@@ -3407,41 +3407,110 @@ def tap_typed_collection_route(
     route_id: str,
     evidence_prefix: str,
 ) -> str:
-    """Restore one measured typed route, tap it, and bind its exact editor."""
+    """Reacquire one scan-proven typed route, tap it, and bind its exact editor."""
     match = CANONICAL_COLLECTION_ITEM_RESOURCE_ID.fullmatch(route_id)
     if match is None or route_id not in inventory.route_viewports:
         raise RuntimeError(f"Unknown scan-proven typed collection route {route_id!r}")
     target_viewport = inventory.route_viewports[route_id]
-    reverse_swipes = inventory.bottom_movement_swipes - target_viewport
-    if reverse_swipes < 0:
+    if (
+        isinstance(target_viewport, bool)
+        or not isinstance(target_viewport, int)
+        or target_viewport < 0
+        or target_viewport > inventory.bottom_movement_swipes
+    ):
         device.capture(f"{evidence_prefix}-viewport-invalid")
         raise RuntimeError("Typed collection route produced an invalid measured viewport")
-    for _ in range(reverse_swipes):
-        device.swipe_down(
+
+    # Inventory finishes at the stable bottom. Gesture distances are not
+    # reversible on Android ScrollView surfaces because clamping and settling
+    # can make N downward gestures land above or below the viewport discovered
+    # by N upward gestures. Rewind to the independently proven start and
+    # reacquire the exact scan-proven resource ID in the same direction used
+    # by the inventory instead of relying on inverse gesture arithmetic.
+    rewind_surface_to_stable_start(
+        device,
+        evidence_prefix=f"{evidence_prefix}-route-reacquire",
+    )
+    previous_sha256: str | None = None
+    unchanged = 0
+    swipes = 0
+    consecutive_empty_reads = 0
+    node: UiNode | None = None
+    saw_clipped_route = False
+    while swipes <= COLLECTION_ROUTE_SCAN_MAX_SCROLLS:
+        nodes = device.hierarchy()
+        if not nodes:
+            consecutive_empty_reads += 1
+            if consecutive_empty_reads > 3:
+                device.capture(f"{evidence_prefix}-fresh-empty-hierarchy")
+                raise RuntimeError(
+                    "Typed collection route reacquisition exhausted empty hierarchies"
+                )
+            time.sleep(0.75)
+            continue
+        consecutive_empty_reads = 0
+
+        matches = [
+            candidate
+            for candidate in nodes
+            if candidate.attributes.get("resource-id", "").rsplit("/", 1)[-1]
+            == route_id
+        ]
+        if len(matches) > 1:
+            device.capture(f"{evidence_prefix}-fresh-cardinality-invalid")
+            raise RuntimeError(
+                f"Typed collection route {route_id!r} has fresh cardinality {len(matches)}"
+            )
+        if len(matches) == 1:
+            candidate = matches[0]
+            if (
+                candidate.attributes.get("enabled") != "true"
+                or candidate.attributes.get("clickable") != "true"
+            ):
+                device.capture(f"{evidence_prefix}-fresh-not-tappable")
+                raise RuntimeError(
+                    f"Typed collection route {route_id!r} was not freshly tappable"
+                )
+            if device.node_has_tappable_bounds(candidate):
+                node = candidate
+                break
+            # A ScrollView hierarchy may expose the exact enabled/clickable
+            # route while its bounds are still clipped just outside the
+            # tappable viewport. Advance in the same bounded forward search;
+            # never tap the clipped node or fall back to its text.
+            saw_clipped_route = True
+
+        hierarchy_sha256 = Device._hierarchy_sha256(nodes)
+        unchanged = unchanged + 1 if hierarchy_sha256 == previous_sha256 else 0
+        previous_sha256 = hierarchy_sha256
+        if unchanged >= COLLECTION_ROUTE_SCAN_STABLE_REPEATS:
+            if saw_clipped_route:
+                device.capture(f"{evidence_prefix}-fresh-not-tappable")
+                raise RuntimeError(
+                    f"Typed collection route {route_id!r} never became freshly tappable"
+                )
+            device.capture(f"{evidence_prefix}-fresh-route-missing")
+            raise RuntimeError(
+                f"Typed collection route {route_id!r} was not found before the proven stable end"
+            )
+        if swipes >= COLLECTION_ROUTE_SCAN_MAX_SCROLLS:
+            break
+        device.swipe_up(
             x_ratio=0.5,
             distance_ratio=COLLECTION_ROUTE_SCAN_DISTANCE_RATIO,
         )
+        swipes += 1
         time.sleep(0.2)
-
-    nodes = device.hierarchy()
-    matches = [
-        node
-        for node in nodes
-        if node.attributes.get("resource-id", "").rsplit("/", 1)[-1] == route_id
-    ]
-    if len(matches) != 1:
-        device.capture(f"{evidence_prefix}-fresh-cardinality-invalid")
+    if node is None:
+        if saw_clipped_route:
+            device.capture(f"{evidence_prefix}-fresh-not-tappable")
+            raise RuntimeError(
+                f"Typed collection route {route_id!r} never became freshly tappable"
+            )
+        device.capture(f"{evidence_prefix}-fresh-route-missing")
         raise RuntimeError(
-            f"Typed collection route {route_id!r} has fresh cardinality {len(matches)}"
+            f"Typed collection route {route_id!r} was not found within the exact bound"
         )
-    node = matches[0]
-    if (
-        node.attributes.get("enabled") != "true"
-        or node.attributes.get("clickable") != "true"
-        or not device.node_has_tappable_bounds(node)
-    ):
-        device.capture(f"{evidence_prefix}-fresh-not-tappable")
-        raise RuntimeError(f"Typed collection route {route_id!r} was not freshly tappable")
     device.shell("input", "tap", *(str(value) for value in node.center))
 
     editor_id = (

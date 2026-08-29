@@ -2074,10 +2074,22 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         self.assertEqual(3, device.swipe_up.call_count)
         device.read_only_hierarchy.assert_not_called()
 
-    def test_typed_collection_route_uses_measured_delta_and_exact_editor_identity(self) -> None:
+    def test_typed_collection_route_rewinds_then_searches_forward_for_exact_editor_identity(self) -> None:
         item_id = "22222222-2222-2222-2222-222222222222"
         route_id = f"collection-item-gear-{item_id}"
         editor_id = f"collection-editor-gear-{item_id}"
+        first_viewport = DRIVER.UiNode(
+            {
+                "resource-id": "collection-surface-start",
+                "text": "start",
+            }
+        )
+        second_viewport = DRIVER.UiNode(
+            {
+                "resource-id": "collection-surface-middle",
+                "text": "middle",
+            }
+        )
         route = DRIVER.UiNode(
             {
                 "resource-id": route_id,
@@ -2088,7 +2100,15 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         )
         editor = DRIVER.UiNode({"resource-id": editor_id})
         device = Mock(spec=DRIVER.Device)
-        device.hierarchy.side_effect = [[route], [editor]]
+        # The target is reached after two forward gestures from the proven
+        # start. This deliberately does not model inverse bottom-relative
+        # gesture arithmetic: Android scroll gestures are asymmetric.
+        device.hierarchy.side_effect = [
+            [first_viewport],
+            [second_viewport],
+            [route],
+            [editor],
+        ]
         device.node_has_tappable_bounds.return_value = True
         device.wait_for_single_exact_resource_id.return_value = editor
         inventory = DRIVER.CollectionRouteInventory({route_id: 1}, 3)
@@ -2105,7 +2125,17 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             )
 
         self.assertEqual(item_id, actual)
-        self.assertEqual(2, device.swipe_down.call_count)
+        self.assertEqual(0, device.swipe_down.call_count)
+        self.assertEqual(
+            [
+                call(
+                    x_ratio=0.5,
+                    distance_ratio=DRIVER.COLLECTION_ROUTE_SCAN_DISTANCE_RATIO,
+                )
+            ]
+            * 2,
+            device.swipe_up.call_args_list,
+        )
         device.shell.assert_called_once_with("input", "tap", "541", "530")
         device.wait_for_single_exact_resource_id.assert_called_once_with(
             editor_id,
@@ -2113,10 +2143,245 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             evidence_prefix="gear-new-route-editor",
             surface_name="Typed collection editor route",
         )
-        rewind.assert_called_once_with(
-            device,
-            evidence_prefix="gear-new-route-editor",
+        self.assertEqual(
+            [
+                call(
+                    device,
+                    evidence_prefix="gear-new-route-route-reacquire",
+                ),
+                call(
+                    device,
+                    evidence_prefix="gear-new-route-editor",
+                ),
+            ],
+            rewind.call_args_list,
         )
+
+    def test_typed_collection_route_retries_transient_empty_hierarchy(self) -> None:
+        item_id = "22222222-2222-2222-2222-222222222222"
+        route_id = f"collection-item-gear-{item_id}"
+        editor_id = f"collection-editor-gear-{item_id}"
+        route = DRIVER.UiNode(
+            {
+                "resource-id": route_id,
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[98,420][984,640]",
+            }
+        )
+        editor = DRIVER.UiNode({"resource-id": editor_id})
+        device = Mock(spec=DRIVER.Device)
+        device.hierarchy.side_effect = [[], [route], [editor]]
+        device.node_has_tappable_bounds.return_value = True
+        inventory = DRIVER.CollectionRouteInventory({route_id: 0}, 2)
+
+        with (
+            patch.object(DRIVER, "rewind_surface_to_stable_start"),
+            patch.object(DRIVER.time, "sleep"),
+        ):
+            actual = DRIVER.tap_typed_collection_route(
+                device,
+                inventory=inventory,
+                route_id=route_id,
+                evidence_prefix="gear-restored-route",
+            )
+
+        self.assertEqual(item_id, actual)
+        device.swipe_up.assert_not_called()
+        device.shell.assert_called_once_with("input", "tap", "541", "530")
+
+    def test_typed_collection_route_advances_past_clipped_exact_route_until_tappable(self) -> None:
+        item_id = "22222222-2222-2222-2222-222222222222"
+        route_id = f"collection-item-gear-{item_id}"
+        editor_id = f"collection-editor-gear-{item_id}"
+        clipped_route = DRIVER.UiNode(
+            {
+                "resource-id": route_id,
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[98,-220][984,-40]",
+            }
+        )
+        tappable_route = DRIVER.UiNode(
+            {
+                "resource-id": route_id,
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[98,420][984,640]",
+            }
+        )
+        editor = DRIVER.UiNode({"resource-id": editor_id})
+        device = Mock(spec=DRIVER.Device)
+        device.hierarchy.side_effect = [[clipped_route], [tappable_route], [editor]]
+        device.node_has_tappable_bounds.side_effect = [False, True]
+        inventory = DRIVER.CollectionRouteInventory({route_id: 1}, 3)
+
+        with (
+            patch.object(DRIVER, "rewind_surface_to_stable_start"),
+            patch.object(DRIVER.time, "sleep"),
+        ):
+            actual = DRIVER.tap_typed_collection_route(
+                device,
+                inventory=inventory,
+                route_id=route_id,
+                evidence_prefix="gear-restored-route",
+            )
+
+        self.assertEqual(item_id, actual)
+        device.swipe_up.assert_called_once_with(
+            x_ratio=0.5,
+            distance_ratio=DRIVER.COLLECTION_ROUTE_SCAN_DISTANCE_RATIO,
+        )
+        device.shell.assert_called_once_with("input", "tap", "541", "530")
+
+    def test_typed_collection_route_fails_closed_when_exact_route_is_missing_at_stable_end(self) -> None:
+        route_id = "collection-item-gear-22222222-2222-2222-2222-222222222222"
+        other = DRIVER.UiNode(
+            {
+                "resource-id": "collection-surface-empty",
+                "text": "empty",
+            }
+        )
+        device = Mock(spec=DRIVER.Device)
+        device.hierarchy.side_effect = [[other], [other], [other]]
+        inventory = DRIVER.CollectionRouteInventory({route_id: 0}, 3)
+
+        with (
+            patch.object(DRIVER, "rewind_surface_to_stable_start"),
+            patch.object(DRIVER.time, "sleep"),
+            self.assertRaisesRegex(RuntimeError, "not found before the proven stable end"),
+        ):
+            DRIVER.tap_typed_collection_route(
+                device,
+                inventory=inventory,
+                route_id=route_id,
+                evidence_prefix="gear-restored-route",
+            )
+
+        self.assertEqual(2, device.swipe_up.call_count)
+        device.capture.assert_called_once_with(
+            "gear-restored-route-fresh-route-missing"
+        )
+        device.shell.assert_not_called()
+
+    def test_typed_collection_route_fails_closed_on_duplicate_fresh_route(self) -> None:
+        route_id = "collection-item-gear-22222222-2222-2222-2222-222222222222"
+        route = DRIVER.UiNode(
+            {
+                "resource-id": route_id,
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[98,420][984,640]",
+            }
+        )
+        device = Mock(spec=DRIVER.Device)
+        device.hierarchy.return_value = [route, route]
+        inventory = DRIVER.CollectionRouteInventory({route_id: 0}, 3)
+
+        with (
+            patch.object(DRIVER, "rewind_surface_to_stable_start"),
+            self.assertRaisesRegex(RuntimeError, "fresh cardinality 2"),
+        ):
+            DRIVER.tap_typed_collection_route(
+                device,
+                inventory=inventory,
+                route_id=route_id,
+                evidence_prefix="gear-restored-route",
+            )
+
+        device.capture.assert_called_once_with(
+            "gear-restored-route-fresh-cardinality-invalid"
+        )
+        device.shell.assert_not_called()
+
+    def test_typed_collection_route_fails_closed_on_fresh_untappable_semantics(self) -> None:
+        route_id = "collection-item-gear-22222222-2222-2222-2222-222222222222"
+        route = DRIVER.UiNode(
+            {
+                "resource-id": route_id,
+                "enabled": "true",
+                "clickable": "false",
+                "bounds": "[98,420][984,640]",
+            }
+        )
+        device = Mock(spec=DRIVER.Device)
+        device.hierarchy.return_value = [route]
+        device.node_has_tappable_bounds.return_value = True
+        inventory = DRIVER.CollectionRouteInventory({route_id: 0}, 3)
+
+        with (
+            patch.object(DRIVER, "rewind_surface_to_stable_start"),
+            self.assertRaisesRegex(RuntimeError, "was not freshly tappable"),
+        ):
+            DRIVER.tap_typed_collection_route(
+                device,
+                inventory=inventory,
+                route_id=route_id,
+                evidence_prefix="gear-restored-route",
+            )
+
+        device.capture.assert_called_once_with(
+            "gear-restored-route-fresh-not-tappable"
+        )
+        device.shell.assert_not_called()
+
+    def test_typed_collection_route_fails_closed_when_clipped_route_never_becomes_tappable(self) -> None:
+        route_id = "collection-item-gear-22222222-2222-2222-2222-222222222222"
+        clipped_route = DRIVER.UiNode(
+            {
+                "resource-id": route_id,
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[98,-220][984,-40]",
+            }
+        )
+        device = Mock(spec=DRIVER.Device)
+        device.hierarchy.side_effect = [
+            [clipped_route],
+            [clipped_route],
+            [clipped_route],
+        ]
+        device.node_has_tappable_bounds.return_value = False
+        inventory = DRIVER.CollectionRouteInventory({route_id: 0}, 3)
+
+        with (
+            patch.object(DRIVER, "rewind_surface_to_stable_start"),
+            patch.object(DRIVER.time, "sleep"),
+            self.assertRaisesRegex(RuntimeError, "never became freshly tappable"),
+        ):
+            DRIVER.tap_typed_collection_route(
+                device,
+                inventory=inventory,
+                route_id=route_id,
+                evidence_prefix="gear-restored-route",
+            )
+
+        self.assertEqual(2, device.swipe_up.call_count)
+        device.capture.assert_called_once_with(
+            "gear-restored-route-fresh-not-tappable"
+        )
+        device.shell.assert_not_called()
+
+    def test_typed_collection_route_rejects_stale_unscanned_id_before_rewind(self) -> None:
+        scanned_route = "collection-item-gear-11111111-1111-1111-1111-111111111111"
+        stale_route = "collection-item-gear-22222222-2222-2222-2222-222222222222"
+        device = Mock(spec=DRIVER.Device)
+        inventory = DRIVER.CollectionRouteInventory({scanned_route: 0}, 3)
+
+        with (
+            patch.object(DRIVER, "rewind_surface_to_stable_start") as rewind,
+            self.assertRaisesRegex(RuntimeError, "Unknown scan-proven typed collection route"),
+        ):
+            DRIVER.tap_typed_collection_route(
+                device,
+                inventory=inventory,
+                route_id=stale_route,
+                evidence_prefix="gear-restored-route",
+            )
+
+        rewind.assert_not_called()
+        device.hierarchy.assert_not_called()
+        device.shell.assert_not_called()
 
     def test_system_ui_anr_is_captured_and_fails_without_dismissal(self) -> None:
         device = Mock(spec=DRIVER.Device)
