@@ -69,16 +69,42 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
             contract, "capture_driver_authority", return_value=self.driver_authority,
         )
         self.driver_patch.start()
-        dummy = contract.BoundBytes(self.provenance, b"{}", "0" * 64, 2)
+        dummy = contract.bind_regular(self.provenance, "fixture provenance reference")
         self.reference_patches = [
             mock.patch.object(
                 contract, "capture_build_provenance_references",
                 return_value=contract.BuildProvenanceReferences(
-                    dummy, dummy, dummy, dummy, dummy, dummy,
+                    dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy,
+                    tuple(
+                        (field, dummy)
+                        for field in sorted(contract.WP1_REFERENCE_EVIDENCE_FILES)
+                    ),
                 ),
             ),
             mock.patch.object(contract, "_validate_package_authority_references"),
             mock.patch.object(contract, "_validate_content_references"),
+            mock.patch.object(contract, "_validate_referenced_provenance_bytes"),
+            mock.patch.object(
+                contract, "TRUSTED_TOOLCHAIN_SIZE_BYTES",
+                {field: 8 for field in contract.TRUSTED_TOOLCHAIN_SIZE_BYTES},
+            ),
+            mock.patch.object(contract, "TRUSTED_JAVA_VERSION_LINES", {
+                "java": 'openjdk version "17.0.14"', "javac": "javac 17.0.14",
+            }),
+            mock.patch.object(contract, "TRUSTED_JDK_RELEASE_VALUES", {
+                "IMPLEMENTOR": "Microsoft", "IMPLEMENTOR_VERSION": "Microsoft-10800290",
+                "JAVA_RUNTIME_VERSION": "17.0.14+7-LTS", "JAVA_VERSION": "17.0.14",
+                "JAVA_VERSION_DATE": "2025-01-21", "LIBC": "gnu",
+                "MODULES": "java.base", "OS_ARCH": "x86_64", "OS_NAME": "Linux",
+                "SOURCE": ".:git:fixture",
+            }),
+            mock.patch.object(
+                contract, "TRUSTED_CORE_CONTENT_TREE",
+                next(
+                    row["tree"] for row in self.graph_payload()["repositories"]
+                    if row["name"] == "chummer6-core"
+                ),
+            ),
         ]
         for patcher in self.reference_patches:
             patcher.start()

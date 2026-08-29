@@ -112,6 +112,15 @@ def stable_regular_bytes(path: Path, label: str) -> tuple[bytes, tuple[int, ...]
     return data, identity
 
 
+def snapshot_reference_bytes(source: Path, output: Path, label: str) -> None:
+    data, identity = stable_regular_bytes(source, label)
+    write_exclusive(output, data, f"{label} snapshot")
+    current, current_identity = stable_regular_bytes(source, label)
+    copied, _ = stable_regular_bytes(output, f"{label} snapshot")
+    if current_identity != identity or current != data or copied != data:
+        raise ValueError(f"{label} changed across evidence snapshot")
+
+
 def add_common(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--android-root", type=Path, required=True)
     parser.add_argument("--presentation-root", type=Path, required=True)
@@ -445,6 +454,21 @@ def main() -> int:
         authenticate_inputs(**common)
         print("api36_physical_build_inputs=pass publication_authorized=false")
         return 0
+    evidence_root = Path(f"{args.output}.evidence")
+    if (
+        not evidence_root.is_absolute()
+        or evidence_root.resolve(strict=True) != evidence_root
+        or not evidence_root.is_dir()
+        or evidence_root.stat().st_mode & 0o077
+    ):
+        raise ValueError("provenance evidence root must be a canonical owner-only directory")
+    snapshot_reference_bytes(
+        args.assets, evidence_root / "project-assets.json", "ARM64 restore assets",
+    )
+    snapshot_reference_bytes(
+        args.android_sdk_packages, evidence_root / "selected-packages.xml",
+        "selected Android SDK packages",
+    )
     manifest = create_manifest(
         **common,
         apk=args.apk,

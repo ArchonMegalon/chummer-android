@@ -43,6 +43,10 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
             ["git", "rev-parse", "HEAD"], cwd=self.core, check=True,
             capture_output=True, text=True,
         ).stdout.strip()
+        self.core_tree = subprocess.run(
+            ["git", "rev-parse", "HEAD^{tree}"], cwd=self.core, check=True,
+            capture_output=True, text=True,
+        ).stdout.strip()
 
         self.android = self.root / "android"
         self.android.mkdir()
@@ -116,6 +120,11 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
             directory.mkdir(parents=True)
         self.package_cache_manifest = self.package_cache / "owner-package-cache.json"
         write_json(self.package_cache_manifest, {"contract": "fixture", "packages": []})
+        write_json(self.package_authority, self.package_authority_payload())
+        subprocess.run(["git", "add", "."], cwd=self.android, check=True)
+        subprocess.run(["git", "commit", "-qm", "bind exact external authority bytes"], cwd=self.android, check=True)
+        self.android_commit = self.git("rev-parse", "HEAD")
+        self.android_tree = self.git("rev-parse", "HEAD^{tree}")
         self.content_source = self.root / "content-source.json"
         write_json(self.content_source, self.content_payload(apk=False))
         self.apk = self.root / "com.myexternalbrain.chummer-Signed.apk"
@@ -263,6 +272,31 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
             "android_workload_manifest": provenance.file_sha256(self.android_workload_manifest),
             "maui_workload_manifest": provenance.file_sha256(self.maui_workload_manifest),
         }
+        self.toolchain_size_authority = {
+            "dotnet": self.dotnet.stat().st_size,
+            "jdk_release": (self.jdk_root / "release").stat().st_size,
+            "java": self.java.stat().st_size,
+            "javac": self.javac.stat().st_size,
+            "jarsigner": self.jarsigner.stat().st_size,
+            "keytool": self.keytool.stat().st_size,
+            "platform_package": (self.platform_root / "package.xml").stat().st_size,
+            "android_jar": (self.platform_root / "android.jar").stat().st_size,
+            "build_tools_package": (self.build_tools_root / "package.xml").stat().st_size,
+            "apksigner": self.apksigner.stat().st_size,
+            "apksigner_jar": (self.build_tools_root / "lib/apksigner.jar").stat().st_size,
+            "aapt2": (self.build_tools_root / "aapt2").stat().st_size,
+            "zipalign": (self.build_tools_root / "zipalign").stat().st_size,
+            "platform_tools_package": (self.platform_tools_root / "package.xml").stat().st_size,
+            "adb": (self.platform_tools_root / "adb").stat().st_size,
+            "android_workload_manifest": self.android_workload_manifest.stat().st_size,
+            "maui_workload_manifest": self.maui_workload_manifest.stat().st_size,
+        }
+        self.jdk_release_values = {
+            "IMPLEMENTOR": "Microsoft", "IMPLEMENTOR_VERSION": "Microsoft-10800290",
+            "JAVA_RUNTIME_VERSION": "17.0.14+7-LTS", "JAVA_VERSION": "17.0.14",
+            "JAVA_VERSION_DATE": "2025-01-21", "LIBC": "gnu", "MODULES": "java.base",
+            "OS_ARCH": "x86_64", "OS_NAME": "Linux", "SOURCE": ".:git:fixture",
+        }
 
         self.patches = [
             mock.patch.object(provenance, "UI_AUTHORITY_RECEIPT_SHA256", provenance.file_sha256(self.ui_authority_receipt)),
@@ -288,8 +322,24 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
                 provenance, "MAUI_WORKLOAD_MANIFEST_AUTHORITY", self.maui_workload_manifest,
             ),
             mock.patch.object(provenance, "TOOLCHAIN_SHA256_AUTHORITY", self.toolchain_authority),
+            mock.patch.object(provenance, "TOOLCHAIN_SIZE_AUTHORITY", self.toolchain_size_authority),
             mock.patch.object(physical_contract, "TRUSTED_ANDROID_SDK_ROOT", str(self.sdk_root)),
             mock.patch.object(physical_contract, "TRUSTED_TOOLCHAIN_SHA256", self.toolchain_authority),
+            mock.patch.object(physical_contract, "TRUSTED_TOOLCHAIN_SIZE_BYTES", self.toolchain_size_authority),
+            mock.patch.object(physical_contract, "TRUSTED_JAVA_VERSION_LINES", {
+                "java": 'openjdk version "17.0.14" 2025-01-21 LTS',
+                "javac": "javac 17.0.14",
+            }),
+            mock.patch.object(physical_contract, "TRUSTED_JDK_RELEASE_VALUES", self.jdk_release_values),
+            mock.patch.object(physical_contract, "TRUSTED_PRESENTATION_PRODUCER_LOCK", {
+                "sha256": provenance.file_sha256(self.producer_lock),
+                "sizeBytes": self.producer_lock.stat().st_size,
+            }),
+            mock.patch.object(physical_contract, "TRUSTED_FULL_PROJECT_LOCK", {
+                "sha256": provenance.file_sha256(self.lock),
+                "sizeBytes": self.lock.stat().st_size,
+            }),
+            mock.patch.object(physical_contract, "TRUSTED_CORE_CONTENT_TREE", self.core_tree),
             mock.patch.object(
                 provenance, "_probe_version",
                 lambda path, _label: (
@@ -353,6 +403,9 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
         presentation_commit = getattr(self, "presentation_commit", provenance.PRESENTATION_COMMIT)
         presentation_tree = getattr(self, "presentation_tree", provenance.PRESENTATION_TREE)
         core_recipe_commit = getattr(self, "core_commit", provenance.CORE_CONTENT_REVISION)
+        presentation_lock = getattr(self, "presentation_lock", None)
+        ui_receipt = getattr(self, "ui_authority_receipt", None)
+        cache_manifest = getattr(self, "package_cache_manifest", None)
         return {
             "contractName": provenance.PACKAGE_AUTHORITY_CONTRACT,
             "authorityClass": "internal_phone_beta_only",
@@ -363,9 +416,35 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
                 "tree": presentation_tree,
                 "repository": provenance.PRESENTATION_REPOSITORY,
             },
-            "packagePlaneLock": {},
-            "verificationReceipt": {},
-            "artifactCache": {},
+            "packagePlaneLock": {
+                "path": "config/package-plane.lock.json",
+                "contractName": "fixture.package-plane-lock",
+                "contractVersion": 11,
+                "sha256": (
+                    provenance.file_sha256(presentation_lock)
+                    if presentation_lock is not None else "1" * 64
+                ),
+                "sizeBytes": presentation_lock.stat().st_size if presentation_lock is not None else 1,
+                "gitBlob": "1" * 40,
+            },
+            "verificationReceipt": {
+                "contractName": provenance.UI_AUTHORITY_RECEIPT_CONTRACT,
+                "contractVersion": 11,
+                "sha256": provenance.file_sha256(ui_receipt) if ui_receipt is not None else "2" * 64,
+                "sizeBytes": ui_receipt.stat().st_size if ui_receipt is not None else 2,
+                "status": "passed",
+            },
+            "artifactCache": {
+                "contractName": "fixture.cache",
+                "cacheKey": "3" * 64,
+                "manifestFileName": "owner-package-cache.json",
+                "manifestSha256": (
+                    provenance.file_sha256(cache_manifest)
+                    if cache_manifest is not None else "3" * 64
+                ),
+                "manifestSizeBytes": cache_manifest.stat().st_size if cache_manifest is not None else 3,
+                "packageCount": 18,
+            },
             "sourceGraph": {
                 "corePackageRecipeCommit": core_recipe_commit,
                 "coreRuntimeSourceCommit": provenance.CORE_RUNTIME_REVISION,
@@ -734,6 +813,27 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
         payload["authoritySha256"] = physical_contract.canonical_sha256(authority)
 
     def consumer_references(self) -> physical_contract.BuildProvenanceReferences:
+        paths = {
+            "executionEvidence.toolchainLog": self.toolchain_log,
+            "executionEvidence.packageAuthorityLog": self.package_authority_log,
+            "executionEvidence.packageAuthorityBinding": self.package_authority_binding,
+            "executionEvidence.contentSourceLog": self.content_source_log,
+            "executionEvidence.buildInputsLog": self.build_inputs_log,
+            "executionEvidence.restoreLog": self.restore_log,
+            "executionEvidence.buildLog": self.build_log,
+            "executionEvidence.signingPhaseLog": self.signing_phase_log,
+            "executionEvidence.apksignerLog": self.apksigner_log,
+            "executionEvidence.jarsignerLog": self.jarsigner_log,
+            "executionEvidence.signingReceipt": self.signing_receipt,
+            "executionEvidence.contentApkLog": self.content_apk_log,
+            "executionEvidence.packageAuthoritySealLog": self.package_authority_seal_log,
+            "executionEvidence.packageAuthoritySeal": self.package_authority_seal,
+            "executionEvidence.commandJournal": self.journal,
+            "executionEvidence.rawCommandJournal": self.raw_journal,
+            "executionEvidence.delegateCommandJournal": self.delegate_journal,
+            "toolchain.dotnetWorkloads": self.workloads,
+            "toolchain.androidSdk.selectedInventory": self.sdk_packages,
+        }
         return physical_contract.BuildProvenanceReferences(
             package_authority=physical_contract.bind_regular(
                 self.package_authority, "consumer committed package authority",
@@ -752,6 +852,19 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
             ),
             content_apk_receipt=physical_contract.bind_regular(
                 self.content_apk, "consumer content APK receipt",
+            ),
+            full_project_lock=physical_contract.bind_regular(
+                self.lock, "consumer full-project lock",
+            ),
+            project_assets=physical_contract.bind_regular(
+                self.assets, "consumer project assets",
+            ),
+            evidence=tuple(
+                (
+                    field,
+                    physical_contract.bind_regular(paths[field], f"consumer {field}"),
+                )
+                for field in sorted(physical_contract.WP1_REFERENCE_EVIDENCE_FILES)
             ),
         )
 
@@ -929,6 +1042,231 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
             self.package_authority.write_bytes(original_authority)
             self.package_authority_binding.write_bytes(original_intake)
             self.package_authority_seal.write_bytes(original_post)
+
+    def test_consumer_rejects_every_previously_unbound_security_leaf(self) -> None:
+        manifest = provenance.create_manifest(**self.create_arguments())
+        graph_path = self.root / "consumer-release-source-graph.json"
+        write_json(graph_path, self.consumer_source_graph(manifest))
+        references = self.consumer_references()
+
+        mutations: list[tuple[str, tuple[object, ...], object]] = []
+        for prefix in (
+            ("presentationBuildSource", "packagePlaneLock"),
+            ("presentationBuildSource", "producerLock"),
+            ("packageAuthority", "uiReceipt"),
+            ("packageAuthority", "cacheManifest"),
+            ("restore", "fullProjectLock"),
+            ("restore", "projectAssets"),
+        ):
+            mutations.extend((
+                (".".join(prefix) + ".sha256", prefix + ("sha256",), "0" * 64),
+                (".".join(prefix) + ".sizeBytes", prefix + ("sizeBytes",), -1),
+            ))
+        mutations.append((
+            "content.sourceRepository.tree",
+            ("content", "sourceRepository", "tree"), "0" * 40,
+        ))
+        for field in sorted(
+            physical_contract.WP1_EXECUTION_EVIDENCE_FIELDS
+            - {"boundedProcessGroups", "warnings", "errors"}
+        ):
+            prefix = ("executionEvidence", field)
+            mutations.extend((
+                (f"executionEvidence.{field}.sha256", prefix + ("sha256",), "0" * 64),
+                (f"executionEvidence.{field}.sizeBytes", prefix + ("sizeBytes",), -1),
+            ))
+        for prefix in (
+            ("toolchain", "dotnetWorkloads"),
+            ("toolchain", "androidSdk", "selectedInventory"),
+        ):
+            mutations.extend((
+                (".".join(prefix) + ".sha256", prefix + ("sha256",), "0" * 64),
+                (".".join(prefix) + ".sizeBytes", prefix + ("sizeBytes",), -1),
+            ))
+        trusted_size_paths = (
+            ("toolchain", "dotnetHost", "sizeBytes"),
+            ("toolchain", "workloadManifests", "android", "sizeBytes"),
+            ("toolchain", "workloadManifests", "maui", "sizeBytes"),
+            ("toolchain", "java", "sizeBytes"),
+            ("toolchain", "javac", "sizeBytes"),
+            ("toolchain", "jarsigner", "sizeBytes"),
+            ("toolchain", "keytool", "sizeBytes"),
+            ("toolchain", "jdkRelease", "sizeBytes"),
+            ("toolchain", "androidSdk", "installedPackages", "platforms;android-36", "sizeBytes"),
+            ("toolchain", "androidSdk", "installedPackages", "build-tools;36.0.0", "sizeBytes"),
+            ("toolchain", "androidSdk", "installedPackages", "platform-tools", "sizeBytes"),
+            ("toolchain", "androidSdk", "androidJar", "sizeBytes"),
+            ("toolchain", "androidSdk", "aapt2", "sizeBytes"),
+            ("toolchain", "androidSdk", "zipalign", "sizeBytes"),
+            ("toolchain", "androidSdk", "adb", "sizeBytes"),
+            ("toolchain", "androidSdk", "apksigner", "sizeBytes"),
+            ("toolchain", "androidSdk", "apksignerJar", "sizeBytes"),
+        )
+        mutations.extend(
+            (".".join(path), path, -1) for path in trusted_size_paths
+        )
+        mutations.extend((
+            ("toolchain.java.versionLine", ("toolchain", "java", "versionLine"), "tampered"),
+            ("toolchain.javac.versionLine", ("toolchain", "javac", "versionLine"), "tampered"),
+        ))
+        for field in (
+            "IMPLEMENTOR_VERSION", "JAVA_RUNTIME_VERSION", "JAVA_VERSION_DATE", "LIBC",
+            "MODULES", "OS_ARCH", "OS_NAME", "SOURCE",
+        ):
+            path = ("toolchain", "jdkRelease", "fields", field)
+            mutations.append((".".join(path), path, "tampered"))
+        mutations.extend((
+            (
+                "artifact.signing.certificateSha256",
+                ("artifact", "signing", "certificateSha256"), "0" * 64,
+            ),
+            (
+                "artifact.signing.verifiedSchemes[0]",
+                ("artifact", "signing", "verifiedSchemes", 0), 3,
+            ),
+            (
+                "artifact.signing.receipt.sha256",
+                ("artifact", "signing", "receipt", "sha256"), "0" * 64,
+            ),
+            (
+                "artifact.signing.receipt.sizeBytes",
+                ("artifact", "signing", "receipt", "sizeBytes"), -1,
+            ),
+        ))
+        self.assertEqual(82, len(mutations))
+
+        def assign(payload: object, path: tuple[object, ...], replacement: object) -> None:
+            current = payload
+            for part in path[:-1]:
+                current = current[part]  # type: ignore[index]
+            leaf = path[-1]
+            if replacement == -1:
+                replacement = current[leaf] + 1  # type: ignore[index,operator]
+            current[leaf] = replacement  # type: ignore[index]
+
+        original = self.manifest.read_bytes() if self.manifest.exists() else None
+        try:
+            for label, path, replacement in mutations:
+                with self.subTest(field=label):
+                    tampered = copy.deepcopy(manifest)
+                    assign(tampered, path, replacement)
+                    self.reseal_for_consumer(tampered)
+                    write_json(self.manifest, tampered)
+                    with self.assertRaises(ValueError):
+                        physical_contract.validate_build_provenance(
+                            physical_contract.bind_regular(self.manifest, label),
+                            physical_contract.bind_regular(graph_path, "consumer source graph"),
+                            physical_contract.bind_regular(self.apk, "materialized producer APK"),
+                            repository_root=self.android,
+                            references=references,
+                        )
+
+            metadata_only = copy.deepcopy(manifest)
+            metadata_only["generatedAtUtc"] = "2030-01-01T00:00:00Z"
+            write_json(self.manifest, metadata_only)
+            physical_contract.validate_build_provenance(
+                physical_contract.bind_regular(self.manifest, "metadata-only provenance"),
+                physical_contract.bind_regular(graph_path, "consumer source graph"),
+                physical_contract.bind_regular(self.apk, "materialized producer APK"),
+                repository_root=self.android,
+                references=references,
+            )
+        finally:
+            if original is None:
+                self.manifest.unlink(missing_ok=True)
+            else:
+                self.manifest.write_bytes(original)
+
+    def test_consumer_reference_capture_rejects_missing_symlink_mode_and_toctou(self) -> None:
+        manifest = provenance.create_manifest(**self.create_arguments())
+        provenance.write_manifest(self.manifest, manifest)
+        graph_path = self.root / "consumer-release-source-graph.json"
+        write_json(graph_path, self.consumer_source_graph(manifest))
+        evidence_root = Path(f"{self.manifest}.evidence")
+        evidence_root.mkdir(mode=0o700)
+        sources = {
+            "toolchain.log": self.toolchain_log,
+            "package-authority.log": self.package_authority_log,
+            "package-authority-binding.json": self.package_authority_binding,
+            "content-source.log": self.content_source_log,
+            "build-inputs.log": self.build_inputs_log,
+            "restore.log": self.restore_log,
+            "build.log": self.build_log,
+            "signing-phase.log": self.signing_phase_log,
+            "apksigner.log": self.apksigner_log,
+            "jarsigner.log": self.jarsigner_log,
+            "signing-receipt.json": self.signing_receipt,
+            "content-apk.log": self.content_apk_log,
+            "package-authority-seal.log": self.package_authority_seal_log,
+            "package-authority-seal.json": self.package_authority_seal,
+            "command-journal.jsonl": self.journal,
+            "raw-command-journal.jsonl": self.raw_journal,
+            "delegate-command-journal.jsonl": self.delegate_journal,
+            "dotnet-workloads.json": self.workloads,
+            "selected-packages.xml": self.sdk_packages,
+            "content-source-receipt.json": self.content_source,
+            "content-apk-receipt.json": self.content_apk,
+            "project-assets.json": self.assets,
+        }
+        for filename, source in sources.items():
+            shutil.copyfile(source, evidence_root / filename)
+
+        references = physical_contract.capture_build_provenance_references(
+            physical_contract.bind_regular(self.manifest, "captured provenance"), self.android,
+        )
+
+        selected = evidence_root / "selected-packages.xml"
+        selected_bytes = selected.read_bytes()
+        selected.unlink()
+        with self.assertRaises((FileNotFoundError, ValueError)):
+            physical_contract.capture_build_provenance_references(
+                physical_contract.bind_regular(self.manifest, "missing reference provenance"),
+                self.android,
+            )
+        selected.write_bytes(selected_bytes)
+
+        selected.unlink()
+        selected.symlink_to(self.sdk_packages)
+        with self.assertRaisesRegex(ValueError, "canonical|symlink"):
+            physical_contract.capture_build_provenance_references(
+                physical_contract.bind_regular(self.manifest, "symlink reference provenance"),
+                self.android,
+            )
+        selected.unlink()
+        selected.write_bytes(selected_bytes)
+
+        evidence_root.chmod(0o755)
+        with self.assertRaisesRegex(ValueError, "owner-only"):
+            physical_contract.capture_build_provenance_references(
+                physical_contract.bind_regular(self.manifest, "open evidence provenance"),
+                self.android,
+            )
+        evidence_root.chmod(0o700)
+
+        symlink_provenance = self.root / "symlink-provenance.json"
+        write_json(symlink_provenance, manifest)
+        symlink_root = Path(f"{symlink_provenance}.evidence")
+        symlink_root.symlink_to(evidence_root, target_is_directory=True)
+        with self.assertRaisesRegex(ValueError, "canonical|owner-only"):
+            physical_contract.capture_build_provenance_references(
+                physical_contract.bind_regular(symlink_provenance, "symlink-root provenance"),
+                self.android,
+            )
+
+        toolchain_log = evidence_root / "toolchain.log"
+        original_log = toolchain_log.read_bytes()
+        toolchain_log.write_bytes(original_log + b"tamper\n")
+        try:
+            with self.assertRaisesRegex(ValueError, "authentication boundary"):
+                physical_contract.validate_build_provenance(
+                    physical_contract.bind_regular(self.manifest, "TOCTOU provenance"),
+                    physical_contract.bind_regular(graph_path, "consumer source graph"),
+                    physical_contract.bind_regular(self.apk, "materialized producer APK"),
+                    repository_root=self.android,
+                    references=references,
+                )
+        finally:
+            toolchain_log.write_bytes(original_log)
 
     def test_ui_authority_receipt_digest_status_and_verifier_are_fail_closed(self) -> None:
         original = self.ui_authority_receipt.read_text(encoding="utf-8")
@@ -1622,6 +1960,10 @@ class PhysicalProducerConsumerAuthorityParityTests(unittest.TestCase):
         self.assertEqual(
             provenance.TOOLCHAIN_SHA256_AUTHORITY,
             physical_contract.TRUSTED_TOOLCHAIN_SHA256,
+        )
+        self.assertEqual(
+            provenance.TOOLCHAIN_SIZE_AUTHORITY,
+            physical_contract.TRUSTED_TOOLCHAIN_SIZE_BYTES,
         )
 
 

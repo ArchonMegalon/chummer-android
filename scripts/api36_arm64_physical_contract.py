@@ -144,6 +144,71 @@ TRUSTED_TOOLCHAIN_SHA256 = {
     "android_workload_manifest": "e520a5f491b933774ed06c48e8adf3a6878ad8a6cd320180a3395080cf362644",
     "maui_workload_manifest": "e2506ea1897fca4cf528fa2e950d3267477e28e5253f1e7781520058742ced10",
 }
+TRUSTED_TOOLCHAIN_SIZE_BYTES = {
+    "dotnet": 73016,
+    "jdk_release": 1279,
+    "java": 12368,
+    "javac": 12416,
+    "jarsigner": 12392,
+    "keytool": 12392,
+    "platform_package": 1655,
+    "android_jar": 27768026,
+    "build_tools_package": 17886,
+    "apksigner": 2959,
+    "apksigner_jar": 1100545,
+    "aapt2": 5735384,
+    "zipalign": 227696,
+    "platform_tools_package": 17882,
+    "adb": 8709272,
+    "android_workload_manifest": 3608,
+    "maui_workload_manifest": 4098,
+}
+TRUSTED_JAVA_VERSION_LINES = {
+    "java": 'openjdk version "17.0.14" 2025-01-21 LTS',
+    "javac": "javac 17.0.14",
+}
+TRUSTED_JDK_RELEASE_VALUES = {
+    "IMPLEMENTOR": "Microsoft",
+    "IMPLEMENTOR_VERSION": "Microsoft-10800290",
+    "JAVA_RUNTIME_VERSION": "17.0.14+7-LTS",
+    "JAVA_VERSION": "17.0.14",
+    "JAVA_VERSION_DATE": "2025-01-21",
+    "LIBC": "gnu",
+    "MODULES": "java.base java.compiler java.datatransfer java.xml java.prefs java.desktop java.instrument java.logging java.management java.security.sasl java.naming java.rmi java.management.rmi java.net.http java.scripting java.security.jgss java.transaction.xa java.sql java.sql.rowset java.xml.crypto java.se java.smartcardio jdk.accessibility jdk.internal.jvmstat jdk.attach jdk.charsets jdk.compiler jdk.crypto.ec jdk.crypto.cryptoki jdk.dynalink jdk.internal.ed jdk.editpad jdk.hotspot.agent jdk.httpserver jdk.incubator.foreign jdk.incubator.vector jdk.internal.le jdk.internal.opt jdk.internal.vm.ci jdk.internal.vm.compiler jdk.internal.vm.compiler.management jdk.jartool jdk.javadoc jdk.jcmd jdk.management jdk.management.agent jdk.jconsole jdk.jdeps jdk.jdwp.agent jdk.jdi jdk.jfr jdk.jlink jdk.jpackage jdk.jshell jdk.jsobject jdk.jstatd jdk.localedata jdk.management.jfr jdk.naming.dns jdk.naming.rmi jdk.net jdk.nio.mapmode jdk.random jdk.sctp jdk.security.auth jdk.security.jgss jdk.unsupported jdk.unsupported.desktop jdk.xml.dom jdk.zipfs",
+    "OS_ARCH": "x86_64",
+    "OS_NAME": "Linux",
+    "SOURCE": ".:git:261f4ed0a496",
+}
+TRUSTED_PRESENTATION_PRODUCER_LOCK = {
+    "sha256": "f4dd03dea3a51674913e2492e77390ba8d9d3587d8dac12def72156403cddd50",
+    "sizeBytes": 2019,
+}
+TRUSTED_FULL_PROJECT_LOCK = {
+    "sha256": "2c6b273ed9eb11db0c3820ebb7e8434ccea6471e7ac2db38763a0aa08db294d9",
+    "sizeBytes": 70376,
+}
+TRUSTED_CORE_CONTENT_TREE = "c110c4a013575a4195987ea7ba0249a65ec89874"
+WP1_REFERENCE_EVIDENCE_FILES = {
+    "executionEvidence.toolchainLog": "toolchain.log",
+    "executionEvidence.packageAuthorityLog": "package-authority.log",
+    "executionEvidence.packageAuthorityBinding": "package-authority-binding.json",
+    "executionEvidence.contentSourceLog": "content-source.log",
+    "executionEvidence.buildInputsLog": "build-inputs.log",
+    "executionEvidence.restoreLog": "restore.log",
+    "executionEvidence.buildLog": "build.log",
+    "executionEvidence.signingPhaseLog": "signing-phase.log",
+    "executionEvidence.apksignerLog": "apksigner.log",
+    "executionEvidence.jarsignerLog": "jarsigner.log",
+    "executionEvidence.signingReceipt": "signing-receipt.json",
+    "executionEvidence.contentApkLog": "content-apk.log",
+    "executionEvidence.packageAuthoritySealLog": "package-authority-seal.log",
+    "executionEvidence.packageAuthoritySeal": "package-authority-seal.json",
+    "executionEvidence.commandJournal": "command-journal.jsonl",
+    "executionEvidence.rawCommandJournal": "raw-command-journal.jsonl",
+    "executionEvidence.delegateCommandJournal": "delegate-command-journal.jsonl",
+    "toolchain.dotnetWorkloads": "dotnet-workloads.json",
+    "toolchain.androidSdk.selectedInventory": "selected-packages.xml",
+}
 PACKAGE_AUTHORITY_RELATIVE_PATH = Path("eng/internal-phone-beta-package-authority.json")
 CONTENT_MANIFEST_RELATIVE_PATH = Path(
     "src/Chummer.Android/Content/chummer-content-manifest.json"
@@ -494,6 +559,9 @@ class BuildProvenanceReferences:
     content_manifest: BoundBytes
     content_source_receipt: BoundBytes
     content_apk_receipt: BoundBytes
+    full_project_lock: BoundBytes
+    project_assets: BoundBytes
+    evidence: tuple[tuple[str, BoundBytes], ...]
 
 
 def reject_duplicate_keys(pairs: list[tuple[str, object]]) -> dict[str, object]:
@@ -650,6 +718,13 @@ def capture_build_provenance_references(
     ):
         raise ValueError("WP1 evidence root must be a canonical owner-only directory")
     _reject_symlink_components(evidence_root)
+    evidence = tuple(
+        (
+            field,
+            bind_regular(evidence_root / filename, f"WP1 referenced evidence {field}"),
+        )
+        for field, filename in sorted(WP1_REFERENCE_EVIDENCE_FILES.items())
+    )
     return BuildProvenanceReferences(
         package_authority=bind_regular(
             repository_root / PACKAGE_AUTHORITY_RELATIVE_PATH,
@@ -675,7 +750,159 @@ def capture_build_provenance_references(
             evidence_root / "content-apk-receipt.json",
             "APK content receipt",
         ),
+        full_project_lock=bind_regular(
+            repository_root / "src/Chummer.Android/packages.lock.json",
+            "committed ARM64 full-project lock",
+        ),
+        project_assets=bind_regular(
+            evidence_root / "project-assets.json",
+            "ARM64 restore assets",
+        ),
+        evidence=evidence,
     )
+
+
+def _evidence_reference_map(
+    references: BuildProvenanceReferences,
+) -> dict[str, BoundBytes]:
+    result: dict[str, BoundBytes] = {}
+    for field, bound in references.evidence:
+        if field in result:
+            raise ValueError(f"duplicate WP1 referenced evidence field: {field}")
+        result[field] = bound
+    if set(result) != set(WP1_REFERENCE_EVIDENCE_FILES):
+        raise ValueError("WP1 referenced evidence field set is not exact")
+    return result
+
+
+def _require_evidence_binding(
+    binding: object, references: Mapping[str, BoundBytes], field: str,
+) -> None:
+    try:
+        bound = references[field]
+    except KeyError as error:
+        raise ValueError(f"missing WP1 referenced evidence: {field}") from error
+    if not isinstance(binding, dict):
+        raise ValueError(f"WP1 referenced evidence {field} must be one object")
+    projected = {
+        "sha256": binding.get("sha256"),
+        "sizeBytes": binding.get("sizeBytes"),
+    }
+    _require_bound_binding(projected, bound, f"WP1 referenced evidence {field}")
+
+
+def _all_build_provenance_references(
+    references: BuildProvenanceReferences,
+) -> tuple[tuple[BoundBytes, str], ...]:
+    direct = (
+        (references.package_authority, "committed package authority"),
+        (references.package_authority_intake, "package authority intake"),
+        (references.package_authority_post_build, "package authority post-build seal"),
+        (references.content_manifest, "committed Android content manifest"),
+        (references.content_source_receipt, "Core content source receipt"),
+        (references.content_apk_receipt, "APK content receipt"),
+        (references.full_project_lock, "committed ARM64 full-project lock"),
+        (references.project_assets, "ARM64 restore assets"),
+    )
+    evidence = tuple(
+        (bound, f"WP1 referenced evidence {field}")
+        for field, bound in references.evidence
+    )
+    return direct + evidence
+
+
+def _validate_referenced_provenance_bytes(
+    value: Mapping[str, object], apk: BoundBytes,
+    references: BuildProvenanceReferences,
+    evidence: Mapping[str, BoundBytes],
+) -> None:
+    presentation = require_exact_keys(
+        value.get("presentationBuildSource"), WP1_PRESENTATION_SOURCE_FIELDS,
+        "WP1 Presentation build source",
+    )
+    package_authority = require_exact_keys(
+        value.get("packageAuthority"), WP1_PACKAGE_AUTHORITY_FIELDS,
+        "WP1 package authority",
+    )
+    restore = require_exact_keys(value.get("restore"), {
+        "lockedMode", "networkSourcesAllowed", "ownerSourceFallbackAllowed",
+        "fullProjectLock", "projectAssets",
+    }, "WP1 restore")
+    execution = require_exact_keys(
+        value.get("executionEvidence"), WP1_EXECUTION_EVIDENCE_FIELDS,
+        "WP1 execution evidence",
+    )
+    toolchain = require_exact_keys(
+        value.get("toolchain"), WP1_TOOLCHAIN_FIELDS, "WP1 toolchain",
+    )
+    artifact = require_exact_keys(
+        value.get("artifact"), WP1_ARTIFACT_FIELDS, "WP1 artifact",
+    )
+    signing = require_exact_keys(
+        artifact.get("signing"), {"certificateSha256", "verifiedSchemes", "receipt"},
+        "WP1 artifact signing",
+    )
+
+    for field in WP1_EXECUTION_EVIDENCE_FIELDS - {
+        "boundedProcessGroups", "warnings", "errors",
+    }:
+        _require_evidence_binding(
+            execution.get(field), evidence, f"executionEvidence.{field}",
+        )
+    _require_bound_binding(
+        restore.get("fullProjectLock"), references.full_project_lock,
+        "WP1 restore full-project lock",
+    )
+    if restore.get("fullProjectLock") != TRUSTED_FULL_PROJECT_LOCK:
+        raise ValueError("WP1 restore full-project lock is not exact")
+    _require_bound_binding(
+        restore.get("projectAssets"), references.project_assets,
+        "WP1 restore project assets",
+    )
+    _require_evidence_binding(
+        toolchain.get("dotnetWorkloads"), evidence, "toolchain.dotnetWorkloads",
+    )
+    android_sdk = require_exact_keys(toolchain.get("androidSdk"), {
+        "root", "selectedInventory", "installedPackages", "androidJar", "aapt2",
+        "zipalign", "adb", "apksigner", "apksignerJar",
+    }, "WP1 Android SDK")
+    _require_evidence_binding(
+        android_sdk.get("selectedInventory"), evidence,
+        "toolchain.androidSdk.selectedInventory",
+    )
+    if signing.get("receipt") != execution.get("signingReceipt"):
+        raise ValueError("WP1 signing receipt bindings are not identical")
+    signing_receipt_bound = evidence["executionEvidence.signingReceipt"]
+    _require_bound_binding(
+        signing.get("receipt"), signing_receipt_bound, "WP1 artifact signing receipt",
+    )
+    receipt = strict_json_bytes(signing_receipt_bound.data, "APK signing receipt")
+    require_exact_keys(receipt, {
+        "contractName", "status", "apkSha256", "certificateSha256",
+        "verifiedSchemes", "apksignerSha256", "jarsignerSha256",
+        "apksignerOutputSha256", "jarsignerOutputSha256", "warningsAsErrors",
+        "publicationAuthorized",
+    }, "APK signing receipt")
+    if (
+        receipt.get("contractName") != "chummer.android.apk-signing-verification/v1"
+        or receipt.get("status") != "pass"
+        or receipt.get("publicationAuthorized") is not False
+        or receipt.get("warningsAsErrors") is not True
+        or receipt.get("apkSha256") != apk.sha256
+        or receipt.get("apksignerSha256") != TRUSTED_TOOLCHAIN_SHA256["apksigner"]
+        or receipt.get("jarsignerSha256") != TRUSTED_TOOLCHAIN_SHA256["jarsigner"]
+        or receipt.get("apksignerOutputSha256")
+        != evidence["executionEvidence.apksignerLog"].sha256
+        or receipt.get("jarsignerOutputSha256")
+        != evidence["executionEvidence.jarsignerLog"].sha256
+        or receipt.get("certificateSha256") != signing.get("certificateSha256")
+        or receipt.get("verifiedSchemes") != signing.get("verifiedSchemes")
+    ):
+        raise ValueError("WP1 signing facts differ from exact signing receipt bytes")
+    if execution.get("packageAuthorityBinding") != package_authority.get("intakeBinding"):
+        raise ValueError("WP1 package-authority intake evidence bindings differ")
+    if execution.get("packageAuthoritySeal") != package_authority.get("postBuildBinding"):
+        raise ValueError("WP1 package-authority seal evidence bindings differ")
 
 
 def _require_bound_binding(
@@ -741,6 +968,42 @@ def _validate_package_authority_references(
         or authority.get("sourceGraph") != package_authority.get("sourceGraph")
     ):
         raise ValueError("WP1 package authority payload differs from exact referenced bytes")
+    verification_receipt = require_exact_keys(
+        authority.get("verificationReceipt"), {
+            "contractName", "contractVersion", "sha256", "sizeBytes", "status",
+        }, "committed package authority verification receipt",
+    )
+    artifact_cache = require_exact_keys(
+        authority.get("artifactCache"), {
+            "contractName", "cacheKey", "manifestFileName", "manifestSha256",
+            "manifestSizeBytes", "packageCount",
+        }, "committed package authority cache",
+    )
+    committed_package_lock = require_exact_keys(
+        authority.get("packagePlaneLock"), {
+            "path", "contractName", "contractVersion", "sha256", "sizeBytes", "gitBlob",
+        }, "committed package authority package-plane lock",
+    )
+    expected_ui_receipt = {
+        "sha256": verification_receipt.get("sha256"),
+        "sizeBytes": verification_receipt.get("sizeBytes"),
+    }
+    expected_cache_manifest = {
+        "sha256": artifact_cache.get("manifestSha256"),
+        "sizeBytes": artifact_cache.get("manifestSizeBytes"),
+    }
+    expected_package_lock = {
+        "sha256": committed_package_lock.get("sha256"),
+        "sizeBytes": committed_package_lock.get("sizeBytes"),
+    }
+    if package_authority.get("uiReceipt") != expected_ui_receipt:
+        raise ValueError("WP1 UI authority receipt differs from committed package authority")
+    if package_authority.get("cacheManifest") != expected_cache_manifest:
+        raise ValueError("WP1 package cache differs from committed package authority")
+    if presentation_source.get("packagePlaneLock") != expected_package_lock:
+        raise ValueError("WP1 Presentation package-plane lock differs from committed authority")
+    if presentation_source.get("producerLock") != TRUSTED_PRESENTATION_PRODUCER_LOCK:
+        raise ValueError("WP1 Presentation producer lock is not exact")
     authority_presentation = require_exact_keys(
         authority.get("presentationSource"), {"commit", "tree", "repository"},
         "committed package authority presentation source",
@@ -1062,14 +1325,20 @@ def _validate_wp1_binding(value: object, label: str) -> dict[str, object]:
 def _validate_wp1_successor_surfaces(
     value: Mapping[str, object],
 ) -> None:
-    if set(TRUSTED_TOOLCHAIN_SHA256) != {
+    trusted_tool_names = {
         "dotnet", "jdk_release", "java", "javac", "jarsigner", "keytool",
         "platform_package", "android_jar", "build_tools_package", "apksigner",
         "apksigner_jar", "aapt2", "zipalign", "platform_tools_package", "adb",
         "android_workload_manifest", "maui_workload_manifest",
-    } or any(
+    }
+    if (
+        set(TRUSTED_TOOLCHAIN_SHA256) != trusted_tool_names
+        or set(TRUSTED_TOOLCHAIN_SIZE_BYTES) != trusted_tool_names
+        or any(type(size) is not int or size <= 0 for size in TRUSTED_TOOLCHAIN_SIZE_BYTES.values())
+        or any(
         re.fullmatch(r"[0-9a-f]{64}", digest) is None
         for digest in TRUSTED_TOOLCHAIN_SHA256.values()
+        )
     ):
         raise ValueError("trusted WP1 toolchain digest authority is not exact")
 
@@ -1077,7 +1346,10 @@ def _validate_wp1_successor_surfaces(
         binding: object, label: str, authority_name: str,
     ) -> dict[str, object]:
         entry = _validate_wp1_binding(binding, label)
-        if entry.get("sha256") != TRUSTED_TOOLCHAIN_SHA256[authority_name]:
+        if (
+            entry.get("sha256") != TRUSTED_TOOLCHAIN_SHA256[authority_name]
+            or entry.get("sizeBytes") != TRUSTED_TOOLCHAIN_SIZE_BYTES[authority_name]
+        ):
             raise ValueError(f"{label} bytes are not trusted-host authorized")
         return entry
 
@@ -1126,10 +1398,16 @@ def _validate_wp1_successor_surfaces(
             toolchain.get(field), {"sha256", "sizeBytes", "version", "versionLine"},
             f"WP1 toolchain {field}",
         )
-        if entry.get("sha256") != TRUSTED_TOOLCHAIN_SHA256[authority_name]:
+        if (
+            entry.get("sha256") != TRUSTED_TOOLCHAIN_SHA256[authority_name]
+            or entry.get("sizeBytes") != TRUSTED_TOOLCHAIN_SIZE_BYTES[authority_name]
+        ):
             raise ValueError(f"WP1 toolchain {field} bytes are not trusted-host authorized")
         require_integer(entry.get("sizeBytes"), f"WP1 toolchain {field} size", minimum=1)
-        if entry.get("version") != "17.0.14" or not isinstance(entry.get("versionLine"), str):
+        if (
+            entry.get("version") != "17.0.14"
+            or entry.get("versionLine") != TRUSTED_JAVA_VERSION_LINES[field]
+        ):
             raise ValueError(f"WP1 toolchain {field} identity is not exact")
     manifests = require_exact_keys(
         toolchain.get("workloadManifests"), {"android", "maui"},
@@ -1143,7 +1421,10 @@ def _validate_wp1_successor_surfaces(
             manifests.get(field), {"sha256", "sizeBytes", "version"},
             f"WP1 workload manifest {field}",
         )
-        if entry.get("sha256") != TRUSTED_TOOLCHAIN_SHA256[authority_name]:
+        if (
+            entry.get("sha256") != TRUSTED_TOOLCHAIN_SHA256[authority_name]
+            or entry.get("sizeBytes") != TRUSTED_TOOLCHAIN_SIZE_BYTES[authority_name]
+        ):
             raise ValueError(f"WP1 workload manifest {field} bytes are not trusted-host authorized")
         require_integer(entry.get("sizeBytes"), f"WP1 workload manifest {field} size", minimum=1)
         if entry.get("version") != version:
@@ -1169,16 +1450,17 @@ def _validate_wp1_successor_surfaces(
         toolchain.get("jdkRelease"), {"sha256", "sizeBytes", "fields"},
         "WP1 JDK release identity",
     )
-    if jdk_release.get("sha256") != TRUSTED_TOOLCHAIN_SHA256["jdk_release"]:
+    if (
+        jdk_release.get("sha256") != TRUSTED_TOOLCHAIN_SHA256["jdk_release"]
+        or jdk_release.get("sizeBytes") != TRUSTED_TOOLCHAIN_SIZE_BYTES["jdk_release"]
+    ):
         raise ValueError("WP1 JDK release bytes are not trusted-host authorized")
     require_integer(jdk_release.get("sizeBytes"), "WP1 JDK release size", minimum=1)
     release_fields = jdk_release.get("fields")
     if (
         not isinstance(release_fields, dict)
         or set(release_fields) != TRUSTED_JDK_RELEASE_FIELDS
-        or release_fields.get("IMPLEMENTOR") != "Microsoft"
-        or release_fields.get("JAVA_VERSION") != "17.0.14"
-        or any(type(field) is not str for field in release_fields.values())
+        or release_fields != TRUSTED_JDK_RELEASE_VALUES
     ):
         raise ValueError("WP1 JDK release identity is not exact")
     android_sdk = require_exact_keys(toolchain.get("androidSdk"), {
@@ -1209,7 +1491,10 @@ def _validate_wp1_successor_surfaces(
             packages.get(package_id), {"sha256", "sizeBytes", "revision"},
             f"WP1 Android SDK package {package_id}",
         )
-        if package.get("sha256") != TRUSTED_TOOLCHAIN_SHA256[authority_name]:
+        if (
+            package.get("sha256") != TRUSTED_TOOLCHAIN_SHA256[authority_name]
+            or package.get("sizeBytes") != TRUSTED_TOOLCHAIN_SIZE_BYTES[authority_name]
+        ):
             raise ValueError(f"WP1 Android SDK package {package_id} bytes are not trusted-host authorized")
         require_integer(package.get("sizeBytes"), f"WP1 Android SDK package {package_id} size", minimum=1)
         if package.get("revision") != revision:
@@ -1257,6 +1542,7 @@ def validate_build_provenance(
         references = capture_build_provenance_references(
             bound, repository_root or Path(__file__).resolve().parents[1],
         )
+    evidence = _evidence_reference_map(references)
     source_head = require_exact_keys(
         value.get("sourceHead"), WP1_SOURCE_HEAD_FIELDS,
         f"{WP1_COMMITTED_ADAPTER} source head",
@@ -1352,6 +1638,7 @@ def validate_build_provenance(
     if (
         content.get("coreRevision") != content_source.get("commit")
         or content_source.get("commit") != package_source_graph.get("corePackageRecipeCommit")
+        or content_source.get("tree") != TRUSTED_CORE_CONTENT_TREE
     ):
         raise ValueError("WP1 Core content source is not bound to current package authority")
     _validate_content_references(content, apk, references)
@@ -1379,6 +1666,7 @@ def validate_build_provenance(
         raise ValueError("WP1 artifact signing schemes are not a canonical modern set")
     _validate_wp1_binding(signing.get("receipt"), "WP1 artifact signing receipt")
     _validate_wp1_successor_surfaces(value)
+    _validate_referenced_provenance_bytes(value, apk, references, evidence)
     if value.get("doesNotAssert") != list(WP1_DOES_NOT_ASSERT):
         raise ValueError("WP1 non-claim boundary is not exact")
     restore = require_exact_keys(value.get("restore"), {
@@ -1393,6 +1681,8 @@ def validate_build_provenance(
         raise ValueError("WP1 restore posture is not locked and offline")
     _validate_wp1_binding(restore.get("fullProjectLock"), "WP1 full-project lock")
     _validate_wp1_binding(restore.get("projectAssets"), "WP1 project assets")
+    for captured, label in _all_build_provenance_references(references):
+        require_unchanged(captured, label)
     return value
 
 

@@ -85,6 +85,14 @@ TOOLCHAIN_SHA256_AUTHORITY = {
     "android_workload_manifest": "e520a5f491b933774ed06c48e8adf3a6878ad8a6cd320180a3395080cf362644",
     "maui_workload_manifest": "e2506ea1897fca4cf528fa2e950d3267477e28e5253f1e7781520058742ced10",
 }
+TOOLCHAIN_SIZE_AUTHORITY = {
+    "dotnet": 73016, "jdk_release": 1279, "java": 12368, "javac": 12416,
+    "jarsigner": 12392, "keytool": 12392, "platform_package": 1655,
+    "android_jar": 27768026, "build_tools_package": 17886, "apksigner": 2959,
+    "apksigner_jar": 1100545, "aapt2": 5735384, "zipalign": 227696,
+    "platform_tools_package": 17882, "adb": 8709272,
+    "android_workload_manifest": 3608, "maui_workload_manifest": 4098,
+}
 
 REVISION_ENVIRONMENT_VARIABLES = (
     "CHUMMER_ANDROID_REVISION",
@@ -671,7 +679,11 @@ def require_native_executable(
 
 def require_authorized_toolchain_digest(snapshot: StableFileSnapshot, authority_name: str) -> None:
     expected = TOOLCHAIN_SHA256_AUTHORITY.get(authority_name)
-    if expected is None or snapshot.sha256 != expected:
+    expected_size = TOOLCHAIN_SIZE_AUTHORITY.get(authority_name)
+    if (
+        expected is None or expected_size is None
+        or snapshot.sha256 != expected or snapshot.size != expected_size
+    ):
         raise ValueError(f"toolchain bytes are not release-authorized: {authority_name}")
 
 
