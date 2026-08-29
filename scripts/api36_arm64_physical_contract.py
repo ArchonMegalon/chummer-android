@@ -120,6 +120,39 @@ WP1_TOOLCHAIN_FIELDS = {
     "androidPlatformLabel", "targetFramework", "targetSdkVersion",
     "runtimeIdentifier", "configuration", "serializedBuild",
 }
+TRUSTED_ANDROID_SDK_ROOT = "/home/tibor/.cache/chummer-android-toolchain/android-sdk"
+TRUSTED_JDK_RELEASE_FIELDS = {
+    "IMPLEMENTOR", "IMPLEMENTOR_VERSION", "JAVA_RUNTIME_VERSION", "JAVA_VERSION",
+    "JAVA_VERSION_DATE", "LIBC", "MODULES", "OS_ARCH", "OS_NAME", "SOURCE",
+}
+TRUSTED_TOOLCHAIN_SHA256 = {
+    "dotnet": "1c13be7f10008294dfd25f0fc0cd7c88e26d3dbaf8e16019af6c5bb53dd0259d",
+    "jdk_release": "6bd25f1446259442ae9cfdd1d9d7b6094aa7e3cf05bcbddb842e2f2b5facac4c",
+    "java": "2878f3c82270ae7f2bc0c94dbde65718a5a97387ed3ad4b1ce9047948f8b401e",
+    "javac": "899fa6dab44db00429d59959cb2ca53169ad4393841dbbae14a0debcdb9fe2a8",
+    "jarsigner": "07e52b7729ed7355c280f6766970b8d5dc9942e741ed5af0330cfc09699eb548",
+    "keytool": "7bb11637313a640810ec568ffb7e12d90e423c8c81356fc0416d7547047fa144",
+    "platform_package": "2110f8ec9c213a77e287e4e92d89e28dd770e4377c24350758cbddebb75de9f3",
+    "android_jar": "d9eb9da824d9e247a352f570f01e1169e725b2954bca9e283a71786c59b59f9a",
+    "build_tools_package": "a1d29ea87385aa2b8997c7f65968e0c52e8efb4f73ed4cf1df54df808acde6b8",
+    "apksigner": "b47549e373b895ce6ca620d0c7887e674d9615ffa837a86ac601dcfd04adb0f0",
+    "apksigner_jar": "3716d9311e55d2b0918a2fd9d54ba9e406c5f6abeea700b287f11259bc163dec",
+    "aapt2": "1a6a396b9cd071f7040071fdd108718cb98c3c9f4960044f373b288993d19eb7",
+    "zipalign": "c5f559e946de5a9e7d58792181db20383b228877812136bc469d97ae00a43b0a",
+    "platform_tools_package": "b7253bc2352e6bd5fdc2aa5da4f452ee4c3b6bdc93f20a87d39ee680a91af97c",
+    "adb": "372d800c04c3272729afade8a85d95a70fb1c7e74062d9ab17a92eb7b618096c",
+    "android_workload_manifest": "e520a5f491b933774ed06c48e8adf3a6878ad8a6cd320180a3395080cf362644",
+    "maui_workload_manifest": "e2506ea1897fca4cf528fa2e950d3267477e28e5253f1e7781520058742ced10",
+}
+PACKAGE_AUTHORITY_RELATIVE_PATH = Path("eng/internal-phone-beta-package-authority.json")
+CONTENT_MANIFEST_RELATIVE_PATH = Path(
+    "src/Chummer.Android/Content/chummer-content-manifest.json"
+)
+CONTENT_RECEIPT_FIELDS = {
+    "status", "schema", "coreRevision", "bundleDigest", "manifestSha256",
+    "apkSha256", "canonicalFileCount", "canonicalByteCount",
+    "apkCanonicalFileCount", "apkVerified", "issues",
+}
 REPOSITORY_NAMES = (
     "chummer-android", "chummer6-ui", "chummer6-core", "chummer6-ui-kit",
     "chummer6-hub", "chummer6-hub-registry", "chummer6-media-factory",
@@ -453,6 +486,16 @@ class BoundBytes:
         }
 
 
+@dataclass(frozen=True)
+class BuildProvenanceReferences:
+    package_authority: BoundBytes
+    package_authority_intake: BoundBytes
+    package_authority_post_build: BoundBytes
+    content_manifest: BoundBytes
+    content_source_receipt: BoundBytes
+    content_apk_receipt: BoundBytes
+
+
 def reject_duplicate_keys(pairs: list[tuple[str, object]]) -> dict[str, object]:
     result: dict[str, object] = {}
     for key, value in pairs:
@@ -588,6 +631,187 @@ def bind_regular(path: Path, label: str) -> BoundBytes:
 def require_unchanged(bound: BoundBytes, label: str) -> None:
     if bind_regular(bound.path, label) != bound:
         raise ValueError(f"{label} bytes changed across the authentication boundary")
+
+
+def capture_build_provenance_references(
+    provenance: BoundBytes, repository_root: Path,
+) -> BuildProvenanceReferences:
+    if (
+        not repository_root.is_absolute()
+        or repository_root.resolve(strict=True) != repository_root
+    ):
+        raise ValueError("build-provenance repository root must be canonical")
+    evidence_root = Path(f"{provenance.path}.evidence")
+    if (
+        not evidence_root.is_absolute()
+        or evidence_root.resolve(strict=True) != evidence_root
+        or not evidence_root.is_dir()
+        or evidence_root.stat().st_mode & 0o077
+    ):
+        raise ValueError("WP1 evidence root must be a canonical owner-only directory")
+    _reject_symlink_components(evidence_root)
+    return BuildProvenanceReferences(
+        package_authority=bind_regular(
+            repository_root / PACKAGE_AUTHORITY_RELATIVE_PATH,
+            "committed package authority",
+        ),
+        package_authority_intake=bind_regular(
+            evidence_root / "package-authority-binding.json",
+            "package authority intake",
+        ),
+        package_authority_post_build=bind_regular(
+            evidence_root / "package-authority-seal.json",
+            "package authority post-build seal",
+        ),
+        content_manifest=bind_regular(
+            repository_root / CONTENT_MANIFEST_RELATIVE_PATH,
+            "committed Android content manifest",
+        ),
+        content_source_receipt=bind_regular(
+            evidence_root / "content-source-receipt.json",
+            "Core content source receipt",
+        ),
+        content_apk_receipt=bind_regular(
+            evidence_root / "content-apk-receipt.json",
+            "APK content receipt",
+        ),
+    )
+
+
+def _require_bound_binding(
+    binding: object, bound: BoundBytes, label: str,
+) -> None:
+    value = _validate_wp1_binding(binding, label)
+    if (value.get("sha256"), value.get("sizeBytes")) != (
+        bound.sha256, bound.size_bytes,
+    ):
+        raise ValueError(f"{label} does not bind the exact referenced bytes")
+
+
+def _validate_package_authority_references(
+    package_authority: Mapping[str, object],
+    presentation_source: Mapping[str, object],
+    references: BuildProvenanceReferences,
+    repository_root: Path,
+    android_source: Mapping[str, object],
+) -> None:
+    if (
+        references.package_authority.path
+        != repository_root / PACKAGE_AUTHORITY_RELATIVE_PATH
+        or references.content_manifest.path
+        != repository_root / CONTENT_MANIFEST_RELATIVE_PATH
+    ):
+        raise ValueError("WP1 committed authority paths are outside the bound Android checkout")
+    if (
+        run_git(repository_root, ("rev-parse", "HEAD")).strip()
+        != android_source.get("commit")
+        or run_git(repository_root, ("rev-parse", "HEAD^{tree}")).strip()
+        != android_source.get("tree")
+        or run_git(
+            repository_root,
+            ("status", "--porcelain=v1", "--untracked-files=all"),
+        )
+    ):
+        raise ValueError("WP1 Android checkout is not the exact clean source-graph authority")
+    if (package_authority.get("sha256"), package_authority.get("sizeBytes")) != (
+        references.package_authority.sha256, references.package_authority.size_bytes,
+    ):
+        raise ValueError("WP1 package authority does not bind the exact committed bytes")
+    _require_bound_binding(
+        package_authority.get("intakeBinding"), references.package_authority_intake,
+        "WP1 package authority intake",
+    )
+    _require_bound_binding(
+        package_authority.get("postBuildBinding"), references.package_authority_post_build,
+        "WP1 package authority post-build seal",
+    )
+    if not (
+        references.package_authority.data
+        == references.package_authority_intake.data
+        == references.package_authority_post_build.data
+    ):
+        raise ValueError("WP1 package authority bytes changed during the physical build")
+    authority = strict_json_bytes(
+        references.package_authority.data, "committed package authority",
+    )
+    if (
+        authority.get("contractName") != package_authority.get("contractName")
+        or authority.get("authorityState") != package_authority.get("authorityState")
+        or authority.get("publicationAuthorized") is not False
+        or authority.get("sourceGraph") != package_authority.get("sourceGraph")
+    ):
+        raise ValueError("WP1 package authority payload differs from exact referenced bytes")
+    authority_presentation = require_exact_keys(
+        authority.get("presentationSource"), {"commit", "tree", "repository"},
+        "committed package authority presentation source",
+    )
+    if (
+        authority_presentation.get("commit") != presentation_source.get("commit")
+        or authority_presentation.get("tree") != presentation_source.get("tree")
+        or authority_presentation.get("repository") != REPOSITORY_URLS[1]
+    ):
+        raise ValueError("WP1 Presentation source differs from exact package authority bytes")
+
+
+def _validate_content_references(
+    content: Mapping[str, object], apk: BoundBytes,
+    references: BuildProvenanceReferences,
+) -> None:
+    _require_bound_binding(
+        content.get("sourceReceipt"), references.content_source_receipt,
+        "WP1 content source receipt",
+    )
+    _require_bound_binding(
+        content.get("apkReceipt"), references.content_apk_receipt,
+        "WP1 content APK receipt",
+    )
+    manifest = strict_json_bytes(references.content_manifest.data, "Android content manifest")
+    require_exact_keys(manifest, {"schema", "coreRevision", "bundleDigest", "files"}, "Android content manifest")
+    files = manifest.get("files")
+    if not isinstance(files, list) or not files:
+        raise ValueError("Android content manifest files are not exact")
+    manifest_count = 0
+    manifest_bytes = 0
+    for index, row in enumerate(files):
+        entry = require_exact_keys(row, {"path", "size", "sha256"}, f"Android content manifest file {index}")
+        require_string(entry.get("path"), f"Android content manifest file {index} path")
+        manifest_bytes += require_integer(entry.get("size"), f"Android content manifest file {index} size")
+        require_hex(entry.get("sha256"), f"Android content manifest file {index} sha256")
+        manifest_count += 1
+    if (
+        manifest.get("schema") != "chummer.android.content-bundle/v1"
+        or content.get("coreRevision") != manifest.get("coreRevision")
+        or content.get("bundleDigest") != manifest.get("bundleDigest")
+        or content.get("manifestSha256") != references.content_manifest.sha256
+        or content.get("canonicalFileCount") != manifest_count
+        or content.get("canonicalByteCount") != manifest_bytes
+    ):
+        raise ValueError("WP1 content payload differs from exact committed content manifest bytes")
+    source = strict_json_bytes(references.content_source_receipt.data, "Core content source receipt")
+    apk_receipt = strict_json_bytes(references.content_apk_receipt.data, "APK content receipt")
+    for label, receipt, apk_verified in (
+        ("Core content source receipt", source, False),
+        ("APK content receipt", apk_receipt, True),
+    ):
+        require_exact_keys(receipt, CONTENT_RECEIPT_FIELDS, label)
+        if (
+            receipt.get("status") != "pass"
+            or receipt.get("schema") != "chummer.android.content-bundle/v1"
+            or receipt.get("coreRevision") != content.get("coreRevision")
+            or receipt.get("bundleDigest") != content.get("bundleDigest")
+            or receipt.get("manifestSha256") != content.get("manifestSha256")
+            or receipt.get("canonicalFileCount") != content.get("canonicalFileCount")
+            or receipt.get("canonicalByteCount") != content.get("canonicalByteCount")
+            or receipt.get("apkVerified") is not apk_verified
+            or receipt.get("issues") != []
+        ):
+            raise ValueError(f"{label} differs from authenticated WP1 content")
+    if (
+        source.get("apkSha256") is not None or source.get("apkCanonicalFileCount") != 0
+        or apk_receipt.get("apkSha256") != apk.sha256
+        or apk_receipt.get("apkCanonicalFileCount") != content.get("canonicalFileCount")
+    ):
+        raise ValueError("WP1 content receipts do not bind the exact APK/source posture")
 
 
 def validate_external_output(path: Path, repository_root: Path) -> None:
@@ -835,7 +1059,28 @@ def _validate_wp1_binding(value: object, label: str) -> dict[str, object]:
     return binding
 
 
-def _validate_wp1_successor_surfaces(value: Mapping[str, object]) -> None:
+def _validate_wp1_successor_surfaces(
+    value: Mapping[str, object],
+) -> None:
+    if set(TRUSTED_TOOLCHAIN_SHA256) != {
+        "dotnet", "jdk_release", "java", "javac", "jarsigner", "keytool",
+        "platform_package", "android_jar", "build_tools_package", "apksigner",
+        "apksigner_jar", "aapt2", "zipalign", "platform_tools_package", "adb",
+        "android_workload_manifest", "maui_workload_manifest",
+    } or any(
+        re.fullmatch(r"[0-9a-f]{64}", digest) is None
+        for digest in TRUSTED_TOOLCHAIN_SHA256.values()
+    ):
+        raise ValueError("trusted WP1 toolchain digest authority is not exact")
+
+    def require_authorized_binding(
+        binding: object, label: str, authority_name: str,
+    ) -> dict[str, object]:
+        entry = _validate_wp1_binding(binding, label)
+        if entry.get("sha256") != TRUSTED_TOOLCHAIN_SHA256[authority_name]:
+            raise ValueError(f"{label} bytes are not trusted-host authorized")
+        return entry
+
     evidence = require_exact_keys(
         value.get("executionEvidence"), WP1_EXECUTION_EVIDENCE_FIELDS,
         f"{WP1_COMMITTED_ADAPTER} execution evidence",
@@ -869,14 +1114,20 @@ def _validate_wp1_successor_surfaces(value: Mapping[str, object]) -> None:
         or toolchain.get("serializedBuild") is not True
     ):
         raise ValueError("WP1 toolchain release selection is not exact")
-    for field in ("dotnetHost", "jarsigner", "keytool"):
-        _validate_wp1_binding(toolchain.get(field), f"WP1 toolchain {field}")
-    for field in ("java", "javac"):
+    for field, authority_name in (
+        ("dotnetHost", "dotnet"), ("jarsigner", "jarsigner"),
+        ("keytool", "keytool"),
+    ):
+        require_authorized_binding(
+            toolchain.get(field), f"WP1 toolchain {field}", authority_name,
+        )
+    for field, authority_name in (("java", "java"), ("javac", "javac")):
         entry = require_exact_keys(
             toolchain.get(field), {"sha256", "sizeBytes", "version", "versionLine"},
             f"WP1 toolchain {field}",
         )
-        require_hex(entry.get("sha256"), f"WP1 toolchain {field} sha256")
+        if entry.get("sha256") != TRUSTED_TOOLCHAIN_SHA256[authority_name]:
+            raise ValueError(f"WP1 toolchain {field} bytes are not trusted-host authorized")
         require_integer(entry.get("sizeBytes"), f"WP1 toolchain {field} size", minimum=1)
         if entry.get("version") != "17.0.14" or not isinstance(entry.get("versionLine"), str):
             raise ValueError(f"WP1 toolchain {field} identity is not exact")
@@ -884,12 +1135,16 @@ def _validate_wp1_successor_surfaces(value: Mapping[str, object]) -> None:
         toolchain.get("workloadManifests"), {"android", "maui"},
         "WP1 workload manifests",
     )
-    for field, version in (("android", "36.1.69"), ("maui", "10.0.20")):
+    for field, version, authority_name in (
+        ("android", "36.1.69", "android_workload_manifest"),
+        ("maui", "10.0.20", "maui_workload_manifest"),
+    ):
         entry = require_exact_keys(
             manifests.get(field), {"sha256", "sizeBytes", "version"},
             f"WP1 workload manifest {field}",
         )
-        require_hex(entry.get("sha256"), f"WP1 workload manifest {field} sha256")
+        if entry.get("sha256") != TRUSTED_TOOLCHAIN_SHA256[authority_name]:
+            raise ValueError(f"WP1 workload manifest {field} bytes are not trusted-host authorized")
         require_integer(entry.get("sizeBytes"), f"WP1 workload manifest {field} size", minimum=1)
         if entry.get("version") != version:
             raise ValueError(f"WP1 workload manifest {field} version is not exact")
@@ -914,13 +1169,14 @@ def _validate_wp1_successor_surfaces(value: Mapping[str, object]) -> None:
         toolchain.get("jdkRelease"), {"sha256", "sizeBytes", "fields"},
         "WP1 JDK release identity",
     )
-    require_hex(jdk_release.get("sha256"), "WP1 JDK release sha256")
+    if jdk_release.get("sha256") != TRUSTED_TOOLCHAIN_SHA256["jdk_release"]:
+        raise ValueError("WP1 JDK release bytes are not trusted-host authorized")
     require_integer(jdk_release.get("sizeBytes"), "WP1 JDK release size", minimum=1)
     release_fields = jdk_release.get("fields")
     if (
         not isinstance(release_fields, dict)
-        or not release_fields
-        or "Microsoft" not in release_fields.get("IMPLEMENTOR", "")
+        or set(release_fields) != TRUSTED_JDK_RELEASE_FIELDS
+        or release_fields.get("IMPLEMENTOR") != "Microsoft"
         or release_fields.get("JAVA_VERSION") != "17.0.14"
         or any(type(field) is not str for field in release_fields.values())
     ):
@@ -930,30 +1186,31 @@ def _validate_wp1_successor_surfaces(value: Mapping[str, object]) -> None:
         "zipalign", "adb", "apksigner", "apksignerJar",
     }, "WP1 Android SDK")
     android_sdk_root = android_sdk.get("root")
-    if (
-        not isinstance(android_sdk_root, str)
-        or not android_sdk_root.startswith("/")
-        or any(component in {"", ".", ".."} for component in android_sdk_root.split("/")[1:])
-    ):
+    if android_sdk_root != TRUSTED_ANDROID_SDK_ROOT:
         raise ValueError("WP1 Android SDK root is not exact")
-    for field in (
-        "selectedInventory", "androidJar", "aapt2", "zipalign", "adb",
-        "apksigner", "apksignerJar",
+    _validate_wp1_binding(android_sdk.get("selectedInventory"), "WP1 Android SDK selectedInventory")
+    for field, authority_name in (
+        ("androidJar", "android_jar"), ("aapt2", "aapt2"),
+        ("zipalign", "zipalign"), ("adb", "adb"),
+        ("apksigner", "apksigner"), ("apksignerJar", "apksigner_jar"),
     ):
-        _validate_wp1_binding(android_sdk.get(field), f"WP1 Android SDK {field}")
+        require_authorized_binding(
+            android_sdk.get(field), f"WP1 Android SDK {field}", authority_name,
+        )
     packages = require_exact_keys(android_sdk.get("installedPackages"), {
         "platforms;android-36", "build-tools;36.0.0", "platform-tools",
     }, "WP1 Android SDK installed packages")
-    for package_id, revision in (
-        ("platforms;android-36", "2.0.0"),
-        ("build-tools;36.0.0", "36.0.0"),
-        ("platform-tools", "36.0.0"),
+    for package_id, revision, authority_name in (
+        ("platforms;android-36", "2.0.0", "platform_package"),
+        ("build-tools;36.0.0", "36.0.0", "build_tools_package"),
+        ("platform-tools", "36.0.0", "platform_tools_package"),
     ):
         package = require_exact_keys(
             packages.get(package_id), {"sha256", "sizeBytes", "revision"},
             f"WP1 Android SDK package {package_id}",
         )
-        require_hex(package.get("sha256"), f"WP1 Android SDK package {package_id} sha256")
+        if package.get("sha256") != TRUSTED_TOOLCHAIN_SHA256[authority_name]:
+            raise ValueError(f"WP1 Android SDK package {package_id} bytes are not trusted-host authorized")
         require_integer(package.get("sizeBytes"), f"WP1 Android SDK package {package_id} size", minimum=1)
         if package.get("revision") != revision:
             raise ValueError(f"WP1 Android SDK package {package_id} revision is not exact")
@@ -962,6 +1219,8 @@ def _validate_wp1_successor_surfaces(value: Mapping[str, object]) -> None:
 def validate_build_provenance(
     bound: BoundBytes, graph: BoundBytes, apk: BoundBytes,
     *, adapter: str = WP1_COMMITTED_ADAPTER,
+    repository_root: Path | None = None,
+    references: BuildProvenanceReferences | None = None,
 ) -> dict[str, object]:
     if adapter != WP1_COMMITTED_ADAPTER:
         raise ValueError(f"unsupported explicit WP1 adapter: {adapter!r}")
@@ -994,6 +1253,10 @@ def validate_build_provenance(
         row["name"]: row for row in graph_payload["repositories"]
         if isinstance(row, dict) and isinstance(row.get("name"), str)
     }
+    if references is None:
+        references = capture_build_provenance_references(
+            bound, repository_root or Path(__file__).resolve().parents[1],
+        )
     source_head = require_exact_keys(
         value.get("sourceHead"), WP1_SOURCE_HEAD_FIELDS,
         f"{WP1_COMMITTED_ADAPTER} source head",
@@ -1045,7 +1308,7 @@ def validate_build_provenance(
         "WP1 package authority source graph",
     )
     expected_package_source_graph = {
-        "corePackageRecipeCommit": repository_rows["chummer6-core"]["commit"],
+        "coreRuntimeSourceCommit": repository_rows["chummer6-core"]["commit"],
         "hubProducerCommit": repository_rows["chummer6-hub"]["commit"],
         "registryCommit": repository_rows["chummer6-hub-registry"]["commit"],
         "uiKitCommit": repository_rows["chummer6-ui-kit"]["commit"],
@@ -1053,10 +1316,7 @@ def validate_build_provenance(
     for field, expected_value in expected_package_source_graph.items():
         if package_source_graph.get(field) != expected_value:
             raise ValueError(f"WP1 package authority source graph is not exact: {field}")
-    require_hex(
-        package_source_graph.get("coreRuntimeSourceCommit"),
-        "WP1 Core runtime source commit", length=40,
-    )
+    require_hex(package_source_graph.get("corePackageRecipeCommit"), "WP1 Core package recipe commit", length=40)
     authority_bindings = [
         _validate_wp1_binding(package_authority.get(field), f"WP1 package authority {field}")
         for field in ("uiReceipt", "cacheManifest", "intakeBinding", "postBuildBinding")
@@ -1067,6 +1327,10 @@ def validate_build_provenance(
         authority_bindings[2].get("sha256"), authority_bindings[2].get("sizeBytes")
     ):
         raise ValueError("WP1 package authority intake/post-build bindings are not identical")
+    _validate_package_authority_references(
+        package_authority, presentation_source, references,
+        repository_root or Path(__file__).resolve().parents[1], android_row,
+    )
 
     content = require_exact_keys(
         value.get("content"), WP1_CONTENT_FIELDS, f"{WP1_COMMITTED_ADAPTER} content",
@@ -1090,6 +1354,7 @@ def validate_build_provenance(
         or content_source.get("commit") != package_source_graph.get("corePackageRecipeCommit")
     ):
         raise ValueError("WP1 Core content source is not bound to current package authority")
+    _validate_content_references(content, apk, references)
 
     artifact = require_exact_keys(value.get("artifact"), WP1_ARTIFACT_FIELDS, f"{WP1_COMMITTED_ADAPTER} artifact")
     expected = {
@@ -2090,6 +2355,7 @@ def capture_authority_inputs(
     apk, graph, provenance, provenance_payload = capture_build_inputs(
         apk_path=apk_path, source_graph_path=source_graph_path,
         build_provenance_path=build_provenance_path,
+        repository_root=repository_root,
     )
     device = bind_regular(device_observation_path, "physical device observation")
     device_payload = validate_device_observation(device)
@@ -2102,13 +2368,19 @@ def capture_authority_inputs(
 
 def capture_build_inputs(
     *, apk_path: Path, source_graph_path: Path, build_provenance_path: Path,
+    repository_root: Path | None = None,
+    references: BuildProvenanceReferences | None = None,
 ) -> tuple[BoundBytes, BoundBytes, BoundBytes, dict[str, object]]:
     apk = bind_regular(apk_path, "ARM64 APK")
     validate_apk(apk)
     graph = bind_regular(source_graph_path, "v2 source graph")
     validate_source_graph(graph)
     provenance = bind_regular(build_provenance_path, "WP1 build provenance")
-    provenance_payload = validate_build_provenance(provenance, graph, apk)
+    provenance_payload = validate_build_provenance(
+        provenance, graph, apk,
+        repository_root=repository_root,
+        references=references,
+    )
     return apk, graph, provenance, provenance_payload
 
 

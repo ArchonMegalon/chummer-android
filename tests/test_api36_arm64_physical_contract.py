@@ -69,8 +69,23 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
             contract, "capture_driver_authority", return_value=self.driver_authority,
         )
         self.driver_patch.start()
+        dummy = contract.BoundBytes(self.provenance, b"{}", "0" * 64, 2)
+        self.reference_patches = [
+            mock.patch.object(
+                contract, "capture_build_provenance_references",
+                return_value=contract.BuildProvenanceReferences(
+                    dummy, dummy, dummy, dummy, dummy, dummy,
+                ),
+            ),
+            mock.patch.object(contract, "_validate_package_authority_references"),
+            mock.patch.object(contract, "_validate_content_references"),
+        ]
+        for patcher in self.reference_patches:
+            patcher.start()
 
     def tearDown(self) -> None:
+        for patcher in reversed(self.reference_patches):
+            patcher.stop()
         self.driver_patch.stop()
         self.temporary.cleanup()
 
@@ -133,6 +148,7 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
     def provenance_payload(self) -> dict[str, object]:
         apk_bytes = self.apk.read_bytes()
         binding = {"sha256": "8" * 64, "sizeBytes": 8}
+        trusted = contract.TRUSTED_TOOLCHAIN_SHA256
         package_binding = {"sha256": "7" * 64, "sizeBytes": 7}
         repository_map = {
             row["name"]: row for row in self.graph_payload()["repositories"]
@@ -145,7 +161,9 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
         execution_evidence.update({"boundedProcessGroups": True, "warnings": 0, "errors": 0})
         toolchain = {
             "dotnetSdkVersion": "10.0.111", "dotnetRuntimeVersion": "10.0.11",
-            "workloadSetVersion": "10.0.110.1", "dotnetHost": dict(binding),
+            "workloadSetVersion": "10.0.110.1", "dotnetHost": {
+                **binding, "sha256": trusted["dotnet"],
+            },
             "dotnetWorkloads": {
                 **binding, "installed": ["maui-android"], "updateAvailable": [],
                 "workloadSetVersion": "10.0.110.1",
@@ -156,13 +174,14 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
                 "runtimeVersion": "10.0.11",
             },
             "workloadManifests": {
-                "android": {**binding, "version": "36.1.69"},
-                "maui": {**binding, "version": "10.0.20"},
+                "android": {**binding, "sha256": trusted["android_workload_manifest"], "version": "36.1.69"},
+                "maui": {**binding, "sha256": trusted["maui_workload_manifest"], "version": "10.0.20"},
             },
-            "java": {**binding, "version": "17.0.14", "versionLine": 'openjdk version "17.0.14"'},
-            "javac": {**binding, "version": "17.0.14", "versionLine": "javac 17.0.14"},
-            "jarsigner": dict(binding), "keytool": dict(binding),
-            "jdkRelease": {**binding, "fields": {
+            "java": {**binding, "sha256": trusted["java"], "version": "17.0.14", "versionLine": 'openjdk version "17.0.14"'},
+            "javac": {**binding, "sha256": trusted["javac"], "version": "17.0.14", "versionLine": "javac 17.0.14"},
+            "jarsigner": {**binding, "sha256": trusted["jarsigner"]},
+            "keytool": {**binding, "sha256": trusted["keytool"]},
+            "jdkRelease": {**binding, "sha256": trusted["jdk_release"], "fields": {
                 "IMPLEMENTOR": "Microsoft", "IMPLEMENTOR_VERSION": "Microsoft-10800290",
                 "JAVA_RUNTIME_VERSION": "17.0.14+7-LTS", "JAVA_VERSION": "17.0.14",
                 "JAVA_VERSION_DATE": "2025-01-21", "LIBC": "gnu", "MODULES": "java.base",
@@ -172,12 +191,16 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
                 "root": "/home/tibor/.cache/chummer-android-toolchain/android-sdk",
                 "selectedInventory": dict(binding),
                 "installedPackages": {
-                    "platforms;android-36": {**binding, "revision": "2.0.0"},
-                    "build-tools;36.0.0": {**binding, "revision": "36.0.0"},
-                    "platform-tools": {**binding, "revision": "36.0.0"},
-                }, "androidJar": dict(binding), "aapt2": dict(binding),
-                "zipalign": dict(binding), "adb": dict(binding), "apksigner": dict(binding),
-                "apksignerJar": dict(binding),
+                    "platforms;android-36": {**binding, "sha256": trusted["platform_package"], "revision": "2.0.0"},
+                    "build-tools;36.0.0": {**binding, "sha256": trusted["build_tools_package"], "revision": "36.0.0"},
+                    "platform-tools": {**binding, "sha256": trusted["platform_tools_package"], "revision": "36.0.0"},
+                },
+                "androidJar": {**binding, "sha256": trusted["android_jar"]},
+                "aapt2": {**binding, "sha256": trusted["aapt2"]},
+                "zipalign": {**binding, "sha256": trusted["zipalign"]},
+                "adb": {**binding, "sha256": trusted["adb"]},
+                "apksigner": {**binding, "sha256": trusted["apksigner"]},
+                "apksignerJar": {**binding, "sha256": trusted["apksigner_jar"]},
             },
             "androidBuildToolsVersion": "36.0.0", "androidPlatformLabel": "Android 16",
             "targetFramework": contract.TARGET_FRAMEWORK, "targetSdkVersion": 36,
@@ -210,8 +233,8 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
                 "contractName": "chummer.android.internal-phone-beta-package-authority/v2",
                 "authorityState": "current_graph_verified",
                 "sourceGraph": {
-                    "corePackageRecipeCommit": repository_map["chummer6-core"]["commit"],
-                    "coreRuntimeSourceCommit": "6" * 40,
+                    "corePackageRecipeCommit": "6" * 40,
+                    "coreRuntimeSourceCommit": repository_map["chummer6-core"]["commit"],
                     "hubProducerCommit": repository_map["chummer6-hub"]["commit"],
                     "registryCommit": repository_map["chummer6-hub-registry"]["commit"],
                     "uiKitCommit": repository_map["chummer6-ui-kit"]["commit"],
@@ -222,11 +245,11 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
             },
             "content": {
                 "sourceReceipt": dict(binding), "apkReceipt": dict(binding),
-                "coreRevision": repository_map["chummer6-core"]["commit"],
+                "coreRevision": "6" * 40,
                 "bundleDigest": "5" * 64, "manifestSha256": "4" * 64,
                 "canonicalFileCount": 1, "canonicalByteCount": 1,
                 "sourceRepository": {
-                    "commit": repository_map["chummer6-core"]["commit"],
+                    "commit": "6" * 40,
                     "tree": repository_map["chummer6-core"]["tree"],
                 },
             },
@@ -1033,6 +1056,10 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
             ("signing-bool-scheme", lambda value: value["artifact"]["signing"].update({"verifiedSchemes": [True, 2]})),
             ("execution-missing", lambda value: value["executionEvidence"].pop("delegateCommandJournal")),
             ("toolchain-unknown", lambda value: value["toolchain"].update({"unknown": True})),
+            ("toolchain-untrusted-dotnet", lambda value: value["toolchain"]["dotnetHost"].update({"sha256": "0" * 64})),
+            ("toolchain-arbitrary-sdk-root", lambda value: value["toolchain"]["androidSdk"].update({"root": "/tmp/android-sdk"})),
+            ("toolchain-incomplete-jdk-map", lambda value: value["toolchain"]["jdkRelease"].update({"fields": {"IMPLEMENTOR": "Microsoft", "JAVA_VERSION": "17.0.14"}})),
+            ("toolchain-extended-jdk-map", lambda value: value["toolchain"]["jdkRelease"]["fields"].update({"UNTRUSTED": "value"})),
             ("wp1-nonclaim", lambda value: value.update({"doesNotAssert": []})),
         )
         for label, mutate in mutations:
