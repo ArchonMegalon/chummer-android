@@ -4669,6 +4669,93 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         device.shell.assert_not_called()
         device.capture.assert_not_called()
 
+    def test_documents_ui_downloads_suppresses_capture_after_late_false_bounds(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        now, monotonic, sleep = self._fake_clock()
+        device.hierarchy.return_value = self._documents_ui_drawer()
+
+        def late_false_bounds(_node: object, *, deadline: float) -> bool:
+            self.assertEqual(45.0, deadline)
+            now[0] = 46.0
+            return False
+
+        device.node_has_tappable_bounds.side_effect = late_false_bounds
+        with (
+            patch.object(DRIVER.time, "monotonic", side_effect=monotonic),
+            patch.object(DRIVER.time, "sleep", side_effect=sleep),
+            self.assertRaisesRegex(RuntimeError, "not enabled and tappable"),
+        ):
+            DRIVER.select_documents_ui_downloads_root(device, timeout=45)
+
+        device.shell.assert_not_called()
+        device.capture.assert_not_called()
+
+    def test_documents_ui_downloads_suppresses_late_row_cardinality_capture(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        now, monotonic, sleep = self._fake_clock()
+        duplicate_rows = self._documents_ui_drawer()
+        duplicate_rows.append(
+            self._documents_ui_node(
+                text=DRIVER.DOCUMENTS_UI_DOWNLOADS_ROOT,
+                resource_id="android:id/title",
+                bounds="[168,717][714,768]",
+            )
+        )
+        device.hierarchy.return_value = duplicate_rows
+        exact_nodes = DRIVER._documents_ui_exact_nodes
+
+        def late_exact_nodes(nodes: list[object], value: str) -> list[object]:
+            matches = exact_nodes(nodes, value)
+            if value == DRIVER.DOCUMENTS_UI_DOWNLOADS_ROOT:
+                now[0] = 46.0
+            return matches
+
+        with (
+            patch.object(DRIVER.time, "monotonic", side_effect=monotonic),
+            patch.object(DRIVER.time, "sleep", side_effect=sleep),
+            patch.object(
+                DRIVER,
+                "_documents_ui_exact_nodes",
+                side_effect=late_exact_nodes,
+            ),
+            self.assertRaisesRegex(RuntimeError, "cardinality was 2"),
+        ):
+            DRIVER.select_documents_ui_downloads_root(device, timeout=45)
+
+        device.shell.assert_not_called()
+        device.capture.assert_not_called()
+
+    def test_documents_ui_downloads_suppresses_late_state_capture(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        now, monotonic, sleep = self._fake_clock()
+        ambiguous_state = [
+            *self._documents_ui_drawer(),
+            self._documents_ui_node(text=DRIVER.DOCUMENTS_UI_DRAWER_MARKER),
+        ]
+        device.hierarchy.return_value = ambiguous_state
+        exact_nodes = DRIVER._documents_ui_exact_nodes
+
+        def late_exact_nodes(nodes: list[object], value: str) -> list[object]:
+            matches = exact_nodes(nodes, value)
+            if value == DRIVER.DOCUMENTS_UI_DRAWER_MARKER:
+                now[0] = 46.0
+            return matches
+
+        with (
+            patch.object(DRIVER.time, "monotonic", side_effect=monotonic),
+            patch.object(DRIVER.time, "sleep", side_effect=sleep),
+            patch.object(
+                DRIVER,
+                "_documents_ui_exact_nodes",
+                side_effect=late_exact_nodes,
+            ),
+            self.assertRaisesRegex(RuntimeError, "ambiguous exact drawer"),
+        ):
+            DRIVER.select_documents_ui_downloads_root(device, timeout=45)
+
+        device.shell.assert_not_called()
+        device.capture.assert_not_called()
+
     def test_documents_ui_downloads_caps_poll_sleep_to_remaining_deadline(self) -> None:
         device = Mock(spec=DRIVER.Device)
         now, monotonic, sleep = self._fake_clock()

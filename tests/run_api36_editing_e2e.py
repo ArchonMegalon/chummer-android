@@ -4429,14 +4429,36 @@ def _documents_ui_exact_nodes(nodes: list[UiNode], value: str) -> list[UiNode]:
     ]
 
 
-def _documents_ui_downloads_state(device: Device, nodes: list[UiNode]) -> str:
+def _capture_documents_ui_before_deadline(
+    device: Device,
+    name: str,
+    *,
+    deadline: float,
+) -> bool:
+    """Start transition diagnostics only while the caller's budget remains."""
+    if time.monotonic() >= deadline:
+        return False
+    device.capture(name)
+    return True
+
+
+def _documents_ui_downloads_state(
+    device: Device,
+    nodes: list[UiNode],
+    *,
+    deadline: float,
+) -> str:
     drawer_markers = _documents_ui_exact_nodes(nodes, DOCUMENTS_UI_DRAWER_MARKER)
     destinations = _documents_ui_exact_nodes(
         nodes,
         DOCUMENTS_UI_DOWNLOADS_DESTINATION,
     )
     if len(drawer_markers) > 1 or len(destinations) > 1:
-        device.capture("documentsui-downloads-transition-cardinality-invalid")
+        _capture_documents_ui_before_deadline(
+            device,
+            "documentsui-downloads-transition-cardinality-invalid",
+            deadline=deadline,
+        )
         raise RuntimeError(
             "DocumentsUI Downloads transition exposed ambiguous exact drawer or "
             "destination authority"
@@ -4456,13 +4478,21 @@ def _documents_ui_downloads_state(device: Device, nodes: list[UiNode]) -> str:
         }
     )
     if wrong_destinations:
-        device.capture("documentsui-downloads-wrong-destination")
+        _capture_documents_ui_before_deadline(
+            device,
+            "documentsui-downloads-wrong-destination",
+            deadline=deadline,
+        )
         raise RuntimeError(
             "DocumentsUI opened a root other than the exact Downloads destination: "
             f"{wrong_destinations!r}"
         )
     if drawer_markers and destinations:
-        device.capture("documentsui-downloads-transition-state-ambiguous")
+        _capture_documents_ui_before_deadline(
+            device,
+            "documentsui-downloads-transition-state-ambiguous",
+            deadline=deadline,
+        )
         raise RuntimeError(
             "DocumentsUI simultaneously exposed the roots drawer and Downloads "
             "destination"
@@ -4486,7 +4516,11 @@ def _exact_enabled_documents_ui_downloads_row(
         if node.attributes.get("resource-id", "").rsplit("/", 1)[-1] == "title"
     ]
     if len(matches) != 1:
-        device.capture("documentsui-downloads-row-cardinality-invalid")
+        _capture_documents_ui_before_deadline(
+            device,
+            "documentsui-downloads-row-cardinality-invalid",
+            deadline=deadline,
+        )
         raise RuntimeError(
             "DocumentsUI Downloads root row cardinality was "
             f"{len(matches)}; expected exactly one"
@@ -4496,7 +4530,11 @@ def _exact_enabled_documents_ui_downloads_row(
         node.attributes.get("enabled") != "true"
         or not device.node_has_tappable_bounds(node, deadline=deadline)
     ):
-        device.capture("documentsui-downloads-row-not-enabled-tappable")
+        _capture_documents_ui_before_deadline(
+            device,
+            "documentsui-downloads-row-not-enabled-tappable",
+            deadline=deadline,
+        )
         raise RuntimeError(
             "The exact DocumentsUI Downloads root row is not enabled and tappable"
         )
@@ -4547,7 +4585,11 @@ def select_documents_ui_downloads_root(device: Device, *, timeout: int = 45) -> 
                 if not _documents_ui_sleep_before_deadline(deadline):
                     break
                 continue
-            last_state = _documents_ui_downloads_state(device, nodes)
+            last_state = _documents_ui_downloads_state(
+                device,
+                nodes,
+                deadline=deadline,
+            )
             if last_state == "destination":
                 return
             if last_state == "drawer":
@@ -4594,7 +4636,11 @@ def select_documents_ui_downloads_root(device: Device, *, timeout: int = 45) -> 
                 if not _documents_ui_sleep_before_deadline(deadline):
                     break
                 continue
-            last_state = _documents_ui_downloads_state(device, nodes)
+            last_state = _documents_ui_downloads_state(
+                device,
+                nodes,
+                deadline=deadline,
+            )
             if last_state == "destination":
                 return
             if (
@@ -4608,8 +4654,11 @@ def select_documents_ui_downloads_root(device: Device, *, timeout: int = 45) -> 
             if not _documents_ui_sleep_before_deadline(deadline):
                 break
 
-    if time.monotonic() < deadline:
-        device.capture("documentsui-downloads-transition-unavailable")
+    _capture_documents_ui_before_deadline(
+        device,
+        "documentsui-downloads-transition-unavailable",
+        deadline=deadline,
+    )
     if last_state == "drawer":
         raise RuntimeError(
             "DocumentsUI roots drawer remained open after "
