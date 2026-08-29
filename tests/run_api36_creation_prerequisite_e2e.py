@@ -74,7 +74,7 @@ CREATION_AUTHORITY_PENDING_TIMEOUT_HIERARCHY = (
     "/sdcard/chummer-creation-authority-pending-timeout.xml"
 )
 CREATION_AUTHORITY_PENDING_TIMEOUT_TEXT_LIMIT = 1_000_000
-PROGRESS_SCHEMA = "chummer.android.creation-prerequisite-progress/v1"
+PROGRESS_SCHEMA = "chummer.android.creation-prerequisite-progress/v2"
 PROGRESS_FILE_NAME = "creation-prerequisite-progress.json"
 PROGRESS_EVENTS_FILE_NAME = "creation-prerequisite-progress.jsonl"
 CREATION_BOOTSTRAP_TIMING_PREFIX = "CHUMMER_CREATION_BOOTSTRAP_TIMING "
@@ -125,6 +125,11 @@ PHASE_BUDGET_MS = {
     "process-restart-reopen": 90_000,
 }
 PHASE_ORDER = tuple(PHASE_BUDGET_MS)
+# Every phase and the aggregate clock are independently rounded to the nearest
+# millisecond. Their worst-case opposing rounding errors are therefore
+# ``(phase count + aggregate clock) / 2`` milliseconds. This reconciliation
+# allowance is never a performance-budget allowance.
+TIMING_ROUNDING_TOLERANCE_MS = (len(PHASE_ORDER) + 1) // 2
 
 
 def accessibility_signature(
@@ -723,11 +728,41 @@ class ProgressRecorder:
         if self._finished:
             raise RuntimeError("Prerequisite progress was already finalized")
         self._close_active("pass")
-        completed = tuple(phase["phaseId"] for phase in self.phases)
-        if completed != PHASE_ORDER:
+        completed = tuple(phase.get("phaseId") for phase in self.phases)
+        if completed != PHASE_ORDER or len(self.phases) != len(PHASE_ORDER):
             raise RuntimeError(
                 f"Prerequisite progress is incomplete: expected={PHASE_ORDER!r}, "
                 f"actual={completed!r}"
+            )
+        phase_elapsed_ms: list[int] = []
+        for ordinal, (phase_id, budget_ms) in enumerate(PHASE_BUDGET_MS.items(), start=1):
+            phase = self.phases[ordinal - 1]
+            elapsed_ms = phase.get("elapsedMs")
+            if (
+                type(phase.get("ordinal")) is not int
+                or phase.get("ordinal") != ordinal
+                or phase.get("phaseId") != phase_id
+                or phase.get("status") != "pass"
+                or type(phase.get("budgetMs")) is not int
+                or phase.get("budgetMs") != budget_ms
+                or phase.get("withinBudget") is not True
+                or type(elapsed_ms) is not int
+                or elapsed_ms < 0
+                or elapsed_ms > budget_ms
+            ):
+                raise RuntimeError(
+                    f"Prerequisite progress phase evidence differs: {phase_id!r}"
+                )
+            phase_elapsed_ms.append(elapsed_ms)
+        snapshot = self.snapshot("timing-complete")
+        total_elapsed_ms = snapshot.get("totalElapsedMs")
+        if type(total_elapsed_ms) is not int or total_elapsed_ms < 0:
+            raise RuntimeError("Prerequisite progress total elapsed time is invalid")
+        if sum(phase_elapsed_ms) > total_elapsed_ms + TIMING_ROUNDING_TOLERANCE_MS:
+            raise RuntimeError(
+                "Prerequisite progress phase elapsed time exceeds its contiguous total: "
+                f"phaseSumMs={sum(phase_elapsed_ms)}, totalElapsedMs={total_elapsed_ms}, "
+                f"roundingToleranceMs={TIMING_ROUNDING_TOLERANCE_MS}"
             )
         actual_milestones = tuple(
             (
@@ -744,12 +779,53 @@ class ProgressRecorder:
                 start=1,
             )
         )
-        if actual_milestones != expected_milestones:
+        if actual_milestones != expected_milestones or any(
+            type(milestone.get("ordinal")) is not int
+            for milestone in self.milestones
+        ):
             raise RuntimeError(
                 "Prerequisite progress milestone evidence differs: "
                 f"expected={expected_milestones!r}, actual={actual_milestones!r}"
             )
-        snapshot = self.snapshot("timing-complete")
+        phase_index_by_id = {
+            phase_id: index
+            for index, phase_id in enumerate(PHASE_ORDER)
+        }
+        previous_phase_elapsed: dict[str, int] = {}
+        previous_total_elapsed = -1
+        for milestone, (milestone_id, phase_id, _) in zip(
+            self.milestones,
+            expected_milestones,
+            strict=True,
+        ):
+            phase_elapsed = milestone.get("phaseElapsedMs")
+            segment_elapsed = milestone.get("segmentElapsedMs")
+            milestone_total_elapsed = milestone.get("totalElapsedMs")
+            preceding_elapsed = sum(
+                phase_elapsed_ms[:phase_index_by_id[phase_id]]
+            )
+            minimum_total_elapsed = preceding_elapsed + (
+                phase_elapsed if type(phase_elapsed) is int else 0
+            )
+            if (
+                type(phase_elapsed) is not int
+                or type(segment_elapsed) is not int
+                or type(milestone_total_elapsed) is not int
+                or phase_elapsed < 0
+                or phase_elapsed > phase_elapsed_ms[phase_index_by_id[phase_id]]
+                or segment_elapsed < 0
+                or segment_elapsed
+                != phase_elapsed - previous_phase_elapsed.get(phase_id, 0)
+                or milestone_total_elapsed < previous_total_elapsed
+                or milestone_total_elapsed > total_elapsed_ms
+                or milestone_total_elapsed + TIMING_ROUNDING_TOLERANCE_MS
+                < minimum_total_elapsed
+            ):
+                raise RuntimeError(
+                    f"Prerequisite progress milestone timing differs: {milestone_id!r}"
+                )
+            previous_phase_elapsed[phase_id] = phase_elapsed
+            previous_total_elapsed = milestone_total_elapsed
         over_budget = tuple(
             str(phase["phaseId"])
             for phase in self.phases

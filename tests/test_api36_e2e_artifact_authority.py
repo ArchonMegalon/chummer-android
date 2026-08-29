@@ -74,7 +74,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                 "status": "timing-complete",
                 "clock": "time.monotonic",
                 "configuredTotalTargetMs": AGGREGATE.CREATION_TOTAL_TARGET_MS,
-                "totalElapsedMs": 8_000,
+                "totalElapsedMs": 20_000,
                 "withinConfiguredTotalTarget": True,
                 "phaseBudgetsMs": dict(AGGREGATE.CREATION_PHASE_BUDGETS_MS),
                 "phases": [
@@ -403,6 +403,42 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                 self.reseal(directory)
 
                 with self.assertRaisesRegex(ValueError, "milestone"):
+                    self.validate(root)
+
+    def test_creation_timing_rejects_cross_field_and_schema_forgery(self) -> None:
+        cases = (
+            ("phaseOverSum", "phase elapsed sum"),
+            ("milestoneTotalZero", "milestone timing differs"),
+            ("phaseBoolOrdinal", "phase timing is outside budget"),
+            ("milestoneBoolOrdinal", "milestone identity differs"),
+            ("schemaV1", "timing schema differs"),
+        )
+        for case, expected_error in cases:
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                self.materialize_all(root)
+                directory = root / AGGREGATE.expected_artifact_directory(
+                    "creation-prerequisite",
+                    RUN_ID,
+                )
+                receipt_path = directory / "receipt.json"
+                receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+                timing = receipt["timing"]
+                if case == "phaseOverSum":
+                    for phase in timing["phases"]:
+                        phase["elapsedMs"] = phase["budgetMs"]
+                elif case == "milestoneTotalZero":
+                    timing["milestones"][0]["totalElapsedMs"] = 0
+                elif case == "phaseBoolOrdinal":
+                    timing["phases"][0]["ordinal"] = True
+                elif case == "milestoneBoolOrdinal":
+                    timing["milestones"][0]["ordinal"] = True
+                else:
+                    timing["schema"] = "chummer.android.creation-prerequisite-progress/v1"
+                receipt_path.write_text(json.dumps(receipt) + "\n", encoding="utf-8")
+                self.reseal(directory)
+
+                with self.assertRaisesRegex(ValueError, expected_error):
                     self.validate(root)
 
 

@@ -421,6 +421,10 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 for line in progress.events_path.read_text(encoding="utf-8").splitlines()
             ]
             self.assertEqual(snapshot, evidence)
+            self.assertEqual(
+                "chummer.android.creation-prerequisite-progress/v2",
+                evidence["schema"],
+            )
             self.assertEqual("timing-complete", evidence["status"])
             self.assertEqual(list(driver.PHASE_ORDER), [
                 phase["phaseId"] for phase in evidence["phases"]
@@ -530,6 +534,46 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                     progress.milestones[3]["ordinal"] = 99
 
                 with self.assertRaisesRegex(RuntimeError, "milestone evidence differs"):
+                    progress.finish()
+
+    def test_progress_finish_rejects_cross_field_timing_forgery(self) -> None:
+        cases = (
+            ("phaseOverSum", "phase elapsed time exceeds"),
+            ("milestoneTotalZero", "milestone timing differs"),
+            ("phaseBoolOrdinal", "phase evidence differs"),
+            ("milestoneBoolOrdinal", "milestone evidence differs"),
+        )
+        for case, expected_error in cases:
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as temporary, mock.patch(
+                "builtins.print"
+            ):
+                progress = driver.ProgressRecorder(Path(temporary))
+                for phase_id in driver.PHASE_ORDER:
+                    progress.advance(phase_id)
+                    for milestone_id, milestone_phase in zip(
+                        driver.INITIAL_MILESTONE_ORDER,
+                        driver.INITIAL_MILESTONE_PHASES,
+                        strict=True,
+                    ):
+                        if milestone_phase == phase_id:
+                            progress.record_initial_milestone(milestone_id)
+                if case == "phaseOverSum":
+                    for phase in progress.phases:
+                        phase["elapsedMs"] = phase["budgetMs"]
+                elif case == "milestoneTotalZero":
+                    progress.started -= 1.0
+                    progress.phases[0]["elapsedMs"] = 20
+                    progress.phases[1]["elapsedMs"] = 20
+                    first = progress.milestones[0]
+                    first["phaseElapsedMs"] = 20
+                    first["segmentElapsedMs"] = 20
+                    first["totalElapsedMs"] = 0
+                elif case == "phaseBoolOrdinal":
+                    progress.phases[0]["ordinal"] = True
+                else:
+                    progress.milestones[0]["ordinal"] = True
+
+                with self.assertRaisesRegex(RuntimeError, expected_error):
                     progress.finish()
 
     def test_creation_timing_uses_three_strict_nonoverlapping_phases(self) -> None:

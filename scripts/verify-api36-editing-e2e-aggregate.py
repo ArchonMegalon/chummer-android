@@ -23,7 +23,7 @@ JOURNEYS = {
     "career-active-skill-advance": "career-active-skill-advance",
     "career-weapon-fire": "career-weapon-fire",
 }
-CREATION_PROGRESS_SCHEMA = "chummer.android.creation-prerequisite-progress/v1"
+CREATION_PROGRESS_SCHEMA = "chummer.android.creation-prerequisite-progress/v2"
 CREATION_TOTAL_TARGET_MS = 15 * 60 * 1000
 CREATION_PHASE_BUDGETS_MS = {
     "device-preflight-install": 180_000,
@@ -45,6 +45,9 @@ CREATION_MILESTONES = (
     ("create-bootstrap-transaction-complete", "initial-authority"),
     ("dashboard-render-complete", "dashboard-proof"),
 )
+CREATION_TIMING_ROUNDING_TOLERANCE_MS = (
+    len(CREATION_PHASE_BUDGETS_MS) + 1
+) // 2
 STARTED_FIELDS = {
     "profile",
     "matrix_journey",
@@ -182,9 +185,11 @@ def require_creation_timing_within_budget(receipt: dict[str, Any]) -> None:
             raise ValueError("creation prerequisite timing phase is not an object")
         elapsed_ms = phase.get("elapsedMs")
         if (
-            phase.get("ordinal") != ordinal
+            type(phase.get("ordinal")) is not int
+            or phase.get("ordinal") != ordinal
             or phase.get("phaseId") != phase_id
             or phase.get("status") != "pass"
+            or type(phase.get("budgetMs")) is not int
             or phase.get("budgetMs") != budget_ms
             or phase.get("withinBudget") is not True
             or type(elapsed_ms) is not int
@@ -194,6 +199,12 @@ def require_creation_timing_within_budget(receipt: dict[str, Any]) -> None:
             raise ValueError(
                 f"creation prerequisite phase timing is outside budget: {phase_id}"
             )
+    phase_elapsed_values = [int(phase["elapsedMs"]) for phase in phases]
+    phase_elapsed_sum = sum(phase_elapsed_values)
+    if phase_elapsed_sum > total_elapsed + CREATION_TIMING_ROUNDING_TOLERANCE_MS:
+        raise ValueError(
+            "creation prerequisite phase elapsed sum exceeds total elapsed time"
+        )
     milestones = timing.get("milestones")
     if not isinstance(milestones, list) or len(milestones) != len(CREATION_MILESTONES):
         raise ValueError("creation prerequisite milestone cardinality differs")
@@ -210,6 +221,7 @@ def require_creation_timing_within_budget(receipt: dict[str, Any]) -> None:
         if (
             milestone.get("milestoneId") != milestone_id
             or milestone.get("phaseId") != phase_id
+            or type(milestone.get("ordinal")) is not int
             or milestone.get("ordinal") != ordinal
         ):
             raise ValueError(
@@ -218,6 +230,11 @@ def require_creation_timing_within_budget(receipt: dict[str, Any]) -> None:
         phase_elapsed_ms = milestone.get("phaseElapsedMs")
         segment_elapsed_ms = milestone.get("segmentElapsedMs")
         milestone_total_elapsed_ms = milestone.get("totalElapsedMs")
+        phase_index = tuple(CREATION_PHASE_BUDGETS_MS).index(phase_id)
+        minimum_total_elapsed_ms = (
+            sum(phase_elapsed_values[:phase_index])
+            + (phase_elapsed_ms if type(phase_elapsed_ms) is int else 0)
+        )
         if (
             type(phase_elapsed_ms) is not int
             or type(segment_elapsed_ms) is not int
@@ -229,6 +246,8 @@ def require_creation_timing_within_budget(receipt: dict[str, Any]) -> None:
             != phase_elapsed_ms - previous_phase_elapsed.get(phase_id, 0)
             or milestone_total_elapsed_ms < previous_total_elapsed
             or milestone_total_elapsed_ms > total_elapsed
+            or milestone_total_elapsed_ms + CREATION_TIMING_ROUNDING_TOLERANCE_MS
+            < minimum_total_elapsed_ms
         ):
             raise ValueError(
                 f"creation prerequisite milestone timing differs: {milestone_id}"
