@@ -384,12 +384,23 @@ def scan_forward_until_stable(
     hierarchy_durations_ms: list[int] = []
     if initial_observation is not None and (
         not initial_observation.nodes
+        or type(initial_observation.reverse_swipes) is not int
+        or type(initial_observation.elapsed_ms) is not int
+        or type(initial_observation.empty_hierarchy_reads) is not int
+        or not initial_observation.hierarchy_durations_ms
+        or any(
+            type(value) is not int
+            for value in initial_observation.hierarchy_durations_ms
+        )
         or initial_observation.reverse_swipes < 0
         or initial_observation.reverse_swipes > 8
         or initial_observation.elapsed_ms < 0
         or initial_observation.empty_hierarchy_reads < 0
-        or not initial_observation.hierarchy_durations_ms
         or any(value < 0 for value in initial_observation.hierarchy_durations_ms)
+        or len(initial_observation.hierarchy_durations_ms)
+        < initial_observation.empty_hierarchy_reads
+        + initial_observation.reverse_swipes
+        + 1
         or initial_observation.empty_hierarchy_reads
         > len(initial_observation.hierarchy_durations_ms)
         or initial_observation.elapsed_ms

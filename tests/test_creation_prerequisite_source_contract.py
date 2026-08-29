@@ -338,7 +338,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             origin,
             reverse_swipes=2,
             elapsed_ms=2400,
-            hierarchy_durations_ms=(2100,),
+            hierarchy_durations_ms=(500, 500, 500, 600),
             empty_hierarchy_reads=1,
         )
         with mock.patch.object(driver.time, "sleep"):
@@ -357,18 +357,18 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertEqual("stable-end", observations[0]["status"])
         self.assertTrue(observations[0]["reusedInitialScreen"])
         self.assertEqual(4, observations[0]["screens"])
-        self.assertEqual(4, observations[0]["hierarchyReadCount"])
+        self.assertEqual(7, observations[0]["hierarchyReadCount"])
         self.assertEqual(2100, observations[0]["hierarchyElapsedMs"])
-        self.assertEqual(2100, observations[0]["maximumHierarchyReadMs"])
+        self.assertEqual(600, observations[0]["maximumHierarchyReadMs"])
         self.assertEqual(2400, observations[0]["originElapsedMs"])
         self.assertEqual(2, observations[0]["originReverseSwipes"])
         self.assertEqual(1, observations[0]["originEmptyHierarchyReads"])
         self.assertEqual(0, observations[0]["traversalEmptyHierarchyReads"])
         self.assertEqual(1, observations[0]["emptyHierarchyReads"])
         self.assertEqual(5, observations[0]["totalNavigationSwipes"])
-        self.assertEqual(1, observations[0]["originHierarchyReadCount"])
+        self.assertEqual(4, observations[0]["originHierarchyReadCount"])
         self.assertEqual(2100, observations[0]["originHierarchyElapsedMs"])
-        self.assertEqual(2100, observations[0]["originMaximumHierarchyReadMs"])
+        self.assertEqual(600, observations[0]["originMaximumHierarchyReadMs"])
         self.assertEqual(
             observations[0]["originElapsedMs"] + observations[0]["traversalElapsedMs"],
             observations[0]["elapsedMs"],
@@ -379,6 +379,9 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         invalid_origins = (
             self.priority_rank_origin([], hierarchy_durations_ms=(1,)),
             self.priority_rank_origin([node], reverse_swipes=9),
+            self.priority_rank_origin(
+                [node], reverse_swipes=8, hierarchy_durations_ms=(1,)
+            ),
             self.priority_rank_origin(
                 [node], elapsed_ms=1, hierarchy_durations_ms=(20,)
             ),
@@ -392,6 +395,59 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 driver.scan_forward_until_stable(
                     mock.Mock(),
                     scan_id="invalid-reused-origin",
+                    max_scrolls=8,
+                    distance_ratio=0.68,
+                    initial_observation=invalid_origin,
+                )
+
+    def test_reused_scan_origin_rejects_bool_and_float_numeric_fields(self) -> None:
+        node = driver.shared.UiNode({"resource-id": "rank-origin"})
+        invalid_fields = (
+            (
+                "reverse_swipes-bool",
+                self.priority_rank_origin([node], reverse_swipes=True),
+            ),
+            (
+                "reverse_swipes-float",
+                self.priority_rank_origin([node], reverse_swipes=1.0),
+            ),
+            (
+                "elapsed_ms-bool",
+                self.priority_rank_origin([node], elapsed_ms=True),
+            ),
+            (
+                "elapsed_ms-float",
+                self.priority_rank_origin([node], elapsed_ms=7.0),
+            ),
+            (
+                "empty_hierarchy_reads-bool",
+                self.priority_rank_origin([node], empty_hierarchy_reads=False),
+            ),
+            (
+                "empty_hierarchy_reads-float",
+                self.priority_rank_origin([node], empty_hierarchy_reads=0.0),
+            ),
+            (
+                "hierarchy_duration-bool",
+                self.priority_rank_origin(
+                    [node], hierarchy_durations_ms=(True,)
+                ),
+            ),
+            (
+                "hierarchy_duration-float",
+                self.priority_rank_origin(
+                    [node], hierarchy_durations_ms=(5.0,)
+                ),
+            ),
+        )
+        for field, invalid_origin in invalid_fields:
+            with self.subTest(field=field), self.assertRaisesRegex(
+                ValueError,
+                "exact nonnegative timing",
+            ):
+                driver.scan_forward_until_stable(
+                    mock.Mock(),
+                    scan_id="invalid-origin-numeric-type",
                     max_scrolls=8,
                     distance_ratio=0.68,
                     initial_observation=invalid_origin,
