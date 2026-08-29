@@ -763,7 +763,7 @@ def rewind_to_exact_resource_id(
         matches = [
             node
             for node in nodes
-            if node.attributes.get("resource-id", "").rsplit("/", 1)[-1] == selector
+            if _exact_resource_id(node) == selector
         ]
         if len(matches) > 1:
             device.capture(f"{evidence_prefix}-cardinality-invalid")
@@ -4140,23 +4140,15 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         dashboard_scan.method_viewport,
         delay_seconds=0.0,
     )
-    method_nodes = [
-        node
-        for node in fresh_hierarchy_timed(device, [])
-        if _exact_resource_id(node) == "creation-stage-method"
-    ]
-    if len(method_nodes) != 1:
-        device.capture("creation-stage-method-ready-cardinality-invalid")
-        raise RuntimeError(
-            "Measured ready creation method navigation has cardinality "
-            f"{len(method_nodes)} after exact viewport restore"
-        )
-    method_node = method_nodes[0]
-    if not device.node_has_tappable_bounds(method_node):
-        device.capture("creation-stage-method-ready-not-tappable")
-        raise RuntimeError(
-            "Measured ready creation method navigation was not visible after exact viewport restore"
-        )
+    method_node, _ = rewind_to_exact_resource_id(
+        device,
+        "creation-stage-method",
+        max_swipes=1,
+        distance_ratio=0.22,
+        evidence_prefix="creation-stage-method-ready",
+        surface_name="Measured ready creation method navigation",
+        require_tappable=True,
+    )
     method_detail = require_creation_method_navigation(method_node, ready=True)
     if method_detail != dashboard_scan.method_detail:
         device.capture("creation-stage-method-changed-after-dashboard-scan")

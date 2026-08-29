@@ -2394,6 +2394,23 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertNotIn("shared.wait_for_phone_runner_route(", initial_source)
         self.assertNotIn("reset_swipes=48", execute_source)
 
+        restore_move = initial_source.index("move_between_measured_viewports(")
+        restore_reacquisition = initial_source.index(
+            'rewind_to_exact_resource_id(\n        device,\n        "creation-stage-method",'
+        )
+        self.assertLess(restore_move, restore_reacquisition)
+        restored_method_source = initial_source[restore_reacquisition:]
+        self.assertIn("max_swipes=1", restored_method_source)
+        self.assertIn("distance_ratio=0.22", restored_method_source)
+        self.assertIn("require_tappable=True", restored_method_source)
+
+        rewind_source = inspect.getsource(driver.rewind_to_exact_resource_id)
+        self.assertIn("fresh_hierarchy_timed(device, [])", rewind_source)
+        self.assertIn("_exact_resource_id(node) == selector", rewind_source)
+        self.assertIn("device.swipe_down(", rewind_source)
+        self.assertNotIn("device.swipe_up(", rewind_source)
+        self.assertNotIn("_matches(", rewind_source)
+
         prerequisite_source = inspect.getsource(driver.scan_prerequisite_authority)
         self.assertIn("scan_forward_with_receipt(", prerequisite_source)
         self.assertIn("max_scrolls=22", prerequisite_source)
@@ -2460,6 +2477,203 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             return_value=driver.StableViewportScan([[binding], [method, method]], 4),
         ), self.assertRaisesRegex(RuntimeError, "cardinality 2"):
             driver.assert_uncreated_advanced_editor_gated(device)
+
+    def test_restored_creation_method_reacquisition_uses_fresh_exact_id_hierarchies(
+        self,
+    ) -> None:
+        clipped_parent = driver.shared.UiNode(
+            {
+                "content-desc": "Priority",
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[53,275][1028,292]",
+            }
+        )
+        fresh_method = driver.shared.UiNode(
+            {
+                "resource-id": "creation-stage-method",
+                "content-desc": "Priority",
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[53,350][1028,550]",
+            }
+        )
+
+        class RestoreDevice:
+            def __init__(self, screens):
+                self.screens = list(screens)
+                self.hierarchy_reads = 0
+                self.reverse_swipes = 0
+                self.captures: list[str] = []
+
+            def hierarchy(self):
+                if self.hierarchy_reads != self.reverse_swipes:
+                    raise AssertionError(
+                        "Every post-restore hierarchy must follow its own reverse swipe"
+                    )
+                screen = self.screens[self.hierarchy_reads]
+                self.hierarchy_reads += 1
+                return screen
+
+            def dismiss_system_ui_anr(self, _nodes):
+                return False
+
+            def swipe_down(self, *, distance_ratio):
+                self.asserted_distance_ratio = distance_ratio
+                self.reverse_swipes += 1
+
+            def node_has_tappable_bounds(self, node):
+                return node.attributes.get("bounds") == "[53,350][1028,550]"
+
+            def capture(self, name):
+                self.captures.append(name)
+
+        device = RestoreDevice([[clipped_parent], [fresh_method]])
+        with mock.patch.object(driver.time, "sleep"):
+            node, reverse_swipes = driver.rewind_to_exact_resource_id(
+                device,
+                "creation-stage-method",
+                max_swipes=1,
+                distance_ratio=0.22,
+                evidence_prefix="creation-stage-method-ready",
+                surface_name="Measured ready creation method navigation",
+                require_tappable=True,
+            )
+
+        self.assertIs(fresh_method, node)
+        self.assertEqual(1, reverse_swipes)
+        self.assertEqual(2, device.hierarchy_reads)
+        self.assertEqual(1, device.reverse_swipes)
+        self.assertEqual(0.22, device.asserted_distance_ratio)
+        self.assertEqual([], device.captures)
+
+    def test_restored_creation_method_reacquisition_accepts_immediate_fresh_match(
+        self,
+    ) -> None:
+        method = driver.shared.UiNode(
+            {
+                "resource-id": "creation-stage-method",
+                "enabled": "true",
+                "clickable": "true",
+            }
+        )
+        device = mock.Mock()
+        device.hierarchy.return_value = [method]
+        device.node_has_tappable_bounds.return_value = True
+
+        node, reverse_swipes = driver.rewind_to_exact_resource_id(
+            device,
+            "creation-stage-method",
+            max_swipes=1,
+            distance_ratio=0.22,
+            evidence_prefix="creation-stage-method-ready",
+            surface_name="Measured ready creation method navigation",
+            require_tappable=True,
+        )
+
+        self.assertIs(method, node)
+        self.assertEqual(0, reverse_swipes)
+        device.hierarchy.assert_called_once_with()
+        device.swipe_down.assert_not_called()
+
+    def test_restored_creation_method_reacquisition_fails_closed_on_duplicate(self) -> None:
+        methods = [
+            driver.shared.UiNode(
+                {
+                    "resource-id": "creation-stage-method",
+                    "enabled": "true",
+                    "clickable": "true",
+                }
+            )
+            for _ in range(2)
+        ]
+        device = mock.Mock()
+        device.hierarchy.return_value = methods
+
+        with self.assertRaisesRegex(RuntimeError, "cardinality 2"):
+            driver.rewind_to_exact_resource_id(
+                device,
+                "creation-stage-method",
+                max_swipes=1,
+                distance_ratio=0.22,
+                evidence_prefix="creation-stage-method-ready",
+                surface_name="Measured ready creation method navigation",
+                require_tappable=True,
+            )
+
+        device.swipe_down.assert_not_called()
+        device.capture.assert_called_once_with(
+            "creation-stage-method-ready-cardinality-invalid"
+        )
+
+    def test_restored_creation_method_reacquisition_fails_closed_when_not_tappable(
+        self,
+    ) -> None:
+        for attributes in (
+            {"enabled": "false", "clickable": "true"},
+            {"enabled": "true", "clickable": "false"},
+            {"enabled": "true", "clickable": "true"},
+        ):
+            with self.subTest(attributes=attributes):
+                method = driver.shared.UiNode(
+                    {"resource-id": "creation-stage-method", **attributes}
+                )
+                device = mock.Mock()
+                device.hierarchy.return_value = [method]
+                device.node_has_tappable_bounds.return_value = attributes != {
+                    "enabled": "true",
+                    "clickable": "true",
+                }
+
+                with self.assertRaisesRegex(RuntimeError, "visible, enabled, and clickable"):
+                    driver.rewind_to_exact_resource_id(
+                        device,
+                        "creation-stage-method",
+                        max_swipes=1,
+                        distance_ratio=0.22,
+                        evidence_prefix="creation-stage-method-ready",
+                        surface_name="Measured ready creation method navigation",
+                        require_tappable=True,
+                    )
+
+                device.swipe_down.assert_not_called()
+                device.capture.assert_called_once_with(
+                    "creation-stage-method-ready-not-tappable"
+                )
+
+    def test_restored_creation_method_reacquisition_stops_at_reverse_swipe_bound(
+        self,
+    ) -> None:
+        clipped_parent = driver.shared.UiNode(
+            {
+                "content-desc": "Priority",
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[53,275][1028,292]",
+            }
+        )
+        device = mock.Mock()
+        device.hierarchy.return_value = [clipped_parent]
+        device.dismiss_system_ui_anr.return_value = False
+
+        with mock.patch.object(driver.time, "sleep"), self.assertRaisesRegex(
+            RuntimeError,
+            "within the scan-proven 1-swipe bound",
+        ):
+            driver.rewind_to_exact_resource_id(
+                device,
+                "creation-stage-method",
+                max_swipes=1,
+                distance_ratio=0.22,
+                evidence_prefix="creation-stage-method-ready",
+                surface_name="Measured ready creation method navigation",
+                require_tappable=True,
+            )
+
+        self.assertEqual(2, device.hierarchy.call_count)
+        device.swipe_down.assert_called_once_with(distance_ratio=0.22)
+        device.swipe_up.assert_not_called()
+        device.capture.assert_called_once_with("creation-stage-method-ready-unavailable")
 
     def test_dashboard_scan_reuses_the_resolved_authority_viewport(self) -> None:
         nodes = [
