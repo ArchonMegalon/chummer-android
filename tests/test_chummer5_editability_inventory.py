@@ -6258,6 +6258,69 @@ public sealed class Demo
             )
         self.assertEqual("missing", drifted["status"])
 
+        rank_handoff_markers = (
+            (
+                "CreationPrerequisitePage.cs",
+                "CharacterCreationFoundationResult<CharacterCreationPrerequisiteState> load =",
+            ),
+            (
+                "CreationPrerequisitePage.cs",
+                "new CreationPriorityCategoryPage(\n"
+                "                    Coordinator,\n"
+                "                    _draft,\n"
+                "                    state,\n"
+                "                    category)",
+            ),
+            (
+                "CreationPriorityCategoryPage.cs",
+                "private readonly CharacterCreationPrerequisiteState _state;",
+            ),
+            (
+                "CreationPriorityCategoryPage.cs",
+                "CharacterCreationPrerequisiteState state,",
+            ),
+            (
+                "CreationPriorityCategoryPage.cs",
+                "_state = state ?? throw new ArgumentNullException(nameof(state));",
+            ),
+            (
+                "CreationPriorityCategoryPage.cs",
+                "if (!_draft.Matches(_state, Coordinator.State))",
+            ),
+            (
+                "CreationPriorityCategoryPage.cs",
+                "_draft.OptionsForCategory(_state, Coordinator.State, _categoryId)",
+            ),
+            (
+                "CreationPriorityCategoryPage.cs",
+                "_draft.TrySelect(_state, Coordinator.State, _categoryId, rank)",
+            ),
+        )
+        for source_name, marker in rank_handoff_markers:
+            def drift_exact_rank_handoff(
+                path: Path,
+                *needles: str,
+                source_name: str = source_name,
+                marker: str = marker,
+            ) -> bool:
+                if path.name == source_name and marker in needles:
+                    return False
+                return original_contains(path, *needles)
+
+            with self.subTest(source=source_name, marker=marker), patch.object(
+                inventory,
+                "_contains",
+                side_effect=drift_exact_rank_handoff,
+            ):
+                drifted = inventory._known_phone_mapping(
+                    rows["cboHeritage"],
+                    inventory.DEFAULT_CHUMMER5_ROOT,
+                    PRESENTATION_ROOT,
+                    CORE_ROOT,
+                    **receipt_arguments,
+                )
+            self.assertEqual("missing", drifted["status"])
+
         def drift_talent_grant_authority(path: Path, *needles: str) -> bool:
             if path.name == "CreationTalentSkillGrantPage.cs":
                 return False

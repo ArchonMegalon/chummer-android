@@ -8053,11 +8053,27 @@ def _known_phone_mapping(
                 "CharacterCreationPrerequisiteConfirmRequest",
             )
         )
-        rank_authority = shared_authority and _contains(
-            category_page,
-            "_draft.OptionsForCategory(state, Coordinator.State, _categoryId)",
-            "_draft.TrySelect(state, Coordinator.State, _categoryId, rank)",
-            '$"creation-prerequisite-rank-',
+        rank_authority = (
+            shared_authority
+            and _contains(
+                prerequisite_page,
+                "CharacterCreationFoundationResult<CharacterCreationPrerequisiteState> load =",
+                "new CreationPriorityCategoryPage(\n"
+                "                    Coordinator,\n"
+                "                    _draft,\n"
+                "                    state,\n"
+                "                    category)",
+            )
+            and _contains(
+                category_page,
+                "private readonly CharacterCreationPrerequisiteState _state;",
+                "CharacterCreationPrerequisiteState state,",
+                "_state = state ?? throw new ArgumentNullException(nameof(state));",
+                "if (!_draft.Matches(_state, Coordinator.State))",
+                "_draft.OptionsForCategory(_state, Coordinator.State, _categoryId)",
+                "_draft.TrySelect(_state, Coordinator.State, _categoryId, rank)",
+                '$"creation-prerequisite-rank-',
+            )
         )
         heritage_authority = shared_authority and _contains(
             detail_page,
