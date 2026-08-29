@@ -374,6 +374,77 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             observations[0]["elapsedMs"],
         )
 
+    def test_composed_scan_timing_reconciles_every_origin_and_traversal_partition(self) -> None:
+        receipt: dict[str, object] = {
+            "scanId": "rank-cardinality-heritage",
+            "status": "stable-end",
+            "reusedInitialScreen": True,
+            "originElapsedMs": 2400,
+            "originReverseSwipes": 2,
+            "originEmptyHierarchyReads": 1,
+            "originHierarchyReadCount": 4,
+            "originHierarchyElapsedMs": 2100,
+            "originMaximumHierarchyReadMs": 600,
+            "traversalElapsedMs": 900,
+            "traversalEmptyHierarchyReads": 0,
+            "emptyHierarchyReads": 1,
+            "totalNavigationSwipes": 5,
+            "hierarchyReadCount": 7,
+            "hierarchyElapsedMs": 2700,
+            "maximumHierarchyReadMs": 600,
+            "elapsedMs": 3300,
+            "swipes": 3,
+        }
+
+        driver.require_composed_scan_timing(receipt)
+
+    def test_composed_scan_timing_rejects_omission_types_and_partition_forgery(self) -> None:
+        receipt: dict[str, object] = {
+            "scanId": "rank-cardinality-heritage",
+            "status": "stable-end",
+            "reusedInitialScreen": True,
+            "originElapsedMs": 2400,
+            "originReverseSwipes": 2,
+            "originEmptyHierarchyReads": 1,
+            "originHierarchyReadCount": 4,
+            "originHierarchyElapsedMs": 2100,
+            "originMaximumHierarchyReadMs": 600,
+            "traversalElapsedMs": 900,
+            "traversalEmptyHierarchyReads": 0,
+            "emptyHierarchyReads": 1,
+            "totalNavigationSwipes": 5,
+            "hierarchyReadCount": 7,
+            "hierarchyElapsedMs": 2700,
+            "maximumHierarchyReadMs": 600,
+            "elapsedMs": 3300,
+            "swipes": 3,
+        }
+        mutations = {
+            "omitted": lambda value: value.pop("originHierarchyElapsedMs"),
+            "bool-as-integer": lambda value: value.__setitem__("swipes", True),
+            "elapsed-partition": lambda value: value.__setitem__("elapsedMs", 3299),
+            "hierarchy-outside-clock": lambda value: value.__setitem__(
+                "hierarchyElapsedMs", 4000
+            ),
+            "empty-read-partition": lambda value: value.__setitem__(
+                "emptyHierarchyReads", 0
+            ),
+            "navigation-partition": lambda value: value.__setitem__(
+                "totalNavigationSwipes", 4
+            ),
+            "false-reuse-with-origin": lambda value: value.__setitem__(
+                "reusedInitialScreen", False
+            ),
+        }
+        for case, mutate in mutations.items():
+            forged = dict(receipt)
+            mutate(forged)
+            with self.subTest(case=case), self.assertRaisesRegex(
+                RuntimeError,
+                "Composed accessibility scan timing",
+            ):
+                driver.require_composed_scan_timing(forged)
+
     def test_reused_scan_origin_must_be_nonempty(self) -> None:
         node = driver.shared.UiNode({"resource-id": "rank-origin"})
         invalid_origins = (
@@ -4117,7 +4188,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
         for marker in (
             'AutomationId = "creation-prerequisite-category-page"',
-            "_draft.OptionsForCategory(state, Coordinator.State, _categoryId)",
+            "_draft.OptionsForCategory(_state, Coordinator.State, _categoryId)",
             "projection.Rank",
             "projection.SourceId",
             "projection.SourceNodeDigest",
@@ -4125,7 +4196,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "projection.SumToTenValue",
             "projection.BaseNormalAttributePoints",
             "option.DisableReason",
-            "_draft.TrySelect(state, Coordinator.State, _categoryId, rank)",
+            "_draft.TrySelect(_state, Coordinator.State, _categoryId, rank)",
             "Navigation.PopAsync(animated: false)",
         ):
             self.assertIn(marker, options)
@@ -4223,6 +4294,36 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "Skill-grant prompts are not yet available on phone",
         ):
             self.assertNotIn(forbidden, combined)
+
+    def test_priority_child_reuses_exact_parent_authority_without_hiding_fresh_parent_reload(
+        self,
+    ) -> None:
+        page = (NATIVE / "CreationPrerequisitePage.cs").read_text(encoding="utf-8")
+        options = (NATIVE / "CreationPriorityCategoryPage.cs").read_text(
+            encoding="utf-8"
+        )
+        category_refresh = options[
+            options.index("protected override void Refresh()") : options.index(
+                "private async Task SelectAsync("
+            )
+        ]
+
+        self.assertEqual(1, page.count("Coordinator.LoadCreationPrerequisite()"))
+        self.assertIn("_draft.Bind(state, Coordinator.State);", page)
+        self.assertIn("_draft,\n                    state,\n                    category", page)
+
+        self.assertNotIn("Coordinator.LoadCreationPrerequisite", options)
+        self.assertIn("CharacterCreationPrerequisiteState state", options)
+        self.assertIn("_state = state ?? throw", options)
+        self.assertIn("if (!_draft.Matches(_state, Coordinator.State))", category_refresh)
+        self.assertLess(
+            category_refresh.index("if (!_draft.Matches(_state, Coordinator.State))"),
+            category_refresh.index("_draft.OptionsForCategory("),
+        )
+        self.assertIn(
+            "AddBlockers([CharacterCreationPrerequisiteBlockers.StaleWorkspaceRevision])",
+            category_refresh,
+        )
 
     def test_build_ghost_is_dormant_and_has_no_phone_prerequisite_launch(self) -> None:
         page = (NATIVE / "CreationPrerequisitePage.cs").read_text(encoding="utf-8")

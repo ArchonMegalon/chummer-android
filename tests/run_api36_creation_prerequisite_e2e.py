@@ -341,6 +341,117 @@ def hierarchy_timing_fields(durations_ms: list[int]) -> dict[str, int]:
     }
 
 
+COMPOSED_SCAN_TIMING_FIELDS = (
+    "originElapsedMs",
+    "originReverseSwipes",
+    "originEmptyHierarchyReads",
+    "originHierarchyReadCount",
+    "originHierarchyElapsedMs",
+    "originMaximumHierarchyReadMs",
+    "traversalElapsedMs",
+    "traversalEmptyHierarchyReads",
+    "emptyHierarchyReads",
+    "totalNavigationSwipes",
+    "hierarchyReadCount",
+    "hierarchyElapsedMs",
+    "maximumHierarchyReadMs",
+    "elapsedMs",
+    "swipes",
+)
+
+
+def require_composed_scan_timing(scan: dict[str, object]) -> None:
+    """Fail closed unless a reused-origin scan's clocks reconcile exactly.
+
+    Each hierarchy duration and the enclosing monotonic intervals are rounded
+    independently.  The per-part read-count tolerance below accounts only for
+    those opposing half-millisecond rounding errors; it is not a phase-budget
+    allowance.  Receipts without composed origin/traversal fields are separate
+    polling observations and remain outside this contract.
+    """
+    composed = any(
+        field in scan
+        for field in (
+            "originElapsedMs",
+            "traversalElapsedMs",
+            "originHierarchyReadCount",
+        )
+    )
+    if not composed:
+        return
+    missing = [field for field in COMPOSED_SCAN_TIMING_FIELDS if field not in scan]
+    if missing:
+        raise RuntimeError(
+            f"Composed accessibility scan timing omitted fields: {missing!r}"
+        )
+    invalid = [
+        field
+        for field in COMPOSED_SCAN_TIMING_FIELDS
+        if type(scan[field]) is not int or int(scan[field]) < 0
+    ]
+    if invalid:
+        raise RuntimeError(
+            f"Composed accessibility scan timing was not nonnegative integer data: {invalid!r}"
+        )
+
+    value = {field: int(scan[field]) for field in COMPOSED_SCAN_TIMING_FIELDS}
+    reused = scan.get("reusedInitialScreen")
+    if type(reused) is not bool:
+        raise RuntimeError("Composed accessibility scan timing omitted its reuse decision")
+    traversal_reads = (
+        value["hierarchyReadCount"] - value["originHierarchyReadCount"]
+    )
+    traversal_hierarchy_ms = (
+        value["hierarchyElapsedMs"] - value["originHierarchyElapsedMs"]
+    )
+    origin_rounding_ms = (value["originHierarchyReadCount"] + 1) // 2
+    traversal_rounding_ms = (traversal_reads + 1) // 2
+    relationships_hold = (
+        traversal_reads >= 0
+        and traversal_hierarchy_ms >= 0
+        and value["elapsedMs"]
+        == value["originElapsedMs"] + value["traversalElapsedMs"]
+        and value["emptyHierarchyReads"]
+        == value["originEmptyHierarchyReads"]
+        + value["traversalEmptyHierarchyReads"]
+        and value["totalNavigationSwipes"]
+        == value["originReverseSwipes"] + value["swipes"]
+        and value["originEmptyHierarchyReads"]
+        <= value["originHierarchyReadCount"]
+        and value["traversalEmptyHierarchyReads"] <= traversal_reads
+        and value["originHierarchyElapsedMs"]
+        <= value["originElapsedMs"] + origin_rounding_ms
+        and traversal_hierarchy_ms
+        <= value["traversalElapsedMs"] + traversal_rounding_ms
+        and value["originMaximumHierarchyReadMs"]
+        <= value["maximumHierarchyReadMs"]
+        and (
+            reused
+            and value["originHierarchyReadCount"]
+            >= value["originEmptyHierarchyReads"]
+            + value["originReverseSwipes"]
+            + 1
+            or not reused
+            and all(
+                value[field] == 0
+                for field in (
+                    "originElapsedMs",
+                    "originReverseSwipes",
+                    "originEmptyHierarchyReads",
+                    "originHierarchyReadCount",
+                    "originHierarchyElapsedMs",
+                    "originMaximumHierarchyReadMs",
+                )
+            )
+        )
+    )
+    if not relationships_hold:
+        raise RuntimeError(
+            "Composed accessibility scan timing did not reconcile its origin, "
+            "traversal, hierarchy, empty-read, and navigation partitions"
+        )
+
+
 class PriorityRankOrigin(NamedTuple):
     nodes: list[shared.UiNode]
     reverse_swipes: int
@@ -836,6 +947,7 @@ class ProgressRecorder:
     def record_scan(self, scan: dict[str, object]) -> None:
         if self._active_id is None or self._finished:
             raise RuntimeError("Scan timing was recorded outside an active progress phase")
+        require_composed_scan_timing(scan)
         self.scans.append({**scan, "phaseId": self._active_id})
         self._write("running")
 

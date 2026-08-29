@@ -261,6 +261,7 @@ public sealed class CreationPrerequisitePage : NativePageBase
                 () => Navigation.PushAsync(new CreationPriorityCategoryPage(
                     Coordinator,
                     _draft,
+                    state,
                     category)),
                 automationId: $"creation-prerequisite-category-{Token(category)}"));
 
