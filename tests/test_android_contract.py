@@ -1,8 +1,11 @@
 import json
+import importlib.util
 import os
 import re
 import struct
+import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 
 
@@ -60,6 +63,61 @@ class AndroidContractTests(unittest.TestCase):
         app = (PROJECT / "Platforms" / "Android" / "MainApplication.cs").read_text(encoding="utf-8")
         self.assertIn("AllowBackup = false", app)
         self.assertIn("UsesCleartextTraffic = false", app)
+
+    def test_content_manifest_json_fails_closed_on_duplicate_and_nonfinite_values(self) -> None:
+        verifier_path = REPO / "scripts" / "verify_android_content_bundle.py"
+        specification = importlib.util.spec_from_file_location(
+            "android_content_bundle_verifier",
+            verifier_path,
+        )
+        self.assertIsNotNone(specification)
+        self.assertIsNotNone(specification.loader)
+        verifier = importlib.util.module_from_spec(specification)
+        specification.loader.exec_module(verifier)
+
+        for payload, marker in (
+            (b'{"schema":"first","schema":"second"}', "duplicate-key:schema"),
+            (b'{"bundleDigest":NaN}', "nonfinite:NaN"),
+        ):
+            with self.subTest(marker=marker):
+                with self.assertRaisesRegex(ValueError, marker):
+                    verifier._strict_json_bytes(payload, "content-manifest-json")
+
+    def test_packaged_content_manifest_json_fails_closed_on_duplicate_and_nonfinite_values(self) -> None:
+        verifier_path = REPO / "scripts" / "verify_android_content_bundle.py"
+        specification = importlib.util.spec_from_file_location(
+            "android_packaged_content_bundle_verifier",
+            verifier_path,
+        )
+        self.assertIsNotNone(specification)
+        self.assertIsNotNone(specification.loader)
+        verifier = importlib.util.module_from_spec(specification)
+        specification.loader.exec_module(verifier)
+        checked_manifest = {
+            "schema": verifier.SCHEMA,
+            "coreRevision": verifier.CORE_REVISION,
+            "bundleDigest": "0" * 64,
+            "files": [],
+        }
+        checked_manifest_bytes = json.dumps(checked_manifest).encode("utf-8")
+
+        for payload, marker in (
+            (b'{"schema":"first","schema":"second"}', "duplicate-key:schema"),
+            (b'{"bundleDigest":Infinity}', "nonfinite:Infinity"),
+        ):
+            with self.subTest(marker=marker), tempfile.TemporaryDirectory() as directory:
+                apk_path = Path(directory) / "candidate.apk"
+                with zipfile.ZipFile(apk_path, "w") as archive:
+                    archive.writestr(verifier.MANIFEST_ENTRY, payload)
+                _, issues = verifier.verify_apk(
+                    apk_path,
+                    checked_manifest,
+                    checked_manifest_bytes,
+                )
+                self.assertTrue(
+                    any(marker in issue for issue in issues),
+                    issues,
+                )
 
     def test_play_identity_and_release_target_are_stable(self) -> None:
         project = (PROJECT / "Chummer.Android.csproj").read_text(encoding="utf-8")

@@ -215,8 +215,8 @@ package_args=(
   "-p:ChummerContractsPackageVersion=0.0.0-packageplane.candidate.sh60112dccb6a3f"
   "-p:ChummerCoreRuntimePackageVersion=0.0.0-packageplane.candidate.sh60112dccb6a3f"
   "-p:ChummerCampaignContractsPackageVersion=0.1.0-preview"
-  "-p:ChummerRunContractsPackageVersion=0.1.0-packageplane.candidate.sh66c418a5004f"
-  "-p:ChummerHubRegistryContractsPackageVersion=0.1.0-packageplane.candidate.sh66c418a5004f"
+  "-p:ChummerRunContractsPackageVersion=0.1.0-packageplane.candidate.sh1852ea4eef6d"
+  "-p:ChummerHubRegistryContractsPackageVersion=0.1.0-packageplane.candidate.sh1852ea4eef6d"
   "-p:ChummerUiKitPackageVersion=0.1.0-preview"
 )
 
