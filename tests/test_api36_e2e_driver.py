@@ -4552,7 +4552,8 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             DRIVER.select_documents_ui_downloads_root(device, timeout=45)
 
         device.capture.assert_called_once_with(
-            "documentsui-downloads-row-cardinality-invalid"
+            "documentsui-downloads-row-cardinality-invalid",
+            deadline=ANY,
         )
         device.shell.assert_not_called()
 
@@ -4565,7 +4566,8 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             DRIVER.select_documents_ui_downloads_root(device, timeout=45)
 
         device.capture.assert_called_once_with(
-            "documentsui-downloads-row-not-enabled-tappable"
+            "documentsui-downloads-row-not-enabled-tappable",
+            deadline=ANY,
         )
         device.shell.assert_not_called()
 
@@ -4581,7 +4583,8 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             DRIVER.select_documents_ui_downloads_root(device, timeout=45)
 
         device.capture.assert_called_once_with(
-            "documentsui-downloads-wrong-destination"
+            "documentsui-downloads-wrong-destination",
+            deadline=ANY,
         )
         device.shell.assert_called_once_with(
             "input",
@@ -4603,7 +4606,8 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             DRIVER.select_documents_ui_downloads_root(device, timeout=45)
 
         device.capture.assert_called_once_with(
-            "documentsui-downloads-transition-state-ambiguous"
+            "documentsui-downloads-transition-state-ambiguous",
+            deadline=ANY,
         )
         device.shell.assert_not_called()
 
@@ -4813,6 +4817,128 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
 
             shell.assert_called_once()
             run.assert_called_once()
+
+    def test_deadline_capture_stops_after_first_read_crosses_deadline(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            device = DRIVER.Device(
+                Path("/unused/adb"),
+                "emulator-5554",
+                Path(temporary),
+            )
+            now, monotonic, _sleep = self._fake_clock()
+            now[0] = 44.9
+
+            def late_screenshot(*_arguments: str, **kwargs: object) -> subprocess.CompletedProcess:
+                self.assertAlmostEqual(0.1, kwargs["timeout"], places=6)
+                self.assertEqual(45.0, kwargs["deadline"])
+                self.assertFalse(kwargs["text"])
+                now[0] = 46.0
+                return subprocess.CompletedProcess(
+                    args=[],
+                    returncode=0,
+                    stdout=b"late screenshot",
+                    stderr=b"",
+                )
+
+            with (
+                patch.object(DRIVER.time, "monotonic", side_effect=monotonic),
+                patch.object(device, "run", side_effect=late_screenshot) as run,
+            ):
+                device.capture("late-documentsui", deadline=45.0)
+
+            run.assert_called_once()
+            self.assertFalse((Path(temporary) / "late-documentsui.png").exists())
+            self.assertFalse((Path(temporary) / "late-documentsui.xml").exists())
+            self.assertFalse(
+                (Path(temporary) / "late-documentsui-logcat.txt").exists()
+            )
+
+    def test_deadline_capture_shares_decreasing_timeout_across_three_reads(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            device = DRIVER.Device(
+                Path("/unused/adb"),
+                "emulator-5554",
+                Path(temporary),
+            )
+            now, monotonic, _sleep = self._fake_clock()
+            observations = iter(
+                (
+                    (10.0, b"screenshot", b""),
+                    (20.0, "<hierarchy rotation='0'></hierarchy>", ""),
+                    (25.0, "logcat", ""),
+                )
+            )
+
+            def read(*_arguments: str, **_kwargs: object) -> subprocess.CompletedProcess:
+                observed_at, stdout, stderr = next(observations)
+                now[0] = observed_at
+                return subprocess.CompletedProcess(
+                    args=[],
+                    returncode=0,
+                    stdout=stdout,
+                    stderr=stderr,
+                )
+
+            with (
+                patch.object(DRIVER.time, "monotonic", side_effect=monotonic),
+                patch.object(device, "run", side_effect=read) as run,
+            ):
+                device.capture("bounded-documentsui", deadline=45.0)
+
+            self.assertEqual(3, run.call_count)
+            self.assertEqual(45.0, run.call_args_list[0].kwargs["timeout"])
+            self.assertEqual(35.0, run.call_args_list[1].kwargs["timeout"])
+            self.assertEqual(25.0, run.call_args_list[2].kwargs["timeout"])
+            for invocation in run.call_args_list:
+                self.assertEqual(45.0, invocation.kwargs["deadline"])
+
+    def test_capture_without_deadline_preserves_original_adb_call_shape(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            device = DRIVER.Device(
+                Path("/unused/adb"),
+                "emulator-5554",
+                Path(temporary),
+            )
+            results = iter(
+                (
+                    subprocess.CompletedProcess([], 0, b"screenshot", b""),
+                    subprocess.CompletedProcess([], 0, "<hierarchy/>", ""),
+                    subprocess.CompletedProcess([], 0, "logcat", ""),
+                )
+            )
+            with patch.object(device, "run", side_effect=results) as run:
+                device.capture("default-capture")
+
+            self.assertEqual(
+                [
+                    call("exec-out", "screencap", "-p", text=False),
+                    call(
+                        "exec-out",
+                        "cat",
+                        "/sdcard/chummer-editing-window.xml",
+                    ),
+                    call("logcat", "-d", "-t", "500"),
+                ],
+                run.call_args_list,
+            )
+
+    def test_documents_ui_capture_error_never_masks_primary_semantic_error(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        device.capture.side_effect = RuntimeError("diagnostic capture failed")
+        nodes = self._documents_ui_destination("Documents")
+
+        with self.assertRaisesRegex(RuntimeError, "root other than") as error:
+            DRIVER._documents_ui_downloads_state(
+                device,
+                nodes,
+                deadline=DRIVER.time.monotonic() + 45,
+            )
+
+        self.assertNotIn("diagnostic capture failed", str(error.exception))
+        device.capture.assert_called_once_with(
+            "documentsui-downloads-wrong-destination",
+            deadline=ANY,
+        )
 
     def test_document_picker_uses_visible_fixture_without_changing_root(self) -> None:
         device = Mock()

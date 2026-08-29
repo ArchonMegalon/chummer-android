@@ -2235,7 +2235,73 @@ class Device:
                 return
         self.shell("input", "tap", "48", "96")
 
-    def capture(self, name: str) -> None:
+    def capture(self, name: str, *, deadline: float | None = None) -> None:
+        if deadline is not None:
+            def deadline_run(
+                *arguments: str,
+                text: bool = True,
+            ) -> subprocess.CompletedProcess | None:
+                try:
+                    return self.run(
+                        *arguments,
+                        timeout=_remaining_operation_timeout(
+                            deadline=deadline,
+                            maximum=120,
+                        ),
+                        text=text,
+                        deadline=deadline,
+                    )
+                except Exception:
+                    # Diagnostic collection is subordinate to the semantic error
+                    # which requested it. Never replace that primary failure.
+                    return None
+
+            screenshot_result = deadline_run(
+                "exec-out",
+                "screencap",
+                "-p",
+                text=False,
+            )
+            if time.monotonic() >= deadline:
+                return
+            if screenshot_result is not None:
+                try:
+                    (self.evidence / f"{name}.png").write_bytes(
+                        screenshot_result.stdout
+                    )
+                except (OSError, TypeError):
+                    pass
+
+            hierarchy_result = deadline_run(
+                "exec-out",
+                "cat",
+                "/sdcard/chummer-editing-window.xml",
+            )
+            if time.monotonic() >= deadline:
+                return
+            if hierarchy_result is not None:
+                try:
+                    (self.evidence / f"{name}.xml").write_text(
+                        hierarchy_result.stdout,
+                        encoding="utf-8",
+                    )
+                except (OSError, TypeError):
+                    pass
+
+            logcat_result = deadline_run("logcat", "-d", "-t", "500")
+            if time.monotonic() >= deadline:
+                return
+            if logcat_result is not None:
+                try:
+                    (self.evidence / f"{name}-logcat.txt").write_text(
+                        logcat_result.stdout,
+                        encoding="utf-8",
+                    )
+                except (OSError, TypeError):
+                    pass
+            return
+
+        # Preserve the no-deadline diagnostic path and its exact ADB call shape.
         try:
             screenshot = self.run("exec-out", "screencap", "-p", text=False).stdout
             (self.evidence / f"{name}.png").write_bytes(screenshot)
@@ -4438,8 +4504,12 @@ def _capture_documents_ui_before_deadline(
     """Start transition diagnostics only while the caller's budget remains."""
     if time.monotonic() >= deadline:
         return False
-    device.capture(name)
-    return True
+    try:
+        device.capture(name, deadline=deadline)
+    except Exception:
+        # Evidence is best-effort and must never mask the caller's semantic error.
+        return False
+    return time.monotonic() < deadline
 
 
 def _documents_ui_downloads_state(
