@@ -40,7 +40,7 @@ on_exit() {
   trap - EXIT HUP INT TERM
   if [[ "$status" -ne 0 && -n "$evidence_dir" && -d "$evidence_dir" ]]; then
     "$jq_command" -n \
-      --arg contractName "chummer.android.api36-arm64-physical-build-provenance/v2" \
+      --arg contractName "chummer.android.api36-arm64-physical-build-provenance/v3" \
       --arg failureStage "$current_stage" \
       '{contractName:$contractName,status:"blocked",publicationAuthorized:false,retryPerformed:false,failureStage:$failureStage}' \
       >"$evidence_dir/blocked.json" 2>/dev/null || true

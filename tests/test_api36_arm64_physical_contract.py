@@ -131,9 +131,12 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
         }
 
     def provenance_payload(self) -> dict[str, object]:
-        graph_bytes = self.graph.read_bytes()
         apk_bytes = self.apk.read_bytes()
         binding = {"sha256": "8" * 64, "sizeBytes": 8}
+        package_binding = {"sha256": "7" * 64, "sizeBytes": 7}
+        repository_map = {
+            row["name"]: row for row in self.graph_payload()["repositories"]
+        }
         execution_evidence = {
             field: dict(binding)
             for field in contract.WP1_EXECUTION_EVIDENCE_FIELDS
@@ -187,21 +190,51 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
             "authorityClass": "internal_phone_beta_physical_candidate_only",
             "publicationAuthorized": False,
             "proofScope": "full_maui_arm64_apk_build_only",
-            "dependencyMode": "locked_w5_packages_no_owner_siblings",
-            "sourceGraph": {
-                "sha256": hashlib.sha256(graph_bytes).hexdigest(),
-                "sizeBytes": len(graph_bytes),
-                "contractName": contract.SOURCE_GRAPH_SCHEMA,
-                "repositories": self.graph_payload()["repositories"],
-                "packageAuthority": {"sha256": "7" * 64, "sizeBytes": 7},
-                "packageAuthorityContract": "chummer.android.release-package-authority/v2",
-                "packageAuthorityPublicationAuthorized": False,
+            "dependencyMode": "locked_current_packages_no_owner_siblings",
+            "sourceHead": {
+                "commit": repository_map["chummer-android"]["commit"],
+                "tree": repository_map["chummer-android"]["tree"],
+                "repository": "https://github.com/ArchonMegalon/chummer-android.git",
+                "publicationAuthorized": False,
             },
-            "w5CompileProof": {},
-            "presentationBuildSource": {"productionSource": False, "publicationAuthorized": False},
-            "packageAuthority": {},
-            "content": {},
-            "restore": {"lockedMode": True, "networkSourcesAllowed": False},
+            "presentationBuildSource": {
+                "commit": repository_map["chummer6-ui"]["commit"],
+                "tree": repository_map["chummer6-ui"]["tree"],
+                "authorityClass": "verified_current_ui_source",
+                "productionSource": False, "publicationAuthorized": False,
+                "packagePlaneLock": dict(binding), "producerLock": dict(binding),
+                "remoteRef": "refs/remotes/origin/main",
+            },
+            "packageAuthority": {
+                **package_binding,
+                "contractName": "chummer.android.internal-phone-beta-package-authority/v2",
+                "authorityState": "current_graph_verified",
+                "sourceGraph": {
+                    "corePackageRecipeCommit": repository_map["chummer6-core"]["commit"],
+                    "coreRuntimeSourceCommit": "6" * 40,
+                    "hubProducerCommit": repository_map["chummer6-hub"]["commit"],
+                    "registryCommit": repository_map["chummer6-hub-registry"]["commit"],
+                    "uiKitCommit": repository_map["chummer6-ui-kit"]["commit"],
+                },
+                "uiReceipt": dict(binding), "cacheManifest": dict(binding),
+                "intakeBinding": dict(package_binding),
+                "postBuildBinding": dict(package_binding),
+            },
+            "content": {
+                "sourceReceipt": dict(binding), "apkReceipt": dict(binding),
+                "coreRevision": repository_map["chummer6-core"]["commit"],
+                "bundleDigest": "5" * 64, "manifestSha256": "4" * 64,
+                "canonicalFileCount": 1, "canonicalByteCount": 1,
+                "sourceRepository": {
+                    "commit": repository_map["chummer6-core"]["commit"],
+                    "tree": repository_map["chummer6-core"]["tree"],
+                },
+            },
+            "restore": {
+                "lockedMode": True, "networkSourcesAllowed": False,
+                "ownerSourceFallbackAllowed": False,
+                "fullProjectLock": dict(binding), "projectAssets": dict(binding),
+            },
             "executionEvidence": execution_evidence,
             "toolchain": toolchain,
             "artifact": {
@@ -991,8 +1024,10 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
 
         pristine = self.provenance_payload()
         mutations = (
-            ("old-source-adapter", lambda value: value["sourceGraph"].pop("packageAuthorityContract")),
-            ("source-publication", lambda value: value["sourceGraph"].update({"packageAuthorityPublicationAuthorized": True})),
+            ("source-head-unknown", lambda value: value["sourceHead"].update({"unknown": True})),
+            ("source-publication", lambda value: value["sourceHead"].update({"publicationAuthorized": True})),
+            ("package-authority-unknown", lambda value: value["packageAuthority"].update({"unknown": True})),
+            ("package-source-drift", lambda value: value["packageAuthority"]["sourceGraph"].update({"hubProducerCommit": "0" * 40})),
             ("artifact-no-signing", lambda value: value["artifact"].pop("signing")),
             ("signing-unknown", lambda value: value["artifact"]["signing"].update({"unknown": True})),
             ("signing-bool-scheme", lambda value: value["artifact"]["signing"].update({"verifiedSchemes": [True, 2]})),

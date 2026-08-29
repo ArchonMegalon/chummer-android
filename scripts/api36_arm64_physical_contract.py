@@ -21,7 +21,7 @@ import zipfile
 DEVICE_SCHEMA = "chummer.android.api36-arm64-physical-device/v1"
 SEAL_SCHEMA = "chummer.android.api36-arm64-physical-journey-seal/v1"
 AGGREGATE_SCHEMA = "chummer.android.api36-arm64-physical-six-journey/v1"
-BUILD_PROVENANCE_SCHEMA = "chummer.android.api36-arm64-physical-build-provenance/v2"
+BUILD_PROVENANCE_SCHEMA = "chummer.android.api36-arm64-physical-build-provenance/v3"
 SOURCE_GRAPH_SCHEMA = "chummer.android.release-source-graph/v2"
 PACKAGE = "com.myexternalbrain.chummer"
 TARGET_FRAMEWORK = "net10.0-android36.0"
@@ -78,10 +78,26 @@ WP1_DOES_NOT_ASSERT = (
     "google_play_upload", "google_play_processing", "tester_installation",
     "public_release_readiness", "publication_authority", "tablet_readiness",
 )
-WP1_COMMITTED_ADAPTER = "wp1-33e69-v2"
-WP1_SOURCE_GRAPH_FIELDS = {
-    "sha256", "sizeBytes", "contractName", "repositories", "packageAuthority",
-    "packageAuthorityContract", "packageAuthorityPublicationAuthorized",
+WP1_COMMITTED_ADAPTER = "trusted-host-physical-build-provenance-v3"
+WP1_SOURCE_HEAD_FIELDS = {
+    "commit", "tree", "repository", "publicationAuthorized",
+}
+WP1_PRESENTATION_SOURCE_FIELDS = {
+    "commit", "tree", "authorityClass", "productionSource",
+    "publicationAuthorized", "packagePlaneLock", "producerLock", "remoteRef",
+}
+WP1_PACKAGE_AUTHORITY_FIELDS = {
+    "sha256", "sizeBytes", "contractName", "authorityState", "sourceGraph",
+    "uiReceipt", "cacheManifest", "intakeBinding", "postBuildBinding",
+}
+WP1_PACKAGE_SOURCE_GRAPH_FIELDS = {
+    "corePackageRecipeCommit", "coreRuntimeSourceCommit", "hubProducerCommit",
+    "registryCommit", "uiKitCommit",
+}
+WP1_CONTENT_FIELDS = {
+    "sourceReceipt", "apkReceipt", "coreRevision", "bundleDigest",
+    "manifestSha256", "canonicalFileCount", "canonicalByteCount",
+    "sourceRepository",
 }
 WP1_ARTIFACT_FIELDS = {
     "basename", "sha256", "sizeBytes", "package", "abis", "apiLevel",
@@ -89,9 +105,11 @@ WP1_ARTIFACT_FIELDS = {
     "installed", "signing",
 }
 WP1_EXECUTION_EVIDENCE_FIELDS = {
-    "toolchainLog", "sourceGraphLog", "contentSourceLog", "buildInputsLog",
+    "toolchainLog", "packageAuthorityLog", "packageAuthorityBinding",
+    "contentSourceLog", "buildInputsLog",
     "restoreLog", "buildLog", "signingPhaseLog", "apksignerLog",
-    "jarsignerLog", "signingReceipt", "contentApkLog", "sourceGraphSealLog",
+    "jarsignerLog", "signingReceipt", "contentApkLog", "packageAuthoritySealLog",
+    "packageAuthoritySeal",
     "commandJournal", "rawCommandJournal", "delegateCommandJournal",
     "boundedProcessGroups", "warnings", "errors",
 }
@@ -898,12 +916,11 @@ def _validate_wp1_successor_surfaces(value: Mapping[str, object]) -> None:
     )
     require_hex(jdk_release.get("sha256"), "WP1 JDK release sha256")
     require_integer(jdk_release.get("sizeBytes"), "WP1 JDK release size", minimum=1)
-    release_fields = require_exact_keys(jdk_release.get("fields"), {
-        "IMPLEMENTOR", "IMPLEMENTOR_VERSION", "JAVA_RUNTIME_VERSION", "JAVA_VERSION",
-        "JAVA_VERSION_DATE", "LIBC", "MODULES", "OS_ARCH", "OS_NAME", "SOURCE",
-    }, "WP1 JDK release fields")
+    release_fields = jdk_release.get("fields")
     if (
-        release_fields.get("IMPLEMENTOR") != "Microsoft"
+        not isinstance(release_fields, dict)
+        or not release_fields
+        or "Microsoft" not in release_fields.get("IMPLEMENTOR", "")
         or release_fields.get("JAVA_VERSION") != "17.0.14"
         or any(type(field) is not str for field in release_fields.values())
     ):
@@ -912,7 +929,12 @@ def _validate_wp1_successor_surfaces(value: Mapping[str, object]) -> None:
         "root", "selectedInventory", "installedPackages", "androidJar", "aapt2",
         "zipalign", "adb", "apksigner", "apksignerJar",
     }, "WP1 Android SDK")
-    if android_sdk.get("root") != "/home/tibor/.cache/chummer-android-toolchain/android-sdk":
+    android_sdk_root = android_sdk.get("root")
+    if (
+        not isinstance(android_sdk_root, str)
+        or not android_sdk_root.startswith("/")
+        or any(component in {"", ".", ".."} for component in android_sdk_root.split("/")[1:])
+    ):
         raise ValueError("WP1 Android SDK root is not exact")
     for field in (
         "selectedInventory", "androidJar", "aapt2", "zipalign", "adb",
@@ -946,7 +968,7 @@ def validate_build_provenance(
     value = strict_json_bytes(bound.data, "WP1 build provenance")
     require_exact_keys(value, {
         "schema", "status", "authorityClass", "publicationAuthorized", "proofScope",
-        "dependencyMode", "sourceGraph", "w5CompileProof", "presentationBuildSource",
+        "dependencyMode", "sourceHead", "presentationBuildSource",
         "packageAuthority", "content", "restore", "executionEvidence", "toolchain",
         "artifact", "doesNotAssert", "authoritySha256", "generatedAtUtc",
     }, "WP1 build provenance")
@@ -955,7 +977,7 @@ def validate_build_provenance(
         or value.get("publicationAuthorized") is not False
         or value.get("proofScope") != "full_maui_arm64_apk_build_only"
         or value.get("authorityClass") != "internal_phone_beta_physical_candidate_only"
-        or value.get("dependencyMode") != "locked_w5_packages_no_owner_siblings"
+        or value.get("dependencyMode") != "locked_current_packages_no_owner_siblings"
     ):
         raise ValueError("WP1 build provenance pass/scope/publication posture is not exact")
     require_utc_timestamp(value.get("generatedAtUtc"), "WP1 generatedAtUtc", canonical_z=True)
@@ -966,31 +988,109 @@ def validate_build_provenance(
         raise ValueError("WP1 authority digest is not canonical")
     if canonical_sha256(authority) != authority_sha:
         raise ValueError("WP1 authority digest does not authenticate its payload")
-    source = require_exact_keys(value.get("sourceGraph"), WP1_SOURCE_GRAPH_FIELDS, f"{WP1_COMMITTED_ADAPTER} source graph binding")
+
     graph_payload = validate_source_graph(graph)
-    if (
-        source.get("sha256") != graph.sha256 or source.get("sizeBytes") != graph.size_bytes
-        or source.get("contractName") != SOURCE_GRAPH_SCHEMA
-        or source.get("repositories") != graph_payload["repositories"]
-    ):
-        raise ValueError("WP1 build provenance does not bind the supplied v2 source graph bytes")
-    package_authority = require_exact_keys(
-        source.get("packageAuthority"), {"sha256", "sizeBytes"},
-        f"{WP1_COMMITTED_ADAPTER} source graph package authority",
+    repository_rows = {
+        row["name"]: row for row in graph_payload["repositories"]
+        if isinstance(row, dict) and isinstance(row.get("name"), str)
+    }
+    source_head = require_exact_keys(
+        value.get("sourceHead"), WP1_SOURCE_HEAD_FIELDS,
+        f"{WP1_COMMITTED_ADAPTER} source head",
     )
-    require_hex(package_authority.get("sha256"), "WP1 source graph package authority sha256")
-    require_integer(package_authority.get("sizeBytes"), "WP1 source graph package authority size", minimum=1)
+    android_row = repository_rows["chummer-android"]
     if (
-        source.get("packageAuthorityContract") != "chummer.android.release-package-authority/v2"
-        or source.get("packageAuthorityPublicationAuthorized") is not False
+        source_head.get("commit") != android_row["commit"]
+        or source_head.get("tree") != android_row["tree"]
+        or source_head.get("repository") != REPOSITORY_URLS[0]
+        or source_head.get("publicationAuthorized") is not False
     ):
-        raise ValueError("WP1 source graph package authority contract/publication posture is not exact")
-    presentation_source = value.get("presentationBuildSource")
-    if not isinstance(presentation_source, dict) or (
-        presentation_source.get("productionSource") is not False
+        raise ValueError("WP1 build provenance source head does not bind the supplied source graph")
+    require_hex(source_head.get("commit"), "WP1 source head commit", length=40)
+    require_hex(source_head.get("tree"), "WP1 source head tree", length=40)
+
+    presentation_source = require_exact_keys(
+        value.get("presentationBuildSource"), WP1_PRESENTATION_SOURCE_FIELDS,
+        f"{WP1_COMMITTED_ADAPTER} Presentation build source",
+    )
+    presentation_row = repository_rows["chummer6-ui"]
+    if (
+        presentation_source.get("commit") != presentation_row["commit"]
+        or presentation_source.get("tree") != presentation_row["tree"]
+        or presentation_source.get("authorityClass") != "verified_current_ui_source"
+        or presentation_source.get("productionSource") is not False
         or presentation_source.get("publicationAuthorized") is not False
+        or presentation_source.get("remoteRef") != "refs/remotes/origin/main"
     ):
-        raise ValueError("WP1 Presentation build source is not internal/non-publication-only")
+        raise ValueError("WP1 Presentation build source is not the exact current internal source")
+    require_hex(presentation_source.get("commit"), "WP1 Presentation commit", length=40)
+    require_hex(presentation_source.get("tree"), "WP1 Presentation tree", length=40)
+    _validate_wp1_binding(presentation_source.get("packagePlaneLock"), "WP1 Presentation package-plane lock")
+    _validate_wp1_binding(presentation_source.get("producerLock"), "WP1 Presentation producer lock")
+
+    package_authority = require_exact_keys(
+        value.get("packageAuthority"), WP1_PACKAGE_AUTHORITY_FIELDS,
+        f"{WP1_COMMITTED_ADAPTER} package authority",
+    )
+    require_hex(package_authority.get("sha256"), "WP1 package authority sha256")
+    require_integer(package_authority.get("sizeBytes"), "WP1 package authority size", minimum=1)
+    if (
+        package_authority.get("contractName")
+        != "chummer.android.internal-phone-beta-package-authority/v2"
+        or package_authority.get("authorityState") != "current_graph_verified"
+    ):
+        raise ValueError("WP1 package authority contract/state is not exact")
+    package_source_graph = require_exact_keys(
+        package_authority.get("sourceGraph"), WP1_PACKAGE_SOURCE_GRAPH_FIELDS,
+        "WP1 package authority source graph",
+    )
+    expected_package_source_graph = {
+        "corePackageRecipeCommit": repository_rows["chummer6-core"]["commit"],
+        "hubProducerCommit": repository_rows["chummer6-hub"]["commit"],
+        "registryCommit": repository_rows["chummer6-hub-registry"]["commit"],
+        "uiKitCommit": repository_rows["chummer6-ui-kit"]["commit"],
+    }
+    for field, expected_value in expected_package_source_graph.items():
+        if package_source_graph.get(field) != expected_value:
+            raise ValueError(f"WP1 package authority source graph is not exact: {field}")
+    require_hex(
+        package_source_graph.get("coreRuntimeSourceCommit"),
+        "WP1 Core runtime source commit", length=40,
+    )
+    authority_bindings = [
+        _validate_wp1_binding(package_authority.get(field), f"WP1 package authority {field}")
+        for field in ("uiReceipt", "cacheManifest", "intakeBinding", "postBuildBinding")
+    ]
+    if authority_bindings[2] != authority_bindings[3] or (
+        package_authority.get("sha256"), package_authority.get("sizeBytes")
+    ) != (
+        authority_bindings[2].get("sha256"), authority_bindings[2].get("sizeBytes")
+    ):
+        raise ValueError("WP1 package authority intake/post-build bindings are not identical")
+
+    content = require_exact_keys(
+        value.get("content"), WP1_CONTENT_FIELDS, f"{WP1_COMMITTED_ADAPTER} content",
+    )
+    for field in ("sourceReceipt", "apkReceipt"):
+        _validate_wp1_binding(content.get(field), f"WP1 content {field}")
+    for field in ("coreRevision",):
+        require_hex(content.get(field), f"WP1 content {field}", length=40)
+    for field in ("bundleDigest", "manifestSha256"):
+        require_hex(content.get(field), f"WP1 content {field}")
+    for field in ("canonicalFileCount", "canonicalByteCount"):
+        require_integer(content.get(field), f"WP1 content {field}", minimum=1)
+    content_source = require_exact_keys(
+        content.get("sourceRepository"), {"commit", "tree"},
+        "WP1 Core content source repository",
+    )
+    require_hex(content_source.get("commit"), "WP1 Core content source commit", length=40)
+    require_hex(content_source.get("tree"), "WP1 Core content source tree", length=40)
+    if (
+        content.get("coreRevision") != content_source.get("commit")
+        or content_source.get("commit") != package_source_graph.get("corePackageRecipeCommit")
+    ):
+        raise ValueError("WP1 Core content source is not bound to current package authority")
+
     artifact = require_exact_keys(value.get("artifact"), WP1_ARTIFACT_FIELDS, f"{WP1_COMMITTED_ADAPTER} artifact")
     expected = {
         "basename": apk.path.name, "sha256": apk.sha256, "sizeBytes": apk.size_bytes,
@@ -1016,9 +1116,18 @@ def validate_build_provenance(
     _validate_wp1_successor_surfaces(value)
     if value.get("doesNotAssert") != list(WP1_DOES_NOT_ASSERT):
         raise ValueError("WP1 non-claim boundary is not exact")
-    restore = value.get("restore")
-    if not isinstance(restore, dict) or restore.get("lockedMode") is not True or restore.get("networkSourcesAllowed") is not False:
+    restore = require_exact_keys(value.get("restore"), {
+        "lockedMode", "networkSourcesAllowed", "ownerSourceFallbackAllowed",
+        "fullProjectLock", "projectAssets",
+    }, f"{WP1_COMMITTED_ADAPTER} restore")
+    if (
+        restore.get("lockedMode") is not True
+        or restore.get("networkSourcesAllowed") is not False
+        or restore.get("ownerSourceFallbackAllowed") is not False
+    ):
         raise ValueError("WP1 restore posture is not locked and offline")
+    _validate_wp1_binding(restore.get("fullProjectLock"), "WP1 full-project lock")
+    _validate_wp1_binding(restore.get("projectAssets"), "WP1 project assets")
     return value
 
 

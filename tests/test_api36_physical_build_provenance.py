@@ -12,7 +12,9 @@ import unittest
 from unittest import mock
 import zipfile
 
+from scripts import api36_arm64_physical_contract as physical_contract
 from tests import api36_physical_build_provenance as provenance
+from tests import test_api36_arm64_physical_contract as consumer_contract_tests
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -677,6 +679,46 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
             "remote_reachability_verifier": lambda *_: None,
         }
 
+    @staticmethod
+    def consumer_source_graph(manifest: dict[str, object]) -> dict[str, object]:
+        graph = consumer_contract_tests.Api36Arm64PhysicalContractTests.graph_payload()
+        repositories = {
+            row["name"]: row for row in graph["repositories"]
+        }
+        source_head = manifest["sourceHead"]
+        presentation = manifest["presentationBuildSource"]
+        package_source = manifest["packageAuthority"]["sourceGraph"]
+        content_source = manifest["content"]["sourceRepository"]
+        repositories["chummer-android"].update({
+            "commit": source_head["commit"], "tree": source_head["tree"],
+        })
+        repositories["chummer6-ui"].update({
+            "commit": presentation["commit"], "tree": presentation["tree"],
+        })
+        repositories["chummer6-core"].update({
+            "commit": package_source["corePackageRecipeCommit"],
+            "tree": content_source["tree"],
+        })
+        repositories["chummer6-hub"]["commit"] = package_source["hubProducerCommit"]
+        repositories["chummer6-hub-registry"]["commit"] = package_source["registryCommit"]
+        repositories["chummer6-ui-kit"]["commit"] = package_source["uiKitCommit"]
+        for row in graph["packagePins"]:
+            row["commit"] = repositories["chummer6-core"]["commit"]
+        for row in graph["ownerPackagePins"]:
+            owner = repositories[row["owner_repository"]]
+            row.update({"source_commit": owner["commit"], "source_tree": owner["tree"]})
+        graph["presentationSource"].update({
+            "commit": presentation["commit"], "tree": presentation["tree"],
+        })
+        return graph
+
+    @staticmethod
+    def reseal_for_consumer(payload: dict[str, object]) -> None:
+        authority = copy.deepcopy(payload)
+        authority.pop("authoritySha256", None)
+        authority.pop("generatedAtUtc", None)
+        payload["authoritySha256"] = physical_contract.canonical_sha256(authority)
+
     def validate_package_authority_fixture(self) -> dict[str, object]:
         return provenance.validate_current_package_authority(
             android_root=self.android,
@@ -688,7 +730,7 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
             verifier=self.verified_package_authority,
         )
 
-    def test_full_v2_provenance_round_trip_binds_inputs_without_device_claims(self) -> None:
+    def test_full_v3_provenance_round_trip_binds_inputs_without_device_claims(self) -> None:
         manifest = provenance.create_manifest(**self.create_arguments())
         provenance.write_manifest(self.manifest, manifest)
         self.assertEqual(
@@ -702,6 +744,72 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
         self.assertFalse(manifest["artifact"]["installed"])
         self.assertFalse(manifest["publicationAuthorized"])
         self.assertIn("api36_device_execution", manifest["doesNotAssert"])
+
+    def test_materialized_v3_is_consumed_and_both_legacy_v2_shapes_fail_closed(self) -> None:
+        manifest = provenance.create_manifest(**self.create_arguments())
+        provenance.write_manifest(self.manifest, manifest)
+        graph_path = self.root / "consumer-release-source-graph.json"
+        write_json(graph_path, self.consumer_source_graph(manifest))
+
+        accepted = physical_contract.validate_build_provenance(
+            physical_contract.bind_regular(self.manifest, "materialized v3 provenance"),
+            physical_contract.bind_regular(graph_path, "consumer release source graph"),
+            physical_contract.bind_regular(self.apk, "materialized producer APK"),
+        )
+        self.assertEqual(provenance.SCHEMA, accepted["schema"])
+
+        producer_v2 = copy.deepcopy(manifest)
+        producer_v2["schema"] = "chummer.android.api36-arm64-physical-build-provenance/v2"
+        self.reseal_for_consumer(producer_v2)
+        write_json(self.manifest, producer_v2)
+        with self.assertRaisesRegex(ValueError, "pass/scope/publication posture"):
+            physical_contract.validate_build_provenance(
+                physical_contract.bind_regular(self.manifest, "legacy producer-shaped v2"),
+                physical_contract.bind_regular(graph_path, "consumer release source graph"),
+                physical_contract.bind_regular(self.apk, "materialized producer APK"),
+            )
+
+        legacy_consumer_v2 = copy.deepcopy(manifest)
+        legacy_consumer_v2["schema"] = "chummer.android.api36-arm64-physical-build-provenance/v2"
+        legacy_consumer_v2["dependencyMode"] = "locked_w5_packages_no_owner_siblings"
+        legacy_consumer_v2["sourceGraph"] = {
+            "sha256": provenance.file_sha256(graph_path),
+            "sizeBytes": graph_path.stat().st_size,
+            "contractName": physical_contract.SOURCE_GRAPH_SCHEMA,
+            "repositories": self.consumer_source_graph(manifest)["repositories"],
+            "packageAuthority": {"sha256": "7" * 64, "sizeBytes": 7},
+            "packageAuthorityContract": "chummer.android.release-package-authority/v2",
+            "packageAuthorityPublicationAuthorized": False,
+        }
+        legacy_consumer_v2["w5CompileProof"] = {}
+        legacy_consumer_v2.pop("sourceHead")
+        legacy_consumer_v2["presentationBuildSource"] = {
+            "productionSource": False, "publicationAuthorized": False,
+        }
+        legacy_consumer_v2["packageAuthority"] = {}
+        legacy_consumer_v2["content"] = {}
+        legacy_consumer_v2["restore"] = {
+            "lockedMode": True, "networkSourcesAllowed": False,
+        }
+        self.reseal_for_consumer(legacy_consumer_v2)
+        write_json(self.manifest, legacy_consumer_v2)
+        with self.assertRaisesRegex(ValueError, "keys are not exact"):
+            physical_contract.validate_build_provenance(
+                physical_contract.bind_regular(self.manifest, "legacy consumer-shaped v2"),
+                physical_contract.bind_regular(graph_path, "consumer release source graph"),
+                physical_contract.bind_regular(self.apk, "materialized producer APK"),
+            )
+
+        tampered_v3 = copy.deepcopy(manifest)
+        tampered_v3["packageAuthority"]["sourceGraph"]["hubProducerCommit"] = "0" * 40
+        self.reseal_for_consumer(tampered_v3)
+        write_json(self.manifest, tampered_v3)
+        with self.assertRaisesRegex(ValueError, "source graph is not exact"):
+            physical_contract.validate_build_provenance(
+                physical_contract.bind_regular(self.manifest, "tampered v3 provenance"),
+                physical_contract.bind_regular(graph_path, "consumer release source graph"),
+                physical_contract.bind_regular(self.apk, "materialized producer APK"),
+            )
 
     def test_ui_authority_receipt_digest_status_and_verifier_are_fail_closed(self) -> None:
         original = self.ui_authority_receipt.read_text(encoding="utf-8")

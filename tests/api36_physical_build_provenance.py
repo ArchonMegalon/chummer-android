@@ -22,7 +22,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 
 
-SCHEMA = "chummer.android.api36-arm64-physical-build-provenance/v2"
+SCHEMA = "chummer.android.api36-arm64-physical-build-provenance/v3"
 AUTHORITY_CLASS = "internal_phone_beta_physical_candidate_only"
 PROOF_SCOPE = "full_maui_arm64_apk_build_only"
 PACKAGE = "com.myexternalbrain.chummer"
