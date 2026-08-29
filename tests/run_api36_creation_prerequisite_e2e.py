@@ -341,13 +341,21 @@ def hierarchy_timing_fields(durations_ms: list[int]) -> dict[str, int]:
     }
 
 
+class PriorityRankOrigin(NamedTuple):
+    nodes: list[shared.UiNode]
+    reverse_swipes: int
+    elapsed_ms: int
+    hierarchy_durations_ms: tuple[int, ...]
+    empty_hierarchy_reads: int
+
+
 def scan_forward_until_stable(
     device: shared.Device,
     *,
     scan_id: str,
     max_scrolls: int,
     distance_ratio: float,
-    initial_screen: list[shared.UiNode] | None = None,
+    initial_observation: PriorityRankOrigin | None = None,
     stable_repeats: int = 2,
     max_consecutive_empty_reads: int = 3,
     delay_seconds: float = 0.2,
@@ -374,10 +382,59 @@ def scan_forward_until_stable(
     consecutive_empty_reads = 0
     total_empty_reads = 0
     hierarchy_durations_ms: list[int] = []
-    if initial_screen is not None and not initial_screen:
-        raise ValueError("A reused initial scan viewport must not be empty")
-    reused_initial_screen = initial_screen is not None
-    pending_initial_screen = initial_screen
+    if initial_observation is not None and (
+        not initial_observation.nodes
+        or initial_observation.reverse_swipes < 0
+        or initial_observation.reverse_swipes > 8
+        or initial_observation.elapsed_ms < 0
+        or initial_observation.empty_hierarchy_reads < 0
+        or not initial_observation.hierarchy_durations_ms
+        or any(value < 0 for value in initial_observation.hierarchy_durations_ms)
+        or initial_observation.empty_hierarchy_reads
+        > len(initial_observation.hierarchy_durations_ms)
+        or initial_observation.elapsed_ms
+        + (len(initial_observation.hierarchy_durations_ms) + 1) // 2
+        < sum(initial_observation.hierarchy_durations_ms)
+    ):
+        raise ValueError("A reused initial scan observation must carry exact nonnegative timing")
+    reused_initial_screen = initial_observation is not None
+    pending_initial_screen = (
+        initial_observation.nodes if initial_observation is not None else None
+    )
+    origin_durations_ms = list(
+        initial_observation.hierarchy_durations_ms
+        if initial_observation is not None
+        else ()
+    )
+    origin_elapsed_ms = (
+        initial_observation.elapsed_ms if initial_observation is not None else 0
+    )
+    origin_reverse_swipes = (
+        initial_observation.reverse_swipes if initial_observation is not None else 0
+    )
+    origin_empty_hierarchy_reads = (
+        initial_observation.empty_hierarchy_reads
+        if initial_observation is not None
+        else 0
+    )
+
+    def timing_receipt() -> dict[str, int]:
+        traversal_elapsed_ms = round((time.monotonic() - started) * 1000)
+        combined_durations = [*origin_durations_ms, *hierarchy_durations_ms]
+        return {
+            "originElapsedMs": origin_elapsed_ms,
+            "originReverseSwipes": origin_reverse_swipes,
+            "originEmptyHierarchyReads": origin_empty_hierarchy_reads,
+            "originHierarchyReadCount": len(origin_durations_ms),
+            "originHierarchyElapsedMs": sum(origin_durations_ms),
+            "originMaximumHierarchyReadMs": max(origin_durations_ms, default=0),
+            "traversalElapsedMs": traversal_elapsed_ms,
+            "traversalEmptyHierarchyReads": total_empty_reads,
+            "emptyHierarchyReads": origin_empty_hierarchy_reads + total_empty_reads,
+            "totalNavigationSwipes": origin_reverse_swipes + swipes,
+            **hierarchy_timing_fields(combined_durations),
+            "elapsedMs": origin_elapsed_ms + traversal_elapsed_ms,
+        }
     while swipes <= max_scrolls:
         if pending_initial_screen is not None:
             nodes = pending_initial_screen
@@ -398,8 +455,7 @@ def scan_forward_until_stable(
                     "emptyHierarchyReads": total_empty_reads,
                     "maximumConsecutiveEmptyReads": max_consecutive_empty_reads,
                     "reusedInitialScreen": reused_initial_screen,
-                    **hierarchy_timing_fields(hierarchy_durations_ms),
-                    "elapsedMs": round((time.monotonic() - started) * 1000),
+                    **timing_receipt(),
                 }
                 if observer is not None:
                     observer(result)
@@ -425,8 +481,7 @@ def scan_forward_until_stable(
                 "emptyHierarchyReads": total_empty_reads,
                 "maximumConsecutiveEmptyReads": max_consecutive_empty_reads,
                 "reusedInitialScreen": reused_initial_screen,
-                **hierarchy_timing_fields(hierarchy_durations_ms),
-                "elapsedMs": round((time.monotonic() - started) * 1000),
+                **timing_receipt(),
             }
             if observer is not None:
                 observer(result)
@@ -447,8 +502,7 @@ def scan_forward_until_stable(
         "emptyHierarchyReads": total_empty_reads,
         "maximumConsecutiveEmptyReads": max_consecutive_empty_reads,
         "reusedInitialScreen": reused_initial_screen,
-        **hierarchy_timing_fields(hierarchy_durations_ms),
-        "elapsedMs": round((time.monotonic() - started) * 1000),
+        **timing_receipt(),
     }
     if observer is not None:
         observer(result)
@@ -470,7 +524,7 @@ def scan_forward_with_receipt(
     scan_id: str,
     max_scrolls: int,
     distance_ratio: float,
-    initial_screen: list[shared.UiNode] | None = None,
+    initial_observation: PriorityRankOrigin | None = None,
     delay_seconds: float = 0.2,
     observer: Callable[[dict[str, object]], None] | None = None,
 ) -> StableViewportScan:
@@ -487,7 +541,7 @@ def scan_forward_with_receipt(
         scan_id=scan_id,
         max_scrolls=max_scrolls,
         distance_ratio=distance_ratio,
-        initial_screen=initial_screen,
+        initial_observation=initial_observation,
         delay_seconds=delay_seconds,
         observer=record,
     )
@@ -593,11 +647,6 @@ def move_between_measured_viewports(
     return target_viewport
 
 
-class PriorityRankOrigin(NamedTuple):
-    nodes: list[shared.UiNode]
-    reverse_swipes: int
-
-
 def wait_for_priority_rank_origin(
     device: shared.Device,
     category: str,
@@ -618,12 +667,15 @@ def wait_for_priority_rank_origin(
         raise ValueError("A supported category and bounded rank-origin search are required")
     route_selector = "creation-prerequisite-category-page"
     rank_selector = f"creation-prerequisite-rank-{category}-a"
+    started = time.monotonic()
     deadline = time.monotonic() + timeout
-    route_seen = False
     reverse_swipes = 0
+    empty_hierarchy_reads = 0
+    hierarchy_durations_ms: list[int] = []
     while time.monotonic() < deadline:
-        nodes = fresh_hierarchy_timed(device, [])
+        nodes = fresh_hierarchy_timed(device, hierarchy_durations_ms)
         if not nodes:
+            empty_hierarchy_reads += 1
             time.sleep(0.75)
             continue
         route_matches = [
@@ -635,8 +687,6 @@ def wait_for_priority_rank_origin(
                 f"{category} priority category route {route_selector!r} has "
                 f"cardinality {len(route_matches)}"
             )
-        if route_matches:
-            route_seen = True
         rank_matches = [
             node for node in nodes if _exact_resource_id(node) == rank_selector
         ]
@@ -646,18 +696,24 @@ def wait_for_priority_rank_origin(
                 f"{category} rank scan origin {rank_selector!r} has cardinality "
                 f"{len(rank_matches)}"
             )
-        if route_seen and len(rank_matches) == 1:
+        if len(route_matches) == 1 and len(rank_matches) == 1:
             node = rank_matches[0]
             if not device.node_has_tappable_bounds(node):
                 device.capture(f"creation-prerequisite-{category}-rank-origin-not-visible")
                 raise RuntimeError(
                     f"{category} rank scan origin {rank_selector!r} was not visible"
                 )
-            return PriorityRankOrigin(nodes, reverse_swipes)
+            return PriorityRankOrigin(
+                nodes=nodes,
+                reverse_swipes=reverse_swipes,
+                elapsed_ms=round((time.monotonic() - started) * 1000),
+                hierarchy_durations_ms=tuple(hierarchy_durations_ms),
+                empty_hierarchy_reads=empty_hierarchy_reads,
+            )
         if device.dismiss_system_ui_anr(nodes):
             time.sleep(2)
             continue
-        if route_seen and reverse_swipes < max_reverse_swipes:
+        if len(route_matches) == 1 and reverse_swipes < max_reverse_swipes:
             # ``input swipe`` is synchronous and the immediately following
             # dump is the post-gesture authority; no blind fixed sleep is
             # needed between those two bounded operations.
@@ -2275,7 +2331,7 @@ def tap_prescribed_exact_enabled_priority_rank(
     category: str,
     *,
     expected_rank: str | None = None,
-    initial_screen: list[shared.UiNode] | None = None,
+    initial_observation: PriorityRankOrigin | None = None,
     scan_observer: Callable[[dict[str, object]], None] | None = None,
 ) -> str:
     """Tap one prescribed exact, enabled A-E rank after a cardinality scan."""
@@ -2293,7 +2349,7 @@ def tap_prescribed_exact_enabled_priority_rank(
     selected_viewports: list[int] = []
     invalid_ids: set[str] = set()
     duplicate_ids: set[str] = set()
-    if initial_screen is None:
+    if initial_observation is None:
         rewind_to_exact_resource_id(
             device,
             f"{prefix}a",
@@ -2308,7 +2364,7 @@ def tap_prescribed_exact_enabled_priority_rank(
         scan_id=f"rank-cardinality-{category}",
         max_scrolls=8,
         distance_ratio=0.68,
-        initial_screen=initial_screen,
+        initial_observation=initial_observation,
         delay_seconds=0.0,
         observer=scan_observer,
     )
@@ -2316,9 +2372,12 @@ def tap_prescribed_exact_enabled_priority_rank(
         screen_ids: list[str] = []
         for node in nodes:
             resource_id = node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
-            if not resource_id.startswith(prefix):
+            if not resource_id.startswith("creation-prerequisite-rank-"):
                 continue
             screen_ids.append(resource_id)
+            if resource_id not in expected_ids:
+                invalid_ids.add(resource_id)
+                continue
             rank_token = resource_id[len(prefix) :]
             if re.fullmatch(r"[a-e]", rank_token) is None:
                 invalid_ids.add(resource_id)
@@ -2420,7 +2479,7 @@ def select_priority_rank(
         device,
         category,
         expected_rank=expected_rank,
-        initial_screen=rank_origin.nodes,
+        initial_observation=rank_origin,
         scan_observer=scan_observer,
     )
 

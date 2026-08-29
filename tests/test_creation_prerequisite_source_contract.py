@@ -25,6 +25,23 @@ SPEC.loader.exec_module(driver)
 
 class CreationPrerequisiteSourceContractTests(unittest.TestCase):
     @staticmethod
+    def priority_rank_origin(
+        nodes: list[driver.shared.UiNode],
+        *,
+        reverse_swipes: int = 0,
+        elapsed_ms: int = 7,
+        hierarchy_durations_ms: tuple[int, ...] = (5,),
+        empty_hierarchy_reads: int = 0,
+    ) -> driver.PriorityRankOrigin:
+        return driver.PriorityRankOrigin(
+            nodes=nodes,
+            reverse_swipes=reverse_swipes,
+            elapsed_ms=elapsed_ms,
+            hierarchy_durations_ms=hierarchy_durations_ms,
+            empty_hierarchy_reads=empty_hierarchy_reads,
+        )
+
+    @staticmethod
     def bootstrap_timing_payload(**changes: object) -> dict[str, object]:
         payload: dict[str, object] = {
             "schema": "chummer.android.creation-bootstrap-timing/v1",
@@ -317,13 +334,20 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
         device = ReusedOriginDevice()
         observations: list[dict[str, object]] = []
+        origin_observation = self.priority_rank_origin(
+            origin,
+            reverse_swipes=2,
+            elapsed_ms=2400,
+            hierarchy_durations_ms=(2100,),
+            empty_hierarchy_reads=1,
+        )
         with mock.patch.object(driver.time, "sleep"):
             screens = driver.scan_forward_until_stable(
                 device,
                 scan_id="reused-origin-proof",
                 max_scrolls=8,
                 distance_ratio=0.68,
-                initial_screen=origin,
+                initial_observation=origin_observation,
                 observer=observations.append,
             )
 
@@ -333,17 +357,45 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertEqual("stable-end", observations[0]["status"])
         self.assertTrue(observations[0]["reusedInitialScreen"])
         self.assertEqual(4, observations[0]["screens"])
-        self.assertEqual(3, observations[0]["hierarchyReadCount"])
+        self.assertEqual(4, observations[0]["hierarchyReadCount"])
+        self.assertEqual(2100, observations[0]["hierarchyElapsedMs"])
+        self.assertEqual(2100, observations[0]["maximumHierarchyReadMs"])
+        self.assertEqual(2400, observations[0]["originElapsedMs"])
+        self.assertEqual(2, observations[0]["originReverseSwipes"])
+        self.assertEqual(1, observations[0]["originEmptyHierarchyReads"])
+        self.assertEqual(0, observations[0]["traversalEmptyHierarchyReads"])
+        self.assertEqual(1, observations[0]["emptyHierarchyReads"])
+        self.assertEqual(5, observations[0]["totalNavigationSwipes"])
+        self.assertEqual(1, observations[0]["originHierarchyReadCount"])
+        self.assertEqual(2100, observations[0]["originHierarchyElapsedMs"])
+        self.assertEqual(2100, observations[0]["originMaximumHierarchyReadMs"])
+        self.assertEqual(
+            observations[0]["originElapsedMs"] + observations[0]["traversalElapsedMs"],
+            observations[0]["elapsedMs"],
+        )
 
     def test_reused_scan_origin_must_be_nonempty(self) -> None:
-        with self.assertRaisesRegex(ValueError, "must not be empty"):
-            driver.scan_forward_until_stable(
-                mock.Mock(),
-                scan_id="empty-reused-origin",
-                max_scrolls=8,
-                distance_ratio=0.68,
-                initial_screen=[],
-            )
+        node = driver.shared.UiNode({"resource-id": "rank-origin"})
+        invalid_origins = (
+            self.priority_rank_origin([], hierarchy_durations_ms=(1,)),
+            self.priority_rank_origin([node], reverse_swipes=9),
+            self.priority_rank_origin(
+                [node], elapsed_ms=1, hierarchy_durations_ms=(20,)
+            ),
+            self.priority_rank_origin(
+                [node], hierarchy_durations_ms=(1,), empty_hierarchy_reads=2
+            ),
+        )
+        for invalid_origin in invalid_origins:
+            with self.subTest(invalid_origin=invalid_origin), \
+                 self.assertRaisesRegex(ValueError, "exact nonnegative timing"):
+                driver.scan_forward_until_stable(
+                    mock.Mock(),
+                    scan_id="invalid-reused-origin",
+                    max_scrolls=8,
+                    distance_ratio=0.68,
+                    initial_observation=invalid_origin,
+                )
 
     def test_stable_end_scan_fails_closed_when_the_bound_never_proves_an_end(self) -> None:
         class MovingDevice:
@@ -1633,7 +1685,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
              mock.patch.object(
                  driver,
                  "wait_for_priority_rank_origin",
-                 return_value=driver.PriorityRankOrigin(rank_origin_nodes, 0),
+                 return_value=self.priority_rank_origin(rank_origin_nodes),
              ), \
              mock.patch.object(driver.time, "sleep"):
             selected = driver.select_priority_rank(
@@ -1650,7 +1702,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             device,
             "heritage",
             expected_rank=None,
-            initial_screen=rank_origin_nodes,
+            initial_observation=self.priority_rank_origin(rank_origin_nodes),
             scan_observer=None,
         )
         self.assertEqual(1, sum(call[0] == "select" for call in calls))
@@ -1875,6 +1927,54 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertEqual([route, rank_a], proof.nodes)
         self.assertEqual(0, proof.reverse_swipes)
         self.assertEqual(1, device.reads)
+        self.assertGreaterEqual(proof.elapsed_ms, 0)
+        self.assertEqual(1, len(proof.hierarchy_durations_ms))
+        self.assertEqual(0, proof.empty_hierarchy_reads)
+
+    def test_priority_rank_origin_never_carries_route_truth_across_snapshots(self) -> None:
+        route = driver.shared.UiNode(
+            {"resource-id": "creation-prerequisite-category-page"}
+        )
+        rank_a = driver.shared.UiNode(
+            {
+                "resource-id": "creation-prerequisite-rank-heritage-a",
+                "bounds": "[10,100][900,300]",
+            }
+        )
+        snapshots = iter(([route], [rank_a], [route, rank_a]))
+
+        class TransitionDevice:
+            reads = 0
+            reverse_swipes = 0
+
+            def hierarchy(self):
+                self.reads += 1
+                return next(snapshots)
+
+            def swipe_down(self, **_options: object) -> None:
+                self.reverse_swipes += 1
+
+            @staticmethod
+            def node_has_tappable_bounds(node) -> bool:
+                return bool(node.attributes.get("bounds"))
+
+            @staticmethod
+            def dismiss_system_ui_anr(_nodes=None) -> bool:
+                return False
+
+            @staticmethod
+            def capture(name: str) -> None:
+                raise AssertionError(f"unexpected capture: {name}")
+
+        device = TransitionDevice()
+        with mock.patch.object(driver.time, "sleep"):
+            proof = driver.wait_for_priority_rank_origin(device, "heritage")
+
+        self.assertEqual([route, rank_a], proof.nodes)
+        self.assertEqual(3, device.reads)
+        self.assertEqual(1, device.reverse_swipes)
+        self.assertEqual(1, proof.reverse_swipes)
+        self.assertEqual(3, len(proof.hierarchy_durations_ms))
 
     def test_priority_rank_origin_fails_closed_on_duplicate_exact_rank_a(self) -> None:
         route = driver.shared.UiNode(
@@ -1894,6 +1994,27 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
         device.capture.assert_called_once_with(
             "creation-prerequisite-heritage-rank-origin-cardinality-invalid"
+        )
+        device.swipe_down.assert_not_called()
+
+    def test_priority_rank_origin_fails_closed_on_duplicate_exact_route(self) -> None:
+        duplicate_route = driver.shared.UiNode(
+            {"resource-id": "creation-prerequisite-category-page"}
+        )
+        rank_a = driver.shared.UiNode(
+            {
+                "resource-id": "creation-prerequisite-rank-heritage-a",
+                "bounds": "[10,100][900,300]",
+            }
+        )
+        device = mock.Mock()
+        device.hierarchy.return_value = [duplicate_route, duplicate_route, rank_a]
+
+        with self.assertRaisesRegex(RuntimeError, "cardinality 2"):
+            driver.wait_for_priority_rank_origin(device, "heritage")
+
+        device.capture.assert_called_once_with(
+            "creation-prerequisite-heritage-category-route-cardinality-invalid"
         )
         device.swipe_down.assert_not_called()
 
@@ -1979,10 +2100,15 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "creation-prerequisite-rank-heritage-forged",
             "Forged rank",
         )
+        wrong_category = self.authority_option_node(
+            "creation-prerequisite-rank-talent-a",
+            "Talent Rank A",
+        )
 
         for nodes, expected in (
             ([duplicate, duplicate], "duplicateIds"),
             ([malformed], "invalidIds"),
+            ([wrong_category], "invalidIds"),
         ):
             with self.subTest(expected=expected):
                 origin = self.authority_option_node(
@@ -2132,9 +2258,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                  mock.patch.object(
                      driver,
                      "wait_for_priority_rank_origin",
-                     return_value=driver.PriorityRankOrigin(
-                         [driver.shared.UiNode({"resource-id": "rank-origin"})],
-                         0,
+                     return_value=self.priority_rank_origin(
+                         [driver.shared.UiNode({"resource-id": "rank-origin"})]
                      ),
                  ), \
                  self.assertRaisesRegex(RuntimeError, expected_error):
