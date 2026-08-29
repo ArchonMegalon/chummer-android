@@ -292,7 +292,6 @@ jq -n \
   --arg authorityReceiptSha256 "940d4cf0d77bb371e50b1cb3fb566089843a945c097b73a122522db1a673b547" \
   --arg authorityCacheManifestSha256 "b31e6f2b1903d9cab0cfe550c2892b9bb0ffc1183bbb8bb2eab4289b1710b09c" \
   --arg packageAuthoritySha256 "42e01c93a863882022cf156d86674cda1fbaecba7b9a1112323a27e42dd73a61" \
-  --arg desktopRuntimeLockSha256 "613ad62809e64e884b5f3f775bce2b127bda97c4aaa04d2e3ca8f089a743709b" \
   --arg authorityBindingSha256 "$authority_binding_sha256" \
   --arg journalSha256 "$journal_sha256" \
   --argjson journalSizeBytes "$journal_size" \
@@ -329,7 +328,6 @@ jq -n \
     authorityReceiptSha256: $authorityReceiptSha256,
     authorityCacheManifestSha256: $authorityCacheManifestSha256,
     packageAuthoritySha256: $packageAuthoritySha256,
-    desktopRuntimeLockSha256: $desktopRuntimeLockSha256,
     authorityBindingSha256: $authorityBindingSha256,
     executionBounds: {perCommandSeconds: 900, totalSeconds: 3600, processGroupTermination: true},
     journalSha256: $journalSha256,

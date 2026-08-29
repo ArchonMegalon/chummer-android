@@ -66,7 +66,6 @@ PASS_ONLY_FIELDS = (
     "androidWorktreeClean",
     "lockSizeBytes",
     "packageAuthoritySha256",
-    "desktopRuntimeLockSha256",
     "producerSdkVersion",
     "packageOnly",
     "restoreLockedMode",
@@ -87,7 +86,7 @@ PASS_ALLOWED_KEYS = frozenset({
     "serializedBuild", "sdkVersion", "producerSdkVersion", "androidCommit",
     "androidTree", "androidWorktreeClean", "presentationCommit",
     "presentationTree", "authorityReceiptSha256", "authorityCacheManifestSha256",
-    "packageAuthoritySha256", "desktopRuntimeLockSha256",
+    "packageAuthoritySha256",
     "authorityBindingSha256", "executionBounds", "journalSha256",
     "journalSizeBytes", "evidenceDirectory", "evidence", "evidenceBindings",
     "compileGraphSha256", "restoreOutputSha256", "buildOutputSha256",
@@ -115,7 +114,6 @@ PRESENTATION_TREE = "d1ae70610a1c4f43cfa8386db22d6f55e620fa6e"
 AUTHORITY_RECEIPT_SHA256 = "940d4cf0d77bb371e50b1cb3fb566089843a945c097b73a122522db1a673b547"
 AUTHORITY_CACHE_MANIFEST_SHA256 = "b31e6f2b1903d9cab0cfe550c2892b9bb0ffc1183bbb8bb2eab4289b1710b09c"
 PACKAGE_AUTHORITY_SHA256 = "42e01c93a863882022cf156d86674cda1fbaecba7b9a1112323a27e42dd73a61"
-DESKTOP_RUNTIME_LOCK_SHA256 = "613ad62809e64e884b5f3f775bce2b127bda97c4aaa04d2e3ca8f089a743709b"
 AUTHORITY_BINDING_SHA256 = "ff7a18a40ea368cf16af49fe43827e9570a9258a27fa852046138d1bf36e789c"
 ANDROID_LOCK_SHA256 = "efbb131ff76a9d1e4d7ec86c5d6b50614587ff51a36316ede5a1d24c5800efd2"
 ANDROID_LOCK_SIZE = 16179
@@ -285,7 +283,6 @@ def validate_pass_contract(payload: dict[str, object], android_root: Path | None
         "authorityReceiptSha256": AUTHORITY_RECEIPT_SHA256,
         "authorityCacheManifestSha256": AUTHORITY_CACHE_MANIFEST_SHA256,
         "packageAuthoritySha256": PACKAGE_AUTHORITY_SHA256,
-        "desktopRuntimeLockSha256": DESKTOP_RUNTIME_LOCK_SHA256,
         "authorityBindingSha256": AUTHORITY_BINDING_SHA256,
         "lockSha256": ANDROID_LOCK_SHA256,
         "lockSizeBytes": ANDROID_LOCK_SIZE,

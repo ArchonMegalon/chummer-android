@@ -739,7 +739,7 @@
       {
         "path": ".github/workflows/api36-editing-e2e.yml",
         "exists": true,
-        "sha256": "9aa242fc2b3acb0848817708bd8761bd6bb33dbcd7e4c74e2807e4e9f8b83230"
+        "sha256": "7845a52d42d1ab2042051ab2860c7c8c2a543ea2a2401536e5059bad7f093ebe"
       },
       {
         "path": "scripts/run-api36-editing-e2e-ci.sh",
@@ -759,7 +759,7 @@
       {
         "path": "tests/test_api36_e2e_workflow.py",
         "exists": true,
-        "sha256": "05150adadd5fe3ae076528e7d305165b4f93827b7bf13b2bcc01716d40b9fd05"
+        "sha256": "c41e53fdf142481a43e59cd9e373f4db84733402d0e895fbe4beaf48e2ed46ba"
       },
       {
         "path": "tests/test_chummer5_editability_inventory.py",
@@ -784,7 +784,7 @@
       {
         "path": "tests/run_api36_editing_e2e.py",
         "exists": true,
-        "sha256": "71ac359be01b53b775dab2f0ab83e4e6c052a05a28b2fb21dc78ea7bf6219a78"
+        "sha256": "d349c64c92db45424059ca9685d7cc71a7856e50b1b219b1230754238944c25b"
       },
       {
         "path": "tests/run_api36_career_active_skill_advance_e2e.py",

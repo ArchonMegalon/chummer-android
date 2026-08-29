@@ -315,19 +315,23 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         self.assertLess(self.text.index(check), self.text.index("actions/setup-dotnet@"))
         self.assertLess(self.text.index(check), self.text.index("run: scripts/build-debug.sh"))
 
-    def test_inventory_inputs_trigger_the_phone_gate(self) -> None:
+    def test_every_pull_request_runs_the_phone_gate_while_push_stays_bounded(self) -> None:
+        trigger_block = self.text[self.text.index("on:\n") : self.text.index("permissions:\n")]
+        self.assertIn("  pull_request:\n  push:\n", trigger_block)
+        self.assertNotIn("  pull_request:\n    paths:", trigger_block)
+        self.assertIn("  push:\n    branches:\n      - main\n    paths:\n", trigger_block)
         self.assertEqual(
-            2,
+            1,
             self.text.count(
                 '"docs/ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json"'
             ),
         )
         self.assertEqual(
-            2,
+            1,
             self.text.count('"docs/CHUMMER5_CHARACTER_SETTINGS_CONTRACT.generated.json"'),
         )
-        self.assertEqual(2, self.text.count('"docs/editability-evidence/**"'))
-        self.assertEqual(2, self.text.count('"scripts/**"'))
+        self.assertEqual(1, self.text.count('"docs/editability-evidence/**"'))
+        self.assertEqual(1, self.text.count('"scripts/**"'))
 
     def test_preview_release_remains_independently_commit_pinned(self) -> None:
         self.assertNotIn("uses: actions/checkout@v", self.preview_text)

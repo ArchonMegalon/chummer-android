@@ -332,7 +332,6 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
             "authorityReceiptSha256": self.receipt.AUTHORITY_RECEIPT_SHA256,
             "authorityCacheManifestSha256": self.receipt.AUTHORITY_CACHE_MANIFEST_SHA256,
             "packageAuthoritySha256": self.receipt.PACKAGE_AUTHORITY_SHA256,
-            "desktopRuntimeLockSha256": self.receipt.DESKTOP_RUNTIME_LOCK_SHA256,
             "evidenceDirectory": str(evidence),
             "evidence": rows,
             "evidenceBindings": {
@@ -495,6 +494,17 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     self.receipt.verify_receipt(receipt)
 
+    def test_pass_receipt_rejects_orphaned_desktop_runtime_lock_claim(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            receipt, _evidence, payload = self.seed_compile_receipt(Path(temporary))
+            payload["desktopRuntimeLockSha256"] = "0" * 64
+            receipt.write_text(json.dumps(payload), encoding="utf-8")
+            with self.assertRaisesRegex(
+                ValueError,
+                "extra=.*desktopRuntimeLockSha256",
+            ):
+                self.receipt.verify_receipt(receipt)
+
     def test_pass_receipt_rejects_wrong_values_in_every_authority_group(self) -> None:
         cases = (
             ("schema", "schema", "forged/v1"),
@@ -503,7 +513,6 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
             ("presentation", "presentationCommit", "0" * 40),
             ("current-ui-receipt", "authorityReceiptSha256", "0" * 64),
             ("v2-package-authority", "packageAuthoritySha256", "0" * 64),
-            ("desktop-lock", "desktopRuntimeLockSha256", "0" * 64),
             ("producer-sdk", "producerSdkVersion", "10.0.111"),
             ("consumer-sdk", "sdkVersion", "10.0.103"),
             ("dependency", "siblingsAllowed", True),
