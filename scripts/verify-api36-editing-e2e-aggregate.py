@@ -27,7 +27,9 @@ CREATION_PROGRESS_SCHEMA = "chummer.android.creation-prerequisite-progress/v1"
 CREATION_TOTAL_TARGET_MS = 15 * 60 * 1000
 CREATION_PHASE_BUDGETS_MS = {
     "device-preflight-install": 180_000,
+    "initial-navigation": 60_000,
     "initial-authority": 90_000,
+    "dashboard-proof": 30_000,
     "authority-inventory": 90_000,
     "priority-ranks": 150_000,
     "typed-authority-options": 150_000,

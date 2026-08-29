@@ -303,8 +303,10 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
     def test_creation_timing_outside_explicit_budgets_fails_closed(self) -> None:
         cases = (
             ("missingTiming", "timing evidence is missing"),
-            ("withinBudget", "phase timing is outside budget"),
-            ("elapsedMs", "phase timing is outside budget"),
+            ("authorityWithinBudget", "phase timing is outside budget"),
+            ("authorityElapsedMs", "phase timing is outside budget"),
+            ("dashboardWithinBudget", "phase timing is outside budget"),
+            ("dashboardElapsedMs", "phase timing is outside budget"),
             ("withinConfiguredTotalTarget", "total timing target was exceeded"),
             ("totalElapsedMs", "total timing target was exceeded"),
         )
@@ -324,10 +326,16 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                     receipt["timing"][field] = False
                 elif field == "totalElapsedMs":
                     receipt["timing"][field] = AGGREGATE.CREATION_TOTAL_TARGET_MS + 1
-                elif field == "withinBudget":
-                    receipt["timing"]["phases"][1][field] = False
+                elif field == "authorityWithinBudget":
+                    receipt["timing"]["phases"][2]["withinBudget"] = False
+                elif field == "dashboardWithinBudget":
+                    receipt["timing"]["phases"][3]["withinBudget"] = False
+                elif field == "dashboardElapsedMs":
+                    receipt["timing"]["phases"][3]["elapsedMs"] = (
+                        AGGREGATE.CREATION_PHASE_BUDGETS_MS["dashboard-proof"] + 1
+                    )
                 else:
-                    receipt["timing"]["phases"][1][field] = (
+                    receipt["timing"]["phases"][2]["elapsedMs"] = (
                         AGGREGATE.CREATION_PHASE_BUDGETS_MS["initial-authority"] + 1
                     )
                 receipt_path.write_text(json.dumps(receipt) + "\n", encoding="utf-8")

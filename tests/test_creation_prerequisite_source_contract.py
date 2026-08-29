@@ -392,9 +392,15 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 progress = driver.ProgressRecorder(root)
                 for phase_id in driver.PHASE_ORDER:
                     progress.advance(phase_id)
+                    if phase_id == "initial-navigation":
+                        for milestone_id in driver.INITIAL_NAVIGATION_MILESTONE_ORDER:
+                            progress.record_initial_milestone(milestone_id)
                     if phase_id == "initial-authority":
                         for milestone_id in driver.INITIAL_AUTHORITY_MILESTONE_ORDER:
-                            progress.record_initial_authority_milestone(milestone_id)
+                            progress.record_initial_milestone(milestone_id)
+                    if phase_id == "dashboard-proof":
+                        for milestone_id in driver.DASHBOARD_PROOF_MILESTONE_ORDER:
+                            progress.record_initial_milestone(milestone_id)
                     if phase_id == "priority-ranks":
                         progress.record_scan(
                             {
@@ -424,12 +430,19 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             ])
             self.assertEqual("rank-cardinality-heritage", evidence["scans"][0]["scanId"])
             self.assertEqual(
-                list(driver.INITIAL_AUTHORITY_MILESTONE_ORDER),
+                list(driver.INITIAL_MILESTONE_ORDER),
                 [milestone["milestoneId"] for milestone in evidence["milestones"]],
             )
+            self.assertEqual(
+                [
+                    *(["initial-navigation"] * len(driver.INITIAL_NAVIGATION_MILESTONE_ORDER)),
+                    *(["initial-authority"] * len(driver.INITIAL_AUTHORITY_MILESTONE_ORDER)),
+                    *(["dashboard-proof"] * len(driver.DASHBOARD_PROOF_MILESTONE_ORDER)),
+                ],
+                [milestone["phaseId"] for milestone in evidence["milestones"]],
+            )
             self.assertTrue(all(
-                milestone["phaseId"] == "initial-authority"
-                and milestone["segmentElapsedMs"] >= 0
+                milestone["segmentElapsedMs"] >= 0
                 for milestone in evidence["milestones"]
             ))
             self.assertEqual(driver.TOTAL_PERFORMANCE_TARGET_MS, evidence["configuredTotalTargetMs"])
@@ -456,13 +469,14 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary, mock.patch("builtins.print"):
             progress = driver.ProgressRecorder(Path(temporary))
             progress.advance("device-preflight-install")
+            progress.advance("initial-navigation")
             progress.advance("initial-authority")
             progress._active_started -= (
                 driver.PHASE_BUDGET_MS["initial-authority"] / 1000
             ) + 1
 
             with self.assertRaisesRegex(RuntimeError, "explicit phase timing budget"):
-                progress.advance("authority-inventory")
+                progress.advance("dashboard-proof")
 
             self.assertTrue(any(
                 phase["phaseId"] == "initial-authority"
@@ -475,15 +489,52 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary, mock.patch("builtins.print"):
             progress = driver.ProgressRecorder(Path(temporary))
             progress.advance("device-preflight-install")
-            with self.assertRaisesRegex(RuntimeError, "outside the active initial phase"):
-                progress.record_initial_authority_milestone(
-                    driver.INITIAL_AUTHORITY_MILESTONE_ORDER[0]
+            with self.assertRaisesRegex(RuntimeError, "outside its active phase"):
+                progress.record_initial_milestone(
+                    driver.INITIAL_NAVIGATION_MILESTONE_ORDER[0]
                 )
-            progress.advance("initial-authority")
-            with self.assertRaisesRegex(RuntimeError, "Expected initial-authority milestone"):
-                progress.record_initial_authority_milestone(
-                    driver.INITIAL_AUTHORITY_MILESTONE_ORDER[1]
+            progress.advance("initial-navigation")
+            with self.assertRaisesRegex(RuntimeError, "Expected initial milestone"):
+                progress.record_initial_milestone(
+                    driver.INITIAL_NAVIGATION_MILESTONE_ORDER[1]
                 )
+
+    def test_creation_timing_uses_three_strict_nonoverlapping_phases(self) -> None:
+        source = inspect.getsource(driver.execute)
+        navigation_start = source.index('progress.advance("initial-navigation")')
+        cold_launch = source.index("initial_launch = shared.launch_app(device)")
+        dialog_ready = source.index(
+            'progress.record_initial_milestone("dialog-acquisition-complete")'
+        )
+        authority_start = source.index('progress.advance("initial-authority")')
+        explicit_tap = source.index(
+            'device.shell(\n        "input",\n        "tap",',
+            authority_start,
+        )
+        timing_capture = source.index("creation_bootstrap_timing = capture_creation_bootstrap_timing(")
+        transaction_ready = source.index(
+            'progress.record_initial_milestone("create-bootstrap-transaction-complete")'
+        )
+        dashboard_start = source.index('progress.advance("dashboard-proof")')
+        visible_dashboard = source.index("require_initial_creation_dashboard_snapshot(")
+        dashboard_ready = source.index(
+            'progress.record_initial_milestone("dashboard-render-complete")'
+        )
+        inventory_start = source.index('progress.advance("authority-inventory")')
+
+        self.assertEqual(60_000, driver.PHASE_BUDGET_MS["initial-navigation"])
+        self.assertEqual(90_000, driver.PHASE_BUDGET_MS["initial-authority"])
+        self.assertEqual(30_000, driver.PHASE_BUDGET_MS["dashboard-proof"])
+        self.assertLess(navigation_start, cold_launch)
+        self.assertLess(cold_launch, dialog_ready)
+        self.assertLess(dialog_ready, authority_start)
+        self.assertLess(authority_start, explicit_tap)
+        self.assertLess(explicit_tap, timing_capture)
+        self.assertLess(timing_capture, transaction_ready)
+        self.assertLess(transaction_ready, dashboard_start)
+        self.assertLess(dashboard_start, visible_dashboard)
+        self.assertLess(visible_dashboard, dashboard_ready)
+        self.assertLess(dashboard_ready, inventory_start)
 
     def test_creation_karma_budget_cards_expose_readable_semantic_totals(self) -> None:
         page = (NATIVE / "CreationPrerequisitePage.cs").read_text(encoding="utf-8")

@@ -81,19 +81,36 @@ CREATION_BOOTSTRAP_TIMING_PREFIX = "CHUMMER_CREATION_BOOTSTRAP_TIMING "
 CREATION_BOOTSTRAP_TIMING_FILE_NAME = "creation-bootstrap-timing.json"
 CREATION_BOOTSTRAP_LOGCAT_FILE_NAME = "creation-bootstrap-timing-logcat.txt"
 TOTAL_PERFORMANCE_TARGET_MS = 15 * 60 * 1000
-INITIAL_AUTHORITY_MILESTONE_ORDER = (
+INITIAL_NAVIGATION_MILESTONE_ORDER = (
     "app-cold-start-complete",
     "phone-shell-locale-complete",
     "dialog-acquisition-complete",
+)
+INITIAL_AUTHORITY_MILESTONE_ORDER = (
     "create-bootstrap-transaction-complete",
+)
+DASHBOARD_PROOF_MILESTONE_ORDER = (
     "dashboard-render-complete",
+)
+INITIAL_MILESTONE_ORDER = (
+    *INITIAL_NAVIGATION_MILESTONE_ORDER,
+    *INITIAL_AUTHORITY_MILESTONE_ORDER,
+    *DASHBOARD_PROOF_MILESTONE_ORDER,
 )
 PHASE_BUDGET_MS = {
     "device-preflight-install": 180_000,
+    # Cold start, locale evidence, and navigation to the explicit action remain
+    # bounded without being charged to the product transaction.
+    "initial-navigation": 60_000,
     "initial-authority": 90_000,
-    # Exhaustive scroll inventories are kept outside initial create/render
-    # latency. They retain their own strict bound and the unchanged 15-minute
-    # aggregate target; no authority field or stable-end proof is removed.
+    # UIAutomator is an external observer. Its exact visible-dashboard proof is
+    # independently bounded after the product has emitted the validated
+    # workspace-publication and shell-sync timing receipt.
+    "dashboard-proof": 30_000,
+    # Exhaustive scroll inventories remain outside both the product transaction
+    # and the visible-dashboard proof. They retain their own strict bound and
+    # the unchanged 15-minute aggregate target; no authority field or stable-end
+    # proof is removed.
     "authority-inventory": 90_000,
     "priority-ranks": 150_000,
     "typed-authority-options": 150_000,
@@ -647,27 +664,38 @@ class ProgressRecorder:
         self.scans.append({**scan, "phaseId": self._active_id})
         self._write("running")
 
-    def record_initial_authority_milestone(self, milestone_id: str) -> None:
-        """Emit ordered wall-clock segments without changing phase boundaries."""
-        if self._active_id != "initial-authority" or self._finished:
-            raise RuntimeError(
-                "Initial-authority milestone was recorded outside the active initial phase"
-            )
+    def record_initial_milestone(self, milestone_id: str) -> None:
+        """Emit ordered navigation, product, and observer timing segments."""
         expected_index = len(self.milestones)
         expected = (
-            INITIAL_AUTHORITY_MILESTONE_ORDER[expected_index]
-            if expected_index < len(INITIAL_AUTHORITY_MILESTONE_ORDER)
+            INITIAL_MILESTONE_ORDER[expected_index]
+            if expected_index < len(INITIAL_MILESTONE_ORDER)
             else None
         )
+        navigation_end = len(INITIAL_NAVIGATION_MILESTONE_ORDER)
+        authority_end = navigation_end + len(INITIAL_AUTHORITY_MILESTONE_ORDER)
+        expected_phase = (
+            "initial-navigation"
+            if expected_index < navigation_end
+            else "initial-authority"
+            if expected_index < authority_end
+            else "dashboard-proof"
+        )
+        if self._active_id != expected_phase or self._finished:
+            raise RuntimeError(
+                f"Initial milestone {milestone_id!r} was recorded outside its "
+                f"active phase {expected_phase!r}"
+            )
         if milestone_id != expected:
             raise RuntimeError(
-                f"Expected initial-authority milestone {expected!r}, got {milestone_id!r}"
+                f"Expected initial milestone {expected!r}, got {milestone_id!r}"
             )
         phase_elapsed = round((time.monotonic() - self._active_started) * 1000)
         total_elapsed = round((time.monotonic() - self.started) * 1000)
+        previous = self.milestones[-1] if self.milestones else None
         previous_elapsed = (
-            int(self.milestones[-1]["phaseElapsedMs"])
-            if self.milestones
+            int(previous["phaseElapsedMs"])
+            if previous is not None and previous["phaseId"] == self._active_id
             else 0
         )
         milestone = {
@@ -3611,15 +3639,15 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         timeout=300,
     )
     device.shell("pm", "clear", shared.PACKAGE)
-    progress.advance("initial-authority")
+    progress.advance("initial-navigation")
     initial_launch = shared.launch_app(device)
-    progress.record_initial_authority_milestone("app-cold-start-complete")
+    progress.record_initial_milestone("app-cold-start-complete")
     phone_ui_locale = shared.record_phone_ui_locale_evidence(
         device,
         evidence_prefix="creation-prerequisite",
         required_route_resource_id="phone-runners",
     )
-    progress.record_initial_authority_milestone("phone-shell-locale-complete")
+    progress.record_initial_milestone("phone-shell-locale-complete")
     create_character = device.tap_exact_resource_id_until_exact_resource_id(
         "home-new-runner",
         "dialog-action-create-character",
@@ -3629,7 +3657,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         target_scroll_surface="dialog-surface",
         max_target_scrolls=16,
     )
-    progress.record_initial_authority_milestone("dialog-acquisition-complete")
+    progress.record_initial_milestone("dialog-acquisition-complete")
     if (
         create_character.attributes.get("enabled") != "true"
         or create_character.attributes.get("clickable") != "true"
@@ -3639,6 +3667,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         raise RuntimeError(
             "Exact create-character dialog action was not visible, enabled, and clickable"
         )
+    progress.advance("initial-authority")
     clear_creation_bootstrap_timing_log(device)
     device.shell(
         "input",
@@ -3651,6 +3680,12 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         observation_out=bootstrap_log_observation,
     )
     progress.record_scan(bootstrap_log_observation)
+    creation_bootstrap_timing = capture_creation_bootstrap_timing(
+        device,
+        logcat=bootstrap_logcat,
+    )
+    progress.record_initial_milestone("create-bootstrap-transaction-complete")
+    progress.advance("dashboard-proof")
     transition_observation: dict[str, object] = {}
     transition_nodes = require_new_character_dialog_transition(
         device,
@@ -3659,13 +3694,8 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         fresh_first=True,
     )
     progress.record_scan(transition_observation)
-    progress.record_initial_authority_milestone("create-bootstrap-transaction-complete")
-    creation_bootstrap_timing = capture_creation_bootstrap_timing(
-        device,
-        logcat=bootstrap_logcat,
-    )
     require_initial_creation_dashboard_snapshot(device, transition_nodes)
-    progress.record_initial_authority_milestone("dashboard-render-complete")
+    progress.record_initial_milestone("dashboard-render-complete")
     progress.advance("authority-inventory")
     dashboard_authority_observation: dict[str, object] = {}
     authority_projection_waited = wait_creation_dashboard_authority(
