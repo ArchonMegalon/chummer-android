@@ -38,6 +38,13 @@ CREATION_PHASE_BUDGETS_MS = {
     "resources-preview-confirm": 150_000,
     "process-restart-reopen": 90_000,
 }
+CREATION_MILESTONES = (
+    ("app-cold-start-complete", "initial-navigation"),
+    ("phone-shell-locale-complete", "initial-navigation"),
+    ("dialog-acquisition-complete", "initial-navigation"),
+    ("create-bootstrap-transaction-complete", "initial-authority"),
+    ("dashboard-render-complete", "dashboard-proof"),
+)
 STARTED_FIELDS = {
     "profile",
     "matrix_journey",
@@ -187,6 +194,47 @@ def require_creation_timing_within_budget(receipt: dict[str, Any]) -> None:
             raise ValueError(
                 f"creation prerequisite phase timing is outside budget: {phase_id}"
             )
+    milestones = timing.get("milestones")
+    if not isinstance(milestones, list) or len(milestones) != len(CREATION_MILESTONES):
+        raise ValueError("creation prerequisite milestone cardinality differs")
+    phase_elapsed_by_id = {
+        str(phase["phaseId"]): int(phase["elapsedMs"])
+        for phase in phases
+    }
+    previous_phase_elapsed: dict[str, int] = {}
+    previous_total_elapsed = -1
+    for ordinal, (milestone_id, phase_id) in enumerate(CREATION_MILESTONES, start=1):
+        milestone = milestones[ordinal - 1]
+        if not isinstance(milestone, dict):
+            raise ValueError("creation prerequisite milestone is not an object")
+        if (
+            milestone.get("milestoneId") != milestone_id
+            or milestone.get("phaseId") != phase_id
+            or milestone.get("ordinal") != ordinal
+        ):
+            raise ValueError(
+                f"creation prerequisite milestone identity differs: {milestone_id}"
+            )
+        phase_elapsed_ms = milestone.get("phaseElapsedMs")
+        segment_elapsed_ms = milestone.get("segmentElapsedMs")
+        milestone_total_elapsed_ms = milestone.get("totalElapsedMs")
+        if (
+            type(phase_elapsed_ms) is not int
+            or type(segment_elapsed_ms) is not int
+            or type(milestone_total_elapsed_ms) is not int
+            or phase_elapsed_ms < 0
+            or phase_elapsed_ms > phase_elapsed_by_id[phase_id]
+            or segment_elapsed_ms < 0
+            or segment_elapsed_ms
+            != phase_elapsed_ms - previous_phase_elapsed.get(phase_id, 0)
+            or milestone_total_elapsed_ms < previous_total_elapsed
+            or milestone_total_elapsed_ms > total_elapsed
+        ):
+            raise ValueError(
+                f"creation prerequisite milestone timing differs: {milestone_id}"
+            )
+        previous_phase_elapsed[phase_id] = phase_elapsed_ms
+        previous_total_elapsed = milestone_total_elapsed_ms
     if not isinstance(timing.get("scans"), list):
         raise ValueError("creation prerequisite scan timing evidence is missing")
 

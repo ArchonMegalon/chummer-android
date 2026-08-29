@@ -499,6 +499,39 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                     driver.INITIAL_NAVIGATION_MILESTONE_ORDER[1]
                 )
 
+    def test_progress_finish_requires_exact_complete_milestone_evidence(self) -> None:
+        cases = ("missing", "duplicate", "reordered", "wrongPhase", "wrongOrdinal")
+        for case in cases:
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as temporary, mock.patch(
+                "builtins.print"
+            ):
+                progress = driver.ProgressRecorder(Path(temporary))
+                for phase_id in driver.PHASE_ORDER:
+                    progress.advance(phase_id)
+                    for milestone_id, milestone_phase in zip(
+                        driver.INITIAL_MILESTONE_ORDER,
+                        driver.INITIAL_MILESTONE_PHASES,
+                        strict=True,
+                    ):
+                        if milestone_phase == phase_id:
+                            progress.record_initial_milestone(milestone_id)
+                if case == "missing":
+                    progress.milestones.pop()
+                elif case == "duplicate":
+                    progress.milestones.append(dict(progress.milestones[-1]))
+                elif case == "reordered":
+                    progress.milestones[0], progress.milestones[1] = (
+                        progress.milestones[1],
+                        progress.milestones[0],
+                    )
+                elif case == "wrongPhase":
+                    progress.milestones[3]["phaseId"] = "dashboard-proof"
+                else:
+                    progress.milestones[3]["ordinal"] = 99
+
+                with self.assertRaisesRegex(RuntimeError, "milestone evidence differs"):
+                    progress.finish()
+
     def test_creation_timing_uses_three_strict_nonoverlapping_phases(self) -> None:
         source = inspect.getsource(driver.execute)
         navigation_start = source.index('progress.advance("initial-navigation")')

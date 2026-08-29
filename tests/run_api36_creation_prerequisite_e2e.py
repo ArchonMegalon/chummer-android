@@ -97,6 +97,11 @@ INITIAL_MILESTONE_ORDER = (
     *INITIAL_AUTHORITY_MILESTONE_ORDER,
     *DASHBOARD_PROOF_MILESTONE_ORDER,
 )
+INITIAL_MILESTONE_PHASES = (
+    *(["initial-navigation"] * len(INITIAL_NAVIGATION_MILESTONE_ORDER)),
+    *(["initial-authority"] * len(INITIAL_AUTHORITY_MILESTONE_ORDER)),
+    *(["dashboard-proof"] * len(DASHBOARD_PROOF_MILESTONE_ORDER)),
+)
 PHASE_BUDGET_MS = {
     "device-preflight-install": 180_000,
     # Cold start, locale evidence, and navigation to the explicit action remain
@@ -723,6 +728,26 @@ class ProgressRecorder:
             raise RuntimeError(
                 f"Prerequisite progress is incomplete: expected={PHASE_ORDER!r}, "
                 f"actual={completed!r}"
+            )
+        actual_milestones = tuple(
+            (
+                milestone.get("milestoneId"),
+                milestone.get("phaseId"),
+                milestone.get("ordinal"),
+            )
+            for milestone in self.milestones
+        )
+        expected_milestones = tuple(
+            (milestone_id, phase_id, ordinal)
+            for ordinal, (milestone_id, phase_id) in enumerate(
+                zip(INITIAL_MILESTONE_ORDER, INITIAL_MILESTONE_PHASES, strict=True),
+                start=1,
+            )
+        )
+        if actual_milestones != expected_milestones:
+            raise RuntimeError(
+                "Prerequisite progress milestone evidence differs: "
+                f"expected={expected_milestones!r}, actual={actual_milestones!r}"
             )
         snapshot = self.snapshot("timing-complete")
         over_budget = tuple(

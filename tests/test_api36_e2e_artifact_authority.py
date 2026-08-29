@@ -91,6 +91,32 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                         start=1,
                     )
                 ],
+                "milestones": [
+                    {
+                        "milestoneId": milestone_id,
+                        "phaseId": phase_id,
+                        "ordinal": ordinal,
+                        "phaseElapsedMs": phase_elapsed_ms,
+                        "segmentElapsedMs": segment_elapsed_ms,
+                        "totalElapsedMs": total_elapsed_ms,
+                    }
+                    for ordinal, (
+                        milestone_id,
+                        phase_id,
+                        phase_elapsed_ms,
+                        segment_elapsed_ms,
+                        total_elapsed_ms,
+                    ) in enumerate(
+                        (
+                            ("app-cold-start-complete", "initial-navigation", 200, 200, 1_200),
+                            ("phone-shell-locale-complete", "initial-navigation", 400, 200, 1_400),
+                            ("dialog-acquisition-complete", "initial-navigation", 600, 200, 1_600),
+                            ("create-bootstrap-transaction-complete", "initial-authority", 500, 500, 2_500),
+                            ("dashboard-render-complete", "dashboard-proof", 500, 500, 3_500),
+                        ),
+                        start=1,
+                    )
+                ],
                 "scans": [],
             }
         else:
@@ -342,6 +368,41 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                 self.reseal(directory)
 
                 with self.assertRaisesRegex(ValueError, expected_error):
+                    self.validate(root)
+
+    def test_creation_timing_requires_exact_ordered_milestones(self) -> None:
+        cases = (
+            "missing",
+            "duplicate",
+            "reordered",
+            "wrongPhase",
+            "wrongOrdinal",
+        )
+        for case in cases:
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                self.materialize_all(root)
+                directory = root / AGGREGATE.expected_artifact_directory(
+                    "creation-prerequisite",
+                    RUN_ID,
+                )
+                receipt_path = directory / "receipt.json"
+                receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+                milestones = receipt["timing"]["milestones"]
+                if case == "missing":
+                    milestones.pop()
+                elif case == "duplicate":
+                    milestones.append(dict(milestones[-1]))
+                elif case == "reordered":
+                    milestones[0], milestones[1] = milestones[1], milestones[0]
+                elif case == "wrongPhase":
+                    milestones[3]["phaseId"] = "dashboard-proof"
+                else:
+                    milestones[3]["ordinal"] = 99
+                receipt_path.write_text(json.dumps(receipt) + "\n", encoding="utf-8")
+                self.reseal(directory)
+
+                with self.assertRaisesRegex(ValueError, "milestone"):
                     self.validate(root)
 
 
