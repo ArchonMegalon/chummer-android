@@ -5,7 +5,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import Mock, call, patch
+from unittest.mock import ANY, Mock, call, patch
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -4483,7 +4483,18 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
 
         DRIVER.select_documents_ui_downloads_root(device, timeout=45)
 
-        device.shell.assert_called_once_with("input", "tap", "441", "642")
+        device.shell.assert_called_once_with(
+            "input",
+            "tap",
+            "441",
+            "642",
+            timeout=ANY,
+            deadline=ANY,
+        )
+        tap = device.shell.call_args
+        self.assertGreater(tap.kwargs["timeout"], 0)
+        self.assertLessEqual(tap.kwargs["timeout"], 45)
+        self.assertGreater(tap.kwargs["deadline"], 0)
         device.capture.assert_not_called()
 
     def test_documents_ui_downloads_reacquires_for_two_bounded_retaps(self) -> None:
@@ -4516,9 +4527,9 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
 
         self.assertEqual(
             [
-                call("input", "tap", "441", "642"),
-                call("input", "tap", "441", "742"),
-                call("input", "tap", "441", "842"),
+                call("input", "tap", "441", "642", timeout=45.0, deadline=45.0),
+                call("input", "tap", "441", "742", timeout=42.75, deadline=45.0),
+                call("input", "tap", "441", "842", timeout=40.5, deadline=45.0),
             ],
             device.shell.call_args_list,
         )
@@ -4572,7 +4583,14 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         device.capture.assert_called_once_with(
             "documentsui-downloads-wrong-destination"
         )
-        device.shell.assert_called_once_with("input", "tap", "441", "642")
+        device.shell.assert_called_once_with(
+            "input",
+            "tap",
+            "441",
+            "642",
+            timeout=ANY,
+            deadline=ANY,
+        )
 
     def test_documents_ui_downloads_rejects_drawer_destination_state_ambiguity(self) -> None:
         device = Mock(spec=DRIVER.Device)
@@ -4603,9 +4621,111 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             DRIVER.select_documents_ui_downloads_root(device, timeout=6)
 
         self.assertEqual(3, device.shell.call_count)
-        device.capture.assert_called_once_with(
-            "documentsui-downloads-transition-unavailable"
-        )
+        device.capture.assert_not_called()
+
+    def test_documents_ui_downloads_never_taps_after_hierarchy_crosses_deadline(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        now, monotonic, sleep = self._fake_clock()
+
+        def late_hierarchy(*, deadline: float) -> list[object]:
+            self.assertEqual(45.0, deadline)
+            now[0] = 46.0
+            return self._documents_ui_drawer()
+
+        device.hierarchy.side_effect = late_hierarchy
+        with (
+            patch.object(DRIVER.time, "monotonic", side_effect=monotonic),
+            patch.object(DRIVER.time, "sleep", side_effect=sleep),
+            self.assertRaisesRegex(RuntimeError, "Timed out waiting"),
+        ):
+            DRIVER.select_documents_ui_downloads_root(device, timeout=45)
+
+        device.hierarchy.assert_called_once_with(deadline=45.0)
+        device.node_has_tappable_bounds.assert_not_called()
+        device.shell.assert_not_called()
+        device.capture.assert_not_called()
+
+    def test_documents_ui_downloads_rechecks_deadline_after_bounds_before_tap(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        now, monotonic, sleep = self._fake_clock()
+        device.hierarchy.return_value = self._documents_ui_drawer()
+
+        def late_bounds(_node: object, *, deadline: float) -> bool:
+            self.assertEqual(45.0, deadline)
+            now[0] = 46.0
+            return True
+
+        device.node_has_tappable_bounds.side_effect = late_bounds
+        with (
+            patch.object(DRIVER.time, "monotonic", side_effect=monotonic),
+            patch.object(DRIVER.time, "sleep", side_effect=sleep),
+            self.assertRaisesRegex(
+                DRIVER.AdbOperationDeadlineExceeded,
+                "deadline expired",
+            ),
+        ):
+            DRIVER.select_documents_ui_downloads_root(device, timeout=45)
+
+        device.shell.assert_not_called()
+        device.capture.assert_not_called()
+
+    def test_documents_ui_downloads_caps_poll_sleep_to_remaining_deadline(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        now, monotonic, sleep = self._fake_clock()
+
+        def late_empty_hierarchy(*, deadline: float) -> list[object]:
+            self.assertEqual(45.0, deadline)
+            now[0] = 44.5
+            return []
+
+        device.hierarchy.side_effect = late_empty_hierarchy
+        with (
+            patch.object(DRIVER.time, "monotonic", side_effect=monotonic),
+            patch.object(DRIVER.time, "sleep", side_effect=sleep) as sleep_mock,
+            self.assertRaisesRegex(RuntimeError, "Timed out waiting"),
+        ):
+            DRIVER.select_documents_ui_downloads_root(device, timeout=45)
+
+        sleep_mock.assert_called_once_with(0.5)
+        self.assertEqual(45.0, now[0])
+        device.shell.assert_not_called()
+        device.capture.assert_not_called()
+
+    def test_hierarchy_shares_one_deadline_across_both_adb_reads(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            device = DRIVER.Device(
+                Path("/unused/adb"),
+                "emulator-5554",
+                Path(temporary),
+            )
+            now, monotonic, _sleep = self._fake_clock()
+
+            def dump(*_arguments: str, **kwargs: object) -> str:
+                self.assertEqual(45.0, kwargs["timeout"])
+                self.assertEqual(45.0, kwargs["deadline"])
+                now[0] = 12.0
+                return "UI hierarchy dumped"
+
+            def read(*_arguments: str, **kwargs: object) -> subprocess.CompletedProcess:
+                self.assertEqual(33.0, kwargs["timeout"])
+                self.assertEqual(45.0, kwargs["deadline"])
+                now[0] = 20.0
+                return subprocess.CompletedProcess(
+                    args=[],
+                    returncode=0,
+                    stdout="<hierarchy rotation='0'></hierarchy>",
+                    stderr="",
+                )
+
+            with (
+                patch.object(DRIVER.time, "monotonic", side_effect=monotonic),
+                patch.object(device, "shell", side_effect=dump) as shell,
+                patch.object(device, "run", side_effect=read) as run,
+            ):
+                self.assertEqual([], device.hierarchy(deadline=45.0))
+
+            shell.assert_called_once()
+            run.assert_called_once()
 
     def test_document_picker_uses_visible_fixture_without_changing_root(self) -> None:
         device = Mock()

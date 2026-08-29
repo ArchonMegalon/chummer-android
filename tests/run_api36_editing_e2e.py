@@ -361,6 +361,25 @@ class AdbTransportError(RuntimeError):
         )
 
 
+class AdbOperationDeadlineExceeded(RuntimeError):
+    """Raised before an ADB invocation when its caller-owned deadline expired."""
+
+
+def _remaining_operation_timeout(
+    *,
+    deadline: float | None,
+    maximum: float,
+) -> float:
+    if deadline is None:
+        return maximum
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        raise AdbOperationDeadlineExceeded(
+            "ADB operation deadline expired before command invocation"
+        )
+    return min(maximum, remaining)
+
+
 class AdbTransportPreflightError(RuntimeError):
     """Raised before any mutation when the transport cannot remain stable."""
 
@@ -528,7 +547,7 @@ class Device:
         self,
         arguments: tuple[str, ...],
         *,
-        timeout: int,
+        timeout: float,
         text: bool,
         check: bool,
     ) -> subprocess.CompletedProcess:
@@ -699,9 +718,10 @@ class Device:
     def run(
         self,
         *arguments: str,
-        timeout: int = 120,
+        timeout: float = 120,
         text: bool = True,
         check: bool = True,
+        deadline: float | None = None,
     ) -> subprocess.CompletedProcess:
         adb_arguments = tuple(arguments)
         command_policy, policy_reason = adb_command_retry_policy(adb_arguments)
@@ -737,7 +757,10 @@ class Device:
             try:
                 result = self._invoke_once(
                     adb_arguments,
-                    timeout=timeout,
+                    timeout=_remaining_operation_timeout(
+                        deadline=deadline,
+                        maximum=timeout,
+                    ),
                     text=text,
                     # Android pidof uses exit 1 with no output for the exact,
                     # expected observation "this package has no process".  Run
@@ -792,6 +815,7 @@ class Device:
                     command_policy == "read-only-retryable"
                     and retryable
                     and attempt < maximum_attempts
+                    and (deadline is None or time.monotonic() < deadline)
                 )
                 receipt, path = self._write_transport_event(
                     arguments=adb_arguments,
@@ -814,7 +838,15 @@ class Device:
                     }
                 if not may_retry:
                     raise AdbTransportError(receipt, path) from error
-                time.sleep(ADB_READ_ONLY_RETRY_DELAY_SECONDS)
+                retry_delay = ADB_READ_ONLY_RETRY_DELAY_SECONDS
+                if deadline is not None:
+                    retry_delay = min(
+                        retry_delay,
+                        max(0.0, deadline - time.monotonic()),
+                    )
+                if retry_delay <= 0:
+                    raise AdbTransportError(receipt, path) from error
+                time.sleep(retry_delay)
         raise AssertionError("bounded ADB retry loop exhausted without a terminal result")
 
     def require_transport_stability(
@@ -1025,8 +1057,20 @@ class Device:
         if command_error is not None:
             raise command_error
 
-    def shell(self, *arguments: str, timeout: int = 120) -> str:
-        return self.run("shell", *arguments, timeout=timeout).stdout.strip()
+    def shell(
+        self,
+        *arguments: str,
+        timeout: float = 120,
+        deadline: float | None = None,
+    ) -> str:
+        if deadline is None:
+            return self.run("shell", *arguments, timeout=timeout).stdout.strip()
+        return self.run(
+            "shell",
+            *arguments,
+            timeout=timeout,
+            deadline=deadline,
+        ).stdout.strip()
 
     def push(self, local_path: Path, remote_path: str) -> None:
         self.run("push", str(local_path.resolve()), remote_path, timeout=120)
@@ -1069,14 +1113,29 @@ class Device:
             )
         return actual
 
-    def hierarchy(self) -> list[UiNode]:
+    def hierarchy(self, *, deadline: float | None = None) -> list[UiNode]:
+        """Read one hierarchy while sharing an optional caller-owned deadline."""
         try:
-            dump_output = self.shell(
-                "uiautomator",
-                "dump",
-                "--compressed",
-                "/sdcard/chummer-editing-window.xml",
-            )
+            if deadline is None:
+                dump_output = self.shell(
+                    "uiautomator",
+                    "dump",
+                    "--compressed",
+                    "/sdcard/chummer-editing-window.xml",
+                )
+            else:
+                dump_output = self.shell(
+                    "uiautomator",
+                    "dump",
+                    "--compressed",
+                    "/sdcard/chummer-editing-window.xml",
+                    timeout=_remaining_operation_timeout(
+                        deadline=deadline,
+                        maximum=120,
+                    ),
+                    deadline=deadline,
+                )
+                _remaining_operation_timeout(deadline=deadline, maximum=120)
             normalized_dump_output = dump_output.lower()
             if not any(
                 marker in normalized_dump_output
@@ -1087,9 +1146,24 @@ class Device:
                     encoding="utf-8",
                 )
                 return []
-            xml = self.run(
-                "exec-out", "cat", "/sdcard/chummer-editing-window.xml"
-            ).stdout
+            if deadline is None:
+                xml = self.run(
+                    "exec-out", "cat", "/sdcard/chummer-editing-window.xml"
+                ).stdout
+            else:
+                xml = self.run(
+                    "exec-out",
+                    "cat",
+                    "/sdcard/chummer-editing-window.xml",
+                    timeout=_remaining_operation_timeout(
+                        deadline=deadline,
+                        maximum=120,
+                    ),
+                    deadline=deadline,
+                ).stdout
+                _remaining_operation_timeout(deadline=deadline, maximum=120)
+        except AdbOperationDeadlineExceeded:
+            return []
         except subprocess.CalledProcessError as error:
             detail = "\n".join(
                 part for part in (str(error), error.stdout, error.stderr) if part
@@ -1797,12 +1871,21 @@ class Device:
             "after a bounded bidirectional search"
         )
 
-    def node_has_tappable_bounds(self, node: UiNode) -> bool:
+    def node_has_tappable_bounds(
+        self,
+        node: UiNode,
+        *,
+        deadline: float | None = None,
+    ) -> bool:
         match = BOUNDS.fullmatch(node.attributes.get("bounds", ""))
         if match is None:
             return False
         left, top, right, bottom = (int(value) for value in match.groups())
-        width, height = self.display_size()
+        width, height = (
+            self.display_size()
+            if deadline is None
+            else self.display_size(deadline=deadline)
+        )
         center_y = (top + bottom) // 2
         return (
             right - left > 8
@@ -2065,9 +2148,20 @@ class Device:
         self.shell("input", "keyevent", "4")
         time.sleep(1)
 
-    def display_size(self) -> tuple[int, int]:
+    def display_size(self, *, deadline: float | None = None) -> tuple[int, int]:
         if self._display_size is None:
-            output = self.shell("wm", "size")
+            if deadline is None:
+                output = self.shell("wm", "size")
+            else:
+                output = self.shell(
+                    "wm",
+                    "size",
+                    timeout=_remaining_operation_timeout(
+                        deadline=deadline,
+                        maximum=120,
+                    ),
+                    deadline=deadline,
+                )
             sizes = DISPLAY_SIZE.findall(output)
             self._display_size = (
                 (int(sizes[-1][0]), int(sizes[-1][1]))
@@ -4383,6 +4477,8 @@ def _documents_ui_downloads_state(device: Device, nodes: list[UiNode]) -> str:
 def _exact_enabled_documents_ui_downloads_row(
     device: Device,
     nodes: list[UiNode],
+    *,
+    deadline: float,
 ) -> UiNode:
     matches = [
         node
@@ -4398,7 +4494,7 @@ def _exact_enabled_documents_ui_downloads_row(
     node = matches[0]
     if (
         node.attributes.get("enabled") != "true"
-        or not device.node_has_tappable_bounds(node)
+        or not device.node_has_tappable_bounds(node, deadline=deadline)
     ):
         device.capture("documentsui-downloads-row-not-enabled-tappable")
         raise RuntimeError(
@@ -4407,38 +4503,96 @@ def _exact_enabled_documents_ui_downloads_row(
     return node
 
 
+def _documents_ui_observation_before_deadline(
+    device: Device,
+    *,
+    deadline: float,
+) -> list[UiNode] | None:
+    if time.monotonic() >= deadline:
+        return None
+    try:
+        nodes = device.hierarchy(deadline=deadline)
+    except AdbOperationDeadlineExceeded:
+        return None
+    # A hierarchy observation is blocking. Its result cannot authorize a later
+    # mutation if it completed after the caller-owned transition deadline.
+    if time.monotonic() >= deadline:
+        return None
+    return nodes
+
+
+def _documents_ui_sleep_before_deadline(deadline: float) -> bool:
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        return False
+    time.sleep(min(DOCUMENTS_UI_POLL_DELAY_SECONDS, remaining))
+    return time.monotonic() < deadline
+
+
 def select_documents_ui_downloads_root(device: Device, *, timeout: int = 45) -> None:
     """Select Downloads with at most two fresh retaps under one deadline."""
     deadline = time.monotonic() + timeout
     last_state = "pending"
     for tap_attempt in range(DOCUMENTS_UI_MAX_DOWNLOADS_TAPS):
         nodes: list[UiNode] = []
-        while time.monotonic() < deadline:
-            nodes = device.hierarchy()
+        while True:
+            observed = _documents_ui_observation_before_deadline(
+                device,
+                deadline=deadline,
+            )
+            if observed is None:
+                break
+            nodes = observed
             if not nodes:
-                time.sleep(DOCUMENTS_UI_POLL_DELAY_SECONDS)
+                if not _documents_ui_sleep_before_deadline(deadline):
+                    break
                 continue
             last_state = _documents_ui_downloads_state(device, nodes)
             if last_state == "destination":
                 return
             if last_state == "drawer":
                 break
-            time.sleep(DOCUMENTS_UI_POLL_DELAY_SECONDS)
-        else:
+            if not _documents_ui_sleep_before_deadline(deadline):
+                break
+        if not nodes or time.monotonic() >= deadline:
             break
 
-        row = _exact_enabled_documents_ui_downloads_row(device, nodes)
+        row = _exact_enabled_documents_ui_downloads_row(
+            device,
+            nodes,
+            deadline=deadline,
+        )
         x, y = row.center
-        device.shell("input", "tap", str(x), str(y))
+        # Bounds/display acquisition may itself block. Recheck immediately before
+        # issuing the non-replayable tap and pass the same deadline into ADB.
+        tap_timeout = _remaining_operation_timeout(
+            deadline=deadline,
+            maximum=120,
+        )
+        device.shell(
+            "input",
+            "tap",
+            str(x),
+            str(y),
+            timeout=tap_timeout,
+            deadline=deadline,
+        )
 
         retry_at = min(
             deadline,
             time.monotonic() + DOCUMENTS_UI_DOWNLOADS_RETRY_SETTLE_SECONDS,
         )
-        while time.monotonic() < deadline:
-            nodes = device.hierarchy()
+        while True:
+            observed = _documents_ui_observation_before_deadline(
+                device,
+                deadline=deadline,
+            )
+            if observed is None:
+                break
+            nodes = observed
             if not nodes:
-                time.sleep(DOCUMENTS_UI_POLL_DELAY_SECONDS)
+                if not _documents_ui_sleep_before_deadline(deadline):
+                    break
                 continue
             last_state = _documents_ui_downloads_state(device, nodes)
             if last_state == "destination":
@@ -4451,9 +4605,11 @@ def select_documents_ui_downloads_root(device: Device, *, timeout: int = 45) -> 
                 # The prior tap had no observable effect. Reacquire the exact row
                 # from a fresh hierarchy before issuing the next bounded retap.
                 break
-            time.sleep(DOCUMENTS_UI_POLL_DELAY_SECONDS)
+            if not _documents_ui_sleep_before_deadline(deadline):
+                break
 
-    device.capture("documentsui-downloads-transition-unavailable")
+    if time.monotonic() < deadline:
+        device.capture("documentsui-downloads-transition-unavailable")
     if last_state == "drawer":
         raise RuntimeError(
             "DocumentsUI roots drawer remained open after "
