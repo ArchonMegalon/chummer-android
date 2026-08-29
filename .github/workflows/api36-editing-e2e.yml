@@ -209,6 +209,12 @@ jobs:
           CHUMMER_CORE_ENGINE_ROOT: ${{ github.workspace }}/chummer-core-engine
         run: scripts/build-debug.sh
 
+      - name: Verify clean Android source after x64 local-compatibility restore
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "$(git -C chummer-android status --porcelain=v1 --untracked-files=no)"
+
       - name: Seal the unique signed debug APK
         id: apk
         shell: bash

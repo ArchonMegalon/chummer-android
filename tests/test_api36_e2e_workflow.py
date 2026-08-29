@@ -106,15 +106,35 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         self.assertIn("needs: build", self.text)
 
     def test_local_compatibility_restore_preserves_tracked_package_locks(self) -> None:
-        clean_step = "Verify clean Android source before local-compatibility restores"
-        self.assertEqual(1, self.text.count(clean_step))
+        pre_build_clean_step = (
+            "Verify clean Android source before local-compatibility restores"
+        )
+        post_x64_clean_step = (
+            "Verify clean Android source after x64 local-compatibility restore"
+        )
+        self.assertEqual(1, self.text.count(pre_build_clean_step))
+        self.assertEqual(1, self.text.count(post_x64_clean_step))
+        self.assertEqual(
+            2,
+            self.text.count(
+                "git -C chummer-android status --porcelain=v1 --untracked-files=no"
+            ),
+        )
         self.assertIn(
             'git -C chummer-android status --porcelain=v1 --untracked-files=no',
             self.text,
         )
         self.assertLess(
-            self.text.index(clean_step),
+            self.text.index(pre_build_clean_step),
             self.text.index("Build the emulator APK and native compile gate"),
+        )
+        self.assertLess(
+            self.text.index("Build the emulator APK and native compile gate"),
+            self.text.index(post_x64_clean_step),
+        )
+        self.assertLess(
+            self.text.index(post_x64_clean_step),
+            self.text.index("Seal the unique signed debug APK"),
         )
         self.assertIn(
             '"-p:RestorePackagesWithLockFile=true"',
