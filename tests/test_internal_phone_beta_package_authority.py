@@ -7,6 +7,7 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 REPO = Path(__file__).resolve().parents[1]
@@ -39,6 +40,42 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
             write_private(path, payload)
             return self.module.validate_manifest(path)
 
+    def validate_presentation_checkout(
+        self,
+        *,
+        origin: str,
+        commit: str | None = None,
+        tree: str | None = None,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            authority = root / self.module.EXPECTED_LOCK_PATH
+            authority.parent.mkdir(parents=True)
+            authority.write_bytes(b"x" * self.module.EXPECTED_LOCK_SIZE)
+            answers = {
+                ("status", "--porcelain", "--untracked-files=all"): "",
+                ("rev-parse", "HEAD"): commit or self.module.EXPECTED_PRESENTATION_COMMIT,
+                ("rev-parse", "HEAD^{tree}"): tree or self.module.EXPECTED_PRESENTATION_TREE,
+                ("remote", "get-url", "origin"): origin,
+                (
+                    "rev-parse",
+                    f"HEAD:{self.module.EXPECTED_LOCK_PATH}",
+                ): self.module.EXPECTED_LOCK_BLOB,
+            }
+
+            def fake_git(_root: Path, *arguments: str) -> str:
+                return answers[arguments]
+
+            with (
+                patch.object(self.module, "git", side_effect=fake_git),
+                patch.object(
+                    self.module,
+                    "sha256",
+                    return_value=self.module.EXPECTED_LOCK_SHA256,
+                ),
+            ):
+                self.module.validate_presentation_repository(root)
+
     def test_exact_current_graph_is_valid_and_never_public_ready(self) -> None:
         validated = self.module.validate_manifest(MANIFEST)
         binding = self.module.build_binding(validated)
@@ -58,6 +95,37 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
         self.assertIn(self.module.EXPECTED_PRESENTATION_COMMIT, workflow)
         self.assertIn(self.module.EXPECTED_SOURCE_GRAPH["coreRuntimeSourceCommit"], workflow)
         self.assertIn(self.module.EXPECTED_SOURCE_GRAPH["hubProducerCommit"], workflow)
+
+    def test_canonical_presentation_origin_is_accepted(self) -> None:
+        self.validate_presentation_checkout(
+            origin=self.module.EXPECTED_PRESENTATION_REPOSITORY,
+        )
+
+    def test_ui_kit_compatibility_origin_is_not_presentation_authority(self) -> None:
+        self.assertIn("uiKitCommit", self.payload["sourceGraph"])
+        self.assertNotIn("compatibilityCheckoutRepository", self.payload["presentationSource"])
+        with self.assertRaisesRegex(ValueError, "repository authority drifted"):
+            self.validate_presentation_checkout(
+                origin="https://github.com/ArchonMegalon/chummer6-ui-kit.git",
+            )
+
+    def test_fork_origin_is_not_presentation_authority(self) -> None:
+        with self.assertRaisesRegex(ValueError, "repository authority drifted"):
+            self.validate_presentation_checkout(
+                origin="https://github.com/example/chummer6-ui.git",
+            )
+
+    def test_presentation_commit_and_tree_remain_exact(self) -> None:
+        with self.assertRaisesRegex(ValueError, "commit drifted"):
+            self.validate_presentation_checkout(
+                origin=self.module.EXPECTED_PRESENTATION_REPOSITORY,
+                commit="0" * 40,
+            )
+        with self.assertRaisesRegex(ValueError, "tree drifted"):
+            self.validate_presentation_checkout(
+                origin=self.module.EXPECTED_PRESENTATION_REPOSITORY,
+                tree="0" * 40,
+            )
 
     def test_current_receipt_lock_cache_and_source_tamper_fail_closed(self) -> None:
         mutations: list[tuple[dict[str, object], str]] = []

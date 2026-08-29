@@ -6,8 +6,7 @@
   "presentationSource": {
     "commit": "1438978f6f883be321c62de69165c9216e10e011",
     "tree": "d1ae70610a1c4f43cfa8386db22d6f55e620fa6e",
-    "repository": "https://github.com/ArchonMegalon/chummer6-ui.git",
-    "compatibilityCheckoutRepository": "https://github.com/ArchonMegalon/chummer6-ui-kit.git"
+    "repository": "https://github.com/ArchonMegalon/chummer6-ui.git"
   },
   "packagePlaneLock": {
     "path": "config/package-plane.lock.json",

@@ -32,7 +32,7 @@ CONTENT_CONTRACT = "chummer.android.content-bundle/v1"
 
 UI_AUTHORITY_RECEIPT_SHA256 = "940d4cf0d77bb371e50b1cb3fb566089843a945c097b73a122522db1a673b547"
 UI_AUTHORITY_RECEIPT_SIZE = 46808
-PACKAGE_AUTHORITY_SHA256 = "8fc702e2614c47a1623c51967d56dfb5085085145575b2a75fdeb8f180c85551"
+PACKAGE_AUTHORITY_SHA256 = "ff7a18a40ea368cf16af49fe43827e9570a9258a27fa852046138d1bf36e789c"
 PACKAGE_CACHE_MANIFEST_SHA256 = "b31e6f2b1903d9cab0cfe550c2892b9bb0ffc1183bbb8bb2eab4289b1710b09c"
 PRESENTATION_COMMIT = "1438978f6f883be321c62de69165c9216e10e011"
 PRESENTATION_TREE = "d1ae70610a1c4f43cfa8386db22d6f55e620fa6e"
@@ -475,7 +475,6 @@ def validate_current_package_authority(
             "commit": PRESENTATION_COMMIT,
             "tree": PRESENTATION_TREE,
             "repository": "https://github.com/ArchonMegalon/chummer6-ui.git",
-            "compatibilityCheckoutRepository": "https://github.com/ArchonMegalon/chummer6-ui-kit.git",
         }
         or payload.get("sourceGraph") != {
             "corePackageRecipeCommit": CORE_CONTENT_REVISION,

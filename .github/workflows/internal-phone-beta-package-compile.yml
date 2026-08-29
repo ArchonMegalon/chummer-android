@@ -52,6 +52,6 @@ jobs:
           CHUMMER_PRESENTATION_ROOT: ${{ github.workspace }}/chummer-presentation
           CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED: ${{ runner.temp }}/current-ui-input/packages
           CHUMMER_INTERNAL_PHONE_BETA_NUGET_PACKAGES: ${{ runner.temp }}/current-ui-input/nuget-packages
-          CHUMMER_CURRENT_UI_PACKAGE_AUTHORITY_RECEIPT: ${{ runner.temp }}/current-ui-input/ui-current-authority-5beaccc9.receipt.json
+          CHUMMER_CURRENT_UI_PACKAGE_AUTHORITY_RECEIPT: ${{ runner.temp }}/current-ui-input/ui-current-authority-1438978f-main-cache-hit.receipt.json
           CHUMMER_INTERNAL_PHONE_BETA_BUILD_RECEIPT: ${{ runner.temp }}/internal-phone-beta-native-compile.json
         run: scripts/build-internal-phone-beta-native-compile.sh

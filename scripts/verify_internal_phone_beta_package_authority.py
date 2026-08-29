@@ -20,7 +20,6 @@ CACHE_CONTRACT = "chummer6-ui.owner-package-artifact-cache/v1"
 EXPECTED_PRESENTATION_COMMIT = "1438978f6f883be321c62de69165c9216e10e011"
 EXPECTED_PRESENTATION_TREE = "d1ae70610a1c4f43cfa8386db22d6f55e620fa6e"
 EXPECTED_PRESENTATION_REPOSITORY = "https://github.com/ArchonMegalon/chummer6-ui.git"
-EXPECTED_COMPATIBILITY_REPOSITORY = "https://github.com/ArchonMegalon/chummer6-ui-kit.git"
 EXPECTED_LOCK_PATH = "config/package-plane.lock.json"
 EXPECTED_LOCK_SHA256 = "42e01c93a863882022cf156d86674cda1fbaecba7b9a1112323a27e42dd73a61"
 EXPECTED_LOCK_SIZE = 54835
@@ -146,7 +145,6 @@ def validate_manifest(path: Path) -> dict[str, Any]:
         "commit": EXPECTED_PRESENTATION_COMMIT,
         "tree": EXPECTED_PRESENTATION_TREE,
         "repository": EXPECTED_PRESENTATION_REPOSITORY,
-        "compatibilityCheckoutRepository": EXPECTED_COMPATIBILITY_REPOSITORY,
     }:
         raise ValueError("Presentation current graph binding is not exact")
     if manifest.get("packagePlaneLock") != {
@@ -217,7 +215,7 @@ def validate_presentation_repository(root: Path) -> None:
         raise ValueError("Presentation current graph commit drifted")
     if git(root, "rev-parse", "HEAD^{tree}") != EXPECTED_PRESENTATION_TREE:
         raise ValueError("Presentation current graph tree drifted")
-    if git(root, "remote", "get-url", "origin") != EXPECTED_COMPATIBILITY_REPOSITORY:
+    if git(root, "remote", "get-url", "origin") != EXPECTED_PRESENTATION_REPOSITORY:
         raise ValueError("Presentation repository authority drifted")
     authority = root / EXPECTED_LOCK_PATH
     if authority.is_symlink() or not authority.is_file():

@@ -346,7 +346,6 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
                 "commit": presentation_commit,
                 "tree": presentation_tree,
                 "repository": "https://github.com/ArchonMegalon/chummer6-ui.git",
-                "compatibilityCheckoutRepository": "https://github.com/ArchonMegalon/chummer6-ui-kit.git",
             },
             "packagePlaneLock": {},
             "verificationReceipt": {},
