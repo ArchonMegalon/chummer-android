@@ -1600,6 +1600,12 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 "creation-prerequisite-talent-grant-complete"
             ],
         )
+        self.assertEqual(
+            ("Arcana",),
+            navigation["resourceDetails"][
+                "creation-prerequisite-talent-active-skill-option-choice-0001"
+            ],
+        )
 
     def test_talent_grant_surface_rejects_malformed_or_opposite_kind_ids(self) -> None:
         malformed = self.talent_grant_nodes(option_id="forged-")
@@ -1650,6 +1656,403 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "creation-prerequisite-talent-grant-cardinality-invalid"
         )
 
+    def test_grouped_talent_state_reacquires_the_hosted_artifact_topology(self) -> None:
+        selected_id = (
+            "creation-prerequisite-talent-active-skill-option-"
+            "89ee1730-053a-400f-a13a-4fbadae015f0"
+        )
+        disabled_id = (
+            "creation-prerequisite-talent-active-skill-option-"
+            "cd9f6bf7-fa48-464b-9a8f-c7ce26713a72"
+        )
+        selected_detail = (
+            "Survival. Physical Active · Group Outdoors · Attribute WIL · "
+            "Source 89ee1730-053a-400f-a13a-4fbadae015f0 · Anchors "
+            "skills.xml#skill:89ee1730-053a-400f-a13a-4fbadae015f0"
+        )
+        disabled_detail = (
+            "Clubs. Combat Active · Group Close Combat · Attribute AGI · "
+            "Source cd9f6bf7-fa48-464b-9a8f-c7ce26713a72 · Anchors "
+            "skills.xml#skill:cd9f6bf7-fa48-464b-9a8f-c7ce26713a72"
+        )
+        digest = "sha256:" + ("a" * 64)
+        baseline = driver.TalentGrantSurface(
+            kind="Active skills",
+            selected_count=0,
+            required_count=1,
+            grant_digest=digest,
+            option_ids=(selected_id, disabled_id),
+            enabled_option_ids=(selected_id, disabled_id),
+            selected_option_ids=(),
+            completion_enabled=False,
+        )
+        navigation = {
+            "endViewport": 6,
+            "resourceViewports": {
+                "creation-prerequisite-talent-grant-authority": 0,
+                "creation-prerequisite-talent-grant-digest": 0,
+                selected_id: 4,
+                disabled_id: 4,
+                "creation-prerequisite-talent-grant-complete": 6,
+            },
+            "resourceDetails": {
+                selected_id: (selected_detail,),
+                disabled_id: (disabled_detail,),
+            },
+        }
+
+        disabled = driver.shared.UiNode(
+            {
+                "resource-id": disabled_id,
+                "content-desc": disabled_detail,
+                "enabled": "false",
+                "clickable": "true",
+                "bounds": "[98,467][984,695]",
+            }
+        )
+        selected = driver.shared.UiNode(
+            {
+                "resource-id": selected_id,
+                "content-desc": "✓ " + selected_detail,
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[98,653][984,881]",
+            }
+        )
+        authority = driver.shared.UiNode(
+            {
+                "resource-id": "creation-prerequisite-talent-grant-authority",
+                "content-desc": "Required. 1 / 1 Active skills",
+            }
+        )
+        digest_node = driver.shared.UiNode(
+            {
+                "resource-id": "creation-prerequisite-talent-grant-digest",
+                "text": digest,
+            }
+        )
+        completion = driver.shared.UiNode(
+            {
+                "resource-id": "creation-prerequisite-talent-grant-complete",
+                "text": "Continue with exact grant",
+                "enabled": "true",
+                "clickable": "true",
+            }
+        )
+
+        class ArtifactTopologyDevice:
+            def __init__(self) -> None:
+                # The hosted failure's first two fresh snapshots remain in the
+                # middle of disabled catalog rows after the measured rewind.
+                self.screens = [
+                    [disabled],
+                    [disabled],
+                    [authority, digest_node],
+                    [disabled, selected],
+                    [completion],
+                ]
+                self.hierarchy_reads = 0
+                self.reverse_swipes = 0
+                self.forward_swipes = 0
+
+            def hierarchy(self):
+                nodes = self.screens[self.hierarchy_reads]
+                self.hierarchy_reads += 1
+                return nodes
+
+            def swipe_down(self, *, distance_ratio):
+                self.asserted_distance_ratio = distance_ratio
+                self.reverse_swipes += 1
+
+            def swipe_up(self, *, distance_ratio):
+                self.asserted_distance_ratio = distance_ratio
+                self.forward_swipes += 1
+
+            @staticmethod
+            def dismiss_system_ui_anr(_nodes):
+                return False
+
+            @staticmethod
+            def node_has_tappable_bounds(node):
+                return node is selected
+
+            @staticmethod
+            def capture(name):
+                raise AssertionError(f"unexpected capture: {name}")
+
+        device = ArtifactTopologyDevice()
+        state, viewport = driver.read_talent_grant_grouped_state(
+            device,
+            "Active skills",
+            baseline,
+            navigation,
+            6,
+            expected_selected_option_ids=(selected_id,),
+            expected_completion_enabled=True,
+            evidence_prefix="artifact-complete",
+        )
+
+        self.assertEqual(
+            driver.TalentGrantMutableState(1, (selected_id,), True),
+            state,
+        )
+        self.assertEqual(6, viewport)
+        self.assertEqual(5, device.hierarchy_reads)
+        self.assertEqual(8, device.reverse_swipes)
+        self.assertEqual(6, device.forward_swipes)
+
+    def test_grouped_talent_reacquisition_accepts_the_last_scan_bound(self) -> None:
+        resource_id = "creation-prerequisite-talent-grant-authority"
+        target = driver.shared.UiNode({"resource-id": resource_id})
+
+        class LastBoundDevice:
+            def __init__(self) -> None:
+                self.hierarchy_reads = 0
+                self.reverse_swipes = 0
+
+            def hierarchy(self):
+                self.hierarchy_reads += 1
+                return [target] if self.hierarchy_reads == 4 else [driver.shared.UiNode({})]
+
+            def swipe_down(self, *, distance_ratio):
+                self.asserted_distance_ratio = distance_ratio
+                self.reverse_swipes += 1
+
+            @staticmethod
+            def dismiss_system_ui_anr(_nodes):
+                return False
+
+            @staticmethod
+            def capture(name):
+                raise AssertionError(f"unexpected capture: {name}")
+
+        device = LastBoundDevice()
+        snapshot = driver.reacquire_exact_talent_state_group(
+            device,
+            (resource_id,),
+            3,
+            0,
+            3,
+            evidence_prefix="last-bound",
+        )
+
+        self.assertIs(target, snapshot.resources[resource_id])
+        self.assertEqual(0, snapshot.logical_viewport)
+        self.assertEqual(3, snapshot.reverse_reacquisition_swipes)
+        self.assertEqual([target], snapshot.nodes)
+        self.assertEqual(4, device.hierarchy_reads)
+        self.assertEqual(6, device.reverse_swipes)
+
+    def test_grouped_talent_reacquisition_rejects_one_beyond_scan_bound(self) -> None:
+        resource_id = "creation-prerequisite-talent-grant-authority"
+
+        class OneBeyondDevice:
+            def __init__(self) -> None:
+                self.hierarchy_reads = 0
+                self.reverse_swipes = 0
+                self.captures: list[str] = []
+
+            def hierarchy(self):
+                self.hierarchy_reads += 1
+                if self.hierarchy_reads == 5:
+                    return [driver.shared.UiNode({"resource-id": resource_id})]
+                return [driver.shared.UiNode({})]
+
+            def swipe_down(self, *, distance_ratio):
+                self.asserted_distance_ratio = distance_ratio
+                self.reverse_swipes += 1
+
+            @staticmethod
+            def dismiss_system_ui_anr(_nodes):
+                return False
+
+            def capture(self, name):
+                self.captures.append(name)
+
+        device = OneBeyondDevice()
+        with self.assertRaisesRegex(
+            RuntimeError,
+            "scan-proven 3-swipe reverse compensation bound",
+        ):
+            driver.reacquire_exact_talent_state_group(
+                device,
+                (resource_id,),
+                3,
+                0,
+                3,
+                evidence_prefix="one-beyond",
+            )
+
+        self.assertEqual(4, device.hierarchy_reads)
+        self.assertEqual(6, device.reverse_swipes)
+        self.assertEqual(["one-beyond-unavailable"], device.captures)
+
+    def test_grouped_talent_reacquisition_rejects_duplicate_exact_id(self) -> None:
+        resource_id = "creation-prerequisite-talent-grant-authority"
+        duplicate = driver.shared.UiNode({"resource-id": resource_id})
+        device = mock.Mock()
+        device.hierarchy.return_value = [duplicate, duplicate]
+
+        with self.assertRaisesRegex(RuntimeError, "cardinality 2"):
+            driver.reacquire_exact_talent_state_group(
+                device,
+                (resource_id,),
+                1,
+                0,
+                1,
+                evidence_prefix="duplicate",
+            )
+
+        device.swipe_down.assert_called_once_with(distance_ratio=0.68)
+        device.capture.assert_called_once_with("duplicate-cardinality-invalid")
+
+    def test_exact_measured_talent_tap_reacquires_after_reverse_geometry_drift(
+        self,
+    ) -> None:
+        resource_id = "creation-prerequisite-talent-active-skill-option-choice-0001"
+        disabled = driver.shared.UiNode(
+            {
+                "resource-id": (
+                    "creation-prerequisite-talent-active-skill-option-disabled"
+                ),
+                "enabled": "false",
+                "clickable": "true",
+            }
+        )
+        target = driver.shared.UiNode(
+            {
+                "resource-id": resource_id,
+                "content-desc": "Arcana",
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[98,467][984,695]",
+            }
+        )
+        device = mock.Mock()
+        device.hierarchy.side_effect = [[disabled], [target]]
+        device.dismiss_system_ui_anr.return_value = False
+        device.node_has_tappable_bounds.return_value = True
+        navigation = {
+            "endViewport": 3,
+            "resourceViewports": {resource_id: 0},
+        }
+
+        viewport = driver.tap_exact_measured_talent_resource(
+            device,
+            resource_id,
+            navigation,
+            3,
+            evidence_prefix="measured-tap",
+        )
+
+        self.assertEqual(0, viewport)
+        self.assertEqual(2, device.hierarchy.call_count)
+        self.assertEqual(
+            [
+                mock.call(distance_ratio=0.68),
+                mock.call(distance_ratio=0.68),
+                mock.call(distance_ratio=0.68),
+                mock.call(distance_ratio=0.22),
+            ],
+            device.swipe_down.call_args_list,
+        )
+        device.shell.assert_called_once_with("input", "tap", "541", "581")
+        device.capture.assert_not_called()
+
+    def test_grouped_talent_reacquisition_keeps_retry_budgets_separate(self) -> None:
+        resource_id = "creation-prerequisite-talent-grant-authority"
+        target = driver.shared.UiNode({"resource-id": resource_id})
+        overlay = driver.shared.UiNode({"content-desc": "system ui"})
+        device = mock.Mock()
+        device.hierarchy.side_effect = [[], [overlay], [target]]
+        device.dismiss_system_ui_anr.side_effect = [True]
+
+        with mock.patch.object(driver.time, "sleep"):
+            snapshot = driver.reacquire_exact_talent_state_group(
+                device,
+                (resource_id,),
+                1,
+                0,
+                1,
+                evidence_prefix="separate-retries",
+                max_empty_hierarchy_reads=1,
+                max_system_ui_dismissals=1,
+            )
+
+        self.assertIs(target, snapshot.resources[resource_id])
+        self.assertEqual(0, snapshot.logical_viewport)
+        self.assertEqual(0, snapshot.reverse_reacquisition_swipes)
+        self.assertEqual(3, device.hierarchy.call_count)
+        device.swipe_down.assert_called_once_with(distance_ratio=0.68)
+        device.capture.assert_not_called()
+
+    def test_grouped_talent_state_rejects_unmeasured_navigation_topology(self) -> None:
+        option_id = "creation-prerequisite-talent-active-skill-option-choice-0001"
+        baseline = driver.TalentGrantSurface(
+            kind="Active skills",
+            selected_count=0,
+            required_count=1,
+            grant_digest="sha256:" + ("a" * 64),
+            option_ids=(option_id,),
+            enabled_option_ids=(option_id,),
+            selected_option_ids=(),
+            completion_enabled=False,
+        )
+        navigation = {
+            "endViewport": 2,
+            "resourceViewports": {
+                "creation-prerequisite-talent-grant-authority": 0,
+                "creation-prerequisite-talent-grant-digest": 0,
+                option_id: 3,
+                "creation-prerequisite-talent-grant-complete": 2,
+            },
+            "resourceDetails": {option_id: ("Arcana",)},
+        }
+        device = mock.Mock()
+
+        with self.assertRaisesRegex(RuntimeError, "exact bounded scan topology"):
+            driver.read_talent_grant_grouped_state(
+                device,
+                "Active skills",
+                baseline,
+                navigation,
+                2,
+                expected_selected_option_ids=(option_id,),
+                expected_completion_enabled=True,
+                evidence_prefix="invalid-topology",
+            )
+
+        device.hierarchy.assert_not_called()
+        device.swipe_down.assert_not_called()
+
+    def test_talent_navigation_topology_requires_exact_ints_within_zero_to_forty(
+        self,
+    ) -> None:
+        self.assertEqual(
+            40,
+            driver._validated_talent_navigation_end(
+                {"endViewport": 40, "resourceViewports": {"target": 40}},
+                40,
+            ),
+        )
+        cases = (
+            ({"endViewport": 41, "resourceViewports": {"target": 40}}, 40),
+            ({"endViewport": True, "resourceViewports": {"target": 0}}, 0),
+            ({"endViewport": 1, "resourceViewports": {"target": True}}, 1),
+            ({"endViewport": 1, "resourceViewports": {"target": -1}}, 1),
+            ({"endViewport": 1, "resourceViewports": {"target": 2}}, 1),
+            ({"endViewport": 1, "resourceViewports": {"target": 1}}, True),
+        )
+        for navigation, current_viewport in cases:
+            with self.subTest(
+                navigation=navigation,
+                current_viewport=current_viewport,
+            ), self.assertRaisesRegex(RuntimeError, "exact bounded scan topology"):
+                driver._validated_talent_navigation_end(
+                    navigation,
+                    current_viewport,
+                )
+
     def test_grouped_talent_state_reuses_catalog_and_fails_closed_on_drift(self) -> None:
         option_id = "creation-prerequisite-talent-active-skill-option-choice-0001"
         digest = "sha256:" + ("a" * 64)
@@ -1664,12 +2067,14 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             completion_enabled=False,
         )
         navigation = {
+            "endViewport": 0,
             "resourceViewports": {
                 "creation-prerequisite-talent-grant-authority": 0,
                 "creation-prerequisite-talent-grant-digest": 0,
                 option_id: 0,
                 "creation-prerequisite-talent-grant-complete": 0,
-            }
+            },
+            "resourceDetails": {option_id: ("Arcana",)},
         }
 
         def nodes(
@@ -1680,11 +2085,15 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             observed_digest: str = digest,
             duplicate: bool = False,
             enabled: bool = True,
+            option_detail: str = "Arcana",
+            digest_detail: str = "",
         ) -> list[driver.shared.UiNode]:
             option = driver.shared.UiNode(
                 {
                     "resource-id": option_id,
-                    "content-desc": "✓ Arcana" if selected else "Arcana",
+                    "content-desc": (
+                        ("✓ " if selected else "") + option_detail
+                    ),
                     "enabled": str(enabled).lower(),
                     "clickable": "true",
                     "bounds": "[10,100][900,300]",
@@ -1701,6 +2110,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                     {
                         "resource-id": "creation-prerequisite-talent-grant-digest",
                         "text": observed_digest,
+                        "content-desc": digest_detail,
                     }
                 ),
                 option,
@@ -1734,6 +2144,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         failures = (
             (nodes(duplicate=True), "cardinality 2"),
             (nodes(observed_digest="sha256:" + ("b" * 64)), "immutable authority"),
+            (nodes(digest_detail="not-the-exact-digest"), "immutable authority"),
+            (nodes(option_detail="Arcana changed"), "changed exact option detail"),
             (nodes(kind="Skill groups"), "kind or required count"),
             (nodes(required=2), "kind or required count"),
             (nodes(enabled=False), "enabled exact selection"),
@@ -2153,6 +2565,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         ]
         device.node_has_tappable_bounds.return_value = True
         navigation = {
+            "endViewport": 7,
             "resourceViewports": {
                 "creation-prerequisite-talent-grant-complete": 7,
             }
@@ -4548,6 +4961,57 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             with self.subTest(marker=marker):
                 self.assertIn(marker, source)
         self.assertLess(source.index("timing = progress.finish()"), source.index("receipt = {"))
+
+    def test_talent_authority_phases_are_ordered_and_independently_bounded(self) -> None:
+        source = inspect.getsource(driver.execute)
+        phase_ids = (
+            "typed-authority-options",
+            "talent-active-skill-grant",
+            "talent-active-preview",
+            "talent-skill-group-grant",
+            "preview-confirm",
+        )
+        for phase_id in phase_ids:
+            with self.subTest(phase_id=phase_id):
+                self.assertEqual(150_000, driver.PHASE_BUDGET_MS[phase_id])
+
+        typed = source.index('progress.advance("typed-authority-options")')
+        active = source.index('progress.advance("talent-active-skill-grant")')
+        active_preview = source.index('progress.advance("talent-active-preview")')
+        skill_group = source.index('progress.advance("talent-skill-group-grant")')
+        final_preview = source.index('progress.advance("preview-confirm")')
+        self.assertEqual(
+            [typed, active, active_preview, skill_group, final_preview],
+            sorted((typed, active, active_preview, skill_group, final_preview)),
+        )
+        self.assertLess(
+            source.index("active_talent_option_id = tap_enabled_authority_option("),
+            active,
+        )
+        self.assertLess(active, source.index("active_grant_proof = choose_and_prove_talent_grant("))
+        self.assertLess(
+            source.index("active_grant_proof.current_viewport"),
+            active_preview,
+        )
+        self.assertLess(active_preview, source.index("active_preview_digest = canonical_digest("))
+        self.assertLess(
+            source.index('typed_selections["talent"] = tap_enabled_authority_option('),
+            skill_group,
+        )
+        self.assertLess(
+            skill_group,
+            source.index("skill_group_grant_proof = choose_and_prove_talent_grant("),
+        )
+        self.assertLess(
+            source.index("skill_group_grant_proof.current_viewport"),
+            final_preview,
+        )
+        self.assertLess(final_preview, source.index("skill_group_plan_digest ="))
+        self.assertEqual(15 * 60 * 1000, driver.TOTAL_PERFORMANCE_TARGET_MS)
+        self.assertEqual(
+            (len(driver.PHASE_ORDER) + 1) // 2,
+            driver.TIMING_ROUNDING_TOLERANCE_MS,
+        )
 
     def test_main_records_failure_evidence_without_converting_it_to_a_pass(self) -> None:
         source = inspect.getsource(driver.main)

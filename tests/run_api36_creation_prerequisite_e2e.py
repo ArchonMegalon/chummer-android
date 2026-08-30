@@ -150,6 +150,9 @@ PHASE_BUDGET_MS = {
     "authority-inventory": 90_000,
     "priority-ranks": 150_000,
     "typed-authority-options": 150_000,
+    "talent-active-skill-grant": 150_000,
+    "talent-active-preview": 150_000,
+    "talent-skill-group-grant": 150_000,
     "preview-confirm": 150_000,
     "same-process-reopen": 90_000,
     "resources-preview-confirm": 150_000,
@@ -1055,6 +1058,8 @@ def move_between_measured_viewports(
 def measured_reverse_reacquisition_bound(
     current_viewport: int,
     target_viewport: int,
+    *,
+    maximum_viewport: int = 18,
 ) -> int:
     """Bound exact-node compensation by the forward scan's measured delta.
 
@@ -1071,10 +1076,13 @@ def measured_reverse_reacquisition_bound(
         or current_viewport < 0
         or target_viewport < 0
         or target_viewport > current_viewport
-        or current_viewport > 18
+        or type(maximum_viewport) is not int
+        or maximum_viewport < 0
+        or current_viewport > maximum_viewport
     ):
         raise ValueError(
-            "Exact-node reacquisition requires integer viewports ordered within 0..18"
+            "Exact-node reacquisition requires integer viewports ordered within "
+            f"0..{maximum_viewport!r}"
         )
     return current_viewport - target_viewport
 
@@ -3360,6 +3368,14 @@ def _accessible_values(node: shared.UiNode) -> tuple[str, ...]:
     )
 
 
+def _talent_option_identity_values(node: shared.UiNode) -> tuple[str, ...]:
+    """Return exact immutable option detail, independent of its check marker."""
+    return tuple(
+        value.removeprefix("✓ ")
+        for value in _accessible_values(node)
+    )
+
+
 def _is_exact_tokenized_resource_id(resource_id: str, prefix: str) -> bool:
     if not resource_id.startswith(prefix):
         return False
@@ -3429,6 +3445,7 @@ def read_talent_grant_surface(
     seen_digest = False
     seen_completion = False
     resource_viewports: dict[str, set[int]] = {}
+    option_identity_values: dict[str, set[tuple[str, ...]]] = {}
 
     for viewport_index, nodes in enumerate(scan.screens):
         screen_ids: list[str] = []
@@ -3451,6 +3468,9 @@ def read_talent_grant_surface(
                     malformed_option_ids.add(resource_id)
                     continue
                 option_ids.add(resource_id)
+                option_identity_values.setdefault(resource_id, set()).add(
+                    _talent_option_identity_values(node)
+                )
                 is_selected = any(value.startswith("✓ ") for value in values)
                 if is_selected:
                     selected_option_ids.add(resource_id)
@@ -3487,6 +3507,12 @@ def read_talent_grant_surface(
         )
 
     contradictions = selected_option_ids & explicitly_unselected_option_ids
+    ambiguous_option_details = {
+        resource_id
+        for resource_id in option_ids
+        if option_identity_values.get(resource_id) in (None, {()})
+        or len(option_identity_values.get(resource_id, set())) != 1
+    }
     if (
         not seen_authority
         or not seen_digest
@@ -3495,6 +3521,7 @@ def read_talent_grant_surface(
         or opposite_option_ids
         or duplicate_ids
         or contradictions
+        or ambiguous_option_details
         or len(authority_counts) != 1
         or len(grant_digests) != 1
         or len(completion_states) != 1
@@ -3506,7 +3533,8 @@ def read_talent_grant_surface(
             f"completion={seen_completion}, counts={sorted(authority_counts)!r}, "
             f"digests={sorted(grant_digests)!r}, malformed={sorted(malformed_option_ids)!r}, "
             f"opposite={sorted(opposite_option_ids)!r}, duplicates={sorted(duplicate_ids)!r}, "
-            f"contradictions={sorted(contradictions)!r}"
+            f"contradictions={sorted(contradictions)!r}, "
+            f"ambiguousDetails={sorted(ambiguous_option_details)!r}"
         )
 
     selected_count, required_count, observed_kind = next(iter(authority_counts))
@@ -3549,6 +3577,10 @@ def read_talent_grant_surface(
                     resource_id: max(viewports)
                     for resource_id, viewports in resource_viewports.items()
                 },
+                "resourceDetails": {
+                    resource_id: next(iter(option_identity_values[resource_id]))
+                    for resource_id in sorted(option_ids)
+                },
             }
         )
     return surface
@@ -3558,6 +3590,13 @@ class TalentGrantMutableState(NamedTuple):
     selected_count: int
     selected_option_ids: tuple[str, ...]
     completion_enabled: bool
+
+
+class TalentStateGroupSnapshot(NamedTuple):
+    nodes: list[shared.UiNode]
+    resources: dict[str, shared.UiNode]
+    logical_viewport: int
+    reverse_reacquisition_swipes: int
 
 
 def _measured_resource_viewport(
@@ -3575,6 +3614,190 @@ def _measured_resource_viewport(
     return viewport
 
 
+def _measured_talent_resource_detail(
+    navigation: dict[str, object],
+    resource_id: str,
+) -> tuple[str, ...]:
+    details = navigation.get("resourceDetails")
+    if not isinstance(details, dict):
+        raise RuntimeError("Talent grant inventory emitted no exact resource details")
+    detail = details.get(resource_id)
+    if (
+        not isinstance(detail, tuple)
+        or not detail
+        or any(not isinstance(value, str) or not value for value in detail)
+    ):
+        raise RuntimeError(
+            f"Talent grant inventory emitted no exact detail for {resource_id!r}"
+        )
+    return detail
+
+
+def _validated_talent_navigation_end(
+    navigation: dict[str, object],
+    current_viewport: int,
+) -> int:
+    end_viewport = navigation.get("endViewport")
+    viewports = navigation.get("resourceViewports")
+    if (
+        type(end_viewport) is not int
+        or end_viewport < 0
+        or end_viewport > 40
+        or type(current_viewport) is not int
+        or current_viewport < 0
+        or current_viewport > end_viewport
+        or not isinstance(viewports, dict)
+        or any(
+            type(viewport) is not int
+            or viewport < 0
+            or viewport > end_viewport
+            for viewport in viewports.values()
+        )
+    ):
+        raise RuntimeError(
+            "Talent grant inventory navigation is not an exact bounded scan topology"
+        )
+    return end_viewport
+
+
+def reacquire_exact_talent_state_group(
+    device: shared.Device,
+    resource_ids: tuple[str, ...],
+    current_viewport: int,
+    target_viewport: int,
+    scan_end_viewport: int,
+    *,
+    evidence_prefix: str,
+    measured_distance_ratio: float = 0.68,
+    reacquisition_distance_ratio: float = 0.22,
+    max_empty_hierarchy_reads: int = 3,
+    max_system_ui_dismissals: int = 3,
+) -> TalentStateGroupSnapshot:
+    """Reacquire one scan-proven state group after a bounded measured move.
+
+    A same-ratio reverse gesture can be shorter than the forward gesture that
+    established the catalog inventory.  The initial measured move therefore
+    remains the fast path, while a missing reverse target authorizes at most
+    the same measured delta again.  Each compensation gesture is followed by
+    a fresh dump.  Empty hierarchies and dismissed system UI retain independent
+    retry budgets and never consume that geometric bound.
+    """
+    if (
+        not resource_ids
+        or len(resource_ids) != len(set(resource_ids))
+        or any(not resource_id for resource_id in resource_ids)
+        or type(max_empty_hierarchy_reads) is not int
+        or max_empty_hierarchy_reads < 0
+        or type(max_system_ui_dismissals) is not int
+        or max_system_ui_dismissals < 0
+    ):
+        raise ValueError(
+            "Exact Talent group IDs and separate nonnegative retry bounds are required"
+        )
+    if (
+        type(scan_end_viewport) is not int
+        or scan_end_viewport < 0
+        or scan_end_viewport > 40
+        or type(current_viewport) is not int
+        or current_viewport < 0
+        or current_viewport > scan_end_viewport
+        or type(target_viewport) is not int
+        or target_viewport < 0
+        or target_viewport > scan_end_viewport
+    ):
+        raise ValueError("Talent group viewports must belong to the scan topology")
+
+    reverse_bound = (
+        measured_reverse_reacquisition_bound(
+            current_viewport,
+            target_viewport,
+            maximum_viewport=scan_end_viewport,
+        )
+        if target_viewport < current_viewport
+        else 0
+    )
+    move_between_measured_viewports(
+        device,
+        current_viewport,
+        target_viewport,
+        distance_ratio=measured_distance_ratio,
+        delay_seconds=0.0,
+    )
+    reverse_swipes = 0
+    empty_hierarchy_reads = 0
+    system_ui_dismissals = 0
+    while reverse_swipes <= reverse_bound:
+        nodes = fresh_hierarchy_timed(device, [])
+        if not nodes:
+            empty_hierarchy_reads += 1
+            if empty_hierarchy_reads > max_empty_hierarchy_reads:
+                device.capture(f"{evidence_prefix}-empty-hierarchy-exhausted")
+                raise RuntimeError(
+                    "Grouped Talent state exhausted its separate transient "
+                    f"empty-hierarchy budget of {max_empty_hierarchy_reads} reads"
+                )
+            time.sleep(0.75)
+            continue
+        matches = {
+            resource_id: [
+                node for node in nodes if _exact_resource_id(node) == resource_id
+            ]
+            for resource_id in resource_ids
+        }
+        duplicates = {
+            resource_id: len(candidates)
+            for resource_id, candidates in matches.items()
+            if len(candidates) > 1
+        }
+        if duplicates:
+            device.capture(f"{evidence_prefix}-cardinality-invalid")
+            if len(duplicates) == 1:
+                resource_id, cardinality = next(iter(duplicates.items()))
+                detail = f"{resource_id!r} has cardinality {cardinality}"
+            else:
+                detail = repr(duplicates)
+            raise RuntimeError(
+                "Grouped Talent state exact resource cardinality was ambiguous: "
+                f"{detail}"
+            )
+        missing = tuple(
+            resource_id
+            for resource_id, candidates in matches.items()
+            if not candidates
+        )
+        if not missing:
+            return TalentStateGroupSnapshot(
+                nodes=nodes,
+                resources={
+                    resource_id: candidates[0]
+                    for resource_id, candidates in matches.items()
+                },
+                logical_viewport=target_viewport,
+                reverse_reacquisition_swipes=reverse_swipes,
+            )
+        if device.dismiss_system_ui_anr(nodes):
+            system_ui_dismissals += 1
+            if system_ui_dismissals > max_system_ui_dismissals:
+                device.capture(f"{evidence_prefix}-system-ui-exhausted")
+                raise RuntimeError(
+                    "Grouped Talent state exhausted its separate system-UI dismissal "
+                    f"budget of {max_system_ui_dismissals}"
+                )
+            time.sleep(2)
+            continue
+        if reverse_swipes >= reverse_bound:
+            break
+        device.swipe_down(distance_ratio=reacquisition_distance_ratio)
+        reverse_swipes += 1
+
+    device.capture(f"{evidence_prefix}-unavailable")
+    raise RuntimeError(
+        "Grouped Talent state could not reacquire exact resources "
+        f"{missing!r} within the scan-proven {reverse_bound}-swipe "
+        "reverse compensation bound"
+    )
+
+
 def tap_exact_measured_talent_resource(
     device: shared.Device,
     resource_id: str,
@@ -3585,15 +3808,19 @@ def tap_exact_measured_talent_resource(
 ) -> int:
     """Move to a measured viewport, reacquire one exact node, then tap it."""
     target_viewport = _measured_resource_viewport(navigation, resource_id)
-    move_between_measured_viewports(device, current_viewport, target_viewport)
-    nodes = device.hierarchy()
-    matches = [node for node in nodes if _exact_resource_id(node) == resource_id]
-    if len(matches) != 1:
-        device.capture(f"{evidence_prefix}-cardinality-invalid")
-        raise RuntimeError(
-            f"Measured Talent resource {resource_id!r} has cardinality {len(matches)}"
-        )
-    node = matches[0]
+    scan_end_viewport = _validated_talent_navigation_end(
+        navigation,
+        current_viewport,
+    )
+    snapshot = reacquire_exact_talent_state_group(
+        device,
+        (resource_id,),
+        current_viewport,
+        target_viewport,
+        scan_end_viewport,
+        evidence_prefix=evidence_prefix,
+    )
+    node = snapshot.resources[resource_id]
     if (
         node.attributes.get("enabled") != "true"
         or node.attributes.get("clickable") != "true"
@@ -3602,7 +3829,7 @@ def tap_exact_measured_talent_resource(
         device.capture(f"{evidence_prefix}-not-tappable")
         raise RuntimeError(f"Measured Talent resource {resource_id!r} was not tappable")
     device.shell("input", "tap", *(str(value) for value in node.center))
-    return target_viewport
+    return snapshot.logical_viewport
 
 
 def read_talent_grant_grouped_state(
@@ -3636,6 +3863,14 @@ def read_talent_grant_grouped_state(
         *expected_unselected,
         completion_id,
     )
+    scan_end_viewport = _validated_talent_navigation_end(
+        navigation,
+        current_viewport,
+    )
+    expected_option_details = {
+        resource_id: _measured_talent_resource_detail(navigation, resource_id)
+        for resource_id in (*expected_selected, *expected_unselected)
+    }
     grouped: dict[int, list[str]] = {}
     for resource_id in required_ids:
         grouped.setdefault(
@@ -3645,20 +3880,16 @@ def read_talent_grant_grouped_state(
 
     observed: dict[str, shared.UiNode] = {}
     for viewport in sorted(grouped):
-        current_viewport = move_between_measured_viewports(
+        snapshot = reacquire_exact_talent_state_group(
             device,
+            tuple(grouped[viewport]),
             current_viewport,
             viewport,
+            scan_end_viewport,
+            evidence_prefix=f"{evidence_prefix}-viewport-{viewport}",
         )
-        nodes = device.hierarchy()
-        for resource_id in grouped[viewport]:
-            matches = [node for node in nodes if _exact_resource_id(node) == resource_id]
-            if len(matches) != 1:
-                device.capture(f"{evidence_prefix}-{resource_id}-cardinality-invalid")
-                raise RuntimeError(
-                    f"Grouped Talent state {resource_id!r} has cardinality {len(matches)}"
-                )
-            observed[resource_id] = matches[0]
+        observed.update(snapshot.resources)
+        current_viewport = snapshot.logical_viewport
 
     authority_values = _accessible_values(observed[authority_id])
     counts = {
@@ -3670,11 +3901,7 @@ def read_talent_grant_grouped_state(
         for value in authority_values
         for match in TALENT_GRANT_REQUIRED.finditer(value)
     }
-    digest_values = {
-        value
-        for value in _accessible_values(observed[digest_id])
-        if CANONICAL_AUTHORITY_DIGEST.fullmatch(value)
-    }
+    digest_values = set(_accessible_values(observed[digest_id]))
     if len(counts) != 1 or digest_values != {baseline.grant_digest}:
         device.capture(f"{evidence_prefix}-authority-drift")
         raise RuntimeError(
@@ -3692,6 +3919,14 @@ def read_talent_grant_grouped_state(
     for resource_id in expected_selected:
         node = observed[resource_id]
         if (
+            _talent_option_identity_values(node)
+            != expected_option_details[resource_id]
+        ):
+            device.capture(f"{evidence_prefix}-{resource_id}-detail-drift")
+            raise RuntimeError(
+                f"Grouped Talent state changed exact option detail for {resource_id!r}"
+            )
+        if (
             not any(value.startswith("✓ ") for value in _accessible_values(node))
             or node.attributes.get("enabled") != "true"
             or node.attributes.get("clickable") != "true"
@@ -3703,6 +3938,14 @@ def read_talent_grant_grouped_state(
             )
     for resource_id in expected_unselected:
         node = observed[resource_id]
+        if (
+            _talent_option_identity_values(node)
+            != expected_option_details[resource_id]
+        ):
+            device.capture(f"{evidence_prefix}-{resource_id}-detail-drift")
+            raise RuntimeError(
+                f"Grouped Talent state changed exact option detail for {resource_id!r}"
+            )
         if (
             any(value.startswith("✓ ") for value in _accessible_values(node))
             or node.attributes.get("enabled") != "true"
@@ -4769,6 +5012,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         navigation_out=active_talent_option_navigation,
     )
     device.wait("creation-prerequisite-talent-grant-page", timeout=45)
+    progress.advance("talent-active-skill-grant")
     active_grant_proof = choose_and_prove_talent_grant(
         device,
         "Active skills",
@@ -4792,7 +5036,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     if not active_talent_selection_id:
         raise RuntimeError("Active-skill Talent SelectionId was not exposed by Core authority")
 
-    progress.advance("preview-confirm")
+    progress.advance("talent-active-preview")
     device.tap("creation-prerequisite-prepare-preview", scroll=True, max_scrolls=22)
     device.wait("creation-prerequisite-preview-page", timeout=60)
     active_preview_digest = canonical_digest(
@@ -4835,6 +5079,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         navigation_out=skill_group_option_navigation,
     )
     device.wait("creation-prerequisite-talent-grant-page", timeout=45)
+    progress.advance("talent-skill-group-grant")
     skill_group_grant_proof = choose_and_prove_talent_grant(
         device,
         "Skill groups",
@@ -4875,6 +5120,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
             "Core SelectionId"
         )
 
+    progress.advance("preview-confirm")
     # A plain Back from a category route preserves the exact in-memory typed rank choice.
     attributes_before = node_text(
         device,
