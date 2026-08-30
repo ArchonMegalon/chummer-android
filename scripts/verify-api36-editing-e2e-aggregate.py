@@ -24,11 +24,18 @@ JOURNEYS = {
     "career-weapon-fire": "career-weapon-fire",
 }
 CREATION_PROGRESS_SCHEMA = "chummer.android.creation-prerequisite-progress/v2"
-CREATION_TOTAL_TARGET_MS = 15 * 60 * 1000
+CREATION_TOTAL_TARGET_MS = 30 * 60 * 1000
 CREATION_METHOD_REACQUISITION_SCAN_ID = (
     "creation-stage-method-ready-reacquisition"
 )
 CREATION_METHOD_REACQUISITION_MAX_SCROLLS = 18
+TALENT_REACQUISITION_PHASES = (
+    "talent-active-skill-grant",
+    "talent-active-skill-preservation",
+    "talent-active-skill-reset",
+    "talent-active-skill-reselection",
+    "talent-skill-group-grant",
+)
 CREATION_METHOD_REACQUISITION_DIRECTION = "down"
 CREATION_METHOD_REACQUISITION_DISTANCE_RATIO = 0.60
 CREATION_PHASE_BUDGETS_MS = {
@@ -42,6 +49,9 @@ CREATION_PHASE_BUDGETS_MS = {
     "priority-ranks": 150_000,
     "typed-authority-options": 150_000,
     "talent-active-skill-grant": 150_000,
+    "talent-active-skill-preservation": 150_000,
+    "talent-active-skill-reset": 150_000,
+    "talent-active-skill-reselection": 150_000,
     "talent-active-preview": 150_000,
     "talent-skill-group-grant": 150_000,
     "preview-confirm": 150_000,
@@ -181,6 +191,149 @@ def require_creation_method_reacquisition_scan(
         raise ValueError(
             "creation method reacquisition scan did not reconcile gestures, screens, "
             "hierarchy reads, or phase timing"
+        )
+
+
+def require_talent_reacquisition_scans(
+    timing: dict[str, Any],
+    *,
+    phase_elapsed_by_id: dict[str, int],
+) -> None:
+    scans = timing.get("scans")
+    if not isinstance(scans, list):
+        raise ValueError("creation prerequisite scan timing evidence is missing")
+    matches = [
+        scan
+        for scan in scans
+        if isinstance(scan, dict)
+        and str(scan.get("scanId", "")).endswith("-reacquisition")
+        and "exactResourceIds" in scan
+    ]
+    observed_phases: set[str] = set()
+    elapsed_by_phase: dict[str, int] = {}
+    scan_count_by_phase: dict[str, int] = {}
+    for scan in matches:
+        phase_id = scan.get("phaseId")
+        resource_ids = scan.get("exactResourceIds")
+        integer_fields = (
+            "startingViewport",
+            "targetViewport",
+            "normalizedTargetViewport",
+            "measuredDelta",
+            "configuredMaxScrolls",
+            "catalogMovementExtent",
+            "screens",
+            "swipes",
+            "emptyHierarchyReads",
+            "systemUiDismissals",
+            "maximumEmptyHierarchyReads",
+            "maximumSystemUiDismissals",
+            "hierarchyReadCount",
+            "hierarchyElapsedMs",
+            "maximumHierarchyReadMs",
+            "elapsedMs",
+        )
+        if (
+            scan.get("status") != "resolved"
+            or phase_id not in TALENT_REACQUISITION_PHASES
+            or scan.get("direction") not in {"forward", "reverse", "none"}
+            or scan.get("distanceRatio") != 0.60
+            or not isinstance(resource_ids, list)
+            or not resource_ids
+            or len(resource_ids) != len(set(resource_ids))
+            or any(not isinstance(value, str) or not value for value in resource_ids)
+            or any(
+                type(scan.get(field)) is not int or int(scan[field]) < 0
+                for field in integer_fields
+            )
+        ):
+            raise ValueError("Talent reacquisition scan identity or typed data differs")
+        value = {field: int(scan[field]) for field in integer_fields}
+        expected_direction = (
+            "forward"
+            if value["targetViewport"] > value["startingViewport"]
+            else "reverse"
+            if value["targetViewport"] < value["startingViewport"]
+            else "none"
+        )
+        expected_bound = (
+            value["catalogMovementExtent"]
+            if value["measuredDelta"] > 0
+            else 0
+        )
+        read_rounding_ms = (value["hierarchyReadCount"] + 1) // 2
+        mandatory_wait_ms = (
+            value["emptyHierarchyReads"] * 750
+            + value["systemUiDismissals"] * 2_000
+        )
+        maximum_lower_bound = (
+            (
+                value["hierarchyElapsedMs"]
+                + value["hierarchyReadCount"]
+                - 1
+            )
+            // value["hierarchyReadCount"]
+            if value["hierarchyReadCount"] > 0
+            else 0
+        )
+        if not (
+            value["startingViewport"] <= value["catalogMovementExtent"] <= 40
+            and value["targetViewport"] <= value["catalogMovementExtent"]
+            and value["normalizedTargetViewport"] == value["targetViewport"]
+            and value["measuredDelta"]
+            == abs(value["targetViewport"] - value["startingViewport"])
+            and scan.get("direction") == expected_direction
+            and value["configuredMaxScrolls"] == expected_bound
+            and value["swipes"] <= value["configuredMaxScrolls"]
+            and value["screens"] >= 1
+            and value["hierarchyReadCount"]
+            == value["screens"] + value["emptyHierarchyReads"]
+            and value["screens"]
+            == value["swipes"] + value["systemUiDismissals"] + 1
+            and value["emptyHierarchyReads"]
+            <= value["maximumEmptyHierarchyReads"] == 3
+            and value["systemUiDismissals"]
+            <= value["maximumSystemUiDismissals"] == 3
+            and value["hierarchyReadCount"] > 0
+            and value["maximumHierarchyReadMs"] >= maximum_lower_bound
+            and value["maximumHierarchyReadMs"] <= value["hierarchyElapsedMs"]
+            and value["hierarchyElapsedMs"]
+            <= value["elapsedMs"] + read_rounding_ms
+            and value["hierarchyElapsedMs"] + mandatory_wait_ms
+            <= value["elapsedMs"] + read_rounding_ms + 1
+            and value["elapsedMs"] <= phase_elapsed_by_id[str(phase_id)]
+        ):
+            raise ValueError(
+                "Talent reacquisition scan did not reconcile catalog geometry, "
+                "hierarchy reads, retries, or phase timing"
+            )
+        observed_phases.add(str(phase_id))
+        elapsed_by_phase[str(phase_id)] = (
+            elapsed_by_phase.get(str(phase_id), 0) + value["elapsedMs"]
+        )
+        scan_count_by_phase[str(phase_id)] = (
+            scan_count_by_phase.get(str(phase_id), 0) + 1
+        )
+    if observed_phases != set(TALENT_REACQUISITION_PHASES):
+        raise ValueError(
+            "Talent reacquisition scan phase coverage differs: "
+            f"expected={sorted(TALENT_REACQUISITION_PHASES)!r}, "
+            f"actual={sorted(observed_phases)!r}"
+        )
+    overcommitted = {
+        phase_id: {
+            "scanElapsedMs": elapsed_by_phase[phase_id],
+            "phaseElapsedMs": phase_elapsed_by_id[phase_id],
+        }
+        for phase_id in TALENT_REACQUISITION_PHASES
+        if elapsed_by_phase[phase_id]
+        > phase_elapsed_by_id[phase_id]
+        + (scan_count_by_phase[phase_id] + 1) // 2
+    }
+    if overcommitted:
+        raise ValueError(
+            "Talent reacquisition scan elapsed partitions exceed their phases: "
+            f"{overcommitted!r}"
         )
 
 
@@ -384,6 +537,10 @@ def require_creation_timing_within_budget(receipt: dict[str, Any]) -> None:
         advanced_phase_elapsed_ms=phase_elapsed_by_id[
             "advanced-editor-gate-inventory"
         ],
+    )
+    require_talent_reacquisition_scans(
+        timing,
+        phase_elapsed_by_id=phase_elapsed_by_id,
     )
 
 

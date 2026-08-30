@@ -1547,9 +1547,9 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             60_000,
             driver.PHASE_BUDGET_MS["prerequisite-authority-inventory"],
         )
-        self.assertEqual(900_000, driver.TOTAL_PERFORMANCE_TARGET_MS)
-        self.assertEqual(16, len(driver.PHASE_ORDER))
-        self.assertEqual(8, driver.TIMING_ROUNDING_TOLERANCE_MS)
+        self.assertEqual(1_800_000, driver.TOTAL_PERFORMANCE_TARGET_MS)
+        self.assertEqual(19, len(driver.PHASE_ORDER))
+        self.assertEqual(10, driver.TIMING_ROUNDING_TOLERANCE_MS)
         self.assertLess(navigation_start, cold_launch)
         self.assertLess(cold_launch, dialog_ready)
         self.assertLess(dialog_ready, authority_start)
@@ -1602,7 +1602,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             driver.TIMING_ROUNDING_TOLERANCE_MS,
             aggregate.CREATION_TIMING_ROUNDING_TOLERANCE_MS,
         )
-        self.assertEqual(8, driver.TIMING_ROUNDING_TOLERANCE_MS)
+        self.assertEqual(10, driver.TIMING_ROUNDING_TOLERANCE_MS)
         for phase_id in (
             "talent-active-skill-grant",
             "talent-active-preview",
@@ -2156,12 +2156,12 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         )
 
         self.assertIs(visible, snapshot.resources[resource_id])
-        self.assertEqual(1, snapshot.logical_viewport)
+        self.assertEqual(0, snapshot.logical_viewport)
         self.assertEqual(1, snapshot.reacquisition_swipes)
         self.assertEqual(2, device.hierarchy_reads)
         self.assertEqual(1, device.reverse_swipes)
 
-    def test_grouped_talent_overlap_returns_actual_observed_viewport(self) -> None:
+    def test_grouped_talent_overlap_normalizes_to_inventory_target_viewport(self) -> None:
         resource_id = "creation-prerequisite-talent-grant-authority"
         target = driver.shared.UiNode(
             {"resource-id": resource_id, "bounds": "[53,350][1028,550]"}
@@ -2179,10 +2179,118 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             evidence_prefix="overlap",
         )
 
-        self.assertEqual(4, snapshot.logical_viewport)
+        self.assertEqual(0, snapshot.logical_viewport)
         self.assertEqual(0, snapshot.reacquisition_swipes)
         device.swipe_down.assert_not_called()
         device.swipe_up.assert_not_called()
+
+    def test_grouped_talent_reacquisition_handles_noninvertible_scroll_geometry(
+        self,
+    ) -> None:
+        resource_id = "creation-prerequisite-talent-active-skill-option-perception"
+        target = driver.shared.UiNode(
+            {
+                "resource-id": resource_id,
+                "bounds": "[53,350][1028,550]",
+            }
+        )
+
+        class NoninvertibleScrollDevice:
+            def __init__(self) -> None:
+                self.hierarchy_reads = 0
+                self.forward_swipes = 0
+                self.forward_distances: list[float] = []
+
+            def hierarchy(self):
+                self.hierarchy_reads += 1
+                return [target] if self.forward_swipes == 10 else [driver.shared.UiNode({})]
+
+            def swipe_up(self, *, distance_ratio):
+                self.forward_swipes += 1
+                self.forward_distances.append(distance_ratio)
+
+            @staticmethod
+            def dismiss_system_ui_anr(_nodes):
+                return False
+
+            @staticmethod
+            def node_has_tappable_bounds(node):
+                return node is target
+
+            @staticmethod
+            def capture(name):
+                raise AssertionError(f"unexpected capture: {name}")
+
+        device = NoninvertibleScrollDevice()
+        receipts: list[dict[str, object]] = []
+        snapshot = driver.reacquire_exact_talent_state_group(
+            device,
+            (resource_id,),
+            2,
+            8,
+            11,
+            evidence_prefix="mutated-row-height",
+            scan_observer=receipts.append,
+        )
+
+        self.assertIs(target, snapshot.resources[resource_id])
+        self.assertEqual(8, snapshot.logical_viewport)
+        self.assertEqual("forward", snapshot.reacquisition_direction)
+        self.assertEqual(10, snapshot.reacquisition_swipes)
+        self.assertEqual(11, device.hierarchy_reads)
+        self.assertEqual(
+            [driver.TALENT_GRANT_SCAN_GESTURE_RATIO] * 10,
+            device.forward_distances,
+        )
+        self.assertEqual(1, len(receipts))
+        self.assertEqual(
+            {
+                "scanId": "mutated-row-height-reacquisition",
+                "status": "resolved",
+                "direction": "forward",
+                "distanceRatio": driver.TALENT_GRANT_SCAN_GESTURE_RATIO,
+                "startingViewport": 2,
+                "targetViewport": 8,
+                "normalizedTargetViewport": 8,
+                "measuredDelta": 6,
+                "configuredMaxScrolls": 11,
+                "catalogMovementExtent": 11,
+                "exactResourceIds": [resource_id],
+                "screens": 11,
+                "swipes": 10,
+                "emptyHierarchyReads": 0,
+                "systemUiDismissals": 0,
+                "maximumEmptyHierarchyReads": 3,
+                "maximumSystemUiDismissals": 3,
+                "hierarchyReadCount": 11,
+            },
+            {
+                key: receipts[0][key]
+                for key in (
+                    "scanId",
+                    "status",
+                    "direction",
+                    "distanceRatio",
+                    "startingViewport",
+                    "targetViewport",
+                    "normalizedTargetViewport",
+                    "measuredDelta",
+                    "configuredMaxScrolls",
+                    "catalogMovementExtent",
+                    "exactResourceIds",
+                    "screens",
+                    "swipes",
+                    "emptyHierarchyReads",
+                    "systemUiDismissals",
+                    "maximumEmptyHierarchyReads",
+                    "maximumSystemUiDismissals",
+                    "hierarchyReadCount",
+                )
+            },
+        )
+        self.assertGreaterEqual(receipts[0]["hierarchyElapsedMs"], 0)
+        self.assertGreaterEqual(receipts[0]["maximumHierarchyReadMs"], 0)
+        self.assertGreaterEqual(receipts[0]["elapsedMs"], 0)
 
     def test_grouped_talent_reacquisition_rejects_one_beyond_scan_bound(self) -> None:
         resource_id = "creation-prerequisite-talent-grant-authority"
@@ -2387,7 +2495,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             evidence_prefix="measured-tap",
         )
 
-        self.assertEqual(2, viewport)
+        self.assertEqual(0, viewport)
         self.assertEqual(2, device.hierarchy.call_count)
         device.swipe_down.assert_called_once_with(
             distance_ratio=driver.TALENT_GRANT_SCAN_GESTURE_RATIO,
@@ -2488,7 +2596,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             )
 
         self.assertIs(target, snapshot.resources[resource_id])
-        self.assertEqual(1, snapshot.logical_viewport)
+        self.assertEqual(0, snapshot.logical_viewport)
         self.assertEqual("reverse", snapshot.reacquisition_direction)
         self.assertEqual(0, snapshot.reacquisition_swipes)
         self.assertEqual(3, device.hierarchy.call_count)
@@ -2820,6 +2928,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         grouped_states = iter(
             ((complete, 5), (complete, 5), (incomplete, 5), (complete, 5))
         )
+        events: list[str] = []
         device = mock.Mock()
 
         def inventory(*_args, navigation_out=None, **_kwargs):
@@ -2828,6 +2937,11 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
         def measured(_device, resource_id, navigation, _current, **_kwargs):
             return int(navigation["resourceViewports"][resource_id])
+
+        def grouped(*_args, **_kwargs):
+            ordinal = sum(event.startswith("grouped-") for event in events) + 1
+            events.append(f"grouped-{ordinal}")
+            return next(grouped_states)
 
         with mock.patch.object(
             driver,
@@ -2840,7 +2954,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         ) as measured_tap, mock.patch.object(
             driver,
             "read_talent_grant_grouped_state",
-            side_effect=lambda *_args, **_kwargs: next(grouped_states),
+            side_effect=grouped,
         ) as grouped_scan:
             proof = driver.choose_and_prove_talent_grant(
                 device,
@@ -2848,6 +2962,11 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 talent_option_id,
                 talent_navigation,
                 scan_id_prefix="active",
+                continuation_phase_advances=(
+                    lambda: events.append("phase-preservation"),
+                    lambda: events.append("phase-reset"),
+                    lambda: events.append("phase-reselection"),
+                ),
             )
 
         self.assertEqual(1, inventory_scan.call_count)
@@ -2856,6 +2975,18 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertEqual(list(option_ids), proof.receipt["allOptionAutomationIds"])
         self.assertEqual(list(chosen), proof.receipt["selectedOptionAutomationIds"])
         self.assertEqual(5, proof.current_viewport)
+        self.assertEqual(
+            [
+                "grouped-1",
+                "phase-preservation",
+                "grouped-2",
+                "phase-reset",
+                "grouped-3",
+                "phase-reselection",
+                "grouped-4",
+            ],
+            events,
+        )
 
     def test_authority_option_collector_rejects_zero_candidates(self) -> None:
         device = mock.Mock()
@@ -6326,6 +6457,9 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         phase_ids = (
             "typed-authority-options",
             "talent-active-skill-grant",
+            "talent-active-skill-preservation",
+            "talent-active-skill-reset",
+            "talent-active-skill-reselection",
             "talent-active-preview",
             "talent-skill-group-grant",
             "preview-confirm",
@@ -6336,12 +6470,39 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
         typed = source.index('progress.advance("typed-authority-options")')
         active = source.index('progress.advance("talent-active-skill-grant")')
+        active_preservation = source.index(
+            'progress.advance("talent-active-skill-preservation")'
+        )
+        active_reset = source.index('progress.advance("talent-active-skill-reset")')
+        active_reselection = source.index(
+            'progress.advance("talent-active-skill-reselection")'
+        )
         active_preview = source.index('progress.advance("talent-active-preview")')
         skill_group = source.index('progress.advance("talent-skill-group-grant")')
         final_preview = source.index('progress.advance("preview-confirm")')
         self.assertEqual(
-            [typed, active, active_preview, skill_group, final_preview],
-            sorted((typed, active, active_preview, skill_group, final_preview)),
+            [
+                typed,
+                active,
+                active_preservation,
+                active_reset,
+                active_reselection,
+                active_preview,
+                skill_group,
+                final_preview,
+            ],
+            sorted(
+                (
+                    typed,
+                    active,
+                    active_preservation,
+                    active_reset,
+                    active_reselection,
+                    active_preview,
+                    skill_group,
+                    final_preview,
+                )
+            ),
         )
         self.assertLess(
             source.index("active_talent_option_id = tap_enabled_authority_option("),
@@ -6366,7 +6527,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             final_preview,
         )
         self.assertLess(final_preview, source.index("skill_group_plan_digest ="))
-        self.assertEqual(15 * 60 * 1000, driver.TOTAL_PERFORMANCE_TARGET_MS)
+        self.assertEqual(30 * 60 * 1000, driver.TOTAL_PERFORMANCE_TARGET_MS)
         self.assertEqual(
             (len(driver.PHASE_ORDER) + 1) // 2,
             driver.TIMING_ROUNDING_TOLERANCE_MS,

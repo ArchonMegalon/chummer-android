@@ -53,6 +53,9 @@ CREATION_PROSPECTIVE_PHASE_ELAPSED_MS = {
     "priority-ranks": 10_000,
     "typed-authority-options": 10_000,
     "talent-active-skill-grant": 8_000,
+    "talent-active-skill-preservation": 8_000,
+    "talent-active-skill-reset": 8_000,
+    "talent-active-skill-reselection": 8_000,
     "talent-active-preview": 5_000,
     "talent-skill-group-grant": 8_000,
     "preview-confirm": 8_000,
@@ -60,6 +63,33 @@ CREATION_PROSPECTIVE_PHASE_ELAPSED_MS = {
     "resources-preview-confirm": 9_000,
     "process-restart-reopen": 5_772,
 }
+
+
+def talent_reacquisition_scan(phase_id: str) -> dict[str, object]:
+    return {
+        "scanId": f"{phase_id}-fixture-reacquisition",
+        "status": "resolved",
+        "phaseId": phase_id,
+        "direction": "none",
+        "distanceRatio": 0.60,
+        "startingViewport": 0,
+        "targetViewport": 0,
+        "normalizedTargetViewport": 0,
+        "measuredDelta": 0,
+        "configuredMaxScrolls": 0,
+        "catalogMovementExtent": 11,
+        "exactResourceIds": [f"{phase_id}-fixture-resource"],
+        "screens": 1,
+        "swipes": 0,
+        "emptyHierarchyReads": 0,
+        "systemUiDismissals": 0,
+        "maximumEmptyHierarchyReads": 3,
+        "maximumSystemUiDismissals": 3,
+        "hierarchyReadCount": 1,
+        "hierarchyElapsedMs": 400,
+        "maximumHierarchyReadMs": 400,
+        "elapsedMs": 500,
+    }
 
 
 class Api36ArtifactAuthorityTests(unittest.TestCase):
@@ -179,6 +209,10 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                         "phaseId": "prerequisite-authority-inventory",
                         "elapsedMs": 36_987,
                     },
+                    *(
+                        talent_reacquisition_scan(phase_id)
+                        for phase_id in AGGREGATE.TALENT_REACQUISITION_PHASES
+                    ),
                 ],
             }
         else:
@@ -432,7 +466,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, expected_error):
                     self.validate(root)
 
-    def test_creation_timing_uses_the_exact_current_sixteen_phase_map(self) -> None:
+    def test_creation_timing_uses_the_exact_current_nineteen_phase_map(self) -> None:
         expected = {
             "device-preflight-install": 180_000,
             "initial-navigation": 60_000,
@@ -444,6 +478,9 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             "priority-ranks": 150_000,
             "typed-authority-options": 150_000,
             "talent-active-skill-grant": 150_000,
+            "talent-active-skill-preservation": 150_000,
+            "talent-active-skill-reset": 150_000,
+            "talent-active-skill-reselection": 150_000,
             "talent-active-preview": 150_000,
             "talent-skill-group-grant": 150_000,
             "preview-confirm": 150_000,
@@ -456,9 +493,9 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             tuple(expected),
             tuple(CREATION_PROSPECTIVE_PHASE_ELAPSED_MS),
         )
-        self.assertEqual(8, AGGREGATE.CREATION_TIMING_ROUNDING_TOLERANCE_MS)
+        self.assertEqual(10, AGGREGATE.CREATION_TIMING_ROUNDING_TOLERANCE_MS)
         self.assertEqual(
-            314_512,
+            338_512,
             sum(CREATION_PROSPECTIVE_PHASE_ELAPSED_MS.values()),
         )
 
@@ -686,9 +723,19 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                         {"timing": timing}
                     )
 
-    def test_creation_timing_rejects_legacy_eleven_and_fourteen_phase_maps(
+    def test_creation_timing_rejects_legacy_eleven_fourteen_and_sixteen_phase_maps(
         self,
     ) -> None:
+        legacy_sixteen = {
+            key: value
+            for key, value in AGGREGATE.CREATION_PHASE_BUDGETS_MS.items()
+            if key
+            not in {
+                "talent-active-skill-preservation",
+                "talent-active-skill-reset",
+                "talent-active-skill-reselection",
+            }
+        }
         legacy_eleven = {
             key: value
             for key, value in AGGREGATE.CREATION_PHASE_BUDGETS_MS.items()
@@ -698,6 +745,9 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                 "advanced-editor-gate-inventory",
                 "prerequisite-authority-inventory",
                 "talent-active-skill-grant",
+                "talent-active-skill-preservation",
+                "talent-active-skill-reset",
+                "talent-active-skill-reselection",
                 "talent-active-preview",
                 "talent-skill-group-grant",
             }
@@ -715,6 +765,9 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                 "dashboard-authority-inventory",
                 "advanced-editor-gate-inventory",
                 "prerequisite-authority-inventory",
+                "talent-active-skill-preservation",
+                "talent-active-skill-reset",
+                "talent-active-skill-reselection",
             }
         }
         legacy_fourteen = {
@@ -724,9 +777,11 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
         }
         self.assertEqual(11, len(legacy_eleven))
         self.assertEqual(14, len(legacy_fourteen))
+        self.assertEqual(16, len(legacy_sixteen))
         for name, legacy_map in (
             ("eleven", legacy_eleven),
             ("fourteen", legacy_fourteen),
+            ("sixteen", legacy_sixteen),
         ):
             with self.subTest(name=name):
                 timing = json.loads(json.dumps(
@@ -738,10 +793,10 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                         {"timing": timing}
                     )
 
-    def test_creation_timing_reconciles_phase_sum_with_exact_eight_ms_tolerance(
+    def test_creation_timing_reconciles_phase_sum_with_exact_ten_ms_tolerance(
         self,
     ) -> None:
-        for offset in (-8, 8):
+        for offset in (-10, 10):
             with self.subTest(offset=offset, accepted=True):
                 timing = json.loads(json.dumps(
                     self.raw_receipt("creation-prerequisite")["timing"]
@@ -750,7 +805,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                 timing["totalElapsedMs"] = phase_sum + offset
                 AGGREGATE.require_creation_timing_within_budget({"timing": timing})
 
-        for offset in (-9, 9):
+        for offset in (-11, 11):
             with self.subTest(offset=offset, accepted=False):
                 timing = json.loads(json.dumps(
                     self.raw_receipt("creation-prerequisite")["timing"]
@@ -758,6 +813,82 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                 phase_sum = sum(phase["elapsedMs"] for phase in timing["phases"])
                 timing["totalElapsedMs"] = phase_sum + offset
                 with self.assertRaisesRegex(ValueError, "does not reconcile"):
+                    AGGREGATE.require_creation_timing_within_budget(
+                        {"timing": timing}
+                    )
+
+    def test_creation_timing_rejects_forged_talent_reacquisition_scans(self) -> None:
+        cases = (
+            "missingPhase",
+            "wrongPhase",
+            "wrongDirection",
+            "wrongRatio",
+            "duplicateResource",
+            "wrongNormalizedTarget",
+            "wrongCatalogBound",
+            "swipesBeyondBound",
+            "booleanCount",
+            "hierarchyCardinality",
+            "retryAuthority",
+            "impossibleTiming",
+            "elapsedBeyondPhase",
+            "phaseElapsedOvercommitted",
+        )
+        for case in cases:
+            with self.subTest(case=case):
+                timing = json.loads(json.dumps(
+                    self.raw_receipt("creation-prerequisite")["timing"]
+                ))
+                scans = [
+                    scan
+                    for scan in timing["scans"]
+                    if isinstance(scan, dict) and "exactResourceIds" in scan
+                ]
+                target = scans[0]
+                if case == "missingPhase":
+                    timing["scans"].remove(target)
+                elif case == "wrongPhase":
+                    target["phaseId"] = "preview-confirm"
+                elif case == "wrongDirection":
+                    target["direction"] = "reverse"
+                elif case == "wrongRatio":
+                    target["distanceRatio"] = 0.61
+                elif case == "duplicateResource":
+                    target["exactResourceIds"] *= 2
+                elif case == "wrongNormalizedTarget":
+                    target["normalizedTargetViewport"] = 1
+                elif case == "wrongCatalogBound":
+                    target["configuredMaxScrolls"] = 1
+                elif case == "swipesBeyondBound":
+                    target["swipes"] = 1
+                elif case == "booleanCount":
+                    target["hierarchyReadCount"] = True
+                elif case == "hierarchyCardinality":
+                    target["screens"] = 2
+                elif case == "retryAuthority":
+                    target["maximumEmptyHierarchyReads"] = 4
+                elif case == "impossibleTiming":
+                    target["hierarchyElapsedMs"] = 600
+                elif case == "elapsedBeyondPhase":
+                    target["elapsedMs"] = (
+                        AGGREGATE.CREATION_PHASE_BUDGETS_MS[
+                            str(target["phaseId"])
+                        ]
+                        + 1
+                    )
+                else:
+                    duplicate = dict(target)
+                    duplicate["scanId"] = (
+                        duplicate["scanId"].removesuffix("-reacquisition")
+                        + "-duplicate-reacquisition"
+                    )
+                    duplicate["exactResourceIds"] = [
+                        target["exactResourceIds"][0] + "-duplicate"
+                    ]
+                    duplicate["elapsedMs"] = 7_800
+                    timing["scans"].append(duplicate)
+
+                with self.assertRaisesRegex(ValueError, "Talent reacquisition"):
                     AGGREGATE.require_creation_timing_within_budget(
                         {"timing": timing}
                     )

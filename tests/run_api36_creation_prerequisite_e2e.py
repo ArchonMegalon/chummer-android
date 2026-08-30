@@ -114,7 +114,11 @@ ADB_CREATION_BOOTSTRAP_LOGCAT_SNAPSHOT_ARGUMENTS = (
     "ChummerBootstrap:I",
     "*:S",
 )
-TOTAL_PERFORMANCE_TARGET_MS = 15 * 60 * 1000
+# This is the wall-clock budget for the exhaustive external UIAutomator proof,
+# not the product's Creation transaction SLO.  The proof deliberately performs
+# repeated fresh file-backed hierarchy observations across mutable catalogs;
+# transaction and render timing remain independently bounded below.
+TOTAL_PERFORMANCE_TARGET_MS = 30 * 60 * 1000
 INITIAL_NAVIGATION_MILESTONE_ORDER = (
     "app-cold-start-complete",
     "phone-shell-locale-complete",
@@ -148,7 +152,7 @@ PHASE_BUDGET_MS = {
     "dashboard-proof": 30_000,
     # Exhaustive scroll inventories remain outside both the product transaction
     # and the visible-dashboard proof. Each semantic surface and the measured
-    # method restore has its own strict bound under the unchanged 15-minute
+    # method restore has its own strict bound under the exhaustive 30-minute
     # aggregate target; no authority field or stable-end proof is removed.
     "dashboard-authority-inventory": 30_000,
     "advanced-editor-gate-inventory": 90_000,
@@ -156,6 +160,9 @@ PHASE_BUDGET_MS = {
     "priority-ranks": 150_000,
     "typed-authority-options": 150_000,
     "talent-active-skill-grant": 150_000,
+    "talent-active-skill-preservation": 150_000,
+    "talent-active-skill-reset": 150_000,
+    "talent-active-skill-reselection": 150_000,
     "talent-active-preview": 150_000,
     "talent-skill-group-grant": 150_000,
     "preview-confirm": 150_000,
@@ -4174,14 +4181,16 @@ def reacquire_exact_talent_state_group(
     evidence_prefix: str,
     max_empty_hierarchy_reads: int = 3,
     max_system_ui_dismissals: int = 3,
+    scan_observer: Callable[[dict[str, object]], None] | None = None,
 ) -> TalentStateGroupSnapshot:
-    """Reacquire one scan-proven state group with observed symmetric gestures.
+    """Reacquire one scan-proven state group within the full catalog extent.
 
     The Talent catalog scan and both navigation directions share one physical
-    gesture distance. Every bounded gesture is authorized by the measured
-    viewport delta and followed by a fresh hierarchy. Empty hierarchies and
-    dismissed system UI retain independent retry budgets and never consume
-    that geometric bound.
+    gesture distance. The measured ordering chooses a direction, while the
+    complete catalog movement extent caps the non-invertible physical search.
+    Every gesture is followed by a fresh hierarchy. Empty hierarchies and
+    dismissed system UI retain independent retry budgets and never consume the
+    catalog bound.
     """
     if (
         not resource_ids
@@ -4216,12 +4225,21 @@ def reacquire_exact_talent_state_group(
         if measured_delta < 0
         else "none"
     )
-    reacquisition_bound = abs(measured_delta)
+    # The inventory viewport is an ordering coordinate, not an invertible
+    # physical-distance unit.  A refreshed MAUI ScrollView can cover a different
+    # content displacement with the same equal gesture sequence.  Keep the
+    # measured direction as the navigation hint, but bound reacquisition by the
+    # complete scan-proven catalog extent.  This remains fail-closed while
+    # allowing the exact node to be observed beyond the pre-refresh delta.
+    reacquisition_bound = scan_end_viewport if measured_delta else 0
     reacquisition_swipes = 0
     empty_hierarchy_reads = 0
     system_ui_dismissals = 0
+    screens = 0
+    hierarchy_durations_ms: list[int] = []
+    started = time.monotonic()
     while reacquisition_swipes <= reacquisition_bound:
-        nodes = fresh_hierarchy_timed(device, [])
+        nodes = fresh_hierarchy_timed(device, hierarchy_durations_ms)
         if not nodes:
             empty_hierarchy_reads += 1
             if empty_hierarchy_reads > max_empty_hierarchy_reads:
@@ -4232,6 +4250,7 @@ def reacquire_exact_talent_state_group(
                 )
             time.sleep(0.75)
             continue
+        screens += 1
         matches = {
             resource_id: [
                 node for node in nodes if _exact_resource_id(node) == resource_id
@@ -4261,18 +4280,40 @@ def reacquire_exact_talent_state_group(
             or not device.node_has_tappable_bounds(candidates[0])
         )
         if not unavailable:
-            observed_viewport = current_viewport
-            if reacquisition_direction == "reverse":
-                observed_viewport -= reacquisition_swipes
-            elif reacquisition_direction == "forward":
-                observed_viewport += reacquisition_swipes
+            if scan_observer is not None:
+                scan_observer(
+                    {
+                        "scanId": f"{evidence_prefix}-reacquisition",
+                        "status": "resolved",
+                        "direction": reacquisition_direction,
+                        "distanceRatio": TALENT_GRANT_SCAN_GESTURE_RATIO,
+                        "startingViewport": current_viewport,
+                        "targetViewport": target_viewport,
+                        "normalizedTargetViewport": target_viewport,
+                        "measuredDelta": abs(measured_delta),
+                        "configuredMaxScrolls": reacquisition_bound,
+                        "catalogMovementExtent": scan_end_viewport,
+                        "exactResourceIds": list(resource_ids),
+                        "screens": screens,
+                        "swipes": reacquisition_swipes,
+                        "emptyHierarchyReads": empty_hierarchy_reads,
+                        "systemUiDismissals": system_ui_dismissals,
+                        "maximumEmptyHierarchyReads": max_empty_hierarchy_reads,
+                        "maximumSystemUiDismissals": max_system_ui_dismissals,
+                        **hierarchy_timing_fields(hierarchy_durations_ms),
+                        "elapsedMs": round((time.monotonic() - started) * 1000),
+                    }
+                )
             return TalentStateGroupSnapshot(
                 nodes=nodes,
                 resources={
                     resource_id: candidates[0]
                     for resource_id, candidates in matches.items()
                 },
-                logical_viewport=observed_viewport,
+                # Normalize the physical observation back to the immutable
+                # inventory coordinate.  Gesture count is deliberately not a
+                # coordinate after the native scroll surface has refreshed.
+                logical_viewport=target_viewport,
                 reacquisition_direction=reacquisition_direction,
                 reacquisition_swipes=reacquisition_swipes,
             )
@@ -4311,6 +4352,7 @@ def tap_exact_measured_talent_resource(
     current_viewport: int,
     *,
     evidence_prefix: str,
+    scan_observer: Callable[[dict[str, object]], None] | None = None,
 ) -> int:
     """Move to a measured viewport, reacquire one exact node, then tap it."""
     target_viewport = _measured_resource_viewport(navigation, resource_id)
@@ -4325,6 +4367,7 @@ def tap_exact_measured_talent_resource(
         target_viewport,
         scan_end_viewport,
         evidence_prefix=evidence_prefix,
+        scan_observer=scan_observer,
     )
     node = snapshot.resources[resource_id]
     if any(
@@ -4365,6 +4408,7 @@ def read_talent_grant_grouped_state(
     expected_unselected_option_ids: tuple[str, ...] = (),
     expected_completion_enabled: bool,
     evidence_prefix: str,
+    scan_observer: Callable[[dict[str, object]], None] | None = None,
 ) -> tuple[TalentGrantMutableState, int]:
     """Read fresh exact state groups without rescanning the immutable catalog."""
     expected_selected_order = tuple(expected_selected_option_ids)
@@ -4416,6 +4460,7 @@ def read_talent_grant_grouped_state(
             viewport,
             scan_end_viewport,
             evidence_prefix=f"{evidence_prefix}-viewport-{viewport}",
+            scan_observer=scan_observer,
         )
         observed.update(snapshot.resources)
         current_viewport = snapshot.logical_viewport
@@ -4601,7 +4646,18 @@ def choose_and_prove_talent_grant(
     *,
     scan_observer: Callable[[dict[str, object]], None] | None = None,
     scan_id_prefix: str,
+    continuation_phase_advances: tuple[
+        Callable[[], None],
+        Callable[[], None],
+        Callable[[], None],
+    ]
+    | None = None,
 ) -> TalentGrantChoiceProof:
+    if continuation_phase_advances is not None and (
+        len(continuation_phase_advances) != 3
+        or any(not callable(advance) for advance in continuation_phase_advances)
+    ):
+        raise ValueError("Talent grant continuation phase advances must be callable")
     navigation: dict[str, object] = {}
     initial = read_talent_grant_surface(
         device,
@@ -4635,6 +4691,7 @@ def choose_and_prove_talent_grant(
             navigation,
             current_viewport,
             evidence_prefix=f"{scan_id_prefix}-choose-{resource_id}",
+            scan_observer=scan_observer,
         )
         device.wait_for_single_exact_resource_id(
             "creation-prerequisite-talent-grant-page",
@@ -4651,6 +4708,7 @@ def choose_and_prove_talent_grant(
         expected_selected_option_ids=chosen,
         expected_completion_enabled=True,
         evidence_prefix=f"{scan_id_prefix}-complete",
+        scan_observer=scan_observer,
     )
     if (
         complete_state.selected_option_ids != chosen
@@ -4662,6 +4720,8 @@ def choose_and_prove_talent_grant(
             f"{expected_kind} exact selection/capacity changed authority: "
             f"initial={initial!r}, complete={complete_state!r}, chosen={chosen!r}"
         )
+    if continuation_phase_advances is not None:
+        continuation_phase_advances[0]()
 
     # A native Back followed by the exact same Talent option must preserve the
     # in-memory typed choices.  Toggling one selected row off and on again then
@@ -4680,6 +4740,7 @@ def choose_and_prove_talent_grant(
         talent_option_navigation,
         talent_viewport,
         evidence_prefix=f"{scan_id_prefix}-reenter-talent-option",
+        scan_observer=scan_observer,
     )
     device.wait_for_single_exact_resource_id(
         "creation-prerequisite-talent-grant-page",
@@ -4696,6 +4757,7 @@ def choose_and_prove_talent_grant(
         expected_selected_option_ids=chosen,
         expected_completion_enabled=True,
         evidence_prefix=f"{scan_id_prefix}-preserved",
+        scan_observer=scan_observer,
     )
     if preserved_state != complete_state:
         device.capture(f"{scan_id_prefix}-back-preservation-mismatch")
@@ -4703,6 +4765,8 @@ def choose_and_prove_talent_grant(
             f"{expected_kind} native Back/re-enter did not preserve the exact draft: "
             f"complete={complete_state!r}, preserved={preserved_state!r}"
         )
+    if continuation_phase_advances is not None:
+        continuation_phase_advances[1]()
 
     reset_id = chosen[0]
     current_viewport = tap_exact_measured_talent_resource(
@@ -4711,6 +4775,7 @@ def choose_and_prove_talent_grant(
         navigation,
         current_viewport,
         evidence_prefix=f"{scan_id_prefix}-explicit-reset-tap",
+        scan_observer=scan_observer,
     )
     device.wait_for_single_exact_resource_id(
         "creation-prerequisite-talent-grant-page",
@@ -4729,6 +4794,7 @@ def choose_and_prove_talent_grant(
         expected_unselected_option_ids=(reset_id,),
         expected_completion_enabled=False,
         evidence_prefix=f"{scan_id_prefix}-explicit-reset",
+        scan_observer=scan_observer,
     )
     if (
         incomplete_state.selected_option_ids != expected_after_reset
@@ -4740,12 +4806,15 @@ def choose_and_prove_talent_grant(
             f"{expected_kind} explicit deselection did not reopen the exact prompt: "
             f"{incomplete_state!r}"
         )
+    if continuation_phase_advances is not None:
+        continuation_phase_advances[2]()
     current_viewport = tap_exact_measured_talent_resource(
         device,
         reset_id,
         navigation,
         current_viewport,
         evidence_prefix=f"{scan_id_prefix}-explicit-reselect-tap",
+        scan_observer=scan_observer,
     )
     device.wait_for_single_exact_resource_id(
         "creation-prerequisite-talent-grant-page",
@@ -4762,6 +4831,7 @@ def choose_and_prove_talent_grant(
         expected_selected_option_ids=(*expected_after_reset, reset_id),
         expected_completion_enabled=True,
         evidence_prefix=f"{scan_id_prefix}-explicit-reselect",
+        scan_observer=scan_observer,
     )
     if restored_state != complete_state:
         device.capture(f"{scan_id_prefix}-explicit-reselect-mismatch")
@@ -4790,6 +4860,8 @@ def complete_talent_grant_to_prerequisite(
     device: shared.Device,
     navigation: dict[str, object],
     current_viewport: int,
+    *,
+    scan_observer: Callable[[dict[str, object]], None] | None = None,
 ) -> None:
     tap_exact_measured_talent_resource(
         device,
@@ -4797,6 +4869,7 @@ def complete_talent_grant_to_prerequisite(
         navigation,
         current_viewport,
         evidence_prefix="creation-prerequisite-talent-grant-complete",
+        scan_observer=scan_observer,
     )
     device.wait_for_single_exact_resource_id(
         "creation-prerequisite-talent-page",
@@ -5553,6 +5626,11 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         active_talent_option_navigation,
         scan_observer=progress.record_scan,
         scan_id_prefix="talent-active-skill-grant",
+        continuation_phase_advances=(
+            lambda: progress.advance("talent-active-skill-preservation"),
+            lambda: progress.advance("talent-active-skill-reset"),
+            lambda: progress.advance("talent-active-skill-reselection"),
+        ),
     )
     active_grant = active_grant_proof.receipt
     active_selected_option_ids = tuple(active_grant["selectedOptionAutomationIds"])
@@ -5560,6 +5638,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         device,
         active_grant_proof.navigation,
         active_grant_proof.current_viewport,
+        scan_observer=progress.record_scan,
     )
     active_talent_selection_id = node_text(
         device,
@@ -5629,6 +5708,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         device,
         skill_group_grant_proof.navigation,
         skill_group_grant_proof.current_viewport,
+        scan_observer=progress.record_scan,
     )
     device.wait_for_single_exact_resource_id(
         "creation-prerequisite-talent-selection",
