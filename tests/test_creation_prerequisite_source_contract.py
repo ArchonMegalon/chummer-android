@@ -1626,6 +1626,31 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 source,
             )
 
+    def test_talent_grant_count_is_bound_to_the_exact_authority_semantics(self) -> None:
+        source = (NATIVE / "CreationTalentSkillGrantPage.cs").read_text(
+            encoding="utf-8"
+        )
+        authority = source[source.index("private void AddGrantAuthority") :]
+        authority = authority[: authority.index("private async Task ToggleActiveAsync")]
+
+        self.assertIn("string requiredAuthority =", authority)
+        self.assertIn(
+            '$"{selectedCount.ToString(CultureInfo.InvariantCulture)} / "',
+            authority,
+        )
+        self.assertIn(
+            '$"{quantity.ToString(CultureInfo.InvariantCulture)} {kind}"',
+            authority,
+        )
+        self.assertIn(
+            'border.AutomationId = "creation-prerequisite-talent-grant-authority";',
+            authority,
+        )
+        self.assertIn(
+            "SemanticProperties.SetDescription(border, requiredAuthority);",
+            authority,
+        )
+
     def test_source_authority_labels_keep_full_width_beside_long_digests(self) -> None:
         page = (NATIVE / "CreationPrerequisitePage.cs").read_text(encoding="utf-8")
 
@@ -2706,6 +2731,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             digest_detail: str = "",
             slot_ordinal: int = 1,
             decorate_unselected_slot: bool = False,
+            authority_detail: str | None = None,
         ) -> list[driver.shared.UiNode]:
             projected_option_detail = (
                 ("✓ " if selected else "")
@@ -2730,7 +2756,11 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 driver.shared.UiNode(
                     {
                         "resource-id": "creation-prerequisite-talent-grant-authority",
-                        "content-desc": f"Required. {selected} / {required} {kind}",
+                        "content-desc": (
+                            f"{selected} / {required} {kind}"
+                            if authority_detail is None
+                            else authority_detail
+                        ),
                     }
                 ),
                 driver.shared.UiNode(
@@ -2748,6 +2778,14 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                     }
                 ),
             ]
+            # Model the native Metric child explicitly. The immutable count
+            # must still be bound to the exact authority AutomationId; a
+            # matching anonymous descendant is not sufficient authority.
+            result.append(
+                driver.shared.UiNode(
+                    {"text": f"{selected} / {required} {kind}"}
+                )
+            )
             if duplicate:
                 result.append(option)
             return result
@@ -2770,6 +2808,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
         failures = (
             (nodes(duplicate=True), "cardinality 2"),
+            (nodes(authority_detail=""), "immutable authority"),
             (nodes(observed_digest="sha256:" + ("b" * 64)), "immutable authority"),
             (nodes(digest_detail="not-the-exact-digest"), "immutable authority"),
             (nodes(option_detail="Arcana changed"), "changed exact option detail"),

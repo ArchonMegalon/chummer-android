@@ -589,7 +589,7 @@
       {
         "path": "src/Chummer.Android/Native/CreationTalentSkillGrantPage.cs",
         "exists": true,
-        "sha256": "e724b14b0fe3c2f07d13a070aa3953b6a6ec5580258a88a1285fe6b2f4207a9b"
+        "sha256": "5204608b65d310ba7aa005ccd1e01fd8b997a3a7189e7cc7b72a932001991b6a"
       },
       {
         "path": "src/Chummer.Android/Native/CreationPrerequisitePreviewPage.cs",

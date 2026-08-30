@@ -193,10 +193,13 @@ public sealed class CreationTalentSkillGrantPage : NativePageBase
         IReadOnlyList<string> anchors,
         int selectedCount)
     {
+        string requiredAuthority =
+            $"{selectedCount.ToString(CultureInfo.InvariantCulture)} / " +
+            $"{quantity.ToString(CultureInfo.InvariantCulture)} {kind}";
         VerticalStackLayout card = new() { Spacing = 6 };
         card.Add(NativeTheme.Metric(
             "Required",
-            $"{selectedCount.ToString(CultureInfo.InvariantCulture)} / {quantity.ToString(CultureInfo.InvariantCulture)} {kind}"));
+            requiredAuthority));
         card.Add(NativeTheme.Metric("Granted rating", rating.ToString(CultureInfo.InvariantCulture)));
         card.Add(NativeTheme.Metric("Selector", selectorType));
         card.Add(NativeTheme.Metric("Improvement", improvementKind));
@@ -207,6 +210,7 @@ public sealed class CreationTalentSkillGrantPage : NativePageBase
             card.Add(NativeTheme.Body($"Source anchor · {anchor}", NativeTheme.Muted));
         Border border = NativeTheme.Card(card);
         border.AutomationId = "creation-prerequisite-talent-grant-authority";
+        SemanticProperties.SetDescription(border, requiredAuthority);
         _body.Add(border);
     }
 
