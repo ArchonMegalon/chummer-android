@@ -1370,6 +1370,49 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 for phase in progress.phases
             ))
 
+    def test_reselection_and_grant_completion_have_independent_hard_budgets(
+        self,
+    ) -> None:
+        def start_phase(progress: driver.ProgressRecorder, target: str) -> None:
+            for phase_id in driver.PHASE_ORDER:
+                progress.advance(phase_id)
+                if phase_id == "advanced-editor-gate-inventory":
+                    self.record_required_method_reacquisition(progress)
+                if phase_id == target:
+                    return
+            raise AssertionError(f"unknown phase: {target}")
+
+        cases = (
+            (
+                "talent-active-skill-reselection",
+                "talent-active-grant-completion",
+            ),
+            (
+                "talent-active-grant-completion",
+                "talent-active-preview",
+            ),
+        )
+        for active_phase, next_phase in cases:
+            with self.subTest(active_phase=active_phase), tempfile.TemporaryDirectory() as temporary, mock.patch(
+                "builtins.print"
+            ):
+                progress = driver.ProgressRecorder(Path(temporary))
+                start_phase(progress, active_phase)
+                progress._active_started -= (
+                    driver.PHASE_BUDGET_MS[active_phase] / 1000
+                ) + 1
+
+                with self.assertRaisesRegex(
+                    RuntimeError,
+                    "explicit phase timing budget",
+                ):
+                    progress.advance(next_phase)
+
+                failed = progress.phases[-1]
+                self.assertEqual(active_phase, failed["phaseId"])
+                self.assertFalse(failed["withinBudget"])
+                self.assertNotEqual(next_phase, progress._active_id)
+
     def test_progress_recorder_rejects_out_of_order_or_wrong_phase_milestones(self) -> None:
         with tempfile.TemporaryDirectory() as temporary, mock.patch("builtins.print"):
             progress = driver.ProgressRecorder(Path(temporary))
@@ -1548,7 +1591,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             driver.PHASE_BUDGET_MS["prerequisite-authority-inventory"],
         )
         self.assertEqual(1_800_000, driver.TOTAL_PERFORMANCE_TARGET_MS)
-        self.assertEqual(19, len(driver.PHASE_ORDER))
+        self.assertEqual(20, len(driver.PHASE_ORDER))
         self.assertEqual(10, driver.TIMING_ROUNDING_TOLERANCE_MS)
         self.assertLess(navigation_start, cold_launch)
         self.assertLess(cold_launch, dialog_ready)
@@ -1605,6 +1648,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertEqual(10, driver.TIMING_ROUNDING_TOLERANCE_MS)
         for phase_id in (
             "talent-active-skill-grant",
+            "talent-active-grant-completion",
             "talent-active-preview",
             "talent-skill-group-grant",
         ):
@@ -6499,13 +6543,22 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "talent-active-skill-preservation",
             "talent-active-skill-reset",
             "talent-active-skill-reselection",
+            "talent-active-grant-completion",
             "talent-active-preview",
             "talent-skill-group-grant",
             "preview-confirm",
         )
-        for phase_id in phase_ids:
+        for phase_id in tuple(
+            phase_id
+            for phase_id in phase_ids
+            if phase_id != "talent-active-grant-completion"
+        ):
             with self.subTest(phase_id=phase_id):
                 self.assertEqual(150_000, driver.PHASE_BUDGET_MS[phase_id])
+        self.assertEqual(
+            180_000,
+            driver.PHASE_BUDGET_MS["talent-active-grant-completion"],
+        )
 
         typed = source.index('progress.advance("typed-authority-options")')
         active = source.index('progress.advance("talent-active-skill-grant")')
@@ -6515,6 +6568,9 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         active_reset = source.index('progress.advance("talent-active-skill-reset")')
         active_reselection = source.index(
             'progress.advance("talent-active-skill-reselection")'
+        )
+        active_completion = source.index(
+            'progress.advance("talent-active-grant-completion")'
         )
         active_preview = source.index('progress.advance("talent-active-preview")')
         skill_group = source.index('progress.advance("talent-skill-group-grant")')
@@ -6526,6 +6582,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 active_preservation,
                 active_reset,
                 active_reselection,
+                active_completion,
                 active_preview,
                 skill_group,
                 final_preview,
@@ -6537,12 +6594,22 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                     active_preservation,
                     active_reset,
                     active_reselection,
+                    active_completion,
                     active_preview,
                     skill_group,
                     final_preview,
                 )
             ),
         )
+        active_choice = source.index("active_grant_proof = choose_and_prove_talent_grant(")
+        active_close = source.index("complete_talent_grant_to_prerequisite(")
+        selection_read = source.index("active_talent_selection_id = node_text(")
+        selection_guard = source.index("if not active_talent_selection_id:")
+        self.assertLess(active_choice, active_completion)
+        self.assertLess(active_completion, active_close)
+        self.assertLess(active_close, selection_read)
+        self.assertLess(selection_read, selection_guard)
+        self.assertLess(selection_guard, active_preview)
         self.assertLess(
             source.index("active_talent_option_id = tap_enabled_authority_option("),
             active,

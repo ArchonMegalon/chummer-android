@@ -163,6 +163,13 @@ PHASE_BUDGET_MS = {
     "talent-active-skill-preservation": 150_000,
     "talent-active-skill-reset": 150_000,
     "talent-active-skill-reselection": 150_000,
+    # Closing the restored Talent grant is a separate route transition: it
+    # taps the exact completion authority, returns through Talent, then
+    # reacquires the prerequisite selection ID. Two 45-second route waits and
+    # the 60-second selection lookup retain 30 seconds of bounded ADB/boundary
+    # overhead. Do not charge this distinct commit/return work to the already-
+    # validated explicit reselection phase.
+    "talent-active-grant-completion": 180_000,
     "talent-active-preview": 150_000,
     "talent-skill-group-grant": 150_000,
     "preview-confirm": 150_000,
@@ -5632,6 +5639,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
             lambda: progress.advance("talent-active-skill-reselection"),
         ),
     )
+    progress.advance("talent-active-grant-completion")
     active_grant = active_grant_proof.receipt
     active_selected_option_ids = tuple(active_grant["selectedOptionAutomationIds"])
     complete_talent_grant_to_prerequisite(

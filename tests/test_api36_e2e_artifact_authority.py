@@ -56,6 +56,7 @@ CREATION_PROSPECTIVE_PHASE_ELAPSED_MS = {
     "talent-active-skill-preservation": 8_000,
     "talent-active-skill-reset": 8_000,
     "talent-active-skill-reselection": 8_000,
+    "talent-active-grant-completion": 80_000,
     "talent-active-preview": 5_000,
     "talent-skill-group-grant": 8_000,
     "preview-confirm": 8_000,
@@ -466,7 +467,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, expected_error):
                     self.validate(root)
 
-    def test_creation_timing_uses_the_exact_current_nineteen_phase_map(self) -> None:
+    def test_creation_timing_uses_the_exact_current_twenty_phase_map(self) -> None:
         expected = {
             "device-preflight-install": 180_000,
             "initial-navigation": 60_000,
@@ -481,6 +482,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             "talent-active-skill-preservation": 150_000,
             "talent-active-skill-reset": 150_000,
             "talent-active-skill-reselection": 150_000,
+            "talent-active-grant-completion": 180_000,
             "talent-active-preview": 150_000,
             "talent-skill-group-grant": 150_000,
             "preview-confirm": 150_000,
@@ -495,7 +497,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
         )
         self.assertEqual(10, AGGREGATE.CREATION_TIMING_ROUNDING_TOLERANCE_MS)
         self.assertEqual(
-            338_512,
+            418_512,
             sum(CREATION_PROSPECTIVE_PHASE_ELAPSED_MS.values()),
         )
 
@@ -723,9 +725,48 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                         {"timing": timing}
                     )
 
-    def test_creation_timing_rejects_legacy_eleven_fourteen_and_sixteen_phase_maps(
+    def test_creation_timing_requires_exact_grant_completion_phase(self) -> None:
+        cases = ("missing", "duplicate", "reordered", "wrongBudget")
+        for case in cases:
+            with self.subTest(case=case):
+                timing = json.loads(json.dumps(
+                    self.raw_receipt("creation-prerequisite")["timing"]
+                ))
+                phases = timing["phases"]
+                completion_index = tuple(
+                    AGGREGATE.CREATION_PHASE_BUDGETS_MS
+                ).index("talent-active-grant-completion")
+                if case == "missing":
+                    phases.pop(completion_index)
+                elif case == "duplicate":
+                    phases.insert(
+                        completion_index,
+                        dict(phases[completion_index]),
+                    )
+                elif case == "reordered":
+                    phases[completion_index], phases[completion_index + 1] = (
+                        phases[completion_index + 1],
+                        phases[completion_index],
+                    )
+                else:
+                    phases[completion_index]["budgetMs"] += 1
+
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "phase timing|phase cardinality",
+                ):
+                    AGGREGATE.require_creation_timing_within_budget(
+                        {"timing": timing}
+                    )
+
+    def test_creation_timing_rejects_legacy_eleven_fourteen_sixteen_and_nineteen_phase_maps(
         self,
     ) -> None:
+        legacy_nineteen = {
+            key: value
+            for key, value in AGGREGATE.CREATION_PHASE_BUDGETS_MS.items()
+            if key != "talent-active-grant-completion"
+        }
         legacy_sixteen = {
             key: value
             for key, value in AGGREGATE.CREATION_PHASE_BUDGETS_MS.items()
@@ -734,6 +775,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                 "talent-active-skill-preservation",
                 "talent-active-skill-reset",
                 "talent-active-skill-reselection",
+                "talent-active-grant-completion",
             }
         }
         legacy_eleven = {
@@ -748,6 +790,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                 "talent-active-skill-preservation",
                 "talent-active-skill-reset",
                 "talent-active-skill-reselection",
+                "talent-active-grant-completion",
                 "talent-active-preview",
                 "talent-skill-group-grant",
             }
@@ -768,6 +811,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                 "talent-active-skill-preservation",
                 "talent-active-skill-reset",
                 "talent-active-skill-reselection",
+                "talent-active-grant-completion",
             }
         }
         legacy_fourteen = {
@@ -778,10 +822,12 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
         self.assertEqual(11, len(legacy_eleven))
         self.assertEqual(14, len(legacy_fourteen))
         self.assertEqual(16, len(legacy_sixteen))
+        self.assertEqual(19, len(legacy_nineteen))
         for name, legacy_map in (
             ("eleven", legacy_eleven),
             ("fourteen", legacy_fourteen),
             ("sixteen", legacy_sixteen),
+            ("nineteen", legacy_nineteen),
         ):
             with self.subTest(name=name):
                 timing = json.loads(json.dumps(

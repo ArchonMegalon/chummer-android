@@ -34,6 +34,7 @@ TALENT_REACQUISITION_PHASES = (
     "talent-active-skill-preservation",
     "talent-active-skill-reset",
     "talent-active-skill-reselection",
+    "talent-active-grant-completion",
     "talent-skill-group-grant",
 )
 CREATION_METHOD_REACQUISITION_DIRECTION = "down"
@@ -52,6 +53,7 @@ CREATION_PHASE_BUDGETS_MS = {
     "talent-active-skill-preservation": 150_000,
     "talent-active-skill-reset": 150_000,
     "talent-active-skill-reselection": 150_000,
+    "talent-active-grant-completion": 180_000,
     "talent-active-preview": 150_000,
     "talent-skill-group-grant": 150_000,
     "preview-confirm": 150_000,
