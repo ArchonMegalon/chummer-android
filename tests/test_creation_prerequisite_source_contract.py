@@ -1612,6 +1612,54 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             ],
         )
 
+    def test_talent_grant_surface_rejects_duplicate_and_misplaced_selected_slots(
+        self,
+    ) -> None:
+        cases = (
+            (
+                "duplicate",
+                "✓ Arcana. Selected slot 1 · Magical Active. "
+                "Selected slot 1 · Attribute MAG",
+                (1, 1),
+                (True, False),
+            ),
+            (
+                "misplaced",
+                "✓ Arcana. Magical Active. Selected slot 1 · Attribute MAG",
+                (1,),
+                (False,),
+            ),
+        )
+        for name, projected_detail, expected_slots, expected_placements in cases:
+            with self.subTest(name=name):
+                nodes = self.talent_grant_nodes()
+                option = nodes[2]
+                option.attributes["content-desc"] = projected_detail
+                self.assertEqual(
+                    (
+                        ("Arcana. Magical Active. Attribute MAG",),
+                        expected_slots,
+                        expected_placements,
+                    ),
+                    driver._talent_option_identity_and_slots(option),
+                )
+                self.assertFalse(driver._talent_option_has_exact_dynamic_slot(option))
+
+                device = mock.Mock()
+                device.hierarchy.return_value = nodes
+                device.node_has_tappable_bounds.return_value = True
+                with mock.patch.object(driver.shared, "reset_scroll_to_top"), \
+                     mock.patch.object(driver.time, "sleep"), \
+                     self.assertRaisesRegex(RuntimeError, "invalidSlotIds"):
+                    driver.read_talent_grant_surface(
+                        device,
+                        "Active skills",
+                        max_scrolls=2,
+                    )
+                device.capture.assert_called_once_with(
+                    "creation-prerequisite-talent-grant-cardinality-invalid"
+                )
+
     def test_talent_grant_surface_rejects_malformed_or_opposite_kind_ids(self) -> None:
         malformed = self.talent_grant_nodes(option_id="forged-")
         opposite = self.talent_grant_nodes()
@@ -2100,6 +2148,46 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         device.capture.assert_called_once_with("measured-tap-detail-detail-drift")
         device.shell.assert_not_called()
 
+    def test_exact_measured_talent_tap_rejects_forged_duplicate_slot_before_tap(
+        self,
+    ) -> None:
+        resource_id = "creation-prerequisite-talent-active-skill-option-choice-0001"
+        forged = driver.shared.UiNode(
+            {
+                "resource-id": resource_id,
+                "content-desc": (
+                    "✓ Arcana. Selected slot 1 · Magical Active. "
+                    "Selected slot 1 · Attribute MAG"
+                ),
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[98,467][984,695]",
+            }
+        )
+        device = mock.Mock()
+        device.hierarchy.return_value = [forged]
+        navigation = {
+            "endViewport": 0,
+            "resourceViewports": {resource_id: 0},
+            "resourceDetails": {
+                resource_id: ("Arcana. Magical Active. Attribute MAG",),
+            },
+        }
+
+        with self.assertRaisesRegex(RuntimeError, "invalid exact slot decorator"):
+            driver.tap_exact_measured_talent_resource(
+                device,
+                resource_id,
+                navigation,
+                0,
+                evidence_prefix="measured-tap-duplicate-slot",
+            )
+
+        device.capture.assert_called_once_with(
+            "measured-tap-duplicate-slot-slot-state-invalid"
+        )
+        device.shell.assert_not_called()
+
     def test_grouped_talent_reacquisition_keeps_retry_budgets_separate(self) -> None:
         resource_id = "creation-prerequisite-talent-grant-authority"
         target = driver.shared.UiNode({"resource-id": resource_id})
@@ -2318,6 +2406,42 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                         expected_selected_option_ids=(option_id,),
                         expected_completion_enabled=True,
                         evidence_prefix="grouped",
+                    )
+
+        forged_selected_details = (
+            (
+                "duplicate-selected-slot",
+                "✓ Arcana. Selected slot 1 · Magical Active. "
+                "Selected slot 1 · Attribute MAG",
+            ),
+            (
+                "misplaced-selected-slot",
+                "✓ Arcana. Magical Active. Selected slot 1 · Attribute MAG",
+            ),
+        )
+        for name, projected_detail in forged_selected_details:
+            with self.subTest(name=name):
+                hierarchy = nodes()
+                hierarchy[2].attributes["content-desc"] = projected_detail
+                forged_navigation = {
+                    **navigation,
+                    "resourceDetails": {
+                        option_id: ("Arcana. Magical Active. Attribute MAG",),
+                    },
+                }
+                failing = mock.Mock()
+                failing.hierarchy.return_value = hierarchy
+                failing.node_has_tappable_bounds.return_value = True
+                with self.assertRaisesRegex(RuntimeError, "enabled exact selection"):
+                    driver.read_talent_grant_grouped_state(
+                        failing,
+                        "Active skills",
+                        baseline,
+                        forged_navigation,
+                        0,
+                        expected_selected_option_ids=(option_id,),
+                        expected_completion_enabled=True,
+                        evidence_prefix=f"grouped-{name}",
                     )
 
         unselected_with_slot = mock.Mock()

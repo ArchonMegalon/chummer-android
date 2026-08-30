@@ -3373,14 +3373,20 @@ def _accessible_values(node: shared.UiNode) -> tuple[str, ...]:
 
 def _talent_option_identity_and_slots(
     node: shared.UiNode,
-) -> tuple[tuple[str, ...], tuple[int, ...]]:
-    """Separate exact immutable detail from the one known slot decorator."""
+) -> tuple[tuple[str, ...], tuple[int, ...], tuple[bool, ...]]:
+    """Separate immutable detail while preserving every exact slot decorator."""
     identities: list[str] = []
-    slots: set[int] = set()
+    slots: list[int] = []
+    slots_at_first_separator: list[bool] = []
     for accessible_value in _accessible_values(node):
         value = accessible_value.removeprefix("✓ ")
         matches = list(TALENT_SELECTED_SLOT_DECORATOR.finditer(value))
-        slots.update(int(match.group("slot")) for match in matches)
+        first_separator = value.find(". ")
+        slots.extend(int(match.group("slot")) for match in matches)
+        slots_at_first_separator.extend(
+            match.start() == first_separator
+            for match in matches
+        )
         for match in reversed(matches):
             value = (
                 value[: match.start()]
@@ -3388,7 +3394,7 @@ def _talent_option_identity_and_slots(
                 + value[match.end() :]
             )
         identities.append(value)
-    return tuple(identities), tuple(sorted(slots))
+    return tuple(identities), tuple(slots), tuple(slots_at_first_separator)
 
 
 def _talent_option_identity_values(node: shared.UiNode) -> tuple[str, ...]:
@@ -3397,6 +3403,27 @@ def _talent_option_identity_values(node: shared.UiNode) -> tuple[str, ...]:
 
 def _talent_option_slot_ordinals(node: shared.UiNode) -> tuple[int, ...]:
     return _talent_option_identity_and_slots(node)[1]
+
+
+def _talent_option_has_exact_dynamic_slot(node: shared.UiNode) -> bool:
+    """Require the product's sole dynamic slot decorator in its exact position."""
+    _, slots, slots_at_first_separator = _talent_option_identity_and_slots(node)
+    selected = any(value.startswith("✓ ") for value in _accessible_values(node))
+    if selected:
+        return len(slots) == 1 and slots_at_first_separator == (True,)
+    return not slots and not slots_at_first_separator
+
+
+def _talent_option_matches_exact_slot(
+    node: shared.UiNode,
+    expected_slot: int | None,
+) -> bool:
+    if not _talent_option_has_exact_dynamic_slot(node):
+        return False
+    selected = any(value.startswith("✓ ") for value in _accessible_values(node))
+    if expected_slot is None:
+        return not selected
+    return selected and _talent_option_slot_ordinals(node) == (expected_slot,)
 
 
 def _is_exact_tokenized_resource_id(resource_id: str, prefix: str) -> bool:
@@ -3470,6 +3497,7 @@ def read_talent_grant_surface(
     resource_viewports: dict[str, set[int]] = {}
     option_identity_values: dict[str, set[tuple[str, ...]]] = {}
     option_slot_ordinals: dict[str, set[int]] = {}
+    invalid_slot_option_ids: set[str] = set()
 
     for viewport_index, nodes in enumerate(scan.screens):
         screen_ids: list[str] = []
@@ -3499,6 +3527,8 @@ def read_talent_grant_surface(
                     _talent_option_slot_ordinals(node)
                 )
                 is_selected = any(value.startswith("✓ ") for value in values)
+                if not _talent_option_has_exact_dynamic_slot(node):
+                    invalid_slot_option_ids.add(resource_id)
                 if is_selected:
                     selected_option_ids.add(resource_id)
                 else:
@@ -3566,18 +3596,6 @@ def read_talent_grant_surface(
 
     selected_count, required_count, observed_kind = next(iter(authority_counts))
     completion_enabled = next(iter(completion_states))
-    invalid_slot_option_ids = {
-        resource_id
-        for resource_id in option_ids
-        if (
-            resource_id in selected_option_ids
-            and len(option_slot_ordinals.get(resource_id, set())) != 1
-        )
-        or (
-            resource_id not in selected_option_ids
-            and bool(option_slot_ordinals.get(resource_id, set()))
-        )
-    }
     selected_slot_ordinals = {
         slot
         for resource_id in selected_option_ids
@@ -3881,6 +3899,12 @@ def tap_exact_measured_talent_resource(
         _is_exact_tokenized_resource_id(resource_id, prefix)
         for prefix in TALENT_GRANT_OPTION_PREFIX.values()
     ):
+        if not _talent_option_has_exact_dynamic_slot(node):
+            device.capture(f"{evidence_prefix}-slot-state-invalid")
+            raise RuntimeError(
+                f"Measured Talent resource {resource_id!r} exposed an invalid "
+                "exact slot decorator"
+            )
         expected_detail = _measured_talent_resource_detail(navigation, resource_id)
         if _talent_option_identity_values(node) != expected_detail:
             device.capture(f"{evidence_prefix}-detail-drift")
@@ -4000,9 +4024,10 @@ def read_talent_grant_grouped_state(
                 f"Grouped Talent state changed exact option detail for {resource_id!r}"
             )
         if (
-            not any(value.startswith("✓ ") for value in _accessible_values(node))
-            or _talent_option_slot_ordinals(node)
-            != (expected_selected_slots[resource_id],)
+            not _talent_option_matches_exact_slot(
+                node,
+                expected_selected_slots[resource_id],
+            )
             or node.attributes.get("enabled") != "true"
             or node.attributes.get("clickable") != "true"
             or not device.node_has_tappable_bounds(node)
@@ -4022,8 +4047,7 @@ def read_talent_grant_grouped_state(
                 f"Grouped Talent state changed exact option detail for {resource_id!r}"
             )
         if (
-            any(value.startswith("✓ ") for value in _accessible_values(node))
-            or _talent_option_slot_ordinals(node)
+            not _talent_option_matches_exact_slot(node, None)
             or node.attributes.get("enabled") != "true"
             or node.attributes.get("clickable") != "true"
             or not device.node_has_tappable_bounds(node)
