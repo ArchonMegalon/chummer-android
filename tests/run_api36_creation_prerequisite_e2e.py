@@ -1052,6 +1052,33 @@ def move_between_measured_viewports(
     return target_viewport
 
 
+def measured_reverse_reacquisition_bound(
+    current_viewport: int,
+    target_viewport: int,
+) -> int:
+    """Bound exact-node compensation by the forward scan's measured delta.
+
+    ``swipe_down`` is capped by the device viewport and therefore does not
+    exactly invert a same-ratio ``swipe_up``.  After the fast measured move,
+    allow at most the same proven delta again while checking a fresh hierarchy
+    after every smaller reverse gesture. A node already at the scan-proven
+    tappable target authorizes no gesture, and no unmeasured fixed reset is
+    authorized.
+    """
+    if (
+        type(current_viewport) is not int
+        or type(target_viewport) is not int
+        or current_viewport < 0
+        or target_viewport < 0
+        or target_viewport > current_viewport
+        or current_viewport > 18
+    ):
+        raise ValueError(
+            "Exact-node reacquisition requires integer viewports ordered within 0..18"
+        )
+    return current_viewport - target_viewport
+
+
 def wait_for_priority_rank_origin(
     device: shared.Device,
     category: str,
@@ -1142,13 +1169,34 @@ def rewind_to_exact_resource_id(
     evidence_prefix: str,
     surface_name: str,
     require_tappable: bool,
+    max_empty_hierarchy_reads: int = 3,
+    max_system_ui_dismissals: int = 3,
 ) -> tuple[shared.UiNode, int]:
     """Reverse only as far as needed, observing one hierarchy per viewport."""
-    if max_swipes < 0:
-        raise ValueError("A nonnegative scan-proven reverse bound is required")
-    for reverse_swipes in range(max_swipes + 1):
+    if (
+        type(max_swipes) is not int
+        or max_swipes < 0
+        or type(max_empty_hierarchy_reads) is not int
+        or max_empty_hierarchy_reads < 0
+        or type(max_system_ui_dismissals) is not int
+        or max_system_ui_dismissals < 0
+    ):
+        raise ValueError(
+            "Exact integer gesture, empty-hierarchy, and system-UI bounds are required"
+        )
+    reverse_swipes = 0
+    empty_hierarchy_reads = 0
+    system_ui_dismissals = 0
+    while reverse_swipes <= max_swipes:
         nodes = fresh_hierarchy_timed(device, [])
         if not nodes:
+            empty_hierarchy_reads += 1
+            if empty_hierarchy_reads > max_empty_hierarchy_reads:
+                device.capture(f"{evidence_prefix}-empty-hierarchy-exhausted")
+                raise RuntimeError(
+                    f"{surface_name} exhausted its separate transient empty-hierarchy "
+                    f"budget of {max_empty_hierarchy_reads} reads"
+                )
             time.sleep(0.75)
             continue
         matches = [
@@ -1176,11 +1224,19 @@ def rewind_to_exact_resource_id(
                 + (", enabled, and clickable" if require_tappable else "")
             )
         if device.dismiss_system_ui_anr(nodes):
+            system_ui_dismissals += 1
+            if system_ui_dismissals > max_system_ui_dismissals:
+                device.capture(f"{evidence_prefix}-system-ui-exhausted")
+                raise RuntimeError(
+                    f"{surface_name} exhausted its separate system-UI dismissal "
+                    f"budget of {max_system_ui_dismissals}"
+                )
             time.sleep(2)
             continue
         if reverse_swipes >= max_swipes:
             break
         device.swipe_down(distance_ratio=distance_ratio)
+        reverse_swipes += 1
         time.sleep(0.2)
     device.capture(f"{evidence_prefix}-unavailable")
     raise RuntimeError(
@@ -1590,7 +1646,8 @@ def assert_uncreated_advanced_editor_gated(
                     if selector == "creation-wizard-binding":
                         bindings.add(value)
                     else:
-                        method_viewports.add(min(viewport_index, scan.swipes))
+                        if device.node_has_tappable_bounds(matches[0]):
+                            method_viewports.add(min(viewport_index, scan.swipes))
                         method_states.add((
                             value,
                             matches[0].attributes.get("enabled", ""),
@@ -1821,6 +1878,34 @@ def require_creation_method_navigation(
             f"clickable={clickable}, enabled={enabled}, detail={description!r}"
         )
     return description
+
+
+def reacquire_exact_ready_creation_method(
+    device: shared.Device,
+    *,
+    expected_detail: str,
+    max_swipes: int,
+) -> tuple[shared.UiNode, str, int]:
+    """Reacquire and revalidate the exact method before any physical tap."""
+    node, reverse_swipes = rewind_to_exact_resource_id(
+        device,
+        "creation-stage-method",
+        max_swipes=max_swipes,
+        distance_ratio=0.22,
+        evidence_prefix="creation-stage-method-ready",
+        surface_name="Measured ready creation method navigation",
+        require_tappable=True,
+        max_empty_hierarchy_reads=3,
+        max_system_ui_dismissals=3,
+    )
+    detail = require_creation_method_navigation(node, ready=True)
+    if detail != expected_detail:
+        device.capture("creation-stage-method-changed-after-dashboard-scan")
+        raise RuntimeError(
+            "Creation method authority changed between the stable dashboard scan and tap: "
+            f"scan={expected_detail!r}, tap={detail!r}"
+        )
+    return node, detail, reverse_swipes
 
 
 def _pending_timeout_text(value: object) -> str:
@@ -4533,28 +4618,21 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         scan_id="advanced-editor-gate-initial",
     )
     dashboard_binding = dashboard_scan.binding
+    method_reverse_swipe_bound = measured_reverse_reacquisition_bound(
+        dashboard_scan.swipes,
+        dashboard_scan.method_viewport,
+    )
     move_between_measured_viewports(
         device,
         dashboard_scan.swipes,
         dashboard_scan.method_viewport,
         delay_seconds=0.0,
     )
-    method_node, _ = rewind_to_exact_resource_id(
+    method_node, method_detail, _ = reacquire_exact_ready_creation_method(
         device,
-        "creation-stage-method",
-        max_swipes=1,
-        distance_ratio=0.22,
-        evidence_prefix="creation-stage-method-ready",
-        surface_name="Measured ready creation method navigation",
-        require_tappable=True,
+        expected_detail=dashboard_scan.method_detail,
+        max_swipes=method_reverse_swipe_bound,
     )
-    method_detail = require_creation_method_navigation(method_node, ready=True)
-    if method_detail != dashboard_scan.method_detail:
-        device.capture("creation-stage-method-changed-after-dashboard-scan")
-        raise RuntimeError(
-            "Creation method authority changed between the stable dashboard scan and tap: "
-            f"scan={dashboard_scan.method_detail!r}, tap={method_detail!r}"
-        )
     ready_navigation = {
         "detail": method_detail,
         "clickable": True,
