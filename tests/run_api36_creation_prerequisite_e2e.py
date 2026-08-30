@@ -2877,11 +2877,13 @@ def acquire_measured_priority_category_row(
 ) -> shared.UiNode:
     """Reacquire one exact category from the digest-bound ordered inventory.
 
-    The first category restores only the already measured viewport delta from
-    the authority scan's stable end.  Later categories are below the freshly
-    verified prior row, so they use bounded forward-only snapshots.  A rank
-    selection can change row height; no pre-navigation node or blind absolute
-    viewport is reused after that state transition.
+    The first category replays the authority scan's measured 0.68-height
+    reverse delta, then permits only the same scan-proven delta in smaller
+    reverse compensation gestures while reacquiring the exact row. Later
+    categories are below the freshly verified prior row, so they retain their
+    bounded forward-only snapshots. A rank selection can change row height;
+    no pre-navigation node or blind absolute viewport is reused after that
+    state transition.
     """
     viewports = navigation.get("viewportByCategory")
     current_viewport = navigation.get("currentViewport")
@@ -2904,19 +2906,38 @@ def acquire_measured_priority_category_row(
     target_viewport = viewports.get(category)
     if type(target_viewport) is not int or target_viewport < 0:
         raise RuntimeError(f"Priority category {category!r} has no measured viewport")
+    selector = f"creation-prerequisite-category-{category}"
 
     if last_category is None:
         if category != CATEGORIES[0] or target_viewport > current_viewport:
             raise RuntimeError(
                 "Priority category navigation did not start with the first ordered row"
             )
+        reverse_bound = measured_reverse_reacquisition_bound(
+            current_viewport,
+            target_viewport,
+            maximum_viewport=22,
+        )
         move_between_measured_viewports(
             device,
             current_viewport,
             target_viewport,
-            distance_ratio=0.22,
+            distance_ratio=0.68,
+            delay_seconds=0.0,
         )
-        max_forward_swipes = 0
+        node, _ = rewind_to_exact_resource_id(
+            device,
+            selector,
+            max_swipes=reverse_bound,
+            distance_ratio=0.22,
+            evidence_prefix=f"creation-prerequisite-{category}-category-row",
+            surface_name=f"Measured {category} priority category row",
+            require_tappable=True,
+            max_empty_hierarchy_reads=3,
+            max_system_ui_dismissals=3,
+        )
+        navigation["currentViewport"] = target_viewport
+        return node
     else:
         last_index = CATEGORIES.index(last_category)
         if last_index + 1 >= len(CATEGORIES) or CATEGORIES[last_index + 1] != category:
@@ -2931,7 +2952,6 @@ def acquire_measured_priority_category_row(
         # with a small bound derived from the measured initial separation.
         max_forward_swipes = max(4, (target_viewport - prior_viewport + 2) * 4)
 
-    selector = f"creation-prerequisite-category-{category}"
     for forward_swipes in range(max_forward_swipes + 1):
         # The prior selection already acquired and cardinality-checked this
         # exact refreshed parent viewport.  Reuse it once rather than issuing

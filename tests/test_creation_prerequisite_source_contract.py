@@ -3233,6 +3233,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertEqual("creation-prerequisite-rank-heritage-a", selected)
         self.assertEqual(0, sum(call[0] == "wait_bidirectional" for call in calls))
         self.assertEqual(1, sum(call[0] == "swipe_down" for call in calls))
+        self.assertIn(("swipe_down", {"distance_ratio": 0.68}), calls)
         self.assertIn(("shell", ("input", "tap", "455", "200")), calls)
         select_rank_mock.assert_called_once_with(
             device,
@@ -3243,6 +3244,345 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         )
         self.assertEqual(1, sum(call[0] == "select" for call in calls))
         self.assertEqual("heritage", category_navigation["lastCategory"])
+
+    def test_hosted_clipped_first_category_replays_scan_ratio_then_reacquires(self) -> None:
+        clipped = driver.shared.UiNode(
+            {
+                "content-desc": (
+                    "Heritage choice. Select an exact Core-projected metatype "
+                    "or metavariant"
+                ),
+                "enabled": "true",
+                "clickable": "false",
+                "bounds": "[53,275][1028,278]",
+            }
+        )
+        talent = driver.shared.UiNode(
+            {
+                "resource-id": "creation-prerequisite-category-talent",
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[98,350][984,503]",
+            }
+        )
+        visible = driver.shared.UiNode(
+            {
+                "resource-id": "creation-prerequisite-category-heritage",
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[53,300][1028,500]",
+            }
+        )
+
+        class HostedClippedDevice:
+            def __init__(self) -> None:
+                self.swipe_ratios: list[float] = []
+                self.hierarchy_reads = 0
+                self.captures: list[str] = []
+
+            def swipe_down(self, *, distance_ratio):
+                self.swipe_ratios.append(distance_ratio)
+
+            @staticmethod
+            def swipe_up(**_options):
+                raise AssertionError("first category used an unmeasured forward search")
+
+            def hierarchy(self):
+                self.hierarchy_reads += 1
+                if self.swipe_ratios[:3] != [0.68, 0.68, 0.68]:
+                    return [driver.shared.UiNode({})]
+                return (
+                    [visible, talent]
+                    if self.swipe_ratios[-1] == 0.22
+                    else [clipped, talent]
+                )
+
+            @staticmethod
+            def dismiss_system_ui_anr(_nodes):
+                return False
+
+            @staticmethod
+            def node_has_tappable_bounds(node):
+                return node is visible
+
+            def capture(self, name):
+                self.captures.append(name)
+
+        device = HostedClippedDevice()
+        navigation = {
+            "viewportByCategory": {
+                "heritage": 0,
+                "talent": 1,
+                "attributes": 2,
+                "skills": 3,
+                "resources": 3,
+            },
+            "currentViewport": 3,
+            "lastCategory": None,
+        }
+        with mock.patch.object(driver.time, "sleep"):
+            row = driver.acquire_measured_priority_category_row(
+                device,
+                "heritage",
+                navigation,
+            )
+
+        self.assertIs(visible, row)
+        self.assertEqual([0.68, 0.68, 0.68, 0.22], device.swipe_ratios)
+        self.assertEqual(2, device.hierarchy_reads)
+        self.assertEqual(0, navigation["currentViewport"])
+        self.assertEqual([], device.captures)
+
+    def test_first_category_reacquisition_accepts_the_last_scan_delta_bound(self) -> None:
+        visible = driver.shared.UiNode(
+            {
+                "resource-id": "creation-prerequisite-category-heritage",
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[53,300][1028,500]",
+            }
+        )
+
+        class LastBoundDevice:
+            def __init__(self) -> None:
+                self.swipe_ratios: list[float] = []
+                self.small_swipes = 0
+                self.hierarchy_reads = 0
+
+            def swipe_down(self, *, distance_ratio):
+                self.swipe_ratios.append(distance_ratio)
+                if distance_ratio == 0.22:
+                    self.small_swipes += 1
+
+            def hierarchy(self):
+                self.hierarchy_reads += 1
+                return [visible] if self.small_swipes == 3 else [driver.shared.UiNode({})]
+
+            @staticmethod
+            def dismiss_system_ui_anr(_nodes):
+                return False
+
+            @staticmethod
+            def node_has_tappable_bounds(node):
+                return node is visible
+
+            @staticmethod
+            def capture(name):
+                raise AssertionError(f"unexpected capture: {name}")
+
+        device = LastBoundDevice()
+        navigation = {
+            "viewportByCategory": {
+                "heritage": 0,
+                "talent": 1,
+                "attributes": 2,
+                "skills": 3,
+                "resources": 3,
+            },
+            "currentViewport": 3,
+            "lastCategory": None,
+        }
+        with mock.patch.object(driver.time, "sleep"):
+            row = driver.acquire_measured_priority_category_row(
+                device,
+                "heritage",
+                navigation,
+            )
+
+        self.assertIs(visible, row)
+        self.assertEqual(([0.68] * 3) + ([0.22] * 3), device.swipe_ratios)
+        self.assertEqual(4, device.hierarchy_reads)
+
+    def test_first_category_reacquisition_rejects_one_beyond_scan_delta(self) -> None:
+        class OneBeyondDevice:
+            def __init__(self) -> None:
+                self.swipe_ratios: list[float] = []
+                self.small_swipes = 0
+                self.hierarchy_reads = 0
+                self.captures: list[str] = []
+
+            def swipe_down(self, *, distance_ratio):
+                self.swipe_ratios.append(distance_ratio)
+                if distance_ratio == 0.22:
+                    self.small_swipes += 1
+
+            def hierarchy(self):
+                self.hierarchy_reads += 1
+                if self.small_swipes == 4:
+                    return [driver.shared.UiNode({
+                        "resource-id": "creation-prerequisite-category-heritage",
+                        "enabled": "true",
+                        "clickable": "true",
+                        "bounds": "[53,300][1028,500]",
+                    })]
+                return [driver.shared.UiNode({})]
+
+            @staticmethod
+            def dismiss_system_ui_anr(_nodes):
+                return False
+
+            def capture(self, name):
+                self.captures.append(name)
+
+        device = OneBeyondDevice()
+        navigation = {
+            "viewportByCategory": {category: 0 for category in driver.CATEGORIES},
+            "currentViewport": 3,
+            "lastCategory": None,
+        }
+        with mock.patch.object(driver.time, "sleep"), self.assertRaisesRegex(
+            RuntimeError,
+            "within the scan-proven 3-swipe bound",
+        ):
+            driver.acquire_measured_priority_category_row(
+                device,
+                "heritage",
+                navigation,
+            )
+
+        self.assertEqual(([0.68] * 3) + ([0.22] * 3), device.swipe_ratios)
+        self.assertEqual(4, device.hierarchy_reads)
+        self.assertEqual(
+            ["creation-prerequisite-heritage-category-row-unavailable"],
+            device.captures,
+        )
+
+    def test_first_category_reacquisition_rejects_duplicate_and_disabled_rows(self) -> None:
+        cases = (
+            (
+                "duplicate",
+                [
+                    driver.shared.UiNode({
+                        "resource-id": "creation-prerequisite-category-heritage",
+                    }),
+                    driver.shared.UiNode({
+                        "resource-id": "creation-prerequisite-category-heritage",
+                    }),
+                ],
+                "cardinality 2",
+                "creation-prerequisite-heritage-category-row-cardinality-invalid",
+            ),
+            (
+                "disabled",
+                [driver.shared.UiNode({
+                    "resource-id": "creation-prerequisite-category-heritage",
+                    "enabled": "false",
+                    "clickable": "true",
+                    "bounds": "[53,300][1028,500]",
+                })],
+                "visible, enabled, and clickable",
+                "creation-prerequisite-heritage-category-row-not-tappable",
+            ),
+        )
+        for name, nodes, error, capture in cases:
+            with self.subTest(name=name):
+                device = mock.Mock()
+                device.hierarchy.return_value = nodes
+                device.node_has_tappable_bounds.return_value = True
+                navigation = {
+                    "viewportByCategory": {
+                        category: 0 for category in driver.CATEGORIES
+                    },
+                    "currentViewport": 0,
+                    "lastCategory": None,
+                }
+                with self.assertRaisesRegex(RuntimeError, error):
+                    driver.acquire_measured_priority_category_row(
+                        device,
+                        "heritage",
+                        navigation,
+                    )
+
+                device.swipe_down.assert_not_called()
+                device.capture.assert_called_once_with(capture)
+
+    def test_first_category_reacquisition_keeps_empty_and_system_budgets_separate(
+        self,
+    ) -> None:
+        overlay = driver.shared.UiNode({"content-desc": "system ui"})
+        visible = driver.shared.UiNode(
+            {
+                "resource-id": "creation-prerequisite-category-heritage",
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[53,300][1028,500]",
+            }
+        )
+        device = mock.Mock()
+        device.hierarchy.side_effect = [
+            [],
+            [],
+            [],
+            [overlay],
+            [overlay],
+            [overlay],
+            [driver.shared.UiNode({})],
+            [visible],
+        ]
+        device.dismiss_system_ui_anr.side_effect = [True, True, True, False]
+        device.node_has_tappable_bounds.return_value = True
+        navigation = {
+            "viewportByCategory": {category: 0 for category in driver.CATEGORIES},
+            "currentViewport": 1,
+            "lastCategory": None,
+        }
+        with mock.patch.object(driver.time, "sleep"):
+            row = driver.acquire_measured_priority_category_row(
+                device,
+                "heritage",
+                navigation,
+            )
+
+        self.assertIs(visible, row)
+        self.assertEqual(8, device.hierarchy.call_count)
+        self.assertEqual(
+            [mock.call(distance_ratio=0.68), mock.call(distance_ratio=0.22)],
+            device.swipe_down.call_args_list,
+        )
+        device.capture.assert_not_called()
+
+    def test_first_category_reacquisition_exhausts_each_transient_budget(self) -> None:
+        cases = (
+            (
+                "empty",
+                [[], [], [], []],
+                False,
+                "empty-hierarchy",
+                "creation-prerequisite-heritage-category-row-empty-hierarchy-exhausted",
+            ),
+            (
+                "system",
+                [[driver.shared.UiNode({"content-desc": "system ui"})]] * 4,
+                True,
+                "system-UI",
+                "creation-prerequisite-heritage-category-row-system-ui-exhausted",
+            ),
+        )
+        for name, screens, dismisses, error, capture in cases:
+            with self.subTest(name=name):
+                device = mock.Mock()
+                device.hierarchy.side_effect = screens
+                device.dismiss_system_ui_anr.return_value = dismisses
+                navigation = {
+                    "viewportByCategory": {
+                        category: 0 for category in driver.CATEGORIES
+                    },
+                    "currentViewport": 0,
+                    "lastCategory": None,
+                }
+                with mock.patch.object(driver.time, "sleep"), self.assertRaisesRegex(
+                    RuntimeError,
+                    error,
+                ):
+                    driver.acquire_measured_priority_category_row(
+                        device,
+                        "heritage",
+                        navigation,
+                    )
+
+                self.assertEqual(4, device.hierarchy.call_count)
+                device.swipe_down.assert_not_called()
+                device.capture.assert_called_once_with(capture)
 
     def test_measured_priority_category_navigation_moves_forward_after_mutation(self) -> None:
         heritage = driver.shared.UiNode(
