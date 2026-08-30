@@ -5648,10 +5648,20 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         active_grant_proof.current_viewport,
         scan_observer=progress.record_scan,
     )
-    active_talent_selection_id = node_text(
-        device,
+    active_talent_selection_node = device.wait_exact_resource_id_bidirectional(
         "creation-prerequisite-talent-selection-id",
-        scroll=True,
+        timeout=60,
+        backward_scrolls=22,
+        forward_scrolls=22,
+        scroll_distance_ratio=0.22,
+        evidence_prefix="creation-prerequisite-active-talent-selection-id",
+        surface_name="Active-skill Talent SelectionId authority",
+        require_tappable=False,
+    )
+    active_talent_selection_id = (
+        active_talent_selection_node.attributes.get("text")
+        or active_talent_selection_node.attributes.get("content-desc")
+        or ""
     ).strip()
     if not active_talent_selection_id:
         raise RuntimeError("Active-skill Talent SelectionId was not exposed by Core authority")

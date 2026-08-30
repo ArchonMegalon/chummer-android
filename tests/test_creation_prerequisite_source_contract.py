@@ -6603,13 +6603,32 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         )
         active_choice = source.index("active_grant_proof = choose_and_prove_talent_grant(")
         active_close = source.index("complete_talent_grant_to_prerequisite(")
-        selection_read = source.index("active_talent_selection_id = node_text(")
+        selection_reacquisition = source.index(
+            "active_talent_selection_node = device.wait_exact_resource_id_bidirectional("
+        )
+        selection_read = source.index("active_talent_selection_id = (")
         selection_guard = source.index("if not active_talent_selection_id:")
         self.assertLess(active_choice, active_completion)
         self.assertLess(active_completion, active_close)
-        self.assertLess(active_close, selection_read)
+        self.assertLess(active_close, selection_reacquisition)
+        self.assertLess(selection_reacquisition, selection_read)
         self.assertLess(selection_read, selection_guard)
         self.assertLess(selection_guard, active_preview)
+        active_selection_reacquisition = source[
+            selection_reacquisition:selection_read
+        ]
+        for required_authority in (
+            '"creation-prerequisite-talent-selection-id"',
+            "timeout=60",
+            "backward_scrolls=22",
+            "forward_scrolls=22",
+            "scroll_distance_ratio=0.22",
+            'evidence_prefix="creation-prerequisite-active-talent-selection-id"',
+            'surface_name="Active-skill Talent SelectionId authority"',
+            "require_tappable=False",
+        ):
+            self.assertIn(required_authority, active_selection_reacquisition)
+        self.assertNotIn("node_text(", active_selection_reacquisition)
         self.assertLess(
             source.index("active_talent_option_id = tap_enabled_authority_option("),
             active,
