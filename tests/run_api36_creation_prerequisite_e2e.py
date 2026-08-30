@@ -56,6 +56,9 @@ TALENT_GRANT_REQUIRED = re.compile(
     r"(?<![0-9])(?P<selected>[0-9]+) / (?P<required>[0-9]+) "
     r"(?P<kind>Active skills|Skill groups)(?=$|[. ·])"
 )
+TALENT_SELECTED_SLOT_DECORATOR = re.compile(
+    r"(?P<separator>\. )Selected slot (?P<slot>[1-9][0-9]*) · "
+)
 CREATION_KARMA_AUTHORITY_BLOCKER = "creation-karma-authority-required"
 STANDARD_PRIORITY_SETTINGS_ID = "223a11ff-80e0-428b-89a9-6ef1c243b8b6"
 SHORT_AUTHORITY_BINDING = re.compile(
@@ -3368,12 +3371,32 @@ def _accessible_values(node: shared.UiNode) -> tuple[str, ...]:
     )
 
 
+def _talent_option_identity_and_slots(
+    node: shared.UiNode,
+) -> tuple[tuple[str, ...], tuple[int, ...]]:
+    """Separate exact immutable detail from the one known slot decorator."""
+    identities: list[str] = []
+    slots: set[int] = set()
+    for accessible_value in _accessible_values(node):
+        value = accessible_value.removeprefix("✓ ")
+        matches = list(TALENT_SELECTED_SLOT_DECORATOR.finditer(value))
+        slots.update(int(match.group("slot")) for match in matches)
+        for match in reversed(matches):
+            value = (
+                value[: match.start()]
+                + match.group("separator")
+                + value[match.end() :]
+            )
+        identities.append(value)
+    return tuple(identities), tuple(sorted(slots))
+
+
 def _talent_option_identity_values(node: shared.UiNode) -> tuple[str, ...]:
-    """Return exact immutable option detail, independent of its check marker."""
-    return tuple(
-        value.removeprefix("✓ ")
-        for value in _accessible_values(node)
-    )
+    return _talent_option_identity_and_slots(node)[0]
+
+
+def _talent_option_slot_ordinals(node: shared.UiNode) -> tuple[int, ...]:
+    return _talent_option_identity_and_slots(node)[1]
 
 
 def _is_exact_tokenized_resource_id(resource_id: str, prefix: str) -> bool:
@@ -3446,6 +3469,7 @@ def read_talent_grant_surface(
     seen_completion = False
     resource_viewports: dict[str, set[int]] = {}
     option_identity_values: dict[str, set[tuple[str, ...]]] = {}
+    option_slot_ordinals: dict[str, set[int]] = {}
 
     for viewport_index, nodes in enumerate(scan.screens):
         screen_ids: list[str] = []
@@ -3470,6 +3494,9 @@ def read_talent_grant_surface(
                 option_ids.add(resource_id)
                 option_identity_values.setdefault(resource_id, set()).add(
                     _talent_option_identity_values(node)
+                )
+                option_slot_ordinals.setdefault(resource_id, set()).update(
+                    _talent_option_slot_ordinals(node)
                 )
                 is_selected = any(value.startswith("✓ ") for value in values)
                 if is_selected:
@@ -3539,6 +3566,23 @@ def read_talent_grant_surface(
 
     selected_count, required_count, observed_kind = next(iter(authority_counts))
     completion_enabled = next(iter(completion_states))
+    invalid_slot_option_ids = {
+        resource_id
+        for resource_id in option_ids
+        if (
+            resource_id in selected_option_ids
+            and len(option_slot_ordinals.get(resource_id, set())) != 1
+        )
+        or (
+            resource_id not in selected_option_ids
+            and bool(option_slot_ordinals.get(resource_id, set()))
+        )
+    }
+    selected_slot_ordinals = {
+        slot
+        for resource_id in selected_option_ids
+        for slot in option_slot_ordinals.get(resource_id, set())
+    }
     if (
         observed_kind != expected_kind
         or required_count < 1
@@ -3547,6 +3591,8 @@ def read_talent_grant_surface(
         or len(enabled_option_ids) < selected_count
         or not selected_option_ids.issubset(enabled_option_ids)
         or selected_count != len(selected_option_ids)
+        or invalid_slot_option_ids
+        or selected_slot_ordinals != set(range(1, selected_count + 1))
         or completion_enabled != (selected_count == required_count)
     ):
         device.capture("creation-prerequisite-talent-grant-cardinality-invalid")
@@ -3556,6 +3602,8 @@ def read_talent_grant_surface(
             f"selected={selected_count}, required={required_count}, "
             f"options={sorted(option_ids)!r}, enabled={sorted(enabled_option_ids)!r}, "
             f"selectedIds={sorted(selected_option_ids)!r}, "
+            f"selectedSlots={sorted(selected_slot_ordinals)!r}, "
+            f"invalidSlotIds={sorted(invalid_slot_option_ids)!r}, "
             f"completionEnabled={completion_enabled}"
         )
     surface = TalentGrantSurface(
@@ -3596,7 +3644,8 @@ class TalentStateGroupSnapshot(NamedTuple):
     nodes: list[shared.UiNode]
     resources: dict[str, shared.UiNode]
     logical_viewport: int
-    reverse_reacquisition_swipes: int
+    reacquisition_direction: str
+    reacquisition_swipes: int
 
 
 def _measured_resource_viewport(
@@ -3675,12 +3724,13 @@ def reacquire_exact_talent_state_group(
 ) -> TalentStateGroupSnapshot:
     """Reacquire one scan-proven state group after a bounded measured move.
 
-    A same-ratio reverse gesture can be shorter than the forward gesture that
-    established the catalog inventory.  The initial measured move therefore
-    remains the fast path, while a missing reverse target authorizes at most
-    the same measured delta again.  Each compensation gesture is followed by
-    a fresh dump.  Empty hierarchies and dismissed system UI retain independent
-    retry budgets and never consume that geometric bound.
+    A measured move can land on a different physical offset after a refreshed
+    list or a prior small-gesture compensation.  The initial measured move
+    therefore remains the fast path, while a missing target authorizes at most
+    the same absolute measured delta again in the requested direction.  Each
+    compensation gesture is followed by a fresh dump.  Empty hierarchies and
+    dismissed system UI retain independent retry budgets and never consume
+    that geometric bound.
     """
     if (
         not resource_ids
@@ -3707,15 +3757,15 @@ def reacquire_exact_talent_state_group(
     ):
         raise ValueError("Talent group viewports must belong to the scan topology")
 
-    reverse_bound = (
-        measured_reverse_reacquisition_bound(
-            current_viewport,
-            target_viewport,
-            maximum_viewport=scan_end_viewport,
-        )
-        if target_viewport < current_viewport
-        else 0
+    measured_delta = target_viewport - current_viewport
+    reacquisition_direction = (
+        "forward"
+        if measured_delta > 0
+        else "reverse"
+        if measured_delta < 0
+        else "none"
     )
+    reacquisition_bound = abs(measured_delta)
     move_between_measured_viewports(
         device,
         current_viewport,
@@ -3723,10 +3773,10 @@ def reacquire_exact_talent_state_group(
         distance_ratio=measured_distance_ratio,
         delay_seconds=0.0,
     )
-    reverse_swipes = 0
+    reacquisition_swipes = 0
     empty_hierarchy_reads = 0
     system_ui_dismissals = 0
-    while reverse_swipes <= reverse_bound:
+    while reacquisition_swipes <= reacquisition_bound:
         nodes = fresh_hierarchy_timed(device, [])
         if not nodes:
             empty_hierarchy_reads += 1
@@ -3773,7 +3823,8 @@ def reacquire_exact_talent_state_group(
                     for resource_id, candidates in matches.items()
                 },
                 logical_viewport=target_viewport,
-                reverse_reacquisition_swipes=reverse_swipes,
+                reacquisition_direction=reacquisition_direction,
+                reacquisition_swipes=reacquisition_swipes,
             )
         if device.dismiss_system_ui_anr(nodes):
             system_ui_dismissals += 1
@@ -3785,16 +3836,21 @@ def reacquire_exact_talent_state_group(
                 )
             time.sleep(2)
             continue
-        if reverse_swipes >= reverse_bound:
+        if reacquisition_swipes >= reacquisition_bound:
             break
-        device.swipe_down(distance_ratio=reacquisition_distance_ratio)
-        reverse_swipes += 1
+        if reacquisition_direction == "reverse":
+            device.swipe_down(distance_ratio=reacquisition_distance_ratio)
+        elif reacquisition_direction == "forward":
+            device.swipe_up(distance_ratio=reacquisition_distance_ratio)
+        else:
+            break
+        reacquisition_swipes += 1
 
     device.capture(f"{evidence_prefix}-unavailable")
     raise RuntimeError(
         "Grouped Talent state could not reacquire exact resources "
-        f"{missing!r} within the scan-proven {reverse_bound}-swipe "
-        "reverse compensation bound"
+        f"{missing!r} within the scan-proven {reacquisition_bound}-swipe "
+        f"{reacquisition_direction} compensation bound"
     )
 
 
@@ -3821,6 +3877,16 @@ def tap_exact_measured_talent_resource(
         evidence_prefix=evidence_prefix,
     )
     node = snapshot.resources[resource_id]
+    if any(
+        _is_exact_tokenized_resource_id(resource_id, prefix)
+        for prefix in TALENT_GRANT_OPTION_PREFIX.values()
+    ):
+        expected_detail = _measured_talent_resource_detail(navigation, resource_id)
+        if _talent_option_identity_values(node) != expected_detail:
+            device.capture(f"{evidence_prefix}-detail-drift")
+            raise RuntimeError(
+                f"Measured Talent resource {resource_id!r} changed exact option detail"
+            )
     if (
         node.attributes.get("enabled") != "true"
         or node.attributes.get("clickable") != "true"
@@ -3845,14 +3911,21 @@ def read_talent_grant_grouped_state(
     evidence_prefix: str,
 ) -> tuple[TalentGrantMutableState, int]:
     """Read fresh exact state groups without rescanning the immutable catalog."""
-    expected_selected = tuple(sorted(expected_selected_option_ids))
+    expected_selected_order = tuple(expected_selected_option_ids)
+    expected_selected = tuple(sorted(expected_selected_order))
     expected_unselected = tuple(sorted(expected_unselected_option_ids))
     if (
-        set(expected_selected) & set(expected_unselected)
+        len(expected_selected_order) != len(set(expected_selected_order))
+        or len(expected_unselected) != len(set(expected_unselected))
+        or bool(set(expected_selected) & set(expected_unselected))
         or not set(expected_selected).issubset(baseline.option_ids)
         or not set(expected_unselected).issubset(baseline.option_ids)
     ):
         raise RuntimeError("Grouped Talent state expected IDs are not a valid catalog partition")
+    expected_selected_slots = {
+        resource_id: ordinal
+        for ordinal, resource_id in enumerate(expected_selected_order, start=1)
+    }
     authority_id = "creation-prerequisite-talent-grant-authority"
     digest_id = "creation-prerequisite-talent-grant-digest"
     completion_id = "creation-prerequisite-talent-grant-complete"
@@ -3928,6 +4001,8 @@ def read_talent_grant_grouped_state(
             )
         if (
             not any(value.startswith("✓ ") for value in _accessible_values(node))
+            or _talent_option_slot_ordinals(node)
+            != (expected_selected_slots[resource_id],)
             or node.attributes.get("enabled") != "true"
             or node.attributes.get("clickable") != "true"
             or not device.node_has_tappable_bounds(node)
@@ -3948,6 +4023,7 @@ def read_talent_grant_grouped_state(
             )
         if (
             any(value.startswith("✓ ") for value in _accessible_values(node))
+            or _talent_option_slot_ordinals(node)
             or node.attributes.get("enabled") != "true"
             or node.attributes.get("clickable") != "true"
             or not device.node_has_tappable_bounds(node)
@@ -4227,7 +4303,7 @@ def choose_and_prove_talent_grant(
         initial,
         navigation,
         current_viewport,
-        expected_selected_option_ids=chosen,
+        expected_selected_option_ids=(*expected_after_reset, reset_id),
         expected_completion_enabled=True,
         evidence_prefix=f"{scan_id_prefix}-explicit-reselect",
     )
