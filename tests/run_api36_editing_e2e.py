@@ -4961,12 +4961,60 @@ def capture_unknown_durable_save_outcome(
     for name, value in diagnostics:
         _write_launch_evidence(device, name, value)
     try:
+        fresh_hierarchy = device.run(
+            *ADB_READ_ONLY_HIERARCHY_ARGUMENTS,
+            timeout=30,
+        ).stdout
+        _write_launch_evidence(
+            device,
+            "durable-save-outcome-fresh-hierarchy.xml",
+            fresh_hierarchy,
+        )
+    except Exception as error:
+        _write_launch_evidence(
+            device,
+            "durable-save-outcome-fresh-hierarchy-error.txt",
+            f"fresh read-only hierarchy capture failed: {_bounded_evidence(error)}",
+        )
+    try:
         device.capture("durable-save-outcome-failure")
     except Exception as error:
         _write_launch_evidence(
             device,
             "durable-save-outcome-capture-error.txt",
             error,
+        )
+
+
+def _is_exact_durable_save_toolbar(device: Device, node: UiNode) -> bool:
+    return (
+        node.attributes.get("resource-id") == ""
+        and node.attributes.get("package") == PACKAGE
+        and node.attributes.get("class") == "android.widget.Button"
+        and node.attributes.get("content-desc") == "build-save-runner"
+        and node.attributes.get("enabled") == "true"
+        and node.attributes.get("clickable") == "true"
+        and node.attributes.get("focusable") == "true"
+        and device.node_has_tappable_bounds(node)
+    )
+
+
+def _launch_state_after_unknown_observation(
+    device: Device,
+    error: BaseException,
+) -> LaunchState:
+    """Best-effort read-only state for an already-unknown save outcome."""
+    try:
+        return current_launch_state(device)
+    except Exception as observation_error:
+        return LaunchState(
+            (),
+            None,
+            "post-save state observation failed: "
+            f"{type(error).__name__}: {_bounded_evidence(error)}; "
+            "follow-up observation failed: "
+            f"{type(observation_error).__name__}: "
+            f"{_bounded_evidence(observation_error)}",
         )
 
 
@@ -4992,36 +5040,62 @@ def save_runner_and_wait_for_durable_notice(
         surface_name="Durable save toolbar control",
     )
     if (
-        toolbar.attributes.get("package") != PACKAGE
-        or toolbar.attributes.get("enabled") != "true"
-        or toolbar.attributes.get("clickable") != "true"
-        or not device.node_has_tappable_bounds(toolbar)
+        not _is_exact_durable_save_toolbar(device, toolbar)
+        or toolbar.attributes.get("text") != "Save"
     ):
         device.capture("durable-save-toolbar-invalid")
         raise RuntimeError(
-            "The exact durable save toolbar control is not a tappable Chummer node"
+            "The exact durable save toolbar control does not have the required "
+            "tappable Chummer button topology and exact pre-save text 'Save'"
         )
 
     expected = current_launch_state(device)
     if (
-        not expected.process_ids
+        len(expected.process_ids) != 1
         or expected.resumed_component is None
         or not expected.resumed_component.startswith(f"{PACKAGE}/")
     ):
         device.capture("durable-save-precondition-invalid")
         raise RuntimeError(
-            "Chummer was not the exact running foreground package before the save tap"
+            "Chummer did not have exactly one PID and the exact foreground "
+            "component before the save tap"
         )
 
     x, y = toolbar.center
     # Exactly one non-replayable mutation. Device.shell already suppresses
     # replay when an ADB outcome is unknown.
-    device.shell("input", "tap", str(x), str(y))
+    try:
+        device.shell("input", "tap", str(x), str(y))
+    except AdbTransportError as error:
+        observed = _launch_state_after_unknown_observation(device, error)
+        capture_unknown_durable_save_outcome(
+            device,
+            reason="save-tap-transport-outcome-unknown",
+            expected=expected,
+            observed=observed,
+        )
+        raise RuntimeError(
+            "Durable save outcome is unknown after the non-replayable save tap "
+            "transport failed; no save replay was attempted"
+        ) from error
 
     deadline = time.monotonic() + timeout
     observed = expected
     while time.monotonic() < deadline:
-        observed = current_launch_state(device)
+        try:
+            observed = current_launch_state(device)
+        except AdbTransportError as error:
+            observed = _launch_state_after_unknown_observation(device, error)
+            capture_unknown_durable_save_outcome(
+                device,
+                reason="post-save-launch-state-observation-failed",
+                expected=expected,
+                observed=observed,
+            )
+            raise RuntimeError(
+                "Durable save outcome is unknown because post-save process/"
+                "foreground observation failed; no save replay was attempted"
+            ) from error
         if (
             observed.process_ids != expected.process_ids
             or observed.resumed_component != expected.resumed_component
@@ -5038,11 +5112,28 @@ def save_runner_and_wait_for_durable_notice(
                 "recovery was attempted"
             )
 
-        nodes = device.read_only_hierarchy()
+        try:
+            nodes = device.read_only_hierarchy()
+            if nodes:
+                device.dismiss_system_ui_anr(nodes)
+        except (AdbTransportError, ProductAnrDetected) as error:
+            capture_unknown_durable_save_outcome(
+                device,
+                reason=(
+                    "post-save-hierarchy-observation-failed"
+                    if isinstance(error, AdbTransportError)
+                    else "post-save-product-anr-detected"
+                ),
+                expected=expected,
+                observed=observed,
+            )
+            raise RuntimeError(
+                "Durable save outcome is unknown because post-save hierarchy/"
+                "ANR observation failed; no save replay was attempted"
+            ) from error
         if not nodes:
             time.sleep(0.75)
             continue
-        device.dismiss_system_ui_anr(nodes)
         matches = [
             node
             for node in nodes
@@ -5060,8 +5151,65 @@ def save_runner_and_wait_for_durable_notice(
                 "Durable save toolbar has ambiguous post-mutation cardinality; "
                 "the save outcome remains unknown"
             )
-        if len(matches) == 1 and matches[0].attributes.get("text") == "Saved.":
-            return matches[0]
+        if len(matches) == 1:
+            match = matches[0]
+            try:
+                exact_toolbar = _is_exact_durable_save_toolbar(device, match)
+            except AdbTransportError as error:
+                capture_unknown_durable_save_outcome(
+                    device,
+                    reason="post-save-toolbar-observation-failed",
+                    expected=expected,
+                    observed=observed,
+                )
+                raise RuntimeError(
+                    "Durable save outcome is unknown because exact post-save "
+                    "toolbar observation failed; no save replay was attempted"
+                ) from error
+            if not exact_toolbar:
+                capture_unknown_durable_save_outcome(
+                    device,
+                    reason="durable-save-toolbar-topology-invalid",
+                    expected=expected,
+                    observed=observed,
+                )
+                raise RuntimeError(
+                    "Durable save toolbar changed to an invalid post-mutation "
+                    "topology; the save outcome remains unknown"
+                )
+            if match.attributes.get("text") == "Saved.":
+                try:
+                    confirmed = current_launch_state(device)
+                except AdbTransportError as error:
+                    confirmed = _launch_state_after_unknown_observation(
+                        device,
+                        error,
+                    )
+                    capture_unknown_durable_save_outcome(
+                        device,
+                        reason="post-save-success-authority-observation-failed",
+                        expected=expected,
+                        observed=confirmed,
+                    )
+                    raise RuntimeError(
+                        "Durable save outcome is unknown because final process/"
+                        "foreground confirmation failed; no save replay was attempted"
+                    ) from error
+                if (
+                    confirmed.process_ids != expected.process_ids
+                    or confirmed.resumed_component != expected.resumed_component
+                ):
+                    capture_unknown_durable_save_outcome(
+                        device,
+                        reason="post-save-success-authority-changed",
+                        expected=expected,
+                        observed=confirmed,
+                    )
+                    raise RuntimeError(
+                        "Durable save notice coincided with changed process/foreground "
+                        "authority; the outcome remains unknown"
+                    )
+                return match
         time.sleep(0.75)
 
     capture_unknown_durable_save_outcome(

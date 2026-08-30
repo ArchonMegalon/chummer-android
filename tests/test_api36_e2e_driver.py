@@ -2626,7 +2626,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         with patch.object(
             DRIVER,
             "current_launch_state",
-            side_effect=[foreground, foreground],
+            side_effect=[foreground, foreground, foreground],
         ), patch.object(DRIVER, "capture_unknown_durable_save_outcome") as capture:
             observed = DRIVER.save_runner_and_wait_for_durable_notice(device)
 
@@ -2644,6 +2644,277 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         device.swipe_up.assert_not_called()
         device.swipe_down.assert_not_called()
         capture.assert_not_called()
+
+    def test_durable_save_rejects_stale_saved_toolbar_before_mutation(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        stale = self.phone_runner_toolbar()
+        stale.attributes["text"] = "Saved."
+        device.wait_for_single_exact_accessibility_value.return_value = stale
+        device.node_has_tappable_bounds.return_value = True
+
+        with self.assertRaisesRegex(RuntimeError, "exact pre-save text"):
+            DRIVER.save_runner_and_wait_for_durable_notice(device)
+
+        device.shell.assert_not_called()
+        device.read_only_hierarchy.assert_not_called()
+        device.capture.assert_called_once_with("durable-save-toolbar-invalid")
+
+    def test_durable_save_rejects_false_saved_toolbar_topology(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        toolbar = self.phone_runner_toolbar()
+        toolbar.attributes["text"] = "Save"
+        false_saved = self.phone_runner_toolbar()
+        false_saved.attributes.update(
+            {
+                "text": "Saved.",
+                "class": "android.widget.TextView",
+                "enabled": "false",
+                "clickable": "false",
+                "focusable": "false",
+            }
+        )
+        component = f"{DRIVER.PACKAGE}/crc123.MainActivity"
+        foreground = DRIVER.LaunchState(("3370",), component, "activity")
+        device.wait_for_single_exact_accessibility_value.return_value = toolbar
+        device.node_has_tappable_bounds.return_value = True
+        device.read_only_hierarchy.return_value = [false_saved]
+        device.dismiss_system_ui_anr.return_value = False
+
+        with patch.object(
+            DRIVER,
+            "current_launch_state",
+            side_effect=[foreground, foreground],
+        ), patch.object(
+            DRIVER,
+            "capture_unknown_durable_save_outcome",
+        ) as capture, self.assertRaisesRegex(RuntimeError, "invalid.*topology"):
+            DRIVER.save_runner_and_wait_for_durable_notice(device)
+
+        device.shell.assert_called_once_with("input", "tap", "1017", "201")
+        device.tap.assert_not_called()
+        device.swipe_up.assert_not_called()
+        capture.assert_called_once_with(
+            device,
+            reason="durable-save-toolbar-topology-invalid",
+            expected=foreground,
+            observed=foreground,
+        )
+
+    def test_durable_save_toolbar_predicate_rejects_each_topology_drift(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        device.node_has_tappable_bounds.return_value = True
+        exact = self.phone_runner_toolbar()
+        self.assertTrue(DRIVER._is_exact_durable_save_toolbar(device, exact))
+
+        invalid_attributes = {
+            "resource-id": f"{DRIVER.PACKAGE}:id/build-save-runner",
+            "package": "com.example.other",
+            "class": "android.widget.TextView",
+            "content-desc": "build-save-runner-other",
+            "enabled": "false",
+            "clickable": "false",
+            "focusable": "false",
+        }
+        for attribute, value in invalid_attributes.items():
+            with self.subTest(attribute=attribute):
+                invalid = self.phone_runner_toolbar()
+                invalid.attributes[attribute] = value
+                self.assertFalse(
+                    DRIVER._is_exact_durable_save_toolbar(device, invalid)
+                )
+
+        device.node_has_tappable_bounds.return_value = False
+        self.assertFalse(DRIVER._is_exact_durable_save_toolbar(device, exact))
+
+    def test_durable_save_requires_exactly_one_pid_before_mutation(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        toolbar = self.phone_runner_toolbar()
+        toolbar.attributes["text"] = "Save"
+        component = f"{DRIVER.PACKAGE}/crc123.MainActivity"
+        multiple = DRIVER.LaunchState(("3370", "4401"), component, "activity")
+        device.wait_for_single_exact_accessibility_value.return_value = toolbar
+        device.node_has_tappable_bounds.return_value = True
+
+        with patch.object(
+            DRIVER,
+            "current_launch_state",
+            return_value=multiple,
+        ), self.assertRaisesRegex(RuntimeError, "exactly one PID"):
+            DRIVER.save_runner_and_wait_for_durable_notice(device)
+
+        device.shell.assert_not_called()
+        device.read_only_hierarchy.assert_not_called()
+        device.capture.assert_called_once_with("durable-save-precondition-invalid")
+
+    def test_durable_save_tap_transport_failure_is_captured_without_replay(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        toolbar = self.phone_runner_toolbar()
+        toolbar.attributes["text"] = "Save"
+        component = f"{DRIVER.PACKAGE}/crc123.MainActivity"
+        foreground = DRIVER.LaunchState(("3370",), component, "activity")
+        transport = DRIVER.AdbTransportError(
+            {
+                "classification": "timeout-unknown-outcome",
+                "commandPolicy": "non-replayable",
+                "replay": {"performed": False, "suppressed": True},
+            },
+            Path("save-tap-transport.json"),
+        )
+        device.wait_for_single_exact_accessibility_value.return_value = toolbar
+        device.node_has_tappable_bounds.return_value = True
+        device.shell.side_effect = transport
+
+        with patch.object(
+            DRIVER,
+            "current_launch_state",
+            side_effect=[foreground, foreground],
+        ), patch.object(
+            DRIVER,
+            "capture_unknown_durable_save_outcome",
+        ) as capture, self.assertRaisesRegex(RuntimeError, "no save replay"):
+            DRIVER.save_runner_and_wait_for_durable_notice(device)
+
+        device.shell.assert_called_once_with("input", "tap", "1017", "201")
+        device.tap.assert_not_called()
+        device.swipe_up.assert_not_called()
+        capture.assert_called_once_with(
+            device,
+            reason="save-tap-transport-outcome-unknown",
+            expected=foreground,
+            observed=foreground,
+        )
+
+    def test_durable_save_hierarchy_transport_failure_is_captured(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        toolbar = self.phone_runner_toolbar()
+        toolbar.attributes["text"] = "Save"
+        component = f"{DRIVER.PACKAGE}/crc123.MainActivity"
+        foreground = DRIVER.LaunchState(("3370",), component, "activity")
+        transport = DRIVER.AdbTransportError(
+            {
+                "classification": "transport-failed",
+                "commandPolicy": "read-only-retryable",
+                "replay": {"performed": True, "suppressed": False},
+            },
+            Path("hierarchy-transport.json"),
+        )
+        device.wait_for_single_exact_accessibility_value.return_value = toolbar
+        device.node_has_tappable_bounds.return_value = True
+        device.read_only_hierarchy.side_effect = transport
+
+        with patch.object(
+            DRIVER,
+            "current_launch_state",
+            side_effect=[foreground, foreground],
+        ), patch.object(
+            DRIVER,
+            "capture_unknown_durable_save_outcome",
+        ) as capture, self.assertRaisesRegex(RuntimeError, "no save replay"):
+            DRIVER.save_runner_and_wait_for_durable_notice(device)
+
+        device.shell.assert_called_once_with("input", "tap", "1017", "201")
+        capture.assert_called_once_with(
+            device,
+            reason="post-save-hierarchy-observation-failed",
+            expected=foreground,
+            observed=foreground,
+        )
+
+    def test_durable_save_launch_state_transport_failure_is_captured(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        toolbar = self.phone_runner_toolbar()
+        toolbar.attributes["text"] = "Save"
+        component = f"{DRIVER.PACKAGE}/crc123.MainActivity"
+        foreground = DRIVER.LaunchState(("3370",), component, "activity")
+        transport = DRIVER.AdbTransportError(
+            {
+                "classification": "transport-failed",
+                "commandPolicy": "read-only-retryable",
+                "replay": {"performed": True, "suppressed": False},
+            },
+            Path("launch-state-transport.json"),
+        )
+        device.wait_for_single_exact_accessibility_value.return_value = toolbar
+        device.node_has_tappable_bounds.return_value = True
+
+        with patch.object(
+            DRIVER,
+            "current_launch_state",
+            side_effect=[foreground, transport, foreground],
+        ), patch.object(
+            DRIVER,
+            "capture_unknown_durable_save_outcome",
+        ) as capture, self.assertRaisesRegex(RuntimeError, "no save replay"):
+            DRIVER.save_runner_and_wait_for_durable_notice(device)
+
+        device.shell.assert_called_once_with("input", "tap", "1017", "201")
+        capture.assert_called_once_with(
+            device,
+            reason="post-save-launch-state-observation-failed",
+            expected=foreground,
+            observed=foreground,
+        )
+
+    def test_durable_save_product_anr_is_captured_as_unknown_outcome(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        toolbar = self.phone_runner_toolbar()
+        toolbar.attributes["text"] = "Save"
+        component = f"{DRIVER.PACKAGE}/crc123.MainActivity"
+        foreground = DRIVER.LaunchState(("3370",), component, "activity")
+        device.wait_for_single_exact_accessibility_value.return_value = toolbar
+        device.node_has_tappable_bounds.return_value = True
+        device.read_only_hierarchy.return_value = [toolbar]
+        device.dismiss_system_ui_anr.side_effect = DRIVER.ProductAnrDetected("anr")
+
+        with patch.object(
+            DRIVER,
+            "current_launch_state",
+            side_effect=[foreground, foreground],
+        ), patch.object(
+            DRIVER,
+            "capture_unknown_durable_save_outcome",
+        ) as capture, self.assertRaisesRegex(RuntimeError, "no save replay"):
+            DRIVER.save_runner_and_wait_for_durable_notice(device)
+
+        device.shell.assert_called_once_with("input", "tap", "1017", "201")
+        capture.assert_called_once_with(
+            device,
+            reason="post-save-product-anr-detected",
+            expected=foreground,
+            observed=foreground,
+        )
+
+    def test_durable_save_rechecks_authority_after_saved_candidate(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        toolbar = self.phone_runner_toolbar()
+        toolbar.attributes["text"] = "Save"
+        saved = self.phone_runner_toolbar()
+        saved.attributes["text"] = "Saved."
+        component = f"{DRIVER.PACKAGE}/crc123.MainActivity"
+        foreground = DRIVER.LaunchState(("3370",), component, "before")
+        restarted = DRIVER.LaunchState(("4401",), component, "after")
+        device.wait_for_single_exact_accessibility_value.return_value = toolbar
+        device.node_has_tappable_bounds.return_value = True
+        device.read_only_hierarchy.return_value = [saved]
+        device.dismiss_system_ui_anr.return_value = False
+
+        with patch.object(
+            DRIVER,
+            "current_launch_state",
+            side_effect=[foreground, foreground, restarted],
+        ), patch.object(
+            DRIVER,
+            "capture_unknown_durable_save_outcome",
+        ) as capture, self.assertRaisesRegex(RuntimeError, "outcome remains unknown"):
+            DRIVER.save_runner_and_wait_for_durable_notice(device)
+
+        device.shell.assert_called_once_with("input", "tap", "1017", "201")
+        capture.assert_called_once_with(
+            device,
+            reason="post-save-success-authority-changed",
+            expected=foreground,
+            observed=restarted,
+        )
 
     def test_save_and_read_authority_uses_the_fail_closed_save_observer(self) -> None:
         device = Mock(spec=DRIVER.Device)
@@ -2689,6 +2960,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
     def test_durable_save_foreground_loss_fails_before_any_followup_ui_input(self) -> None:
         device = Mock(spec=DRIVER.Device)
         toolbar = self.phone_runner_toolbar()
+        toolbar.attributes["text"] = "Save"
         component = f"{DRIVER.PACKAGE}/crc123.MainActivity"
         expected = DRIVER.LaunchState(("3370",), component, "chummer")
         observed = DRIVER.LaunchState(
@@ -2724,6 +2996,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
     def test_durable_save_process_replacement_is_not_treated_as_recovery(self) -> None:
         device = Mock(spec=DRIVER.Device)
         toolbar = self.phone_runner_toolbar()
+        toolbar.attributes["text"] = "Save"
         component = f"{DRIVER.PACKAGE}/crc123.MainActivity"
         expected = DRIVER.LaunchState(("3370",), component, "before")
         restarted = DRIVER.LaunchState(("4401",), component, "after")
@@ -2753,7 +3026,9 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
     def test_durable_save_duplicate_toolbar_fails_closed_without_replay(self) -> None:
         device = Mock(spec=DRIVER.Device)
         toolbar = self.phone_runner_toolbar()
+        toolbar.attributes["text"] = "Save"
         duplicate = self.phone_runner_toolbar()
+        duplicate.attributes["text"] = "Save"
         component = f"{DRIVER.PACKAGE}/crc123.MainActivity"
         foreground = DRIVER.LaunchState(("3370",), component, "activity")
         device.wait_for_single_exact_accessibility_value.return_value = toolbar
@@ -2839,6 +3114,12 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 subprocess.CompletedProcess(
                     args=["logcat", "crash"], returncode=0, stdout="fatal", stderr=""
                 ),
+                subprocess.CompletedProcess(
+                    args=["uiautomator", "dump"],
+                    returncode=0,
+                    stdout="<hierarchy rotation=\"0\"></hierarchy>",
+                    stderr="",
+                ),
             ]
             expected = DRIVER.LaunchState(
                 ("3370",),
@@ -2874,6 +3155,13 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             self.assertEqual(
                 "am_crash",
                 (Path(temporary) / "durable-save-outcome-logcat-events.txt").read_text(),
+            )
+            self.assertEqual(
+                '<hierarchy rotation="0"></hierarchy>',
+                (
+                    Path(temporary)
+                    / "durable-save-outcome-fresh-hierarchy.xml"
+                ).read_text(),
             )
             device.capture.assert_called_once_with("durable-save-outcome-failure")
 
