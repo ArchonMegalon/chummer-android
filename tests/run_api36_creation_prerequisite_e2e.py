@@ -524,6 +524,105 @@ class PriorityRankOrigin(NamedTuple):
     empty_hierarchy_reads: int
 
 
+def require_reusable_scan_origin(origin: PriorityRankOrigin) -> None:
+    if (
+        not origin.nodes
+        or type(origin.reverse_swipes) is not int
+        or type(origin.elapsed_ms) is not int
+        or type(origin.empty_hierarchy_reads) is not int
+        or not origin.hierarchy_durations_ms
+        or any(type(value) is not int for value in origin.hierarchy_durations_ms)
+        or origin.reverse_swipes < 0
+        or origin.reverse_swipes > 8
+        or origin.elapsed_ms < 0
+        or origin.empty_hierarchy_reads < 0
+        or any(value < 0 for value in origin.hierarchy_durations_ms)
+        or len(origin.hierarchy_durations_ms)
+        < origin.empty_hierarchy_reads + origin.reverse_swipes + 1
+        or origin.empty_hierarchy_reads > len(origin.hierarchy_durations_ms)
+        or origin.elapsed_ms + (len(origin.hierarchy_durations_ms) + 1) // 2
+        < sum(origin.hierarchy_durations_ms)
+    ):
+        raise ValueError("A reused initial scan observation must carry exact nonnegative timing")
+
+
+def acquire_stable_start_origin(
+    device: shared.Device,
+    *,
+    scan_id: str,
+    max_reverse_swipes: int,
+    distance_ratio: float,
+    stable_repeats: int = 2,
+    max_consecutive_empty_reads: int = 3,
+    delay_seconds: float = 0.0,
+) -> PriorityRankOrigin:
+    """Prove a measured page start and retain its fresh final hierarchy.
+
+    The baseline and every post-gesture observation use the file-backed fresh
+    hierarchy path. The returned origin carries that acquisition timing exactly
+    once for the composed forward-scan receipt; no separate scan is recorded.
+    """
+    if (
+        not scan_id
+        or max_reverse_swipes < stable_repeats
+        or max_reverse_swipes > 8
+        or stable_repeats < 1
+        or max_consecutive_empty_reads < 0
+        or delay_seconds < 0
+    ):
+        raise ValueError(
+            "A named stable-start scan with bounded swipes, repeats, and empty reads is required"
+        )
+    started = time.monotonic()
+    hierarchy_durations_ms: list[int] = []
+    empty_hierarchy_reads = 0
+    previous: tuple[tuple[str, ...], ...] | None = None
+    unchanged = 0
+    reverse_swipes = 0
+    consecutive_empty_reads = 0
+
+    while reverse_swipes <= max_reverse_swipes:
+        nodes = fresh_hierarchy_timed(device, hierarchy_durations_ms)
+        if not nodes:
+            consecutive_empty_reads += 1
+            empty_hierarchy_reads += 1
+            if consecutive_empty_reads > max_consecutive_empty_reads:
+                device.capture(f"{scan_id}-empty-hierarchy-exhausted")
+                raise RuntimeError(
+                    f"Accessibility reverse scan {scan_id!r} exhausted transient empty "
+                    "hierarchy reads"
+                )
+            time.sleep(0.75)
+            continue
+        consecutive_empty_reads = 0
+        signature = accessibility_signature(nodes)
+        unchanged = unchanged + 1 if previous is not None and signature == previous else 0
+        previous = signature
+        if unchanged >= stable_repeats:
+            elapsed_ms = round((time.monotonic() - started) * 1000)
+            origin = PriorityRankOrigin(
+                nodes=nodes,
+                reverse_swipes=reverse_swipes,
+                elapsed_ms=elapsed_ms,
+                hierarchy_durations_ms=tuple(hierarchy_durations_ms),
+                empty_hierarchy_reads=empty_hierarchy_reads,
+            )
+            require_reusable_scan_origin(origin)
+            return origin
+        if reverse_swipes >= max_reverse_swipes:
+            break
+        device.swipe_down(distance_ratio=distance_ratio)
+        reverse_swipes += 1
+        if delay_seconds > 0:
+            time.sleep(delay_seconds)
+
+    device.capture(f"{scan_id}-stable-start-unproven")
+    raise RuntimeError(
+        f"Accessibility reverse scan {scan_id!r} did not prove a stable page start "
+        f"within {max_reverse_swipes} swipes"
+    )
+
+
 def scan_forward_until_stable(
     device: shared.Device,
     *,
@@ -557,32 +656,8 @@ def scan_forward_until_stable(
     consecutive_empty_reads = 0
     total_empty_reads = 0
     hierarchy_durations_ms: list[int] = []
-    if initial_observation is not None and (
-        not initial_observation.nodes
-        or type(initial_observation.reverse_swipes) is not int
-        or type(initial_observation.elapsed_ms) is not int
-        or type(initial_observation.empty_hierarchy_reads) is not int
-        or not initial_observation.hierarchy_durations_ms
-        or any(
-            type(value) is not int
-            for value in initial_observation.hierarchy_durations_ms
-        )
-        or initial_observation.reverse_swipes < 0
-        or initial_observation.reverse_swipes > 8
-        or initial_observation.elapsed_ms < 0
-        or initial_observation.empty_hierarchy_reads < 0
-        or any(value < 0 for value in initial_observation.hierarchy_durations_ms)
-        or len(initial_observation.hierarchy_durations_ms)
-        < initial_observation.empty_hierarchy_reads
-        + initial_observation.reverse_swipes
-        + 1
-        or initial_observation.empty_hierarchy_reads
-        > len(initial_observation.hierarchy_durations_ms)
-        or initial_observation.elapsed_ms
-        + (len(initial_observation.hierarchy_durations_ms) + 1) // 2
-        < sum(initial_observation.hierarchy_durations_ms)
-    ):
-        raise ValueError("A reused initial scan observation must carry exact nonnegative timing")
+    if initial_observation is not None:
+        require_reusable_scan_origin(initial_observation)
     reused_initial_screen = initial_observation is not None
     pending_initial_screen = (
         initial_observation.nodes if initial_observation is not None else None
@@ -1311,7 +1386,6 @@ class CreationDashboardScanProof(NamedTuple):
 def assert_uncreated_advanced_editor_gated(
     device: shared.Device,
     *,
-    initial_observation: PriorityRankOrigin | None = None,
     scan_observer: Callable[[dict[str, object]], None] | None = None,
     scan_id: str = "advanced-editor-gate",
 ) -> CreationDashboardScanProof:
@@ -1324,12 +1398,21 @@ def assert_uncreated_advanced_editor_gated(
         "creation-wizard-attributes",
         "attribute-save-",
     )
+    scan_origin = acquire_stable_start_origin(
+        device,
+        scan_id=f"{scan_id}-origin",
+        max_reverse_swipes=8,
+        distance_ratio=0.68,
+        stable_repeats=2,
+        max_consecutive_empty_reads=3,
+        delay_seconds=0.0,
+    )
     scan = scan_forward_with_receipt(
         device,
         scan_id=scan_id,
         max_scrolls=18,
         distance_ratio=0.68,
-        initial_observation=initial_observation,
+        initial_observation=scan_origin,
         delay_seconds=0.0,
         observer=scan_observer,
     )
@@ -4305,7 +4388,6 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         )
     dashboard_scan = assert_uncreated_advanced_editor_gated(
         device,
-        initial_observation=resolved_dashboard_viewport[0],
         scan_observer=progress.record_scan,
         scan_id="advanced-editor-gate-initial",
     )

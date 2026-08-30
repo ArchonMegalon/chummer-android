@@ -2581,7 +2581,20 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         dashboard_source = inspect.getsource(driver.assert_uncreated_advanced_editor_gated)
         self.assertIn("distance_ratio=0.68", dashboard_source)
         self.assertIn("max_scrolls=18", dashboard_source)
+        self.assertIn("acquire_stable_start_origin(", dashboard_source)
+        self.assertIn("max_reverse_swipes=8", dashboard_source)
+        self.assertIn("stable_repeats=2", dashboard_source)
+        self.assertIn("max_consecutive_empty_reads=3", dashboard_source)
+        self.assertIn("initial_observation=scan_origin", dashboard_source)
         self.assertNotIn("reset_scroll_to_top", dashboard_source)
+
+        stable_origin_source = inspect.getsource(driver.acquire_stable_start_origin)
+        self.assertIn("fresh_hierarchy_timed(device, hierarchy_durations_ms)", stable_origin_source)
+        self.assertIn("device.swipe_down(distance_ratio=distance_ratio)", stable_origin_source)
+        self.assertNotIn("read_only_hierarchy", stable_origin_source)
+        self.assertNotIn("observer", stable_origin_source)
+        self.assertNotIn("COMPOSED_SCAN_TIMING_TRIGGER_FIELDS", stable_origin_source)
+        self.assertEqual(90_000, driver.PHASE_BUDGET_MS["authority-inventory"])
 
         execute_source = inspect.getsource(driver.execute)
         self.assertIn(
@@ -2661,18 +2674,45 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             }
         )
         device = mock.Mock()
+        origin = self.priority_rank_origin([binding, method])
         with mock.patch.object(
+            driver,
+            "acquire_stable_start_origin",
+            return_value=origin,
+        ) as acquire, mock.patch.object(
             driver,
             "scan_forward_with_receipt",
             return_value=driver.StableViewportScan([[binding], [method]], 4),
-        ):
+        ) as scan:
             proof = driver.assert_uncreated_advanced_editor_gated(device)
         self.assertEqual(
             driver.CreationDashboardScanProof("Revision 7", "Priority", 4, 1),
             proof,
         )
+        acquire.assert_called_once_with(
+            device,
+            scan_id="advanced-editor-gate-origin",
+            max_reverse_swipes=8,
+            distance_ratio=0.68,
+            stable_repeats=2,
+            max_consecutive_empty_reads=3,
+            delay_seconds=0.0,
+        )
+        scan.assert_called_once_with(
+            device,
+            scan_id="advanced-editor-gate",
+            max_scrolls=18,
+            distance_ratio=0.68,
+            initial_observation=origin,
+            delay_seconds=0.0,
+            observer=None,
+        )
 
         with mock.patch.object(
+            driver,
+            "acquire_stable_start_origin",
+            return_value=origin,
+        ), mock.patch.object(
             driver,
             "scan_forward_with_receipt",
             return_value=driver.StableViewportScan([[binding], [method, method]], 4),
@@ -2876,7 +2916,9 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         device.swipe_up.assert_not_called()
         device.capture.assert_called_once_with("creation-stage-method-ready-unavailable")
 
-    def test_dashboard_scan_reuses_the_resolved_authority_viewport(self) -> None:
+    def test_dashboard_scan_does_not_reuse_read_only_authority_viewport_as_scroll_origin(
+        self,
+    ) -> None:
         nodes = [
             driver.shared.UiNode({"resource-id": "creation-wizard-dashboard"}),
             driver.shared.UiNode(
@@ -2912,25 +2954,349 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertEqual((3,), viewport[0].hierarchy_durations_ms)
 
         device = mock.Mock()
+        fresh_origin = driver.PriorityRankOrigin(nodes, 2, 9, (3, 3, 3), 0)
         with mock.patch.object(
+            driver,
+            "acquire_stable_start_origin",
+            return_value=fresh_origin,
+        ) as acquire, mock.patch.object(
             driver,
             "scan_forward_with_receipt",
             return_value=driver.StableViewportScan([nodes], 0),
         ) as scan:
             proof = driver.assert_uncreated_advanced_editor_gated(
                 device,
-                initial_observation=viewport[0],
             )
         self.assertEqual("Revision 7", proof.binding)
+        acquire.assert_called_once_with(
+            device,
+            scan_id="advanced-editor-gate-origin",
+            max_reverse_swipes=8,
+            distance_ratio=0.68,
+            stable_repeats=2,
+            max_consecutive_empty_reads=3,
+            delay_seconds=0.0,
+        )
         scan.assert_called_once_with(
             device,
             scan_id="advanced-editor-gate",
             max_scrolls=18,
             distance_ratio=0.68,
-            initial_observation=viewport[0],
+            initial_observation=fresh_origin,
             delay_seconds=0.0,
             observer=None,
         )
+
+    def test_dashboard_stable_origin_recovers_hosted_method_above_start(self) -> None:
+        def marker(name: str) -> driver.shared.UiNode:
+            return driver.shared.UiNode(
+                {
+                    "resource-id": "hosted-viewport-marker",
+                    "content-desc": name,
+                    "bounds": "[0,275][1080,2190]",
+                }
+            )
+
+        method = driver.shared.UiNode(
+            {
+                "resource-id": "creation-stage-method",
+                "content-desc": "Priority",
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[53,350][1028,550]",
+            }
+        )
+        top = [marker("top"), method]
+
+        class HostedOffsetDevice:
+            def __init__(self) -> None:
+                # The failure artifact placed the method around y=-4266. Four
+                # 0.68-height reverse movements recover it; two clamped repeats
+                # then prove the stable start, all within the unchanged bound 8.
+                self.screens = [
+                    [marker("below-method-4")],
+                    [marker("below-method-3")],
+                    [marker("below-method-2")],
+                    [marker("below-method-1")],
+                    top,
+                    top,
+                    top,
+                ]
+                self.hierarchy_reads = 0
+                self.reverse_swipes = 0
+                self.captures: list[str] = []
+
+            def hierarchy(self):
+                if self.hierarchy_reads != self.reverse_swipes:
+                    raise AssertionError("Each reverse gesture needs one fresh hierarchy")
+                nodes = self.screens[self.hierarchy_reads]
+                self.hierarchy_reads += 1
+                return nodes
+
+            def swipe_down(self, *, distance_ratio):
+                if self.hierarchy_reads != self.reverse_swipes + 1:
+                    raise AssertionError("A reverse gesture cannot outrun its fresh baseline")
+                self.asserted_distance_ratio = distance_ratio
+                self.reverse_swipes += 1
+
+            def capture(self, name):
+                self.captures.append(name)
+
+        device = HostedOffsetDevice()
+        perf_counter = [
+            value
+            for index in range(7)
+            for value in (float(index), float(index) + 0.003)
+        ]
+        with mock.patch.object(
+            driver.time,
+            "perf_counter",
+            side_effect=perf_counter,
+        ), mock.patch.object(
+            driver.time,
+            "monotonic",
+            side_effect=[10.0, 10.030],
+        ):
+            origin = driver.acquire_stable_start_origin(
+                device,
+                scan_id="advanced-editor-gate-initial-origin",
+                max_reverse_swipes=8,
+                distance_ratio=0.68,
+                stable_repeats=2,
+                max_consecutive_empty_reads=3,
+                delay_seconds=0.0,
+            )
+
+        self.assertIs(top, origin.nodes)
+        self.assertIn(method, origin.nodes)
+        self.assertEqual(6, origin.reverse_swipes)
+        self.assertEqual(30, origin.elapsed_ms)
+        self.assertEqual((3, 3, 3, 3, 3, 3, 3), origin.hierarchy_durations_ms)
+        self.assertEqual(0, origin.empty_hierarchy_reads)
+        self.assertEqual(7, device.hierarchy_reads)
+        self.assertEqual(6, device.reverse_swipes)
+        self.assertEqual(0.68, device.asserted_distance_ratio)
+        self.assertEqual([], device.captures)
+
+    def test_dashboard_stable_origin_retries_empty_reads_without_extra_gestures(
+        self,
+    ) -> None:
+        device = mock.Mock()
+        device.hierarchy.side_effect = [
+            [
+                driver.shared.UiNode(
+                    {
+                        "resource-id": "moving-viewport-marker",
+                        "content-desc": "below-method",
+                    }
+                )
+            ],
+            [],
+            [],
+            [],
+            [],
+        ]
+
+        with mock.patch.object(driver.time, "sleep"), self.assertRaisesRegex(
+            RuntimeError,
+            "exhausted transient empty hierarchy reads",
+        ):
+            driver.acquire_stable_start_origin(
+                device,
+                scan_id="advanced-editor-gate-initial-origin",
+                max_reverse_swipes=8,
+                distance_ratio=0.68,
+                stable_repeats=2,
+                max_consecutive_empty_reads=3,
+                delay_seconds=0.0,
+            )
+
+        self.assertEqual(5, device.hierarchy.call_count)
+        device.swipe_down.assert_called_once_with(distance_ratio=0.68)
+        device.capture.assert_called_once_with(
+            "advanced-editor-gate-initial-origin-empty-hierarchy-exhausted"
+        )
+
+    def test_dashboard_stable_origin_exhausts_exact_reverse_bound_without_guessing(
+        self,
+    ) -> None:
+        device = mock.Mock()
+        device.hierarchy.side_effect = [
+            [
+                driver.shared.UiNode(
+                    {
+                        "resource-id": "moving-viewport-marker",
+                        "content-desc": f"viewport-{index}",
+                    }
+                )
+            ]
+            for index in range(9)
+        ]
+
+        with self.assertRaisesRegex(RuntimeError, "within 8 swipes"):
+            driver.acquire_stable_start_origin(
+                device,
+                scan_id="advanced-editor-gate-initial-origin",
+                max_reverse_swipes=8,
+                distance_ratio=0.68,
+                stable_repeats=2,
+                max_consecutive_empty_reads=3,
+                delay_seconds=0.0,
+            )
+
+        self.assertEqual(9, device.hierarchy.call_count)
+        self.assertEqual(8, device.swipe_down.call_count)
+        device.capture.assert_called_once_with(
+            "advanced-editor-gate-initial-origin-stable-start-unproven"
+        )
+
+    def test_dashboard_origin_timing_is_carried_once_by_composed_forward_receipt(
+        self,
+    ) -> None:
+        node = driver.shared.UiNode(
+            {
+                "resource-id": "stable-dashboard",
+                "content-desc": "stable",
+            }
+        )
+        device = mock.Mock()
+        device.hierarchy.return_value = [node]
+        observations: list[dict[str, object]] = []
+        perf_counter = iter(
+            value
+            for started, duration_ms in (
+                (0.0, 4),
+                (1.0, 5),
+                (2.0, 6),
+                (3.0, 7),
+                (4.0, 8),
+            )
+            for value in (started, started + duration_ms / 1000)
+        )
+
+        with mock.patch.object(
+            driver.time,
+            "perf_counter",
+            side_effect=perf_counter,
+        ), mock.patch.object(
+            driver.time,
+            "monotonic",
+            side_effect=[0.0, 0.016, 1.0, 1.020],
+        ):
+            origin = driver.acquire_stable_start_origin(
+                device,
+                scan_id="advanced-editor-gate-initial-origin",
+                max_reverse_swipes=8,
+                distance_ratio=0.68,
+                stable_repeats=2,
+                max_consecutive_empty_reads=3,
+                delay_seconds=0.0,
+            )
+            driver.scan_forward_until_stable(
+                device,
+                scan_id="advanced-editor-gate-initial",
+                max_scrolls=18,
+                distance_ratio=0.68,
+                initial_observation=origin,
+                stable_repeats=2,
+                delay_seconds=0.0,
+                observer=observations.append,
+            )
+
+        self.assertEqual(1, len(observations))
+        receipt = observations[0]
+        self.assertEqual("stable-end", receipt["status"])
+        self.assertEqual(16, receipt["originElapsedMs"])
+        self.assertEqual(2, receipt["originReverseSwipes"])
+        self.assertEqual(3, receipt["originHierarchyReadCount"])
+        self.assertEqual(15, receipt["originHierarchyElapsedMs"])
+        self.assertEqual(6, receipt["originMaximumHierarchyReadMs"])
+        self.assertEqual(20, receipt["traversalElapsedMs"])
+        self.assertEqual(4, receipt["totalNavigationSwipes"])
+        self.assertEqual(5, receipt["hierarchyReadCount"])
+        self.assertEqual(30, receipt["hierarchyElapsedMs"])
+        self.assertEqual(8, receipt["maximumHierarchyReadMs"])
+        self.assertEqual(36, receipt["elapsedMs"])
+        driver.require_composed_scan_timing(receipt)
+        self.assertEqual(5, device.hierarchy.call_count)
+        self.assertEqual(2, device.swipe_down.call_count)
+        self.assertEqual(2, device.swipe_up.call_count)
+
+    def test_composed_scan_timing_accepts_exact_maximum_lower_and_upper_bounds(
+        self,
+    ) -> None:
+        for case, origin_maximum, combined_maximum in (
+            ("lower", 5, 8),
+            ("upper", 15, 15),
+        ):
+            with self.subTest(case=case):
+                driver.require_composed_scan_timing(
+                    {
+                        "scanId": "advanced-editor-gate-initial",
+                        "status": "stable-end",
+                        "reusedInitialScreen": True,
+                        "originElapsedMs": 13,
+                        "originReverseSwipes": 2,
+                        "originEmptyHierarchyReads": 0,
+                        "originHierarchyReadCount": 3,
+                        "originHierarchyElapsedMs": 15,
+                        "originMaximumHierarchyReadMs": origin_maximum,
+                        "traversalElapsedMs": 14,
+                        "traversalEmptyHierarchyReads": 0,
+                        "emptyHierarchyReads": 0,
+                        "totalNavigationSwipes": 4,
+                        "hierarchyReadCount": 5,
+                        "hierarchyElapsedMs": 30,
+                        "maximumHierarchyReadMs": combined_maximum,
+                        "elapsedMs": 27,
+                        "swipes": 2,
+                    }
+                )
+
+    def test_dashboard_inventory_rejects_duplicate_missing_and_empty_authority(
+        self,
+    ) -> None:
+        def authority(selector: str, value: str) -> driver.shared.UiNode:
+            return driver.shared.UiNode(
+                {
+                    "resource-id": selector,
+                    "content-desc": value,
+                    "enabled": "true",
+                    "clickable": "true",
+                }
+            )
+
+        binding = authority("creation-wizard-binding", "Revision 7")
+        method = authority("creation-stage-method", "Priority")
+        cases = (
+            ("duplicate-binding", [[binding, binding, method]], "cardinality 2"),
+            ("duplicate-method", [[binding, method, method]], "cardinality 2"),
+            ("missing-binding", [[method]], "did not expose one binding"),
+            ("missing-method", [[binding]], "did not expose one binding"),
+            (
+                "empty-binding",
+                [[authority("creation-wizard-binding", "  "), method]],
+                "did not expose one binding",
+            ),
+            (
+                "empty-method",
+                [[binding, authority("creation-stage-method", "  ")]],
+                "did not expose one binding",
+            ),
+        )
+        origin = self.priority_rank_origin([binding, method])
+        for case, screens, error in cases:
+            device = mock.Mock()
+            with self.subTest(case=case), mock.patch.object(
+                driver,
+                "acquire_stable_start_origin",
+                return_value=origin,
+            ), mock.patch.object(
+                driver,
+                "scan_forward_with_receipt",
+                return_value=driver.StableViewportScan(screens, 0),
+            ), self.assertRaisesRegex(RuntimeError, error):
+                driver.assert_uncreated_advanced_editor_gated(device)
 
     def test_prerequisite_scan_origin_reuses_exact_top_viewport_after_bounded_rewind(
         self,
