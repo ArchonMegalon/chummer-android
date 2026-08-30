@@ -4023,6 +4023,67 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertEqual(4, device.swipe_down.call_count)
         sleep.assert_not_called()
 
+    def test_build_page_exposes_one_real_authority_gated_creation_method_route(self) -> None:
+        source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
+        dashboard_start = source.index("private void AddCreationWizardDashboard()")
+        route_start = source.index("private void AddCreationMethodRoute(")
+        dashboard = source[dashboard_start:route_start]
+        route_end = source.index("private void AddFinalizationReviewAction(", route_start)
+        route = source[route_start:route_end]
+        stages_start = source.index("private void AddWizardStages(")
+        stages_end = source.index("private void AddCompletionBlockers(", stages_start)
+        stages = source[stages_start:stages_end]
+
+        self.assertEqual(
+            1,
+            dashboard.count("AddCreationMethodRoute(snapshot, projection, prerequisite);"),
+        )
+        self.assertNotIn("VerticalStackLayout method =", dashboard)
+        self.assertEqual(1, source.count('automationId: "creation-stage-method"'))
+        for marker in (
+            "NativeTheme.NavigationRow(",
+            "HasAuthoritativePrerequisiteOptions(prerequisite)",
+            "Coordinator.CanOpenSr5LifeModuleOrigin()",
+            "OpenCreationPrerequisiteAsync",
+            "OpenSr5LifeModuleOriginAsync",
+            "BuildPageUiProjection.CreationKarmaAuthorityRequired",
+            "static () => Task.CompletedTask",
+            "enabled: canOpen",
+        ):
+            with self.subTest(marker=marker):
+                self.assertIn(marker, route)
+        self.assertNotIn("enabled: true", route)
+        method_guard = stages.index("CharacterCreationWizardStepIds.Method")
+        self.assertLess(method_guard, stages.index("NativeTheme.NavigationRow("))
+        self.assertIn(
+            "continue;",
+            stages[method_guard:stages.index("bool foundation", method_guard)],
+        )
+        self.assertNotIn("AddCreationMethodRoute", stages)
+
+    def test_zero_or_repeated_projected_method_steps_keep_one_canonical_route(self) -> None:
+        source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
+        dashboard_start = source.index("private void AddCreationWizardDashboard()")
+        dashboard_end = source.index("private void AddCreationMethodRoute(", dashboard_start)
+        dashboard = source[dashboard_start:dashboard_end]
+        stages_start = source.index("private void AddWizardStages(")
+        stages_end = source.index("private void AddCompletionBlockers(", stages_start)
+        stages = source[stages_start:stages_end]
+
+        # Zero projected Method rows still gets the unconditional dedicated route.
+        self.assertIn(
+            "AddCreationMethodRoute(snapshot, projection, prerequisite);",
+            dashboard,
+        )
+        # Repeated projected Method rows all hit this guard before the generic renderer.
+        method_guard = stages.index("CharacterCreationWizardStepIds.Method")
+        generic_renderer = stages.index(
+            'automationId: $"creation-stage-{Token(stage.StepId)}"',
+        )
+        self.assertIn("continue;", stages[method_guard:generic_renderer])
+        self.assertLess(method_guard, generic_renderer)
+        self.assertEqual(1, source.count('automationId: "creation-stage-method"'))
+
     def test_execute_emits_all_phase_and_scan_timing_into_digest_bound_receipt(self) -> None:
         source = inspect.getsource(driver.execute)
         offsets = [source.index(f'progress.advance("{phase_id}")') for phase_id in driver.PHASE_ORDER]

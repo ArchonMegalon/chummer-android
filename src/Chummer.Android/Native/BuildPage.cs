@@ -166,6 +166,8 @@ public static class BuildPageUiProjection
 {
     public const string CreationIdentityDraftContractUnavailable =
         "creation-identity-draft-contract-unavailable";
+    public const string CreationKarmaAuthorityRequired =
+        "creation-karma-authority-required";
 
     public static BuildPageRouteMarker RouteMarker(CharacterProfileSection? profile)
         => profile switch
@@ -499,12 +501,6 @@ public sealed class BuildPage : NativePageBase
         binding.AutomationId = "creation-wizard-binding";
         _body.Add(binding);
 
-        VerticalStackLayout method = new() { Spacing = 8 };
-        method.Add(NativeTheme.Eyebrow("Build method"));
-        method.Add(NativeTheme.Title(RunnerSessionCoordinator.HumanizeId(snapshot.BuildMethod), 21));
-        method.Add(NativeTheme.Metric("Active stage", StageLabel(snapshot, snapshot.ActiveStepId)));
-        _body.Add(NativeTheme.Card(method));
-
         CharacterCreationWizardStageState? lifeModuleStage = snapshot.Steps.FirstOrDefault(candidate =>
             string.Equals(
                 candidate.StepId,
@@ -535,6 +531,7 @@ public sealed class BuildPage : NativePageBase
             projection?.Contacts;
         CharacterCreationResourcesInteractionLoadResult? creationResources =
             projection?.Resources;
+        AddCreationMethodRoute(snapshot, projection, prerequisite);
         if (projection is null
             || projection.Progress.Prerequisite == CreationDashboardAuthorityPhaseState.Loading)
         {
@@ -581,6 +578,61 @@ public sealed class BuildPage : NativePageBase
             creationContacts,
             creationResources);
         AddFinalizationReviewAction(snapshot);
+    }
+
+    private void AddCreationMethodRoute(
+        CharacterCreationWizardSnapshot snapshot,
+        CreationDashboardAuthorityProjection? projection,
+        CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>? prerequisite)
+    {
+        bool prerequisiteMethod = snapshot.BuildMethod is (CharacterCreationBuildMethods.Priority
+            or CharacterCreationBuildMethods.SumToTen);
+        bool lifeModuleMethod = string.Equals(
+            snapshot.BuildMethod,
+            CharacterCreationBuildMethods.LifeModules,
+            StringComparison.Ordinal);
+        bool canOpenPrerequisite = prerequisiteMethod
+                                   && HasAuthoritativePrerequisiteOptions(prerequisite);
+        bool canOpenLifeModule = lifeModuleMethod && Coordinator.CanOpenSr5LifeModuleOrigin();
+        bool canOpen = canOpenPrerequisite || canOpenLifeModule;
+        Func<Task> selected = canOpenPrerequisite
+            ? OpenCreationPrerequisiteAsync
+            : canOpenLifeModule
+                ? OpenSr5LifeModuleOriginAsync
+                : static () => Task.CompletedTask;
+
+        string authorityDetail = canOpenPrerequisite
+            ? PrerequisiteStageDetail(prerequisite!.Value!)
+            : canOpenLifeModule
+                ? "Read the source-bound Origin scene, preview exact effects, then confirm"
+                : prerequisiteMethod
+                    ? BuildPageUiProjection.CreationKarmaAuthorityRequired
+                      + " · "
+                      + (ProjectionStageBlocker(
+                             projection,
+                             prerequisiteStage: true,
+                             attributeStage: false,
+                             skillStage: false,
+                             contactsStage: false,
+                             resourcesStage: false)
+                         ?? prerequisite?.Blockers.FirstOrDefault()
+                         ?? prerequisite?.Value?.Blockers.FirstOrDefault()
+                         ?? "creation-prerequisite-authority-unavailable")
+                    : lifeModuleMethod
+                        ? snapshot.Steps.FirstOrDefault(candidate => string.Equals(
+                                candidate.StepId,
+                                CharacterCreationWizardStepIds.LifeModules,
+                                StringComparison.Ordinal))?.Blockers.FirstOrDefault()
+                          ?? "sr5-life-module-origin-authority-unavailable"
+                        : "creation-build-method-editor-unavailable";
+        string method = RunnerSessionCoordinator.HumanizeId(snapshot.BuildMethod);
+        string activeStage = StageLabel(snapshot, snapshot.ActiveStepId);
+        _body.Add(NativeTheme.NavigationRow(
+            $"Build method · {method}",
+            $"Active stage: {activeStage} · {authorityDetail}",
+            selected,
+            enabled: canOpen,
+            automationId: "creation-stage-method"));
     }
 
     private void AddFinalizationReviewAction(CharacterCreationWizardSnapshot snapshot)
@@ -1100,6 +1152,17 @@ public sealed class BuildPage : NativePageBase
         _body.Add(NativeTheme.Eyebrow("Generation steps"));
         foreach (CharacterCreationWizardStageState stage in snapshot.Steps)
         {
+            // The build method has one canonical route above the generated stage list.  Core
+            // snapshots may include or omit a method step, but the phone surface must never
+            // duplicate its automation identity or present two competing method editors.
+            if (string.Equals(
+                    stage.StepId,
+                    CharacterCreationWizardStepIds.Method,
+                    StringComparison.Ordinal))
+            {
+                continue;
+            }
+
             bool foundation = IsFoundationStage(stage.StepId);
             bool basicsStage = string.Equals(
                 stage.StepId,
