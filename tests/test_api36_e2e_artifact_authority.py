@@ -71,7 +71,7 @@ def talent_reacquisition_scan(phase_id: str) -> dict[str, object]:
         "scanId": f"{phase_id}-fixture-reacquisition",
         "status": "resolved",
         "phaseId": phase_id,
-        "navigationMode": "measured-direction-stable-boundary",
+        "navigationMode": "measured-direction-stable-boundary-overlap-recovery",
         "direction": "none",
         "distanceRatio": 0.60,
         "startingViewport": 0,
@@ -82,6 +82,24 @@ def talent_reacquisition_scan(phase_id: str) -> dict[str, object]:
         "catalogMovementExtent": 11,
         "stableRepeats": 2,
         "stableBoundaryProven": False,
+        "primaryDirection": "none",
+        "primaryDistanceRatio": 0.60,
+        "primaryConfiguredMaxScrolls": 0,
+        "primaryStableBoundaryProven": False,
+        "primaryScreens": 1,
+        "primarySwipes": 0,
+        "primaryEmptyHierarchyReads": 0,
+        "primarySystemUiDismissals": 0,
+        "recoveryEligible": False,
+        "recoveryUsed": False,
+        "recoveryDirection": "none",
+        "recoveryDistanceRatio": 0.22,
+        "recoveryConfiguredMaxScrolls": 0,
+        "recoveryStableBoundaryProven": False,
+        "recoveryScreens": 0,
+        "recoverySwipes": 0,
+        "recoveryEmptyHierarchyReads": 0,
+        "recoverySystemUiDismissals": 0,
         "deadlineEnforced": True,
         "exactResourceIds": [f"{phase_id}-fixture-resource"],
         "screens": 1,
@@ -95,6 +113,41 @@ def talent_reacquisition_scan(phase_id: str) -> dict[str, object]:
         "maximumHierarchyReadMs": 400,
         "elapsedMs": 500,
     }
+
+
+def talent_overlap_recovery_scan(phase_id: str) -> dict[str, object]:
+    scan = talent_reacquisition_scan(phase_id)
+    scan.update(
+        {
+            "direction": "forward",
+            "startingViewport": 0,
+            "targetViewport": 7,
+            "normalizedTargetViewport": 7,
+            "measuredDelta": 7,
+            "configuredMaxScrolls": 40,
+            "exactResourceIds": [
+                "creation-prerequisite-talent-active-skill-option-perception"
+            ],
+            "primaryDirection": "forward",
+            "primaryConfiguredMaxScrolls": 40,
+            "primaryStableBoundaryProven": True,
+            "primaryScreens": 4,
+            "primarySwipes": 3,
+            "recoveryEligible": True,
+            "recoveryUsed": True,
+            "recoveryDirection": "reverse",
+            "recoveryConfiguredMaxScrolls": 40,
+            "recoveryScreens": 2,
+            "recoverySwipes": 2,
+            "screens": 6,
+            "swipes": 5,
+            "hierarchyReadCount": 6,
+            "hierarchyElapsedMs": 400,
+            "maximumHierarchyReadMs": 100,
+            "elapsedMs": 1_500,
+        }
+    )
+    return scan
 
 
 class Api36ArtifactAuthorityTests(unittest.TestCase):
@@ -957,6 +1010,82 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                     AGGREGATE.require_creation_timing_within_budget(
                         {"timing": timing}
                     )
+
+    def test_creation_timing_accepts_exact_talent_overlap_recovery_scan(self) -> None:
+        timing = json.loads(json.dumps(
+            self.raw_receipt("creation-prerequisite")["timing"]
+        ))
+        target_index = next(
+            index
+            for index, scan in enumerate(timing["scans"])
+            if isinstance(scan, dict) and "exactResourceIds" in scan
+        )
+        phase_id = str(timing["scans"][target_index]["phaseId"])
+        timing["scans"][target_index] = talent_overlap_recovery_scan(phase_id)
+        AGGREGATE.require_creation_timing_within_budget({"timing": timing})
+
+    def test_creation_timing_rejects_forged_talent_overlap_recovery_fields(
+        self,
+    ) -> None:
+        for field, forged in (
+            ("recoveryEligible", False),
+            ("recoveryEligible", 1),
+            ("recoveryUsed", False),
+            ("recoveryUsed", 1),
+            ("recoveryDirection", "forward"),
+            ("recoveryDistanceRatio", 0.23),
+            ("recoveryConfiguredMaxScrolls", 41),
+            ("primaryDirection", "reverse"),
+            ("primaryDistanceRatio", 0.61),
+            ("primaryConfiguredMaxScrolls", 39),
+            ("primaryStableBoundaryProven", False),
+            ("primaryStableBoundaryProven", 1),
+            ("recoveryStableBoundaryProven", True),
+            ("recoveryStableBoundaryProven", 0),
+            ("primarySwipes", 4),
+            ("recoverySwipes", 41),
+            ("primaryScreens", 5),
+            ("recoveryScreens", 3),
+            ("recoveryEmptyHierarchyReads", 4),
+            ("recoverySystemUiDismissals", 4),
+        ):
+            with self.subTest(field=field, forged=forged):
+                timing = json.loads(json.dumps(
+                    self.raw_receipt("creation-prerequisite")["timing"]
+                ))
+                target_index = next(
+                    index
+                    for index, scan in enumerate(timing["scans"])
+                    if isinstance(scan, dict) and "exactResourceIds" in scan
+                )
+                phase_id = str(timing["scans"][target_index]["phaseId"])
+                target = talent_overlap_recovery_scan(phase_id)
+                target[field] = forged
+                timing["scans"][target_index] = target
+                with self.assertRaisesRegex(ValueError, "Talent reacquisition"):
+                    AGGREGATE.require_creation_timing_within_budget(
+                        {"timing": timing}
+                    )
+
+    def test_creation_timing_rejects_overlap_recovery_for_non_option_authority(
+        self,
+    ) -> None:
+        timing = json.loads(json.dumps(
+            self.raw_receipt("creation-prerequisite")["timing"]
+        ))
+        target_index = next(
+            index
+            for index, scan in enumerate(timing["scans"])
+            if isinstance(scan, dict) and "exactResourceIds" in scan
+        )
+        phase_id = str(timing["scans"][target_index]["phaseId"])
+        target = talent_overlap_recovery_scan(phase_id)
+        target["exactResourceIds"] = [
+            "creation-prerequisite-talent-grant-authority"
+        ]
+        timing["scans"][target_index] = target
+        with self.assertRaisesRegex(ValueError, "Talent reacquisition"):
+            AGGREGATE.require_creation_timing_within_budget({"timing": timing})
 
     def test_creation_timing_requires_exact_ordered_milestones(self) -> None:
         cases = (

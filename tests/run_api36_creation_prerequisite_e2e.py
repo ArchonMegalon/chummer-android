@@ -185,7 +185,9 @@ CREATION_METHOD_REACQUISITION_SCAN_ID = (
 )
 CREATION_METHOD_REACQUISITION_DIRECTION = "down"
 TALENT_GRANT_SCAN_GESTURE_RATIO = 0.60
+TALENT_GRANT_OPTION_RECOVERY_GESTURE_RATIO = 0.22
 TALENT_GRANT_REACQUISITION_MAX_SCROLLS = 40
+TALENT_GRANT_OPTION_RECOVERY_MAX_SCROLLS = 40
 TALENT_GRANT_REACQUISITION_STABLE_REPEATS = 2
 # Every phase and the aggregate clock are independently rounded to the nearest
 # millisecond. Their worst-case opposing rounding errors are therefore
@@ -4198,15 +4200,16 @@ def reacquire_exact_talent_state_group(
     scan_observer: Callable[[dict[str, object]], None] | None = None,
     deadline: float | None = None,
 ) -> TalentStateGroupSnapshot:
-    """Reacquire one exact state group under a boundary-proven hard ceiling.
+    """Reacquire one exact state group under boundary-proven hard ceilings.
 
     Inventory viewports are immutable ordering coordinates, not reversible
     physical distances after a MAUI row-state refresh.  The measured ordering
-    therefore chooses only a direction. Every gesture is followed by a fresh
-    hierarchy and the search ends at the exact group, a two-signature physical
-    boundary proof, the catalog's hard 40-swipe ceiling, or the active phase
-    deadline. Empty hierarchies and dismissed system UI retain independent
-    retry budgets and never consume the gesture ceiling.
+    therefore chooses only the primary direction. Exact Talent option groups
+    may recover from a proven primary boundary with overlapping gestures in
+    the opposite direction; authority, digest, completion, and zero-delta
+    groups never receive that fallback. Every gesture is followed by a fresh
+    hierarchy. Primary and recovery gestures and transient retries have
+    separate hard ceilings while sharing the active phase deadline.
     """
     if (
         not resource_ids
@@ -4234,48 +4237,107 @@ def reacquire_exact_talent_state_group(
         raise ValueError("Talent group viewports must belong to the scan topology")
 
     measured_delta = target_viewport - current_viewport
-    reacquisition_direction = (
+    primary_direction = (
         "forward"
         if measured_delta > 0
         else "reverse"
         if measured_delta < 0
         else "none"
     )
-    reacquisition_bound = (
+    primary_bound = (
         TALENT_GRANT_REACQUISITION_MAX_SCROLLS if measured_delta else 0
     )
-    reacquisition_swipes = 0
-    empty_hierarchy_reads = 0
-    system_ui_dismissals = 0
-    screens = 0
+    recovery_eligible = bool(measured_delta) and all(
+        any(
+            _is_exact_tokenized_resource_id(resource_id, prefix)
+            for prefix in TALENT_GRANT_OPTION_PREFIX.values()
+        )
+        for resource_id in resource_ids
+    )
+    recovery_direction = (
+        "reverse"
+        if recovery_eligible and primary_direction == "forward"
+        else "forward"
+        if recovery_eligible and primary_direction == "reverse"
+        else "none"
+    )
+    recovery_bound = (
+        TALENT_GRANT_OPTION_RECOVERY_MAX_SCROLLS if recovery_eligible else 0
+    )
+    stage = "primary"
+    primary_swipes = 0
+    recovery_swipes = 0
+    primary_empty_hierarchy_reads = 0
+    recovery_empty_hierarchy_reads = 0
+    primary_system_ui_dismissals = 0
+    recovery_system_ui_dismissals = 0
+    primary_screens = 0
+    recovery_screens = 0
     hierarchy_durations_ms: list[int] = []
     previous_signature: tuple[tuple[str, ...], ...] | None = None
     unchanged_signatures = 0
-    stable_boundary_proven = False
+    primary_stable_boundary_proven = False
+    recovery_stable_boundary_proven = False
+    recovery_used = False
     terminal_receipt_emitted = False
     started = time.monotonic()
 
     def receipt(status: str) -> dict[str, object]:
+        total_swipes = primary_swipes + recovery_swipes
+        total_screens = primary_screens + recovery_screens
+        total_empty_reads = (
+            primary_empty_hierarchy_reads + recovery_empty_hierarchy_reads
+        )
+        total_system_ui_dismissals = (
+            primary_system_ui_dismissals + recovery_system_ui_dismissals
+        )
         return {
             "scanId": f"{evidence_prefix}-reacquisition",
             "status": status,
-            "navigationMode": "measured-direction-stable-boundary",
-            "direction": reacquisition_direction,
+            "navigationMode": (
+                "measured-direction-stable-boundary-overlap-recovery"
+            ),
+            "direction": primary_direction,
             "distanceRatio": TALENT_GRANT_SCAN_GESTURE_RATIO,
             "startingViewport": current_viewport,
             "targetViewport": target_viewport,
             "normalizedTargetViewport": target_viewport,
             "measuredDelta": abs(measured_delta),
-            "configuredMaxScrolls": reacquisition_bound,
+            "configuredMaxScrolls": primary_bound,
             "catalogMovementExtent": scan_end_viewport,
             "stableRepeats": TALENT_GRANT_REACQUISITION_STABLE_REPEATS,
-            "stableBoundaryProven": stable_boundary_proven,
+            # This compatibility field remains terminal-boundary authority.
+            # Successful recovery has a proven primary boundary but no proven
+            # terminal boundary.
+            "stableBoundaryProven": (
+                recovery_stable_boundary_proven
+                if recovery_used
+                else primary_stable_boundary_proven and not recovery_eligible
+            ),
+            "primaryDirection": primary_direction,
+            "primaryDistanceRatio": TALENT_GRANT_SCAN_GESTURE_RATIO,
+            "primaryConfiguredMaxScrolls": primary_bound,
+            "primaryStableBoundaryProven": primary_stable_boundary_proven,
+            "primaryScreens": primary_screens,
+            "primarySwipes": primary_swipes,
+            "primaryEmptyHierarchyReads": primary_empty_hierarchy_reads,
+            "primarySystemUiDismissals": primary_system_ui_dismissals,
+            "recoveryEligible": recovery_eligible,
+            "recoveryUsed": recovery_used,
+            "recoveryDirection": recovery_direction,
+            "recoveryDistanceRatio": TALENT_GRANT_OPTION_RECOVERY_GESTURE_RATIO,
+            "recoveryConfiguredMaxScrolls": recovery_bound,
+            "recoveryStableBoundaryProven": recovery_stable_boundary_proven,
+            "recoveryScreens": recovery_screens,
+            "recoverySwipes": recovery_swipes,
+            "recoveryEmptyHierarchyReads": recovery_empty_hierarchy_reads,
+            "recoverySystemUiDismissals": recovery_system_ui_dismissals,
             "deadlineEnforced": deadline is not None,
             "exactResourceIds": list(resource_ids),
-            "screens": screens,
-            "swipes": reacquisition_swipes,
-            "emptyHierarchyReads": empty_hierarchy_reads,
-            "systemUiDismissals": system_ui_dismissals,
+            "screens": total_screens,
+            "swipes": total_swipes,
+            "emptyHierarchyReads": total_empty_reads,
+            "systemUiDismissals": total_system_ui_dismissals,
             "maximumEmptyHierarchyReads": max_empty_hierarchy_reads,
             "maximumSystemUiDismissals": max_system_ui_dismissals,
             **hierarchy_timing_fields(hierarchy_durations_ms),
@@ -4297,7 +4359,7 @@ def reacquire_exact_talent_state_group(
             else default
         )
 
-    while reacquisition_swipes <= reacquisition_bound:
+    while True:
         try:
             nodes = fresh_hierarchy_timed(
                 device,
@@ -4308,13 +4370,19 @@ def reacquire_exact_talent_state_group(
             emit(unresolved_status("hierarchy-or-transport-unresolved"))
             raise
         if not nodes:
-            empty_hierarchy_reads += 1
-            if empty_hierarchy_reads > max_empty_hierarchy_reads:
+            if stage == "primary":
+                primary_empty_hierarchy_reads += 1
+                stage_empty_reads = primary_empty_hierarchy_reads
+            else:
+                recovery_empty_hierarchy_reads += 1
+                stage_empty_reads = recovery_empty_hierarchy_reads
+            if stage_empty_reads > max_empty_hierarchy_reads:
                 emit("empty-hierarchy-exhausted")
                 device.capture(f"{evidence_prefix}-empty-hierarchy-exhausted")
                 raise RuntimeError(
-                    "Grouped Talent state exhausted its separate transient "
-                    f"empty-hierarchy budget of {max_empty_hierarchy_reads} reads"
+                    f"Grouped Talent state {stage} scan exhausted its separate "
+                    f"transient empty-hierarchy budget of "
+                    f"{max_empty_hierarchy_reads} reads"
                 )
             try:
                 sleep_before_phase_deadline(
@@ -4326,7 +4394,10 @@ def reacquire_exact_talent_state_group(
                 emit(unresolved_status("empty-hierarchy-wait-unresolved"))
                 raise
             continue
-        screens += 1
+        if stage == "primary":
+            primary_screens += 1
+        else:
+            recovery_screens += 1
         matches = {
             resource_id: [
                 node for node in nodes if _exact_resource_id(node) == resource_id
@@ -4368,8 +4439,8 @@ def reacquire_exact_talent_state_group(
                 # inventory coordinate.  Gesture count is deliberately not a
                 # coordinate after the native scroll surface has refreshed.
                 logical_viewport=target_viewport,
-                reacquisition_direction=reacquisition_direction,
-                reacquisition_swipes=reacquisition_swipes,
+                reacquisition_direction=primary_direction,
+                reacquisition_swipes=primary_swipes + recovery_swipes,
             )
         try:
             system_ui_dismissed = device.dismiss_system_ui_anr(nodes)
@@ -4377,13 +4448,18 @@ def reacquire_exact_talent_state_group(
             emit("system-ui-check-failed")
             raise
         if system_ui_dismissed:
-            system_ui_dismissals += 1
-            if system_ui_dismissals > max_system_ui_dismissals:
+            if stage == "primary":
+                primary_system_ui_dismissals += 1
+                stage_system_ui_dismissals = primary_system_ui_dismissals
+            else:
+                recovery_system_ui_dismissals += 1
+                stage_system_ui_dismissals = recovery_system_ui_dismissals
+            if stage_system_ui_dismissals > max_system_ui_dismissals:
                 emit("system-ui-exhausted")
                 device.capture(f"{evidence_prefix}-system-ui-exhausted")
                 raise RuntimeError(
-                    "Grouped Talent state exhausted its separate system-UI dismissal "
-                    f"budget of {max_system_ui_dismissals}"
+                    f"Grouped Talent state {stage} scan exhausted its separate "
+                    f"system-UI dismissal budget of {max_system_ui_dismissals}"
                 )
             try:
                 sleep_before_phase_deadline(
@@ -4403,43 +4479,74 @@ def reacquire_exact_talent_state_group(
         )
         previous_signature = signature
         if unchanged_signatures >= TALENT_GRANT_REACQUISITION_STABLE_REPEATS:
-            stable_boundary_proven = True
-            emit("stable-boundary-unresolved")
-            device.capture(f"{evidence_prefix}-stable-boundary-unresolved")
-            raise RuntimeError(
-                "Grouped Talent state reached a stable physical boundary without "
-                f"reacquiring exact resources {unavailable!r}"
-            )
-        if reacquisition_direction == "none":
+            if stage == "primary":
+                primary_stable_boundary_proven = True
+                if recovery_eligible:
+                    recovery_used = True
+                    stage = "recovery"
+                    previous_signature = None
+                    unchanged_signatures = 0
+                else:
+                    emit("stable-boundary-unresolved")
+                    device.capture(f"{evidence_prefix}-stable-boundary-unresolved")
+                    raise RuntimeError(
+                        "Grouped Talent state reached a stable physical boundary "
+                        "without an authorized option recovery and without "
+                        f"reacquiring exact resources {unavailable!r}"
+                    )
+            else:
+                recovery_stable_boundary_proven = True
+                emit("recovery-stable-boundary-unresolved")
+                device.capture(
+                    f"{evidence_prefix}-recovery-stable-boundary-unresolved"
+                )
+                raise RuntimeError(
+                    "Grouped Talent option recovery reached the opposite stable "
+                    f"physical boundary without exact resources {unavailable!r}"
+                )
+        if stage == "primary" and primary_direction == "none":
             emit("zero-delta-unresolved")
             device.capture(f"{evidence_prefix}-zero-delta-unresolved")
             raise RuntimeError(
                 "Grouped Talent state changed physical geometry at one logical "
                 f"viewport without a safe directional hint: {unavailable!r}"
             )
-        if reacquisition_swipes >= reacquisition_bound:
+        active_direction = (
+            primary_direction if stage == "primary" else recovery_direction
+        )
+        active_distance_ratio = (
+            TALENT_GRANT_SCAN_GESTURE_RATIO
+            if stage == "primary"
+            else TALENT_GRANT_OPTION_RECOVERY_GESTURE_RATIO
+        )
+        stage_swipes = primary_swipes if stage == "primary" else recovery_swipes
+        stage_bound = primary_bound if stage == "primary" else recovery_bound
+        if stage_swipes >= stage_bound:
             break
         try:
-            if reacquisition_direction == "reverse":
+            if active_direction == "reverse":
                 if deadline is None:
-                    device.swipe_down(distance_ratio=TALENT_GRANT_SCAN_GESTURE_RATIO)
+                    device.swipe_down(distance_ratio=active_distance_ratio)
                 else:
                     device.swipe_down(
-                        distance_ratio=TALENT_GRANT_SCAN_GESTURE_RATIO,
+                        distance_ratio=active_distance_ratio,
                         deadline=deadline,
                     )
-            elif reacquisition_direction == "forward":
+            elif active_direction == "forward":
                 if deadline is None:
-                    device.swipe_up(distance_ratio=TALENT_GRANT_SCAN_GESTURE_RATIO)
+                    device.swipe_up(distance_ratio=active_distance_ratio)
                 else:
                     device.swipe_up(
-                        distance_ratio=TALENT_GRANT_SCAN_GESTURE_RATIO,
+                        distance_ratio=active_distance_ratio,
                         deadline=deadline,
                     )
         except Exception:
             emit(unresolved_status("gesture-or-transport-unresolved"))
             raise
-        reacquisition_swipes += 1
+        if stage == "primary":
+            primary_swipes += 1
+        else:
+            recovery_swipes += 1
         try:
             sleep_before_phase_deadline(
                 0.2,
@@ -4450,12 +4557,13 @@ def reacquire_exact_talent_state_group(
             emit(unresolved_status("post-swipe-wait-unresolved"))
             raise
 
-    emit("hard-bound-unresolved")
+    hard_bound_stage = stage
+    emit(f"{hard_bound_stage}-hard-bound-unresolved")
     device.capture(f"{evidence_prefix}-unavailable")
     raise RuntimeError(
         "Grouped Talent state could not reacquire exact resources "
-        f"{unavailable!r} within the boundary-checked {reacquisition_bound}-swipe "
-        f"{reacquisition_direction} hard bound"
+        f"{unavailable!r} within the boundary-checked {stage_bound}-swipe "
+        f"{active_direction} {hard_bound_stage} hard bound"
     )
 
 
@@ -4511,6 +4619,23 @@ def tap_exact_measured_talent_resource(
         raise RuntimeError(f"Measured Talent resource {resource_id!r} was not tappable")
     device.shell("input", "tap", *(str(value) for value in node.center))
     return snapshot.logical_viewport
+
+
+def _nearest_talent_group_viewport(
+    current_viewport: int,
+    remaining_viewports: set[int],
+) -> int:
+    if type(current_viewport) is not int or current_viewport < 0:
+        raise ValueError("Current Talent viewport must be a nonnegative exact integer")
+    if (
+        not remaining_viewports
+        or any(type(viewport) is not int or viewport < 0 for viewport in remaining_viewports)
+    ):
+        raise ValueError("Remaining Talent viewports must be nonempty nonnegative integers")
+    return min(
+        remaining_viewports,
+        key=lambda candidate: (abs(candidate - current_viewport), candidate),
+    )
 
 
 def read_talent_grant_grouped_state(
@@ -4569,7 +4694,16 @@ def read_talent_grant_grouped_state(
         ).append(resource_id)
 
     observed: dict[str, shared.UiNode] = {}
-    for viewport in sorted(grouped):
+    remaining_viewports = set(grouped)
+    while remaining_viewports:
+        # Greedy nearest-current traversal is deterministic (lower viewport is
+        # the tie-break) and avoids crossing a freshly resolved exact option
+        # merely to return to it after a native row-state refresh.
+        viewport = _nearest_talent_group_viewport(
+            current_viewport,
+            remaining_viewports,
+        )
+        remaining_viewports.remove(viewport)
         snapshot = reacquire_exact_talent_state_group(
             device,
             tuple(grouped[viewport]),

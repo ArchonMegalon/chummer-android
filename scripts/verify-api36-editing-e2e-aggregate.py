@@ -30,7 +30,14 @@ CREATION_METHOD_REACQUISITION_SCAN_ID = (
 )
 CREATION_METHOD_REACQUISITION_MAX_SCROLLS = 18
 TALENT_REACQUISITION_MAX_SCROLLS = 40
+TALENT_OPTION_RECOVERY_MAX_SCROLLS = 40
 TALENT_REACQUISITION_STABLE_REPEATS = 2
+TALENT_REACQUISITION_DISTANCE_RATIO = 0.60
+TALENT_OPTION_RECOVERY_DISTANCE_RATIO = 0.22
+TALENT_OPTION_PREFIXES = (
+    "creation-prerequisite-talent-active-skill-option-",
+    "creation-prerequisite-talent-skill-group-option-",
+)
 TALENT_REACQUISITION_PHASES = (
     "talent-active-skill-grant",
     "talent-active-skill-preservation",
@@ -236,18 +243,39 @@ def require_talent_reacquisition_scans(
             "hierarchyElapsedMs",
             "maximumHierarchyReadMs",
             "elapsedMs",
+            "primaryConfiguredMaxScrolls",
+            "primaryScreens",
+            "primarySwipes",
+            "primaryEmptyHierarchyReads",
+            "primarySystemUiDismissals",
+            "recoveryConfiguredMaxScrolls",
+            "recoveryScreens",
+            "recoverySwipes",
+            "recoveryEmptyHierarchyReads",
+            "recoverySystemUiDismissals",
         )
         if (
             scan.get("status") != "resolved"
             or phase_id not in TALENT_REACQUISITION_PHASES
             or scan.get("navigationMode")
-            != "measured-direction-stable-boundary"
+            != "measured-direction-stable-boundary-overlap-recovery"
             or scan.get("direction") not in {"forward", "reverse", "none"}
-            or scan.get("distanceRatio") != 0.60
+            or scan.get("distanceRatio") != TALENT_REACQUISITION_DISTANCE_RATIO
+            or scan.get("primaryDirection") not in {"forward", "reverse", "none"}
+            or scan.get("primaryDistanceRatio")
+            != TALENT_REACQUISITION_DISTANCE_RATIO
+            or scan.get("recoveryDirection") not in {"forward", "reverse", "none"}
+            or scan.get("recoveryDistanceRatio")
+            != TALENT_OPTION_RECOVERY_DISTANCE_RATIO
             or scan.get("stableRepeats")
             != TALENT_REACQUISITION_STABLE_REPEATS
             or type(scan.get("stableBoundaryProven")) is not bool
             or scan.get("stableBoundaryProven") is not False
+            or type(scan.get("primaryStableBoundaryProven")) is not bool
+            or type(scan.get("recoveryStableBoundaryProven")) is not bool
+            or scan.get("recoveryStableBoundaryProven") is not False
+            or type(scan.get("recoveryEligible")) is not bool
+            or type(scan.get("recoveryUsed")) is not bool
             or type(scan.get("deadlineEnforced")) is not bool
             or scan.get("deadlineEnforced") is not True
             or not isinstance(resource_ids, list)
@@ -273,6 +301,30 @@ def require_talent_reacquisition_scans(
             if value["measuredDelta"] > 0
             else 0
         )
+        expected_recovery_eligible = value["measuredDelta"] > 0 and all(
+            any(
+                value.startswith(prefix)
+                and re.fullmatch(
+                    r"[a-z0-9](?:[a-z0-9-]*[a-z0-9])?",
+                    value[len(prefix) :],
+                )
+                is not None
+                for prefix in TALENT_OPTION_PREFIXES
+            )
+            for value in resource_ids
+        )
+        expected_recovery_direction = (
+            "reverse"
+            if expected_recovery_eligible and expected_direction == "forward"
+            else "forward"
+            if expected_recovery_eligible and expected_direction == "reverse"
+            else "none"
+        )
+        expected_recovery_bound = (
+            TALENT_OPTION_RECOVERY_MAX_SCROLLS
+            if expected_recovery_eligible
+            else 0
+        )
         read_rounding_ms = (value["hierarchyReadCount"] + 1) // 2
         mandatory_wait_ms = (
             value["swipes"] * 200
@@ -296,17 +348,72 @@ def require_talent_reacquisition_scans(
             and value["measuredDelta"]
             == abs(value["targetViewport"] - value["startingViewport"])
             and scan.get("direction") == expected_direction
+            and scan.get("primaryDirection") == expected_direction
             and value["configuredMaxScrolls"] == expected_bound
-            and value["swipes"] <= value["configuredMaxScrolls"]
+            and value["primaryConfiguredMaxScrolls"] == expected_bound
+            and value["primarySwipes"] <= value["primaryConfiguredMaxScrolls"]
+            and scan.get("recoveryEligible") is expected_recovery_eligible
+            and scan.get("recoveryDirection") == expected_recovery_direction
+            and value["recoveryConfiguredMaxScrolls"] == expected_recovery_bound
+            and value["recoverySwipes"]
+            <= value["recoveryConfiguredMaxScrolls"]
+            and (
+                scan.get("recoveryUsed") is False
+                or (
+                    expected_recovery_eligible
+                    and scan.get("primaryStableBoundaryProven") is True
+                    and value["recoveryScreens"] >= 1
+                )
+            )
+            and (
+                scan.get("recoveryUsed") is True
+                or (
+                    scan.get("primaryStableBoundaryProven") is False
+                    and value["recoveryScreens"] == 0
+                    and value["recoverySwipes"] == 0
+                    and value["recoveryEmptyHierarchyReads"] == 0
+                    and value["recoverySystemUiDismissals"] == 0
+                )
+            )
+            and value["swipes"]
+            == value["primarySwipes"] + value["recoverySwipes"]
+            and value["screens"]
+            == value["primaryScreens"] + value["recoveryScreens"]
+            and value["emptyHierarchyReads"]
+            == value["primaryEmptyHierarchyReads"]
+            + value["recoveryEmptyHierarchyReads"]
+            and value["systemUiDismissals"]
+            == value["primarySystemUiDismissals"]
+            + value["recoverySystemUiDismissals"]
+            and value["primaryScreens"]
+            == value["primarySwipes"]
+            + value["primarySystemUiDismissals"]
+            + 1
+            and (
+                (
+                    scan.get("recoveryUsed") is True
+                    and value["recoveryScreens"]
+                    == value["recoverySwipes"]
+                    + value["recoverySystemUiDismissals"]
+                )
+                or (
+                    scan.get("recoveryUsed") is False
+                    and value["recoveryScreens"] == 0
+                )
+            )
             and value["screens"] >= 1
             and value["hierarchyReadCount"]
             == value["screens"] + value["emptyHierarchyReads"]
             and value["screens"]
             == value["swipes"] + value["systemUiDismissals"] + 1
-            and value["emptyHierarchyReads"]
+            and value["primaryEmptyHierarchyReads"]
             <= value["maximumEmptyHierarchyReads"] == 3
-            and value["systemUiDismissals"]
+            and value["recoveryEmptyHierarchyReads"]
+            <= value["maximumEmptyHierarchyReads"]
+            and value["primarySystemUiDismissals"]
             <= value["maximumSystemUiDismissals"] == 3
+            and value["recoverySystemUiDismissals"]
+            <= value["maximumSystemUiDismissals"]
             and value["hierarchyReadCount"] > 0
             and value["maximumHierarchyReadMs"] >= maximum_lower_bound
             and value["maximumHierarchyReadMs"] <= value["hierarchyElapsedMs"]

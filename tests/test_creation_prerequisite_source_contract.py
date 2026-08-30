@@ -2113,18 +2113,15 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             driver.TalentGrantMutableState(1, (selected_id,), True),
             state,
         )
-        self.assertEqual(6, viewport)
-        self.assertEqual(15, device.hierarchy_reads)
+        self.assertEqual(0, viewport)
+        self.assertEqual(9, device.hierarchy_reads)
         self.assertEqual(6, device.reverse_swipes)
-        self.assertEqual(6, device.forward_swipes)
+        self.assertEqual(0, device.forward_swipes)
         self.assertEqual(
             [driver.TALENT_GRANT_SCAN_GESTURE_RATIO] * 6,
             device.reverse_distances,
         )
-        self.assertEqual(
-            [driver.TALENT_GRANT_SCAN_GESTURE_RATIO] * 6,
-            device.forward_distances,
-        )
+        self.assertEqual([], device.forward_distances)
 
     def test_grouped_talent_reacquisition_accepts_the_last_scan_bound(self) -> None:
         resource_id = "creation-prerequisite-talent-grant-authority"
@@ -2335,7 +2332,9 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 "measuredDelta": 6,
                 "configuredMaxScrolls": 40,
                 "catalogMovementExtent": 11,
-                "navigationMode": "measured-direction-stable-boundary",
+                "navigationMode": (
+                    "measured-direction-stable-boundary-overlap-recovery"
+                ),
                 "stableRepeats": 2,
                 "stableBoundaryProven": False,
                 "deadlineEnforced": False,
@@ -2379,6 +2378,497 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertGreaterEqual(receipts[0]["hierarchyElapsedMs"], 0)
         self.assertGreaterEqual(receipts[0]["maximumHierarchyReadMs"], 0)
         self.assertGreaterEqual(receipts[0]["elapsedMs"], 0)
+
+    def test_grouped_talent_order_is_greedy_nearest_with_lower_tie_break(self) -> None:
+        remaining = {0, 7, 9}
+        current = 7
+        order: list[int] = []
+        while remaining:
+            current = driver._nearest_talent_group_viewport(current, remaining)
+            remaining.remove(current)
+            order.append(current)
+        self.assertEqual([7, 9, 0], order)
+        self.assertEqual(0, driver._nearest_talent_group_viewport(3, {0, 6}))
+        for current_viewport, candidates in ((True, {0}), (0, set()), (0, {False})):
+            with self.subTest(current=current_viewport, candidates=candidates), self.assertRaises(
+                ValueError
+            ):
+                driver._nearest_talent_group_viewport(current_viewport, candidates)
+
+    def test_grouped_talent_option_recovers_c7f_selected_perception_after_coarse_skip(
+        self,
+    ) -> None:
+        resource_id = (
+            "creation-prerequisite-talent-active-skill-option-"
+            "04e1eb3e-e82d-485b-a7fd-1e677df2a070"
+        )
+        target = driver.shared.UiNode(
+            {
+                "resource-id": resource_id,
+                "content-desc": (
+                    "✓ Perception. Selected slot 1 · Physical Active · Attribute INT"
+                ),
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[98,467][984,725]",
+            }
+        )
+
+        class CoarseSkipDevice:
+            def __init__(self) -> None:
+                self.coarse_swipes = 0
+                self.recovery_swipes = 0
+                self.forward_ratios: list[float] = []
+                self.reverse_ratios: list[float] = []
+
+            def hierarchy(self):
+                if self.recovery_swipes >= 2:
+                    return [target]
+                if self.recovery_swipes:
+                    return [driver.shared.UiNode({
+                        "resource-id": "recovery-moving",
+                        "bounds": "[53,-900][1028,-700]",
+                    })]
+                if self.coarse_swipes:
+                    return [driver.shared.UiNode({
+                        "resource-id": "stable-bottom",
+                        "bounds": "[53,1800][1028,2050]",
+                    })]
+                return [driver.shared.UiNode({
+                    "resource-id": "top",
+                    "bounds": "[53,350][1028,550]",
+                })]
+
+            def swipe_up(self, *, distance_ratio):
+                self.forward_ratios.append(distance_ratio)
+                self.coarse_swipes += 1
+
+            def swipe_down(self, *, distance_ratio):
+                self.reverse_ratios.append(distance_ratio)
+                self.recovery_swipes += 1
+
+            @staticmethod
+            def dismiss_system_ui_anr(_nodes):
+                return False
+
+            @staticmethod
+            def node_has_tappable_bounds(node):
+                return node is target
+
+            @staticmethod
+            def capture(name):
+                raise AssertionError(f"unexpected capture: {name}")
+
+        device = CoarseSkipDevice()
+        receipts: list[dict[str, object]] = []
+        with mock.patch.object(driver.time, "sleep"):
+            snapshot = driver.reacquire_exact_talent_state_group(
+                device,
+                (resource_id,),
+                0,
+                7,
+                9,
+                evidence_prefix="c7f-selected-perception",
+                scan_observer=receipts.append,
+            )
+
+        self.assertIs(target, snapshot.resources[resource_id])
+        self.assertEqual(7, snapshot.logical_viewport)
+        self.assertEqual(5, snapshot.reacquisition_swipes)
+        self.assertEqual([0.60] * 3, device.forward_ratios)
+        self.assertEqual([0.22] * 2, device.reverse_ratios)
+        self.assertEqual("resolved", receipts[0]["status"])
+        self.assertIs(receipts[0]["primaryStableBoundaryProven"], True)
+        self.assertIs(receipts[0]["recoveryEligible"], True)
+        self.assertIs(receipts[0]["recoveryUsed"], True)
+        self.assertEqual("reverse", receipts[0]["recoveryDirection"])
+        self.assertEqual(3, receipts[0]["primarySwipes"])
+        self.assertEqual(2, receipts[0]["recoverySwipes"])
+        self.assertIs(receipts[0]["recoveryStableBoundaryProven"], False)
+
+    def test_exact_unselected_perception_reselect_uses_overlap_recovery_then_taps(
+        self,
+    ) -> None:
+        resource_id = (
+            "creation-prerequisite-talent-active-skill-option-"
+            "04e1eb3e-e82d-485b-a7fd-1e677df2a070"
+        )
+        target = driver.shared.UiNode(
+            {
+                "resource-id": resource_id,
+                "content-desc": "Perception. Physical Active · Attribute INT",
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[98,467][984,724]",
+            }
+        )
+
+        class ReselectDevice:
+            def __init__(self) -> None:
+                self.coarse_swipes = 0
+                self.recovery_swipes = 0
+                self.taps: list[tuple[str, ...]] = []
+
+            def hierarchy(self):
+                if self.recovery_swipes >= 1:
+                    return [target]
+                if self.coarse_swipes:
+                    return [driver.shared.UiNode({
+                        "resource-id": "stable-bottom",
+                        "bounds": "[53,1800][1028,2050]",
+                    })]
+                return [driver.shared.UiNode({"resource-id": "top"})]
+
+            def swipe_up(self, *, distance_ratio):
+                self.asserted_primary_ratio = distance_ratio
+                self.coarse_swipes += 1
+
+            def swipe_down(self, *, distance_ratio):
+                self.asserted_recovery_ratio = distance_ratio
+                self.recovery_swipes += 1
+
+            @staticmethod
+            def dismiss_system_ui_anr(_nodes):
+                return False
+
+            @staticmethod
+            def node_has_tappable_bounds(node):
+                return node is target
+
+            def shell(self, *args):
+                self.taps.append(args)
+
+            @staticmethod
+            def capture(name):
+                raise AssertionError(f"unexpected capture: {name}")
+
+        navigation = {
+            "endViewport": 9,
+            "resourceViewports": {resource_id: 7},
+            "resourceDetails": {
+                resource_id: ("Perception. Physical Active · Attribute INT",),
+            },
+        }
+        device = ReselectDevice()
+        receipts: list[dict[str, object]] = []
+        with mock.patch.object(driver.time, "sleep"):
+            viewport = driver.tap_exact_measured_talent_resource(
+                device,
+                resource_id,
+                navigation,
+                0,
+                evidence_prefix="explicit-unselected-reselect",
+                scan_observer=receipts.append,
+            )
+
+        self.assertEqual(7, viewport)
+        self.assertEqual(3, device.coarse_swipes)
+        self.assertEqual(1, device.recovery_swipes)
+        self.assertEqual(0.60, device.asserted_primary_ratio)
+        self.assertEqual(0.22, device.asserted_recovery_ratio)
+        self.assertEqual([("input", "tap", "541", "595")], device.taps)
+        self.assertIs(receipts[0]["recoveryUsed"], True)
+
+    def test_talent_option_recovery_rejects_duplicate_exact_id(self) -> None:
+        resource_id = "creation-prerequisite-talent-active-skill-option-perception"
+        target = driver.shared.UiNode(
+            {"resource-id": resource_id, "bounds": "[53,350][1028,550]"}
+        )
+
+        class DuplicateRecoveryDevice:
+            def __init__(self) -> None:
+                self.coarse_swipes = 0
+                self.recovery_swipes = 0
+                self.captures: list[str] = []
+
+            def hierarchy(self):
+                if self.recovery_swipes:
+                    return [target, target]
+                return [driver.shared.UiNode({
+                    "resource-id": "top" if self.coarse_swipes == 0 else "bottom"
+                })]
+
+            def swipe_up(self, *, distance_ratio):
+                self.asserted_primary_ratio = distance_ratio
+                self.coarse_swipes += 1
+
+            def swipe_down(self, *, distance_ratio):
+                self.asserted_recovery_ratio = distance_ratio
+                self.recovery_swipes += 1
+
+            @staticmethod
+            def dismiss_system_ui_anr(_nodes):
+                return False
+
+            def capture(self, name):
+                self.captures.append(name)
+
+        device = DuplicateRecoveryDevice()
+        receipts: list[dict[str, object]] = []
+        with mock.patch.object(driver.time, "sleep"), self.assertRaisesRegex(
+            RuntimeError,
+            "cardinality 2",
+        ):
+            driver.reacquire_exact_talent_state_group(
+                device,
+                (resource_id,),
+                0,
+                7,
+                9,
+                evidence_prefix="duplicate-recovery",
+                scan_observer=receipts.append,
+            )
+
+        self.assertEqual(3, device.coarse_swipes)
+        self.assertEqual(1, device.recovery_swipes)
+        self.assertEqual(["duplicate-recovery-cardinality-invalid"], device.captures)
+        self.assertEqual("cardinality-invalid", receipts[0]["status"])
+        self.assertIs(receipts[0]["primaryStableBoundaryProven"], True)
+        self.assertIs(receipts[0]["recoveryUsed"], True)
+
+    def test_talent_option_recovery_fails_at_opposite_stable_boundary(self) -> None:
+        resource_id = "creation-prerequisite-talent-active-skill-option-perception"
+
+        class OppositeBoundaryDevice:
+            def __init__(self) -> None:
+                self.coarse_swipes = 0
+                self.recovery_swipes = 0
+                self.captures: list[str] = []
+
+            def hierarchy(self):
+                resource = (
+                    "recovery-boundary"
+                    if self.recovery_swipes
+                    else "top"
+                    if self.coarse_swipes == 0
+                    else "primary-boundary"
+                )
+                return [driver.shared.UiNode({"resource-id": resource})]
+
+            def swipe_up(self, *, distance_ratio):
+                self.coarse_swipes += 1
+
+            def swipe_down(self, *, distance_ratio):
+                self.recovery_swipes += 1
+
+            @staticmethod
+            def dismiss_system_ui_anr(_nodes):
+                return False
+
+            def capture(self, name):
+                self.captures.append(name)
+
+        device = OppositeBoundaryDevice()
+        receipts: list[dict[str, object]] = []
+        with mock.patch.object(driver.time, "sleep"), self.assertRaisesRegex(
+            RuntimeError,
+            "opposite stable physical boundary",
+        ):
+            driver.reacquire_exact_talent_state_group(
+                device,
+                (resource_id,),
+                0,
+                7,
+                9,
+                evidence_prefix="opposite-boundary",
+                scan_observer=receipts.append,
+            )
+
+        self.assertEqual(3, device.coarse_swipes)
+        self.assertEqual(3, device.recovery_swipes)
+        self.assertEqual(
+            ["opposite-boundary-recovery-stable-boundary-unresolved"],
+            device.captures,
+        )
+        self.assertEqual("recovery-stable-boundary-unresolved", receipts[0]["status"])
+        self.assertIs(receipts[0]["recoveryStableBoundaryProven"], True)
+
+    def test_talent_option_recovery_enforces_separate_hard_forty_bound(self) -> None:
+        resource_id = "creation-prerequisite-talent-active-skill-option-perception"
+
+        class MovingRecoveryDevice:
+            def __init__(self) -> None:
+                self.coarse_swipes = 0
+                self.recovery_swipes = 0
+                self.captures: list[str] = []
+
+            def hierarchy(self):
+                resource = (
+                    f"recovery-{self.recovery_swipes}"
+                    if self.recovery_swipes
+                    else "top"
+                    if self.coarse_swipes == 0
+                    else "primary-boundary"
+                )
+                return [driver.shared.UiNode({"resource-id": resource})]
+
+            def swipe_up(self, *, distance_ratio):
+                self.coarse_swipes += 1
+
+            def swipe_down(self, *, distance_ratio):
+                self.recovery_swipes += 1
+
+            @staticmethod
+            def dismiss_system_ui_anr(_nodes):
+                return False
+
+            def capture(self, name):
+                self.captures.append(name)
+
+        device = MovingRecoveryDevice()
+        receipts: list[dict[str, object]] = []
+        with mock.patch.object(driver.time, "sleep"), self.assertRaisesRegex(
+            RuntimeError,
+            "40-swipe reverse recovery hard bound",
+        ):
+            driver.reacquire_exact_talent_state_group(
+                device,
+                (resource_id,),
+                0,
+                7,
+                9,
+                evidence_prefix="recovery-hard-bound",
+                scan_observer=receipts.append,
+            )
+
+        self.assertEqual(3, device.coarse_swipes)
+        self.assertEqual(40, device.recovery_swipes)
+        self.assertEqual(["recovery-hard-bound-unavailable"], device.captures)
+        self.assertEqual("recovery-hard-bound-unresolved", receipts[0]["status"])
+        self.assertEqual(40, receipts[0]["recoveryConfiguredMaxScrolls"])
+
+    def test_talent_option_recovery_threads_same_deadline_to_both_directions(self) -> None:
+        resource_id = "creation-prerequisite-talent-active-skill-option-perception"
+        target = driver.shared.UiNode(
+            {"resource-id": resource_id, "bounds": "[53,350][1028,550]"}
+        )
+
+        class DeadlineRecoveryDevice:
+            def __init__(self) -> None:
+                self.coarse_swipes = 0
+                self.recovery_swipes = 0
+                self.hierarchy_deadlines: list[float] = []
+                self.forward_deadlines: list[float] = []
+                self.reverse_deadlines: list[float] = []
+
+            def hierarchy(self, *, deadline):
+                self.hierarchy_deadlines.append(deadline)
+                if self.recovery_swipes:
+                    return [target]
+                return [driver.shared.UiNode({
+                    "resource-id": "top" if self.coarse_swipes == 0 else "bottom"
+                })]
+
+            def swipe_up(self, *, distance_ratio, deadline):
+                self.forward_deadlines.append(deadline)
+                self.coarse_swipes += 1
+
+            def swipe_down(self, *, distance_ratio, deadline):
+                self.reverse_deadlines.append(deadline)
+                self.recovery_swipes += 1
+
+            @staticmethod
+            def dismiss_system_ui_anr(_nodes):
+                return False
+
+            @staticmethod
+            def node_has_tappable_bounds(node):
+                return node is target
+
+            @staticmethod
+            def capture(name):
+                raise AssertionError(f"unexpected capture: {name}")
+
+        deadline = driver.time.monotonic() + 30
+        device = DeadlineRecoveryDevice()
+        with mock.patch.object(driver.time, "sleep"):
+            snapshot = driver.reacquire_exact_talent_state_group(
+                device,
+                (resource_id,),
+                0,
+                7,
+                9,
+                evidence_prefix="recovery-deadline",
+                deadline=deadline,
+            )
+
+        self.assertIs(target, snapshot.resources[resource_id])
+        self.assertTrue(device.hierarchy_deadlines)
+        self.assertEqual({deadline}, set(device.hierarchy_deadlines))
+        self.assertEqual([deadline] * 3, device.forward_deadlines)
+        self.assertEqual([deadline], device.reverse_deadlines)
+
+    def test_talent_option_recovery_has_fresh_transient_retry_budgets(self) -> None:
+        resource_id = "creation-prerequisite-talent-active-skill-option-perception"
+        target = driver.shared.UiNode(
+            {"resource-id": resource_id, "bounds": "[53,350][1028,550]"}
+        )
+        overlay = driver.shared.UiNode({"resource-id": "system-overlay"})
+
+        class SeparateStageRetryDevice:
+            def __init__(self) -> None:
+                self.coarse_swipes = 0
+                self.recovery_swipes = 0
+                self.primary_prelude = 0
+                self.recovery_prelude = 0
+
+            def hierarchy(self):
+                if self.recovery_swipes:
+                    self.recovery_prelude += 1
+                    if self.recovery_prelude == 1:
+                        return []
+                    if self.recovery_prelude == 2:
+                        return [overlay]
+                    return [target]
+                if self.coarse_swipes == 0:
+                    self.primary_prelude += 1
+                    if self.primary_prelude == 1:
+                        return []
+                    if self.primary_prelude == 2:
+                        return [overlay]
+                    return [driver.shared.UiNode({"resource-id": "top"})]
+                return [driver.shared.UiNode({"resource-id": "bottom"})]
+
+            def swipe_up(self, *, distance_ratio):
+                self.coarse_swipes += 1
+
+            def swipe_down(self, *, distance_ratio):
+                self.recovery_swipes += 1
+
+            @staticmethod
+            def dismiss_system_ui_anr(nodes):
+                return nodes == [overlay]
+
+            @staticmethod
+            def node_has_tappable_bounds(node):
+                return node is target
+
+            @staticmethod
+            def capture(name):
+                raise AssertionError(f"unexpected capture: {name}")
+
+        device = SeparateStageRetryDevice()
+        receipts: list[dict[str, object]] = []
+        with mock.patch.object(driver.time, "sleep"):
+            snapshot = driver.reacquire_exact_talent_state_group(
+                device,
+                (resource_id,),
+                0,
+                7,
+                9,
+                evidence_prefix="separate-stage-retries",
+                max_empty_hierarchy_reads=1,
+                max_system_ui_dismissals=1,
+                scan_observer=receipts.append,
+            )
+
+        self.assertIs(target, snapshot.resources[resource_id])
+        self.assertEqual(1, receipts[0]["primaryEmptyHierarchyReads"])
+        self.assertEqual(1, receipts[0]["recoveryEmptyHierarchyReads"])
+        self.assertEqual(1, receipts[0]["primarySystemUiDismissals"])
+        self.assertEqual(1, receipts[0]["recoverySystemUiDismissals"])
+        self.assertEqual(2, receipts[0]["emptyHierarchyReads"])
+        self.assertEqual(2, receipts[0]["systemUiDismissals"])
 
     def test_grouped_talent_reacquisition_closes_cfb_artifact_asymmetric_reverse_geometry(
         self,
@@ -2450,7 +2940,10 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertEqual(14, device.hierarchy_reads)
         self.assertEqual(40, receipts[0]["configuredMaxScrolls"])
         self.assertEqual(10, receipts[0]["catalogMovementExtent"])
-        self.assertEqual("measured-direction-stable-boundary", receipts[0]["navigationMode"])
+        self.assertEqual(
+            "measured-direction-stable-boundary-overlap-recovery",
+            receipts[0]["navigationMode"],
+        )
         self.assertIs(receipts[0]["stableBoundaryProven"], False)
 
     def test_grouped_talent_reacquisition_rejects_hard_bound_without_boundary_proof(
@@ -2484,7 +2977,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         receipts: list[dict[str, object]] = []
         with mock.patch.object(driver.time, "sleep"), self.assertRaisesRegex(
             RuntimeError,
-            "boundary-checked 40-swipe reverse hard bound",
+            "boundary-checked 40-swipe reverse primary hard bound",
         ):
             driver.reacquire_exact_talent_state_group(
                 device,
@@ -2498,7 +2991,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
         self.assertEqual(40, device.reverse_swipes)
         self.assertEqual(["hard-bound-unavailable"], device.captures)
-        self.assertEqual("hard-bound-unresolved", receipts[0]["status"])
+        self.assertEqual("primary-hard-bound-unresolved", receipts[0]["status"])
         self.assertIs(receipts[0]["stableBoundaryProven"], False)
 
     def test_grouped_talent_reacquisition_enforces_absolute_phase_deadline(
@@ -2703,6 +3196,126 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             ["one-beyond-stable-boundary-unresolved"],
             device.captures,
         )
+
+    def test_non_option_talent_groups_never_enter_overlap_recovery(self) -> None:
+        for resource_id in (
+            "creation-prerequisite-talent-grant-authority",
+            "creation-prerequisite-talent-grant-digest",
+            "creation-prerequisite-talent-grant-complete",
+        ):
+            with self.subTest(resource_id=resource_id):
+                class StableBoundaryDevice:
+                    def __init__(self) -> None:
+                        self.reverse_ratios: list[float] = []
+                        self.forward_ratios: list[float] = []
+
+                    @staticmethod
+                    def hierarchy():
+                        return [driver.shared.UiNode({"resource-id": "boundary"})]
+
+                    def swipe_down(self, *, distance_ratio):
+                        self.reverse_ratios.append(distance_ratio)
+
+                    def swipe_up(self, *, distance_ratio):
+                        self.forward_ratios.append(distance_ratio)
+
+                    @staticmethod
+                    def dismiss_system_ui_anr(_nodes):
+                        return False
+
+                    @staticmethod
+                    def capture(_name):
+                        return None
+
+                device = StableBoundaryDevice()
+                receipts: list[dict[str, object]] = []
+                with mock.patch.object(driver.time, "sleep"), self.assertRaisesRegex(
+                    RuntimeError,
+                    "without an authorized option recovery",
+                ):
+                    driver.reacquire_exact_talent_state_group(
+                        device,
+                        (resource_id,),
+                        3,
+                        0,
+                        3,
+                        evidence_prefix="non-option",
+                        scan_observer=receipts.append,
+                    )
+                self.assertEqual([0.60, 0.60], device.reverse_ratios)
+                self.assertEqual([], device.forward_ratios)
+                self.assertIs(receipts[0]["recoveryEligible"], False)
+                self.assertIs(receipts[0]["recoveryUsed"], False)
+                self.assertEqual(0, receipts[0]["recoveryConfiguredMaxScrolls"])
+
+    def test_exact_talent_option_detail_drift_after_recovery_still_fails_closed(
+        self,
+    ) -> None:
+        resource_id = "creation-prerequisite-talent-active-skill-option-perception"
+        changed = driver.shared.UiNode(
+            {
+                "resource-id": resource_id,
+                "content-desc": "Perception changed. Physical Active",
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[98,467][984,724]",
+            }
+        )
+
+        class DriftAfterRecoveryDevice:
+            def __init__(self) -> None:
+                self.coarse_swipes = 0
+                self.recovery_swipes = 0
+                self.captures: list[str] = []
+
+            def hierarchy(self):
+                if self.recovery_swipes:
+                    return [changed]
+                return [driver.shared.UiNode({
+                    "resource-id": "top" if self.coarse_swipes == 0 else "bottom"
+                })]
+
+            def swipe_up(self, *, distance_ratio):
+                self.coarse_swipes += 1
+
+            def swipe_down(self, *, distance_ratio):
+                self.recovery_swipes += 1
+
+            @staticmethod
+            def dismiss_system_ui_anr(_nodes):
+                return False
+
+            @staticmethod
+            def node_has_tappable_bounds(node):
+                return node is changed
+
+            def capture(self, name):
+                self.captures.append(name)
+
+            @staticmethod
+            def shell(*_args):
+                raise AssertionError("detail-drift option must not be tapped")
+
+        navigation = {
+            "endViewport": 9,
+            "resourceViewports": {resource_id: 7},
+            "resourceDetails": {resource_id: ("Perception. Physical Active",)},
+        }
+        device = DriftAfterRecoveryDevice()
+        with mock.patch.object(driver.time, "sleep"), self.assertRaisesRegex(
+            RuntimeError,
+            "changed exact option detail",
+        ):
+            driver.tap_exact_measured_talent_resource(
+                device,
+                resource_id,
+                navigation,
+                0,
+                evidence_prefix="recovered-detail-drift",
+            )
+        self.assertEqual(3, device.coarse_swipes)
+        self.assertEqual(1, device.recovery_swipes)
+        self.assertEqual(["recovered-detail-drift-detail-drift"], device.captures)
 
     def test_grouped_talent_forward_reacquisition_accepts_the_last_scan_bound(
         self,
@@ -3274,10 +3887,10 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             2,
             catalog.count("distance_ratio=TALENT_GRANT_SCAN_GESTURE_RATIO"),
         )
-        self.assertEqual(
-            4,
-            reacquisition.count("distance_ratio=TALENT_GRANT_SCAN_GESTURE_RATIO"),
-        )
+        self.assertEqual(0.22, driver.TALENT_GRANT_OPTION_RECOVERY_GESTURE_RATIO)
+        self.assertEqual(40, driver.TALENT_GRANT_OPTION_RECOVERY_MAX_SCROLLS)
+        self.assertIn("active_distance_ratio", reacquisition)
+        self.assertIn("recovery_eligible", reacquisition)
         self.assertNotIn("move_between_measured_viewports(", reacquisition)
         self.assertNotIn("reacquisition_distance_ratio", reacquisition)
         self.assertNotIn("measured_distance_ratio", reacquisition)
