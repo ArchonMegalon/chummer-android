@@ -125,10 +125,12 @@ def talent_overlap_recovery_scan(phase_id: str) -> dict[str, object]:
             "normalizedTargetViewport": 7,
             "measuredDelta": 7,
             "configuredMaxScrolls": 40,
+            "distanceRatio": 0.22,
             "exactResourceIds": [
                 "creation-prerequisite-talent-active-skill-option-perception"
             ],
             "primaryDirection": "forward",
+            "primaryDistanceRatio": 0.22,
             "primaryConfiguredMaxScrolls": 40,
             "primaryStableBoundaryProven": True,
             "primaryScreens": 4,
@@ -1024,6 +1026,47 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
         timing["scans"][target_index] = talent_overlap_recovery_scan(phase_id)
         AGGREGATE.require_creation_timing_within_budget({"timing": timing})
 
+    def test_creation_timing_keeps_coarse_primary_for_non_option_groups(self) -> None:
+        timing = json.loads(json.dumps(
+            self.raw_receipt("creation-prerequisite")["timing"]
+        ))
+        target_index = next(
+            index
+            for index, scan in enumerate(timing["scans"])
+            if isinstance(scan, dict) and "exactResourceIds" in scan
+        )
+        phase_id = str(timing["scans"][target_index]["phaseId"])
+        target = talent_reacquisition_scan(phase_id)
+        target.update(
+            {
+                "direction": "forward",
+                "targetViewport": 1,
+                "normalizedTargetViewport": 1,
+                "measuredDelta": 1,
+                "configuredMaxScrolls": 40,
+                "primaryDirection": "forward",
+                "primaryConfiguredMaxScrolls": 40,
+                "primaryScreens": 2,
+                "primarySwipes": 1,
+                "screens": 2,
+                "swipes": 1,
+                "hierarchyReadCount": 2,
+                "hierarchyElapsedMs": 100,
+                "maximumHierarchyReadMs": 60,
+                "elapsedMs": 400,
+            }
+        )
+        timing["scans"][target_index] = target
+        AGGREGATE.require_creation_timing_within_budget({"timing": timing})
+        for field in ("distanceRatio", "primaryDistanceRatio"):
+            with self.subTest(field=field):
+                forged = json.loads(json.dumps(timing))
+                forged["scans"][target_index][field] = 0.22
+                with self.assertRaisesRegex(ValueError, "Talent reacquisition"):
+                    AGGREGATE.require_creation_timing_within_budget(
+                        {"timing": forged}
+                    )
+
     def test_creation_timing_rejects_forged_talent_overlap_recovery_fields(
         self,
     ) -> None:
@@ -1035,7 +1078,9 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             ("recoveryDirection", "forward"),
             ("recoveryDistanceRatio", 0.23),
             ("recoveryConfiguredMaxScrolls", 41),
+            ("distanceRatio", 0.60),
             ("primaryDirection", "reverse"),
+            ("primaryDistanceRatio", 0.60),
             ("primaryDistanceRatio", 0.61),
             ("primaryConfiguredMaxScrolls", 39),
             ("primaryStableBoundaryProven", False),

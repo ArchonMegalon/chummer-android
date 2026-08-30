@@ -260,10 +260,7 @@ def require_talent_reacquisition_scans(
             or scan.get("navigationMode")
             != "measured-direction-stable-boundary-overlap-recovery"
             or scan.get("direction") not in {"forward", "reverse", "none"}
-            or scan.get("distanceRatio") != TALENT_REACQUISITION_DISTANCE_RATIO
             or scan.get("primaryDirection") not in {"forward", "reverse", "none"}
-            or scan.get("primaryDistanceRatio")
-            != TALENT_REACQUISITION_DISTANCE_RATIO
             or scan.get("recoveryDirection") not in {"forward", "reverse", "none"}
             or scan.get("recoveryDistanceRatio")
             != TALENT_OPTION_RECOVERY_DISTANCE_RATIO
@@ -325,6 +322,11 @@ def require_talent_reacquisition_scans(
             if expected_recovery_eligible
             else 0
         )
+        expected_primary_distance_ratio = (
+            TALENT_OPTION_RECOVERY_DISTANCE_RATIO
+            if expected_recovery_eligible
+            else TALENT_REACQUISITION_DISTANCE_RATIO
+        )
         read_rounding_ms = (value["hierarchyReadCount"] + 1) // 2
         mandatory_wait_ms = (
             value["swipes"] * 200
@@ -349,6 +351,9 @@ def require_talent_reacquisition_scans(
             == abs(value["targetViewport"] - value["startingViewport"])
             and scan.get("direction") == expected_direction
             and scan.get("primaryDirection") == expected_direction
+            and scan.get("distanceRatio") == expected_primary_distance_ratio
+            and scan.get("primaryDistanceRatio")
+            == expected_primary_distance_ratio
             and value["configuredMaxScrolls"] == expected_bound
             and value["primaryConfiguredMaxScrolls"] == expected_bound
             and value["primarySwipes"] <= value["primaryConfiguredMaxScrolls"]

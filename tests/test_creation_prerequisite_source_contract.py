@@ -2072,14 +2072,20 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 )
 
             def swipe_down(self, *, distance_ratio):
-                if distance_ratio != driver.TALENT_GRANT_SCAN_GESTURE_RATIO:
+                if distance_ratio not in {
+                    driver.TALENT_GRANT_SCAN_GESTURE_RATIO,
+                    driver.TALENT_GRANT_OPTION_RECOVERY_GESTURE_RATIO,
+                }:
                     raise AssertionError(f"unexpected reverse ratio: {distance_ratio!r}")
                 self.reverse_swipes += 1
                 self.reverse_distances.append(distance_ratio)
                 self.viewport = max(0, self.viewport - 1)
 
             def swipe_up(self, *, distance_ratio):
-                if distance_ratio != driver.TALENT_GRANT_SCAN_GESTURE_RATIO:
+                if distance_ratio not in {
+                    driver.TALENT_GRANT_SCAN_GESTURE_RATIO,
+                    driver.TALENT_GRANT_OPTION_RECOVERY_GESTURE_RATIO,
+                }:
                     raise AssertionError(f"unexpected forward ratio: {distance_ratio!r}")
                 self.forward_swipes += 1
                 self.forward_distances.append(distance_ratio)
@@ -2118,10 +2124,37 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertEqual(6, device.reverse_swipes)
         self.assertEqual(0, device.forward_swipes)
         self.assertEqual(
-            [driver.TALENT_GRANT_SCAN_GESTURE_RATIO] * 6,
+            [driver.TALENT_GRANT_OPTION_RECOVERY_GESTURE_RATIO] * 2
+            + [driver.TALENT_GRANT_SCAN_GESTURE_RATIO] * 4,
             device.reverse_distances,
         )
         self.assertEqual([], device.forward_distances)
+
+        preferred_device = ArtifactTopologyDevice()
+        preferred_state, preferred_viewport = driver.read_talent_grant_grouped_state(
+            preferred_device,
+            "Active skills",
+            baseline,
+            navigation,
+            6,
+            expected_selected_option_ids=(selected_id,),
+            expected_completion_enabled=True,
+            preferred_final_resource_id=selected_id,
+            evidence_prefix="artifact-complete-preferred-final",
+        )
+        self.assertEqual(state, preferred_state)
+        self.assertEqual(4, preferred_viewport)
+        self.assertEqual(13, preferred_device.hierarchy_reads)
+        self.assertEqual(6, preferred_device.reverse_swipes)
+        self.assertEqual(4, preferred_device.forward_swipes)
+        self.assertEqual(
+            [driver.TALENT_GRANT_SCAN_GESTURE_RATIO] * 6,
+            preferred_device.reverse_distances,
+        )
+        self.assertEqual(
+            [driver.TALENT_GRANT_OPTION_RECOVERY_GESTURE_RATIO] * 4,
+            preferred_device.forward_distances,
+        )
 
     def test_grouped_talent_reacquisition_accepts_the_last_scan_bound(self) -> None:
         resource_id = "creation-prerequisite-talent-grant-authority"
@@ -2316,7 +2349,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertEqual(10, snapshot.reacquisition_swipes)
         self.assertEqual(11, device.hierarchy_reads)
         self.assertEqual(
-            [driver.TALENT_GRANT_SCAN_GESTURE_RATIO] * 10,
+            [driver.TALENT_GRANT_OPTION_RECOVERY_GESTURE_RATIO] * 10,
             device.forward_distances,
         )
         self.assertEqual(1, len(receipts))
@@ -2325,7 +2358,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 "scanId": "mutated-row-height-reacquisition",
                 "status": "resolved",
                 "direction": "forward",
-                "distanceRatio": driver.TALENT_GRANT_SCAN_GESTURE_RATIO,
+                "distanceRatio": driver.TALENT_GRANT_OPTION_RECOVERY_GESTURE_RATIO,
                 "startingViewport": 2,
                 "targetViewport": 8,
                 "normalizedTargetViewport": 8,
@@ -2395,7 +2428,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             ):
                 driver._nearest_talent_group_viewport(current_viewport, candidates)
 
-    def test_grouped_talent_option_recovers_c7f_selected_perception_after_coarse_skip(
+    def test_grouped_talent_option_recovers_c7f_selected_perception_after_stable_boundary(
         self,
     ) -> None:
         resource_id = (
@@ -2475,9 +2508,11 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertIs(target, snapshot.resources[resource_id])
         self.assertEqual(7, snapshot.logical_viewport)
         self.assertEqual(5, snapshot.reacquisition_swipes)
-        self.assertEqual([0.60] * 3, device.forward_ratios)
+        self.assertEqual([0.22] * 3, device.forward_ratios)
         self.assertEqual([0.22] * 2, device.reverse_ratios)
         self.assertEqual("resolved", receipts[0]["status"])
+        self.assertEqual(0.22, receipts[0]["distanceRatio"])
+        self.assertEqual(0.22, receipts[0]["primaryDistanceRatio"])
         self.assertIs(receipts[0]["primaryStableBoundaryProven"], True)
         self.assertIs(receipts[0]["recoveryEligible"], True)
         self.assertIs(receipts[0]["recoveryUsed"], True)
@@ -2564,7 +2599,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertEqual(7, viewport)
         self.assertEqual(3, device.coarse_swipes)
         self.assertEqual(1, device.recovery_swipes)
-        self.assertEqual(0.60, device.asserted_primary_ratio)
+        self.assertEqual(0.22, device.asserted_primary_ratio)
         self.assertEqual(0.22, device.asserted_recovery_ratio)
         self.assertEqual([("input", "tap", "541", "595")], device.taps)
         self.assertIs(receipts[0]["recoveryUsed"], True)
@@ -3484,7 +3519,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertEqual(0, viewport)
         self.assertEqual(2, device.hierarchy.call_count)
         device.swipe_down.assert_called_once_with(
-            distance_ratio=driver.TALENT_GRANT_SCAN_GESTURE_RATIO,
+            distance_ratio=driver.TALENT_GRANT_OPTION_RECOVERY_GESTURE_RATIO,
         )
         device.shell.assert_called_once_with("input", "tap", "541", "581")
         device.capture.assert_not_called()
@@ -3863,6 +3898,18 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 expected_completion_enabled=True,
                 evidence_prefix="grouped",
             )
+        with self.assertRaisesRegex(RuntimeError, "preferred final resource"):
+            driver.read_talent_grant_grouped_state(
+                device,
+                "Active skills",
+                baseline,
+                navigation,
+                0,
+                expected_selected_option_ids=(option_id,),
+                expected_completion_enabled=True,
+                preferred_final_resource_id="creation-prerequisite-unrelated",
+                evidence_prefix="grouped-invalid-final-resource",
+            )
 
     def test_talent_choice_uses_one_catalog_scan_and_no_fixed_reset_searches(self) -> None:
         source = inspect.getsource(driver.choose_and_prove_talent_grant)
@@ -3890,6 +3937,11 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertEqual(0.22, driver.TALENT_GRANT_OPTION_RECOVERY_GESTURE_RATIO)
         self.assertEqual(40, driver.TALENT_GRANT_OPTION_RECOVERY_MAX_SCROLLS)
         self.assertIn("active_distance_ratio", reacquisition)
+        self.assertIn("primary_distance_ratio", reacquisition)
+        self.assertIn(
+            "TALENT_GRANT_OPTION_RECOVERY_GESTURE_RATIO",
+            reacquisition,
+        )
         self.assertIn("recovery_eligible", reacquisition)
         self.assertNotIn("move_between_measured_viewports(", reacquisition)
         self.assertNotIn("reacquisition_distance_ratio", reacquisition)
@@ -3929,6 +3981,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             ((complete, 5), (complete, 5), (incomplete, 5), (complete, 5))
         )
         events: list[str] = []
+        preferred_final_resources: list[str | None] = []
         propagated_deadlines: list[float] = []
         deadline_values = iter(float(value) for value in range(1, 10))
         device = mock.Mock()
@@ -3943,6 +3996,9 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
         def grouped(*_args, **_kwargs):
             propagated_deadlines.append(_kwargs["deadline"])
+            preferred_final_resources.append(
+                _kwargs.get("preferred_final_resource_id")
+            )
             ordinal = sum(event.startswith("grouped-") for event in events) + 1
             events.append(f"grouped-{ordinal}")
             return next(grouped_states)
@@ -3995,6 +4051,10 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 "grouped-4",
             ],
             events,
+        )
+        self.assertEqual(
+            [None, chosen[0], chosen[0], None],
+            preferred_final_resources,
         )
 
     def test_authority_option_collector_rejects_zero_candidates(self) -> None:

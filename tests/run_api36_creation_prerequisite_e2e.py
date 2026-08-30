@@ -4205,11 +4205,12 @@ def reacquire_exact_talent_state_group(
     Inventory viewports are immutable ordering coordinates, not reversible
     physical distances after a MAUI row-state refresh.  The measured ordering
     therefore chooses only the primary direction. Exact Talent option groups
-    may recover from a proven primary boundary with overlapping gestures in
-    the opposite direction; authority, digest, completion, and zero-delta
-    groups never receive that fallback. Every gesture is followed by a fresh
-    hierarchy. Primary and recovery gestures and transient retries have
-    separate hard ceilings while sharing the active phase deadline.
+    use overlapping gestures in both the primary and boundary-proven recovery
+    directions so a virtualized row cannot be skipped by a coarse gesture;
+    authority, digest, completion, and zero-delta groups retain the coarse
+    primary traversal and never receive recovery. Every gesture is followed
+    by a fresh hierarchy. Primary and recovery gestures and transient retries
+    have separate hard ceilings while sharing the active phase deadline.
     """
     if (
         not resource_ids
@@ -4264,6 +4265,11 @@ def reacquire_exact_talent_state_group(
     recovery_bound = (
         TALENT_GRANT_OPTION_RECOVERY_MAX_SCROLLS if recovery_eligible else 0
     )
+    primary_distance_ratio = (
+        TALENT_GRANT_OPTION_RECOVERY_GESTURE_RATIO
+        if recovery_eligible
+        else TALENT_GRANT_SCAN_GESTURE_RATIO
+    )
     stage = "primary"
     primary_swipes = 0
     recovery_swipes = 0
@@ -4298,7 +4304,7 @@ def reacquire_exact_talent_state_group(
                 "measured-direction-stable-boundary-overlap-recovery"
             ),
             "direction": primary_direction,
-            "distanceRatio": TALENT_GRANT_SCAN_GESTURE_RATIO,
+            "distanceRatio": primary_distance_ratio,
             "startingViewport": current_viewport,
             "targetViewport": target_viewport,
             "normalizedTargetViewport": target_viewport,
@@ -4315,7 +4321,7 @@ def reacquire_exact_talent_state_group(
                 else primary_stable_boundary_proven and not recovery_eligible
             ),
             "primaryDirection": primary_direction,
-            "primaryDistanceRatio": TALENT_GRANT_SCAN_GESTURE_RATIO,
+            "primaryDistanceRatio": primary_distance_ratio,
             "primaryConfiguredMaxScrolls": primary_bound,
             "primaryStableBoundaryProven": primary_stable_boundary_proven,
             "primaryScreens": primary_screens,
@@ -4515,7 +4521,7 @@ def reacquire_exact_talent_state_group(
             primary_direction if stage == "primary" else recovery_direction
         )
         active_distance_ratio = (
-            TALENT_GRANT_SCAN_GESTURE_RATIO
+            primary_distance_ratio
             if stage == "primary"
             else TALENT_GRANT_OPTION_RECOVERY_GESTURE_RATIO
         )
@@ -4648,6 +4654,7 @@ def read_talent_grant_grouped_state(
     expected_selected_option_ids: tuple[str, ...],
     expected_unselected_option_ids: tuple[str, ...] = (),
     expected_completion_enabled: bool,
+    preferred_final_resource_id: str | None = None,
     evidence_prefix: str,
     scan_observer: Callable[[dict[str, object]], None] | None = None,
     deadline: float | None = None,
@@ -4678,6 +4685,14 @@ def read_talent_grant_grouped_state(
         *expected_unselected,
         completion_id,
     )
+    if (
+        preferred_final_resource_id is not None
+        and preferred_final_resource_id not in required_ids
+    ):
+        raise RuntimeError(
+            "Grouped Talent preferred final resource is not part of the exact "
+            "required state"
+        )
     scan_end_viewport = _validated_talent_navigation_end(
         navigation,
         current_viewport,
@@ -4695,13 +4710,26 @@ def read_talent_grant_grouped_state(
 
     observed: dict[str, shared.UiNode] = {}
     remaining_viewports = set(grouped)
+    preferred_final_viewport = (
+        _measured_resource_viewport(navigation, preferred_final_resource_id)
+        if preferred_final_resource_id is not None
+        else None
+    )
     while remaining_viewports:
         # Greedy nearest-current traversal is deterministic (lower viewport is
-        # the tie-break) and avoids crossing a freshly resolved exact option
-        # merely to return to it after a native row-state refresh.
+        # the tie-break).  When the immediately following mutation targets one
+        # of these exact resources, reserve its viewport for the final group so
+        # the mutation can use a fresh zero-delta hierarchy instead of crossing
+        # the same option and later performing a boundary recovery.
+        eligible_viewports = remaining_viewports
+        if (
+            preferred_final_viewport in remaining_viewports
+            and len(remaining_viewports) > 1
+        ):
+            eligible_viewports = remaining_viewports - {preferred_final_viewport}
         viewport = _nearest_talent_group_viewport(
             current_viewport,
-            remaining_viewports,
+            eligible_viewports,
         )
         remaining_viewports.remove(viewport)
         snapshot = reacquire_exact_talent_state_group(
@@ -5008,6 +5036,7 @@ def choose_and_prove_talent_grant(
         evidence_prefix=f"{scan_id_prefix}-preserved-route",
         surface_name=f"Preserved {expected_kind} Talent grant route",
     )
+    reset_id = chosen[0]
     preserved_state, current_viewport = read_talent_grant_grouped_state(
         device,
         expected_kind,
@@ -5016,6 +5045,7 @@ def choose_and_prove_talent_grant(
         current_viewport,
         expected_selected_option_ids=chosen,
         expected_completion_enabled=True,
+        preferred_final_resource_id=reset_id,
         evidence_prefix=f"{scan_id_prefix}-preserved",
         scan_observer=scan_observer,
         deadline=active_deadline(),
@@ -5029,7 +5059,6 @@ def choose_and_prove_talent_grant(
     if continuation_phase_advances is not None:
         continuation_phase_advances[1]()
 
-    reset_id = chosen[0]
     current_viewport = tap_exact_measured_talent_resource(
         device,
         reset_id,
@@ -5055,6 +5084,7 @@ def choose_and_prove_talent_grant(
         expected_selected_option_ids=expected_after_reset,
         expected_unselected_option_ids=(reset_id,),
         expected_completion_enabled=False,
+        preferred_final_resource_id=reset_id,
         evidence_prefix=f"{scan_id_prefix}-explicit-reset",
         scan_observer=scan_observer,
         deadline=active_deadline(),
