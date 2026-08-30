@@ -799,7 +799,7 @@
       {
         "path": "tests/run_api36_career_weapon_fire_e2e.py",
         "exists": true,
-        "sha256": "b1e424b10f20340a79ee998da8b97bd343251b80ccbace554e892d778dcecdb7"
+        "sha256": "75b1abd088816f3749f520edf795c769e8decd402fb67926b870d2cf7ac1c25e"
       },
       {
         "path": "tests/fixtures/career-weapon-fire-e2e.chum5",

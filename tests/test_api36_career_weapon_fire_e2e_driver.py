@@ -48,10 +48,11 @@ class Api36CareerWeaponFireDriverTests(unittest.TestCase):
         self.assertIn('"build-save-runner"', source)
         self.assertIn('== "Navigate up"', source)
         self.assertIn("max_back_steps: int = 6", source)
-        self.assertIn("device.wait_for_single_exact_resource_id(", source)
+        self.assertIn("device.tap_exact_resource_id_bidirectional(", source)
         self.assertIn('"build-section-tab-gear"', source)
         self.assertIn('"build-action-tab-gear-weapons"', source)
-        self.assertIn("max_scrolls=24", source)
+        self.assertIn("backward_scrolls=0", source)
+        self.assertIn("forward_scrolls=24", source)
         self.assertIn(
             'evidence_prefix="career-weapon-fire-gear-section-route"',
             source,
@@ -88,17 +89,8 @@ class Api36CareerWeaponFireDriverTests(unittest.TestCase):
             source,
         )
 
-    def test_build_route_resets_then_taps_one_exact_bounded_node(self) -> None:
-        node = driver.shared.UiNode(
-            {
-                "resource-id": "build-action-tab-gear-weapons",
-                "clickable": "true",
-                "bounds": "[98,400][984,560]",
-            }
-        )
+    def test_build_route_resets_then_delegates_one_exact_bounded_tap(self) -> None:
         device = Mock(spec=driver.shared.Device)
-        device.wait_for_single_exact_resource_id.return_value = node
-        device.node_has_tappable_bounds.return_value = True
 
         with patch.object(driver.shared, "reset_scroll_to_top") as reset:
             driver.tap_exact_build_route(
@@ -109,32 +101,76 @@ class Api36CareerWeaponFireDriverTests(unittest.TestCase):
             )
 
         reset.assert_called_once_with(device, swipes=48)
-        device.wait_for_single_exact_resource_id.assert_called_once_with(
+        device.tap_exact_resource_id_bidirectional.assert_called_once_with(
             "build-action-tab-gear-weapons",
             timeout=120,
-            scroll=True,
-            max_scrolls=24,
+            backward_scrolls=0,
+            forward_scrolls=24,
             scroll_distance_ratio=0.22,
             evidence_prefix="career-weapon-fire-weapons-route",
             surface_name="Gear Weapons route accessibility node",
         )
-        device.shell.assert_called_once_with("input", "tap", "541", "480")
+        device.wait_for_single_exact_resource_id.assert_not_called()
+        device.shell.assert_not_called()
 
-    def test_build_route_fails_closed_when_exact_node_is_untappable(self) -> None:
-        node = driver.shared.UiNode(
+    def test_build_route_scrolls_past_artifact_clipped_exact_weapons_node(self) -> None:
+        semantic_container = driver.shared.UiNode(
             {
-                "resource-id": "build-action-tab-gear-weapons",
+                "content-desc": "Weapons",
+                "enabled": "true",
+                "clickable": "false",
+                "bounds": "[53,2152][1028,2190]",
+            }
+        )
+        clipped = driver.shared.UiNode(
+            {
+                "resource-id": (
+                    "com.myexternalbrain.chummer:id/build-action-tab-gear-weapons"
+                ),
+                "enabled": "true",
                 "clickable": "true",
-                "bounds": "[98,275][984,276]",
+                "bounds": "[98,2187][984,2190]",
+            }
+        )
+        visible = driver.shared.UiNode(
+            {
+                "resource-id": (
+                    "com.myexternalbrain.chummer:id/build-action-tab-gear-weapons"
+                ),
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[98,1659][984,1812]",
             }
         )
         device = Mock(spec=driver.shared.Device)
-        device.wait_for_single_exact_resource_id.return_value = node
-        device.node_has_tappable_bounds.return_value = False
+        device._scroll_x_ratio.return_value = 0.5
+        device.display_size.return_value = (1080, 2400)
+        device.hierarchy.side_effect = [
+            [semantic_container, clipped],
+            [semantic_container, visible],
+        ]
+        device.node_has_tappable_bounds.side_effect = (
+            lambda node: driver.shared.Device.node_has_tappable_bounds(device, node)
+        )
+        device.dismiss_system_ui_anr.return_value = False
+        device.wait_exact_resource_id_bidirectional.side_effect = (
+            lambda selector, **kwargs: driver.shared.Device.wait_exact_resource_id_bidirectional(
+                device,
+                selector,
+                **kwargs,
+            )
+        )
+        device.tap_exact_resource_id_bidirectional.side_effect = (
+            lambda selector, **kwargs: driver.shared.Device.tap_exact_resource_id_bidirectional(
+                device,
+                selector,
+                **kwargs,
+            )
+        )
 
         with (
-            patch.object(driver.shared, "reset_scroll_to_top"),
-            self.assertRaisesRegex(RuntimeError, "not tappable"),
+            patch.object(driver.shared, "reset_scroll_to_top") as reset,
+            patch.object(driver.shared.time, "sleep"),
         ):
             driver.tap_exact_build_route(
                 device,
@@ -143,9 +179,32 @@ class Api36CareerWeaponFireDriverTests(unittest.TestCase):
                 surface_name="Gear Weapons route accessibility node",
             )
 
-        device.capture.assert_called_once_with(
-            "career-weapon-fire-weapons-route-untappable"
+        reset.assert_called_once_with(device, swipes=48)
+        device.swipe_up.assert_called_once_with(
+            x_ratio=0.5,
+            distance_ratio=0.22,
         )
+        device.capture.assert_not_called()
+        device.shell.assert_called_once_with("input", "tap", "541", "1735")
+
+    def test_build_route_propagates_exact_bidirectional_fail_closed_result(self) -> None:
+        device = Mock(spec=driver.shared.Device)
+        device.tap_exact_resource_id_bidirectional.side_effect = RuntimeError(
+            "Gear Weapons route accessibility node was not enabled, clickable, and tappable"
+        )
+
+        with (
+            patch.object(driver.shared, "reset_scroll_to_top"),
+            self.assertRaisesRegex(RuntimeError, "not enabled, clickable, and tappable"),
+        ):
+            driver.tap_exact_build_route(
+                device,
+                "build-action-tab-gear-weapons",
+                evidence_prefix="career-weapon-fire-weapons-route",
+                surface_name="Gear Weapons route accessibility node",
+            )
+
+        device.wait_for_single_exact_resource_id.assert_not_called()
         device.shell.assert_not_called()
 
     def test_open_page_binds_exact_gear_transition_before_weapons_route(self) -> None:
