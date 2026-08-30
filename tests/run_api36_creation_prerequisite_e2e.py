@@ -1218,6 +1218,15 @@ def rewind_to_exact_resource_id(
             )
             if visible and (interactive or not require_tappable):
                 return node, reverse_swipes
+            if (
+                not visible
+                and (interactive or not require_tappable)
+                and reverse_swipes < max_swipes
+            ):
+                device.swipe_down(distance_ratio=distance_ratio)
+                reverse_swipes += 1
+                time.sleep(0.2)
+                continue
             device.capture(f"{evidence_prefix}-not-tappable")
             raise RuntimeError(
                 f"{surface_name} {selector!r} was not visible"

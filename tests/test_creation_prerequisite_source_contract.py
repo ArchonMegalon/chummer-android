@@ -3639,6 +3639,84 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         device.hierarchy.assert_called_once_with()
         device.swipe_down.assert_not_called()
 
+    def test_restored_creation_method_reacquires_clipped_exact_id_within_bound(
+        self,
+    ) -> None:
+        clipped = driver.shared.UiNode(
+            {
+                "resource-id": "creation-stage-method",
+                "content-desc": "Priority",
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[53,275][1028,292]",
+            }
+        )
+        visible = driver.shared.UiNode(
+            {
+                "resource-id": "creation-stage-method",
+                "content-desc": "Priority",
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[53,350][1028,550]",
+            }
+        )
+        device = mock.Mock()
+        device.hierarchy.side_effect = [[clipped], [visible]]
+        device.node_has_tappable_bounds.side_effect = lambda node: node is visible
+
+        with mock.patch.object(driver.time, "sleep"):
+            node, reverse_swipes = driver.rewind_to_exact_resource_id(
+                device,
+                "creation-stage-method",
+                max_swipes=1,
+                distance_ratio=0.22,
+                evidence_prefix="creation-stage-method-ready",
+                surface_name="Measured ready creation method navigation",
+                require_tappable=True,
+            )
+
+        self.assertIs(visible, node)
+        self.assertEqual(1, reverse_swipes)
+        self.assertEqual(2, device.hierarchy.call_count)
+        device.swipe_down.assert_called_once_with(distance_ratio=0.22)
+        device.capture.assert_not_called()
+
+    def test_restored_creation_method_fails_when_exact_id_stays_clipped_at_bound(
+        self,
+    ) -> None:
+        clipped = driver.shared.UiNode(
+            {
+                "resource-id": "creation-stage-method",
+                "content-desc": "Priority",
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[53,275][1028,292]",
+            }
+        )
+        device = mock.Mock()
+        device.hierarchy.return_value = [clipped]
+        device.node_has_tappable_bounds.return_value = False
+
+        with mock.patch.object(driver.time, "sleep"), self.assertRaisesRegex(
+            RuntimeError,
+            "was not visible, enabled, and clickable",
+        ):
+            driver.rewind_to_exact_resource_id(
+                device,
+                "creation-stage-method",
+                max_swipes=1,
+                distance_ratio=0.22,
+                evidence_prefix="creation-stage-method-ready",
+                surface_name="Measured ready creation method navigation",
+                require_tappable=True,
+            )
+
+        self.assertEqual(2, device.hierarchy.call_count)
+        device.swipe_down.assert_called_once_with(distance_ratio=0.22)
+        device.capture.assert_called_once_with(
+            "creation-stage-method-ready-not-tappable"
+        )
+
     def test_restored_creation_method_reacquisition_fails_closed_on_duplicate(self) -> None:
         methods = [
             driver.shared.UiNode(
@@ -3675,7 +3753,6 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         for attributes in (
             {"enabled": "false", "clickable": "true"},
             {"enabled": "true", "clickable": "false"},
-            {"enabled": "true", "clickable": "true"},
         ):
             with self.subTest(attributes=attributes):
                 method = driver.shared.UiNode(
@@ -3683,10 +3760,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 )
                 device = mock.Mock()
                 device.hierarchy.return_value = [method]
-                device.node_has_tappable_bounds.return_value = attributes != {
-                    "enabled": "true",
-                    "clickable": "true",
-                }
+                device.node_has_tappable_bounds.return_value = False
 
                 with self.assertRaisesRegex(RuntimeError, "visible, enabled, and clickable"):
                     driver.rewind_to_exact_resource_id(
