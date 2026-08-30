@@ -25,13 +25,19 @@ JOURNEYS = {
 }
 CREATION_PROGRESS_SCHEMA = "chummer.android.creation-prerequisite-progress/v2"
 CREATION_TOTAL_TARGET_MS = 15 * 60 * 1000
+CREATION_METHOD_REACQUISITION_SCAN_ID = (
+    "creation-stage-method-ready-reacquisition"
+)
+CREATION_METHOD_REACQUISITION_MAX_SCROLLS = 18
+CREATION_METHOD_REACQUISITION_DIRECTION = "down"
+CREATION_METHOD_REACQUISITION_DISTANCE_RATIO = 0.60
 CREATION_PHASE_BUDGETS_MS = {
     "device-preflight-install": 180_000,
     "initial-navigation": 60_000,
     "initial-authority": 90_000,
     "dashboard-proof": 30_000,
     "dashboard-authority-inventory": 30_000,
-    "advanced-editor-gate-inventory": 60_000,
+    "advanced-editor-gate-inventory": 90_000,
     "prerequisite-authority-inventory": 60_000,
     "priority-ranks": 150_000,
     "typed-authority-options": 150_000,
@@ -63,6 +69,119 @@ STARTED_FIELDS = {
     "artifact_attempt",
     "apk_sha256",
 }
+
+
+def require_creation_method_reacquisition_scan(
+    timing: dict[str, Any],
+    *,
+    advanced_phase_elapsed_ms: int,
+) -> None:
+    scans = timing.get("scans")
+    if not isinstance(scans, list):
+        raise ValueError("creation prerequisite scan timing evidence is missing")
+    matches = [
+        scan
+        for scan in scans
+        if isinstance(scan, dict)
+        and scan.get("scanId") == CREATION_METHOD_REACQUISITION_SCAN_ID
+    ]
+    if len(matches) != 1:
+        raise ValueError(
+            "creation method reacquisition scan cardinality differs: "
+            f"expected=1, actual={len(matches)}"
+        )
+    scan = matches[0]
+    required_literals: dict[str, Any] = {
+        "status": "resolved",
+        "phaseId": "advanced-editor-gate-inventory",
+        "direction": CREATION_METHOD_REACQUISITION_DIRECTION,
+        "distanceRatio": CREATION_METHOD_REACQUISITION_DISTANCE_RATIO,
+        "configuredMaxScrolls": CREATION_METHOD_REACQUISITION_MAX_SCROLLS,
+        "stableRepeats": 2,
+        "maximumEmptyHierarchyReads": 3,
+        "maximumSystemUiDismissals": 3,
+        "phaseBudgetMs": CREATION_PHASE_BUDGETS_MS[
+            "advanced-editor-gate-inventory"
+        ],
+    }
+    differing = {
+        field: (expected, scan.get(field))
+        for field, expected in required_literals.items()
+        if scan.get(field) != expected
+    }
+    if differing:
+        raise ValueError(
+            "creation method reacquisition scan authority differs: "
+            f"{differing!r}"
+        )
+    if type(scan.get("deadlineEnforced")) is not bool or scan.get(
+        "deadlineEnforced"
+    ) is not True:
+        raise ValueError(
+            "creation method reacquisition scan authority differs: "
+            "deadlineEnforced must be the JSON boolean true"
+        )
+    integer_fields = (
+        "screens",
+        "swipes",
+        "emptyHierarchyReads",
+        "systemUiDismissals",
+        "hierarchyReadCount",
+        "hierarchyElapsedMs",
+        "maximumHierarchyReadMs",
+        "elapsedMs",
+    )
+    invalid = [
+        field
+        for field in integer_fields
+        if type(scan.get(field)) is not int or int(scan[field]) < 0
+    ]
+    if invalid:
+        raise ValueError(
+            "creation method reacquisition scan timing/count data differs: "
+            f"{invalid!r}"
+        )
+    value = {field: int(scan[field]) for field in integer_fields}
+    read_rounding_ms = (value["hierarchyReadCount"] + 1) // 2
+    mandatory_wait_ms = (
+        value["swipes"] * 200
+        + value["emptyHierarchyReads"] * 750
+        + value["systemUiDismissals"] * 2_000
+    )
+    maximum_lower_bound = (
+        (
+            value["hierarchyElapsedMs"]
+            + value["hierarchyReadCount"]
+            - 1
+        )
+        // value["hierarchyReadCount"]
+        if value["hierarchyReadCount"] > 0
+        else 0
+    )
+    if not (
+        1 <= value["screens"]
+        and 0 <= value["swipes"] <= CREATION_METHOD_REACQUISITION_MAX_SCROLLS
+        and value["emptyHierarchyReads"] <= 3
+        and value["systemUiDismissals"] <= 3
+        and value["hierarchyReadCount"]
+        == value["screens"] + value["emptyHierarchyReads"]
+        and value["screens"]
+        == value["swipes"] + value["systemUiDismissals"] + 1
+        and value["hierarchyReadCount"] > 0
+        and value["maximumHierarchyReadMs"] >= maximum_lower_bound
+        and value["maximumHierarchyReadMs"] <= value["hierarchyElapsedMs"]
+        and value["hierarchyElapsedMs"]
+        <= value["elapsedMs"] + read_rounding_ms
+        and value["hierarchyElapsedMs"] + mandatory_wait_ms
+        <= value["elapsedMs"] + read_rounding_ms + 1
+        and value["elapsedMs"] <= advanced_phase_elapsed_ms
+        and value["elapsedMs"]
+        <= CREATION_PHASE_BUDGETS_MS["advanced-editor-gate-inventory"]
+    ):
+        raise ValueError(
+            "creation method reacquisition scan did not reconcile gestures, screens, "
+            "hierarchy reads, or phase timing"
+        )
 
 
 def object_without_duplicates(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -260,8 +379,12 @@ def require_creation_timing_within_budget(receipt: dict[str, Any]) -> None:
             )
         previous_phase_elapsed[phase_id] = phase_elapsed_ms
         previous_total_elapsed = milestone_total_elapsed_ms
-    if not isinstance(timing.get("scans"), list):
-        raise ValueError("creation prerequisite scan timing evidence is missing")
+    require_creation_method_reacquisition_scan(
+        timing,
+        advanced_phase_elapsed_ms=phase_elapsed_by_id[
+            "advanced-editor-gate-inventory"
+        ],
+    )
 
 
 def validate_aggregate(

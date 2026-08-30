@@ -1211,9 +1211,23 @@ class Device:
 
         return Device._parse_hierarchy(self, xml, "last-invalid-hierarchy.txt")
 
-    def read_only_hierarchy(self) -> list[UiNode]:
+    def read_only_hierarchy(
+        self,
+        *,
+        deadline: float | None = None,
+    ) -> list[UiNode]:
         """Observe accessibility state without writing a device-side dump file."""
-        xml = self.run(*ADB_READ_ONLY_HIERARCHY_ARGUMENTS, timeout=30).stdout
+        if deadline is None:
+            xml = self.run(*ADB_READ_ONLY_HIERARCHY_ARGUMENTS, timeout=30).stdout
+        else:
+            xml = self.run(
+                *ADB_READ_ONLY_HIERARCHY_ARGUMENTS,
+                timeout=_remaining_operation_timeout(
+                    deadline=deadline,
+                    maximum=30,
+                ),
+                deadline=deadline,
+            ).stdout
         return Device._parse_hierarchy(
             self,
             xml,
@@ -1258,6 +1272,8 @@ class Device:
         self,
         failed: AdbTransportError,
         arguments: tuple[str, ...],
+        *,
+        deadline: float | None = None,
     ) -> bool:
         receipt = failed.receipt
         blocker = self._mutation_blocker
@@ -1273,7 +1289,11 @@ class Device:
         consecutive = 0
         for observation in range(1, ADB_SWIPE_RECONCILIATION_MAX_OBSERVATIONS + 1):
             try:
-                nodes = self.read_only_hierarchy()
+                nodes = (
+                    self.read_only_hierarchy()
+                    if deadline is None
+                    else self.read_only_hierarchy(deadline=deadline)
+                )
             except AdbTransportError:
                 return False
             if not nodes:
@@ -1291,6 +1311,12 @@ class Device:
                 self._mutation_blocker = None
                 return True
             if observation < ADB_SWIPE_RECONCILIATION_MAX_OBSERVATIONS:
+                if deadline is not None:
+                    remaining = deadline - time.monotonic()
+                    if remaining < ADB_SWIPE_RECONCILIATION_DELAY_SECONDS:
+                        raise AdbOperationDeadlineExceeded(
+                            "Swipe reconciliation delay exceeded its caller-owned deadline"
+                        )
                 time.sleep(ADB_SWIPE_RECONCILIATION_DELAY_SECONDS)
         return False
 
@@ -2210,8 +2236,13 @@ class Device:
         *,
         x_ratio: float = 0.5,
         distance_ratio: float = 0.52,
+        deadline: float | None = None,
     ) -> None:
-        width, height = self.display_size()
+        width, height = (
+            self.display_size()
+            if deadline is None
+            else self.display_size(deadline=deadline)
+        )
         x = int(round(width * x_ratio))
         start_y = int(round(height * 0.82))
         end_y = int(round(height * max(0.10, 0.82 - distance_ratio)))
@@ -2225,11 +2256,22 @@ class Device:
             "300",
         )
         try:
-            self.shell(*arguments, timeout=15)
+            if deadline is None:
+                self.shell(*arguments, timeout=15)
+            else:
+                self.shell(
+                    *arguments,
+                    timeout=_remaining_operation_timeout(
+                        deadline=deadline,
+                        maximum=15,
+                    ),
+                    deadline=deadline,
+                )
         except AdbTransportError as error:
             if not self._reconcile_unknown_swipe(
                 error,
                 ("shell", *arguments),
+                deadline=deadline,
             ):
                 raise
 
@@ -2238,8 +2280,13 @@ class Device:
         *,
         x_ratio: float = 0.5,
         distance_ratio: float = 0.52,
+        deadline: float | None = None,
     ) -> None:
-        width, height = self.display_size()
+        width, height = (
+            self.display_size()
+            if deadline is None
+            else self.display_size(deadline=deadline)
+        )
         x = int(round(width * x_ratio))
         start_y = int(round(height * 0.30))
         end_y = int(round(height * min(0.90, 0.30 + distance_ratio)))
@@ -2253,11 +2300,22 @@ class Device:
             "300",
         )
         try:
-            self.shell(*arguments, timeout=15)
+            if deadline is None:
+                self.shell(*arguments, timeout=15)
+            else:
+                self.shell(
+                    *arguments,
+                    timeout=_remaining_operation_timeout(
+                        deadline=deadline,
+                        maximum=15,
+                    ),
+                    deadline=deadline,
+                )
         except AdbTransportError as error:
             if not self._reconcile_unknown_swipe(
                 error,
                 ("shell", *arguments),
+                deadline=deadline,
             ):
                 raise
 

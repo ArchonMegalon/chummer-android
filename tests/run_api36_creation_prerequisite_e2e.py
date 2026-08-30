@@ -151,7 +151,7 @@ PHASE_BUDGET_MS = {
     # method restore has its own strict bound under the unchanged 15-minute
     # aggregate target; no authority field or stable-end proof is removed.
     "dashboard-authority-inventory": 30_000,
-    "advanced-editor-gate-inventory": 60_000,
+    "advanced-editor-gate-inventory": 90_000,
     "prerequisite-authority-inventory": 60_000,
     "priority-ranks": 150_000,
     "typed-authority-options": 150_000,
@@ -165,6 +165,11 @@ PHASE_BUDGET_MS = {
 }
 PHASE_ORDER = tuple(PHASE_BUDGET_MS)
 DASHBOARD_SCAN_GESTURE_RATIO = 0.60
+DASHBOARD_SCAN_MAX_SCROLLS = 18
+CREATION_METHOD_REACQUISITION_SCAN_ID = (
+    "creation-stage-method-ready-reacquisition"
+)
+CREATION_METHOD_REACQUISITION_DIRECTION = "down"
 TALENT_GRANT_SCAN_GESTURE_RATIO = 0.60
 # Every phase and the aggregate clock are independently rounded to the nearest
 # millisecond. Their worst-case opposing rounding errors are therefore
@@ -206,9 +211,39 @@ def read_only_hierarchy_timed(
     return nodes
 
 
+def require_phase_deadline(
+    deadline: float | None,
+    *,
+    operation: str,
+) -> None:
+    if deadline is not None and time.monotonic() >= deadline:
+        raise RuntimeError(
+            f"Advanced-editor phase deadline expired during {operation}"
+        )
+
+
+def sleep_before_phase_deadline(
+    seconds: float,
+    *,
+    deadline: float | None,
+    operation: str,
+) -> None:
+    if seconds <= 0:
+        require_phase_deadline(deadline, operation=operation)
+        return
+    if deadline is not None and deadline - time.monotonic() < seconds:
+        raise RuntimeError(
+            f"Advanced-editor phase deadline cannot accommodate {operation}"
+        )
+    time.sleep(seconds)
+    require_phase_deadline(deadline, operation=operation)
+
+
 def fresh_hierarchy_timed(
     device: shared.Device,
     durations_ms: list[int],
+    *,
+    deadline: float | None = None,
 ) -> list[shared.UiNode]:
     """Acquire a post-gesture hierarchy through UIAutomator's dump file.
 
@@ -218,9 +253,17 @@ def fresh_hierarchy_timed(
     every scroll-dependent inventory.  Busy-state polling deliberately keeps
     using :func:`read_only_hierarchy_timed` because it never changes viewport.
     """
+    require_phase_deadline(deadline, operation="fresh hierarchy acquisition")
     started = time.perf_counter()
-    nodes = device.hierarchy()
-    durations_ms.append(round((time.perf_counter() - started) * 1000))
+    try:
+        nodes = (
+            device.hierarchy()
+            if deadline is None
+            else device.hierarchy(deadline=deadline)
+        )
+    finally:
+        durations_ms.append(round((time.perf_counter() - started) * 1000))
+    require_phase_deadline(deadline, operation="fresh hierarchy acquisition")
     return nodes
 
 
@@ -706,6 +749,7 @@ def acquire_stable_start_origin(
     stable_repeats: int = 2,
     max_consecutive_empty_reads: int = 3,
     delay_seconds: float = 0.0,
+    deadline: float | None = None,
 ) -> PriorityRankOrigin:
     """Prove a measured page start and retain its fresh final hierarchy.
 
@@ -733,7 +777,11 @@ def acquire_stable_start_origin(
     consecutive_empty_reads = 0
 
     while reverse_swipes <= max_reverse_swipes:
-        nodes = fresh_hierarchy_timed(device, hierarchy_durations_ms)
+        nodes = fresh_hierarchy_timed(
+            device,
+            hierarchy_durations_ms,
+            deadline=deadline,
+        )
         if not nodes:
             consecutive_empty_reads += 1
             empty_hierarchy_reads += 1
@@ -743,7 +791,11 @@ def acquire_stable_start_origin(
                     f"Accessibility reverse scan {scan_id!r} exhausted transient empty "
                     "hierarchy reads"
                 )
-            time.sleep(0.75)
+            sleep_before_phase_deadline(
+                0.75,
+                deadline=deadline,
+                operation="stable-start empty-hierarchy wait",
+            )
             continue
         consecutive_empty_reads = 0
         signature = accessibility_signature(nodes)
@@ -762,10 +814,20 @@ def acquire_stable_start_origin(
             return origin
         if reverse_swipes >= max_reverse_swipes:
             break
-        device.swipe_down(distance_ratio=distance_ratio)
+        if deadline is None:
+            device.swipe_down(distance_ratio=distance_ratio)
+        else:
+            device.swipe_down(
+                distance_ratio=distance_ratio,
+                deadline=deadline,
+            )
         reverse_swipes += 1
         if delay_seconds > 0:
-            time.sleep(delay_seconds)
+            sleep_before_phase_deadline(
+                delay_seconds,
+                deadline=deadline,
+                operation="stable-start post-swipe wait",
+            )
 
     device.capture(f"{scan_id}-stable-start-unproven")
     raise RuntimeError(
@@ -785,6 +847,7 @@ def scan_forward_until_stable(
     max_consecutive_empty_reads: int = 3,
     delay_seconds: float = 0.2,
     observer: Callable[[dict[str, object]], None] | None = None,
+    deadline: float | None = None,
 ) -> list[list[shared.UiNode]]:
     """Scan through the exact stable page end instead of spending the full bound.
 
@@ -852,7 +915,11 @@ def scan_forward_until_stable(
             nodes = pending_initial_screen
             pending_initial_screen = None
         else:
-            nodes = fresh_hierarchy_timed(device, hierarchy_durations_ms)
+            nodes = fresh_hierarchy_timed(
+                device,
+                hierarchy_durations_ms,
+                deadline=deadline,
+            )
         if not nodes:
             consecutive_empty_reads += 1
             total_empty_reads += 1
@@ -875,7 +942,11 @@ def scan_forward_until_stable(
                 raise RuntimeError(
                     f"Accessibility scan {scan_id!r} exhausted transient empty hierarchy reads"
                 )
-            time.sleep(0.75)
+            sleep_before_phase_deadline(
+                0.75,
+                deadline=deadline,
+                operation="stable-end empty-hierarchy wait",
+            )
             continue
         consecutive_empty_reads = 0
         screens.append(nodes)
@@ -900,10 +971,20 @@ def scan_forward_until_stable(
             return screens
         if swipes >= max_scrolls:
             break
-        device.swipe_up(distance_ratio=distance_ratio)
+        if deadline is None:
+            device.swipe_up(distance_ratio=distance_ratio)
+        else:
+            device.swipe_up(
+                distance_ratio=distance_ratio,
+                deadline=deadline,
+            )
         swipes += 1
         if delay_seconds > 0:
-            time.sleep(delay_seconds)
+            sleep_before_phase_deadline(
+                delay_seconds,
+                deadline=deadline,
+                operation="stable-end post-swipe wait",
+            )
     result = {
         "scanId": scan_id,
         "status": "bound-exhausted",
@@ -939,6 +1020,7 @@ def scan_forward_with_receipt(
     initial_observation: PriorityRankOrigin | None = None,
     delay_seconds: float = 0.2,
     observer: Callable[[dict[str, object]], None] | None = None,
+    deadline: float | None = None,
 ) -> StableViewportScan:
     """Return the stable scan's actual viewport delta without another dump."""
     receipt: dict[str, object] = {}
@@ -956,6 +1038,7 @@ def scan_forward_with_receipt(
         initial_observation=initial_observation,
         delay_seconds=delay_seconds,
         observer=record,
+        deadline=deadline,
     )
     swipes = receipt.get("swipes")
     stable_repeats = receipt.get("stableRepeats")
@@ -1267,6 +1350,140 @@ def rewind_to_exact_resource_id(
     )
 
 
+def require_creation_method_reacquisition_receipt(
+    scan: dict[str, object],
+    *,
+    expected_phase_id: str | None = None,
+    phase_elapsed_ms: int | None = None,
+    require_deadline: bool = False,
+) -> None:
+    """Validate one resolved, bounded dashboard-method restoration receipt."""
+    required_literals: dict[str, object] = {
+        "scanId": CREATION_METHOD_REACQUISITION_SCAN_ID,
+        "status": "resolved",
+        "direction": CREATION_METHOD_REACQUISITION_DIRECTION,
+        "distanceRatio": DASHBOARD_SCAN_GESTURE_RATIO,
+        "configuredMaxScrolls": DASHBOARD_SCAN_MAX_SCROLLS,
+        "stableRepeats": 2,
+        "maximumEmptyHierarchyReads": 3,
+        "maximumSystemUiDismissals": 3,
+        "phaseBudgetMs": PHASE_BUDGET_MS["advanced-editor-gate-inventory"],
+    }
+    if expected_phase_id is not None:
+        required_literals["phaseId"] = expected_phase_id
+    differing = {
+        field: (expected, scan.get(field))
+        for field, expected in required_literals.items()
+        if scan.get(field) != expected
+    }
+    if differing:
+        raise RuntimeError(
+            "Creation method reacquisition receipt literal authority differs: "
+            f"{differing!r}"
+        )
+    deadline_enforced = scan.get("deadlineEnforced")
+    if type(deadline_enforced) is not bool or (
+        require_deadline and deadline_enforced is not True
+    ):
+        raise RuntimeError(
+            "Creation method reacquisition receipt omitted its active deadline authority"
+        )
+    integer_fields = (
+        "screens",
+        "swipes",
+        "emptyHierarchyReads",
+        "systemUiDismissals",
+        "hierarchyReadCount",
+        "hierarchyElapsedMs",
+        "maximumHierarchyReadMs",
+        "elapsedMs",
+    )
+    invalid = [
+        field
+        for field in integer_fields
+        if type(scan.get(field)) is not int or int(scan[field]) < 0
+    ]
+    if invalid:
+        raise RuntimeError(
+            "Creation method reacquisition receipt timing/count data differs: "
+            f"{invalid!r}"
+        )
+    value = {field: int(scan[field]) for field in integer_fields}
+    read_rounding_ms = (value["hierarchyReadCount"] + 1) // 2
+    mandatory_wait_ms = (
+        value["swipes"] * 200
+        + value["emptyHierarchyReads"] * 750
+        + value["systemUiDismissals"] * 2_000
+    )
+    maximum_lower_bound = (
+        (
+            value["hierarchyElapsedMs"]
+            + value["hierarchyReadCount"]
+            - 1
+        )
+        // value["hierarchyReadCount"]
+        if value["hierarchyReadCount"] > 0
+        else 0
+    )
+    relationships_hold = (
+        1 <= value["screens"]
+        and 0 <= value["swipes"] <= DASHBOARD_SCAN_MAX_SCROLLS
+        and value["emptyHierarchyReads"] <= 3
+        and value["systemUiDismissals"] <= 3
+        and value["hierarchyReadCount"]
+        == value["screens"] + value["emptyHierarchyReads"]
+        and value["screens"]
+        == value["swipes"] + value["systemUiDismissals"] + 1
+        and value["hierarchyReadCount"] > 0
+        and value["maximumHierarchyReadMs"] >= maximum_lower_bound
+        and value["maximumHierarchyReadMs"] <= value["hierarchyElapsedMs"]
+        and value["hierarchyElapsedMs"]
+        <= value["elapsedMs"] + read_rounding_ms
+        and (
+            deadline_enforced is not True
+            or value["hierarchyElapsedMs"] + mandatory_wait_ms
+            <= value["elapsedMs"] + read_rounding_ms + 1
+        )
+        and value["elapsedMs"]
+        <= PHASE_BUDGET_MS["advanced-editor-gate-inventory"]
+        and (
+            phase_elapsed_ms is None
+            or (
+                type(phase_elapsed_ms) is int
+                and value["elapsedMs"] <= phase_elapsed_ms
+            )
+        )
+    )
+    if not relationships_hold:
+        raise RuntimeError(
+            "Creation method reacquisition receipt did not reconcile its gestures, "
+            "screens, hierarchy reads, or phase timing"
+        )
+
+
+def require_one_advanced_editor_method_reacquisition(
+    scans: list[dict[str, object]],
+    *,
+    phase_elapsed_ms: int,
+) -> None:
+    matches = [
+        scan
+        for scan in scans
+        if scan.get("scanId") == CREATION_METHOD_REACQUISITION_SCAN_ID
+    ]
+    if len(matches) != 1:
+        raise RuntimeError(
+            "Advanced-editor phase requires exactly one creation method "
+            f"reacquisition receipt; found {len(matches)}"
+        )
+    require_creation_method_reacquisition_receipt(
+        matches[0],
+        expected_phase_id="advanced-editor-gate-inventory",
+        phase_elapsed_ms=phase_elapsed_ms,
+        require_deadline=True,
+    )
+
+
 class ProgressRecorder:
     """Deterministic phase events plus atomic timing evidence for a physical run."""
 
@@ -1308,8 +1525,25 @@ class ProgressRecorder:
         if self._active_id is None or self._finished:
             raise RuntimeError("Scan timing was recorded outside an active progress phase")
         require_composed_scan_timing(scan)
-        self.scans.append({**scan, "phaseId": self._active_id})
+        bound_scan = {**scan, "phaseId": self._active_id}
+        if (
+            bound_scan.get("scanId") == CREATION_METHOD_REACQUISITION_SCAN_ID
+            and bound_scan.get("status") == "resolved"
+        ):
+            require_creation_method_reacquisition_receipt(
+                bound_scan,
+                expected_phase_id="advanced-editor-gate-inventory",
+                require_deadline=True,
+            )
+        self.scans.append(bound_scan)
         self._write("running")
+
+    def active_phase_deadline(self, phase_id: str) -> float:
+        if self._active_id != phase_id or self._finished:
+            raise RuntimeError(
+                f"Cannot obtain deadline for inactive progress phase {phase_id!r}"
+            )
+        return self._active_started + (PHASE_BUDGET_MS[phase_id] / 1000)
 
     def record_initial_milestone(self, milestone_id: str) -> None:
         """Emit ordered navigation, product, and observer timing segments."""
@@ -1530,6 +1764,11 @@ class ProgressRecorder:
         ended = time.monotonic() if ended_at is None else ended_at
         elapsed = round((ended - self._active_started) * 1000)
         budget = PHASE_BUDGET_MS[self._active_id]
+        if status == "pass" and self._active_id == "advanced-editor-gate-inventory":
+            require_one_advanced_editor_method_reacquisition(
+                self.scans,
+                phase_elapsed_ms=elapsed,
+            )
         phase = {
             "ordinal": len(self.phases) + 1,
             "phaseId": self._active_id,
@@ -1618,6 +1857,7 @@ def assert_uncreated_advanced_editor_gated(
     *,
     scan_observer: Callable[[dict[str, object]], None] | None = None,
     scan_id: str = "advanced-editor-gate",
+    deadline: float | None = None,
 ) -> CreationDashboardScanProof:
     """Scan the dashboard once for forbidden controls and reusable authority."""
     forbidden = (
@@ -1636,15 +1876,17 @@ def assert_uncreated_advanced_editor_gated(
         stable_repeats=2,
         max_consecutive_empty_reads=3,
         delay_seconds=0.0,
+        deadline=deadline,
     )
     scan = scan_forward_with_receipt(
         device,
         scan_id=scan_id,
-        max_scrolls=18,
+        max_scrolls=DASHBOARD_SCAN_MAX_SCROLLS,
         distance_ratio=DASHBOARD_SCAN_GESTURE_RATIO,
         initial_observation=scan_origin,
         delay_seconds=0.0,
         observer=scan_observer,
+        deadline=deadline,
     )
     bindings: set[str] = set()
     method_states: set[tuple[str, str, str]] = set()
@@ -1918,27 +2160,196 @@ def reacquire_exact_ready_creation_method(
     *,
     expected_detail: str,
     max_swipes: int,
+    scan_observer: Callable[[dict[str, object]], None] | None = None,
+    stable_repeats: int = 2,
+    max_empty_hierarchy_reads: int = 3,
+    max_system_ui_dismissals: int = 3,
+    deadline: float | None = None,
 ) -> tuple[shared.UiNode, str, int]:
-    """Reacquire and revalidate the exact method before any physical tap."""
-    node, reverse_swipes = rewind_to_exact_resource_id(
-        device,
-        "creation-stage-method",
-        max_swipes=max_swipes,
-        distance_ratio=DASHBOARD_SCAN_GESTURE_RATIO,
-        evidence_prefix="creation-stage-method-ready",
-        surface_name="Measured ready creation method navigation",
-        require_tappable=True,
-        max_empty_hierarchy_reads=3,
-        max_system_ui_dismissals=3,
-    )
-    detail = require_creation_method_navigation(node, ready=True)
-    if detail != expected_detail:
-        device.capture("creation-stage-method-changed-after-dashboard-scan")
-        raise RuntimeError(
-            "Creation method authority changed between the stable dashboard scan and tap: "
-            f"scan={expected_detail!r}, tap={detail!r}"
+    """Observe back to the exact method without assuming swipe-count symmetry.
+
+    Android's equal-distance up/down gestures do not establish an invertible
+    MAUI ScrollView coordinate.  Observe every reverse endpoint and stop only
+    on the exact ready method, a separately proven stable start, or an explicit
+    safety bound.
+    """
+    if (
+        type(max_swipes) is not int
+        or max_swipes < 0
+        or max_swipes > DASHBOARD_SCAN_MAX_SCROLLS
+        or type(stable_repeats) is not int
+        or stable_repeats < 1
+        or type(max_empty_hierarchy_reads) is not int
+        or max_empty_hierarchy_reads < 0
+        or type(max_system_ui_dismissals) is not int
+        or max_system_ui_dismissals < 0
+    ):
+        raise ValueError(
+            "Creation method restoration requires exact gesture, stable-start, "
+            "empty-hierarchy, and system-UI bounds"
         )
-    return node, detail, reverse_swipes
+
+    started = time.monotonic()
+    hierarchy_durations_ms: list[int] = []
+    reverse_swipes = 0
+    screens = 0
+    empty_hierarchy_reads = 0
+    system_ui_dismissals = 0
+    previous_signature: tuple[tuple[str, ...], ...] | None = None
+    unchanged_post_gesture = 0
+    pending_post_gesture = False
+
+    def record(status: str) -> None:
+        receipt: dict[str, object] = {
+            "scanId": CREATION_METHOD_REACQUISITION_SCAN_ID,
+            "status": status,
+            "direction": CREATION_METHOD_REACQUISITION_DIRECTION,
+            "distanceRatio": DASHBOARD_SCAN_GESTURE_RATIO,
+            "screens": screens,
+            "swipes": reverse_swipes,
+            "configuredMaxScrolls": max_swipes,
+            "stableRepeats": stable_repeats,
+            "emptyHierarchyReads": empty_hierarchy_reads,
+            "maximumEmptyHierarchyReads": max_empty_hierarchy_reads,
+            "systemUiDismissals": system_ui_dismissals,
+            "maximumSystemUiDismissals": max_system_ui_dismissals,
+            "deadlineEnforced": deadline is not None,
+            "phaseBudgetMs": PHASE_BUDGET_MS["advanced-editor-gate-inventory"],
+            **hierarchy_timing_fields(hierarchy_durations_ms),
+            "elapsedMs": round((time.monotonic() - started) * 1000),
+        }
+        if status == "resolved":
+            require_creation_method_reacquisition_receipt(receipt)
+        if scan_observer is not None:
+            scan_observer(receipt)
+
+    def reject_not_tappable() -> None:
+        record("not-tappable")
+        device.capture("creation-stage-method-ready-not-tappable")
+        raise RuntimeError(
+            "Measured ready creation method navigation 'creation-stage-method' "
+            "was not visible, enabled, and clickable"
+        )
+
+    while reverse_swipes <= max_swipes:
+        nodes = fresh_hierarchy_timed(
+            device,
+            hierarchy_durations_ms,
+            deadline=deadline,
+        )
+        if not nodes:
+            empty_hierarchy_reads += 1
+            if empty_hierarchy_reads > max_empty_hierarchy_reads:
+                record("reverse-empty-hierarchy-exhausted")
+                device.capture("creation-stage-method-ready-empty-hierarchy-exhausted")
+                raise RuntimeError(
+                    "Measured ready creation method navigation exhausted its separate "
+                    f"transient empty-hierarchy budget of {max_empty_hierarchy_reads} reads"
+                )
+            sleep_before_phase_deadline(
+                0.75,
+                deadline=deadline,
+                operation="method-reacquisition empty-hierarchy wait",
+            )
+            continue
+        screens += 1
+        matches = [
+            node
+            for node in nodes
+            if _exact_resource_id(node) == "creation-stage-method"
+        ]
+        if len(matches) > 1:
+            record("cardinality-invalid")
+            device.capture("creation-stage-method-ready-cardinality-invalid")
+            raise RuntimeError(
+                "Measured ready creation method navigation 'creation-stage-method' "
+                f"has cardinality {len(matches)}; expected one"
+            )
+        if len(matches) == 1:
+            node = matches[0]
+            visible = device.node_has_tappable_bounds(node)
+            interactive = (
+                node.attributes.get("enabled") == "true"
+                and node.attributes.get("clickable") == "true"
+            )
+            if visible and interactive:
+                try:
+                    detail = require_creation_method_navigation(node, ready=True)
+                except RuntimeError:
+                    record("not-ready")
+                    device.capture("creation-stage-method-ready-not-ready")
+                    raise
+                if detail != expected_detail:
+                    record("detail-changed")
+                    device.capture("creation-stage-method-changed-after-dashboard-scan")
+                    raise RuntimeError(
+                        "Creation method authority changed between the stable dashboard "
+                        f"scan and tap: scan={expected_detail!r}, tap={detail!r}"
+                    )
+                record("resolved")
+                return node, detail, reverse_swipes
+            if not interactive:
+                reject_not_tappable()
+
+        if device.dismiss_system_ui_anr(nodes):
+            system_ui_dismissals += 1
+            if system_ui_dismissals > max_system_ui_dismissals:
+                record("reverse-system-ui-exhausted")
+                device.capture("creation-stage-method-ready-system-ui-exhausted")
+                raise RuntimeError(
+                    "Measured ready creation method navigation exhausted its separate "
+                    f"system-UI dismissal budget of {max_system_ui_dismissals}"
+                )
+            sleep_before_phase_deadline(
+                2,
+                deadline=deadline,
+                operation="method-reacquisition system-UI wait",
+            )
+            continue
+
+        signature = accessibility_signature(nodes)
+        if pending_post_gesture:
+            unchanged_post_gesture = (
+                unchanged_post_gesture + 1
+                if previous_signature is not None and signature == previous_signature
+                else 0
+            )
+            pending_post_gesture = False
+        previous_signature = signature
+        if unchanged_post_gesture >= stable_repeats:
+            if matches:
+                reject_not_tappable()
+            record("stable-start-without-method")
+            device.capture("creation-stage-method-ready-stable-start-without-method")
+            raise RuntimeError(
+                "Creation dashboard proved a stable start without the exact ready "
+                "creation-stage-method"
+            )
+        if reverse_swipes >= max_swipes:
+            if matches:
+                reject_not_tappable()
+            break
+        if deadline is None:
+            device.swipe_down(distance_ratio=DASHBOARD_SCAN_GESTURE_RATIO)
+        else:
+            device.swipe_down(
+                distance_ratio=DASHBOARD_SCAN_GESTURE_RATIO,
+                deadline=deadline,
+            )
+        reverse_swipes += 1
+        pending_post_gesture = True
+        sleep_before_phase_deadline(
+            0.2,
+            deadline=deadline,
+            operation="method-reacquisition post-swipe wait",
+        )
+
+    record("reverse-bound-exhausted")
+    device.capture("creation-stage-method-ready-unavailable")
+    raise RuntimeError(
+        "Timed out reversing to exact measured ready creation method navigation "
+        f"'creation-stage-method' within the dashboard scan bound of {max_swipes} swipes"
+    )
 
 
 def _pending_timeout_text(value: object) -> str:
@@ -4986,20 +5397,22 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
             "Creation dashboard authority wait did not retain one exact resolved viewport"
         )
     progress.advance("advanced-editor-gate-inventory")
+    advanced_editor_deadline = progress.active_phase_deadline(
+        "advanced-editor-gate-inventory"
+    )
     dashboard_scan = assert_uncreated_advanced_editor_gated(
         device,
         scan_observer=progress.record_scan,
         scan_id="advanced-editor-gate-initial",
+        deadline=advanced_editor_deadline,
     )
     dashboard_binding = dashboard_scan.binding
-    method_reverse_swipe_bound = measured_reverse_reacquisition_bound(
-        dashboard_scan.swipes,
-        dashboard_scan.method_viewport,
-    )
     method_node, method_detail, _ = reacquire_exact_ready_creation_method(
         device,
         expected_detail=dashboard_scan.method_detail,
-        max_swipes=method_reverse_swipe_bound,
+        max_swipes=DASHBOARD_SCAN_MAX_SCROLLS,
+        scan_observer=progress.record_scan,
+        deadline=advanced_editor_deadline,
     )
     ready_navigation = {
         "detail": method_detail,
@@ -5007,7 +5420,10 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         "enabled": True,
         "authorityProjectionWaited": authority_projection_waited,
     }
-    device.capture("creation-priority-core-bootstrap-ready")
+    device.capture(
+        "creation-priority-core-bootstrap-ready",
+        deadline=advanced_editor_deadline,
+    )
 
     progress.advance("prerequisite-authority-inventory")
     device.shell("input", "tap", *(str(value) for value in method_node.center))

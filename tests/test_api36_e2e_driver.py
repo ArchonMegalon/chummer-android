@@ -5855,6 +5855,33 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             device.commands[-1],
         )
 
+    def test_swipes_share_caller_deadline_with_geometry_and_adb(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        device.display_size.return_value = (1080, 2400)
+        with patch.object(DRIVER.time, "monotonic", return_value=90.0):
+            DRIVER.Device.swipe_up(device, distance_ratio=0.60, deadline=100.0)
+            DRIVER.Device.swipe_down(device, distance_ratio=0.60, deadline=100.0)
+
+        self.assertEqual(
+            [call(deadline=100.0), call(deadline=100.0)],
+            device.display_size.call_args_list,
+        )
+        self.assertEqual(
+            [
+                call(
+                    "input", "swipe", "540", "1968", "540", "528", "300",
+                    timeout=10.0,
+                    deadline=100.0,
+                ),
+                call(
+                    "input", "swipe", "540", "720", "540", "2160", "300",
+                    timeout=10.0,
+                    deadline=100.0,
+                ),
+            ],
+            device.shell.call_args_list,
+        )
+
     def test_tablet_selectors_scroll_their_own_panes(self) -> None:
         self.assertEqual(
             0.15,

@@ -49,6 +49,33 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         )
 
     @staticmethod
+    def record_required_method_reacquisition(
+        progress: driver.ProgressRecorder,
+    ) -> None:
+        progress.record_scan({
+            "scanId": driver.CREATION_METHOD_REACQUISITION_SCAN_ID,
+            "status": "resolved",
+            "direction": driver.CREATION_METHOD_REACQUISITION_DIRECTION,
+            "distanceRatio": driver.DASHBOARD_SCAN_GESTURE_RATIO,
+            "screens": 1,
+            "swipes": 0,
+            "configuredMaxScrolls": driver.DASHBOARD_SCAN_MAX_SCROLLS,
+            "stableRepeats": 2,
+            "emptyHierarchyReads": 0,
+            "maximumEmptyHierarchyReads": 3,
+            "systemUiDismissals": 0,
+            "maximumSystemUiDismissals": 3,
+            "deadlineEnforced": True,
+            "phaseBudgetMs": driver.PHASE_BUDGET_MS[
+                "advanced-editor-gate-inventory"
+            ],
+            "hierarchyReadCount": 1,
+            "hierarchyElapsedMs": 0,
+            "maximumHierarchyReadMs": 0,
+            "elapsedMs": 0,
+        })
+
+    @staticmethod
     def bootstrap_timing_payload(**changes: object) -> dict[str, object]:
         payload: dict[str, object] = {
             "schema": "chummer.android.creation-bootstrap-timing/v1",
@@ -1203,6 +1230,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 progress = driver.ProgressRecorder(root)
                 for phase_id in driver.PHASE_ORDER:
                     progress.advance(phase_id)
+                    if phase_id == "advanced-editor-gate-inventory":
+                        self.record_required_method_reacquisition(progress)
                     if phase_id == "initial-navigation":
                         for milestone_id in driver.INITIAL_NAVIGATION_MILESTONE_ORDER:
                             progress.record_initial_milestone(milestone_id)
@@ -1257,7 +1286,14 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             self.assertEqual(list(driver.PHASE_BUDGET_MS), [
                 phase["phaseId"] for phase in evidence["phases"]
             ])
-            self.assertEqual("rank-cardinality-heritage", evidence["scans"][0]["scanId"])
+            self.assertEqual(
+                "rank-cardinality-heritage",
+                next(
+                    scan["scanId"]
+                    for scan in evidence["scans"]
+                    if scan["scanId"] == "rank-cardinality-heritage"
+                ),
+            )
             self.assertEqual(
                 list(driver.INITIAL_MILESTONE_ORDER),
                 [milestone["milestoneId"] for milestone in evidence["milestones"]],
@@ -1293,6 +1329,26 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             progress.advance(driver.PHASE_ORDER[0])
             with self.assertRaisesRegex(RuntimeError, "progress is incomplete"):
                 progress.finish()
+
+    def test_advanced_editor_phase_requires_one_resolved_method_receipt(self) -> None:
+        for case in ("omitted", "duplicated"):
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as temporary, mock.patch(
+                "builtins.print"
+            ):
+                progress = driver.ProgressRecorder(Path(temporary))
+                for phase_id in driver.PHASE_ORDER:
+                    progress.advance(phase_id)
+                    if phase_id != "advanced-editor-gate-inventory":
+                        continue
+                    if case == "duplicated":
+                        self.record_required_method_reacquisition(progress)
+                        self.record_required_method_reacquisition(progress)
+                    with self.assertRaisesRegex(
+                        RuntimeError,
+                        "exactly one creation method reacquisition receipt",
+                    ):
+                        progress.advance("prerequisite-authority-inventory")
+                    break
 
     def test_progress_recorder_rejects_a_pass_phase_outside_its_budget(self) -> None:
         with tempfile.TemporaryDirectory() as temporary, mock.patch("builtins.print"):
@@ -1337,6 +1393,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 progress = driver.ProgressRecorder(Path(temporary))
                 for phase_id in driver.PHASE_ORDER:
                     progress.advance(phase_id)
+                    if phase_id == "advanced-editor-gate-inventory":
+                        self.record_required_method_reacquisition(progress)
                     for milestone_id, milestone_phase in zip(
                         driver.INITIAL_MILESTONE_ORDER,
                         driver.INITIAL_MILESTONE_PHASES,
@@ -1376,6 +1434,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 progress = driver.ProgressRecorder(Path(temporary))
                 for phase_id in driver.PHASE_ORDER:
                     progress.advance(phase_id)
+                    if phase_id == "advanced-editor-gate-inventory":
+                        self.record_required_method_reacquisition(progress)
                     for milestone_id, milestone_phase in zip(
                         driver.INITIAL_MILESTONE_ORDER,
                         driver.INITIAL_MILESTONE_PHASES,
@@ -1450,9 +1510,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "method_node, method_detail, _ = reacquire_exact_ready_creation_method("
         )
         ready_navigation = source.index("ready_navigation = {")
-        ready_capture = source.index(
-            'device.capture("creation-priority-core-bootstrap-ready")'
-        )
+        ready_capture = source.index('"creation-priority-core-bootstrap-ready"')
         prerequisite_authority_start = source.index(
             'progress.advance("prerequisite-authority-inventory")'
         )
@@ -1482,7 +1540,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             driver.PHASE_BUDGET_MS["dashboard-authority-inventory"],
         )
         self.assertEqual(
-            60_000,
+            90_000,
             driver.PHASE_BUDGET_MS["advanced-editor-gate-inventory"],
         )
         self.assertEqual(
@@ -1510,6 +1568,10 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertLess(method_reacquisition, ready_navigation)
         self.assertLess(ready_navigation, ready_capture)
         self.assertLess(ready_capture, prerequisite_authority_start)
+        self.assertIn(
+            "deadline=advanced_editor_deadline",
+            source[ready_capture:prerequisite_authority_start],
+        )
         self.assertLess(prerequisite_authority_start, prerequisite_tap)
         self.assertLess(prerequisite_tap, prerequisite_scan)
         self.assertLess(prerequisite_scan, prerequisite_binding)
@@ -4317,11 +4379,12 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
         dashboard_source = inspect.getsource(driver.assert_uncreated_advanced_editor_gated)
         self.assertEqual(0.60, driver.DASHBOARD_SCAN_GESTURE_RATIO)
+        self.assertEqual(18, driver.DASHBOARD_SCAN_MAX_SCROLLS)
         self.assertEqual(
             2,
             dashboard_source.count("distance_ratio=DASHBOARD_SCAN_GESTURE_RATIO"),
         )
-        self.assertIn("max_scrolls=18", dashboard_source)
+        self.assertIn("max_scrolls=DASHBOARD_SCAN_MAX_SCROLLS", dashboard_source)
         self.assertIn("acquire_stable_start_origin(", dashboard_source)
         self.assertIn("max_reverse_swipes=8", dashboard_source)
         self.assertIn("stable_repeats=2", dashboard_source)
@@ -4330,8 +4393,9 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertNotIn("reset_scroll_to_top", dashboard_source)
 
         stable_origin_source = inspect.getsource(driver.acquire_stable_start_origin)
-        self.assertIn("fresh_hierarchy_timed(device, hierarchy_durations_ms)", stable_origin_source)
-        self.assertIn("device.swipe_down(distance_ratio=distance_ratio)", stable_origin_source)
+        self.assertIn("fresh_hierarchy_timed(", stable_origin_source)
+        self.assertIn("deadline=deadline", stable_origin_source)
+        self.assertIn("device.swipe_down(", stable_origin_source)
         self.assertNotIn("read_only_hierarchy", stable_origin_source)
         self.assertNotIn("observer", stable_origin_source)
         self.assertNotIn("COMPOSED_SCAN_TIMING_TRIGGER_FIELDS", stable_origin_source)
@@ -4340,7 +4404,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             driver.PHASE_BUDGET_MS["dashboard-authority-inventory"],
         )
         self.assertEqual(
-            60_000,
+            90_000,
             driver.PHASE_BUDGET_MS["advanced-editor-gate-inventory"],
         )
         self.assertEqual(
@@ -4360,19 +4424,25 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertNotIn("shared.wait_for_phone_runner_route(", initial_source)
         self.assertNotIn("reset_swipes=48", execute_source)
 
-        restore_bound = initial_source.index(
-            "method_reverse_swipe_bound = measured_reverse_reacquisition_bound("
-        )
         restore_reacquisition = initial_source.index(
             "reacquire_exact_ready_creation_method("
         )
-        self.assertLess(restore_bound, restore_reacquisition)
+        self.assertNotIn("measured_reverse_reacquisition_bound(", initial_source)
         self.assertNotIn("move_between_measured_viewports(", initial_source)
         restored_method_source = initial_source[restore_reacquisition:]
         self.assertIn(
-            "max_swipes=method_reverse_swipe_bound",
+            "advanced_editor_deadline = progress.active_phase_deadline(",
+            initial_source,
+        )
+        self.assertGreaterEqual(
+            initial_source.count("deadline=advanced_editor_deadline"),
+            2,
+        )
+        self.assertIn(
+            "max_swipes=DASHBOARD_SCAN_MAX_SCROLLS",
             restored_method_source,
         )
+        self.assertIn("scan_observer=progress.record_scan", restored_method_source)
         self.assertNotIn("max_swipes=1", restored_method_source)
 
         method_reacquisition_source = inspect.getsource(
@@ -4383,10 +4453,17 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "distance_ratio=DASHBOARD_SCAN_GESTURE_RATIO",
             method_reacquisition_source,
         )
-        self.assertIn("require_tappable=True", method_reacquisition_source)
-        self.assertIn("max_empty_hierarchy_reads=3", method_reacquisition_source)
-        self.assertIn("max_system_ui_dismissals=3", method_reacquisition_source)
+        self.assertIn("fresh_hierarchy_timed(", method_reacquisition_source)
+        self.assertIn("deadline=deadline", method_reacquisition_source)
+        self.assertIn("stable-start-without-method", method_reacquisition_source)
+        self.assertIn("max_empty_hierarchy_reads", method_reacquisition_source)
+        self.assertIn("max_system_ui_dismissals", method_reacquisition_source)
+        self.assertIn("max_swipes > DASHBOARD_SCAN_MAX_SCROLLS", method_reacquisition_source)
+        self.assertIn('"direction": CREATION_METHOD_REACQUISITION_DIRECTION', method_reacquisition_source)
+        self.assertIn('"distanceRatio": DASHBOARD_SCAN_GESTURE_RATIO', method_reacquisition_source)
+        self.assertIn('"deadlineEnforced": deadline is not None', method_reacquisition_source)
         self.assertIn("detail != expected_detail", method_reacquisition_source)
+        self.assertIn('device.capture("creation-stage-method-ready-not-ready")', method_reacquisition_source)
 
         rewind_source = inspect.getsource(driver.rewind_to_exact_resource_id)
         self.assertIn("fresh_hierarchy_timed(device, [])", rewind_source)
@@ -4467,6 +4544,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             stable_repeats=2,
             max_consecutive_empty_reads=3,
             delay_seconds=0.0,
+            deadline=None,
         )
         scan.assert_called_once_with(
             device,
@@ -4476,6 +4554,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             initial_observation=origin,
             delay_seconds=0.0,
             observer=None,
+            deadline=None,
         )
 
         with mock.patch.object(
@@ -4536,6 +4615,37 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             driver.CreationDashboardScanProof("Revision 7", "Priority", 6, 1),
             proof,
         )
+
+    def test_dashboard_origin_and_forward_scan_share_one_phase_deadline(self) -> None:
+        binding = driver.shared.UiNode({
+            "resource-id": "creation-wizard-binding",
+            "content-desc": "Revision 7",
+        })
+        method = driver.shared.UiNode({
+            "resource-id": "creation-stage-method",
+            "content-desc": "Priority",
+            "enabled": "true",
+            "clickable": "true",
+            "bounds": "[10,100][900,300]",
+        })
+        device = mock.Mock()
+        origin = self.priority_rank_origin([binding, method])
+        with mock.patch.object(
+            driver,
+            "acquire_stable_start_origin",
+            return_value=origin,
+        ) as acquire, mock.patch.object(
+            driver,
+            "scan_forward_with_receipt",
+            return_value=driver.StableViewportScan([[binding, method]], 2),
+        ) as scan:
+            driver.assert_uncreated_advanced_editor_gated(
+                device,
+                deadline=123.0,
+            )
+
+        self.assertEqual(123.0, acquire.call_args.kwargs["deadline"])
+        self.assertEqual(123.0, scan.call_args.kwargs["deadline"])
 
     def test_restored_creation_method_reacquisition_uses_fresh_exact_id_hierarchies(
         self,
@@ -4629,12 +4739,11 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
         class HostedRestoreDevice:
             def __init__(self) -> None:
-                # The hosted receipt made five real movements (seven swipes
-                # minus two stable-end gestures) and observed the method at
-                # viewport zero. Reacquisition may therefore perform exactly
-                # five same-ratio reverse gestures, but each endpoint must be
-                # observed before another gesture is authorized.
-                self.remaining = 5
+                # Run 33323001738 exported five forward movement gestures, but
+                # its exact ready method remained above the viewport after five
+                # same-geometry reverse gestures. The observed reverse search
+                # must continue without treating that count as a coordinate.
+                self.remaining = 7
                 self.hierarchy_reads = 0
                 self.swipe_ratios: list[float] = []
                 self.captures: list[str] = []
@@ -4645,7 +4754,12 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                         "Every reverse gesture must be followed by its own fresh hierarchy"
                     )
                 self.hierarchy_reads += 1
-                return [exact_method] if self.remaining == 0 else [clipped_parent]
+                if self.remaining == 0:
+                    return [exact_method]
+                return [driver.shared.UiNode({
+                    **clipped_parent.attributes,
+                    "content-desc": f"remaining-{self.remaining}",
+                })]
 
             @staticmethod
             def dismiss_system_ui_anr(_nodes):
@@ -4667,26 +4781,191 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 self.captures.append(name)
 
         device = HostedRestoreDevice()
-        movement_swipes = 5
-        method_viewport = 0
-        reverse_bound = driver.measured_reverse_reacquisition_bound(
-            movement_swipes,
-            method_viewport,
-        )
+        observations: list[dict[str, object]] = []
         with mock.patch.object(driver.time, "sleep"):
             node, detail, reverse_swipes = driver.reacquire_exact_ready_creation_method(
                 device,
                 expected_detail="Priority",
-                max_swipes=reverse_bound,
+                max_swipes=driver.DASHBOARD_SCAN_MAX_SCROLLS,
+                scan_observer=observations.append,
             )
 
-        self.assertEqual(5, reverse_bound)
         self.assertIs(exact_method, node)
         self.assertEqual("Priority", detail)
-        self.assertEqual(5, reverse_swipes)
-        self.assertEqual(6, device.hierarchy_reads)
-        self.assertEqual([0.60] * 5, device.swipe_ratios)
+        self.assertEqual(7, reverse_swipes)
+        self.assertEqual(8, device.hierarchy_reads)
+        self.assertEqual([0.60] * 7, device.swipe_ratios)
         self.assertEqual([], device.captures)
+        self.assertEqual(1, len(observations))
+        self.assertEqual("resolved", observations[0]["status"])
+        self.assertEqual(7, observations[0]["swipes"])
+        self.assertEqual(
+            driver.DASHBOARD_SCAN_MAX_SCROLLS,
+            observations[0]["configuredMaxScrolls"],
+        )
+        self.assertEqual("down", observations[0]["direction"])
+        self.assertEqual(0.60, observations[0]["distanceRatio"])
+        self.assertFalse(observations[0]["deadlineEnforced"])
+        driver.require_creation_method_reacquisition_receipt(observations[0])
+
+    def test_dashboard_method_reacquisition_rejects_a_bound_above_shared_cap(
+        self,
+    ) -> None:
+        device = mock.Mock()
+        with self.assertRaisesRegex(ValueError, "exact gesture"):
+            driver.reacquire_exact_ready_creation_method(
+                device,
+                expected_detail="Priority",
+                max_swipes=driver.DASHBOARD_SCAN_MAX_SCROLLS + 1,
+            )
+        device.hierarchy.assert_not_called()
+        device.swipe_down.assert_not_called()
+
+    def test_dashboard_method_reacquisition_threads_one_active_deadline(
+        self,
+    ) -> None:
+        method = driver.shared.UiNode({
+            "resource-id": "creation-stage-method",
+            "content-desc": "Priority",
+            "enabled": "true",
+            "clickable": "true",
+            "bounds": "[53,350][1028,550]",
+        })
+
+        class DeadlineDevice:
+            def __init__(self) -> None:
+                self.deadlines: list[float] = []
+                self.swipe_deadlines: list[float] = []
+
+            def hierarchy(self, *, deadline: float):
+                self.deadlines.append(deadline)
+                return (
+                    [method]
+                    if self.swipe_deadlines
+                    else [driver.shared.UiNode({"text": "before method"})]
+                )
+
+            def swipe_down(self, *, distance_ratio: float, deadline: float):
+                if distance_ratio != driver.DASHBOARD_SCAN_GESTURE_RATIO:
+                    raise AssertionError(f"unexpected ratio: {distance_ratio!r}")
+                self.swipe_deadlines.append(deadline)
+
+            @staticmethod
+            def dismiss_system_ui_anr(_nodes):
+                return False
+
+            @staticmethod
+            def node_has_tappable_bounds(_node):
+                return True
+
+            @staticmethod
+            def capture(name):
+                raise AssertionError(f"unexpected capture: {name}")
+
+        device = DeadlineDevice()
+        observations: list[dict[str, object]] = []
+        now = [10.0]
+
+        def advance(seconds: float) -> None:
+            now[0] += seconds
+
+        with mock.patch.object(
+            driver.time,
+            "monotonic",
+            side_effect=lambda: now[0],
+        ), mock.patch.object(driver.time, "sleep", side_effect=advance):
+            node, detail, swipes = driver.reacquire_exact_ready_creation_method(
+                device,
+                expected_detail="Priority",
+                max_swipes=driver.DASHBOARD_SCAN_MAX_SCROLLS,
+                scan_observer=observations.append,
+                deadline=20.0,
+            )
+
+        self.assertIs(method, node)
+        self.assertEqual("Priority", detail)
+        self.assertEqual(1, swipes)
+        self.assertEqual([20.0, 20.0], device.deadlines)
+        self.assertEqual([20.0], device.swipe_deadlines)
+        self.assertTrue(observations[0]["deadlineEnforced"])
+        driver.require_creation_method_reacquisition_receipt(observations[0])
+
+    def test_fresh_hierarchy_rejects_completion_after_shared_deadline(self) -> None:
+        class LateDevice:
+            @staticmethod
+            def hierarchy(*, deadline: float):
+                if deadline != 1.0:
+                    raise AssertionError(f"unexpected deadline: {deadline!r}")
+                return [driver.shared.UiNode({"text": "late"})]
+
+        with mock.patch.object(
+            driver.time,
+            "monotonic",
+            side_effect=(0.0, 1.0),
+        ), self.assertRaisesRegex(RuntimeError, "phase deadline expired"):
+            driver.fresh_hierarchy_timed(LateDevice(), [], deadline=1.0)
+
+    def test_method_receipt_rejects_nonboolean_deadline_and_omitted_waits(
+        self,
+    ) -> None:
+        receipt: dict[str, object] = {
+            "scanId": driver.CREATION_METHOD_REACQUISITION_SCAN_ID,
+            "status": "resolved",
+            "direction": driver.CREATION_METHOD_REACQUISITION_DIRECTION,
+            "distanceRatio": driver.DASHBOARD_SCAN_GESTURE_RATIO,
+            "screens": 8,
+            "swipes": 7,
+            "configuredMaxScrolls": driver.DASHBOARD_SCAN_MAX_SCROLLS,
+            "stableRepeats": 2,
+            "emptyHierarchyReads": 0,
+            "maximumEmptyHierarchyReads": 3,
+            "systemUiDismissals": 0,
+            "maximumSystemUiDismissals": 3,
+            "deadlineEnforced": True,
+            "phaseBudgetMs": driver.PHASE_BUDGET_MS[
+                "advanced-editor-gate-inventory"
+            ],
+            "hierarchyReadCount": 8,
+            "hierarchyElapsedMs": 4_000,
+            "maximumHierarchyReadMs": 500,
+            "elapsedMs": 5_400,
+        }
+        driver.require_creation_method_reacquisition_receipt(
+            receipt,
+            require_deadline=True,
+        )
+
+        for field, forged in (
+            ("deadlineEnforced", 1),
+            ("elapsedMs", 4_000),
+        ):
+            with self.subTest(field=field):
+                candidate = dict(receipt)
+                candidate[field] = forged
+                with self.assertRaisesRegex(
+                    RuntimeError,
+                    "deadline authority|did not reconcile",
+                ):
+                    driver.require_creation_method_reacquisition_receipt(
+                        candidate,
+                        require_deadline=True,
+                    )
+
+    def test_post_swipe_wait_cannot_cross_shared_phase_deadline(self) -> None:
+        with mock.patch.object(
+            driver.time,
+            "monotonic",
+            return_value=0.9,
+        ), mock.patch.object(driver.time, "sleep") as sleep, self.assertRaisesRegex(
+            RuntimeError,
+            "cannot accommodate method-reacquisition post-swipe wait",
+        ):
+            driver.sleep_before_phase_deadline(
+                0.2,
+                deadline=1.0,
+                operation="method-reacquisition post-swipe wait",
+            )
+        sleep.assert_not_called()
 
     def test_dashboard_scan_ratio_has_symmetric_physical_swipe_geometry(self) -> None:
         device = mock.Mock()
@@ -4719,18 +4998,14 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             abs(int(down[3]) - int(down[5])),
         )
 
-    def test_dashboard_method_reacquisition_consumes_no_op_gestures_fail_closed(
+    def test_dashboard_method_reacquisition_fails_at_stable_start_without_method(
         self,
     ) -> None:
-        clipped = driver.shared.UiNode(
-            {
-                "resource-id": "creation-stage-method",
-                "content-desc": "Priority",
-                "enabled": "true",
-                "clickable": "true",
-                "bounds": "[53,-200][1028,-20]",
-            }
-        )
+        stable_start = driver.shared.UiNode({
+            "resource-id": "creation-wizard-dashboard",
+            "content-desc": "stable start without method",
+            "bounds": "[0,275][1080,2190]",
+        })
 
         class NoOpDevice:
             def __init__(self) -> None:
@@ -4740,7 +5015,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
             def hierarchy(self):
                 self.hierarchy_reads += 1
-                return [clipped]
+                return [stable_start]
 
             @staticmethod
             def dismiss_system_ui_anr(_nodes):
@@ -4759,19 +5034,107 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 self.captures.append(name)
 
         device = NoOpDevice()
+        observations: list[dict[str, object]] = []
         with mock.patch.object(driver.time, "sleep"), self.assertRaisesRegex(
             RuntimeError,
-            "was not visible, enabled, and clickable",
+            "stable start without the exact ready creation-stage-method",
+        ):
+            driver.reacquire_exact_ready_creation_method(
+                device,
+                expected_detail="Priority",
+                max_swipes=driver.DASHBOARD_SCAN_MAX_SCROLLS,
+                scan_observer=observations.append,
+            )
+
+        self.assertEqual(3, device.hierarchy_reads)
+        self.assertEqual(2, device.reverse_swipes)
+        self.assertEqual(
+            ["creation-stage-method-ready-stable-start-without-method"],
+            device.captures,
+        )
+        self.assertEqual("stable-start-without-method", observations[0]["status"])
+        self.assertEqual(2, observations[0]["swipes"])
+
+    def test_dashboard_method_reacquisition_bounds_empty_hierarchies_separately(
+        self,
+    ) -> None:
+        device = mock.Mock()
+        device.hierarchy.return_value = []
+        observations: list[dict[str, object]] = []
+
+        with mock.patch.object(driver.time, "sleep"), self.assertRaisesRegex(
+            RuntimeError,
+            "transient empty-hierarchy budget of 3 reads",
+        ):
+            driver.reacquire_exact_ready_creation_method(
+                device,
+                expected_detail="Priority",
+                max_swipes=driver.DASHBOARD_SCAN_MAX_SCROLLS,
+                scan_observer=observations.append,
+            )
+
+        self.assertEqual(4, device.hierarchy.call_count)
+        device.swipe_down.assert_not_called()
+        device.capture.assert_called_once_with(
+            "creation-stage-method-ready-empty-hierarchy-exhausted"
+        )
+        self.assertEqual("reverse-empty-hierarchy-exhausted", observations[0]["status"])
+        self.assertEqual(0, observations[0]["swipes"])
+
+    def test_dashboard_method_reacquisition_bounds_system_ui_separately(
+        self,
+    ) -> None:
+        device = mock.Mock()
+        device.hierarchy.return_value = [driver.shared.UiNode({"text": "system ui"})]
+        device.dismiss_system_ui_anr.return_value = True
+        observations: list[dict[str, object]] = []
+
+        with mock.patch.object(driver.time, "sleep"), self.assertRaisesRegex(
+            RuntimeError,
+            "system-UI dismissal budget of 3",
+        ):
+            driver.reacquire_exact_ready_creation_method(
+                device,
+                expected_detail="Priority",
+                max_swipes=driver.DASHBOARD_SCAN_MAX_SCROLLS,
+                scan_observer=observations.append,
+            )
+
+        self.assertEqual(4, device.hierarchy.call_count)
+        device.swipe_down.assert_not_called()
+        device.capture.assert_called_once_with(
+            "creation-stage-method-ready-system-ui-exhausted"
+        )
+        self.assertEqual("reverse-system-ui-exhausted", observations[0]["status"])
+        self.assertEqual(4, observations[0]["systemUiDismissals"])
+
+    def test_dashboard_method_reacquisition_exhausts_changing_viewport_bound(
+        self,
+    ) -> None:
+        device = mock.Mock()
+        device.hierarchy.side_effect = [
+            [driver.shared.UiNode({"text": f"viewport-{index}"})]
+            for index in range(3)
+        ]
+        device.dismiss_system_ui_anr.return_value = False
+        observations: list[dict[str, object]] = []
+
+        with mock.patch.object(driver.time, "sleep"), self.assertRaisesRegex(
+            RuntimeError,
+            "dashboard scan bound of 2 swipes",
         ):
             driver.reacquire_exact_ready_creation_method(
                 device,
                 expected_detail="Priority",
                 max_swipes=2,
+                scan_observer=observations.append,
             )
 
-        self.assertEqual(3, device.hierarchy_reads)
-        self.assertEqual(2, device.reverse_swipes)
-        self.assertEqual(["creation-stage-method-ready-not-tappable"], device.captures)
+        self.assertEqual(3, device.hierarchy.call_count)
+        self.assertEqual(2, device.swipe_down.call_count)
+        device.capture.assert_called_once_with("creation-stage-method-ready-unavailable")
+        self.assertEqual("reverse-bound-exhausted", observations[0]["status"])
+        self.assertEqual(2, observations[0]["swipes"])
 
     def test_measured_reverse_reacquisition_bound_is_exact_and_fail_closed(
         self,
@@ -4991,6 +5354,31 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
             device.shell.assert_not_called()
             device.swipe_down.assert_not_called()
+
+    def test_ready_creation_method_not_ready_has_distinct_evidence(self) -> None:
+        node = driver.shared.UiNode({
+            "resource-id": "creation-stage-method",
+            "content-desc": (
+                "Priority · " + driver.CREATION_KARMA_AUTHORITY_BLOCKER
+            ),
+            "enabled": "true",
+            "clickable": "true",
+        })
+        device = mock.Mock()
+        device.hierarchy.return_value = [node]
+        device.node_has_tappable_bounds.return_value = True
+
+        with self.assertRaisesRegex(RuntimeError, "did not enable"):
+            driver.reacquire_exact_ready_creation_method(
+                device,
+                expected_detail="Priority",
+                max_swipes=0,
+            )
+
+        device.capture.assert_called_once_with(
+            "creation-stage-method-ready-not-ready"
+        )
+        device.swipe_down.assert_not_called()
 
     def test_restored_creation_method_reacquisition_accepts_immediate_fresh_match(
         self,
@@ -5254,6 +5642,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             stable_repeats=2,
             max_consecutive_empty_reads=3,
             delay_seconds=0.0,
+            deadline=None,
         )
         scan.assert_called_once_with(
             device,
@@ -5263,6 +5652,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             initial_observation=fresh_origin,
             delay_seconds=0.0,
             observer=None,
+            deadline=None,
         )
 
     def test_dashboard_stable_origin_recovers_hosted_method_above_start(self) -> None:
