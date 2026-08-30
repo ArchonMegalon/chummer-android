@@ -132,7 +132,10 @@ class CharacterSettingsDevice(shared.Device):
         timeout: float = 120,
         deadline: float | None = None,
     ) -> str:
-        if arguments == shared.ADB_FRESH_FILE_HIERARCHY_SHELL_ARGUMENTS:
+        if arguments in (
+            shared.ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS,
+            shared.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
+        ):
             timeout = min(timeout, 30)
         return super().shell(
             *arguments,

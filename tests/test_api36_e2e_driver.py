@@ -1619,8 +1619,12 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             nodes = DRIVER.Device.hierarchy(device)
 
         self.assertEqual("Your runners", nodes[0].attributes["text"])
-        device.shell.assert_called_once_with(
-            *DRIVER.ADB_FRESH_FILE_HIERARCHY_SHELL_ARGUMENTS,
+        self.assertEqual(
+            [
+                call(*DRIVER.ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS),
+                call(*DRIVER.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS),
+            ],
+            device.shell.call_args_list,
         )
 
     def test_invalid_hierarchy_is_retryable_and_preserved(self) -> None:
@@ -1651,7 +1655,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 diagnostic.read_text(encoding="utf-8"),
             )
 
-    def test_empty_dump_status_reads_only_atomically_refreshed_file(self) -> None:
+    def test_empty_dump_status_reads_only_freshness_barrier_file(self) -> None:
         current = "<hierarchy><node text='Current runner root' /></hierarchy>"
         device = Mock(spec=DRIVER.Device)
         device.shell.return_value = " \n\t "
@@ -1666,8 +1670,12 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             nodes = DRIVER.Device.hierarchy(device)
 
         self.assertEqual("Current runner root", nodes[0].attributes["text"])
-        device.shell.assert_called_once_with(
-            *DRIVER.ADB_FRESH_FILE_HIERARCHY_SHELL_ARGUMENTS,
+        self.assertEqual(
+            [
+                call(*DRIVER.ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS),
+                call(*DRIVER.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS),
+            ],
+            device.shell.call_args_list,
         )
         self.assertEqual(
             [
@@ -1680,17 +1688,24 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             device.run.call_args_list,
         )
         self.assertEqual(
+            ("rm", "-f", "/sdcard/chummer-editing-window.xml"),
+            DRIVER.ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS,
+        )
+        self.assertEqual(
             (
-                "sh",
-                "-c",
-                "rm -f /sdcard/chummer-editing-window.xml && "
-                "uiautomator dump --compressed /sdcard/chummer-editing-window.xml",
+                "uiautomator",
+                "dump",
+                "--compressed",
+                "/sdcard/chummer-editing-window.xml",
             ),
-            DRIVER.ADB_FRESH_FILE_HIERARCHY_SHELL_ARGUMENTS,
+            DRIVER.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
         )
         self.assertNotIn(
             "/dev/tty",
-            " ".join(DRIVER.ADB_FRESH_FILE_HIERARCHY_SHELL_ARGUMENTS),
+            " ".join(
+                DRIVER.ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS
+                + DRIVER.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS
+            ),
         )
 
     def test_empty_dump_status_rejects_invalid_fresh_file_hierarchy(self) -> None:
@@ -1755,6 +1770,58 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         self.assertIn("device-offline", diagnostic)
         self.assertIn(str(transport_evidence), diagnostic)
 
+    def test_hierarchy_removal_transport_failure_never_dumps_or_reads(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        with tempfile.TemporaryDirectory() as temporary:
+            evidence = Path(temporary)
+            transport_evidence = evidence / "adb-transport-event-0001.json"
+            failure = DRIVER.AdbTransportError(
+                {
+                    "classification": "unclassified-adb-failure",
+                    "commandPolicy": "non-replayable",
+                    "replay": {"performed": False, "suppressed": True},
+                },
+                transport_evidence,
+            )
+            device.evidence = evidence
+            device.shell.side_effect = failure
+
+            with self.assertRaises(DRIVER.AdbTransportError):
+                DRIVER.Device.hierarchy(device)
+
+        device.shell.assert_called_once_with(
+            *DRIVER.ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS,
+        )
+        device.run.assert_not_called()
+
+    def test_hierarchy_dump_transport_failure_after_remove_never_reads(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        with tempfile.TemporaryDirectory() as temporary:
+            evidence = Path(temporary)
+            transport_evidence = evidence / "adb-transport-event-0001.json"
+            failure = DRIVER.AdbTransportError(
+                {
+                    "classification": "unclassified-adb-failure",
+                    "commandPolicy": "non-replayable",
+                    "replay": {"performed": False, "suppressed": True},
+                },
+                transport_evidence,
+            )
+            device.evidence = evidence
+            device.shell.side_effect = ("", failure)
+
+            with self.assertRaises(DRIVER.AdbTransportError):
+                DRIVER.Device.hierarchy(device)
+
+        self.assertEqual(
+            [
+                call(*DRIVER.ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS),
+                call(*DRIVER.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS),
+            ],
+            device.shell.call_args_list,
+        )
+        device.run.assert_not_called()
+
     def test_empty_dump_status_fresh_file_read_preserves_caller_deadline(self) -> None:
         current = "<hierarchy><node text='Current runner root' /></hierarchy>"
         device = Mock(spec=DRIVER.Device)
@@ -1774,10 +1841,20 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             nodes = DRIVER.Device.hierarchy(device, deadline=100.0)
 
         self.assertEqual("Current runner root", nodes[0].attributes["text"])
-        device.shell.assert_called_once_with(
-            *DRIVER.ADB_FRESH_FILE_HIERARCHY_SHELL_ARGUMENTS,
-            timeout=10.0,
-            deadline=100.0,
+        self.assertEqual(
+            [
+                call(
+                    *DRIVER.ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS,
+                    timeout=10.0,
+                    deadline=100.0,
+                ),
+                call(
+                    *DRIVER.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
+                    timeout=10.0,
+                    deadline=100.0,
+                ),
+            ],
+            device.shell.call_args_list,
         )
         device.run.assert_called_once_with(
             "exec-out",
@@ -1804,6 +1881,45 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
 
         self.assertIn("caller-owned deadline", diagnostic)
         self.assertIn("deadline expired before command invocation", diagnostic)
+        device.shell.assert_called_once_with(
+            *DRIVER.ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS,
+            timeout=10.0,
+            deadline=100.0,
+        )
+        device.run.assert_not_called()
+
+    def test_empty_dump_status_does_not_read_file_after_dump_deadline(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        device.shell.return_value = ""
+        with tempfile.TemporaryDirectory() as temporary, patch.object(
+            DRIVER.time,
+            "monotonic",
+            side_effect=(90.0, 90.0, 90.0, 101.0),
+        ):
+            evidence = Path(temporary)
+            device.evidence = evidence
+            self.assertEqual([], DRIVER.Device.hierarchy(device, deadline=100.0))
+            diagnostic = (evidence / "last-invalid-hierarchy.txt").read_text(
+                encoding="utf-8"
+            )
+
+        self.assertIn("caller-owned deadline", diagnostic)
+        self.assertIn("deadline expired before command invocation", diagnostic)
+        self.assertEqual(
+            [
+                call(
+                    *DRIVER.ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS,
+                    timeout=10.0,
+                    deadline=100.0,
+                ),
+                call(
+                    *DRIVER.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
+                    timeout=10.0,
+                    deadline=100.0,
+                ),
+            ],
+            device.shell.call_args_list,
+        )
         device.run.assert_not_called()
 
     def test_android_hierchary_success_typo_is_accepted(self) -> None:
@@ -5510,7 +5626,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         device.shell.assert_not_called()
         device.capture.assert_not_called()
 
-    def test_hierarchy_shares_one_deadline_across_both_adb_reads(self) -> None:
+    def test_hierarchy_shares_one_deadline_across_freshness_barrier_and_read(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             device = DRIVER.Device(
                 Path("/unused/adb"),
@@ -5519,14 +5635,22 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             )
             now, monotonic, _sleep = self._fake_clock()
 
-            def dump(*_arguments: str, **kwargs: object) -> str:
-                self.assertEqual(45.0, kwargs["timeout"])
+            def dump(*arguments: str, **kwargs: object) -> str:
                 self.assertEqual(45.0, kwargs["deadline"])
-                now[0] = 12.0
+                if arguments == DRIVER.ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS:
+                    self.assertEqual(45.0, kwargs["timeout"])
+                    now[0] = 12.0
+                    return ""
+                self.assertEqual(
+                    DRIVER.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
+                    arguments,
+                )
+                self.assertEqual(33.0, kwargs["timeout"])
+                now[0] = 20.0
                 return "UI hierarchy dumped"
 
             def read(*_arguments: str, **kwargs: object) -> subprocess.CompletedProcess:
-                self.assertEqual(33.0, kwargs["timeout"])
+                self.assertEqual(25.0, kwargs["timeout"])
                 self.assertEqual(45.0, kwargs["deadline"])
                 now[0] = 20.0
                 return subprocess.CompletedProcess(
@@ -5543,7 +5667,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             ):
                 self.assertEqual([], device.hierarchy(deadline=45.0))
 
-            shell.assert_called_once()
+            self.assertEqual(2, shell.call_count)
             run.assert_called_once()
 
     def test_deadline_capture_stops_after_first_read_crosses_deadline(self) -> None:

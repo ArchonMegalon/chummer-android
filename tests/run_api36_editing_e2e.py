@@ -115,11 +115,16 @@ ADB_READ_ONLY_HIERARCHY_ARGUMENTS = (
     "/dev/tty",
 )
 ADB_FILE_HIERARCHY_REMOTE_PATH = "/sdcard/chummer-editing-window.xml"
-ADB_FRESH_FILE_HIERARCHY_SHELL_ARGUMENTS = (
-    "sh",
-    "-c",
-    "rm -f /sdcard/chummer-editing-window.xml && "
-    "uiautomator dump --compressed /sdcard/chummer-editing-window.xml",
+ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS = (
+    "rm",
+    "-f",
+    ADB_FILE_HIERARCHY_REMOTE_PATH,
+)
+ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS = (
+    "uiautomator",
+    "dump",
+    "--compressed",
+    ADB_FILE_HIERARCHY_REMOTE_PATH,
 )
 DOCUMENTS_UI_PACKAGE = "com.google.android.documentsui"
 DOCUMENTS_UI_DRAWER_MARKER = "Open from"
@@ -1127,10 +1132,23 @@ class Device:
         """Read one hierarchy while sharing an optional caller-owned deadline."""
         try:
             if deadline is None:
-                dump_output = self.shell(*ADB_FRESH_FILE_HIERARCHY_SHELL_ARGUMENTS)
+                # ADB does not preserve an argv element as the script operand of
+                # ``sh -c``. Keep the freshness barrier as two exact one-shot
+                # commands instead of relying on host/remote shell quoting.
+                self.shell(*ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS)
+                dump_output = self.shell(*ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS)
             else:
+                self.shell(
+                    *ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS,
+                    timeout=_remaining_operation_timeout(
+                        deadline=deadline,
+                        maximum=120,
+                    ),
+                    deadline=deadline,
+                )
+                _remaining_operation_timeout(deadline=deadline, maximum=120)
                 dump_output = self.shell(
-                    *ADB_FRESH_FILE_HIERARCHY_SHELL_ARGUMENTS,
+                    *ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
                     timeout=_remaining_operation_timeout(
                         deadline=deadline,
                         maximum=120,
@@ -1143,10 +1161,10 @@ class Device:
                 marker in normalized_dump_output
                 for marker in ("hierarchy dumped", "hierchary dumped")
             ):
-                # The one-shot shell command invalidates the canonical file
-                # before invoking UIAutomator. A successful command with empty
-                # status therefore cannot authorize bytes from an older dump;
-                # any nonempty unrecognized status remains a hard rejection.
+                # The preceding exact removal and successful dump are both
+                # single-attempt commands owned by this driver. Empty status
+                # therefore cannot authorize bytes from an older dump; any
+                # nonempty unrecognized status remains a hard rejection.
                 if normalized_dump_output:
                     (self.evidence / "last-invalid-hierarchy.txt").write_text(
                         dump_output,

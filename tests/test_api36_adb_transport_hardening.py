@@ -273,7 +273,8 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
             ("shell", "pm", "clear", driver.PACKAGE),
             ("shell", "rm", "-f", "/sdcard/Download/runner.chum5"),
             ("shell", "am", "start", "-W", driver.PACKAGE),
-            ("shell", *driver.ADB_FRESH_FILE_HIERARCHY_SHELL_ARGUMENTS),
+            ("shell", *driver.ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS),
+            ("shell", *driver.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS),
             ("exec-out", "run-as", driver.PACKAGE, "cat", "shared_prefs/a.xml"),
         )
         for arguments in commands:
@@ -393,12 +394,15 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
                 driver.ADB_READ_ONLY_HIERARCHY_ARGUMENTS
             )[0],
         )
-        self.assertEqual(
-            "non-replayable",
-            driver.adb_command_retry_policy(
-                ("shell", *driver.ADB_FRESH_FILE_HIERARCHY_SHELL_ARGUMENTS)
-            )[0],
-        )
+        for arguments in (
+            ("shell", *driver.ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS),
+            ("shell", *driver.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS),
+        ):
+            with self.subTest(arguments=arguments):
+                self.assertEqual(
+                    "non-replayable",
+                    driver.adb_command_retry_policy(arguments)[0],
+                )
 
     def test_only_exact_bounded_creation_bootstrap_log_filter_is_retryable(self) -> None:
         self.assertEqual(
