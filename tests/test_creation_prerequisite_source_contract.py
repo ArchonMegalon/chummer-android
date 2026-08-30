@@ -2066,7 +2066,10 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
             def hierarchy(self):
                 self.hierarchy_reads += 1
-                return self.screens.get(self.viewport, [disabled])
+                return self.screens.get(
+                    self.viewport,
+                    [driver.shared.UiNode({"resource-id": f"viewport-{self.viewport}"})],
+                )
 
             def swipe_down(self, *, distance_ratio):
                 if distance_ratio != driver.TALENT_GRANT_SCAN_GESTURE_RATIO:
@@ -2137,7 +2140,11 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
             def hierarchy(self):
                 self.hierarchy_reads += 1
-                return [target] if self.hierarchy_reads == 4 else [driver.shared.UiNode({})]
+                return (
+                    [target]
+                    if self.hierarchy_reads == 4
+                    else [driver.shared.UiNode({"resource-id": f"viewport-{self.hierarchy_reads}"})]
+                )
 
             def swipe_down(self, *, distance_ratio):
                 self.reverse_swipes += 1
@@ -2272,7 +2279,11 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
             def hierarchy(self):
                 self.hierarchy_reads += 1
-                return [target] if self.forward_swipes == 10 else [driver.shared.UiNode({})]
+                return (
+                    [target]
+                    if self.forward_swipes == 10
+                    else [driver.shared.UiNode({"resource-id": f"viewport-{self.forward_swipes}"})]
+                )
 
             def swipe_up(self, *, distance_ratio):
                 self.forward_swipes += 1
@@ -2322,8 +2333,12 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 "targetViewport": 8,
                 "normalizedTargetViewport": 8,
                 "measuredDelta": 6,
-                "configuredMaxScrolls": 11,
+                "configuredMaxScrolls": 40,
                 "catalogMovementExtent": 11,
+                "navigationMode": "measured-direction-stable-boundary",
+                "stableRepeats": 2,
+                "stableBoundaryProven": False,
+                "deadlineEnforced": False,
                 "exactResourceIds": [resource_id],
                 "screens": 11,
                 "swipes": 10,
@@ -2346,6 +2361,10 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                     "measuredDelta",
                     "configuredMaxScrolls",
                     "catalogMovementExtent",
+                    "navigationMode",
+                    "stableRepeats",
+                    "stableBoundaryProven",
+                    "deadlineEnforced",
                     "exactResourceIds",
                     "screens",
                     "swipes",
@@ -2361,7 +2380,286 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertGreaterEqual(receipts[0]["maximumHierarchyReadMs"], 0)
         self.assertGreaterEqual(receipts[0]["elapsedMs"], 0)
 
-    def test_grouped_talent_reacquisition_rejects_one_beyond_scan_bound(self) -> None:
+    def test_grouped_talent_reacquisition_closes_cfb_artifact_asymmetric_reverse_geometry(
+        self,
+    ) -> None:
+        resource_id = "creation-prerequisite-talent-grant-authority"
+        clipped = driver.shared.UiNode(
+            {
+                "resource-id": resource_id,
+                "content-desc": "1 / 1 Active skills",
+                "bounds": "[53,-2128][1028,-1468]",
+            }
+        )
+        visible = driver.shared.UiNode(
+            {
+                "resource-id": resource_id,
+                "content-desc": "1 / 1 Active skills",
+                "bounds": "[53,350][1028,1010]",
+            }
+        )
+
+        class AsymmetricArtifactDevice:
+            def __init__(self) -> None:
+                self.reverse_swipes = 0
+                self.hierarchy_reads = 0
+
+            def hierarchy(self):
+                self.hierarchy_reads += 1
+                if self.reverse_swipes >= 13:
+                    return [visible]
+                if self.reverse_swipes == 10:
+                    return [clipped]
+                return [driver.shared.UiNode({
+                    "resource-id": f"physical-reverse-{self.reverse_swipes}",
+                    "bounds": f"[53,{-4000 + self.reverse_swipes * 180}][1028,{-3800 + self.reverse_swipes * 180}]",
+                })]
+
+            def swipe_down(self, *, distance_ratio):
+                self.asserted_distance_ratio = distance_ratio
+                self.reverse_swipes += 1
+
+            @staticmethod
+            def dismiss_system_ui_anr(_nodes):
+                return False
+
+            @staticmethod
+            def node_has_tappable_bounds(node):
+                return node is visible
+
+            @staticmethod
+            def capture(name):
+                raise AssertionError(f"unexpected capture: {name}")
+
+        device = AsymmetricArtifactDevice()
+        receipts: list[dict[str, object]] = []
+        with mock.patch.object(driver.time, "sleep"):
+            snapshot = driver.reacquire_exact_talent_state_group(
+                device,
+                (resource_id,),
+                10,
+                0,
+                10,
+                evidence_prefix="cfb-artifact",
+                scan_observer=receipts.append,
+            )
+
+        self.assertIs(visible, snapshot.resources[resource_id])
+        self.assertEqual(0, snapshot.logical_viewport)
+        self.assertEqual(13, snapshot.reacquisition_swipes)
+        self.assertEqual(14, device.hierarchy_reads)
+        self.assertEqual(40, receipts[0]["configuredMaxScrolls"])
+        self.assertEqual(10, receipts[0]["catalogMovementExtent"])
+        self.assertEqual("measured-direction-stable-boundary", receipts[0]["navigationMode"])
+        self.assertIs(receipts[0]["stableBoundaryProven"], False)
+
+    def test_grouped_talent_reacquisition_rejects_hard_bound_without_boundary_proof(
+        self,
+    ) -> None:
+        resource_id = "creation-prerequisite-talent-grant-authority"
+
+        class MovingBeyondHardBoundDevice:
+            def __init__(self) -> None:
+                self.reverse_swipes = 0
+                self.captures: list[str] = []
+
+            def hierarchy(self):
+                return [driver.shared.UiNode({
+                    "resource-id": f"moving-{self.reverse_swipes}",
+                    "bounds": f"[53,{-8000 + self.reverse_swipes * 100}][1028,{-7800 + self.reverse_swipes * 100}]",
+                })]
+
+            def swipe_down(self, *, distance_ratio):
+                self.asserted_distance_ratio = distance_ratio
+                self.reverse_swipes += 1
+
+            @staticmethod
+            def dismiss_system_ui_anr(_nodes):
+                return False
+
+            def capture(self, name):
+                self.captures.append(name)
+
+        device = MovingBeyondHardBoundDevice()
+        receipts: list[dict[str, object]] = []
+        with mock.patch.object(driver.time, "sleep"), self.assertRaisesRegex(
+            RuntimeError,
+            "boundary-checked 40-swipe reverse hard bound",
+        ):
+            driver.reacquire_exact_talent_state_group(
+                device,
+                (resource_id,),
+                10,
+                0,
+                10,
+                evidence_prefix="hard-bound",
+                scan_observer=receipts.append,
+            )
+
+        self.assertEqual(40, device.reverse_swipes)
+        self.assertEqual(["hard-bound-unavailable"], device.captures)
+        self.assertEqual("hard-bound-unresolved", receipts[0]["status"])
+        self.assertIs(receipts[0]["stableBoundaryProven"], False)
+
+    def test_grouped_talent_reacquisition_enforces_absolute_phase_deadline(
+        self,
+    ) -> None:
+        device = mock.Mock()
+        receipts: list[dict[str, object]] = []
+        with self.assertRaisesRegex(RuntimeError, "phase deadline expired"):
+            driver.reacquire_exact_talent_state_group(
+                device,
+                ("creation-prerequisite-talent-grant-authority",),
+                10,
+                0,
+                10,
+                evidence_prefix="expired",
+                deadline=driver.time.monotonic() - 1,
+                scan_observer=receipts.append,
+            )
+        device.hierarchy.assert_not_called()
+        self.assertEqual("deadline-unresolved", receipts[0]["status"])
+        self.assertIs(receipts[0]["deadlineEnforced"], True)
+
+    def test_grouped_talent_reacquisition_passes_deadline_to_hierarchy_and_gesture(
+        self,
+    ) -> None:
+        resource_id = "creation-prerequisite-talent-grant-authority"
+        target = driver.shared.UiNode({
+            "resource-id": resource_id,
+            "bounds": "[53,350][1028,550]",
+        })
+
+        class DeadlineDevice:
+            def __init__(self) -> None:
+                self.swipes = 0
+                self.hierarchy_deadlines: list[float] = []
+                self.swipe_deadlines: list[float] = []
+
+            def hierarchy(self, *, deadline):
+                self.hierarchy_deadlines.append(deadline)
+                return [target] if self.swipes == 1 else [driver.shared.UiNode({
+                    "resource-id": "moving",
+                    "bounds": "[53,-500][1028,-300]",
+                })]
+
+            def swipe_down(self, *, distance_ratio, deadline):
+                self.asserted_distance_ratio = distance_ratio
+                self.swipe_deadlines.append(deadline)
+                self.swipes += 1
+
+            @staticmethod
+            def dismiss_system_ui_anr(_nodes):
+                return False
+
+            @staticmethod
+            def node_has_tappable_bounds(node):
+                return node is target
+
+            @staticmethod
+            def capture(name):
+                raise AssertionError(f"unexpected capture: {name}")
+
+        deadline = driver.time.monotonic() + 30
+        device = DeadlineDevice()
+        with mock.patch.object(driver.time, "sleep"):
+            snapshot = driver.reacquire_exact_talent_state_group(
+                device,
+                (resource_id,),
+                10,
+                0,
+                10,
+                evidence_prefix="deadline-thread",
+                deadline=deadline,
+            )
+
+        self.assertIs(target, snapshot.resources[resource_id])
+        self.assertEqual([deadline, deadline], device.hierarchy_deadlines)
+        self.assertEqual([deadline], device.swipe_deadlines)
+
+    def test_grouped_talent_boundary_uses_full_accessibility_signature(self) -> None:
+        resource_id = "creation-prerequisite-talent-grant-authority"
+        observations = (
+            {"text": "A", "checked": "false", "bounds": "[53,-900][1028,-700]"},
+            {"text": "A", "checked": "false", "bounds": "[53,-700][1028,-500]"},
+            {"text": "B", "checked": "true", "bounds": "[53,-700][1028,-500]"},
+            {"text": "B", "checked": "true", "bounds": "[53,-700][1028,-500]"},
+            {"text": "B", "checked": "true", "bounds": "[53,-700][1028,-500]"},
+        )
+
+        class SignatureDevice:
+            def __init__(self) -> None:
+                self.index = 0
+                self.swipes = 0
+                self.captures: list[str] = []
+
+            def hierarchy(self):
+                value = observations[min(self.index, len(observations) - 1)]
+                return [driver.shared.UiNode({"resource-id": "same-id", **value})]
+
+            def swipe_down(self, *, distance_ratio):
+                self.asserted_distance_ratio = distance_ratio
+                self.swipes += 1
+                self.index += 1
+
+            @staticmethod
+            def dismiss_system_ui_anr(_nodes):
+                return False
+
+            def capture(self, name):
+                self.captures.append(name)
+
+        device = SignatureDevice()
+        receipts: list[dict[str, object]] = []
+        with mock.patch.object(driver.time, "sleep"), self.assertRaisesRegex(
+            RuntimeError,
+            "stable physical boundary",
+        ):
+            driver.reacquire_exact_talent_state_group(
+                device,
+                (resource_id,),
+                10,
+                0,
+                10,
+                evidence_prefix="signature-boundary",
+                scan_observer=receipts.append,
+            )
+
+        self.assertEqual(4, device.swipes)
+        self.assertEqual(
+            ["signature-boundary-stable-boundary-unresolved"],
+            device.captures,
+        )
+        self.assertEqual("stable-boundary-unresolved", receipts[0]["status"])
+        self.assertIs(receipts[0]["stableBoundaryProven"], True)
+
+    def test_grouped_talent_reacquisition_fails_closed_on_zero_delta_geometry_drift(
+        self,
+    ) -> None:
+        resource_id = "creation-prerequisite-talent-grant-complete"
+        device = mock.Mock()
+        device.hierarchy.return_value = [driver.shared.UiNode({})]
+        device.dismiss_system_ui_anr.return_value = False
+        receipts: list[dict[str, object]] = []
+
+        with self.assertRaisesRegex(RuntimeError, "without a safe directional hint"):
+            driver.reacquire_exact_talent_state_group(
+                device,
+                (resource_id,),
+                5,
+                5,
+                10,
+                evidence_prefix="zero-delta",
+                scan_observer=receipts.append,
+            )
+
+        device.swipe_down.assert_not_called()
+        device.swipe_up.assert_not_called()
+        device.capture.assert_called_once_with("zero-delta-zero-delta-unresolved")
+        self.assertEqual("zero-delta-unresolved", receipts[0]["status"])
+        self.assertEqual(0, receipts[0]["configuredMaxScrolls"])
+
+    def test_grouped_talent_reacquisition_rejects_proven_reverse_boundary(self) -> None:
         resource_id = "creation-prerequisite-talent-grant-authority"
 
         class OneBeyondDevice:
@@ -2372,8 +2670,6 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
             def hierarchy(self):
                 self.hierarchy_reads += 1
-                if self.hierarchy_reads == 5:
-                    return [driver.shared.UiNode({"resource-id": resource_id})]
                 return [driver.shared.UiNode({})]
 
             def swipe_down(self, *, distance_ratio):
@@ -2390,7 +2686,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         device = OneBeyondDevice()
         with self.assertRaisesRegex(
             RuntimeError,
-            "scan-proven 3-swipe reverse compensation bound",
+            "stable physical boundary",
         ):
             driver.reacquire_exact_talent_state_group(
                 device,
@@ -2401,9 +2697,12 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 evidence_prefix="one-beyond",
             )
 
-        self.assertEqual(4, device.hierarchy_reads)
-        self.assertEqual(3, device.reverse_swipes)
-        self.assertEqual(["one-beyond-unavailable"], device.captures)
+        self.assertEqual(3, device.hierarchy_reads)
+        self.assertEqual(2, device.reverse_swipes)
+        self.assertEqual(
+            ["one-beyond-stable-boundary-unresolved"],
+            device.captures,
+        )
 
     def test_grouped_talent_forward_reacquisition_accepts_the_last_scan_bound(
         self,
@@ -2420,7 +2719,11 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
             def hierarchy(self):
                 self.hierarchy_reads += 1
-                return [target] if self.hierarchy_reads == 4 else [driver.shared.UiNode({})]
+                return (
+                    [target]
+                    if self.hierarchy_reads == 4
+                    else [driver.shared.UiNode({"resource-id": f"viewport-{self.hierarchy_reads}"})]
+                )
 
             def swipe_up(self, *, distance_ratio):
                 self.forward_distances.append(distance_ratio)
@@ -2457,7 +2760,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             device.forward_distances,
         )
 
-    def test_grouped_talent_forward_reacquisition_rejects_one_beyond_scan_bound(
+    def test_grouped_talent_forward_reacquisition_rejects_proven_boundary(
         self,
     ) -> None:
         resource_id = "creation-prerequisite-talent-grant-complete"
@@ -2470,8 +2773,6 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
             def hierarchy(self):
                 self.hierarchy_reads += 1
-                if self.hierarchy_reads == 5:
-                    return [driver.shared.UiNode({"resource-id": resource_id})]
                 return [driver.shared.UiNode({})]
 
             def swipe_up(self, *, distance_ratio):
@@ -2487,7 +2788,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         device = OneBeyondForwardDevice()
         with self.assertRaisesRegex(
             RuntimeError,
-            "scan-proven 3-swipe forward compensation bound",
+            "stable physical boundary",
         ):
             driver.reacquire_exact_talent_state_group(
                 device,
@@ -2498,12 +2799,15 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 evidence_prefix="forward-one-beyond",
             )
 
-        self.assertEqual(4, device.hierarchy_reads)
+        self.assertEqual(3, device.hierarchy_reads)
         self.assertEqual(
-            [driver.TALENT_GRANT_SCAN_GESTURE_RATIO] * 3,
+            [driver.TALENT_GRANT_SCAN_GESTURE_RATIO] * 2,
             device.forward_distances,
         )
-        self.assertEqual(["forward-one-beyond-unavailable"], device.captures)
+        self.assertEqual(
+            ["forward-one-beyond-stable-boundary-unresolved"],
+            device.captures,
+        )
 
     def test_grouped_talent_reacquisition_rejects_duplicate_exact_id(self) -> None:
         resource_id = "creation-prerequisite-talent-grant-authority"
@@ -2971,7 +3275,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             catalog.count("distance_ratio=TALENT_GRANT_SCAN_GESTURE_RATIO"),
         )
         self.assertEqual(
-            2,
+            4,
             reacquisition.count("distance_ratio=TALENT_GRANT_SCAN_GESTURE_RATIO"),
         )
         self.assertNotIn("move_between_measured_viewports(", reacquisition)
@@ -3012,6 +3316,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             ((complete, 5), (complete, 5), (incomplete, 5), (complete, 5))
         )
         events: list[str] = []
+        propagated_deadlines: list[float] = []
+        deadline_values = iter(float(value) for value in range(1, 10))
         device = mock.Mock()
 
         def inventory(*_args, navigation_out=None, **_kwargs):
@@ -3019,9 +3325,11 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             return baseline
 
         def measured(_device, resource_id, navigation, _current, **_kwargs):
+            propagated_deadlines.append(_kwargs["deadline"])
             return int(navigation["resourceViewports"][resource_id])
 
         def grouped(*_args, **_kwargs):
+            propagated_deadlines.append(_kwargs["deadline"])
             ordinal = sum(event.startswith("grouped-") for event in events) + 1
             events.append(f"grouped-{ordinal}")
             return next(grouped_states)
@@ -3045,6 +3353,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 talent_option_id,
                 talent_navigation,
                 scan_id_prefix="active",
+                phase_deadline_provider=lambda: next(deadline_values),
                 continuation_phase_advances=(
                     lambda: events.append("phase-preservation"),
                     lambda: events.append("phase-reset"),
@@ -3055,6 +3364,10 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertEqual(1, inventory_scan.call_count)
         self.assertEqual(4, grouped_scan.call_count)
         self.assertEqual(5, measured_tap.call_count)
+        self.assertEqual(
+            [float(value) for value in range(1, 10)],
+            propagated_deadlines,
+        )
         self.assertEqual(list(option_ids), proof.receipt["allOptionAutomationIds"])
         self.assertEqual(list(chosen), proof.receipt["selectedOptionAutomationIds"])
         self.assertEqual(5, proof.current_viewport)

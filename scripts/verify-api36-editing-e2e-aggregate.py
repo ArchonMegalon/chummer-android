@@ -29,6 +29,8 @@ CREATION_METHOD_REACQUISITION_SCAN_ID = (
     "creation-stage-method-ready-reacquisition"
 )
 CREATION_METHOD_REACQUISITION_MAX_SCROLLS = 18
+TALENT_REACQUISITION_MAX_SCROLLS = 40
+TALENT_REACQUISITION_STABLE_REPEATS = 2
 TALENT_REACQUISITION_PHASES = (
     "talent-active-skill-grant",
     "talent-active-skill-preservation",
@@ -238,8 +240,16 @@ def require_talent_reacquisition_scans(
         if (
             scan.get("status") != "resolved"
             or phase_id not in TALENT_REACQUISITION_PHASES
+            or scan.get("navigationMode")
+            != "measured-direction-stable-boundary"
             or scan.get("direction") not in {"forward", "reverse", "none"}
             or scan.get("distanceRatio") != 0.60
+            or scan.get("stableRepeats")
+            != TALENT_REACQUISITION_STABLE_REPEATS
+            or type(scan.get("stableBoundaryProven")) is not bool
+            or scan.get("stableBoundaryProven") is not False
+            or type(scan.get("deadlineEnforced")) is not bool
+            or scan.get("deadlineEnforced") is not True
             or not isinstance(resource_ids, list)
             or not resource_ids
             or len(resource_ids) != len(set(resource_ids))
@@ -259,13 +269,14 @@ def require_talent_reacquisition_scans(
             else "none"
         )
         expected_bound = (
-            value["catalogMovementExtent"]
+            TALENT_REACQUISITION_MAX_SCROLLS
             if value["measuredDelta"] > 0
             else 0
         )
         read_rounding_ms = (value["hierarchyReadCount"] + 1) // 2
         mandatory_wait_ms = (
-            value["emptyHierarchyReads"] * 750
+            value["swipes"] * 200
+            + value["emptyHierarchyReads"] * 750
             + value["systemUiDismissals"] * 2_000
         )
         maximum_lower_bound = (
@@ -304,6 +315,8 @@ def require_talent_reacquisition_scans(
             and value["hierarchyElapsedMs"] + mandatory_wait_ms
             <= value["elapsedMs"] + read_rounding_ms + 1
             and value["elapsedMs"] <= phase_elapsed_by_id[str(phase_id)]
+            and value["elapsedMs"]
+            <= CREATION_PHASE_BUDGETS_MS[str(phase_id)]
         ):
             raise ValueError(
                 "Talent reacquisition scan did not reconcile catalog geometry, "

@@ -14,11 +14,11 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 478,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 536,
-      "missing": 929,
+      "implemented_pending_emulator": 378,
+      "missing": 1109,
       "not_applicable_non_mutating": 478,
-      "partial_create_only": 106,
-      "partial_exact_saved_data": 180
+      "partial_create_only": 110,
+      "partial_exact_saved_data": 154
     },
     "tabletStatusCounts": {
       "implemented_pending_emulator": 79,
@@ -133,28 +133,28 @@
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ApplicationDeleteConfirmationPresenter.cs",
-        "exists": true,
-        "sha256": "71320609dafe589de5488a72804a0572823183037222d2d51a6f908024dc8e62"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Api/ApplicationDeleteConfirmationContracts.cs",
-        "exists": true,
-        "sha256": "f8100a6c21b10e0cbdc24b2894fbb9a90efbba1b133e9520494fb2c3f8fa9421"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-core-engine/Chummer.Application/Tools/ApplicationDeleteConfirmationRules.cs",
-        "exists": true,
-        "sha256": "de29d2a681a3e6a0ae06e601048d206e272117bd105672a0cab0d0ecbc49b542"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-core-engine/Chummer.Application/Tools/IApplicationDeleteConfirmationStore.cs",
-        "exists": true,
-        "sha256": "b868d8c24f9b4d3b7be5856e43ea7ac644e67d31b91bbd282f54741a9dcd79fb"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Files/FileApplicationDeleteConfirmationStore.cs",
-        "exists": true,
-        "sha256": "0b8fd29fd800be4073cf57824030edc91164c99c4a10f96fe924c0ae50b79e8b"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "tests/run_api36_application_date_time_settings_e2e.py",
@@ -198,28 +198,28 @@
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterRosterFavoritePresenter.cs",
-        "exists": true,
-        "sha256": "825487d5e555d0fef156d0a76027982b7c13b945f0ed236a1e16a0ee5579e9a5"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Api/CharacterRosterFavoriteContracts.cs",
-        "exists": true,
-        "sha256": "94c493aee2ba9c57366bc1a6668df11b5a85b9aa6a48b9849fdeb409ba67a131"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-core-engine/Chummer.Application/Tools/CharacterRosterFavoriteRules.cs",
-        "exists": true,
-        "sha256": "2489649f2d7d066f7be51bfe7f1a7086907fcccbc273527d67017cc64993770a"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-core-engine/Chummer.Application/Tools/ICharacterRosterFavoriteStore.cs",
-        "exists": true,
-        "sha256": "f387ac798f54f3246c18e932697a5d1fd8f358fe92fcbb8c13158d3a358b6bbf"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Files/FileCharacterRosterFavoriteStore.cs",
-        "exists": true,
-        "sha256": "6e29765b430bbb40cf04a56d2f2cb201e6cb21a61e864d87459a08384f1be17c"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "src/Chummer.Android/Native/GroupNamePage.cs",
@@ -358,13 +358,13 @@
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/GearWirelessEditRequest.cs",
-        "exists": true,
-        "sha256": "ba64ea0d3c2a929d4fe621dd57716a1c57446afe69f4a41b40c1e96eb1818c4e"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterGearWirelessRules.cs",
-        "exists": true,
-        "sha256": "30c6c78431d32c88df698bce6bd006c940cf9f9115a690e3eaf1a840edf0c565"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "src/Chummer.Android/Native/CareerMugshotPage.cs",
@@ -373,13 +373,13 @@
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerMugshotEditRequest.cs",
-        "exists": true,
-        "sha256": "e97501e896493e9614e86ee526322142e71f2e68f54c8b658d9c1f649e5f24c4"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerMugshotRules.cs",
-        "exists": true,
-        "sha256": "5004dc195f03d02507a2b1fb9ab92517c725da01b54da9186d8b2b1579e7966b"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "src/Chummer.Android/Native/CreationMugshotPage.cs",
@@ -388,13 +388,13 @@
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CreationMugshotEditRequest.cs",
-        "exists": true,
-        "sha256": "864403faf61b04da552e2716aa5e34762c8fe653a3df7c9293ff98bdd815ca7b"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterCreationMugshotRules.cs",
-        "exists": true,
-        "sha256": "c2ae4529a98125e7a44abe14204f42024f9577052dfe9eeda41ea5231b7d077b"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "src/Chummer.Android/Native/VehicleEquipmentInstalledPage.cs",
@@ -403,13 +403,13 @@
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/VehicleEquipmentInstalledEditRequest.cs",
-        "exists": true,
-        "sha256": "7f33f0ee6d804c4e6ef393ee8ce39473ef247ee57f1ae11a6c253f7c388e7897"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterVehicleEquipmentInstalledRules.cs",
-        "exists": true,
-        "sha256": "38c318ad826df8c337b50679aa64739b9589523aee9c29aeda94f2519530f734"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "src/Chummer.Android/Native/GearOverclockerPage.cs",
@@ -433,13 +433,13 @@
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/GearDataProcessingFirewallSwapEditRequest.cs",
-        "exists": true,
-        "sha256": "189802fdb4c7b6949517da8b9dc480353b5ed64aa5ff486bbcd6831aae5f040c"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterGearMatrixSwapRules.cs",
-        "exists": true,
-        "sha256": "e6466d00e60d960626a1ffa2397b156170c471928ab7635b06edf999a6dca865"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "src/Chummer.Android/Native/CyberwareMatrixSwapPage.cs",
@@ -448,18 +448,18 @@
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CyberwareMatrixSwapEditRequest.cs",
-        "exists": true,
-        "sha256": "d54c728b47b0b325e2209d58aad6569d7672b1b67db7f60cfc828c4e14772a28"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterCyberwareMatrixSwapRules.cs",
-        "exists": true,
-        "sha256": "22afdd4498c7bec7e9eea914da1aad616344131f4caec547f7734d216d0a2616"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterMatrixPermutationAuthority.cs",
-        "exists": true,
-        "sha256": "261fb5d29fd1aa62f4832ea3167fdb4662c918272a921e537dbb033b4e7ce399"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "src/Chummer.Android/Native/VehicleWeaponFiringModePage.cs",
@@ -468,13 +468,13 @@
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/VehicleWeaponFiringModeEditRequest.cs",
-        "exists": true,
-        "sha256": "9fc94bbff28ab9579d12eb974191cdad8d68dd4fdba2a1eb18536696a10cfa50"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterVehicleWeaponFiringModeRules.cs",
-        "exists": true,
-        "sha256": "d4ed7239210125667ecee4f8f689a33232218578186d47c2853ba7ed66a16412"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "src/Chummer.Android/Native/ImprovementActivePage.cs",
@@ -658,13 +658,13 @@
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/Sr5CareerWizardDesktopSession.cs",
-        "exists": true,
-        "sha256": "54f9b9e899e6e32f09034400824b605536c074ac883852a8ed2f28ab6d1139b9"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/Sr5TableWizardSession.cs",
-        "exists": true,
-        "sha256": "b9bdb631b2217389d9373f9b7d6eca72636d273c87f6563a8e351ba5aff85fcb"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.resx",
@@ -1204,7 +1204,7 @@
       {
         "path": "tests/run_api36_creation_prerequisite_e2e.py",
         "exists": true,
-        "sha256": "da6293d686d294c07e71c686af70e11be76b180b3fb9e5ff43328d4cb4601d1d"
+        "sha256": "89a38d00eccbd90973d884c9564908611f7eb82082d5345102b331e373b06874"
       },
       {
         "path": "tests/fixtures/career-condition-monitor-e2e.chum5",
@@ -2039,37 +2039,37 @@
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
         "exists": true,
-        "sha256": "6bbc73a9d7cf952c4d6d6dde9ecf74751acf3163d8eaecbdc89ff6cf6d33261e"
+        "sha256": "fef7c2ed02ae61ddf3573483b14c9e7c8473eaa05afc32fee95c233c68b9c39b"
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterWeaponHomeNodeRules.cs",
-        "exists": true,
-        "sha256": "e0b38338213e06e5420bead7ea2f0207451c96ff30b7a2f64092b33b5da8f9e9"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterWeaponActiveCommlinkRules.cs",
-        "exists": true,
-        "sha256": "2aff7e273a7fcdf446aebcfc4c49bd357d82b75a138c370378cfec2869dd29e8"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterGearActiveCommlinkRules.cs",
-        "exists": true,
-        "sha256": "886a7d266aaa3b12b6930ec9bdf5b5136cb92a16fd60c27abef61e6b9106b576"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterCyberwareActiveCommlinkRules.cs",
-        "exists": true,
-        "sha256": "6b1403a542ec1c4caef3a7b4ed65725b7a9f73e1546f8ea6fffc6c7f500480be"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterVehicleActiveCommlinkRules.cs",
-        "exists": true,
-        "sha256": "9f534da227ae613db7f11eeb269dbbbe0b29da5f04a35d96f51fd1e35fb80d9d"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterPrototypeTranshumanRules.cs",
-        "exists": true,
-        "sha256": "eed8eb6b40fc93cc885a342ba94946030ab010cbebfef8228f6861f0dae5f815"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterWeaponMatrixParentResolver.cs",
@@ -2078,93 +2078,93 @@
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterCyberwareCommerceRules.cs",
-        "exists": true,
-        "sha256": "af16d1dce039f05b1a62799e2e52d3241a396cddaf2f422d934faa34206ebfdd"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterArmorDamageRules.cs",
-        "exists": true,
-        "sha256": "103cceca02d2ed779fb0b568b75d95effcc711e4a067a5c8699ce78a2e32a754"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterArmorEquipmentRules.cs",
-        "exists": true,
-        "sha256": "4a6a4641057afaf7e1bfcd39df9862a0d75193f213be1999e97902f4f4cc3d55"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterArmorTreeFlagRules.cs",
-        "exists": true,
-        "sha256": "2c7713955e21cea85240e577902585abe01bd67d609b2624ba57d5e159a27747"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterImprovementActiveRules.cs",
-        "exists": true,
-        "sha256": "ee6256aa3e03b184ce068e873830167d81c7a6b8c3619792815725be169b4705"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterImprovementNotesRules.cs",
-        "exists": true,
-        "sha256": "c5553856cd2e086a3e8acd3bd6b29f1ee225fff24635ac7658d8d8c60a6ef693"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterImprovementGroupAddRules.cs",
-        "exists": true,
-        "sha256": "7b7629abdc748a1e171804d148e7e430e0e41f5ac4aff42bc241478c51b96273"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterImprovementGroupActiveRules.cs",
-        "exists": true,
-        "sha256": "23dc170aeb3aa7eb7d7c42da54962b05a404273051ddf7f01b6a875e3c8bdf7a"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterCritterPowerCountRules.cs",
-        "exists": true,
-        "sha256": "05494abd2ada41aeec925c3fa3d0b4086c3df93bdfce9de1f3572b83372efb91"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterSpiritFetteringRules.cs",
-        "exists": true,
-        "sha256": "256bd61f5afe9f283f7a52c6d8f8cb0f35b2f972367d944ce9143c7ec4139931"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterSpiritNameChoiceRules.cs",
-        "exists": true,
-        "sha256": "90072aac32af90c6ea3476fd9d1149e929735b95af5d483513a6d7f006204a26"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterGearStolenRules.cs",
-        "exists": true,
-        "sha256": "5057e54bdf160e074b253dc654b6c98e8228ef96dcb979f7a7955aa5fc918515"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterSustainedObjectRules.cs",
-        "exists": true,
-        "sha256": "cbeddfd917eea8a2e7b7593bb939508c4f57e04a5451b249f516a69a5eff5585"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterGroupMembershipRules.cs",
-        "exists": true,
-        "sha256": "ee5448d8192850627d5a789f20dd63d85fde309561a2c45699181b33a351a18e"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterGroupNameRules.cs",
-        "exists": true,
-        "sha256": "69dcc7571e8582b713e311172ef4133fd0c1e02b9570fd9682ddf2ded4c2a143"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterTraditionNameRules.cs",
-        "exists": true,
-        "sha256": "73388bd5ed9920a32b52117525b8ef1f3c5aee5a800c045581126e827a93141c"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterTraditionDrainRules.cs",
-        "exists": true,
-        "sha256": "9e98871e64b74cb7e9e09253b1ff1aeadc25c281dd2541fd853a21d5dfaf24d2"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterTraditionSpiritCategoryRules.cs",
-        "exists": true,
-        "sha256": "893cf0aea70ff71752fc9dfc90577905406513cb8ca2c12dd807c06881fb4049"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-core-engine/Chummer/data/traditions.xml",
@@ -2178,68 +2178,68 @@
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerEdgeUseRules.cs",
-        "exists": true,
-        "sha256": "d59db7c77f2a62d6a1d2541ae61eeb69f226066a0c4242a6089981269e00e610"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterWeaponFireRules.cs",
-        "exists": true,
-        "sha256": "1ed73fdb863ef3b7ac047079c3f1692e6357b836c1b721d0c08de590a11d0301"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerActiveSkillAdvanceRules.cs",
-        "exists": true,
-        "sha256": "5c3423e285047914804cfc76ee5051e5c0f5de7eeb8dae305ba6e4e3b77f1467"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerManualKarmaRules.cs",
-        "exists": true,
-        "sha256": "9bce1e3aab47a6fdd08499376f9ee8e95f2bc32ea21ffcac6860d76d35a5002b"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerManualNuyenRules.cs",
-        "exists": true,
-        "sha256": "7d0a46446658b2f5ddf22ca55e7fbeb9c422b897d45fcb782f9ba5e9704ad207"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerCreateExpenseRules.cs",
-        "exists": true,
-        "sha256": "b161cf69cc2f07dbc89e4fa923aacabbd922c792436b42be40d23eaaf579d8ba"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerNuyenExpenseEditRules.cs",
-        "exists": true,
-        "sha256": "3e5a7ac5de667dd35ad0fdb70189a3e171e4867d7fd52c21426028657536254b"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Workspaces/CharacterWorkspaceModels.cs",
         "exists": true,
-        "sha256": "eeb593e72da728f41dc06c6c005240dc169ab072e5458ae58a92c293c3324efc"
+        "sha256": "baffec98acf296f33b199db621e70884c3b60b4596e1600dc56937bc15c4ecec"
       },
       {
         "path": "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
         "exists": true,
-        "sha256": "5dc99ca6b3aa0d4d124b2411e9c1caaa04467c39658067ee31c58747b24a51a5"
+        "sha256": "6dacdbc26c20ae21a8df89ad5d6f150f52c9e2a346c8a7700eecf29735cc28d2"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterFileService.cs",
         "exists": true,
-        "sha256": "0dcfdec98daddc6e94e89cb7b253bffb449a54807c67b711f82b686c170c9655"
+        "sha256": "09101c9d00d49227c1c930d1ed38111ef68072d8dcfd09410f839eadac370bfd"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
         "exists": true,
-        "sha256": "d1727b57898c1d4718dc76e963f92d1014f4f8cb070d6f54840959dffb1f1c4a"
+        "sha256": "95fcf8ccd467a17982a4e0dd3ddcf1fba7b38a885c855bc18ac6c7bcf7fa65a7"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
         "exists": true,
-        "sha256": "d2a77c80c153b14a99058bd428d600b90c7284ed2a8d9c5da0ec7f3748bb7e95"
+        "sha256": "ca21bc20efdec00d783875c3df1c69abe141010ccd380bf029a00765674ccaa5"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
         "exists": true,
-        "sha256": "2fe9d232183571275d60074d1ad1a082db54f418492846eaec10110c78007151"
+        "sha256": "796e5ee161c9c5b7f887f5d60500735262ca50f0936bbe4881830ad45e1a5ee6"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
@@ -2259,227 +2259,227 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "5d3f4156c6b03e0168ca3c08c6428e871a2e0dac452914809a375100b578accc"
+        "sha256": "e36097fadc11bf83e76f6c7a74a80859970a308ff9b67948e0f593520d557829"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
-        "exists": true,
-        "sha256": "022fa5d15ad2be86a4eb0aea45385befb163cc430dd1b8e5c6a4c2fb74aa2b6a"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/SituationalModifiersEditRequest.cs",
-        "exists": true,
-        "sha256": "2c6bda77607d71c1d335c298048bcd87f2363fd15440d3db08c9c16252dabc83"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/PrimaryArmEditRequest.cs",
         "exists": true,
-        "sha256": "ab174728493660115b62887154ec2990c64945d209a762023d941b847a06e0cb"
+        "sha256": "3f2c4b7b39615d428a97ed95d3f406291721169dfa531744d9b800882dccc82c"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/GroupMembershipEditRequest.cs",
-        "exists": true,
-        "sha256": "5d96b536fc27d1c56cbf94c5e4bc8695d48f0992f2ad60ed45dae33ef8371275"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/GroupNameEditRequest.cs",
-        "exists": true,
-        "sha256": "d5239aff9e98f6d8495b9bba9b8eae1e5ab1df7dc777ab835131483803823bda"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/TraditionNameEditRequest.cs",
-        "exists": true,
-        "sha256": "acc3c6a1ac4c802a7961ba41899843285fc5018c6cdbb15c6f533a2b070e46ff"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/TraditionDrainEditRequest.cs",
-        "exists": true,
-        "sha256": "682a03edf299db5719160f47f82bf4cd3d0d90ee902037ab834e32cb3a9f3116"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/TraditionSpiritCategoryEditRequest.cs",
-        "exists": true,
-        "sha256": "00b8928e7b480eeaad49223909e70959c988c479cc0edeaf3662559480414ded"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerEdgeUseEditRequest.cs",
-        "exists": true,
-        "sha256": "114badd36a786fa11a201ebeac60b41acc3bfb50c59f6b0d5c5989da46767422"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerWeaponFireRequest.cs",
-        "exists": true,
-        "sha256": "8d60cba9a1ac538cf20027a64a1b9bd032aee3b34ca5a6f85025ca7c4c7b8b6b"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerActiveSkillAdvanceEditRequest.cs",
-        "exists": true,
-        "sha256": "e96eea861758bec3462d0068a983c634ddeda2e033e8c61b3db07cb955d590af"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerActiveSkillAdvanceMutation.cs",
-        "exists": true,
-        "sha256": "bc081d4ad6684292b4514e1051f60a921ae94a0f6e774d5b14d70a84e4f8c03d"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerManualKarmaEditRequest.cs",
-        "exists": true,
-        "sha256": "98ce4560327e4ab2a6c1b2ec678162517af16c0613b66acdcd3524e17876b095"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerManualNuyenEditRequest.cs",
-        "exists": true,
-        "sha256": "c6783b6fd4595aa4117bdc52ba3b512a77d49e7467dd225f45ad86251aa6d8b0"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerCreateExpenseEditRequest.cs",
-        "exists": true,
-        "sha256": "18b0a762619a85afe31f473a16e31ea531eec6d67ea9e54c69eef5691cdf901e"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerNuyenExpenseEditRequest.cs",
-        "exists": true,
-        "sha256": "a27ae103b04b2233160ed3b70faeae01a1d7c12bc98c828ccc66cdac818512e4"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/GearLocationAddRequest.cs",
-        "exists": true,
-        "sha256": "f889362153034f6f8e61367c31d995720a04982ba264914db59f7095cd1eba65"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WeaponLocationAddRequest.cs",
-        "exists": true,
-        "sha256": "cd793ac4258beb2a98c1759c727d047ced979e82c625868fc5f3a3bf84046ca1"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/VehicleLocationAddRequest.cs",
-        "exists": true,
-        "sha256": "2b74f6551e962facd2b2d572bd68c09c6b4b2af23a203180325566fceb2b4995"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/VehicleHomeNodeEditRequest.cs",
-        "exists": true,
-        "sha256": "e4a5d725e080a481343dffa5b635848776a6cfc0f36681aecb62a2f651da9197"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ArmorHomeNodeEditRequest.cs",
-        "exists": true,
-        "sha256": "457da5b2de65f85a113726cf00c70e234b77ef4ef965171deec441370d40d1fe"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WeaponHomeNodeEditRequest.cs",
-        "exists": true,
-        "sha256": "99cbcdafca9a9df79ee88aa052412a283d2463331afc05b34b0aef825f8f13c5"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ArmorActiveCommlinkEditRequest.cs",
-        "exists": true,
-        "sha256": "bf45b488209cc8f7b14a1855d84199d0930f0980dd53a261ca5a1e2fe9c0f894"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/GearActiveCommlinkEditRequest.cs",
-        "exists": true,
-        "sha256": "6c2800c43c53ec0a422051ac60c07c64da9f51c9db4a57c4fcc52999ca3ae394"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CyberwareActiveCommlinkEditRequest.cs",
-        "exists": true,
-        "sha256": "704c42b9c7594002b1acddf5b4cb08e82c6a2610a17becf2931e483ba461b63b"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/PrototypeTranshumanEditRequest.cs",
-        "exists": true,
-        "sha256": "6ba5b414cfa639b24c201888904b4fe2b9d35c3ab46a4405cfb20aa0e1b9a5fd"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ArmorDamageAdjustmentRequest.cs",
-        "exists": true,
-        "sha256": "1c7a286ada3a140c597fe2ede8420657fb05d31e3564cd807233a95128f8302c"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ArmorEquipmentEditRequest.cs",
-        "exists": true,
-        "sha256": "434c75c44b7c5e55122212c15a665a9ddbf3481975fe28eae5dcfb1b9cf73f9d"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ArmorTreeFlagEditRequest.cs",
-        "exists": true,
-        "sha256": "2bdfa890aec7eaed50ace563f539014b83efb48402d082b426ae26a4d852ffb0"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/GearStolenEditRequest.cs",
-        "exists": true,
-        "sha256": "2c5b92f63ec11b1a8796cbae49d54077fc8622356489ae081afe04a3ca1761d1"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ImprovementActiveEditRequest.cs",
-        "exists": true,
-        "sha256": "297c9b2ae8af2d39e5ae35e93ace8acc21dc0391a65e7b05221d6e041c7c0679"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ImprovementNotesEditRequest.cs",
-        "exists": true,
-        "sha256": "81fc1adba3db7a2b689401e09fd6744a00246ebdd3558da7f65cf5a61fdf80a5"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ImprovementGroupAddRequest.cs",
-        "exists": true,
-        "sha256": "e91aa286105ed71269c32535eee6ca6ef20a855f4254ff442f3b856634cd71fd"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ImprovementGroupActiveEditRequest.cs",
-        "exists": true,
-        "sha256": "5fe6dd5e4e82de15030825d4e6d6f5149744728bfe5a9b83b060adc40cb834c6"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WeaponAccessoryIncludedEditRequest.cs",
-        "exists": true,
-        "sha256": "3d665cc28f5457039132d0ac07a5449895986f5a9d59c2c0547d0eadf25dbd2d"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CritterPowerCountEditRequest.cs",
-        "exists": true,
-        "sha256": "38e3e92a962d310aa92cb318fbb00bd9d298f2576732077868e4635946fb5e4f"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/SpiritFetteredEditRequest.cs",
-        "exists": true,
-        "sha256": "083d08a675b251a45f7f0432c920358f6dfec32a77a3a283d911f3c7fba6ac3b"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/SpiritNameChoiceEditRequest.cs",
-        "exists": true,
-        "sha256": "6b8dd2d3bc18f6b751a5d69bf94efcf74062b11b0ec33989df841e0d547308c5"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/SustainedObjectEditRequest.cs",
-        "exists": true,
-        "sha256": "58b906c7408b0e29a559ff9f14baf33d6a5b7780068c5d6f1486055aefd23c8d"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CyberwareCommerceRequest.cs",
-        "exists": true,
-        "sha256": "290e1d6bb718a6385ddc6c37421acef1227c4988b0b5c8d095d22d966540bb9c"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceLocationEditorState.cs",
-        "exists": true,
-        "sha256": "b5ee911ed027d4a9b56794ea6ded98f00c66d0528a14f0a7f463fd254a4bb14a"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/LocationRenameRequest.cs",
-        "exists": true,
-        "sha256": "d43270b3751723043bae901b7ae571af4ac13c35f8ef69e162764010554c8d6c"
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceSectionRenderer.cs",
         "exists": true,
-        "sha256": "6ac500b49e29bf369fca9b4b51de88fd2b813c34029e23f225f205910f814f56"
+        "sha256": "4dc73580d4116247302845bd6258da0418d57471d33ee2182d379dc751c878a3"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewState.cs",
         "exists": true,
-        "sha256": "25344339580baa08ffaa7434c1e9d81f0e08642d04abb2130e77294a2980ad18"
+        "sha256": "59ae9b3361e2788384ecd5c2d0bde554f5d9be6b3ab0396d21c8cd481b0c682f"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
@@ -2489,7 +2489,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
         "exists": true,
-        "sha256": "7c7d62245f7352d36d912fe466faacfe09836e7cb0fc954b82373d2b36e7828b"
+        "sha256": "33a858c21c454abb27dcd3550b7ccaa6910bc506aea24b0272a08b9f64c3acbf"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
@@ -2504,12 +2504,12 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
         "exists": true,
-        "sha256": "acef24db637281075e68a6e6c289aed41b2d516566dbde85178700bb7bbd300c"
+        "sha256": "45b0507a4b1b30a8a77bd59c72040ce2e262960667d724f274260b12f35b8e1b"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
         "exists": true,
-        "sha256": "3f9c41de15d3d807c00e74edd79c3d3878d2f9f2786e45bcdd8dbdc125108120"
+        "sha256": "c95cdae34903ee982dcc8ed766fb2699d74205e4e1bfeb7a1d5cd72184e661d6"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.CharacterSettings.cs",
@@ -2519,37 +2519,37 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs",
         "exists": true,
-        "sha256": "989158b6876e6ac1bbf70813bbe5e4a7f4d7055c8cd0cefa65531cae911eb575"
+        "sha256": "bb87b7b58664e2ceb7c0d58c95fd694bcbdb8f043e3765be9ec0c5471c2f8a50"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
         "exists": true,
-        "sha256": "9a418082fa297c94d6af83096717cfcd34fe507e649cf00b562a1373cbf8fc96"
+        "sha256": "220d165ea994832a58e437a32f16bd1dcc0b230759d87b86c4f13851d3745f04"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
         "exists": true,
-        "sha256": "6b4ac0980e93f3ca1fcb0f1072be529664165e985869a474e95ae4a67367ed59"
+        "sha256": "05ee0331331a5f7a14b8ac7499d363720865e482212d755f13166664380b226e"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
         "exists": true,
-        "sha256": "36c7d6160bf738cc713aef5bde0430f5cd6236dd65f10a232c595f1a9beb7878"
+        "sha256": "6ae514666fcfb25b99f9cbf27bc2e4cc9888e7881beb0a0bd1ea1a13b05e68f5"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
         "exists": true,
-        "sha256": "4f26d429241fb2399060dbbfe7ef3f6b8d68a67d3122ce81a64ac0123542e860"
+        "sha256": "98a4b10cec3e0925b288c2bd1d70c4d48ed08b22665734b7550e35eead4e1517"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "651f09eec0f0181b56b9ddd54ee4e863983748cae461073a0b242214a9e32154"
+        "sha256": "b8fc1affd727e832d15e16ad8d861e6f211b00cdf6e414a4348ab30a5d34144e"
       },
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
         "exists": true,
-        "sha256": "9753a446b1eddbbe3c45cddf4d19b297896c5052b77ccfb42e593c8d5590a16b"
+        "sha256": "a5575ff98735e9685cdb7c97fad634fda18716c922c977c30592ee548311554f"
       }
     ],
     "api36JourneyRecognition": {
@@ -2560,7 +2560,7 @@
         "sr5-career/playtime"
       ],
       "recognitionStatus": "recognized",
-      "sourceAuthorityStatus": "ready",
+      "sourceAuthorityStatus": "blocked",
       "executionStatus": "not_executed",
       "matrixJourney": null,
       "releaseClaim": false,
@@ -2615,7 +2615,10 @@
           "chummer-presentation/Chummer.Presentation/Overview/Sr5CareerWizardDesktopSession.cs"
         ]
       },
-      "blockers": []
+      "blockers": [
+        "source-missing:chummer-presentation/Chummer.Presentation/Overview/Sr5CareerWizardDesktopSession.cs",
+        "source-missing:chummer-presentation/Chummer.Presentation/Overview/Sr5TableWizardSession.cs"
+      ]
     },
     "contextualMutationJourneyRecognition": {
       "journeyId": "sr5-downtime-playtime-typed-transactions",
@@ -2639,12 +2642,15 @@
         "playtime.initiative-run-state"
       ],
       "recognitionStatus": "recognized",
-      "sourceAuthorityStatus": "ready",
+      "sourceAuthorityStatus": "blocked",
       "executionStatus": "not_executed",
       "matrixJourney": null,
       "releaseClaim": false,
       "completionCountContribution": 0,
-      "blockers": []
+      "blockers": [
+        "source-missing:chummer-presentation/Chummer.Presentation/Overview/Sr5CareerWizardDesktopSession.cs",
+        "source-missing:chummer-presentation/Chummer.Presentation/Overview/Sr5TableWizardSession.cs"
+      ]
     },
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
@@ -2669,14 +2675,14 @@
     "application_settings": {
       "rowCount": 73,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 43,
+      "phoneMissingCount": 56,
       "tabletMissingCount": 56,
       "completionProvenCount": 17
     },
     "armor": {
       "rowCount": 97,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 28,
+      "phoneMissingCount": 44,
       "tabletMissingCount": 59,
       "completionProvenCount": 14
     },
@@ -2711,14 +2717,14 @@
     "character_roster": {
       "rowCount": 15,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 1,
+      "phoneMissingCount": 4,
       "tabletMissingCount": 4,
       "completionProvenCount": 11
     },
     "character_settings": {
       "rowCount": 209,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 28,
+      "phoneMissingCount": 11,
       "tabletMissingCount": 197,
       "completionProvenCount": 12
     },
@@ -2753,14 +2759,14 @@
     "critter_powers": {
       "rowCount": 22,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 9,
+      "phoneMissingCount": 11,
       "tabletMissingCount": 19,
       "completionProvenCount": 3
     },
     "cyberware": {
       "rowCount": 94,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 37,
+      "phoneMissingCount": 50,
       "tabletMissingCount": 66,
       "completionProvenCount": 4
     },
@@ -2788,7 +2794,7 @@
     "expenses": {
       "rowCount": 19,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 2,
+      "phoneMissingCount": 15,
       "tabletMissingCount": 15,
       "completionProvenCount": 4
     },
@@ -2802,7 +2808,7 @@
     "gear": {
       "rowCount": 84,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 19,
+      "phoneMissingCount": 42,
       "tabletMissingCount": 54,
       "completionProvenCount": 6
     },
@@ -2823,7 +2829,7 @@
     "improvements": {
       "rowCount": 64,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 55,
+      "phoneMissingCount": 60,
       "tabletMissingCount": 60,
       "completionProvenCount": 4
     },
@@ -2844,7 +2850,7 @@
     "karma_nuyen_and_reputation": {
       "rowCount": 18,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 5,
+      "phoneMissingCount": 15,
       "tabletMissingCount": 15,
       "completionProvenCount": 3
     },
@@ -2858,28 +2864,28 @@
     "lifestyles": {
       "rowCount": 58,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 40,
+      "phoneMissingCount": 50,
       "tabletMissingCount": 50,
       "completionProvenCount": 8
     },
     "limits_and_modifiers": {
       "rowCount": 20,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 13,
+      "phoneMissingCount": 15,
       "tabletMissingCount": 15,
       "completionProvenCount": 5
     },
     "locations_and_containers": {
       "rowCount": 2,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 0,
+      "phoneMissingCount": 2,
       "tabletMissingCount": 2,
       "completionProvenCount": 0
     },
     "magic_tradition_and_resonance": {
       "rowCount": 15,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 4,
+      "phoneMissingCount": 14,
       "tabletMissingCount": 14,
       "completionProvenCount": 1
     },
@@ -2900,7 +2906,7 @@
     "mugshots": {
       "rowCount": 8,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 2,
+      "phoneMissingCount": 8,
       "tabletMissingCount": 8,
       "completionProvenCount": 0
     },
@@ -2921,7 +2927,7 @@
     "notes": {
       "rowCount": 26,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 20,
+      "phoneMissingCount": 25,
       "tabletMissingCount": 25,
       "completionProvenCount": 1
     },
@@ -2949,7 +2955,7 @@
     "qualities": {
       "rowCount": 57,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 29,
+      "phoneMissingCount": 35,
       "tabletMissingCount": 49,
       "completionProvenCount": 8
     },
@@ -2963,7 +2969,7 @@
     "skills": {
       "rowCount": 36,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 22,
+      "phoneMissingCount": 23,
       "tabletMissingCount": 24,
       "completionProvenCount": 12
     },
@@ -2984,14 +2990,14 @@
     "spells": {
       "rowCount": 67,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 39,
+      "phoneMissingCount": 45,
       "tabletMissingCount": 56,
       "completionProvenCount": 11
     },
     "spirits_and_sprites": {
       "rowCount": 32,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 0,
+      "phoneMissingCount": 14,
       "tabletMissingCount": 28,
       "completionProvenCount": 4
     },
@@ -3012,7 +3018,7 @@
     "vehicles_and_drones": {
       "rowCount": 151,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 41,
+      "phoneMissingCount": 59,
       "tabletMissingCount": 100,
       "completionProvenCount": 27
     },
@@ -3026,7 +3032,7 @@
     "weapons": {
       "rowCount": 119,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 35,
+      "phoneMissingCount": 54,
       "tabletMissingCount": 72,
       "completionProvenCount": 23
     },
@@ -5675,7 +5681,7 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "set_value",
       "phone": {
-        "status": "partial_exact_saved_data",
+        "status": "missing",
         "route": "Build > Magic and Resonance > Spirits and sprites > selected stable Spirit or Sprite > Spirit/Sprite metatype",
         "surface": "SpiritNameChoicePage",
         "automationId": "spirit-name-choice-picker-{stable-spirit-guid}",
@@ -5814,7 +5820,7 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "set_value",
       "phone": {
-        "status": "partial_exact_saved_data",
+        "status": "missing",
         "route": "Build > Magic and Resonance > Spirits and sprites > selected spirit or sprite > Fettered Spirit / Sprite Pet",
         "surface": "SpiritFetteredPage",
         "automationId": "spirit-fettered-toggle-{stable-target}",
@@ -10100,7 +10106,7 @@
       "mutationFamily": "spells",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Runner > Sustained effects > selected saved occurrence",
         "surface": "SustainedObjectEditPage",
         "automationId": "sustained-effect-self-{linked-type-guid-occurrence}",
@@ -10172,7 +10178,7 @@
       "mutationFamily": "spells",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Runner > Sustained effects > selected saved occurrence",
         "surface": "SustainedObjectEditPage",
         "automationId": "sustained-effect-force-{linked-type-guid-occurrence}",
@@ -10244,7 +10250,7 @@
       "mutationFamily": "spells",
       "operation": "delete",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Runner > Sustained effects > selected saved occurrence",
         "surface": "SustainedObjectEditPage",
         "automationId": "sustained-effect-delete-{linked-type-guid-occurrence}",
@@ -10316,7 +10322,7 @@
       "mutationFamily": "spells",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Runner > Sustained effects > selected saved occurrence",
         "surface": "SustainedObjectEditPage",
         "automationId": "sustained-effect-net-hits-{linked-type-guid-occurrence}",
@@ -11213,7 +11219,7 @@
       "mutationFamily": "skills",
       "operation": "adjust",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Active Skills > Advance active skill",
         "surface": "CareerActiveSkillAdvancePage",
         "automationId": "career-active-skill-advance",
@@ -12988,7 +12994,7 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "route": "Home > New runner > Select Build Method",
         "surface": "NativeDialogPage",
         "automationId": "dialog-field-newcharacterignorerules",
@@ -13051,7 +13057,7 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "route": "Home > New runner > Select Build Method",
         "surface": "NativeDialogPage",
         "automationId": "dialog-field-newcharactersetting",
@@ -13171,7 +13177,7 @@
       "mutationFamily": "character_settings",
       "operation": "commit",
       "phone": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "route": "Home > New runner > Select Build Method",
         "surface": "NativeDialogPage",
         "automationId": "dialog-action-create-character",
@@ -13845,7 +13851,7 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "route": "Home > New runner > Select Build Method > Karma > Select Metatype",
         "surface": "NativeDialogPage",
         "automationId": "dialog-field-newcharacterpossessionmethod",
@@ -13909,7 +13915,7 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "route": "Home > New runner > Select Build Method > Karma > Select Metatype",
         "surface": "NativeDialogPage",
         "automationId": "dialog-field-newcharacterpossessionbased",
@@ -13968,7 +13974,7 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "route": "Home > New runner > Select Build Method > Karma > Select Metatype",
         "surface": "NativeDialogPage",
         "automationId": "dialog-field-newcharacterforce",
@@ -14032,7 +14038,7 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "route": "Home > New runner > Select Build Method > Karma > Select Metatype",
         "surface": "NativeDialogPage",
         "automationId": "dialog-field-newcharactermetatypecategory",
@@ -14096,7 +14102,7 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "route": "Home > New runner > Select Build Method > Karma > Select Metatype",
         "surface": "NativeDialogPage",
         "automationId": "dialog-field-newcharactermetavariant",
@@ -14164,7 +14170,7 @@
       "mutationFamily": "character_settings",
       "operation": "select_or_mutate_collection",
       "phone": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "route": "Home > New runner > Select Build Method > Karma > Select Metatype",
         "surface": "NativeDialogPage",
         "automationId": "dialog-field-newcharactermetatype",
@@ -14342,7 +14348,7 @@
       "mutationFamily": "character_settings",
       "operation": "commit",
       "phone": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "route": "Home > New runner > Select Build Method > Karma > Select Metatype",
         "surface": "NativeDialogPage",
         "automationId": "dialog-action-complete-new-character-workflow",
@@ -14406,7 +14412,7 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "route": "Home > New runner > Select Build Method > Karma > Select Metatype",
         "surface": "NativeDialogPage",
         "automationId": "dialog-field-newcharactermetatypesearch",
@@ -14470,7 +14476,7 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "route": "Home > New runner > Select Build Method > Select Metatype Priority",
         "surface": "NativeDialogPage",
         "automationId": "dialog-field-newcharactermetatypecategory",
@@ -14590,7 +14596,7 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "route": "Home > New runner > Select Build Method > Select Metatype Priority",
         "surface": "NativeDialogPage",
         "automationId": "dialog-field-newcharactermetavariant",
@@ -14851,7 +14857,7 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "route": "Home > New runner > Select Build Method > Select Metatype Priority",
         "surface": "NativeDialogPage",
         "automationId": "dialog-field-newcharacterpriorityskillchoice1",
@@ -14909,7 +14915,7 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "route": "Home > New runner > Select Build Method > Select Metatype Priority",
         "surface": "NativeDialogPage",
         "automationId": "dialog-field-newcharacterpriorityskillchoice2",
@@ -14967,7 +14973,7 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "route": "Home > New runner > Select Build Method > Select Metatype Priority",
         "surface": "NativeDialogPage",
         "automationId": "dialog-field-newcharacterpriorityskillchoice3",
@@ -15360,7 +15366,7 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "route": "Home > New runner > Select Build Method > Select Metatype Priority",
         "surface": "NativeDialogPage",
         "automationId": "dialog-field-newcharacterpossessionbased",
@@ -15418,7 +15424,7 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "route": "Home > New runner > Select Build Method > Select Metatype Priority",
         "surface": "NativeDialogPage",
         "automationId": "dialog-field-newcharacterpossessionmethod",
@@ -15476,7 +15482,7 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "route": "Home > New runner > Select Build Method > Select Metatype Priority",
         "surface": "NativeDialogPage",
         "automationId": "dialog-field-newcharacterforce",
@@ -15705,7 +15711,7 @@
       "mutationFamily": "karma_nuyen_and_reputation",
       "operation": "mutating_action",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Runner > Edge use",
         "surface": "CareerEdgeUsePage",
         "automationId": "career-edge-use-regain",
@@ -15774,7 +15780,7 @@
       "mutationFamily": "karma_nuyen_and_reputation",
       "operation": "mutating_action",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Runner > Edge use",
         "surface": "CareerEdgeUsePage",
         "automationId": "career-edge-use-spend",
@@ -15942,7 +15948,7 @@
       "mutationFamily": "spells",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Situational modifiers",
         "surface": "SituationalModifiersPage",
         "automationId": "situational-counterspelling-dice",
@@ -16772,7 +16778,7 @@
       "mutationFamily": "qualities",
       "operation": "delete",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Delete Martial Art > selected non-quality Art or parent-scoped Technique",
         "surface": "MartialArtDeletePage",
         "automationId": "martial-art-delete-confirm",
@@ -16836,7 +16842,7 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Magic > Tradition spirits",
         "surface": "TraditionSpiritCategoryPage",
         "automationId": "tradition-spirit-manipulation-value",
@@ -16903,7 +16909,7 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Magic > Tradition spirits",
         "surface": "TraditionSpiritCategoryPage",
         "automationId": "tradition-spirit-illusion-value",
@@ -16970,7 +16976,7 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Magic > Tradition spirits",
         "surface": "TraditionSpiritCategoryPage",
         "automationId": "tradition-spirit-health-value",
@@ -17037,7 +17043,7 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Magic > Tradition spirits",
         "surface": "TraditionSpiritCategoryPage",
         "automationId": "tradition-spirit-detection-value",
@@ -17104,7 +17110,7 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Magic > Tradition spirits",
         "surface": "TraditionSpiritCategoryPage",
         "automationId": "tradition-spirit-combat-value",
@@ -17171,7 +17177,7 @@
       "mutationFamily": "magic_tradition_and_resonance",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Magic > Tradition drain",
         "surface": "TraditionDrainPage",
         "automationId": "tradition-drain-value",
@@ -17238,7 +17244,7 @@
       "mutationFamily": "magic_tradition_and_resonance",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Magic > Custom tradition name",
         "surface": "TraditionNamePage",
         "automationId": "tradition-name-value",
@@ -18078,7 +18084,7 @@
       "mutationFamily": "critter_powers",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Critter > Critter Powers > selected stable power > Counts towards limit",
         "surface": "CritterPowerCountPage",
         "automationId": "critter-power-count-toggle-{stable-critter-power-guid}",
@@ -18832,7 +18838,7 @@
       "mutationFamily": "magic_tradition_and_resonance",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Runner > Group membership",
         "surface": "GroupMembershipPage",
         "automationId": "group-membership-toggle",
@@ -18903,7 +18909,7 @@
       "mutationFamily": "notes",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Notes",
         "surface": "CharacterNotesPage",
         "automationId": "character-group-notes-editor",
@@ -18964,7 +18970,7 @@
       "mutationFamily": "magic_tradition_and_resonance",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Runner > Group name",
         "surface": "GroupNamePage",
         "automationId": "group-name-value",
@@ -19269,7 +19275,7 @@
       "mutationFamily": "cyberware",
       "operation": "set_value",
       "phone": {
-        "status": "partial_exact_saved_data",
+        "status": "missing",
         "route": "Build > Gear > Cyberware > selected stable Cyberware > Swap Cyberware Matrix values",
         "surface": "CyberwareMatrixSwapPage",
         "automationId": "cyberware-matrix-swap-changed-{stable-cyberware-guid}",
@@ -19332,7 +19338,7 @@
       "mutationFamily": "cyberware",
       "operation": "set_value",
       "phone": {
-        "status": "partial_exact_saved_data",
+        "status": "missing",
         "route": "Build > Gear > Cyberware > selected stable Cyberware > Swap Cyberware Matrix values",
         "surface": "CyberwareMatrixSwapPage",
         "automationId": "cyberware-matrix-swap-changed-{stable-cyberware-guid}",
@@ -19395,7 +19401,7 @@
       "mutationFamily": "cyberware",
       "operation": "set_value",
       "phone": {
-        "status": "partial_exact_saved_data",
+        "status": "missing",
         "route": "Build > Gear > Cyberware > selected stable Cyberware > Swap Cyberware Matrix values",
         "surface": "CyberwareMatrixSwapPage",
         "automationId": "cyberware-matrix-swap-changed-{stable-cyberware-guid}",
@@ -19458,7 +19464,7 @@
       "mutationFamily": "cyberware",
       "operation": "set_value",
       "phone": {
-        "status": "partial_exact_saved_data",
+        "status": "missing",
         "route": "Build > Gear > Cyberware > selected stable Cyberware > Swap Cyberware Matrix values",
         "surface": "CyberwareMatrixSwapPage",
         "automationId": "cyberware-matrix-swap-changed-{stable-cyberware-guid}",
@@ -21639,7 +21645,7 @@
       "mutationFamily": "vehicles_and_drones",
       "operation": "set_value",
       "phone": {
-        "status": "partial_exact_saved_data",
+        "status": "missing",
         "route": "Build > Gear > Vehicles > selected stable Vehicle > Swap Vehicle Matrix values",
         "surface": "VehicleDataProcessingFirewallSwapPage",
         "automationId": "vehicle-dp-firewall-swap-changed-{stable-vehicle-guid}",
@@ -21701,7 +21707,7 @@
       "mutationFamily": "vehicles_and_drones",
       "operation": "set_value",
       "phone": {
-        "status": "partial_exact_saved_data",
+        "status": "missing",
         "route": "Build > Gear > Vehicles > selected stable Vehicle > Swap Vehicle Matrix values",
         "surface": "VehicleDataProcessingFirewallSwapPage",
         "automationId": "vehicle-dp-firewall-swap-changed-{stable-vehicle-guid}",
@@ -21763,7 +21769,7 @@
       "mutationFamily": "vehicles_and_drones",
       "operation": "set_value",
       "phone": {
-        "status": "partial_exact_saved_data",
+        "status": "missing",
         "route": "Build > Gear > Vehicles > selected stable Vehicle > Swap Vehicle Matrix values",
         "surface": "VehicleDataProcessingFirewallSwapPage",
         "automationId": "vehicle-dp-firewall-swap-changed-{stable-vehicle-guid}",
@@ -21825,7 +21831,7 @@
       "mutationFamily": "vehicles_and_drones",
       "operation": "set_value",
       "phone": {
-        "status": "partial_exact_saved_data",
+        "status": "missing",
         "route": "Build > Gear > Vehicles > selected stable Vehicle > Swap Vehicle Matrix values",
         "surface": "VehicleDataProcessingFirewallSwapPage",
         "automationId": "vehicle-dp-firewall-swap-changed-{stable-vehicle-guid}",
@@ -25281,7 +25287,7 @@
       "mutationFamily": "vehicles_and_drones",
       "operation": "add",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "partial_create_only",
         "route": "Build > Gear > Vehicle Locations > Add vehicle location OR Build > Gear > Vehicles > selected stable vehicle > Add location to vehicle",
         "surface": "VehicleLocationAddPage",
         "automationId": "vehicle-location-add-{global|stable-vehicle-guid}",
@@ -25352,7 +25358,7 @@
       "mutationFamily": "vehicles_and_drones",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Vehicles > selected stable vehicle > Vehicle Home Node",
         "surface": "VehicleHomeNodePage",
         "automationId": "vehicle-home-node-toggle-{stable-vehicle-guid}",
@@ -25531,7 +25537,7 @@
       "mutationFamily": "vehicles_and_drones",
       "operation": "set_value",
       "phone": {
-        "status": "partial_exact_saved_data",
+        "status": "missing",
         "route": "Build > Gear > Vehicles > selected stable Vehicle > Installed equipment",
         "surface": "VehicleEquipmentInstalledPage",
         "automationId": "vehicle-equipment-installed-toggle-{stable-vehicle-guid}",
@@ -26030,7 +26036,7 @@
       "mutationFamily": "karma_nuyen_and_reputation",
       "operation": "adjust",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Reputation > Burn 2 Street Cred",
         "surface": "CareerReputationPage",
         "automationId": "career-reputation-burn-street-cred",
@@ -26593,7 +26599,7 @@
       "mutationFamily": "karma_nuyen_and_reputation",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Reputation",
         "surface": "CareerReputationPage",
         "automationId": "career-reputation-public-awareness",
@@ -26656,7 +26662,7 @@
       "mutationFamily": "karma_nuyen_and_reputation",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Reputation",
         "surface": "CareerReputationPage",
         "automationId": "career-reputation-notoriety",
@@ -26720,7 +26726,7 @@
       "mutationFamily": "karma_nuyen_and_reputation",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Reputation",
         "surface": "CareerReputationPage",
         "automationId": "career-reputation-street-cred",
@@ -26788,7 +26794,7 @@
       "mutationFamily": "mugshots",
       "operation": "delete",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Runner > Mugshots (Career only)",
         "surface": "CareerMugshotPage",
         "automationId": "career-mugshot-delete",
@@ -27036,7 +27042,7 @@
       "mutationFamily": "karma_nuyen_and_reputation",
       "operation": "mutating_action",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Runner > Manual Karma",
         "surface": "CareerManualKarmaPage",
         "automationId": "career-manual-karma-gain",
@@ -27168,7 +27174,7 @@
       "mutationFamily": "karma_nuyen_and_reputation",
       "operation": "mutating_action",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Runner > Manual Karma",
         "surface": "CareerManualKarmaPage",
         "automationId": "career-manual-karma-spend",
@@ -27296,7 +27302,7 @@
       "mutationFamily": "expenses",
       "operation": "edit",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Runner > Nuyen expenses",
         "surface": "CareerNuyenExpensePage",
         "automationId": "career-nuyen-expense-save",
@@ -27369,7 +27375,7 @@
       "mutationFamily": "expenses",
       "operation": "select_or_mutate_collection",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Runner > Nuyen expenses",
         "surface": "CareerNuyenExpensePage",
         "automationId": "career-nuyen-expense-picker",
@@ -27438,7 +27444,7 @@
       "mutationFamily": "expenses",
       "operation": "mutating_action",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Runner > Manual Nuyen",
         "surface": "CareerManualNuyenPage",
         "automationId": "career-manual-nuyen-spend",
@@ -27509,7 +27515,7 @@
       "mutationFamily": "expenses",
       "operation": "mutating_action",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Runner > Manual Nuyen",
         "surface": "CareerManualNuyenPage",
         "automationId": "career-manual-nuyen-gain",
@@ -27865,7 +27871,7 @@
       "mutationFamily": "improvements",
       "operation": "add",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Add Improvement Group",
         "surface": "ImprovementGroupAddPage",
         "automationId": "improvement-group-add-name",
@@ -28105,7 +28111,7 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Primary arm",
         "surface": "PrimaryArmPage",
         "automationId": "primary-arm-choice",
@@ -28171,7 +28177,7 @@
       "mutationFamily": "mugshots",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Runner > Mugshots (Career only)",
         "surface": "CareerMugshotPage",
         "automationId": "career-mugshot-index",
@@ -28240,7 +28246,7 @@
       "mutationFamily": "mugshots",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Runner > Mugshots (Career only)",
         "surface": "CareerMugshotPage",
         "automationId": "career-mugshot-main",
@@ -28760,7 +28766,7 @@
       "mutationFamily": "vehicles_and_drones",
       "operation": "set_value",
       "phone": {
-        "status": "partial_exact_saved_data",
+        "status": "missing",
         "route": "Build > Gear > Vehicles > selected stable Vehicle > Vehicle Weapon firing modes > selected stable direct Vehicle Weapon",
         "surface": "VehicleWeaponFiringModePage",
         "automationId": "vehicle-weapon-firing-mode-picker-{stable-vehicle-guid}-{stable-vehicle-weapon-guid}",
@@ -28883,7 +28889,7 @@
       "mutationFamily": "locations_and_containers",
       "operation": "add",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Gear Locations > Add gear location",
         "surface": "GearLocationAddPage",
         "automationId": "gear-location-add",
@@ -29151,7 +29157,7 @@
       "mutationFamily": "armor",
       "operation": "toggle_equipped",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Armor > selected stable armor > Armor Equipment",
         "surface": "ArmorEquipmentPage",
         "automationId": "armor-equipment-unequip-all-{stable-armor-guid}",
@@ -29222,7 +29228,7 @@
       "mutationFamily": "armor",
       "operation": "toggle_equipped",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Armor > selected stable armor > Armor Equipment",
         "surface": "ArmorEquipmentPage",
         "automationId": "armor-equipment-equip-all-{stable-armor-guid}",
@@ -29488,7 +29494,7 @@
       "mutationFamily": "armor",
       "operation": "adjust",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Armor > selected stable Career armor > Armor Condition",
         "surface": "ArmorDamagePage",
         "automationId": "armor-damage-repair-{stable-armor-guid}",
@@ -29559,7 +29565,7 @@
       "mutationFamily": "armor",
       "operation": "adjust",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Armor > selected stable Career armor > Armor Condition",
         "surface": "ArmorDamagePage",
         "automationId": "armor-damage-degrade-{stable-armor-guid}",
@@ -31512,7 +31518,7 @@
       "mutationFamily": "weapons",
       "operation": "set_value",
       "phone": {
-        "status": "partial_exact_saved_data",
+        "status": "missing",
         "route": "Build > Gear > Weapons > selected stable direct Weapon > Swap Weapon Matrix values",
         "surface": "WeaponMatrixSwapPage",
         "automationId": "weapon-matrix-swap-changed-{stable-weapon-guid}",
@@ -31582,7 +31588,7 @@
       "mutationFamily": "weapons",
       "operation": "set_value",
       "phone": {
-        "status": "partial_exact_saved_data",
+        "status": "missing",
         "route": "Build > Gear > Weapons > selected stable direct Weapon > Swap Weapon Matrix values",
         "surface": "WeaponMatrixSwapPage",
         "automationId": "weapon-matrix-swap-changed-{stable-weapon-guid}",
@@ -31652,7 +31658,7 @@
       "mutationFamily": "weapons",
       "operation": "set_value",
       "phone": {
-        "status": "partial_exact_saved_data",
+        "status": "missing",
         "route": "Build > Gear > Weapons > selected stable direct Weapon > Swap Weapon Matrix values",
         "surface": "WeaponMatrixSwapPage",
         "automationId": "weapon-matrix-swap-changed-{stable-weapon-guid}",
@@ -31722,7 +31728,7 @@
       "mutationFamily": "weapons",
       "operation": "set_value",
       "phone": {
-        "status": "partial_exact_saved_data",
+        "status": "missing",
         "route": "Build > Gear > Weapons > selected stable direct Weapon > Swap Weapon Matrix values",
         "surface": "WeaponMatrixSwapPage",
         "automationId": "weapon-matrix-swap-changed-{stable-weapon-guid}",
@@ -31792,7 +31798,7 @@
       "mutationFamily": "weapons",
       "operation": "add",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "partial_create_only",
         "route": "Build > Gear > Weapon Locations > Add weapon location",
         "surface": "WeaponLocationAddPage",
         "automationId": "weapon-location-add",
@@ -32345,7 +32351,7 @@
       "mutationFamily": "weapons",
       "operation": "mutating_action",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Weapons > selected stable Weapon > Fire weapon",
         "surface": "CareerWeaponFirePage",
         "automationId": "career-weapon-fire-default-{stable-weapon-guid}",
@@ -32414,7 +32420,7 @@
       "mutationFamily": "lifestyles",
       "operation": "adjust",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Lifestyle > Lifestyles > selected stable Lifestyle > Lifestyle Intervals",
         "surface": "LifestyleIncrementPage",
         "automationId": "lifestyle-increments-decrease-{stable-lifestyle-guid}",
@@ -32486,7 +32492,7 @@
       "mutationFamily": "lifestyles",
       "operation": "adjust",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Lifestyle > Lifestyles > selected stable Lifestyle > Lifestyle Intervals",
         "surface": "LifestyleIncrementPage",
         "automationId": "lifestyle-increments-increase-{stable-lifestyle-guid}",
@@ -37307,7 +37313,7 @@
       "mutationFamily": "notes",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Notes",
         "surface": "CharacterNotesPage",
         "automationId": "character-notes-editor",
@@ -37368,7 +37374,7 @@
       "mutationFamily": "notes",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Notes",
         "surface": "CharacterNotesPage",
         "automationId": "character-game-notes-editor",
@@ -37429,7 +37435,7 @@
       "mutationFamily": "karma_nuyen_and_reputation",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Reputation",
         "surface": "CareerReputationPage",
         "automationId": "career-reputation-astral",
@@ -37492,7 +37498,7 @@
       "mutationFamily": "karma_nuyen_and_reputation",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Reputation",
         "surface": "CareerReputationPage",
         "automationId": "career-reputation-wild",
@@ -37617,7 +37623,7 @@
       "mutationFamily": "gear",
       "operation": "adjust",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Gear > selected stable Career Gear > Gear Quantity",
         "surface": "GearQuantityPage",
         "automationId": "gear-quantity-increase-{stable-gear-guid}",
@@ -37690,7 +37696,7 @@
       "mutationFamily": "gear",
       "operation": "mutating_action",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Gear > selected stable Career Gear > Gear Quantity",
         "surface": "GearQuantityPage",
         "automationId": "gear-quantity-reduce-{stable-gear-guid}",
@@ -37763,7 +37769,7 @@
       "mutationFamily": "gear",
       "operation": "mutating_action",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Gear > selected stable Career Gear > Gear Quantity",
         "surface": "GearQuantityPage",
         "automationId": "gear-quantity-split-{stable-gear-guid}",
@@ -37836,7 +37842,7 @@
       "mutationFamily": "gear",
       "operation": "mutating_action",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Gear > selected stable Career Gear > Gear Quantity",
         "surface": "GearQuantityPage",
         "automationId": "gear-quantity-merge-{stable-gear-guid}",
@@ -37966,7 +37972,7 @@
       "mutationFamily": "gear",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Gear > selected stable root Gear > Career Cyberdeck Overclocker",
         "surface": "GearOverclockerPage",
         "automationId": "gear-overclocker-attribute-{stable-root-gear-guid}",
@@ -38035,7 +38041,7 @@
       "mutationFamily": "gear",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Gear > selected stable root Gear > Matrix Gear Swap Attack",
         "surface": "GearAttackSwapPage",
         "automationId": "gear-attack-swap-attribute-{stable-root-gear-guid}",
@@ -38105,7 +38111,7 @@
       "mutationFamily": "gear",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Gear > selected stable root Gear > Matrix Gear Swap Sleaze",
         "surface": "GearSleazeSwapPage",
         "automationId": "gear-sleaze-swap-attribute-{stable-root-gear-guid}",
@@ -38167,7 +38173,7 @@
       "mutationFamily": "gear",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Gear > selected stable root Gear > Matrix Gear Swap Data Processing / Firewall",
         "surface": "GearDataProcessingFirewallSwapPage",
         "automationId": "gear-dp-firewall-swap-changed-{stable-root-gear-guid}",
@@ -38229,7 +38235,7 @@
       "mutationFamily": "gear",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Gear > selected stable root Gear > Matrix Gear Swap Data Processing / Firewall",
         "surface": "GearDataProcessingFirewallSwapPage",
         "automationId": "gear-dp-firewall-swap-changed-{stable-root-gear-guid}",
@@ -40170,7 +40176,7 @@
       "mutationFamily": "vehicles_and_drones",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Vehicles > selected stable top-level persona-capable Vehicle > Vehicle Active Commlink",
         "surface": "VehicleActiveCommlinkPage",
         "automationId": "vehicle-active-commlink-toggle-{stable-vehicle-guid}",
@@ -40242,7 +40248,7 @@
       "mutationFamily": "cyberware",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Cyberware > selected stable persona-capable cyberware > Cyberware Active Commlink",
         "surface": "CyberwareActiveCommlinkPage",
         "automationId": "cyberware-active-commlink-toggle-{stable-cyberware-guid}",
@@ -40487,7 +40493,7 @@
       "mutationFamily": "armor",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Armor > selected stable armor > Armor Equipment",
         "surface": "ArmorEquipmentPage",
         "automationId": "armor-equipment-toggle-{stable-armor-guid}",
@@ -40558,7 +40564,7 @@
       "mutationFamily": "weapons",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Weapon Accessories > selected stable accessory > Included in Weapon",
         "surface": "WeaponAccessoryIncludedPage",
         "automationId": "weapon-accessory-included-toggle-{stable-accessory-guid}",
@@ -40884,7 +40890,7 @@
       "mutationFamily": "gear",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Gear > selected stable root Gear > Equipped",
         "surface": "GearEquipmentPage",
         "automationId": "gear-equipment-toggle-{stable-root-gear-guid}",
@@ -41017,7 +41023,7 @@
       "mutationFamily": "gear",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > selected stable persona-capable gear > Gear Active Commlink",
         "surface": "GearActiveCommlinkPage",
         "automationId": "gear-active-commlink-toggle-{stable-gear-guid}",
@@ -41088,7 +41094,7 @@
       "mutationFamily": "gear",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Gear > selected stable root Career Gear > Wireless",
         "surface": "GearWirelessPage",
         "automationId": "gear-wireless-toggle-{stable-root-gear-guid}",
@@ -41514,7 +41520,7 @@
       "mutationFamily": "qualities",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Qualities > selected stable exact Quality > Quality Level",
         "surface": "QualityLevelPage",
         "automationId": "quality-level-value-{stable-quality-guid}",
@@ -41671,7 +41677,7 @@
       "mutationFamily": "improvements",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Improvements > Active state",
         "surface": "ImprovementActivePage",
         "automationId": "improvement-active-toggle",
@@ -41740,7 +41746,7 @@
       "mutationFamily": "improvements",
       "operation": "adjust",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Improvement groups > selected saved custom group",
         "surface": "ImprovementGroupActivePage",
         "automationId": "improvement-group-disable-all",
@@ -41809,7 +41815,7 @@
       "mutationFamily": "improvements",
       "operation": "adjust",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Improvement groups > selected saved custom group",
         "surface": "ImprovementGroupActivePage",
         "automationId": "improvement-group-enable-all",
@@ -41873,7 +41879,7 @@
       "mutationFamily": "magic_tradition_and_resonance",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Runner > Sustained effects > Psyche",
         "surface": "SustainedObjectsPage",
         "automationId": "sustained-psyche-active-magician",
@@ -41939,7 +41945,7 @@
       "mutationFamily": "magic_tradition_and_resonance",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Runner > Sustained effects > Psyche",
         "surface": "SustainedObjectsPage",
         "automationId": "sustained-psyche-active-technomancer",
@@ -43162,7 +43168,7 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "mutating_action",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Convert to Free Sprite",
         "surface": "FreeSpriteConversionPage",
         "automationId": "free-sprite-conversion-save",
@@ -44586,7 +44592,7 @@
       "mutationFamily": "gear",
       "operation": "edit",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > selected stable Gear > Gear Name",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-field-gearname-{stable-gear-guid}",
@@ -45113,7 +45119,7 @@
       "mutationFamily": "cyberware",
       "operation": "delete",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Cyberwares > selected stable Career Cyberware > Upgrade or Sell",
         "surface": "CyberwareCommercePage",
         "automationId": "cyberware-commerce-sell-{stable-cyberware-guid}",
@@ -45186,7 +45192,7 @@
       "mutationFamily": "cyberware",
       "operation": "adjust",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Cyberwares > selected stable Career Cyberware > Upgrade or Sell",
         "surface": "CyberwareCommercePage",
         "automationId": "cyberware-commerce-upgrade-{stable-cyberware-guid}",
@@ -45886,7 +45892,7 @@
       "mutationFamily": "qualities",
       "operation": "edit",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Martial Arts Notes > selected Martial Art or parent-scoped Technique",
         "surface": "MartialArtNotesPage",
         "automationId": "martial-art-notes-save",
@@ -46304,7 +46310,7 @@
       "mutationFamily": "expenses",
       "operation": "edit",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Runner > Nuyen expenses",
         "surface": "CareerNuyenExpensePage",
         "automationId": "career-nuyen-expense-save",
@@ -47048,7 +47054,7 @@
       "mutationFamily": "lifestyles",
       "operation": "edit",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Lifestyle > Lifestyles > selected stable Lifestyle > Notes + Notes Color",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-field-notes-{stable-lifestyle-guid} + collection-field-notescolor-{stable-lifestyle-guid}",
@@ -47175,7 +47181,7 @@
       "mutationFamily": "gear",
       "operation": "edit",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Gear Locations > selected stable location > Rename",
         "surface": "LocationRenamePage",
         "automationId": "location-rename-save",
@@ -47243,7 +47249,7 @@
       "mutationFamily": "improvements",
       "operation": "edit",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Improvement Notes > selected saved Improvement",
         "surface": "ImprovementNotesPage",
         "automationId": "improvement-notes-text",
@@ -47554,7 +47560,7 @@
       "mutationFamily": "vehicles_and_drones",
       "operation": "edit",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Vehicle Locations > selected stable location > Rename",
         "surface": "LocationRenamePage",
         "automationId": "location-rename-save",
@@ -47793,7 +47799,7 @@
       "mutationFamily": "weapons",
       "operation": "mutating_action",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Weapons > selected stable Weapon > Fire weapon",
         "surface": "CareerWeaponFirePage",
         "automationId": "career-weapon-fire-single-shot-{stable-weapon-guid}",
@@ -47862,7 +47868,7 @@
       "mutationFamily": "weapons",
       "operation": "mutating_action",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Weapons > selected stable Weapon > Fire weapon",
         "surface": "CareerWeaponFirePage",
         "automationId": "career-weapon-fire-short-burst-{stable-weapon-guid}",
@@ -47931,7 +47937,7 @@
       "mutationFamily": "weapons",
       "operation": "mutating_action",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Weapons > selected stable Weapon > Fire weapon",
         "surface": "CareerWeaponFirePage",
         "automationId": "career-weapon-fire-long-burst-{stable-weapon-guid}",
@@ -48000,7 +48006,7 @@
       "mutationFamily": "weapons",
       "operation": "mutating_action",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Weapons > selected stable Weapon > Fire weapon",
         "surface": "CareerWeaponFirePage",
         "automationId": "career-weapon-fire-full-burst-{stable-weapon-guid}",
@@ -48069,7 +48075,7 @@
       "mutationFamily": "weapons",
       "operation": "mutating_action",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Weapons > selected stable Weapon > Fire weapon",
         "surface": "CareerWeaponFirePage",
         "automationId": "career-weapon-fire-suppressive-fire-{stable-weapon-guid}",
@@ -48822,7 +48828,7 @@
       "mutationFamily": "lifestyles",
       "operation": "edit",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Lifestyle > Lifestyles > selected stable Lifestyle > Lifestyle Name",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-field-lifestylename-{stable-lifestyle-guid}",
@@ -48892,7 +48898,7 @@
       "mutationFamily": "lifestyles",
       "operation": "edit",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Lifestyle > Lifestyles > selected stable Lifestyle > Notes + Notes Color",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-field-notes-{stable-lifestyle-guid} + collection-field-notescolor-{stable-lifestyle-guid}",
@@ -49076,7 +49082,7 @@
       "mutationFamily": "armor",
       "operation": "edit",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Armor Locations > selected stable location > Rename",
         "surface": "LocationRenamePage",
         "automationId": "location-rename-save",
@@ -49372,7 +49378,7 @@
       "mutationFamily": "weapons",
       "operation": "edit",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Weapon Locations > selected stable location > Rename",
         "surface": "LocationRenamePage",
         "automationId": "location-rename-save",
@@ -50116,7 +50122,7 @@
       "mutationFamily": "armor",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Armor > selected stable armor > Armor Home Node",
         "surface": "ArmorHomeNodePage",
         "automationId": "armor-home-node-toggle-{stable-armor-guid}",
@@ -50186,7 +50192,7 @@
       "mutationFamily": "armor",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Armor > selected stable persona-capable armor > Armor Active Commlink",
         "surface": "ArmorActiveCommlinkPage",
         "automationId": "armor-active-commlink-toggle-{stable-armor-guid}",
@@ -52245,7 +52251,7 @@
       "mutationFamily": "weapons",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Weapons > selected stable AI weapon > Weapon Home Node",
         "surface": "WeaponHomeNodePage",
         "automationId": "weapon-home-node-toggle-{stable-weapon-guid}",
@@ -52317,7 +52323,7 @@
       "mutationFamily": "weapons",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Weapons > selected stable commlink weapon > Weapon Active Commlink",
         "surface": "WeaponActiveCommlinkPage",
         "automationId": "weapon-active-commlink-toggle-{stable-weapon-guid}",
@@ -52513,7 +52519,7 @@
       "mutationFamily": "limits_and_modifiers",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Situational modifiers",
         "surface": "SituationalModifiersPage",
         "automationId": "situational-lift-carry-hits",
@@ -54959,7 +54965,7 @@
       "mutationFamily": "lifestyles",
       "operation": "delete",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Lifestyle > Lifestyles > selected stable Lifestyle > Delete Lifestyle",
         "surface": "CollectionItemEditorPage",
         "automationId": "creation-lifestyle-delete-{stable-lifestyle-guid}",
@@ -55096,7 +55102,7 @@
       "mutationFamily": "lifestyles",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Lifestyle > Lifestyles > selected stable Lifestyle > Lifestyle Intervals",
         "surface": "LifestyleIncrementPage",
         "automationId": "lifestyle-increments-value-{stable-lifestyle-guid} + lifestyle-increments-set-{stable-lifestyle-guid}",
@@ -55566,7 +55572,7 @@
       "mutationFamily": "armor",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Armor > selected stable armor > Armor Equipment",
         "surface": "ArmorEquipmentPage",
         "automationId": "armor-equipment-toggle-{stable-armor-guid}",
@@ -55702,7 +55708,7 @@
       "mutationFamily": "qualities",
       "operation": "delete",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Delete Martial Art > selected non-quality Art or parent-scoped Technique",
         "surface": "MartialArtDeletePage",
         "automationId": "martial-art-delete-confirm",
@@ -56505,7 +56511,7 @@
       "mutationFamily": "mugshots",
       "operation": "delete",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Runner > Creation Mugshots (Creation only)",
         "surface": "CreationMugshotPage",
         "automationId": "creation-mugshot-delete",
@@ -57033,7 +57039,7 @@
       "mutationFamily": "weapons",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Weapon Accessories > selected stable accessory > Included in Weapon",
         "surface": "WeaponAccessoryIncludedPage",
         "automationId": "weapon-accessory-included-toggle-{stable-accessory-guid}",
@@ -57761,7 +57767,7 @@
       "mutationFamily": "gear",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Gear > selected stable root Gear > Equipped",
         "surface": "GearEquipmentPage",
         "automationId": "gear-equipment-toggle-{stable-root-gear-guid}",
@@ -57830,7 +57836,7 @@
       "mutationFamily": "locations_and_containers",
       "operation": "add",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Gear Locations > Add gear location",
         "surface": "GearLocationAddPage",
         "automationId": "gear-location-add",
@@ -58073,7 +58079,7 @@
       "mutationFamily": "armor",
       "operation": "toggle_equipped",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Armor > selected stable armor > Armor Equipment",
         "surface": "ArmorEquipmentPage",
         "automationId": "armor-equipment-unequip-all-{stable-armor-guid}",
@@ -58144,7 +58150,7 @@
       "mutationFamily": "armor",
       "operation": "toggle_equipped",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Armor > selected stable armor > Armor Equipment",
         "surface": "ArmorEquipmentPage",
         "automationId": "armor-equipment-equip-all-{stable-armor-guid}",
@@ -58215,7 +58221,7 @@
       "mutationFamily": "vehicles_and_drones",
       "operation": "add",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "partial_create_only",
         "route": "Build > Gear > Vehicle Locations > Add vehicle location OR Build > Gear > Vehicles > selected stable vehicle > Add location to vehicle",
         "surface": "VehicleLocationAddPage",
         "automationId": "vehicle-location-add-{global|stable-vehicle-guid}",
@@ -58395,7 +58401,7 @@
       "mutationFamily": "critter_powers",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Critter > Critter Powers > selected stable power > Counts towards limit",
         "surface": "CritterPowerCountPage",
         "automationId": "critter-power-count-toggle-{stable-critter-power-guid}",
@@ -58519,7 +58525,7 @@
       "mutationFamily": "weapons",
       "operation": "add",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "partial_create_only",
         "route": "Build > Gear > Weapon Locations > Add weapon location",
         "surface": "WeaponLocationAddPage",
         "automationId": "weapon-location-add",
@@ -58642,7 +58648,7 @@
       "mutationFamily": "gear",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > selected stable persona-capable gear > Gear Active Commlink",
         "surface": "GearActiveCommlinkPage",
         "automationId": "gear-active-commlink-toggle-{stable-gear-guid}",
@@ -59464,7 +59470,7 @@
       "mutationFamily": "magic_tradition_and_resonance",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Magic > Tradition drain",
         "surface": "TraditionDrainPage",
         "automationId": "tradition-drain-value",
@@ -59531,7 +59537,7 @@
       "mutationFamily": "magic_tradition_and_resonance",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Magic > Custom tradition name",
         "surface": "TraditionNamePage",
         "automationId": "tradition-name-value",
@@ -59595,7 +59601,7 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Magic > Tradition spirits",
         "surface": "TraditionSpiritCategoryPage",
         "automationId": "tradition-spirit-combat-value",
@@ -59662,7 +59668,7 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Magic > Tradition spirits",
         "surface": "TraditionSpiritCategoryPage",
         "automationId": "tradition-spirit-manipulation-value",
@@ -59729,7 +59735,7 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Magic > Tradition spirits",
         "surface": "TraditionSpiritCategoryPage",
         "automationId": "tradition-spirit-illusion-value",
@@ -59796,7 +59802,7 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Magic > Tradition spirits",
         "surface": "TraditionSpiritCategoryPage",
         "automationId": "tradition-spirit-health-value",
@@ -59863,7 +59869,7 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Magic > Tradition spirits",
         "surface": "TraditionSpiritCategoryPage",
         "automationId": "tradition-spirit-detection-value",
@@ -60479,7 +60485,7 @@
       "mutationFamily": "gear",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Gear > selected stable root Gear > Matrix Gear Swap Data Processing / Firewall",
         "surface": "GearDataProcessingFirewallSwapPage",
         "automationId": "gear-dp-firewall-swap-changed-{stable-root-gear-guid}",
@@ -60541,7 +60547,7 @@
       "mutationFamily": "gear",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Gear > selected stable root Gear > Matrix Gear Swap Data Processing / Firewall",
         "surface": "GearDataProcessingFirewallSwapPage",
         "automationId": "gear-dp-firewall-swap-changed-{stable-root-gear-guid}",
@@ -60603,7 +60609,7 @@
       "mutationFamily": "gear",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Gear > selected stable root Gear > Matrix Gear Swap Sleaze",
         "surface": "GearSleazeSwapPage",
         "automationId": "gear-sleaze-swap-attribute-{stable-root-gear-guid}",
@@ -60665,7 +60671,7 @@
       "mutationFamily": "gear",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Gear > selected stable root Gear > Matrix Gear Swap Attack",
         "surface": "GearAttackSwapPage",
         "automationId": "gear-attack-swap-attribute-{stable-root-gear-guid}",
@@ -60730,7 +60736,7 @@
       "mutationFamily": "spells",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Situational modifiers",
         "surface": "SituationalModifiersPage",
         "automationId": "situational-counterspelling-dice",
@@ -61210,7 +61216,7 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Primary arm",
         "surface": "PrimaryArmPage",
         "automationId": "primary-arm-choice",
@@ -61276,7 +61282,7 @@
       "mutationFamily": "mugshots",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Runner > Creation Mugshots (Creation only)",
         "surface": "CreationMugshotPage",
         "automationId": "creation-mugshot-main",
@@ -61345,7 +61351,7 @@
       "mutationFamily": "mugshots",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Runner > Creation Mugshots (Creation only)",
         "surface": "CreationMugshotPage",
         "automationId": "creation-mugshot-index",
@@ -61523,7 +61529,7 @@
       "mutationFamily": "cyberware",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Cyberware > selected stable top-level Bioware > Prototype Transhuman",
         "surface": "PrototypeTranshumanPage",
         "automationId": "prototype-transhuman-toggle-{stable-cyberware-guid}",
@@ -61594,7 +61600,7 @@
       "mutationFamily": "qualities",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Qualities > selected stable exact Quality > Quality Level",
         "surface": "QualityLevelPage",
         "automationId": "quality-level-value-{stable-quality-guid}",
@@ -62249,7 +62255,7 @@
       "mutationFamily": "cyberware",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Cyberware > selected stable persona-capable cyberware > Cyberware Active Commlink",
         "surface": "CyberwareActiveCommlinkPage",
         "automationId": "cyberware-active-commlink-toggle-{stable-cyberware-guid}",
@@ -62321,7 +62327,7 @@
       "mutationFamily": "cyberware",
       "operation": "set_value",
       "phone": {
-        "status": "partial_exact_saved_data",
+        "status": "missing",
         "route": "Build > Gear > Cyberware > selected stable Cyberware > Swap Cyberware Matrix values",
         "surface": "CyberwareMatrixSwapPage",
         "automationId": "cyberware-matrix-swap-changed-{stable-cyberware-guid}",
@@ -62384,7 +62390,7 @@
       "mutationFamily": "cyberware",
       "operation": "set_value",
       "phone": {
-        "status": "partial_exact_saved_data",
+        "status": "missing",
         "route": "Build > Gear > Cyberware > selected stable Cyberware > Swap Cyberware Matrix values",
         "surface": "CyberwareMatrixSwapPage",
         "automationId": "cyberware-matrix-swap-changed-{stable-cyberware-guid}",
@@ -62447,7 +62453,7 @@
       "mutationFamily": "cyberware",
       "operation": "set_value",
       "phone": {
-        "status": "partial_exact_saved_data",
+        "status": "missing",
         "route": "Build > Gear > Cyberware > selected stable Cyberware > Swap Cyberware Matrix values",
         "surface": "CyberwareMatrixSwapPage",
         "automationId": "cyberware-matrix-swap-changed-{stable-cyberware-guid}",
@@ -62510,7 +62516,7 @@
       "mutationFamily": "cyberware",
       "operation": "set_value",
       "phone": {
-        "status": "partial_exact_saved_data",
+        "status": "missing",
         "route": "Build > Gear > Cyberware > selected stable Cyberware > Swap Cyberware Matrix values",
         "surface": "CyberwareMatrixSwapPage",
         "automationId": "cyberware-matrix-swap-changed-{stable-cyberware-guid}",
@@ -62695,7 +62701,7 @@
       "mutationFamily": "notes",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Notes",
         "surface": "CharacterNotesPage",
         "automationId": "character-group-notes-editor",
@@ -62820,7 +62826,7 @@
       "mutationFamily": "magic_tradition_and_resonance",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Runner > Group name",
         "surface": "GroupNamePage",
         "automationId": "group-name-value",
@@ -62884,7 +62890,7 @@
       "mutationFamily": "magic_tradition_and_resonance",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Runner > Group membership",
         "surface": "GroupMembershipPage",
         "automationId": "group-membership-toggle",
@@ -63069,7 +63075,7 @@
       "mutationFamily": "gear",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Gear > selected stable root Gear > Stolen",
         "surface": "GearStolenPage",
         "automationId": "gear-stolen-toggle-{stable-root-gear-guid}",
@@ -63138,7 +63144,7 @@
       "mutationFamily": "armor",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Armor > selected stable Armor > Armor tree flags",
         "surface": "ArmorTreeFlagPage",
         "automationId": "armor-tree-stolen-toggle-{stable-root-armor-guid}",
@@ -63207,7 +63213,7 @@
       "mutationFamily": "weapons",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Weapons > selected stable root Weapon > Stolen",
         "surface": "WeaponStolenPage",
         "automationId": "weapon-stolen-toggle-{stable-root-weapon-guid}",
@@ -63439,7 +63445,7 @@
       "mutationFamily": "notes",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Notes",
         "surface": "CharacterNotesPage",
         "automationId": "character-notes-editor",
@@ -63894,7 +63900,7 @@
       "mutationFamily": "vehicles_and_drones",
       "operation": "set_value",
       "phone": {
-        "status": "partial_exact_saved_data",
+        "status": "missing",
         "route": "Build > Gear > Vehicles > selected stable Vehicle > Installed equipment",
         "surface": "VehicleEquipmentInstalledPage",
         "automationId": "vehicle-equipment-installed-toggle-{stable-vehicle-guid}",
@@ -64072,7 +64078,7 @@
       "mutationFamily": "vehicles_and_drones",
       "operation": "set_value",
       "phone": {
-        "status": "partial_exact_saved_data",
+        "status": "missing",
         "route": "Build > Gear > Vehicles > selected stable Vehicle > Vehicle Weapon firing modes > selected stable direct Vehicle Weapon",
         "surface": "VehicleWeaponFiringModePage",
         "automationId": "vehicle-weapon-firing-mode-picker-{stable-vehicle-guid}-{stable-vehicle-weapon-guid}",
@@ -64134,7 +64140,7 @@
       "mutationFamily": "vehicles_and_drones",
       "operation": "set_value",
       "phone": {
-        "status": "partial_exact_saved_data",
+        "status": "missing",
         "route": "Build > Gear > Vehicles > selected stable Vehicle > Swap Vehicle Matrix values",
         "surface": "VehicleDataProcessingFirewallSwapPage",
         "automationId": "vehicle-dp-firewall-swap-changed-{stable-vehicle-guid}",
@@ -64196,7 +64202,7 @@
       "mutationFamily": "vehicles_and_drones",
       "operation": "set_value",
       "phone": {
-        "status": "partial_exact_saved_data",
+        "status": "missing",
         "route": "Build > Gear > Vehicles > selected stable Vehicle > Swap Vehicle Matrix values",
         "surface": "VehicleDataProcessingFirewallSwapPage",
         "automationId": "vehicle-dp-firewall-swap-changed-{stable-vehicle-guid}",
@@ -64258,7 +64264,7 @@
       "mutationFamily": "vehicles_and_drones",
       "operation": "set_value",
       "phone": {
-        "status": "partial_exact_saved_data",
+        "status": "missing",
         "route": "Build > Gear > Vehicles > selected stable Vehicle > Swap Vehicle Matrix values",
         "surface": "VehicleDataProcessingFirewallSwapPage",
         "automationId": "vehicle-dp-firewall-swap-changed-{stable-vehicle-guid}",
@@ -64320,7 +64326,7 @@
       "mutationFamily": "vehicles_and_drones",
       "operation": "set_value",
       "phone": {
-        "status": "partial_exact_saved_data",
+        "status": "missing",
         "route": "Build > Gear > Vehicles > selected stable Vehicle > Swap Vehicle Matrix values",
         "surface": "VehicleDataProcessingFirewallSwapPage",
         "automationId": "vehicle-dp-firewall-swap-changed-{stable-vehicle-guid}",
@@ -64382,7 +64388,7 @@
       "mutationFamily": "vehicles_and_drones",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Vehicles > selected stable vehicle > Vehicle Home Node",
         "surface": "VehicleHomeNodePage",
         "automationId": "vehicle-home-node-toggle-{stable-vehicle-guid}",
@@ -64452,7 +64458,7 @@
       "mutationFamily": "vehicles_and_drones",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Vehicles > selected stable top-level persona-capable Vehicle > Vehicle Active Commlink",
         "surface": "VehicleActiveCommlinkPage",
         "automationId": "vehicle-active-commlink-toggle-{stable-vehicle-guid}",
@@ -66042,7 +66048,7 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "mutating_action",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Convert to Free Sprite",
         "surface": "FreeSpriteConversionPage",
         "automationId": "free-sprite-conversion-save",
@@ -67841,7 +67847,7 @@
       "mutationFamily": "qualities",
       "operation": "edit",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Martial Arts Notes > selected Martial Art or parent-scoped Technique",
         "surface": "MartialArtNotesPage",
         "automationId": "martial-art-notes-save",
@@ -68859,7 +68865,7 @@
       "mutationFamily": "lifestyles",
       "operation": "edit",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Lifestyle > Lifestyles > selected stable Lifestyle > Lifestyle Name",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-field-lifestylename-{stable-lifestyle-guid}",
@@ -68929,7 +68935,7 @@
       "mutationFamily": "lifestyles",
       "operation": "edit",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Lifestyle > Lifestyles > selected stable Lifestyle > Notes + Notes Color",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-field-notes-{stable-lifestyle-guid} + collection-field-notescolor-{stable-lifestyle-guid}",
@@ -69243,7 +69249,7 @@
       "mutationFamily": "lifestyles",
       "operation": "edit",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Lifestyle > Lifestyles > selected stable Lifestyle > Notes + Notes Color",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-field-notes-{stable-lifestyle-guid} + collection-field-notescolor-{stable-lifestyle-guid}",
@@ -69370,7 +69376,7 @@
       "mutationFamily": "gear",
       "operation": "edit",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Gear Locations > selected stable location > Rename",
         "surface": "LocationRenamePage",
         "automationId": "location-rename-save",
@@ -69846,7 +69852,7 @@
       "mutationFamily": "armor",
       "operation": "edit",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Armor Locations > selected stable location > Rename",
         "surface": "LocationRenamePage",
         "automationId": "location-rename-save",
@@ -70085,7 +70091,7 @@
       "mutationFamily": "weapons",
       "operation": "edit",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Weapon Locations > selected stable location > Rename",
         "surface": "LocationRenamePage",
         "automationId": "location-rename-save",
@@ -70509,7 +70515,7 @@
       "mutationFamily": "gear",
       "operation": "edit",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > selected stable Gear > Gear Name",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-field-gearname-{stable-gear-guid}",
@@ -71269,7 +71275,7 @@
       "mutationFamily": "vehicles_and_drones",
       "operation": "edit",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Vehicle Locations > selected stable location > Rename",
         "surface": "LocationRenamePage",
         "automationId": "location-rename-save",
@@ -71515,7 +71521,7 @@
       "mutationFamily": "armor",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Armor > selected stable armor > Armor Home Node",
         "surface": "ArmorHomeNodePage",
         "automationId": "armor-home-node-toggle-{stable-armor-guid}",
@@ -71585,7 +71591,7 @@
       "mutationFamily": "armor",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Armor > selected stable persona-capable armor > Armor Active Commlink",
         "surface": "ArmorActiveCommlinkPage",
         "automationId": "armor-active-commlink-toggle-{stable-armor-guid}",
@@ -71655,7 +71661,7 @@
       "mutationFamily": "weapons",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Weapons > selected stable AI weapon > Weapon Home Node",
         "surface": "WeaponHomeNodePage",
         "automationId": "weapon-home-node-toggle-{stable-weapon-guid}",
@@ -71727,7 +71733,7 @@
       "mutationFamily": "weapons",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Weapons > selected stable commlink weapon > Weapon Active Commlink",
         "surface": "WeaponActiveCommlinkPage",
         "automationId": "weapon-active-commlink-toggle-{stable-weapon-guid}",
@@ -71914,7 +71920,7 @@
       "mutationFamily": "armor",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Gear > Armor > selected stable Armor > Armor tree flags",
         "surface": "ArmorTreeFlagPage",
         "automationId": "armor-tree-discounted-cost-toggle-{stable-root-armor-guid}",
@@ -72263,7 +72269,7 @@
       "mutationFamily": "limits_and_modifiers",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Situational modifiers",
         "surface": "SituationalModifiersPage",
         "automationId": "situational-lift-carry-hits",
@@ -79094,7 +79100,7 @@
       "mutationFamily": "expenses",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Runner > Create expense > operation",
         "surface": "CareerCreateExpensePage",
         "automationId": "career-create-expense-amount",
@@ -79161,7 +79167,7 @@
       "mutationFamily": "expenses",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Runner > Create expense > operation",
         "surface": "CareerCreateExpensePage",
         "automationId": "career-create-expense-description",
@@ -79290,7 +79296,7 @@
       "mutationFamily": "expenses",
       "operation": "commit",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Runner > Create expense > operation",
         "surface": "CareerCreateExpensePage",
         "automationId": "career-create-expense-ok",
@@ -79357,7 +79363,7 @@
       "mutationFamily": "expenses",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Runner > Create expense > operation",
         "surface": "CareerCreateExpensePage",
         "automationId": "career-create-expense-refund",
@@ -79424,7 +79430,7 @@
       "mutationFamily": "expenses",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Runner > Create expense > operation",
         "surface": "CareerCreateExpensePage",
         "automationId": "career-create-expense-date",
@@ -79491,7 +79497,7 @@
       "mutationFamily": "expenses",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Runner > Create expense > operation",
         "surface": "CareerCreateExpensePage",
         "automationId": "career-create-expense-percent",
@@ -79563,7 +79569,7 @@
       "mutationFamily": "expenses",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Runner > Create expense > operation",
         "surface": "CareerCreateExpensePage",
         "automationId": "career-create-expense-exchange",
@@ -79630,7 +79636,7 @@
       "mutationFamily": "expenses",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Runner > Create expense > operation",
         "surface": "CareerCreateExpensePage",
         "automationId": "career-create-expense-force-career-visible",
@@ -96384,7 +96390,7 @@
       "mutationFamily": "application_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Home > Application settings > Navigation visibility > Hide the Master Index > Save",
         "surface": "ApplicationSettingsPage",
         "automationId": "settings-hide-master-index",
@@ -96451,7 +96457,7 @@
       "mutationFamily": "application_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Home > Application settings > Navigation visibility > Hide the Character Roster > Save",
         "surface": "ApplicationSettingsPage",
         "automationId": "settings-hide-character-roster",
@@ -96518,7 +96524,7 @@
       "mutationFamily": "application_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Home > Application settings > Date and time > time-format draft and preview > Save",
         "surface": "ApplicationSettingsPage",
         "automationId": "settings-time-format",
@@ -96637,7 +96643,7 @@
       "mutationFamily": "application_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Home > Application settings > Selection behavior > Search only in the current category > Save",
         "surface": "ApplicationSettingsPage",
         "automationId": "settings-search-in-category-only",
@@ -96704,7 +96710,7 @@
       "mutationFamily": "application_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Home > Application settings > Selection behavior > Allow Easter Eggs > Save",
         "surface": "ApplicationSettingsPage",
         "automationId": "settings-allow-easter-eggs",
@@ -96885,7 +96891,7 @@
       "mutationFamily": "application_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Home > Application settings > Updates > Prefer Nightly builds when updating > Save",
         "surface": "ApplicationSettingsPage",
         "automationId": "settings-prefer-nightly-builds",
@@ -96952,7 +96958,7 @@
       "mutationFamily": "application_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Home > Application settings > Updates > Reload unchanged open character files > Save",
         "surface": "ApplicationSettingsPage",
         "automationId": "settings-live-update-clean-character-files",
@@ -97019,7 +97025,7 @@
       "mutationFamily": "application_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Home > Application settings > Date and time > dates-include-time toggle > Save",
         "surface": "ApplicationSettingsPage",
         "automationId": "settings-dates-include-time",
@@ -97770,7 +97776,7 @@
       "mutationFamily": "application_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Home > Application settings > Date and time > custom-format phase > Save",
         "surface": "ApplicationSettingsPage",
         "automationId": "settings-custom-date-time-formats",
@@ -97837,7 +97843,7 @@
       "mutationFamily": "application_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Home > Application settings > Karma expense confirmation > Save",
         "surface": "ApplicationSettingsPage",
         "automationId": "settings-confirm-karma-expense",
@@ -97904,7 +97910,7 @@
       "mutationFamily": "application_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Home > Application settings > Delete confirmation > Save",
         "surface": "ApplicationSettingsPage",
         "automationId": "settings-confirm-delete",
@@ -98365,7 +98371,7 @@
       "mutationFamily": "application_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Home > Application settings > Date and time > date-format draft and preview > Save",
         "surface": "ApplicationSettingsPage",
         "automationId": "settings-date-format",
@@ -98891,7 +98897,7 @@
       "mutationFamily": "application_settings",
       "operation": "commit",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Home > Application settings > Delete confirmation > Save",
         "surface": "ApplicationSettingsPage",
         "automationId": "settings-save",
@@ -125931,7 +125937,7 @@
       "mutationFamily": "character_roster",
       "operation": "toggle",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Home > Roster favorite > current runner",
         "surface": "RosterFavoritesPage",
         "automationId": "roster-favorite-toggle",
@@ -125999,7 +126005,7 @@
       "mutationFamily": "character_roster",
       "operation": "reorder",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Home > Roster metadata > Sort favorites / Sort recent",
         "surface": "RosterFavoritesPage",
         "automationId": "roster-sort-favorites / roster-sort-recent",
@@ -126236,7 +126242,7 @@
       "mutationFamily": "character_roster",
       "operation": "delete",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Home > Roster metadata > Remove from favorites / Remove from recent",
         "surface": "RosterFavoritesPage",
         "automationId": "roster-remove-favorite / roster-remove-recent",

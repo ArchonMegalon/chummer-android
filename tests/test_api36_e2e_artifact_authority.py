@@ -71,6 +71,7 @@ def talent_reacquisition_scan(phase_id: str) -> dict[str, object]:
         "scanId": f"{phase_id}-fixture-reacquisition",
         "status": "resolved",
         "phaseId": phase_id,
+        "navigationMode": "measured-direction-stable-boundary",
         "direction": "none",
         "distanceRatio": 0.60,
         "startingViewport": 0,
@@ -79,6 +80,9 @@ def talent_reacquisition_scan(phase_id: str) -> dict[str, object]:
         "measuredDelta": 0,
         "configuredMaxScrolls": 0,
         "catalogMovementExtent": 11,
+        "stableRepeats": 2,
+        "stableBoundaryProven": False,
+        "deadlineEnforced": True,
         "exactResourceIds": [f"{phase_id}-fixture-resource"],
         "screens": 1,
         "swipes": 0,
@@ -867,8 +871,13 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
         cases = (
             "missingPhase",
             "wrongPhase",
+            "wrongNavigationMode",
             "wrongDirection",
             "wrongRatio",
+            "wrongStableRepeats",
+            "forgedStableBoundary",
+            "deadlineDisabled",
+            "integerDeadline",
             "duplicateResource",
             "wrongNormalizedTarget",
             "wrongCatalogBound",
@@ -895,10 +904,20 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                     timing["scans"].remove(target)
                 elif case == "wrongPhase":
                     target["phaseId"] = "preview-confirm"
+                elif case == "wrongNavigationMode":
+                    target["navigationMode"] = "invertible-measured-delta"
                 elif case == "wrongDirection":
                     target["direction"] = "reverse"
                 elif case == "wrongRatio":
                     target["distanceRatio"] = 0.61
+                elif case == "wrongStableRepeats":
+                    target["stableRepeats"] = 1
+                elif case == "forgedStableBoundary":
+                    target["stableBoundaryProven"] = True
+                elif case == "deadlineDisabled":
+                    target["deadlineEnforced"] = False
+                elif case == "integerDeadline":
+                    target["deadlineEnforced"] = 1
                 elif case == "duplicateResource":
                     target["exactResourceIds"] *= 2
                 elif case == "wrongNormalizedTarget":
