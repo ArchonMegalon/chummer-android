@@ -1899,12 +1899,14 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             {
                 "resource-id": "creation-prerequisite-talent-grant-authority",
                 "content-desc": "Required. 1 / 1 Active skills",
+                "bounds": "[53,350][1028,550]",
             }
         )
         digest_node = driver.shared.UiNode(
             {
                 "resource-id": "creation-prerequisite-talent-grant-digest",
                 "text": digest,
+                "bounds": "[53,560][1028,700]",
             }
         )
         completion = driver.shared.UiNode(
@@ -1913,21 +1915,18 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 "text": "Continue with exact grant",
                 "enabled": "true",
                 "clickable": "true",
+                "bounds": "[53,1953][1028,2085]",
             }
         )
 
         class ArtifactTopologyDevice:
             def __init__(self) -> None:
-                # The hosted failure's first two fresh snapshots remain in the
-                # middle of disabled catalog rows after the measured rewind.
-                self.screens = [
-                    [disabled],
-                    [disabled],
-                    [authority, digest_node],
-                    [disabled],
-                    [disabled, selected],
-                    [completion],
-                ]
+                self.viewport = 6
+                self.screens = {
+                    0: [authority, digest_node],
+                    4: [disabled, selected],
+                    6: [completion],
+                }
                 self.hierarchy_reads = 0
                 self.reverse_swipes = 0
                 self.forward_swipes = 0
@@ -1935,19 +1934,22 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 self.forward_distances: list[float] = []
 
             def hierarchy(self):
-                nodes = self.screens[self.hierarchy_reads]
                 self.hierarchy_reads += 1
-                return nodes
+                return self.screens.get(self.viewport, [disabled])
 
             def swipe_down(self, *, distance_ratio):
-                self.asserted_distance_ratio = distance_ratio
+                if distance_ratio != driver.TALENT_GRANT_SCAN_GESTURE_RATIO:
+                    raise AssertionError(f"unexpected reverse ratio: {distance_ratio!r}")
                 self.reverse_swipes += 1
                 self.reverse_distances.append(distance_ratio)
+                self.viewport = max(0, self.viewport - 1)
 
             def swipe_up(self, *, distance_ratio):
-                self.asserted_distance_ratio = distance_ratio
+                if distance_ratio != driver.TALENT_GRANT_SCAN_GESTURE_RATIO:
+                    raise AssertionError(f"unexpected forward ratio: {distance_ratio!r}")
                 self.forward_swipes += 1
                 self.forward_distances.append(distance_ratio)
+                self.viewport = min(6, self.viewport + 1)
 
             @staticmethod
             def dismiss_system_ui_anr(_nodes):
@@ -1955,7 +1957,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
             @staticmethod
             def node_has_tappable_bounds(node):
-                return node is selected
+                return node in (authority, digest_node, disabled, selected, completion)
 
             @staticmethod
             def capture(name):
@@ -1978,35 +1980,45 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             state,
         )
         self.assertEqual(6, viewport)
-        self.assertEqual(6, device.hierarchy_reads)
-        self.assertEqual(8, device.reverse_swipes)
-        self.assertEqual(7, device.forward_swipes)
-        self.assertEqual(([0.68] * 6) + ([0.22] * 2), device.reverse_distances)
+        self.assertEqual(15, device.hierarchy_reads)
+        self.assertEqual(6, device.reverse_swipes)
+        self.assertEqual(6, device.forward_swipes)
         self.assertEqual(
-            ([0.68] * 4) + [0.22] + ([0.68] * 2),
+            [driver.TALENT_GRANT_SCAN_GESTURE_RATIO] * 6,
+            device.reverse_distances,
+        )
+        self.assertEqual(
+            [driver.TALENT_GRANT_SCAN_GESTURE_RATIO] * 6,
             device.forward_distances,
         )
 
     def test_grouped_talent_reacquisition_accepts_the_last_scan_bound(self) -> None:
         resource_id = "creation-prerequisite-talent-grant-authority"
-        target = driver.shared.UiNode({"resource-id": resource_id})
+        target = driver.shared.UiNode(
+            {"resource-id": resource_id, "bounds": "[53,350][1028,550]"}
+        )
 
         class LastBoundDevice:
             def __init__(self) -> None:
                 self.hierarchy_reads = 0
                 self.reverse_swipes = 0
+                self.reverse_distances: list[float] = []
 
             def hierarchy(self):
                 self.hierarchy_reads += 1
                 return [target] if self.hierarchy_reads == 4 else [driver.shared.UiNode({})]
 
             def swipe_down(self, *, distance_ratio):
-                self.asserted_distance_ratio = distance_ratio
                 self.reverse_swipes += 1
+                self.reverse_distances.append(distance_ratio)
 
             @staticmethod
             def dismiss_system_ui_anr(_nodes):
                 return False
+
+            @staticmethod
+            def node_has_tappable_bounds(node):
+                return node is target
 
             @staticmethod
             def capture(name):
@@ -2028,7 +2040,87 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertEqual(3, snapshot.reacquisition_swipes)
         self.assertEqual([target], snapshot.nodes)
         self.assertEqual(4, device.hierarchy_reads)
-        self.assertEqual(6, device.reverse_swipes)
+        self.assertEqual(3, device.reverse_swipes)
+        self.assertEqual(
+            [driver.TALENT_GRANT_SCAN_GESTURE_RATIO] * 3,
+            device.reverse_distances,
+        )
+
+    def test_grouped_talent_reacquisition_continues_past_clipped_exact_id(
+        self,
+    ) -> None:
+        resource_id = "creation-prerequisite-talent-grant-authority"
+        clipped = driver.shared.UiNode(
+            {"resource-id": resource_id, "bounds": "[53,-200][1028,-20]"}
+        )
+        visible = driver.shared.UiNode(
+            {"resource-id": resource_id, "bounds": "[53,350][1028,550]"}
+        )
+
+        class ClippedThenVisibleDevice:
+            def __init__(self) -> None:
+                self.hierarchy_reads = 0
+                self.reverse_swipes = 0
+
+            def hierarchy(self):
+                self.hierarchy_reads += 1
+                return [clipped] if self.reverse_swipes == 0 else [visible]
+
+            def swipe_down(self, *, distance_ratio):
+                if distance_ratio != driver.TALENT_GRANT_SCAN_GESTURE_RATIO:
+                    raise AssertionError(f"unexpected reverse ratio: {distance_ratio!r}")
+                self.reverse_swipes += 1
+
+            @staticmethod
+            def node_has_tappable_bounds(node):
+                return node is visible
+
+            @staticmethod
+            def dismiss_system_ui_anr(_nodes):
+                return False
+
+            @staticmethod
+            def capture(name):
+                raise AssertionError(f"unexpected capture: {name}")
+
+        device = ClippedThenVisibleDevice()
+        snapshot = driver.reacquire_exact_talent_state_group(
+            device,
+            (resource_id,),
+            2,
+            0,
+            2,
+            evidence_prefix="clipped-then-visible",
+        )
+
+        self.assertIs(visible, snapshot.resources[resource_id])
+        self.assertEqual(1, snapshot.logical_viewport)
+        self.assertEqual(1, snapshot.reacquisition_swipes)
+        self.assertEqual(2, device.hierarchy_reads)
+        self.assertEqual(1, device.reverse_swipes)
+
+    def test_grouped_talent_overlap_returns_actual_observed_viewport(self) -> None:
+        resource_id = "creation-prerequisite-talent-grant-authority"
+        target = driver.shared.UiNode(
+            {"resource-id": resource_id, "bounds": "[53,350][1028,550]"}
+        )
+        device = mock.Mock()
+        device.hierarchy.return_value = [target]
+        device.node_has_tappable_bounds.return_value = True
+
+        snapshot = driver.reacquire_exact_talent_state_group(
+            device,
+            (resource_id,),
+            4,
+            0,
+            6,
+            evidence_prefix="overlap",
+        )
+
+        self.assertEqual(4, snapshot.logical_viewport)
+        self.assertEqual(0, snapshot.reacquisition_swipes)
+        device.swipe_down.assert_not_called()
+        device.swipe_up.assert_not_called()
 
     def test_grouped_talent_reacquisition_rejects_one_beyond_scan_bound(self) -> None:
         resource_id = "creation-prerequisite-talent-grant-authority"
@@ -2071,14 +2163,16 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             )
 
         self.assertEqual(4, device.hierarchy_reads)
-        self.assertEqual(6, device.reverse_swipes)
+        self.assertEqual(3, device.reverse_swipes)
         self.assertEqual(["one-beyond-unavailable"], device.captures)
 
     def test_grouped_talent_forward_reacquisition_accepts_the_last_scan_bound(
         self,
     ) -> None:
         resource_id = "creation-prerequisite-talent-grant-complete"
-        target = driver.shared.UiNode({"resource-id": resource_id})
+        target = driver.shared.UiNode(
+            {"resource-id": resource_id, "bounds": "[53,350][1028,550]"}
+        )
 
         class LastForwardBoundDevice:
             def __init__(self) -> None:
@@ -2095,6 +2189,10 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             @staticmethod
             def dismiss_system_ui_anr(_nodes):
                 return False
+
+            @staticmethod
+            def node_has_tappable_bounds(node):
+                return node is target
 
             @staticmethod
             def capture(name):
@@ -2115,7 +2213,10 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertEqual("forward", snapshot.reacquisition_direction)
         self.assertEqual(3, snapshot.reacquisition_swipes)
         self.assertEqual(4, device.hierarchy_reads)
-        self.assertEqual(([0.68] * 3) + ([0.22] * 3), device.forward_distances)
+        self.assertEqual(
+            [driver.TALENT_GRANT_SCAN_GESTURE_RATIO] * 3,
+            device.forward_distances,
+        )
 
     def test_grouped_talent_forward_reacquisition_rejects_one_beyond_scan_bound(
         self,
@@ -2159,7 +2260,10 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             )
 
         self.assertEqual(4, device.hierarchy_reads)
-        self.assertEqual(([0.68] * 3) + ([0.22] * 3), device.forward_distances)
+        self.assertEqual(
+            [driver.TALENT_GRANT_SCAN_GESTURE_RATIO] * 3,
+            device.forward_distances,
+        )
         self.assertEqual(["forward-one-beyond-unavailable"], device.captures)
 
     def test_grouped_talent_reacquisition_rejects_duplicate_exact_id(self) -> None:
@@ -2178,7 +2282,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 evidence_prefix="duplicate",
             )
 
-        device.swipe_down.assert_called_once_with(distance_ratio=0.68)
+        device.swipe_down.assert_not_called()
         device.capture.assert_called_once_with("duplicate-cardinality-invalid")
 
     def test_exact_measured_talent_tap_reacquires_after_reverse_geometry_drift(
@@ -2221,16 +2325,10 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             evidence_prefix="measured-tap",
         )
 
-        self.assertEqual(0, viewport)
+        self.assertEqual(2, viewport)
         self.assertEqual(2, device.hierarchy.call_count)
-        self.assertEqual(
-            [
-                mock.call(distance_ratio=0.68),
-                mock.call(distance_ratio=0.68),
-                mock.call(distance_ratio=0.68),
-                mock.call(distance_ratio=0.22),
-            ],
-            device.swipe_down.call_args_list,
+        device.swipe_down.assert_called_once_with(
+            distance_ratio=driver.TALENT_GRANT_SCAN_GESTURE_RATIO,
         )
         device.shell.assert_called_once_with("input", "tap", "541", "581")
         device.capture.assert_not_called()
@@ -2313,6 +2411,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         device = mock.Mock()
         device.hierarchy.side_effect = [[], [overlay], [target]]
         device.dismiss_system_ui_anr.side_effect = [True]
+        device.node_has_tappable_bounds.return_value = True
 
         with mock.patch.object(driver.time, "sleep"):
             snapshot = driver.reacquire_exact_talent_state_group(
@@ -2327,11 +2426,11 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             )
 
         self.assertIs(target, snapshot.resources[resource_id])
-        self.assertEqual(0, snapshot.logical_viewport)
+        self.assertEqual(1, snapshot.logical_viewport)
         self.assertEqual("reverse", snapshot.reacquisition_direction)
         self.assertEqual(0, snapshot.reacquisition_swipes)
         self.assertEqual(3, device.hierarchy.call_count)
-        device.swipe_down.assert_called_once_with(distance_ratio=0.68)
+        device.swipe_down.assert_not_called()
         device.capture.assert_not_called()
 
     def test_grouped_talent_state_rejects_unmeasured_navigation_topology(self) -> None:
@@ -2606,6 +2705,25 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertIn("tap_exact_measured_talent_resource(", completion)
         self.assertNotIn("backward_scrolls=40", completion)
         self.assertNotIn("forward_scrolls=40", completion)
+
+        catalog = inspect.getsource(driver.read_talent_grant_surface)
+        reacquisition = inspect.getsource(driver.reacquire_exact_talent_state_group)
+        self.assertEqual(0.60, driver.TALENT_GRANT_SCAN_GESTURE_RATIO)
+        self.assertEqual(
+            driver.DASHBOARD_SCAN_GESTURE_RATIO,
+            driver.TALENT_GRANT_SCAN_GESTURE_RATIO,
+        )
+        self.assertEqual(
+            2,
+            catalog.count("distance_ratio=TALENT_GRANT_SCAN_GESTURE_RATIO"),
+        )
+        self.assertEqual(
+            2,
+            reacquisition.count("distance_ratio=TALENT_GRANT_SCAN_GESTURE_RATIO"),
+        )
+        self.assertNotIn("move_between_measured_viewports(", reacquisition)
+        self.assertNotIn("reacquisition_distance_ratio", reacquisition)
+        self.assertNotIn("measured_distance_ratio", reacquisition)
 
     def test_talent_choice_runs_one_inventory_then_four_fresh_grouped_states(self) -> None:
         prefix = driver.TALENT_GRANT_OPTION_PREFIX["Active skills"]

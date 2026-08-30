@@ -165,6 +165,7 @@ PHASE_BUDGET_MS = {
 }
 PHASE_ORDER = tuple(PHASE_BUDGET_MS)
 DASHBOARD_SCAN_GESTURE_RATIO = 0.60
+TALENT_GRANT_SCAN_GESTURE_RATIO = 0.60
 # Every phase and the aggregate clock are independently rounded to the nearest
 # millisecond. Their worst-case opposing rounding errors are therefore
 # ``(phase count + aggregate clock) / 2`` milliseconds. This reconciliation
@@ -3495,14 +3496,14 @@ def read_talent_grant_surface(
         device,
         scan_id=f"{scan_token}-start",
         max_scrolls=max_scrolls,
-        distance_ratio=0.68,
+        distance_ratio=TALENT_GRANT_SCAN_GESTURE_RATIO,
         observer=scan_observer,
     )
     scan = scan_forward_with_receipt(
         device,
         scan_id=scan_token,
         max_scrolls=max_scrolls,
-        distance_ratio=0.68,
+        distance_ratio=TALENT_GRANT_SCAN_GESTURE_RATIO,
         observer=scan_observer,
     )
 
@@ -3760,18 +3761,14 @@ def reacquire_exact_talent_state_group(
     scan_end_viewport: int,
     *,
     evidence_prefix: str,
-    measured_distance_ratio: float = 0.68,
-    reacquisition_distance_ratio: float = 0.22,
     max_empty_hierarchy_reads: int = 3,
     max_system_ui_dismissals: int = 3,
 ) -> TalentStateGroupSnapshot:
-    """Reacquire one scan-proven state group after a bounded measured move.
+    """Reacquire one scan-proven state group with observed symmetric gestures.
 
-    A measured move can land on a different physical offset after a refreshed
-    list or a prior small-gesture compensation.  The initial measured move
-    therefore remains the fast path, while a missing target authorizes at most
-    the same absolute measured delta again in the requested direction.  Each
-    compensation gesture is followed by a fresh dump.  Empty hierarchies and
+    The Talent catalog scan and both navigation directions share one physical
+    gesture distance. Every bounded gesture is authorized by the measured
+    viewport delta and followed by a fresh hierarchy. Empty hierarchies and
     dismissed system UI retain independent retry budgets and never consume
     that geometric bound.
     """
@@ -3809,13 +3806,6 @@ def reacquire_exact_talent_state_group(
         else "none"
     )
     reacquisition_bound = abs(measured_delta)
-    move_between_measured_viewports(
-        device,
-        current_viewport,
-        target_viewport,
-        distance_ratio=measured_distance_ratio,
-        delay_seconds=0.0,
-    )
     reacquisition_swipes = 0
     empty_hierarchy_reads = 0
     system_ui_dismissals = 0
@@ -3853,19 +3843,25 @@ def reacquire_exact_talent_state_group(
                 "Grouped Talent state exact resource cardinality was ambiguous: "
                 f"{detail}"
             )
-        missing = tuple(
+        unavailable = tuple(
             resource_id
             for resource_id, candidates in matches.items()
             if not candidates
+            or not device.node_has_tappable_bounds(candidates[0])
         )
-        if not missing:
+        if not unavailable:
+            observed_viewport = current_viewport
+            if reacquisition_direction == "reverse":
+                observed_viewport -= reacquisition_swipes
+            elif reacquisition_direction == "forward":
+                observed_viewport += reacquisition_swipes
             return TalentStateGroupSnapshot(
                 nodes=nodes,
                 resources={
                     resource_id: candidates[0]
                     for resource_id, candidates in matches.items()
                 },
-                logical_viewport=target_viewport,
+                logical_viewport=observed_viewport,
                 reacquisition_direction=reacquisition_direction,
                 reacquisition_swipes=reacquisition_swipes,
             )
@@ -3882,9 +3878,9 @@ def reacquire_exact_talent_state_group(
         if reacquisition_swipes >= reacquisition_bound:
             break
         if reacquisition_direction == "reverse":
-            device.swipe_down(distance_ratio=reacquisition_distance_ratio)
+            device.swipe_down(distance_ratio=TALENT_GRANT_SCAN_GESTURE_RATIO)
         elif reacquisition_direction == "forward":
-            device.swipe_up(distance_ratio=reacquisition_distance_ratio)
+            device.swipe_up(distance_ratio=TALENT_GRANT_SCAN_GESTURE_RATIO)
         else:
             break
         reacquisition_swipes += 1
@@ -3892,7 +3888,7 @@ def reacquire_exact_talent_state_group(
     device.capture(f"{evidence_prefix}-unavailable")
     raise RuntimeError(
         "Grouped Talent state could not reacquire exact resources "
-        f"{missing!r} within the scan-proven {reacquisition_bound}-swipe "
+        f"{unavailable!r} within the scan-proven {reacquisition_bound}-swipe "
         f"{reacquisition_direction} compensation bound"
     )
 
