@@ -30,9 +30,14 @@ CREATION_PHASE_BUDGETS_MS = {
     "initial-navigation": 60_000,
     "initial-authority": 90_000,
     "dashboard-proof": 30_000,
-    "authority-inventory": 90_000,
+    "dashboard-authority-inventory": 30_000,
+    "advanced-editor-gate-inventory": 60_000,
+    "prerequisite-authority-inventory": 60_000,
     "priority-ranks": 150_000,
     "typed-authority-options": 150_000,
+    "talent-active-skill-grant": 150_000,
+    "talent-active-preview": 150_000,
+    "talent-skill-group-grant": 150_000,
     "preview-confirm": 150_000,
     "same-process-reopen": 90_000,
     "resources-preview-confirm": 150_000,
@@ -201,9 +206,10 @@ def require_creation_timing_within_budget(receipt: dict[str, Any]) -> None:
             )
     phase_elapsed_values = [int(phase["elapsedMs"]) for phase in phases]
     phase_elapsed_sum = sum(phase_elapsed_values)
-    if phase_elapsed_sum > total_elapsed + CREATION_TIMING_ROUNDING_TOLERANCE_MS:
+    if abs(phase_elapsed_sum - total_elapsed) > CREATION_TIMING_ROUNDING_TOLERANCE_MS:
         raise ValueError(
-            "creation prerequisite phase elapsed sum exceeds total elapsed time"
+            "creation prerequisite phase elapsed sum does not reconcile with "
+            "total elapsed time"
         )
     milestones = timing.get("milestones")
     if not isinstance(milestones, list) or len(milestones) != len(CREATION_MILESTONES):

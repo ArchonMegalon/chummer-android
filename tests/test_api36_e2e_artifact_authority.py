@@ -38,6 +38,28 @@ JOURNEYS = {
     "career-active-skill-advance": "career-active-skill-advance",
     "career-weapon-fire": "career-weapon-fire",
 }
+CREATION_PROSPECTIVE_PHASE_ELAPSED_MS = {
+    # Exact prefix timings from hosted run 33309423140, followed by phase
+    # elapsed values that include the observed scan lower bounds and modest
+    # bounded work around them. This models a prospective complete receipt;
+    # the hosted run itself stopped at 250,054 ms before the later phases.
+    "device-preflight-install": 40_079,
+    "initial-navigation": 34_239,
+    "initial-authority": 70_699,
+    "dashboard-proof": 7_441,
+    "dashboard-authority-inventory": 13_017,
+    "advanced-editor-gate-inventory": 38_278,
+    "prerequisite-authority-inventory": 41_987,
+    "priority-ranks": 10_000,
+    "typed-authority-options": 10_000,
+    "talent-active-skill-grant": 8_000,
+    "talent-active-preview": 5_000,
+    "talent-skill-group-grant": 8_000,
+    "preview-confirm": 8_000,
+    "same-process-reopen": 5_000,
+    "resources-preview-confirm": 9_000,
+    "process-restart-reopen": 5_772,
+}
 
 
 class Api36ArtifactAuthorityTests(unittest.TestCase):
@@ -68,13 +90,14 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             "apkSha256": APK_SHA256,
         }
         if journey == "creation-prerequisite":
+            total_elapsed_ms = sum(CREATION_PROSPECTIVE_PHASE_ELAPSED_MS.values())
             receipt["executionStatus"] = "pass"
             receipt["timing"] = {
                 "schema": AGGREGATE.CREATION_PROGRESS_SCHEMA,
                 "status": "timing-complete",
                 "clock": "time.monotonic",
                 "configuredTotalTargetMs": AGGREGATE.CREATION_TOTAL_TARGET_MS,
-                "totalElapsedMs": 20_000,
+                "totalElapsedMs": total_elapsed_ms,
                 "withinConfiguredTotalTarget": True,
                 "phaseBudgetsMs": dict(AGGREGATE.CREATION_PHASE_BUDGETS_MS),
                 "phases": [
@@ -82,7 +105,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                         "ordinal": ordinal,
                         "phaseId": phase_id,
                         "status": "pass",
-                        "elapsedMs": 1_000,
+                        "elapsedMs": CREATION_PROSPECTIVE_PHASE_ELAPSED_MS[phase_id],
                         "budgetMs": budget_ms,
                         "withinBudget": True,
                     }
@@ -108,16 +131,32 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                         total_elapsed_ms,
                     ) in enumerate(
                         (
-                            ("app-cold-start-complete", "initial-navigation", 200, 200, 1_200),
-                            ("phone-shell-locale-complete", "initial-navigation", 400, 200, 1_400),
-                            ("dialog-acquisition-complete", "initial-navigation", 600, 200, 1_600),
-                            ("create-bootstrap-transaction-complete", "initial-authority", 500, 500, 2_500),
-                            ("dashboard-render-complete", "dashboard-proof", 500, 500, 3_500),
+                            ("app-cold-start-complete", "initial-navigation", 11_000, 11_000, 51_079),
+                            ("phone-shell-locale-complete", "initial-navigation", 22_000, 11_000, 62_079),
+                            ("dialog-acquisition-complete", "initial-navigation", 34_239, 12_239, 74_318),
+                            ("create-bootstrap-transaction-complete", "initial-authority", 70_699, 70_699, 145_017),
+                            ("dashboard-render-complete", "dashboard-proof", 7_441, 7_441, 152_458),
                         ),
                         start=1,
                     )
                 ],
-                "scans": [],
+                "scans": [
+                    {
+                        "scanId": "dashboard-authority-poll",
+                        "phaseId": "dashboard-authority-inventory",
+                        "elapsedMs": 13_017,
+                    },
+                    {
+                        "scanId": "advanced-editor-gate-initial",
+                        "phaseId": "advanced-editor-gate-inventory",
+                        "elapsedMs": 33_278,
+                    },
+                    {
+                        "scanId": "prerequisite-authority",
+                        "phaseId": "prerequisite-authority-inventory",
+                        "elapsedMs": 36_987,
+                    },
+                ],
             }
         else:
             receipt["journey"] = driver_journey
@@ -370,6 +409,201 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, expected_error):
                     self.validate(root)
 
+    def test_creation_timing_uses_the_exact_current_sixteen_phase_map(self) -> None:
+        expected = {
+            "device-preflight-install": 180_000,
+            "initial-navigation": 60_000,
+            "initial-authority": 90_000,
+            "dashboard-proof": 30_000,
+            "dashboard-authority-inventory": 30_000,
+            "advanced-editor-gate-inventory": 60_000,
+            "prerequisite-authority-inventory": 60_000,
+            "priority-ranks": 150_000,
+            "typed-authority-options": 150_000,
+            "talent-active-skill-grant": 150_000,
+            "talent-active-preview": 150_000,
+            "talent-skill-group-grant": 150_000,
+            "preview-confirm": 150_000,
+            "same-process-reopen": 90_000,
+            "resources-preview-confirm": 150_000,
+            "process-restart-reopen": 90_000,
+        }
+        self.assertEqual(expected, AGGREGATE.CREATION_PHASE_BUDGETS_MS)
+        self.assertEqual(
+            tuple(expected),
+            tuple(CREATION_PROSPECTIVE_PHASE_ELAPSED_MS),
+        )
+        self.assertEqual(8, AGGREGATE.CREATION_TIMING_ROUNDING_TOLERANCE_MS)
+        self.assertEqual(
+            314_512,
+            sum(CREATION_PROSPECTIVE_PHASE_ELAPSED_MS.values()),
+        )
+
+    def test_each_new_authority_phase_accepts_exact_limit_and_rejects_plus_one(
+        self,
+    ) -> None:
+        for phase_id in (
+            "dashboard-authority-inventory",
+            "advanced-editor-gate-inventory",
+            "prerequisite-authority-inventory",
+        ):
+            with self.subTest(phase_id=phase_id, boundary="exact"):
+                timing = json.loads(json.dumps(
+                    self.raw_receipt("creation-prerequisite")["timing"]
+                ))
+                phase = next(
+                    phase
+                    for phase in timing["phases"]
+                    if phase["phaseId"] == phase_id
+                )
+                phase["elapsedMs"] = phase["budgetMs"]
+                timing["totalElapsedMs"] = sum(
+                    item["elapsedMs"] for item in timing["phases"]
+                )
+                AGGREGATE.require_creation_timing_within_budget({"timing": timing})
+
+            with self.subTest(phase_id=phase_id, boundary="plus-one"):
+                timing = json.loads(json.dumps(
+                    self.raw_receipt("creation-prerequisite")["timing"]
+                ))
+                phase = next(
+                    phase
+                    for phase in timing["phases"]
+                    if phase["phaseId"] == phase_id
+                )
+                phase["elapsedMs"] = phase["budgetMs"] + 1
+                timing["totalElapsedMs"] = sum(
+                    item["elapsedMs"] for item in timing["phases"]
+                )
+                with self.assertRaisesRegex(ValueError, phase_id):
+                    AGGREGATE.require_creation_timing_within_budget(
+                        {"timing": timing}
+                    )
+
+    def test_creation_timing_rejects_adversarial_phase_topology(self) -> None:
+        cases = (
+            "missing",
+            "duplicate",
+            "reordered",
+            "extra",
+            "wrongBudget",
+            "wrongOrdinal",
+            "boolElapsed",
+        )
+        for case in cases:
+            with self.subTest(case=case):
+                timing = json.loads(json.dumps(
+                    self.raw_receipt("creation-prerequisite")["timing"]
+                ))
+                phases = timing["phases"]
+                dashboard_index = tuple(AGGREGATE.CREATION_PHASE_BUDGETS_MS).index(
+                    "dashboard-authority-inventory"
+                )
+                advanced_index = tuple(AGGREGATE.CREATION_PHASE_BUDGETS_MS).index(
+                    "advanced-editor-gate-inventory"
+                )
+                if case == "missing":
+                    phases.pop(dashboard_index)
+                elif case == "duplicate":
+                    phases.insert(dashboard_index, dict(phases[dashboard_index]))
+                elif case == "reordered":
+                    phases[dashboard_index], phases[advanced_index] = (
+                        phases[advanced_index],
+                        phases[dashboard_index],
+                    )
+                elif case == "extra":
+                    phases.append(dict(phases[-1]))
+                elif case == "wrongBudget":
+                    phases[advanced_index]["budgetMs"] += 1
+                elif case == "wrongOrdinal":
+                    phases[advanced_index]["ordinal"] = 99
+                else:
+                    phases[advanced_index]["elapsedMs"] = True
+
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "phase timing|phase cardinality",
+                ):
+                    AGGREGATE.require_creation_timing_within_budget(
+                        {"timing": timing}
+                    )
+
+    def test_creation_timing_rejects_legacy_eleven_and_fourteen_phase_maps(
+        self,
+    ) -> None:
+        legacy_eleven = {
+            key: value
+            for key, value in AGGREGATE.CREATION_PHASE_BUDGETS_MS.items()
+            if key
+            not in {
+                "dashboard-authority-inventory",
+                "advanced-editor-gate-inventory",
+                "prerequisite-authority-inventory",
+                "talent-active-skill-grant",
+                "talent-active-preview",
+                "talent-skill-group-grant",
+            }
+        }
+        legacy_eleven = {
+            **dict(tuple(legacy_eleven.items())[:4]),
+            "authority-inventory": 90_000,
+            **dict(tuple(legacy_eleven.items())[4:]),
+        }
+        legacy_fourteen = {
+            key: value
+            for key, value in AGGREGATE.CREATION_PHASE_BUDGETS_MS.items()
+            if key
+            not in {
+                "dashboard-authority-inventory",
+                "advanced-editor-gate-inventory",
+                "prerequisite-authority-inventory",
+            }
+        }
+        legacy_fourteen = {
+            **dict(tuple(legacy_fourteen.items())[:4]),
+            "authority-inventory": 90_000,
+            **dict(tuple(legacy_fourteen.items())[4:]),
+        }
+        self.assertEqual(11, len(legacy_eleven))
+        self.assertEqual(14, len(legacy_fourteen))
+        for name, legacy_map in (
+            ("eleven", legacy_eleven),
+            ("fourteen", legacy_fourteen),
+        ):
+            with self.subTest(name=name):
+                timing = json.loads(json.dumps(
+                    self.raw_receipt("creation-prerequisite")["timing"]
+                ))
+                timing["phaseBudgetsMs"] = legacy_map
+                with self.assertRaisesRegex(ValueError, "phase timing budgets differ"):
+                    AGGREGATE.require_creation_timing_within_budget(
+                        {"timing": timing}
+                    )
+
+    def test_creation_timing_reconciles_phase_sum_with_exact_eight_ms_tolerance(
+        self,
+    ) -> None:
+        for offset in (-8, 8):
+            with self.subTest(offset=offset, accepted=True):
+                timing = json.loads(json.dumps(
+                    self.raw_receipt("creation-prerequisite")["timing"]
+                ))
+                phase_sum = sum(phase["elapsedMs"] for phase in timing["phases"])
+                timing["totalElapsedMs"] = phase_sum + offset
+                AGGREGATE.require_creation_timing_within_budget({"timing": timing})
+
+        for offset in (-9, 9):
+            with self.subTest(offset=offset, accepted=False):
+                timing = json.loads(json.dumps(
+                    self.raw_receipt("creation-prerequisite")["timing"]
+                ))
+                phase_sum = sum(phase["elapsedMs"] for phase in timing["phases"])
+                timing["totalElapsedMs"] = phase_sum + offset
+                with self.assertRaisesRegex(ValueError, "does not reconcile"):
+                    AGGREGATE.require_creation_timing_within_budget(
+                        {"timing": timing}
+                    )
+
     def test_creation_timing_requires_exact_ordered_milestones(self) -> None:
         cases = (
             "missing",
@@ -407,7 +641,8 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
 
     def test_creation_timing_rejects_cross_field_and_schema_forgery(self) -> None:
         cases = (
-            ("phaseOverSum", "phase elapsed sum"),
+            ("phaseOverSum", "does not reconcile"),
+            ("totalOverPhaseSum", "does not reconcile"),
             ("milestoneTotalZero", "milestone timing differs"),
             ("phaseBoolOrdinal", "phase timing is outside budget"),
             ("milestoneBoolOrdinal", "milestone identity differs"),
@@ -427,6 +662,10 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                 if case == "phaseOverSum":
                     for phase in timing["phases"]:
                         phase["elapsedMs"] = phase["budgetMs"]
+                elif case == "totalOverPhaseSum":
+                    timing["totalElapsedMs"] += (
+                        AGGREGATE.CREATION_TIMING_ROUNDING_TOLERANCE_MS + 1
+                    )
                 elif case == "milestoneTotalZero":
                     timing["milestones"][0]["totalElapsedMs"] = 0
                 elif case == "phaseBoolOrdinal":

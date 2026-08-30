@@ -21,6 +21,13 @@ SPEC = importlib.util.spec_from_file_location("creation_prerequisite_driver", DR
 assert SPEC is not None and SPEC.loader is not None
 driver = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(driver)
+AGGREGATE_SPEC = importlib.util.spec_from_file_location(
+    "creation_prerequisite_aggregate",
+    REPO / "scripts" / "verify-api36-editing-e2e-aggregate.py",
+)
+assert AGGREGATE_SPEC is not None and AGGREGATE_SPEC.loader is not None
+aggregate = importlib.util.module_from_spec(AGGREGATE_SPEC)
+AGGREGATE_SPEC.loader.exec_module(aggregate)
 
 
 class CreationPrerequisiteSourceContractTests(unittest.TestCase):
@@ -1282,7 +1289,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary, mock.patch("builtins.print"):
             progress = driver.ProgressRecorder(Path(temporary))
             with self.assertRaisesRegex(RuntimeError, "Expected prerequisite progress phase"):
-                progress.advance("authority-inventory")
+                progress.advance("dashboard-authority-inventory")
             progress.advance(driver.PHASE_ORDER[0])
             with self.assertRaisesRegex(RuntimeError, "progress is incomplete"):
                 progress.finish()
@@ -1356,7 +1363,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
     def test_progress_finish_rejects_cross_field_timing_forgery(self) -> None:
         cases = (
-            ("phaseOverSum", "phase elapsed time exceeds"),
+            ("phaseOverSum", "does not reconcile"),
+            ("totalOverPhaseSum", "does not reconcile"),
             ("milestoneTotalZero", "milestone timing differs"),
             ("phaseBoolOrdinal", "phase evidence differs"),
             ("milestoneBoolOrdinal", "milestone evidence differs"),
@@ -1378,10 +1386,18 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 if case == "phaseOverSum":
                     for phase in progress.phases:
                         phase["elapsedMs"] = phase["budgetMs"]
-                elif case == "milestoneTotalZero":
+                elif case == "totalOverPhaseSum":
                     progress.started -= 1.0
+                elif case == "milestoneTotalZero":
                     progress.phases[0]["elapsedMs"] = 20
                     progress.phases[1]["elapsedMs"] = 20
+                    completed_phase_sum = sum(
+                        int(phase["elapsedMs"])
+                        for phase in progress.phases
+                    )
+                    progress.started = (
+                        driver.time.monotonic() - (completed_phase_sum / 1000)
+                    )
                     first = progress.milestones[0]
                     first["phaseElapsedMs"] = 20
                     first["segmentElapsedMs"] = 20
@@ -1394,7 +1410,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, expected_error):
                     progress.finish()
 
-    def test_creation_timing_uses_three_strict_nonoverlapping_phases(self) -> None:
+    def test_creation_timing_uses_strict_nonoverlapping_semantic_phases(self) -> None:
         source = inspect.getsource(driver.execute)
         navigation_start = source.index('progress.advance("initial-navigation")')
         cold_launch = source.index("initial_launch = shared.launch_app(device)")
@@ -1415,11 +1431,67 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         dashboard_ready = source.index(
             'progress.record_initial_milestone("dashboard-render-complete")'
         )
-        inventory_start = source.index('progress.advance("authority-inventory")')
+        dashboard_authority_start = source.index(
+            'progress.advance("dashboard-authority-inventory")'
+        )
+        dashboard_authority_wait = source.index(
+            "authority_projection_waited = wait_creation_dashboard_authority("
+        )
+        dashboard_authority_record = source.index(
+            "progress.record_scan(dashboard_authority_observation)"
+        )
+        advanced_editor_start = source.index(
+            'progress.advance("advanced-editor-gate-inventory")'
+        )
+        advanced_editor_scan = source.index(
+            "dashboard_scan = assert_uncreated_advanced_editor_gated("
+        )
+        method_reacquisition = source.index(
+            "method_node, method_detail, _ = reacquire_exact_ready_creation_method("
+        )
+        ready_navigation = source.index("ready_navigation = {")
+        ready_capture = source.index(
+            'device.capture("creation-priority-core-bootstrap-ready")'
+        )
+        prerequisite_authority_start = source.index(
+            'progress.advance("prerequisite-authority-inventory")'
+        )
+        prerequisite_tap = source.index(
+            'device.shell("input", "tap", *(str(value) for value in method_node.center))'
+        )
+        prerequisite_scan = source.index("prerequisite_scan = scan_prerequisite_authority(")
+        prerequisite_binding = source.index(
+            "prerequisite_binding_authority = require_prerequisite_binding("
+        )
+        prerequisite_digest_validation = source.index(
+            "require_binding_matches_canonical_digests("
+        )
+        prerequisite_karma_validation = source.index(
+            'karma = prerequisite_values["creation-prerequisite-karma-budget"]'
+        )
+        prerequisite_source_authority = source.index(
+            "source_authority_digests = sorted("
+        )
+        priority_start = source.index('progress.advance("priority-ranks")')
 
         self.assertEqual(60_000, driver.PHASE_BUDGET_MS["initial-navigation"])
         self.assertEqual(90_000, driver.PHASE_BUDGET_MS["initial-authority"])
         self.assertEqual(30_000, driver.PHASE_BUDGET_MS["dashboard-proof"])
+        self.assertEqual(
+            30_000,
+            driver.PHASE_BUDGET_MS["dashboard-authority-inventory"],
+        )
+        self.assertEqual(
+            60_000,
+            driver.PHASE_BUDGET_MS["advanced-editor-gate-inventory"],
+        )
+        self.assertEqual(
+            60_000,
+            driver.PHASE_BUDGET_MS["prerequisite-authority-inventory"],
+        )
+        self.assertEqual(900_000, driver.TOTAL_PERFORMANCE_TARGET_MS)
+        self.assertEqual(16, len(driver.PHASE_ORDER))
+        self.assertEqual(8, driver.TIMING_ROUNDING_TOLERANCE_MS)
         self.assertLess(navigation_start, cold_launch)
         self.assertLess(cold_launch, dialog_ready)
         self.assertLess(dialog_ready, authority_start)
@@ -1429,7 +1501,53 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertLess(transaction_ready, dashboard_start)
         self.assertLess(dashboard_start, visible_dashboard)
         self.assertLess(visible_dashboard, dashboard_ready)
-        self.assertLess(dashboard_ready, inventory_start)
+        self.assertLess(dashboard_ready, dashboard_authority_start)
+        self.assertLess(dashboard_authority_start, dashboard_authority_wait)
+        self.assertLess(dashboard_authority_wait, dashboard_authority_record)
+        self.assertLess(dashboard_authority_record, advanced_editor_start)
+        self.assertLess(advanced_editor_start, advanced_editor_scan)
+        self.assertLess(advanced_editor_scan, method_reacquisition)
+        self.assertLess(method_reacquisition, ready_navigation)
+        self.assertLess(ready_navigation, ready_capture)
+        self.assertLess(ready_capture, prerequisite_authority_start)
+        self.assertLess(prerequisite_authority_start, prerequisite_tap)
+        self.assertLess(prerequisite_tap, prerequisite_scan)
+        self.assertLess(prerequisite_scan, prerequisite_binding)
+        self.assertLess(prerequisite_binding, prerequisite_digest_validation)
+        self.assertLess(prerequisite_digest_validation, prerequisite_karma_validation)
+        self.assertLess(prerequisite_karma_validation, prerequisite_source_authority)
+        self.assertLess(prerequisite_source_authority, priority_start)
+
+    def test_driver_and_aggregate_share_one_exact_timing_contract(self) -> None:
+        self.assertEqual(driver.PROGRESS_SCHEMA, aggregate.CREATION_PROGRESS_SCHEMA)
+        self.assertEqual(
+            list(driver.PHASE_BUDGET_MS.items()),
+            list(aggregate.CREATION_PHASE_BUDGETS_MS.items()),
+        )
+        self.assertEqual(
+            driver.TOTAL_PERFORMANCE_TARGET_MS,
+            aggregate.CREATION_TOTAL_TARGET_MS,
+        )
+        self.assertEqual(
+            tuple(zip(
+                driver.INITIAL_MILESTONE_ORDER,
+                driver.INITIAL_MILESTONE_PHASES,
+                strict=True,
+            )),
+            aggregate.CREATION_MILESTONES,
+        )
+        self.assertEqual(
+            driver.TIMING_ROUNDING_TOLERANCE_MS,
+            aggregate.CREATION_TIMING_ROUNDING_TOLERANCE_MS,
+        )
+        self.assertEqual(8, driver.TIMING_ROUNDING_TOLERANCE_MS)
+        for phase_id in (
+            "talent-active-skill-grant",
+            "talent-active-preview",
+            "talent-skill-group-grant",
+        ):
+            with self.subTest(phase_id=phase_id):
+                self.assertIn(phase_id, aggregate.CREATION_PHASE_BUDGETS_MS)
 
     def test_creation_karma_budget_cards_expose_readable_semantic_totals(self) -> None:
         page = (NATIVE / "CreationPrerequisitePage.cs").read_text(encoding="utf-8")
@@ -3755,7 +3873,18 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertNotIn("read_only_hierarchy", stable_origin_source)
         self.assertNotIn("observer", stable_origin_source)
         self.assertNotIn("COMPOSED_SCAN_TIMING_TRIGGER_FIELDS", stable_origin_source)
-        self.assertEqual(90_000, driver.PHASE_BUDGET_MS["authority-inventory"])
+        self.assertEqual(
+            30_000,
+            driver.PHASE_BUDGET_MS["dashboard-authority-inventory"],
+        )
+        self.assertEqual(
+            60_000,
+            driver.PHASE_BUDGET_MS["advanced-editor-gate-inventory"],
+        )
+        self.assertEqual(
+            60_000,
+            driver.PHASE_BUDGET_MS["prerequisite-authority-inventory"],
+        )
 
         execute_source = inspect.getsource(driver.execute)
         self.assertIn(

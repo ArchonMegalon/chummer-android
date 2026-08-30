@@ -147,10 +147,12 @@ PHASE_BUDGET_MS = {
     # workspace-publication and shell-sync timing receipt.
     "dashboard-proof": 30_000,
     # Exhaustive scroll inventories remain outside both the product transaction
-    # and the visible-dashboard proof. They retain their own strict bound and
-    # the unchanged 15-minute aggregate target; no authority field or stable-end
-    # proof is removed.
-    "authority-inventory": 90_000,
+    # and the visible-dashboard proof. Each semantic surface and the measured
+    # method restore has its own strict bound under the unchanged 15-minute
+    # aggregate target; no authority field or stable-end proof is removed.
+    "dashboard-authority-inventory": 30_000,
+    "advanced-editor-gate-inventory": 60_000,
+    "prerequisite-authority-inventory": 60_000,
     "priority-ranks": 150_000,
     "typed-authority-options": 150_000,
     "talent-active-skill-grant": 150_000,
@@ -1289,9 +1291,11 @@ class ProgressRecorder:
             raise RuntimeError(
                 f"Expected prerequisite progress phase {expected!r}, got {phase_id!r}"
             )
-        self._close_active("pass")
+        boundary = time.monotonic()
+        first_phase = self._active_id is None and not self.phases
+        self._close_active("pass", ended_at=boundary)
         self._active_id = phase_id
-        self._active_started = time.monotonic()
+        self._active_started = self.started if first_phase else boundary
         self._emit({
             "schema": PROGRESS_SCHEMA,
             "event": "phase-start",
@@ -1360,7 +1364,8 @@ class ProgressRecorder:
     def finish(self) -> dict[str, object]:
         if self._finished:
             raise RuntimeError("Prerequisite progress was already finalized")
-        self._close_active("pass")
+        finished_at = time.monotonic()
+        self._close_active("pass", ended_at=finished_at)
         completed = tuple(phase.get("phaseId") for phase in self.phases)
         if completed != PHASE_ORDER or len(self.phases) != len(PHASE_ORDER):
             raise RuntimeError(
@@ -1387,13 +1392,14 @@ class ProgressRecorder:
                     f"Prerequisite progress phase evidence differs: {phase_id!r}"
                 )
             phase_elapsed_ms.append(elapsed_ms)
-        snapshot = self.snapshot("timing-complete")
+        snapshot = self.snapshot("timing-complete", observed_at=finished_at)
         total_elapsed_ms = snapshot.get("totalElapsedMs")
         if type(total_elapsed_ms) is not int or total_elapsed_ms < 0:
             raise RuntimeError("Prerequisite progress total elapsed time is invalid")
-        if sum(phase_elapsed_ms) > total_elapsed_ms + TIMING_ROUNDING_TOLERANCE_MS:
+        if abs(sum(phase_elapsed_ms) - total_elapsed_ms) > TIMING_ROUNDING_TOLERANCE_MS:
             raise RuntimeError(
-                "Prerequisite progress phase elapsed time exceeds its contiguous total: "
+                "Prerequisite progress phase elapsed time does not reconcile with "
+                "its contiguous total: "
                 f"phaseSumMs={sum(phase_elapsed_ms)}, totalElapsedMs={total_elapsed_ms}, "
                 f"roundingToleranceMs={TIMING_ROUNDING_TOLERANCE_MS}"
             )
@@ -1497,8 +1503,14 @@ class ProgressRecorder:
             "totalElapsedMs": snapshot["totalElapsedMs"],
         })
 
-    def snapshot(self, status: str) -> dict[str, object]:
-        total_elapsed = round((time.monotonic() - self.started) * 1000)
+    def snapshot(
+        self,
+        status: str,
+        *,
+        observed_at: float | None = None,
+    ) -> dict[str, object]:
+        observed = time.monotonic() if observed_at is None else observed_at
+        total_elapsed = round((observed - self.started) * 1000)
         return {
             "schema": PROGRESS_SCHEMA,
             "status": status,
@@ -1512,10 +1524,11 @@ class ProgressRecorder:
             "milestones": list(self.milestones),
         }
 
-    def _close_active(self, status: str) -> None:
+    def _close_active(self, status: str, *, ended_at: float | None = None) -> None:
         if self._active_id is None:
             return
-        elapsed = round((time.monotonic() - self._active_started) * 1000)
+        ended = time.monotonic() if ended_at is None else ended_at
+        elapsed = round((ended - self._active_started) * 1000)
         budget = PHASE_BUDGET_MS[self._active_id]
         phase = {
             "ordinal": len(self.phases) + 1,
@@ -4949,7 +4962,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
             "Creation dashboard transition did not retain one exact resolved viewport"
         )
     progress.record_initial_milestone("dashboard-render-complete")
-    progress.advance("authority-inventory")
+    progress.advance("dashboard-authority-inventory")
     dashboard_authority_observation: dict[str, object] = {}
     resolved_dashboard_viewport: list[PriorityRankOrigin] = []
     authority_projection_waited = wait_creation_dashboard_authority(
@@ -4964,6 +4977,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         raise RuntimeError(
             "Creation dashboard authority wait did not retain one exact resolved viewport"
         )
+    progress.advance("advanced-editor-gate-inventory")
     dashboard_scan = assert_uncreated_advanced_editor_gated(
         device,
         scan_observer=progress.record_scan,
@@ -4993,6 +5007,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     }
     device.capture("creation-priority-core-bootstrap-ready")
 
+    progress.advance("prerequisite-authority-inventory")
     device.shell("input", "tap", *(str(value) for value in method_node.center))
     prerequisite_origin = wait_for_prerequisite_scan_origin(device)
     prerequisite_scan = scan_prerequisite_authority(
