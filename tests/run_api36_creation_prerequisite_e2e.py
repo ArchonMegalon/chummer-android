@@ -164,6 +164,7 @@ PHASE_BUDGET_MS = {
     "process-restart-reopen": 90_000,
 }
 PHASE_ORDER = tuple(PHASE_BUDGET_MS)
+DASHBOARD_SCAN_GESTURE_RATIO = 0.60
 # Every phase and the aggregate clock are independently rounded to the nearest
 # millisecond. Their worst-case opposing rounding errors are therefore
 # ``(phase count + aggregate clock) / 2`` milliseconds. This reconciliation
@@ -1066,14 +1067,12 @@ def measured_reverse_reacquisition_bound(
     *,
     maximum_viewport: int = 18,
 ) -> int:
-    """Bound exact-node compensation by the forward scan's measured delta.
+    """Bound exact-node reacquisition by the forward scan's measured delta.
 
-    ``swipe_down`` is capped by the device viewport and therefore does not
-    exactly invert a same-ratio ``swipe_up``.  After the fast measured move,
-    allow at most the same proven delta again while checking a fresh hierarchy
-    after every smaller reverse gesture. A node already at the scan-proven
-    tappable target authorizes no gesture, and no unmeasured fixed reset is
-    authorized.
+    Callers must observe a fresh hierarchy before and after every reverse
+    gesture, using the same gesture ratio that established the scan topology.
+    A node already at the scan-proven tappable target authorizes no gesture,
+    and no blind pre-move or unmeasured fixed reset is authorized.
     """
     if (
         type(current_viewport) is not int
@@ -1632,7 +1631,7 @@ def assert_uncreated_advanced_editor_gated(
         device,
         scan_id=f"{scan_id}-origin",
         max_reverse_swipes=8,
-        distance_ratio=0.68,
+        distance_ratio=DASHBOARD_SCAN_GESTURE_RATIO,
         stable_repeats=2,
         max_consecutive_empty_reads=3,
         delay_seconds=0.0,
@@ -1641,7 +1640,7 @@ def assert_uncreated_advanced_editor_gated(
         device,
         scan_id=scan_id,
         max_scrolls=18,
-        distance_ratio=0.68,
+        distance_ratio=DASHBOARD_SCAN_GESTURE_RATIO,
         initial_observation=scan_origin,
         delay_seconds=0.0,
         observer=scan_observer,
@@ -1924,7 +1923,7 @@ def reacquire_exact_ready_creation_method(
         device,
         "creation-stage-method",
         max_swipes=max_swipes,
-        distance_ratio=0.22,
+        distance_ratio=DASHBOARD_SCAN_GESTURE_RATIO,
         evidence_prefix="creation-stage-method-ready",
         surface_name="Measured ready creation method navigation",
         require_tappable=True,
@@ -5000,12 +4999,6 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     method_reverse_swipe_bound = measured_reverse_reacquisition_bound(
         dashboard_scan.swipes,
         dashboard_scan.method_viewport,
-    )
-    move_between_measured_viewports(
-        device,
-        dashboard_scan.swipes,
-        dashboard_scan.method_viewport,
-        delay_seconds=0.0,
     )
     method_node, method_detail, _ = reacquire_exact_ready_creation_method(
         device,

@@ -4198,7 +4198,11 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 self.assertNotIn("for scroll_index in range(", source)
 
         dashboard_source = inspect.getsource(driver.assert_uncreated_advanced_editor_gated)
-        self.assertIn("distance_ratio=0.68", dashboard_source)
+        self.assertEqual(0.60, driver.DASHBOARD_SCAN_GESTURE_RATIO)
+        self.assertEqual(
+            2,
+            dashboard_source.count("distance_ratio=DASHBOARD_SCAN_GESTURE_RATIO"),
+        )
         self.assertIn("max_scrolls=18", dashboard_source)
         self.assertIn("acquire_stable_start_origin(", dashboard_source)
         self.assertIn("max_reverse_swipes=8", dashboard_source)
@@ -4238,15 +4242,14 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertNotIn("shared.wait_for_phone_runner_route(", initial_source)
         self.assertNotIn("reset_swipes=48", execute_source)
 
-        restore_move = initial_source.index("move_between_measured_viewports(")
         restore_bound = initial_source.index(
             "method_reverse_swipe_bound = measured_reverse_reacquisition_bound("
         )
         restore_reacquisition = initial_source.index(
             "reacquire_exact_ready_creation_method("
         )
-        self.assertLess(restore_bound, restore_move)
-        self.assertLess(restore_move, restore_reacquisition)
+        self.assertLess(restore_bound, restore_reacquisition)
+        self.assertNotIn("move_between_measured_viewports(", initial_source)
         restored_method_source = initial_source[restore_reacquisition:]
         self.assertIn(
             "max_swipes=method_reverse_swipe_bound",
@@ -4258,7 +4261,10 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             driver.reacquire_exact_ready_creation_method
         )
         self.assertIn('"creation-stage-method"', method_reacquisition_source)
-        self.assertIn("distance_ratio=0.22", method_reacquisition_source)
+        self.assertIn(
+            "distance_ratio=DASHBOARD_SCAN_GESTURE_RATIO",
+            method_reacquisition_source,
+        )
         self.assertIn("require_tappable=True", method_reacquisition_source)
         self.assertIn("max_empty_hierarchy_reads=3", method_reacquisition_source)
         self.assertIn("max_system_ui_dismissals=3", method_reacquisition_source)
@@ -4339,7 +4345,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             device,
             scan_id="advanced-editor-gate-origin",
             max_reverse_swipes=8,
-            distance_ratio=0.68,
+            distance_ratio=driver.DASHBOARD_SCAN_GESTURE_RATIO,
             stable_repeats=2,
             max_consecutive_empty_reads=3,
             delay_seconds=0.0,
@@ -4348,7 +4354,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             device,
             scan_id="advanced-editor-gate",
             max_scrolls=18,
-            distance_ratio=0.68,
+            distance_ratio=driver.DASHBOARD_SCAN_GESTURE_RATIO,
             initial_observation=origin,
             delay_seconds=0.0,
             observer=None,
@@ -4482,7 +4488,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertEqual(0.22, device.asserted_distance_ratio)
         self.assertEqual([], device.captures)
 
-    def test_hosted_creation_method_restore_derives_compensation_from_scan_delta(
+    def test_hosted_creation_method_restore_observes_each_scan_ratio_gesture(
         self,
     ) -> None:
         clipped_parent = driver.shared.UiNode(
@@ -4505,30 +4511,35 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
         class HostedRestoreDevice:
             def __init__(self) -> None:
-                # The hosted receipt made six real movements (eight swipes
+                # The hosted receipt made five real movements (seven swipes
                 # minus two stable-end gestures) and observed the method at
-                # viewport one. Five 0.68-height movements separate that exact
-                # node from the end. Android's reverse gesture caps at 0.60
-                # height, leaving 0.40 height after the measured five-swipe
-                # return. Two 0.22 gestures recover the exact row; the former
-                # one-swipe constant could not.
-                self.offset = 340
+                # viewport zero. Reacquisition may therefore perform exactly
+                # five same-ratio reverse gestures, but each endpoint must be
+                # observed before another gesture is authorized.
+                self.remaining = 5
                 self.hierarchy_reads = 0
                 self.swipe_ratios: list[float] = []
                 self.captures: list[str] = []
 
             def hierarchy(self):
+                if self.hierarchy_reads != len(self.swipe_ratios):
+                    raise AssertionError(
+                        "Every reverse gesture must be followed by its own fresh hierarchy"
+                    )
                 self.hierarchy_reads += 1
-                return [exact_method] if self.offset <= 4 else [clipped_parent]
+                return [exact_method] if self.remaining == 0 else [clipped_parent]
 
             @staticmethod
             def dismiss_system_ui_anr(_nodes):
                 return False
 
             def swipe_down(self, *, distance_ratio):
+                if self.hierarchy_reads != len(self.swipe_ratios) + 1:
+                    raise AssertionError("A reverse gesture requires a fresh prior hierarchy")
                 self.swipe_ratios.append(distance_ratio)
-                movement = 60 if distance_ratio == 0.68 else 22
-                self.offset = max(0, self.offset - movement)
+                if distance_ratio != 0.60:
+                    raise AssertionError(f"unexpected reverse ratio: {distance_ratio!r}")
+                self.remaining -= 1
 
             @staticmethod
             def node_has_tappable_bounds(node):
@@ -4538,36 +4549,111 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 self.captures.append(name)
 
         device = HostedRestoreDevice()
-        movement_swipes = 6
-        method_viewport = 1
+        movement_swipes = 5
+        method_viewport = 0
         reverse_bound = driver.measured_reverse_reacquisition_bound(
             movement_swipes,
             method_viewport,
         )
-        driver.move_between_measured_viewports(
-            device,
-            movement_swipes,
-            method_viewport,
-            distance_ratio=0.68,
-            delay_seconds=0.0,
-        )
         with mock.patch.object(driver.time, "sleep"):
-            node, reverse_swipes = driver.rewind_to_exact_resource_id(
+            node, detail, reverse_swipes = driver.reacquire_exact_ready_creation_method(
                 device,
-                "creation-stage-method",
+                expected_detail="Priority",
                 max_swipes=reverse_bound,
-                distance_ratio=0.22,
-                evidence_prefix="creation-stage-method-ready",
-                surface_name="Measured ready creation method navigation",
-                require_tappable=True,
             )
 
         self.assertEqual(5, reverse_bound)
         self.assertIs(exact_method, node)
-        self.assertEqual(2, reverse_swipes)
-        self.assertEqual(3, device.hierarchy_reads)
-        self.assertEqual(([0.68] * 5) + ([0.22] * 2), device.swipe_ratios)
+        self.assertEqual("Priority", detail)
+        self.assertEqual(5, reverse_swipes)
+        self.assertEqual(6, device.hierarchy_reads)
+        self.assertEqual([0.60] * 5, device.swipe_ratios)
         self.assertEqual([], device.captures)
+
+    def test_dashboard_scan_ratio_has_symmetric_physical_swipe_geometry(self) -> None:
+        device = mock.Mock()
+        device.display_size.return_value = (1080, 2400)
+
+        driver.shared.Device.swipe_up(
+            device,
+            distance_ratio=driver.DASHBOARD_SCAN_GESTURE_RATIO,
+        )
+        driver.shared.Device.swipe_down(
+            device,
+            distance_ratio=driver.DASHBOARD_SCAN_GESTURE_RATIO,
+        )
+
+        self.assertEqual(
+            [
+                mock.call(
+                    "input", "swipe", "540", "1968", "540", "528", "300", timeout=15
+                ),
+                mock.call(
+                    "input", "swipe", "540", "720", "540", "2160", "300", timeout=15
+                ),
+            ],
+            device.shell.call_args_list,
+        )
+        up = device.shell.call_args_list[0].args
+        down = device.shell.call_args_list[1].args
+        self.assertEqual(
+            abs(int(up[3]) - int(up[5])),
+            abs(int(down[3]) - int(down[5])),
+        )
+
+    def test_dashboard_method_reacquisition_consumes_no_op_gestures_fail_closed(
+        self,
+    ) -> None:
+        clipped = driver.shared.UiNode(
+            {
+                "resource-id": "creation-stage-method",
+                "content-desc": "Priority",
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[53,-200][1028,-20]",
+            }
+        )
+
+        class NoOpDevice:
+            def __init__(self) -> None:
+                self.hierarchy_reads = 0
+                self.reverse_swipes = 0
+                self.captures: list[str] = []
+
+            def hierarchy(self):
+                self.hierarchy_reads += 1
+                return [clipped]
+
+            @staticmethod
+            def dismiss_system_ui_anr(_nodes):
+                return False
+
+            def swipe_down(self, *, distance_ratio):
+                if distance_ratio != driver.DASHBOARD_SCAN_GESTURE_RATIO:
+                    raise AssertionError(f"unexpected reverse ratio: {distance_ratio!r}")
+                self.reverse_swipes += 1
+
+            @staticmethod
+            def node_has_tappable_bounds(_node):
+                return False
+
+            def capture(self, name):
+                self.captures.append(name)
+
+        device = NoOpDevice()
+        with mock.patch.object(driver.time, "sleep"), self.assertRaisesRegex(
+            RuntimeError,
+            "was not visible, enabled, and clickable",
+        ):
+            driver.reacquire_exact_ready_creation_method(
+                device,
+                expected_detail="Priority",
+                max_swipes=2,
+            )
+
+        self.assertEqual(3, device.hierarchy_reads)
+        self.assertEqual(2, device.reverse_swipes)
+        self.assertEqual(["creation-stage-method-ready-not-tappable"], device.captures)
 
     def test_measured_reverse_reacquisition_bound_is_exact_and_fail_closed(
         self,
@@ -5046,7 +5132,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             device,
             scan_id="advanced-editor-gate-origin",
             max_reverse_swipes=8,
-            distance_ratio=0.68,
+            distance_ratio=driver.DASHBOARD_SCAN_GESTURE_RATIO,
             stable_repeats=2,
             max_consecutive_empty_reads=3,
             delay_seconds=0.0,
@@ -5055,7 +5141,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             device,
             scan_id="advanced-editor-gate",
             max_scrolls=18,
-            distance_ratio=0.68,
+            distance_ratio=driver.DASHBOARD_SCAN_GESTURE_RATIO,
             initial_observation=fresh_origin,
             delay_seconds=0.0,
             observer=None,
