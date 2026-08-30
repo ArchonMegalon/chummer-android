@@ -1067,6 +1067,64 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                         {"timing": timing}
                     )
 
+    def test_creation_timing_rejects_reconciled_recovery_without_boundary_gestures(
+        self,
+    ) -> None:
+        for primary_swipes in (0, 1):
+            with self.subTest(primary_swipes=primary_swipes):
+                timing = json.loads(json.dumps(
+                    self.raw_receipt("creation-prerequisite")["timing"]
+                ))
+                target_index = next(
+                    index
+                    for index, scan in enumerate(timing["scans"])
+                    if isinstance(scan, dict) and "exactResourceIds" in scan
+                )
+                phase_id = str(timing["scans"][target_index]["phaseId"])
+                target = talent_overlap_recovery_scan(phase_id)
+                target["primarySwipes"] = primary_swipes
+                target["primaryScreens"] = primary_swipes + 1
+                target["swipes"] = primary_swipes + int(target["recoverySwipes"])
+                target["screens"] = int(target["primaryScreens"]) + int(
+                    target["recoveryScreens"]
+                )
+                target["hierarchyReadCount"] = target["screens"]
+                target["maximumHierarchyReadMs"] = 200
+                timing["scans"][target_index] = target
+                with self.assertRaisesRegex(ValueError, "Talent reacquisition"):
+                    AGGREGATE.require_creation_timing_within_budget(
+                        {"timing": timing}
+                    )
+
+    def test_creation_timing_rejects_reconciled_recovery_without_opposite_gesture(
+        self,
+    ) -> None:
+        timing = json.loads(json.dumps(
+            self.raw_receipt("creation-prerequisite")["timing"]
+        ))
+        target_index = next(
+            index
+            for index, scan in enumerate(timing["scans"])
+            if isinstance(scan, dict) and "exactResourceIds" in scan
+        )
+        phase_id = str(timing["scans"][target_index]["phaseId"])
+        target = talent_overlap_recovery_scan(phase_id)
+        target.update(
+            {
+                "recoverySwipes": 0,
+                "recoveryScreens": 1,
+                "recoverySystemUiDismissals": 1,
+                "swipes": 3,
+                "screens": 5,
+                "systemUiDismissals": 1,
+                "hierarchyReadCount": 5,
+                "elapsedMs": 3_000,
+            }
+        )
+        timing["scans"][target_index] = target
+        with self.assertRaisesRegex(ValueError, "Talent reacquisition"):
+            AGGREGATE.require_creation_timing_within_budget({"timing": timing})
+
     def test_creation_timing_rejects_overlap_recovery_for_non_option_authority(
         self,
     ) -> None:

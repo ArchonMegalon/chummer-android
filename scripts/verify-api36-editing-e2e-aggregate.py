@@ -362,6 +362,11 @@ def require_talent_reacquisition_scans(
                 or (
                     expected_recovery_eligible
                     and scan.get("primaryStableBoundaryProven") is True
+                    and value["primarySwipes"]
+                    >= TALENT_REACQUISITION_STABLE_REPEATS
+                    and value["primaryScreens"]
+                    >= TALENT_REACQUISITION_STABLE_REPEATS + 1
+                    and value["recoverySwipes"] >= 1
                     and value["recoveryScreens"] >= 1
                 )
             )
