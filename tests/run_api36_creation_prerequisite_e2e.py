@@ -83,8 +83,11 @@ CREATION_BOOTSTRAP_LOGCAT_FILE_NAME = "creation-bootstrap-timing-logcat.txt"
 CREATION_BOOTSTRAP_TIMING_LINE = re.compile(
     rf"^{re.escape(CREATION_BOOTSTRAP_TIMING_PREFIX)}(?P<payload>\{{.*\}})$"
 )
+CREATION_BOOTSTRAP_LOGCAT_MAIN_DIVIDER = "--------- beginning of main"
 ADB_CREATION_BOOTSTRAP_LOGCAT_WAIT_ARGUMENTS = (
     "logcat",
+    "-b",
+    "main",
     "-v",
     "raw",
     "-T",
@@ -100,6 +103,8 @@ ADB_CREATION_BOOTSTRAP_LOGCAT_WAIT_ARGUMENTS = (
 ADB_CREATION_BOOTSTRAP_LOGCAT_SNAPSHOT_ARGUMENTS = (
     "logcat",
     "-d",
+    "-b",
+    "main",
     "-v",
     "raw",
     "-s",
@@ -226,17 +231,16 @@ def capture_creation_bootstrap_timing(
         logcat,
         encoding="utf-8",
     )
-    raw_lines = logcat.splitlines()
-    exact_matches = [
-        match
-        for line in raw_lines
-        if (match := CREATION_BOOTSTRAP_TIMING_LINE.fullmatch(line)) is not None
-    ]
-    if len(raw_lines) != 1 or len(exact_matches) != 1:
+    raw_lines, exact_matches, divider_count, invalid_lines = (
+        classify_creation_bootstrap_logcat(logcat)
+    )
+    if len(exact_matches) != 1 or invalid_lines:
         device.capture("creation-bootstrap-timing-cardinality-invalid")
         raise RuntimeError(
-            "Expected exactly one exact create bootstrap timing line, "
-            f"found raw={len(raw_lines)}, exact={len(exact_matches)}"
+            "Expected exactly one exact create bootstrap timing line with at most "
+            "one canonical main-buffer divider before it, "
+            f"found raw={len(raw_lines)}, exact={len(exact_matches)}, "
+            f"dividers={divider_count}, invalid={len(invalid_lines)}"
         )
     try:
         timing = json.loads(exact_matches[0].group("payload"))
@@ -290,6 +294,42 @@ def capture_creation_bootstrap_timing(
         encoding="utf-8",
     )
     return timing
+
+
+def classify_creation_bootstrap_logcat(
+    logcat: str,
+) -> tuple[
+    list[str],
+    list[re.Match[str]],
+    int,
+    list[str],
+]:
+    """Classify the narrow raw-logcat framing around one main-buffer marker.
+
+    ``logcat -v raw`` still writes the canonical buffer divider before the
+    first matching entry.  Both local commands are pinned to ``-b main``, so
+    the only non-marker line allowed is one exact main-buffer divider before
+    the marker.  Duplicate/late dividers and every other line remain invalid.
+    """
+    raw_lines = logcat.splitlines()
+    exact_matches: list[re.Match[str]] = []
+    invalid_lines: list[str] = []
+    divider_count = 0
+    marker_seen = False
+    for line in raw_lines:
+        match = CREATION_BOOTSTRAP_TIMING_LINE.fullmatch(line)
+        if match is not None:
+            exact_matches.append(match)
+            marker_seen = True
+        elif (
+            line == CREATION_BOOTSTRAP_LOGCAT_MAIN_DIVIDER
+            and divider_count == 0
+            and not marker_seen
+        ):
+            divider_count = 1
+        else:
+            invalid_lines.append(line)
+    return raw_lines, exact_matches, divider_count, invalid_lines
 
 
 def wait_for_creation_bootstrap_timing_log(
@@ -368,14 +408,12 @@ def wait_for_creation_bootstrap_timing_log(
             last_logcat = str(stdout)
     else:
         last_logcat = str(streamed.stdout)
-        stream_lines = last_logcat.splitlines()
-        stream_exact = sum(
-            CREATION_BOOTSTRAP_TIMING_LINE.fullmatch(line) is not None
-            for line in stream_lines
+        _, stream_exact, _, stream_invalid = classify_creation_bootstrap_logcat(
+            last_logcat
         )
         if (
-            len(stream_lines) == 1
-            and stream_exact == 1
+            len(stream_exact) == 1
+            and not stream_invalid
             and time.monotonic() < deadline
         ):
             try:
@@ -398,11 +436,12 @@ def wait_for_creation_bootstrap_timing_log(
                     last_logcat = str(stdout)
             else:
                 last_logcat = str(snapshot.stdout)
+                _, snapshot_exact, _, snapshot_invalid = (
+                    classify_creation_bootstrap_logcat(last_logcat)
+                )
                 if (
-                    any(
-                        CREATION_BOOTSTRAP_TIMING_LINE.fullmatch(line) is not None
-                        for line in last_logcat.splitlines()
-                    )
+                    snapshot_exact
+                    and not snapshot_invalid
                     and time.monotonic() < deadline
                 ):
                     record("resolved")

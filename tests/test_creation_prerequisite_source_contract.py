@@ -134,6 +134,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
     def test_creation_bootstrap_stream_is_local_exact_and_conservatively_non_replayable(self) -> None:
         wait_expected = (
             "logcat",
+            "-b",
+            "main",
             "-v",
             "raw",
             "-T",
@@ -149,6 +151,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         snapshot_expected = (
             "logcat",
             "-d",
+            "-b",
+            "main",
             "-v",
             "raw",
             "-s",
@@ -170,7 +174,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             hasattr(driver.shared, "ADB_CREATION_BOOTSTRAP_LOGCAT_SNAPSHOT_ARGUMENTS")
         )
         near_misses = (
-            wait_expected[:5] + wait_expected[7:],
+            wait_expected[:7] + wait_expected[9:],
             tuple(
                 "CHUMMER_CREATION_BOOTSTRAP_TIMING"
                 if argument == r"^CHUMMER_CREATION_BOOTSTRAP_TIMING \{"
@@ -181,7 +185,15 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 "*:I" if argument == "ChummerBootstrap:I" else argument
                 for argument in wait_expected
             ),
-            snapshot_expected[:2] + snapshot_expected[4:],
+            snapshot_expected[:4] + snapshot_expected[6:],
+            tuple(
+                "system" if argument == "main" else argument
+                for argument in wait_expected
+            ),
+            tuple(
+                "system" if argument == "main" else argument
+                for argument in snapshot_expected
+            ),
         )
         for arguments in (wait_expected, snapshot_expected, *near_misses):
             with self.subTest(arguments=arguments):
@@ -252,6 +264,134 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 "time.sleep",
                 inspect.getsource(driver.wait_for_creation_bootstrap_timing_log),
             )
+
+    def test_creation_bootstrap_stream_and_snapshot_accept_one_exact_main_divider(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            payload = self.bootstrap_timing_payload()
+            marker = driver.CREATION_BOOTSTRAP_TIMING_PREFIX + json.dumps(
+                payload,
+                separators=(",", ":"),
+            )
+            framed = f"{driver.CREATION_BOOTSTRAP_LOGCAT_MAIN_DIVIDER}\n{marker}\n"
+
+            class TimingDevice:
+                evidence = Path(temporary)
+                calls: list[tuple[str, ...]] = []
+
+                @classmethod
+                def run(cls, *arguments: str, **_options: object) -> subprocess.CompletedProcess:
+                    cls.calls.append(arguments)
+                    return subprocess.CompletedProcess(
+                        arguments,
+                        0,
+                        stdout=framed,
+                        stderr="",
+                    )
+
+                @staticmethod
+                def capture(name: str) -> None:
+                    raise AssertionError(f"unexpected capture: {name}")
+
+            logcat = driver.wait_for_creation_bootstrap_timing_log(TimingDevice())
+            self.assertEqual(framed, logcat)
+            self.assertEqual(payload, driver.capture_creation_bootstrap_timing(
+                TimingDevice(),
+                logcat=logcat,
+            ))
+            self.assertEqual(
+                [
+                    driver.ADB_CREATION_BOOTSTRAP_LOGCAT_WAIT_ARGUMENTS,
+                    driver.ADB_CREATION_BOOTSTRAP_LOGCAT_SNAPSHOT_ARGUMENTS,
+                ],
+                TimingDevice.calls,
+            )
+
+    def test_creation_bootstrap_timing_rejects_illegal_logcat_framing(self) -> None:
+        payload = self.bootstrap_timing_payload()
+        marker = driver.CREATION_BOOTSTRAP_TIMING_PREFIX + json.dumps(
+            payload,
+            separators=(",", ":"),
+        )
+        divider = driver.CREATION_BOOTSTRAP_LOGCAT_MAIN_DIVIDER
+        illegal_logs = (
+            f"--------- beginning of system\n{marker}",
+            f"{divider}\n{divider}\n{marker}",
+            f"{marker}\n{divider}",
+            f"-------- beginning of main\n{marker}",
+            f"{divider} \n{marker}",
+            f"unexpected raw log line\n{marker}",
+        )
+
+        for logcat in illegal_logs:
+            with self.subTest(logcat=logcat), tempfile.TemporaryDirectory() as temporary:
+                class TimingDevice:
+                    evidence = Path(temporary)
+                    captures: list[str] = []
+
+                    @classmethod
+                    def capture(cls, name: str) -> None:
+                        cls.captures.append(name)
+
+                with self.assertRaisesRegex(RuntimeError, "canonical main-buffer divider"):
+                    driver.capture_creation_bootstrap_timing(
+                        TimingDevice(),
+                        logcat=logcat,
+                    )
+                self.assertEqual(
+                    ["creation-bootstrap-timing-cardinality-invalid"],
+                    TimingDevice.captures,
+                )
+
+    def test_creation_bootstrap_timing_rejects_malformed_exact_payload(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            device = mock.Mock()
+            device.evidence = Path(temporary)
+            logcat = (
+                f"{driver.CREATION_BOOTSTRAP_LOGCAT_MAIN_DIVIDER}\n"
+                f"{driver.CREATION_BOOTSTRAP_TIMING_PREFIX}{{not-json}}"
+            )
+
+            with self.assertRaisesRegex(RuntimeError, "invalid JSON"):
+                driver.capture_creation_bootstrap_timing(device, logcat=logcat)
+
+            device.capture.assert_called_once_with(
+                "creation-bootstrap-timing-json-invalid"
+            )
+
+    def test_creation_bootstrap_wait_rejects_illegal_stream_or_snapshot_lines(self) -> None:
+        payload = self.bootstrap_timing_payload()
+        marker = driver.CREATION_BOOTSTRAP_TIMING_PREFIX + json.dumps(
+            payload,
+            separators=(",", ":"),
+        )
+        divider = driver.CREATION_BOOTSTRAP_LOGCAT_MAIN_DIVIDER
+        cases = (
+            (
+                (f"{divider}\nnoise\n{marker}",),
+                1,
+            ),
+            (
+                (marker, f"{divider}\n{divider}\n{marker}"),
+                2,
+            ),
+        )
+
+        for outputs, expected_calls in cases:
+            with self.subTest(outputs=outputs), tempfile.TemporaryDirectory() as temporary:
+                device = mock.Mock()
+                device.evidence = Path(temporary)
+                device.run.side_effect = tuple(
+                    subprocess.CompletedProcess([], 0, stdout=output, stderr="")
+                    for output in outputs
+                )
+
+                with self.assertRaisesRegex(RuntimeError, "post-action creation bootstrap"):
+                    driver.wait_for_creation_bootstrap_timing_log(device, timeout=1.0)
+
+                self.assertEqual(expected_calls, device.run.call_count)
+                device.capture.assert_called_once_with(
+                    "creation-bootstrap-timing-log-timeout"
+                )
 
     def test_creation_bootstrap_marker_stream_does_not_hide_snapshot_cardinality(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
