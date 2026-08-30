@@ -132,6 +132,45 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, expected):
                     driver.capture_creation_bootstrap_timing(TimingDevice())
 
+    def test_creation_bootstrap_stream_is_local_exact_and_conservatively_non_replayable(self) -> None:
+        expected = (
+            "logcat",
+            "-v",
+            "raw",
+            "-T",
+            "1",
+            "-m",
+            "1",
+            "-e",
+            r"^CHUMMER_CREATION_BOOTSTRAP_TIMING \{",
+            "-s",
+            "ChummerBootstrap:I",
+            "*:S",
+        )
+        self.assertEqual(expected, driver.ADB_CREATION_BOOTSTRAP_LOGCAT_WAIT_ARGUMENTS)
+        self.assertFalse(
+            hasattr(driver.shared, "ADB_CREATION_BOOTSTRAP_LOGCAT_WAIT_ARGUMENTS")
+        )
+        near_misses = (
+            expected[:5] + expected[7:],
+            tuple(
+                "CHUMMER_CREATION_BOOTSTRAP_TIMING"
+                if argument == r"^CHUMMER_CREATION_BOOTSTRAP_TIMING \{"
+                else argument
+                for argument in expected
+            ),
+            tuple(
+                "*:I" if argument == "ChummerBootstrap:I" else argument
+                for argument in expected
+            ),
+        )
+        for arguments in (expected, *near_misses):
+            with self.subTest(arguments=arguments):
+                self.assertEqual(
+                    "non-replayable",
+                    driver.shared.adb_command_retry_policy(arguments)[0],
+                )
+
     def test_creation_bootstrap_marker_poll_uses_only_exact_tagged_logcat(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             payload = self.bootstrap_timing_payload()
@@ -168,11 +207,71 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             )
             self.assertIn(driver.CREATION_BOOTSTRAP_TIMING_PREFIX, logcat)
             self.assertEqual(
-                [driver.shared.ADB_CREATION_BOOTSTRAP_LOGCAT_ARGUMENTS],
+                [
+                    driver.ADB_CREATION_BOOTSTRAP_LOGCAT_WAIT_ARGUMENTS,
+                    driver.shared.ADB_CREATION_BOOTSTRAP_LOGCAT_ARGUMENTS,
+                ],
                 TimingDevice.calls,
             )
             self.assertEqual("resolved", observation["status"])
-            self.assertEqual(1, observation["logcatReadCount"])
+            self.assertEqual(2, observation["logcatReadCount"])
+            self.assertEqual(
+                "single-bounded-stream-plus-snapshot",
+                observation["observationMode"],
+            )
+            self.assertEqual(1, observation["streamLogcatReadCount"])
+            self.assertEqual(1, observation["snapshotLogcatReadCount"])
+            self.assertNotIn(
+                "time.sleep",
+                inspect.getsource(driver.wait_for_creation_bootstrap_timing_log),
+            )
+
+    def test_creation_bootstrap_marker_stream_does_not_hide_snapshot_cardinality(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            first = self.bootstrap_timing_payload()
+            second = self.bootstrap_timing_payload(coreCreateMs=13, totalMs=39)
+            marker = driver.CREATION_BOOTSTRAP_TIMING_PREFIX
+
+            class TimingDevice:
+                evidence = Path(temporary)
+                calls: list[tuple[str, ...]] = []
+                captures: list[str] = []
+
+                @classmethod
+                def run(cls, *arguments: str, **_options: object) -> subprocess.CompletedProcess:
+                    cls.calls.append(arguments)
+                    payloads = [first] if len(cls.calls) == 1 else [first, second]
+                    return subprocess.CompletedProcess(
+                        arguments,
+                        0,
+                        stdout="\n".join(
+                            marker + json.dumps(payload, separators=(",", ":"))
+                            for payload in payloads
+                        ),
+                        stderr="",
+                    )
+
+                @classmethod
+                def capture(cls, name: str) -> None:
+                    cls.captures.append(name)
+
+            logcat = driver.wait_for_creation_bootstrap_timing_log(TimingDevice())
+            with self.assertRaisesRegex(RuntimeError, "exactly one unique"):
+                driver.capture_creation_bootstrap_timing(
+                    TimingDevice(),
+                    logcat=logcat,
+                )
+            self.assertEqual(
+                [
+                    driver.ADB_CREATION_BOOTSTRAP_LOGCAT_WAIT_ARGUMENTS,
+                    driver.shared.ADB_CREATION_BOOTSTRAP_LOGCAT_ARGUMENTS,
+                ],
+                TimingDevice.calls,
+            )
+            self.assertEqual(
+                ["creation-bootstrap-timing-cardinality-invalid"],
+                TimingDevice.captures,
+            )
 
     def test_creation_bootstrap_log_is_cleared_once_without_retry_before_tap(self) -> None:
         device = mock.Mock()
@@ -194,17 +293,15 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             device = mock.Mock()
             device.evidence = Path(temporary)
-            device.run.return_value = subprocess.CompletedProcess(
-                driver.shared.ADB_CREATION_BOOTSTRAP_LOGCAT_ARGUMENTS,
-                0,
-                stdout="",
-                stderr="",
+            device.run.side_effect = subprocess.TimeoutExpired(
+                driver.ADB_CREATION_BOOTSTRAP_LOGCAT_WAIT_ARGUMENTS,
+                1.0,
             )
             observation: dict[str, object] = {}
             with mock.patch.object(
                 driver.time,
                 "monotonic",
-                side_effect=[0.0, 0.0, 0.0, 2.0, 2.0],
+                side_effect=[10.0, 10.0, 11.0],
             ), self.assertRaisesRegex(RuntimeError, "post-action creation bootstrap"):
                 driver.wait_for_creation_bootstrap_timing_log(
                     device,
@@ -212,13 +309,63 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                     observation_out=observation,
                 )
             device.run.assert_called_once_with(
-                *driver.shared.ADB_CREATION_BOOTSTRAP_LOGCAT_ARGUMENTS,
-                timeout=30,
+                *driver.ADB_CREATION_BOOTSTRAP_LOGCAT_WAIT_ARGUMENTS,
+                timeout=1.0,
+                deadline=11.0,
             )
             device.capture.assert_called_once_with(
                 "creation-bootstrap-timing-log-timeout"
             )
             self.assertEqual("timeout", observation["status"])
+            self.assertEqual(1, observation["logcatReadCount"])
+            self.assertEqual(1, observation["streamLogcatReadCount"])
+            self.assertEqual(0, observation["snapshotLogcatReadCount"])
+
+    def test_creation_bootstrap_transport_timeout_rejects_partial_marker_output(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            evidence = Path(temporary)
+            device = mock.Mock()
+            device.evidence = evidence
+            receipt = {
+                "classification": "timeout-unknown-outcome",
+                "commandPolicy": "non-replayable",
+                "replay": {"performed": False, "suppressed": True},
+                "failure": {
+                    "stdout": driver.CREATION_BOOTSTRAP_TIMING_PREFIX + "{}",
+                },
+            }
+            device.run.side_effect = driver.shared.AdbTransportError(
+                receipt,
+                evidence / "adb-transport-event-0001.json",
+            )
+            observation: dict[str, object] = {}
+
+            with mock.patch.object(
+                driver.time,
+                "monotonic",
+                side_effect=[10.0, 10.0, 11.0],
+            ), self.assertRaisesRegex(RuntimeError, "post-action creation bootstrap"):
+                driver.wait_for_creation_bootstrap_timing_log(
+                    device,
+                    timeout=1.0,
+                    observation_out=observation,
+                )
+
+            device.run.assert_called_once_with(
+                *driver.ADB_CREATION_BOOTSTRAP_LOGCAT_WAIT_ARGUMENTS,
+                timeout=1.0,
+                deadline=11.0,
+            )
+            device.capture.assert_called_once_with(
+                "creation-bootstrap-timing-log-timeout"
+            )
+            self.assertEqual("timeout", observation["status"])
+            self.assertIn(
+                driver.CREATION_BOOTSTRAP_TIMING_PREFIX,
+                (evidence / driver.CREATION_BOOTSTRAP_LOGCAT_FILE_NAME).read_text(
+                    encoding="utf-8"
+                ),
+            )
 
     def test_artifact_binding_digest_uses_canonical_sorted_json(self) -> None:
         first = {"driver": "a", "apk": "b", "nested": {"events": "c"}}

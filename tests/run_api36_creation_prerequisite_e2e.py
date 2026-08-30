@@ -80,6 +80,20 @@ PROGRESS_EVENTS_FILE_NAME = "creation-prerequisite-progress.jsonl"
 CREATION_BOOTSTRAP_TIMING_PREFIX = "CHUMMER_CREATION_BOOTSTRAP_TIMING "
 CREATION_BOOTSTRAP_TIMING_FILE_NAME = "creation-bootstrap-timing.json"
 CREATION_BOOTSTRAP_LOGCAT_FILE_NAME = "creation-bootstrap-timing-logcat.txt"
+ADB_CREATION_BOOTSTRAP_LOGCAT_WAIT_ARGUMENTS = (
+    "logcat",
+    "-v",
+    "raw",
+    "-T",
+    "1",
+    "-m",
+    "1",
+    "-e",
+    r"^CHUMMER_CREATION_BOOTSTRAP_TIMING \{",
+    "-s",
+    "ChummerBootstrap:I",
+    "*:S",
+)
 TOTAL_PERFORMANCE_TARGET_MS = 15 * 60 * 1000
 INITIAL_NAVIGATION_MILESTONE_ORDER = (
     "app-cold-start-complete",
@@ -274,7 +288,15 @@ def wait_for_creation_bootstrap_timing_log(
     timeout: float = 90.0,
     observation_out: dict[str, object] | None = None,
 ) -> str:
-    """Wait cheaply for the post-action product marker before observing the UI."""
+    """Wait once for the post-action marker, then snapshot its full cardinality.
+
+    A repeated ``logcat -d`` loop scans the growing device log buffer on every
+    observation and competes with the creation loaders on a small hosted
+    emulator.  The exact-tag stream blocks in one ADB process and exits after
+    its first exact marker.  One subsequent bounded dump remains authoritative
+    for duplicate/forged receipt rejection in
+    :func:`capture_creation_bootstrap_timing`.
+    """
     if timeout <= 0:
         raise ValueError("Creation bootstrap timing wait requires a positive timeout")
     deadline = time.monotonic() + timeout
@@ -290,26 +312,66 @@ def wait_for_creation_bootstrap_timing_log(
                 "logcatReadCount": len(read_durations_ms),
                 "logcatElapsedMs": sum(read_durations_ms),
                 "maximumLogcatReadMs": max(read_durations_ms, default=0),
+                "observationMode": "single-bounded-stream-plus-snapshot",
+                "streamLogcatReadCount": min(1, len(read_durations_ms)),
+                "snapshotLogcatReadCount": max(0, len(read_durations_ms) - 1),
                 "elapsedMs": round((time.monotonic() - started) * 1000),
             })
 
-    while time.monotonic() < deadline:
+    def observe(
+        arguments: tuple[str, ...],
+        *,
+        command_timeout: float,
+        command_deadline: float | None = None,
+    ) -> subprocess.CompletedProcess:
         read_started = time.perf_counter()
-        result = device.run(
-            *shared.ADB_CREATION_BOOTSTRAP_LOGCAT_ARGUMENTS,
-            timeout=30,
-        )
-        read_durations_ms.append(round((time.perf_counter() - read_started) * 1000))
-        last_logcat = str(result.stdout)
-        if CREATION_BOOTSTRAP_TIMING_PREFIX in last_logcat:
-            record("resolved")
-            device.evidence.mkdir(parents=True, exist_ok=True)
-            (device.evidence / CREATION_BOOTSTRAP_LOGCAT_FILE_NAME).write_text(
-                last_logcat,
-                encoding="utf-8",
+        try:
+            options: dict[str, object] = {"timeout": command_timeout}
+            if command_deadline is not None:
+                options["deadline"] = command_deadline
+            return device.run(*arguments, **options)
+        finally:
+            read_durations_ms.append(
+                round((time.perf_counter() - read_started) * 1000)
             )
-            return last_logcat
-        time.sleep(0.75)
+
+    try:
+        streamed = observe(
+            ADB_CREATION_BOOTSTRAP_LOGCAT_WAIT_ARGUMENTS,
+            command_timeout=timeout,
+            command_deadline=deadline,
+        )
+    except shared.AdbTransportError as error:
+        if error.receipt.get("classification") != "timeout-unknown-outcome":
+            raise
+        failure = error.receipt.get("failure")
+        if isinstance(failure, dict):
+            last_logcat = str(failure.get("stdout", ""))
+    except subprocess.TimeoutExpired as error:
+        # Pure source-contract fakes may expose the subprocess timeout directly;
+        # the real Device converts it to the exact fail-closed transport receipt
+        # handled above.
+        stdout = error.stdout
+        if isinstance(stdout, bytes):
+            last_logcat = stdout.decode("utf-8", errors="replace")
+        elif stdout is not None:
+            last_logcat = str(stdout)
+    else:
+        last_logcat = str(streamed.stdout)
+        if CREATION_BOOTSTRAP_TIMING_PREFIX in last_logcat:
+            snapshot = observe(
+                shared.ADB_CREATION_BOOTSTRAP_LOGCAT_ARGUMENTS,
+                command_timeout=30,
+            )
+            last_logcat = str(snapshot.stdout)
+            if CREATION_BOOTSTRAP_TIMING_PREFIX in last_logcat:
+                record("resolved")
+                device.evidence.mkdir(parents=True, exist_ok=True)
+                (device.evidence / CREATION_BOOTSTRAP_LOGCAT_FILE_NAME).write_text(
+                    last_logcat,
+                    encoding="utf-8",
+                )
+                return last_logcat
 
     record("timeout")
     device.evidence.mkdir(parents=True, exist_ok=True)
