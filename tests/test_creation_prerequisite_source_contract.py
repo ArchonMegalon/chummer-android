@@ -3233,7 +3233,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertEqual("creation-prerequisite-rank-heritage-a", selected)
         self.assertEqual(0, sum(call[0] == "wait_bidirectional" for call in calls))
         self.assertEqual(1, sum(call[0] == "swipe_down" for call in calls))
-        self.assertIn(("swipe_down", {"distance_ratio": 0.68}), calls)
+        self.assertIn(("swipe_down", {"distance_ratio": 0.22}), calls)
         self.assertIn(("shell", ("input", "tap", "455", "200")), calls)
         select_rank_mock.assert_called_once_with(
             device,
@@ -3245,7 +3245,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertEqual(1, sum(call[0] == "select" for call in calls))
         self.assertEqual("heritage", category_navigation["lastCategory"])
 
-    def test_hosted_clipped_first_category_replays_scan_ratio_then_reacquires(self) -> None:
+    def test_hosted_clipped_first_category_uses_scan_equivalent_small_gestures(self) -> None:
         clipped = driver.shared.UiNode(
             {
                 "content-desc": (
@@ -3277,11 +3277,17 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         class HostedClippedDevice:
             def __init__(self) -> None:
                 self.swipe_ratios: list[float] = []
+                self.small_swipes = 0
                 self.hierarchy_reads = 0
                 self.captures: list[str] = []
 
             def swipe_down(self, *, distance_ratio):
                 self.swipe_ratios.append(distance_ratio)
+                if distance_ratio != 0.22:
+                    raise AssertionError(
+                        "first category used a large reverse gesture that can skip the row"
+                    )
+                self.small_swipes += 1
 
             @staticmethod
             def swipe_up(**_options):
@@ -3289,13 +3295,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
             def hierarchy(self):
                 self.hierarchy_reads += 1
-                if self.swipe_ratios[:3] != [0.68, 0.68, 0.68]:
-                    return [driver.shared.UiNode({})]
-                return (
-                    [visible, talent]
-                    if self.swipe_ratios[-1] == 0.22
-                    else [clipped, talent]
-                )
+                return [visible, talent] if self.small_swipes == 3 else [clipped, talent]
 
             @staticmethod
             def dismiss_system_ui_anr(_nodes):
@@ -3311,13 +3311,13 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         device = HostedClippedDevice()
         navigation = {
             "viewportByCategory": {
-                "heritage": 0,
-                "talent": 1,
-                "attributes": 2,
-                "skills": 3,
-                "resources": 3,
+                "heritage": 4,
+                "talent": 5,
+                "attributes": 6,
+                "skills": 7,
+                "resources": 7,
             },
-            "currentViewport": 3,
+            "currentViewport": 7,
             "lastCategory": None,
         }
         with mock.patch.object(driver.time, "sleep"):
@@ -3328,9 +3328,9 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             )
 
         self.assertIs(visible, row)
-        self.assertEqual([0.68, 0.68, 0.68, 0.22], device.swipe_ratios)
-        self.assertEqual(2, device.hierarchy_reads)
-        self.assertEqual(0, navigation["currentViewport"])
+        self.assertEqual([0.22] * 3, device.swipe_ratios)
+        self.assertEqual(4, device.hierarchy_reads)
+        self.assertEqual(4, navigation["currentViewport"])
         self.assertEqual([], device.captures)
 
     def test_first_category_reacquisition_accepts_the_last_scan_delta_bound(self) -> None:
@@ -3390,7 +3390,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             )
 
         self.assertIs(visible, row)
-        self.assertEqual(([0.68] * 3) + ([0.22] * 3), device.swipe_ratios)
+        self.assertEqual([0.22] * 3, device.swipe_ratios)
         self.assertEqual(4, device.hierarchy_reads)
 
     def test_first_category_reacquisition_rejects_one_beyond_scan_delta(self) -> None:
@@ -3440,7 +3440,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 navigation,
             )
 
-        self.assertEqual(([0.68] * 3) + ([0.22] * 3), device.swipe_ratios)
+        self.assertEqual([0.22] * 3, device.swipe_ratios)
         self.assertEqual(4, device.hierarchy_reads)
         self.assertEqual(
             ["creation-prerequisite-heritage-category-row-unavailable"],
@@ -3536,7 +3536,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertIs(visible, row)
         self.assertEqual(8, device.hierarchy.call_count)
         self.assertEqual(
-            [mock.call(distance_ratio=0.68), mock.call(distance_ratio=0.22)],
+            [mock.call(distance_ratio=0.22)],
             device.swipe_down.call_args_list,
         )
         device.capture.assert_not_called()

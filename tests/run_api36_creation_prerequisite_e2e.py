@@ -2877,13 +2877,13 @@ def acquire_measured_priority_category_row(
 ) -> shared.UiNode:
     """Reacquire one exact category from the digest-bound ordered inventory.
 
-    The first category replays the authority scan's measured 0.68-height
-    reverse delta, then permits only the same scan-proven delta in smaller
-    reverse compensation gestures while reacquiring the exact row. Later
-    categories are below the freshly verified prior row, so they retain their
-    bounded forward-only snapshots. A rank selection can change row height;
-    no pre-navigation node or blind absolute viewport is reused after that
-    state transition.
+    The first category reverses only the authority scan's exact measured
+    0.22-height delta, checking a fresh hierarchy before and after every
+    gesture. This cannot skip a narrow row by performing a larger reverse
+    jump and remains bounded solely by the prior scan. Later categories are
+    below the freshly verified prior row, so they retain their bounded
+    forward-only snapshots. A rank selection can change row height; no
+    pre-navigation node or blind absolute viewport is reused.
     """
     viewports = navigation.get("viewportByCategory")
     current_viewport = navigation.get("currentViewport")
@@ -2917,13 +2917,6 @@ def acquire_measured_priority_category_row(
             current_viewport,
             target_viewport,
             maximum_viewport=22,
-        )
-        move_between_measured_viewports(
-            device,
-            current_viewport,
-            target_viewport,
-            distance_ratio=0.68,
-            delay_seconds=0.0,
         )
         node, _ = rewind_to_exact_resource_id(
             device,
