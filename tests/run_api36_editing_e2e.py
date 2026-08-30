@@ -99,6 +99,9 @@ MAX_LAUNCH_EVIDENCE_CHARACTERS = 1_000_000
 ADB_TRANSPORT_EVENT_SCHEMA = "chummer.android.adb-transport-event/v1"
 ADB_TRANSPORT_PREFLIGHT_SCHEMA = "chummer.android.adb-transport-preflight/v1"
 ADB_TRANSPORT_SUMMARY_SCHEMA = "chummer.android.adb-transport-summary/v1"
+DURABLE_SAVE_OUTCOME_FAILURE_SCHEMA = (
+    "chummer.android.durable-save-outcome-failure/v1"
+)
 ADB_READ_ONLY_MAX_ATTEMPTS = 3
 ADB_READ_ONLY_RETRY_DELAY_SECONDS = 1.0
 ADB_SWIPE_RECONCILIATION_REQUIRED_CONSECUTIVE = 2
@@ -4871,6 +4874,215 @@ def current_launch_state(device: Device) -> LaunchState:
     )
 
 
+def _launch_state_json(state: LaunchState) -> dict[str, object]:
+    return {
+        "processIds": list(state.process_ids),
+        "resumedComponent": state.resumed_component,
+    }
+
+
+def capture_unknown_durable_save_outcome(
+    device: Device,
+    *,
+    reason: str,
+    expected: LaunchState,
+    observed: LaunchState,
+) -> None:
+    """Capture the first unknown post-save state without attempting recovery.
+
+    A save tap is non-idempotent from the driver's point of view. Once it has
+    been sent, a process or foreground transition must be diagnosed in place;
+    relaunching the task or replaying the tap could turn an unknown commit into
+    a second mutation and could hide a product crash.
+    """
+    _write_new_json_receipt(
+        device.evidence / "durable-save-outcome-failure.json",
+        {
+            "schema": DURABLE_SAVE_OUTCOME_FAILURE_SCHEMA,
+            "status": "fail-closed",
+            "reason": reason,
+            "expected": _launch_state_json(expected),
+            "observed": _launch_state_json(observed),
+            "saveTapReplayAttempted": False,
+            "foregroundRecoveryAttempted": False,
+            "outcomeAuthority": "unknown-no-replay",
+        },
+    )
+    def diagnostic_shell(*arguments: str) -> str:
+        try:
+            return _safe_shell(device, *arguments)
+        except Exception as error:
+            # Diagnostic transport loss must not replace the semantic unknown-
+            # outcome failure which caused this capture.
+            return f"diagnostic command failed: {_bounded_evidence(error)}"
+
+    # Log buffers come first: later UIAutomator/dumpsys diagnostics can be noisy
+    # enough to evict the short-lived crash event that this lane exists to retain.
+    for buffer_name, arguments in (
+        (
+            "all",
+            ("logcat", "-d", "-b", "all", "-v", "threadtime", "-t", "4000"),
+        ),
+        ("events", ("logcat", "-d", "-b", "events", "-v", "threadtime")),
+        ("crash", ("logcat", "-d", "-b", "crash", "-v", "threadtime")),
+    ):
+        try:
+            result = device.run(*arguments, timeout=60, check=False)
+            output = _bounded_evidence(result.stdout)
+            if result.stderr:
+                output = (
+                    f"{output}\n[logcat stderr]\n"
+                    f"{_bounded_evidence(result.stderr)}"
+                )
+        except Exception as error:
+            output = (
+                f"logcat {buffer_name} capture failed: {error}\n"
+                f"{_bounded_evidence(getattr(error, 'stdout', ''))}\n"
+                f"{_bounded_evidence(getattr(error, 'stderr', ''))}"
+            )
+        _write_launch_evidence(
+            device,
+            f"durable-save-outcome-logcat-{buffer_name}.txt",
+            output,
+        )
+
+    diagnostics = (
+        ("durable-save-outcome-activity.txt", observed.activity_dump),
+        (
+            "durable-save-outcome-exit-info.txt",
+            diagnostic_shell("dumpsys", "activity", "exit-info", PACKAGE),
+        ),
+        (
+            "durable-save-outcome-lastanr.txt",
+            diagnostic_shell("dumpsys", "activity", "lastanr"),
+        ),
+        (
+            "durable-save-outcome-processes.txt",
+            diagnostic_shell("dumpsys", "activity", "processes"),
+        ),
+        (
+            "durable-save-outcome-window.txt",
+            diagnostic_shell("dumpsys", "window", "windows"),
+        ),
+    )
+    for name, value in diagnostics:
+        _write_launch_evidence(device, name, value)
+    try:
+        device.capture("durable-save-outcome-failure")
+    except Exception as error:
+        _write_launch_evidence(
+            device,
+            "durable-save-outcome-capture-error.txt",
+            error,
+        )
+
+
+def save_runner_and_wait_for_durable_notice(
+    device: Device,
+    *,
+    timeout: float = 90,
+) -> UiNode:
+    """Issue one exact save and observe its outcome without further UI input.
+
+    The durable notice lives in the always-visible toolbar, so scrolling is
+    neither required nor safe after the mutation. Every post-tap operation is
+    read-only. A disappeared/replaced process or a different resumed activity
+    is an unknown save outcome and fails immediately with crash/exit evidence.
+    """
+    if timeout <= 0:
+        raise ValueError("Durable save observation timeout must be positive")
+
+    toolbar = device.wait_for_single_exact_accessibility_value(
+        "build-save-runner",
+        timeout=45,
+        evidence_prefix="durable-save-toolbar",
+        surface_name="Durable save toolbar control",
+    )
+    if (
+        toolbar.attributes.get("package") != PACKAGE
+        or toolbar.attributes.get("enabled") != "true"
+        or toolbar.attributes.get("clickable") != "true"
+        or not device.node_has_tappable_bounds(toolbar)
+    ):
+        device.capture("durable-save-toolbar-invalid")
+        raise RuntimeError(
+            "The exact durable save toolbar control is not a tappable Chummer node"
+        )
+
+    expected = current_launch_state(device)
+    if (
+        not expected.process_ids
+        or expected.resumed_component is None
+        or not expected.resumed_component.startswith(f"{PACKAGE}/")
+    ):
+        device.capture("durable-save-precondition-invalid")
+        raise RuntimeError(
+            "Chummer was not the exact running foreground package before the save tap"
+        )
+
+    x, y = toolbar.center
+    # Exactly one non-replayable mutation. Device.shell already suppresses
+    # replay when an ADB outcome is unknown.
+    device.shell("input", "tap", str(x), str(y))
+
+    deadline = time.monotonic() + timeout
+    observed = expected
+    while time.monotonic() < deadline:
+        observed = current_launch_state(device)
+        if (
+            observed.process_ids != expected.process_ids
+            or observed.resumed_component != expected.resumed_component
+        ):
+            capture_unknown_durable_save_outcome(
+                device,
+                reason="process-or-foreground-authority-changed",
+                expected=expected,
+                observed=observed,
+            )
+            raise RuntimeError(
+                "Durable save outcome is unknown because Chummer lost its exact "
+                "process/foreground authority; no save replay or foreground "
+                "recovery was attempted"
+            )
+
+        nodes = device.read_only_hierarchy()
+        if not nodes:
+            time.sleep(0.75)
+            continue
+        device.dismiss_system_ui_anr(nodes)
+        matches = [
+            node
+            for node in nodes
+            if node.attributes.get("content-desc") == "build-save-runner"
+            and node.attributes.get("package") == PACKAGE
+        ]
+        if len(matches) > 1:
+            capture_unknown_durable_save_outcome(
+                device,
+                reason="durable-save-toolbar-cardinality-invalid",
+                expected=expected,
+                observed=observed,
+            )
+            raise RuntimeError(
+                "Durable save toolbar has ambiguous post-mutation cardinality; "
+                "the save outcome remains unknown"
+            )
+        if len(matches) == 1 and matches[0].attributes.get("text") == "Saved.":
+            return matches[0]
+        time.sleep(0.75)
+
+    capture_unknown_durable_save_outcome(
+        device,
+        reason="durable-save-notice-timeout",
+        expected=expected,
+        observed=observed,
+    )
+    raise RuntimeError(
+        "Timed out observing the exact durable save notice without replaying "
+        "the save or sending post-mutation UI input"
+    )
+
+
 def _package_crash_is_visible(logcat: str) -> bool:
     package_lines = [line for line in logcat.splitlines() if PACKAGE in line]
     return any(
@@ -5252,14 +5464,7 @@ def prepare_full_editing_runner(
         # Importing another dossier is correctly blocked while the current workspace
         # is dirty. Persist this incomplete creation draft without claiming that the
         # creation workflow itself has completed, then switch to the signed fixture.
-        device.tap("build-save-runner")
-        device.wait(
-            "Saved.",
-            timeout=90,
-            scroll=True,
-            max_scrolls=48,
-            scroll_distance_ratio=0.22,
-        )
+        save_runner_and_wait_for_durable_notice(device)
         tap_phone_destination(device, "phone-destination-runners")
         wait_for_phone_runners(device)
     else:
