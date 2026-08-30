@@ -2645,6 +2645,47 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         device.swipe_down.assert_not_called()
         capture.assert_not_called()
 
+    def test_save_and_read_authority_uses_the_fail_closed_save_observer(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        authority = DRIVER.WorkspaceAuthority(
+            "workspace",
+            17,
+            17,
+            "a" * 64,
+            "b" * 64,
+        )
+
+        with patch.object(DRIVER, "tap_phone_destination") as tap_destination, \
+             patch.object(DRIVER, "wait_for_phone_runners") as wait_runners, \
+             patch.object(DRIVER, "open_build") as open_build, \
+             patch.object(
+                 DRIVER,
+                 "save_runner_and_wait_for_durable_notice",
+             ) as save_runner, \
+             patch.object(
+                 DRIVER,
+                 "read_workspace_authority",
+                 return_value=authority,
+             ) as read_authority, \
+             patch.object(DRIVER, "require_saved_authority") as require_saved:
+            observed = DRIVER.save_and_read_workspace_authority(device, "phone")
+
+        self.assertEqual(authority, observed)
+        self.assertEqual(
+            [
+                call(device, "phone-destination-runners"),
+                call(device, "phone-destination-runners"),
+            ],
+            tap_destination.call_args_list,
+        )
+        self.assertEqual([call(device), call(device)], wait_runners.call_args_list)
+        open_build.assert_called_once_with(device, "phone")
+        save_runner.assert_called_once_with(device)
+        read_authority.assert_called_once_with(device)
+        require_saved.assert_called_once_with(authority)
+        device.tap.assert_not_called()
+        device.wait.assert_not_called()
+
     def test_durable_save_foreground_loss_fails_before_any_followup_ui_input(self) -> None:
         device = Mock(spec=DRIVER.Device)
         toolbar = self.phone_runner_toolbar()

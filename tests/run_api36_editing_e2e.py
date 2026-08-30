@@ -3198,14 +3198,7 @@ def save_and_read_workspace_authority(
     tap_phone_destination(device, "phone-destination-runners")
     wait_for_phone_runners(device)
     open_build(device, profile)
-    device.tap("build-save-runner")
-    device.wait(
-        "Saved.",
-        timeout=90,
-        scroll=True,
-        max_scrolls=48,
-        scroll_distance_ratio=0.22,
-    )
+    save_runner_and_wait_for_durable_notice(device)
     tap_phone_destination(device, "phone-destination-runners")
     wait_for_phone_runners(device)
     authority = read_workspace_authority(device)
