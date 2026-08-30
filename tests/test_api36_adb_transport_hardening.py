@@ -273,13 +273,7 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
             ("shell", "pm", "clear", driver.PACKAGE),
             ("shell", "rm", "-f", "/sdcard/Download/runner.chum5"),
             ("shell", "am", "start", "-W", driver.PACKAGE),
-            (
-                "shell",
-                "uiautomator",
-                "dump",
-                "--compressed",
-                "/sdcard/chummer-editing-window.xml",
-            ),
+            ("shell", *driver.ADB_FRESH_FILE_HIERARCHY_SHELL_ARGUMENTS),
             ("exec-out", "run-as", driver.PACKAGE, "cat", "shared_prefs/a.xml"),
         )
         for arguments in commands:
@@ -392,7 +386,7 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
             )
             self.assertEqual(2, device.transport_summary()["terminalFailureCount"])
 
-    def test_direct_hierarchy_observation_is_the_only_retryable_uiautomator_dump(self) -> None:
+    def test_only_dev_tty_hierarchy_observation_is_retryable(self) -> None:
         self.assertEqual(
             "read-only-retryable",
             driver.adb_command_retry_policy(
@@ -402,13 +396,7 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
         self.assertEqual(
             "non-replayable",
             driver.adb_command_retry_policy(
-                (
-                    "shell",
-                    "uiautomator",
-                    "dump",
-                    "--compressed",
-                    "/sdcard/chummer-editing-window.xml",
-                )
+                ("shell", *driver.ADB_FRESH_FILE_HIERARCHY_SHELL_ARGUMENTS)
             )[0],
         )
 

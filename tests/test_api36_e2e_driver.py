@@ -411,6 +411,28 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         )
         reset_scroll.assert_not_called()
 
+    def test_phone_runner_root_threads_one_deadline_into_hierarchy_reads(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        route = self.phone_runner_route()
+        root_nodes = [self.phone_runner_page(), self.phone_runner_toolbar(), route]
+        device.hierarchy.return_value = root_nodes
+        device.node_has_tappable_bounds.return_value = True
+
+        with patch.object(
+            DRIVER.time,
+            "monotonic",
+            side_effect=(10.0, 10.25),
+        ):
+            observed = DRIVER.return_to_phone_runner_root(
+                device,
+                created=True,
+                timeout=1,
+            )
+
+        self.assertIs(route, observed)
+        device.hierarchy.assert_called_once_with(deadline=11.0)
+        device.dismiss_system_ui_anr.assert_not_called()
+
     def test_phone_runner_root_does_not_accept_toolbar_without_exact_route(self) -> None:
         device = Mock(spec=DRIVER.Device)
         device.hierarchy.return_value = [self.phone_runner_toolbar()]
@@ -1598,10 +1620,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
 
         self.assertEqual("Your runners", nodes[0].attributes["text"])
         device.shell.assert_called_once_with(
-            "uiautomator",
-            "dump",
-            "--compressed",
-            "/sdcard/chummer-editing-window.xml",
+            *DRIVER.ADB_FRESH_FILE_HIERARCHY_SHELL_ARGUMENTS,
         )
 
     def test_invalid_hierarchy_is_retryable_and_preserved(self) -> None:
@@ -1623,12 +1642,169 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 dump_output="ERROR: could not get idle state.",
             )
 
-            self.assertEqual([], device.hierarchy())
+            with patch.object(device, "run", wraps=device.run) as run:
+                self.assertEqual([], device.hierarchy())
+            run.assert_not_called()
             diagnostic = evidence / "last-invalid-hierarchy.txt"
             self.assertIn(
                 "could not get idle state",
                 diagnostic.read_text(encoding="utf-8"),
             )
+
+    def test_empty_dump_status_reads_only_atomically_refreshed_file(self) -> None:
+        current = "<hierarchy><node text='Current runner root' /></hierarchy>"
+        device = Mock(spec=DRIVER.Device)
+        device.shell.return_value = " \n\t "
+        device.run.return_value = subprocess.CompletedProcess(
+            args=("exec-out", "cat", DRIVER.ADB_FILE_HIERARCHY_REMOTE_PATH),
+            returncode=0,
+            stdout=current,
+            stderr="",
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            device.evidence = Path(temporary)
+            nodes = DRIVER.Device.hierarchy(device)
+
+        self.assertEqual("Current runner root", nodes[0].attributes["text"])
+        device.shell.assert_called_once_with(
+            *DRIVER.ADB_FRESH_FILE_HIERARCHY_SHELL_ARGUMENTS,
+        )
+        self.assertEqual(
+            [
+                call(
+                    "exec-out",
+                    "cat",
+                    DRIVER.ADB_FILE_HIERARCHY_REMOTE_PATH,
+                )
+            ],
+            device.run.call_args_list,
+        )
+        self.assertEqual(
+            (
+                "sh",
+                "-c",
+                "rm -f /sdcard/chummer-editing-window.xml && "
+                "uiautomator dump --compressed /sdcard/chummer-editing-window.xml",
+            ),
+            DRIVER.ADB_FRESH_FILE_HIERARCHY_SHELL_ARGUMENTS,
+        )
+        self.assertNotIn(
+            "/dev/tty",
+            " ".join(DRIVER.ADB_FRESH_FILE_HIERARCHY_SHELL_ARGUMENTS),
+        )
+
+    def test_empty_dump_status_rejects_invalid_fresh_file_hierarchy(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        device.shell.return_value = ""
+        device.run.return_value = subprocess.CompletedProcess(
+            args=("exec-out", "cat", DRIVER.ADB_FILE_HIERARCHY_REMOTE_PATH),
+            returncode=0,
+            stdout="fresh file contained no hierarchy",
+            stderr="",
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            evidence = Path(temporary)
+            device.evidence = evidence
+            self.assertEqual([], DRIVER.Device.hierarchy(device))
+            diagnostic = evidence / "last-invalid-hierarchy.txt"
+            self.assertEqual(
+                "fresh file contained no hierarchy",
+                diagnostic.read_text(encoding="utf-8"),
+            )
+
+        device.run.assert_called_once_with(
+            "exec-out",
+            "cat",
+            DRIVER.ADB_FILE_HIERARCHY_REMOTE_PATH,
+        )
+
+    def test_empty_dump_status_records_fresh_file_transport_failure(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        device.shell.return_value = ""
+        failed_arguments = (
+            "exec-out",
+            "cat",
+            DRIVER.ADB_FILE_HIERARCHY_REMOTE_PATH,
+        )
+        self.assertEqual(
+            (
+                "read-only-retryable",
+                "exact remote-file byte observation",
+            ),
+            DRIVER.adb_command_retry_policy(failed_arguments),
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            evidence = Path(temporary)
+            transport_evidence = evidence / "adb-transport-event-0001.json"
+            device.run.side_effect = DRIVER.AdbTransportError(
+                {
+                    "classification": "device-offline",
+                    "commandPolicy": "read-only-retryable",
+                    "replay": {"performed": True, "suppressed": True},
+                },
+                transport_evidence,
+            )
+            device.evidence = evidence
+            with self.assertRaises(DRIVER.AdbTransportError):
+                DRIVER.Device.hierarchy(device)
+            diagnostic = (evidence / "last-invalid-hierarchy.txt").read_text(
+                encoding="utf-8"
+            )
+
+        self.assertIn("Fresh file-backed hierarchy observation failed", diagnostic)
+        self.assertIn("device-offline", diagnostic)
+        self.assertIn(str(transport_evidence), diagnostic)
+
+    def test_empty_dump_status_fresh_file_read_preserves_caller_deadline(self) -> None:
+        current = "<hierarchy><node text='Current runner root' /></hierarchy>"
+        device = Mock(spec=DRIVER.Device)
+        device.shell.return_value = ""
+        device.run.return_value = subprocess.CompletedProcess(
+            args=("exec-out", "cat", DRIVER.ADB_FILE_HIERARCHY_REMOTE_PATH),
+            returncode=0,
+            stdout=current,
+            stderr="",
+        )
+        with tempfile.TemporaryDirectory() as temporary, patch.object(
+            DRIVER.time,
+            "monotonic",
+            return_value=90.0,
+        ):
+            device.evidence = Path(temporary)
+            nodes = DRIVER.Device.hierarchy(device, deadline=100.0)
+
+        self.assertEqual("Current runner root", nodes[0].attributes["text"])
+        device.shell.assert_called_once_with(
+            *DRIVER.ADB_FRESH_FILE_HIERARCHY_SHELL_ARGUMENTS,
+            timeout=10.0,
+            deadline=100.0,
+        )
+        device.run.assert_called_once_with(
+            "exec-out",
+            "cat",
+            DRIVER.ADB_FILE_HIERARCHY_REMOTE_PATH,
+            timeout=10.0,
+            deadline=100.0,
+        )
+
+    def test_empty_dump_status_does_not_read_fresh_file_after_deadline(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        device.shell.return_value = ""
+        with tempfile.TemporaryDirectory() as temporary, patch.object(
+            DRIVER.time,
+            "monotonic",
+            side_effect=(90.0, 101.0),
+        ):
+            evidence = Path(temporary)
+            device.evidence = evidence
+            self.assertEqual([], DRIVER.Device.hierarchy(device, deadline=100.0))
+            diagnostic = (evidence / "last-invalid-hierarchy.txt").read_text(
+                encoding="utf-8"
+            )
+
+        self.assertIn("caller-owned deadline", diagnostic)
+        self.assertIn("deadline expired before command invocation", diagnostic)
+        device.run.assert_not_called()
 
     def test_android_hierchary_success_typo_is_accepted(self) -> None:
         xml = "<hierarchy><node text='Current screen' /></hierarchy>"

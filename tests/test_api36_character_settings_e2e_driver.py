@@ -96,8 +96,13 @@ class Api36CharacterSettingsE2EDriverTests(unittest.TestCase):
                 30,
                 output=b"partial hierarchy output",
             )
-            with patch.object(shared.Device, "hierarchy", side_effect=timeout):
-                self.assertEqual([], device.hierarchy())
+            with patch.object(
+                shared.Device,
+                "hierarchy",
+                side_effect=timeout,
+            ) as hierarchy:
+                self.assertEqual([], device.hierarchy(deadline=41.0))
+            hierarchy.assert_called_once_with(deadline=41.0)
             self.assertIn(
                 "partial hierarchy output",
                 (Path(temporary) / "last-invalid-hierarchy.txt").read_text(encoding="utf-8"),

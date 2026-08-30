@@ -114,6 +114,13 @@ ADB_READ_ONLY_HIERARCHY_ARGUMENTS = (
     "--compressed",
     "/dev/tty",
 )
+ADB_FILE_HIERARCHY_REMOTE_PATH = "/sdcard/chummer-editing-window.xml"
+ADB_FRESH_FILE_HIERARCHY_SHELL_ARGUMENTS = (
+    "sh",
+    "-c",
+    "rm -f /sdcard/chummer-editing-window.xml && "
+    "uiautomator dump --compressed /sdcard/chummer-editing-window.xml",
+)
 DOCUMENTS_UI_PACKAGE = "com.google.android.documentsui"
 DOCUMENTS_UI_DRAWER_MARKER = "Open from"
 DOCUMENTS_UI_DOWNLOADS_ROOT = "Downloads"
@@ -1120,18 +1127,10 @@ class Device:
         """Read one hierarchy while sharing an optional caller-owned deadline."""
         try:
             if deadline is None:
-                dump_output = self.shell(
-                    "uiautomator",
-                    "dump",
-                    "--compressed",
-                    "/sdcard/chummer-editing-window.xml",
-                )
+                dump_output = self.shell(*ADB_FRESH_FILE_HIERARCHY_SHELL_ARGUMENTS)
             else:
                 dump_output = self.shell(
-                    "uiautomator",
-                    "dump",
-                    "--compressed",
-                    "/sdcard/chummer-editing-window.xml",
+                    *ADB_FRESH_FILE_HIERARCHY_SHELL_ARGUMENTS,
                     timeout=_remaining_operation_timeout(
                         deadline=deadline,
                         maximum=120,
@@ -1139,25 +1138,30 @@ class Device:
                     deadline=deadline,
                 )
                 _remaining_operation_timeout(deadline=deadline, maximum=120)
-            normalized_dump_output = dump_output.lower()
+            normalized_dump_output = dump_output.strip().lower()
             if not any(
                 marker in normalized_dump_output
                 for marker in ("hierarchy dumped", "hierchary dumped")
             ):
-                (self.evidence / "last-invalid-hierarchy.txt").write_text(
-                    dump_output or "uiautomator returned no dump status",
-                    encoding="utf-8",
-                )
-                return []
+                # The one-shot shell command invalidates the canonical file
+                # before invoking UIAutomator. A successful command with empty
+                # status therefore cannot authorize bytes from an older dump;
+                # any nonempty unrecognized status remains a hard rejection.
+                if normalized_dump_output:
+                    (self.evidence / "last-invalid-hierarchy.txt").write_text(
+                        dump_output,
+                        encoding="utf-8",
+                    )
+                    return []
             if deadline is None:
                 xml = self.run(
-                    "exec-out", "cat", "/sdcard/chummer-editing-window.xml"
+                    "exec-out", "cat", ADB_FILE_HIERARCHY_REMOTE_PATH
                 ).stdout
             else:
                 xml = self.run(
                     "exec-out",
                     "cat",
-                    "/sdcard/chummer-editing-window.xml",
+                    ADB_FILE_HIERARCHY_REMOTE_PATH,
                     timeout=_remaining_operation_timeout(
                         deadline=deadline,
                         maximum=120,
@@ -1165,8 +1169,18 @@ class Device:
                     deadline=deadline,
                 ).stdout
                 _remaining_operation_timeout(deadline=deadline, maximum=120)
-        except AdbOperationDeadlineExceeded:
+        except AdbOperationDeadlineExceeded as error:
+            (self.evidence / "last-invalid-hierarchy.txt").write_text(
+                f"Hierarchy observation exceeded its caller-owned deadline: {error}",
+                encoding="utf-8",
+            )
             return []
+        except AdbTransportError as error:
+            (self.evidence / "last-invalid-hierarchy.txt").write_text(
+                f"Fresh file-backed hierarchy observation failed: {error}",
+                encoding="utf-8",
+            )
+            raise
         except subprocess.CalledProcessError as error:
             detail = "\n".join(
                 part for part in (str(error), error.stdout, error.stderr) if part
@@ -3249,9 +3263,9 @@ def return_to_phone_runner_root(
     back_steps = 0
     viewport_reset = False
     while time.monotonic() < deadline:
-        nodes = device.hierarchy()
+        nodes = device.hierarchy(deadline=deadline)
         if not nodes:
-            if device.dismiss_system_ui_anr():
+            if device.dismiss_system_ui_anr(nodes):
                 time.sleep(2)
             else:
                 time.sleep(0.75)
@@ -3346,7 +3360,7 @@ def return_to_phone_runner_root(
             time.sleep(0.75)
             continue
 
-        if device.dismiss_system_ui_anr():
+        if device.dismiss_system_ui_anr(nodes):
             time.sleep(2)
             continue
         time.sleep(0.75)
