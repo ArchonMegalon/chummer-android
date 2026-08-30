@@ -80,6 +80,9 @@ PROGRESS_EVENTS_FILE_NAME = "creation-prerequisite-progress.jsonl"
 CREATION_BOOTSTRAP_TIMING_PREFIX = "CHUMMER_CREATION_BOOTSTRAP_TIMING "
 CREATION_BOOTSTRAP_TIMING_FILE_NAME = "creation-bootstrap-timing.json"
 CREATION_BOOTSTRAP_LOGCAT_FILE_NAME = "creation-bootstrap-timing-logcat.txt"
+CREATION_BOOTSTRAP_TIMING_LINE = re.compile(
+    rf"^{re.escape(CREATION_BOOTSTRAP_TIMING_PREFIX)}(?P<payload>\{{.*\}})$"
+)
 ADB_CREATION_BOOTSTRAP_LOGCAT_WAIT_ARGUMENTS = (
     "logcat",
     "-v",
@@ -90,6 +93,15 @@ ADB_CREATION_BOOTSTRAP_LOGCAT_WAIT_ARGUMENTS = (
     "1",
     "-e",
     r"^CHUMMER_CREATION_BOOTSTRAP_TIMING \{",
+    "-s",
+    "ChummerBootstrap:I",
+    "*:S",
+)
+ADB_CREATION_BOOTSTRAP_LOGCAT_SNAPSHOT_ARGUMENTS = (
+    "logcat",
+    "-d",
+    "-v",
+    "raw",
     "-s",
     "ChummerBootstrap:I",
     "*:S",
@@ -205,7 +217,7 @@ def capture_creation_bootstrap_timing(
     """Capture the product-emitted, exact create/load/shell timing partition."""
     if logcat is None:
         result = device.run(
-            *shared.ADB_CREATION_BOOTSTRAP_LOGCAT_ARGUMENTS,
+            *ADB_CREATION_BOOTSTRAP_LOGCAT_SNAPSHOT_ARGUMENTS,
             timeout=30,
         )
         logcat = str(result.stdout)
@@ -214,29 +226,27 @@ def capture_creation_bootstrap_timing(
         logcat,
         encoding="utf-8",
     )
-    decoded: dict[str, dict[str, object]] = {}
-    for line in logcat.splitlines():
-        if CREATION_BOOTSTRAP_TIMING_PREFIX not in line:
-            continue
-        payload_text = line.split(CREATION_BOOTSTRAP_TIMING_PREFIX, 1)[1].strip()
-        try:
-            payload = json.loads(payload_text)
-        except json.JSONDecodeError as error:
-            device.capture("creation-bootstrap-timing-json-invalid")
-            raise RuntimeError(
-                "Creation bootstrap timing log contained invalid JSON"
-            ) from error
-        if not isinstance(payload, dict):
-            raise RuntimeError("Creation bootstrap timing payload was not an object")
-        decoded[json.dumps(payload, sort_keys=True, separators=(",", ":"))] = payload
-
-    if len(decoded) != 1:
+    raw_lines = logcat.splitlines()
+    exact_matches = [
+        match
+        for line in raw_lines
+        if (match := CREATION_BOOTSTRAP_TIMING_LINE.fullmatch(line)) is not None
+    ]
+    if len(raw_lines) != 1 or len(exact_matches) != 1:
         device.capture("creation-bootstrap-timing-cardinality-invalid")
         raise RuntimeError(
-            "Expected exactly one unique create bootstrap timing receipt, "
-            f"found {len(decoded)}"
+            "Expected exactly one exact create bootstrap timing line, "
+            f"found raw={len(raw_lines)}, exact={len(exact_matches)}"
         )
-    timing = next(iter(decoded.values()))
+    try:
+        timing = json.loads(exact_matches[0].group("payload"))
+    except json.JSONDecodeError as error:
+        device.capture("creation-bootstrap-timing-json-invalid")
+        raise RuntimeError(
+            "Creation bootstrap timing log contained invalid JSON"
+        ) from error
+    if not isinstance(timing, dict):
+        raise RuntimeError("Creation bootstrap timing payload was not an object")
     required_literal = {
         "schema": "chummer.android.creation-bootstrap-timing/v1",
         "actionId": "create_character",
@@ -358,20 +368,50 @@ def wait_for_creation_bootstrap_timing_log(
             last_logcat = str(stdout)
     else:
         last_logcat = str(streamed.stdout)
-        if CREATION_BOOTSTRAP_TIMING_PREFIX in last_logcat:
-            snapshot = observe(
-                shared.ADB_CREATION_BOOTSTRAP_LOGCAT_ARGUMENTS,
-                command_timeout=30,
-            )
-            last_logcat = str(snapshot.stdout)
-            if CREATION_BOOTSTRAP_TIMING_PREFIX in last_logcat:
-                record("resolved")
-                device.evidence.mkdir(parents=True, exist_ok=True)
-                (device.evidence / CREATION_BOOTSTRAP_LOGCAT_FILE_NAME).write_text(
-                    last_logcat,
-                    encoding="utf-8",
+        stream_lines = last_logcat.splitlines()
+        stream_exact = sum(
+            CREATION_BOOTSTRAP_TIMING_LINE.fullmatch(line) is not None
+            for line in stream_lines
+        )
+        if (
+            len(stream_lines) == 1
+            and stream_exact == 1
+            and time.monotonic() < deadline
+        ):
+            try:
+                snapshot = observe(
+                    ADB_CREATION_BOOTSTRAP_LOGCAT_SNAPSHOT_ARGUMENTS,
+                    command_timeout=30,
+                    command_deadline=deadline,
                 )
-                return last_logcat
+            except shared.AdbTransportError as error:
+                if error.receipt.get("classification") != "timeout-unknown-outcome":
+                    raise
+                failure = error.receipt.get("failure")
+                if isinstance(failure, dict):
+                    last_logcat = str(failure.get("stdout", ""))
+            except subprocess.TimeoutExpired as error:
+                stdout = error.stdout
+                if isinstance(stdout, bytes):
+                    last_logcat = stdout.decode("utf-8", errors="replace")
+                elif stdout is not None:
+                    last_logcat = str(stdout)
+            else:
+                last_logcat = str(snapshot.stdout)
+                if (
+                    any(
+                        CREATION_BOOTSTRAP_TIMING_LINE.fullmatch(line) is not None
+                        for line in last_logcat.splitlines()
+                    )
+                    and time.monotonic() < deadline
+                ):
+                    record("resolved")
+                    device.evidence.mkdir(parents=True, exist_ok=True)
+                    (device.evidence / CREATION_BOOTSTRAP_LOGCAT_FILE_NAME).write_text(
+                        last_logcat,
+                        encoding="utf-8",
+                    )
+                    return last_logcat
 
     record("timeout")
     device.evidence.mkdir(parents=True, exist_ok=True)
