@@ -2410,11 +2410,11 @@ def assert_uncreated_advanced_editor_gated(
     bindings: set[str] = set()
     method_states: set[tuple[str, str, str]] = set()
     method_viewports: set[int] = set()
-    exact_dashboard_ids = (
+    exact_dashboard_resource_ids = (
         "phone-runner-create",
         "creation-wizard-dashboard",
-        "build-save-runner",
     )
+    exact_dashboard_ids = (*exact_dashboard_resource_ids, "build-save-runner")
     dashboard_states: dict[str, set[tuple[str, str]]] = {
         selector: set() for selector in exact_dashboard_ids
     }
@@ -2427,7 +2427,7 @@ def assert_uncreated_advanced_editor_gated(
                     "Creation dashboard exposed a Career/advanced-editor control while "
                     f"the authoritative runner is still uncreated: {selector!r}"
                 )
-        for selector in exact_dashboard_ids if deadline is not None else ():
+        for selector in exact_dashboard_resource_ids if deadline is not None else ():
             matches = [node for node in nodes if _exact_resource_id(node) == selector]
             if len(matches) > 1:
                 capture(f"{scan_id}-{selector}-cardinality-invalid")
@@ -2444,6 +2444,44 @@ def assert_uncreated_advanced_editor_gated(
                     capture(f"{scan_id}-{selector}-identity-invalid")
                     raise RuntimeError(
                         f"Creation dashboard {selector!r} was not canonical"
+                    )
+                dashboard_states[selector].add(
+                    (
+                        node.attributes.get("enabled", ""),
+                        node.attributes.get("clickable", ""),
+                    )
+                )
+                if visible(node):
+                    dashboard_visible.add(selector)
+        if deadline is not None:
+            selector = "build-save-runner"
+            matches = [
+                node
+                for node in nodes
+                if selector
+                in {
+                    _exact_resource_id(node),
+                    node.attributes.get("content-desc", ""),
+                }
+            ]
+            if len(matches) > 1:
+                capture(f"{scan_id}-{selector}-cardinality-invalid")
+                raise RuntimeError(
+                    f"Creation dashboard {selector!r} has cardinality {len(matches)}"
+                )
+            if len(matches) == 1:
+                node = matches[0]
+                if (
+                    node.attributes.get("resource-id") != ""
+                    or node.attributes.get("package") != shared.PACKAGE
+                    or node.attributes.get("class") != "android.widget.Button"
+                    or node.attributes.get("content-desc") != selector
+                    or node.attributes.get("focusable") != "true"
+                ):
+                    capture(f"{scan_id}-{selector}-identity-invalid")
+                    raise RuntimeError(
+                        f"Creation dashboard {selector!r} was not the canonical "
+                        "native toolbar accessibility node"
                     )
                 dashboard_states[selector].add(
                     (

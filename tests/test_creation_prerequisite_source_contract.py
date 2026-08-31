@@ -69,7 +69,18 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         return [
             cls.canonical_node("phone-runner-create"),
             cls.canonical_node("creation-wizard-dashboard"),
-            cls.canonical_node("build-save-runner"),
+            driver.shared.UiNode(
+                {
+                    "resource-id": "",
+                    "package": driver.shared.PACKAGE,
+                    "class": "android.widget.Button",
+                    "content-desc": "build-save-runner",
+                    "enabled": "true",
+                    "clickable": "true",
+                    "focusable": "true",
+                    "bounds": "[954,138][1080,264]",
+                }
+            ),
         ]
 
     @staticmethod
@@ -6163,6 +6174,137 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
         self.assertEqual(123.0, acquire.call_args.kwargs["deadline"])
         self.assertEqual(123.0, scan.call_args.kwargs["deadline"])
+
+    def test_dashboard_deadline_scan_rejects_noncanonical_native_toolbar_identity(
+        self,
+    ) -> None:
+        binding = self.canonical_node(
+            "creation-wizard-binding",
+            **{"content-desc": "Revision 7"},
+        )
+        method = self.canonical_node(
+            "creation-stage-method",
+            **{"content-desc": "Priority"},
+        )
+        canonical_routes = self.dashboard_route_nodes()
+        toolbar_attributes = dict(canonical_routes[-1].attributes)
+        cases = (
+            (
+                "resource-backed-toolbar",
+                {
+                    **toolbar_attributes,
+                    "resource-id": (
+                        f"{driver.shared.PACKAGE}:id/build-save-runner"
+                    ),
+                },
+                "canonical native toolbar accessibility node",
+            ),
+            (
+                "wrong-toolbar-class",
+                {**toolbar_attributes, "class": "android.widget.TextView"},
+                "canonical native toolbar accessibility node",
+            ),
+            (
+                "wrong-toolbar-package",
+                {**toolbar_attributes, "package": "com.example.other"},
+                "canonical native toolbar accessibility node",
+            ),
+            (
+                "non-focusable-toolbar",
+                {**toolbar_attributes, "focusable": "false"},
+                "canonical native toolbar accessibility node",
+            ),
+            (
+                "disabled-toolbar",
+                {**toolbar_attributes, "enabled": "false"},
+                "canonical route, root, toolbar",
+            ),
+            (
+                "non-clickable-toolbar",
+                {**toolbar_attributes, "clickable": "false"},
+                "canonical route, root, toolbar",
+            ),
+            (
+                "prefix-lookalike-toolbar",
+                {
+                    **toolbar_attributes,
+                    "content-desc": "build-save-runner-lookalike",
+                },
+                "canonical route, root, toolbar",
+            ),
+        )
+        for case, invalid_attributes, error in cases:
+            nodes = [
+                *canonical_routes[:-1],
+                driver.shared.UiNode(invalid_attributes),
+                binding,
+                method,
+            ]
+            origin = self.priority_rank_origin(nodes)
+            device = mock.Mock()
+            device.node_has_tappable_bounds.return_value = True
+            with self.subTest(case=case), mock.patch.object(
+                driver,
+                "acquire_stable_start_origin",
+                return_value=origin,
+            ), mock.patch.object(
+                driver,
+                "scan_forward_with_receipt",
+                return_value=driver.StableViewportScan([nodes], 0),
+            ), self.assertRaisesRegex(RuntimeError, error):
+                driver.assert_uncreated_advanced_editor_gated(
+                    device,
+                    deadline=123.0,
+                )
+
+        duplicate_nodes = [
+            *canonical_routes,
+            canonical_routes[-1],
+            binding,
+            method,
+        ]
+        duplicate_origin = self.priority_rank_origin(duplicate_nodes)
+        duplicate_device = mock.Mock()
+        duplicate_device.node_has_tappable_bounds.return_value = True
+        with mock.patch.object(
+            driver,
+            "acquire_stable_start_origin",
+            return_value=duplicate_origin,
+        ), mock.patch.object(
+            driver,
+            "scan_forward_with_receipt",
+            return_value=driver.StableViewportScan([duplicate_nodes], 0),
+        ), self.assertRaisesRegex(RuntimeError, "cardinality 2"):
+            driver.assert_uncreated_advanced_editor_gated(
+                duplicate_device,
+                deadline=123.0,
+            )
+
+        clipped_toolbar = driver.shared.UiNode(toolbar_attributes)
+        clipped_nodes = [
+            *canonical_routes[:-1],
+            clipped_toolbar,
+            binding,
+            method,
+        ]
+        clipped_origin = self.priority_rank_origin(clipped_nodes)
+        clipped_device = mock.Mock()
+        clipped_device.node_has_tappable_bounds.side_effect = (
+            lambda node, **_kwargs: node is not clipped_toolbar
+        )
+        with mock.patch.object(
+            driver,
+            "acquire_stable_start_origin",
+            return_value=clipped_origin,
+        ), mock.patch.object(
+            driver,
+            "scan_forward_with_receipt",
+            return_value=driver.StableViewportScan([clipped_nodes], 0),
+        ), self.assertRaisesRegex(RuntimeError, "canonical route, root, toolbar"):
+            driver.assert_uncreated_advanced_editor_gated(
+                clipped_device,
+                deadline=123.0,
+            )
 
     def test_restored_creation_method_reacquisition_uses_fresh_exact_id_hierarchies(
         self,
