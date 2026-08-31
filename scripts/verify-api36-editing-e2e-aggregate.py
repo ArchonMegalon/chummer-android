@@ -29,6 +29,16 @@ CREATION_METHOD_REACQUISITION_SCAN_ID = (
     "creation-stage-method-ready-reacquisition"
 )
 CREATION_METHOD_REACQUISITION_MAX_SCROLLS = 18
+CONFIRMED_RECEIPT_SCAN_ID = "creation-prerequisite-confirmed-receipt"
+CONFIRMED_RECEIPT_BACK_REACQUISITION_SCAN_ID = (
+    "creation-prerequisite-confirmed-receipt-back-reacquisition"
+)
+CONFIRMED_RECEIPT_BACK_REACQUISITION_MAX_SCROLLS = 12
+CONFIRMED_RECEIPT_BACK_REACQUISITION_MAX_EMPTY_HIERARCHIES = 3
+CONFIRMED_RECEIPT_BACK_REACQUISITION_MAX_SYSTEM_UI_DISMISSALS = 3
+CONFIRMED_RECEIPT_BACK_REACQUISITION_MAX_ELAPSED_MS = 45_000
+CONFIRMED_RECEIPT_BACK_REACQUISITION_DOWNSTREAM_RESERVE_MS = 33_000
+CONFIRMED_RECEIPT_BACK_REACQUISITION_DELAY_MS = 200
 TALENT_REACQUISITION_MAX_SCROLLS = 40
 TALENT_OPTION_RECOVERY_MAX_SCROLLS = 40
 TALENT_REACQUISITION_STABLE_REPEATS = 2
@@ -211,6 +221,176 @@ def require_creation_method_reacquisition_scan(
         raise ValueError(
             "creation method reacquisition scan did not reconcile gestures, screens, "
             "hierarchy reads, or phase timing"
+        )
+
+
+def require_confirmed_receipt_back_reacquisition_scan(
+    timing: dict[str, Any],
+    *,
+    preview_phase_elapsed_ms: int,
+) -> None:
+    scans = timing.get("scans")
+    if not isinstance(scans, list):
+        raise ValueError("creation prerequisite scan timing evidence is missing")
+    receipt_matches = [
+        scan
+        for scan in scans
+        if isinstance(scan, dict)
+        and scan.get("scanId") == CONFIRMED_RECEIPT_SCAN_ID
+    ]
+    if len(receipt_matches) != 1:
+        raise ValueError(
+            "confirmed-receipt authority scan cardinality differs: "
+            f"expected=1, actual={len(receipt_matches)}"
+        )
+    receipt_scan = receipt_matches[0]
+    receipt_required_literals: dict[str, Any] = {
+        "status": "required-authority-complete",
+        "phaseId": "preview-confirm",
+    }
+    receipt_differing = {
+        field: (expected, receipt_scan.get(field))
+        for field, expected in receipt_required_literals.items()
+        if receipt_scan.get(field) != expected
+    }
+    if receipt_differing:
+        raise ValueError(
+            "confirmed-receipt scan authority differs: "
+            f"{receipt_differing!r}"
+        )
+    if (
+        type(receipt_scan.get("swipes")) is not int
+        or int(receipt_scan["swipes"]) < 0
+    ):
+        raise ValueError(
+            "confirmed-receipt authority scan swipes must be a nonnegative integer"
+        )
+    receipt_swipes = int(receipt_scan["swipes"])
+    if receipt_swipes > 12:
+        raise ValueError(
+            "confirmed-receipt authority scan swipes exceeded its measured bound"
+        )
+    matches = [
+        scan
+        for scan in scans
+        if isinstance(scan, dict)
+        and scan.get("scanId")
+        == CONFIRMED_RECEIPT_BACK_REACQUISITION_SCAN_ID
+    ]
+    if len(matches) != 1:
+        raise ValueError(
+            "confirmed-receipt Back reacquisition scan cardinality differs: "
+            f"expected=1, actual={len(matches)}"
+        )
+    scan = matches[0]
+    required_literals: dict[str, Any] = {
+        "status": "resolved",
+        "phaseId": "preview-confirm",
+        "direction": "forward-from-measured-restored-bottom",
+        "distanceRatio": 0.30,
+        "deadlineEnforced": True,
+        "maximumEmptyHierarchyReads": (
+            CONFIRMED_RECEIPT_BACK_REACQUISITION_MAX_EMPTY_HIERARCHIES
+        ),
+        "maximumSystemUiDismissals": (
+            CONFIRMED_RECEIPT_BACK_REACQUISITION_MAX_SYSTEM_UI_DISMISSALS
+        ),
+        "downstreamReserveMs": (
+            CONFIRMED_RECEIPT_BACK_REACQUISITION_DOWNSTREAM_RESERVE_MS
+        ),
+    }
+    differing = {
+        field: (expected, scan.get(field))
+        for field, expected in required_literals.items()
+        if scan.get(field) != expected
+    }
+    if differing:
+        raise ValueError(
+            "confirmed-receipt Back reacquisition authority differs: "
+            f"{differing!r}"
+        )
+    if type(scan.get("deadlineEnforced")) is not bool or scan.get(
+        "deadlineEnforced"
+    ) is not True:
+        raise ValueError(
+            "confirmed-receipt Back reacquisition authority differs: "
+            "deadlineEnforced must be the JSON boolean true"
+        )
+    integer_fields = (
+        "screens",
+        "swipes",
+        "configuredMaxScrolls",
+        "emptyHierarchyReads",
+        "systemUiDismissals",
+        "hierarchyReadCount",
+        "hierarchyElapsedMs",
+        "maximumHierarchyReadMs",
+        "maximumElapsedMs",
+        "elapsedMs",
+    )
+    invalid = [
+        field
+        for field in integer_fields
+        if type(scan.get(field)) is not int or int(scan[field]) < 0
+    ]
+    if invalid:
+        raise ValueError(
+            "confirmed-receipt Back reacquisition timing/count data differs: "
+            f"{invalid!r}"
+        )
+    value = {field: int(scan[field]) for field in integer_fields}
+    if value["configuredMaxScrolls"] != receipt_swipes:
+        raise ValueError(
+            "confirmed-receipt Back configuredMaxScrolls differs from the "
+            "original confirmed-receipt swipes"
+        )
+    read_rounding_ms = (value["hierarchyReadCount"] + 1) // 2
+    mandatory_wait_ms = (
+        value["swipes"] * CONFIRMED_RECEIPT_BACK_REACQUISITION_DELAY_MS
+        + value["emptyHierarchyReads"]
+        * CONFIRMED_RECEIPT_BACK_REACQUISITION_DELAY_MS
+        + value["systemUiDismissals"] * 2_000
+    )
+    maximum_lower_bound = (
+        (
+            value["hierarchyElapsedMs"]
+            + value["hierarchyReadCount"]
+            - 1
+        )
+        // value["hierarchyReadCount"]
+        if value["hierarchyReadCount"] > 0
+        else 0
+    )
+    if not (
+        0
+        <= value["configuredMaxScrolls"]
+        <= CONFIRMED_RECEIPT_BACK_REACQUISITION_MAX_SCROLLS
+        and value["configuredMaxScrolls"] == receipt_swipes
+        and 0 <= value["swipes"] <= value["configuredMaxScrolls"]
+        and 1 <= value["screens"]
+        and value["emptyHierarchyReads"]
+        <= CONFIRMED_RECEIPT_BACK_REACQUISITION_MAX_EMPTY_HIERARCHIES
+        and value["systemUiDismissals"]
+        <= CONFIRMED_RECEIPT_BACK_REACQUISITION_MAX_SYSTEM_UI_DISMISSALS
+        and value["hierarchyReadCount"]
+        == value["screens"] + value["emptyHierarchyReads"]
+        and value["screens"]
+        == value["swipes"] + value["systemUiDismissals"] + 1
+        and value["hierarchyReadCount"] > 0
+        and value["maximumHierarchyReadMs"] >= maximum_lower_bound
+        and value["maximumHierarchyReadMs"] <= value["hierarchyElapsedMs"]
+        and value["hierarchyElapsedMs"]
+        <= value["elapsedMs"] + read_rounding_ms
+        and value["hierarchyElapsedMs"] + mandatory_wait_ms
+        <= value["elapsedMs"] + read_rounding_ms + 1
+        and 0 < value["maximumElapsedMs"]
+        <= CONFIRMED_RECEIPT_BACK_REACQUISITION_MAX_ELAPSED_MS
+        and value["elapsedMs"] <= value["maximumElapsedMs"] + 1
+        and value["elapsedMs"] <= preview_phase_elapsed_ms
+    ):
+        raise ValueError(
+            "confirmed-receipt Back reacquisition scan did not reconcile its "
+            "measured bound, gestures, hierarchy reads, or timing"
         )
 
 
@@ -678,6 +858,10 @@ def require_creation_timing_within_budget(receipt: dict[str, Any]) -> None:
         advanced_phase_elapsed_ms=phase_elapsed_by_id[
             "advanced-editor-gate-inventory"
         ],
+    )
+    require_confirmed_receipt_back_reacquisition_scan(
+        timing,
+        preview_phase_elapsed_ms=phase_elapsed_by_id["preview-confirm"],
     )
     require_talent_reacquisition_scans(
         timing,

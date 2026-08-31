@@ -157,6 +157,53 @@ def talent_overlap_recovery_scan(phase_id: str) -> dict[str, object]:
     return scan
 
 
+def confirmed_receipt_back_reacquisition_scan() -> dict[str, object]:
+    return {
+        "scanId": AGGREGATE.CONFIRMED_RECEIPT_BACK_REACQUISITION_SCAN_ID,
+        "status": "resolved",
+        "phaseId": "preview-confirm",
+        "direction": "forward-from-measured-restored-bottom",
+        "distanceRatio": 0.30,
+        "screens": 3,
+        "swipes": 2,
+        "configuredMaxScrolls": 2,
+        "emptyHierarchyReads": 0,
+        "systemUiDismissals": 0,
+        "maximumEmptyHierarchyReads": (
+            AGGREGATE.CONFIRMED_RECEIPT_BACK_REACQUISITION_MAX_EMPTY_HIERARCHIES
+        ),
+        "maximumSystemUiDismissals": (
+            AGGREGATE.CONFIRMED_RECEIPT_BACK_REACQUISITION_MAX_SYSTEM_UI_DISMISSALS
+        ),
+        "downstreamReserveMs": (
+            AGGREGATE.CONFIRMED_RECEIPT_BACK_REACQUISITION_DOWNSTREAM_RESERVE_MS
+        ),
+        "deadlineEnforced": True,
+        "hierarchyReadCount": 3,
+        "hierarchyElapsedMs": 300,
+        "maximumHierarchyReadMs": 100,
+        "elapsedMs": 700,
+        "maximumElapsedMs": (
+            AGGREGATE.CONFIRMED_RECEIPT_BACK_REACQUISITION_MAX_ELAPSED_MS
+        ),
+    }
+
+
+def confirmed_receipt_scan(swipes: int = 2) -> dict[str, object]:
+    return {
+        "scanId": "creation-prerequisite-confirmed-receipt",
+        "status": "required-authority-complete",
+        "phaseId": "preview-confirm",
+        "configuredMaxScrolls": 12,
+        "distanceRatio": 0.30,
+        "direction": "reverse-from-current-confirmed-bottom",
+        "deadlineEnforced": True,
+        "screens": swipes + 1,
+        "swipes": swipes,
+        "elapsedMs": 700,
+    }
+
+
 class Api36ArtifactAuthorityTests(unittest.TestCase):
     def authority(self, attempt: str = "1", **overrides: str) -> dict[str, str]:
         values = {
@@ -278,6 +325,8 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                         talent_reacquisition_scan(phase_id)
                         for phase_id in AGGREGATE.TALENT_REACQUISITION_PHASES
                     ),
+                    confirmed_receipt_scan(),
+                    confirmed_receipt_back_reacquisition_scan(),
                 ],
             }
         else:
@@ -749,6 +798,355 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                     AGGREGATE.require_creation_timing_within_budget(
                         {"timing": timing}
                     )
+
+    def test_creation_timing_requires_exactly_one_confirmed_receipt_back_reacquisition_scan(
+        self,
+    ) -> None:
+        for case in ("omitted", "duplicated"):
+            with self.subTest(case=case):
+                timing = json.loads(json.dumps(
+                    self.raw_receipt("creation-prerequisite")["timing"]
+                ))
+                scan = next(
+                    scan
+                    for scan in timing["scans"]
+                    if scan.get("scanId")
+                    == AGGREGATE.CONFIRMED_RECEIPT_BACK_REACQUISITION_SCAN_ID
+                )
+                if case == "omitted":
+                    timing["scans"].remove(scan)
+                else:
+                    timing["scans"].append(dict(scan))
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "confirmed-receipt Back reacquisition scan cardinality differs",
+                ):
+                    AGGREGATE.require_creation_timing_within_budget(
+                        {"timing": timing}
+                    )
+
+    def test_creation_timing_requires_exactly_one_confirmed_receipt_scan(
+        self,
+    ) -> None:
+        for case in ("omitted", "duplicated"):
+            with self.subTest(case=case):
+                timing = json.loads(json.dumps(
+                    self.raw_receipt("creation-prerequisite")["timing"]
+                ))
+                scan = next(
+                    scan
+                    for scan in timing["scans"]
+                    if scan.get("scanId")
+                    == "creation-prerequisite-confirmed-receipt"
+                )
+                if case == "omitted":
+                    timing["scans"].remove(scan)
+                else:
+                    timing["scans"].append(dict(scan))
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "confirmed-receipt.*cardinality differs",
+                ):
+                    AGGREGATE.require_creation_timing_within_budget(
+                        {"timing": timing}
+                    )
+
+    def test_creation_timing_rejects_forged_confirmed_receipt_scan_authority(
+        self,
+    ) -> None:
+        for field, forged in (
+            ("status", "pass"),
+            ("phaseId", "same-process-reopen"),
+        ):
+            with self.subTest(field=field):
+                timing = json.loads(json.dumps(
+                    self.raw_receipt("creation-prerequisite")["timing"]
+                ))
+                scan = next(
+                    scan
+                    for scan in timing["scans"]
+                    if scan.get("scanId")
+                    == "creation-prerequisite-confirmed-receipt"
+                )
+                scan[field] = forged
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "confirmed-receipt.*differs",
+                ):
+                    AGGREGATE.require_creation_timing_within_budget(
+                        {"timing": timing}
+                    )
+
+    def test_creation_timing_rejects_invalid_confirmed_receipt_scan_swipes(
+        self,
+    ) -> None:
+        for case, forged in (
+            ("boolean", True),
+            ("negative", -1),
+            ("aboveBound", 13),
+        ):
+            with self.subTest(case=case):
+                timing = json.loads(json.dumps(
+                    self.raw_receipt("creation-prerequisite")["timing"]
+                ))
+                scan = next(
+                    scan
+                    for scan in timing["scans"]
+                    if scan.get("scanId")
+                    == "creation-prerequisite-confirmed-receipt"
+                )
+                scan["swipes"] = forged
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "confirmed-receipt.*swipes",
+                ):
+                    AGGREGATE.require_creation_timing_within_budget(
+                        {"timing": timing}
+                    )
+
+    def test_creation_timing_rejects_confirmed_receipt_cross_scan_mismatch(
+        self,
+    ) -> None:
+        timing = json.loads(json.dumps(
+            self.raw_receipt("creation-prerequisite")["timing"]
+        ))
+        reacquisition = next(
+            scan
+            for scan in timing["scans"]
+            if scan.get("scanId")
+            == AGGREGATE.CONFIRMED_RECEIPT_BACK_REACQUISITION_SCAN_ID
+        )
+        reacquisition["configuredMaxScrolls"] = 3
+        with self.assertRaisesRegex(
+            ValueError,
+            "confirmed-receipt Back configuredMaxScrolls differs.*confirmed-receipt swipes",
+        ):
+            AGGREGATE.require_creation_timing_within_budget({"timing": timing})
+
+    def test_creation_timing_rejects_forged_confirmed_receipt_back_authority(
+        self,
+    ) -> None:
+        cases = {
+            "status": "failed",
+            "phaseId": "same-process-reopen",
+            "direction": "backward",
+            "distanceRatio": 0.31,
+            "deadlineEnforced": False,
+            "maximumEmptyHierarchyReads": 4,
+            "maximumSystemUiDismissals": 4,
+            "downstreamReserveMs": 33_001,
+        }
+        for field, forged in cases.items():
+            with self.subTest(field=field):
+                timing = json.loads(json.dumps(
+                    self.raw_receipt("creation-prerequisite")["timing"]
+                ))
+                scan = next(
+                    scan
+                    for scan in timing["scans"]
+                    if scan.get("scanId")
+                    == AGGREGATE.CONFIRMED_RECEIPT_BACK_REACQUISITION_SCAN_ID
+                )
+                scan[field] = forged
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "confirmed-receipt Back reacquisition authority differs",
+                ):
+                    AGGREGATE.require_creation_timing_within_budget(
+                        {"timing": timing}
+                    )
+
+        timing = json.loads(json.dumps(
+            self.raw_receipt("creation-prerequisite")["timing"]
+        ))
+        scan = next(
+            scan
+            for scan in timing["scans"]
+            if scan.get("scanId")
+            == AGGREGATE.CONFIRMED_RECEIPT_BACK_REACQUISITION_SCAN_ID
+        )
+        scan["deadlineEnforced"] = 1
+        with self.assertRaisesRegex(
+            ValueError,
+            "deadlineEnforced must be the JSON boolean true",
+        ):
+            AGGREGATE.require_creation_timing_within_budget({"timing": timing})
+
+    def test_creation_timing_rejects_non_integer_confirmed_receipt_back_counts(
+        self,
+    ) -> None:
+        for field in (
+            "screens",
+            "swipes",
+            "configuredMaxScrolls",
+            "emptyHierarchyReads",
+            "systemUiDismissals",
+            "hierarchyReadCount",
+            "hierarchyElapsedMs",
+            "maximumHierarchyReadMs",
+            "maximumElapsedMs",
+            "elapsedMs",
+        ):
+            with self.subTest(field=field):
+                timing = json.loads(json.dumps(
+                    self.raw_receipt("creation-prerequisite")["timing"]
+                ))
+                scan = next(
+                    scan
+                    for scan in timing["scans"]
+                    if scan.get("scanId")
+                    == AGGREGATE.CONFIRMED_RECEIPT_BACK_REACQUISITION_SCAN_ID
+                )
+                scan[field] = True
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "confirmed-receipt Back reacquisition timing/count data differs",
+                ):
+                    AGGREGATE.require_creation_timing_within_budget(
+                        {"timing": timing}
+                    )
+
+    def test_creation_timing_rejects_confirmed_receipt_back_bound_forgery(
+        self,
+    ) -> None:
+        cases = {
+            "swipesBeyondConfigured": {"configuredMaxScrolls": 1},
+            "noScreen": {"screens": 0},
+            "emptyHierarchyBound": {"emptyHierarchyReads": 4},
+            "systemUiBound": {"systemUiDismissals": 4},
+            "hierarchyCardinality": {"hierarchyReadCount": 4},
+            "gestureCardinality": {"screens": 4},
+            "maximumReadBelowAverage": {"maximumHierarchyReadMs": 99},
+            "maximumReadAboveTotal": {"maximumHierarchyReadMs": 301},
+        }
+        for case, mutations in cases.items():
+            with self.subTest(case=case):
+                timing = json.loads(json.dumps(
+                    self.raw_receipt("creation-prerequisite")["timing"]
+                ))
+                scan = next(
+                    scan
+                    for scan in timing["scans"]
+                    if scan.get("scanId")
+                    == AGGREGATE.CONFIRMED_RECEIPT_BACK_REACQUISITION_SCAN_ID
+                )
+                scan.update(mutations)
+                if case == "swipesBeyondConfigured":
+                    source = next(
+                        source
+                        for source in timing["scans"]
+                        if source.get("scanId")
+                        == "creation-prerequisite-confirmed-receipt"
+                    )
+                    source["swipes"] = scan["configuredMaxScrolls"]
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "confirmed-receipt Back reacquisition scan did not reconcile",
+                ):
+                    AGGREGATE.require_creation_timing_within_budget(
+                        {"timing": timing}
+                    )
+
+    def test_creation_timing_rejects_confirmed_receipt_back_timing_forgery(
+        self,
+    ) -> None:
+        cases = {
+            "hierarchyBeyondElapsed": {
+                "hierarchyElapsedMs": 704,
+                "maximumHierarchyReadMs": 235,
+            },
+            "mandatoryWaitMissing": {"elapsedMs": 696},
+            "maximumElapsedZero": {"maximumElapsedMs": 0},
+            "maximumElapsedBeyondAuthority": {"maximumElapsedMs": 45_001},
+            "elapsedBeyondReceiptMaximum": {"maximumElapsedMs": 698},
+            "elapsedBeyondPhase": {"elapsedMs": 8_001},
+        }
+        for case, mutations in cases.items():
+            with self.subTest(case=case):
+                timing = json.loads(json.dumps(
+                    self.raw_receipt("creation-prerequisite")["timing"]
+                ))
+                scan = next(
+                    scan
+                    for scan in timing["scans"]
+                    if scan.get("scanId")
+                    == AGGREGATE.CONFIRMED_RECEIPT_BACK_REACQUISITION_SCAN_ID
+                )
+                scan.update(mutations)
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "confirmed-receipt Back reacquisition scan did not reconcile",
+                ):
+                    AGGREGATE.require_creation_timing_within_budget(
+                        {"timing": timing}
+                    )
+
+    def test_creation_timing_accepts_confirmed_receipt_back_exact_bounds(
+        self,
+    ) -> None:
+        timing = json.loads(json.dumps(
+            self.raw_receipt("creation-prerequisite")["timing"]
+        ))
+        scan = next(
+            scan
+            for scan in timing["scans"]
+            if scan.get("scanId")
+            == AGGREGATE.CONFIRMED_RECEIPT_BACK_REACQUISITION_SCAN_ID
+        )
+        scan.update(
+            {
+                "screens": 13,
+                "swipes": 12,
+                "configuredMaxScrolls": 12,
+                "hierarchyReadCount": 13,
+                "hierarchyElapsedMs": 1_300,
+                "maximumHierarchyReadMs": 100,
+                "maximumElapsedMs": 3_699,
+                "elapsedMs": 3_700,
+            }
+        )
+        source = next(
+            source
+            for source in timing["scans"]
+            if source.get("scanId")
+            == "creation-prerequisite-confirmed-receipt"
+        )
+        source["swipes"] = scan["configuredMaxScrolls"]
+        source["screens"] = source["swipes"] + 1
+        AGGREGATE.require_creation_timing_within_budget({"timing": timing})
+
+        scan.update(
+            {
+                "screens": 4,
+                "swipes": 0,
+                "emptyHierarchyReads": 3,
+                "systemUiDismissals": 3,
+                "hierarchyReadCount": 7,
+                "hierarchyElapsedMs": 700,
+                "maximumHierarchyReadMs": 100,
+                "maximumElapsedMs": 7_299,
+                "elapsedMs": 7_300,
+            }
+        )
+        AGGREGATE.require_creation_timing_within_budget({"timing": timing})
+
+        maximum_elapsed = confirmed_receipt_back_reacquisition_scan()
+        maximum_elapsed.update(
+            {
+                "screens": 1,
+                "swipes": 0,
+                "configuredMaxScrolls": 0,
+                "hierarchyReadCount": 1,
+                "hierarchyElapsedMs": 45_001,
+                "maximumHierarchyReadMs": 45_001,
+                "maximumElapsedMs": 45_000,
+                "elapsedMs": 45_001,
+            }
+        )
+        AGGREGATE.require_confirmed_receipt_back_reacquisition_scan(
+            {"scans": [confirmed_receipt_scan(0), maximum_elapsed]},
+            preview_phase_elapsed_ms=45_001,
+        )
 
     def test_creation_timing_rejects_adversarial_phase_topology(self) -> None:
         cases = (

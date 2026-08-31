@@ -210,11 +210,19 @@ ZERO_GESTURE_ROUTE_PROOF_TIMEOUT_SECONDS = 75
 CONFIRMED_STATE_TRANSITION_TIMEOUT_SECONDS = 90.0
 CONFIRMED_RECEIPT_BACK_ORIGIN_TIMEOUT_SECONDS = 15.0
 CONFIRMED_RECEIPT_TRAVERSAL_RESERVE_SECONDS = 60.0
+CONFIRMED_RECEIPT_BACK_REACQUISITION_TIMEOUT_SECONDS = 45.0
+CONFIRMED_RECEIPT_BACK_RECOVERY_MAX_EMPTY_HIERARCHIES = 3
+CONFIRMED_RECEIPT_BACK_RECOVERY_MAX_SYSTEM_UI_DISMISSALS = 3
+CONFIRMED_RECEIPT_BACK_RECOVERY_DELAY_SECONDS = 0.2
 CONFIRMED_RECEIPT_PROOF_TIMEOUT_SECONDS = (
     CONFIRMED_STATE_TRANSITION_TIMEOUT_SECONDS
     + CONFIRMED_RECEIPT_TRAVERSAL_RESERVE_SECONDS
 )
 POST_CONFIRM_DASHBOARD_PROOF_TIMEOUT_SECONDS = 30.0
+CONFIRMED_RECEIPT_BACK_DOWNSTREAM_RESERVE_SECONDS = (
+    PERSISTENT_PREVIEW_ACTION_TIMEOUT_SECONDS
+    + POST_CONFIRM_DASHBOARD_PROOF_TIMEOUT_SECONDS
+)
 CONFIRM_DOWNSTREAM_RESERVE_SECONDS = (
     CONFIRMED_RECEIPT_PROOF_TIMEOUT_SECONDS
     + PERSISTENT_PREVIEW_ACTION_TIMEOUT_SECONDS
@@ -6716,13 +6724,212 @@ def read_exact_confirmed_receipt(
         "backAuthority": values[back_selector],
         "backViewport": viewports[back_selector][0],
         "currentViewport": 0,
+        # Inverse Android scroll gestures are not mathematically reversible at
+        # a clamped page boundary.  Bind any fresh Back reacquisition to no
+        # more forward movement than the exact reverse traversal which proved
+        # this receipt; the data-changing Back action itself remains one-shot.
+        "backRecoveryMaxForwardScrolls": reverse_swipes,
     }
+
+
+def reacquire_exact_confirmed_receipt_back(
+    device: shared.Device,
+    *,
+    max_forward_scrolls: int,
+    expected_authority: str,
+    scan_observer: Callable[[dict[str, object]], None] | None,
+    deadline: float,
+) -> tuple[shared.UiNode, dict[str, object]]:
+    """Freshly recover Back within only the receipt scan's measured extent."""
+    if (
+        type(max_forward_scrolls) is not int
+        or max_forward_scrolls < 0
+        or max_forward_scrolls > 12
+    ):
+        raise ValueError(
+            "Confirmed-receipt Back recovery requires its exact 0..12 measured bound"
+        )
+    selector = "creation-prerequisite-back-to-build"
+    started = time.monotonic()
+    maximum_elapsed_ms = max(
+        0,
+        min(
+            round(CONFIRMED_RECEIPT_BACK_REACQUISITION_TIMEOUT_SECONDS * 1000),
+            math.floor((deadline - started) * 1000),
+        ),
+    )
+    forward_swipes = 0
+    screens = 0
+    empty_hierarchies = 0
+    system_ui_dismissals = 0
+    hierarchy_durations_ms: list[int] = []
+    terminal_receipt_emitted = False
+
+    def emit(status: str, *, failure_reason: str | None = None) -> dict[str, object]:
+        nonlocal terminal_receipt_emitted
+        scan: dict[str, object] = {
+            "scanId": "creation-prerequisite-confirmed-receipt-back-reacquisition",
+            "status": status,
+            "screens": screens,
+            "swipes": forward_swipes,
+            "configuredMaxScrolls": max_forward_scrolls,
+            "emptyHierarchyReads": empty_hierarchies,
+            "maximumEmptyHierarchyReads": (
+                CONFIRMED_RECEIPT_BACK_RECOVERY_MAX_EMPTY_HIERARCHIES
+            ),
+            "systemUiDismissals": system_ui_dismissals,
+            "maximumSystemUiDismissals": (
+                CONFIRMED_RECEIPT_BACK_RECOVERY_MAX_SYSTEM_UI_DISMISSALS
+            ),
+            "distanceRatio": 0.30,
+            "direction": "forward-from-measured-restored-bottom",
+            "deadlineEnforced": True,
+            "maximumElapsedMs": maximum_elapsed_ms,
+            "downstreamReserveMs": round(
+                CONFIRMED_RECEIPT_BACK_DOWNSTREAM_RESERVE_SECONDS * 1000
+            ),
+            **hierarchy_timing_fields(hierarchy_durations_ms),
+            "elapsedMs": round((time.monotonic() - started) * 1000),
+        }
+        if failure_reason is not None:
+            scan["failureReason"] = failure_reason
+        if terminal_receipt_emitted:
+            return scan
+        # Set the cardinality guard before the external observer can raise.
+        # A partially written evidence sink must never trigger a contradictory
+        # second terminal receipt from the enclosing fail-closed exception path.
+        terminal_receipt_emitted = True
+        if scan_observer is not None:
+            scan_observer(scan)
+        return scan
+
+    try:
+        require_phase_deadline(
+            deadline,
+            operation="confirmed-receipt Back reacquisition lease",
+        )
+        while forward_swipes <= max_forward_scrolls:
+            require_phase_deadline(
+                deadline,
+                operation="confirmed-receipt Back reacquisition",
+            )
+            hierarchy_started = time.perf_counter()
+            try:
+                nodes = device.hierarchy(deadline=deadline)
+            finally:
+                hierarchy_durations_ms.append(
+                    round((time.perf_counter() - hierarchy_started) * 1000)
+                )
+            if not nodes:
+                empty_hierarchies += 1
+                if (
+                    empty_hierarchies
+                    > CONFIRMED_RECEIPT_BACK_RECOVERY_MAX_EMPTY_HIERARCHIES
+                ):
+                    break
+                sleep_before_phase_deadline(
+                    CONFIRMED_RECEIPT_BACK_RECOVERY_DELAY_SECONDS,
+                    deadline=deadline,
+                    operation="confirmed-receipt Back empty hierarchy",
+                )
+                continue
+            screens += 1
+            matches = [
+                node for node in nodes if _exact_resource_id(node) == selector
+            ]
+            if len(matches) > 1:
+                _capture_with_phase_deadline(
+                    device,
+                    "creation-prerequisite-confirmed-receipt-back-current-cardinality-invalid",
+                    deadline=deadline,
+                )
+                raise RuntimeError(
+                    "Fresh confirmed-receipt Back reacquisition exposed duplicate exact nodes"
+                )
+            if len(matches) == 1:
+                node = matches[0]
+                _require_canonical_chummer_resource_id(
+                    device,
+                    node,
+                    selector,
+                    evidence_prefix="creation-prerequisite-confirmed-receipt-back-current",
+                    surface_name="Measured current confirmed-receipt Back action",
+                    deadline=deadline,
+                )
+                value = (
+                    node.attributes.get("text")
+                    or node.attributes.get("content-desc")
+                    or ""
+                )
+                if value != expected_authority:
+                    raise RuntimeError(
+                        "Fresh confirmed-receipt Back authority drifted"
+                    )
+                if (
+                    node.attributes.get("enabled") != "true"
+                    or node.attributes.get("clickable") != "true"
+                ):
+                    _capture_with_phase_deadline(
+                        device,
+                        "creation-prerequisite-confirmed-receipt-back-current-disabled",
+                        deadline=deadline,
+                    )
+                    raise RuntimeError(
+                        "Fresh confirmed-receipt Back authority was not enabled and clickable"
+                    )
+                if device.node_has_tappable_bounds(
+                    node,
+                    deadline=deadline,
+                ):
+                    return node, emit("resolved")
+            if device.dismiss_system_ui_anr(
+                nodes,
+                deadline=deadline,
+            ):
+                system_ui_dismissals += 1
+                if (
+                    system_ui_dismissals
+                    > CONFIRMED_RECEIPT_BACK_RECOVERY_MAX_SYSTEM_UI_DISMISSALS
+                ):
+                    break
+                sleep_before_phase_deadline(
+                    2.0,
+                    deadline=deadline,
+                    operation="confirmed-receipt Back system-UI dismissal",
+                )
+                continue
+            if forward_swipes >= max_forward_scrolls:
+                break
+            device.swipe_up(
+                distance_ratio=0.30,
+                deadline=deadline,
+            )
+            forward_swipes += 1
+            sleep_before_phase_deadline(
+                CONFIRMED_RECEIPT_BACK_RECOVERY_DELAY_SECONDS,
+                deadline=deadline,
+                operation="confirmed-receipt Back forward observation",
+            )
+
+        _capture_with_phase_deadline(
+            device,
+            "creation-prerequisite-confirmed-receipt-back-current-unavailable",
+            deadline=deadline,
+        )
+        raise RuntimeError(
+            "Fresh confirmed-receipt Back authority was unavailable within its "
+            f"scan-proven {max_forward_scrolls}-swipe recovery bound"
+        )
+    except Exception as exc:
+        emit("failed", failure_reason=type(exc).__name__)
+        raise
 
 
 def tap_exact_confirmed_receipt_back(
     device: shared.Device,
     receipt: dict[str, object],
     *,
+    scan_observer: Callable[[dict[str, object]], None] | None,
     deadline: float,
 ) -> float:
     """Freshly reacquire one measured Back action and lease dashboard proof time."""
@@ -6731,16 +6938,56 @@ def tap_exact_confirmed_receipt_back(
         receipt.get("backViewport") != receipt.get("currentViewport")
         or not isinstance(receipt.get("backAuthority"), str)
         or not str(receipt["backAuthority"]).strip()
+        or type(receipt.get("backRecoveryMaxForwardScrolls")) is not int
     ):
         raise RuntimeError("Receipt scan emitted no exact terminal Back authority")
-    node = device.wait_for_single_exact_resource_id(
-        selector,
-        timeout=45,
-        scroll=False,
-        max_scrolls=0,
-        evidence_prefix="creation-prerequisite-confirmed-receipt-back-current",
-        surface_name="Measured current confirmed-receipt Back action",
-        deadline=deadline,
+    lease_started = time.monotonic()
+    remaining = deadline - lease_started
+    if remaining <= CONFIRMED_RECEIPT_BACK_DOWNSTREAM_RESERVE_SECONDS:
+        if scan_observer is not None:
+            scan_observer({
+                "scanId": "creation-prerequisite-confirmed-receipt-back-reacquisition",
+                "status": "failed",
+                "failureReason": "InsufficientDownstreamReserve",
+                "screens": 0,
+                "swipes": 0,
+                "configuredMaxScrolls": int(
+                    receipt["backRecoveryMaxForwardScrolls"]
+                ),
+                "emptyHierarchyReads": 0,
+                "maximumEmptyHierarchyReads": (
+                    CONFIRMED_RECEIPT_BACK_RECOVERY_MAX_EMPTY_HIERARCHIES
+                ),
+                "systemUiDismissals": 0,
+                "maximumSystemUiDismissals": (
+                    CONFIRMED_RECEIPT_BACK_RECOVERY_MAX_SYSTEM_UI_DISMISSALS
+                ),
+                "distanceRatio": 0.30,
+                "direction": "forward-from-measured-restored-bottom",
+                "deadlineEnforced": True,
+                "maximumElapsedMs": 0,
+                "downstreamReserveMs": round(
+                    CONFIRMED_RECEIPT_BACK_DOWNSTREAM_RESERVE_SECONDS * 1000
+                ),
+                "hierarchyReadCount": 0,
+                "hierarchyElapsedMs": 0,
+                "maximumHierarchyReadMs": 0,
+                "elapsedMs": 0,
+            })
+        raise RuntimeError(
+            "Preview-confirm phase cannot preserve the exact confirmed-receipt "
+            "Back action-plus-dashboard reserve"
+        )
+    reacquisition_deadline = min(
+        deadline - CONFIRMED_RECEIPT_BACK_DOWNSTREAM_RESERVE_SECONDS,
+        lease_started + CONFIRMED_RECEIPT_BACK_REACQUISITION_TIMEOUT_SECONDS,
+    )
+    node, reacquisition = reacquire_exact_confirmed_receipt_back(
+        device,
+        max_forward_scrolls=int(receipt["backRecoveryMaxForwardScrolls"]),
+        expected_authority=str(receipt["backAuthority"]),
+        scan_observer=scan_observer,
+        deadline=reacquisition_deadline,
     )
     _require_canonical_chummer_resource_id(
         device,
@@ -7681,6 +7928,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     dashboard_deadline = tap_exact_confirmed_receipt_back(
         device,
         confirmed_receipt,
+        scan_observer=progress.record_scan,
         deadline=preview_confirm_deadline,
     )
     post_confirm_dashboard = assert_uncreated_advanced_editor_gated(

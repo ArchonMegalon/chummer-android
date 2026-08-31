@@ -9447,6 +9447,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             deadline=deadline,
         )
         self.assertEqual(sha_b, receipt["draftDigest"])
+        self.assertEqual(0, receipt["backRecoveryMaxForwardScrolls"])
         stale = [*required, self.canonical_node("creation-prerequisite-confirm")]
         device.hierarchy.return_value = stale
         with self.assertRaisesRegex(RuntimeError, "stale"):
@@ -9591,7 +9592,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         device.shell.assert_not_called()
 
         device.reset_mock(side_effect=True, return_value=True)
-        device.wait_for_single_exact_resource_id.side_effect = expired
+        device.hierarchy.side_effect = expired
         with self.assertRaises(driver.shared.AdbOperationDeadlineExceeded):
             driver.tap_exact_confirmed_receipt_back(
                 device,
@@ -9599,9 +9600,172 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                     "backViewport": 0,
                     "currentViewport": 0,
                     "backAuthority": "Back to build",
+                    "backRecoveryMaxForwardScrolls": 0,
                 },
+                scan_observer=None,
+                deadline=driver.time.monotonic() + 60,
+            )
+        device.shell.assert_not_called()
+
+    def test_confirmed_receipt_back_reacquisition_uses_only_measured_forward_bound(
+        self,
+    ) -> None:
+        deadline = driver.time.monotonic() + 60
+        back = self.canonical_node(
+            "creation-prerequisite-back-to-build",
+            text="Back to build",
+        )
+        unrelated = self.canonical_node("receipt-restoration-spacer")
+        device = mock.Mock(spec=driver.shared.Device)
+        device.hierarchy.side_effect = ([unrelated], [back])
+        device.dismiss_system_ui_anr.return_value = False
+        device.node_has_tappable_bounds.return_value = True
+        observer = mock.Mock()
+
+        with mock.patch.object(driver.time, "sleep"):
+            dashboard_deadline = driver.tap_exact_confirmed_receipt_back(
+                device,
+                {
+                    "backViewport": 0,
+                    "currentViewport": 0,
+                    "backAuthority": "Back to build",
+                    "backRecoveryMaxForwardScrolls": 1,
+                },
+                scan_observer=observer,
                 deadline=deadline,
             )
+
+        self.assertGreater(dashboard_deadline, driver.time.monotonic())
+        self.assertEqual(2, device.hierarchy.call_count)
+        device.swipe_up.assert_called_once()
+        self.assertEqual(0.30, device.swipe_up.call_args.kwargs["distance_ratio"])
+        self.assertLessEqual(device.swipe_up.call_args.kwargs["deadline"], deadline)
+        device.shell.assert_called_once()
+        self.assertEqual("input", device.shell.call_args.args[0])
+        self.assertEqual("tap", device.shell.call_args.args[1])
+        observer.assert_called_once()
+        reacquisition = observer.call_args.args[0]
+        self.assertEqual("resolved", reacquisition["status"])
+        self.assertEqual(1, reacquisition["swipes"])
+        self.assertEqual(1, reacquisition["configuredMaxScrolls"])
+        self.assertGreater(reacquisition["maximumElapsedMs"], 0)
+        self.assertLessEqual(reacquisition["maximumElapsedMs"], 27_000)
+        self.assertEqual(33_000, reacquisition["downstreamReserveMs"])
+        self.assertEqual(
+            "forward-from-measured-restored-bottom",
+            reacquisition["direction"],
+        )
+
+    def test_confirmed_receipt_back_reacquisition_exhaustion_never_taps(
+        self,
+    ) -> None:
+        deadline = driver.time.monotonic() + 60
+        unrelated = self.canonical_node("receipt-restoration-spacer")
+        device = mock.Mock(spec=driver.shared.Device)
+        device.hierarchy.return_value = [unrelated]
+        device.dismiss_system_ui_anr.return_value = False
+        observer = mock.Mock()
+
+        with self.assertRaisesRegex(RuntimeError, "scan-proven 0-swipe"):
+            driver.tap_exact_confirmed_receipt_back(
+                device,
+                {
+                    "backViewport": 0,
+                    "currentViewport": 0,
+                    "backAuthority": "Back to build",
+                    "backRecoveryMaxForwardScrolls": 0,
+                },
+                scan_observer=observer,
+                deadline=deadline,
+            )
+
+        device.swipe_up.assert_not_called()
+        device.shell.assert_not_called()
+        observer.assert_called_once()
+        failure = observer.call_args.args[0]
+        self.assertEqual("failed", failure["status"])
+        self.assertEqual("RuntimeError", failure["failureReason"])
+        self.assertEqual(0, failure["configuredMaxScrolls"])
+
+    def test_confirmed_receipt_back_reacquisition_observer_failure_is_terminal(
+        self,
+    ) -> None:
+        back = self.canonical_node(
+            "creation-prerequisite-back-to-build",
+            text="Back to build",
+        )
+        device = mock.Mock(spec=driver.shared.Device)
+        device.hierarchy.return_value = [back]
+        device.node_has_tappable_bounds.return_value = True
+        observer = mock.Mock(side_effect=RuntimeError("evidence write failed"))
+
+        with self.assertRaisesRegex(RuntimeError, "evidence write failed"):
+            driver.tap_exact_confirmed_receipt_back(
+                device,
+                {
+                    "backViewport": 0,
+                    "currentViewport": 0,
+                    "backAuthority": "Back to build",
+                    "backRecoveryMaxForwardScrolls": 0,
+                },
+                scan_observer=observer,
+                deadline=driver.time.monotonic() + 78,
+            )
+
+        observer.assert_called_once()
+        self.assertEqual("resolved", observer.call_args.args[0]["status"])
+        device.shell.assert_not_called()
+
+    def test_confirmed_receipt_back_reacquisition_preserves_action_and_proof_lease(
+        self,
+    ) -> None:
+        device = mock.Mock(spec=driver.shared.Device)
+        observer = mock.Mock()
+
+        with self.assertRaisesRegex(RuntimeError, "action-plus-dashboard reserve"):
+            driver.tap_exact_confirmed_receipt_back(
+                device,
+                {
+                    "backViewport": 0,
+                    "currentViewport": 0,
+                    "backAuthority": "Back to build",
+                    "backRecoveryMaxForwardScrolls": 1,
+                },
+                scan_observer=observer,
+                deadline=(
+                    driver.time.monotonic()
+                    + driver.CONFIRMED_RECEIPT_BACK_DOWNSTREAM_RESERVE_SECONDS
+                    - 0.001
+                ),
+            )
+
+        device.hierarchy.assert_not_called()
+        device.swipe_up.assert_not_called()
+        device.shell.assert_not_called()
+        observer.assert_called_once()
+        failure = observer.call_args.args[0]
+        self.assertEqual("failed", failure["status"])
+        self.assertEqual(
+            "InsufficientDownstreamReserve",
+            failure["failureReason"],
+        )
+        self.assertEqual(0, failure["maximumElapsedMs"])
+        self.assertEqual(33_000, failure["downstreamReserveMs"])
+
+    def test_confirmed_receipt_back_reacquisition_rejects_unmeasured_bound(
+        self,
+    ) -> None:
+        device = mock.Mock(spec=driver.shared.Device)
+        for bound in (-1, 13, 1.0, True, "1"):
+            with self.subTest(bound=bound), self.assertRaises(ValueError):
+                driver.reacquire_exact_confirmed_receipt_back(
+                    device,
+                    max_forward_scrolls=bound,
+                    expected_authority="Back to build",
+                    scan_observer=None,
+                    deadline=driver.time.monotonic() + 60,
+                )
+        device.hierarchy.assert_not_called()
         device.shell.assert_not_called()
 
     def test_rich_preview_rejects_unknown_or_reordered_assignments(self) -> None:
