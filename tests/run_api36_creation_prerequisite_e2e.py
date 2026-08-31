@@ -91,6 +91,16 @@ CREATION_BOOTSTRAP_TIMING_LINE = re.compile(
     rf"^{re.escape(CREATION_BOOTSTRAP_TIMING_PREFIX)}(?P<payload>\{{.*\}})$"
 )
 CREATION_BOOTSTRAP_LOGCAT_MAIN_DIVIDER = "--------- beginning of main"
+CREATION_DASHBOARD_READY_PREFIX = "CHUMMER_CREATION_DASHBOARD_READY "
+CREATION_DASHBOARD_READY_SCHEMA = (
+    "chummer.android.creation-dashboard-route-ready/v1"
+)
+CREATION_DASHBOARD_READY_LINE = re.compile(
+    rf"^{re.escape(CREATION_DASHBOARD_READY_PREFIX)}(?P<payload>\{{.*\}})$"
+)
+CREATION_DASHBOARD_READY_LOG_FILE_NAME = (
+    "creation-dashboard-route-ready-logcat.txt"
+)
 ADB_CREATION_BOOTSTRAP_LOGCAT_WAIT_ARGUMENTS = (
     "logcat",
     "-b",
@@ -218,13 +228,18 @@ CONFIRMED_RECEIPT_PROOF_TIMEOUT_SECONDS = (
     CONFIRMED_STATE_TRANSITION_TIMEOUT_SECONDS
     + CONFIRMED_RECEIPT_TRAVERSAL_RESERVE_SECONDS
 )
-POST_CONFIRM_DASHBOARD_PROOF_TIMEOUT_SECONDS = 30.0
+PRE_BACK_ROUTE_LOG_CLEAR_TIMEOUT_SECONDS = 3.0
+POST_CONFIRM_DASHBOARD_READY_TIMEOUT_SECONDS = 20.0
+POST_CONFIRM_DASHBOARD_DUMP_ATTEMPT_MAX_SECONDS = 30.0
+POST_CONFIRM_DASHBOARD_PROOF_TIMEOUT_SECONDS = 75.0
 CONFIRMED_RECEIPT_BACK_DOWNSTREAM_RESERVE_SECONDS = (
-    PERSISTENT_PREVIEW_ACTION_TIMEOUT_SECONDS
+    PRE_BACK_ROUTE_LOG_CLEAR_TIMEOUT_SECONDS
+    + PERSISTENT_PREVIEW_ACTION_TIMEOUT_SECONDS
     + POST_CONFIRM_DASHBOARD_PROOF_TIMEOUT_SECONDS
 )
 CONFIRM_DOWNSTREAM_RESERVE_SECONDS = (
     CONFIRMED_RECEIPT_PROOF_TIMEOUT_SECONDS
+    + PRE_BACK_ROUTE_LOG_CLEAR_TIMEOUT_SECONDS
     + PERSISTENT_PREVIEW_ACTION_TIMEOUT_SECONDS
     + POST_CONFIRM_DASHBOARD_PROOF_TIMEOUT_SECONDS
 )
@@ -357,6 +372,8 @@ def fresh_hierarchy_timed(
     durations_ms: list[int],
     *,
     deadline: float | None = None,
+    dump_attempt_max_seconds: float | None = None,
+    allow_direct_reconciliation: bool = True,
 ) -> list[shared.UiNode]:
     """Acquire a post-gesture hierarchy through UIAutomator's dump file.
 
@@ -366,14 +383,28 @@ def fresh_hierarchy_timed(
     every scroll-dependent inventory.  Busy-state polling deliberately keeps
     using :func:`read_only_hierarchy_timed` because it never changes viewport.
     """
+    if type(allow_direct_reconciliation) is not bool:
+        raise ValueError("Direct hierarchy reconciliation policy must be boolean")
+    if dump_attempt_max_seconds is not None and (
+        isinstance(dump_attempt_max_seconds, bool)
+        or not isinstance(dump_attempt_max_seconds, (int, float))
+        or not math.isfinite(dump_attempt_max_seconds)
+        or dump_attempt_max_seconds <= 0
+    ):
+        raise ValueError("Hierarchy dump attempt bound must be finite and positive")
     require_phase_deadline(deadline, operation="fresh hierarchy acquisition")
     started = time.perf_counter()
     try:
-        nodes = (
-            device.hierarchy()
-            if deadline is None
-            else device.hierarchy(deadline=deadline)
-        )
+        hierarchy_options: dict[str, object] = {}
+        if deadline is not None:
+            hierarchy_options["deadline"] = deadline
+        if dump_attempt_max_seconds is not None:
+            hierarchy_options["dump_attempt_max_seconds"] = (
+                dump_attempt_max_seconds
+            )
+        if not allow_direct_reconciliation:
+            hierarchy_options["allow_direct_reconciliation"] = False
+        nodes = device.hierarchy(**hierarchy_options)
     finally:
         durations_ms.append(round((time.perf_counter() - started) * 1000))
     require_phase_deadline(deadline, operation="fresh hierarchy acquisition")
@@ -638,6 +669,190 @@ def clear_creation_bootstrap_timing_log(device: shared.Device) -> None:
     the create action under proof, never by an earlier app process or journey.
     """
     device.run(*shared.ADB_CREATION_BOOTSTRAP_LOGCAT_CLEAR_ARGUMENTS, timeout=30)
+
+
+def classify_creation_dashboard_ready_logcat(
+    logcat: str,
+) -> tuple[list[str], list[re.Match[str]], int, list[str]]:
+    """Classify one exact route-ready marker and its optional main divider."""
+    raw_lines = logcat.splitlines()
+    exact_matches: list[re.Match[str]] = []
+    invalid_lines: list[str] = []
+    divider_count = 0
+    marker_seen = False
+    for line in raw_lines:
+        match = CREATION_DASHBOARD_READY_LINE.fullmatch(line)
+        if match is not None:
+            exact_matches.append(match)
+            marker_seen = True
+        elif (
+            line == CREATION_BOOTSTRAP_LOGCAT_MAIN_DIVIDER
+            and divider_count == 0
+            and not marker_seen
+        ):
+            divider_count = 1
+        else:
+            invalid_lines.append(line)
+    return raw_lines, exact_matches, divider_count, invalid_lines
+
+
+def wait_for_creation_dashboard_ready_log(
+    device: shared.Device,
+    *,
+    expected_content_revision: int,
+    expected_saved_revision: int,
+    deadline: float,
+    scan_observer: Callable[[dict[str, object]], None] | None = None,
+) -> dict[str, object]:
+    """Gate UIAutomator on one fresh, laid-out post-Back dashboard marker.
+
+    The main log is cleared immediately before the one-shot Back action.  This
+    marker is therefore only transition readiness; the following same-snapshot
+    accessibility proof remains the route and cardinality authority.
+    """
+    if (
+        type(expected_content_revision) is not int
+        or expected_content_revision <= 0
+        or type(expected_saved_revision) is not int
+        or expected_saved_revision < 0
+    ):
+        raise ValueError("Dashboard-ready marker requires exact nonnegative revisions")
+    started = time.monotonic()
+    read_started = time.perf_counter()
+    marker_deadline = min(
+        deadline,
+        started + POST_CONFIRM_DASHBOARD_READY_TIMEOUT_SECONDS,
+    )
+    try:
+        result = device.run(
+            *shared.ADB_CREATION_DASHBOARD_READY_LOGCAT_ARGUMENTS,
+            timeout=shared._remaining_operation_timeout(
+                deadline=marker_deadline,
+                maximum=POST_CONFIRM_DASHBOARD_READY_TIMEOUT_SECONDS,
+            ),
+            deadline=marker_deadline,
+        )
+    finally:
+        read_elapsed_ms = round((time.perf_counter() - read_started) * 1000)
+    logcat = str(result.stdout)
+    device.evidence.mkdir(parents=True, exist_ok=True)
+    (device.evidence / CREATION_DASHBOARD_READY_LOG_FILE_NAME).write_text(
+        logcat,
+        encoding="utf-8",
+    )
+    raw_lines, exact_matches, divider_count, invalid_lines = (
+        classify_creation_dashboard_ready_logcat(logcat)
+    )
+    if len(exact_matches) != 1 or invalid_lines:
+        raise RuntimeError(
+            "Expected one exact post-Back Creation dashboard-ready marker with "
+            "only an optional leading main-buffer divider: "
+            f"raw={len(raw_lines)}, exact={len(exact_matches)}, "
+            f"dividers={divider_count}, invalid={len(invalid_lines)}"
+        )
+    try:
+        payload = json.loads(exact_matches[0].group("payload"))
+    except json.JSONDecodeError as error:
+        raise RuntimeError("Creation dashboard-ready marker contained invalid JSON") from error
+    if not isinstance(payload, dict):
+        raise RuntimeError("Creation dashboard-ready marker payload was not an object")
+    expected_fields = {
+        "schema",
+        "routeAutomationId",
+        "dashboardAutomationId",
+        "workspaceId",
+        "contentRevision",
+        "savedRevision",
+        "contentDigest",
+        "sourceDigest",
+        "runtimeFingerprint",
+        "buildMethod",
+        "snapshotDigest",
+        "characterCreated",
+        "authorityReady",
+    }
+    if set(payload) != expected_fields:
+        raise RuntimeError(
+            "Creation dashboard-ready marker field set differed: "
+            f"expected={sorted(expected_fields)!r}, actual={sorted(payload)!r}"
+        )
+    invalid_scalar_types = [
+        field
+        for field, expected_type in (
+            ("contentRevision", int),
+            ("savedRevision", int),
+            ("characterCreated", bool),
+            ("authorityReady", bool),
+        )
+        if type(payload.get(field)) is not expected_type
+    ]
+    if invalid_scalar_types:
+        raise RuntimeError(
+            "Creation dashboard-ready marker scalar types differed: "
+            f"{invalid_scalar_types!r}"
+        )
+    required_literals: dict[str, object] = {
+        "schema": CREATION_DASHBOARD_READY_SCHEMA,
+        "routeAutomationId": "phone-runner-create",
+        "dashboardAutomationId": "creation-wizard-dashboard",
+        "contentRevision": expected_content_revision,
+        "savedRevision": expected_saved_revision,
+        "buildMethod": "priority",
+        "characterCreated": False,
+        "authorityReady": True,
+    }
+    differing = {
+        field: (expected, payload.get(field))
+        for field, expected in required_literals.items()
+        if payload.get(field) != expected
+    }
+    digest_fields = (
+        "contentDigest",
+        "sourceDigest",
+        "runtimeFingerprint",
+        "snapshotDigest",
+    )
+    invalid_digests = [
+        field
+        for field in digest_fields
+        if not isinstance(payload.get(field), str)
+        or CANONICAL_AUTHORITY_DIGEST.fullmatch(str(payload[field])) is None
+    ]
+    workspace_id = payload.get("workspaceId")
+    if (
+        differing
+        or invalid_digests
+        or not isinstance(workspace_id, str)
+        or not workspace_id.strip()
+        or len(workspace_id) > 128
+    ):
+        raise RuntimeError(
+            "Creation dashboard-ready marker was stale or malformed: "
+            f"differing={differing!r}, invalidDigests={invalid_digests!r}"
+        )
+    elapsed_ms = round((time.monotonic() - started) * 1000)
+    scan = {
+        "scanId": "post-confirm-dashboard-route-ready-log",
+        "status": "resolved",
+        "observationMode": "fresh-cleared-main-log-single-marker",
+        "logcatReadCount": 1,
+        "logcatElapsedMs": read_elapsed_ms,
+        "maximumLogcatReadMs": read_elapsed_ms,
+        "expectedContentRevision": expected_content_revision,
+        "observedContentRevision": int(payload["contentRevision"]),
+        "expectedSavedRevision": expected_saved_revision,
+        "observedSavedRevision": int(payload["savedRevision"]),
+        "workspaceId": workspace_id,
+        "snapshotDigest": str(payload["snapshotDigest"]),
+        "deadlineEnforced": True,
+        "maximumElapsedMs": round(
+            POST_CONFIRM_DASHBOARD_READY_TIMEOUT_SECONDS * 1000
+        ),
+        "elapsedMs": elapsed_ms,
+    }
+    if scan_observer is not None:
+        scan_observer(scan)
+    return payload
 
 
 def hierarchy_timing_fields(durations_ms: list[int]) -> dict[str, int]:
@@ -978,6 +1193,9 @@ def scan_forward_until_stable(
     delay_seconds: float = 0.2,
     observer: Callable[[dict[str, object]], None] | None = None,
     deadline: float | None = None,
+    hierarchy_dump_attempt_max_seconds: float | None = None,
+    allow_direct_hierarchy_reconciliation: bool = True,
+    allow_direct_swipe_reconciliation: bool = True,
 ) -> list[list[shared.UiNode]]:
     """Scan through the exact stable page end instead of spending the full bound.
 
@@ -993,6 +1211,20 @@ def scan_forward_until_stable(
         or type(initial_observation_max_reverse_swipes) is not int
         or initial_observation_max_reverse_swipes < 0
         or initial_observation_max_reverse_swipes > MAX_STABLE_START_REVERSE_SWIPES
+        or type(allow_direct_hierarchy_reconciliation) is not bool
+        or type(allow_direct_swipe_reconciliation) is not bool
+        or (
+            hierarchy_dump_attempt_max_seconds is not None
+            and (
+                isinstance(hierarchy_dump_attempt_max_seconds, bool)
+                or not isinstance(
+                    hierarchy_dump_attempt_max_seconds,
+                    (int, float),
+                )
+                or not math.isfinite(hierarchy_dump_attempt_max_seconds)
+                or hierarchy_dump_attempt_max_seconds <= 0
+            )
+        )
     ):
         raise ValueError("A named scan with enough scroll budget for stable-end proof is required")
     started = time.monotonic()
@@ -1055,6 +1287,12 @@ def scan_forward_until_stable(
                 device,
                 hierarchy_durations_ms,
                 deadline=deadline,
+                dump_attempt_max_seconds=(
+                    hierarchy_dump_attempt_max_seconds
+                ),
+                allow_direct_reconciliation=(
+                    allow_direct_hierarchy_reconciliation
+                ),
             )
         if not nodes:
             consecutive_empty_reads += 1
@@ -1108,12 +1346,17 @@ def scan_forward_until_stable(
         if swipes >= max_scrolls:
             break
         if deadline is None:
-            device.swipe_up(distance_ratio=distance_ratio)
+            swipe_options: dict[str, object] = {
+                "distance_ratio": distance_ratio,
+            }
         else:
-            device.swipe_up(
-                distance_ratio=distance_ratio,
-                deadline=deadline,
-            )
+            swipe_options = {
+                "distance_ratio": distance_ratio,
+                "deadline": deadline,
+            }
+        if not allow_direct_swipe_reconciliation:
+            swipe_options["allow_direct_reconciliation"] = False
+        device.swipe_up(**swipe_options)
         swipes += 1
         if delay_seconds > 0:
             sleep_before_phase_deadline(
@@ -1161,6 +1404,9 @@ def scan_forward_with_receipt(
     delay_seconds: float = 0.2,
     observer: Callable[[dict[str, object]], None] | None = None,
     deadline: float | None = None,
+    hierarchy_dump_attempt_max_seconds: float | None = None,
+    allow_direct_hierarchy_reconciliation: bool = True,
+    allow_direct_swipe_reconciliation: bool = True,
 ) -> StableViewportScan:
     """Return the stable scan's actual viewport delta without another dump."""
     receipt: dict[str, object] = {}
@@ -1182,6 +1428,13 @@ def scan_forward_with_receipt(
         delay_seconds=delay_seconds,
         observer=record,
         deadline=deadline,
+        hierarchy_dump_attempt_max_seconds=(
+            hierarchy_dump_attempt_max_seconds
+        ),
+        allow_direct_hierarchy_reconciliation=(
+            allow_direct_hierarchy_reconciliation
+        ),
+        allow_direct_swipe_reconciliation=allow_direct_swipe_reconciliation,
     )
     swipes = receipt.get("swipes")
     stable_repeats = receipt.get("stableRepeats")
@@ -2365,64 +2618,66 @@ def wait_for_compact_dashboard_origin(
     """Observe the post-Back dashboard transition without another action.
 
     The exact Back tap is persistent and must never be replayed.  API 36 may
-    briefly expose either the receipt viewport or an empty UIAutomator result
-    while MAUI publishes the dashboard.  Poll only the fresh file-backed,
-    product-read-only hierarchy until both canonical dashboard identities
-    share one viewport. The direct ``/dev/tty`` stream can keep its process
-    alive after this route transition even when it emits no bytes; the
-    file-backed path has a separately bounded dump plus exact owned-file
-    observation and never replays Back. Duplicate identities remain an
-    immediate fail-closed error.
+    briefly exposes the outgoing receipt viewport while MAUI publishes the
+    dashboard.  The caller first waits for the fresh, revision-bound,
+    post-layout app marker, then takes exactly one fresh file-backed hierarchy.
+    Both canonical dashboard identities must share that one snapshot. This
+    route-specific observer deliberately disables the shared
+    direct ``/dev/tty`` reconciliation path: an ambiguous file dump may inspect
+    only its pre-cleared owned file and must never invoke another UIAutomator
+    process. Duplicate identities remain an immediate fail-closed error.
     """
     selectors = ("phone-runner-create", "creation-wizard-dashboard")
-    while time.monotonic() < deadline:
-        require_phase_deadline(deadline, operation="compact dashboard transition")
-        current_nodes = device.hierarchy(deadline=deadline)
-        cardinalities = {
-            selector: [
-                node
-                for node in current_nodes
-                if _exact_resource_id(node) == selector
-            ]
-            for selector in selectors
-        }
-        for selector, exact in cardinalities.items():
-            if len(exact) > 1:
-                _capture_with_phase_deadline(
-                    device,
-                    f"{scan_id}-{selector}-current-cardinality-invalid",
-                    deadline=deadline,
-                )
-                raise RuntimeError(
-                    f"Compact dashboard current origin exposed {len(exact)} exact "
-                    f"{selector!r} nodes"
-                )
-        if all(len(cardinalities[selector]) == 1 for selector in selectors):
-            for selector in selectors:
-                _require_canonical_chummer_resource_id(
-                    device,
-                    cardinalities[selector][0],
-                    selector,
-                    evidence_prefix=f"{scan_id}-{selector}-current",
-                    surface_name="Compact dashboard current origin",
-                    deadline=deadline,
-                )
-            return current_nodes
-        sleep_before_phase_deadline(
-            0.2,
-            deadline=deadline,
-            operation="compact dashboard transition observation",
-        )
-
-    _capture_with_phase_deadline(
-        device,
-        f"{scan_id}-current-transition-unavailable",
+    require_phase_deadline(deadline, operation="compact dashboard transition")
+    current_nodes = device.hierarchy(
         deadline=deadline,
+        dump_attempt_max_seconds=(
+            POST_CONFIRM_DASHBOARD_DUMP_ATTEMPT_MAX_SECONDS
+        ),
+        allow_direct_reconciliation=False,
     )
-    raise RuntimeError(
-        "Compact dashboard proof did not observe the exact post-Back dashboard "
-        "within its action-bound proof lease"
-    )
+    cardinalities = {
+        selector: [
+            node
+            for node in current_nodes
+            if _exact_resource_id(node) == selector
+        ]
+        for selector in selectors
+    }
+    for selector, exact in cardinalities.items():
+        if len(exact) > 1:
+            _capture_with_phase_deadline(
+                device,
+                f"{scan_id}-{selector}-current-cardinality-invalid",
+                deadline=deadline,
+            )
+            raise RuntimeError(
+                f"Compact dashboard current origin exposed {len(exact)} exact "
+                f"{selector!r} nodes"
+            )
+    missing = [
+        selector for selector in selectors if len(cardinalities[selector]) != 1
+    ]
+    if missing:
+        _capture_with_phase_deadline(
+            device,
+            f"{scan_id}-current-transition-unavailable",
+            deadline=deadline,
+        )
+        raise RuntimeError(
+            "The single post-marker dashboard snapshot did not expose both exact "
+            f"route identities; missing={missing!r}"
+        )
+    for selector in selectors:
+        _require_canonical_chummer_resource_id(
+            device,
+            cardinalities[selector][0],
+            selector,
+            evidence_prefix=f"{scan_id}-{selector}-current",
+            surface_name="Compact dashboard current origin",
+            deadline=deadline,
+        )
+    return current_nodes
 
 
 def assert_uncreated_advanced_editor_gated(
@@ -2483,6 +2738,15 @@ def assert_uncreated_advanced_editor_gated(
             deadline=deadline,
         )
         max_scrolls = DASHBOARD_SCAN_MAX_SCROLLS
+    scan_options: dict[str, object] = {}
+    if compact_current:
+        scan_options.update(
+            hierarchy_dump_attempt_max_seconds=(
+                POST_CONFIRM_DASHBOARD_DUMP_ATTEMPT_MAX_SECONDS
+            ),
+            allow_direct_hierarchy_reconciliation=False,
+            allow_direct_swipe_reconciliation=False,
+        )
     scan = scan_forward_with_receipt(
         device,
         scan_id=scan_id,
@@ -2492,6 +2756,7 @@ def assert_uncreated_advanced_editor_gated(
         delay_seconds=0.0,
         observer=scan_observer,
         deadline=deadline,
+        **scan_options,
     )
     bindings: set[str] = set()
     method_states: set[tuple[str, str, str]] = set()
@@ -7009,6 +7274,23 @@ def tap_exact_confirmed_receipt_back(
             deadline=deadline,
         )
         raise RuntimeError("Fresh confirmed-receipt Back authority drifted or was not tappable")
+    clear_deadline = persistent_action_deadline(
+        deadline,
+        action_timeout_seconds=PRE_BACK_ROUTE_LOG_CLEAR_TIMEOUT_SECONDS,
+        proof_timeout_seconds=(
+            PERSISTENT_PREVIEW_ACTION_TIMEOUT_SECONDS
+            + POST_CONFIRM_DASHBOARD_PROOF_TIMEOUT_SECONDS
+        ),
+        operation="the pre-Back Creation dashboard route-log freshness barrier",
+    )
+    device.run(
+        *shared.ADB_CREATION_BOOTSTRAP_LOGCAT_CLEAR_ARGUMENTS,
+        timeout=shared._remaining_operation_timeout(
+            deadline=clear_deadline,
+            maximum=PRE_BACK_ROUTE_LOG_CLEAR_TIMEOUT_SECONDS,
+        ),
+        deadline=clear_deadline,
+    )
     action_deadline = persistent_action_deadline(
         deadline,
         action_timeout_seconds=PERSISTENT_PREVIEW_ACTION_TIMEOUT_SECONDS,
@@ -7929,6 +8211,13 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         confirmed_receipt,
         scan_observer=progress.record_scan,
         deadline=preview_confirm_deadline,
+    )
+    wait_for_creation_dashboard_ready_log(
+        device,
+        expected_content_revision=confirmed_revisions["contentRevision"],
+        expected_saved_revision=confirmed_revisions["savedRevision"],
+        deadline=dashboard_deadline,
+        scan_observer=progress.record_scan,
     )
     post_confirm_dashboard = assert_uncreated_advanced_editor_gated(
         device,

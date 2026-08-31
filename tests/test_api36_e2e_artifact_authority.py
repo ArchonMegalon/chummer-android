@@ -204,6 +204,44 @@ def confirmed_receipt_scan(swipes: int = 2) -> dict[str, object]:
     }
 
 
+def post_confirm_dashboard_route_ready_scan() -> dict[str, object]:
+    return {
+        "scanId": AGGREGATE.POST_CONFIRM_DASHBOARD_ROUTE_READY_SCAN_ID,
+        "status": "resolved",
+        "phaseId": "preview-confirm",
+        "observationMode": "fresh-cleared-main-log-single-marker",
+        "logcatReadCount": 1,
+        "logcatElapsedMs": 500,
+        "maximumLogcatReadMs": 500,
+        "expectedContentRevision": 2,
+        "observedContentRevision": 2,
+        "expectedSavedRevision": 2,
+        "observedSavedRevision": 2,
+        "workspaceId": "workspace-route-ready",
+        "snapshotDigest": ARTIFACT_DIGEST,
+        "deadlineEnforced": True,
+        "maximumElapsedMs": (
+            AGGREGATE.POST_CONFIRM_DASHBOARD_ROUTE_READY_MAX_ELAPSED_MS
+        ),
+        "elapsedMs": 500,
+    }
+
+
+def creation_receipt_with_timing(
+    timing: dict[str, object],
+) -> dict[str, object]:
+    return {
+        "timing": timing,
+        "journeys": {
+            "confirmedRevisions": {
+                "contentRevision": 2,
+                "savedRevision": 2,
+                "draftRevision": 1,
+            }
+        },
+    }
+
+
 class Api36ArtifactAuthorityTests(unittest.TestCase):
     def authority(self, attempt: str = "1", **overrides: str) -> dict[str, str]:
         values = {
@@ -234,6 +272,13 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
         if journey == "creation-prerequisite":
             total_elapsed_ms = sum(CREATION_PROSPECTIVE_PHASE_ELAPSED_MS.values())
             receipt["executionStatus"] = "pass"
+            receipt["journeys"] = {
+                "confirmedRevisions": {
+                    "contentRevision": 2,
+                    "savedRevision": 2,
+                    "draftRevision": 1,
+                }
+            }
             receipt["timing"] = {
                 "schema": AGGREGATE.CREATION_PROGRESS_SCHEMA,
                 "status": "timing-complete",
@@ -327,6 +372,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                     ),
                     confirmed_receipt_scan(),
                     confirmed_receipt_back_reacquisition_scan(),
+                    post_confirm_dashboard_route_ready_scan(),
                 ],
             }
         else:
@@ -644,7 +690,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                 timing["totalElapsedMs"] = sum(
                     item["elapsedMs"] for item in timing["phases"]
                 )
-                AGGREGATE.require_creation_timing_within_budget({"timing": timing})
+                AGGREGATE.require_creation_timing_within_budget(creation_receipt_with_timing(timing))
 
             with self.subTest(phase_id=phase_id, boundary="plus-one"):
                 timing = json.loads(json.dumps(
@@ -661,7 +707,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                 )
                 with self.assertRaisesRegex(ValueError, phase_id):
                     AGGREGATE.require_creation_timing_within_budget(
-                        {"timing": timing}
+                        creation_receipt_with_timing(timing)
                     )
 
     def test_creation_timing_requires_exactly_one_method_reacquisition_scan(
@@ -684,7 +730,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                     timing["scans"].append(dict(method))
                 with self.assertRaisesRegex(ValueError, "scan cardinality differs"):
                     AGGREGATE.require_creation_timing_within_budget(
-                        {"timing": timing}
+                        creation_receipt_with_timing(timing)
                     )
 
     def test_creation_timing_rejects_forged_method_reacquisition_authority(
@@ -716,7 +762,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                 method[field] = forged
                 with self.assertRaisesRegex(ValueError, "scan authority differs"):
                     AGGREGATE.require_creation_timing_within_budget(
-                        {"timing": timing}
+                        creation_receipt_with_timing(timing)
                     )
 
         timing = json.loads(json.dumps(
@@ -730,7 +776,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
         )
         method["deadlineEnforced"] = 1
         with self.assertRaisesRegex(ValueError, "JSON boolean true"):
-            AGGREGATE.require_creation_timing_within_budget({"timing": timing})
+            AGGREGATE.require_creation_timing_within_budget(creation_receipt_with_timing(timing))
 
     def test_creation_timing_rejects_omitted_method_reacquisition_fields(
         self,
@@ -752,7 +798,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                     "authority differs|timing/count data differs",
                 ):
                     AGGREGATE.require_creation_timing_within_budget(
-                        {"timing": timing}
+                        creation_receipt_with_timing(timing)
                     )
 
     def test_creation_timing_rejects_forged_method_reacquisition_relationships(
@@ -796,7 +842,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                     "did not reconcile|timing/count data differs",
                 ):
                     AGGREGATE.require_creation_timing_within_budget(
-                        {"timing": timing}
+                        creation_receipt_with_timing(timing)
                     )
 
     def test_creation_timing_requires_exactly_one_confirmed_receipt_back_reacquisition_scan(
@@ -822,7 +868,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                     "confirmed-receipt Back reacquisition scan cardinality differs",
                 ):
                     AGGREGATE.require_creation_timing_within_budget(
-                        {"timing": timing}
+                        creation_receipt_with_timing(timing)
                     )
 
     def test_creation_timing_requires_exactly_one_confirmed_receipt_scan(
@@ -848,8 +894,167 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                     "confirmed-receipt.*cardinality differs",
                 ):
                     AGGREGATE.require_creation_timing_within_budget(
-                        {"timing": timing}
+                        creation_receipt_with_timing(timing)
                     )
+
+    def test_creation_timing_requires_exactly_one_post_confirm_route_ready_scan(
+        self,
+    ) -> None:
+        for case in ("omitted", "duplicated"):
+            with self.subTest(case=case):
+                timing = json.loads(json.dumps(
+                    self.raw_receipt("creation-prerequisite")["timing"]
+                ))
+                scan = next(
+                    scan
+                    for scan in timing["scans"]
+                    if scan.get("scanId")
+                    == AGGREGATE.POST_CONFIRM_DASHBOARD_ROUTE_READY_SCAN_ID
+                )
+                if case == "omitted":
+                    timing["scans"].remove(scan)
+                else:
+                    timing["scans"].append(dict(scan))
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "post-confirm dashboard route-ready scan cardinality differs",
+                ):
+                    AGGREGATE.require_creation_timing_within_budget(
+                        creation_receipt_with_timing(timing)
+                    )
+
+    def test_creation_timing_rejects_forged_post_confirm_route_ready_authority(
+        self,
+    ) -> None:
+        cases: dict[str, object] = {
+            "status": "pass",
+            "phaseId": "same-process-reopen",
+            "observationMode": "uncleared-log",
+            "logcatReadCount": 2,
+            "deadlineEnforced": False,
+            "maximumElapsedMs": 20_001,
+        }
+        for field, forged in cases.items():
+            with self.subTest(field=field):
+                timing = json.loads(json.dumps(
+                    self.raw_receipt("creation-prerequisite")["timing"]
+                ))
+                scan = next(
+                    scan
+                    for scan in timing["scans"]
+                    if scan.get("scanId")
+                    == AGGREGATE.POST_CONFIRM_DASHBOARD_ROUTE_READY_SCAN_ID
+                )
+                scan[field] = forged
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "post-confirm dashboard route-ready authority differs",
+                ):
+                    AGGREGATE.require_creation_timing_within_budget(
+                        creation_receipt_with_timing(timing)
+                    )
+
+    def test_creation_timing_rejects_forged_post_confirm_route_ready_binding(
+        self,
+    ) -> None:
+        cases: dict[str, object] = {
+            "observedContentRevision": 3,
+            "observedSavedRevision": 3,
+            "workspaceId": " ",
+            "snapshotDigest": "not-a-digest",
+            "logcatElapsedMs": 501,
+            "elapsedMs": 20_002,
+        }
+        for field, forged in cases.items():
+            with self.subTest(field=field):
+                timing = json.loads(json.dumps(
+                    self.raw_receipt("creation-prerequisite")["timing"]
+                ))
+                scan = next(
+                    scan
+                    for scan in timing["scans"]
+                    if scan.get("scanId")
+                    == AGGREGATE.POST_CONFIRM_DASHBOARD_ROUTE_READY_SCAN_ID
+                )
+                scan[field] = forged
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "post-confirm dashboard route-ready scan did not reconcile",
+                ):
+                    AGGREGATE.require_creation_timing_within_budget(
+                        creation_receipt_with_timing(timing)
+                    )
+
+    def test_creation_timing_binds_post_confirm_expected_revisions_to_receipt(
+        self,
+    ) -> None:
+        receipt = json.loads(json.dumps(
+            self.raw_receipt("creation-prerequisite")
+        ))
+        scan = next(
+            scan
+            for scan in receipt["timing"]["scans"]
+            if scan.get("scanId")
+            == AGGREGATE.POST_CONFIRM_DASHBOARD_ROUTE_READY_SCAN_ID
+        )
+        scan["expectedContentRevision"] = 3
+        scan["observedContentRevision"] = 3
+        scan["expectedSavedRevision"] = 3
+        scan["observedSavedRevision"] = 3
+        with self.assertRaisesRegex(
+            ValueError,
+            "post-confirm dashboard route-ready scan did not reconcile",
+        ):
+            AGGREGATE.require_creation_timing_within_budget(receipt)
+
+    def test_creation_timing_requires_exact_confirmed_revision_authority(self) -> None:
+        for case, mutate in (
+            (
+                "missing",
+                lambda receipt: receipt.pop("journeys"),
+            ),
+            (
+                "boolean-content",
+                lambda receipt: receipt["journeys"]["confirmedRevisions"].__setitem__(
+                    "contentRevision", True
+                ),
+            ),
+            (
+                "float-saved",
+                lambda receipt: receipt["journeys"]["confirmedRevisions"].__setitem__(
+                    "savedRevision", 2.0
+                ),
+            ),
+        ):
+            with self.subTest(case=case):
+                receipt = json.loads(json.dumps(
+                    self.raw_receipt("creation-prerequisite")
+                ))
+                mutate(receipt)
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "confirmed revisions are missing|confirmed revisions are invalid",
+                ):
+                    AGGREGATE.require_creation_timing_within_budget(receipt)
+
+    def test_creation_timing_rejects_boolean_post_confirm_route_ready_integer(
+        self,
+    ) -> None:
+        timing = json.loads(json.dumps(
+            self.raw_receipt("creation-prerequisite")["timing"]
+        ))
+        scan = next(
+            scan
+            for scan in timing["scans"]
+            if scan.get("scanId")
+            == AGGREGATE.POST_CONFIRM_DASHBOARD_ROUTE_READY_SCAN_ID
+        )
+        scan["observedContentRevision"] = True
+        with self.assertRaisesRegex(
+            ValueError,
+            "post-confirm dashboard route-ready timing/revision data differs",
+        ):
+            AGGREGATE.require_creation_timing_within_budget(creation_receipt_with_timing(timing))
 
     def test_creation_timing_rejects_forged_confirmed_receipt_scan_authority(
         self,
@@ -874,7 +1079,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                     "confirmed-receipt.*differs",
                 ):
                     AGGREGATE.require_creation_timing_within_budget(
-                        {"timing": timing}
+                        creation_receipt_with_timing(timing)
                     )
 
     def test_creation_timing_rejects_invalid_confirmed_receipt_scan_swipes(
@@ -901,7 +1106,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                     "confirmed-receipt.*swipes",
                 ):
                     AGGREGATE.require_creation_timing_within_budget(
-                        {"timing": timing}
+                        creation_receipt_with_timing(timing)
                     )
 
     def test_creation_timing_rejects_confirmed_receipt_cross_scan_mismatch(
@@ -921,7 +1126,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             ValueError,
             "confirmed-receipt Back configuredMaxScrolls differs.*confirmed-receipt swipes",
         ):
-            AGGREGATE.require_creation_timing_within_budget({"timing": timing})
+            AGGREGATE.require_creation_timing_within_budget(creation_receipt_with_timing(timing))
 
     def test_creation_timing_rejects_forged_confirmed_receipt_back_authority(
         self,
@@ -934,7 +1139,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             "deadlineEnforced": False,
             "maximumEmptyHierarchyReads": 4,
             "maximumSystemUiDismissals": 4,
-            "downstreamReserveMs": 33_001,
+            "downstreamReserveMs": 81_001,
         }
         for field, forged in cases.items():
             with self.subTest(field=field):
@@ -953,7 +1158,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                     "confirmed-receipt Back reacquisition authority differs",
                 ):
                     AGGREGATE.require_creation_timing_within_budget(
-                        {"timing": timing}
+                        creation_receipt_with_timing(timing)
                     )
 
         timing = json.loads(json.dumps(
@@ -970,7 +1175,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             ValueError,
             "deadlineEnforced must be the JSON boolean true",
         ):
-            AGGREGATE.require_creation_timing_within_budget({"timing": timing})
+            AGGREGATE.require_creation_timing_within_budget(creation_receipt_with_timing(timing))
 
     def test_creation_timing_rejects_non_integer_confirmed_receipt_back_counts(
         self,
@@ -1003,7 +1208,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                     "confirmed-receipt Back reacquisition timing/count data differs",
                 ):
                     AGGREGATE.require_creation_timing_within_budget(
-                        {"timing": timing}
+                        creation_receipt_with_timing(timing)
                     )
 
     def test_creation_timing_rejects_confirmed_receipt_back_bound_forgery(
@@ -1044,7 +1249,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                     "confirmed-receipt Back reacquisition scan did not reconcile",
                 ):
                     AGGREGATE.require_creation_timing_within_budget(
-                        {"timing": timing}
+                        creation_receipt_with_timing(timing)
                     )
 
     def test_creation_timing_rejects_confirmed_receipt_back_timing_forgery(
@@ -1078,7 +1283,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                     "confirmed-receipt Back reacquisition scan did not reconcile",
                 ):
                     AGGREGATE.require_creation_timing_within_budget(
-                        {"timing": timing}
+                        creation_receipt_with_timing(timing)
                     )
 
     def test_creation_timing_accepts_confirmed_receipt_back_exact_bounds(
@@ -1113,7 +1318,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
         )
         source["swipes"] = scan["configuredMaxScrolls"]
         source["screens"] = source["swipes"] + 1
-        AGGREGATE.require_creation_timing_within_budget({"timing": timing})
+        AGGREGATE.require_creation_timing_within_budget(creation_receipt_with_timing(timing))
 
         scan.update(
             {
@@ -1128,7 +1333,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                 "elapsedMs": 7_300,
             }
         )
-        AGGREGATE.require_creation_timing_within_budget({"timing": timing})
+        AGGREGATE.require_creation_timing_within_budget(creation_receipt_with_timing(timing))
 
         maximum_elapsed = confirmed_receipt_back_reacquisition_scan()
         maximum_elapsed.update(
@@ -1193,7 +1398,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                     "phase timing|phase cardinality",
                 ):
                     AGGREGATE.require_creation_timing_within_budget(
-                        {"timing": timing}
+                        creation_receipt_with_timing(timing)
                     )
 
     def test_creation_timing_requires_exact_grant_completion_phases(self) -> None:
@@ -1232,7 +1437,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                         "phase timing|phase cardinality",
                     ):
                         AGGREGATE.require_creation_timing_within_budget(
-                            {"timing": timing}
+                            creation_receipt_with_timing(timing)
                         )
 
     def test_creation_timing_rejects_legacy_eleven_fourteen_sixteen_nineteen_twenty_and_twenty_one_phase_maps(
@@ -1343,7 +1548,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                 timing["phaseBudgetsMs"] = legacy_map
                 with self.assertRaisesRegex(ValueError, "phase timing budgets differ"):
                     AGGREGATE.require_creation_timing_within_budget(
-                        {"timing": timing}
+                        creation_receipt_with_timing(timing)
                     )
 
     def test_creation_timing_reconciles_phase_sum_with_exact_thirteen_ms_tolerance(
@@ -1356,7 +1561,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                 ))
                 phase_sum = sum(phase["elapsedMs"] for phase in timing["phases"])
                 timing["totalElapsedMs"] = phase_sum + offset
-                AGGREGATE.require_creation_timing_within_budget({"timing": timing})
+                AGGREGATE.require_creation_timing_within_budget(creation_receipt_with_timing(timing))
 
         for offset in (-14, 14):
             with self.subTest(offset=offset, accepted=False):
@@ -1367,7 +1572,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                 timing["totalElapsedMs"] = phase_sum + offset
                 with self.assertRaisesRegex(ValueError, "does not reconcile"):
                     AGGREGATE.require_creation_timing_within_budget(
-                        {"timing": timing}
+                        creation_receipt_with_timing(timing)
                     )
 
     def test_creation_timing_rejects_forged_talent_reacquisition_scans(self) -> None:
@@ -1458,7 +1663,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
 
                 with self.assertRaisesRegex(ValueError, "Talent reacquisition"):
                     AGGREGATE.require_creation_timing_within_budget(
-                        {"timing": timing}
+                        creation_receipt_with_timing(timing)
                     )
 
     def test_creation_timing_accepts_exact_talent_overlap_recovery_scan(self) -> None:
@@ -1472,7 +1677,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
         )
         phase_id = str(timing["scans"][target_index]["phaseId"])
         timing["scans"][target_index] = talent_overlap_recovery_scan(phase_id)
-        AGGREGATE.require_creation_timing_within_budget({"timing": timing})
+        AGGREGATE.require_creation_timing_within_budget(creation_receipt_with_timing(timing))
 
     def test_creation_timing_keeps_coarse_primary_for_non_option_groups(self) -> None:
         timing = json.loads(json.dumps(
@@ -1505,14 +1710,14 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             }
         )
         timing["scans"][target_index] = target
-        AGGREGATE.require_creation_timing_within_budget({"timing": timing})
+        AGGREGATE.require_creation_timing_within_budget(creation_receipt_with_timing(timing))
         for field in ("distanceRatio", "primaryDistanceRatio"):
             with self.subTest(field=field):
                 forged = json.loads(json.dumps(timing))
                 forged["scans"][target_index][field] = 0.22
                 with self.assertRaisesRegex(ValueError, "Talent reacquisition"):
                     AGGREGATE.require_creation_timing_within_budget(
-                        {"timing": forged}
+                        creation_receipt_with_timing(forged)
                     )
 
     def test_creation_timing_rejects_forged_talent_overlap_recovery_fields(
@@ -1557,7 +1762,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                 timing["scans"][target_index] = target
                 with self.assertRaisesRegex(ValueError, "Talent reacquisition"):
                     AGGREGATE.require_creation_timing_within_budget(
-                        {"timing": timing}
+                        creation_receipt_with_timing(timing)
                     )
 
     def test_creation_timing_rejects_reconciled_recovery_without_boundary_gestures(
@@ -1586,7 +1791,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                 timing["scans"][target_index] = target
                 with self.assertRaisesRegex(ValueError, "Talent reacquisition"):
                     AGGREGATE.require_creation_timing_within_budget(
-                        {"timing": timing}
+                        creation_receipt_with_timing(timing)
                     )
 
     def test_creation_timing_rejects_reconciled_recovery_without_opposite_gesture(
@@ -1616,7 +1821,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
         )
         timing["scans"][target_index] = target
         with self.assertRaisesRegex(ValueError, "Talent reacquisition"):
-            AGGREGATE.require_creation_timing_within_budget({"timing": timing})
+            AGGREGATE.require_creation_timing_within_budget(creation_receipt_with_timing(timing))
 
     def test_creation_timing_rejects_overlap_recovery_for_non_option_authority(
         self,
@@ -1636,7 +1841,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
         ]
         timing["scans"][target_index] = target
         with self.assertRaisesRegex(ValueError, "Talent reacquisition"):
-            AGGREGATE.require_creation_timing_within_budget({"timing": timing})
+            AGGREGATE.require_creation_timing_within_budget(creation_receipt_with_timing(timing))
 
     def test_creation_timing_requires_exact_ordered_milestones(self) -> None:
         cases = (

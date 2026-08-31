@@ -2136,6 +2136,92 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             issued,
         )
 
+    def test_post_back_owned_file_only_dump_never_invokes_direct_reconciliation(
+        self,
+    ) -> None:
+        now = [0.0]
+
+        def monotonic() -> float:
+            return now[0]
+
+        def invoke(
+            command: list[str],
+            *,
+            check: bool,
+            capture_output: bool,
+            text: bool,
+            timeout: float,
+        ) -> subprocess.CompletedProcess:
+            self.assertTrue(check)
+            self.assertTrue(capture_output)
+            self.assertTrue(text)
+            arguments = tuple(command[3:])
+            if arguments == (
+                "shell",
+                *DRIVER.ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS,
+            ):
+                return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
+            if arguments == (
+                "shell",
+                *DRIVER.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
+            ):
+                self.assertEqual(30.0, timeout)
+                now[0] += timeout
+                raise subprocess.TimeoutExpired(command, timeout)
+            if arguments == (
+                "exec-out",
+                "cat",
+                DRIVER.ADB_FILE_HIERARCHY_REMOTE_PATH,
+            ):
+                now[0] += 0.1
+                return subprocess.CompletedProcess(
+                    command,
+                    0,
+                    stdout=DRIVER.ADB_FILE_HIERARCHY_ABSENT_OUTPUT,
+                    stderr="",
+                )
+            if arguments == DRIVER.ADB_READ_ONLY_HIERARCHY_ARGUMENTS:
+                raise AssertionError("owned-file-only route invoked /dev/tty")
+            raise AssertionError(f"unexpected ADB arguments: {arguments!r}")
+
+        with tempfile.TemporaryDirectory() as temporary:
+            device = DRIVER.Device(
+                Path("/trusted/adb"),
+                "SERIAL-API36",
+                Path(temporary),
+            )
+            with (
+                patch.object(DRIVER.subprocess, "run", side_effect=invoke) as run,
+                patch.object(DRIVER.time, "monotonic", side_effect=monotonic),
+                patch.object(
+                    DRIVER.time,
+                    "sleep",
+                    side_effect=lambda seconds: now.__setitem__(0, now[0] + seconds),
+                ),
+                self.assertRaises(DRIVER.AdbTransportError) as raised,
+            ):
+                device.hierarchy(
+                    deadline=75.0,
+                    dump_attempt_max_seconds=30.0,
+                    allow_direct_reconciliation=False,
+                )
+            summary = device.transport_summary()
+
+        issued = [tuple(invocation.args[0][3:]) for invocation in run.call_args_list]
+        self.assertEqual(
+            1,
+            issued.count(("shell", *DRIVER.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS)),
+        )
+        self.assertGreaterEqual(
+            issued.count(("exec-out", "cat", DRIVER.ADB_FILE_HIERARCHY_REMOTE_PATH)),
+            1,
+        )
+        self.assertNotIn(DRIVER.ADB_READ_ONLY_HIERARCHY_ARGUMENTS, issued)
+        self.assertEqual("adb-transport-event-0001.json", raised.exception.receipt["evidenceFile"])
+        self.assertEqual(1, summary["eventCount"])
+        self.assertEqual(1, summary["terminalFailureCount"])
+        self.assertIsNotNone(device._mutation_blocker)
+
     def test_invalid_hierarchy_is_retryable_and_preserved(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             evidence = Path(temporary)
@@ -4798,8 +4884,55 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             "full_editing_contract.improved_body_total)"
         )
         post_restart = source[source.rindex(marker) :]
-        route = post_restart[: post_restart.index("open_gear_section(device, args.profile)")]
+        route = post_restart[: post_restart.index("open_persisted_phone_gear_after_restart(")]
         self.assertIn('if args.profile == "phone":\n        device.back()', route)
+
+    def test_post_restart_gear_proof_uses_typed_route_not_quick_add_gate(self) -> None:
+        source = Path(DRIVER.__file__).read_text(encoding="utf-8")
+        marker = (
+            "assert_body_total(device, args.profile, "
+            "full_editing_contract.improved_body_total)"
+        )
+        post_restart = source[source.rindex(marker) :]
+        phone = post_restart[
+            post_restart.index('if args.profile == "phone":') :
+            post_restart.index("    else:", post_restart.index('if args.profile == "phone":'))
+        ]
+        self.assertIn("open_persisted_phone_gear_after_restart(", phone)
+        self.assertNotIn("open_gear_section(", phone)
+        self.assertNotIn("section-quick-gear-add", phone)
+
+        helper = source[source.index("def open_persisted_phone_gear_after_restart") :]
+        helper = helper[: helper.index("\ndef ", 5)]
+        self.assertIn('tap_phone_build_section(device, "gear")', helper)
+        self.assertIn('kind="gear"', helper)
+        self.assertIn('restored_route = f"collection-item-gear-{item_id}"', helper)
+        self.assertIn("tap_typed_collection_route(", helper)
+        self.assertNotIn("section-quick-gear-add", helper)
+
+        initial_add = source[source.index("def add_and_edit_gear") :]
+        initial_add = initial_add[: initial_add.index("\ndef ", 5)]
+        self.assertIn("open_gear_section(device, profile)", initial_add)
+        self.assertIn('"section-quick-gear-add"', initial_add)
+
+    def test_post_restart_gear_route_fails_before_item_tap_when_identity_is_missing(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        with (
+            patch.object(DRIVER, "tap_phone_build_section") as open_section,
+            patch.object(
+                DRIVER,
+                "scan_collection_route_inventory",
+                return_value=DRIVER.CollectionRouteInventory({}, 0),
+            ),
+            self.assertRaisesRegex(RuntimeError, "Unknown scan-proven typed collection route"),
+        ):
+            DRIVER.open_persisted_phone_gear_after_restart(
+                device,
+                "22222222-2222-2222-2222-222222222222",
+            )
+
+        open_section.assert_called_once_with(device, "gear")
+        device.shell.assert_not_called()
 
     def test_full_editing_fixture_has_valid_career_body_improvement(self) -> None:
         fixture = REPO_ROOT / "tests" / "fixtures" / "career-full-editing-e2e.chum5"
@@ -6221,8 +6354,14 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         source = Path(DRIVER.__file__).read_text(encoding="utf-8")
         restart = source[source.index('        if added_gear_item_id is None:') :]
         phone_restart = restart[: restart.index("    else:")]
-        self.assertIn('restored_route = f"collection-item-gear-{added_gear_item_id}"', restart)
-        self.assertIn("tap_typed_collection_route(", phone_restart)
+        self.assertIn(
+            "open_persisted_phone_gear_after_restart(device, added_gear_item_id)",
+            phone_restart,
+        )
+        helper = source[source.index("def open_persisted_phone_gear_after_restart") :]
+        helper = helper[: helper.index("\ndef ", 5)]
+        self.assertIn('restored_route = f"collection-item-gear-{item_id}"', helper)
+        self.assertIn("tap_typed_collection_route(", helper)
         self.assertIn('selected_text(device, gear_field, "Custom Name", scroll=True)', restart)
         self.assertIn('persisted_custom_name != "GearProofE2E"', restart)
         self.assertNotIn('tap_collection_item(device, "Ares Predator V")', phone_restart)

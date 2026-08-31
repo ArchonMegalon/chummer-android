@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json;
 using Chummer.Contracts.Characters;
 using Chummer.Contracts.Presentation;
 using Chummer.Presentation.Overview;
@@ -9,6 +10,21 @@ namespace Chummer.Android.Native;
 public sealed record BuildPageRouteMarker(string AutomationId, string Label);
 
 public sealed record CreationIdentityRouteState(bool IsEnabled, string Blocker);
+
+public sealed record CreationDashboardRouteReadyMarker(
+    string Schema,
+    string RouteAutomationId,
+    string DashboardAutomationId,
+    string WorkspaceId,
+    long ContentRevision,
+    long SavedRevision,
+    string ContentDigest,
+    string SourceDigest,
+    string RuntimeFingerprint,
+    string BuildMethod,
+    string SnapshotDigest,
+    bool CharacterCreated,
+    bool AuthorityReady);
 
 public sealed record CreationDashboardProjectionBinding(
     string WorkspaceId,
@@ -90,6 +106,13 @@ public sealed record CreationDashboardAuthorityPhaseProgress(
     CreationDashboardAuthorityPhaseState Contacts,
     CreationDashboardAuthorityPhaseState Resources)
 {
+    public bool IsTerminalReady
+        => IsReadyOrNotApplicable(Prerequisite)
+           && IsReadyOrNotApplicable(Attributes)
+           && IsReadyOrNotApplicable(Skills)
+           && IsReadyOrNotApplicable(Contacts)
+           && IsReadyOrNotApplicable(Resources);
+
     public static CreationDashboardAuthorityPhaseProgress ForBuildMethod(string buildMethod)
     {
         bool priorityOrSumToTen = buildMethod is (CharacterCreationBuildMethods.Priority
@@ -127,6 +150,10 @@ public sealed record CreationDashboardAuthorityPhaseProgress(
             _ => throw new ArgumentOutOfRangeException(nameof(phase), phase, null)
         };
     }
+
+    private static bool IsReadyOrNotApplicable(CreationDashboardAuthorityPhaseState state)
+        => state is CreationDashboardAuthorityPhaseState.Ready
+            or CreationDashboardAuthorityPhaseState.NotApplicable;
 }
 
 public sealed record CreationDashboardAuthorityProjection(
@@ -180,6 +207,37 @@ public static class BuildPageUiProjection
     public static string SaveToolbarText(bool hasDurableSaveNotice)
         => hasDurableSaveNotice ? "Saved." : "Save";
 
+    public static CreationDashboardRouteReadyMarker? CreationDashboardRouteReady(
+        CharacterOverviewState state,
+        CharacterCreationWizardSnapshot snapshot,
+        CreationDashboardAuthorityProjection? projection)
+    {
+        if (state.Profile?.Created != false
+            || projection is null
+            || projection.HasFailure
+            || !projection.Progress.IsTerminalReady
+            || !projection.Binding.Matches(state, snapshot))
+        {
+            return null;
+        }
+
+        CreationDashboardProjectionBinding binding = projection.Binding;
+        return new CreationDashboardRouteReadyMarker(
+            "chummer.android.creation-dashboard-route-ready/v1",
+            "phone-runner-create",
+            "creation-wizard-dashboard",
+            binding.WorkspaceId,
+            binding.ContentRevision,
+            binding.SavedRevision,
+            binding.ContentDigest,
+            binding.SourceDigest,
+            binding.RuntimeFingerprint,
+            binding.BuildMethod,
+            binding.SnapshotDigest,
+            CharacterCreated: false,
+            AuthorityReady: true);
+    }
+
     public static CreationIdentityRouteState CreationIdentityRoute(
         IReadOnlyList<string> coreBlockers)
         => new(
@@ -202,6 +260,15 @@ public static class BuildPageUiProjection
 
 public sealed class BuildPage : NativePageBase
 {
+    private const string CreationDashboardRouteReadyLogTag = "ChummerRoute";
+    private const string CreationDashboardRouteReadyLogPrefix =
+        "CHUMMER_CREATION_DASHBOARD_READY ";
+    private static readonly JsonSerializerOptions CreationDashboardRouteReadyJson = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
+    private static readonly TimeSpan CreationDashboardRouteReadySettleDelay =
+        TimeSpan.FromMilliseconds(750);
     private readonly VerticalStackLayout _body = new()
     {
         Padding = new Thickness(20, 18, 20, 40),
@@ -234,6 +301,9 @@ public sealed class BuildPage : NativePageBase
     private CharacterCreationFinalizationResult<CharacterCreationFinalizationState>?
         _creationFinalizationAuthority;
     private string? _creationFinalizationFailureReason;
+    private CancellationTokenSource? _creationDashboardRouteReadyLifetime;
+    private long _creationDashboardAppearanceGeneration;
+    private long _creationDashboardRouteReadyEmittedGeneration = -1;
 
     public BuildPage(
         RunnerSessionCoordinator coordinator,
@@ -310,8 +380,21 @@ public sealed class BuildPage : NativePageBase
         Content = new ScrollView { Content = _body };
     }
 
+    protected override void OnAppearing()
+    {
+        _creationDashboardRouteReadyLifetime?.Cancel();
+        _creationDashboardRouteReadyLifetime?.Dispose();
+        _creationDashboardRouteReadyLifetime = new CancellationTokenSource();
+        _creationDashboardAppearanceGeneration++;
+        base.OnAppearing();
+    }
+
     protected override void OnDisappearing()
     {
+        _creationDashboardRouteReadyLifetime?.Cancel();
+        _creationDashboardRouteReadyLifetime?.Dispose();
+        _creationDashboardRouteReadyLifetime = null;
+        _creationDashboardAppearanceGeneration++;
         CancelCreationProjectionQueues();
         base.OnDisappearing();
     }
@@ -468,6 +551,7 @@ public sealed class BuildPage : NativePageBase
 
     private void AddCreationWizardDashboard()
     {
+        CharacterCreationWizardSnapshot? snapshot = Coordinator.State.CreationWizard;
         VerticalStackLayout header = new()
         {
             AutomationId = "creation-wizard-dashboard",
@@ -481,9 +565,16 @@ public sealed class BuildPage : NativePageBase
         header.Add(NativeTheme.Body(
             "Build this runner step by step. The full character editor unlocks after creation is complete.",
             NativeTheme.Muted));
+        if (snapshot is not null)
+        {
+            long appearanceGeneration = _creationDashboardAppearanceGeneration;
+            header.Loaded += (_, _) => ScheduleCreationDashboardRouteReady(
+                header,
+                snapshot,
+                appearanceGeneration);
+        }
         _body.Add(header);
 
-        CharacterCreationWizardSnapshot? snapshot = Coordinator.State.CreationWizard;
         if (snapshot is null)
         {
             Label unavailable = NativeTheme.Body(
@@ -578,6 +669,91 @@ public sealed class BuildPage : NativePageBase
             creationContacts,
             creationResources);
         AddFinalizationReviewAction(snapshot);
+    }
+
+    private void ScheduleCreationDashboardRouteReady(
+        VisualElement header,
+        CharacterCreationWizardSnapshot capturedSnapshot,
+        long appearanceGeneration)
+    {
+        CancellationTokenSource? lifetime = _creationDashboardRouteReadyLifetime;
+        if (lifetime is null)
+            return;
+
+        _ = EmitCreationDashboardRouteReadyAsync(
+            header,
+            capturedSnapshot,
+            appearanceGeneration,
+            lifetime.Token);
+    }
+
+    private async Task EmitCreationDashboardRouteReadyAsync(
+        VisualElement header,
+        CharacterCreationWizardSnapshot capturedSnapshot,
+        long appearanceGeneration,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await Task.Delay(CreationDashboardRouteReadySettleDelay, cancellationToken);
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                if (cancellationToken.IsCancellationRequested
+                    || appearanceGeneration != _creationDashboardAppearanceGeneration
+                    || _creationDashboardRouteReadyEmittedGeneration == appearanceGeneration
+                    || header.Handler is null
+                    || !header.IsVisible
+                    || header.Width <= 0
+                    || header.Height <= 0
+                    || !_body.Children.Contains(header)
+                    || !ReferenceEquals(Shell.Current?.CurrentPage, this)
+                    || Coordinator.State.CreationWizard is not { } currentSnapshot
+                    || !string.Equals(
+                        currentSnapshot.SnapshotDigest,
+                        capturedSnapshot.SnapshotDigest,
+                        StringComparison.Ordinal))
+                {
+                    return;
+                }
+
+                CreationDashboardRouteReadyMarker? marker =
+                    BuildPageUiProjection.CreationDashboardRouteReady(
+                        Coordinator.State,
+                        currentSnapshot,
+                        _creationProjection);
+                if (marker is null)
+                    return;
+
+                _creationDashboardRouteReadyEmittedGeneration = appearanceGeneration;
+                string payload = JsonSerializer.Serialize(
+                    marker,
+                    CreationDashboardRouteReadyJson);
+#if ANDROID
+                global::Android.Util.Log.Info(
+                    CreationDashboardRouteReadyLogTag,
+                    CreationDashboardRouteReadyLogPrefix + payload);
+#else
+                Console.WriteLine(CreationDashboardRouteReadyLogPrefix + payload);
+#endif
+            });
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // The page left or a newer appearance superseded this layout marker.
+        }
+        catch (Exception error)
+        {
+            // This proof-only marker must never destabilize the runner UI. Its
+            // absence keeps the hosted journey fail-closed.
+#if ANDROID
+            global::Android.Util.Log.Warn(
+                CreationDashboardRouteReadyLogTag,
+                $"Creation dashboard route-ready marker suppressed: {error.GetType().Name}");
+#else
+            Console.Error.WriteLine(
+                $"Creation dashboard route-ready marker suppressed: {error.GetType().Name}");
+#endif
+        }
     }
 
     private void AddCreationMethodRoute(

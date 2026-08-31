@@ -33,12 +33,16 @@ CONFIRMED_RECEIPT_SCAN_ID = "creation-prerequisite-confirmed-receipt"
 CONFIRMED_RECEIPT_BACK_REACQUISITION_SCAN_ID = (
     "creation-prerequisite-confirmed-receipt-back-reacquisition"
 )
+POST_CONFIRM_DASHBOARD_ROUTE_READY_SCAN_ID = (
+    "post-confirm-dashboard-route-ready-log"
+)
 CONFIRMED_RECEIPT_BACK_REACQUISITION_MAX_SCROLLS = 12
 CONFIRMED_RECEIPT_BACK_REACQUISITION_MAX_EMPTY_HIERARCHIES = 3
 CONFIRMED_RECEIPT_BACK_REACQUISITION_MAX_SYSTEM_UI_DISMISSALS = 3
 CONFIRMED_RECEIPT_BACK_REACQUISITION_MAX_ELAPSED_MS = 45_000
-CONFIRMED_RECEIPT_BACK_REACQUISITION_DOWNSTREAM_RESERVE_MS = 33_000
+CONFIRMED_RECEIPT_BACK_REACQUISITION_DOWNSTREAM_RESERVE_MS = 81_000
 CONFIRMED_RECEIPT_BACK_REACQUISITION_DELAY_MS = 200
+POST_CONFIRM_DASHBOARD_ROUTE_READY_MAX_ELAPSED_MS = 20_000
 TALENT_REACQUISITION_MAX_SCROLLS = 40
 TALENT_OPTION_RECOVERY_MAX_SCROLLS = 40
 TALENT_REACQUISITION_STABLE_REPEATS = 2
@@ -391,6 +395,96 @@ def require_confirmed_receipt_back_reacquisition_scan(
         raise ValueError(
             "confirmed-receipt Back reacquisition scan did not reconcile its "
             "measured bound, gestures, hierarchy reads, or timing"
+        )
+
+
+def require_post_confirm_dashboard_route_ready_scan(
+    timing: dict[str, Any],
+    *,
+    preview_phase_elapsed_ms: int,
+    confirmed_content_revision: int,
+    confirmed_saved_revision: int,
+) -> None:
+    scans = timing.get("scans")
+    if not isinstance(scans, list):
+        raise ValueError("creation prerequisite scan timing evidence is missing")
+    matches = [
+        scan
+        for scan in scans
+        if isinstance(scan, dict)
+        and scan.get("scanId") == POST_CONFIRM_DASHBOARD_ROUTE_READY_SCAN_ID
+    ]
+    if len(matches) != 1:
+        raise ValueError(
+            "post-confirm dashboard route-ready scan cardinality differs: "
+            f"expected=1, actual={len(matches)}"
+        )
+    scan = matches[0]
+    required_literals: dict[str, Any] = {
+        "status": "resolved",
+        "phaseId": "preview-confirm",
+        "observationMode": "fresh-cleared-main-log-single-marker",
+        "logcatReadCount": 1,
+        "deadlineEnforced": True,
+        "maximumElapsedMs": POST_CONFIRM_DASHBOARD_ROUTE_READY_MAX_ELAPSED_MS,
+    }
+    differing = {
+        field: (expected, scan.get(field))
+        for field, expected in required_literals.items()
+        if scan.get(field) != expected
+    }
+    if differing:
+        raise ValueError(
+            "post-confirm dashboard route-ready authority differs: "
+            f"{differing!r}"
+        )
+    if type(scan.get("deadlineEnforced")) is not bool:
+        raise ValueError(
+            "post-confirm dashboard route-ready deadlineEnforced must be boolean"
+        )
+    integer_fields = (
+        "logcatReadCount",
+        "logcatElapsedMs",
+        "maximumLogcatReadMs",
+        "expectedContentRevision",
+        "observedContentRevision",
+        "expectedSavedRevision",
+        "observedSavedRevision",
+        "maximumElapsedMs",
+        "elapsedMs",
+    )
+    invalid = [
+        field
+        for field in integer_fields
+        if type(scan.get(field)) is not int or int(scan[field]) < 0
+    ]
+    if invalid:
+        raise ValueError(
+            "post-confirm dashboard route-ready timing/revision data differs: "
+            f"{invalid!r}"
+        )
+    value = {field: int(scan[field]) for field in integer_fields}
+    workspace_id = scan.get("workspaceId")
+    snapshot_digest = scan.get("snapshotDigest")
+    if not (
+        value["expectedContentRevision"] > 0
+        and value["expectedContentRevision"] == confirmed_content_revision
+        and value["observedContentRevision"]
+        == value["expectedContentRevision"]
+        and value["expectedSavedRevision"] == confirmed_saved_revision
+        and value["observedSavedRevision"] == value["expectedSavedRevision"]
+        and value["maximumLogcatReadMs"] == value["logcatElapsedMs"]
+        and value["logcatElapsedMs"] <= value["elapsedMs"] + 1
+        and value["elapsedMs"] <= value["maximumElapsedMs"] + 1
+        and value["elapsedMs"] <= preview_phase_elapsed_ms
+        and isinstance(workspace_id, str)
+        and 0 < len(workspace_id.strip()) <= 128
+        and isinstance(snapshot_digest, str)
+        and ARTIFACT_DIGEST.fullmatch(snapshot_digest) is not None
+    ):
+        raise ValueError(
+            "post-confirm dashboard route-ready scan did not reconcile its "
+            "revision, digest, workspace, or timing authority"
         )
 
 
@@ -752,6 +846,23 @@ def canonical_authority(
 
 
 def require_creation_timing_within_budget(receipt: dict[str, Any]) -> None:
+    journeys = receipt.get("journeys")
+    confirmed_revisions = (
+        journeys.get("confirmedRevisions")
+        if isinstance(journeys, dict)
+        else None
+    )
+    if not isinstance(confirmed_revisions, dict):
+        raise ValueError("creation prerequisite confirmed revisions are missing")
+    confirmed_content_revision = confirmed_revisions.get("contentRevision")
+    confirmed_saved_revision = confirmed_revisions.get("savedRevision")
+    if (
+        type(confirmed_content_revision) is not int
+        or confirmed_content_revision <= 0
+        or type(confirmed_saved_revision) is not int
+        or confirmed_saved_revision < 0
+    ):
+        raise ValueError("creation prerequisite confirmed revisions are invalid")
     timing = receipt.get("timing")
     if not isinstance(timing, dict):
         raise ValueError("creation prerequisite timing evidence is missing")
@@ -862,6 +973,12 @@ def require_creation_timing_within_budget(receipt: dict[str, Any]) -> None:
     require_confirmed_receipt_back_reacquisition_scan(
         timing,
         preview_phase_elapsed_ms=phase_elapsed_by_id["preview-confirm"],
+    )
+    require_post_confirm_dashboard_route_ready_scan(
+        timing,
+        preview_phase_elapsed_ms=phase_elapsed_by_id["preview-confirm"],
+        confirmed_content_revision=confirmed_content_revision,
+        confirmed_saved_revision=confirmed_saved_revision,
     )
     require_talent_reacquisition_scans(
         timing,

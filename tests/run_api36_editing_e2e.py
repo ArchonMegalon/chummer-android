@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import os
 import re
 import subprocess
@@ -171,6 +172,22 @@ ADB_CREATION_BOOTSTRAP_LOGCAT_ARGUMENTS = (
     "*:S",
 )
 ADB_CREATION_BOOTSTRAP_LOGCAT_CLEAR_ARGUMENTS = ("logcat", "-c")
+ADB_CREATION_DASHBOARD_READY_LOGCAT_ARGUMENTS = (
+    "logcat",
+    "-b",
+    "main",
+    "-v",
+    "raw",
+    "-T",
+    "1",
+    "-m",
+    "1",
+    "-e",
+    r"^CHUMMER_CREATION_DASHBOARD_READY \{",
+    "-s",
+    "ChummerRoute:I",
+    "*:S",
+)
 ADB_PREFLIGHT_REQUIRED_CONSECUTIVE = 3
 ADB_PREFLIGHT_MAX_OBSERVATIONS = 7
 ADB_PREFLIGHT_OBSERVATION_DELAY_SECONDS = 1.0
@@ -435,6 +452,11 @@ def adb_command_retry_policy(arguments: tuple[str, ...]) -> tuple[str, str]:
         return (
             "read-only-retryable",
             "bounded exact-tag creation-bootstrap timing observation",
+        )
+    if arguments == ADB_CREATION_DASHBOARD_READY_LOGCAT_ARGUMENTS:
+        return (
+            "non-replayable",
+            "single-attempt creation-dashboard route-ready freshness observation",
         )
     if arguments[:1] != ("shell",):
         return (
@@ -1536,8 +1558,26 @@ class Device:
             )
         return actual
 
-    def hierarchy(self, *, deadline: float | None = None) -> list[UiNode]:
+    def hierarchy(
+        self,
+        *,
+        deadline: float | None = None,
+        dump_attempt_max_seconds: float = ADB_FILE_HIERARCHY_DUMP_ATTEMPT_MAX_SECONDS,
+        allow_direct_reconciliation: bool = True,
+    ) -> list[UiNode]:
         """Read one hierarchy while sharing an optional caller-owned deadline."""
+        if (
+            isinstance(dump_attempt_max_seconds, bool)
+            or not isinstance(dump_attempt_max_seconds, (int, float))
+            or not math.isfinite(dump_attempt_max_seconds)
+            or dump_attempt_max_seconds <= 0
+            or dump_attempt_max_seconds > 30.0
+        ):
+            raise ValueError(
+                "Hierarchy dump attempt maximum must be within (0, 30] seconds"
+            )
+        if type(allow_direct_reconciliation) is not bool:
+            raise TypeError("Hierarchy direct-reconciliation policy must be boolean")
         try:
             if deadline is None:
                 # ADB does not preserve an argv element as the script operand of
@@ -1562,14 +1602,14 @@ class Device:
                 if deadline is None:
                     dump_output = self.shell(
                         *ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
-                        timeout=ADB_FILE_HIERARCHY_DUMP_ATTEMPT_MAX_SECONDS,
+                        timeout=dump_attempt_max_seconds,
                     )
                 else:
                     dump_output = self.shell(
                         *ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
                         timeout=_hierarchy_dump_attempt_timeout(
                             deadline=deadline,
-                            maximum=ADB_FILE_HIERARCHY_DUMP_ATTEMPT_MAX_SECONDS,
+                            maximum=dump_attempt_max_seconds,
                         ),
                         deadline=deadline,
                     )
@@ -1579,6 +1619,7 @@ class Device:
                     error,
                     dump_arguments,
                     deadline=deadline,
+                    allow_direct_reconciliation=allow_direct_reconciliation,
                 )
                 if reconciled is not None:
                     return reconciled
@@ -1829,6 +1870,7 @@ class Device:
         arguments: tuple[str, ...],
         *,
         deadline: float | None = None,
+        allow_direct_reconciliation: bool = True,
     ) -> list[UiNode] | None:
         receipt = failed.receipt
         if (
@@ -1937,6 +1979,8 @@ class Device:
                 except AdbOperationDeadlineExceeded:
                     break
                 time.sleep(delay)
+        if not allow_direct_reconciliation:
+            return None
         direct_deadline = (
             time.monotonic()
             + ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_MAX_SECONDS
@@ -3121,7 +3165,10 @@ class Device:
         x_ratio: float = 0.5,
         distance_ratio: float = 0.52,
         deadline: float | None = None,
+        allow_direct_reconciliation: bool = True,
     ) -> None:
+        if type(allow_direct_reconciliation) is not bool:
+            raise ValueError("Direct swipe reconciliation policy must be boolean")
         width, height = (
             self.display_size()
             if deadline is None
@@ -3152,10 +3199,13 @@ class Device:
                     deadline=deadline,
                 )
         except AdbTransportError as error:
-            if not self._reconcile_unknown_swipe(
+            if (
+                not allow_direct_reconciliation
+                or not self._reconcile_unknown_swipe(
                 error,
                 ("shell", *arguments),
                 deadline=deadline,
+                )
             ):
                 raise
 
@@ -5230,6 +5280,28 @@ def open_gear_section(device: Device, profile: str) -> None:
         backward_scrolls=24,
         forward_scrolls=48,
         scroll_distance_ratio=0.22,
+    )
+
+
+def open_persisted_phone_gear_after_restart(
+    device: Device,
+    item_id: str,
+) -> str:
+    """Open one exact persisted Gear route without reusing the add gate."""
+    if not item_id.strip():
+        raise RuntimeError("Post-restart Gear proof requires one typed item identity")
+    tap_phone_build_section(device, "gear")
+    restored_inventory = scan_collection_route_inventory(
+        device,
+        kind="gear",
+        evidence_prefix="gear-after-restart",
+    )
+    restored_route = f"collection-item-gear-{item_id}"
+    return tap_typed_collection_route(
+        device,
+        inventory=restored_inventory,
+        route_id=restored_route,
+        evidence_prefix="gear-after-restart",
     )
 
 
@@ -7603,24 +7675,17 @@ def main() -> int:
     assert_body_total(device, args.profile, full_editing_contract.improved_body_total)
     if args.profile == "phone":
         device.back()
-    open_gear_section(device, args.profile)
     if args.profile == "phone":
+        # Post-restart verification does not create another item, so it must not
+        # reuse the add-oriented quick-action route gate. Bind the
+        # exact Gear section, inventory its typed persisted routes, and enter
+        # only the item identity created before restart.
         if added_gear_item_id is None:
             raise RuntimeError("Phone gear proof lost its exact typed item identity")
-        restored_inventory = scan_collection_route_inventory(
-            device,
-            kind="gear",
-            evidence_prefix="gear-after-restart",
-        )
-        restored_route = f"collection-item-gear-{added_gear_item_id}"
-        tap_typed_collection_route(
-            device,
-            inventory=restored_inventory,
-            route_id=restored_route,
-            evidence_prefix="gear-after-restart",
-        )
+        open_persisted_phone_gear_after_restart(device, added_gear_item_id)
         gear_field = f"collection-field-customname-{added_gear_item_id}"
     else:
+        open_gear_section(device, args.profile)
         reset_scroll_to_top(device, x_ratio=0.375, swipes=6)
         tap_collection_item(device, "Ares Predator V")
         gear_field = "tablet-field-customname"

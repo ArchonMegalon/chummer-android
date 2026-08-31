@@ -25,6 +25,20 @@ def write_json(path: Path, value: object) -> None:
 
 
 class Api36Arm64PhysicalContractTests(unittest.TestCase):
+    def test_creation_dashboard_ready_logcat_is_excluded_from_retry_allowlist(self) -> None:
+        self.assertIsNone(
+            contract.read_only_adb_policy_reason(
+                contract.ADB_CREATION_DASHBOARD_READY_LOGCAT_ARGUMENTS
+            )
+        )
+        for arguments in (
+            contract.ADB_CREATION_DASHBOARD_READY_LOGCAT_ARGUMENTS[:-1],
+            ("logcat", "-d", "-s", "ChummerRoute:I", "*:S"),
+            ("logcat", "-b", "main", "-v", "raw", "-T", "1"),
+        ):
+            with self.subTest(arguments=arguments):
+                self.assertIsNone(contract.read_only_adb_policy_reason(arguments))
+
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
         self.root = Path(self.temporary.name).resolve()

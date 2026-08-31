@@ -38,6 +38,7 @@ internal static class Program
             (nameof(SlowCreationDashboardProjectionDoesNotBlockCallerAsync), SlowCreationDashboardProjectionDoesNotBlockCallerAsync),
             (nameof(PrerequisiteAuthorityPublishesBeforeSlowLaterPhasesAsync), PrerequisiteAuthorityPublishesBeforeSlowLaterPhasesAsync),
             (nameof(CreationAuthorityPhaseMergesAreIndependentAndDeterministicAsync), CreationAuthorityPhaseMergesAreIndependentAndDeterministicAsync),
+            (nameof(CreationDashboardReadyMarkerRequiresCurrentTerminalAuthorityAsync), CreationDashboardReadyMarkerRequiresCurrentTerminalAuthorityAsync),
             (nameof(CompletedCreationProjectionSurvivesADeferredUiConsumerAsync), CompletedCreationProjectionSurvivesADeferredUiConsumerAsync),
             (nameof(RejectedCreationProjectionForcesCurrentBindingRefreshAsync), RejectedCreationProjectionForcesCurrentBindingRefreshAsync),
             (nameof(LateCreationDashboardProjectionCannotOverwriteNewerBindingAsync), LateCreationDashboardProjectionCannotOverwriteNewerBindingAsync),
@@ -725,6 +726,99 @@ internal static class Program
             && sumToTen.Skills == CreationDashboardAuthorityPhaseState.NotApplicable
             && sumToTen.Contacts == CreationDashboardAuthorityPhaseState.Loading,
             "Contacts must remain an independent Core phase even when Priority-only Skills do not apply.");
+        return Task.CompletedTask;
+    }
+
+    private static Task CreationDashboardReadyMarkerRequiresCurrentTerminalAuthorityAsync()
+    {
+        var workspaceId = new CharacterWorkspaceId("phone-dashboard-ready-marker");
+        CharacterOverviewState overview = NewCreationOverview(workspaceId, 12, 11);
+        var snapshot = new CharacterCreationWizardSnapshot(
+            CharacterCreationWizardSchemas.SnapshotV1,
+            workspaceId.Value,
+            WorkspaceRevision: 12,
+            ContentDigest: CanonicalDigest('1'),
+            SourceDigest: CanonicalDigest('2'),
+            RulesetDefaults.Sr5,
+            RuntimeFingerprint: CanonicalDigest('3'),
+            CharacterCreationBuildMethods.Priority,
+            CharacterCreated: false,
+            CharacterCreationWizardStepIds.Foundation,
+            [],
+            [],
+            new Dictionary<string, IReadOnlyList<CharacterCreationLegalOption>>(),
+            [],
+            [],
+            CanFinalize: false,
+            SnapshotDigest: CanonicalDigest('4'));
+        Require(
+            CreationDashboardProjectionBinding.TryCreate(
+                overview,
+                snapshot,
+                out CreationDashboardProjectionBinding? binding)
+            && binding is not null,
+            "The exact dashboard marker fixture did not produce a current binding.");
+
+        CreationDashboardAuthorityPhaseProgress ready =
+            CreationDashboardAuthorityPhaseProgress
+                .ForBuildMethod(CharacterCreationBuildMethods.Priority)
+                .WithTerminal(CreationDashboardAuthorityPhase.Prerequisite, failed: false)
+                .WithTerminal(CreationDashboardAuthorityPhase.Attributes, failed: false)
+                .WithTerminal(CreationDashboardAuthorityPhase.Skills, failed: false)
+                .WithTerminal(CreationDashboardAuthorityPhase.Contacts, failed: false)
+                .WithTerminal(CreationDashboardAuthorityPhase.Resources, failed: false);
+        var projection = new CreationDashboardAuthorityProjection(
+            binding!,
+            ready,
+            Prerequisite: null,
+            Attributes: null,
+            Skills: null,
+            Contacts: null,
+            Resources: null);
+        CreationDashboardRouteReadyMarker? marker =
+            BuildPageUiProjection.CreationDashboardRouteReady(
+                overview,
+                snapshot,
+                projection);
+        Require(
+            marker is
+            {
+                Schema: "chummer.android.creation-dashboard-route-ready/v1",
+                RouteAutomationId: "phone-runner-create",
+                DashboardAutomationId: "creation-wizard-dashboard",
+                CharacterCreated: false,
+                AuthorityReady: true
+            }
+            && marker.WorkspaceId == workspaceId.Value
+            && marker.ContentRevision == 12
+            && marker.SavedRevision == 11
+            && marker.SnapshotDigest == snapshot.SnapshotDigest,
+            "The ready marker did not preserve the exact current workspace and route authority.");
+
+        Require(
+            BuildPageUiProjection.CreationDashboardRouteReady(
+                overview,
+                snapshot,
+                projection with
+                {
+                    Progress = ready with
+                    {
+                        Contacts = CreationDashboardAuthorityPhaseState.Loading
+                    }
+                }) is null,
+            "A still-loading dashboard emitted a route-ready marker.");
+        Require(
+            BuildPageUiProjection.CreationDashboardRouteReady(
+                overview,
+                snapshot with { SnapshotDigest = CanonicalDigest('5') },
+                projection) is null,
+            "A stale snapshot emitted the current dashboard route-ready marker.");
+        Require(
+            BuildPageUiProjection.CreationDashboardRouteReady(
+                overview with { Profile = overview.Profile! with { Created = true } },
+                snapshot,
+                projection) is null,
+            "A Career runner emitted a Creation dashboard route-ready marker.");
         return Task.CompletedTask;
     }
 

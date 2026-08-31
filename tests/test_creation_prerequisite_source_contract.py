@@ -895,6 +895,72 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             observations[0]["elapsedMs"],
         )
 
+    def test_stable_end_scan_can_keep_every_post_origin_dump_owned_file_only(
+        self,
+    ) -> None:
+        stable = [
+            driver.shared.UiNode(
+                {"resource-id": "stable-row", "bounds": "[0,0][100,100]"}
+            )
+        ]
+
+        class OwnedFileOnlyDevice:
+            def __init__(self) -> None:
+                self.hierarchy_options: list[dict[str, object]] = []
+                self.swipe_options: list[dict[str, object]] = []
+
+            def hierarchy(self, **options: object) -> list[driver.shared.UiNode]:
+                self.hierarchy_options.append(options)
+                return stable
+
+            def swipe_up(self, **options: object) -> None:
+                self.swipe_options.append(options)
+
+            @staticmethod
+            def capture(_name: str, **_options: object) -> None:
+                raise AssertionError("stable owned-file scan unexpectedly captured")
+
+        device = OwnedFileOnlyDevice()
+        deadline = driver.time.monotonic() + 30.0
+        origin = self.priority_rank_origin(stable)
+        scan = driver.scan_forward_with_receipt(
+            device,
+            scan_id="post-back-owned-file-only",
+            max_scrolls=8,
+            distance_ratio=0.68,
+            initial_observation=origin,
+            delay_seconds=0.0,
+            deadline=deadline,
+            hierarchy_dump_attempt_max_seconds=30.0,
+            allow_direct_hierarchy_reconciliation=False,
+            allow_direct_swipe_reconciliation=False,
+        )
+
+        self.assertEqual(0, scan.swipes)
+        self.assertEqual(
+            [
+                {
+                    "distance_ratio": 0.68,
+                    "deadline": deadline,
+                    "allow_direct_reconciliation": False,
+                }
+            ]
+            * 2,
+            device.swipe_options,
+        )
+        self.assertEqual(2, len(device.hierarchy_options))
+        self.assertEqual(
+            [
+                {
+                    "deadline": deadline,
+                    "dump_attempt_max_seconds": 30.0,
+                    "allow_direct_reconciliation": False,
+                }
+            ]
+            * 2,
+            device.hierarchy_options,
+        )
+
     def test_composed_scan_timing_reconciles_every_origin_and_traversal_partition(self) -> None:
         receipt: dict[str, object] = {
             "scanId": "rank-cardinality-heritage",
@@ -6188,10 +6254,9 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertEqual(123.0, acquire.call_args.kwargs["deadline"])
         self.assertEqual(123.0, scan.call_args.kwargs["deadline"])
 
-    def test_compact_dashboard_origin_waits_read_only_for_exact_post_back_route(
+    def test_compact_dashboard_origin_uses_one_exact_post_marker_snapshot(
         self,
     ) -> None:
-        receipt = self.canonical_node("creation-prerequisite-confirmed")
         dashboard = self.dashboard_route_nodes()
         binding = self.canonical_node(
             "creation-wizard-binding",
@@ -6205,7 +6270,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
         class TransitionDevice:
             def __init__(self) -> None:
-                self.responses = [[], [receipt], [dashboard[0]], exact_dashboard]
+                self.responses = [exact_dashboard]
                 self.deadlines: list[float] = []
                 self.captures: list[str] = []
 
@@ -6213,9 +6278,27 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 self,
                 *,
                 deadline: float,
+                dump_attempt_max_seconds: float,
+                allow_direct_reconciliation: bool,
             ) -> list[driver.shared.UiNode]:
+                self.assert_hierarchy_policy(
+                    dump_attempt_max_seconds,
+                    allow_direct_reconciliation,
+                )
                 self.deadlines.append(deadline)
                 return self.responses.pop(0)
+
+            @staticmethod
+            def assert_hierarchy_policy(
+                dump_attempt_max_seconds: float,
+                allow_direct_reconciliation: bool,
+            ) -> None:
+                if (
+                    dump_attempt_max_seconds
+                    != driver.POST_CONFIRM_DASHBOARD_DUMP_ATTEMPT_MAX_SECONDS
+                    or allow_direct_reconciliation is not False
+                ):
+                    raise AssertionError("compact dashboard used the wrong dump policy")
 
             def read_only_hierarchy(
                 self,
@@ -6241,9 +6324,6 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         deadline = driver.time.monotonic() + 30.0
         with mock.patch.object(
             driver,
-            "sleep_before_phase_deadline",
-        ) as sleep, mock.patch.object(
-            driver,
             "scan_forward_with_receipt",
             return_value=driver.StableViewportScan([exact_dashboard], 0),
         ) as scan:
@@ -6258,15 +6338,24 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             driver.CreationDashboardScanProof("Revision 7", "Priority", 0, 0),
             proof,
         )
-        self.assertEqual([deadline] * 4, device.deadlines)
+        self.assertEqual([deadline], device.deadlines)
+        self.assertEqual([], device.responses)
         self.assertEqual([], device.captures)
-        self.assertEqual(3, sleep.call_count)
-        for call in sleep.call_args_list:
-            self.assertEqual(0.2, call.args[0])
-            self.assertEqual(deadline, call.kwargs["deadline"])
         origin = scan.call_args.kwargs["initial_observation"]
         self.assertIs(exact_dashboard, origin.nodes)
         self.assertEqual(8, scan.call_args.kwargs["max_scrolls"])
+        self.assertEqual(
+            driver.POST_CONFIRM_DASHBOARD_DUMP_ATTEMPT_MAX_SECONDS,
+            scan.call_args.kwargs["hierarchy_dump_attempt_max_seconds"],
+        )
+        self.assertIs(
+            False,
+            scan.call_args.kwargs["allow_direct_hierarchy_reconciliation"],
+        )
+        self.assertIs(
+            False,
+            scan.call_args.kwargs["allow_direct_swipe_reconciliation"],
+        )
 
     def test_compact_dashboard_origin_rejects_duplicate_route_without_retry(
         self,
@@ -6282,9 +6371,26 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 self,
                 *,
                 deadline: float,
+                dump_attempt_max_seconds: float,
+                allow_direct_reconciliation: bool,
             ) -> list[driver.shared.UiNode]:
+                self.assertEqualPolicy(
+                    dump_attempt_max_seconds,
+                    allow_direct_reconciliation,
+                )
                 self.reads += 1
                 return [dashboard[0], dashboard[0], dashboard[1]]
+
+            @staticmethod
+            def assertEqualPolicy(
+                dump_attempt_max_seconds: float,
+                allow_direct_reconciliation: bool,
+            ) -> None:
+                if (
+                    dump_attempt_max_seconds != 30.0
+                    or allow_direct_reconciliation is not False
+                ):
+                    raise AssertionError("compact dashboard used the wrong dump policy")
 
             def capture(self, name: str, *, deadline: float) -> None:
                 self.captures.append((name, deadline))
@@ -6328,35 +6434,38 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 self,
                 *,
                 deadline: float,
+                dump_attempt_max_seconds: float,
+                allow_direct_reconciliation: bool,
             ) -> list[driver.shared.UiNode]:
+                if (
+                    dump_attempt_max_seconds != 30.0
+                    or allow_direct_reconciliation is not False
+                ):
+                    raise AssertionError("compact dashboard used the wrong dump policy")
                 return self.responses.pop(0)
 
             def capture(self, name: str, *, deadline: float) -> None:
                 self.captures.append((name, deadline))
 
         device = SplitDevice()
-        clock = [0.0] * 8 + [11.0]
-        with mock.patch.object(
-            driver.time,
-            "monotonic",
-            side_effect=clock,
-        ), mock.patch.object(driver.time, "sleep"), self.assertRaisesRegex(
+        deadline = driver.time.monotonic() + 10.0
+        with self.assertRaisesRegex(
             RuntimeError,
-            "did not observe the exact post-Back dashboard",
+            "single post-marker dashboard snapshot",
         ):
             driver.wait_for_compact_dashboard_origin(
                 device,
                 scan_id="advanced-editor-gate-post-confirm",
-                deadline=10.0,
+                deadline=deadline,
             )
 
-        self.assertEqual([], device.responses)
+        self.assertEqual([[dashboard[1]]], device.responses)
         self.assertEqual(
             [
                 (
                     "advanced-editor-gate-post-confirm-"
                     "current-transition-unavailable",
-                    10.0,
+                    deadline,
                 )
             ],
             device.captures,
@@ -6374,7 +6483,14 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 self,
                 *,
                 deadline: float,
+                dump_attempt_max_seconds: float,
+                allow_direct_reconciliation: bool,
             ) -> list[driver.shared.UiNode]:
+                if (
+                    dump_attempt_max_seconds != 30.0
+                    or allow_direct_reconciliation is not False
+                ):
+                    raise AssertionError("compact dashboard used the wrong dump policy")
                 self.reads += 1
                 return []
 
@@ -6382,18 +6498,15 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 self.captures.append(name)
 
         device = EmptyDevice()
-        with mock.patch.object(
-            driver.time,
-            "monotonic",
-            side_effect=[0.0, 0.0, 0.0, 0.0, 11.0],
-        ), mock.patch.object(driver.time, "sleep"), self.assertRaisesRegex(
+        deadline = driver.time.monotonic() + 10.0
+        with self.assertRaisesRegex(
             RuntimeError,
-            "did not observe the exact post-Back dashboard",
+            "single post-marker dashboard snapshot",
         ):
             driver.wait_for_compact_dashboard_origin(
                 device,
                 scan_id="advanced-editor-gate-post-confirm",
-                deadline=10.0,
+                deadline=deadline,
             )
 
         self.assertEqual(1, device.reads)
@@ -6423,7 +6536,14 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 self,
                 *,
                 deadline: float,
+                dump_attempt_max_seconds: float,
+                allow_direct_reconciliation: bool,
             ) -> list[driver.shared.UiNode]:
+                if (
+                    dump_attempt_max_seconds != 30.0
+                    or allow_direct_reconciliation is not False
+                ):
+                    raise AssertionError("compact dashboard used the wrong dump policy")
                 self.reads += 1
                 raise error
 
@@ -6464,7 +6584,14 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 self,
                 *,
                 deadline: float,
+                dump_attempt_max_seconds: float,
+                allow_direct_reconciliation: bool,
             ) -> list[driver.shared.UiNode]:
+                if (
+                    dump_attempt_max_seconds != 30.0
+                    or allow_direct_reconciliation is not False
+                ):
+                    raise AssertionError("compact dashboard used the wrong dump policy")
                 return [malformed, dashboard[1]]
 
             def capture(self, name: str, *, deadline: float) -> None:
@@ -6499,10 +6626,207 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         ):
             with self.subTest(forbidden=forbidden):
                 self.assertNotIn(forbidden, helper_source)
-        self.assertIn("device.hierarchy(deadline=deadline)", helper_source)
+        self.assertIn("dump_attempt_max_seconds=", helper_source)
+        self.assertIn("allow_direct_reconciliation=False", helper_source)
         self.assertNotIn("device.read_only_hierarchy", helper_source)
         execute_source = inspect.getsource(driver.execute)
         self.assertEqual(1, execute_source.count("tap_exact_confirmed_receipt_back("))
+
+    def test_post_back_dashboard_ready_marker_is_exact_and_revision_bound(self) -> None:
+        digest = "sha256:" + "a" * 64
+        payload = {
+            "schema": driver.CREATION_DASHBOARD_READY_SCHEMA,
+            "routeAutomationId": "phone-runner-create",
+            "dashboardAutomationId": "creation-wizard-dashboard",
+            "workspaceId": "workspace-route-ready",
+            "contentRevision": 12,
+            "savedRevision": 11,
+            "contentDigest": digest,
+            "sourceDigest": digest,
+            "runtimeFingerprint": digest,
+            "buildMethod": "priority",
+            "snapshotDigest": digest,
+            "characterCreated": False,
+            "authorityReady": True,
+        }
+        line = driver.CREATION_DASHBOARD_READY_PREFIX + json.dumps(
+            payload,
+            separators=(",", ":"),
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            device = mock.Mock()
+            device.evidence = Path(temporary)
+            device.run.return_value = subprocess.CompletedProcess(
+                args=[],
+                returncode=0,
+                stdout=driver.CREATION_BOOTSTRAP_LOGCAT_MAIN_DIVIDER + "\n" + line,
+                stderr="",
+            )
+            scans: list[dict[str, object]] = []
+            observed = driver.wait_for_creation_dashboard_ready_log(
+                device,
+                expected_content_revision=12,
+                expected_saved_revision=11,
+                deadline=driver.time.monotonic() + 30.0,
+                scan_observer=scans.append,
+            )
+
+            self.assertEqual(payload, observed)
+            self.assertEqual(1, len(scans))
+            self.assertEqual(
+                "post-confirm-dashboard-route-ready-log",
+                scans[0]["scanId"],
+            )
+            self.assertEqual(12, scans[0]["observedContentRevision"])
+            self.assertEqual(11, scans[0]["observedSavedRevision"])
+            self.assertEqual(
+                driver.shared.ADB_CREATION_DASHBOARD_READY_LOGCAT_ARGUMENTS,
+                device.run.call_args.args,
+            )
+            device.hierarchy.assert_not_called()
+            device.shell.assert_not_called()
+
+    def test_dashboard_ready_marker_uses_the_shell_presented_root_page(self) -> None:
+        source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
+        callback = source[
+            source.index("private async Task EmitCreationDashboardRouteReadyAsync(") :
+            source.index("private void AddCreationMethodRoute(")
+        ]
+
+        self.assertIn(
+            "!ReferenceEquals(Shell.Current?.CurrentPage, this)",
+            callback,
+        )
+        self.assertNotIn("Navigation.NavigationStack", callback)
+
+    def test_post_back_dashboard_ready_marker_rejects_stale_duplicate_and_malformed(
+        self,
+    ) -> None:
+        digest = "sha256:" + "b" * 64
+        valid = {
+            "schema": driver.CREATION_DASHBOARD_READY_SCHEMA,
+            "routeAutomationId": "phone-runner-create",
+            "dashboardAutomationId": "creation-wizard-dashboard",
+            "workspaceId": "workspace-route-ready",
+            "contentRevision": 12,
+            "savedRevision": 11,
+            "contentDigest": digest,
+            "sourceDigest": digest,
+            "runtimeFingerprint": digest,
+            "buildMethod": "priority",
+            "snapshotDigest": digest,
+            "characterCreated": False,
+            "authorityReady": True,
+        }
+        cases = {
+            "stale-revision": {
+                **valid,
+                "contentRevision": 11,
+            },
+            "wrong-schema": {
+                **valid,
+                "schema": "chummer.android.creation-dashboard-route-ready/v0",
+            },
+            "malformed-digest": {
+                **valid,
+                "snapshotDigest": "not-a-digest",
+            },
+            "boolean-content-revision": {
+                **valid,
+                "contentRevision": True,
+            },
+            "float-content-revision": {
+                **valid,
+                "contentRevision": 12.0,
+            },
+            "boolean-saved-revision": {
+                **valid,
+                "savedRevision": False,
+            },
+            "integer-character-created": {
+                **valid,
+                "characterCreated": 0,
+            },
+            "integer-authority-ready": {
+                **valid,
+                "authorityReady": 1,
+            },
+        }
+        for name, payload in cases.items():
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as temporary:
+                device = mock.Mock()
+                device.evidence = Path(temporary)
+                device.run.return_value = subprocess.CompletedProcess(
+                    args=[],
+                    returncode=0,
+                    stdout=(
+                        driver.CREATION_DASHBOARD_READY_PREFIX
+                        + json.dumps(payload, separators=(",", ":"))
+                    ),
+                    stderr="",
+                )
+                with self.assertRaisesRegex(
+                    RuntimeError,
+                    "stale or malformed|scalar types differed",
+                ):
+                    driver.wait_for_creation_dashboard_ready_log(
+                        device,
+                        expected_content_revision=12,
+                        expected_saved_revision=11,
+                        deadline=driver.time.monotonic() + 30.0,
+                    )
+                device.hierarchy.assert_not_called()
+                device.shell.assert_not_called()
+
+        with tempfile.TemporaryDirectory() as temporary:
+            device = mock.Mock()
+            device.evidence = Path(temporary)
+            marker = driver.CREATION_DASHBOARD_READY_PREFIX + json.dumps(
+                valid,
+                separators=(",", ":"),
+            )
+            device.run.return_value = subprocess.CompletedProcess(
+                args=[],
+                returncode=0,
+                stdout=marker + "\n" + marker,
+                stderr="",
+            )
+            with self.assertRaisesRegex(RuntimeError, "Expected one exact"):
+                driver.wait_for_creation_dashboard_ready_log(
+                    device,
+                    expected_content_revision=12,
+                    expected_saved_revision=11,
+                    deadline=driver.time.monotonic() + 30.0,
+                )
+            device.hierarchy.assert_not_called()
+            device.shell.assert_not_called()
+
+    def test_post_back_dashboard_ready_transport_ambiguity_cannot_reach_hierarchy(
+        self,
+    ) -> None:
+        receipt = {
+            "classification": "timeout-unknown-outcome",
+            "commandPolicy": "non-replayable",
+            "replay": {"performed": False, "suppressed": True},
+        }
+        transport = driver.shared.AdbTransportError(
+            receipt,
+            Path("route-ready-timeout.json"),
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            device = mock.Mock()
+            device.evidence = Path(temporary)
+            device.run.side_effect = transport
+            with self.assertRaises(driver.shared.AdbTransportError):
+                driver.wait_for_creation_dashboard_ready_log(
+                    device,
+                    expected_content_revision=12,
+                    expected_saved_revision=11,
+                    deadline=driver.time.monotonic() + 30.0,
+                )
+            device.run.assert_called_once()
+            device.hierarchy.assert_not_called()
+            device.shell.assert_not_called()
 
     def test_dashboard_deadline_scan_rejects_noncanonical_native_toolbar_identity(
         self,
@@ -8756,13 +9080,20 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             + driver.CONFIRMED_RECEIPT_TRAVERSAL_RESERVE_SECONDS,
             driver.CONFIRMED_RECEIPT_PROOF_TIMEOUT_SECONDS,
         )
-        self.assertEqual(30.0, driver.POST_CONFIRM_DASHBOARD_PROOF_TIMEOUT_SECONDS)
+        self.assertEqual(3.0, driver.PRE_BACK_ROUTE_LOG_CLEAR_TIMEOUT_SECONDS)
+        self.assertEqual(20.0, driver.POST_CONFIRM_DASHBOARD_READY_TIMEOUT_SECONDS)
         self.assertEqual(
-            183.0,
+            30.0,
+            driver.POST_CONFIRM_DASHBOARD_DUMP_ATTEMPT_MAX_SECONDS,
+        )
+        self.assertEqual(75.0, driver.POST_CONFIRM_DASHBOARD_PROOF_TIMEOUT_SECONDS)
+        self.assertEqual(
+            231.0,
             driver.CONFIRM_DOWNSTREAM_RESERVE_SECONDS,
         )
         self.assertEqual(
             driver.CONFIRMED_RECEIPT_PROOF_TIMEOUT_SECONDS
+            + driver.PRE_BACK_ROUTE_LOG_CLEAR_TIMEOUT_SECONDS
             + driver.PERSISTENT_PREVIEW_ACTION_TIMEOUT_SECONDS
             + driver.POST_CONFIRM_DASHBOARD_PROOF_TIMEOUT_SECONDS,
             driver.CONFIRM_DOWNSTREAM_RESERVE_SECONDS,
@@ -9123,14 +9454,14 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 driver.tap_exact_current_preview_confirm,
                 "proof_timeout_seconds=CONFIRM_DOWNSTREAM_RESERVE_SECONDS",
                 driver.CONFIRM_DOWNSTREAM_RESERVE_SECONDS,
-                186.0,
+                234.0,
             ),
             (
                 "back",
                 driver.tap_exact_confirmed_receipt_back,
                 "proof_timeout_seconds=POST_CONFIRM_DASHBOARD_PROOF_TIMEOUT_SECONDS",
                 driver.POST_CONFIRM_DASHBOARD_PROOF_TIMEOUT_SECONDS,
-                33.0,
+                78.0,
             ),
         )
         with mock.patch.object(driver.time, "monotonic", return_value=100.0):
@@ -9262,7 +9593,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             driver.tap_exact_current_preview_confirm(
                 device,
                 proof,
-                deadline=driver.time.monotonic() + 200,
+                deadline=driver.time.monotonic() + 300,
             )
         device.shell.assert_called_once()
         device.wait_for_single_exact_resource_id.assert_called_once()
@@ -9654,14 +9985,14 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                     "backRecoveryMaxForwardScrolls": 0,
                 },
                 scan_observer=None,
-                deadline=driver.time.monotonic() + 60,
+                deadline=driver.time.monotonic() + 120,
             )
         device.shell.assert_not_called()
 
     def test_confirmed_receipt_back_reacquisition_uses_only_measured_forward_bound(
         self,
     ) -> None:
-        deadline = driver.time.monotonic() + 60
+        deadline = driver.time.monotonic() + 120
         back = self.canonical_node(
             "creation-prerequisite-back-to-build",
             text="Back to build",
@@ -9694,14 +10025,21 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         device.shell.assert_called_once()
         self.assertEqual("input", device.shell.call_args.args[0])
         self.assertEqual("tap", device.shell.call_args.args[1])
+        device.run.assert_called_once()
+        self.assertEqual(
+            driver.shared.ADB_CREATION_BOOTSTRAP_LOGCAT_CLEAR_ARGUMENTS,
+            device.run.call_args.args,
+        )
+        method_names = [call[0] for call in device.method_calls]
+        self.assertLess(method_names.index("run"), method_names.index("shell"))
         observer.assert_called_once()
         reacquisition = observer.call_args.args[0]
         self.assertEqual("resolved", reacquisition["status"])
         self.assertEqual(1, reacquisition["swipes"])
         self.assertEqual(1, reacquisition["configuredMaxScrolls"])
         self.assertGreater(reacquisition["maximumElapsedMs"], 0)
-        self.assertLessEqual(reacquisition["maximumElapsedMs"], 27_000)
-        self.assertEqual(33_000, reacquisition["downstreamReserveMs"])
+        self.assertLessEqual(reacquisition["maximumElapsedMs"], 39_000)
+        self.assertEqual(81_000, reacquisition["downstreamReserveMs"])
         self.assertEqual(
             "forward-from-measured-restored-bottom",
             reacquisition["direction"],
@@ -9710,7 +10048,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
     def test_confirmed_receipt_back_reacquisition_exhaustion_never_taps(
         self,
     ) -> None:
-        deadline = driver.time.monotonic() + 60
+        deadline = driver.time.monotonic() + 120
         unrelated = self.canonical_node("receipt-restoration-spacer")
         device = mock.Mock(spec=driver.shared.Device)
         device.hierarchy.return_value = [unrelated]
@@ -9738,6 +10076,47 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertEqual("RuntimeError", failure["failureReason"])
         self.assertEqual(0, failure["configuredMaxScrolls"])
 
+    def test_pre_back_route_log_clear_ambiguity_prevents_the_one_shot_back(
+        self,
+    ) -> None:
+        back = self.canonical_node(
+            "creation-prerequisite-back-to-build",
+            text="Back to build",
+        )
+        receipt = {
+            "classification": "timeout-unknown-outcome",
+            "commandPolicy": "non-replayable",
+            "replay": {"performed": False, "suppressed": True},
+        }
+        transport = driver.shared.AdbTransportError(
+            receipt,
+            Path("pre-back-log-clear-timeout.json"),
+        )
+        device = mock.Mock(spec=driver.shared.Device)
+        device.hierarchy.return_value = [back]
+        device.node_has_tappable_bounds.return_value = True
+        device.run.side_effect = transport
+
+        with self.assertRaises(driver.shared.AdbTransportError):
+            driver.tap_exact_confirmed_receipt_back(
+                device,
+                {
+                    "backViewport": 0,
+                    "currentViewport": 0,
+                    "backAuthority": "Back to build",
+                    "backRecoveryMaxForwardScrolls": 0,
+                },
+                scan_observer=None,
+                deadline=driver.time.monotonic() + 130,
+            )
+
+        device.run.assert_called_once()
+        self.assertEqual(
+            driver.shared.ADB_CREATION_BOOTSTRAP_LOGCAT_CLEAR_ARGUMENTS,
+            device.run.call_args.args,
+        )
+        device.shell.assert_not_called()
+
     def test_confirmed_receipt_back_reacquisition_observer_failure_is_terminal(
         self,
     ) -> None:
@@ -9760,7 +10139,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                     "backRecoveryMaxForwardScrolls": 0,
                 },
                 scan_observer=observer,
-                deadline=driver.time.monotonic() + 78,
+                deadline=driver.time.monotonic() + 130,
             )
 
         observer.assert_called_once()
@@ -9801,7 +10180,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             failure["failureReason"],
         )
         self.assertEqual(0, failure["maximumElapsedMs"])
-        self.assertEqual(33_000, failure["downstreamReserveMs"])
+        self.assertEqual(81_000, failure["downstreamReserveMs"])
 
     def test_confirmed_receipt_back_reacquisition_rejects_unmeasured_bound(
         self,

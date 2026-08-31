@@ -804,6 +804,37 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
                 reconciliation["outcomeMutationAuthority"],
             )
 
+    def test_owned_file_only_swipe_fails_closed_without_direct_reconciliation(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            device = self.make_device(Path(temporary))
+            device._display_size = (1080, 2400)
+            timeout = subprocess.TimeoutExpired(
+                ("shell", "input", "swipe"),
+                15,
+            )
+            with mock.patch.object(
+                driver.subprocess,
+                "run",
+                side_effect=timeout,
+            ) as run:
+                with self.assertRaises(driver.AdbTransportError):
+                    device.swipe_up(
+                        deadline=driver.time.monotonic() + 60.0,
+                        allow_direct_reconciliation=False,
+                    )
+
+            self.assertEqual(1, run.call_count)
+            issued = [tuple(call.args[0][3:]) for call in run.call_args_list]
+            self.assertEqual(1, len(issued))
+            self.assertEqual(("shell", "input", "swipe"), issued[0][:3])
+            self.assertNotIn(driver.ADB_READ_ONLY_HIERARCHY_ARGUMENTS, issued)
+            summary = device.transport_summary()
+            self.assertEqual(1, summary["terminalFailureCount"])
+            self.assertNotIn(
+                "reconciled-unknown-swipe",
+                [event["status"] for event in summary["events"]],
+            )
+
     def test_swipe_reconciliation_transport_recovery_preserves_mutation_blocker(self) -> None:
         xml = (
             "<?xml version='1.0' encoding='UTF-8'?>"
@@ -1540,6 +1571,55 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
                 driver.ADB_CREATION_BOOTSTRAP_LOGCAT_CLEAR_ARGUMENTS
             )[0],
         )
+
+    def test_creation_dashboard_ready_log_filter_is_exactly_one_shot(self) -> None:
+        self.assertEqual(
+            (
+                "non-replayable",
+                "single-attempt creation-dashboard route-ready freshness observation",
+            ),
+            driver.adb_command_retry_policy(
+                driver.ADB_CREATION_DASHBOARD_READY_LOGCAT_ARGUMENTS
+            ),
+        )
+        for arguments in (
+            driver.ADB_CREATION_DASHBOARD_READY_LOGCAT_ARGUMENTS[:-2],
+            (*driver.ADB_CREATION_DASHBOARD_READY_LOGCAT_ARGUMENTS[:-4], "2", *driver.ADB_CREATION_DASHBOARD_READY_LOGCAT_ARGUMENTS[-3:]),
+            ("logcat", "-d", "-s", "ChummerRoute:I", "*:S"),
+        ):
+            with self.subTest(arguments=arguments):
+                self.assertEqual("non-replayable", driver.adb_command_retry_policy(tuple(arguments))[0])
+
+    def test_creation_dashboard_ready_log_filter_never_replays_transport_failure(self) -> None:
+        arguments = driver.ADB_CREATION_DASHBOARD_READY_LOGCAT_ARGUMENTS
+        with tempfile.TemporaryDirectory() as temporary:
+            device = self.make_device(Path(temporary))
+            responses = [
+                offline(arguments),
+                completed(arguments, "must-not-be-read"),
+            ]
+            with (
+                mock.patch.object(driver.subprocess, "run", side_effect=responses) as run,
+                mock.patch.object(driver.time, "sleep"),
+                self.assertRaises(driver.AdbTransportError) as raised,
+            ):
+                device.run(*arguments, timeout=20.0)
+
+        self.assertEqual(1, run.call_count)
+        self.assertEqual("non-replayable", raised.exception.receipt["commandPolicy"])
+        self.assertFalse(raised.exception.receipt["replay"]["performed"])
+        self.assertFalse(raised.exception.receipt["replay"]["scheduled"])
+        self.assertTrue(raised.exception.receipt["replay"]["suppressed"])
+
+    def test_hierarchy_rejects_nonfinite_dump_bound_without_adb_command(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            device = self.make_device(Path(temporary))
+            with (
+                mock.patch.object(driver.subprocess, "run") as run,
+                self.assertRaisesRegex(ValueError, "within"),
+            ):
+                device.hierarchy(dump_attempt_max_seconds=float("nan"))
+        run.assert_not_called()
 
     def test_verified_install_and_push_never_replay_unknown_outcomes(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
