@@ -6187,6 +6187,271 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertEqual(123.0, acquire.call_args.kwargs["deadline"])
         self.assertEqual(123.0, scan.call_args.kwargs["deadline"])
 
+    def test_compact_dashboard_origin_waits_read_only_for_exact_post_back_route(
+        self,
+    ) -> None:
+        receipt = self.canonical_node("creation-prerequisite-confirmed")
+        dashboard = self.dashboard_route_nodes()
+        binding = self.canonical_node(
+            "creation-wizard-binding",
+            **{"text": "", "content-desc": "Revision 7"},
+        )
+        method = self.canonical_node(
+            "creation-stage-method",
+            **{"text": "", "content-desc": "Priority"},
+        )
+        exact_dashboard = [*dashboard, binding, method]
+
+        class TransitionDevice:
+            def __init__(self) -> None:
+                self.responses = [[], [receipt], [dashboard[0]], exact_dashboard]
+                self.deadlines: list[float] = []
+                self.captures: list[str] = []
+
+            def read_only_hierarchy(
+                self,
+                *,
+                deadline: float,
+            ) -> list[driver.shared.UiNode]:
+                self.deadlines.append(deadline)
+                return self.responses.pop(0)
+
+            def hierarchy(self, *, deadline: float) -> list[driver.shared.UiNode]:
+                raise AssertionError("compact transition must use the read-only path")
+
+            def capture(self, name: str, *, deadline: float) -> None:
+                self.captures.append(name)
+
+            def node_has_tappable_bounds(
+                self,
+                _node: driver.shared.UiNode,
+                *,
+                deadline: float,
+            ) -> bool:
+                return True
+
+        device = TransitionDevice()
+        deadline = driver.time.monotonic() + 30.0
+        with mock.patch.object(
+            driver,
+            "sleep_before_phase_deadline",
+        ) as sleep, mock.patch.object(
+            driver,
+            "scan_forward_with_receipt",
+            return_value=driver.StableViewportScan([exact_dashboard], 0),
+        ) as scan:
+            proof = driver.assert_uncreated_advanced_editor_gated(
+                device,
+                scan_id="advanced-editor-gate-post-confirm",
+                deadline=deadline,
+                compact_current=True,
+            )
+
+        self.assertEqual(
+            driver.CreationDashboardScanProof("Revision 7", "Priority", 0, 0),
+            proof,
+        )
+        self.assertEqual([deadline] * 4, device.deadlines)
+        self.assertEqual([], device.captures)
+        self.assertEqual(3, sleep.call_count)
+        for call in sleep.call_args_list:
+            self.assertEqual(0.2, call.args[0])
+            self.assertEqual(deadline, call.kwargs["deadline"])
+        origin = scan.call_args.kwargs["initial_observation"]
+        self.assertIs(exact_dashboard, origin.nodes)
+        self.assertEqual(8, scan.call_args.kwargs["max_scrolls"])
+
+    def test_compact_dashboard_origin_rejects_duplicate_route_without_retry(
+        self,
+    ) -> None:
+        dashboard = self.dashboard_route_nodes()
+
+        class DuplicateDevice:
+            def __init__(self) -> None:
+                self.reads = 0
+                self.captures: list[tuple[str, float]] = []
+
+            def read_only_hierarchy(
+                self,
+                *,
+                deadline: float,
+            ) -> list[driver.shared.UiNode]:
+                self.reads += 1
+                return [dashboard[0], dashboard[0], dashboard[1]]
+
+            def capture(self, name: str, *, deadline: float) -> None:
+                self.captures.append((name, deadline))
+
+        device = DuplicateDevice()
+        deadline = driver.time.monotonic() + 30.0
+        with self.assertRaisesRegex(RuntimeError, "exposed 2 exact"), mock.patch.object(
+            driver,
+            "sleep_before_phase_deadline",
+        ) as sleep:
+            driver.wait_for_compact_dashboard_origin(
+                device,
+                scan_id="advanced-editor-gate-post-confirm",
+                deadline=deadline,
+            )
+
+        self.assertEqual(1, device.reads)
+        self.assertEqual(
+            [
+                (
+                    "advanced-editor-gate-post-confirm-phone-runner-create-"
+                    "current-cardinality-invalid",
+                    deadline,
+                )
+            ],
+            device.captures,
+        )
+        sleep.assert_not_called()
+
+    def test_compact_dashboard_origin_never_unions_split_route_snapshots(
+        self,
+    ) -> None:
+        dashboard = self.dashboard_route_nodes()
+
+        class SplitDevice:
+            def __init__(self) -> None:
+                self.responses = [[dashboard[0]], [dashboard[1]]]
+                self.captures: list[tuple[str, float]] = []
+
+            def read_only_hierarchy(
+                self,
+                *,
+                deadline: float,
+            ) -> list[driver.shared.UiNode]:
+                return self.responses.pop(0)
+
+            def capture(self, name: str, *, deadline: float) -> None:
+                self.captures.append((name, deadline))
+
+        device = SplitDevice()
+        clock = [0.0] * 8 + [11.0]
+        with mock.patch.object(
+            driver.time,
+            "monotonic",
+            side_effect=clock,
+        ), mock.patch.object(driver.time, "sleep"), self.assertRaisesRegex(
+            RuntimeError,
+            "did not observe the exact post-Back dashboard",
+        ):
+            driver.wait_for_compact_dashboard_origin(
+                device,
+                scan_id="advanced-editor-gate-post-confirm",
+                deadline=10.0,
+            )
+
+        self.assertEqual([], device.responses)
+        self.assertEqual(
+            [
+                (
+                    "advanced-editor-gate-post-confirm-"
+                    "current-transition-unavailable",
+                    10.0,
+                )
+            ],
+            device.captures,
+        )
+
+    def test_compact_dashboard_origin_empty_until_deadline_fails_without_action(
+        self,
+    ) -> None:
+        class EmptyDevice:
+            def __init__(self) -> None:
+                self.reads = 0
+                self.captures: list[str] = []
+
+            def read_only_hierarchy(
+                self,
+                *,
+                deadline: float,
+            ) -> list[driver.shared.UiNode]:
+                self.reads += 1
+                return []
+
+            def capture(self, name: str, *, deadline: float) -> None:
+                self.captures.append(name)
+
+        device = EmptyDevice()
+        with mock.patch.object(
+            driver.time,
+            "monotonic",
+            side_effect=[0.0, 0.0, 0.0, 0.0, 11.0],
+        ), mock.patch.object(driver.time, "sleep"), self.assertRaisesRegex(
+            RuntimeError,
+            "did not observe the exact post-Back dashboard",
+        ):
+            driver.wait_for_compact_dashboard_origin(
+                device,
+                scan_id="advanced-editor-gate-post-confirm",
+                deadline=10.0,
+            )
+
+        self.assertEqual(1, device.reads)
+        self.assertEqual(
+            ["advanced-editor-gate-post-confirm-current-transition-unavailable"],
+            device.captures,
+        )
+
+    def test_compact_dashboard_origin_rejects_noncanonical_suffix_match(self) -> None:
+        dashboard = self.dashboard_route_nodes()
+        malformed = driver.shared.UiNode(
+            {
+                **dashboard[0].attributes,
+                "package": "invalid.package",
+                "resource-id": "invalid.package:id/phone-runner-create",
+            }
+        )
+
+        class MalformedDevice:
+            def __init__(self) -> None:
+                self.captures: list[str] = []
+
+            def read_only_hierarchy(
+                self,
+                *,
+                deadline: float,
+            ) -> list[driver.shared.UiNode]:
+                return [malformed, dashboard[1]]
+
+            def capture(self, name: str, *, deadline: float) -> None:
+                self.captures.append(name)
+
+        device = MalformedDevice()
+        with self.assertRaisesRegex(
+            RuntimeError,
+            "did not expose the canonical Chummer resource identity",
+        ):
+            driver.wait_for_compact_dashboard_origin(
+                device,
+                scan_id="advanced-editor-gate-post-confirm",
+                deadline=driver.time.monotonic() + 30.0,
+            )
+
+        self.assertEqual(
+            [
+                "advanced-editor-gate-post-confirm-phone-runner-create-"
+                "current-identity-invalid"
+            ],
+            device.captures,
+        )
+
+    def test_post_confirm_dashboard_observation_cannot_replay_navigation(self) -> None:
+        helper_source = inspect.getsource(driver.wait_for_compact_dashboard_origin)
+        for forbidden in (
+            "device.shell(",
+            "device.tap(",
+            "device.swipe_",
+            "dismiss_system_ui",
+        ):
+            with self.subTest(forbidden=forbidden):
+                self.assertNotIn(forbidden, helper_source)
+        self.assertIn("device.read_only_hierarchy(deadline=deadline)", helper_source)
+        execute_source = inspect.getsource(driver.execute)
+        self.assertEqual(1, execute_source.count("tap_exact_confirmed_receipt_back("))
+
     def test_dashboard_deadline_scan_rejects_noncanonical_native_toolbar_identity(
         self,
     ) -> None:

@@ -2335,6 +2335,76 @@ class CreationDashboardScanProof(NamedTuple):
     method_viewport: int
 
 
+def wait_for_compact_dashboard_origin(
+    device: shared.Device,
+    *,
+    scan_id: str,
+    deadline: float,
+) -> list[shared.UiNode]:
+    """Observe the post-Back dashboard transition without another action.
+
+    The exact Back tap is persistent and must never be replayed.  API 36 may
+    briefly expose either the receipt viewport or an empty UIAutomator result
+    while MAUI publishes the dashboard.  Poll only the direct read-only
+    hierarchy until both canonical dashboard identities share one viewport.
+    Duplicate identities remain an immediate fail-closed error.
+    """
+    selectors = ("phone-runner-create", "creation-wizard-dashboard")
+    while time.monotonic() < deadline:
+        require_phase_deadline(deadline, operation="compact dashboard transition")
+        reader = getattr(type(device), "read_only_hierarchy", None)
+        current_nodes = (
+            device.read_only_hierarchy(deadline=deadline)
+            if callable(reader)
+            else device.hierarchy(deadline=deadline)
+        )
+        cardinalities = {
+            selector: [
+                node
+                for node in current_nodes
+                if _exact_resource_id(node) == selector
+            ]
+            for selector in selectors
+        }
+        for selector, exact in cardinalities.items():
+            if len(exact) > 1:
+                _capture_with_phase_deadline(
+                    device,
+                    f"{scan_id}-{selector}-current-cardinality-invalid",
+                    deadline=deadline,
+                )
+                raise RuntimeError(
+                    f"Compact dashboard current origin exposed {len(exact)} exact "
+                    f"{selector!r} nodes"
+                )
+        if all(len(cardinalities[selector]) == 1 for selector in selectors):
+            for selector in selectors:
+                _require_canonical_chummer_resource_id(
+                    device,
+                    cardinalities[selector][0],
+                    selector,
+                    evidence_prefix=f"{scan_id}-{selector}-current",
+                    surface_name="Compact dashboard current origin",
+                    deadline=deadline,
+                )
+            return current_nodes
+        sleep_before_phase_deadline(
+            0.2,
+            deadline=deadline,
+            operation="compact dashboard transition observation",
+        )
+
+    _capture_with_phase_deadline(
+        device,
+        f"{scan_id}-current-transition-unavailable",
+        deadline=deadline,
+    )
+    raise RuntimeError(
+        "Compact dashboard proof did not observe the exact post-Back dashboard "
+        "within its action-bound proof lease"
+    )
+
+
 def assert_uncreated_advanced_editor_gated(
     device: shared.Device,
     *,
@@ -2368,31 +2438,11 @@ def assert_uncreated_advanced_editor_gated(
     if compact_current:
         if deadline is None:
             raise ValueError("Compact dashboard proof requires one absolute deadline")
-        require_phase_deadline(deadline, operation="compact dashboard origin")
-        current_nodes = device.hierarchy(deadline=deadline)
-        if not current_nodes:
-            capture(f"{scan_id}-current-hierarchy-empty")
-            raise RuntimeError("Compact dashboard proof exposed no current hierarchy")
-        for selector in ("phone-runner-create", "creation-wizard-dashboard"):
-            exact = [
-                node
-                for node in current_nodes
-                if _exact_resource_id(node) == selector
-            ]
-            if len(exact) != 1:
-                capture(f"{scan_id}-{selector}-current-cardinality-invalid")
-                raise RuntimeError(
-                    f"Compact dashboard current origin exposed {len(exact)} exact "
-                    f"{selector!r} nodes"
-                )
-            _require_canonical_chummer_resource_id(
-                device,
-                exact[0],
-                selector,
-                evidence_prefix=f"{scan_id}-{selector}-current",
-                surface_name="Compact dashboard current origin",
-                deadline=deadline,
-            )
+        current_nodes = wait_for_compact_dashboard_origin(
+            device,
+            scan_id=scan_id,
+            deadline=deadline,
+        )
         scan_origin = PriorityRankOrigin(
             current_nodes,
             0,
