@@ -104,6 +104,7 @@ DURABLE_SAVE_OUTCOME_FAILURE_SCHEMA = (
 )
 ADB_READ_ONLY_MAX_ATTEMPTS = 3
 ADB_READ_ONLY_RETRY_DELAY_SECONDS = 1.0
+ADB_READ_ONLY_HIERARCHY_ATTEMPT_MAX_SECONDS = 8.0
 ADB_SWIPE_RECONCILIATION_REQUIRED_CONSECUTIVE = 2
 ADB_SWIPE_RECONCILIATION_MAX_OBSERVATIONS = 3
 ADB_SWIPE_RECONCILIATION_DELAY_SECONDS = 0.5
@@ -1448,7 +1449,7 @@ class Device:
                 *ADB_READ_ONLY_HIERARCHY_ARGUMENTS,
                 timeout=_remaining_operation_timeout(
                     deadline=deadline,
-                    maximum=30,
+                    maximum=ADB_READ_ONLY_HIERARCHY_ATTEMPT_MAX_SECONDS,
                 ),
                 deadline=deadline,
             ).stdout
@@ -1509,6 +1510,11 @@ class Device:
             or blocker.get("evidenceFile") != receipt.get("evidenceFile")
         ):
             return False
+        # The stable viewport observations must remain immediately adjacent to
+        # the ambiguous swipe receipt. A transport retry/recovery receipt from
+        # an observation breaks that attribution, so retain the mutation
+        # blocker instead of authorizing another navigation command.
+        expected_transport_event_index = self._transport_event_index
         previous_sha256: str | None = None
         consecutive = 0
         for observation in range(1, ADB_SWIPE_RECONCILIATION_MAX_OBSERVATIONS + 1):
@@ -1519,6 +1525,8 @@ class Device:
                     else self.read_only_hierarchy(deadline=deadline)
                 )
             except AdbTransportError:
+                return False
+            if self._transport_event_index != expected_transport_event_index:
                 return False
             if not nodes:
                 return False
@@ -4417,6 +4425,8 @@ PHONE_BUILD_SECTION_SCAN_MAX_SCROLLS = 32
 PHONE_BUILD_SECTION_SCAN_DISTANCE_RATIO = 0.22
 PHONE_BUILD_SECTION_SCAN_STABLE_REPEATS = 2
 PHONE_BUILD_SECTION_REACQUIRE_DISTANCE_RATIO = 0.22
+PHONE_BUILD_SECTION_ROUTE_STABLE_OBSERVATIONS = 3
+PHONE_BUILD_SECTION_ROUTE_STABILITY_DELAY_SECONDS = 0.5
 
 
 @dataclass(frozen=True)
@@ -4623,9 +4633,35 @@ def acquire_fresh_phone_build_section_route(
             )
         return node if device.node_has_tappable_bounds(node) else None
 
+    def stable_exact(initial: UiNode) -> UiNode | None:
+        keys = (
+            "resource-id",
+            "class",
+            "content-desc",
+            "text",
+            "enabled",
+            "clickable",
+            "focusable",
+            "bounds",
+        )
+        previous = tuple(initial.attributes.get(key, "") for key in keys)
+        for _ in range(1, PHONE_BUILD_SECTION_ROUTE_STABLE_OBSERVATIONS):
+            time.sleep(PHONE_BUILD_SECTION_ROUTE_STABILITY_DELAY_SECONDS)
+            current = exact_from(device.hierarchy())
+            if current is None:
+                previous = ()
+                continue
+            signature = tuple(current.attributes.get(key, "") for key in keys)
+            if signature == previous:
+                return current
+            previous = signature
+        return None
+
     measured = exact_from(device.hierarchy())
     if measured is not None:
-        return measured
+        stable = stable_exact(measured)
+        if stable is not None:
+            return stable
 
     # A zero-cardinality or clipped measured viewport invalidates that
     # observation.  Rebind the exact root scroll origin before any new search.
@@ -4640,7 +4676,9 @@ def acquire_fresh_phone_build_section_route(
     for forward_swipes in range(max_forward_swipes + 1):
         node = exact_from(device.hierarchy())
         if node is not None:
-            return node
+            stable = stable_exact(node)
+            if stable is not None:
+                return stable
         if forward_swipes >= max_forward_swipes:
             break
         device.swipe_up(

@@ -5409,7 +5409,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             * 2,
             device.swipe_down.call_args_list,
         )
-        device.hierarchy.assert_called_once_with()
+        self.assertEqual(2, device.hierarchy.call_count)
         device.shell.assert_called_once_with("input", "tap", "541", "530")
 
     def test_phone_build_section_rejects_unknown_route_before_root_or_tap(self) -> None:
@@ -5434,7 +5434,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             }
         )
         device = Mock(spec=DRIVER.Device)
-        device.hierarchy.side_effect = [[], [target]]
+        device.hierarchy.side_effect = [[], [target], [target]]
         device.node_has_tappable_bounds.return_value = True
 
         with (
@@ -5456,8 +5456,50 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             device,
             evidence_prefix="attributes-section-route-reacquire",
         )
-        self.assertEqual(2, device.hierarchy.call_count)
+        self.assertEqual(3, device.hierarchy.call_count)
         device.shell.assert_called_once_with("input", "tap", "541", "530")
+
+    def test_phone_build_section_taps_only_after_bounds_stabilize(self) -> None:
+        moving = DRIVER.UiNode(
+            {
+                "resource-id": "build-section-tab-attributes",
+                "class": "android.view.ViewGroup",
+                "enabled": "true",
+                "clickable": "true",
+                "focusable": "true",
+                "bounds": "[98,420][984,640]",
+            }
+        )
+        settled = DRIVER.UiNode(
+            {
+                **moving.attributes,
+                "bounds": "[98,720][984,940]",
+            }
+        )
+        device = Mock(spec=DRIVER.Device)
+        device.hierarchy.side_effect = [[moving], [settled], [settled]]
+        device.node_has_tappable_bounds.return_value = True
+
+        with (
+            patch.object(DRIVER, "return_to_phone_runner_root"),
+            patch.object(
+                DRIVER,
+                "scan_phone_build_section_inventory",
+                return_value=DRIVER.PhoneBuildSectionInventory(
+                    viewport_by_section={"attributes": 2},
+                    bottom_movement_swipes=2,
+                ),
+            ),
+            patch.object(DRIVER.time, "sleep") as sleep,
+        ):
+            DRIVER.tap_phone_build_section(device, "attributes")
+
+        self.assertEqual(3, device.hierarchy.call_count)
+        self.assertEqual(
+            [call(DRIVER.PHONE_BUILD_SECTION_ROUTE_STABILITY_DELAY_SECONDS)] * 2,
+            sleep.call_args_list,
+        )
+        device.shell.assert_called_once_with("input", "tap", "541", "830")
 
     def test_phone_build_section_inventory_proves_every_route_and_stable_end(self) -> None:
         def route(section: str, top: int) -> DRIVER.UiNode:
