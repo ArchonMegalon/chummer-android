@@ -1276,7 +1276,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             ]
             self.assertEqual(snapshot, evidence)
             self.assertEqual(
-                "chummer.android.creation-prerequisite-progress/v2",
+                "chummer.android.creation-prerequisite-progress/v3",
                 evidence["schema"],
             )
             self.assertEqual("timing-complete", evidence["status"])
@@ -1591,8 +1591,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             driver.PHASE_BUDGET_MS["prerequisite-authority-inventory"],
         )
         self.assertEqual(1_800_000, driver.TOTAL_PERFORMANCE_TARGET_MS)
-        self.assertEqual(20, len(driver.PHASE_ORDER))
-        self.assertEqual(10, driver.TIMING_ROUNDING_TOLERANCE_MS)
+        self.assertEqual(21, len(driver.PHASE_ORDER))
+        self.assertEqual(11, driver.TIMING_ROUNDING_TOLERANCE_MS)
         self.assertLess(navigation_start, cold_launch)
         self.assertLess(cold_launch, dialog_ready)
         self.assertLess(dialog_ready, authority_start)
@@ -1645,11 +1645,12 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             driver.TIMING_ROUNDING_TOLERANCE_MS,
             aggregate.CREATION_TIMING_ROUNDING_TOLERANCE_MS,
         )
-        self.assertEqual(10, driver.TIMING_ROUNDING_TOLERANCE_MS)
+        self.assertEqual(11, driver.TIMING_ROUNDING_TOLERANCE_MS)
         for phase_id in (
             "talent-active-skill-grant",
             "talent-active-grant-completion",
             "talent-active-preview",
+            "talent-skill-group-selection",
             "talent-skill-group-grant",
         ):
             with self.subTest(phase_id=phase_id):
@@ -7559,6 +7560,9 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             'progress.advance("talent-active-grant-completion")'
         )
         active_preview = source.index('progress.advance("talent-active-preview")')
+        skill_group_selection = source.index(
+            'progress.advance("talent-skill-group-selection")'
+        )
         skill_group = source.index('progress.advance("talent-skill-group-grant")')
         final_preview = source.index('progress.advance("preview-confirm")')
         self.assertEqual(
@@ -7570,6 +7574,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 active_reselection,
                 active_completion,
                 active_preview,
+                skill_group_selection,
                 skill_group,
                 final_preview,
             ],
@@ -7582,6 +7587,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                     active_reselection,
                     active_completion,
                     active_preview,
+                    skill_group_selection,
                     skill_group,
                     final_preview,
                 )
@@ -7625,6 +7631,18 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             active_preview,
         )
         self.assertLess(active_preview, source.index("active_preview_digest = canonical_digest("))
+        preview_back = source.index(
+            'evidence_prefix="talent-active-skill-preview-back"'
+        )
+        exact_selection_open = source.index(
+            "open_talent_selection_after_preview(device)"
+        )
+        self.assertLess(preview_back, skill_group_selection)
+        self.assertLess(skill_group_selection, exact_selection_open)
+        self.assertLess(
+            exact_selection_open,
+            source.index('typed_selections["talent"] = tap_enabled_authority_option('),
+        )
         self.assertLess(
             source.index('typed_selections["talent"] = tap_enabled_authority_option('),
             skill_group,
@@ -7643,6 +7661,50 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             (len(driver.PHASE_ORDER) + 1) // 2,
             driver.TIMING_ROUNDING_TOLERANCE_MS,
         )
+
+    def test_post_preview_talent_transition_is_exact_single_tap_and_fail_closed(
+        self,
+    ) -> None:
+        device = mock.Mock()
+
+        driver.open_talent_selection_after_preview(device)
+
+        device.tap_exact_resource_id_bidirectional.assert_called_once_with(
+            "creation-prerequisite-talent-selection",
+            timeout=90,
+            backward_scrolls=22,
+            forward_scrolls=22,
+            scroll_distance_ratio=0.22,
+            evidence_prefix="creation-prerequisite-talent-selection-after-preview",
+            surface_name="Talent selection row after active-skill preview",
+        )
+        device.wait_for_single_exact_resource_id.assert_called_once_with(
+            "creation-prerequisite-talent-page",
+            timeout=45,
+            evidence_prefix="creation-prerequisite-talent-route-after-preview",
+            surface_name="Talent route after active-skill preview",
+        )
+        device.tap.assert_not_called()
+
+        ambiguous = mock.Mock()
+        ambiguous.tap_exact_resource_id_bidirectional.side_effect = RuntimeError(
+            "exact Talent selection cardinality was ambiguous"
+        )
+        with self.assertRaisesRegex(RuntimeError, "cardinality was ambiguous"):
+            driver.open_talent_selection_after_preview(ambiguous)
+        ambiguous.tap_exact_resource_id_bidirectional.assert_called_once()
+        ambiguous.wait_for_single_exact_resource_id.assert_not_called()
+        ambiguous.tap.assert_not_called()
+
+        missing_route = mock.Mock()
+        missing_route.wait_for_single_exact_resource_id.side_effect = RuntimeError(
+            "exact Talent route did not appear"
+        )
+        with self.assertRaisesRegex(RuntimeError, "route did not appear"):
+            driver.open_talent_selection_after_preview(missing_route)
+        missing_route.tap_exact_resource_id_bidirectional.assert_called_once()
+        missing_route.wait_for_single_exact_resource_id.assert_called_once()
+        missing_route.tap.assert_not_called()
 
     def test_main_records_failure_evidence_without_converting_it_to_a_pass(self) -> None:
         source = inspect.getsource(driver.main)

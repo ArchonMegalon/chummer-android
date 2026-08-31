@@ -77,7 +77,7 @@ CREATION_AUTHORITY_PENDING_TIMEOUT_HIERARCHY = (
     "/sdcard/chummer-creation-authority-pending-timeout.xml"
 )
 CREATION_AUTHORITY_PENDING_TIMEOUT_TEXT_LIMIT = 1_000_000
-PROGRESS_SCHEMA = "chummer.android.creation-prerequisite-progress/v2"
+PROGRESS_SCHEMA = "chummer.android.creation-prerequisite-progress/v3"
 PROGRESS_FILE_NAME = "creation-prerequisite-progress.json"
 PROGRESS_EVENTS_FILE_NAME = "creation-prerequisite-progress.jsonl"
 CREATION_BOOTSTRAP_TIMING_PREFIX = "CHUMMER_CREATION_BOOTSTRAP_TIMING "
@@ -171,6 +171,11 @@ PHASE_BUDGET_MS = {
     # validated explicit reselection phase.
     "talent-active-grant-completion": 180_000,
     "talent-active-preview": 150_000,
+    # Returning from the deeply scanned preview preserves the prerequisite
+    # page's bottom offset. Reacquiring the Talent row, opening its typed route,
+    # and selecting the exact replacement authority is therefore a distinct
+    # bounded transition, not part of the already-complete preview proof.
+    "talent-skill-group-selection": 150_000,
     "talent-skill-group-grant": 150_000,
     "preview-confirm": 150_000,
     "same-process-reopen": 90_000,
@@ -5252,6 +5257,32 @@ def require_exact_preview_talent_grant_plan(
     return plan_digest
 
 
+def open_talent_selection_after_preview(device: shared.Device) -> None:
+    """Open the exact Talent route from a preview-preserved bottom viewport.
+
+    A generic forward-only ``tap(..., scroll=True)`` cannot reach the Talent
+    row after Back restores the prerequisite page at its bottom. Use the
+    shared exact-cardinality bidirectional acquisition and perform one tap
+    only. If acquisition or the resulting route proof fails, propagate the
+    failure without retrying the product-state transition.
+    """
+    device.tap_exact_resource_id_bidirectional(
+        "creation-prerequisite-talent-selection",
+        timeout=90,
+        backward_scrolls=22,
+        forward_scrolls=22,
+        scroll_distance_ratio=0.22,
+        evidence_prefix="creation-prerequisite-talent-selection-after-preview",
+        surface_name="Talent selection row after active-skill preview",
+    )
+    device.wait_for_single_exact_resource_id(
+        "creation-prerequisite-talent-page",
+        timeout=45,
+        evidence_prefix="creation-prerequisite-talent-route-after-preview",
+        surface_name="Talent route after active-skill preview",
+    )
+
+
 def require_restored_talent_grant(
     device: shared.Device,
     talent_option_id: str,
@@ -5987,12 +6018,8 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     # Changing the selected Talent must clear the prior active-skill slots.  The
     # new skill-group prompt is required to start at zero and is then subjected
     # to the same Back-preservation and explicit deselect/reselect proof.
-    device.tap(
-        "creation-prerequisite-talent-selection",
-        scroll=True,
-        max_scrolls=22,
-    )
-    device.wait("creation-prerequisite-talent-page", timeout=45)
+    progress.advance("talent-skill-group-selection")
+    open_talent_selection_after_preview(device)
     skill_group_option_navigation: dict[str, object] = {}
     typed_selections["talent"] = tap_enabled_authority_option(
         device,
