@@ -401,7 +401,11 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
             "nonReplayableCommandMaximumAttempts": 1,
         }
 
-    def reconciled_hierarchy_dump_transport_payload(self) -> dict[str, object]:
+    def reconciled_hierarchy_dump_transport_payload(
+        self,
+        *,
+        observation_mode: str = "fresh-owned-file",
+    ) -> dict[str, object]:
         payload = self.adb_transport_payload()
         serial = self.device_payload()["serial"]
         original = {
@@ -444,8 +448,8 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
             "retryableTransportClassification": True,
             "commandPolicy": "non-replayable",
             "policyReason": (
-                "file-backed dump was never replayed; stable current hierarchy "
-                "became observation authority"
+                "file-backed dump was never replayed; bounded stable current "
+                "hierarchy became observation authority"
             ),
             "adbArguments": list(
                 contract.ADB_FILE_HIERARCHY_DUMP_REDACTED_ARGUMENTS
@@ -466,8 +470,11 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
             "failure": None,
             "reconcilesEvidenceFile": original["evidenceFile"],
             "readOnlyObservation": {
+                "mode": observation_mode,
                 "arguments": list(
                     contract.ADB_FILE_HIERARCHY_OBSERVATION_ARGUMENTS
+                    if observation_mode == "fresh-owned-file"
+                    else contract.ADB_READ_ONLY_HIERARCHY_ARGUMENTS
                 ),
                 "freshnessBarrierArguments": list(
                     contract.ADB_FILE_HIERARCHY_REMOVE_ARGUMENTS
@@ -475,7 +482,7 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
                 "consecutiveMatching": 2,
                 "observationsPerformed": 2,
                 "hierarchySha256": "1" * 64,
-                "ownedFileSha256": "2" * 64,
+                "observationBytesSha256": "2" * 64,
             },
             "evidenceFile": "adb-transport-event-0002.json",
         }
@@ -932,6 +939,26 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
             label="priority",
         )
 
+    def test_direct_hierarchy_dump_reconciliation_is_accepted(self) -> None:
+        contract.validate_adb_transport(
+            self.reconciled_hierarchy_dump_transport_payload(
+                observation_mode="direct-current-hierarchy",
+            ),
+            serial=str(self.device_payload()["serial"]),
+            label="priority",
+        )
+
+        too_many = self.reconciled_hierarchy_dump_transport_payload(
+            observation_mode="direct-current-hierarchy",
+        )
+        too_many["events"][1]["readOnlyObservation"]["observationsPerformed"] = 4
+        with self.assertRaises(ValueError):
+            contract.validate_adb_transport(
+                too_many,
+                serial=str(self.device_payload()["serial"]),
+                label="priority",
+            )
+
     def test_exact_swipe_reconciliation_is_accepted(self) -> None:
         contract.validate_adb_transport(
             self.reconciled_swipe_transport_payload(),
@@ -1061,9 +1088,27 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
                 }),
             ),
             (
-                "invalid-owned-file-digest",
+                "invalid-observation-bytes-digest",
                 lambda value: value["events"][1]["readOnlyObservation"].update({
-                    "ownedFileSha256": "not-a-digest",
+                    "observationBytesSha256": "not-a-digest",
+                }),
+            ),
+            (
+                "unknown-observation-mode",
+                lambda value: value["events"][1]["readOnlyObservation"].update({
+                    "mode": "unbounded-fallback",
+                }),
+            ),
+            (
+                "direct-mode-with-owned-file-command",
+                lambda value: value["events"][1]["readOnlyObservation"].update({
+                    "mode": "direct-current-hierarchy",
+                }),
+            ),
+            (
+                "owned-mode-with-direct-command",
+                lambda value: value["events"][1]["readOnlyObservation"].update({
+                    "arguments": list(contract.ADB_READ_ONLY_HIERARCHY_ARGUMENTS),
                 }),
             ),
             (

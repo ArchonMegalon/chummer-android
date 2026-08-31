@@ -2100,21 +2100,22 @@ def validate_adb_transport(value: object, *, serial: str, label: str) -> None:
         if status == "reconciled-unknown-hierarchy-dump":
             preceding = events[index - 2]
             observation = require_exact_keys(event.get("readOnlyObservation"), {
-                "arguments", "freshnessBarrierArguments", "consecutiveMatching",
-                "observationsPerformed", "hierarchySha256", "ownedFileSha256",
+                "mode", "arguments", "freshnessBarrierArguments",
+                "consecutiveMatching", "observationsPerformed",
+                "hierarchySha256", "observationBytesSha256",
             }, f"{label} ADB hierarchy-dump reconciliation")
             require_field_types(observation, {
-                "arguments": list, "freshnessBarrierArguments": list,
+                "mode": str, "arguments": list, "freshnessBarrierArguments": list,
                 "consecutiveMatching": int, "observationsPerformed": int,
-                "hierarchySha256": str, "ownedFileSha256": str,
+                "hierarchySha256": str, "observationBytesSha256": str,
             }, f"{label} ADB hierarchy-dump reconciliation")
             require_hex(
                 observation.get("hierarchySha256"),
                 f"{label} ADB hierarchy-dump hierarchy sha256",
             )
             require_hex(
-                observation.get("ownedFileSha256"),
-                f"{label} ADB hierarchy-dump owned-file sha256",
+                observation.get("observationBytesSha256"),
+                f"{label} ADB hierarchy-dump observation-bytes sha256",
             )
             expected_original = {
                 "classification": "timeout-unknown-outcome",
@@ -2137,8 +2138,8 @@ def validate_adb_transport(value: object, *, serial: str, label: str) -> None:
                 "retryableTransportClassification": True,
                 "commandPolicy": "non-replayable",
                 "policyReason": (
-                    "file-backed dump was never replayed; stable current hierarchy "
-                    "became observation authority"
+                    "file-backed dump was never replayed; bounded stable current "
+                    "hierarchy became observation authority"
                 ),
                 "adbArguments": list(ADB_FILE_HIERARCHY_DUMP_REDACTED_ARGUMENTS),
                 "adbArgumentsSha256": ADB_FILE_HIERARCHY_DUMP_ARGUMENTS_SHA256,
@@ -2169,15 +2170,32 @@ def validate_adb_transport(value: object, *, serial: str, label: str) -> None:
                     "eligible": False, "performed": False,
                     "scheduled": False, "suppressed": True,
                 }
-                or observation.get("arguments")
-                != list(ADB_FILE_HIERARCHY_OBSERVATION_ARGUMENTS)
                 or observation.get("freshnessBarrierArguments")
                 != list(ADB_FILE_HIERARCHY_REMOVE_ARGUMENTS)
                 or observation.get("consecutiveMatching") != 2
-                or not 2 <= observation.get("observationsPerformed", 0) <= 8
             ):
                 raise ValueError(
                     f"{label} ADB hierarchy-dump reconciliation proof is not exact"
+                )
+            observation_mode = observation.get("mode")
+            if observation_mode == "fresh-owned-file":
+                observation_arguments = ADB_FILE_HIERARCHY_OBSERVATION_ARGUMENTS
+                maximum_observations = 8
+            elif observation_mode == "direct-current-hierarchy":
+                observation_arguments = ADB_READ_ONLY_HIERARCHY_ARGUMENTS
+                maximum_observations = 3
+            else:
+                raise ValueError(
+                    f"{label} ADB hierarchy-dump observation mode is not exact"
+                )
+            if (
+                observation.get("arguments") != list(observation_arguments)
+                or not 2
+                <= observation.get("observationsPerformed", 0)
+                <= maximum_observations
+            ):
+                raise ValueError(
+                    f"{label} ADB hierarchy-dump observation is not exact"
                 )
 
 

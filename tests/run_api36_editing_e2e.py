@@ -111,6 +111,9 @@ ADB_HIERARCHY_DUMP_RECONCILIATION_REQUIRED_CONSECUTIVE = 2
 ADB_HIERARCHY_DUMP_RECONCILIATION_MAX_OBSERVATIONS = 8
 ADB_HIERARCHY_DUMP_RECONCILIATION_DELAY_SECONDS = 0.25
 ADB_HIERARCHY_DUMP_RECONCILIATION_MAX_SECONDS = 10.0
+ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_MAX_OBSERVATIONS = 3
+ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_DELAY_SECONDS = 0.5
+ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_MAX_SECONDS = 10.0
 ADB_READ_ONLY_HIERARCHY_ARGUMENTS = (
     "exec-out",
     "uiautomator",
@@ -766,9 +769,11 @@ class Device:
         *,
         failed: AdbTransportError,
         arguments: tuple[str, ...],
+        observation_mode: str,
+        observation_arguments: tuple[str, ...],
         observation_count: int,
         hierarchy_sha256: str,
-        owned_file_sha256: str,
+        observation_bytes_sha256: str,
     ) -> None:
         if self._transport_event_index >= MAX_ADB_TRANSPORT_EVENTS:
             raise RuntimeError(
@@ -788,8 +793,8 @@ class Device:
             "retryableTransportClassification": True,
             "commandPolicy": "non-replayable",
             "policyReason": (
-                "file-backed dump was never replayed; stable current hierarchy "
-                "became observation authority"
+                "file-backed dump was never replayed; bounded stable current "
+                "hierarchy became observation authority"
             ),
             "adbArguments": _adb_arguments_evidence(arguments, "non-replayable"),
             "adbArgumentsSha256": _adb_arguments_sha256(arguments),
@@ -806,11 +811,8 @@ class Device:
             "failure": None,
             "reconcilesEvidenceFile": failed.receipt["evidenceFile"],
             "readOnlyObservation": {
-                "arguments": [
-                    "exec-out",
-                    "cat",
-                    ADB_FILE_HIERARCHY_REMOTE_PATH,
-                ],
+                "mode": observation_mode,
+                "arguments": list(observation_arguments),
                 "freshnessBarrierArguments": [
                     "shell",
                     *ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS,
@@ -820,7 +822,7 @@ class Device:
                 ),
                 "observationsPerformed": observation_count,
                 "hierarchySha256": hierarchy_sha256,
-                "ownedFileSha256": owned_file_sha256,
+                "observationBytesSha256": observation_bytes_sha256,
             },
             "evidenceFile": filename,
         }
@@ -1549,11 +1551,13 @@ class Device:
         expected_transport_event_index = self._transport_event_index
         previous_sha256: str | None = None
         consecutive = 0
-        local_deadline = (
+        owned_file_deadline = (
             time.monotonic() + ADB_HIERARCHY_DUMP_RECONCILIATION_MAX_SECONDS
         )
-        reconciliation_deadline = (
-            local_deadline if deadline is None else min(deadline, local_deadline)
+        owned_file_deadline = (
+            owned_file_deadline
+            if deadline is None
+            else min(deadline, owned_file_deadline)
         )
         for observation in range(
             1,
@@ -1565,16 +1569,18 @@ class Device:
                     "cat",
                     ADB_FILE_HIERARCHY_REMOTE_PATH,
                     timeout=_remaining_operation_timeout(
-                        deadline=reconciliation_deadline,
+                        deadline=owned_file_deadline,
                         maximum=ADB_HIERARCHY_DUMP_RECONCILIATION_MAX_SECONDS,
                     ),
-                    deadline=reconciliation_deadline,
+                    deadline=owned_file_deadline,
                 ).stdout
                 _remaining_operation_timeout(
-                    deadline=reconciliation_deadline,
+                    deadline=owned_file_deadline,
                     maximum=ADB_HIERARCHY_DUMP_RECONCILIATION_MAX_SECONDS,
                 )
-            except (AdbOperationDeadlineExceeded, AdbTransportError):
+            except AdbOperationDeadlineExceeded:
+                break
+            except AdbTransportError:
                 return None
             if self._transport_event_index != expected_transport_event_index:
                 return None
@@ -1589,11 +1595,11 @@ class Device:
                 if observation < ADB_HIERARCHY_DUMP_RECONCILIATION_MAX_OBSERVATIONS:
                     try:
                         delay = _remaining_operation_timeout(
-                            deadline=reconciliation_deadline,
+                            deadline=owned_file_deadline,
                             maximum=ADB_HIERARCHY_DUMP_RECONCILIATION_DELAY_SECONDS,
                         )
                     except AdbOperationDeadlineExceeded:
-                        return None
+                        break
                     time.sleep(delay)
                 continue
             observed_sha256 = hashlib.sha256(xml.encode("utf-8")).hexdigest()
@@ -1607,17 +1613,99 @@ class Device:
                 self._write_hierarchy_dump_reconciliation_event(
                     failed=failed,
                     arguments=arguments,
+                    observation_mode="fresh-owned-file",
+                    observation_arguments=(
+                        "exec-out",
+                        "cat",
+                        ADB_FILE_HIERARCHY_REMOTE_PATH,
+                    ),
                     observation_count=observation,
                     hierarchy_sha256=observed_nodes_sha256,
-                    owned_file_sha256=observed_sha256,
+                    observation_bytes_sha256=observed_sha256,
                 )
                 self._mutation_blocker = None
                 return nodes
             if observation < ADB_HIERARCHY_DUMP_RECONCILIATION_MAX_OBSERVATIONS:
                 try:
                     delay = _remaining_operation_timeout(
-                        deadline=reconciliation_deadline,
+                        deadline=owned_file_deadline,
                         maximum=ADB_HIERARCHY_DUMP_RECONCILIATION_DELAY_SECONDS,
+                    )
+                except AdbOperationDeadlineExceeded:
+                    break
+                time.sleep(delay)
+        direct_deadline = (
+            time.monotonic()
+            + ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_MAX_SECONDS
+        )
+        direct_deadline = (
+            direct_deadline if deadline is None else min(deadline, direct_deadline)
+        )
+        previous_sha256 = None
+        consecutive = 0
+        for observation in range(
+            1,
+            ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_MAX_OBSERVATIONS + 1,
+        ):
+            try:
+                xml = self.run(
+                    *ADB_READ_ONLY_HIERARCHY_ARGUMENTS,
+                    timeout=_remaining_operation_timeout(
+                        deadline=direct_deadline,
+                        maximum=(
+                            ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_MAX_SECONDS
+                        ),
+                    ),
+                    deadline=direct_deadline,
+                ).stdout
+                _remaining_operation_timeout(
+                    deadline=direct_deadline,
+                    maximum=ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_MAX_SECONDS,
+                )
+            except (AdbOperationDeadlineExceeded, AdbTransportError):
+                return None
+            if self._transport_event_index != expected_transport_event_index:
+                return None
+            nodes = Device._parse_hierarchy(
+                self,
+                xml,
+                "last-hierarchy-dump-direct-reconciliation-invalid.txt",
+            )
+            if not nodes:
+                previous_sha256 = None
+                consecutive = 0
+            else:
+                observed_sha256 = hashlib.sha256(xml.encode("utf-8")).hexdigest()
+                observed_nodes_sha256 = self._hierarchy_sha256(nodes)
+                consecutive = (
+                    consecutive + 1 if observed_sha256 == previous_sha256 else 1
+                )
+                previous_sha256 = observed_sha256
+                if (
+                    consecutive
+                    >= ADB_HIERARCHY_DUMP_RECONCILIATION_REQUIRED_CONSECUTIVE
+                ):
+                    self._write_hierarchy_dump_reconciliation_event(
+                        failed=failed,
+                        arguments=arguments,
+                        observation_mode="direct-current-hierarchy",
+                        observation_arguments=ADB_READ_ONLY_HIERARCHY_ARGUMENTS,
+                        observation_count=observation,
+                        hierarchy_sha256=observed_nodes_sha256,
+                        observation_bytes_sha256=observed_sha256,
+                    )
+                    self._mutation_blocker = None
+                    return nodes
+            if (
+                observation
+                < ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_MAX_OBSERVATIONS
+            ):
+                try:
+                    delay = _remaining_operation_timeout(
+                        deadline=direct_deadline,
+                        maximum=(
+                            ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_DELAY_SECONDS
+                        ),
                     )
                 except AdbOperationDeadlineExceeded:
                     return None

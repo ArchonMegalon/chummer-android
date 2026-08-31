@@ -433,10 +433,328 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
                 reconciliation["readOnlyObservation"]["consecutiveMatching"],
             )
             self.assertEqual(
+                "fresh-owned-file",
+                reconciliation["readOnlyObservation"]["mode"],
+            )
+            self.assertEqual(
                 ["shell", *driver.ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS],
                 reconciliation["readOnlyObservation"][
                     "freshnessBarrierArguments"
                 ],
+            )
+
+    def test_missing_owned_dump_uses_two_stable_direct_reads_without_replay(self) -> None:
+        xml = (
+            "<hierarchy><node text='Stable direct preview' "
+            "bounds='[0,0][100,100]' /></hierarchy>"
+        )
+        remove_arguments = (
+            "shell",
+            *driver.ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS,
+        )
+        dump_arguments = (
+            "shell",
+            *driver.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
+        )
+        owned_arguments = (
+            "exec-out",
+            "cat",
+            driver.ADB_FILE_HIERARCHY_REMOTE_PATH,
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            device = self.make_device(Path(temporary))
+            responses = [
+                completed(remove_arguments, ""),
+                subprocess.TimeoutExpired(dump_arguments, 37),
+                *[
+                    completed(owned_arguments, "")
+                    for _ in range(
+                        driver.ADB_HIERARCHY_DUMP_RECONCILIATION_MAX_OBSERVATIONS
+                    )
+                ],
+                completed(driver.ADB_READ_ONLY_HIERARCHY_ARGUMENTS, xml),
+                completed(driver.ADB_READ_ONLY_HIERARCHY_ARGUMENTS, xml),
+                completed(("shell", "input", "keyevent", "4"), ""),
+            ]
+            with (
+                mock.patch.object(driver.subprocess, "run", side_effect=responses) as run,
+                mock.patch.object(driver.time, "sleep"),
+            ):
+                nodes = device.hierarchy(deadline=driver.time.monotonic() + 150)
+                device.shell("input", "keyevent", "4")
+
+            self.assertEqual("Stable direct preview", nodes[0].attributes["text"])
+            issued = [tuple(call.args[0][3:]) for call in run.call_args_list]
+            self.assertEqual(1, issued.count(dump_arguments))
+            self.assertEqual(
+                driver.ADB_HIERARCHY_DUMP_RECONCILIATION_MAX_OBSERVATIONS,
+                issued.count(owned_arguments),
+            )
+            self.assertEqual(
+                driver.ADB_HIERARCHY_DUMP_RECONCILIATION_REQUIRED_CONSECUTIVE,
+                issued.count(driver.ADB_READ_ONLY_HIERARCHY_ARGUMENTS),
+            )
+            summary = device.transport_summary()
+            self.assertEqual(0, summary["terminalFailureCount"])
+            original, reconciliation = summary["events"]
+            self.assertEqual(
+                original["evidenceFile"],
+                reconciliation["reconcilesEvidenceFile"],
+            )
+            self.assertEqual(
+                "direct-current-hierarchy",
+                reconciliation["readOnlyObservation"]["mode"],
+            )
+            self.assertEqual(
+                list(driver.ADB_READ_ONLY_HIERARCHY_ARGUMENTS),
+                reconciliation["readOnlyObservation"]["arguments"],
+            )
+            self.assertFalse(reconciliation["replay"]["performed"])
+
+    def test_owned_file_local_deadline_hands_off_to_direct_reads(self) -> None:
+        xml = "<hierarchy><node text='Deadline handoff' /></hierarchy>"
+        remove_arguments = (
+            "shell",
+            *driver.ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS,
+        )
+        dump_arguments = (
+            "shell",
+            *driver.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
+        )
+        owned_arguments = (
+            "exec-out",
+            "cat",
+            driver.ADB_FILE_HIERARCHY_REMOTE_PATH,
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            device = self.make_device(Path(temporary))
+            with mock.patch.object(
+                driver.subprocess,
+                "run",
+                side_effect=[
+                    completed(remove_arguments, ""),
+                    subprocess.TimeoutExpired(dump_arguments, 37),
+                ],
+            ):
+                device.run(*remove_arguments)
+                with self.assertRaises(driver.AdbTransportError) as raised:
+                    device.run(*dump_arguments)
+
+            remaining_calls = 0
+
+            def remaining(*, deadline: float | None, maximum: float) -> float:
+                nonlocal remaining_calls
+                remaining_calls += 1
+                if remaining_calls == 3:
+                    raise driver.AdbOperationDeadlineExceeded("owned file local deadline")
+                return maximum
+
+            with (
+                mock.patch.object(
+                    driver.subprocess,
+                    "run",
+                    side_effect=[
+                        completed(owned_arguments, ""),
+                        completed(driver.ADB_READ_ONLY_HIERARCHY_ARGUMENTS, xml),
+                        completed(driver.ADB_READ_ONLY_HIERARCHY_ARGUMENTS, xml),
+                    ],
+                ),
+                mock.patch.object(
+                    driver,
+                    "_remaining_operation_timeout",
+                    side_effect=remaining,
+                ),
+                mock.patch.object(driver.time, "sleep"),
+            ):
+                nodes = device._reconcile_unknown_hierarchy_dump(
+                    raised.exception,
+                    dump_arguments,
+                    deadline=driver.time.monotonic() + 150,
+                )
+
+            self.assertIsNotNone(nodes)
+            self.assertEqual("Deadline handoff", nodes[0].attributes["text"])
+            reconciliation = device.transport_summary()["events"][1]
+            self.assertEqual(
+                "direct-current-hierarchy",
+                reconciliation["readOnlyObservation"]["mode"],
+            )
+            self.assertFalse(reconciliation["replay"]["performed"])
+
+    def test_expired_caller_deadline_never_starts_direct_observation(self) -> None:
+        remove_arguments = (
+            "shell",
+            *driver.ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS,
+        )
+        dump_arguments = (
+            "shell",
+            *driver.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            device = self.make_device(Path(temporary))
+            with mock.patch.object(
+                driver.subprocess,
+                "run",
+                side_effect=[
+                    completed(remove_arguments, ""),
+                    subprocess.TimeoutExpired(dump_arguments, 37),
+                ],
+            ):
+                device.run(*remove_arguments)
+                with self.assertRaises(driver.AdbTransportError) as raised:
+                    device.run(*dump_arguments)
+
+            with mock.patch.object(driver.subprocess, "run") as run:
+                nodes = device._reconcile_unknown_hierarchy_dump(
+                    raised.exception,
+                    dump_arguments,
+                    deadline=driver.time.monotonic() - 1,
+                )
+
+            self.assertIsNone(nodes)
+            run.assert_not_called()
+            self.assertEqual(1, device.transport_summary()["terminalFailureCount"])
+
+    def test_direct_transport_recovery_preserves_original_blocker(self) -> None:
+        xml = "<hierarchy><node text='Recovered transport' /></hierarchy>"
+        remove_arguments = (
+            "shell",
+            *driver.ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS,
+        )
+        dump_arguments = (
+            "shell",
+            *driver.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
+        )
+        owned_arguments = (
+            "exec-out",
+            "cat",
+            driver.ADB_FILE_HIERARCHY_REMOTE_PATH,
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            device = self.make_device(Path(temporary))
+            responses = [
+                completed(remove_arguments, ""),
+                subprocess.TimeoutExpired(dump_arguments, 37),
+                *[
+                    completed(owned_arguments, "")
+                    for _ in range(
+                        driver.ADB_HIERARCHY_DUMP_RECONCILIATION_MAX_OBSERVATIONS
+                    )
+                ],
+                offline(driver.ADB_READ_ONLY_HIERARCHY_ARGUMENTS),
+                completed(driver.ADB_READ_ONLY_HIERARCHY_ARGUMENTS, xml),
+            ]
+            with (
+                mock.patch.object(driver.subprocess, "run", side_effect=responses),
+                mock.patch.object(driver.time, "sleep"),
+            ):
+                with self.assertRaises(driver.AdbTransportError):
+                    device.hierarchy(deadline=driver.time.monotonic() + 150)
+                with self.assertRaises(driver.AdbTransportError) as blocked:
+                    device.shell("input", "keyevent", "4")
+
+            statuses = [
+                event["status"] for event in device.transport_summary()["events"]
+            ]
+            self.assertEqual(
+                ["fail", "retrying-read-only", "recovered-read-only", "fail"],
+                statuses,
+            )
+            self.assertEqual(
+                "prior-mutation-outcome-unknown",
+                blocked.exception.receipt["classification"],
+            )
+
+    def test_direct_reconciliation_requires_raw_byte_identity(self) -> None:
+        remove_arguments = (
+            "shell",
+            *driver.ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS,
+        )
+        dump_arguments = (
+            "shell",
+            *driver.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
+        )
+        owned_arguments = (
+            "exec-out",
+            "cat",
+            driver.ADB_FILE_HIERARCHY_REMOTE_PATH,
+        )
+        semantically_equal = (
+            "<hierarchy><node text='Same' /></hierarchy>",
+            "<hierarchy> <node text='Same' /></hierarchy>",
+            "<hierarchy><node text='Same'/> </hierarchy>",
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            device = self.make_device(Path(temporary))
+            responses = [
+                completed(remove_arguments, ""),
+                subprocess.TimeoutExpired(dump_arguments, 37),
+                *[
+                    completed(owned_arguments, "")
+                    for _ in range(
+                        driver.ADB_HIERARCHY_DUMP_RECONCILIATION_MAX_OBSERVATIONS
+                    )
+                ],
+                *[
+                    completed(driver.ADB_READ_ONLY_HIERARCHY_ARGUMENTS, xml)
+                    for xml in semantically_equal
+                ],
+            ]
+            with (
+                mock.patch.object(driver.subprocess, "run", side_effect=responses),
+                mock.patch.object(driver.time, "sleep"),
+            ):
+                with self.assertRaises(driver.AdbTransportError):
+                    device.hierarchy(deadline=driver.time.monotonic() + 150)
+                with self.assertRaises(driver.AdbTransportError):
+                    device.shell("input", "keyevent", "4")
+
+            self.assertNotIn(
+                "reconciled-unknown-hierarchy-dump",
+                [event["status"] for event in device.transport_summary()["events"]],
+            )
+
+    def test_direct_reconciliation_accepts_invalid_then_two_identical_complete_reads(self) -> None:
+        xml = "<hierarchy><node text='Third observation' /></hierarchy>"
+        remove_arguments = (
+            "shell",
+            *driver.ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS,
+        )
+        dump_arguments = (
+            "shell",
+            *driver.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
+        )
+        owned_arguments = (
+            "exec-out",
+            "cat",
+            driver.ADB_FILE_HIERARCHY_REMOTE_PATH,
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            device = self.make_device(Path(temporary))
+            responses = [
+                completed(remove_arguments, ""),
+                subprocess.TimeoutExpired(dump_arguments, 37),
+                *[
+                    completed(owned_arguments, "")
+                    for _ in range(
+                        driver.ADB_HIERARCHY_DUMP_RECONCILIATION_MAX_OBSERVATIONS
+                    )
+                ],
+                completed(driver.ADB_READ_ONLY_HIERARCHY_ARGUMENTS, "<hierarchy>"),
+                completed(driver.ADB_READ_ONLY_HIERARCHY_ARGUMENTS, xml),
+                completed(driver.ADB_READ_ONLY_HIERARCHY_ARGUMENTS, xml),
+            ]
+            with (
+                mock.patch.object(driver.subprocess, "run", side_effect=responses),
+                mock.patch.object(driver.time, "sleep"),
+            ):
+                nodes = device.hierarchy(deadline=driver.time.monotonic() + 150)
+
+            self.assertEqual("Third observation", nodes[0].attributes["text"])
+            reconciliation = device.transport_summary()["events"][1]
+            self.assertEqual(
+                3,
+                reconciliation["readOnlyObservation"]["observationsPerformed"],
             )
 
     def test_divergent_hierarchy_dump_reconciliation_stays_blocked(self) -> None:
@@ -464,6 +782,17 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
                     for index in range(
                         1,
                         driver.ADB_HIERARCHY_DUMP_RECONCILIATION_MAX_OBSERVATIONS
+                        + 1,
+                    )
+                ],
+                *[
+                    completed(
+                        driver.ADB_READ_ONLY_HIERARCHY_ARGUMENTS,
+                        hierarchy(f"direct-observation-{index}"),
+                    )
+                    for index in range(
+                        1,
+                        driver.ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_MAX_OBSERVATIONS
                         + 1,
                     )
                 ],
