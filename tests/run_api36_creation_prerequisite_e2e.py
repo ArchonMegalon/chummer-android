@@ -6025,12 +6025,30 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     if not typed_selection_ids["heritage"]:
         raise RuntimeError("Typed heritage SelectionId was not exposed by Core authority")
 
-    device.tap(
-        "creation-prerequisite-talent-selection",
-        scroll=True,
-        max_scrolls=22,
+    typed_authority_deadline = progress.active_phase_deadline(
+        "typed-authority-options"
     )
-    device.wait("creation-prerequisite-talent-page", timeout=45)
+    device.tap_exact_resource_id_bidirectional(
+        "creation-prerequisite-talent-selection",
+        timeout=90,
+        backward_scrolls=22,
+        forward_scrolls=22,
+        scroll_distance_ratio=0.22,
+        evidence_prefix="creation-prerequisite-talent-selection",
+        surface_name="Typed Talent selection row",
+        deadline=typed_authority_deadline,
+    )
+    device.wait_exact_resource_id_bidirectional(
+        "creation-prerequisite-talent-page",
+        timeout=45,
+        backward_scrolls=0,
+        forward_scrolls=0,
+        scroll_distance_ratio=0.22,
+        evidence_prefix="creation-prerequisite-talent-route",
+        surface_name="Typed Talent detail route",
+        require_tappable=False,
+        deadline=typed_authority_deadline,
+    )
     active_talent_option_navigation: dict[str, object] = {}
     active_talent_option_id = tap_enabled_authority_option(
         device,

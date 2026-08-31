@@ -401,6 +401,18 @@ def _remaining_operation_timeout(
     return min(maximum, remaining)
 
 
+def _sleep_before_operation_deadline(
+    seconds: float,
+    *,
+    deadline: float | None,
+) -> None:
+    if deadline is not None and deadline - time.monotonic() < seconds:
+        raise AdbOperationDeadlineExceeded(
+            "ADB operation deadline expired before bounded acquisition delay"
+        )
+    time.sleep(seconds)
+
+
 class AdbTransportPreflightError(RuntimeError):
     """Raised before any mutation when the transport cannot remain stable."""
 
@@ -1641,7 +1653,12 @@ class Device:
         self.capture("failure")
         raise RuntimeError(f"Timed out waiting for UI node {selector!r}")
 
-    def dismiss_system_ui_anr(self, nodes: list[UiNode] | None = None) -> bool:
+    def dismiss_system_ui_anr(
+        self,
+        nodes: list[UiNode] | None = None,
+        *,
+        deadline: float | None = None,
+    ) -> bool:
         wait_button = (
             self.find("aerr_wait")
             if nodes is None
@@ -1649,7 +1666,10 @@ class Device:
         )
         if wait_button is None:
             return False
-        self.capture_product_anr_evidence()
+        if deadline is None:
+            self.capture_product_anr_evidence()
+        else:
+            self.capture("product-anr", deadline=deadline)
         raise ProductAnrDetected(
             "Android reported that Chummer is not responding; captured product-ANR "
             "diagnostics and refused to dismiss the dialog as success"
@@ -1809,6 +1829,7 @@ class Device:
         evidence_prefix: str = "exact-resource-bidirectional",
         surface_name: str = "Exact resource-id control",
         require_tappable: bool = True,
+        deadline: float | None = None,
     ) -> UiNode:
         """Reset to the top, then scan one exact ID without blind swipes.
 
@@ -1819,23 +1840,45 @@ class Device:
         retain the default tappability gate; read-only authority cards can explicitly
         request cardinality-checked visible-node acquisition instead.
         """
+        if deadline is not None:
+            _remaining_operation_timeout(deadline=deadline, maximum=timeout)
+
+        def capture_evidence(name: str) -> None:
+            if deadline is None:
+                self.capture(name)
+            else:
+                self.capture(name, deadline=deadline)
+
         x_ratio = self._scroll_x_ratio(selector)
         for _ in range(backward_scrolls):
-            self.swipe_down(
-                x_ratio=x_ratio,
-                distance_ratio=scroll_distance_ratio,
-            )
-            time.sleep(0.2)
+            if deadline is None:
+                self.swipe_down(
+                    x_ratio=x_ratio,
+                    distance_ratio=scroll_distance_ratio,
+                )
+            else:
+                self.swipe_down(
+                    x_ratio=x_ratio,
+                    distance_ratio=scroll_distance_ratio,
+                    deadline=deadline,
+                )
+            _sleep_before_operation_deadline(0.2, deadline=deadline)
         if backward_scrolls > 0:
-            time.sleep(0.75)
+            _sleep_before_operation_deadline(0.75, deadline=deadline)
 
-        deadline = time.monotonic() + timeout
+        search_deadline = time.monotonic() + timeout
+        if deadline is not None:
+            search_deadline = min(search_deadline, deadline)
         forward = 0
         backtracks = 0
-        while time.monotonic() < deadline:
-            nodes = self.hierarchy()
+        while time.monotonic() < search_deadline:
+            nodes = (
+                self.hierarchy()
+                if deadline is None
+                else self.hierarchy(deadline=deadline)
+            )
             if not nodes:
-                time.sleep(0.75)
+                _sleep_before_operation_deadline(0.75, deadline=deadline)
                 continue
 
             matches = [
@@ -1845,14 +1888,18 @@ class Device:
                 == selector
             ]
             if len(matches) > 1:
-                self.capture(f"{evidence_prefix}-cardinality-invalid")
+                capture_evidence(f"{evidence_prefix}-cardinality-invalid")
                 raise RuntimeError(
                     f"{surface_name} {selector!r} has cardinality {len(matches)}; "
                     "expected exactly one"
                 )
             if len(matches) == 1:
                 node = matches[0]
-                visible_bounds = self.node_has_tappable_bounds(node)
+                visible_bounds = (
+                    self.node_has_tappable_bounds(node)
+                    if deadline is None
+                    else self.node_has_tappable_bounds(node, deadline=deadline)
+                )
                 if not require_tappable and visible_bounds:
                     return node
                 if (
@@ -1864,12 +1911,16 @@ class Device:
 
                 bounds = BOUNDS.fullmatch(node.attributes.get("bounds", ""))
                 if bounds is None:
-                    self.capture(f"{evidence_prefix}-bounds-invalid")
+                    capture_evidence(f"{evidence_prefix}-bounds-invalid")
                     raise RuntimeError(
                         f"{surface_name} {selector!r} exposed invalid bounds"
                     )
                 _, top, _, bottom = (int(value) for value in bounds.groups())
-                _, height = self.display_size()
+                _, height = (
+                    self.display_size()
+                    if deadline is None
+                    else self.display_size(deadline=deadline)
+                )
                 center_y = (top + bottom) // 2
                 clipped = bottom - top <= 8
                 clipped_above = top < 0 or (clipped and center_y < height // 2)
@@ -1879,45 +1930,73 @@ class Device:
                     or (clipped and center_y >= height // 2)
                 )
                 if clipped_above and forward > 0 and backtracks < forward_scrolls:
-                    self.swipe_down(
-                        x_ratio=x_ratio,
-                        distance_ratio=scroll_distance_ratio,
-                    )
+                    if deadline is None:
+                        self.swipe_down(
+                            x_ratio=x_ratio,
+                            distance_ratio=scroll_distance_ratio,
+                        )
+                    else:
+                        self.swipe_down(
+                            x_ratio=x_ratio,
+                            distance_ratio=scroll_distance_ratio,
+                            deadline=deadline,
+                        )
                     forward -= 1
                     backtracks += 1
-                    time.sleep(0.75)
+                    _sleep_before_operation_deadline(0.75, deadline=deadline)
                     continue
                 if clipped_below and forward < forward_scrolls:
-                    self.swipe_up(
-                        x_ratio=x_ratio,
-                        distance_ratio=scroll_distance_ratio,
-                    )
+                    if deadline is None:
+                        self.swipe_up(
+                            x_ratio=x_ratio,
+                            distance_ratio=scroll_distance_ratio,
+                        )
+                    else:
+                        self.swipe_up(
+                            x_ratio=x_ratio,
+                            distance_ratio=scroll_distance_ratio,
+                            deadline=deadline,
+                        )
                     forward += 1
-                    time.sleep(0.75)
+                    _sleep_before_operation_deadline(0.75, deadline=deadline)
                     continue
 
                 if require_tappable:
-                    self.capture(f"{evidence_prefix}-not-tappable")
+                    capture_evidence(f"{evidence_prefix}-not-tappable")
                     raise RuntimeError(
                         f"{surface_name} {selector!r} was not enabled, clickable, and tappable"
                     )
-                self.capture(f"{evidence_prefix}-not-readable")
+                capture_evidence(f"{evidence_prefix}-not-readable")
                 raise RuntimeError(
                     f"{surface_name} {selector!r} was not fully visible for read-only acquisition"
                 )
 
-            if self.dismiss_system_ui_anr(nodes):
-                time.sleep(2)
+            anr_detected = (
+                self.dismiss_system_ui_anr(nodes)
+                if deadline is None
+                else self.dismiss_system_ui_anr(nodes, deadline=deadline)
+            )
+            if anr_detected:
+                _sleep_before_operation_deadline(2, deadline=deadline)
                 continue
             if forward >= forward_scrolls:
                 break
-            self.swipe_up(
-                x_ratio=x_ratio,
-                distance_ratio=scroll_distance_ratio,
-            )
+            if deadline is None:
+                self.swipe_up(
+                    x_ratio=x_ratio,
+                    distance_ratio=scroll_distance_ratio,
+                )
+            else:
+                self.swipe_up(
+                    x_ratio=x_ratio,
+                    distance_ratio=scroll_distance_ratio,
+                    deadline=deadline,
+                )
             forward += 1
-            time.sleep(0.75)
-        self.capture(f"{evidence_prefix}-unavailable")
+            _sleep_before_operation_deadline(0.75, deadline=deadline)
+        if deadline is not None:
+            _remaining_operation_timeout(deadline=deadline, maximum=timeout)
+        capture_evidence(f"{evidence_prefix}-unavailable")
         qualifier = "tappable " if require_tappable else "visible "
         raise RuntimeError(
             f"Timed out waiting for exactly one {qualifier}{surface_name.lower()} {selector!r} "
@@ -1934,19 +2013,45 @@ class Device:
         scroll_distance_ratio: float = 0.22,
         evidence_prefix: str = "exact-resource-bidirectional-tap",
         surface_name: str = "Exact resource-id control",
+        deadline: float | None = None,
     ) -> None:
         """Tap the exact cardinality-checked node from one observed hierarchy."""
-        node = self.wait_exact_resource_id_bidirectional(
-            selector,
-            timeout=timeout,
-            backward_scrolls=backward_scrolls,
-            forward_scrolls=forward_scrolls,
-            scroll_distance_ratio=scroll_distance_ratio,
-            evidence_prefix=evidence_prefix,
-            surface_name=surface_name,
-        )
+        if deadline is None:
+            node = self.wait_exact_resource_id_bidirectional(
+                selector,
+                timeout=timeout,
+                backward_scrolls=backward_scrolls,
+                forward_scrolls=forward_scrolls,
+                scroll_distance_ratio=scroll_distance_ratio,
+                evidence_prefix=evidence_prefix,
+                surface_name=surface_name,
+            )
+        else:
+            node = self.wait_exact_resource_id_bidirectional(
+                selector,
+                timeout=timeout,
+                backward_scrolls=backward_scrolls,
+                forward_scrolls=forward_scrolls,
+                scroll_distance_ratio=scroll_distance_ratio,
+                evidence_prefix=evidence_prefix,
+                surface_name=surface_name,
+                deadline=deadline,
+            )
         x, y = node.center
-        self.shell("input", "tap", str(x), str(y))
+        if deadline is None:
+            self.shell("input", "tap", str(x), str(y))
+        else:
+            self.shell(
+                "input",
+                "tap",
+                str(x),
+                str(y),
+                timeout=_remaining_operation_timeout(
+                    deadline=deadline,
+                    maximum=120,
+                ),
+                deadline=deadline,
+            )
 
     def tap_bidirectional(
         self,

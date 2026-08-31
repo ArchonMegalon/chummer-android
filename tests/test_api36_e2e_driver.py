@@ -3392,6 +3392,76 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         device.capture_product_anr_evidence.assert_called_once_with()
         device.shell.assert_not_called()
 
+    def test_deadline_bound_exact_wait_stops_anr_diagnostics_at_the_deadline(self) -> None:
+        wait_button = DRIVER.UiNode(
+            {
+                "resource-id": "android:id/aerr_wait",
+                "text": "Wait",
+                "clickable": "true",
+                "bounds": "[100,1200][900,1400]",
+            }
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            device = Mock(spec=DRIVER.Device)
+            device.evidence = Path(temporary)
+            device._scroll_x_ratio.return_value = 0.5
+            device.hierarchy.return_value = [wait_button]
+            device.dismiss_system_ui_anr.side_effect = (
+                lambda nodes, **options: DRIVER.Device.dismiss_system_ui_anr(
+                    device,
+                    nodes,
+                    **options,
+                )
+            )
+            device.capture.side_effect = (
+                lambda name, **options: DRIVER.Device.capture(
+                    device,
+                    name,
+                    **options,
+                )
+            )
+            device.run.return_value = subprocess.CompletedProcess(
+                args=[], returncode=0, stdout=b"bounded screenshot", stderr=b""
+            )
+
+            with (
+                patch.object(
+                    DRIVER.time,
+                    "monotonic",
+                    side_effect=[0.0, 0.0, 0.0, 0.0, 10.0],
+                ),
+                self.assertRaisesRegex(
+                    DRIVER.ProductAnrDetected,
+                    "refused to dismiss the dialog as success",
+                ),
+            ):
+                DRIVER.Device.wait_exact_resource_id_bidirectional(
+                    device,
+                    "creation-prerequisite-talent-selection",
+                    timeout=90,
+                    backward_scrolls=0,
+                    forward_scrolls=3,
+                    deadline=5.0,
+                )
+
+        device.dismiss_system_ui_anr.assert_called_once_with(
+            [wait_button],
+            deadline=5.0,
+        )
+        device.capture.assert_called_once_with("product-anr", deadline=5.0)
+        device.capture_product_anr_evidence.assert_not_called()
+        device.run.assert_called_once_with(
+            "exec-out",
+            "screencap",
+            "-p",
+            timeout=5.0,
+            text=False,
+            deadline=5.0,
+        )
+        device.swipe_down.assert_not_called()
+        device.swipe_up.assert_not_called()
+        device.shell.assert_not_called()
+
     def test_product_anr_diagnostics_are_read_only_and_do_not_signal_process(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             evidence = Path(temporary)
@@ -7138,6 +7208,357 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         )
         device.hierarchy.assert_not_called()
         device.shell.assert_called_once_with("input", "tap", "541", "530")
+
+    def test_deadline_bound_exact_tap_recovers_a_preserved_bottom_once(self) -> None:
+        target = DRIVER.UiNode(
+            {
+                "resource-id": (
+                    "com.myexternalbrain.chummer:id/"
+                    "creation-prerequisite-talent-selection"
+                ),
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[98,420][984,640]",
+            }
+        )
+        position = {"value": 3}
+        device = Mock(spec=DRIVER.Device)
+        device.wait_exact_resource_id_bidirectional.side_effect = (
+            lambda selector, **options: DRIVER.Device.wait_exact_resource_id_bidirectional(
+                device,
+                selector,
+                **options,
+            )
+        )
+        device._scroll_x_ratio.return_value = 0.5
+        device.swipe_down.side_effect = lambda **_: position.update(
+            value=max(0, position["value"] - 1)
+        )
+        device.hierarchy.side_effect = lambda **_: (
+            [target] if position["value"] == 0 else []
+        )
+        device.node_has_tappable_bounds.return_value = True
+        deadline = DRIVER.time.monotonic() + 100
+
+        with patch.object(DRIVER.time, "sleep"):
+            DRIVER.Device.tap_exact_resource_id_bidirectional(
+                device,
+                "creation-prerequisite-talent-selection",
+                timeout=90,
+                backward_scrolls=3,
+                forward_scrolls=4,
+                scroll_distance_ratio=0.22,
+                evidence_prefix="creation-prerequisite-talent-selection",
+                surface_name="Typed Talent selection row",
+                deadline=deadline,
+            )
+
+        self.assertEqual(0, position["value"])
+        self.assertEqual(3, device.swipe_down.call_count)
+        device.swipe_up.assert_not_called()
+        device.hierarchy.assert_called_once_with(deadline=deadline)
+        device.shell.assert_called_once_with(
+            "input",
+            "tap",
+            "541",
+            "530",
+            timeout=ANY,
+            deadline=deadline,
+        )
+
+    def test_deadline_bound_exact_tap_rejects_duplicate_and_missing_rows(self) -> None:
+        target = DRIVER.UiNode(
+            {
+                "resource-id": (
+                    "com.myexternalbrain.chummer:id/"
+                    "creation-prerequisite-talent-selection"
+                ),
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[98,420][984,640]",
+            }
+        )
+        deadline = 200.0
+        duplicate = Mock(spec=DRIVER.Device)
+        duplicate.wait_exact_resource_id_bidirectional.side_effect = (
+            lambda selector, **options: DRIVER.Device.wait_exact_resource_id_bidirectional(
+                duplicate,
+                selector,
+                **options,
+            )
+        )
+        duplicate._scroll_x_ratio.return_value = 0.5
+        duplicate.hierarchy.return_value = [target, target]
+        with (
+            patch.object(DRIVER.time, "monotonic", return_value=0.0),
+            self.assertRaisesRegex(RuntimeError, "cardinality 2"),
+        ):
+            DRIVER.Device.tap_exact_resource_id_bidirectional(
+                duplicate,
+                "creation-prerequisite-talent-selection",
+                backward_scrolls=0,
+                deadline=deadline,
+            )
+        duplicate.shell.assert_not_called()
+        duplicate.swipe_up.assert_not_called()
+        duplicate.swipe_down.assert_not_called()
+        duplicate.capture.assert_called_once_with(
+            "exact-resource-bidirectional-tap-cardinality-invalid",
+            deadline=deadline,
+        )
+
+        missing = Mock(spec=DRIVER.Device)
+        missing.wait_exact_resource_id_bidirectional.side_effect = (
+            lambda selector, **options: DRIVER.Device.wait_exact_resource_id_bidirectional(
+                missing,
+                selector,
+                **options,
+            )
+        )
+        missing._scroll_x_ratio.return_value = 0.5
+        missing.hierarchy.return_value = [
+            DRIVER.UiNode(
+                {
+                    "resource-id": (
+                        "com.myexternalbrain.chummer:id/"
+                        "creation-prerequisite-talent-selection-prefix-decoy"
+                    )
+                }
+            )
+        ]
+        missing.dismiss_system_ui_anr.return_value = False
+        with (
+            patch.object(DRIVER.time, "monotonic", side_effect=[0.0, 0.0, 0.0, 100.0]),
+            self.assertRaisesRegex(RuntimeError, "exactly one tappable"),
+        ):
+            DRIVER.Device.tap_exact_resource_id_bidirectional(
+                missing,
+                "creation-prerequisite-talent-selection",
+                timeout=1,
+                backward_scrolls=0,
+                forward_scrolls=0,
+                deadline=deadline,
+            )
+        missing.shell.assert_not_called()
+        missing.swipe_up.assert_not_called()
+        missing.swipe_down.assert_not_called()
+
+        disabled = Mock(spec=DRIVER.Device)
+        disabled.wait_exact_resource_id_bidirectional.side_effect = (
+            lambda selector, **options: DRIVER.Device.wait_exact_resource_id_bidirectional(
+                disabled,
+                selector,
+                **options,
+            )
+        )
+        disabled._scroll_x_ratio.return_value = 0.5
+        disabled.hierarchy.return_value = [
+            DRIVER.UiNode(
+                {
+                    "resource-id": (
+                        "com.myexternalbrain.chummer:id/"
+                        "creation-prerequisite-talent-selection"
+                    ),
+                    "enabled": "false",
+                    "clickable": "true",
+                    "bounds": "[98,420][984,640]",
+                }
+            )
+        ]
+        disabled.node_has_tappable_bounds.return_value = True
+        disabled.display_size.return_value = (1080, 2400)
+        with (
+            patch.object(DRIVER.time, "monotonic", return_value=0.0),
+            self.assertRaisesRegex(RuntimeError, "not enabled, clickable, and tappable"),
+        ):
+            DRIVER.Device.tap_exact_resource_id_bidirectional(
+                disabled,
+                "creation-prerequisite-talent-selection",
+                backward_scrolls=0,
+                deadline=deadline,
+            )
+        disabled.shell.assert_not_called()
+        disabled.swipe_up.assert_not_called()
+        disabled.swipe_down.assert_not_called()
+        disabled.capture.assert_called_once_with(
+            "exact-resource-bidirectional-tap-not-tappable",
+            deadline=deadline,
+        )
+
+    def test_deadline_bound_exact_tap_stops_before_or_during_acquisition(self) -> None:
+        expired = Mock(spec=DRIVER.Device)
+        expired.wait_exact_resource_id_bidirectional.side_effect = (
+            lambda selector, **options: DRIVER.Device.wait_exact_resource_id_bidirectional(
+                expired,
+                selector,
+                **options,
+            )
+        )
+        with (
+            patch.object(DRIVER.time, "monotonic", return_value=10.0),
+            self.assertRaises(DRIVER.AdbOperationDeadlineExceeded),
+        ):
+            DRIVER.Device.tap_exact_resource_id_bidirectional(
+                expired,
+                "creation-prerequisite-talent-selection",
+                backward_scrolls=3,
+                deadline=9.0,
+            )
+        expired.hierarchy.assert_not_called()
+        expired.swipe_down.assert_not_called()
+        expired.swipe_up.assert_not_called()
+        expired.shell.assert_not_called()
+
+        reverse_expired = Mock(spec=DRIVER.Device)
+        reverse_expired.wait_exact_resource_id_bidirectional.side_effect = (
+            lambda selector, **options: DRIVER.Device.wait_exact_resource_id_bidirectional(
+                reverse_expired,
+                selector,
+                **options,
+            )
+        )
+        reverse_expired._scroll_x_ratio.return_value = 0.5
+        with (
+            patch.object(DRIVER.time, "monotonic", side_effect=[0.0, 8.9]),
+            self.assertRaises(DRIVER.AdbOperationDeadlineExceeded),
+        ):
+            DRIVER.Device.tap_exact_resource_id_bidirectional(
+                reverse_expired,
+                "creation-prerequisite-talent-selection",
+                backward_scrolls=3,
+                deadline=9.0,
+            )
+        self.assertEqual(1, reverse_expired.swipe_down.call_count)
+        reverse_expired.hierarchy.assert_not_called()
+        reverse_expired.swipe_up.assert_not_called()
+        reverse_expired.shell.assert_not_called()
+
+        forward_expired = Mock(spec=DRIVER.Device)
+        forward_expired.wait_exact_resource_id_bidirectional.side_effect = (
+            lambda selector, **options: DRIVER.Device.wait_exact_resource_id_bidirectional(
+                forward_expired,
+                selector,
+                **options,
+            )
+        )
+        forward_expired._scroll_x_ratio.return_value = 0.5
+        forward_expired.hierarchy.return_value = [
+            DRIVER.UiNode(
+                {
+                    "resource-id": (
+                        "com.myexternalbrain.chummer:id/"
+                        "creation-prerequisite-talent-selection-prefix-decoy"
+                    )
+                }
+            )
+        ]
+        forward_expired.dismiss_system_ui_anr.return_value = False
+        with (
+            patch.object(
+                DRIVER.time,
+                "monotonic",
+                side_effect=[0.0, 0.0, 0.0, 8.9],
+            ),
+            self.assertRaises(DRIVER.AdbOperationDeadlineExceeded),
+        ):
+            DRIVER.Device.tap_exact_resource_id_bidirectional(
+                forward_expired,
+                "creation-prerequisite-talent-selection",
+                timeout=90,
+                backward_scrolls=0,
+                forward_scrolls=3,
+                deadline=9.0,
+            )
+        forward_expired.swipe_down.assert_not_called()
+        self.assertEqual(1, forward_expired.swipe_up.call_count)
+        forward_expired.shell.assert_not_called()
+
+        acquisition_expired = Mock(spec=DRIVER.Device)
+        acquisition_expired.wait_exact_resource_id_bidirectional.side_effect = (
+            lambda selector, **options: DRIVER.Device.wait_exact_resource_id_bidirectional(
+                acquisition_expired,
+                selector,
+                **options,
+            )
+        )
+        acquisition_expired._scroll_x_ratio.return_value = 0.5
+        acquisition_expired.hierarchy.side_effect = DRIVER.AdbOperationDeadlineExceeded(
+            "deadline expired during hierarchy"
+        )
+        with self.assertRaises(DRIVER.AdbOperationDeadlineExceeded):
+            DRIVER.Device.tap_exact_resource_id_bidirectional(
+                acquisition_expired,
+                "creation-prerequisite-talent-selection",
+                backward_scrolls=0,
+                deadline=DRIVER.time.monotonic() + 100,
+            )
+        acquisition_expired.swipe_down.assert_not_called()
+        acquisition_expired.swipe_up.assert_not_called()
+        acquisition_expired.shell.assert_not_called()
+
+    def test_deadline_bound_exact_tap_never_replays_an_unknown_tap_outcome(self) -> None:
+        target = DRIVER.UiNode(
+            {
+                "resource-id": (
+                    "com.myexternalbrain.chummer:id/"
+                    "creation-prerequisite-talent-selection"
+                ),
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[98,420][984,640]",
+            }
+        )
+        device = Mock(spec=DRIVER.Device)
+        device.wait_exact_resource_id_bidirectional.return_value = target
+        error = DRIVER.AdbTransportError(
+            {
+                "classification": "timeout-unknown-outcome",
+                "commandPolicy": "non-replayable",
+                "replay": {"performed": False, "suppressed": True},
+            },
+            Path("/tmp/deadline-bound-talent-tap.json"),
+        )
+        device.shell.side_effect = error
+        deadline = DRIVER.time.monotonic() + 100
+
+        with self.assertRaises(DRIVER.AdbTransportError) as raised:
+            DRIVER.Device.tap_exact_resource_id_bidirectional(
+                device,
+                "creation-prerequisite-talent-selection",
+                deadline=deadline,
+            )
+
+        self.assertIs(error, raised.exception)
+        device.wait_exact_resource_id_bidirectional.assert_called_once_with(
+            "creation-prerequisite-talent-selection",
+            timeout=90,
+            backward_scrolls=24,
+            forward_scrolls=24,
+            scroll_distance_ratio=0.22,
+            evidence_prefix="exact-resource-bidirectional-tap",
+            surface_name="Exact resource-id control",
+            deadline=deadline,
+        )
+        self.assertEqual(1, device.shell.call_count)
+
+    def test_typed_talent_transition_is_one_exact_deadline_bound_action(self) -> None:
+        source = CREATION_DRIVER_PATH.read_text(encoding="utf-8")
+        block = source[
+            source.index(
+                'typed_authority_deadline = progress.active_phase_deadline('
+            ) : source.index("active_talent_option_navigation:")
+        ]
+        self.assertEqual(1, block.count("device.tap_exact_resource_id_bidirectional("))
+        self.assertEqual(1, block.count("device.wait_exact_resource_id_bidirectional("))
+        self.assertNotIn("device.tap(", block)
+        self.assertNotIn("device.wait(", block)
+        self.assertIn('"typed-authority-options"', block)
+        self.assertEqual(2, block.count("deadline=typed_authority_deadline"))
+        self.assertIn("backward_scrolls=22", block)
+        self.assertIn("forward_scrolls=22", block)
+        self.assertIn("backward_scrolls=0", block)
+        self.assertIn("forward_scrolls=0", block)
+        self.assertIn("require_tappable=False", block)
 
     def test_exact_bidirectional_wait_does_not_scroll_after_empty_hierarchy(self) -> None:
         target = DRIVER.UiNode(
