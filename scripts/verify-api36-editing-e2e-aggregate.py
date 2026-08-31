@@ -45,6 +45,10 @@ TALENT_REACQUISITION_PHASES = (
     "talent-active-skill-reselection",
     "talent-active-grant-completion",
     "talent-skill-group-grant",
+    "talent-skill-group-preservation",
+    "talent-skill-group-reset",
+    "talent-skill-group-reselection",
+    "talent-skill-group-grant-completion",
 )
 CREATION_METHOD_REACQUISITION_DIRECTION = "down"
 CREATION_METHOD_REACQUISITION_DISTANCE_RATIO = 0.60
@@ -66,6 +70,10 @@ CREATION_PHASE_BUDGETS_MS = {
     "talent-active-preview": 150_000,
     "talent-skill-group-selection": 150_000,
     "talent-skill-group-grant": 150_000,
+    "talent-skill-group-preservation": 150_000,
+    "talent-skill-group-reset": 150_000,
+    "talent-skill-group-reselection": 150_000,
+    "talent-skill-group-grant-completion": 180_000,
     "preview-confirm": 150_000,
     "same-process-reopen": 90_000,
     "resources-preview-confirm": 150_000,

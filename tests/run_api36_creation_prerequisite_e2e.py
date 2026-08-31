@@ -181,6 +181,13 @@ PHASE_BUDGET_MS = {
     # bounded transition, not part of the already-complete preview proof.
     "talent-skill-group-selection": 150_000,
     "talent-skill-group-grant": 150_000,
+    "talent-skill-group-preservation": 150_000,
+    "talent-skill-group-reset": 150_000,
+    "talent-skill-group-reselection": 150_000,
+    # Skill-group completion performs the same distinct commit/return and
+    # SelectionId reacquisition as active-skill completion. It must not borrow
+    # the tail of the already-proven choose/preserve/reset/reselect sequence.
+    "talent-skill-group-grant-completion": 180_000,
     "preview-confirm": 150_000,
     "same-process-reopen": 90_000,
     "resources-preview-confirm": 150_000,
@@ -7491,24 +7498,30 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         scan_observer=progress.record_scan,
         scan_id_prefix="talent-skill-group-grant",
         phase_deadline_provider=progress.active_phase_deadline,
+        continuation_phase_advances=(
+            lambda: progress.advance("talent-skill-group-preservation"),
+            lambda: progress.advance("talent-skill-group-reset"),
+            lambda: progress.advance("talent-skill-group-reselection"),
+        ),
     )
     skill_group_grant = skill_group_grant_proof.receipt
     skill_group_selected_option_ids = tuple(
         skill_group_grant["selectedOptionAutomationIds"]
     )
-    skill_group_grant_deadline = progress.active_phase_deadline(
-        "talent-skill-group-grant"
+    progress.advance("talent-skill-group-grant-completion")
+    skill_group_grant_completion_deadline = progress.active_phase_deadline(
+        "talent-skill-group-grant-completion"
     )
     complete_talent_grant_to_prerequisite(
         device,
         skill_group_grant_proof.navigation,
         skill_group_grant_proof.current_viewport,
         scan_observer=progress.record_scan,
-        deadline=skill_group_grant_deadline,
+        deadline=skill_group_grant_completion_deadline,
     )
     typed_selection_ids["talent"] = read_exact_skill_group_talent_selection_id(
         device,
-        deadline=skill_group_grant_deadline,
+        deadline=skill_group_grant_completion_deadline,
     )
     if (
         not typed_selection_ids["talent"]

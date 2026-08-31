@@ -1426,6 +1426,14 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 "talent-active-grant-completion",
                 "talent-active-preview",
             ),
+            (
+                "talent-skill-group-reselection",
+                "talent-skill-group-grant-completion",
+            ),
+            (
+                "talent-skill-group-grant-completion",
+                "preview-confirm",
+            ),
         )
         for active_phase, next_phase in cases:
             with self.subTest(active_phase=active_phase), tempfile.TemporaryDirectory() as temporary, mock.patch(
@@ -1626,8 +1634,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             driver.PHASE_BUDGET_MS["prerequisite-authority-inventory"],
         )
         self.assertEqual(1_800_000, driver.TOTAL_PERFORMANCE_TARGET_MS)
-        self.assertEqual(21, len(driver.PHASE_ORDER))
-        self.assertEqual(11, driver.TIMING_ROUNDING_TOLERANCE_MS)
+        self.assertEqual(25, len(driver.PHASE_ORDER))
+        self.assertEqual(13, driver.TIMING_ROUNDING_TOLERANCE_MS)
         self.assertLess(navigation_start, cold_launch)
         self.assertLess(cold_launch, dialog_ready)
         self.assertLess(dialog_ready, authority_start)
@@ -1680,13 +1688,17 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             driver.TIMING_ROUNDING_TOLERANCE_MS,
             aggregate.CREATION_TIMING_ROUNDING_TOLERANCE_MS,
         )
-        self.assertEqual(11, driver.TIMING_ROUNDING_TOLERANCE_MS)
+        self.assertEqual(13, driver.TIMING_ROUNDING_TOLERANCE_MS)
         for phase_id in (
             "talent-active-skill-grant",
             "talent-active-grant-completion",
             "talent-active-preview",
             "talent-skill-group-selection",
             "talent-skill-group-grant",
+            "talent-skill-group-preservation",
+            "talent-skill-group-reset",
+            "talent-skill-group-reselection",
+            "talent-skill-group-grant-completion",
         ):
             with self.subTest(phase_id=phase_id):
                 self.assertIn(phase_id, aggregate.CREATION_PHASE_BUDGETS_MS)
@@ -7991,18 +8003,30 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "talent-active-grant-completion",
             "talent-active-preview",
             "talent-skill-group-grant",
+            "talent-skill-group-preservation",
+            "talent-skill-group-reset",
+            "talent-skill-group-reselection",
+            "talent-skill-group-grant-completion",
             "preview-confirm",
         )
         for phase_id in tuple(
             phase_id
             for phase_id in phase_ids
-            if phase_id != "talent-active-grant-completion"
+            if phase_id
+            not in {
+                "talent-active-grant-completion",
+                "talent-skill-group-grant-completion",
+            }
         ):
             with self.subTest(phase_id=phase_id):
                 self.assertEqual(150_000, driver.PHASE_BUDGET_MS[phase_id])
         self.assertEqual(
             180_000,
             driver.PHASE_BUDGET_MS["talent-active-grant-completion"],
+        )
+        self.assertEqual(
+            180_000,
+            driver.PHASE_BUDGET_MS["talent-skill-group-grant-completion"],
         )
 
         typed = source.index('progress.advance("typed-authority-options")')
@@ -8022,6 +8046,18 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             'progress.advance("talent-skill-group-selection")'
         )
         skill_group = source.index('progress.advance("talent-skill-group-grant")')
+        skill_group_preservation = source.index(
+            'progress.advance("talent-skill-group-preservation")'
+        )
+        skill_group_reset = source.index(
+            'progress.advance("talent-skill-group-reset")'
+        )
+        skill_group_reselection = source.index(
+            'progress.advance("talent-skill-group-reselection")'
+        )
+        skill_group_completion = source.index(
+            'progress.advance("talent-skill-group-grant-completion")'
+        )
         final_preview = source.index('progress.advance("preview-confirm")')
         self.assertEqual(
             [
@@ -8034,6 +8070,10 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 active_preview,
                 skill_group_selection,
                 skill_group,
+                skill_group_preservation,
+                skill_group_reset,
+                skill_group_reselection,
+                skill_group_completion,
                 final_preview,
             ],
             sorted(
@@ -8047,6 +8087,10 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                     active_preview,
                     skill_group_selection,
                     skill_group,
+                    skill_group_preservation,
+                    skill_group_reset,
+                    skill_group_reselection,
+                    skill_group_completion,
                     final_preview,
                 )
             ),
@@ -8119,8 +8163,43 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             skill_group,
             source.index("skill_group_grant_proof = choose_and_prove_talent_grant("),
         )
+        skill_group_choice_block = source[
+            source.index("skill_group_grant_proof = choose_and_prove_talent_grant("):
+            skill_group_completion
+        ]
+        for continuation_phase in (
+            "talent-skill-group-preservation",
+            "talent-skill-group-reset",
+            "talent-skill-group-reselection",
+        ):
+            with self.subTest(continuation_phase=continuation_phase):
+                self.assertEqual(
+                    1,
+                    skill_group_choice_block.count(
+                        f'lambda: progress.advance("{continuation_phase}")'
+                    ),
+                )
+        skill_group_completion_deadline = source.index(
+            "skill_group_grant_completion_deadline = progress.active_phase_deadline("
+        )
+        skill_group_close = source.index(
+            "complete_talent_grant_to_prerequisite(",
+            skill_group_completion,
+        )
+        skill_group_current_viewport = source.index(
+            "skill_group_grant_proof.current_viewport",
+            skill_group_close,
+        )
+        skill_group_selection_read = source.index(
+            'typed_selection_ids["talent"] = read_exact_skill_group_talent_selection_id('
+        )
+        self.assertLess(skill_group_completion, skill_group_completion_deadline)
+        self.assertLess(skill_group_completion_deadline, skill_group_close)
+        self.assertLess(skill_group_close, skill_group_current_viewport)
+        self.assertLess(skill_group_current_viewport, skill_group_selection_read)
+        self.assertLess(skill_group_selection_read, final_preview)
         self.assertLess(
-            source.index("skill_group_grant_proof.current_viewport"),
+            skill_group_completion,
             final_preview,
         )
         self.assertLess(final_preview, source.index("skill_group_plan_digest ="))
@@ -8135,7 +8214,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
     ) -> None:
         source = inspect.getsource(driver.execute)
         start = source.index(
-            "skill_group_grant_deadline = progress.active_phase_deadline("
+            "skill_group_grant_completion_deadline = progress.active_phase_deadline("
         )
         end = source.index(
             'if (\n        not typed_selection_ids["talent"]',
@@ -8143,14 +8222,20 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         )
         block = source[start:end]
 
-        self.assertEqual(150_000, driver.PHASE_BUDGET_MS["talent-skill-group-grant"])
-        self.assertIn('"talent-skill-group-grant"', block)
+        self.assertEqual(
+            180_000,
+            driver.PHASE_BUDGET_MS["talent-skill-group-grant-completion"],
+        )
+        self.assertIn('"talent-skill-group-grant-completion"', block)
         self.assertEqual(1, block.count("complete_talent_grant_to_prerequisite("))
         self.assertEqual(
             1,
             block.count("read_exact_skill_group_talent_selection_id("),
         )
-        self.assertEqual(2, block.count("deadline=skill_group_grant_deadline"))
+        self.assertEqual(
+            2,
+            block.count("deadline=skill_group_grant_completion_deadline"),
+        )
         self.assertNotIn("node_text(", block)
         self.assertNotIn("device.wait(", block)
         self.assertNotIn("device.wait_for_single_exact_resource_id(", block)
