@@ -353,15 +353,27 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         ]
         skill_group = source[
             source.index("skill_group_plan_digest = require_exact_preview_talent_grant_plan(") :
-            source.index("# The pushed preview route can inherit")
+            source.index("preview_digest = str(preview_proof", source.index(
+                "skill_group_plan_digest = require_exact_preview_talent_grant_plan("
+            ))
         ]
         self.assertIn(
             'deadline=progress.active_phase_deadline("talent-active-preview")',
             active,
         )
         self.assertIn(
-            'deadline=progress.active_phase_deadline("preview-confirm")',
+            "deadline=preview_confirm_deadline",
             skill_group,
+        )
+        preview_confirm = source[
+            source.index('progress.advance("preview-confirm")') :
+            source.index("skill_group_plan_digest = require_exact_preview_talent_grant_plan(")
+        ]
+        self.assertEqual(
+            1,
+            preview_confirm.count(
+                'preview_confirm_deadline = progress.active_phase_deadline("preview-confirm")'
+            ),
         )
 
     def test_preview_talent_plan_rejects_digest_ambiguity_and_malformed_values(self) -> None:

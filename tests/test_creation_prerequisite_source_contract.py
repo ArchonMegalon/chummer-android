@@ -32,6 +32,22 @@ AGGREGATE_SPEC.loader.exec_module(aggregate)
 
 class CreationPrerequisiteSourceContractTests(unittest.TestCase):
     @staticmethod
+    def canonical_node(
+        selector: str,
+        **attributes: str,
+    ) -> driver.shared.UiNode:
+        values = {
+            "package": driver.shared.PACKAGE,
+            "resource-id": f"{driver.shared.PACKAGE}:id/{selector}",
+            "text": selector,
+            "enabled": "true",
+            "clickable": "true",
+            "bounds": "[100,300][900,500]",
+        }
+        values.update(attributes)
+        return driver.shared.UiNode(values)
+
+    @staticmethod
     def priority_rank_origin(
         nodes: list[driver.shared.UiNode],
         *,
@@ -47,6 +63,14 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             hierarchy_durations_ms=hierarchy_durations_ms,
             empty_hierarchy_reads=empty_hierarchy_reads,
         )
+
+    @classmethod
+    def dashboard_route_nodes(cls) -> list[driver.shared.UiNode]:
+        return [
+            cls.canonical_node("phone-runner-create"),
+            cls.canonical_node("creation-wizard-dashboard"),
+            cls.canonical_node("build-save-runner"),
+        ]
 
     @staticmethod
     def record_required_method_reacquisition(
@@ -2787,6 +2811,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 self.forward_deadlines: list[float] = []
                 self.reverse_deadlines: list[float] = []
                 self.system_ui_deadlines: list[float] = []
+                self.bounds_deadlines: list[float] = []
 
             def hierarchy(self, *, deadline):
                 self.hierarchy_deadlines.append(deadline)
@@ -2808,8 +2833,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 self.system_ui_deadlines.append(deadline)
                 return False
 
-            @staticmethod
-            def node_has_tappable_bounds(node):
+            def node_has_tappable_bounds(self, node, *, deadline):
+                self.bounds_deadlines.append(deadline)
                 return node is target
 
             @staticmethod
@@ -2835,6 +2860,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertEqual([deadline] * 3, device.forward_deadlines)
         self.assertEqual([deadline], device.reverse_deadlines)
         self.assertEqual({deadline}, set(device.system_ui_deadlines))
+        self.assertEqual([deadline], device.bounds_deadlines)
 
     def test_talent_option_recovery_has_fresh_transient_retry_budgets(self) -> None:
         resource_id = "creation-prerequisite-talent-active-skill-option-perception"
@@ -3067,6 +3093,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 self.hierarchy_deadlines: list[float] = []
                 self.swipe_deadlines: list[float] = []
                 self.system_ui_deadlines: list[float] = []
+                self.bounds_deadlines: list[float] = []
 
             def hierarchy(self, *, deadline):
                 self.hierarchy_deadlines.append(deadline)
@@ -3084,8 +3111,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 self.system_ui_deadlines.append(deadline)
                 return False
 
-            @staticmethod
-            def node_has_tappable_bounds(node):
+            def node_has_tappable_bounds(self, node, *, deadline):
+                self.bounds_deadlines.append(deadline)
                 return node is target
 
             @staticmethod
@@ -3109,6 +3136,100 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertEqual([deadline, deadline], device.hierarchy_deadlines)
         self.assertEqual([deadline], device.swipe_deadlines)
         self.assertEqual([deadline], device.system_ui_deadlines)
+        self.assertEqual([deadline], device.bounds_deadlines)
+
+    def test_grouped_talent_bounds_deadline_expiry_authorizes_no_gesture_or_action(
+        self,
+    ) -> None:
+        deadline = driver.time.monotonic() + 30
+        resource_id = "creation-prerequisite-talent-grant-authority"
+        target = driver.shared.UiNode(
+            {
+                "resource-id": resource_id,
+                "bounds": "[53,350][1028,550]",
+            }
+        )
+        error = driver.shared.AdbOperationDeadlineExceeded(
+            "phase deadline expired while resolving display bounds"
+        )
+        device = mock.Mock()
+        device.hierarchy.return_value = [target]
+        device.node_has_tappable_bounds.side_effect = error
+
+        with self.assertRaises(driver.shared.AdbOperationDeadlineExceeded):
+            driver.reacquire_exact_talent_state_group(
+                device,
+                (resource_id,),
+                0,
+                0,
+                0,
+                evidence_prefix="bounds-deadline",
+                deadline=deadline,
+            )
+
+        device.hierarchy.assert_called_once_with(deadline=deadline)
+        device.node_has_tappable_bounds.assert_called_once_with(
+            target,
+            deadline=deadline,
+        )
+        device.swipe_down.assert_not_called()
+        device.swipe_up.assert_not_called()
+        device.shell.assert_not_called()
+
+    def test_measured_talent_tap_recheck_uses_deadline_and_never_taps_after_expiry(
+        self,
+    ) -> None:
+        deadline = driver.time.monotonic() + 30
+        resource_id = "creation-prerequisite-talent-grant-complete"
+        target = driver.shared.UiNode(
+            {
+                "resource-id": resource_id,
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[53,350][1028,550]",
+            }
+        )
+        snapshot = driver.TalentStateGroupSnapshot(
+            nodes=[target],
+            resources={resource_id: target},
+            logical_viewport=0,
+            reacquisition_direction="none",
+            reacquisition_swipes=0,
+        )
+        device = mock.Mock()
+        device.node_has_tappable_bounds.side_effect = (
+            driver.shared.AdbOperationDeadlineExceeded(
+                "phase deadline expired while rechecking tap bounds"
+            )
+        )
+        navigation = {
+            "endViewport": 0,
+            "resourceViewports": {resource_id: 0},
+        }
+
+        with mock.patch.object(
+            driver,
+            "reacquire_exact_talent_state_group",
+            return_value=snapshot,
+        ) as reacquire, self.assertRaises(
+            driver.shared.AdbOperationDeadlineExceeded
+        ):
+            driver.tap_exact_measured_talent_resource(
+                device,
+                resource_id,
+                navigation,
+                0,
+                evidence_prefix="tap-bounds-deadline",
+                deadline=deadline,
+            )
+
+        reacquire.assert_called_once()
+        self.assertEqual(deadline, reacquire.call_args.kwargs["deadline"])
+        device.node_has_tappable_bounds.assert_called_once_with(
+            target,
+            deadline=deadline,
+        )
+        device.shell.assert_not_called()
 
     def test_grouped_talent_boundary_uses_full_accessibility_signature(self) -> None:
         resource_id = "creation-prerequisite-talent-grant-authority"
@@ -4666,37 +4787,19 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             device.shell.call_args_list,
         )
 
-    def test_route_and_persisted_authority_reads_reset_inherited_viewports(self) -> None:
+    def test_preview_routes_use_bounded_exact_scans_and_persisted_reads_reset(self) -> None:
         main_source = inspect.getsource(driver.execute)
         persisted_source = inspect.getsource(driver.require_exact_restored_authority_option)
 
-        preview_route = main_source.index(
-            'device.wait("creation-prerequisite-preview-page", timeout=60)'
-        )
-        preview_reset = main_source.index(
-            "shared.reset_scroll_to_top(device, swipes=22)",
-            preview_route,
-        )
-        preview_digest = main_source.index(
-            '"creation-prerequisite-preview-digest"',
-            preview_reset,
-        )
-        self.assertLess(preview_route, preview_reset)
-        self.assertLess(preview_reset, preview_digest)
-
-        receipt_route = main_source.index(
-            'device.wait("creation-prerequisite-confirm-receipt"'
-        )
-        receipt_reset = main_source.index(
-            "shared.reset_scroll_to_top(device, swipes=22)",
-            receipt_route,
-        )
-        receipt_read = main_source.index(
-            'node_text(device, "creation-prerequisite-confirm-receipt"',
-            receipt_reset,
-        )
-        self.assertLess(receipt_route, receipt_reset)
-        self.assertLess(receipt_reset, receipt_read)
+        self.assertIn("open_exact_prerequisite_preview(", main_source)
+        self.assertIn("require_exact_preview_talent_grant_plan(", main_source)
+        self.assertIn("read_exact_confirmed_receipt(", main_source)
+        preview_slice = main_source[
+            main_source.index('progress.advance("preview-confirm")') :
+            main_source.index('progress.advance("same-process-reopen")')
+        ]
+        self.assertNotIn("shared.reset_scroll_to_top", preview_slice)
+        self.assertNotIn("node_text(", preview_slice)
 
         persisted_reset = persisted_source.index(
             "shared.reset_scroll_to_top(device, swipes=max_scrolls)"
@@ -5794,7 +5897,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             2,
             dashboard_source.count("distance_ratio=DASHBOARD_SCAN_GESTURE_RATIO"),
         )
-        self.assertIn("max_scrolls=DASHBOARD_SCAN_MAX_SCROLLS", dashboard_source)
+        self.assertIn("max_scrolls = DASHBOARD_SCAN_MAX_SCROLLS", dashboard_source)
+        self.assertIn("max_scrolls=max_scrolls", dashboard_source)
         self.assertIn("acquire_stable_start_origin(", dashboard_source)
         self.assertIn("max_reverse_swipes=8", dashboard_source)
         self.assertIn("stable_repeats=2", dashboard_source)
@@ -6039,7 +6143,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "bounds": "[10,100][900,300]",
         })
         device = mock.Mock()
-        origin = self.priority_rank_origin([binding, method])
+        route_nodes = self.dashboard_route_nodes()
+        origin = self.priority_rank_origin([*route_nodes, binding, method])
         with mock.patch.object(
             driver,
             "acquire_stable_start_origin",
@@ -6047,7 +6152,9 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         ) as acquire, mock.patch.object(
             driver,
             "scan_forward_with_receipt",
-            return_value=driver.StableViewportScan([[binding, method]], 2),
+            return_value=driver.StableViewportScan(
+                [[*route_nodes, binding, method]], 2
+            ),
         ) as scan:
             driver.assert_uncreated_advanced_editor_gated(
                 device,
@@ -8004,6 +8111,922 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         blank.tap.assert_not_called()
         blank.shell.assert_not_called()
 
+    def test_preview_confirm_delegates_one_exact_deadline_bound_attributes_round_trip(
+        self,
+    ) -> None:
+        source = inspect.getsource(driver.execute)
+        start = source.index('progress.advance("preview-confirm")')
+        end = source.index("preview_proof: dict[str, object] = {}", start)
+        block = source[start:end]
+
+        self.assertEqual(150_000, driver.PHASE_BUDGET_MS["preview-confirm"])
+        self.assertEqual(
+            1,
+            block.count(
+                'preview_confirm_deadline = progress.active_phase_deadline("preview-confirm")'
+            ),
+        )
+        self.assertEqual(
+            1,
+            block.count(
+                "attributes_before = require_exact_attributes_category_round_trip("
+            ),
+        )
+        self.assertEqual(2, block.count("deadline=preview_confirm_deadline"))
+        for forbidden in (
+            "node_text(",
+            "device.tap(",
+            "device.wait(",
+            "device.back(",
+        ):
+            self.assertNotIn(forbidden, block)
+
+        round_trip = inspect.getsource(
+            driver.require_exact_attributes_category_round_trip
+        )
+        self.assertEqual(
+            1,
+            round_trip.count("acquire_exact_attributes_category_authority("),
+        )
+        self.assertEqual(1, round_trip.count("require_exact_zero_gesture_route("))
+        self.assertEqual(1, round_trip.count("device.back(deadline=deadline)"))
+        self.assertEqual(
+            1,
+            round_trip.count("require_exact_attributes_post_back_observation("),
+        )
+        self.assertEqual(1, round_trip.count("device.shell("))
+        for forbidden in (
+            "node_text(",
+            "device.tap(",
+            "device.wait(",
+        ):
+            self.assertNotIn(forbidden, round_trip)
+
+    def test_preview_confirm_keeps_one_original_150_second_denominator(
+        self,
+    ) -> None:
+        source = inspect.getsource(driver.execute)
+        confirm = source.index('progress.advance("preview-confirm")')
+        receipt_validation = source.index(
+            'if confirmed_revisions["contentRevision"] <= 0'
+        )
+        back = source.index("dashboard_deadline = tap_exact_confirmed_receipt_back(")
+        self.assertEqual(150_000, driver.PHASE_BUDGET_MS["preview-confirm"])
+        self.assertLess(confirm, receipt_validation)
+        self.assertLess(receipt_validation, back)
+        post_receipt = source.index(
+            'receipt_text = str(confirmed_receipt["receiptText"])'
+        )
+        self.assertNotIn("device.", source[post_receipt:back])
+        self.assertNotIn("preview-authority", driver.PHASE_BUDGET_MS)
+        self.assertNotIn("post-confirm-dashboard", driver.PHASE_BUDGET_MS)
+        self.assertEqual(3.0, driver.PERSISTENT_PREVIEW_ACTION_TIMEOUT_SECONDS)
+        self.assertEqual(50.0, driver.CONFIRMED_RECEIPT_SCAN_TIMEOUT_SECONDS)
+        self.assertEqual(30.0, driver.POST_CONFIRM_DASHBOARD_PROOF_TIMEOUT_SECONDS)
+        self.assertEqual(
+            83.0,
+            driver.CONFIRM_DOWNSTREAM_RESERVE_SECONDS,
+        )
+        self.assertEqual(
+            driver.CONFIRMED_RECEIPT_SCAN_TIMEOUT_SECONDS
+            + driver.PERSISTENT_PREVIEW_ACTION_TIMEOUT_SECONDS
+            + driver.POST_CONFIRM_DASHBOARD_PROOF_TIMEOUT_SECONDS,
+            driver.CONFIRM_DOWNSTREAM_RESERVE_SECONDS,
+        )
+
+    def test_exact_attributes_round_trip_uses_one_observed_node_and_preserves_raw_bytes(
+        self,
+    ) -> None:
+        deadline = driver.time.monotonic() + 30
+        authority = "Rank A · Attributes 24 "
+        before = self.canonical_node(
+            "creation-prerequisite-category-attributes",
+            text=authority,
+        )
+        # The post-Back authority is deliberately noninteractive. The
+        # fine read-only scan compares its bytes without authorizing a tap.
+        after = self.canonical_node(
+            "creation-prerequisite-category-attributes",
+            text=authority,
+            enabled="false",
+            clickable="false",
+        )
+        category_route = self.canonical_node(
+            "creation-prerequisite-category-page"
+        )
+        prerequisite_route = self.canonical_node("creation-prerequisite-page")
+        disabled = self.canonical_node(
+            "creation-prerequisite-attributes-disabled",
+            enabled="false",
+            clickable="false",
+        )
+        device = mock.Mock(spec=driver.shared.Device)
+        device.hierarchy.return_value = [before]
+        device.wait_for_single_exact_resource_id.return_value = category_route
+        device.node_has_tappable_bounds.return_value = True
+        device.dismiss_system_ui_anr.return_value = False
+
+        with mock.patch.object(
+            driver,
+            "scan_forward_until_stable",
+            return_value=[
+                [prerequisite_route, after],
+                [disabled],
+                [disabled],
+            ],
+        ) as scan:
+            actual = driver.require_exact_attributes_category_round_trip(
+                device,
+                deadline=deadline,
+            )
+
+        self.assertEqual(authority, actual)
+        device.hierarchy.assert_called_once_with(deadline=deadline)
+        device.swipe_down.assert_not_called()
+        device.swipe_up.assert_not_called()
+        device.node_has_tappable_bounds.assert_any_call(before, deadline=deadline)
+        scan.assert_called_once_with(
+            device,
+            scan_id="creation-prerequisite-attributes-post-back",
+            max_scrolls=12,
+            distance_ratio=0.22,
+            stable_repeats=2,
+            max_consecutive_empty_reads=3,
+            delay_seconds=0.0,
+            deadline=deadline,
+        )
+        self.assertEqual(1, device.shell.call_count)
+        self.assertEqual(
+            ("input", "tap", "500", "400"),
+            device.shell.call_args_list[0].args,
+        )
+        for call in device.shell.call_args_list:
+            self.assertEqual(deadline, call.kwargs["deadline"])
+        self.assertEqual(1, device.wait_for_single_exact_resource_id.call_count)
+        for call in device.wait_for_single_exact_resource_id.call_args_list:
+            self.assertIs(call.kwargs["scroll"], False)
+            self.assertEqual(0, call.kwargs["max_scrolls"])
+            self.assertEqual(deadline, call.kwargs["deadline"])
+        device.tap.assert_not_called()
+        device.wait.assert_not_called()
+        device.back.assert_called_once_with(deadline=deadline)
+
+    def test_exact_attributes_pre_tap_authority_fails_closed_without_action(
+        self,
+    ) -> None:
+        deadline = driver.time.monotonic() + 30
+        exact = self.canonical_node("creation-prerequisite-category-attributes")
+        failures = (
+            ("cardinality", [exact, exact], RuntimeError),
+            ("missing", [[], [], [], [], []], RuntimeError),
+            (
+                "deadline",
+                driver.shared.AdbOperationDeadlineExceeded(
+                    "phase deadline expired during Attributes acquisition"
+                ),
+                driver.shared.AdbOperationDeadlineExceeded,
+            ),
+        )
+        for name, observations, error_type in failures:
+            with self.subTest(failure=name):
+                device = mock.Mock(spec=driver.shared.Device)
+                if isinstance(observations, BaseException):
+                    device.hierarchy.side_effect = observations
+                elif observations and isinstance(observations[0], list):
+                    device.hierarchy.side_effect = observations
+                else:
+                    device.hierarchy.return_value = observations
+                with self.assertRaises(error_type):
+                    driver.require_exact_attributes_category_round_trip(
+                        device,
+                        deadline=deadline,
+                    )
+                device.shell.assert_not_called()
+                device.wait_for_single_exact_resource_id.assert_not_called()
+
+        cases = (
+            (
+                "foreign-package-decoy",
+                self.canonical_node(
+                    "creation-prerequisite-category-attributes",
+                    package="decoy.package",
+                ),
+                True,
+                "canonical Chummer resource identity",
+            ),
+            (
+                "disabled",
+                self.canonical_node(
+                    "creation-prerequisite-category-attributes",
+                    enabled="false",
+                ),
+                True,
+                "not enabled and clickable",
+            ),
+            (
+                "nonclickable",
+                self.canonical_node(
+                    "creation-prerequisite-category-attributes",
+                    clickable="false",
+                ),
+                True,
+                "not enabled and clickable",
+            ),
+            (
+                "out-of-bounds",
+                self.canonical_node(
+                    "creation-prerequisite-category-attributes",
+                    bounds="[100,-300][900,-100]",
+                ),
+                False,
+                "not tappable within",
+            ),
+            (
+                "blank",
+                self.canonical_node(
+                    "creation-prerequisite-category-attributes",
+                    text="   ",
+                    **{"content-desc": ""},
+                ),
+                True,
+                "blank authority",
+            ),
+        )
+        for name, node, tappable, expected in cases:
+            with self.subTest(name=name):
+                device = mock.Mock(spec=driver.shared.Device)
+                device.hierarchy.return_value = [node]
+                device.node_has_tappable_bounds.return_value = tappable
+                with self.assertRaisesRegex(RuntimeError, expected):
+                    driver.require_exact_attributes_category_round_trip(
+                        device,
+                        deadline=deadline,
+                    )
+                device.shell.assert_not_called()
+                device.wait_for_single_exact_resource_id.assert_not_called()
+                self.assertGreaterEqual(device.hierarchy.call_count, 1)
+                for call in device.hierarchy.call_args_list:
+                    self.assertEqual(deadline, call.kwargs["deadline"])
+
+    def test_attributes_unknown_open_outcome_is_not_replayed_or_followed_by_navigation(
+        self,
+    ) -> None:
+        deadline = driver.time.monotonic() + 30
+        node = self.canonical_node("creation-prerequisite-category-attributes")
+        receipt = {
+            "classification": "timeout-unknown-outcome",
+            "commandPolicy": "non-replayable",
+            "replay": {"performed": False, "suppressed": True},
+        }
+        error = driver.shared.AdbTransportError(
+            receipt,
+            Path("attributes-open-timeout-unknown-outcome.json"),
+        )
+        device = mock.Mock(spec=driver.shared.Device)
+        device.hierarchy.return_value = [node]
+        device.node_has_tappable_bounds.return_value = True
+        device.shell.side_effect = error
+
+        with self.assertRaises(driver.shared.AdbTransportError):
+            driver.require_exact_attributes_category_round_trip(
+                device,
+                deadline=deadline,
+            )
+
+        device.shell.assert_called_once()
+        device.wait_for_single_exact_resource_id.assert_not_called()
+        device.hierarchy.assert_called_once_with(deadline=deadline)
+        device.back.assert_not_called()
+
+    def test_exact_attributes_routes_reject_decoys_without_later_mutation(
+        self,
+    ) -> None:
+        deadline = driver.time.monotonic() + 30
+        attributes = self.canonical_node(
+            "creation-prerequisite-category-attributes"
+        )
+        route_decoy = self.canonical_node(
+            "creation-prerequisite-category-page",
+            package="decoy.package",
+        )
+        device = mock.Mock(spec=driver.shared.Device)
+        device.hierarchy.return_value = [attributes]
+        device.wait_for_single_exact_resource_id.return_value = route_decoy
+        device.node_has_tappable_bounds.return_value = True
+
+        with self.assertRaisesRegex(RuntimeError, "canonical Chummer resource identity"):
+            driver.require_exact_attributes_category_round_trip(
+                device,
+                deadline=deadline,
+            )
+
+        device.shell.assert_called_once()
+        device.hierarchy.assert_called_once_with(deadline=deadline)
+        device.back.assert_not_called()
+
+    def test_post_back_attributes_scan_rejects_duplicate_and_decoy_authority(
+        self,
+    ) -> None:
+        deadline = driver.time.monotonic() + 30
+        route = self.canonical_node("creation-prerequisite-page")
+        attributes = self.canonical_node(
+            "creation-prerequisite-category-attributes",
+            text="Rank A · Attributes 24",
+        )
+        disabled = self.canonical_node("creation-prerequisite-attributes-disabled")
+        cases = (
+            (
+                "duplicate",
+                [[route, attributes, attributes], [disabled], [disabled]],
+                "cardinality 2",
+            ),
+            (
+                "decoy",
+                [[route, driver.shared.UiNode({
+                    **attributes.attributes,
+                    "package": "decoy.package",
+                })], [disabled], [disabled]],
+                "canonical Chummer resource identity",
+            ),
+        )
+        for name, screens, expected in cases:
+            with self.subTest(name=name):
+                device = mock.Mock(spec=driver.shared.Device)
+                with mock.patch.object(
+                    driver,
+                    "scan_forward_until_stable",
+                    return_value=screens,
+                ), self.assertRaisesRegex(RuntimeError, expected):
+                    driver.require_exact_attributes_post_back_observation(
+                        device,
+                        "Rank A · Attributes 24",
+                        deadline=deadline,
+                    )
+                device.shell.assert_not_called()
+                device.back.assert_not_called()
+
+    def test_attributes_post_back_read_is_read_only_and_byte_exact(self) -> None:
+        deadline = driver.time.monotonic() + 30
+        after = self.canonical_node(
+            "creation-prerequisite-category-attributes",
+            text="Rank A · Attributes 24 ",
+            enabled="false",
+            clickable="false",
+        )
+        route = self.canonical_node("creation-prerequisite-page")
+        disabled = self.canonical_node(
+            "creation-prerequisite-attributes-disabled",
+            enabled="false",
+            clickable="false",
+        )
+        device = mock.Mock(spec=driver.shared.Device)
+
+        with mock.patch.object(
+            driver,
+            "scan_forward_until_stable",
+            return_value=[[route, after], [disabled], [disabled]],
+        ), self.assertRaisesRegex(RuntimeError, "byte-for-byte"):
+            driver.require_exact_attributes_post_back_observation(
+                device,
+                "Rank A · Attributes 24",
+                deadline=deadline,
+            )
+
+        device.shell.assert_not_called()
+        device.wait_exact_resource_id_bidirectional.assert_not_called()
+        device.back.assert_not_called()
+
+    def test_bounds_deadline_expiry_stops_attributes_before_tap_route_or_back(
+        self,
+    ) -> None:
+        deadline = driver.time.monotonic() + 30
+        node = self.canonical_node("creation-prerequisite-category-attributes")
+        error = driver.shared.AdbOperationDeadlineExceeded(
+            "phase deadline expired during bounds validation"
+        )
+        device = mock.Mock(spec=driver.shared.Device)
+        device.hierarchy.return_value = [node]
+        device.node_has_tappable_bounds.side_effect = error
+
+        with self.assertRaises(driver.shared.AdbOperationDeadlineExceeded):
+            driver.require_exact_attributes_category_round_trip(
+                device,
+                deadline=deadline,
+            )
+
+        device.node_has_tappable_bounds.assert_called_once_with(
+            node,
+            deadline=deadline,
+        )
+        device.shell.assert_not_called()
+        device.wait_for_single_exact_resource_id.assert_not_called()
+        device.hierarchy.assert_called_once_with(deadline=deadline)
+        device.back.assert_not_called()
+
+    def test_persistent_action_lease_is_exact_and_never_clamps_permission(self) -> None:
+        with mock.patch.object(driver.time, "monotonic", return_value=100.0):
+            with self.assertRaisesRegex(RuntimeError, "action-plus-proof lease"):
+                driver.persistent_action_deadline(
+                    174.999,
+                    action_timeout_seconds=15.0,
+                    proof_timeout_seconds=60.0,
+                    operation="Confirm",
+                )
+            self.assertEqual(
+                115.0,
+                driver.persistent_action_deadline(
+                    175.0,
+                    action_timeout_seconds=15.0,
+                    proof_timeout_seconds=60.0,
+                    operation="Confirm",
+                ),
+            )
+        for invalid in (float("nan"), float("inf"), 0.0, -1.0):
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                driver.persistent_action_deadline(
+                    200.0,
+                    action_timeout_seconds=invalid,
+                    proof_timeout_seconds=60.0,
+                    operation="Confirm",
+                )
+
+    def test_attributes_current_first_recovers_artifact_clipped_row_in_one_reverse(self) -> None:
+        deadline = driver.time.monotonic() + 30
+        clipped = self.canonical_node(
+            "creation-prerequisite-category-attributes",
+            text="Rank A · Attributes 24",
+            bounds="[100,-270][900,-70]",
+        )
+        visible = self.canonical_node(
+            "creation-prerequisite-category-attributes",
+            text="Rank A · Attributes 24",
+        )
+        device = mock.Mock(spec=driver.shared.Device)
+        device.hierarchy.side_effect = ([clipped], [visible])
+        device.node_has_tappable_bounds.side_effect = (False, True)
+        with mock.patch.object(driver, "sleep_before_phase_deadline"):
+            node, authority = driver.acquire_exact_attributes_category_authority(
+                device,
+                evidence_prefix="artifact-clipped-attributes",
+                deadline=deadline,
+            )
+        self.assertIs(visible, node)
+        self.assertEqual("Rank A · Attributes 24", authority)
+        device.swipe_down.assert_called_once_with(
+            distance_ratio=0.22,
+            deadline=deadline,
+        )
+        device.swipe_up.assert_not_called()
+        device.shell.assert_not_called()
+
+    def test_prepare_preview_unknown_outcome_is_never_replayed_or_proved(self) -> None:
+        node = self.canonical_node("creation-prerequisite-prepare-preview")
+        device = mock.Mock(spec=driver.shared.Device)
+        device.wait_exact_resource_id_bidirectional.return_value = node
+        device.node_has_tappable_bounds.return_value = True
+        error = driver.shared.AdbTransportError(
+            {
+                "classification": "timeout-unknown-outcome",
+                "commandPolicy": "non-replayable",
+                "replay": {"performed": False, "suppressed": True},
+            },
+            Path("prepare-preview-unknown.json"),
+        )
+        device.shell.side_effect = error
+        with self.assertRaises(driver.shared.AdbTransportError):
+            driver.open_exact_prerequisite_preview(
+                device,
+                deadline=driver.time.monotonic() + 90,
+            )
+        device.shell.assert_called_once()
+        device.wait_for_single_exact_resource_id.assert_not_called()
+
+    def test_confirm_fresh_authority_unknown_outcome_is_never_replayed(self) -> None:
+        retained = self.canonical_node(
+            "creation-prerequisite-confirm",
+            text="Confirm exact preview",
+        )
+        current = self.canonical_node(
+            "creation-prerequisite-confirm",
+            text="Confirm exact preview",
+        )
+        proof = {
+            "confirmNode": retained,
+            "confirmAuthority": "Confirm exact preview",
+            "confirmViewport": 4,
+            "terminalViewport": 4,
+        }
+        device = mock.Mock(spec=driver.shared.Device)
+        device.wait_for_single_exact_resource_id.return_value = current
+        device.node_has_tappable_bounds.return_value = True
+        error = driver.shared.AdbTransportError(
+            {
+                "classification": "timeout-unknown-outcome",
+                "commandPolicy": "non-replayable",
+                "replay": {"performed": False, "suppressed": True},
+            },
+            Path("preview-confirm-unknown.json"),
+        )
+        device.shell.side_effect = error
+        with self.assertRaises(driver.shared.AdbTransportError):
+            driver.tap_exact_current_preview_confirm(
+                device,
+                proof,
+                deadline=driver.time.monotonic() + 90,
+            )
+        device.shell.assert_called_once()
+        device.wait_for_single_exact_resource_id.assert_called_once()
+
+    def test_confirmed_receipt_allows_immutable_preview_evidence_but_rejects_confirm_action(
+        self,
+    ) -> None:
+        sha_a = "sha256:" + ("a" * 64)
+        sha_b = "sha256:" + ("b" * 64)
+        aux = "c" * 64
+        required = [
+            self.canonical_node("creation-prerequisite-preview-page"),
+            self.canonical_node("creation-prerequisite-confirmed"),
+            self.canonical_node(
+                "creation-prerequisite-confirm-receipt",
+                text="Created false",
+            ),
+            self.canonical_node(
+                "creation-prerequisite-receipt-content-revision", text="2"
+            ),
+            self.canonical_node(
+                "creation-prerequisite-receipt-saved-revision", text="2"
+            ),
+            self.canonical_node(
+                "creation-prerequisite-receipt-draft-revision", text="1"
+            ),
+            self.canonical_node(
+                "creation-prerequisite-receipt-draft-digest", text=sha_b
+            ),
+            self.canonical_node(
+                "creation-prerequisite-receipt-raw-character-xml-digest", text=sha_a
+            ),
+            self.canonical_node(
+                "creation-prerequisite-receipt-auxiliary-state-digest", text=aux
+            ),
+            self.canonical_node(
+                "creation-prerequisite-receipt-authority-digest", text=sha_a
+            ),
+            self.canonical_node(
+                "creation-prerequisite-back-to-build", text="Back to build"
+            ),
+            # The native confirmed page intentionally retains immutable Preview
+            # evidence. It is evidence, not a stale actionable Confirm control.
+            self.canonical_node(
+                "creation-prerequisite-preview-digest", text=sha_a
+            ),
+            self.canonical_node(
+                "creation-prerequisite-preview-binding",
+                text="Revision 1 · saved 0 · preview abcdef012345",
+            ),
+            self.canonical_node(
+                "creation-prerequisite-preview-assignment-heritage",
+                text="Heritage assignment",
+            ),
+        ]
+        device = mock.Mock(spec=driver.shared.Device)
+        deadline = driver.time.monotonic() + 30
+        device.wait_exact_resource_id_bidirectional.return_value = next(
+            node
+            for node in required
+            if node.attributes["resource-id"].endswith(
+                "/creation-prerequisite-back-to-build"
+            )
+        )
+        device.hierarchy.return_value = required
+        immutable_ids = (
+            "creation-prerequisite-preview-page",
+            "creation-prerequisite-preview-binding",
+            "creation-prerequisite-preview-digest",
+            "creation-prerequisite-preview-assignment-heritage",
+        )
+        immutable_nodes = {
+            node.attributes["resource-id"].rsplit("/", 1)[-1]: node
+            for node in required
+            if node.attributes["resource-id"].rsplit("/", 1)[-1]
+            in immutable_ids
+        }
+        preview_proof = {
+            "immutableAuthorities": {
+                selector: (
+                    immutable_nodes[selector].attributes.get("text")
+                    or immutable_nodes[selector].attributes.get("content-desc")
+                    or ""
+                )
+                for selector in immutable_ids
+            },
+            "immutableStates": {
+                selector: (
+                    immutable_nodes[selector].attributes.get("enabled", ""),
+                    immutable_nodes[selector].attributes.get("clickable", ""),
+                )
+                for selector in immutable_ids
+            },
+            "assignmentIds": (
+                "creation-prerequisite-preview-assignment-heritage",
+            ),
+            "grantIds": (),
+            "absentPreviewIds": (
+                "creation-prerequisite-preview-sum-to-ten",
+                "creation-prerequisite-preview-blockers",
+                "creation-prerequisite-preview-attributes-disabled",
+            ),
+        }
+        receipt = driver.read_exact_confirmed_receipt(
+            device,
+            preview_proof=preview_proof,
+            scan_observer=None,
+            deadline=deadline,
+        )
+        self.assertEqual(sha_b, receipt["draftDigest"])
+        stale = [*required, self.canonical_node("creation-prerequisite-confirm")]
+        device.hierarchy.return_value = stale
+        with self.assertRaisesRegex(RuntimeError, "stale"):
+            driver.read_exact_confirmed_receipt(
+                device,
+                preview_proof=preview_proof,
+                scan_observer=None,
+                deadline=deadline,
+            )
+        unknown = [
+            *required,
+            self.canonical_node(
+                "creation-prerequisite-preview-assignment-unknown"
+            ),
+        ]
+        device.hierarchy.return_value = unknown
+        with self.assertRaisesRegex(RuntimeError, "unknownPreviewIds"):
+            driver.read_exact_confirmed_receipt(
+                device,
+                preview_proof=preview_proof,
+                scan_observer=None,
+                deadline=deadline,
+            )
+        conditional = [
+            *required,
+            self.canonical_node("creation-prerequisite-preview-blockers"),
+        ]
+        device.hierarchy.return_value = conditional
+        with self.assertRaisesRegex(RuntimeError, "unexpectedConditional"):
+            driver.read_exact_confirmed_receipt(
+                device,
+                preview_proof=preview_proof,
+                scan_observer=None,
+                deadline=deadline,
+            )
+        drifted = [
+            self.canonical_node(
+                "creation-prerequisite-preview-digest",
+                text="sha256:" + ("d" * 64),
+            )
+            if node.attributes["resource-id"].endswith(
+                "/creation-prerequisite-preview-digest"
+            )
+            else node
+            for node in required
+        ]
+        device.hierarchy.return_value = drifted
+        with self.assertRaisesRegex(RuntimeError, "immutableDrift"):
+            driver.read_exact_confirmed_receipt(
+                device,
+                preview_proof=preview_proof,
+                scan_observer=None,
+                deadline=deadline,
+            )
+
+        assignment = immutable_nodes[
+            "creation-prerequisite-preview-assignment-heritage"
+        ]
+        authority_digest = next(
+            node
+            for node in required
+            if node.attributes["resource-id"].endswith(
+                "/creation-prerequisite-receipt-authority-digest"
+            )
+        )
+        bottom = [
+            node
+            for node in required
+            if node is not assignment and node is not authority_digest
+        ]
+        device.hierarchy.side_effect = (
+            bottom,
+            [assignment],
+            [self.canonical_node("unrelated-receipt-spacer")],
+            [assignment, authority_digest],
+        )
+        with self.assertRaisesRegex(RuntimeError, "reappeared"):
+            driver.read_exact_confirmed_receipt(
+                device,
+                preview_proof=preview_proof,
+                scan_observer=None,
+                deadline=deadline,
+            )
+        device.shell.assert_not_called()
+
+        expired = driver.shared.AdbOperationDeadlineExceeded(
+            "receipt proof deadline expired"
+        )
+        device.reset_mock(side_effect=True, return_value=True)
+        device.wait_exact_resource_id_bidirectional.side_effect = expired
+        with self.assertRaises(driver.shared.AdbOperationDeadlineExceeded):
+            driver.read_exact_confirmed_receipt(
+                device,
+                preview_proof=preview_proof,
+                scan_observer=None,
+                deadline=deadline,
+            )
+        device.hierarchy.assert_not_called()
+        device.swipe_down.assert_not_called()
+        device.shell.assert_not_called()
+
+        back_node = next(
+            node
+            for node in required
+            if node.attributes["resource-id"].endswith(
+                "/creation-prerequisite-back-to-build"
+            )
+        )
+        device.reset_mock(side_effect=True, return_value=True)
+        device.wait_exact_resource_id_bidirectional.return_value = back_node
+        device.hierarchy.return_value = bottom
+        device.swipe_down.side_effect = expired
+        with self.assertRaises(driver.shared.AdbOperationDeadlineExceeded):
+            driver.read_exact_confirmed_receipt(
+                device,
+                preview_proof=preview_proof,
+                scan_observer=None,
+                deadline=deadline,
+            )
+        device.swipe_down.assert_called_once()
+        device.swipe_up.assert_not_called()
+        device.shell.assert_not_called()
+
+        device.reset_mock(side_effect=True, return_value=True)
+        device.wait_exact_resource_id_bidirectional.return_value = back_node
+        device.hierarchy.side_effect = (
+            bottom,
+            [assignment, authority_digest],
+        )
+        device.swipe_up.side_effect = expired
+        with self.assertRaises(driver.shared.AdbOperationDeadlineExceeded):
+            driver.read_exact_confirmed_receipt(
+                device,
+                preview_proof=preview_proof,
+                scan_observer=None,
+                deadline=deadline,
+            )
+        device.swipe_up.assert_called_once()
+        device.shell.assert_not_called()
+
+        device.reset_mock(side_effect=True, return_value=True)
+        device.wait_for_single_exact_resource_id.side_effect = expired
+        with self.assertRaises(driver.shared.AdbOperationDeadlineExceeded):
+            driver.tap_exact_confirmed_receipt_back(
+                device,
+                {
+                    "backViewport": 0,
+                    "currentViewport": 0,
+                    "backAuthority": "Back to build",
+                },
+                deadline=deadline,
+            )
+        device.shell.assert_not_called()
+
+    def test_rich_preview_rejects_unknown_or_reordered_assignments(self) -> None:
+        option_id = (
+            "creation-prerequisite-talent-skill-group-option-"
+            "0dbcb9cd-f824-4b5d-a387-90d33318b04c"
+        )
+        preview_id = option_id.replace(
+            "talent-skill-group-option-",
+            "preview-talent-skill-group-",
+        )
+        sha = "sha256:" + ("a" * 64)
+        assignments = [
+            self.canonical_node(
+                f"creation-prerequisite-preview-assignment-{category}"
+            )
+            for category in driver.CATEGORIES
+        ]
+        fixed = [
+            self.canonical_node("creation-prerequisite-preview-page"),
+            self.canonical_node(
+                "creation-prerequisite-preview-binding",
+                text="Revision 1 · saved 0 · preview abcdef012345",
+            ),
+            self.canonical_node("creation-prerequisite-preview-digest", text=sha),
+            self.canonical_node(
+                "creation-prerequisite-preview-raw-character-xml-digest", text=sha
+            ),
+            self.canonical_node(
+                "creation-prerequisite-preview-auxiliary-state-digest",
+                text="b" * 64,
+            ),
+            self.canonical_node(
+                "creation-prerequisite-preview-authority-digest", text=sha
+            ),
+        ]
+        tail = [
+            self.canonical_node("creation-prerequisite-preview-heritage"),
+            self.canonical_node("creation-prerequisite-preview-talent"),
+            self.canonical_node(
+                "creation-prerequisite-preview-karma-budget", text="Karma 25"
+            ),
+            self.canonical_node("creation-prerequisite-preview-attributes-ready"),
+            self.canonical_node(
+                driver.TALENT_GRANT_PREVIEW_PLAN_DIGEST_ID,
+                text=sha,
+            ),
+            self.canonical_node(preview_id),
+            self.canonical_node(
+                "creation-prerequisite-confirm", text="Confirm exact preview"
+            ),
+        ]
+        device = mock.Mock(spec=driver.shared.Device)
+        device.node_has_tappable_bounds.return_value = True
+        deadline = driver.time.monotonic() + 30
+
+        def evaluate(screen: list[driver.shared.UiNode]) -> None:
+            origin = self.priority_rank_origin(screen)
+            with mock.patch.object(
+                driver,
+                "acquire_stable_start_origin",
+                return_value=origin,
+            ), mock.patch.object(
+                driver,
+                "scan_forward_until_stable",
+                return_value=[screen],
+            ):
+                driver.require_exact_preview_talent_grant_plan(
+                    device,
+                    "Skill groups",
+                    (option_id,),
+                    max_scrolls=22,
+                    scan_id="rich-preview-order",
+                    deadline=deadline,
+                    proof_out={},
+                )
+
+        evaluate([*fixed, *assignments, *tail])
+        unknown = self.canonical_node(
+            "creation-prerequisite-preview-assignment-unknown"
+        )
+        with self.assertRaisesRegex(RuntimeError, "assignmentOrder"):
+            evaluate([*fixed, *assignments, unknown, *tail])
+        with self.assertRaisesRegex(RuntimeError, "assignmentOrder"):
+            evaluate([*fixed, assignments[1], assignments[0], *assignments[2:], *tail])
+        with self.assertRaisesRegex(RuntimeError, "unexpectedConditional"):
+            evaluate([
+                *fixed,
+                *assignments,
+                self.canonical_node("creation-prerequisite-preview-sum-to-ten"),
+                *tail,
+            ])
+
+    def test_priority_ready_preview_product_shape_has_binding_and_no_conditional_cards(
+        self,
+    ) -> None:
+        source = (
+            NATIVE / "CreationPrerequisitePreviewPage.cs"
+        ).read_text(encoding="utf-8")
+        refresh = source[
+            source.index("protected override void Refresh()") :
+            source.index("private void AddHeritageAndTalent()")
+        ]
+        self.assertLess(
+            refresh.index('binding.AutomationId = "creation-prerequisite-preview-binding"'),
+            refresh.index("AddAssignments();"),
+        )
+        sum_to_ten = source[
+            source.index("private void AddSumToTen()") :
+            source.index("private void AddAttributeGrant()")
+        ]
+        self.assertIn("CharacterCreationBuildMethods.SumToTen", sum_to_ten)
+        self.assertIn("return;", sum_to_ten)
+        attributes = source[
+            source.index("private void AddAttributeGrant()") :
+            source.index("private void AddBlockers()")
+        ]
+        self.assertIn(
+            '"creation-prerequisite-preview-attributes-disabled"',
+            attributes,
+        )
+        self.assertIn(
+            ': "creation-prerequisite-preview-attributes-ready"',
+            attributes,
+        )
+        blockers = source[
+            source.index("private void AddBlockers()") :
+            source.index("private void AddConfirmation()")
+        ]
+        self.assertIn("if (blockers.Length == 0)", blockers)
+        self.assertIn("return;", blockers)
+
     def test_post_preview_talent_transition_is_exact_single_tap_and_fail_closed(
         self,
     ) -> None:
@@ -9342,7 +10365,10 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertIn('"creation-prerequisite-preview-heritage"', source)
         self.assertIn('"creation-prerequisite-preview-talent"', source)
         self.assertIn('"creation-prerequisite-preview-attributes-ready"', source)
-        self.assertIn("Back navigation did not restore", source)
+        self.assertIn(
+            "Back navigation did not restore the byte-for-byte typed Attribute ",
+            source,
+        )
         self.assertIn('"creation-prerequisite-attributes-disabled"', source)
         self.assertIn('"creation-prerequisite-prepare-preview"', source)
         self.assertIn('"creation-prerequisite-confirm"', source)
@@ -9391,16 +10417,15 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         source = DRIVER.read_text(encoding="utf-8")
 
         typed = source[source.index("selected: dict[str, str] = {}") :]
-        typed = typed[: typed.index("# A plain Back from a category route")]
+        typed = typed[: typed.index('progress.advance("preview-confirm")')]
         self.assertLess(
             typed.index("shared.reset_scroll_to_top(device, swipes=22)"),
             typed.index('"creation-prerequisite-heritage-selection"'),
         )
 
-        preview = source[source.index('device.wait("creation-prerequisite-preview-page"') :]
-        preview = preview[: preview.index('device.tap("creation-prerequisite-confirm"')]
+        preview = inspect.getsource(driver.require_exact_preview_talent_grant_plan)
         self.assertLess(
-            preview.index('f"creation-prerequisite-preview-assignment-{category}"'),
+            preview.index('assignment_selectors = tuple('),
             preview.index('"creation-prerequisite-preview-heritage"'),
         )
         self.assertLess(
@@ -9416,8 +10441,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             preview.index('"creation-prerequisite-preview-attributes-ready"'),
         )
 
-        receipt = source[source.index("confirmed_revisions = {") :]
-        receipt = receipt[: receipt.index('device.capture("creation-prerequisite-confirmed")')]
+        receipt = inspect.getsource(driver.read_exact_confirmed_receipt)
         self.assertLess(
             receipt.index('"creation-prerequisite-receipt-draft-revision"'),
             receipt.index('"creation-prerequisite-receipt-draft-digest"'),

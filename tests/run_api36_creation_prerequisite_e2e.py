@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import re
 import subprocess
 import sys
@@ -186,6 +187,15 @@ PHASE_BUDGET_MS = {
     "process-restart-reopen": 90_000,
 }
 PHASE_ORDER = tuple(PHASE_BUDGET_MS)
+PERSISTENT_PREVIEW_ACTION_TIMEOUT_SECONDS = 3.0
+PREVIEW_ROUTE_PROOF_TIMEOUT_SECONDS = 15.0
+CONFIRMED_RECEIPT_SCAN_TIMEOUT_SECONDS = 50.0
+POST_CONFIRM_DASHBOARD_PROOF_TIMEOUT_SECONDS = 30.0
+CONFIRM_DOWNSTREAM_RESERVE_SECONDS = (
+    CONFIRMED_RECEIPT_SCAN_TIMEOUT_SECONDS
+    + PERSISTENT_PREVIEW_ACTION_TIMEOUT_SECONDS
+    + POST_CONFIRM_DASHBOARD_PROOF_TIMEOUT_SECONDS
+)
 DASHBOARD_SCAN_GESTURE_RATIO = 0.60
 DASHBOARD_SCAN_MAX_SCROLLS = 18
 CREATION_METHOD_REACQUISITION_SCAN_ID = (
@@ -264,6 +274,45 @@ def sleep_before_phase_deadline(
         )
     time.sleep(seconds)
     require_phase_deadline(deadline, operation=operation)
+
+
+def persistent_action_deadline(
+    phase_deadline: float,
+    *,
+    action_timeout_seconds: float,
+    proof_timeout_seconds: float,
+    operation: str,
+) -> float:
+    """Lease one action only when its immediate bounded proof still fits."""
+    if (
+        not math.isfinite(phase_deadline)
+        or not math.isfinite(action_timeout_seconds)
+        or not math.isfinite(proof_timeout_seconds)
+        or action_timeout_seconds <= 0
+        or proof_timeout_seconds <= 0
+    ):
+        raise ValueError("Persistent action bounds must be finite and positive")
+    now = time.monotonic()
+    required = action_timeout_seconds + proof_timeout_seconds
+    remaining = phase_deadline - now
+    if remaining < required:
+        raise RuntimeError(
+            f"Preview-confirm phase has {remaining:.3f}s remaining before {operation}; "
+            f"requires the exact {required:.3f}s action-plus-proof lease"
+        )
+    return min(phase_deadline, now + action_timeout_seconds)
+
+
+def immediate_proof_deadline(
+    phase_deadline: float,
+    proof_timeout_seconds: float,
+    *,
+    operation: str,
+) -> float:
+    if not math.isfinite(proof_timeout_seconds) or proof_timeout_seconds <= 0:
+        raise ValueError("Immediate proof timeout must be finite and positive")
+    require_phase_deadline(phase_deadline, operation=operation)
+    return min(phase_deadline, time.monotonic() + proof_timeout_seconds)
 
 
 def fresh_hierarchy_timed(
@@ -820,7 +869,13 @@ def acquire_stable_start_origin(
             consecutive_empty_reads += 1
             empty_hierarchy_reads += 1
             if consecutive_empty_reads > max_consecutive_empty_reads:
-                device.capture(f"{scan_id}-empty-hierarchy-exhausted")
+                if deadline is None:
+                    device.capture(f"{scan_id}-empty-hierarchy-exhausted")
+                else:
+                    device.capture(
+                        f"{scan_id}-empty-hierarchy-exhausted",
+                        deadline=deadline,
+                    )
                 raise RuntimeError(
                     f"Accessibility reverse scan {scan_id!r} exhausted transient empty "
                     "hierarchy reads"
@@ -1043,7 +1098,10 @@ def scan_forward_until_stable(
     }
     if observer is not None:
         observer(result)
-    device.capture(f"{scan_id}-stable-end-unproven")
+    if deadline is None:
+        device.capture(f"{scan_id}-stable-end-unproven")
+    else:
+        device.capture(f"{scan_id}-stable-end-unproven", deadline=deadline)
     raise RuntimeError(
         f"Accessibility scan {scan_id!r} did not prove a stable page end within "
         f"{max_scrolls} forward swipes"
@@ -1898,6 +1956,333 @@ def node_text(device: shared.Device, selector: str, *, scroll: bool = False) -> 
     return node.attributes.get("text") or node.attributes.get("content-desc") or ""
 
 
+def _capture_with_phase_deadline(
+    device: shared.Device,
+    name: str,
+    *,
+    deadline: float,
+) -> None:
+    device.capture(name, deadline=deadline)
+
+
+def _require_canonical_chummer_resource_id(
+    device: shared.Device,
+    node: shared.UiNode,
+    selector: str,
+    *,
+    evidence_prefix: str,
+    surface_name: str,
+    deadline: float,
+) -> None:
+    if (
+        node.attributes.get("package") == shared.PACKAGE
+        and node.attributes.get("resource-id")
+        == f"{shared.PACKAGE}:id/{selector}"
+    ):
+        return
+    _capture_with_phase_deadline(
+        device,
+        f"{evidence_prefix}-identity-invalid",
+        deadline=deadline,
+    )
+    raise RuntimeError(
+        f"{surface_name} {selector!r} did not expose the canonical Chummer resource identity"
+    )
+
+
+def acquire_exact_attributes_category_authority(
+    device: shared.Device,
+    *,
+    evidence_prefix: str,
+    deadline: float,
+) -> tuple[shared.UiNode, str]:
+    """Observe current first, then recover one exact Attributes row within 4 gestures."""
+    selector = "creation-prerequisite-category-attributes"
+    direction: str | None = None
+    gestures = 0
+    while gestures <= 4:
+        require_phase_deadline(deadline, operation="Attributes category acquisition")
+        nodes = device.hierarchy(deadline=deadline)
+        matches = [node for node in nodes if _exact_resource_id(node) == selector]
+        if len(matches) > 1:
+            _capture_with_phase_deadline(
+                device,
+                f"{evidence_prefix}-cardinality-invalid",
+                deadline=deadline,
+            )
+            raise RuntimeError(
+                f"Typed Attributes category row has cardinality {len(matches)}; expected one"
+            )
+        if len(matches) == 1:
+            node = matches[0]
+            _require_canonical_chummer_resource_id(
+                device,
+                node,
+                selector,
+                evidence_prefix=evidence_prefix,
+                surface_name="Typed Attributes category row",
+                deadline=deadline,
+            )
+            if (
+                node.attributes.get("enabled") != "true"
+                or node.attributes.get("clickable") != "true"
+            ):
+                _capture_with_phase_deadline(
+                    device,
+                    f"{evidence_prefix}-not-tappable",
+                    deadline=deadline,
+                )
+                raise RuntimeError(
+                    "Typed Attributes category row was not enabled and clickable"
+                )
+            if device.node_has_tappable_bounds(node, deadline=deadline):
+                value = (
+                    node.attributes.get("text")
+                    or node.attributes.get("content-desc")
+                    or ""
+                )
+                if not value.strip():
+                    _capture_with_phase_deadline(
+                        device,
+                        f"{evidence_prefix}-authority-blank",
+                        deadline=deadline,
+                    )
+                    raise RuntimeError(
+                        "Typed Attributes category row exposed blank authority"
+                    )
+                return node, value
+            bounds = re.fullmatch(
+                r"\[(-?[0-9]+),(-?[0-9]+)\]\[(-?[0-9]+),(-?[0-9]+)\]",
+                node.attributes.get("bounds", ""),
+            )
+            if bounds is None:
+                _capture_with_phase_deadline(
+                    device,
+                    f"{evidence_prefix}-bounds-invalid",
+                    deadline=deadline,
+                )
+                raise RuntimeError("Typed Attributes category row exposed invalid bounds")
+            _, top, _, bottom = (int(value) for value in bounds.groups())
+            if direction is None:
+                direction = "reverse" if bottom <= 0 or top < 0 else "forward"
+        elif direction is None:
+            # The hosted failure retained a bottom viewport with the exact row
+            # wholly above it. A missing current observation therefore gets one
+            # bounded reverse probe before any forward recovery.
+            direction = "reverse"
+        elif direction == "reverse":
+            direction = "forward"
+        if gestures >= 4:
+            break
+        if direction == "reverse":
+            device.swipe_down(distance_ratio=0.22, deadline=deadline)
+        else:
+            device.swipe_up(distance_ratio=0.22, deadline=deadline)
+        gestures += 1
+        sleep_before_phase_deadline(
+            0.2,
+            deadline=deadline,
+            operation="Attributes category post-gesture observation",
+        )
+    _capture_with_phase_deadline(
+        device,
+        f"{evidence_prefix}-unavailable",
+        deadline=deadline,
+    )
+    raise RuntimeError(
+        "Typed Attributes category row was not tappable within the current-first "
+        "four-gesture recovery bound"
+    )
+
+
+def require_exact_zero_gesture_route(
+    device: shared.Device,
+    selector: str,
+    *,
+    evidence_prefix: str,
+    surface_name: str,
+    deadline: float,
+) -> shared.UiNode:
+    """Prove one exact route without authorizing a gesture or product action."""
+    node = device.wait_for_single_exact_resource_id(
+        selector,
+        timeout=45,
+        scroll=False,
+        max_scrolls=0,
+        evidence_prefix=evidence_prefix,
+        surface_name=surface_name,
+        deadline=deadline,
+    )
+    _require_canonical_chummer_resource_id(
+        device,
+        node,
+        selector,
+        evidence_prefix=evidence_prefix,
+        surface_name=surface_name,
+        deadline=deadline,
+    )
+    return node
+
+
+def require_exact_attributes_post_back_observation(
+    device: shared.Device,
+    expected_authority: str,
+    *,
+    deadline: float,
+) -> None:
+    """Fine-scan the restored route through its exact disabled Attributes row."""
+    selectors = (
+        "creation-prerequisite-page",
+        "creation-prerequisite-category-attributes",
+        "creation-prerequisite-attributes-disabled",
+    )
+    screens = scan_forward_until_stable(
+        device,
+        scan_id="creation-prerequisite-attributes-post-back",
+        max_scrolls=12,
+        distance_ratio=0.22,
+        stable_repeats=2,
+        max_consecutive_empty_reads=3,
+        delay_seconds=0.0,
+        deadline=deadline,
+    )
+    values, viewports, _ = collect_exact_contiguous_authority_values(
+        device,
+        screens,
+        selectors,
+        evidence_prefix="creation-prerequisite-attributes-post-back",
+        require_nonblank=frozenset(
+            {"creation-prerequisite-category-attributes"}
+        ),
+        deadline=deadline,
+    )
+    if (
+        viewports["creation-prerequisite-page"][0] != 0
+        or viewports["creation-prerequisite-category-attributes"][0] != 0
+        or values["creation-prerequisite-category-attributes"]
+        != expected_authority
+    ):
+        _capture_with_phase_deadline(
+            device,
+            "creation-prerequisite-attributes-authority-changed",
+            deadline=deadline,
+        )
+        raise RuntimeError(
+            "Back navigation did not restore the byte-for-byte typed Attribute "
+            "rank selection at the exact current route"
+        )
+
+
+def require_exact_attributes_category_round_trip(
+    device: shared.Device,
+    *,
+    deadline: float,
+) -> str:
+    """Open Attributes and return through one exact, non-replayable navigation path."""
+    node, before = acquire_exact_attributes_category_authority(
+        device,
+        evidence_prefix="creation-prerequisite-attributes-before",
+        deadline=deadline,
+    )
+    x, y = node.center
+    device.shell(
+        "input",
+        "tap",
+        str(x),
+        str(y),
+        timeout=shared._remaining_operation_timeout(
+            deadline=deadline,
+            maximum=120,
+        ),
+        deadline=deadline,
+    )
+    require_exact_zero_gesture_route(
+        device,
+        "creation-prerequisite-category-page",
+        evidence_prefix="creation-prerequisite-attributes-category-route",
+        surface_name="Attributes category detail route",
+        deadline=deadline,
+    )
+    device.back(deadline=deadline)
+    require_exact_attributes_post_back_observation(
+        device,
+        before,
+        deadline=deadline,
+    )
+    return before
+
+
+def open_exact_prerequisite_preview(
+    device: shared.Device,
+    *,
+    deadline: float,
+) -> None:
+    """Acquire and tap one exact Preview action, then prove its exact route."""
+    selector = "creation-prerequisite-prepare-preview"
+    node = device.wait_exact_resource_id_bidirectional(
+        selector,
+        timeout=60,
+        backward_scrolls=0,
+        forward_scrolls=4,
+        scroll_distance_ratio=0.22,
+        evidence_prefix="creation-prerequisite-prepare-preview",
+        surface_name="Creation prerequisite Preview action",
+        require_tappable=True,
+        deadline=deadline,
+    )
+    _require_canonical_chummer_resource_id(
+        device,
+        node,
+        selector,
+        evidence_prefix="creation-prerequisite-prepare-preview",
+        surface_name="Creation prerequisite Preview action",
+        deadline=deadline,
+    )
+    if (
+        node.attributes.get("enabled") != "true"
+        or node.attributes.get("clickable") != "true"
+        or not device.node_has_tappable_bounds(node, deadline=deadline)
+    ):
+        _capture_with_phase_deadline(
+            device,
+            "creation-prerequisite-prepare-preview-not-tappable",
+            deadline=deadline,
+        )
+        raise RuntimeError(
+            "Creation prerequisite Preview action was not enabled, clickable, and tappable"
+        )
+    action_deadline = persistent_action_deadline(
+        deadline,
+        action_timeout_seconds=PERSISTENT_PREVIEW_ACTION_TIMEOUT_SECONDS,
+        proof_timeout_seconds=PREVIEW_ROUTE_PROOF_TIMEOUT_SECONDS,
+        operation="the exact Prepare Preview action",
+    )
+    x, y = node.center
+    device.shell(
+        "input",
+        "tap",
+        str(x),
+        str(y),
+        timeout=shared._remaining_operation_timeout(
+            deadline=action_deadline,
+            maximum=PERSISTENT_PREVIEW_ACTION_TIMEOUT_SECONDS,
+        ),
+        deadline=action_deadline,
+    )
+    proof_deadline = immediate_proof_deadline(
+        deadline,
+        PREVIEW_ROUTE_PROOF_TIMEOUT_SECONDS,
+        operation="the exact Preview route proof",
+    )
+    require_exact_zero_gesture_route(
+        device,
+        "creation-prerequisite-preview-page",
+        evidence_prefix="creation-prerequisite-preview-route",
+        surface_name="Creation prerequisite Preview route",
+        deadline=proof_deadline,
+    )
+
+
 def read_exact_skill_group_talent_selection_id(
     device: shared.Device,
     *,
@@ -1940,8 +2325,22 @@ def assert_uncreated_advanced_editor_gated(
     scan_observer: Callable[[dict[str, object]], None] | None = None,
     scan_id: str = "advanced-editor-gate",
     deadline: float | None = None,
+    compact_current: bool = False,
 ) -> CreationDashboardScanProof:
     """Scan the dashboard once for forbidden controls and reusable authority."""
+    def capture(name: str) -> None:
+        if deadline is None:
+            device.capture(name)
+        else:
+            device.capture(name, deadline=deadline)
+
+    def visible(node: shared.UiNode) -> bool:
+        return (
+            device.node_has_tappable_bounds(node)
+            if deadline is None
+            else device.node_has_tappable_bounds(node, deadline=deadline)
+        )
+
     forbidden = (
         "Actions",
         "build-origin-dossier",
@@ -1950,20 +2349,58 @@ def assert_uncreated_advanced_editor_gated(
         "creation-wizard-attributes",
         "attribute-save-",
     )
-    scan_origin = acquire_stable_start_origin(
-        device,
-        scan_id=f"{scan_id}-origin",
-        max_reverse_swipes=8,
-        distance_ratio=DASHBOARD_SCAN_GESTURE_RATIO,
-        stable_repeats=2,
-        max_consecutive_empty_reads=3,
-        delay_seconds=0.0,
-        deadline=deadline,
-    )
+    if compact_current:
+        if deadline is None:
+            raise ValueError("Compact dashboard proof requires one absolute deadline")
+        require_phase_deadline(deadline, operation="compact dashboard origin")
+        current_nodes = device.hierarchy(deadline=deadline)
+        if not current_nodes:
+            capture(f"{scan_id}-current-hierarchy-empty")
+            raise RuntimeError("Compact dashboard proof exposed no current hierarchy")
+        for selector in ("phone-runner-create", "creation-wizard-dashboard"):
+            exact = [
+                node
+                for node in current_nodes
+                if _exact_resource_id(node) == selector
+            ]
+            if len(exact) != 1:
+                capture(f"{scan_id}-{selector}-current-cardinality-invalid")
+                raise RuntimeError(
+                    f"Compact dashboard current origin exposed {len(exact)} exact "
+                    f"{selector!r} nodes"
+                )
+            _require_canonical_chummer_resource_id(
+                device,
+                exact[0],
+                selector,
+                evidence_prefix=f"{scan_id}-{selector}-current",
+                surface_name="Compact dashboard current origin",
+                deadline=deadline,
+            )
+        scan_origin = PriorityRankOrigin(
+            current_nodes,
+            0,
+            0,
+            (0,),
+            0,
+        )
+        max_scrolls = 8
+    else:
+        scan_origin = acquire_stable_start_origin(
+            device,
+            scan_id=f"{scan_id}-origin",
+            max_reverse_swipes=8,
+            distance_ratio=DASHBOARD_SCAN_GESTURE_RATIO,
+            stable_repeats=2,
+            max_consecutive_empty_reads=3,
+            delay_seconds=0.0,
+            deadline=deadline,
+        )
+        max_scrolls = DASHBOARD_SCAN_MAX_SCROLLS
     scan = scan_forward_with_receipt(
         device,
         scan_id=scan_id,
-        max_scrolls=DASHBOARD_SCAN_MAX_SCROLLS,
+        max_scrolls=max_scrolls,
         distance_ratio=DASHBOARD_SCAN_GESTURE_RATIO,
         initial_observation=scan_origin,
         delay_seconds=0.0,
@@ -1973,14 +2410,49 @@ def assert_uncreated_advanced_editor_gated(
     bindings: set[str] = set()
     method_states: set[tuple[str, str, str]] = set()
     method_viewports: set[int] = set()
+    exact_dashboard_ids = (
+        "phone-runner-create",
+        "creation-wizard-dashboard",
+        "build-save-runner",
+    )
+    dashboard_states: dict[str, set[tuple[str, str]]] = {
+        selector: set() for selector in exact_dashboard_ids
+    }
+    dashboard_visible: set[str] = set()
     for viewport_index, nodes in enumerate(scan.screens):
         for selector in forbidden:
             if any(shared.Device._matches(node, selector) for node in nodes):
-                device.capture(f"wizard-forbidden-{selector}")
+                capture(f"wizard-forbidden-{selector}")
                 raise RuntimeError(
                     "Creation dashboard exposed a Career/advanced-editor control while "
                     f"the authoritative runner is still uncreated: {selector!r}"
                 )
+        for selector in exact_dashboard_ids if deadline is not None else ():
+            matches = [node for node in nodes if _exact_resource_id(node) == selector]
+            if len(matches) > 1:
+                capture(f"{scan_id}-{selector}-cardinality-invalid")
+                raise RuntimeError(
+                    f"Creation dashboard {selector!r} has cardinality {len(matches)}"
+                )
+            if len(matches) == 1:
+                node = matches[0]
+                if (
+                    node.attributes.get("package") != shared.PACKAGE
+                    or node.attributes.get("resource-id")
+                    != f"{shared.PACKAGE}:id/{selector}"
+                ):
+                    capture(f"{scan_id}-{selector}-identity-invalid")
+                    raise RuntimeError(
+                        f"Creation dashboard {selector!r} was not canonical"
+                    )
+                dashboard_states[selector].add(
+                    (
+                        node.attributes.get("enabled", ""),
+                        node.attributes.get("clickable", ""),
+                    )
+                )
+                if visible(node):
+                    dashboard_visible.add(selector)
         for selector in ("creation-wizard-binding", "creation-stage-method"):
             matches = [
                 node
@@ -1989,7 +2461,7 @@ def assert_uncreated_advanced_editor_gated(
                 == selector
             ]
             if len(matches) > 1:
-                device.capture(f"{scan_id}-{selector}-cardinality-invalid")
+                capture(f"{scan_id}-{selector}-cardinality-invalid")
                 raise RuntimeError(
                     f"Creation dashboard {selector!r} has cardinality {len(matches)}"
                 )
@@ -2003,19 +2475,44 @@ def assert_uncreated_advanced_editor_gated(
                     if selector == "creation-wizard-binding":
                         bindings.add(value)
                     else:
-                        if device.node_has_tappable_bounds(matches[0]):
+                        if visible(matches[0]):
                             method_viewports.add(min(viewport_index, scan.swipes))
                         method_states.add((
                             value,
                             matches[0].attributes.get("enabled", ""),
                             matches[0].attributes.get("clickable", ""),
                         ))
-    if len(bindings) != 1 or len(method_states) != 1 or not method_viewports:
-        device.capture(f"{scan_id}-authority-incomplete")
+    invalid_dashboard = {
+        selector: sorted(states)
+        for selector, states in dashboard_states.items()
+        if len(states) != 1
+    }
+    toolbar_state = dashboard_states["build-save-runner"]
+    if (
+        len(bindings) != 1
+        or len(method_states) != 1
+        or not method_viewports
+    ):
+        capture(f"{scan_id}-authority-incomplete")
         raise RuntimeError(
-            "Creation dashboard stable scan did not expose one binding and one method row: "
+            "Creation dashboard stable scan did not expose one binding and one "
+            "tappable method authority: "
             f"bindings={sorted(bindings)!r}, methods={sorted(method_states)!r}, "
             f"methodViewports={sorted(method_viewports)!r}"
+        )
+    if deadline is not None and (
+        invalid_dashboard
+        or "creation-wizard-dashboard" not in dashboard_visible
+        or "build-save-runner" not in dashboard_visible
+        or toolbar_state != {("true", "true")}
+    ):
+        capture(f"{scan_id}-authority-incomplete")
+        raise RuntimeError(
+            "Creation dashboard stable scan did not expose its canonical route, root, "
+            "toolbar, binding, and method row: "
+            f"bindings={sorted(bindings)!r}, methods={sorted(method_states)!r}, "
+            f"methodViewports={sorted(method_viewports)!r}, "
+            f"dashboardStates={invalid_dashboard!r}, visible={sorted(dashboard_visible)!r}"
         )
     method_detail, method_enabled, method_clickable = next(iter(method_states))
     require_creation_method_navigation(
@@ -4496,7 +4993,14 @@ def reacquire_exact_talent_state_group(
             resource_id
             for resource_id, candidates in matches.items()
             if not candidates
-            or not device.node_has_tappable_bounds(candidates[0])
+            or not (
+                device.node_has_tappable_bounds(candidates[0])
+                if deadline is None
+                else device.node_has_tappable_bounds(
+                    candidates[0],
+                    deadline=deadline,
+                )
+            )
         )
         if not unavailable:
             emit("resolved")
@@ -4691,10 +5195,15 @@ def tap_exact_measured_talent_resource(
             raise RuntimeError(
                 f"Measured Talent resource {resource_id!r} changed exact option detail"
             )
+    node_is_tappable = (
+        device.node_has_tappable_bounds(node)
+        if deadline is None
+        else device.node_has_tappable_bounds(node, deadline=deadline)
+    )
     if (
         node.attributes.get("enabled") != "true"
         or node.attributes.get("clickable") != "true"
-        or not device.node_has_tappable_bounds(node)
+        or not node_is_tappable
     ):
         capture(f"{evidence_prefix}-not-tappable")
         raise RuntimeError(f"Measured Talent resource {resource_id!r} was not tappable")
@@ -5284,6 +5793,96 @@ def complete_talent_grant_to_prerequisite(
     )
 
 
+def collect_exact_contiguous_authority_values(
+    device: shared.Device,
+    screens: list[list[shared.UiNode]],
+    selectors: tuple[str, ...],
+    *,
+    evidence_prefix: str,
+    require_nonblank: frozenset[str],
+    deadline: float,
+) -> tuple[dict[str, str], dict[str, tuple[int, ...]], dict[str, tuple[str, str]]]:
+    """Collect one stable value/state per exact ID across overlapping screens."""
+    values: dict[str, set[str]] = {selector: set() for selector in selectors}
+    states: dict[str, set[tuple[str, str]]] = {
+        selector: set() for selector in selectors
+    }
+    viewports: dict[str, list[int]] = {selector: [] for selector in selectors}
+    for viewport_index, nodes in enumerate(screens):
+        for selector in selectors:
+            matches = [node for node in nodes if _exact_resource_id(node) == selector]
+            if len(matches) > 1:
+                _capture_with_phase_deadline(
+                    device,
+                    f"{evidence_prefix}-cardinality-invalid",
+                    deadline=deadline,
+                )
+                raise RuntimeError(
+                    f"{evidence_prefix} {selector!r} has cardinality {len(matches)} "
+                    f"in viewport {viewport_index}; expected one"
+                )
+            if not matches:
+                continue
+            node = matches[0]
+            _require_canonical_chummer_resource_id(
+                device,
+                node,
+                selector,
+                evidence_prefix=evidence_prefix,
+                surface_name="Composite exact authority scan",
+                deadline=deadline,
+            )
+            value = (
+                node.attributes.get("text")
+                or node.attributes.get("content-desc")
+                or ""
+            )
+            if selector in require_nonblank and not value.strip():
+                _capture_with_phase_deadline(
+                    device,
+                    f"{evidence_prefix}-value-blank",
+                    deadline=deadline,
+                )
+                raise RuntimeError(
+                    f"{evidence_prefix} {selector!r} exposed blank authority"
+                )
+            values[selector].add(value)
+            states[selector].add(
+                (
+                    node.attributes.get("enabled", ""),
+                    node.attributes.get("clickable", ""),
+                )
+            )
+            viewports[selector].append(viewport_index)
+
+    missing = sorted(selector for selector, entries in viewports.items() if not entries)
+    drift = sorted(
+        selector
+        for selector in selectors
+        if len(values[selector]) != 1 or len(states[selector]) != 1
+    )
+    reappeared = sorted(
+        selector
+        for selector, entries in viewports.items()
+        if any(current != previous + 1 for previous, current in zip(entries, entries[1:]))
+    )
+    if missing or drift or reappeared:
+        _capture_with_phase_deadline(
+            device,
+            f"{evidence_prefix}-authority-invalid",
+            deadline=deadline,
+        )
+        raise RuntimeError(
+            f"{evidence_prefix} exact authority was incomplete or unstable: "
+            f"missing={missing!r}, drift={drift!r}, reappeared={reappeared!r}"
+        )
+    return (
+        {selector: next(iter(values[selector])) for selector in selectors},
+        {selector: tuple(viewports[selector]) for selector in selectors},
+        {selector: next(iter(states[selector])) for selector in selectors},
+    )
+
+
 def require_exact_preview_talent_grant_plan(
     device: shared.Device,
     expected_kind: str,
@@ -5293,6 +5892,7 @@ def require_exact_preview_talent_grant_plan(
     scan_observer: Callable[[dict[str, object]], None] | None = None,
     scan_id: str,
     deadline: float | None = None,
+    proof_out: dict[str, object] | None = None,
 ) -> str:
     option_prefix = TALENT_GRANT_OPTION_PREFIX[expected_kind]
     preview_prefix = TALENT_GRANT_PREVIEW_PREFIX[expected_kind]
@@ -5316,8 +5916,8 @@ def require_exact_preview_talent_grant_plan(
     origin = acquire_stable_start_origin(
         device,
         scan_id=f"{scan_id}-origin",
-        max_reverse_swipes=max_scrolls,
-        distance_ratio=0.22,
+        max_reverse_swipes=8 if proof_out is not None else max_scrolls,
+        distance_ratio=0.60 if proof_out is not None else 0.22,
         stable_repeats=2,
         max_consecutive_empty_reads=3,
         delay_seconds=0.0,
@@ -5327,9 +5927,11 @@ def require_exact_preview_talent_grant_plan(
         device,
         scan_id=scan_id,
         max_scrolls=max_scrolls,
-        distance_ratio=0.22,
+        distance_ratio=0.30 if proof_out is not None else 0.22,
         initial_observation=origin,
-        initial_observation_max_reverse_swipes=max_scrolls,
+        initial_observation_max_reverse_swipes=(
+            8 if proof_out is not None else max_scrolls
+        ),
         observer=scan_observer,
         deadline=deadline,
     )
@@ -5408,7 +6010,14 @@ def require_exact_preview_talent_grant_plan(
         or duplicate_ids
         or observed_ids != expected_ids
     ):
-        device.capture(f"{scan_id}-mismatch")
+        if deadline is None:
+            device.capture(f"{scan_id}-mismatch")
+        else:
+            _capture_with_phase_deadline(
+                device,
+                f"{scan_id}-mismatch",
+                deadline=deadline,
+            )
         raise RuntimeError(
             f"{expected_kind} preview grant plan was not exact: expected={sorted(expected_ids)!r}, "
             f"observed={sorted(observed_ids)!r}, opposite={sorted(opposite_ids)!r}, "
@@ -5420,7 +6029,625 @@ def require_exact_preview_talent_grant_plan(
             f"separatedGrantIds={separated_grant_ids!r}, "
             f"grantViewports={grant_viewports!r}"
         )
-    return next(iter(plan_digest_values))
+    plan_digest = next(iter(plan_digest_values))
+    if proof_out is not None:
+        if deadline is None:
+            raise ValueError("Rich Preview authority requires one absolute phase deadline")
+        assignment_selectors = tuple(
+            f"creation-prerequisite-preview-assignment-{category}"
+            for category in CATEGORIES
+        )
+        rich_selectors = (
+            "creation-prerequisite-preview-page",
+            "creation-prerequisite-preview-binding",
+            "creation-prerequisite-preview-digest",
+            "creation-prerequisite-preview-raw-character-xml-digest",
+            "creation-prerequisite-preview-auxiliary-state-digest",
+            "creation-prerequisite-preview-authority-digest",
+            *assignment_selectors,
+            "creation-prerequisite-preview-heritage",
+            "creation-prerequisite-preview-talent",
+            "creation-prerequisite-preview-karma-budget",
+            "creation-prerequisite-preview-attributes-ready",
+            "creation-prerequisite-confirm",
+        )
+        rich_values, rich_viewports, rich_states = (
+            collect_exact_contiguous_authority_values(
+                device,
+                screens,
+                rich_selectors,
+                evidence_prefix=f"{scan_id}-rich-preview",
+                require_nonblank=frozenset(
+                    {
+                        "creation-prerequisite-preview-digest",
+                        "creation-prerequisite-preview-binding",
+                        "creation-prerequisite-preview-raw-character-xml-digest",
+                        "creation-prerequisite-preview-auxiliary-state-digest",
+                        "creation-prerequisite-preview-authority-digest",
+                        "creation-prerequisite-preview-karma-budget",
+                        "creation-prerequisite-confirm",
+                    }
+                ),
+                deadline=deadline,
+            )
+        )
+        canonical_selectors = (
+            "creation-prerequisite-preview-digest",
+            "creation-prerequisite-preview-raw-character-xml-digest",
+            "creation-prerequisite-preview-authority-digest",
+        )
+        malformed = [
+            selector
+            for selector in canonical_selectors
+            if CANONICAL_AUTHORITY_DIGEST.fullmatch(
+                rich_values[selector].strip()
+            )
+            is None
+        ]
+        auxiliary_selector = (
+            "creation-prerequisite-preview-auxiliary-state-digest"
+        )
+        if CANONICAL_AUXILIARY_STATE_DIGEST.fullmatch(
+            rich_values[auxiliary_selector].strip()
+        ) is None:
+            malformed.append(auxiliary_selector)
+        stale_receipt_ids = sorted(
+            {
+                _exact_resource_id(node)
+                for nodes in screens
+                for node in nodes
+                if _exact_resource_id(node) == "creation-prerequisite-confirmed"
+                or _exact_resource_id(node).startswith("creation-prerequisite-receipt-")
+                or _exact_resource_id(node)
+                == "creation-prerequisite-confirm-receipt"
+            }
+        )
+        absent_preview_ids = (
+            "creation-prerequisite-preview-sum-to-ten",
+            "creation-prerequisite-preview-blockers",
+            "creation-prerequisite-preview-attributes-disabled",
+        )
+        unexpected_conditional_ids = sorted(
+            {
+                _exact_resource_id(node)
+                for nodes in screens
+                for node in nodes
+                if _exact_resource_id(node) in absent_preview_ids
+            }
+        )
+        confirm_selector = "creation-prerequisite-confirm"
+        confirm_state = rich_states[confirm_selector]
+        confirm_viewports = rich_viewports[confirm_selector]
+        observed_assignment_order: list[str] = []
+        assignment_prefix = "creation-prerequisite-preview-assignment-"
+        for nodes in screens:
+            for node in nodes:
+                resource_id = _exact_resource_id(node)
+                if (
+                    resource_id.startswith(assignment_prefix)
+                    and resource_id not in observed_assignment_order
+                ):
+                    observed_assignment_order.append(resource_id)
+        terminal_confirm_nodes = [
+            node
+            for node in screens[-1]
+            if _exact_resource_id(node) == confirm_selector
+        ]
+        terminal_confirm = (
+            terminal_confirm_nodes[0]
+            if len(terminal_confirm_nodes) == 1
+            else None
+        )
+        terminal_confirm_tappable = (
+            terminal_confirm is not None
+            and device.node_has_tappable_bounds(
+                terminal_confirm,
+                deadline=deadline,
+            )
+        )
+        if (
+            malformed
+            or stale_receipt_ids
+            or unexpected_conditional_ids
+            or tuple(observed_assignment_order) != assignment_selectors
+            or confirm_state != ("true", "true")
+            or confirm_viewports[-1] != len(screens) - 1
+            or not terminal_confirm_tappable
+        ):
+            _capture_with_phase_deadline(
+                device,
+                f"{scan_id}-rich-preview-invalid",
+                deadline=deadline,
+            )
+            raise RuntimeError(
+                "Rich Preview authority was malformed, stale, or did not retain the "
+                "exact enabled Confirm action at the measured terminal viewport: "
+                f"malformed={malformed!r}, stale={stale_receipt_ids!r}, "
+                f"unexpectedConditional={unexpected_conditional_ids!r}, "
+                f"assignmentOrder={observed_assignment_order!r}, "
+                f"confirmState={confirm_state!r}, confirmViewports={confirm_viewports!r}, "
+                f"terminalConfirmTappable={terminal_confirm_tappable!r}"
+            )
+        proof_out.clear()
+        immutable_selectors = (
+            *rich_selectors[:-1],
+            TALENT_GRANT_PREVIEW_PLAN_DIGEST_ID,
+            *tuple(sorted(expected_ids)),
+        )
+        proof_out.update(
+            {
+                "previewDigest": rich_values[
+                    "creation-prerequisite-preview-digest"
+                ].strip(),
+                "bindingDigests": {
+                    "rawCharacterXml": rich_values[
+                        "creation-prerequisite-preview-raw-character-xml-digest"
+                    ].strip(),
+                    "auxiliaryState": rich_values[auxiliary_selector].strip(),
+                    "authority": rich_values[
+                        "creation-prerequisite-preview-authority-digest"
+                    ].strip(),
+                },
+                "confirmAuthority": rich_values[confirm_selector],
+                "confirmNode": terminal_confirm,
+                "confirmViewport": confirm_viewports[-1],
+                "terminalViewport": len(screens) - 1,
+                "assignmentIds": assignment_selectors,
+                "grantIds": tuple(sorted(expected_ids)),
+                "absentPreviewIds": absent_preview_ids,
+                "planDigest": plan_digest,
+                "immutableAuthorities": {
+                    selector: (
+                        plan_digest
+                        if selector == TALENT_GRANT_PREVIEW_PLAN_DIGEST_ID
+                        else rich_values.get(selector, next(
+                            (
+                                node.attributes.get("text")
+                                or node.attributes.get("content-desc")
+                                or ""
+                                for nodes in screens
+                                for node in nodes
+                                if _exact_resource_id(node) == selector
+                            ),
+                            "",
+                        ))
+                    )
+                    for selector in immutable_selectors
+                },
+                "immutableStates": {
+                    selector: rich_states.get(
+                        selector,
+                        next(
+                            (
+                                (
+                                    node.attributes.get("enabled", ""),
+                                    node.attributes.get("clickable", ""),
+                                )
+                                for nodes in screens
+                                for node in nodes
+                                if _exact_resource_id(node) == selector
+                            ),
+                            ("", ""),
+                        ),
+                    )
+                    for selector in immutable_selectors
+                },
+            }
+        )
+    return plan_digest
+
+
+def tap_exact_current_preview_confirm(
+    device: shared.Device,
+    proof: dict[str, object],
+    *,
+    deadline: float,
+) -> float:
+    """Tap the scan-retained terminal Confirm once and return its proof deadline."""
+    selector = "creation-prerequisite-confirm"
+    node = proof.get("confirmNode")
+    if (
+        proof.get("confirmViewport") != proof.get("terminalViewport")
+        or not isinstance(proof.get("confirmAuthority"), str)
+        or not str(proof["confirmAuthority"]).strip()
+        or not isinstance(node, shared.UiNode)
+    ):
+        raise RuntimeError("Preview scan emitted no exact terminal Confirm authority")
+    retained = node
+    node = device.wait_for_single_exact_resource_id(
+        selector,
+        timeout=45,
+        scroll=False,
+        max_scrolls=0,
+        evidence_prefix="creation-prerequisite-confirm-current",
+        surface_name="Measured current Preview Confirm action",
+        deadline=deadline,
+    )
+    _require_canonical_chummer_resource_id(
+        device,
+        node,
+        selector,
+        evidence_prefix="creation-prerequisite-confirm-current",
+        surface_name="Measured current Preview Confirm action",
+        deadline=deadline,
+    )
+    value = node.attributes.get("text") or node.attributes.get("content-desc") or ""
+    retained_value = (
+        retained.attributes.get("text")
+        or retained.attributes.get("content-desc")
+        or ""
+    )
+    if (
+        value != proof["confirmAuthority"]
+        or retained_value != value
+        or node.attributes.get("enabled") != "true"
+        or node.attributes.get("clickable") != "true"
+        or not device.node_has_tappable_bounds(node, deadline=deadline)
+    ):
+        _capture_with_phase_deadline(
+            device,
+            "creation-prerequisite-confirm-current-invalid",
+            deadline=deadline,
+        )
+        raise RuntimeError(
+            "Scan-retained Preview Confirm authority drifted or was not tappable"
+        )
+    action_deadline = persistent_action_deadline(
+        deadline,
+        action_timeout_seconds=PERSISTENT_PREVIEW_ACTION_TIMEOUT_SECONDS,
+        proof_timeout_seconds=CONFIRM_DOWNSTREAM_RESERVE_SECONDS,
+        operation="the exact Preview Confirm action",
+    )
+    x, y = node.center
+    device.shell(
+        "input",
+        "tap",
+        str(x),
+        str(y),
+        timeout=shared._remaining_operation_timeout(
+            deadline=action_deadline,
+            maximum=PERSISTENT_PREVIEW_ACTION_TIMEOUT_SECONDS,
+        ),
+        deadline=action_deadline,
+    )
+    return immediate_proof_deadline(
+        deadline,
+        CONFIRMED_RECEIPT_SCAN_TIMEOUT_SECONDS,
+        operation="the composite confirmed-receipt proof",
+    )
+
+
+def read_exact_confirmed_receipt(
+    device: shared.Device,
+    *,
+    preview_proof: dict[str, object],
+    scan_observer: Callable[[dict[str, object]], None] | None,
+    deadline: float,
+) -> dict[str, object]:
+    """Read one compact bottom-oriented receipt scan without leaving its route."""
+    scan_id = "creation-prerequisite-confirmed-receipt"
+    receipt_selectors = (
+        "creation-prerequisite-preview-page",
+        "creation-prerequisite-confirmed",
+        "creation-prerequisite-confirm-receipt",
+        "creation-prerequisite-receipt-content-revision",
+        "creation-prerequisite-receipt-saved-revision",
+        "creation-prerequisite-receipt-draft-revision",
+        "creation-prerequisite-receipt-draft-digest",
+        "creation-prerequisite-receipt-raw-character-xml-digest",
+        "creation-prerequisite-receipt-auxiliary-state-digest",
+        "creation-prerequisite-receipt-authority-digest",
+        "creation-prerequisite-back-to-build",
+    )
+    immutable_authorities = preview_proof.get("immutableAuthorities")
+    immutable_states = preview_proof.get("immutableStates")
+    assignment_ids = preview_proof.get("assignmentIds")
+    grant_ids = preview_proof.get("grantIds")
+    absent_preview_ids = preview_proof.get("absentPreviewIds")
+    if (
+        not isinstance(immutable_authorities, dict)
+        or not immutable_authorities
+        or not isinstance(immutable_states, dict)
+        or set(immutable_states) != set(immutable_authorities)
+        or not isinstance(assignment_ids, tuple)
+        or not isinstance(grant_ids, tuple)
+        or absent_preview_ids != (
+            "creation-prerequisite-preview-sum-to-ten",
+            "creation-prerequisite-preview-blockers",
+            "creation-prerequisite-preview-attributes-disabled",
+        )
+    ):
+        raise RuntimeError("Preview proof emitted no reusable immutable authority")
+    immutable_selectors = tuple(str(value) for value in immutable_authorities)
+    selectors = tuple(dict.fromkeys((*receipt_selectors, *immutable_selectors)))
+    expected = frozenset(selectors)
+    back_origin = device.wait_exact_resource_id_bidirectional(
+        "creation-prerequisite-back-to-build",
+        timeout=15,
+        backward_scrolls=0,
+        forward_scrolls=4,
+        scroll_distance_ratio=0.30,
+        evidence_prefix=f"{scan_id}-back-origin",
+        surface_name="Confirmed receipt Back read origin",
+        require_tappable=False,
+        deadline=deadline,
+    )
+    _require_canonical_chummer_resource_id(
+        device,
+        back_origin,
+        "creation-prerequisite-back-to-build",
+        evidence_prefix=f"{scan_id}-back-origin",
+        surface_name="Confirmed receipt Back read origin",
+        deadline=deadline,
+    )
+    screens: list[list[shared.UiNode]] = []
+    observed: set[str] = set()
+    reverse_swipes = 0
+    empty_reads = 0
+    started = time.monotonic()
+    while reverse_swipes <= 12:
+        require_phase_deadline(deadline, operation="confirmed-receipt hierarchy")
+        nodes = device.hierarchy(deadline=deadline)
+        if not nodes:
+            empty_reads += 1
+            if empty_reads > 3:
+                break
+            sleep_before_phase_deadline(
+                0.2,
+                deadline=deadline,
+                operation="confirmed-receipt empty hierarchy",
+            )
+            continue
+        empty_reads = 0
+        screens.append(nodes)
+        observed.update(
+            resource_id
+            for node in nodes
+            if (resource_id := _exact_resource_id(node)) in expected
+        )
+        if observed == expected:
+            break
+        if reverse_swipes >= 12:
+            break
+        device.swipe_down(distance_ratio=0.30, deadline=deadline)
+        reverse_swipes += 1
+        sleep_before_phase_deadline(
+            0.2,
+            deadline=deadline,
+            operation="confirmed-receipt reverse observation",
+        )
+    if observed != expected:
+        _capture_with_phase_deadline(
+            device,
+            f"{scan_id}-required-authority-missing",
+            deadline=deadline,
+        )
+        raise RuntimeError(
+            "Confirmed receipt compact scan did not expose every required exact "
+            f"authority within 12 reverse swipes: missing={sorted(expected - observed)!r}"
+        )
+    if scan_observer is not None:
+        scan_observer(
+            {
+                "scanId": scan_id,
+                "status": "required-authority-complete",
+                "screens": len(screens),
+                "swipes": reverse_swipes,
+                "configuredMaxScrolls": 12,
+                "distanceRatio": 0.30,
+                "direction": "reverse-from-current-confirmed-bottom",
+                "deadlineEnforced": True,
+                "elapsedMs": round((time.monotonic() - started) * 1000),
+            }
+        )
+    value_selectors = frozenset(receipt_selectors) - {
+        "creation-prerequisite-preview-page",
+        "creation-prerequisite-confirmed",
+    }
+    values, viewports, states = collect_exact_contiguous_authority_values(
+        device,
+        screens,
+        selectors,
+        evidence_prefix=scan_id,
+        require_nonblank=value_selectors,
+        deadline=deadline,
+    )
+    stale_confirm = any(
+        _exact_resource_id(node) == "creation-prerequisite-confirm"
+        for nodes in screens
+        for node in nodes
+    )
+    expected_preview_ids = frozenset(immutable_selectors)
+    unknown_preview_ids = sorted(
+        {
+            resource_id
+            for nodes in screens
+            for node in nodes
+            if (
+                resource_id := _exact_resource_id(node)
+            ).startswith("creation-prerequisite-preview-")
+            and resource_id not in expected_preview_ids
+            and resource_id not in absent_preview_ids
+        }
+    )
+    unexpected_conditional_ids = sorted(
+        {
+            _exact_resource_id(node)
+            for nodes in screens
+            for node in nodes
+            if _exact_resource_id(node) in absent_preview_ids
+        }
+    )
+    retained_assignment_order: list[str] = []
+    for nodes in reversed(screens):
+        for node in nodes:
+            resource_id = _exact_resource_id(node)
+            if (
+                resource_id in assignment_ids
+                and resource_id not in retained_assignment_order
+            ):
+                retained_assignment_order.append(resource_id)
+    immutable_drift = sorted(
+        selector
+        for selector in immutable_selectors
+        if values[selector] != immutable_authorities[selector]
+        or states[selector] != tuple(immutable_states[selector])
+    )
+    receipt_text = values["creation-prerequisite-confirm-receipt"]
+    revisions: dict[str, int] = {}
+    malformed: list[str] = []
+    for name, selector in (
+        ("contentRevision", "creation-prerequisite-receipt-content-revision"),
+        ("savedRevision", "creation-prerequisite-receipt-saved-revision"),
+        ("draftRevision", "creation-prerequisite-receipt-draft-revision"),
+    ):
+        value = values[selector].strip()
+        if re.fullmatch(r"[0-9]+", value) is None:
+            malformed.append(selector)
+        else:
+            revisions[name] = int(value)
+    digest_selectors = {
+        "draft": "creation-prerequisite-receipt-draft-digest",
+        "rawCharacterXml": (
+            "creation-prerequisite-receipt-raw-character-xml-digest"
+        ),
+        "auxiliaryState": (
+            "creation-prerequisite-receipt-auxiliary-state-digest"
+        ),
+        "authority": "creation-prerequisite-receipt-authority-digest",
+    }
+    digests = {
+        name: values[selector].strip()
+        for name, selector in digest_selectors.items()
+    }
+    for name in ("draft", "rawCharacterXml", "authority"):
+        if CANONICAL_AUTHORITY_DIGEST.fullmatch(digests[name]) is None:
+            malformed.append(digest_selectors[name])
+    if CANONICAL_AUXILIARY_STATE_DIGEST.fullmatch(
+        digests["auxiliaryState"]
+    ) is None:
+        malformed.append(digest_selectors["auxiliaryState"])
+    back_selector = "creation-prerequisite-back-to-build"
+    if (
+        stale_confirm
+        or unknown_preview_ids
+        or unexpected_conditional_ids
+        or immutable_drift
+        or tuple(retained_assignment_order) != assignment_ids
+        or malformed
+        or re.search(r"(?:^|[. ·])false(?:$|[. ·])", receipt_text.casefold())
+        is None
+        or states[back_selector] != ("true", "true")
+        or viewports[back_selector][0] != 0
+    ):
+        _capture_with_phase_deadline(
+            device,
+            f"{scan_id}-invalid",
+            deadline=deadline,
+        )
+        raise RuntimeError(
+            "Confirmed receipt was stale, malformed, or lacked one terminal Back action: "
+            f"staleConfirm={stale_confirm!r}, unknownPreviewIds={unknown_preview_ids!r}, "
+            f"unexpectedConditional={unexpected_conditional_ids!r}, "
+            f"immutableDrift={immutable_drift!r}, "
+            f"assignmentOrder={retained_assignment_order!r}, malformed={malformed!r}, "
+            f"backState={states[back_selector]!r}, "
+            f"backViewports={viewports[back_selector]!r}"
+        )
+
+    # Restore the measured current/bottom viewport without another authority
+    # traversal. The exact Back action is freshly reacquired after this bounded
+    # read-only restoration and is never replayed.
+    for _ in range(reverse_swipes):
+        device.swipe_up(distance_ratio=0.30, deadline=deadline)
+        sleep_before_phase_deadline(
+            0.2,
+            deadline=deadline,
+            operation="confirmed-receipt measured bottom restoration",
+        )
+
+    return {
+        "receiptText": receipt_text,
+        "revisions": revisions,
+        "draftDigest": digests["draft"],
+        "bindingDigests": {
+            "rawCharacterXml": digests["rawCharacterXml"],
+            "auxiliaryState": digests["auxiliaryState"],
+            "authority": digests["authority"],
+        },
+        "backAuthority": values[back_selector],
+        "backViewport": viewports[back_selector][0],
+        "currentViewport": 0,
+    }
+
+
+def tap_exact_confirmed_receipt_back(
+    device: shared.Device,
+    receipt: dict[str, object],
+    *,
+    deadline: float,
+) -> float:
+    """Freshly reacquire one measured Back action and lease dashboard proof time."""
+    selector = "creation-prerequisite-back-to-build"
+    if (
+        receipt.get("backViewport") != receipt.get("currentViewport")
+        or not isinstance(receipt.get("backAuthority"), str)
+        or not str(receipt["backAuthority"]).strip()
+    ):
+        raise RuntimeError("Receipt scan emitted no exact terminal Back authority")
+    node = device.wait_for_single_exact_resource_id(
+        selector,
+        timeout=45,
+        scroll=False,
+        max_scrolls=0,
+        evidence_prefix="creation-prerequisite-confirmed-receipt-back-current",
+        surface_name="Measured current confirmed-receipt Back action",
+        deadline=deadline,
+    )
+    _require_canonical_chummer_resource_id(
+        device,
+        node,
+        selector,
+        evidence_prefix="creation-prerequisite-confirmed-receipt-back-current",
+        surface_name="Measured current confirmed-receipt Back action",
+        deadline=deadline,
+    )
+    value = node.attributes.get("text") or node.attributes.get("content-desc") or ""
+    if (
+        value != receipt["backAuthority"]
+        or node.attributes.get("enabled") != "true"
+        or node.attributes.get("clickable") != "true"
+        or not device.node_has_tappable_bounds(node, deadline=deadline)
+    ):
+        _capture_with_phase_deadline(
+            device,
+            "creation-prerequisite-confirmed-receipt-back-current-invalid",
+            deadline=deadline,
+        )
+        raise RuntimeError("Fresh confirmed-receipt Back authority drifted or was not tappable")
+    action_deadline = persistent_action_deadline(
+        deadline,
+        action_timeout_seconds=PERSISTENT_PREVIEW_ACTION_TIMEOUT_SECONDS,
+        proof_timeout_seconds=POST_CONFIRM_DASHBOARD_PROOF_TIMEOUT_SECONDS,
+        operation="the exact confirmed-receipt Back action",
+    )
+    x, y = node.center
+    device.shell(
+        "input",
+        "tap",
+        str(x),
+        str(y),
+        timeout=shared._remaining_operation_timeout(
+            deadline=action_deadline,
+            maximum=PERSISTENT_PREVIEW_ACTION_TIMEOUT_SECONDS,
+        ),
+        deadline=action_deadline,
+    )
+    return immediate_proof_deadline(
+        deadline,
+        POST_CONFIRM_DASHBOARD_PROOF_TIMEOUT_SECONDS,
+        operation="the post-confirm dashboard proof",
+    )
 
 
 def open_talent_selection_after_preview(device: shared.Device) -> None:
@@ -6068,7 +7295,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     device.tap(
         "creation-prerequisite-heritage-selection",
         scroll=True,
-        max_scrolls=22,
+        max_scrolls=12,
     )
     device.wait("creation-prerequisite-heritage-page", timeout=45)
     typed_selections["heritage"] = tap_enabled_authority_option(
@@ -6255,150 +7482,50 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         )
 
     progress.advance("preview-confirm")
-    # A plain Back from a category route preserves the exact in-memory typed rank choice.
-    attributes_before = node_text(
+    preview_confirm_deadline = progress.active_phase_deadline("preview-confirm")
+    attributes_before = require_exact_attributes_category_round_trip(
         device,
-        "creation-prerequisite-category-attributes",
-        scroll=True,
-    )
-    device.tap("creation-prerequisite-category-attributes", scroll=True, max_scrolls=22)
-    device.wait("creation-prerequisite-category-page", timeout=45)
-    device.back()
-    attributes_after = node_text(
-        device,
-        "creation-prerequisite-category-attributes",
-        scroll=True,
-    )
-    if attributes_after != attributes_before:
-        raise RuntimeError("Back navigation did not restore the typed Attribute rank selection")
-
-    device.wait_for_single_exact_resource_id(
-        "creation-prerequisite-attributes-disabled",
-        timeout=60,
-        scroll=True,
-        max_scrolls=22,
-        scroll_distance_ratio=0.22,
-        evidence_prefix="creation-prerequisite-attributes-disabled",
-        surface_name="Core-disabled Attributes prerequisite row",
+        deadline=preview_confirm_deadline,
     )
 
-    device.tap("creation-prerequisite-prepare-preview", scroll=True, max_scrolls=22)
-    device.wait("creation-prerequisite-preview-page", timeout=60)
+    open_exact_prerequisite_preview(
+        device,
+        deadline=preview_confirm_deadline,
+    )
+    preview_proof: dict[str, object] = {}
     skill_group_plan_digest = require_exact_preview_talent_grant_plan(
         device,
         "Skill groups",
         skill_group_selected_option_ids,
+        max_scrolls=12,
         scan_observer=progress.record_scan,
         scan_id="talent-skill-group-preview-plan",
-        deadline=progress.active_phase_deadline("preview-confirm"),
+        deadline=preview_confirm_deadline,
+        proof_out=preview_proof,
     )
-    # The pushed preview route can inherit the prerequisite page's bottom offset.
-    shared.reset_scroll_to_top(device, swipes=22)
-    preview_digest = canonical_digest(
-        device,
-        "creation-prerequisite-preview-digest",
-        scroll=True,
-    )
-    preview_binding_digests = {
-        "rawCharacterXml": canonical_digest(
-            device,
-            "creation-prerequisite-preview-raw-character-xml-digest",
-            scroll=True,
-        ),
-        "auxiliaryState": canonical_auxiliary_state_digest(
-            device,
-            "creation-prerequisite-preview-auxiliary-state-digest",
-            scroll=True,
-        ),
-        "authority": canonical_digest(
-            device,
-            "creation-prerequisite-preview-authority-digest",
-            scroll=True,
-        ),
-    }
+    preview_digest = str(preview_proof["previewDigest"])
+    preview_binding_digests = dict(preview_proof["bindingDigests"])
     if preview_binding_digests != prerequisite_digests:
         raise RuntimeError(
             "Core preview binding changed from the selected prerequisite snapshot: "
             f"before={prerequisite_digests!r}, preview={preview_binding_digests!r}"
         )
-    for category in CATEGORIES:
-        device.wait(
-            f"creation-prerequisite-preview-assignment-{category}",
-            timeout=45,
-            scroll=True,
-            max_scrolls=22,
-        )
-    device.wait("creation-prerequisite-preview-heritage", scroll=True, max_scrolls=22)
-    device.wait("creation-prerequisite-preview-talent", scroll=True, max_scrolls=22)
-    device.wait("creation-prerequisite-preview-karma-budget", timeout=45, scroll=True, max_scrolls=22)
-    device.wait_for_single_exact_resource_id(
-        "creation-prerequisite-preview-attributes-ready",
-        timeout=60,
-        scroll=True,
-        max_scrolls=22,
-        scroll_distance_ratio=0.22,
-        evidence_prefix="creation-prerequisite-preview-attributes-ready",
-        surface_name="Core-ready Attributes preview authority",
-    )
-    device.tap("creation-prerequisite-confirm", scroll=True, max_scrolls=22)
-    device.wait("creation-prerequisite-confirm-receipt", timeout=90, scroll=True, max_scrolls=22)
-    # Confirmation replaces the deeply scrolled preview content in place. Read the
-    # receipt and its ordered authority fields from a deterministic page origin.
-    shared.reset_scroll_to_top(device, swipes=22)
-    device.wait_for_single_exact_resource_id(
-        "creation-prerequisite-confirmed",
-        timeout=60,
-        scroll=True,
-        max_scrolls=22,
-        scroll_distance_ratio=0.22,
-        evidence_prefix="creation-prerequisite-confirmed",
-        surface_name="Explicit prerequisite confirmation state",
-    )
-    receipt_text = node_text(device, "creation-prerequisite-confirm-receipt", scroll=True)
-    if re.search(r"(?:^|[. ·])false(?:$|[. ·])", receipt_text.casefold()) is None:
-        raise RuntimeError(
-            "Prerequisite receipt did not expose the invariant "
-            f"CharacterDocumentChanged=false value: {receipt_text!r}"
-        )
-    confirmed_revisions = {
-        "contentRevision": nonnegative_integer(
-            device,
-            "creation-prerequisite-receipt-content-revision",
-            scroll=True,
-        ),
-        "savedRevision": nonnegative_integer(
-            device,
-            "creation-prerequisite-receipt-saved-revision",
-            scroll=True,
-        ),
-        "draftRevision": nonnegative_integer(
-            device,
-            "creation-prerequisite-receipt-draft-revision",
-            scroll=True,
-        ),
-    }
-    confirmed_draft_digest = canonical_digest(
+
+    receipt_deadline = tap_exact_current_preview_confirm(
         device,
-        "creation-prerequisite-receipt-draft-digest",
-        scroll=True,
+        preview_proof,
+        deadline=preview_confirm_deadline,
     )
-    confirmed_binding_digests = {
-        "rawCharacterXml": canonical_digest(
-            device,
-            "creation-prerequisite-receipt-raw-character-xml-digest",
-            scroll=True,
-        ),
-        "auxiliaryState": canonical_auxiliary_state_digest(
-            device,
-            "creation-prerequisite-receipt-auxiliary-state-digest",
-            scroll=True,
-        ),
-        "authority": canonical_digest(
-            device,
-            "creation-prerequisite-receipt-authority-digest",
-            scroll=True,
-        ),
-    }
+    confirmed_receipt = read_exact_confirmed_receipt(
+        device,
+        preview_proof=preview_proof,
+        scan_observer=progress.record_scan,
+        deadline=receipt_deadline,
+    )
+    receipt_text = str(confirmed_receipt["receiptText"])
+    confirmed_revisions = dict(confirmed_receipt["revisions"])
+    confirmed_draft_digest = str(confirmed_receipt["draftDigest"])
+    confirmed_binding_digests = dict(confirmed_receipt["bindingDigests"])
     if confirmed_revisions["contentRevision"] <= 0 or confirmed_revisions["draftRevision"] <= 0:
         raise RuntimeError(f"Prerequisite receipt revisions are invalid: {confirmed_revisions!r}")
     if confirmed_binding_digests["rawCharacterXml"] != preview_binding_digests["rawCharacterXml"]:
@@ -6407,20 +7534,19 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         raise RuntimeError("Auxiliary draft confirmation changed rules authority")
     if confirmed_binding_digests["auxiliaryState"] == preview_binding_digests["auxiliaryState"]:
         raise RuntimeError("Auxiliary draft confirmation did not change auxiliary-state authority")
-    device.capture("creation-prerequisite-confirmed")
-    device.tap("creation-prerequisite-back-to-build", scroll=True, max_scrolls=22)
-    shared.open_creation_dashboard(
+    dashboard_deadline = tap_exact_confirmed_receipt_back(
         device,
-        open_build_route=False,
-        dashboard_timeout=60,
-        reset_swipes=22,
+        confirmed_receipt,
+        deadline=preview_confirm_deadline,
     )
-    assert_uncreated_advanced_editor_gated(
+    post_confirm_dashboard = assert_uncreated_advanced_editor_gated(
         device,
         scan_observer=progress.record_scan,
         scan_id="advanced-editor-gate-post-confirm",
+        deadline=dashboard_deadline,
+        compact_current=True,
     )
-    if node_text(device, "creation-wizard-binding", scroll=True) == dashboard_binding:
+    if post_confirm_dashboard.binding == dashboard_binding:
         raise RuntimeError("Atomic prerequisite confirmation did not refresh the wizard revision")
 
     # Prove the prerequisite receipt before the Resources write legitimately advances
