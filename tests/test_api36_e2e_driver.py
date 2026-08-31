@@ -1733,6 +1733,374 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             DRIVER.ADB_FILE_HIERARCHY_REMOTE_PATH,
         )
 
+    def test_missing_fresh_file_retries_only_the_same_owned_file(self) -> None:
+        current = (
+            "<?xml version='1.0' encoding='UTF-8'?>"
+            "<hierarchy><node text='Current runner root' /></hierarchy>"
+        )
+        with tempfile.TemporaryDirectory() as temporary, patch.object(
+            DRIVER.time,
+            "monotonic",
+            return_value=90.0,
+        ):
+            evidence = Path(temporary)
+            device = DRIVER.Device(
+                Path("/unused/adb"),
+                "emulator-5554",
+                evidence,
+            )
+            with (
+                patch.object(device, "shell", return_value="") as shell,
+                patch.object(
+                    device,
+                    "run",
+                    side_effect=(
+                        subprocess.CompletedProcess(
+                            args=(
+                                "exec-out",
+                                "cat",
+                                DRIVER.ADB_FILE_HIERARCHY_REMOTE_PATH,
+                            ),
+                            returncode=0,
+                            stdout=DRIVER.ADB_FILE_HIERARCHY_ABSENT_OUTPUT,
+                            stderr="",
+                        ),
+                        subprocess.CompletedProcess(
+                            args=(
+                                "exec-out",
+                                "cat",
+                                DRIVER.ADB_FILE_HIERARCHY_REMOTE_PATH,
+                            ),
+                            returncode=0,
+                            stdout=current,
+                            stderr="",
+                        ),
+                    ),
+                ) as run,
+                patch.object(DRIVER.time, "sleep") as sleep,
+            ):
+                nodes = device.hierarchy()
+            self.assertEqual("Current runner root", nodes[0].attributes["text"])
+            self.assertEqual(
+                [
+                    call(*DRIVER.ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS),
+                    call(*DRIVER.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS),
+                ],
+                shell.call_args_list,
+            )
+            self.assertEqual(
+                [
+                    call(
+                        "exec-out",
+                        "cat",
+                        DRIVER.ADB_FILE_HIERARCHY_REMOTE_PATH,
+                    ),
+                    call(
+                        "exec-out",
+                        "cat",
+                        DRIVER.ADB_FILE_HIERARCHY_REMOTE_PATH,
+                        timeout=DRIVER.ADB_FILE_HIERARCHY_VISIBILITY_MAX_SECONDS,
+                        deadline=(
+                            90.0 + DRIVER.ADB_FILE_HIERARCHY_VISIBILITY_MAX_SECONDS
+                        ),
+                    ),
+                ],
+                run.call_args_list,
+            )
+            sleep.assert_called_once_with(
+                DRIVER.ADB_FILE_HIERARCHY_VISIBILITY_DELAY_SECONDS
+            )
+            self.assertEqual(
+                DRIVER.ADB_FILE_HIERARCHY_ABSENT_OUTPUT,
+                (evidence / "last-invalid-hierarchy.txt").read_text(
+                    encoding="utf-8"
+                ),
+            )
+
+    def test_missing_fresh_file_stops_after_one_malformed_visibility_read(
+        self,
+    ) -> None:
+        malformed = "fresh file contained no hierarchy"
+        with tempfile.TemporaryDirectory() as temporary, patch.object(
+            DRIVER.time,
+            "monotonic",
+            return_value=90.0,
+        ):
+            evidence = Path(temporary)
+            device = DRIVER.Device(
+                Path("/unused/adb"),
+                "emulator-5554",
+                evidence,
+            )
+            with (
+                patch.object(device, "shell", return_value=""),
+                patch.object(
+                    device,
+                    "run",
+                    side_effect=(
+                        subprocess.CompletedProcess(
+                            args=(
+                                "exec-out",
+                                "cat",
+                                DRIVER.ADB_FILE_HIERARCHY_REMOTE_PATH,
+                            ),
+                            returncode=0,
+                            stdout=DRIVER.ADB_FILE_HIERARCHY_ABSENT_OUTPUT,
+                            stderr="",
+                        ),
+                        subprocess.CompletedProcess(
+                            args=(
+                                "exec-out",
+                                "cat",
+                                DRIVER.ADB_FILE_HIERARCHY_REMOTE_PATH,
+                            ),
+                            returncode=0,
+                            stdout=malformed,
+                            stderr="",
+                        ),
+                    ),
+                ) as run,
+                patch.object(DRIVER.time, "sleep") as sleep,
+            ):
+                self.assertEqual([], device.hierarchy())
+
+            self.assertEqual(2, run.call_count)
+            self.assertEqual(1, sleep.call_count)
+            self.assertEqual(
+                malformed,
+                (evidence / "last-invalid-hierarchy.txt").read_text(
+                    encoding="utf-8"
+                ),
+            )
+
+    def test_missing_fresh_file_visibility_read_clips_distant_caller_deadline(
+        self,
+    ) -> None:
+        current = "<hierarchy><node text='Current runner root' /></hierarchy>"
+        now = [90.0]
+
+        def monotonic() -> float:
+            return now[0]
+
+        def sleep(seconds: float) -> None:
+            now[0] += seconds
+
+        with tempfile.TemporaryDirectory() as temporary:
+            device = DRIVER.Device(
+                Path("/unused/adb"),
+                "emulator-5554",
+                Path(temporary),
+            )
+            with (
+                patch.object(device, "shell", return_value=""),
+                patch.object(
+                    device,
+                    "run",
+                    side_effect=(
+                        subprocess.CompletedProcess(
+                            args=(
+                                "exec-out",
+                                "cat",
+                                DRIVER.ADB_FILE_HIERARCHY_REMOTE_PATH,
+                            ),
+                            returncode=0,
+                            stdout=DRIVER.ADB_FILE_HIERARCHY_ABSENT_OUTPUT,
+                            stderr="",
+                        ),
+                        subprocess.CompletedProcess(
+                            args=(
+                                "exec-out",
+                                "cat",
+                                DRIVER.ADB_FILE_HIERARCHY_REMOTE_PATH,
+                            ),
+                            returncode=0,
+                            stdout=current,
+                            stderr="",
+                        ),
+                    ),
+                ) as run,
+                patch.object(DRIVER.time, "monotonic", side_effect=monotonic),
+                patch.object(DRIVER.time, "sleep", side_effect=sleep),
+            ):
+                nodes = device.hierarchy(deadline=100.0)
+
+        self.assertEqual("Current runner root", nodes[0].attributes["text"])
+        self.assertEqual(
+            call(
+                "exec-out",
+                "cat",
+                DRIVER.ADB_FILE_HIERARCHY_REMOTE_PATH,
+                timeout=(
+                    DRIVER.ADB_FILE_HIERARCHY_VISIBILITY_MAX_SECONDS
+                    - DRIVER.ADB_FILE_HIERARCHY_VISIBILITY_DELAY_SECONDS
+                ),
+                deadline=(
+                    90.0 + DRIVER.ADB_FILE_HIERARCHY_VISIBILITY_MAX_SECONDS
+                ),
+            ),
+            run.call_args_list[-1],
+        )
+        self.assertEqual(
+            90.0 + DRIVER.ADB_FILE_HIERARCHY_VISIBILITY_DELAY_SECONDS,
+            now[0],
+        )
+
+    def test_missing_fresh_file_visibility_read_is_strictly_bounded(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary, patch.object(
+            DRIVER.time,
+            "monotonic",
+            return_value=90.0,
+        ):
+            device = DRIVER.Device(
+                Path("/unused/adb"),
+                "emulator-5554",
+                Path(temporary),
+            )
+            missing = subprocess.CompletedProcess(
+                args=(
+                    "exec-out",
+                    "cat",
+                    DRIVER.ADB_FILE_HIERARCHY_REMOTE_PATH,
+                ),
+                returncode=0,
+                stdout=DRIVER.ADB_FILE_HIERARCHY_ABSENT_OUTPUT,
+                stderr="",
+            )
+            with (
+                patch.object(device, "shell", return_value="") as shell,
+                patch.object(
+                    device,
+                    "run",
+                    side_effect=(
+                        missing,
+                        *(
+                            missing
+                            for _index in range(
+                                1,
+                                DRIVER.ADB_FILE_HIERARCHY_VISIBILITY_MAX_OBSERVATIONS,
+                            )
+                        ),
+                    ),
+                ) as run,
+                patch.object(DRIVER.time, "sleep") as sleep,
+            ):
+                self.assertEqual([], device.hierarchy())
+
+        self.assertEqual(2, shell.call_count)
+        self.assertEqual(
+            DRIVER.ADB_FILE_HIERARCHY_VISIBILITY_MAX_OBSERVATIONS,
+            run.call_count,
+        )
+        self.assertEqual(
+            DRIVER.ADB_FILE_HIERARCHY_VISIBILITY_MAX_OBSERVATIONS - 1,
+            sleep.call_count,
+        )
+        self.assertTrue(
+            all(
+                tuple(invocation.args)
+                == (
+                    "exec-out",
+                    "cat",
+                    DRIVER.ADB_FILE_HIERARCHY_REMOTE_PATH,
+                )
+                for invocation in run.call_args_list
+            )
+        )
+
+    def test_missing_fresh_file_visibility_never_polls_after_caller_deadline(
+        self,
+    ) -> None:
+        now = [99.9]
+
+        def monotonic() -> float:
+            return now[0]
+
+        def sleep(seconds: float) -> None:
+            now[0] += seconds
+
+        with tempfile.TemporaryDirectory() as temporary:
+            evidence = Path(temporary)
+            device = DRIVER.Device(
+                Path("/unused/adb"),
+                "emulator-5554",
+                evidence,
+            )
+            missing = subprocess.CompletedProcess(
+                args=(
+                    "exec-out",
+                    "cat",
+                    DRIVER.ADB_FILE_HIERARCHY_REMOTE_PATH,
+                ),
+                returncode=0,
+                stdout=DRIVER.ADB_FILE_HIERARCHY_ABSENT_OUTPUT,
+                stderr="",
+            )
+            with (
+                patch.object(device, "shell", return_value=""),
+                patch.object(device, "run", return_value=missing) as run,
+                patch.object(DRIVER.time, "monotonic", side_effect=monotonic),
+                patch.object(DRIVER.time, "sleep", side_effect=sleep),
+            ):
+                self.assertEqual([], device.hierarchy(deadline=100.0))
+
+            self.assertEqual(1, run.call_count)
+            self.assertEqual(100.0, now[0])
+            diagnostic = (evidence / "last-invalid-hierarchy.txt").read_text(
+                encoding="utf-8"
+            )
+            self.assertIn("bounded visibility deadline", diagnostic)
+            self.assertIn("deadline expired before command invocation", diagnostic)
+
+    def test_missing_fresh_file_visibility_read_fails_closed_on_transport_error(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            evidence = Path(temporary)
+            device = DRIVER.Device(
+                Path("/unused/adb"),
+                "emulator-5554",
+                evidence,
+            )
+            transport_evidence = evidence / "adb-transport-event-0001.json"
+            fallback_failure = DRIVER.AdbTransportError(
+                {
+                    "classification": "device-offline",
+                    "commandPolicy": "read-only-retryable",
+                    "replay": {"performed": True, "suppressed": True},
+                },
+                transport_evidence,
+            )
+            with (
+                patch.object(device, "shell", return_value=""),
+                patch.object(
+                    device,
+                    "run",
+                    side_effect=(
+                        subprocess.CompletedProcess(
+                            args=(
+                                "exec-out",
+                                "cat",
+                                DRIVER.ADB_FILE_HIERARCHY_REMOTE_PATH,
+                            ),
+                            returncode=0,
+                            stdout=DRIVER.ADB_FILE_HIERARCHY_ABSENT_OUTPUT,
+                            stderr="",
+                        ),
+                        fallback_failure,
+                    ),
+                ),
+                patch.object(DRIVER.time, "sleep"),
+                self.assertRaises(DRIVER.AdbTransportError),
+            ):
+                device.hierarchy()
+            diagnostic = (evidence / "last-invalid-hierarchy.txt").read_text(
+                encoding="utf-8"
+            )
+            self.assertIn(
+                "Fresh file-backed hierarchy visibility observation failed",
+                diagnostic,
+            )
+            self.assertIn("device-offline", diagnostic)
+            self.assertIn(str(transport_evidence), diagnostic)
+
     def test_empty_dump_status_records_fresh_file_transport_failure(self) -> None:
         device = Mock(spec=DRIVER.Device)
         device.shell.return_value = ""

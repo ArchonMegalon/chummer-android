@@ -126,6 +126,12 @@ ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS = (
     "--compressed",
     ADB_FILE_HIERARCHY_REMOTE_PATH,
 )
+ADB_FILE_HIERARCHY_ABSENT_OUTPUT = (
+    f"cat: {ADB_FILE_HIERARCHY_REMOTE_PATH}: No such file or directory"
+)
+ADB_FILE_HIERARCHY_VISIBILITY_MAX_OBSERVATIONS = 8
+ADB_FILE_HIERARCHY_VISIBILITY_DELAY_SECONDS = 0.25
+ADB_FILE_HIERARCHY_VISIBILITY_MAX_SECONDS = 2.5
 DOCUMENTS_UI_PACKAGE = "com.google.android.documentsui"
 DOCUMENTS_UI_DRAWER_MARKER = "Open from"
 DOCUMENTS_UI_DOWNLOADS_ROOT = "Downloads"
@@ -1209,7 +1215,72 @@ class Device:
             )
             return []
 
-        return Device._parse_hierarchy(self, xml, "last-invalid-hierarchy.txt")
+        nodes = Device._parse_hierarchy(
+            self,
+            xml,
+            "last-invalid-hierarchy.txt",
+        )
+        if nodes or xml.strip() != ADB_FILE_HIERARCHY_ABSENT_OUTPUT:
+            return nodes
+
+        # Some API-36 emulator images acknowledge the exact UIAutomator dump
+        # before its requested /sdcard file becomes observable. The preceding
+        # removal proves that any file which now appears belongs to this exact
+        # dump invocation. Give only that same owned file a small, bounded
+        # visibility window; do not re-run the dump, remove the file again, or
+        # issue any mutation. Every follow-up cat remains a read-only command
+        # under both a small local cap and any earlier caller-owned deadline.
+        local_visibility_deadline = (
+            time.monotonic() + ADB_FILE_HIERARCHY_VISIBILITY_MAX_SECONDS
+        )
+        visibility_deadline = (
+            local_visibility_deadline
+            if deadline is None
+            else min(deadline, local_visibility_deadline)
+        )
+        for _observation in range(1, ADB_FILE_HIERARCHY_VISIBILITY_MAX_OBSERVATIONS):
+            try:
+                visibility_delay = _remaining_operation_timeout(
+                    deadline=visibility_deadline,
+                    maximum=ADB_FILE_HIERARCHY_VISIBILITY_DELAY_SECONDS,
+                )
+                time.sleep(visibility_delay)
+                xml = self.run(
+                    "exec-out",
+                    "cat",
+                    ADB_FILE_HIERARCHY_REMOTE_PATH,
+                    timeout=_remaining_operation_timeout(
+                        deadline=visibility_deadline,
+                        maximum=ADB_FILE_HIERARCHY_VISIBILITY_MAX_SECONDS,
+                    ),
+                    deadline=visibility_deadline,
+                ).stdout
+                _remaining_operation_timeout(
+                    deadline=visibility_deadline,
+                    maximum=ADB_FILE_HIERARCHY_VISIBILITY_MAX_SECONDS,
+                )
+            except AdbOperationDeadlineExceeded as error:
+                (self.evidence / "last-invalid-hierarchy.txt").write_text(
+                    "Fresh file-backed hierarchy observation exceeded its bounded "
+                    f"visibility deadline: {error}",
+                    encoding="utf-8",
+                )
+                return []
+            except AdbTransportError as error:
+                (self.evidence / "last-invalid-hierarchy.txt").write_text(
+                    f"Fresh file-backed hierarchy visibility observation failed: {error}",
+                    encoding="utf-8",
+                )
+                raise
+
+            nodes = Device._parse_hierarchy(
+                self,
+                xml,
+                "last-invalid-hierarchy.txt",
+            )
+            if nodes or xml.strip() != ADB_FILE_HIERARCHY_ABSENT_OUTPUT:
+                return nodes
+        return []
 
     def read_only_hierarchy(
         self,
