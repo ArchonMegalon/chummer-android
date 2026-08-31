@@ -8347,6 +8347,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         start = source.index('progress.advance("preview-confirm")')
         end = source.index("preview_proof: dict[str, object] = {}", start)
         block = source[start:end]
+        phase_end = source.index('progress.advance("same-process-reopen")', start)
+        phase_block = source[start:phase_end]
 
         self.assertEqual(330_000, driver.PHASE_BUDGET_MS["preview-confirm"])
         self.assertEqual(
@@ -8361,6 +8363,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 "attributes_before = require_exact_attributes_category_round_trip("
             ),
         )
+        self.assertEqual(1, phase_block.count("tap_exact_current_preview_confirm("))
+        self.assertEqual(1, phase_block.count("read_exact_confirmed_receipt("))
         self.assertEqual(2, block.count("deadline=preview_confirm_deadline"))
         for forbidden in (
             "node_text(",
@@ -8410,17 +8414,42 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertNotIn("preview-authority", driver.PHASE_BUDGET_MS)
         self.assertNotIn("post-confirm-dashboard", driver.PHASE_BUDGET_MS)
         self.assertEqual(3.0, driver.PERSISTENT_PREVIEW_ACTION_TIMEOUT_SECONDS)
-        self.assertEqual(50.0, driver.CONFIRMED_RECEIPT_SCAN_TIMEOUT_SECONDS)
+        self.assertEqual(90.0, driver.CONFIRMED_STATE_TRANSITION_TIMEOUT_SECONDS)
+        self.assertEqual(
+            15.0,
+            driver.CONFIRMED_RECEIPT_BACK_ORIGIN_TIMEOUT_SECONDS,
+        )
+        self.assertEqual(
+            60.0,
+            driver.CONFIRMED_RECEIPT_TRAVERSAL_RESERVE_SECONDS,
+        )
+        self.assertEqual(150.0, driver.CONFIRMED_RECEIPT_PROOF_TIMEOUT_SECONDS)
+        self.assertEqual(
+            driver.CONFIRMED_STATE_TRANSITION_TIMEOUT_SECONDS
+            + driver.CONFIRMED_RECEIPT_TRAVERSAL_RESERVE_SECONDS,
+            driver.CONFIRMED_RECEIPT_PROOF_TIMEOUT_SECONDS,
+        )
         self.assertEqual(30.0, driver.POST_CONFIRM_DASHBOARD_PROOF_TIMEOUT_SECONDS)
         self.assertEqual(
-            83.0,
+            183.0,
             driver.CONFIRM_DOWNSTREAM_RESERVE_SECONDS,
         )
         self.assertEqual(
-            driver.CONFIRMED_RECEIPT_SCAN_TIMEOUT_SECONDS
+            driver.CONFIRMED_RECEIPT_PROOF_TIMEOUT_SECONDS
             + driver.PERSISTENT_PREVIEW_ACTION_TIMEOUT_SECONDS
             + driver.POST_CONFIRM_DASHBOARD_PROOF_TIMEOUT_SECONDS,
             driver.CONFIRM_DOWNSTREAM_RESERVE_SECONDS,
+        )
+        receipt_source = inspect.getsource(driver.read_exact_confirmed_receipt)
+        self.assertIn(
+            "timeout=CONFIRMED_STATE_TRANSITION_TIMEOUT_SECONDS",
+            receipt_source,
+        )
+        self.assertIn("scroll=False", receipt_source)
+        self.assertIn("max_scrolls=0", receipt_source)
+        self.assertIn(
+            "timeout=CONFIRMED_RECEIPT_BACK_ORIGIN_TIMEOUT_SECONDS",
+            receipt_source,
         )
         self.assertEqual(1_800_000, driver.TOTAL_PERFORMANCE_TARGET_MS)
 
@@ -8767,7 +8796,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 driver.tap_exact_current_preview_confirm,
                 "proof_timeout_seconds=CONFIRM_DOWNSTREAM_RESERVE_SECONDS",
                 driver.CONFIRM_DOWNSTREAM_RESERVE_SECONDS,
-                86.0,
+                186.0,
             ),
             (
                 "back",
@@ -8906,10 +8935,126 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             driver.tap_exact_current_preview_confirm(
                 device,
                 proof,
-                deadline=driver.time.monotonic() + 90,
+                deadline=driver.time.monotonic() + 200,
             )
         device.shell.assert_called_once()
         device.wait_for_single_exact_resource_id.assert_called_once()
+
+    def test_confirmed_receipt_waits_read_only_for_transition_before_traversal(
+        self,
+    ) -> None:
+        deadline = driver.time.monotonic() + 200
+        transition_timeout = RuntimeError(
+            "confirmed state transition remained unavailable"
+        )
+        device = mock.Mock(spec=driver.shared.Device)
+        device.wait_for_single_exact_resource_id.side_effect = transition_timeout
+        preview_proof = {
+            "immutableAuthorities": {
+                "creation-prerequisite-preview-binding": "Revision 1",
+            },
+            "immutableStates": {
+                "creation-prerequisite-preview-binding": ("true", "false"),
+            },
+            "assignmentIds": (),
+            "grantIds": (),
+            "absentPreviewIds": (
+                "creation-prerequisite-preview-sum-to-ten",
+                "creation-prerequisite-preview-blockers",
+                "creation-prerequisite-preview-attributes-disabled",
+            ),
+        }
+
+        with self.assertRaises(RuntimeError) as raised:
+            driver.read_exact_confirmed_receipt(
+                device,
+                preview_proof=preview_proof,
+                scan_observer=None,
+                deadline=deadline,
+            )
+
+        self.assertIs(transition_timeout, raised.exception)
+        device.wait_for_single_exact_resource_id.assert_called_once_with(
+            "creation-prerequisite-confirmed",
+            timeout=driver.CONFIRMED_STATE_TRANSITION_TIMEOUT_SECONDS,
+            scroll=False,
+            max_scrolls=0,
+            evidence_prefix="creation-prerequisite-confirmed-receipt-transition",
+            surface_name="Confirmed prerequisite state transition",
+            deadline=deadline,
+        )
+        device.wait_exact_resource_id_bidirectional.assert_not_called()
+        device.hierarchy.assert_not_called()
+        device.shell.assert_not_called()
+
+    def test_confirmed_receipt_delayed_transition_precedes_back_traversal(
+        self,
+    ) -> None:
+        preview = self.canonical_node("creation-prerequisite-confirm")
+        confirmed = self.canonical_node("creation-prerequisite-confirmed")
+        observations = iter(([preview], [preview], [confirmed]))
+        events: list[str] = []
+        device = mock.Mock(spec=driver.shared.Device)
+
+        def hierarchy(*, deadline: float | None = None) -> list[driver.shared.UiNode]:
+            self.assertEqual(190.0, deadline)
+            events.append("poll")
+            return next(observations)
+
+        def real_transition_wait(selector: str, **kwargs: object) -> driver.shared.UiNode:
+            return driver.shared.Device.wait_for_single_exact_resource_id(
+                device,
+                selector,
+                **kwargs,
+            )
+
+        back_blocker = RuntimeError("ordered Back traversal marker")
+
+        def begin_back(*args: object, **kwargs: object) -> driver.shared.UiNode:
+            self.assertEqual(["poll", "poll", "poll"], events)
+            events.append("back")
+            raise back_blocker
+
+        device.hierarchy.side_effect = hierarchy
+        device.dismiss_system_ui_anr.return_value = False
+        device.wait_for_single_exact_resource_id.side_effect = real_transition_wait
+        device.wait_exact_resource_id_bidirectional.side_effect = begin_back
+        preview_proof = {
+            "immutableAuthorities": {
+                "creation-prerequisite-preview-binding": "Revision 1",
+            },
+            "immutableStates": {
+                "creation-prerequisite-preview-binding": ("true", "false"),
+            },
+            "assignmentIds": (),
+            "grantIds": (),
+            "absentPreviewIds": (
+                "creation-prerequisite-preview-sum-to-ten",
+                "creation-prerequisite-preview-blockers",
+                "creation-prerequisite-preview-attributes-disabled",
+            ),
+        }
+
+        with mock.patch.object(
+            driver.shared.time,
+            "monotonic",
+            return_value=100.0,
+        ), mock.patch.object(driver.shared.time, "sleep") as sleep:
+            with self.assertRaises(RuntimeError) as raised:
+                driver.read_exact_confirmed_receipt(
+                    device,
+                    preview_proof=preview_proof,
+                    scan_observer=None,
+                    deadline=250.0,
+                )
+
+        self.assertIs(back_blocker, raised.exception)
+        self.assertEqual(["poll", "poll", "poll", "back"], events)
+        self.assertEqual(3, device.hierarchy.call_count)
+        self.assertEqual(2, sleep.call_count)
+        device.swipe_up.assert_not_called()
+        device.swipe_down.assert_not_called()
+        device.shell.assert_not_called()
 
     def test_confirmed_receipt_allows_immutable_preview_evidence_but_rejects_confirm_action(
         self,
@@ -8964,6 +9109,14 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         ]
         device = mock.Mock(spec=driver.shared.Device)
         deadline = driver.time.monotonic() + 30
+        confirmed_node = next(
+            node
+            for node in required
+            if node.attributes["resource-id"].endswith(
+                "/creation-prerequisite-confirmed"
+            )
+        )
+        device.wait_for_single_exact_resource_id.return_value = confirmed_node
         device.wait_exact_resource_id_bidirectional.return_value = next(
             node
             for node in required
@@ -9106,6 +9259,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "receipt proof deadline expired"
         )
         device.reset_mock(side_effect=True, return_value=True)
+        device.wait_for_single_exact_resource_id.return_value = confirmed_node
         device.wait_exact_resource_id_bidirectional.side_effect = expired
         with self.assertRaises(driver.shared.AdbOperationDeadlineExceeded):
             driver.read_exact_confirmed_receipt(
@@ -9126,6 +9280,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             )
         )
         device.reset_mock(side_effect=True, return_value=True)
+        device.wait_for_single_exact_resource_id.return_value = confirmed_node
         device.wait_exact_resource_id_bidirectional.return_value = back_node
         device.hierarchy.return_value = bottom
         device.swipe_down.side_effect = expired
@@ -9141,6 +9296,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         device.shell.assert_not_called()
 
         device.reset_mock(side_effect=True, return_value=True)
+        device.wait_for_single_exact_resource_id.return_value = confirmed_node
         device.wait_exact_resource_id_bidirectional.return_value = back_node
         device.hierarchy.side_effect = (
             bottom,

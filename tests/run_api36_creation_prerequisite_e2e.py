@@ -199,10 +199,16 @@ PHASE_ORDER = tuple(PHASE_BUDGET_MS)
 PERSISTENT_PREVIEW_ACTION_TIMEOUT_SECONDS = 3.0
 PREVIEW_ROUTE_PROOF_TIMEOUT_SECONDS = 75.0
 ZERO_GESTURE_ROUTE_PROOF_TIMEOUT_SECONDS = 75
-CONFIRMED_RECEIPT_SCAN_TIMEOUT_SECONDS = 50.0
+CONFIRMED_STATE_TRANSITION_TIMEOUT_SECONDS = 90.0
+CONFIRMED_RECEIPT_BACK_ORIGIN_TIMEOUT_SECONDS = 15.0
+CONFIRMED_RECEIPT_TRAVERSAL_RESERVE_SECONDS = 60.0
+CONFIRMED_RECEIPT_PROOF_TIMEOUT_SECONDS = (
+    CONFIRMED_STATE_TRANSITION_TIMEOUT_SECONDS
+    + CONFIRMED_RECEIPT_TRAVERSAL_RESERVE_SECONDS
+)
 POST_CONFIRM_DASHBOARD_PROOF_TIMEOUT_SECONDS = 30.0
 CONFIRM_DOWNSTREAM_RESERVE_SECONDS = (
-    CONFIRMED_RECEIPT_SCAN_TIMEOUT_SECONDS
+    CONFIRMED_RECEIPT_PROOF_TIMEOUT_SECONDS
     + PERSISTENT_PREVIEW_ACTION_TIMEOUT_SECONDS
     + POST_CONFIRM_DASHBOARD_PROOF_TIMEOUT_SECONDS
 )
@@ -6360,7 +6366,7 @@ def tap_exact_current_preview_confirm(
     )
     return immediate_proof_deadline(
         deadline,
-        CONFIRMED_RECEIPT_SCAN_TIMEOUT_SECONDS,
+        CONFIRMED_RECEIPT_PROOF_TIMEOUT_SECONDS,
         operation="the composite confirmed-receipt proof",
     )
 
@@ -6409,9 +6415,26 @@ def read_exact_confirmed_receipt(
     immutable_selectors = tuple(str(value) for value in immutable_authorities)
     selectors = tuple(dict.fromkeys((*receipt_selectors, *immutable_selectors)))
     expected = frozenset(selectors)
+    confirmed_transition = device.wait_for_single_exact_resource_id(
+        "creation-prerequisite-confirmed",
+        timeout=CONFIRMED_STATE_TRANSITION_TIMEOUT_SECONDS,
+        scroll=False,
+        max_scrolls=0,
+        evidence_prefix=f"{scan_id}-transition",
+        surface_name="Confirmed prerequisite state transition",
+        deadline=deadline,
+    )
+    _require_canonical_chummer_resource_id(
+        device,
+        confirmed_transition,
+        "creation-prerequisite-confirmed",
+        evidence_prefix=f"{scan_id}-transition",
+        surface_name="Confirmed prerequisite state transition",
+        deadline=deadline,
+    )
     back_origin = device.wait_exact_resource_id_bidirectional(
         "creation-prerequisite-back-to-build",
-        timeout=15,
+        timeout=CONFIRMED_RECEIPT_BACK_ORIGIN_TIMEOUT_SECONDS,
         backward_scrolls=0,
         forward_scrolls=4,
         scroll_distance_ratio=0.30,
