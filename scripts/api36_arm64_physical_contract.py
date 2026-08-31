@@ -16,6 +16,7 @@ import subprocess
 import tempfile
 from typing import Callable, Mapping, Sequence
 import zipfile
+import xml.etree.ElementTree as ET
 
 
 DEVICE_SCHEMA = "chummer.android.api36-arm64-physical-device/v1"
@@ -27,6 +28,7 @@ PACKAGE = "com.myexternalbrain.chummer"
 TARGET_FRAMEWORK = "net10.0-android36.0"
 RUNTIME_IDENTIFIER = "android-arm64"
 ABI = "arm64-v8a"
+ADB_TIMEOUT_HIERARCHY_MAX_BYTES = 1_000_000
 JOURNEY_ORDER = (
     "priority", "career", "before-run", "after-run", "downtime", "playtime",
 )
@@ -1922,6 +1924,71 @@ def read_only_adb_policy_reason(arguments: Sequence[str]) -> str | None:
     return None
 
 
+def validate_complete_timeout_hierarchy_output(output: object) -> tuple[str, int]:
+    """Re-derive the exact hierarchy payload and node count from bound stdout."""
+    if not isinstance(output, str):
+        raise ValueError("ADB timeout hierarchy stdout must be UTF-8 text")
+    try:
+        output_bytes = output.encode("utf-8", errors="strict")
+    except UnicodeEncodeError as error:
+        raise ValueError("ADB timeout hierarchy stdout is not strict UTF-8") from error
+    if len(output_bytes) > ADB_TIMEOUT_HIERARCHY_MAX_BYTES:
+        raise ValueError("ADB timeout hierarchy stdout exceeds its byte bound")
+    hierarchy_start = output.find("<hierarchy")
+    hierarchy_close = "</hierarchy>"
+    hierarchy_end = output.find(hierarchy_close, hierarchy_start + 1)
+    if (
+        hierarchy_start < 0
+        or hierarchy_end < hierarchy_start
+        or output.find("<hierarchy", hierarchy_start + 1) >= 0
+        or output.find(hierarchy_close, hierarchy_end + len(hierarchy_close)) >= 0
+    ):
+        raise ValueError("ADB timeout hierarchy envelope is not single and complete")
+    prefix = output[:hierarchy_start]
+    suffix = output[hierarchy_end + len(hierarchy_close):]
+    if re.fullmatch(r"\s*(?:<\?xml[^>]*\?>\s*)?", prefix) is None or re.fullmatch(
+        r"\s*(?:UI (?:hierarchy|hierchary) dumped to:\s*/dev/tty\s*)?",
+        suffix,
+        flags=re.IGNORECASE,
+    ) is None:
+        raise ValueError("ADB timeout hierarchy has an unauthorized prefix or suffix")
+    payload = output[hierarchy_start:hierarchy_end + len(hierarchy_close)]
+    try:
+        root = ET.fromstring(payload)
+    except ET.ParseError as error:
+        raise ValueError("ADB timeout hierarchy XML is malformed") from error
+    if (
+        root.tag != "hierarchy"
+        or set(root.attrib) != {"rotation"}
+        or root.attrib["rotation"] not in {"0", "1", "2", "3"}
+    ):
+        raise ValueError("ADB timeout hierarchy root authority is not exact")
+    required_attributes = {
+        "index", "text", "resource-id", "class", "package", "content-desc",
+        "checkable", "checked", "clickable", "enabled", "focusable", "focused",
+        "scrollable", "long-clickable", "password", "selected", "bounds",
+    }
+    boolean_attributes = {
+        "checkable", "checked", "clickable", "enabled", "focusable", "focused",
+        "scrollable", "long-clickable", "password", "selected",
+    }
+    bounds = re.compile(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]")
+    nodes = list(root.iter("node"))
+    if any(element.tag != "node" for element in root.iter() if element is not root):
+        raise ValueError("ADB timeout hierarchy contains a foreign element")
+    if not nodes or any(
+        not required_attributes.issubset(node.attrib)
+        or re.fullmatch(r"[0-9]+", node.attrib["index"]) is None
+        or not node.attrib["class"]
+        or node.attrib["package"] != PACKAGE
+        or bounds.fullmatch(node.attrib["bounds"]) is None
+        or any(node.attrib[name] not in {"true", "false"} for name in boolean_attributes)
+        for node in nodes
+    ):
+        raise ValueError("ADB timeout hierarchy node authority is not exact")
+    return payload, len(nodes)
+
+
 def validate_adb_transport(value: object, *, serial: str, label: str) -> None:
     summary = require_exact_keys(value, {
         "schema", "status", "preflight", "eventCount", "terminalFailureCount", "events",
@@ -2041,6 +2108,11 @@ def validate_adb_transport(value: object, *, serial: str, label: str) -> None:
         fields = set(base_event_fields)
         if status in reconciliation_statuses:
             fields.update({"reconcilesEvidenceFile", "readOnlyObservation"})
+        if (
+            status == "recovered-read-only"
+            and event.get("classification") == "timeout-output-complete"
+        ):
+            fields.add("timeoutOutput")
         require_exact_keys(event, fields, f"{label} ADB event")
         require_field_types(event, {
             "schema": str, "status": str, "serial": str, "classification": str,
@@ -2351,24 +2423,98 @@ def validate_adb_transport(value: object, *, serial: str, label: str) -> None:
             raise ValueError(f"{label} ADB read-only event identity/bounds are not exact")
 
         if status == "recovered-read-only":
-            if (
-                event.get("classification") != "transport-recovered"
-                or event.get("classificationAuthority")
-                != "fresh-read-only-command-succeeded"
-                or event.get("retryableTransportClassification") is not True
-                or event.get("failure") is not None
-                or event.get("replay") != {
-                    "eligible": True, "performed": True,
-                    "scheduled": False, "suppressed": False,
-                }
-                or attempt <= 1
-                or event_index == 0
-                or events[event_index - 1].get("status") != "retrying-read-only"
-            ):
+            if event.get("classification") == "transport-recovered":
+                if (
+                    event.get("classificationAuthority")
+                    != "fresh-read-only-command-succeeded"
+                    or event.get("retryableTransportClassification") is not True
+                    or event.get("failure") is not None
+                    or event.get("replay") != {
+                        "eligible": True, "performed": True,
+                        "scheduled": False, "suppressed": False,
+                    }
+                    or attempt <= 1
+                    or event_index == 0
+                    or events[event_index - 1].get("status")
+                    != "retrying-read-only"
+                ):
+                    raise ValueError(f"{label} ADB read-only recovery is not exact")
+                require_read_only_binding(
+                    events[event_index - 1], event, "retry recovery",
+                )
+            elif event.get("classification") == "timeout-output-complete":
+                timeout_output = require_exact_keys(
+                    event.get("timeoutOutput"),
+                    {
+                        "validation", "stdout", "stdoutSha256",
+                        "stdoutBytes", "hierarchySha256", "hierarchyBytes",
+                        "hierarchyNodeCount",
+                    },
+                    f"{label} ADB timeout hierarchy output",
+                )
+                require_field_types(timeout_output, {
+                    "validation": str, "stdout": str,
+                    "stdoutSha256": str, "stdoutBytes": int,
+                    "hierarchySha256": str, "hierarchyBytes": int,
+                    "hierarchyNodeCount": int,
+                }, f"{label} ADB timeout hierarchy output")
+                try:
+                    hierarchy_payload, hierarchy_node_count = (
+                        validate_complete_timeout_hierarchy_output(
+                            timeout_output.get("stdout")
+                        )
+                    )
+                except ValueError as error:
+                    raise ValueError(
+                        f"{label} ADB timeout hierarchy recovery is not exact"
+                    ) from error
+                stdout_bytes = timeout_output["stdout"].encode("utf-8")
+                hierarchy_bytes = hierarchy_payload.encode("utf-8")
+                if (
+                    event.get("classificationAuthority")
+                    != "complete-well-formed-read-only-timeout-stdout"
+                    or event.get("retryableTransportClassification") is not True
+                    or not isinstance(failure, dict)
+                    or failure.get("type") != "TimeoutExpired"
+                    or failure.get("returnCode") is not None
+                    or event.get("replay") != {
+                        "eligible": True, "performed": attempt > 1,
+                        "scheduled": False, "suppressed": True,
+                    }
+                    or event.get("adbArguments")
+                    != list(ADB_READ_ONLY_HIERARCHY_ARGUMENTS)
+                    or timeout_output.get("validation")
+                    != "complete-well-formed-single-hierarchy"
+                    or timeout_output.get("stdoutSha256")
+                    != hashlib.sha256(stdout_bytes).hexdigest()
+                    or timeout_output.get("stdoutBytes") != len(stdout_bytes)
+                    or timeout_output.get("hierarchySha256")
+                    != hashlib.sha256(hierarchy_bytes).hexdigest()
+                    or timeout_output.get("hierarchyBytes") != len(hierarchy_bytes)
+                    or timeout_output.get("hierarchyNodeCount")
+                    != hierarchy_node_count
+                    or failure.get("stdout")
+                    != timeout_output["stdout"][:4000]
+                    or failure.get("stderr") != ""
+                ):
+                    raise ValueError(
+                        f"{label} ADB timeout hierarchy recovery is not exact"
+                    )
+                if attempt > 1:
+                    if (
+                        event_index == 0
+                        or events[event_index - 1].get("status")
+                        != "retrying-read-only"
+                    ):
+                        raise ValueError(
+                            f"{label} ADB timeout hierarchy recovery is orphaned"
+                        )
+                    require_read_only_binding(
+                        events[event_index - 1], event,
+                        "timeout hierarchy recovery",
+                    )
+            else:
                 raise ValueError(f"{label} ADB read-only recovery is not exact")
-            require_read_only_binding(
-                events[event_index - 1], event, "retry recovery",
-            )
             continue
 
         classification = event.get("classification")

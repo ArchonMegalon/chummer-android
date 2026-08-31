@@ -32,6 +32,20 @@ def offline(arguments: tuple[str, ...]) -> subprocess.CalledProcessError:
     )
 
 
+def strict_hierarchy_xml(label: str = "Priorities") -> str:
+    return (
+        "<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>"
+        "<hierarchy rotation='0'><node index='0' "
+        f"text='{label}' resource-id='com.myexternalbrain.chummer:id/"
+        "creation-prerequisite-page' class='android.view.ViewGroup' "
+        "package='com.myexternalbrain.chummer' content-desc='' "
+        "checkable='false' checked='false' clickable='false' enabled='true' "
+        "focusable='false' focused='false' scrollable='false' "
+        "long-clickable='false' password='false' selected='false' "
+        "bounds='[0,0][1080,2400]' /></hierarchy>"
+    )
+
+
 class Api36AdbTransportHardeningTests(unittest.TestCase):
     def make_device(self, evidence: Path) -> object:
         return driver.Device(Path("/trusted/adb"), "SERIAL-API36", evidence)
@@ -324,6 +338,125 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
         self.assertEqual(0, summary["terminalFailureCount"])
         self.assertTrue(summary["events"][0]["replay"]["scheduled"])
         self.assertTrue(summary["events"][1]["replay"]["performed"])
+
+    def test_complete_hierarchy_stdout_becomes_authority_after_process_timeout(self) -> None:
+        xml = strict_hierarchy_xml()
+
+        def invoke(
+            command: list[str],
+            *,
+            check: bool,
+            capture_output: bool,
+            text: bool,
+            timeout: float,
+        ) -> subprocess.CompletedProcess:
+            self.assertEqual(driver.ADB_READ_ONLY_HIERARCHY_ARGUMENTS, tuple(command[3:]))
+            raise subprocess.TimeoutExpired(
+                command,
+                timeout,
+                output=xml.encode("utf-8"),
+                stderr=b"",
+            )
+
+        with tempfile.TemporaryDirectory() as temporary:
+            evidence = Path(temporary)
+            device = self.make_device(evidence)
+            with mock.patch.object(driver.subprocess, "run", side_effect=invoke) as run:
+                nodes = device.read_only_hierarchy(
+                    deadline=driver.time.monotonic() + 30.0
+                )
+                summary = device.transport_summary()
+
+            self.assertEqual(1, run.call_count)
+            self.assertEqual("Priorities", nodes[0].attributes["text"])
+            self.assertEqual("not-started", summary["status"])
+            self.assertEqual(0, summary["terminalFailureCount"])
+            self.assertEqual(1, summary["eventCount"])
+            recovery = summary["events"][0]
+            self.assertEqual("recovered-read-only", recovery["status"])
+            self.assertEqual("timeout-output-complete", recovery["classification"])
+            self.assertEqual(
+                "complete-well-formed-read-only-timeout-stdout",
+                recovery["classificationAuthority"],
+            )
+            self.assertEqual(1, recovery["attempt"])
+            self.assertFalse(recovery["replay"]["performed"])
+            self.assertTrue(recovery["replay"]["suppressed"])
+            timeout_output = recovery["timeoutOutput"]
+            self.assertEqual(len(xml.encode("utf-8")), timeout_output["stdoutBytes"])
+            self.assertEqual(1, timeout_output["hierarchyNodeCount"])
+            self.assertEqual(xml, timeout_output["stdout"])
+
+    def test_timeout_hierarchy_recovery_rejects_incomplete_or_ambiguous_output(self) -> None:
+        invalid_outputs = (
+            "<hierarchy><node text='partial' />",
+            "<hierarchy></hierarchy>",
+            "<hierarchy><node /></hierarchy><hierarchy><node /></hierarchy>",
+            "unexpected<hierarchy><node /></hierarchy>",
+            "<hierarchy><node /></hierarchy>unexpected",
+            "<hierarchy rotation='0'><foreign><node /></foreign></hierarchy>",
+            "<hierarchy rotation='0'><node /></hierarchy>",
+            strict_hierarchy_xml("x" * driver.ADB_TIMEOUT_HIERARCHY_MAX_BYTES),
+            strict_hierarchy_xml("\udcff"),
+            b"<hierarchy><node text='\xff' /></hierarchy>",
+        )
+        for output in invalid_outputs:
+            with self.subTest(output=output):
+                error = subprocess.TimeoutExpired(
+                    driver.ADB_READ_ONLY_HIERARCHY_ARGUMENTS,
+                    8,
+                    output=output,
+                )
+                self.assertIsNone(driver._complete_timed_out_hierarchy_output(error))
+        for stderr in (
+            "error: device unauthorized",
+            b"error: device offline",
+            "cannot connect to daemon",
+        ):
+            with self.subTest(stderr=stderr):
+                error = subprocess.TimeoutExpired(
+                    driver.ADB_READ_ONLY_HIERARCHY_ARGUMENTS,
+                    8,
+                    output=strict_hierarchy_xml().encode("utf-8"),
+                    stderr=stderr,
+                )
+                self.assertIsNone(driver._complete_timed_out_hierarchy_output(error))
+
+    def test_complete_timeout_output_after_retry_preserves_attempt_chain(self) -> None:
+        xml = strict_hierarchy_xml("Recovered priorities")
+        attempts = [
+            subprocess.TimeoutExpired(
+                driver.ADB_READ_ONLY_HIERARCHY_ARGUMENTS,
+                8,
+                output=b"<hierarchy>",
+            ),
+            subprocess.TimeoutExpired(
+                driver.ADB_READ_ONLY_HIERARCHY_ARGUMENTS,
+                8,
+                output=xml.encode("utf-8"),
+            ),
+        ]
+        with tempfile.TemporaryDirectory() as temporary:
+            device = self.make_device(Path(temporary))
+            with (
+                mock.patch.object(driver.subprocess, "run", side_effect=attempts) as run,
+                mock.patch.object(driver.time, "sleep"),
+            ):
+                nodes = device.read_only_hierarchy(
+                    deadline=driver.time.monotonic() + 30.0
+                )
+                summary = device.transport_summary()
+
+        self.assertEqual(2, run.call_count)
+        self.assertEqual("Recovered priorities", nodes[0].attributes["text"])
+        self.assertEqual(
+            ["retrying-read-only", "recovered-read-only"],
+            [event["status"] for event in summary["events"]],
+        )
+        recovery = summary["events"][1]
+        self.assertEqual(2, recovery["attempt"])
+        self.assertTrue(recovery["replay"]["performed"])
+        self.assertEqual(0, summary["terminalFailureCount"])
 
     def test_late_read_only_hierarchy_shares_caller_lease_across_all_retries(self) -> None:
         now = [90.0]

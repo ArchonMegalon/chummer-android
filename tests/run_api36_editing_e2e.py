@@ -106,6 +106,7 @@ ADB_READ_ONLY_MAX_ATTEMPTS = 3
 ADB_READ_ONLY_RETRY_DELAY_SECONDS = 1.0
 ADB_READ_ONLY_HIERARCHY_ATTEMPT_MAX_SECONDS = 8.0
 ADB_READ_ONLY_DEADLINE_HEADROOM_SECONDS = 0.5
+ADB_TIMEOUT_HIERARCHY_MAX_BYTES = 1_000_000
 ADB_SWIPE_RECONCILIATION_REQUIRED_CONSECUTIVE = 2
 ADB_SWIPE_RECONCILIATION_MAX_OBSERVATIONS = 3
 ADB_SWIPE_RECONCILIATION_DELAY_SECONDS = 0.5
@@ -195,6 +196,101 @@ def _write_new_json_receipt(path: Path, receipt: dict[str, object]) -> None:
         stream.write(encoded)
         stream.flush()
         os.fsync(stream.fileno())
+
+
+def _complete_timed_out_hierarchy_output(
+    error: subprocess.TimeoutExpired,
+) -> tuple[str, str, int] | None:
+    """Accept only one complete, well-formed hierarchy emitted before timeout.
+
+    API-36 can leave ``uiautomator dump ... /dev/tty`` alive after it has emitted
+    the complete snapshot.  The command is an exact read-only argv.  Its bytes
+    may therefore become observation authority only when strict UTF-8 decoding,
+    a single hierarchy envelope, a closed root, an allowed prefix/suffix, and at
+    least one accessibility node all agree.  Partial or ambiguous output remains
+    an ordinary timeout and follows the bounded retry/fail-closed path.
+    """
+    raw_stderr = error.stderr
+    if raw_stderr not in (None, "", b""):
+        return None
+    raw = error.stdout
+    if raw is None:
+        return None
+    if isinstance(raw, bytes):
+        try:
+            output = raw.decode("utf-8", errors="strict")
+        except UnicodeDecodeError:
+            return None
+    elif isinstance(raw, str):
+        output = raw
+    else:
+        return None
+    try:
+        output_bytes = output.encode("utf-8", errors="strict")
+    except UnicodeEncodeError:
+        return None
+    if len(output_bytes) > ADB_TIMEOUT_HIERARCHY_MAX_BYTES:
+        return None
+
+    hierarchy_start = output.find("<hierarchy")
+    hierarchy_close = "</hierarchy>"
+    hierarchy_end = output.find(hierarchy_close, hierarchy_start + 1)
+    if (
+        hierarchy_start < 0
+        or hierarchy_end < hierarchy_start
+        or output.find("<hierarchy", hierarchy_start + 1) >= 0
+        or output.find(hierarchy_close, hierarchy_end + len(hierarchy_close)) >= 0
+    ):
+        return None
+
+    prefix = output[:hierarchy_start]
+    suffix = output[hierarchy_end + len(hierarchy_close):]
+    if re.fullmatch(r"\s*(?:<\?xml[^>]*\?>\s*)?", prefix) is None:
+        return None
+    if re.fullmatch(
+        r"\s*(?:UI (?:hierarchy|hierchary) dumped to:\s*/dev/tty\s*)?",
+        suffix,
+        flags=re.IGNORECASE,
+    ) is None:
+        return None
+
+    payload = output[hierarchy_start:hierarchy_end + len(hierarchy_close)]
+    try:
+        root = ET.fromstring(payload)
+    except ET.ParseError:
+        return None
+    if (
+        root.tag != "hierarchy"
+        or set(root.attrib) != {"rotation"}
+        or root.attrib["rotation"] not in {"0", "1", "2", "3"}
+    ):
+        return None
+    required_attributes = {
+        "index", "text", "resource-id", "class", "package", "content-desc",
+        "checkable", "checked", "clickable", "enabled", "focusable", "focused",
+        "scrollable", "long-clickable", "password", "selected", "bounds",
+    }
+    boolean_attributes = {
+        "checkable", "checked", "clickable", "enabled", "focusable", "focused",
+        "scrollable", "long-clickable", "password", "selected",
+    }
+    nodes = list(root.iter("node"))
+    if any(element.tag != "node" for element in root.iter() if element is not root):
+        return None
+    if any(
+        not required_attributes.issubset(node.attrib)
+        or re.fullmatch(r"[0-9]+", node.attrib["index"]) is None
+        or not node.attrib["class"]
+        or node.attrib["package"] != PACKAGE
+        or BOUNDS.fullmatch(node.attrib["bounds"]) is None
+        or any(node.attrib[name] not in {"true", "false"} for name in boolean_attributes)
+        for node in nodes
+    ):
+        return None
+    node_count = len(nodes)
+    if node_count <= 0:
+        return None
+    return output, payload, node_count
 
 
 def _adb_arguments_sha256(arguments: tuple[str, ...]) -> str:
@@ -747,6 +843,78 @@ class Device:
         _write_new_json_receipt(self.evidence / filename, receipt)
         self._transport_events.append(receipt)
 
+    def _write_timeout_output_recovery_event(
+        self,
+        *,
+        arguments: tuple[str, ...],
+        attempt: int,
+        error: subprocess.TimeoutExpired,
+        output: str,
+        hierarchy_payload: str,
+        hierarchy_node_count: int,
+    ) -> None:
+        """Bind a complete read-only hierarchy emitted before process timeout."""
+        verified = _complete_timed_out_hierarchy_output(error)
+        if (
+            arguments != ADB_READ_ONLY_HIERARCHY_ARGUMENTS
+            or adb_command_retry_policy(arguments)[0] != "read-only-retryable"
+            or verified != (output, hierarchy_payload, hierarchy_node_count)
+        ):
+            raise RuntimeError(
+                "Timeout-output recovery requires the exact verified read-only "
+                "hierarchy command and payload"
+            )
+        if self._transport_event_index >= MAX_ADB_TRANSPORT_EVENTS:
+            raise RuntimeError(
+                "ADB transport event bound exhausted; refusing timeout-output recovery"
+            )
+        self._transport_event_index += 1
+        filename = f"adb-transport-event-{self._transport_event_index:04d}.json"
+        output_bytes = output.encode("utf-8")
+        hierarchy_bytes = hierarchy_payload.encode("utf-8")
+        receipt: dict[str, object] = {
+            "schema": ADB_TRANSPORT_EVENT_SCHEMA,
+            "status": "recovered-read-only",
+            "serial": self.serial,
+            "classification": "timeout-output-complete",
+            "classificationAuthority": (
+                "complete-well-formed-read-only-timeout-stdout"
+            ),
+            "retryableTransportClassification": True,
+            "commandPolicy": "read-only-retryable",
+            "policyReason": adb_command_retry_policy(arguments)[1],
+            "adbArguments": list(arguments),
+            "adbArgumentsSha256": _adb_arguments_sha256(arguments),
+            "attempt": attempt,
+            "maximumAttempts": ADB_READ_ONLY_MAX_ATTEMPTS,
+            "commandInvocationPerformed": True,
+            "outcomeMutationAuthority": "none-read-only-command",
+            "replay": {
+                "eligible": True,
+                "performed": attempt > 1,
+                "scheduled": False,
+                "suppressed": True,
+            },
+            "failure": {
+                "type": type(error).__name__,
+                "returnCode": None,
+                "stdout": _bounded_adb_detail(error.stdout),
+                "stderr": _bounded_adb_detail(error.stderr),
+            },
+            "timeoutOutput": {
+                "validation": "complete-well-formed-single-hierarchy",
+                "stdout": output,
+                "stdoutSha256": hashlib.sha256(output_bytes).hexdigest(),
+                "stdoutBytes": len(output_bytes),
+                "hierarchySha256": hashlib.sha256(hierarchy_bytes).hexdigest(),
+                "hierarchyBytes": len(hierarchy_bytes),
+                "hierarchyNodeCount": hierarchy_node_count,
+            },
+            "evidenceFile": filename,
+        }
+        _write_new_json_receipt(self.evidence / filename, receipt)
+        self._transport_events.append(receipt)
+
     def _write_swipe_reconciliation_event(
         self,
         *,
@@ -975,6 +1143,30 @@ class Device:
                 )
                 raise AdbTransportError(receipt, path) from error
             except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
+                if (
+                    isinstance(error, subprocess.TimeoutExpired)
+                    and adb_arguments == ADB_READ_ONLY_HIERARCHY_ARGUMENTS
+                    and text
+                ):
+                    completed_hierarchy = _complete_timed_out_hierarchy_output(error)
+                    if completed_hierarchy is not None:
+                        output, hierarchy_payload, hierarchy_node_count = (
+                            completed_hierarchy
+                        )
+                        self._write_timeout_output_recovery_event(
+                            arguments=adb_arguments,
+                            attempt=attempt,
+                            error=error,
+                            output=output,
+                            hierarchy_payload=hierarchy_payload,
+                            hierarchy_node_count=hierarchy_node_count,
+                        )
+                        return subprocess.CompletedProcess(
+                            adb_arguments,
+                            0,
+                            stdout=output,
+                            stderr=_bounded_adb_detail(error.stderr),
+                        )
                 classification, retryable = classify_adb_failure(error)
                 retry_delay = ADB_READ_ONLY_RETRY_DELAY_SECONDS
                 may_retry = (

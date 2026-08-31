@@ -466,6 +466,68 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
         })
         return payload
 
+    def timeout_output_recovered_transport_payload(self) -> dict[str, object]:
+        payload = self.adb_transport_payload()
+        serial = self.device_payload()["serial"]
+        arguments = contract.ADB_READ_ONLY_HIERARCHY_ARGUMENTS
+        hierarchy = (
+            "<hierarchy rotation='0'><node index='0' text='Priorities' "
+            "resource-id='com.myexternalbrain.chummer:id/creation-prerequisite-page' "
+            "class='android.view.ViewGroup' package='com.myexternalbrain.chummer' "
+            "content-desc='' checkable='false' checked='false' clickable='false' "
+            "enabled='true' focusable='false' focused='false' scrollable='false' "
+            "long-clickable='false' password='false' selected='false' "
+            "bounds='[0,0][1080,2400]' /></hierarchy>"
+        )
+        hierarchy_bytes = hierarchy.encode("utf-8")
+        arguments_sha256 = hashlib.sha256(
+            "\0".join(arguments).encode("utf-8")
+        ).hexdigest()
+        event = {
+            "schema": "chummer.android.adb-transport-event/v1",
+            "status": "recovered-read-only",
+            "serial": serial,
+            "classification": "timeout-output-complete",
+            "classificationAuthority": (
+                "complete-well-formed-read-only-timeout-stdout"
+            ),
+            "retryableTransportClassification": True,
+            "commandPolicy": "read-only-retryable",
+            "policyReason": (
+                "exact accessibility-hierarchy observation without app mutation"
+            ),
+            "adbArguments": list(arguments),
+            "adbArgumentsSha256": arguments_sha256,
+            "attempt": 1,
+            "maximumAttempts": 3,
+            "commandInvocationPerformed": True,
+            "outcomeMutationAuthority": "none-read-only-command",
+            "replay": {
+                "eligible": True, "performed": False,
+                "scheduled": False, "suppressed": True,
+            },
+            "failure": {
+                "type": "TimeoutExpired", "returnCode": None,
+                "stdout": hierarchy[:4000], "stderr": "",
+            },
+            "timeoutOutput": {
+                "validation": "complete-well-formed-single-hierarchy",
+                "stdout": hierarchy,
+                "stdoutSha256": hashlib.sha256(hierarchy_bytes).hexdigest(),
+                "stdoutBytes": len(hierarchy_bytes),
+                "hierarchySha256": hashlib.sha256(hierarchy_bytes).hexdigest(),
+                "hierarchyBytes": len(hierarchy_bytes),
+                "hierarchyNodeCount": 1,
+            },
+            "evidenceFile": "adb-transport-event-0001.json",
+        }
+        payload.update({
+            "eventCount": 1,
+            "terminalFailureCount": 0,
+            "events": [event],
+        })
+        return payload
+
     def reconciled_hierarchy_dump_transport_payload(
         self,
         *,
@@ -1010,6 +1072,136 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
             serial=str(self.device_payload()["serial"]),
             label="priority",
         )
+
+    def test_complete_timeout_hierarchy_output_recovery_is_accepted(self) -> None:
+        contract.validate_adb_transport(
+            self.timeout_output_recovered_transport_payload(),
+            serial=str(self.device_payload()["serial"]),
+            label="priority",
+        )
+
+    def test_timeout_hierarchy_output_recovery_rejects_forgery(self) -> None:
+        def replace_stdout_with_consistent_forgery(
+            value: dict[str, object],
+            stdout: str,
+        ) -> None:
+            event = value["events"][0]
+            timeout_output = event["timeoutOutput"]
+            encoded = stdout.encode("utf-8")
+            timeout_output.update({
+                "stdout": stdout,
+                "stdoutSha256": hashlib.sha256(encoded).hexdigest(),
+                "stdoutBytes": len(encoded),
+                "hierarchySha256": hashlib.sha256(encoded).hexdigest(),
+                "hierarchyBytes": len(encoded),
+                "hierarchyNodeCount": 1,
+            })
+            event["failure"]["stdout"] = stdout[:4000]
+
+        mutations = (
+            (
+                "wrong-command",
+                lambda value: value["events"][0].update({
+                    "adbArguments": ["get-state"],
+                    "adbArgumentsSha256": hashlib.sha256(b"get-state").hexdigest(),
+                }),
+            ),
+            (
+                "missing-timeout-output",
+                lambda value: value["events"][0].pop("timeoutOutput"),
+            ),
+            (
+                "partial-validation",
+                lambda value: value["events"][0]["timeoutOutput"].update({
+                    "validation": "partial-hierarchy",
+                }),
+            ),
+            (
+                "forged-stdout",
+                lambda value: value["events"][0]["timeoutOutput"].update({
+                    "stdout": value["events"][0]["timeoutOutput"]["stdout"].replace(
+                        "Priorities", "Forged", 1
+                    ),
+                }),
+            ),
+            (
+                "zero-nodes",
+                lambda value: value["events"][0]["timeoutOutput"].update({
+                    "hierarchyNodeCount": 0,
+                }),
+            ),
+            (
+                "wrong-size",
+                lambda value: value["events"][0]["timeoutOutput"].update({
+                    "stdoutBytes": 1,
+                }),
+            ),
+            (
+                "invalid-hash",
+                lambda value: value["events"][0]["timeoutOutput"].update({
+                    "hierarchySha256": "invalid",
+                }),
+            ),
+            (
+                "stderr-transport-failure",
+                lambda value: value["events"][0]["failure"].update({
+                    "stderr": "error: device unauthorized",
+                }),
+            ),
+            (
+                "foreign-wrapper-with-recomputed-metadata",
+                lambda value: replace_stdout_with_consistent_forgery(
+                    value,
+                    "<hierarchy rotation='0'><foreign><node /></foreign></hierarchy>",
+                ),
+            ),
+            (
+                "attribute-less-node-with-recomputed-metadata",
+                lambda value: replace_stdout_with_consistent_forgery(
+                    value,
+                    "<hierarchy rotation='0'><node /></hierarchy>",
+                ),
+            ),
+            (
+                "oversized-stdout-with-recomputed-metadata",
+                lambda value: replace_stdout_with_consistent_forgery(
+                    value,
+                    value["events"][0]["timeoutOutput"]["stdout"].replace(
+                        "Priorities",
+                        "x" * (contract.ADB_TIMEOUT_HIERARCHY_MAX_BYTES + 1),
+                        1,
+                    ),
+                ),
+            ),
+            (
+                "replay-not-suppressed",
+                lambda value: value["events"][0]["replay"].update({
+                    "suppressed": False,
+                }),
+            ),
+            (
+                "no-timeout-failure",
+                lambda value: value["events"][0]["failure"].update({
+                    "type": "CalledProcessError",
+                }),
+            ),
+            (
+                "missing-failure",
+                lambda value: value["events"][0].update({"failure": None}),
+            ),
+        )
+        for label, mutate in mutations:
+            with self.subTest(label=label):
+                payload = copy.deepcopy(
+                    self.timeout_output_recovered_transport_payload()
+                )
+                mutate(payload)
+                with self.assertRaises(ValueError):
+                    contract.validate_adb_transport(
+                        payload,
+                        serial=str(self.device_payload()["serial"]),
+                        label="priority",
+                    )
 
     def test_read_only_retry_chain_rejects_dangling_and_forged_links(self) -> None:
         def dangling(value: dict[str, object]) -> None:
