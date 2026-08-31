@@ -2786,6 +2786,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 self.hierarchy_deadlines: list[float] = []
                 self.forward_deadlines: list[float] = []
                 self.reverse_deadlines: list[float] = []
+                self.system_ui_deadlines: list[float] = []
 
             def hierarchy(self, *, deadline):
                 self.hierarchy_deadlines.append(deadline)
@@ -2803,8 +2804,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 self.reverse_deadlines.append(deadline)
                 self.recovery_swipes += 1
 
-            @staticmethod
-            def dismiss_system_ui_anr(_nodes):
+            def dismiss_system_ui_anr(self, _nodes, *, deadline):
+                self.system_ui_deadlines.append(deadline)
                 return False
 
             @staticmethod
@@ -2833,6 +2834,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertEqual({deadline}, set(device.hierarchy_deadlines))
         self.assertEqual([deadline] * 3, device.forward_deadlines)
         self.assertEqual([deadline], device.reverse_deadlines)
+        self.assertEqual({deadline}, set(device.system_ui_deadlines))
 
     def test_talent_option_recovery_has_fresh_transient_retry_budgets(self) -> None:
         resource_id = "creation-prerequisite-talent-active-skill-option-perception"
@@ -3064,6 +3066,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 self.swipes = 0
                 self.hierarchy_deadlines: list[float] = []
                 self.swipe_deadlines: list[float] = []
+                self.system_ui_deadlines: list[float] = []
 
             def hierarchy(self, *, deadline):
                 self.hierarchy_deadlines.append(deadline)
@@ -3077,8 +3080,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 self.swipe_deadlines.append(deadline)
                 self.swipes += 1
 
-            @staticmethod
-            def dismiss_system_ui_anr(_nodes):
+            def dismiss_system_ui_anr(self, _nodes, *, deadline):
+                self.system_ui_deadlines.append(deadline)
                 return False
 
             @staticmethod
@@ -3105,6 +3108,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertIs(target, snapshot.resources[resource_id])
         self.assertEqual([deadline, deadline], device.hierarchy_deadlines)
         self.assertEqual([deadline], device.swipe_deadlines)
+        self.assertEqual([deadline], device.system_ui_deadlines)
 
     def test_grouped_talent_boundary_uses_full_accessibility_signature(self) -> None:
         resource_id = "creation-prerequisite-talent-grant-authority"
@@ -4393,6 +4397,211 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             device.wait_for_single_exact_resource_id.call_args_list,
         )
         device.back.assert_called_once_with()
+
+    def test_talent_grant_completion_threads_one_deadline_through_all_operations(
+        self,
+    ) -> None:
+        deadline = driver.time.monotonic() + 30
+        completion = driver.shared.UiNode(
+            {
+                "resource-id": "creation-prerequisite-talent-grant-complete",
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[10,100][900,300]",
+            }
+        )
+        device = mock.Mock()
+        device.hierarchy.return_value = [completion]
+        device.node_has_tappable_bounds.return_value = True
+        navigation = {
+            "endViewport": 7,
+            "resourceViewports": {
+                "creation-prerequisite-talent-grant-complete": 7,
+            },
+        }
+
+        driver.complete_talent_grant_to_prerequisite(
+            device,
+            navigation,
+            7,
+            deadline=deadline,
+        )
+
+        device.hierarchy.assert_called_once_with(deadline=deadline)
+        device.shell.assert_called_once_with(
+            "input",
+            "tap",
+            "455",
+            "200",
+            deadline=deadline,
+        )
+        self.assertEqual(
+            [
+                mock.call(
+                    "creation-prerequisite-talent-page",
+                    timeout=45,
+                    evidence_prefix="creation-prerequisite-talent-after-grant",
+                    surface_name="Talent detail route after exact grant completion",
+                    deadline=deadline,
+                ),
+                mock.call(
+                    "creation-prerequisite-page",
+                    timeout=45,
+                    evidence_prefix="creation-prerequisite-after-talent-grant",
+                    surface_name="Creation prerequisite route after Talent grant completion",
+                    deadline=deadline,
+                ),
+            ],
+            device.wait_for_single_exact_resource_id.call_args_list,
+        )
+        device.back.assert_called_once_with(deadline=deadline)
+
+    def test_deadline_bound_exact_route_wait_rejects_duplicate_cardinality(
+        self,
+    ) -> None:
+        selector = "creation-prerequisite-talent-page"
+        deadline = driver.shared.time.monotonic() + 30
+        duplicate = driver.shared.UiNode({"resource-id": selector})
+        device = mock.Mock()
+        device.hierarchy.return_value = [duplicate, duplicate]
+
+        with self.assertRaisesRegex(RuntimeError, "cardinality 2"):
+            driver.shared.Device.wait_for_single_exact_resource_id(
+                device,
+                selector,
+                evidence_prefix="deadline-route",
+                surface_name="Deadline-bound Talent route",
+                deadline=deadline,
+            )
+
+        device.hierarchy.assert_called_once_with(deadline=deadline)
+        device.capture.assert_called_once_with(
+            "deadline-route-cardinality-invalid",
+            deadline=deadline,
+        )
+        device.swipe_up.assert_not_called()
+
+    def test_expired_exact_route_deadline_performs_no_hierarchy_or_mutation(
+        self,
+    ) -> None:
+        deadline = driver.shared.time.monotonic() - 1
+        device = mock.Mock()
+
+        with self.assertRaisesRegex(RuntimeError, "Timed out waiting"):
+            driver.shared.Device.wait_for_single_exact_resource_id(
+                device,
+                "creation-prerequisite-talent-page",
+                evidence_prefix="expired-route",
+                deadline=deadline,
+            )
+
+        device.hierarchy.assert_not_called()
+        device.swipe_up.assert_not_called()
+        device.capture.assert_called_once_with(
+            "expired-route-unavailable",
+            deadline=deadline,
+        )
+
+    def test_deadline_bound_back_issues_one_action_and_one_bounded_sleep(self) -> None:
+        deadline = driver.shared.time.monotonic() + 30
+        navigate_up = driver.shared.UiNode({"bounds": "[10,20][110,120]"})
+        device = mock.Mock()
+        device.find.return_value = navigate_up
+
+        with mock.patch.object(
+            driver.shared,
+            "_sleep_before_operation_deadline",
+        ) as bounded_sleep:
+            driver.shared.Device.back(device, deadline=deadline)
+
+        device.find.assert_called_once_with("Navigate up", deadline=deadline)
+        device.shell.assert_called_once()
+        action = device.shell.call_args
+        self.assertEqual(("input", "tap", "60", "70"), action.args)
+        self.assertEqual(deadline, action.kwargs["deadline"])
+        self.assertGreater(action.kwargs["timeout"], 0)
+        self.assertLessEqual(action.kwargs["timeout"], 120)
+        bounded_sleep.assert_called_once_with(1, deadline=deadline)
+
+    def test_expired_back_deadline_issues_no_hierarchy_or_action(self) -> None:
+        device = mock.Mock()
+        with self.assertRaises(driver.shared.AdbOperationDeadlineExceeded):
+            driver.shared.Device.back(
+                device,
+                deadline=driver.shared.time.monotonic() - 1,
+            )
+
+        device.find.assert_not_called()
+        device.shell.assert_not_called()
+
+    def test_unknown_deadline_bound_back_action_is_issued_only_once(self) -> None:
+        deadline = driver.shared.time.monotonic() + 30
+        receipt = {
+            "classification": "timeout-unknown-outcome",
+            "commandPolicy": "non-replayable",
+            "replay": {"performed": False, "suppressed": True},
+        }
+        error = driver.shared.AdbTransportError(
+            receipt,
+            Path("back-action-timeout-unknown-outcome.json"),
+        )
+        device = mock.Mock()
+        device.find.return_value = None
+        device.shell.side_effect = error
+
+        with mock.patch.object(
+            driver.shared,
+            "_sleep_before_operation_deadline",
+        ) as bounded_sleep, self.assertRaises(driver.shared.AdbTransportError):
+            driver.shared.Device.back(device, deadline=deadline)
+
+        device.find.assert_called_once_with("Navigate up", deadline=deadline)
+        device.shell.assert_called_once()
+        action = device.shell.call_args
+        self.assertEqual(("input", "keyevent", "4"), action.args)
+        self.assertEqual(deadline, action.kwargs["deadline"])
+        bounded_sleep.assert_not_called()
+
+    def test_unknown_back_outcome_is_never_replayed_or_followed_by_route_wait(
+        self,
+    ) -> None:
+        deadline = driver.time.monotonic() + 30
+        receipt = {
+            "classification": "timeout-unknown-outcome",
+            "commandPolicy": "non-replayable",
+            "replay": {"performed": False, "suppressed": True},
+        }
+        error = driver.shared.AdbTransportError(
+            receipt,
+            Path("back-timeout-unknown-outcome.json"),
+        )
+        device = mock.Mock()
+        device.wait_for_single_exact_resource_id.return_value = mock.Mock()
+        device.back.side_effect = error
+        navigation = {
+            "endViewport": 7,
+            "resourceViewports": {
+                "creation-prerequisite-talent-grant-complete": 7,
+            },
+        }
+
+        with mock.patch.object(
+            driver,
+            "tap_exact_measured_talent_resource",
+        ) as completion_tap, self.assertRaises(driver.shared.AdbTransportError):
+            driver.complete_talent_grant_to_prerequisite(
+                device,
+                navigation,
+                7,
+                deadline=deadline,
+            )
+
+        completion_tap.assert_called_once()
+        device.back.assert_called_once_with(deadline=deadline)
+        self.assertEqual(
+            1,
+            device.wait_for_single_exact_resource_id.call_count,
+        )
 
     def test_bidirectional_exact_read_can_bind_a_noninteractive_authority_card(self) -> None:
         authority = driver.shared.UiNode(

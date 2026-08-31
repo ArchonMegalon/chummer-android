@@ -1444,8 +1444,18 @@ class Device:
             return 0.375
         return 0.5
 
-    def find(self, selector: str, *, field_after_label: str | None = None) -> UiNode | None:
-        nodes = self.hierarchy()
+    def find(
+        self,
+        selector: str,
+        *,
+        field_after_label: str | None = None,
+        deadline: float | None = None,
+    ) -> UiNode | None:
+        nodes = (
+            self.hierarchy()
+            if deadline is None
+            else self.hierarchy(deadline=deadline)
+        )
         matches = [node for node in nodes if self._matches(node, selector)]
         if matches:
             return next(
@@ -1490,6 +1500,7 @@ class Device:
         scroll_distance_ratio: float = 0.52,
         evidence_prefix: str = "workspace-authority",
         surface_name: str = "Workspace authority accessibility node",
+        deadline: float | None = None,
     ) -> UiNode:
         """Return exactly one accessibility node with an exact resource id.
 
@@ -1497,15 +1508,30 @@ class Device:
         selector. A missing node means the surface was not published; duplicate
         nodes make the rendered proof ambiguous. Both conditions fail closed.
         """
-        deadline = time.monotonic() + timeout
+        timeout_deadline = time.monotonic() + timeout
+        operation_deadline = (
+            timeout_deadline
+            if deadline is None
+            else min(timeout_deadline, deadline)
+        )
         scrolls = 0
-        while time.monotonic() < deadline:
-            nodes = self.hierarchy()
+        while time.monotonic() < operation_deadline:
+            nodes = (
+                self.hierarchy()
+                if deadline is None
+                else self.hierarchy(deadline=operation_deadline)
+            )
             if not nodes:
                 # A failed/empty UIAutomator dump is not evidence that the target is
                 # outside the viewport.  Advancing here can move a short row through
                 # the viewport without ever observing it.
-                time.sleep(0.75)
+                if deadline is None:
+                    time.sleep(0.75)
+                else:
+                    _sleep_before_operation_deadline(
+                        0.75,
+                        deadline=operation_deadline,
+                    )
                 continue
             matches = [
                 node
@@ -1516,22 +1542,61 @@ class Device:
             if len(matches) == 1:
                 return matches[0]
             if len(matches) > 1:
-                self.capture(f"{evidence_prefix}-cardinality-invalid")
+                if deadline is None:
+                    self.capture(f"{evidence_prefix}-cardinality-invalid")
+                else:
+                    self.capture(
+                        f"{evidence_prefix}-cardinality-invalid",
+                        deadline=operation_deadline,
+                    )
                 raise RuntimeError(
                     f"{surface_name} "
                     f"{selector!r} has cardinality {len(matches)}; expected exactly one"
                 )
-            if self.dismiss_system_ui_anr(nodes):
-                time.sleep(2)
+            system_ui_dismissed = (
+                self.dismiss_system_ui_anr(nodes)
+                if deadline is None
+                else self.dismiss_system_ui_anr(
+                    nodes,
+                    deadline=operation_deadline,
+                )
+            )
+            if system_ui_dismissed:
+                if deadline is None:
+                    time.sleep(2)
+                else:
+                    _sleep_before_operation_deadline(
+                        2,
+                        deadline=operation_deadline,
+                    )
                 continue
             if scroll and scrolls < max_scrolls:
-                self.swipe_up(
-                    x_ratio=self._scroll_x_ratio(selector),
-                    distance_ratio=scroll_distance_ratio,
-                )
+                if deadline is None:
+                    self.swipe_up(
+                        x_ratio=self._scroll_x_ratio(selector),
+                        distance_ratio=scroll_distance_ratio,
+                    )
+                else:
+                    self.swipe_up(
+                        x_ratio=self._scroll_x_ratio(selector),
+                        distance_ratio=scroll_distance_ratio,
+                        deadline=operation_deadline,
+                    )
                 scrolls += 1
-            time.sleep(0.75)
-        self.capture(f"{evidence_prefix}-unavailable")
+            if deadline is None:
+                time.sleep(0.75)
+            else:
+                _sleep_before_operation_deadline(
+                    0.75,
+                    deadline=operation_deadline,
+                )
+        if deadline is None:
+            self.capture(f"{evidence_prefix}-unavailable")
+        else:
+            self.capture(
+                f"{evidence_prefix}-unavailable",
+                deadline=operation_deadline,
+            )
         raise RuntimeError(
             f"Timed out waiting for exactly one {surface_name.lower()} {selector!r}"
         )
@@ -2375,15 +2440,46 @@ class Device:
         self.capture("missing-text")
         raise RuntimeError(f"Expected persisted text {expected!r} was not rendered")
 
-    def back(self) -> None:
-        node = self.find("Navigate up")
-        if node is not None:
-            x, y = node.center
-            self.shell("input", "tap", str(x), str(y))
+    def back(self, *, deadline: float | None = None) -> None:
+        if deadline is None:
+            node = self.find("Navigate up")
+            if node is not None:
+                x, y = node.center
+                self.shell("input", "tap", str(x), str(y))
+                time.sleep(1)
+                return
+            self.shell("input", "keyevent", "4")
             time.sleep(1)
             return
-        self.shell("input", "keyevent", "4")
-        time.sleep(1)
+
+        _remaining_operation_timeout(deadline=deadline, maximum=120)
+        node = self.find("Navigate up", deadline=deadline)
+        _remaining_operation_timeout(deadline=deadline, maximum=120)
+        if node is not None:
+            x, y = node.center
+            self.shell(
+                "input",
+                "tap",
+                str(x),
+                str(y),
+                timeout=_remaining_operation_timeout(
+                    deadline=deadline,
+                    maximum=120,
+                ),
+                deadline=deadline,
+            )
+        else:
+            self.shell(
+                "input",
+                "keyevent",
+                "4",
+                timeout=_remaining_operation_timeout(
+                    deadline=deadline,
+                    maximum=120,
+                ),
+                deadline=deadline,
+            )
+        _sleep_before_operation_deadline(1, deadline=deadline)
 
     def display_size(self, *, deadline: float | None = None) -> tuple[int, int]:
         if self._display_size is None:

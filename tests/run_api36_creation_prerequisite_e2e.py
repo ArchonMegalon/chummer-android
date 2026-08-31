@@ -4424,6 +4424,12 @@ def reacquire_exact_talent_state_group(
             else default
         )
 
+    def capture(name: str) -> None:
+        if deadline is None:
+            device.capture(name)
+        else:
+            device.capture(name, deadline=deadline)
+
     while True:
         try:
             nodes = fresh_hierarchy_timed(
@@ -4443,7 +4449,7 @@ def reacquire_exact_talent_state_group(
                 stage_empty_reads = recovery_empty_hierarchy_reads
             if stage_empty_reads > max_empty_hierarchy_reads:
                 emit("empty-hierarchy-exhausted")
-                device.capture(f"{evidence_prefix}-empty-hierarchy-exhausted")
+                capture(f"{evidence_prefix}-empty-hierarchy-exhausted")
                 raise RuntimeError(
                     f"Grouped Talent state {stage} scan exhausted its separate "
                     f"transient empty-hierarchy budget of "
@@ -4476,7 +4482,7 @@ def reacquire_exact_talent_state_group(
         }
         if duplicates:
             emit("cardinality-invalid")
-            device.capture(f"{evidence_prefix}-cardinality-invalid")
+            capture(f"{evidence_prefix}-cardinality-invalid")
             if len(duplicates) == 1:
                 resource_id, cardinality = next(iter(duplicates.items()))
                 detail = f"{resource_id!r} has cardinality {cardinality}"
@@ -4508,7 +4514,11 @@ def reacquire_exact_talent_state_group(
                 reacquisition_swipes=primary_swipes + recovery_swipes,
             )
         try:
-            system_ui_dismissed = device.dismiss_system_ui_anr(nodes)
+            system_ui_dismissed = (
+                device.dismiss_system_ui_anr(nodes)
+                if deadline is None
+                else device.dismiss_system_ui_anr(nodes, deadline=deadline)
+            )
         except Exception:
             emit("system-ui-check-failed")
             raise
@@ -4521,7 +4531,7 @@ def reacquire_exact_talent_state_group(
                 stage_system_ui_dismissals = recovery_system_ui_dismissals
             if stage_system_ui_dismissals > max_system_ui_dismissals:
                 emit("system-ui-exhausted")
-                device.capture(f"{evidence_prefix}-system-ui-exhausted")
+                capture(f"{evidence_prefix}-system-ui-exhausted")
                 raise RuntimeError(
                     f"Grouped Talent state {stage} scan exhausted its separate "
                     f"system-UI dismissal budget of {max_system_ui_dismissals}"
@@ -4553,7 +4563,7 @@ def reacquire_exact_talent_state_group(
                     unchanged_signatures = 0
                 else:
                     emit("stable-boundary-unresolved")
-                    device.capture(f"{evidence_prefix}-stable-boundary-unresolved")
+                    capture(f"{evidence_prefix}-stable-boundary-unresolved")
                     raise RuntimeError(
                         "Grouped Talent state reached a stable physical boundary "
                         "without an authorized option recovery and without "
@@ -4562,7 +4572,7 @@ def reacquire_exact_talent_state_group(
             else:
                 recovery_stable_boundary_proven = True
                 emit("recovery-stable-boundary-unresolved")
-                device.capture(
+                capture(
                     f"{evidence_prefix}-recovery-stable-boundary-unresolved"
                 )
                 raise RuntimeError(
@@ -4571,7 +4581,7 @@ def reacquire_exact_talent_state_group(
                 )
         if stage == "primary" and primary_direction == "none":
             emit("zero-delta-unresolved")
-            device.capture(f"{evidence_prefix}-zero-delta-unresolved")
+            capture(f"{evidence_prefix}-zero-delta-unresolved")
             raise RuntimeError(
                 "Grouped Talent state changed physical geometry at one logical "
                 f"viewport without a safe directional hint: {unavailable!r}"
@@ -4624,7 +4634,7 @@ def reacquire_exact_talent_state_group(
 
     hard_bound_stage = stage
     emit(f"{hard_bound_stage}-hard-bound-unresolved")
-    device.capture(f"{evidence_prefix}-unavailable")
+    capture(f"{evidence_prefix}-unavailable")
     raise RuntimeError(
         "Grouped Talent state could not reacquire exact resources "
         f"{unavailable!r} within the boundary-checked {stage_bound}-swipe "
@@ -4643,6 +4653,12 @@ def tap_exact_measured_talent_resource(
     deadline: float | None = None,
 ) -> int:
     """Move to a measured viewport, reacquire one exact node, then tap it."""
+    def capture(name: str) -> None:
+        if deadline is None:
+            device.capture(name)
+        else:
+            device.capture(name, deadline=deadline)
+
     target_viewport = _measured_resource_viewport(navigation, resource_id)
     scan_end_viewport = _validated_talent_navigation_end(
         navigation,
@@ -4664,14 +4680,14 @@ def tap_exact_measured_talent_resource(
         for prefix in TALENT_GRANT_OPTION_PREFIX.values()
     ):
         if not _talent_option_has_exact_dynamic_slot(node):
-            device.capture(f"{evidence_prefix}-slot-state-invalid")
+            capture(f"{evidence_prefix}-slot-state-invalid")
             raise RuntimeError(
                 f"Measured Talent resource {resource_id!r} exposed an invalid "
                 "exact slot decorator"
             )
         expected_detail = _measured_talent_resource_detail(navigation, resource_id)
         if _talent_option_identity_values(node) != expected_detail:
-            device.capture(f"{evidence_prefix}-detail-drift")
+            capture(f"{evidence_prefix}-detail-drift")
             raise RuntimeError(
                 f"Measured Talent resource {resource_id!r} changed exact option detail"
             )
@@ -4680,9 +4696,17 @@ def tap_exact_measured_talent_resource(
         or node.attributes.get("clickable") != "true"
         or not device.node_has_tappable_bounds(node)
     ):
-        device.capture(f"{evidence_prefix}-not-tappable")
+        capture(f"{evidence_prefix}-not-tappable")
         raise RuntimeError(f"Measured Talent resource {resource_id!r} was not tappable")
-    device.shell("input", "tap", *(str(value) for value in node.center))
+    if deadline is None:
+        device.shell("input", "tap", *(str(value) for value in node.center))
+    else:
+        device.shell(
+            "input",
+            "tap",
+            *(str(value) for value in node.center),
+            deadline=deadline,
+        )
     return snapshot.logical_viewport
 
 
@@ -5227,18 +5251,36 @@ def complete_talent_grant_to_prerequisite(
         scan_observer=scan_observer,
         deadline=deadline,
     )
+    if deadline is None:
+        device.wait_for_single_exact_resource_id(
+            "creation-prerequisite-talent-page",
+            timeout=45,
+            evidence_prefix="creation-prerequisite-talent-after-grant",
+            surface_name="Talent detail route after exact grant completion",
+        )
+        device.back()
+        device.wait_for_single_exact_resource_id(
+            "creation-prerequisite-page",
+            timeout=45,
+            evidence_prefix="creation-prerequisite-after-talent-grant",
+            surface_name="Creation prerequisite route after Talent grant completion",
+        )
+        return
+
     device.wait_for_single_exact_resource_id(
         "creation-prerequisite-talent-page",
         timeout=45,
         evidence_prefix="creation-prerequisite-talent-after-grant",
         surface_name="Talent detail route after exact grant completion",
+        deadline=deadline,
     )
-    device.back()
+    device.back(deadline=deadline)
     device.wait_for_single_exact_resource_id(
         "creation-prerequisite-page",
         timeout=45,
         evidence_prefix="creation-prerequisite-after-talent-grant",
         surface_name="Creation prerequisite route after Talent grant completion",
+        deadline=deadline,
     )
 
 
