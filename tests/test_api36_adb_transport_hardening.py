@@ -325,6 +325,163 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
         self.assertTrue(summary["events"][0]["replay"]["scheduled"])
         self.assertTrue(summary["events"][1]["replay"]["performed"])
 
+    def test_late_read_only_hierarchy_shares_caller_lease_across_all_retries(self) -> None:
+        now = [90.0]
+        xml = (
+            "<hierarchy><node text='Post-confirm dashboard' "
+            "resource-id='com.chummer6.android:id/creation-wizard-dashboard' "
+            "bounds='[0,0][100,100]' /></hierarchy>"
+        )
+        observed_timeouts: list[float] = []
+
+        def invoke(
+            command: list[str],
+            *,
+            check: bool,
+            capture_output: bool,
+            text: bool,
+            timeout: float,
+        ) -> subprocess.CompletedProcess:
+            self.assertTrue(check)
+            self.assertTrue(capture_output)
+            self.assertTrue(text)
+            self.assertEqual(driver.ADB_READ_ONLY_HIERARCHY_ARGUMENTS, tuple(command[3:]))
+            observed_timeouts.append(timeout)
+            if len(observed_timeouts) < 3:
+                now[0] += timeout
+                raise subprocess.TimeoutExpired(command, timeout)
+            return completed(driver.ADB_READ_ONLY_HIERARCHY_ARGUMENTS, xml)
+
+        def delayed_retry(seconds: float) -> None:
+            self.assertEqual(driver.ADB_READ_ONLY_RETRY_DELAY_SECONDS, seconds)
+            now[0] += seconds
+
+        with tempfile.TemporaryDirectory() as temporary:
+            device = self.make_device(Path(temporary))
+            caller_deadline = now[0] + 10.0
+            with (
+                mock.patch.object(driver.subprocess, "run", side_effect=invoke) as run,
+                mock.patch.object(driver.time, "monotonic", side_effect=lambda: now[0]),
+                mock.patch.object(driver.time, "sleep", side_effect=delayed_retry),
+            ):
+                nodes = device.read_only_hierarchy(deadline=caller_deadline)
+                summary = device.transport_summary()
+
+        self.assertEqual("Post-confirm dashboard", nodes[0].attributes["text"])
+        self.assertEqual(3, run.call_count)
+        self.assertEqual([2.5, 2.5, 2.5], observed_timeouts)
+        self.assertLessEqual(now[0], caller_deadline)
+        self.assertEqual(
+            ["retrying-read-only", "retrying-read-only", "recovered-read-only"],
+            [event["status"] for event in summary["events"]],
+        )
+        self.assertEqual(0, summary["terminalFailureCount"])
+
+    def test_full_read_only_hierarchy_lease_preserves_third_attempt(self) -> None:
+        now = [90.0]
+        xml = "<hierarchy><node text='Third attempt dashboard' /></hierarchy>"
+        observed_timeouts: list[float] = []
+
+        def invoke(
+            command: list[str],
+            *,
+            check: bool,
+            capture_output: bool,
+            text: bool,
+            timeout: float,
+        ) -> subprocess.CompletedProcess:
+            arguments = tuple(command[3:])
+            self.assertEqual(driver.ADB_READ_ONLY_HIERARCHY_ARGUMENTS, arguments)
+            observed_timeouts.append(timeout)
+            if len(observed_timeouts) < 3:
+                now[0] += timeout
+                raise subprocess.TimeoutExpired(command, timeout)
+            return completed(arguments, xml)
+
+        def delayed_retry(seconds: float) -> None:
+            now[0] += seconds
+
+        with tempfile.TemporaryDirectory() as temporary:
+            device = self.make_device(Path(temporary))
+            caller_deadline = now[0] + 30.0
+            with (
+                mock.patch.object(driver.subprocess, "run", side_effect=invoke) as run,
+                mock.patch.object(driver.time, "monotonic", side_effect=lambda: now[0]),
+                mock.patch.object(driver.time, "sleep", side_effect=delayed_retry),
+            ):
+                nodes = device.read_only_hierarchy(deadline=caller_deadline)
+                summary = device.transport_summary()
+
+        self.assertEqual("Third attempt dashboard", nodes[0].attributes["text"])
+        self.assertEqual(3, run.call_count)
+        self.assertEqual(
+            [driver.ADB_READ_ONLY_HIERARCHY_ATTEMPT_MAX_SECONDS] * 3,
+            observed_timeouts,
+        )
+        self.assertLess(now[0], caller_deadline)
+        self.assertEqual(
+            ["retrying-read-only", "retrying-read-only", "recovered-read-only"],
+            [event["status"] for event in summary["events"]],
+        )
+        self.assertEqual(0, summary["terminalFailureCount"])
+
+    def test_partitioned_read_only_hierarchy_exhausts_exactly_three_attempts(self) -> None:
+        now = [90.0]
+        observed_timeouts: list[float] = []
+
+        def invoke(
+            command: list[str],
+            *,
+            check: bool,
+            capture_output: bool,
+            text: bool,
+            timeout: float,
+        ) -> subprocess.CompletedProcess:
+            self.assertEqual(driver.ADB_READ_ONLY_HIERARCHY_ARGUMENTS, tuple(command[3:]))
+            observed_timeouts.append(timeout)
+            now[0] += timeout
+            raise subprocess.TimeoutExpired(command, timeout)
+
+        def delayed_retry(seconds: float) -> None:
+            now[0] += seconds
+
+        with tempfile.TemporaryDirectory() as temporary:
+            device = self.make_device(Path(temporary))
+            caller_deadline = now[0] + 10.0
+            with (
+                mock.patch.object(driver.subprocess, "run", side_effect=invoke) as run,
+                mock.patch.object(driver.time, "monotonic", side_effect=lambda: now[0]),
+                mock.patch.object(driver.time, "sleep", side_effect=delayed_retry),
+                self.assertRaises(driver.AdbTransportError),
+            ):
+                device.read_only_hierarchy(deadline=caller_deadline)
+            summary = device.transport_summary()
+
+        self.assertEqual(3, run.call_count)
+        self.assertEqual([2.5, 2.5, 2.5], observed_timeouts)
+        self.assertLessEqual(now[0], caller_deadline)
+        self.assertEqual(
+            ["retrying-read-only", "retrying-read-only", "fail"],
+            [event["status"] for event in summary["events"]],
+        )
+        self.assertEqual(1, summary["terminalFailureCount"])
+        self.assertIsNone(device._mutation_blocker)
+
+    def test_read_only_hierarchy_refuses_to_spend_reserved_retry_delays(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            device = self.make_device(Path(temporary))
+            with (
+                mock.patch.object(driver.time, "monotonic", return_value=90.0),
+                mock.patch.object(driver.subprocess, "run") as run,
+                self.assertRaisesRegex(
+                    driver.AdbOperationDeadlineExceeded,
+                    "retry lease expired",
+                ),
+            ):
+                device.read_only_hierarchy(deadline=92.5)
+
+        run.assert_not_called()
+
     def test_get_state_offline_success_exit_is_still_retried_as_transport(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             device = self.make_device(Path(temporary))

@@ -105,6 +105,7 @@ DURABLE_SAVE_OUTCOME_FAILURE_SCHEMA = (
 ADB_READ_ONLY_MAX_ATTEMPTS = 3
 ADB_READ_ONLY_RETRY_DELAY_SECONDS = 1.0
 ADB_READ_ONLY_HIERARCHY_ATTEMPT_MAX_SECONDS = 8.0
+ADB_READ_ONLY_DEADLINE_HEADROOM_SECONDS = 0.5
 ADB_SWIPE_RECONCILIATION_REQUIRED_CONSECUTIVE = 2
 ADB_SWIPE_RECONCILIATION_MAX_OBSERVATIONS = 3
 ADB_SWIPE_RECONCILIATION_DELAY_SECONDS = 0.5
@@ -428,6 +429,25 @@ def _remaining_operation_timeout(
             "ADB operation deadline expired before command invocation"
         )
     return min(maximum, remaining)
+
+
+def _read_only_retry_attempt_timeout(
+    *,
+    deadline: float,
+    maximum: float,
+) -> float:
+    """Share a caller lease across every allowed read-only attempt and delay."""
+    remaining = deadline - time.monotonic()
+    reserved = (
+        (ADB_READ_ONLY_MAX_ATTEMPTS - 1) * ADB_READ_ONLY_RETRY_DELAY_SECONDS
+        + ADB_READ_ONLY_DEADLINE_HEADROOM_SECONDS
+    )
+    available = remaining - reserved
+    if available <= 0:
+        raise AdbOperationDeadlineExceeded(
+            "ADB read-only retry lease expired before command invocation"
+        )
+    return min(maximum, available / ADB_READ_ONLY_MAX_ATTEMPTS)
 
 
 def _sleep_before_operation_deadline(
@@ -1454,7 +1474,7 @@ class Device:
         else:
             xml = self.run(
                 *ADB_READ_ONLY_HIERARCHY_ARGUMENTS,
-                timeout=_remaining_operation_timeout(
+                timeout=_read_only_retry_attempt_timeout(
                     deadline=deadline,
                     maximum=ADB_READ_ONLY_HIERARCHY_ATTEMPT_MAX_SECONDS,
                 ),
