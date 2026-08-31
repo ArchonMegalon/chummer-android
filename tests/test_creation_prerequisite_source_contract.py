@@ -7594,6 +7594,9 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             ),
         )
         active_choice = source.index("active_grant_proof = choose_and_prove_talent_grant(")
+        active_deadline = source.index(
+            "active_grant_completion_deadline = progress.active_phase_deadline("
+        )
         active_close = source.index("complete_talent_grant_to_prerequisite(")
         selection_reacquisition = source.index(
             "active_talent_selection_node = device.wait_exact_resource_id_bidirectional("
@@ -7601,7 +7604,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         selection_read = source.index("active_talent_selection_id = (")
         selection_guard = source.index("if not active_talent_selection_id:")
         self.assertLess(active_choice, active_completion)
-        self.assertLess(active_completion, active_close)
+        self.assertLess(active_completion, active_deadline)
+        self.assertLess(active_deadline, active_close)
         self.assertLess(active_close, selection_reacquisition)
         self.assertLess(selection_reacquisition, selection_read)
         self.assertLess(selection_read, selection_guard)
@@ -7609,6 +7613,11 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         active_selection_reacquisition = source[
             selection_reacquisition:selection_read
         ]
+        active_deadline_block = source[active_deadline:selection_read]
+        self.assertEqual(
+            2,
+            active_deadline_block.count("deadline=active_grant_completion_deadline"),
+        )
         for required_authority in (
             '"creation-prerequisite-talent-selection-id"',
             "timeout=60",
@@ -7618,6 +7627,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             'evidence_prefix="creation-prerequisite-active-talent-selection-id"',
             'surface_name="Active-skill Talent SelectionId authority"',
             "require_tappable=False",
+            "deadline=active_grant_completion_deadline",
         ):
             self.assertIn(required_authority, active_selection_reacquisition)
         self.assertNotIn("node_text(", active_selection_reacquisition)
@@ -7661,6 +7671,129 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             (len(driver.PHASE_ORDER) + 1) // 2,
             driver.TIMING_ROUNDING_TOLERANCE_MS,
         )
+
+    def test_skill_group_post_grant_selection_id_is_one_deadline_bound_exact_read(
+        self,
+    ) -> None:
+        source = inspect.getsource(driver.execute)
+        start = source.index(
+            "skill_group_grant_deadline = progress.active_phase_deadline("
+        )
+        end = source.index(
+            'if (\n        not typed_selection_ids["talent"]',
+            start,
+        )
+        block = source[start:end]
+
+        self.assertEqual(150_000, driver.PHASE_BUDGET_MS["talent-skill-group-grant"])
+        self.assertIn('"talent-skill-group-grant"', block)
+        self.assertEqual(1, block.count("complete_talent_grant_to_prerequisite("))
+        self.assertEqual(
+            1,
+            block.count("read_exact_skill_group_talent_selection_id("),
+        )
+        self.assertEqual(2, block.count("deadline=skill_group_grant_deadline"))
+        self.assertNotIn("node_text(", block)
+        self.assertNotIn("device.wait(", block)
+        self.assertNotIn("device.wait_for_single_exact_resource_id(", block)
+        self.assertNotIn("device.tap(", block)
+        self.assertNotIn("device.shell(", block)
+
+    def test_skill_group_selection_id_read_delegates_one_exact_read_only_scan(
+        self,
+    ) -> None:
+        deadline = 321.5
+        device = mock.Mock()
+        device.wait_exact_resource_id_bidirectional.return_value = (
+            driver.shared.UiNode(
+                {
+                    "resource-id": (
+                        "com.myexternalbrain.chummer:id/"
+                        "creation-prerequisite-talent-selection-id"
+                    ),
+                    "text": "774fd89a-ecea-4f5f-ad2b-c4476ca46f70:talent:3",
+                    "bounds": "[103,420][979,473]",
+                }
+            )
+        )
+
+        actual = driver.read_exact_skill_group_talent_selection_id(
+            device,
+            deadline=deadline,
+        )
+
+        self.assertEqual(
+            "774fd89a-ecea-4f5f-ad2b-c4476ca46f70:talent:3",
+            actual,
+        )
+        device.wait_exact_resource_id_bidirectional.assert_called_once_with(
+            "creation-prerequisite-talent-selection-id",
+            timeout=60,
+            backward_scrolls=22,
+            forward_scrolls=22,
+            scroll_distance_ratio=0.22,
+            evidence_prefix=(
+                "creation-prerequisite-skill-group-talent-selection-id"
+            ),
+            surface_name="Skill-group Talent SelectionId authority",
+            require_tappable=False,
+            deadline=deadline,
+        )
+        device.wait_for_single_exact_resource_id.assert_not_called()
+        device.wait.assert_not_called()
+        device.tap.assert_not_called()
+        device.shell.assert_not_called()
+
+    def test_skill_group_selection_id_read_fails_closed_without_fallback_or_action(
+        self,
+    ) -> None:
+        failures = (
+            RuntimeError("exact SelectionId cardinality 2"),
+            RuntimeError("exact SelectionId unavailable after prefix decoy"),
+            driver.shared.AdbOperationDeadlineExceeded(
+                "phase deadline expired before reverse acquisition"
+            ),
+        )
+        for failure in failures:
+            with self.subTest(failure=str(failure)):
+                device = mock.Mock()
+                device.wait_exact_resource_id_bidirectional.side_effect = failure
+                with self.assertRaises(type(failure)) as raised:
+                    driver.read_exact_skill_group_talent_selection_id(
+                        device,
+                        deadline=9.0,
+                    )
+                self.assertIs(failure, raised.exception)
+                device.wait_exact_resource_id_bidirectional.assert_called_once()
+                device.wait_for_single_exact_resource_id.assert_not_called()
+                device.wait.assert_not_called()
+                device.tap.assert_not_called()
+                device.shell.assert_not_called()
+
+        blank = mock.Mock()
+        blank.wait_exact_resource_id_bidirectional.return_value = (
+            driver.shared.UiNode(
+                {
+                    "resource-id": (
+                        "com.myexternalbrain.chummer:id/"
+                        "creation-prerequisite-talent-selection-id"
+                    ),
+                    "text": "   ",
+                    "content-desc": "",
+                    "bounds": "[103,420][979,473]",
+                }
+            )
+        )
+        with self.assertRaisesRegex(RuntimeError, "did not expose an exact value"):
+            driver.read_exact_skill_group_talent_selection_id(
+                blank,
+                deadline=9.0,
+            )
+        blank.wait_exact_resource_id_bidirectional.assert_called_once()
+        blank.wait_for_single_exact_resource_id.assert_not_called()
+        blank.wait.assert_not_called()
+        blank.tap.assert_not_called()
+        blank.shell.assert_not_called()
 
     def test_post_preview_talent_transition_is_exact_single_tap_and_fail_closed(
         self,

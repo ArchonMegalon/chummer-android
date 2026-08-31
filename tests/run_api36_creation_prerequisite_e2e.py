@@ -1898,6 +1898,35 @@ def node_text(device: shared.Device, selector: str, *, scroll: bool = False) -> 
     return node.attributes.get("text") or node.attributes.get("content-desc") or ""
 
 
+def read_exact_skill_group_talent_selection_id(
+    device: shared.Device,
+    *,
+    deadline: float,
+) -> str:
+    """Read one exact post-grant SelectionId without a product action or fallback."""
+    node = device.wait_exact_resource_id_bidirectional(
+        "creation-prerequisite-talent-selection-id",
+        timeout=60,
+        backward_scrolls=22,
+        forward_scrolls=22,
+        scroll_distance_ratio=0.22,
+        evidence_prefix="creation-prerequisite-skill-group-talent-selection-id",
+        surface_name="Skill-group Talent SelectionId authority",
+        require_tappable=False,
+        deadline=deadline,
+    )
+    value = (
+        node.attributes.get("text")
+        or node.attributes.get("content-desc")
+        or ""
+    ).strip()
+    if not value:
+        raise RuntimeError(
+            "Skill-group Talent SelectionId authority did not expose an exact value"
+        )
+    return value
+
+
 class CreationDashboardScanProof(NamedTuple):
     binding: str
     method_detail: str
@@ -6077,14 +6106,15 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     progress.advance("talent-active-grant-completion")
     active_grant = active_grant_proof.receipt
     active_selected_option_ids = tuple(active_grant["selectedOptionAutomationIds"])
+    active_grant_completion_deadline = progress.active_phase_deadline(
+        "talent-active-grant-completion"
+    )
     complete_talent_grant_to_prerequisite(
         device,
         active_grant_proof.navigation,
         active_grant_proof.current_viewport,
         scan_observer=progress.record_scan,
-        deadline=progress.active_phase_deadline(
-            "talent-active-grant-completion"
-        ),
+        deadline=active_grant_completion_deadline,
     )
     active_talent_selection_node = device.wait_exact_resource_id_bidirectional(
         "creation-prerequisite-talent-selection-id",
@@ -6095,6 +6125,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         evidence_prefix="creation-prerequisite-active-talent-selection-id",
         surface_name="Active-skill Talent SelectionId authority",
         require_tappable=False,
+        deadline=active_grant_completion_deadline,
     )
     active_talent_selection_id = (
         active_talent_selection_node.attributes.get("text")
@@ -6158,27 +6189,20 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     skill_group_selected_option_ids = tuple(
         skill_group_grant["selectedOptionAutomationIds"]
     )
+    skill_group_grant_deadline = progress.active_phase_deadline(
+        "talent-skill-group-grant"
+    )
     complete_talent_grant_to_prerequisite(
         device,
         skill_group_grant_proof.navigation,
         skill_group_grant_proof.current_viewport,
         scan_observer=progress.record_scan,
-        deadline=progress.active_phase_deadline("talent-skill-group-grant"),
+        deadline=skill_group_grant_deadline,
     )
-    device.wait_for_single_exact_resource_id(
-        "creation-prerequisite-talent-selection",
-        timeout=60,
-        scroll=True,
-        max_scrolls=22,
-        scroll_distance_ratio=0.22,
-        evidence_prefix="creation-prerequisite-talent-selection",
-        surface_name="Typed Talent selection row",
-    )
-    typed_selection_ids["talent"] = node_text(
+    typed_selection_ids["talent"] = read_exact_skill_group_talent_selection_id(
         device,
-        "creation-prerequisite-talent-selection-id",
-        scroll=True,
-    ).strip()
+        deadline=skill_group_grant_deadline,
+    )
     if (
         not typed_selection_ids["talent"]
         or typed_selection_ids["talent"] == active_talent_selection_id
