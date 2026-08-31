@@ -8280,7 +8280,9 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             for phase_id in phase_ids
             if phase_id
             not in {
+                "talent-active-skill-grant",
                 "talent-active-grant-completion",
+                "talent-skill-group-grant",
                 "talent-skill-group-grant-completion",
                 "preview-confirm",
             }
@@ -8289,7 +8291,15 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 self.assertEqual(150_000, driver.PHASE_BUDGET_MS[phase_id])
         self.assertEqual(
             180_000,
+            driver.PHASE_BUDGET_MS["talent-active-skill-grant"],
+        )
+        self.assertEqual(
+            180_000,
             driver.PHASE_BUDGET_MS["talent-active-grant-completion"],
+        )
+        self.assertEqual(
+            180_000,
+            driver.PHASE_BUDGET_MS["talent-skill-group-grant"],
         )
         self.assertEqual(
             180_000,

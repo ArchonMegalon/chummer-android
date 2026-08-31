@@ -163,7 +163,13 @@ PHASE_BUDGET_MS = {
     "prerequisite-authority-inventory": 60_000,
     "priority-ranks": 150_000,
     "typed-authority-options": 150_000,
-    "talent-active-skill-grant": 150_000,
+    # The grant proof ends by reacquiring viewport zero after the exhaustive
+    # option scan. Run 33423780713 observed 11 hierarchy reads plus 10 reverse
+    # swipes before the final single, non-replayable file-backed dump reached
+    # the former 150-second boundary. Keep the dump single-shot and preserve
+    # fail-closed reconciliation, but reserve 30 seconds for that external
+    # observer. The unchanged 30-minute whole-journey cap remains authoritative.
+    "talent-active-skill-grant": 180_000,
     "talent-active-skill-preservation": 150_000,
     "talent-active-skill-reset": 150_000,
     "talent-active-skill-reselection": 150_000,
@@ -180,7 +186,9 @@ PHASE_BUDGET_MS = {
     # and selecting the exact replacement authority is therefore a distinct
     # bounded transition, not part of the already-complete preview proof.
     "talent-skill-group-selection": 150_000,
-    "talent-skill-group-grant": 150_000,
+    # Skill-group grants use the same exhaustive scan/reacquisition topology
+    # and therefore retain the same bounded observer reserve.
+    "talent-skill-group-grant": 180_000,
     "talent-skill-group-preservation": 150_000,
     "talent-skill-group-reset": 150_000,
     "talent-skill-group-reselection": 150_000,
