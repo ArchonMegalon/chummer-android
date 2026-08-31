@@ -113,6 +113,8 @@ ADB_SWIPE_RECONCILIATION_DELAY_SECONDS = 0.5
 ADB_HIERARCHY_DUMP_RECONCILIATION_REQUIRED_CONSECUTIVE = 2
 ADB_HIERARCHY_DUMP_RECONCILIATION_MAX_OBSERVATIONS = 8
 ADB_HIERARCHY_DUMP_RECONCILIATION_DELAY_SECONDS = 0.25
+ADB_HIERARCHY_DUMP_RECONCILIATION_READ_ATTEMPT_MAX_SECONDS = 1.0
+ADB_HIERARCHY_DUMP_RECONCILIATION_HEADROOM_SECONDS = 0.5
 ADB_HIERARCHY_DUMP_RECONCILIATION_MAX_SECONDS = 10.0
 ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_MAX_OBSERVATIONS = 3
 ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_DELAY_SECONDS = 8.0
@@ -546,6 +548,38 @@ def _read_only_retry_attempt_timeout(
     return min(maximum, available / ADB_READ_ONLY_MAX_ATTEMPTS)
 
 
+def _hierarchy_dump_attempt_timeout(
+    *,
+    deadline: float,
+    maximum: float,
+) -> float:
+    """Keep enough caller lease for two stable owned-file observations.
+
+    A file-backed UIAutomator process can remain alive after it has written the
+    requested hierarchy. The dump itself is never replayed. Reserve only the
+    exact time required for two single-shot, read-only file observations plus
+    their bounded spacing and a small deadline handoff margin. If that reserve
+    does not fit, fail before starting another outcome-ambiguous dump.
+    """
+    remaining = deadline - time.monotonic()
+    reserved = (
+        ADB_HIERARCHY_DUMP_RECONCILIATION_REQUIRED_CONSECUTIVE
+        * ADB_HIERARCHY_DUMP_RECONCILIATION_READ_ATTEMPT_MAX_SECONDS
+        + (
+            ADB_HIERARCHY_DUMP_RECONCILIATION_REQUIRED_CONSECUTIVE - 1
+        )
+        * ADB_HIERARCHY_DUMP_RECONCILIATION_DELAY_SECONDS
+        + ADB_HIERARCHY_DUMP_RECONCILIATION_HEADROOM_SECONDS
+    )
+    available = remaining - reserved
+    if available <= 0:
+        raise AdbOperationDeadlineExceeded(
+            "ADB hierarchy-dump lease cannot preserve its owned-file "
+            "reconciliation reserve"
+        )
+    return min(maximum, available)
+
+
 def _sleep_before_operation_deadline(
     seconds: float,
     *,
@@ -976,6 +1010,21 @@ class Device:
         hierarchy_sha256: str,
         observation_bytes_sha256: str,
     ) -> None:
+        observation_bounds = {
+            "fresh-owned-file": (
+                ADB_HIERARCHY_DUMP_RECONCILIATION_READ_ATTEMPT_MAX_SECONDS,
+                ADB_HIERARCHY_DUMP_RECONCILIATION_MAX_SECONDS,
+            ),
+            "direct-current-hierarchy": (
+                ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_READ_ATTEMPT_MAX_SECONDS,
+                ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_MAX_SECONDS,
+            ),
+        }
+        if observation_mode not in observation_bounds:
+            raise RuntimeError("Unknown hierarchy-dump reconciliation mode")
+        read_attempt_maximum, observation_maximum = observation_bounds[
+            observation_mode
+        ]
         if self._transport_event_index >= MAX_ADB_TRANSPORT_EVENTS:
             raise RuntimeError(
                 "ADB transport event bound exhausted; refusing hierarchy-dump "
@@ -1021,7 +1070,10 @@ class Device:
                 "consecutiveMatching": (
                     ADB_HIERARCHY_DUMP_RECONCILIATION_REQUIRED_CONSECUTIVE
                 ),
+                "matchingAuthority": "exact-observation-bytes",
                 "observationsPerformed": observation_count,
+                "readAttemptMaximumSeconds": read_attempt_maximum,
+                "maximumObservationSeconds": observation_maximum,
                 "hierarchySha256": hierarchy_sha256,
                 "observationBytesSha256": observation_bytes_sha256,
             },
@@ -1515,7 +1567,7 @@ class Device:
                 else:
                     dump_output = self.shell(
                         *ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
-                        timeout=_remaining_operation_timeout(
+                        timeout=_hierarchy_dump_attempt_timeout(
                             deadline=deadline,
                             maximum=ADB_FILE_HIERARCHY_DUMP_ATTEMPT_MAX_SECONDS,
                         ),
@@ -1819,7 +1871,9 @@ class Device:
                     ADB_FILE_HIERARCHY_REMOTE_PATH,
                     timeout=_remaining_operation_timeout(
                         deadline=owned_file_deadline,
-                        maximum=ADB_HIERARCHY_DUMP_RECONCILIATION_MAX_SECONDS,
+                        maximum=(
+                            ADB_HIERARCHY_DUMP_RECONCILIATION_READ_ATTEMPT_MAX_SECONDS
+                        ),
                     ),
                     deadline=owned_file_deadline,
                 ).stdout

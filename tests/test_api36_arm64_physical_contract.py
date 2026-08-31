@@ -607,7 +607,20 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
                     contract.ADB_FILE_HIERARCHY_REMOVE_ARGUMENTS
                 ),
                 "consecutiveMatching": 2,
+                "matchingAuthority": (
+                    contract.ADB_HIERARCHY_OBSERVATION_MATCHING_AUTHORITY
+                ),
                 "observationsPerformed": 2,
+                "readAttemptMaximumSeconds": (
+                    contract.ADB_FILE_HIERARCHY_OBSERVATION_READ_ATTEMPT_MAX_SECONDS
+                    if observation_mode == "fresh-owned-file"
+                    else contract.ADB_DIRECT_HIERARCHY_OBSERVATION_READ_ATTEMPT_MAX_SECONDS
+                ),
+                "maximumObservationSeconds": (
+                    contract.ADB_FILE_HIERARCHY_OBSERVATION_MAX_SECONDS
+                    if observation_mode == "fresh-owned-file"
+                    else contract.ADB_DIRECT_HIERARCHY_OBSERVATION_MAX_SECONDS
+                ),
                 "hierarchySha256": "1" * 64,
                 "observationBytesSha256": "2" * 64,
             },
@@ -1481,6 +1494,24 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
                 "wrong-consecutive-count",
                 lambda value: value["events"][1]["readOnlyObservation"].update({
                     "consecutiveMatching": 1,
+                }),
+            ),
+            (
+                "forged-matching-authority",
+                lambda value: value["events"][1]["readOnlyObservation"].update({
+                    "matchingAuthority": "canonical-ui-nodes",
+                }),
+            ),
+            (
+                "unbounded-owned-read-attempt",
+                lambda value: value["events"][1]["readOnlyObservation"].update({
+                    "readAttemptMaximumSeconds": 10.0,
+                }),
+            ),
+            (
+                "unbounded-owned-observation",
+                lambda value: value["events"][1]["readOnlyObservation"].update({
+                    "maximumObservationSeconds": 48.0,
                 }),
             ),
             (

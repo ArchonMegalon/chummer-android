@@ -946,6 +946,53 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
                     "freshnessBarrierArguments"
                 ],
             )
+            self.assertEqual(
+                "exact-observation-bytes",
+                reconciliation["readOnlyObservation"]["matchingAuthority"],
+            )
+            self.assertEqual(
+                driver.ADB_HIERARCHY_DUMP_RECONCILIATION_READ_ATTEMPT_MAX_SECONDS,
+                reconciliation["readOnlyObservation"][
+                    "readAttemptMaximumSeconds"
+                ],
+            )
+            self.assertEqual(
+                driver.ADB_HIERARCHY_DUMP_RECONCILIATION_MAX_SECONDS,
+                reconciliation["readOnlyObservation"][
+                    "maximumObservationSeconds"
+                ],
+            )
+            self.assertTrue(
+                all(
+                    call.kwargs["timeout"]
+                    <= driver.ADB_HIERARCHY_DUMP_RECONCILIATION_READ_ATTEMPT_MAX_SECONDS
+                    for call in run.call_args_list[2:4]
+                )
+            )
+
+    def test_hierarchy_dump_attempt_preserves_owned_file_reconciliation_lease(self) -> None:
+        reserved = (
+            driver.ADB_HIERARCHY_DUMP_RECONCILIATION_REQUIRED_CONSECUTIVE
+            * driver.ADB_HIERARCHY_DUMP_RECONCILIATION_READ_ATTEMPT_MAX_SECONDS
+            + (
+                driver.ADB_HIERARCHY_DUMP_RECONCILIATION_REQUIRED_CONSECUTIVE - 1
+            )
+            * driver.ADB_HIERARCHY_DUMP_RECONCILIATION_DELAY_SECONDS
+            + driver.ADB_HIERARCHY_DUMP_RECONCILIATION_HEADROOM_SECONDS
+        )
+        with mock.patch.object(driver.time, "monotonic", return_value=100.0):
+            self.assertEqual(
+                1.0,
+                driver._hierarchy_dump_attempt_timeout(
+                    deadline=101.0 + reserved,
+                    maximum=driver.ADB_FILE_HIERARCHY_DUMP_ATTEMPT_MAX_SECONDS,
+                ),
+            )
+            with self.assertRaises(driver.AdbOperationDeadlineExceeded):
+                driver._hierarchy_dump_attempt_timeout(
+                    deadline=100.0 + reserved,
+                    maximum=driver.ADB_FILE_HIERARCHY_DUMP_ATTEMPT_MAX_SECONDS,
+                )
 
     def test_missing_owned_dump_uses_two_stable_direct_reads_without_replay(self) -> None:
         xml = (

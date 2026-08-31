@@ -2049,6 +2049,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
     def test_file_backed_hierarchy_dump_never_inflates_caller_deadline(self) -> None:
         now = [0.0]
         observed_dump_timeouts: list[float] = []
+        observed_owned_read_timeouts: list[float] = []
 
         def monotonic() -> float:
             return now[0]
@@ -2067,6 +2068,19 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 *DRIVER.ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS,
             ):
                 return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
+            if arguments == (
+                "exec-out",
+                "cat",
+                DRIVER.ADB_FILE_HIERARCHY_REMOTE_PATH,
+            ):
+                observed_owned_read_timeouts.append(timeout)
+                now[0] += timeout
+                return subprocess.CompletedProcess(
+                    command,
+                    0,
+                    stdout=DRIVER.ADB_FILE_HIERARCHY_ABSENT_OUTPUT,
+                    stderr="",
+                )
             self.assertEqual(
                 ("shell", *DRIVER.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS),
                 arguments,
@@ -2084,17 +2098,40 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             with (
                 patch.object(DRIVER.subprocess, "run", side_effect=invoke) as run,
                 patch.object(DRIVER.time, "monotonic", side_effect=monotonic),
+                patch.object(
+                    DRIVER.time,
+                    "sleep",
+                    side_effect=lambda seconds: now.__setitem__(0, now[0] + seconds),
+                ),
             ):
                 with self.assertRaises(DRIVER.AdbTransportError):
                     device.hierarchy(deadline=12.0)
 
-        self.assertEqual([12.0], observed_dump_timeouts)
+        reserved = (
+            DRIVER.ADB_HIERARCHY_DUMP_RECONCILIATION_REQUIRED_CONSECUTIVE
+            * DRIVER.ADB_HIERARCHY_DUMP_RECONCILIATION_READ_ATTEMPT_MAX_SECONDS
+            + (
+                DRIVER.ADB_HIERARCHY_DUMP_RECONCILIATION_REQUIRED_CONSECUTIVE - 1
+            )
+            * DRIVER.ADB_HIERARCHY_DUMP_RECONCILIATION_DELAY_SECONDS
+            + DRIVER.ADB_HIERARCHY_DUMP_RECONCILIATION_HEADROOM_SECONDS
+        )
+        self.assertEqual([12.0 - reserved], observed_dump_timeouts)
+        self.assertGreaterEqual(len(observed_owned_read_timeouts), 2)
+        self.assertTrue(
+            all(
+                timeout
+                <= DRIVER.ADB_HIERARCHY_DUMP_RECONCILIATION_READ_ATTEMPT_MAX_SECONDS
+                for timeout in observed_owned_read_timeouts
+            )
+        )
+        self.assertLessEqual(now[0], 12.0)
         issued = [tuple(invocation.args[0][3:]) for invocation in run.call_args_list]
         self.assertEqual(
             1,
             issued.count(("shell", *DRIVER.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS)),
         )
-        self.assertNotIn(
+        self.assertIn(
             ("exec-out", "cat", DRIVER.ADB_FILE_HIERARCHY_REMOTE_PATH),
             issued,
         )
@@ -2716,13 +2753,13 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             ):
                 self.assertEqual([], device.hierarchy(deadline=100.0))
 
-            self.assertEqual(1, run.call_count)
-            self.assertEqual(100.0, now[0])
+            self.assertEqual(0, run.call_count)
+            self.assertEqual(99.9, now[0])
             diagnostic = (evidence / "last-invalid-hierarchy.txt").read_text(
                 encoding="utf-8"
             )
-            self.assertIn("bounded visibility deadline", diagnostic)
-            self.assertIn("deadline expired before command invocation", diagnostic)
+            self.assertIn("caller-owned deadline", diagnostic)
+            self.assertIn("cannot preserve its owned-file reconciliation reserve", diagnostic)
 
     def test_missing_fresh_file_visibility_read_fails_closed_on_transport_error(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -2894,7 +2931,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 ),
                 call(
                     *DRIVER.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
-                    timeout=10.0,
+                    timeout=7.25,
                     deadline=100.0,
                 ),
             ],
@@ -2958,7 +2995,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 ),
                 call(
                     *DRIVER.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
-                    timeout=10.0,
+                    timeout=7.25,
                     deadline=100.0,
                 ),
             ],

@@ -84,8 +84,15 @@ ADB_FILE_HIERARCHY_DUMP_ARGUMENTS_SHA256 = hashlib.sha256(
 ADB_FILE_HIERARCHY_OBSERVATION_ARGUMENTS = (
     "exec-out", "cat", ADB_FILE_HIERARCHY_REMOTE_PATH,
 )
+ADB_FILE_HIERARCHY_OBSERVATION_READ_ATTEMPT_MAX_SECONDS = 1.0
+ADB_FILE_HIERARCHY_OBSERVATION_MAX_SECONDS = 10.0
 ADB_READ_ONLY_HIERARCHY_ARGUMENTS = (
     "exec-out", "uiautomator", "dump", "--compressed", "/dev/tty",
+)
+ADB_DIRECT_HIERARCHY_OBSERVATION_READ_ATTEMPT_MAX_SECONDS = 10.0
+ADB_DIRECT_HIERARCHY_OBSERVATION_MAX_SECONDS = 48.0
+ADB_HIERARCHY_OBSERVATION_MATCHING_AUTHORITY = (
+    "exact-observation-bytes"
 )
 ADB_SWIPE_REDACTED_ARGUMENTS = (
     "shell", "input", "swipe", "<5 redacted argument(s)>",
@@ -2253,12 +2260,17 @@ def validate_adb_transport(value: object, *, serial: str, label: str) -> None:
             preceding = events[index - 2]
             observation = require_exact_keys(event.get("readOnlyObservation"), {
                 "mode", "arguments", "freshnessBarrierArguments",
-                "consecutiveMatching", "observationsPerformed",
+                "consecutiveMatching", "matchingAuthority",
+                "observationsPerformed", "readAttemptMaximumSeconds",
+                "maximumObservationSeconds",
                 "hierarchySha256", "observationBytesSha256",
             }, f"{label} ADB hierarchy-dump reconciliation")
             require_field_types(observation, {
                 "mode": str, "arguments": list, "freshnessBarrierArguments": list,
-                "consecutiveMatching": int, "observationsPerformed": int,
+                "consecutiveMatching": int, "matchingAuthority": str,
+                "observationsPerformed": int,
+                "readAttemptMaximumSeconds": (int, float),
+                "maximumObservationSeconds": (int, float),
                 "hierarchySha256": str, "observationBytesSha256": str,
             }, f"{label} ADB hierarchy-dump reconciliation")
             require_hex(
@@ -2333,15 +2345,33 @@ def validate_adb_transport(value: object, *, serial: str, label: str) -> None:
             if observation_mode == "fresh-owned-file":
                 observation_arguments = ADB_FILE_HIERARCHY_OBSERVATION_ARGUMENTS
                 maximum_observations = 8
+                read_attempt_maximum_seconds = (
+                    ADB_FILE_HIERARCHY_OBSERVATION_READ_ATTEMPT_MAX_SECONDS
+                )
+                maximum_observation_seconds = (
+                    ADB_FILE_HIERARCHY_OBSERVATION_MAX_SECONDS
+                )
             elif observation_mode == "direct-current-hierarchy":
                 observation_arguments = ADB_READ_ONLY_HIERARCHY_ARGUMENTS
                 maximum_observations = 3
+                read_attempt_maximum_seconds = (
+                    ADB_DIRECT_HIERARCHY_OBSERVATION_READ_ATTEMPT_MAX_SECONDS
+                )
+                maximum_observation_seconds = (
+                    ADB_DIRECT_HIERARCHY_OBSERVATION_MAX_SECONDS
+                )
             else:
                 raise ValueError(
                     f"{label} ADB hierarchy-dump observation mode is not exact"
                 )
             if (
                 observation.get("arguments") != list(observation_arguments)
+                or observation.get("matchingAuthority")
+                != ADB_HIERARCHY_OBSERVATION_MATCHING_AUTHORITY
+                or observation.get("readAttemptMaximumSeconds")
+                != read_attempt_maximum_seconds
+                or observation.get("maximumObservationSeconds")
+                != maximum_observation_seconds
                 or not 2
                 <= observation.get("observationsPerformed", 0)
                 <= maximum_observations
