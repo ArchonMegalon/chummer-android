@@ -88,6 +88,11 @@ ADB_READ_ONLY_HIERARCHY_ARGUMENTS = (
 ADB_SWIPE_REDACTED_ARGUMENTS = (
     "shell", "input", "swipe", "<5 redacted argument(s)>",
 )
+ADB_CREATION_BOOTSTRAP_LOGCAT_ARGUMENTS = (
+    "logcat", "-d", "-t", "50", "-s", "ChummerBootstrap:I", "*:S",
+)
+ADB_SAFE_READ_ONLY_REMOTE_PATH = re.compile(r"^/[A-Za-z0-9._/:-]{1,511}$")
+ADB_SAFE_ANDROID_PROPERTY = re.compile(r"^[A-Za-z0-9._-]{1,255}$")
 VIRTUAL_MARKERS = (
     "aosp_cf_", "cuttlefish", "emulator", "generic", "goldfish", "qemu",
     "ranchu", "sdk_gphone", "vbox", "virtualbox",
@@ -1854,6 +1859,69 @@ def _raw_device_matches(
         raise ValueError(f"{journey_id} nested device observation differs from the shared device bytes")
 
 
+def read_only_adb_policy_reason(arguments: Sequence[str]) -> str | None:
+    """Independently classify the driver's closed-world read-only ADB surface."""
+    values = tuple(arguments)
+    if values == ("get-state",):
+        return "exact adb transport-state observation"
+    if values == ("exec-out", "screencap", "-p"):
+        return "exact framebuffer observation"
+    if values == ADB_READ_ONLY_HIERARCHY_ARGUMENTS:
+        return "exact accessibility-hierarchy observation without app mutation"
+    if (
+        len(values) == 3
+        and values[:2] == ("exec-out", "cat")
+        and ADB_SAFE_READ_ONLY_REMOTE_PATH.fullmatch(values[2]) is not None
+    ):
+        return "exact remote-file byte observation"
+    if values == ("logcat", "-d", "-t", "500"):
+        return "bounded logcat dump observation"
+    if values == ADB_CREATION_BOOTSTRAP_LOGCAT_ARGUMENTS:
+        return "bounded exact-tag creation-bootstrap timing observation"
+    if values[:1] != ("shell",):
+        return None
+
+    shell_arguments = values[1:]
+    if (
+        len(shell_arguments) == 2
+        and shell_arguments[0] == "getprop"
+        and ADB_SAFE_ANDROID_PROPERTY.fullmatch(shell_arguments[1]) is not None
+    ):
+        return "exact Android property observation"
+    if shell_arguments == ("wm", "size"):
+        return "exact display-size observation"
+    if shell_arguments == ("pidof", PACKAGE):
+        return "exact package process-id observation"
+    if (
+        len(shell_arguments) == 2
+        and shell_arguments[0] in {"cat", "sha256sum"}
+        and ADB_SAFE_READ_ONLY_REMOTE_PATH.fullmatch(shell_arguments[1]) is not None
+    ):
+        return "exact remote-file observation"
+    if (
+        len(shell_arguments) == 4
+        and shell_arguments[:3] == ("test", "!", "-e")
+        and ADB_SAFE_READ_ONLY_REMOTE_PATH.fullmatch(shell_arguments[3]) is not None
+    ):
+        return "exact remote-path absence observation"
+    if shell_arguments in {
+        ("dumpsys", "input_method"),
+        ("dumpsys", "activity", "activities"),
+        ("dumpsys", "activity", "lastanr"),
+        ("dumpsys", "activity", "processes"),
+        ("dumpsys", "activity", "exit-info", PACKAGE),
+        ("dumpsys", "window", "windows"),
+    }:
+        return "exact dumpsys observation"
+    if shell_arguments == ("ls", "-la", "/data/anr"):
+        return "exact ANR-directory observation"
+    if shell_arguments == (
+        "logcat", "-d", "-b", "all", "-v", "threadtime", "-t", "4000",
+    ):
+        return "bounded logcat dump observation"
+    return None
+
+
 def validate_adb_transport(value: object, *, serial: str, label: str) -> None:
     summary = require_exact_keys(value, {
         "schema", "status", "preflight", "eventCount", "terminalFailureCount", "events",
@@ -2006,20 +2074,32 @@ def validate_adb_transport(value: object, *, serial: str, label: str) -> None:
                 "stdout": str, "stderr": str,
             }, f"{label} ADB event failure")
         if status == "fail":
-            if failure is None or index >= len(events):
+            if failure is None:
+                raise ValueError(f"{label} ADB fail event has no failure")
+            if event.get("commandPolicy") == "read-only-retryable":
+                if (
+                    index <= 1
+                    or not isinstance(events[index - 2], dict)
+                    or events[index - 2].get("status") != "retrying-read-only"
+                ):
+                    raise ValueError(
+                        f"{label} ADB terminal read-only failure has no adjacent retry"
+                    )
+            elif index >= len(events):
                 raise ValueError(
                     f"{label} ADB fail event is terminal or has no adjacent reconciliation"
                 )
-            following = events[index]
-            if (
-                not isinstance(following, dict)
-                or following.get("status") not in reconciliation_statuses
-                or following.get("reconcilesEvidenceFile")
-                != event.get("evidenceFile")
-            ):
-                raise ValueError(
-                    f"{label} ADB fail event is not followed by its exact reconciliation"
-                )
+            else:
+                following = events[index]
+                if (
+                    not isinstance(following, dict)
+                    or following.get("status") not in reconciliation_statuses
+                    or following.get("reconcilesEvidenceFile")
+                    != event.get("evidenceFile")
+                ):
+                    raise ValueError(
+                        f"{label} ADB fail event is not followed by its exact reconciliation"
+                    )
         if status in reconciliation_statuses:
             if index <= 1:
                 raise ValueError(f"{label} ADB reconciliation is orphaned")
@@ -2197,6 +2277,161 @@ def validate_adb_transport(value: object, *, serial: str, label: str) -> None:
                 raise ValueError(
                     f"{label} ADB hierarchy-dump observation is not exact"
                 )
+
+    retryable_classification_authorities = {
+        "timeout-unknown-outcome": "timeout-with-unknown-command-outcome",
+        "device-offline": "recognized-transient-transport-marker",
+        "device-missing": "recognized-transient-transport-marker",
+        "transport-closed": "recognized-transient-transport-marker",
+        "daemon-unavailable": "recognized-transient-transport-marker",
+    }
+    terminal_classification_authorities = {
+        **retryable_classification_authorities,
+        "caller-deadline-exhausted-before-retry": (
+            "caller-owned-deadline-before-command"
+        ),
+        "device-unauthorized": "recognized-nonretryable-transport-marker",
+        "unclassified-adb-failure": "unclassified-fail-closed",
+    }
+    read_only_statuses = {"retrying-read-only", "recovered-read-only"}
+    terminal_read_only_failure_seen = False
+
+    def require_read_only_binding(
+        earlier: Mapping[str, object],
+        later: Mapping[str, object],
+        chain_label: str,
+    ) -> None:
+        for field in (
+            "serial", "commandPolicy", "policyReason", "adbArguments",
+            "adbArgumentsSha256", "maximumAttempts",
+        ):
+            if later.get(field) != earlier.get(field):
+                raise ValueError(
+                    f"{label} ADB {chain_label} changes read-only {field}"
+                )
+        if later.get("attempt") != earlier.get("attempt", 0) + 1:
+            raise ValueError(
+                f"{label} ADB {chain_label} attempt progression is not exact"
+            )
+
+    for event_index, event in enumerate(events):
+        status = event["status"]
+        is_terminal_read_only = (
+            status == "fail"
+            and event.get("commandPolicy") == "read-only-retryable"
+        )
+        if status not in read_only_statuses and not is_terminal_read_only:
+            continue
+
+        arguments = event["adbArguments"]
+        expected_arguments_sha256 = hashlib.sha256(
+            "\0".join(arguments).encode("utf-8")
+        ).hexdigest()
+        expected_policy_reason = read_only_adb_policy_reason(arguments)
+        attempt = event["attempt"]
+        maximum_attempts = event["maximumAttempts"]
+        deadline_before_retry = (
+            event.get("classification")
+            == "caller-deadline-exhausted-before-retry"
+        )
+        if (
+            event.get("commandPolicy") != "read-only-retryable"
+            or expected_policy_reason is None
+            or event.get("policyReason") != expected_policy_reason
+            or event.get("serial") != serial
+            or event.get("adbArgumentsSha256") != expected_arguments_sha256
+            or type(attempt) is not int
+            or type(maximum_attempts) is not int
+            or maximum_attempts != summary["readOnlyMaximumAttempts"]
+            or not 1 <= attempt <= maximum_attempts
+            or event.get("commandInvocationPerformed")
+            is not (not deadline_before_retry)
+            or event.get("outcomeMutationAuthority") != "none-read-only-command"
+        ):
+            raise ValueError(f"{label} ADB read-only event identity/bounds are not exact")
+
+        if status == "recovered-read-only":
+            if (
+                event.get("classification") != "transport-recovered"
+                or event.get("classificationAuthority")
+                != "fresh-read-only-command-succeeded"
+                or event.get("retryableTransportClassification") is not True
+                or event.get("failure") is not None
+                or event.get("replay") != {
+                    "eligible": True, "performed": True,
+                    "scheduled": False, "suppressed": False,
+                }
+                or attempt <= 1
+                or event_index == 0
+                or events[event_index - 1].get("status") != "retrying-read-only"
+            ):
+                raise ValueError(f"{label} ADB read-only recovery is not exact")
+            require_read_only_binding(
+                events[event_index - 1], event, "retry recovery",
+            )
+            continue
+
+        classification = event.get("classification")
+        expected_authority = (
+            retryable_classification_authorities.get(classification)
+            if status == "retrying-read-only"
+            else terminal_classification_authorities.get(classification)
+        )
+        retryable_classification = (
+            classification in retryable_classification_authorities
+        )
+        expected_replay = {
+            "eligible": retryable_classification,
+            "performed": attempt > 1 and not deadline_before_retry,
+            "scheduled": status == "retrying-read-only",
+            "suppressed": status == "fail",
+        }
+        if (
+            expected_authority is None
+            or event.get("classificationAuthority") != expected_authority
+            or event.get("retryableTransportClassification")
+            is not retryable_classification
+            or event.get("failure") is None
+            or event.get("replay") != expected_replay
+            or (
+                deadline_before_retry
+                and (
+                    event["failure"].get("type")
+                    != "AdbOperationDeadlineExceeded"
+                    or event["failure"].get("returnCode") is not None
+                )
+            )
+        ):
+            raise ValueError(f"{label} ADB read-only failure/replay is not exact")
+
+        if attempt > 1:
+            if (
+                event_index == 0
+                or events[event_index - 1].get("status") != "retrying-read-only"
+            ):
+                raise ValueError(f"{label} ADB read-only retry is orphaned")
+            require_read_only_binding(
+                events[event_index - 1], event, "retry attempt",
+            )
+
+        if status == "retrying-read-only":
+            if attempt >= maximum_attempts or event_index + 1 >= len(events):
+                raise ValueError(f"{label} ADB read-only retry is dangling")
+            following = events[event_index + 1]
+            if (
+                not isinstance(following, dict)
+                or following.get("status")
+                not in {"retrying-read-only", "recovered-read-only", "fail"}
+            ):
+                raise ValueError(
+                    f"{label} ADB read-only retry has no adjacent completion"
+                )
+            require_read_only_binding(event, following, "retry completion")
+        else:
+            terminal_read_only_failure_seen = True
+
+    if terminal_read_only_failure_seen:
+        raise ValueError(f"{label} ADB pass summary contains a terminal read-only failure")
 
 
 def validate_workspace(value: object, label: str) -> None:

@@ -401,6 +401,71 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
             "nonReplayableCommandMaximumAttempts": 1,
         }
 
+    def recovered_read_only_transport_payload(self) -> dict[str, object]:
+        payload = self.adb_transport_payload()
+        serial = self.device_payload()["serial"]
+        arguments = contract.ADB_FILE_HIERARCHY_OBSERVATION_ARGUMENTS
+        arguments_sha256 = hashlib.sha256(
+            "\0".join(arguments).encode("utf-8")
+        ).hexdigest()
+
+        def retrying(attempt: int) -> dict[str, object]:
+            return {
+                "schema": "chummer.android.adb-transport-event/v1",
+                "status": "retrying-read-only",
+                "serial": serial,
+                "classification": "timeout-unknown-outcome",
+                "classificationAuthority": "timeout-with-unknown-command-outcome",
+                "retryableTransportClassification": True,
+                "commandPolicy": "read-only-retryable",
+                "policyReason": "exact remote-file byte observation",
+                "adbArguments": list(arguments),
+                "adbArgumentsSha256": arguments_sha256,
+                "attempt": attempt,
+                "maximumAttempts": 3,
+                "commandInvocationPerformed": True,
+                "outcomeMutationAuthority": "none-read-only-command",
+                "replay": {
+                    "eligible": True, "performed": attempt > 1,
+                    "scheduled": True, "suppressed": False,
+                },
+                "failure": {
+                    "type": "TimeoutExpired", "returnCode": None,
+                    "stdout": "", "stderr": "",
+                },
+                "evidenceFile": f"adb-transport-event-{attempt:04d}.json",
+            }
+
+        recovered = {
+            "schema": "chummer.android.adb-transport-event/v1",
+            "status": "recovered-read-only",
+            "serial": serial,
+            "classification": "transport-recovered",
+            "classificationAuthority": "fresh-read-only-command-succeeded",
+            "retryableTransportClassification": True,
+            "commandPolicy": "read-only-retryable",
+            "policyReason": "exact remote-file byte observation",
+            "adbArguments": list(arguments),
+            "adbArgumentsSha256": arguments_sha256,
+            "attempt": 3,
+            "maximumAttempts": 3,
+            "commandInvocationPerformed": True,
+            "outcomeMutationAuthority": "none-read-only-command",
+            "replay": {
+                "eligible": True, "performed": True,
+                "scheduled": False, "suppressed": False,
+            },
+            "failure": None,
+            "evidenceFile": "adb-transport-event-0003.json",
+        }
+        events = [retrying(1), retrying(2), recovered]
+        payload.update({
+            "eventCount": len(events),
+            "terminalFailureCount": 0,
+            "events": events,
+        })
+        return payload
+
     def reconciled_hierarchy_dump_transport_payload(
         self,
         *,
@@ -938,6 +1003,103 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
             serial=str(self.device_payload()["serial"]),
             label="priority",
         )
+
+    def test_canonical_read_only_retry_chain_is_accepted(self) -> None:
+        contract.validate_adb_transport(
+            self.recovered_read_only_transport_payload(),
+            serial=str(self.device_payload()["serial"]),
+            label="priority",
+        )
+
+    def test_read_only_retry_chain_rejects_dangling_and_forged_links(self) -> None:
+        def dangling(value: dict[str, object]) -> None:
+            value["events"].pop()
+            value["eventCount"] = len(value["events"])
+
+        def wrong_command(value: dict[str, object]) -> None:
+            recovered = value["events"][-1]
+            recovered["adbArguments"] = ["get-state"]
+            recovered["adbArgumentsSha256"] = hashlib.sha256(
+                b"get-state"
+            ).hexdigest()
+
+        def terminal_failure(value: dict[str, object]) -> None:
+            terminal = value["events"][-1]
+            terminal.update({
+                "status": "fail",
+                "classification": "timeout-unknown-outcome",
+                "classificationAuthority": "timeout-with-unknown-command-outcome",
+                "retryableTransportClassification": True,
+                "replay": {
+                    "eligible": True, "performed": True,
+                    "scheduled": False, "suppressed": True,
+                },
+                "failure": {
+                    "type": "TimeoutExpired", "returnCode": None,
+                    "stdout": "", "stderr": "",
+                },
+            })
+
+        def mutating_whole_chain(value: dict[str, object]) -> None:
+            arguments = ("shell", "input", "tap", "10", "20")
+            arguments_sha256 = hashlib.sha256(
+                "\0".join(arguments).encode("utf-8")
+            ).hexdigest()
+            for event in value["events"]:
+                event.update({
+                    "policyReason": "forged read-only viewport observation",
+                    "adbArguments": list(arguments),
+                    "adbArgumentsSha256": arguments_sha256,
+                })
+
+        mutations = (
+            ("dangling", dangling),
+            (
+                "wrong-digest",
+                lambda value: value["events"][-1].update({
+                    "adbArgumentsSha256": "0" * 64,
+                }),
+            ),
+            ("wrong-command", wrong_command),
+            (
+                "attempt-skip",
+                lambda value: value["events"][-1].update({"attempt": 2}),
+            ),
+            (
+                "maximum-attempt-drift",
+                lambda value: value["events"][1].update({"maximumAttempts": 2}),
+            ),
+            (
+                "serial-drift",
+                lambda value: value["events"][-1].update({"serial": "other"}),
+            ),
+            (
+                "retry-not-scheduled",
+                lambda value: value["events"][0]["replay"].update({
+                    "scheduled": False,
+                }),
+            ),
+            (
+                "recovery-not-performed",
+                lambda value: value["events"][-1]["replay"].update({
+                    "performed": False,
+                }),
+            ),
+            ("mutating-whole-chain", mutating_whole_chain),
+            ("terminal-failure-in-pass", terminal_failure),
+        )
+        for label, mutate in mutations:
+            with self.subTest(label=label):
+                payload = copy.deepcopy(
+                    self.recovered_read_only_transport_payload()
+                )
+                mutate(payload)
+                with self.assertRaises(ValueError):
+                    contract.validate_adb_transport(
+                        payload,
+                        serial=str(self.device_payload()["serial"]),
+                        label="priority",
+                    )
 
     def test_direct_hierarchy_dump_reconciliation_is_accepted(self) -> None:
         contract.validate_adb_transport(

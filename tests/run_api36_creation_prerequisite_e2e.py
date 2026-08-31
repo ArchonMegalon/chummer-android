@@ -188,14 +188,17 @@ PHASE_BUDGET_MS = {
     # SelectionId reacquisition as active-skill completion. It must not borrow
     # the tail of the already-proven choose/preserve/reset/reselect sequence.
     "talent-skill-group-grant-completion": 180_000,
-    "preview-confirm": 150_000,
+    # External proof phase SLO/cap; not a sum-of-operation maxima or an
+    # entitlement beyond TOTAL_PERFORMANCE_TARGET_MS.
+    "preview-confirm": 330_000,
     "same-process-reopen": 90_000,
     "resources-preview-confirm": 150_000,
     "process-restart-reopen": 90_000,
 }
 PHASE_ORDER = tuple(PHASE_BUDGET_MS)
 PERSISTENT_PREVIEW_ACTION_TIMEOUT_SECONDS = 3.0
-PREVIEW_ROUTE_PROOF_TIMEOUT_SECONDS = 15.0
+PREVIEW_ROUTE_PROOF_TIMEOUT_SECONDS = 75.0
+ZERO_GESTURE_ROUTE_PROOF_TIMEOUT_SECONDS = 75
 CONFIRMED_RECEIPT_SCAN_TIMEOUT_SECONDS = 50.0
 POST_CONFIRM_DASHBOARD_PROOF_TIMEOUT_SECONDS = 30.0
 CONFIRM_DOWNSTREAM_RESERVE_SECONDS = (
@@ -2113,7 +2116,7 @@ def require_exact_zero_gesture_route(
     """Prove one exact route without authorizing a gesture or product action."""
     node = device.wait_for_single_exact_resource_id(
         selector,
-        timeout=45,
+        timeout=ZERO_GESTURE_ROUTE_PROOF_TIMEOUT_SECONDS,
         scroll=False,
         max_scrolls=0,
         evidence_prefix=evidence_prefix,

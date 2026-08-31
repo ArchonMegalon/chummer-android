@@ -1963,7 +1963,10 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         self.assertEqual(
             [
                 call(*DRIVER.ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS),
-                call(*DRIVER.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS),
+                call(
+                    *DRIVER.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
+                    timeout=DRIVER.ADB_FILE_HIERARCHY_DUMP_ATTEMPT_MAX_SECONDS,
+                ),
             ],
             device.shell.call_args_list,
         )
@@ -2014,7 +2017,10 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         self.assertEqual(
             [
                 call(*DRIVER.ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS),
-                call(*DRIVER.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS),
+                call(
+                    *DRIVER.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
+                    timeout=DRIVER.ADB_FILE_HIERARCHY_DUMP_ATTEMPT_MAX_SECONDS,
+                ),
             ],
             device.shell.call_args_list,
         )
@@ -2125,7 +2131,10 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             self.assertEqual(
                 [
                     call(*DRIVER.ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS),
-                    call(*DRIVER.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS),
+                    call(
+                        *DRIVER.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
+                        timeout=DRIVER.ADB_FILE_HIERARCHY_DUMP_ATTEMPT_MAX_SECONDS,
+                    ),
                 ],
                 shell.call_args_list,
             )
@@ -2140,7 +2149,9 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                         "exec-out",
                         "cat",
                         DRIVER.ADB_FILE_HIERARCHY_REMOTE_PATH,
-                        timeout=DRIVER.ADB_FILE_HIERARCHY_VISIBILITY_MAX_SECONDS,
+                        timeout=(
+                            DRIVER.ADB_FILE_HIERARCHY_VISIBILITY_READ_ATTEMPT_MAX_SECONDS
+                        ),
                         deadline=(
                             90.0 + DRIVER.ADB_FILE_HIERARCHY_VISIBILITY_MAX_SECONDS
                         ),
@@ -2157,6 +2168,200 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                     encoding="utf-8"
                 ),
             )
+
+    def test_missing_fresh_file_visibility_timeout_can_use_bounded_read_retry(
+        self,
+    ) -> None:
+        current = (
+            "<?xml version='1.0' encoding='UTF-8'?>"
+            "<hierarchy><node text='Current runner root' /></hierarchy>"
+        )
+        now = [90.0]
+        cat_invocations = [0]
+
+        def monotonic() -> float:
+            return now[0]
+
+        def sleep(seconds: float) -> None:
+            now[0] += seconds
+
+        def invoke_once(
+            arguments: tuple[str, ...],
+            *,
+            timeout: float,
+            text: bool,
+            check: bool,
+        ) -> subprocess.CompletedProcess:
+            self.assertTrue(text)
+            self.assertTrue(check)
+            if arguments == (
+                "shell",
+                *DRIVER.ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS,
+            ):
+                return subprocess.CompletedProcess(arguments, 0, "", "")
+            if arguments == (
+                "shell",
+                *DRIVER.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
+            ):
+                return subprocess.CompletedProcess(
+                    arguments,
+                    0,
+                    "UI hierarchy dumped to fresh owned file",
+                    "",
+                )
+            self.assertEqual(
+                (
+                    "exec-out",
+                    "cat",
+                    DRIVER.ADB_FILE_HIERARCHY_REMOTE_PATH,
+                ),
+                arguments,
+            )
+            cat_invocations[0] += 1
+            if cat_invocations[0] == 1:
+                return subprocess.CompletedProcess(
+                    arguments,
+                    0,
+                    DRIVER.ADB_FILE_HIERARCHY_ABSENT_OUTPUT,
+                    "",
+                )
+            self.assertLessEqual(
+                timeout,
+                DRIVER.ADB_FILE_HIERARCHY_VISIBILITY_READ_ATTEMPT_MAX_SECONDS,
+            )
+            if cat_invocations[0] == 2:
+                now[0] += timeout
+                raise subprocess.TimeoutExpired(arguments, timeout)
+            return subprocess.CompletedProcess(arguments, 0, current, "")
+
+        with tempfile.TemporaryDirectory() as temporary:
+            device = DRIVER.Device(
+                Path("/unused/adb"),
+                "emulator-5554",
+                Path(temporary),
+            )
+            with (
+                patch.object(device, "_invoke_once", side_effect=invoke_once),
+                patch.object(DRIVER.time, "monotonic", side_effect=monotonic),
+                patch.object(DRIVER.time, "sleep", side_effect=sleep),
+            ):
+                nodes = device.hierarchy()
+                summary = device.transport_summary()
+
+        self.assertEqual("Current runner root", nodes[0].attributes["text"])
+        self.assertEqual(3, cat_invocations[0])
+        self.assertEqual(0, summary["terminalFailureCount"])
+        self.assertEqual(
+            ["retrying-read-only", "recovered-read-only"],
+            [event["status"] for event in summary["events"]],
+        )
+        self.assertEqual(1, summary["events"][0]["attempt"])
+        self.assertEqual(2, summary["events"][1]["attempt"])
+        self.assertTrue(summary["events"][0]["replay"]["scheduled"])
+        self.assertTrue(summary["events"][1]["replay"]["performed"])
+
+    def test_missing_fresh_file_visibility_retries_are_exact_and_fail_closed(
+        self,
+    ) -> None:
+        now = [90.0]
+        cat_invocations = [0]
+        visibility_timeouts: list[float] = []
+        exact_commands: list[tuple[str, ...]] = []
+
+        def monotonic() -> float:
+            return now[0]
+
+        def sleep(seconds: float) -> None:
+            now[0] += seconds
+
+        def invoke_once(
+            arguments: tuple[str, ...],
+            *,
+            timeout: float,
+            text: bool,
+            check: bool,
+        ) -> subprocess.CompletedProcess:
+            self.assertTrue(text)
+            self.assertTrue(check)
+            exact_commands.append(arguments)
+            if arguments == (
+                "shell",
+                *DRIVER.ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS,
+            ):
+                return subprocess.CompletedProcess(arguments, 0, "", "")
+            if arguments == (
+                "shell",
+                *DRIVER.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
+            ):
+                return subprocess.CompletedProcess(
+                    arguments,
+                    0,
+                    "UI hierarchy dumped to fresh owned file",
+                    "",
+                )
+            self.assertEqual(
+                (
+                    "exec-out",
+                    "cat",
+                    DRIVER.ADB_FILE_HIERARCHY_REMOTE_PATH,
+                ),
+                arguments,
+            )
+            cat_invocations[0] += 1
+            if cat_invocations[0] == 1:
+                return subprocess.CompletedProcess(
+                    arguments,
+                    0,
+                    DRIVER.ADB_FILE_HIERARCHY_ABSENT_OUTPUT,
+                    "",
+                )
+            visibility_timeouts.append(timeout)
+            now[0] += timeout
+            raise subprocess.TimeoutExpired(arguments, timeout)
+
+        with tempfile.TemporaryDirectory() as temporary:
+            device = DRIVER.Device(
+                Path("/unused/adb"),
+                "emulator-5554",
+                Path(temporary),
+            )
+            with (
+                patch.object(device, "_invoke_once", side_effect=invoke_once),
+                patch.object(DRIVER.time, "monotonic", side_effect=monotonic),
+                patch.object(DRIVER.time, "sleep", side_effect=sleep),
+                self.assertRaises(DRIVER.AdbTransportError),
+            ):
+                device.hierarchy()
+            summary = device.transport_summary()
+
+        self.assertEqual(4, cat_invocations[0])
+        self.assertEqual([1.0, 1.0, 1.0], visibility_timeouts)
+        self.assertLessEqual(
+            now[0] - 90.0,
+            DRIVER.ADB_FILE_HIERARCHY_VISIBILITY_MAX_SECONDS,
+        )
+        self.assertEqual(
+            1,
+            exact_commands.count(
+                ("shell", *DRIVER.ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS)
+            ),
+        )
+        self.assertEqual(
+            1,
+            exact_commands.count(
+                ("shell", *DRIVER.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS)
+            ),
+        )
+        self.assertNotIn(DRIVER.ADB_READ_ONLY_HIERARCHY_ARGUMENTS, exact_commands)
+        self.assertEqual(1, summary["terminalFailureCount"])
+        self.assertEqual(
+            ["retrying-read-only", "retrying-read-only", "fail"],
+            [event["status"] for event in summary["events"]],
+        )
+        self.assertEqual(
+            [1, 2, 3],
+            [event["attempt"] for event in summary["events"]],
+        )
 
     def test_missing_fresh_file_stops_after_one_malformed_visibility_read(
         self,
@@ -2272,8 +2477,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 "cat",
                 DRIVER.ADB_FILE_HIERARCHY_REMOTE_PATH,
                 timeout=(
-                    DRIVER.ADB_FILE_HIERARCHY_VISIBILITY_MAX_SECONDS
-                    - DRIVER.ADB_FILE_HIERARCHY_VISIBILITY_DELAY_SECONDS
+                    DRIVER.ADB_FILE_HIERARCHY_VISIBILITY_READ_ATTEMPT_MAX_SECONDS
                 ),
                 deadline=(
                     90.0 + DRIVER.ADB_FILE_HIERARCHY_VISIBILITY_MAX_SECONDS
@@ -2525,7 +2729,10 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         self.assertEqual(
             [
                 call(*DRIVER.ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS),
-                call(*DRIVER.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS),
+                call(
+                    *DRIVER.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
+                    timeout=DRIVER.ADB_FILE_HIERARCHY_DUMP_ATTEMPT_MAX_SECONDS,
+                ),
             ],
             device.shell.call_args_list,
         )
@@ -6424,7 +6631,10 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                     DRIVER.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
                     arguments,
                 )
-                self.assertEqual(33.0, kwargs["timeout"])
+                self.assertEqual(
+                    DRIVER.ADB_FILE_HIERARCHY_DUMP_ATTEMPT_MAX_SECONDS,
+                    kwargs["timeout"],
+                )
                 now[0] = 20.0
                 return "UI hierarchy dumped"
 

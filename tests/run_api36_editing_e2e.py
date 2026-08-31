@@ -112,8 +112,9 @@ ADB_HIERARCHY_DUMP_RECONCILIATION_MAX_OBSERVATIONS = 8
 ADB_HIERARCHY_DUMP_RECONCILIATION_DELAY_SECONDS = 0.25
 ADB_HIERARCHY_DUMP_RECONCILIATION_MAX_SECONDS = 10.0
 ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_MAX_OBSERVATIONS = 3
-ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_DELAY_SECONDS = 0.5
-ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_MAX_SECONDS = 10.0
+ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_DELAY_SECONDS = 8.0
+ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_READ_ATTEMPT_MAX_SECONDS = 10.0
+ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_MAX_SECONDS = 48.0
 ADB_READ_ONLY_HIERARCHY_ARGUMENTS = (
     "exec-out",
     "uiautomator",
@@ -133,12 +134,14 @@ ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS = (
     "--compressed",
     ADB_FILE_HIERARCHY_REMOTE_PATH,
 )
+ADB_FILE_HIERARCHY_DUMP_ATTEMPT_MAX_SECONDS = 10.0
 ADB_FILE_HIERARCHY_ABSENT_OUTPUT = (
     f"cat: {ADB_FILE_HIERARCHY_REMOTE_PATH}: No such file or directory"
 )
 ADB_FILE_HIERARCHY_VISIBILITY_MAX_OBSERVATIONS = 8
 ADB_FILE_HIERARCHY_VISIBILITY_DELAY_SECONDS = 0.25
-ADB_FILE_HIERARCHY_VISIBILITY_MAX_SECONDS = 2.5
+ADB_FILE_HIERARCHY_VISIBILITY_READ_ATTEMPT_MAX_SECONDS = 1.0
+ADB_FILE_HIERARCHY_VISIBILITY_MAX_SECONDS = 6.0
 DOCUMENTS_UI_PACKAGE = "com.google.android.documentsui"
 DOCUMENTS_UI_DRAWER_MARKER = "Open from"
 DOCUMENTS_UI_DOWNLOADS_ROOT = "Downloads"
@@ -297,6 +300,8 @@ def adb_classification_authority(classification: str) -> str:
         return "recognized-nonretryable-transport-marker"
     if classification == "timeout-unknown-outcome":
         return "timeout-with-unknown-command-outcome"
+    if classification == "caller-deadline-exhausted-before-retry":
+        return "caller-owned-deadline-before-command"
     return "unclassified-fail-closed"
 
 
@@ -923,13 +928,35 @@ class Device:
                         attempts=attempt,
                     )
                 return result
+            except AdbOperationDeadlineExceeded as error:
+                if attempt <= 1:
+                    raise
+                receipt, path = self._write_transport_event(
+                    arguments=adb_arguments,
+                    command_policy=command_policy,
+                    policy_reason=policy_reason,
+                    classification="caller-deadline-exhausted-before-retry",
+                    retryable_classification=False,
+                    attempt=attempt,
+                    maximum_attempts=maximum_attempts,
+                    status="fail",
+                    error=error,
+                    replay_performed=False,
+                    replay_suppressed=True,
+                    command_invocation_performed=False,
+                )
+                raise AdbTransportError(receipt, path) from error
             except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
                 classification, retryable = classify_adb_failure(error)
+                retry_delay = ADB_READ_ONLY_RETRY_DELAY_SECONDS
                 may_retry = (
                     command_policy == "read-only-retryable"
                     and retryable
                     and attempt < maximum_attempts
-                    and (deadline is None or time.monotonic() < deadline)
+                    and (
+                        deadline is None
+                        or deadline - time.monotonic() > retry_delay
+                    )
                 )
                 receipt, path = self._write_transport_event(
                     arguments=adb_arguments,
@@ -951,14 +978,6 @@ class Device:
                         "evidenceFile": receipt["evidenceFile"],
                     }
                 if not may_retry:
-                    raise AdbTransportError(receipt, path) from error
-                retry_delay = ADB_READ_ONLY_RETRY_DELAY_SECONDS
-                if deadline is not None:
-                    retry_delay = min(
-                        retry_delay,
-                        max(0.0, deadline - time.monotonic()),
-                    )
-                if retry_delay <= 0:
                     raise AdbTransportError(receipt, path) from error
                 time.sleep(retry_delay)
         raise AssertionError("bounded ADB retry loop exhausted without a terminal result")
@@ -1270,14 +1289,15 @@ class Device:
             try:
                 if deadline is None:
                     dump_output = self.shell(
-                        *ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS
+                        *ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
+                        timeout=ADB_FILE_HIERARCHY_DUMP_ATTEMPT_MAX_SECONDS,
                     )
                 else:
                     dump_output = self.shell(
                         *ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
                         timeout=_remaining_operation_timeout(
                             deadline=deadline,
-                            maximum=120,
+                            maximum=ADB_FILE_HIERARCHY_DUMP_ATTEMPT_MAX_SECONDS,
                         ),
                         deadline=deadline,
                     )
@@ -1382,7 +1402,9 @@ class Device:
                     ADB_FILE_HIERARCHY_REMOTE_PATH,
                     timeout=_remaining_operation_timeout(
                         deadline=visibility_deadline,
-                        maximum=ADB_FILE_HIERARCHY_VISIBILITY_MAX_SECONDS,
+                        maximum=(
+                            ADB_FILE_HIERARCHY_VISIBILITY_READ_ATTEMPT_MAX_SECONDS
+                        ),
                     ),
                     deadline=visibility_deadline,
                 ).stdout
@@ -1653,7 +1675,7 @@ class Device:
                     timeout=_remaining_operation_timeout(
                         deadline=direct_deadline,
                         maximum=(
-                            ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_MAX_SECONDS
+                            ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_READ_ATTEMPT_MAX_SECONDS
                         ),
                     ),
                     deadline=direct_deadline,

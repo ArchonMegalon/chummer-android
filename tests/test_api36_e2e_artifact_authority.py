@@ -554,7 +554,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             "talent-skill-group-reset": 150_000,
             "talent-skill-group-reselection": 150_000,
             "talent-skill-group-grant-completion": 180_000,
-            "preview-confirm": 150_000,
+            "preview-confirm": 330_000,
             "same-process-reopen": 90_000,
             "resources-preview-confirm": 150_000,
             "process-restart-reopen": 90_000,

@@ -174,6 +174,95 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
                 (evidence / "adb-transport-event-0001.json").stat().st_mode & 0o777,
             )
 
+    def test_read_only_retry_is_not_scheduled_without_deadline_headroom(self) -> None:
+        now = [90.0]
+        arguments = (
+            "exec-out",
+            "cat",
+            driver.ADB_FILE_HIERARCHY_REMOTE_PATH,
+        )
+
+        def invoke(
+            command: list[str],
+            *,
+            check: bool,
+            capture_output: bool,
+            text: bool,
+            timeout: float,
+        ) -> subprocess.CompletedProcess:
+            self.assertTrue(check)
+            self.assertTrue(capture_output)
+            self.assertTrue(text)
+            self.assertEqual(arguments, tuple(command[3:]))
+            now[0] += timeout
+            raise subprocess.TimeoutExpired(command, timeout)
+
+        with tempfile.TemporaryDirectory() as temporary:
+            device = self.make_device(Path(temporary))
+            with (
+                mock.patch.object(driver.subprocess, "run", side_effect=invoke) as run,
+                mock.patch.object(driver.time, "monotonic", side_effect=lambda: now[0]),
+                self.assertRaises(driver.AdbTransportError) as raised,
+            ):
+                device.run(*arguments, timeout=1.0, deadline=91.5)
+
+            summary = device.transport_summary()
+
+        self.assertEqual(1, run.call_count)
+        self.assertEqual("fail", raised.exception.receipt["status"])
+        self.assertFalse(raised.exception.receipt["replay"]["scheduled"])
+        self.assertEqual(1, summary["terminalFailureCount"])
+        self.assertEqual(["fail"], [event["status"] for event in summary["events"]])
+
+    def test_read_only_retry_deadline_overrun_gets_terminal_receipt(self) -> None:
+        now = [90.0]
+        arguments = (
+            "exec-out",
+            "cat",
+            driver.ADB_FILE_HIERARCHY_REMOTE_PATH,
+        )
+
+        def invoke(
+            command: list[str],
+            *,
+            check: bool,
+            capture_output: bool,
+            text: bool,
+            timeout: float,
+        ) -> subprocess.CompletedProcess:
+            self.assertEqual(arguments, tuple(command[3:]))
+            now[0] += timeout
+            raise subprocess.TimeoutExpired(command, timeout)
+
+        def delayed_retry(seconds: float) -> None:
+            self.assertEqual(driver.ADB_READ_ONLY_RETRY_DELAY_SECONDS, seconds)
+            now[0] += seconds + 0.2
+
+        with tempfile.TemporaryDirectory() as temporary:
+            device = self.make_device(Path(temporary))
+            with (
+                mock.patch.object(driver.subprocess, "run", side_effect=invoke) as run,
+                mock.patch.object(driver.time, "monotonic", side_effect=lambda: now[0]),
+                mock.patch.object(driver.time, "sleep", side_effect=delayed_retry),
+                self.assertRaises(driver.AdbTransportError) as raised,
+            ):
+                device.run(*arguments, timeout=1.0, deadline=92.1)
+
+            summary = device.transport_summary()
+
+        self.assertEqual(1, run.call_count)
+        self.assertEqual(
+            ["retrying-read-only", "fail"],
+            [event["status"] for event in summary["events"]],
+        )
+        terminal = raised.exception.receipt
+        self.assertEqual("caller-deadline-exhausted-before-retry", terminal["classification"])
+        self.assertEqual("caller-owned-deadline-before-command", terminal["classificationAuthority"])
+        self.assertEqual(2, terminal["attempt"])
+        self.assertFalse(terminal["commandInvocationPerformed"])
+        self.assertFalse(terminal["replay"]["scheduled"])
+        self.assertEqual(1, summary["terminalFailureCount"])
+
     def test_get_state_offline_success_exit_is_still_retried_as_transport(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             device = self.make_device(Path(temporary))
@@ -756,6 +845,108 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
                 3,
                 reconciliation["readOnlyObservation"]["observationsPerformed"],
             )
+
+    def test_slow_dump_reserves_exact_direct_reconciliation_lease(self) -> None:
+        xml = "<hierarchy><node text='Recovered preview' /></hierarchy>"
+        null_root = "ERROR: null root node returned by UiTestAutomationBridge."
+        remove_arguments = (
+            "shell",
+            *driver.ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS,
+        )
+        dump_arguments = (
+            "shell",
+            *driver.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
+        )
+        owned_arguments = (
+            "exec-out",
+            "cat",
+            driver.ADB_FILE_HIERARCHY_REMOTE_PATH,
+        )
+        now = [90.0]
+        dump_timeouts: list[float] = []
+        direct_timeouts: list[float] = []
+        direct_outputs = [null_root, xml, xml]
+        direct_started_at: list[float] = []
+
+        def monotonic() -> float:
+            return now[0]
+
+        def sleep(seconds: float) -> None:
+            now[0] += seconds
+
+        def invoke(
+            command: list[str],
+            *,
+            check: bool,
+            capture_output: bool,
+            text: bool,
+            timeout: float,
+        ) -> subprocess.CompletedProcess:
+            self.assertTrue(check)
+            self.assertTrue(capture_output)
+            self.assertTrue(text)
+            arguments = tuple(command[3:])
+            if arguments == remove_arguments:
+                return completed(arguments, "")
+            if arguments == dump_arguments:
+                dump_timeouts.append(timeout)
+                now[0] += timeout
+                raise subprocess.TimeoutExpired(command, timeout)
+            if arguments == owned_arguments:
+                return completed(arguments, "")
+            self.assertEqual(driver.ADB_READ_ONLY_HIERARCHY_ARGUMENTS, arguments)
+            if not direct_started_at:
+                direct_started_at.append(now[0])
+            direct_timeouts.append(timeout)
+            now[0] += timeout
+            return completed(arguments, direct_outputs[len(direct_timeouts) - 1])
+
+        with tempfile.TemporaryDirectory() as temporary:
+            device = self.make_device(Path(temporary))
+            caller_deadline = now[0] + 75.0
+            with (
+                mock.patch.object(driver.subprocess, "run", side_effect=invoke) as run,
+                mock.patch.object(driver.time, "monotonic", side_effect=monotonic),
+                mock.patch.object(driver.time, "sleep", side_effect=sleep),
+            ):
+                nodes = device.hierarchy(deadline=caller_deadline)
+                summary = device.transport_summary()
+
+        self.assertEqual("Recovered preview", nodes[0].attributes["text"])
+        self.assertEqual(
+            [driver.ADB_FILE_HIERARCHY_DUMP_ATTEMPT_MAX_SECONDS],
+            dump_timeouts,
+        )
+        self.assertEqual(
+            [driver.ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_READ_ATTEMPT_MAX_SECONDS] * 3,
+            direct_timeouts,
+        )
+        self.assertLessEqual(
+            now[0] - direct_started_at[0],
+            driver.ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_MAX_SECONDS,
+        )
+        self.assertLessEqual(now[0], caller_deadline)
+        issued = [tuple(invocation.args[0][3:]) for invocation in run.call_args_list]
+        self.assertEqual(1, issued.count(remove_arguments))
+        self.assertEqual(1, issued.count(dump_arguments))
+        self.assertEqual(
+            driver.ADB_HIERARCHY_DUMP_RECONCILIATION_MAX_OBSERVATIONS,
+            issued.count(owned_arguments),
+        )
+        self.assertEqual(3, issued.count(driver.ADB_READ_ONLY_HIERARCHY_ARGUMENTS))
+        self.assertEqual(0, summary["terminalFailureCount"])
+        original, reconciliation = summary["events"]
+        self.assertEqual("fail", original["status"])
+        self.assertEqual("reconciled-unknown-hierarchy-dump", reconciliation["status"])
+        self.assertEqual(
+            original["evidenceFile"],
+            reconciliation["reconcilesEvidenceFile"],
+        )
+        self.assertEqual(
+            "direct-current-hierarchy",
+            reconciliation["readOnlyObservation"]["mode"],
+        )
+        self.assertEqual(3, reconciliation["readOnlyObservation"]["observationsPerformed"])
 
     def test_divergent_hierarchy_dump_reconciliation_stays_blocked(self) -> None:
         def hierarchy(label: str) -> str:

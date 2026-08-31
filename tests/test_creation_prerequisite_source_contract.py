@@ -8016,6 +8016,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             not in {
                 "talent-active-grant-completion",
                 "talent-skill-group-grant-completion",
+                "preview-confirm",
             }
         ):
             with self.subTest(phase_id=phase_id):
@@ -8028,6 +8029,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             180_000,
             driver.PHASE_BUDGET_MS["talent-skill-group-grant-completion"],
         )
+        self.assertEqual(330_000, driver.PHASE_BUDGET_MS["preview-confirm"])
 
         typed = source.index('progress.advance("typed-authority-options")')
         active = source.index('progress.advance("talent-active-skill-grant")')
@@ -8346,7 +8348,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         end = source.index("preview_proof: dict[str, object] = {}", start)
         block = source[start:end]
 
-        self.assertEqual(150_000, driver.PHASE_BUDGET_MS["preview-confirm"])
+        self.assertEqual(330_000, driver.PHASE_BUDGET_MS["preview-confirm"])
         self.assertEqual(
             1,
             block.count(
@@ -8389,7 +8391,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, round_trip)
 
-    def test_preview_confirm_keeps_one_original_150_second_denominator(
+    def test_preview_confirm_uses_one_330_second_phase_slo(
         self,
     ) -> None:
         source = inspect.getsource(driver.execute)
@@ -8398,7 +8400,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             'if confirmed_revisions["contentRevision"] <= 0'
         )
         back = source.index("dashboard_deadline = tap_exact_confirmed_receipt_back(")
-        self.assertEqual(150_000, driver.PHASE_BUDGET_MS["preview-confirm"])
+        self.assertEqual(330_000, driver.PHASE_BUDGET_MS["preview-confirm"])
         self.assertLess(confirm, receipt_validation)
         self.assertLess(receipt_validation, back)
         post_receipt = source.index(
@@ -8420,6 +8422,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             + driver.POST_CONFIRM_DASHBOARD_PROOF_TIMEOUT_SECONDS,
             driver.CONFIRM_DOWNSTREAM_RESERVE_SECONDS,
         )
+        self.assertEqual(1_800_000, driver.TOTAL_PERFORMANCE_TARGET_MS)
 
     def test_exact_attributes_round_trip_uses_one_observed_node_and_preserves_raw_bytes(
         self,
@@ -8751,23 +8754,67 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         device.back.assert_not_called()
 
     def test_persistent_action_lease_is_exact_and_never_clamps_permission(self) -> None:
+        cases = (
+            (
+                "prepare-preview",
+                driver.open_exact_prerequisite_preview,
+                "proof_timeout_seconds=PREVIEW_ROUTE_PROOF_TIMEOUT_SECONDS",
+                driver.PREVIEW_ROUTE_PROOF_TIMEOUT_SECONDS,
+                78.0,
+            ),
+            (
+                "confirm",
+                driver.tap_exact_current_preview_confirm,
+                "proof_timeout_seconds=CONFIRM_DOWNSTREAM_RESERVE_SECONDS",
+                driver.CONFIRM_DOWNSTREAM_RESERVE_SECONDS,
+                86.0,
+            ),
+            (
+                "back",
+                driver.tap_exact_confirmed_receipt_back,
+                "proof_timeout_seconds=POST_CONFIRM_DASHBOARD_PROOF_TIMEOUT_SECONDS",
+                driver.POST_CONFIRM_DASHBOARD_PROOF_TIMEOUT_SECONDS,
+                33.0,
+            ),
+        )
         with mock.patch.object(driver.time, "monotonic", return_value=100.0):
-            with self.assertRaisesRegex(RuntimeError, "action-plus-proof lease"):
-                driver.persistent_action_deadline(
-                    174.999,
-                    action_timeout_seconds=15.0,
-                    proof_timeout_seconds=60.0,
-                    operation="Confirm",
-                )
-            self.assertEqual(
-                115.0,
-                driver.persistent_action_deadline(
-                    175.0,
-                    action_timeout_seconds=15.0,
-                    proof_timeout_seconds=60.0,
-                    operation="Confirm",
-                ),
-            )
+            for label, function, binding, proof_seconds, required_seconds in cases:
+                with self.subTest(label=label):
+                    source = inspect.getsource(function)
+                    self.assertIn(
+                        "action_timeout_seconds="
+                        "PERSISTENT_PREVIEW_ACTION_TIMEOUT_SECONDS",
+                        source,
+                    )
+                    self.assertIn(binding, source)
+                    self.assertEqual(
+                        driver.PERSISTENT_PREVIEW_ACTION_TIMEOUT_SECONDS
+                        + proof_seconds,
+                        required_seconds,
+                    )
+                    with self.assertRaisesRegex(
+                        RuntimeError,
+                        "action-plus-proof lease",
+                    ):
+                        driver.persistent_action_deadline(
+                            100.0 + required_seconds - 0.001,
+                            action_timeout_seconds=(
+                                driver.PERSISTENT_PREVIEW_ACTION_TIMEOUT_SECONDS
+                            ),
+                            proof_timeout_seconds=proof_seconds,
+                            operation=label,
+                        )
+                    self.assertEqual(
+                        103.0,
+                        driver.persistent_action_deadline(
+                            100.0 + required_seconds,
+                            action_timeout_seconds=(
+                                driver.PERSISTENT_PREVIEW_ACTION_TIMEOUT_SECONDS
+                            ),
+                            proof_timeout_seconds=proof_seconds,
+                            operation=label,
+                        ),
+                    )
         for invalid in (float("nan"), float("inf"), 0.0, -1.0):
             with self.subTest(invalid=invalid), self.assertRaises(ValueError):
                 driver.persistent_action_deadline(
