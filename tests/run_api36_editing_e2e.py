@@ -135,7 +135,14 @@ ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS = (
     "--compressed",
     ADB_FILE_HIERARCHY_REMOTE_PATH,
 )
-ADB_FILE_HIERARCHY_DUMP_ATTEMPT_MAX_SECONDS = 10.0
+# A cold API-36 emulator can need more than ten seconds for its first file-backed
+# UIAutomator observation even after transport preflight and launch verification.
+# Keep this a single non-replayable command, but give that one attempt a bounded
+# twenty-second window. Run 33406127634 proved that the former ten-second cap
+# could reject an otherwise healthy candidate before any product route was
+# exercised; twenty seconds still preserves the existing 75-second caller lease
+# for owned-file and direct read-only reconciliation.
+ADB_FILE_HIERARCHY_DUMP_ATTEMPT_MAX_SECONDS = 20.0
 ADB_FILE_HIERARCHY_ABSENT_OUTPUT = (
     f"cat: {ADB_FILE_HIERARCHY_REMOTE_PATH}: No such file or directory"
 )

@@ -1971,6 +1971,134 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             device.shell.call_args_list,
         )
 
+    def test_file_backed_hierarchy_allows_one_slow_api36_dump_without_replay(self) -> None:
+        xml = "<hierarchy><node text='Slow cold hierarchy' /></hierarchy>"
+        now = [0.0]
+        observed_dump_timeouts: list[float] = []
+
+        def monotonic() -> float:
+            return now[0]
+
+        def invoke(
+            command: list[str],
+            *,
+            check: bool,
+            capture_output: bool,
+            text: bool,
+            timeout: float,
+        ) -> subprocess.CompletedProcess:
+            self.assertTrue(check)
+            self.assertTrue(capture_output)
+            self.assertTrue(text)
+            arguments = tuple(command[3:])
+            if arguments == (
+                "shell",
+                *DRIVER.ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS,
+            ):
+                return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
+            if arguments == (
+                "shell",
+                *DRIVER.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
+            ):
+                observed_dump_timeouts.append(timeout)
+                now[0] += 16.0
+                return subprocess.CompletedProcess(
+                    command,
+                    0,
+                    stdout="UI hierarchy dumped",
+                    stderr="",
+                )
+            self.assertEqual(
+                ("exec-out", "cat", DRIVER.ADB_FILE_HIERARCHY_REMOTE_PATH),
+                arguments,
+            )
+            return subprocess.CompletedProcess(command, 0, stdout=xml, stderr="")
+
+        with tempfile.TemporaryDirectory() as temporary:
+            device = DRIVER.Device(
+                Path("/trusted/adb"),
+                "SERIAL-API36",
+                Path(temporary),
+            )
+            with (
+                patch.object(DRIVER.subprocess, "run", side_effect=invoke) as run,
+                patch.object(DRIVER.time, "monotonic", side_effect=monotonic),
+            ):
+                nodes = device.hierarchy()
+                summary = device.transport_summary()
+
+        self.assertEqual("Slow cold hierarchy", nodes[0].attributes["text"])
+        self.assertEqual([20.0], observed_dump_timeouts)
+        issued = [tuple(invocation.args[0][3:]) for invocation in run.call_args_list]
+        self.assertEqual(
+            1,
+            issued.count(("shell", *DRIVER.ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS)),
+        )
+        self.assertEqual(
+            1,
+            issued.count(("shell", *DRIVER.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS)),
+        )
+        self.assertEqual(
+            1,
+            issued.count(("exec-out", "cat", DRIVER.ADB_FILE_HIERARCHY_REMOTE_PATH)),
+        )
+        self.assertEqual(0, summary["eventCount"])
+        self.assertEqual(0, summary["terminalFailureCount"])
+        self.assertIsNone(device._mutation_blocker)
+
+    def test_file_backed_hierarchy_dump_never_inflates_caller_deadline(self) -> None:
+        now = [0.0]
+        observed_dump_timeouts: list[float] = []
+
+        def monotonic() -> float:
+            return now[0]
+
+        def invoke(
+            command: list[str],
+            *,
+            check: bool,
+            capture_output: bool,
+            text: bool,
+            timeout: float,
+        ) -> subprocess.CompletedProcess:
+            arguments = tuple(command[3:])
+            if arguments == (
+                "shell",
+                *DRIVER.ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS,
+            ):
+                return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
+            self.assertEqual(
+                ("shell", *DRIVER.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS),
+                arguments,
+            )
+            observed_dump_timeouts.append(timeout)
+            now[0] += timeout
+            raise subprocess.TimeoutExpired(command, timeout)
+
+        with tempfile.TemporaryDirectory() as temporary:
+            device = DRIVER.Device(
+                Path("/trusted/adb"),
+                "SERIAL-API36",
+                Path(temporary),
+            )
+            with (
+                patch.object(DRIVER.subprocess, "run", side_effect=invoke) as run,
+                patch.object(DRIVER.time, "monotonic", side_effect=monotonic),
+            ):
+                with self.assertRaises(DRIVER.AdbTransportError):
+                    device.hierarchy(deadline=12.0)
+
+        self.assertEqual([12.0], observed_dump_timeouts)
+        issued = [tuple(invocation.args[0][3:]) for invocation in run.call_args_list]
+        self.assertEqual(
+            1,
+            issued.count(("shell", *DRIVER.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS)),
+        )
+        self.assertNotIn(
+            ("exec-out", "cat", DRIVER.ADB_FILE_HIERARCHY_REMOTE_PATH),
+            issued,
+        )
+
     def test_invalid_hierarchy_is_retryable_and_preserved(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             evidence = Path(temporary)
