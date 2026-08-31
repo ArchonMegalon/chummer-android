@@ -2366,19 +2366,18 @@ def wait_for_compact_dashboard_origin(
 
     The exact Back tap is persistent and must never be replayed.  API 36 may
     briefly expose either the receipt viewport or an empty UIAutomator result
-    while MAUI publishes the dashboard.  Poll only the direct read-only
-    hierarchy until both canonical dashboard identities share one viewport.
-    Duplicate identities remain an immediate fail-closed error.
+    while MAUI publishes the dashboard.  Poll only the fresh file-backed,
+    product-read-only hierarchy until both canonical dashboard identities
+    share one viewport. The direct ``/dev/tty`` stream can keep its process
+    alive after this route transition even when it emits no bytes; the
+    file-backed path has a separately bounded dump plus exact owned-file
+    observation and never replays Back. Duplicate identities remain an
+    immediate fail-closed error.
     """
     selectors = ("phone-runner-create", "creation-wizard-dashboard")
     while time.monotonic() < deadline:
         require_phase_deadline(deadline, operation="compact dashboard transition")
-        reader = getattr(type(device), "read_only_hierarchy", None)
-        current_nodes = (
-            device.read_only_hierarchy(deadline=deadline)
-            if callable(reader)
-            else device.hierarchy(deadline=deadline)
-        )
+        current_nodes = device.hierarchy(deadline=deadline)
         cardinalities = {
             selector: [
                 node

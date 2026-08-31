@@ -6209,7 +6209,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 self.deadlines: list[float] = []
                 self.captures: list[str] = []
 
-            def read_only_hierarchy(
+            def hierarchy(
                 self,
                 *,
                 deadline: float,
@@ -6217,8 +6217,14 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 self.deadlines.append(deadline)
                 return self.responses.pop(0)
 
-            def hierarchy(self, *, deadline: float) -> list[driver.shared.UiNode]:
-                raise AssertionError("compact transition must use the read-only path")
+            def read_only_hierarchy(
+                self,
+                *,
+                deadline: float,
+            ) -> list[driver.shared.UiNode]:
+                raise AssertionError(
+                    "compact transition must avoid the hanging direct stream"
+                )
 
             def capture(self, name: str, *, deadline: float) -> None:
                 self.captures.append(name)
@@ -6272,7 +6278,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 self.reads = 0
                 self.captures: list[tuple[str, float]] = []
 
-            def read_only_hierarchy(
+            def hierarchy(
                 self,
                 *,
                 deadline: float,
@@ -6318,7 +6324,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 self.responses = [[dashboard[0]], [dashboard[1]]]
                 self.captures: list[tuple[str, float]] = []
 
-            def read_only_hierarchy(
+            def hierarchy(
                 self,
                 *,
                 deadline: float,
@@ -6364,7 +6370,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 self.reads = 0
                 self.captures: list[str] = []
 
-            def read_only_hierarchy(
+            def hierarchy(
                 self,
                 *,
                 deadline: float,
@@ -6396,6 +6402,50 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             device.captures,
         )
 
+    def test_compact_dashboard_origin_propagates_ambiguous_dump_without_replay(
+        self,
+    ) -> None:
+        receipt = {
+            "classification": "timeout-unknown-outcome",
+            "commandPolicy": "non-replayable",
+            "replay": {"performed": False, "suppressed": True},
+        }
+        error = driver.shared.AdbTransportError(
+            receipt,
+            Path("compact-dashboard-dump-timeout-unknown-outcome.json"),
+        )
+
+        class AmbiguousDevice:
+            def __init__(self) -> None:
+                self.reads = 0
+
+            def hierarchy(
+                self,
+                *,
+                deadline: float,
+            ) -> list[driver.shared.UiNode]:
+                self.reads += 1
+                raise error
+
+            def capture(self, name: str, *, deadline: float) -> None:
+                raise AssertionError("ambiguous hierarchy must propagate directly")
+
+        device = AmbiguousDevice()
+        deadline = driver.time.monotonic() + 30.0
+        with mock.patch.object(
+            driver,
+            "sleep_before_phase_deadline",
+        ) as sleep, self.assertRaises(driver.shared.AdbTransportError) as raised:
+            driver.wait_for_compact_dashboard_origin(
+                device,
+                scan_id="advanced-editor-gate-post-confirm",
+                deadline=deadline,
+            )
+
+        self.assertIs(error, raised.exception)
+        self.assertEqual(1, device.reads)
+        sleep.assert_not_called()
+
     def test_compact_dashboard_origin_rejects_noncanonical_suffix_match(self) -> None:
         dashboard = self.dashboard_route_nodes()
         malformed = driver.shared.UiNode(
@@ -6410,7 +6460,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             def __init__(self) -> None:
                 self.captures: list[str] = []
 
-            def read_only_hierarchy(
+            def hierarchy(
                 self,
                 *,
                 deadline: float,
@@ -6449,7 +6499,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         ):
             with self.subTest(forbidden=forbidden):
                 self.assertNotIn(forbidden, helper_source)
-        self.assertIn("device.read_only_hierarchy(deadline=deadline)", helper_source)
+        self.assertIn("device.hierarchy(deadline=deadline)", helper_source)
+        self.assertNotIn("device.read_only_hierarchy", helper_source)
         execute_source = inspect.getsource(driver.execute)
         self.assertEqual(1, execute_source.count("tap_exact_confirmed_receipt_back("))
 
