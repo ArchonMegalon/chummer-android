@@ -594,7 +594,7 @@
       {
         "path": "src/Chummer.Android/Native/CreationPrerequisitePreviewPage.cs",
         "exists": true,
-        "sha256": "726d20e11f332bacbe473cd4afd79e47000d1e52965894a0711ba7e0b1938b01"
+        "sha256": "c2c465120acf8299cf9f2957eb2cf4a59ee9521afd0e85d4c220b021ac4f4f1c"
       },
       {
         "path": "src/Chummer.Android/Native/CreationPrerequisitePhoneDraft.cs",

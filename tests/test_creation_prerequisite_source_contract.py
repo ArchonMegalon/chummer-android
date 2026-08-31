@@ -9067,7 +9067,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             self.canonical_node("creation-prerequisite-confirmed"),
             self.canonical_node(
                 "creation-prerequisite-confirm-receipt",
-                text="Created false",
+                text="",
+                **{"content-desc": "Character document changed false"},
             ),
             self.canonical_node(
                 "creation-prerequisite-receipt-content-revision", text="2"
@@ -10662,7 +10663,10 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "_preview.RequiresMetatypeAttributeAdjustment",
             "Coordinator.ConfirmCreationPrerequisiteAsync(",
             'AutomationId = "creation-prerequisite-confirm"',
-            'AutomationId = "creation-prerequisite-confirm-receipt"',
+            'documentChangedMetric.AutomationId =\n            "creation-prerequisite-confirm-receipt";',
+            "string documentChangedLabel = WizardStrings.Get(",
+            "string documentChanged = receipt.CharacterDocumentChanged",
+            'SemanticProperties.SetDescription(\n            documentChangedMetric,\n            $"{documentChangedLabel} {documentChanged}");',
             "receipt.DraftDigest",
             '"creation-prerequisite-receipt-draft-digest"',
             '"creation-prerequisite-receipt-auxiliary-state-digest"',

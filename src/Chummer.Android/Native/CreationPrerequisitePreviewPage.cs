@@ -440,9 +440,21 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
         card.Add(NativeTheme.Metric(
             WizardStrings.Get("Priority.Attributes.TotalSpecialLabel", "Total special Attribute points"),
             receipt.TotalSpecialAttributePoints.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric(
-            WizardStrings.Get("Priority.Preview.DocumentChanged", "Character document changed"),
-            receipt.CharacterDocumentChanged.ToString().ToLowerInvariant()));
+        string documentChangedLabel = WizardStrings.Get(
+            "Priority.Preview.DocumentChanged",
+            "Character document changed");
+        string documentChanged = receipt.CharacterDocumentChanged
+            .ToString()
+            .ToLowerInvariant();
+        Grid documentChangedMetric = NativeTheme.Metric(
+            documentChangedLabel,
+            documentChanged);
+        documentChangedMetric.AutomationId =
+            "creation-prerequisite-confirm-receipt";
+        SemanticProperties.SetDescription(
+            documentChangedMetric,
+            $"{documentChangedLabel} {documentChanged}");
+        card.Add(documentChangedMetric);
         card.Add(NativeTheme.Body(
             refreshed.RequiresMetatypeAttributeAdjustment
                 ? WizardStrings.Get(
@@ -475,7 +487,6 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
             "creation-prerequisite-receipt-authority-digest",
             receipt.AuthorityDigest);
         Border border = NativeTheme.Card(card);
-        border.AutomationId = "creation-prerequisite-confirm-receipt";
         _body.Add(border);
 
         Button back = NativeTheme.SecondaryButton(WizardStrings.Get("Priority.Preview.BackToBuild", "Back to Build"));
