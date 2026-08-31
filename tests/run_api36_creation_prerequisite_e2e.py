@@ -52,6 +52,9 @@ TALENT_GRANT_PREVIEW_PREFIX = {
     "Active skills": "creation-prerequisite-preview-talent-active-skill-",
     "Skill groups": "creation-prerequisite-preview-talent-skill-group-",
 }
+TALENT_GRANT_PREVIEW_PLAN_DIGEST_ID = (
+    "creation-prerequisite-preview-talent-grant-plan-digest"
+)
 TALENT_GRANT_REQUIRED = re.compile(
     r"(?<![0-9])(?P<selected>[0-9]+) / (?P<required>[0-9]+) "
     r"(?P<kind>Active skills|Skill groups)(?=$|[. ·])"
@@ -194,6 +197,7 @@ TALENT_GRANT_OPTION_RECOVERY_GESTURE_RATIO = 0.22
 TALENT_GRANT_REACQUISITION_MAX_SCROLLS = 40
 TALENT_GRANT_OPTION_RECOVERY_MAX_SCROLLS = 40
 TALENT_GRANT_REACQUISITION_STABLE_REPEATS = 2
+MAX_STABLE_START_REVERSE_SWIPES = 40
 # Every phase and the aggregate clock are independently rounded to the nearest
 # millisecond. Their worst-case opposing rounding errors are therefore
 # ``(phase count + aggregate clock) / 2`` milliseconds. This reconciliation
@@ -741,16 +745,23 @@ class PriorityRankOrigin(NamedTuple):
     empty_hierarchy_reads: int
 
 
-def require_reusable_scan_origin(origin: PriorityRankOrigin) -> None:
+def require_reusable_scan_origin(
+    origin: PriorityRankOrigin,
+    *,
+    max_reverse_swipes: int = 8,
+) -> None:
     if (
-        not origin.nodes
+        type(max_reverse_swipes) is not int
+        or max_reverse_swipes < 0
+        or max_reverse_swipes > MAX_STABLE_START_REVERSE_SWIPES
+        or not origin.nodes
         or type(origin.reverse_swipes) is not int
         or type(origin.elapsed_ms) is not int
         or type(origin.empty_hierarchy_reads) is not int
         or not origin.hierarchy_durations_ms
         or any(type(value) is not int for value in origin.hierarchy_durations_ms)
         or origin.reverse_swipes < 0
-        or origin.reverse_swipes > 8
+        or origin.reverse_swipes > max_reverse_swipes
         or origin.elapsed_ms < 0
         or origin.empty_hierarchy_reads < 0
         or any(value < 0 for value in origin.hierarchy_durations_ms)
@@ -783,7 +794,7 @@ def acquire_stable_start_origin(
     if (
         not scan_id
         or max_reverse_swipes < stable_repeats
-        or max_reverse_swipes > 8
+        or max_reverse_swipes > MAX_STABLE_START_REVERSE_SWIPES
         or stable_repeats < 1
         or max_consecutive_empty_reads < 0
         or delay_seconds < 0
@@ -833,7 +844,10 @@ def acquire_stable_start_origin(
                 hierarchy_durations_ms=tuple(hierarchy_durations_ms),
                 empty_hierarchy_reads=empty_hierarchy_reads,
             )
-            require_reusable_scan_origin(origin)
+            require_reusable_scan_origin(
+                origin,
+                max_reverse_swipes=max_reverse_swipes,
+            )
             return origin
         if reverse_swipes >= max_reverse_swipes:
             break
@@ -866,6 +880,7 @@ def scan_forward_until_stable(
     max_scrolls: int,
     distance_ratio: float,
     initial_observation: PriorityRankOrigin | None = None,
+    initial_observation_max_reverse_swipes: int = 8,
     stable_repeats: int = 2,
     max_consecutive_empty_reads: int = 3,
     delay_seconds: float = 0.2,
@@ -883,6 +898,9 @@ def scan_forward_until_stable(
         or max_scrolls < stable_repeats
         or stable_repeats < 1
         or max_consecutive_empty_reads < 0
+        or type(initial_observation_max_reverse_swipes) is not int
+        or initial_observation_max_reverse_swipes < 0
+        or initial_observation_max_reverse_swipes > MAX_STABLE_START_REVERSE_SWIPES
     ):
         raise ValueError("A named scan with enough scroll budget for stable-end proof is required")
     started = time.monotonic()
@@ -894,7 +912,10 @@ def scan_forward_until_stable(
     total_empty_reads = 0
     hierarchy_durations_ms: list[int] = []
     if initial_observation is not None:
-        require_reusable_scan_origin(initial_observation)
+        require_reusable_scan_origin(
+            initial_observation,
+            max_reverse_swipes=initial_observation_max_reverse_swipes,
+        )
     reused_initial_screen = initial_observation is not None
     pending_initial_screen = (
         initial_observation.nodes if initial_observation is not None else None
@@ -1041,6 +1062,7 @@ def scan_forward_with_receipt(
     max_scrolls: int,
     distance_ratio: float,
     initial_observation: PriorityRankOrigin | None = None,
+    initial_observation_max_reverse_swipes: int = 8,
     delay_seconds: float = 0.2,
     observer: Callable[[dict[str, object]], None] | None = None,
     deadline: float | None = None,
@@ -1059,6 +1081,9 @@ def scan_forward_with_receipt(
         max_scrolls=max_scrolls,
         distance_ratio=distance_ratio,
         initial_observation=initial_observation,
+        initial_observation_max_reverse_swipes=(
+            initial_observation_max_reverse_swipes
+        ),
         delay_seconds=delay_seconds,
         observer=record,
         deadline=deadline,
@@ -5196,6 +5221,7 @@ def require_exact_preview_talent_grant_plan(
     max_scrolls: int = 40,
     scan_observer: Callable[[dict[str, object]], None] | None = None,
     scan_id: str,
+    deadline: float | None = None,
 ) -> str:
     option_prefix = TALENT_GRANT_OPTION_PREFIX[expected_kind]
     preview_prefix = TALENT_GRANT_PREVIEW_PREFIX[expected_kind]
@@ -5211,25 +5237,60 @@ def require_exact_preview_talent_grant_plan(
         raise RuntimeError(
             f"Expected {expected_kind} preview IDs were not exact: {selected_option_ids!r}"
         )
-    shared.reset_scroll_to_top(device, swipes=max_scrolls)
-    plan_digest = canonical_digest(
+    # The digest row is only 100 px high.  A coarse generic wait can move it
+    # from below to above the viewport between hierarchy observations.  Prove
+    # a stable start and use the same fine-grained, overlapping full-page scan
+    # for both the digest and every projected grant row.  This is one read-only
+    # authority traversal: it neither retries nor replays a product action.
+    origin = acquire_stable_start_origin(
         device,
-        "creation-prerequisite-preview-talent-grant-plan-digest",
-        scroll=True,
+        scan_id=f"{scan_id}-origin",
+        max_reverse_swipes=max_scrolls,
+        distance_ratio=0.22,
+        stable_repeats=2,
+        max_consecutive_empty_reads=3,
+        delay_seconds=0.0,
+        deadline=deadline,
     )
-    shared.reset_scroll_to_top(device, swipes=max_scrolls)
     screens = scan_forward_until_stable(
         device,
         scan_id=scan_id,
         max_scrolls=max_scrolls,
         distance_ratio=0.22,
+        initial_observation=origin,
+        initial_observation_max_reverse_swipes=max_scrolls,
         observer=scan_observer,
+        deadline=deadline,
     )
     observed_ids: set[str] = set()
     opposite_ids: set[str] = set()
     malformed_ids: set[str] = set()
     duplicate_ids: set[str] = set()
-    for nodes in screens:
+    plan_digest_values: set[str] = set()
+    malformed_plan_digests: set[str] = set()
+    duplicate_plan_digest_viewports: list[int] = []
+    plan_digest_viewports: list[int] = []
+    grant_viewports: dict[str, list[int]] = {}
+    for viewport_index, nodes in enumerate(screens):
+        plan_digest_nodes = [
+            node
+            for node in nodes
+            if _exact_resource_id(node) == TALENT_GRANT_PREVIEW_PLAN_DIGEST_ID
+        ]
+        if plan_digest_nodes:
+            plan_digest_viewports.append(viewport_index)
+        if len(plan_digest_nodes) > 1:
+            duplicate_plan_digest_viewports.append(viewport_index)
+        for node in plan_digest_nodes:
+            value = (
+                node.attributes.get("text")
+                or node.attributes.get("content-desc")
+                or ""
+            ).strip()
+            if CANONICAL_AUTHORITY_DIGEST.fullmatch(value) is None:
+                malformed_plan_digests.add(value)
+            else:
+                plan_digest_values.add(value)
         screen_ids: list[str] = []
         for node in nodes:
             resource_id = _exact_resource_id(node)
@@ -5242,19 +5303,53 @@ def require_exact_preview_talent_grant_plan(
                 observed_ids.add(resource_id)
             else:
                 malformed_ids.add(resource_id)
+        for resource_id in set(screen_ids):
+            if _is_exact_tokenized_resource_id(resource_id, preview_prefix):
+                grant_viewports.setdefault(resource_id, []).append(viewport_index)
         duplicate_ids.update(
             resource_id
             for resource_id in set(screen_ids)
             if screen_ids.count(resource_id) > 1
         )
-    if malformed_ids or opposite_ids or duplicate_ids or observed_ids != expected_ids:
+    separated_plan_digest = any(
+        current != previous + 1
+        for previous, current in zip(
+            plan_digest_viewports,
+            plan_digest_viewports[1:],
+        )
+    )
+    separated_grant_ids = sorted(
+        resource_id
+        for resource_id, viewports in grant_viewports.items()
+        if any(
+            current != previous + 1
+            for previous, current in zip(viewports, viewports[1:])
+        )
+    )
+    if (
+        len(plan_digest_values) != 1
+        or malformed_plan_digests
+        or duplicate_plan_digest_viewports
+        or separated_plan_digest
+        or separated_grant_ids
+        or malformed_ids
+        or opposite_ids
+        or duplicate_ids
+        or observed_ids != expected_ids
+    ):
         device.capture(f"{scan_id}-mismatch")
         raise RuntimeError(
             f"{expected_kind} preview grant plan was not exact: expected={sorted(expected_ids)!r}, "
             f"observed={sorted(observed_ids)!r}, opposite={sorted(opposite_ids)!r}, "
-            f"malformed={sorted(malformed_ids)!r}, duplicates={sorted(duplicate_ids)!r}"
+            f"malformed={sorted(malformed_ids)!r}, duplicates={sorted(duplicate_ids)!r}, "
+            f"planDigestValues={sorted(plan_digest_values)!r}, "
+            f"malformedPlanDigests={sorted(malformed_plan_digests)!r}, "
+            f"duplicatePlanDigestViewports={duplicate_plan_digest_viewports!r}, "
+            f"planDigestViewports={plan_digest_viewports!r}, "
+            f"separatedGrantIds={separated_grant_ids!r}, "
+            f"grantViewports={grant_viewports!r}"
         )
-    return plan_digest
+    return next(iter(plan_digest_values))
 
 
 def open_talent_selection_after_preview(device: shared.Device) -> None:
@@ -6005,6 +6100,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         active_selected_option_ids,
         scan_observer=progress.record_scan,
         scan_id="talent-active-skill-preview-plan",
+        deadline=progress.active_phase_deadline("talent-active-preview"),
     )
     device.capture("creation-prerequisite-talent-active-skill-preview")
     device.back()
@@ -6110,6 +6206,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         skill_group_selected_option_ids,
         scan_observer=progress.record_scan,
         scan_id="talent-skill-group-preview-plan",
+        deadline=progress.active_phase_deadline("preview-confirm"),
     )
     # The pushed preview route can inherit the prerequisite page's bottom offset.
     shared.reset_scroll_to_top(device, swipes=22)

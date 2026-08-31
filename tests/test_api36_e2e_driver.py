@@ -17,6 +17,17 @@ DRIVER = importlib.util.module_from_spec(SPEC)
 sys.modules[SPEC.name] = DRIVER
 SPEC.loader.exec_module(DRIVER)
 
+CREATION_DRIVER_PATH = REPO_ROOT / "tests" / "run_api36_creation_prerequisite_e2e.py"
+CREATION_SPEC = importlib.util.spec_from_file_location(
+    "run_api36_creation_prerequisite_e2e",
+    CREATION_DRIVER_PATH,
+)
+if CREATION_SPEC is None or CREATION_SPEC.loader is None:
+    raise RuntimeError(f"could not load {CREATION_DRIVER_PATH}")
+CREATION = importlib.util.module_from_spec(CREATION_SPEC)
+sys.modules[CREATION_SPEC.name] = CREATION
+CREATION_SPEC.loader.exec_module(CREATION)
+
 
 class FakeDevice(DRIVER.Device):
     def __init__(
@@ -127,6 +138,324 @@ class RecordingDevice(DRIVER.Device):
 
 
 class Api36EditingE2EDriverTests(unittest.TestCase):
+    def test_preview_talent_plan_uses_one_fine_scan_for_a_short_digest_row(self) -> None:
+        selected_id = (
+            "creation-prerequisite-talent-active-skill-option-"
+            "0dbcb9cd-f824-4b5d-a387-90d33318b04c"
+        )
+        preview_id = (
+            "creation-prerequisite-preview-talent-active-skill-"
+            "0dbcb9cd-f824-4b5d-a387-90d33318b04c"
+        )
+        digest = "sha256:" + "6c" * 32
+        digest_node = DRIVER.UiNode(
+            {
+                "resource-id": (
+                    "com.myexternalbrain.chummer:id/"
+                    + CREATION.TALENT_GRANT_PREVIEW_PLAN_DIGEST_ID
+                ),
+                "text": digest,
+                "bounds": "[103,420][979,520]",
+            }
+        )
+        preview_node = DRIVER.UiNode(
+            {
+                "resource-id": "com.myexternalbrain.chummer:id/" + preview_id,
+                "text": "Slot 1 · Swimming · rating 4 · SkillBase",
+                "bounds": "[103,560][979,660]",
+            }
+        )
+        origin = CREATION.PriorityRankOrigin(
+            nodes=[DRIVER.UiNode({"resource-id": "preview-start"})],
+            reverse_swipes=2,
+            elapsed_ms=3,
+            hierarchy_durations_ms=(1, 1, 1, 0, 0),
+            empty_hierarchy_reads=0,
+        )
+        # The short digest is absent from the observations on either side of
+        # the fine-grained overlap, but present in the intervening viewport.
+        screens = [
+            [DRIVER.UiNode({"resource-id": "before-short-digest"})],
+            [digest_node, preview_node],
+            # Adjacent overlap repeats the same physical rows and remains one
+            # contiguous visibility interval, not duplicate authority.
+            [digest_node, preview_node],
+            [DRIVER.UiNode({"resource-id": "after-short-digest"})],
+        ]
+        device = Mock(spec=DRIVER.Device)
+
+        with (
+            patch.object(CREATION, "acquire_stable_start_origin", return_value=origin) as acquire,
+            patch.object(CREATION, "scan_forward_until_stable", return_value=screens) as scan,
+            patch.object(
+                CREATION,
+                "canonical_digest",
+                side_effect=AssertionError("coarse generic digest lookup must not run"),
+            ),
+            patch.object(
+                CREATION.shared,
+                "reset_scroll_to_top",
+                side_effect=AssertionError("blind reset must not run"),
+            ),
+        ):
+            actual = CREATION.require_exact_preview_talent_grant_plan(
+                device,
+                "Active skills",
+                (selected_id,),
+                scan_id="talent-active-skill-preview-plan",
+                deadline=1234.0,
+            )
+
+        self.assertEqual(digest, actual)
+        acquire.assert_called_once_with(
+            device,
+            scan_id="talent-active-skill-preview-plan-origin",
+            max_reverse_swipes=40,
+            distance_ratio=0.22,
+            stable_repeats=2,
+            max_consecutive_empty_reads=3,
+            delay_seconds=0.0,
+            deadline=1234.0,
+        )
+        scan.assert_called_once_with(
+            device,
+            scan_id="talent-active-skill-preview-plan",
+            max_scrolls=40,
+            distance_ratio=0.22,
+            initial_observation=origin,
+            initial_observation_max_reverse_swipes=40,
+            observer=None,
+            deadline=1234.0,
+        )
+        device.capture.assert_not_called()
+
+    def test_stable_start_can_prove_an_inherited_bottom_beyond_eight_swipes(self) -> None:
+        position = {"value": 12}
+        device = Mock(spec=DRIVER.Device)
+        device.hierarchy.side_effect = lambda: [
+            DRIVER.UiNode(
+                {
+                    "resource-id": f"preview-viewport-{position['value']}",
+                    "bounds": "[0,275][1080,2190]",
+                }
+            )
+        ]
+        device.swipe_down.side_effect = lambda **_: position.update(
+            value=max(0, position["value"] - 1)
+        )
+
+        origin = CREATION.acquire_stable_start_origin(
+            device,
+            scan_id="talent-active-skill-preview-plan-origin",
+            max_reverse_swipes=40,
+            distance_ratio=0.22,
+            stable_repeats=2,
+            delay_seconds=0.0,
+        )
+
+        self.assertEqual(0, position["value"])
+        self.assertGreater(origin.reverse_swipes, 8)
+        self.assertLessEqual(origin.reverse_swipes, 40)
+        CREATION.require_reusable_scan_origin(origin, max_reverse_swipes=40)
+        with self.assertRaisesRegex(ValueError, "reused initial scan observation"):
+            CREATION.require_reusable_scan_origin(origin)
+        device.capture.assert_not_called()
+
+    def test_stable_start_fails_closed_when_its_exact_reverse_bound_is_exhausted(self) -> None:
+        position = {"value": 20}
+        device = Mock(spec=DRIVER.Device)
+        device.hierarchy.side_effect = lambda: [
+            DRIVER.UiNode(
+                {
+                    "resource-id": f"preview-viewport-{position['value']}",
+                    "bounds": "[0,275][1080,2190]",
+                }
+            )
+        ]
+        device.swipe_down.side_effect = lambda **_: position.update(
+            value=max(0, position["value"] - 1)
+        )
+
+        with self.assertRaisesRegex(RuntimeError, "did not prove a stable page start"):
+            CREATION.acquire_stable_start_origin(
+                device,
+                scan_id="talent-active-skill-preview-plan-origin",
+                max_reverse_swipes=8,
+                distance_ratio=0.22,
+                stable_repeats=2,
+                delay_seconds=0.0,
+            )
+
+        self.assertEqual(12, position["value"])
+        self.assertEqual(8, device.swipe_down.call_count)
+        self.assertEqual(9, device.hierarchy.call_count)
+        device.capture.assert_called_once_with(
+            "talent-active-skill-preview-plan-origin-stable-start-unproven"
+        )
+
+    def test_forward_scan_rejects_an_extended_origin_without_its_exact_bound(self) -> None:
+        forged = CREATION.PriorityRankOrigin(
+            nodes=[DRIVER.UiNode({"resource-id": "preview-start"})],
+            reverse_swipes=9,
+            elapsed_ms=0,
+            hierarchy_durations_ms=(0,) * 10,
+            empty_hierarchy_reads=0,
+        )
+        device = Mock(spec=DRIVER.Device)
+
+        with self.assertRaisesRegex(ValueError, "reused initial scan observation"):
+            CREATION.scan_forward_until_stable(
+                device,
+                scan_id="talent-active-skill-preview-plan",
+                max_scrolls=40,
+                distance_ratio=0.22,
+                initial_observation=forged,
+            )
+
+        device.hierarchy.assert_not_called()
+        device.swipe_up.assert_not_called()
+        device.swipe_down.assert_not_called()
+        CREATION.require_reusable_scan_origin(forged, max_reverse_swipes=40)
+
+    def test_preview_talent_plan_deadline_expires_before_hierarchy_or_gesture(self) -> None:
+        selected_id = (
+            "creation-prerequisite-talent-active-skill-option-"
+            "0dbcb9cd-f824-4b5d-a387-90d33318b04c"
+        )
+        device = Mock(spec=DRIVER.Device)
+
+        with (
+            patch.object(CREATION.time, "monotonic", return_value=10.0),
+            patch.object(CREATION, "scan_forward_until_stable") as scan,
+            self.assertRaisesRegex(
+                RuntimeError,
+                "phase deadline expired during fresh hierarchy acquisition",
+            ),
+        ):
+            CREATION.require_exact_preview_talent_grant_plan(
+                device,
+                "Active skills",
+                (selected_id,),
+                scan_id="talent-active-skill-preview-plan",
+                deadline=9.0,
+            )
+
+        device.hierarchy.assert_not_called()
+        device.swipe_down.assert_not_called()
+        device.swipe_up.assert_not_called()
+        scan.assert_not_called()
+
+    def test_both_preview_plan_calls_bind_their_exact_active_phase_deadline(self) -> None:
+        source = CREATION_DRIVER_PATH.read_text(encoding="utf-8")
+        active = source[
+            source.index("active_plan_digest = require_exact_preview_talent_grant_plan(") :
+            source.index('device.capture("creation-prerequisite-talent-active-skill-preview")')
+        ]
+        skill_group = source[
+            source.index("skill_group_plan_digest = require_exact_preview_talent_grant_plan(") :
+            source.index("# The pushed preview route can inherit")
+        ]
+        self.assertIn(
+            'deadline=progress.active_phase_deadline("talent-active-preview")',
+            active,
+        )
+        self.assertIn(
+            'deadline=progress.active_phase_deadline("preview-confirm")',
+            skill_group,
+        )
+
+    def test_preview_talent_plan_rejects_digest_ambiguity_and_malformed_values(self) -> None:
+        selected_id = (
+            "creation-prerequisite-talent-active-skill-option-"
+            "0dbcb9cd-f824-4b5d-a387-90d33318b04c"
+        )
+        preview_id = (
+            "creation-prerequisite-preview-talent-active-skill-"
+            "0dbcb9cd-f824-4b5d-a387-90d33318b04c"
+        )
+        origin = CREATION.PriorityRankOrigin(
+            nodes=[DRIVER.UiNode({"resource-id": "preview-start"})],
+            reverse_swipes=0,
+            elapsed_ms=1,
+            hierarchy_durations_ms=(1,),
+            empty_hierarchy_reads=0,
+        )
+
+        def digest_node(value: str) -> DRIVER.UiNode:
+            return DRIVER.UiNode(
+                {
+                    "resource-id": (
+                        "com.myexternalbrain.chummer:id/"
+                        + CREATION.TALENT_GRANT_PREVIEW_PLAN_DIGEST_ID
+                    ),
+                    "text": value,
+                }
+            )
+
+        preview_node = DRIVER.UiNode(
+            {"resource-id": "com.myexternalbrain.chummer:id/" + preview_id}
+        )
+        cases = (
+            (
+                "duplicate same viewport",
+                [[digest_node("sha256:" + "1" * 64), digest_node("sha256:" + "1" * 64), preview_node]],
+                "duplicatePlanDigestViewports=\\[0\\]",
+            ),
+            (
+                "changed across overlapping viewports",
+                [
+                    [digest_node("sha256:" + "1" * 64), preview_node],
+                    [digest_node("sha256:" + "2" * 64), preview_node],
+                ],
+                "planDigestValues=\\['sha256:1{64}', 'sha256:2{64}'\\]",
+            ),
+            (
+                "malformed",
+                [[digest_node("sha256:not-canonical"), preview_node]],
+                "malformedPlanDigests=\\['sha256:not-canonical'\\]",
+            ),
+            (
+                "missing",
+                [[preview_node]],
+                "planDigestValues=\\[\\]",
+            ),
+            (
+                "digest disappears then reappears",
+                [
+                    [digest_node("sha256:" + "1" * 64), preview_node],
+                    [preview_node],
+                    [digest_node("sha256:" + "1" * 64), preview_node],
+                ],
+                "planDigestViewports=\\[0, 2\\]",
+            ),
+            (
+                "grant disappears then reappears",
+                [
+                    [digest_node("sha256:" + "1" * 64), preview_node],
+                    [digest_node("sha256:" + "1" * 64)],
+                    [digest_node("sha256:" + "1" * 64), preview_node],
+                ],
+                "separatedGrantIds=\\['creation-prerequisite-preview-talent-active-skill-",
+            ),
+        )
+        for name, screens, message in cases:
+            with self.subTest(name=name):
+                device = Mock(spec=DRIVER.Device)
+                with (
+                    patch.object(CREATION, "acquire_stable_start_origin", return_value=origin),
+                    patch.object(CREATION, "scan_forward_until_stable", return_value=screens),
+                    self.assertRaisesRegex(RuntimeError, message),
+                ):
+                    CREATION.require_exact_preview_talent_grant_plan(
+                        device,
+                        "Active skills",
+                        (selected_id,),
+                        scan_id="talent-active-skill-preview-plan",
+                    )
+                device.capture.assert_called_once_with(
+                    "talent-active-skill-preview-plan-mismatch"
+                )
+
     @staticmethod
     def successful_am_start(component: str) -> subprocess.CompletedProcess:
         return subprocess.CompletedProcess(
