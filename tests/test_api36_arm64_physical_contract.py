@@ -401,6 +401,165 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
             "nonReplayableCommandMaximumAttempts": 1,
         }
 
+    def reconciled_hierarchy_dump_transport_payload(self) -> dict[str, object]:
+        payload = self.adb_transport_payload()
+        serial = self.device_payload()["serial"]
+        original = {
+            "schema": "chummer.android.adb-transport-event/v1",
+            "status": "fail",
+            "serial": serial,
+            "classification": "timeout-unknown-outcome",
+            "classificationAuthority": "timeout-with-unknown-command-outcome",
+            "retryableTransportClassification": True,
+            "commandPolicy": "non-replayable",
+            "policyReason": "shell mutation or ambiguous shell command is never replayed",
+            "adbArguments": list(
+                contract.ADB_FILE_HIERARCHY_DUMP_REDACTED_ARGUMENTS
+            ),
+            "adbArgumentsSha256": (
+                contract.ADB_FILE_HIERARCHY_DUMP_ARGUMENTS_SHA256
+            ),
+            "attempt": 1,
+            "maximumAttempts": 1,
+            "commandInvocationPerformed": True,
+            "outcomeMutationAuthority": "unknown-fail-closed",
+            "replay": {
+                "eligible": False, "performed": False,
+                "scheduled": False, "suppressed": True,
+            },
+            "failure": {
+                "type": "TimeoutExpired", "returnCode": None,
+                "stdout": "", "stderr": "",
+            },
+            "evidenceFile": "adb-transport-event-0001.json",
+        }
+        reconciliation = {
+            "schema": "chummer.android.adb-transport-event/v1",
+            "status": "reconciled-unknown-hierarchy-dump",
+            "serial": serial,
+            "classification": "timeout-unknown-outcome",
+            "classificationAuthority": (
+                "bounded-consecutive-read-only-hierarchy-observations"
+            ),
+            "retryableTransportClassification": True,
+            "commandPolicy": "non-replayable",
+            "policyReason": (
+                "file-backed dump was never replayed; stable current hierarchy "
+                "became observation authority"
+            ),
+            "adbArguments": list(
+                contract.ADB_FILE_HIERARCHY_DUMP_REDACTED_ARGUMENTS
+            ),
+            "adbArgumentsSha256": (
+                contract.ADB_FILE_HIERARCHY_DUMP_ARGUMENTS_SHA256
+            ),
+            "attempt": 1,
+            "maximumAttempts": 1,
+            "commandInvocationPerformed": False,
+            "outcomeMutationAuthority": (
+                "current-hierarchy-observed-no-dump-replay"
+            ),
+            "replay": {
+                "eligible": False, "performed": False,
+                "scheduled": False, "suppressed": True,
+            },
+            "failure": None,
+            "reconcilesEvidenceFile": original["evidenceFile"],
+            "readOnlyObservation": {
+                "arguments": list(
+                    contract.ADB_FILE_HIERARCHY_OBSERVATION_ARGUMENTS
+                ),
+                "freshnessBarrierArguments": list(
+                    contract.ADB_FILE_HIERARCHY_REMOVE_ARGUMENTS
+                ),
+                "consecutiveMatching": 2,
+                "observationsPerformed": 2,
+                "hierarchySha256": "1" * 64,
+                "ownedFileSha256": "2" * 64,
+            },
+            "evidenceFile": "adb-transport-event-0002.json",
+        }
+        payload.update({
+            "eventCount": 2,
+            "terminalFailureCount": 0,
+            "events": [original, reconciliation],
+        })
+        return payload
+
+    def reconciled_swipe_transport_payload(self) -> dict[str, object]:
+        payload = self.adb_transport_payload()
+        serial = self.device_payload()["serial"]
+        swipe_arguments = (
+            "shell", "input", "swipe", "540", "1968", "540", "720", "300",
+        )
+        swipe_digest = hashlib.sha256(
+            "\0".join(swipe_arguments).encode("utf-8")
+        ).hexdigest()
+        original = {
+            "schema": "chummer.android.adb-transport-event/v1",
+            "status": "fail",
+            "serial": serial,
+            "classification": "timeout-unknown-outcome",
+            "classificationAuthority": "timeout-with-unknown-command-outcome",
+            "retryableTransportClassification": True,
+            "commandPolicy": "non-replayable",
+            "policyReason": "shell mutation or ambiguous shell command is never replayed",
+            "adbArguments": list(contract.ADB_SWIPE_REDACTED_ARGUMENTS),
+            "adbArgumentsSha256": swipe_digest,
+            "attempt": 1,
+            "maximumAttempts": 1,
+            "commandInvocationPerformed": True,
+            "outcomeMutationAuthority": "unknown-fail-closed",
+            "replay": {
+                "eligible": False, "performed": False,
+                "scheduled": False, "suppressed": True,
+            },
+            "failure": {
+                "type": "TimeoutExpired", "returnCode": None,
+                "stdout": "", "stderr": "",
+            },
+            "evidenceFile": "adb-transport-event-0001.json",
+        }
+        reconciliation = {
+            "schema": "chummer.android.adb-transport-event/v1",
+            "status": "reconciled-unknown-swipe",
+            "serial": serial,
+            "classification": "timeout-unknown-outcome",
+            "classificationAuthority": (
+                "bounded-consecutive-read-only-hierarchy-observations"
+            ),
+            "retryableTransportClassification": True,
+            "commandPolicy": "non-replayable",
+            "policyReason": (
+                "swipe was never replayed; current viewport became authority"
+            ),
+            "adbArguments": list(contract.ADB_SWIPE_REDACTED_ARGUMENTS),
+            "adbArgumentsSha256": swipe_digest,
+            "attempt": 1,
+            "maximumAttempts": 1,
+            "commandInvocationPerformed": False,
+            "outcomeMutationAuthority": "current-viewport-observed-no-replay",
+            "replay": {
+                "eligible": False, "performed": False,
+                "scheduled": False, "suppressed": True,
+            },
+            "failure": None,
+            "reconcilesEvidenceFile": original["evidenceFile"],
+            "readOnlyObservation": {
+                "arguments": list(contract.ADB_READ_ONLY_HIERARCHY_ARGUMENTS),
+                "consecutiveMatching": 2,
+                "observationsPerformed": 2,
+                "hierarchySha256": "3" * 64,
+            },
+            "evidenceFile": "adb-transport-event-0002.json",
+        }
+        payload.update({
+            "eventCount": 2,
+            "terminalFailureCount": 0,
+            "events": [original, reconciliation],
+        })
+        return payload
+
     def source_authority_payload(self, journey: str) -> dict[str, object]:
         authority = {
             "expectedAndroidSourceRevision": "1" * 40,
@@ -765,6 +924,203 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
         self.assertEqual(6, len(verified["journeys"]))
         self.assertFalse(verified["publicationAuthorized"])
         self.assertEqual(contract.PACKAGE, verified["artifact"]["package"])
+
+    def test_owned_file_hierarchy_dump_reconciliation_is_accepted(self) -> None:
+        contract.validate_adb_transport(
+            self.reconciled_hierarchy_dump_transport_payload(),
+            serial=str(self.device_payload()["serial"]),
+            label="priority",
+        )
+
+    def test_exact_swipe_reconciliation_is_accepted(self) -> None:
+        contract.validate_adb_transport(
+            self.reconciled_swipe_transport_payload(),
+            serial=str(self.device_payload()["serial"]),
+            label="priority",
+        )
+
+    def test_swipe_reconciliation_rejects_cross_type_and_metadata_forgery(self) -> None:
+        def relabel_dump(value: dict[str, object]) -> None:
+            value["events"][1].update({
+                "status": "reconciled-unknown-swipe",
+                "readOnlyObservation": {
+                    "arguments": list(contract.ADB_READ_ONLY_HIERARCHY_ARGUMENTS),
+                    "consecutiveMatching": 2,
+                    "observationsPerformed": 2,
+                    "hierarchySha256": "3" * 64,
+                },
+            })
+
+        mutations = (
+            (
+                "cross-type-relabel",
+                self.reconciled_hierarchy_dump_transport_payload,
+                relabel_dump,
+            ),
+            (
+                "original-replay",
+                self.reconciled_swipe_transport_payload,
+                lambda value: value["events"][0]["replay"].update({
+                    "performed": True,
+                }),
+            ),
+            (
+                "reconciliation-invocation",
+                self.reconciled_swipe_transport_payload,
+                lambda value: value["events"][1].update({
+                    "commandInvocationPerformed": True,
+                }),
+            ),
+            (
+                "wrong-original-classification",
+                self.reconciled_swipe_transport_payload,
+                lambda value: value["events"][0].update({
+                    "classification": "transport-recovered",
+                }),
+            ),
+        )
+        for label, factory, mutate in mutations:
+            with self.subTest(label=label):
+                payload = factory()
+                mutate(payload)
+                with self.assertRaises(ValueError):
+                    contract.validate_adb_transport(
+                        payload,
+                        serial=str(self.device_payload()["serial"]),
+                        label="priority",
+                    )
+
+    def test_owned_file_hierarchy_dump_reconciliation_rejects_forgery(self) -> None:
+        def orphan(value: dict[str, object]) -> None:
+            reconciliation = value["events"][1]
+            reconciliation["evidenceFile"] = "adb-transport-event-0001.json"
+            value.update({"eventCount": 1, "events": [reconciliation]})
+
+        def nonadjacent(value: dict[str, object]) -> None:
+            recovered = {
+                "schema": "chummer.android.adb-transport-event/v1",
+                "status": "recovered-read-only",
+                "serial": self.device_payload()["serial"],
+                "classification": "transport-recovered",
+                "classificationAuthority": "fresh-read-only-command-succeeded",
+                "retryableTransportClassification": True,
+                "commandPolicy": "read-only-retryable",
+                "policyReason": "exact remote-file byte observation",
+                "adbArguments": list(
+                    contract.ADB_FILE_HIERARCHY_OBSERVATION_ARGUMENTS
+                ),
+                "adbArgumentsSha256": "3" * 64,
+                "attempt": 2,
+                "maximumAttempts": 3,
+                "commandInvocationPerformed": True,
+                "outcomeMutationAuthority": "none-read-only-command",
+                "replay": {
+                    "eligible": True, "performed": True,
+                    "scheduled": False, "suppressed": False,
+                },
+                "failure": None,
+                "evidenceFile": "adb-transport-event-0002.json",
+            }
+            value["events"].insert(1, recovered)
+            value["events"][2]["evidenceFile"] = "adb-transport-event-0003.json"
+            value["eventCount"] = 3
+
+        mutations = (
+            ("orphan", orphan),
+            ("nonadjacent", nonadjacent),
+            (
+                "wrong-reference",
+                lambda value: value["events"][1].update({
+                    "reconcilesEvidenceFile": "adb-transport-event-9999.json",
+                }),
+            ),
+            (
+                "different-digest",
+                lambda value: value["events"][1].update({
+                    "adbArgumentsSha256": "0" * 64,
+                }),
+            ),
+            (
+                "forged-original-command",
+                lambda value: value["events"][0].update({
+                    "adbArguments": ["shell", "input", "<3 redacted argument(s)>"],
+                }),
+            ),
+            (
+                "forged-freshness-barrier",
+                lambda value: value["events"][1]["readOnlyObservation"].update({
+                    "freshnessBarrierArguments": [
+                        "shell", "rm", "-f", "/sdcard/other.xml",
+                    ],
+                }),
+            ),
+            (
+                "forged-owned-file",
+                lambda value: value["events"][1]["readOnlyObservation"].update({
+                    "arguments": ["exec-out", "cat", "/sdcard/other.xml"],
+                }),
+            ),
+            (
+                "invalid-owned-file-digest",
+                lambda value: value["events"][1]["readOnlyObservation"].update({
+                    "ownedFileSha256": "not-a-digest",
+                }),
+            ),
+            (
+                "insufficient-observations",
+                lambda value: value["events"][1]["readOnlyObservation"].update({
+                    "observationsPerformed": 1,
+                }),
+            ),
+            (
+                "too-many-observations",
+                lambda value: value["events"][1]["readOnlyObservation"].update({
+                    "observationsPerformed": 9,
+                }),
+            ),
+            (
+                "wrong-consecutive-count",
+                lambda value: value["events"][1]["readOnlyObservation"].update({
+                    "consecutiveMatching": 1,
+                }),
+            ),
+            (
+                "replayed-dump",
+                lambda value: value["events"][1]["replay"].update({
+                    "performed": True,
+                }),
+            ),
+            (
+                "not-a-timeout",
+                lambda value: value["events"][0]["failure"].update({
+                    "type": "CalledProcessError",
+                }),
+            ),
+            (
+                "original-not-invoked",
+                lambda value: value["events"][0].update({
+                    "commandInvocationPerformed": False,
+                }),
+            ),
+            (
+                "reconciliation-claims-invocation",
+                lambda value: value["events"][1].update({
+                    "commandInvocationPerformed": True,
+                }),
+            ),
+        )
+        for label, mutate in mutations:
+            with self.subTest(label=label):
+                payload = copy.deepcopy(
+                    self.reconciled_hierarchy_dump_transport_payload()
+                )
+                mutate(payload)
+                with self.assertRaises(ValueError):
+                    contract.validate_adb_transport(
+                        payload,
+                        serial=str(self.device_payload()["serial"]),
+                        label="priority",
+                    )
 
     def test_finalizer_and_aggregate_cli_materialize_then_verify(self) -> None:
         def load(name: str, filename: str):

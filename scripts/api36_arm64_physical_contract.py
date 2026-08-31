@@ -65,6 +65,29 @@ SHA256 = re.compile(r"^[0-9a-f]{64}$")
 PID = re.compile(r"^[1-9][0-9]*$")
 SERIAL = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 COMPONENT = re.compile(r"^com\.myexternalbrain\.chummer/[A-Za-z0-9._$]+$")
+ADB_FILE_HIERARCHY_REMOTE_PATH = "/sdcard/chummer-editing-window.xml"
+ADB_FILE_HIERARCHY_REMOVE_ARGUMENTS = (
+    "shell", "rm", "-f", ADB_FILE_HIERARCHY_REMOTE_PATH,
+)
+ADB_FILE_HIERARCHY_DUMP_ARGUMENTS = (
+    "shell", "uiautomator", "dump", "--compressed",
+    ADB_FILE_HIERARCHY_REMOTE_PATH,
+)
+ADB_FILE_HIERARCHY_DUMP_REDACTED_ARGUMENTS = (
+    "shell", "uiautomator", "<3 redacted argument(s)>",
+)
+ADB_FILE_HIERARCHY_DUMP_ARGUMENTS_SHA256 = hashlib.sha256(
+    "\0".join(ADB_FILE_HIERARCHY_DUMP_ARGUMENTS).encode("utf-8")
+).hexdigest()
+ADB_FILE_HIERARCHY_OBSERVATION_ARGUMENTS = (
+    "exec-out", "cat", ADB_FILE_HIERARCHY_REMOTE_PATH,
+)
+ADB_READ_ONLY_HIERARCHY_ARGUMENTS = (
+    "exec-out", "uiautomator", "dump", "--compressed", "/dev/tty",
+)
+ADB_SWIPE_REDACTED_ARGUMENTS = (
+    "shell", "input", "swipe", "<5 redacted argument(s)>",
+)
 VIRTUAL_MARKERS = (
     "aosp_cf_", "cuttlefish", "emulator", "generic", "goldfish", "qemu",
     "ranchu", "sdk_gphone", "vbox", "virtualbox",
@@ -1935,12 +1958,20 @@ def validate_adb_transport(value: object, *, serial: str, label: str) -> None:
         "adbArgumentsSha256", "attempt", "maximumAttempts", "commandInvocationPerformed",
         "outcomeMutationAuthority", "replay", "failure", "evidenceFile",
     }
+    reconciliation_statuses = {
+        "reconciled-unknown-swipe",
+        "reconciled-unknown-hierarchy-dump",
+    }
+    allowed_statuses = {
+        "fail", "retrying-read-only", "recovered-read-only",
+        *reconciliation_statuses,
+    }
     for index, event in enumerate(events, start=1):
         if not isinstance(event, dict):
             raise ValueError(f"{label} ADB event must be one object")
         status = event.get("status")
         fields = set(base_event_fields)
-        if status == "reconciled-unknown-swipe":
+        if status in reconciliation_statuses:
             fields.update({"reconcilesEvidenceFile", "readOnlyObservation"})
         require_exact_keys(event, fields, f"{label} ADB event")
         require_field_types(event, {
@@ -1954,7 +1985,7 @@ def validate_adb_transport(value: object, *, serial: str, label: str) -> None:
         if (
             event.get("schema") != "chummer.android.adb-transport-event/v1"
             or event.get("serial") != serial
-            or status not in {"retrying-read-only", "recovered-read-only", "reconciled-unknown-swipe"}
+            or status not in allowed_statuses
             or not isinstance(event.get("adbArguments"), list)
             or any(not isinstance(row, str) for row in event["adbArguments"])
             or SHA256.fullmatch(str(event.get("adbArgumentsSha256"))) is None
@@ -1970,11 +2001,184 @@ def validate_adb_transport(value: object, *, serial: str, label: str) -> None:
         failure = event.get("failure")
         if failure is not None:
             require_exact_keys(failure, {"type", "returnCode", "stdout", "stderr"}, f"{label} ADB event failure")
+            require_field_types(failure, {
+                "type": str, "returnCode": (int, type(None)),
+                "stdout": str, "stderr": str,
+            }, f"{label} ADB event failure")
+        if status == "fail":
+            if failure is None or index >= len(events):
+                raise ValueError(
+                    f"{label} ADB fail event is terminal or has no adjacent reconciliation"
+                )
+            following = events[index]
+            if (
+                not isinstance(following, dict)
+                or following.get("status") not in reconciliation_statuses
+                or following.get("reconcilesEvidenceFile")
+                != event.get("evidenceFile")
+            ):
+                raise ValueError(
+                    f"{label} ADB fail event is not followed by its exact reconciliation"
+                )
+        if status in reconciliation_statuses:
+            if index <= 1:
+                raise ValueError(f"{label} ADB reconciliation is orphaned")
+            preceding = events[index - 2]
+            if (
+                not isinstance(preceding, dict)
+                or preceding.get("status") != "fail"
+                or event.get("reconcilesEvidenceFile")
+                != preceding.get("evidenceFile")
+                or event.get("serial") != preceding.get("serial")
+                or event.get("adbArguments") != preceding.get("adbArguments")
+                or event.get("adbArgumentsSha256")
+                != preceding.get("adbArgumentsSha256")
+            ):
+                raise ValueError(
+                    f"{label} ADB reconciliation does not exactly bind the adjacent fail event"
+                )
         if status == "reconciled-unknown-swipe":
+            preceding = events[index - 2]
             observation = require_exact_keys(event.get("readOnlyObservation"), {
                 "arguments", "consecutiveMatching", "observationsPerformed", "hierarchySha256",
             }, f"{label} ADB reconciliation")
             require_hex(observation.get("hierarchySha256"), f"{label} ADB hierarchy sha256")
+            expected_original = {
+                "classification": "timeout-unknown-outcome",
+                "classificationAuthority": "timeout-with-unknown-command-outcome",
+                "retryableTransportClassification": True,
+                "commandPolicy": "non-replayable",
+                "policyReason": "shell mutation or ambiguous shell command is never replayed",
+                "adbArguments": list(ADB_SWIPE_REDACTED_ARGUMENTS),
+                "attempt": 1,
+                "maximumAttempts": 1,
+                "commandInvocationPerformed": True,
+                "outcomeMutationAuthority": "unknown-fail-closed",
+            }
+            expected_reconciliation = {
+                "classification": "timeout-unknown-outcome",
+                "classificationAuthority": (
+                    "bounded-consecutive-read-only-hierarchy-observations"
+                ),
+                "retryableTransportClassification": True,
+                "commandPolicy": "non-replayable",
+                "policyReason": (
+                    "swipe was never replayed; current viewport became authority"
+                ),
+                "adbArguments": list(ADB_SWIPE_REDACTED_ARGUMENTS),
+                "attempt": 1,
+                "maximumAttempts": 1,
+                "commandInvocationPerformed": False,
+                "outcomeMutationAuthority": "current-viewport-observed-no-replay",
+            }
+            if (
+                any(
+                    preceding.get(key) != expected
+                    for key, expected in expected_original.items()
+                )
+                or any(
+                    event.get(key) != expected
+                    for key, expected in expected_reconciliation.items()
+                )
+                or preceding.get("failure", {}).get("type") != "TimeoutExpired"
+                or preceding.get("failure", {}).get("returnCode") is not None
+                or preceding.get("replay") != {
+                    "eligible": False, "performed": False,
+                    "scheduled": False, "suppressed": True,
+                }
+                or event.get("failure") is not None
+                or event.get("replay") != {
+                    "eligible": False, "performed": False,
+                    "scheduled": False, "suppressed": True,
+                }
+                or observation.get("arguments") != list(ADB_READ_ONLY_HIERARCHY_ARGUMENTS)
+                or observation.get("consecutiveMatching") != 2
+                or type(observation.get("observationsPerformed")) is not int
+                or not 2 <= observation["observationsPerformed"] <= 3
+            ):
+                raise ValueError(f"{label} ADB swipe reconciliation is not exact")
+        if status == "reconciled-unknown-hierarchy-dump":
+            preceding = events[index - 2]
+            observation = require_exact_keys(event.get("readOnlyObservation"), {
+                "arguments", "freshnessBarrierArguments", "consecutiveMatching",
+                "observationsPerformed", "hierarchySha256", "ownedFileSha256",
+            }, f"{label} ADB hierarchy-dump reconciliation")
+            require_field_types(observation, {
+                "arguments": list, "freshnessBarrierArguments": list,
+                "consecutiveMatching": int, "observationsPerformed": int,
+                "hierarchySha256": str, "ownedFileSha256": str,
+            }, f"{label} ADB hierarchy-dump reconciliation")
+            require_hex(
+                observation.get("hierarchySha256"),
+                f"{label} ADB hierarchy-dump hierarchy sha256",
+            )
+            require_hex(
+                observation.get("ownedFileSha256"),
+                f"{label} ADB hierarchy-dump owned-file sha256",
+            )
+            expected_original = {
+                "classification": "timeout-unknown-outcome",
+                "classificationAuthority": "timeout-with-unknown-command-outcome",
+                "retryableTransportClassification": True,
+                "commandPolicy": "non-replayable",
+                "policyReason": "shell mutation or ambiguous shell command is never replayed",
+                "adbArguments": list(ADB_FILE_HIERARCHY_DUMP_REDACTED_ARGUMENTS),
+                "adbArgumentsSha256": ADB_FILE_HIERARCHY_DUMP_ARGUMENTS_SHA256,
+                "attempt": 1,
+                "maximumAttempts": 1,
+                "commandInvocationPerformed": True,
+                "outcomeMutationAuthority": "unknown-fail-closed",
+            }
+            expected_reconciliation = {
+                "classification": "timeout-unknown-outcome",
+                "classificationAuthority": (
+                    "bounded-consecutive-read-only-hierarchy-observations"
+                ),
+                "retryableTransportClassification": True,
+                "commandPolicy": "non-replayable",
+                "policyReason": (
+                    "file-backed dump was never replayed; stable current hierarchy "
+                    "became observation authority"
+                ),
+                "adbArguments": list(ADB_FILE_HIERARCHY_DUMP_REDACTED_ARGUMENTS),
+                "adbArgumentsSha256": ADB_FILE_HIERARCHY_DUMP_ARGUMENTS_SHA256,
+                "attempt": 1,
+                "maximumAttempts": 1,
+                "commandInvocationPerformed": False,
+                "outcomeMutationAuthority": (
+                    "current-hierarchy-observed-no-dump-replay"
+                ),
+            }
+            if any(preceding.get(key) != expected for key, expected in expected_original.items()):
+                raise ValueError(
+                    f"{label} ADB hierarchy-dump timeout event is not exact"
+                )
+            if any(event.get(key) != expected for key, expected in expected_reconciliation.items()):
+                raise ValueError(
+                    f"{label} ADB hierarchy-dump reconciliation metadata is not exact"
+                )
+            if (
+                preceding.get("failure", {}).get("type") != "TimeoutExpired"
+                or preceding.get("failure", {}).get("returnCode") is not None
+                or preceding.get("replay") != {
+                    "eligible": False, "performed": False,
+                    "scheduled": False, "suppressed": True,
+                }
+                or event.get("failure") is not None
+                or event.get("replay") != {
+                    "eligible": False, "performed": False,
+                    "scheduled": False, "suppressed": True,
+                }
+                or observation.get("arguments")
+                != list(ADB_FILE_HIERARCHY_OBSERVATION_ARGUMENTS)
+                or observation.get("freshnessBarrierArguments")
+                != list(ADB_FILE_HIERARCHY_REMOVE_ARGUMENTS)
+                or observation.get("consecutiveMatching") != 2
+                or not 2 <= observation.get("observationsPerformed", 0) <= 8
+            ):
+                raise ValueError(
+                    f"{label} ADB hierarchy-dump reconciliation proof is not exact"
+                )
 
 
 def validate_workspace(value: object, label: str) -> None:

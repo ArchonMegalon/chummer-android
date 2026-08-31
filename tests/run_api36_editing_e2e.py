@@ -107,6 +107,10 @@ ADB_READ_ONLY_RETRY_DELAY_SECONDS = 1.0
 ADB_SWIPE_RECONCILIATION_REQUIRED_CONSECUTIVE = 2
 ADB_SWIPE_RECONCILIATION_MAX_OBSERVATIONS = 3
 ADB_SWIPE_RECONCILIATION_DELAY_SECONDS = 0.5
+ADB_HIERARCHY_DUMP_RECONCILIATION_REQUIRED_CONSECUTIVE = 2
+ADB_HIERARCHY_DUMP_RECONCILIATION_MAX_OBSERVATIONS = 8
+ADB_HIERARCHY_DUMP_RECONCILIATION_DELAY_SECONDS = 0.25
+ADB_HIERARCHY_DUMP_RECONCILIATION_MAX_SECONDS = 10.0
 ADB_READ_ONLY_HIERARCHY_ARGUMENTS = (
     "exec-out",
     "uiautomator",
@@ -188,7 +192,16 @@ def _adb_arguments_evidence(
 ) -> list[str]:
     if command_policy == "read-only-retryable":
         return list(arguments)
-    visible = 2 if arguments[:1] == ("shell",) else 1
+    # The command kind is non-sensitive and must remain visible so downstream
+    # proof validators cannot relabel one ambiguous shell mutation as another.
+    # Swipe coordinates remain redacted.
+    visible = (
+        3
+        if arguments[:3] == ("shell", "input", "swipe")
+        else 2
+        if arguments[:1] == ("shell",)
+        else 1
+    )
     prefix = list(arguments[:visible])
     hidden = len(arguments) - len(prefix)
     if hidden > 0:
@@ -748,6 +761,72 @@ class Device:
         _write_new_json_receipt(self.evidence / filename, receipt)
         self._transport_events.append(receipt)
 
+    def _write_hierarchy_dump_reconciliation_event(
+        self,
+        *,
+        failed: AdbTransportError,
+        arguments: tuple[str, ...],
+        observation_count: int,
+        hierarchy_sha256: str,
+        owned_file_sha256: str,
+    ) -> None:
+        if self._transport_event_index >= MAX_ADB_TRANSPORT_EVENTS:
+            raise RuntimeError(
+                "ADB transport event bound exhausted; refusing hierarchy-dump "
+                "reconciliation"
+            )
+        self._transport_event_index += 1
+        filename = f"adb-transport-event-{self._transport_event_index:04d}.json"
+        receipt: dict[str, object] = {
+            "schema": ADB_TRANSPORT_EVENT_SCHEMA,
+            "status": "reconciled-unknown-hierarchy-dump",
+            "serial": self.serial,
+            "classification": "timeout-unknown-outcome",
+            "classificationAuthority": (
+                "bounded-consecutive-read-only-hierarchy-observations"
+            ),
+            "retryableTransportClassification": True,
+            "commandPolicy": "non-replayable",
+            "policyReason": (
+                "file-backed dump was never replayed; stable current hierarchy "
+                "became observation authority"
+            ),
+            "adbArguments": _adb_arguments_evidence(arguments, "non-replayable"),
+            "adbArgumentsSha256": _adb_arguments_sha256(arguments),
+            "attempt": 1,
+            "maximumAttempts": 1,
+            "commandInvocationPerformed": False,
+            "outcomeMutationAuthority": "current-hierarchy-observed-no-dump-replay",
+            "replay": {
+                "eligible": False,
+                "performed": False,
+                "scheduled": False,
+                "suppressed": True,
+            },
+            "failure": None,
+            "reconcilesEvidenceFile": failed.receipt["evidenceFile"],
+            "readOnlyObservation": {
+                "arguments": [
+                    "exec-out",
+                    "cat",
+                    ADB_FILE_HIERARCHY_REMOTE_PATH,
+                ],
+                "freshnessBarrierArguments": [
+                    "shell",
+                    *ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS,
+                ],
+                "consecutiveMatching": (
+                    ADB_HIERARCHY_DUMP_RECONCILIATION_REQUIRED_CONSECUTIVE
+                ),
+                "observationsPerformed": observation_count,
+                "hierarchySha256": hierarchy_sha256,
+                "ownedFileSha256": owned_file_sha256,
+            },
+            "evidenceFile": filename,
+        }
+        _write_new_json_receipt(self.evidence / filename, receipt)
+        self._transport_events.append(receipt)
+
     def run(
         self,
         *arguments: str,
@@ -1017,11 +1096,29 @@ class Device:
         raise failure from terminal_error
 
     def transport_summary(self) -> dict[str, object]:
-        reconciled = {
-            event["reconcilesEvidenceFile"]
-            for event in self._transport_events
-            if event["status"] == "reconciled-unknown-swipe"
+        reconciled: set[object] = set()
+        reconciliation_statuses = {
+            "reconciled-unknown-swipe",
+            "reconciled-unknown-hierarchy-dump",
         }
+        for index, event in enumerate(self._transport_events):
+            if event.get("status") not in reconciliation_statuses or index == 0:
+                continue
+            failed = self._transport_events[index - 1]
+            if (
+                failed.get("status") == "fail"
+                and failed.get("classification") == "timeout-unknown-outcome"
+                and failed.get("commandPolicy") == "non-replayable"
+                and event.get("classification") == "timeout-unknown-outcome"
+                and event.get("commandPolicy") == "non-replayable"
+                and event.get("reconcilesEvidenceFile")
+                == failed.get("evidenceFile")
+                and event.get("serial") == failed.get("serial")
+                and event.get("adbArgumentsSha256")
+                == failed.get("adbArgumentsSha256")
+                and event.get("replay", {}).get("performed") is False
+            ):
+                reconciled.add(failed.get("evidenceFile"))
         terminal_failures = [
             event
             for event in self._transport_events
@@ -1154,7 +1251,6 @@ class Device:
                 # ``sh -c``. Keep the freshness barrier as two exact one-shot
                 # commands instead of relying on host/remote shell quoting.
                 self.shell(*ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS)
-                dump_output = self.shell(*ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS)
             else:
                 self.shell(
                     *ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS,
@@ -1165,14 +1261,35 @@ class Device:
                     deadline=deadline,
                 )
                 _remaining_operation_timeout(deadline=deadline, maximum=120)
-                dump_output = self.shell(
-                    *ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
-                    timeout=_remaining_operation_timeout(
+            dump_arguments = (
+                "shell",
+                *ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
+            )
+            try:
+                if deadline is None:
+                    dump_output = self.shell(
+                        *ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS
+                    )
+                else:
+                    dump_output = self.shell(
+                        *ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
+                        timeout=_remaining_operation_timeout(
+                            deadline=deadline,
+                            maximum=120,
+                        ),
                         deadline=deadline,
-                        maximum=120,
-                    ),
+                    )
+            except AdbTransportError as error:
+                reconciled = Device._reconcile_unknown_hierarchy_dump(
+                    self,
+                    error,
+                    dump_arguments,
                     deadline=deadline,
                 )
+                if reconciled is not None:
+                    return reconciled
+                raise
+            if deadline is not None:
                 _remaining_operation_timeout(deadline=deadline, maximum=120)
             normalized_dump_output = dump_output.strip().lower()
             if not any(
@@ -1402,6 +1519,110 @@ class Device:
                         )
                 time.sleep(ADB_SWIPE_RECONCILIATION_DELAY_SECONDS)
         return False
+
+    def _reconcile_unknown_hierarchy_dump(
+        self,
+        failed: AdbTransportError,
+        arguments: tuple[str, ...],
+        *,
+        deadline: float | None = None,
+    ) -> list[UiNode] | None:
+        receipt = failed.receipt
+        if (
+            arguments
+            != ("shell", *ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS)
+            or receipt.get("classification") != "timeout-unknown-outcome"
+            or receipt.get("commandPolicy") != "non-replayable"
+            or receipt.get("adbArgumentsSha256") != _adb_arguments_sha256(arguments)
+        ):
+            return None
+        blocker = self._mutation_blocker
+        if (
+            blocker is None
+            or blocker.get("evidenceFile") != receipt.get("evidenceFile")
+        ):
+            return None
+        # A successful owned-file observation must remain immediately adjacent
+        # to the ambiguous dump event. Any transport recovery receipt emitted
+        # while reading the file makes attribution non-canonical and therefore
+        # preserves the original fail-closed mutation blocker.
+        expected_transport_event_index = self._transport_event_index
+        previous_sha256: str | None = None
+        consecutive = 0
+        local_deadline = (
+            time.monotonic() + ADB_HIERARCHY_DUMP_RECONCILIATION_MAX_SECONDS
+        )
+        reconciliation_deadline = (
+            local_deadline if deadline is None else min(deadline, local_deadline)
+        )
+        for observation in range(
+            1,
+            ADB_HIERARCHY_DUMP_RECONCILIATION_MAX_OBSERVATIONS + 1,
+        ):
+            try:
+                xml = self.run(
+                    "exec-out",
+                    "cat",
+                    ADB_FILE_HIERARCHY_REMOTE_PATH,
+                    timeout=_remaining_operation_timeout(
+                        deadline=reconciliation_deadline,
+                        maximum=ADB_HIERARCHY_DUMP_RECONCILIATION_MAX_SECONDS,
+                    ),
+                    deadline=reconciliation_deadline,
+                ).stdout
+                _remaining_operation_timeout(
+                    deadline=reconciliation_deadline,
+                    maximum=ADB_HIERARCHY_DUMP_RECONCILIATION_MAX_SECONDS,
+                )
+            except (AdbOperationDeadlineExceeded, AdbTransportError):
+                return None
+            if self._transport_event_index != expected_transport_event_index:
+                return None
+            nodes = Device._parse_hierarchy(
+                self,
+                xml,
+                "last-hierarchy-dump-reconciliation-invalid.txt",
+            )
+            if not nodes:
+                previous_sha256 = None
+                consecutive = 0
+                if observation < ADB_HIERARCHY_DUMP_RECONCILIATION_MAX_OBSERVATIONS:
+                    try:
+                        delay = _remaining_operation_timeout(
+                            deadline=reconciliation_deadline,
+                            maximum=ADB_HIERARCHY_DUMP_RECONCILIATION_DELAY_SECONDS,
+                        )
+                    except AdbOperationDeadlineExceeded:
+                        return None
+                    time.sleep(delay)
+                continue
+            observed_sha256 = hashlib.sha256(xml.encode("utf-8")).hexdigest()
+            observed_nodes_sha256 = self._hierarchy_sha256(nodes)
+            consecutive = consecutive + 1 if observed_sha256 == previous_sha256 else 1
+            previous_sha256 = observed_sha256
+            if (
+                consecutive
+                >= ADB_HIERARCHY_DUMP_RECONCILIATION_REQUIRED_CONSECUTIVE
+            ):
+                self._write_hierarchy_dump_reconciliation_event(
+                    failed=failed,
+                    arguments=arguments,
+                    observation_count=observation,
+                    hierarchy_sha256=observed_nodes_sha256,
+                    owned_file_sha256=observed_sha256,
+                )
+                self._mutation_blocker = None
+                return nodes
+            if observation < ADB_HIERARCHY_DUMP_RECONCILIATION_MAX_OBSERVATIONS:
+                try:
+                    delay = _remaining_operation_timeout(
+                        deadline=reconciliation_deadline,
+                        maximum=ADB_HIERARCHY_DUMP_RECONCILIATION_DELAY_SECONDS,
+                    )
+                except AdbOperationDeadlineExceeded:
+                    return None
+                time.sleep(delay)
+        return None
 
     @staticmethod
     def _matches(node: UiNode, selector: str) -> bool:

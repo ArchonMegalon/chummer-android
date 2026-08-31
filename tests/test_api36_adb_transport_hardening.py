@@ -351,12 +351,143 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
                 original["evidenceFile"],
                 reconciliation["reconcilesEvidenceFile"],
             )
+            self.assertEqual(
+                ["shell", "input", "swipe", "<5 redacted argument(s)>"],
+                original["adbArguments"],
+            )
+            self.assertEqual(original["adbArguments"], reconciliation["adbArguments"])
             self.assertFalse(reconciliation["replay"]["performed"])
             self.assertTrue(reconciliation["replay"]["suppressed"])
             self.assertEqual(
                 "current-viewport-observed-no-replay",
                 reconciliation["outcomeMutationAuthority"],
             )
+
+    def test_timed_out_hierarchy_dump_is_reconciled_without_dump_replay(self) -> None:
+        xml = (
+            "<?xml version='1.0' encoding='UTF-8'?>"
+            "<hierarchy><node text='Stable preview' bounds='[0,0][100,100]' />"
+            "</hierarchy>UI hierarchy dumped to: /dev/tty"
+        )
+        remove_arguments = (
+            "shell",
+            *driver.ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS,
+        )
+        dump_arguments = (
+            "shell",
+            *driver.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            evidence = Path(temporary)
+            device = self.make_device(evidence)
+            responses = [
+                completed(remove_arguments, ""),
+                subprocess.TimeoutExpired(dump_arguments, 52),
+                completed(
+                    ("exec-out", "cat", driver.ADB_FILE_HIERARCHY_REMOTE_PATH),
+                    xml,
+                ),
+                completed(
+                    ("exec-out", "cat", driver.ADB_FILE_HIERARCHY_REMOTE_PATH),
+                    xml,
+                ),
+                completed(("shell", "input", "keyevent", "4"), ""),
+            ]
+            with (
+                mock.patch.object(driver.subprocess, "run", side_effect=responses) as run,
+                mock.patch.object(driver.time, "sleep"),
+            ):
+                nodes = device.hierarchy(deadline=driver.time.monotonic() + 150)
+                device.shell("input", "keyevent", "4")
+
+            self.assertEqual("Stable preview", nodes[0].attributes["text"])
+            self.assertEqual(5, run.call_count)
+            issued = [tuple(call.args[0][3:]) for call in run.call_args_list]
+            self.assertEqual(1, issued.count(dump_arguments))
+            self.assertEqual(
+                [
+                    ("exec-out", "cat", driver.ADB_FILE_HIERARCHY_REMOTE_PATH),
+                ] * 2,
+                issued[2:4],
+            )
+            summary = device.transport_summary()
+            self.assertEqual(0, summary["terminalFailureCount"])
+            original, reconciliation = summary["events"]
+            self.assertEqual("fail", original["status"])
+            self.assertEqual(
+                "reconciled-unknown-hierarchy-dump",
+                reconciliation["status"],
+            )
+            self.assertEqual(
+                original["evidenceFile"],
+                reconciliation["reconcilesEvidenceFile"],
+            )
+            self.assertFalse(reconciliation["replay"]["performed"])
+            self.assertTrue(reconciliation["replay"]["suppressed"])
+            self.assertEqual(
+                "current-hierarchy-observed-no-dump-replay",
+                reconciliation["outcomeMutationAuthority"],
+            )
+            self.assertEqual(
+                2,
+                reconciliation["readOnlyObservation"]["consecutiveMatching"],
+            )
+            self.assertEqual(
+                ["shell", *driver.ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS],
+                reconciliation["readOnlyObservation"][
+                    "freshnessBarrierArguments"
+                ],
+            )
+
+    def test_divergent_hierarchy_dump_reconciliation_stays_blocked(self) -> None:
+        def hierarchy(label: str) -> str:
+            return f"<hierarchy><node text='{label}' /></hierarchy>"
+
+        remove_arguments = (
+            "shell",
+            *driver.ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS,
+        )
+        dump_arguments = (
+            "shell",
+            *driver.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            device = self.make_device(Path(temporary))
+            responses = [
+                completed(remove_arguments, ""),
+                subprocess.TimeoutExpired(dump_arguments, 52),
+                *[
+                    completed(
+                        ("exec-out", "cat", driver.ADB_FILE_HIERARCHY_REMOTE_PATH),
+                        hierarchy(f"observation-{index}"),
+                    )
+                    for index in range(
+                        1,
+                        driver.ADB_HIERARCHY_DUMP_RECONCILIATION_MAX_OBSERVATIONS
+                        + 1,
+                    )
+                ],
+            ]
+            with (
+                mock.patch.object(driver.subprocess, "run", side_effect=responses) as run,
+                mock.patch.object(driver.time, "sleep"),
+            ):
+                with self.assertRaises(driver.AdbTransportError) as original:
+                    device.hierarchy(deadline=driver.time.monotonic() + 150)
+                with self.assertRaises(driver.AdbTransportError) as blocked:
+                    device.shell("input", "keyevent", "4")
+
+            issued = [tuple(call.args[0][3:]) for call in run.call_args_list]
+            self.assertEqual(1, issued.count(dump_arguments))
+            self.assertEqual(
+                "timeout-unknown-outcome",
+                original.exception.receipt["classification"],
+            )
+            self.assertEqual(
+                "prior-mutation-outcome-unknown",
+                blocked.exception.receipt["classification"],
+            )
+            self.assertEqual(2, device.transport_summary()["terminalFailureCount"])
 
     def test_divergent_read_only_hierarchies_leave_swipe_outcome_blocked(self) -> None:
         def hierarchy(label: str) -> str:
