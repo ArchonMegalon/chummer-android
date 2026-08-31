@@ -5049,7 +5049,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertEqual(4, navigation["currentViewport"])
         self.assertEqual([], device.captures)
 
-    def test_first_category_reacquisition_accepts_the_last_scan_delta_bound(self) -> None:
+    def test_first_category_reacquisition_accepts_one_overlap_beyond_scan_delta(self) -> None:
+        self.assertEqual(1, driver.PRIORITY_CATEGORY_REACQUISITION_OVERLAP_SWIPES)
         visible = driver.shared.UiNode(
             {
                 "resource-id": "creation-prerequisite-category-heritage",
@@ -5072,7 +5073,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
             def hierarchy(self):
                 self.hierarchy_reads += 1
-                return [visible] if self.small_swipes == 3 else [driver.shared.UiNode({})]
+                return [visible] if self.small_swipes == 4 else [driver.shared.UiNode({})]
 
             @staticmethod
             def dismiss_system_ui_anr(_nodes):
@@ -5106,11 +5107,11 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             )
 
         self.assertIs(visible, row)
-        self.assertEqual([0.22] * 3, device.swipe_ratios)
-        self.assertEqual(4, device.hierarchy_reads)
+        self.assertEqual([0.22] * 4, device.swipe_ratios)
+        self.assertEqual(5, device.hierarchy_reads)
 
-    def test_first_category_reacquisition_rejects_one_beyond_scan_delta(self) -> None:
-        class OneBeyondDevice:
+    def test_first_category_reacquisition_rejects_two_beyond_scan_delta(self) -> None:
+        class TwoBeyondDevice:
             def __init__(self) -> None:
                 self.swipe_ratios: list[float] = []
                 self.small_swipes = 0
@@ -5124,7 +5125,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
             def hierarchy(self):
                 self.hierarchy_reads += 1
-                if self.small_swipes == 4:
+                if self.small_swipes == 5:
                     return [driver.shared.UiNode({
                         "resource-id": "creation-prerequisite-category-heritage",
                         "enabled": "true",
@@ -5140,7 +5141,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             def capture(self, name):
                 self.captures.append(name)
 
-        device = OneBeyondDevice()
+        device = TwoBeyondDevice()
         navigation = {
             "viewportByCategory": {category: 0 for category in driver.CATEGORIES},
             "currentViewport": 3,
@@ -5148,7 +5149,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         }
         with mock.patch.object(driver.time, "sleep"), self.assertRaisesRegex(
             RuntimeError,
-            "within the scan-proven 3-swipe bound",
+            "within the scan-proven 4-swipe bound",
         ):
             driver.acquire_measured_priority_category_row(
                 device,
@@ -5156,8 +5157,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 navigation,
             )
 
-        self.assertEqual([0.22] * 3, device.swipe_ratios)
-        self.assertEqual(4, device.hierarchy_reads)
+        self.assertEqual([0.22] * 4, device.swipe_ratios)
+        self.assertEqual(5, device.hierarchy_reads)
         self.assertEqual(
             ["creation-prerequisite-heritage-category-row-unavailable"],
             device.captures,

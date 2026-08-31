@@ -224,6 +224,11 @@ TALENT_GRANT_REACQUISITION_MAX_SCROLLS = 40
 TALENT_GRANT_OPTION_RECOVERY_MAX_SCROLLS = 40
 TALENT_GRANT_REACQUISITION_STABLE_REPEATS = 2
 MAX_STABLE_START_REVERSE_SWIPES = 40
+# Forward and reverse Android ScrollView gestures are not exact inverses when
+# the forward scan reaches a clamped page end.  One overlapping reverse
+# gesture is therefore allowed after the exact measured delta.  Every gesture
+# is still followed by a fresh exact hierarchy and the bound cannot expand.
+PRIORITY_CATEGORY_REACQUISITION_OVERLAP_SWIPES = 1
 # Every phase and the aggregate clock are independently rounded to the nearest
 # millisecond. Their worst-case opposing rounding errors are therefore
 # ``(phase count + aggregate clock) / 2`` milliseconds. This reconciliation
@@ -3971,13 +3976,14 @@ def acquire_measured_priority_category_row(
 ) -> shared.UiNode:
     """Reacquire one exact category from the digest-bound ordered inventory.
 
-    The first category reverses only the authority scan's exact measured
-    0.22-height delta, checking a fresh hierarchy before and after every
-    gesture. This cannot skip a narrow row by performing a larger reverse
-    jump and remains bounded solely by the prior scan. Later categories are
-    below the freshly verified prior row, so they retain their bounded
-    forward-only snapshots. A rank selection can change row height; no
-    pre-navigation node or blind absolute viewport is reused.
+    The first category reverses the authority scan's exact measured 0.22-height
+    delta plus one overlap gesture, checking a fresh hierarchy before and after
+    every gesture.  Android end-clamping can make the forward and reverse
+    gesture distances differ by one viewport; the overlap is fixed, explicit,
+    and cannot expand into a blind reset. Later categories are below the
+    freshly verified prior row, so they retain their bounded forward-only
+    snapshots. A rank selection can change row height; no pre-navigation node
+    or blind absolute viewport is reused.
     """
     viewports = navigation.get("viewportByCategory")
     current_viewport = navigation.get("currentViewport")
@@ -4007,10 +4013,13 @@ def acquire_measured_priority_category_row(
             raise RuntimeError(
                 "Priority category navigation did not start with the first ordered row"
             )
-        reverse_bound = measured_reverse_reacquisition_bound(
-            current_viewport,
-            target_viewport,
-            maximum_viewport=22,
+        reverse_bound = (
+            measured_reverse_reacquisition_bound(
+                current_viewport,
+                target_viewport,
+                maximum_viewport=22,
+            )
+            + PRIORITY_CATEGORY_REACQUISITION_OVERLAP_SWIPES
         )
         node, _ = rewind_to_exact_resource_id(
             device,
