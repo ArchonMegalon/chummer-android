@@ -101,8 +101,7 @@ ADB_CREATION_BOOTSTRAP_LOGCAT_ARGUMENTS = (
     "logcat", "-d", "-t", "50", "-s", "ChummerBootstrap:I", "*:S",
 )
 ADB_CREATION_DASHBOARD_READY_LOGCAT_ARGUMENTS = (
-    "logcat", "-b", "main", "-v", "raw", "-T", "1", "-m", "1",
-    "-e", r"^CHUMMER_CREATION_DASHBOARD_READY \{",
+    "logcat", "-d", "-b", "main", "-v", "raw",
     "-s", "ChummerRoute:I", "*:S",
 )
 ADB_SAFE_READ_ONLY_REMOTE_PATH = re.compile(r"^/[A-Za-z0-9._/:-]{1,511}$")
@@ -1893,7 +1892,7 @@ def read_only_adb_policy_reason(arguments: Sequence[str]) -> str | None:
     if values == ADB_CREATION_BOOTSTRAP_LOGCAT_ARGUMENTS:
         return "bounded exact-tag creation-bootstrap timing observation"
     if values == ADB_CREATION_DASHBOARD_READY_LOGCAT_ARGUMENTS:
-        return None
+        return "bounded exact-tag creation-dashboard route-ready snapshot observation"
     if values[:1] != ("shell",):
         return None
 

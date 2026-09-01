@@ -25,11 +25,12 @@ def write_json(path: Path, value: object) -> None:
 
 
 class Api36Arm64PhysicalContractTests(unittest.TestCase):
-    def test_creation_dashboard_ready_logcat_is_excluded_from_retry_allowlist(self) -> None:
-        self.assertIsNone(
+    def test_creation_dashboard_ready_snapshot_is_exactly_retry_allowlisted(self) -> None:
+        self.assertEqual(
+            "bounded exact-tag creation-dashboard route-ready snapshot observation",
             contract.read_only_adb_policy_reason(
                 contract.ADB_CREATION_DASHBOARD_READY_LOGCAT_ARGUMENTS
-            )
+            ),
         )
         for arguments in (
             contract.ADB_CREATION_DASHBOARD_READY_LOGCAT_ARGUMENTS[:-1],

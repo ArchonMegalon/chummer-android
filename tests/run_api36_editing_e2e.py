@@ -174,16 +174,11 @@ ADB_CREATION_BOOTSTRAP_LOGCAT_ARGUMENTS = (
 ADB_CREATION_BOOTSTRAP_LOGCAT_CLEAR_ARGUMENTS = ("logcat", "-c")
 ADB_CREATION_DASHBOARD_READY_LOGCAT_ARGUMENTS = (
     "logcat",
+    "-d",
     "-b",
     "main",
     "-v",
     "raw",
-    "-T",
-    "1",
-    "-m",
-    "1",
-    "-e",
-    r"^CHUMMER_CREATION_DASHBOARD_READY \{",
     "-s",
     "ChummerRoute:I",
     "*:S",
@@ -455,8 +450,8 @@ def adb_command_retry_policy(arguments: tuple[str, ...]) -> tuple[str, str]:
         )
     if arguments == ADB_CREATION_DASHBOARD_READY_LOGCAT_ARGUMENTS:
         return (
-            "non-replayable",
-            "single-attempt creation-dashboard route-ready freshness observation",
+            "read-only-retryable",
+            "bounded exact-tag creation-dashboard route-ready snapshot observation",
         )
     if arguments[:1] != ("shell",):
         return (

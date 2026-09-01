@@ -1572,11 +1572,11 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
             )[0],
         )
 
-    def test_creation_dashboard_ready_log_filter_is_exactly_one_shot(self) -> None:
+    def test_creation_dashboard_ready_snapshot_is_exactly_read_only_retryable(self) -> None:
         self.assertEqual(
             (
-                "non-replayable",
-                "single-attempt creation-dashboard route-ready freshness observation",
+                "read-only-retryable",
+                "bounded exact-tag creation-dashboard route-ready snapshot observation",
             ),
             driver.adb_command_retry_policy(
                 driver.ADB_CREATION_DASHBOARD_READY_LOGCAT_ARGUMENTS
@@ -1584,13 +1584,13 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
         )
         for arguments in (
             driver.ADB_CREATION_DASHBOARD_READY_LOGCAT_ARGUMENTS[:-2],
-            (*driver.ADB_CREATION_DASHBOARD_READY_LOGCAT_ARGUMENTS[:-4], "2", *driver.ADB_CREATION_DASHBOARD_READY_LOGCAT_ARGUMENTS[-3:]),
             ("logcat", "-d", "-s", "ChummerRoute:I", "*:S"),
+            ("logcat", "-b", "main", "-v", "raw", "-T", "1"),
         ):
             with self.subTest(arguments=arguments):
                 self.assertEqual("non-replayable", driver.adb_command_retry_policy(tuple(arguments))[0])
 
-    def test_creation_dashboard_ready_log_filter_never_replays_transport_failure(self) -> None:
+    def test_creation_dashboard_ready_snapshot_retries_transport_failure_only(self) -> None:
         arguments = driver.ADB_CREATION_DASHBOARD_READY_LOGCAT_ARGUMENTS
         with tempfile.TemporaryDirectory() as temporary:
             device = self.make_device(Path(temporary))
@@ -1601,15 +1601,11 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
             with (
                 mock.patch.object(driver.subprocess, "run", side_effect=responses) as run,
                 mock.patch.object(driver.time, "sleep"),
-                self.assertRaises(driver.AdbTransportError) as raised,
             ):
-                device.run(*arguments, timeout=20.0)
+                result = device.run(*arguments, timeout=20.0)
 
-        self.assertEqual(1, run.call_count)
-        self.assertEqual("non-replayable", raised.exception.receipt["commandPolicy"])
-        self.assertFalse(raised.exception.receipt["replay"]["performed"])
-        self.assertFalse(raised.exception.receipt["replay"]["scheduled"])
-        self.assertTrue(raised.exception.receipt["replay"]["suppressed"])
+        self.assertEqual(2, run.call_count)
+        self.assertEqual("must-not-be-read", result.stdout)
 
     def test_hierarchy_rejects_nonfinite_dump_bound_without_adb_command(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

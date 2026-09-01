@@ -6631,6 +6631,18 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertNotIn("device.read_only_hierarchy", helper_source)
         execute_source = inspect.getsource(driver.execute)
         self.assertEqual(1, execute_source.count("tap_exact_confirmed_receipt_back("))
+        self.assertEqual(
+            1,
+            execute_source.count(
+                "dashboard_ready_marker = wait_for_creation_dashboard_ready_log("
+            ),
+        )
+        self.assertEqual(
+            1,
+            execute_source.count(
+                "require_marker_bound_post_confirm_dashboard("
+            ),
+        )
 
     def test_post_back_dashboard_ready_marker_is_exact_and_revision_bound(self) -> None:
         digest = "sha256:" + "a" * 64
@@ -6680,11 +6692,137 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             self.assertEqual(12, scans[0]["observedContentRevision"])
             self.assertEqual(11, scans[0]["observedSavedRevision"])
             self.assertEqual(
+                "fresh-cleared-main-log-snapshot-poll",
+                scans[0]["observationMode"],
+            )
+            self.assertEqual(1, scans[0]["logcatReadCount"])
+            self.assertEqual(0, scans[0]["emptySnapshotCount"])
+            self.assertEqual(
                 driver.shared.ADB_CREATION_DASHBOARD_READY_LOGCAT_ARGUMENTS,
                 device.run.call_args.args,
             )
             device.hierarchy.assert_not_called()
             device.shell.assert_not_called()
+
+    def test_post_back_dashboard_ready_snapshot_poll_resolves_after_pending_read(
+        self,
+    ) -> None:
+        digest = "sha256:" + "c" * 64
+        payload = {
+            "schema": driver.CREATION_DASHBOARD_READY_SCHEMA,
+            "routeAutomationId": "phone-runner-create",
+            "dashboardAutomationId": "creation-wizard-dashboard",
+            "workspaceId": "workspace-route-ready",
+            "contentRevision": 12,
+            "savedRevision": 11,
+            "contentDigest": digest,
+            "sourceDigest": digest,
+            "runtimeFingerprint": digest,
+            "buildMethod": "priority",
+            "snapshotDigest": digest,
+            "characterCreated": False,
+            "authorityReady": True,
+        }
+        marker = driver.CREATION_DASHBOARD_READY_PREFIX + json.dumps(
+            payload,
+            separators=(",", ":"),
+        )
+        pending = subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout=driver.CREATION_BOOTSTRAP_LOGCAT_MAIN_DIVIDER,
+            stderr="",
+        )
+        resolved = subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout=driver.CREATION_BOOTSTRAP_LOGCAT_MAIN_DIVIDER + "\n" + marker,
+            stderr="",
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            device = mock.Mock()
+            device.evidence = Path(temporary)
+            device.run.side_effect = (pending, resolved)
+            scans: list[dict[str, object]] = []
+            with mock.patch.object(driver.time, "sleep"):
+                observed = driver.wait_for_creation_dashboard_ready_log(
+                    device,
+                    expected_content_revision=12,
+                    expected_saved_revision=11,
+                    deadline=driver.time.monotonic() + 30.0,
+                    scan_observer=scans.append,
+                )
+
+            self.assertEqual(payload, observed)
+            self.assertEqual(2, device.run.call_count)
+            self.assertEqual(2, scans[0]["logcatReadCount"])
+            self.assertEqual(1, scans[0]["emptySnapshotCount"])
+            device.shell.assert_not_called()
+            device.hierarchy.assert_not_called()
+
+    def test_post_back_dashboard_ready_snapshot_poll_fails_closed_at_deadline(
+        self,
+    ) -> None:
+        pending = subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout=driver.CREATION_BOOTSTRAP_LOGCAT_MAIN_DIVIDER,
+            stderr="",
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            device = mock.Mock()
+            device.evidence = Path(temporary)
+            device.run.return_value = pending
+            with (
+                mock.patch.object(
+                    driver,
+                    "POST_CONFIRM_DASHBOARD_READY_TIMEOUT_SECONDS",
+                    0.02,
+                ),
+                mock.patch.object(
+                    driver,
+                    "POST_CONFIRM_DASHBOARD_READY_POLL_DELAY_SECONDS",
+                    0.005,
+                ),
+                self.assertRaisesRegex(RuntimeError, "Timed out waiting"),
+            ):
+                driver.wait_for_creation_dashboard_ready_log(
+                    device,
+                    expected_content_revision=12,
+                    expected_saved_revision=11,
+                    deadline=driver.time.monotonic() + 1.0,
+                )
+
+            self.assertGreaterEqual(device.run.call_count, 1)
+            device.shell.assert_not_called()
+            device.hierarchy.assert_not_called()
+
+    def test_post_confirm_dashboard_binding_is_executable_and_fail_closed(
+        self,
+    ) -> None:
+        digest = "sha256:" + "d" * 64
+        marker: dict[str, object] = {
+            "contentRevision": 12,
+            "snapshotDigest": digest,
+        }
+        dashboard = driver.CreationDashboardScanProof(
+            binding=f"Revision 12 · snapshot {digest[:12]}",
+            method_detail="Priority",
+            swipes=0,
+            method_viewport=0,
+        )
+        driver.require_marker_bound_post_confirm_dashboard(marker, dashboard)
+
+        with self.assertRaisesRegex(RuntimeError, "marker-bound revision"):
+            driver.require_marker_bound_post_confirm_dashboard(
+                marker,
+                dashboard._replace(binding="Revision 11 · snapshot sha256:bad00"),
+            )
+        with self.assertRaisesRegex(RuntimeError, "canonical binding authority"):
+            driver.require_marker_bound_post_confirm_dashboard(
+                {"contentRevision": True, "snapshotDigest": digest},
+                dashboard,
+            )
 
     def test_dashboard_ready_marker_uses_the_shell_presented_root_page(self) -> None:
         source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
@@ -6806,8 +6944,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
     ) -> None:
         receipt = {
             "classification": "timeout-unknown-outcome",
-            "commandPolicy": "non-replayable",
-            "replay": {"performed": False, "suppressed": True},
+            "commandPolicy": "read-only-retryable",
+            "replay": {"performed": True, "suppressed": False},
         }
         transport = driver.shared.AdbTransportError(
             receipt,
@@ -9081,7 +9219,15 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             driver.CONFIRMED_RECEIPT_PROOF_TIMEOUT_SECONDS,
         )
         self.assertEqual(3.0, driver.PRE_BACK_ROUTE_LOG_CLEAR_TIMEOUT_SECONDS)
-        self.assertEqual(20.0, driver.POST_CONFIRM_DASHBOARD_READY_TIMEOUT_SECONDS)
+        self.assertEqual(30.0, driver.POST_CONFIRM_DASHBOARD_READY_TIMEOUT_SECONDS)
+        self.assertEqual(
+            5.0,
+            driver.POST_CONFIRM_DASHBOARD_READY_READ_ATTEMPT_MAX_SECONDS,
+        )
+        self.assertEqual(
+            0.25,
+            driver.POST_CONFIRM_DASHBOARD_READY_POLL_DELAY_SECONDS,
+        )
         self.assertEqual(
             30.0,
             driver.POST_CONFIRM_DASHBOARD_DUMP_ATTEMPT_MAX_SECONDS,

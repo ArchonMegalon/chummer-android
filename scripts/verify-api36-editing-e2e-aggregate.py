@@ -42,7 +42,9 @@ CONFIRMED_RECEIPT_BACK_REACQUISITION_MAX_SYSTEM_UI_DISMISSALS = 3
 CONFIRMED_RECEIPT_BACK_REACQUISITION_MAX_ELAPSED_MS = 45_000
 CONFIRMED_RECEIPT_BACK_REACQUISITION_DOWNSTREAM_RESERVE_MS = 81_000
 CONFIRMED_RECEIPT_BACK_REACQUISITION_DELAY_MS = 200
-POST_CONFIRM_DASHBOARD_ROUTE_READY_MAX_ELAPSED_MS = 20_000
+POST_CONFIRM_DASHBOARD_ROUTE_READY_MAX_ELAPSED_MS = 30_000
+POST_CONFIRM_DASHBOARD_ROUTE_READY_READ_ATTEMPT_MAX_MS = 5_000
+POST_CONFIRM_DASHBOARD_ROUTE_READY_POLL_DELAY_MS = 250
 TALENT_REACQUISITION_MAX_SCROLLS = 40
 TALENT_OPTION_RECOVERY_MAX_SCROLLS = 40
 TALENT_REACQUISITION_STABLE_REPEATS = 2
@@ -423,8 +425,11 @@ def require_post_confirm_dashboard_route_ready_scan(
     required_literals: dict[str, Any] = {
         "status": "resolved",
         "phaseId": "preview-confirm",
-        "observationMode": "fresh-cleared-main-log-single-marker",
-        "logcatReadCount": 1,
+        "observationMode": "fresh-cleared-main-log-snapshot-poll",
+        "readAttemptMaxMs": (
+            POST_CONFIRM_DASHBOARD_ROUTE_READY_READ_ATTEMPT_MAX_MS
+        ),
+        "pollDelayMs": POST_CONFIRM_DASHBOARD_ROUTE_READY_POLL_DELAY_MS,
         "deadlineEnforced": True,
         "maximumElapsedMs": POST_CONFIRM_DASHBOARD_ROUTE_READY_MAX_ELAPSED_MS,
     }
@@ -444,8 +449,11 @@ def require_post_confirm_dashboard_route_ready_scan(
         )
     integer_fields = (
         "logcatReadCount",
+        "emptySnapshotCount",
         "logcatElapsedMs",
         "maximumLogcatReadMs",
+        "readAttemptMaxMs",
+        "pollDelayMs",
         "expectedContentRevision",
         "observedContentRevision",
         "expectedSavedRevision",
@@ -464,6 +472,20 @@ def require_post_confirm_dashboard_route_ready_scan(
             f"{invalid!r}"
         )
     value = {field: int(scan[field]) for field in integer_fields}
+    read_rounding_ms = (value["logcatReadCount"] + 1) // 2
+    maximum_lower_bound = (
+        (
+            value["logcatElapsedMs"]
+            + value["logcatReadCount"]
+            - 1
+        )
+        // value["logcatReadCount"]
+        if value["logcatReadCount"] > 0
+        else 0
+    )
+    mandatory_wait_ms = (
+        value["emptySnapshotCount"] * value["pollDelayMs"]
+    )
     workspace_id = scan.get("workspaceId")
     snapshot_digest = scan.get("snapshotDigest")
     if not (
@@ -473,8 +495,14 @@ def require_post_confirm_dashboard_route_ready_scan(
         == value["expectedContentRevision"]
         and value["expectedSavedRevision"] == confirmed_saved_revision
         and value["observedSavedRevision"] == value["expectedSavedRevision"]
-        and value["maximumLogcatReadMs"] == value["logcatElapsedMs"]
-        and value["logcatElapsedMs"] <= value["elapsedMs"] + 1
+        and value["logcatReadCount"] >= 1
+        and value["emptySnapshotCount"] == value["logcatReadCount"] - 1
+        and value["maximumLogcatReadMs"] >= maximum_lower_bound
+        and value["maximumLogcatReadMs"] <= value["logcatElapsedMs"]
+        and value["logcatElapsedMs"]
+        <= value["elapsedMs"] + read_rounding_ms
+        and value["logcatElapsedMs"] + mandatory_wait_ms
+        <= value["elapsedMs"] + read_rounding_ms + 1
         and value["elapsedMs"] <= value["maximumElapsedMs"] + 1
         and value["elapsedMs"] <= preview_phase_elapsed_ms
         and isinstance(workspace_id, str)

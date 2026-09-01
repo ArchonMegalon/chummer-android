@@ -229,7 +229,9 @@ CONFIRMED_RECEIPT_PROOF_TIMEOUT_SECONDS = (
     + CONFIRMED_RECEIPT_TRAVERSAL_RESERVE_SECONDS
 )
 PRE_BACK_ROUTE_LOG_CLEAR_TIMEOUT_SECONDS = 3.0
-POST_CONFIRM_DASHBOARD_READY_TIMEOUT_SECONDS = 20.0
+POST_CONFIRM_DASHBOARD_READY_TIMEOUT_SECONDS = 30.0
+POST_CONFIRM_DASHBOARD_READY_READ_ATTEMPT_MAX_SECONDS = 5.0
+POST_CONFIRM_DASHBOARD_READY_POLL_DELAY_SECONDS = 0.25
 POST_CONFIRM_DASHBOARD_DUMP_ATTEMPT_MAX_SECONDS = 30.0
 POST_CONFIRM_DASHBOARD_PROOF_TIMEOUT_SECONDS = 75.0
 CONFIRMED_RECEIPT_BACK_DOWNSTREAM_RESERVE_SECONDS = (
@@ -707,7 +709,8 @@ def wait_for_creation_dashboard_ready_log(
     """Gate UIAutomator on one fresh, laid-out post-Back dashboard marker.
 
     The main log is cleared immediately before the one-shot Back action.  This
-    marker is therefore only transition readiness; the following same-snapshot
+    marker is therefore only transition readiness.  Snapshot reads are safe to
+    repeat and never replay the Back action; the following same-snapshot
     accessibility proof remains the route and cardinality authority.
     """
     if (
@@ -718,32 +721,64 @@ def wait_for_creation_dashboard_ready_log(
     ):
         raise ValueError("Dashboard-ready marker requires exact nonnegative revisions")
     started = time.monotonic()
-    read_started = time.perf_counter()
     marker_deadline = min(
         deadline,
         started + POST_CONFIRM_DASHBOARD_READY_TIMEOUT_SECONDS,
     )
-    try:
-        result = device.run(
-            *shared.ADB_CREATION_DASHBOARD_READY_LOGCAT_ARGUMENTS,
-            timeout=shared._remaining_operation_timeout(
+    read_durations_ms: list[int] = []
+    empty_snapshot_count = 0
+    logcat = ""
+    exact_matches: list[re.Match[str]] = []
+    divider_count = 0
+    invalid_lines: list[str] = []
+    raw_lines: list[str] = []
+    while time.monotonic() < marker_deadline:
+        read_started = time.perf_counter()
+        try:
+            result = device.run(
+                *shared.ADB_CREATION_DASHBOARD_READY_LOGCAT_ARGUMENTS,
+                timeout=shared._remaining_operation_timeout(
+                    deadline=marker_deadline,
+                    maximum=(
+                        POST_CONFIRM_DASHBOARD_READY_READ_ATTEMPT_MAX_SECONDS
+                    ),
+                ),
                 deadline=marker_deadline,
-                maximum=POST_CONFIRM_DASHBOARD_READY_TIMEOUT_SECONDS,
-            ),
-            deadline=marker_deadline,
+            )
+        finally:
+            read_durations_ms.append(
+                round((time.perf_counter() - read_started) * 1000)
+            )
+        logcat = str(result.stdout)
+        raw_lines, exact_matches, divider_count, invalid_lines = (
+            classify_creation_dashboard_ready_logcat(logcat)
         )
-    finally:
-        read_elapsed_ms = round((time.perf_counter() - read_started) * 1000)
-    logcat = str(result.stdout)
+        if invalid_lines or len(exact_matches) > 1:
+            break
+        if len(exact_matches) == 1:
+            break
+        empty_snapshot_count += 1
+        if (
+            time.monotonic() + POST_CONFIRM_DASHBOARD_READY_POLL_DELAY_SECONDS
+            >= marker_deadline
+        ):
+            break
+        sleep_before_phase_deadline(
+            POST_CONFIRM_DASHBOARD_READY_POLL_DELAY_SECONDS,
+            deadline=marker_deadline,
+            operation="Creation dashboard route-ready snapshot poll",
+        )
     device.evidence.mkdir(parents=True, exist_ok=True)
     (device.evidence / CREATION_DASHBOARD_READY_LOG_FILE_NAME).write_text(
         logcat,
         encoding="utf-8",
     )
-    raw_lines, exact_matches, divider_count, invalid_lines = (
-        classify_creation_dashboard_ready_logcat(logcat)
-    )
     if len(exact_matches) != 1 or invalid_lines:
+        if not exact_matches and not invalid_lines:
+            raise RuntimeError(
+                "Timed out waiting for the exact post-Back Creation "
+                "dashboard-ready marker"
+            )
         raise RuntimeError(
             "Expected one exact post-Back Creation dashboard-ready marker with "
             "only an optional leading main-buffer divider: "
@@ -834,10 +869,17 @@ def wait_for_creation_dashboard_ready_log(
     scan = {
         "scanId": "post-confirm-dashboard-route-ready-log",
         "status": "resolved",
-        "observationMode": "fresh-cleared-main-log-single-marker",
-        "logcatReadCount": 1,
-        "logcatElapsedMs": read_elapsed_ms,
-        "maximumLogcatReadMs": read_elapsed_ms,
+        "observationMode": "fresh-cleared-main-log-snapshot-poll",
+        "logcatReadCount": len(read_durations_ms),
+        "emptySnapshotCount": empty_snapshot_count,
+        "logcatElapsedMs": sum(read_durations_ms),
+        "maximumLogcatReadMs": max(read_durations_ms, default=0),
+        "readAttemptMaxMs": round(
+            POST_CONFIRM_DASHBOARD_READY_READ_ATTEMPT_MAX_SECONDS * 1000
+        ),
+        "pollDelayMs": round(
+            POST_CONFIRM_DASHBOARD_READY_POLL_DELAY_SECONDS * 1000
+        ),
         "expectedContentRevision": expected_content_revision,
         "observedContentRevision": int(payload["contentRevision"]),
         "expectedSavedRevision": expected_saved_revision,
@@ -2607,6 +2649,33 @@ class CreationDashboardScanProof(NamedTuple):
     method_detail: str
     swipes: int
     method_viewport: int
+
+
+def require_marker_bound_post_confirm_dashboard(
+    marker: dict[str, object],
+    dashboard: CreationDashboardScanProof,
+) -> None:
+    """Bind the app readiness marker to the exact visible dashboard snapshot."""
+    content_revision = marker.get("contentRevision")
+    snapshot_digest = marker.get("snapshotDigest")
+    if (
+        type(content_revision) is not int
+        or content_revision <= 0
+        or not isinstance(snapshot_digest, str)
+        or CANONICAL_AUTHORITY_DIGEST.fullmatch(snapshot_digest) is None
+    ):
+        raise RuntimeError(
+            "Post-confirm dashboard marker did not expose canonical binding authority"
+        )
+    expected_binding = (
+        f"Revision {content_revision} · snapshot {snapshot_digest[:12]}"
+    )
+    if dashboard.binding != expected_binding:
+        raise RuntimeError(
+            "Post-confirm dashboard did not expose the marker-bound revision and "
+            "snapshot digest: "
+            f"expected={expected_binding!r}, actual={dashboard.binding!r}"
+        )
 
 
 def wait_for_compact_dashboard_origin(
@@ -8212,7 +8281,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         scan_observer=progress.record_scan,
         deadline=preview_confirm_deadline,
     )
-    wait_for_creation_dashboard_ready_log(
+    dashboard_ready_marker = wait_for_creation_dashboard_ready_log(
         device,
         expected_content_revision=confirmed_revisions["contentRevision"],
         expected_saved_revision=confirmed_revisions["savedRevision"],
@@ -8225,6 +8294,10 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         scan_id="advanced-editor-gate-post-confirm",
         deadline=dashboard_deadline,
         compact_current=True,
+    )
+    require_marker_bound_post_confirm_dashboard(
+        dashboard_ready_marker,
+        post_confirm_dashboard,
     )
     if post_confirm_dashboard.binding == dashboard_binding:
         raise RuntimeError("Atomic prerequisite confirmation did not refresh the wizard revision")

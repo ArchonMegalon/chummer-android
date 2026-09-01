@@ -209,10 +209,17 @@ def post_confirm_dashboard_route_ready_scan() -> dict[str, object]:
         "scanId": AGGREGATE.POST_CONFIRM_DASHBOARD_ROUTE_READY_SCAN_ID,
         "status": "resolved",
         "phaseId": "preview-confirm",
-        "observationMode": "fresh-cleared-main-log-single-marker",
-        "logcatReadCount": 1,
+        "observationMode": "fresh-cleared-main-log-snapshot-poll",
+        "logcatReadCount": 2,
+        "emptySnapshotCount": 1,
         "logcatElapsedMs": 500,
-        "maximumLogcatReadMs": 500,
+        "maximumLogcatReadMs": 300,
+        "readAttemptMaxMs": (
+            AGGREGATE.POST_CONFIRM_DASHBOARD_ROUTE_READY_READ_ATTEMPT_MAX_MS
+        ),
+        "pollDelayMs": (
+            AGGREGATE.POST_CONFIRM_DASHBOARD_ROUTE_READY_POLL_DELAY_MS
+        ),
         "expectedContentRevision": 2,
         "observedContentRevision": 2,
         "expectedSavedRevision": 2,
@@ -223,7 +230,7 @@ def post_confirm_dashboard_route_ready_scan() -> dict[str, object]:
         "maximumElapsedMs": (
             AGGREGATE.POST_CONFIRM_DASHBOARD_ROUTE_READY_MAX_ELAPSED_MS
         ),
-        "elapsedMs": 500,
+        "elapsedMs": 750,
     }
 
 
@@ -930,9 +937,10 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             "status": "pass",
             "phaseId": "same-process-reopen",
             "observationMode": "uncleared-log",
-            "logcatReadCount": 2,
+            "readAttemptMaxMs": 5_001,
+            "pollDelayMs": 251,
             "deadlineEnforced": False,
-            "maximumElapsedMs": 20_001,
+            "maximumElapsedMs": 30_001,
         }
         for field, forged in cases.items():
             with self.subTest(field=field):
@@ -962,8 +970,9 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             "observedSavedRevision": 3,
             "workspaceId": " ",
             "snapshotDigest": "not-a-digest",
-            "logcatElapsedMs": 501,
-            "elapsedMs": 20_002,
+            "emptySnapshotCount": 2,
+            "maximumLogcatReadMs": 501,
+            "elapsedMs": 30_002,
         }
         for field, forged in cases.items():
             with self.subTest(field=field):
@@ -1001,6 +1010,51 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
         scan["observedContentRevision"] = 3
         scan["expectedSavedRevision"] = 3
         scan["observedSavedRevision"] = 3
+        with self.assertRaisesRegex(
+            ValueError,
+            "post-confirm dashboard route-ready scan did not reconcile",
+        ):
+            AGGREGATE.require_creation_timing_within_budget(receipt)
+
+    def test_creation_timing_uses_count_derived_snapshot_rounding_allowance(
+        self,
+    ) -> None:
+        receipt = json.loads(json.dumps(
+            self.raw_receipt("creation-prerequisite")
+        ))
+        scan = next(
+            candidate
+            for candidate in receipt["timing"]["scans"]
+            if candidate.get("scanId")
+            == AGGREGATE.POST_CONFIRM_DASHBOARD_ROUTE_READY_SCAN_ID
+        )
+        scan.update({
+            "logcatReadCount": 3,
+            "emptySnapshotCount": 2,
+            "logcatElapsedMs": 3,
+            "maximumLogcatReadMs": 1,
+            "elapsedMs": 500,
+        })
+        AGGREGATE.require_creation_timing_within_budget(receipt)
+
+        scan["elapsedMs"] = 499
+        with self.assertRaisesRegex(
+            ValueError,
+            "post-confirm dashboard route-ready scan did not reconcile",
+        ):
+            AGGREGATE.require_creation_timing_within_budget(receipt)
+
+    def test_creation_timing_rejects_too_small_snapshot_read_maximum(self) -> None:
+        receipt = json.loads(json.dumps(
+            self.raw_receipt("creation-prerequisite")
+        ))
+        scan = next(
+            candidate
+            for candidate in receipt["timing"]["scans"]
+            if candidate.get("scanId")
+            == AGGREGATE.POST_CONFIRM_DASHBOARD_ROUTE_READY_SCAN_ID
+        )
+        scan["maximumLogcatReadMs"] = 249
         with self.assertRaisesRegex(
             ValueError,
             "post-confirm dashboard route-ready scan did not reconcile",
