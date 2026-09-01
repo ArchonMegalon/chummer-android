@@ -6837,7 +6837,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         )
         self.assertNotIn("Navigation.NavigationStack", callback)
 
-    def test_confirmed_prerequisite_back_returns_to_shell_root_atomically(self) -> None:
+    def test_confirmed_prerequisite_back_resets_to_authored_phone_runner_route(self) -> None:
         source = (
             NATIVE / "CreationPrerequisitePreviewPage.cs"
         ).read_text(encoding="utf-8")
@@ -6846,7 +6846,20 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             source.index("private static string FormatBudget(")
         ]
 
-        self.assertEqual(1, callback.count("Navigation.PopToRootAsync(animated: false)"))
+        self.assertEqual(
+            1,
+            callback.count(
+                "await shell.GoToAsync(PhoneShellRoutes.RunnerAbsolute, animate: false);"
+            ),
+        )
+        self.assertIn(
+            "Shell.Current is not MainShell { UsesTabletComposition: false } shell",
+            callback,
+        )
+        self.assertIn("throw new InvalidOperationException(", callback)
+        self.assertNotIn("ScheduleCreationDashboardRouteReady", callback)
+        self.assertNotIn("EmitCreationDashboardRouteReady", callback)
+        self.assertNotIn("Navigation.PopToRootAsync", callback)
         self.assertNotIn("Navigation.PopAsync", callback)
         self.assertNotIn("Navigation.NavigationStack", callback)
 

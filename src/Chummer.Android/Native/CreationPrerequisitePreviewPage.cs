@@ -497,11 +497,17 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
 
     private async Task BackToBuildAsync()
     {
-        // Shell omits the current tab's ShellContent root (BuildPage) from this
-        // child navigation stack. Pop the prerequisite and preview routes as one
-        // non-animated operation so BuildPage receives one stable return rather
-        // than a transient prerequisite appearance between two separate pops.
-        await Navigation.PopToRootAsync(animated: false);
+        // Creation prerequisite pages are pushed outside Shell's visual route
+        // hierarchy.  Reset the phone Shell to its authored Runner route so Shell
+        // owns the CurrentPage/OnAppearing/Loaded transition back to BuildPage.
+        // Do not fall back to child-stack pops: they can leave no attached root.
+        if (Shell.Current is not MainShell { UsesTabletComposition: false } shell)
+        {
+            throw new InvalidOperationException(
+                "The Creation prerequisite preview can return only through the phone Runner route.");
+        }
+
+        await shell.GoToAsync(PhoneShellRoutes.RunnerAbsolute, animate: false);
     }
 
     private static string FormatBudget(decimal value, string unit)
