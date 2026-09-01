@@ -5782,10 +5782,10 @@ def choose_navigation_local_talent_options(
 ) -> tuple[tuple[str, ...], tuple[str, ...]]:
     """Choose valid options nearest the measured completion authority.
 
-    The option identifiers remain the deterministic selection authority. The
-    measured inventory is used only to choose an equally legal subset and an
-    efficient tap order, avoiding repeated full-surface traversals from the
-    stable scan end. The returned selection is canonical-ID sorted for all
+    The full option catalog remains deterministic selection authority. Only
+    enabled options observed with validated tappable bounds are eligible for
+    this physical mutation, because a clipped-only row has no measured tap
+    authority. The returned selection is canonical-ID sorted for all
     subsequent digest/state comparisons; the tap order is navigation-local.
     """
     if (
@@ -5802,18 +5802,33 @@ def choose_navigation_local_talent_options(
     if type(end_viewport) is not int:
         raise RuntimeError("Talent grant inventory emitted no exact end viewport")
     _validated_talent_navigation_end(navigation, end_viewport)
+    viewports = navigation.get("resourceViewports")
+    if not isinstance(viewports, dict):
+        raise RuntimeError("Talent grant inventory emitted no measured resource viewports")
+    measured_option_ids = tuple(
+        resource_id
+        for resource_id in available_option_ids
+        if resource_id in viewports
+    )
+    if len(measured_option_ids) < required_count:
+        raise RuntimeError(
+            "Talent grant inventory exposed too few enabled options with measured "
+            "tappable viewports: "
+            f"required={required_count}, measured={measured_option_ids!r}, "
+            f"available={available_option_ids!r}"
+        )
     completion_viewport = _measured_resource_viewport(
         navigation,
         "creation-prerequisite-talent-grant-complete",
     )
     option_viewports = {
         resource_id: _measured_resource_viewport(navigation, resource_id)
-        for resource_id in available_option_ids
+        for resource_id in measured_option_ids
     }
     selected = tuple(
         sorted(
             sorted(
-                available_option_ids,
+                measured_option_ids,
                 key=lambda resource_id: (
                     abs(option_viewports[resource_id] - completion_viewport),
                     abs(option_viewports[resource_id] - end_viewport),

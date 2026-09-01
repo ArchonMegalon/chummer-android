@@ -4714,6 +4714,42 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertEqual(option_ids[1:], selected)
         self.assertEqual((option_ids[2], option_ids[1]), tap_order)
 
+    def test_talent_choice_excludes_enabled_options_seen_only_clipped(self) -> None:
+        prefix = driver.TALENT_GRANT_OPTION_PREFIX["Active skills"]
+        clipped_id, measured_id = tuple(prefix + suffix for suffix in ("a", "b"))
+
+        selected, tap_order = driver.choose_navigation_local_talent_options(
+            (clipped_id, measured_id),
+            1,
+            {
+                "endViewport": 4,
+                "resourceViewports": {
+                    measured_id: 3,
+                    "creation-prerequisite-talent-grant-complete": 4,
+                },
+            },
+        )
+
+        self.assertEqual((measured_id,), selected)
+        self.assertEqual((measured_id,), tap_order)
+
+    def test_talent_choice_fails_closed_when_tappable_subset_is_insufficient(self) -> None:
+        prefix = driver.TALENT_GRANT_OPTION_PREFIX["Active skills"]
+        clipped_id, measured_id = tuple(prefix + suffix for suffix in ("a", "b"))
+
+        with self.assertRaisesRegex(RuntimeError, "too few enabled options"):
+            driver.choose_navigation_local_talent_options(
+                (clipped_id, measured_id),
+                2,
+                {
+                    "endViewport": 4,
+                    "resourceViewports": {
+                        measured_id: 3,
+                        "creation-prerequisite-talent-grant-complete": 4,
+                    },
+                },
+            )
+
     def test_talent_transition_waits_for_mutated_exact_option_and_same_route(self) -> None:
         option_id = (
             driver.TALENT_GRANT_OPTION_PREFIX["Active skills"] + "arcana"
