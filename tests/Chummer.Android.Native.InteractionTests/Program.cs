@@ -740,7 +740,7 @@ internal static class Program
             ContentDigest: CanonicalDigest('1'),
             SourceDigest: CanonicalDigest('2'),
             RulesetDefaults.Sr5,
-            RuntimeFingerprint: CanonicalDigest('3'),
+            RuntimeFingerprint: string.Empty,
             CharacterCreationBuildMethods.Priority,
             CharacterCreated: false,
             CharacterCreationWizardStepIds.Foundation,
@@ -792,8 +792,10 @@ internal static class Program
             && marker.WorkspaceId == workspaceId.Value
             && marker.ContentRevision == 12
             && marker.SavedRevision == 11
+            && marker.RuntimeFingerprint == string.Empty
+            && marker.BuildMethod == CharacterCreationBuildMethods.Priority
             && marker.SnapshotDigest == snapshot.SnapshotDigest,
-            "The ready marker did not preserve the exact current workspace and route authority.");
+            "The ready marker did not preserve the exact current workspace, typed build method, absent runtime authority, and route authority.");
 
         Require(
             BuildPageUiProjection.CreationDashboardRouteReady(

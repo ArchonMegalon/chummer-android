@@ -6655,8 +6655,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "savedRevision": 11,
             "contentDigest": digest,
             "sourceDigest": digest,
-            "runtimeFingerprint": digest,
-            "buildMethod": "priority",
+            "runtimeFingerprint": "",
+            "buildMethod": "Priority",
             "snapshotDigest": digest,
             "characterCreated": False,
             "authorityReady": True,
@@ -6717,8 +6717,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "savedRevision": 11,
             "contentDigest": digest,
             "sourceDigest": digest,
-            "runtimeFingerprint": digest,
-            "buildMethod": "priority",
+            "runtimeFingerprint": "",
+            "buildMethod": "Priority",
             "snapshotDigest": digest,
             "characterCreated": False,
             "authorityReady": True,
@@ -6947,8 +6947,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "savedRevision": 11,
             "contentDigest": digest,
             "sourceDigest": digest,
-            "runtimeFingerprint": digest,
-            "buildMethod": "priority",
+            "runtimeFingerprint": "",
+            "buildMethod": "Priority",
             "snapshotDigest": digest,
             "characterCreated": False,
             "authorityReady": True,
@@ -6965,6 +6965,18 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "malformed-digest": {
                 **valid,
                 "snapshotDigest": "not-a-digest",
+            },
+            "normalized-build-method": {
+                **valid,
+                "buildMethod": "priority",
+            },
+            "invented-runtime-fingerprint": {
+                **valid,
+                "runtimeFingerprint": digest,
+            },
+            "null-runtime-fingerprint": {
+                **valid,
+                "runtimeFingerprint": None,
             },
             "boolean-content-revision": {
                 **valid,
@@ -7027,6 +7039,30 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 stderr="",
             )
             with self.assertRaisesRegex(RuntimeError, "Expected one exact"):
+                driver.wait_for_creation_dashboard_ready_log(
+                    device,
+                    expected_content_revision=12,
+                    expected_saved_revision=11,
+                    deadline=driver.time.monotonic() + 30.0,
+                )
+            device.hierarchy.assert_not_called()
+            device.shell.assert_not_called()
+
+        missing_runtime = dict(valid)
+        del missing_runtime["runtimeFingerprint"]
+        with tempfile.TemporaryDirectory() as temporary:
+            device = mock.Mock()
+            device.evidence = Path(temporary)
+            device.run.return_value = subprocess.CompletedProcess(
+                args=[],
+                returncode=0,
+                stdout=(
+                    driver.CREATION_DASHBOARD_READY_PREFIX
+                    + json.dumps(missing_runtime, separators=(",", ":"))
+                ),
+                stderr="",
+            )
+            with self.assertRaisesRegex(RuntimeError, "field set differed"):
                 driver.wait_for_creation_dashboard_ready_log(
                     device,
                     expected_content_revision=12,

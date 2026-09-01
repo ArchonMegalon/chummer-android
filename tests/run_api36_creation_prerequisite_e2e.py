@@ -832,7 +832,14 @@ def wait_for_creation_dashboard_ready_log(
         "dashboardAutomationId": "creation-wizard-dashboard",
         "contentRevision": expected_content_revision,
         "savedRevision": expected_saved_revision,
-        "buildMethod": "priority",
+        # Core owns this case-sensitive typed identity. Presentation must not
+        # normalize it into a route/display token.
+        "buildMethod": "Priority",
+        # The frozen Creation projection intentionally has no whole-wizard
+        # runtime authority before Magic/Resonance supplies one. Requiring the
+        # exact empty value proves the marker did not promote a domain-specific
+        # digest or invent a global runtime fingerprint.
+        "runtimeFingerprint": "",
         "characterCreated": False,
         "authorityReady": True,
     }
@@ -844,7 +851,6 @@ def wait_for_creation_dashboard_ready_log(
     digest_fields = (
         "contentDigest",
         "sourceDigest",
-        "runtimeFingerprint",
         "snapshotDigest",
     )
     invalid_digests = [
