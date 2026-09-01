@@ -66,8 +66,11 @@ CREATION_PROSPECTIVE_PHASE_ELAPSED_MS = {
     "talent-skill-group-grant-completion": 80_000,
     "preview-confirm": 8_000,
     "same-process-reopen": 5_000,
+    "same-process-authority-options": 5_000,
     "resources-preview-confirm": 9_000,
     "process-restart-reopen": 5_772,
+    "process-restart-authority-options": 5_000,
+    "process-restart-resources": 5_000,
 }
 
 
@@ -633,7 +636,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, expected_error):
                     self.validate(root)
 
-    def test_creation_timing_uses_the_exact_current_twenty_five_phase_map(self) -> None:
+    def test_creation_timing_uses_the_exact_current_twenty_eight_phase_map(self) -> None:
         expected = {
             "device-preflight-install": 180_000,
             "initial-navigation": 60_000,
@@ -658,17 +661,20 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             "talent-skill-group-grant-completion": 180_000,
             "preview-confirm": 360_000,
             "same-process-reopen": 90_000,
+            "same-process-authority-options": 90_000,
             "resources-preview-confirm": 150_000,
             "process-restart-reopen": 90_000,
+            "process-restart-authority-options": 90_000,
+            "process-restart-resources": 90_000,
         }
         self.assertEqual(expected, AGGREGATE.CREATION_PHASE_BUDGETS_MS)
         self.assertEqual(
             tuple(expected),
             tuple(CREATION_PROSPECTIVE_PHASE_ELAPSED_MS),
         )
-        self.assertEqual(13, AGGREGATE.CREATION_TIMING_ROUNDING_TOLERANCE_MS)
+        self.assertEqual(14, AGGREGATE.CREATION_TIMING_ROUNDING_TOLERANCE_MS)
         self.assertEqual(
-            532_512,
+            547_512,
             sum(CREATION_PROSPECTIVE_PHASE_ELAPSED_MS.values()),
         )
 
@@ -1494,108 +1500,14 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                             creation_receipt_with_timing(timing)
                         )
 
-    def test_creation_timing_rejects_legacy_eleven_fourteen_sixteen_nineteen_twenty_and_twenty_one_phase_maps(
+    def test_creation_timing_rejects_legacy_phase_maps(
         self,
     ) -> None:
-        skill_group_split_phases = {
-            "talent-skill-group-preservation",
-            "talent-skill-group-reset",
-            "talent-skill-group-reselection",
-            "talent-skill-group-grant-completion",
-        }
-        legacy_twenty_one = {
-            key: value
-            for key, value in AGGREGATE.CREATION_PHASE_BUDGETS_MS.items()
-            if key not in skill_group_split_phases
-        }
-        legacy_twenty = {
-            key: value
-            for key, value in AGGREGATE.CREATION_PHASE_BUDGETS_MS.items()
-            if key not in {*skill_group_split_phases, "talent-skill-group-selection"}
-        }
-        legacy_nineteen = {
-            key: value
-            for key, value in AGGREGATE.CREATION_PHASE_BUDGETS_MS.items()
-            if key
-            not in {
-                "talent-active-grant-completion",
-                "talent-skill-group-selection",
-                *skill_group_split_phases,
-            }
-        }
-        legacy_sixteen = {
-            key: value
-            for key, value in AGGREGATE.CREATION_PHASE_BUDGETS_MS.items()
-            if key
-            not in {
-                "talent-active-skill-preservation",
-                "talent-active-skill-reset",
-                "talent-active-skill-reselection",
-                "talent-active-grant-completion",
-                "talent-skill-group-selection",
-                *skill_group_split_phases,
-            }
-        }
-        legacy_eleven = {
-            key: value
-            for key, value in AGGREGATE.CREATION_PHASE_BUDGETS_MS.items()
-            if key
-            not in {
-                "dashboard-authority-inventory",
-                "advanced-editor-gate-inventory",
-                "prerequisite-authority-inventory",
-                "talent-active-skill-grant",
-                "talent-active-skill-preservation",
-                "talent-active-skill-reset",
-                "talent-active-skill-reselection",
-                "talent-active-grant-completion",
-                "talent-active-preview",
-                "talent-skill-group-selection",
-                "talent-skill-group-grant",
-                *skill_group_split_phases,
-            }
-        }
-        legacy_eleven = {
-            **dict(tuple(legacy_eleven.items())[:4]),
-            "authority-inventory": 90_000,
-            **dict(tuple(legacy_eleven.items())[4:]),
-        }
-        legacy_fourteen = {
-            key: value
-            for key, value in AGGREGATE.CREATION_PHASE_BUDGETS_MS.items()
-            if key
-            not in {
-                "dashboard-authority-inventory",
-                "advanced-editor-gate-inventory",
-                "prerequisite-authority-inventory",
-                "talent-active-skill-preservation",
-                "talent-active-skill-reset",
-                "talent-active-skill-reselection",
-                "talent-active-grant-completion",
-                "talent-skill-group-selection",
-                *skill_group_split_phases,
-            }
-        }
-        legacy_fourteen = {
-            **dict(tuple(legacy_fourteen.items())[:4]),
-            "authority-inventory": 90_000,
-            **dict(tuple(legacy_fourteen.items())[4:]),
-        }
-        self.assertEqual(11, len(legacy_eleven))
-        self.assertEqual(14, len(legacy_fourteen))
-        self.assertEqual(16, len(legacy_sixteen))
-        self.assertEqual(19, len(legacy_nineteen))
-        self.assertEqual(20, len(legacy_twenty))
-        self.assertEqual(21, len(legacy_twenty_one))
-        for name, legacy_map in (
-            ("eleven", legacy_eleven),
-            ("fourteen", legacy_fourteen),
-            ("sixteen", legacy_sixteen),
-            ("nineteen", legacy_nineteen),
-            ("twenty", legacy_twenty),
-            ("twenty-one", legacy_twenty_one),
-        ):
-            with self.subTest(name=name):
+        current_items = tuple(AGGREGATE.CREATION_PHASE_BUDGETS_MS.items())
+        for phase_count in (11, 14, 16, 19, 20, 21, 25):
+            legacy_map = dict(current_items[:phase_count])
+            self.assertEqual(phase_count, len(legacy_map))
+            with self.subTest(phase_count=phase_count):
                 timing = json.loads(json.dumps(
                     self.raw_receipt("creation-prerequisite")["timing"]
                 ))
@@ -1605,10 +1517,10 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                         creation_receipt_with_timing(timing)
                     )
 
-    def test_creation_timing_reconciles_phase_sum_with_exact_thirteen_ms_tolerance(
+    def test_creation_timing_reconciles_phase_sum_with_exact_fourteen_ms_tolerance(
         self,
     ) -> None:
-        for offset in (-13, 13):
+        for offset in (-14, 14):
             with self.subTest(offset=offset, accepted=True):
                 timing = json.loads(json.dumps(
                     self.raw_receipt("creation-prerequisite")["timing"]
@@ -1617,7 +1529,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                 timing["totalElapsedMs"] = phase_sum + offset
                 AGGREGATE.require_creation_timing_within_budget(creation_receipt_with_timing(timing))
 
-        for offset in (-14, 14):
+        for offset in (-15, 15):
             with self.subTest(offset=offset, accepted=False):
                 timing = json.loads(json.dumps(
                     self.raw_receipt("creation-prerequisite")["timing"]

@@ -23,7 +23,7 @@ JOURNEYS = {
     "career-active-skill-advance": "career-active-skill-advance",
     "career-weapon-fire": "career-weapon-fire",
 }
-CREATION_PROGRESS_SCHEMA = "chummer.android.creation-prerequisite-progress/v3"
+CREATION_PROGRESS_SCHEMA = "chummer.android.creation-prerequisite-progress/v4"
 CREATION_TOTAL_TARGET_MS = 30 * 60 * 1000
 CREATION_METHOD_REACQUISITION_SCAN_ID = (
     "creation-stage-method-ready-reacquisition"
@@ -92,8 +92,11 @@ CREATION_PHASE_BUDGETS_MS = {
     "talent-skill-group-grant-completion": 180_000,
     "preview-confirm": 360_000,
     "same-process-reopen": 90_000,
+    "same-process-authority-options": 90_000,
     "resources-preview-confirm": 150_000,
     "process-restart-reopen": 90_000,
+    "process-restart-authority-options": 90_000,
+    "process-restart-resources": 90_000,
 }
 CREATION_MILESTONES = (
     ("app-cold-start-complete", "initial-navigation"),

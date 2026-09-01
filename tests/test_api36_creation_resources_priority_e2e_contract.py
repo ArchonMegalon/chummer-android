@@ -31,8 +31,12 @@ class Api36CreationResourcesPriorityE2EContractTests(unittest.TestCase):
         text = DRIVER.read_text(encoding="utf-8")
         restart = text[text.index('progress.advance("process-restart-reopen")') :]
         self.assertIn("shared.force_stop_and_launch_new_process", restart)
-        self.assertIn("open_resources(device)", restart)
-        self.assertIn("read_persisted_resources_authority(device, resources_receipt)", restart)
+        self.assertIn(
+            "open_resources(device, deadline=process_restart_resources_deadline)",
+            restart,
+        )
+        self.assertIn("read_persisted_resources_authority(\n        device,", restart)
+        self.assertIn("deadline=process_restart_resources_deadline", restart)
         for field in (
             'saved["optionId"] != expected_receipt["optionId"]',
             'saved["draftRevision"] != expected_receipt["draftRevision"]',
@@ -47,12 +51,13 @@ class Api36CreationResourcesPriorityE2EContractTests(unittest.TestCase):
             text.index('progress.advance("resources-preview-confirm")'),
         )
         for expression in (
-            'post_resources_prerequisite_authority = read_persisted_prerequisite_authority(device)',
+            'post_resources_prerequisite_authority = read_persisted_prerequisite_authority(',
+            'scan_id="post-resources-persisted-prerequisite-authority"',
             'post_resources_binding_digests["auxiliaryState"]',
             '== confirmed_binding_digests["auxiliaryState"]',
             'int(resources_receipt["workspaceRevision"])',
             'int(resources_receipt["savedRevision"])',
-            '"prerequisiteAuthorityAfterResources": post_resources_prerequisite_authority',
+            'post_resources_prerequisite_authority.authority',
         ):
             self.assertIn(expression, text)
 

@@ -2259,13 +2259,24 @@ class Device:
         timeout: int = 45,
         evidence_prefix: str,
         surface_name: str,
+        deadline: float | None = None,
     ) -> UiNode:
         """Bind one exact resource-id/content-desc value without prefix fallback."""
-        deadline = time.monotonic() + timeout
-        while time.monotonic() < deadline:
+        timeout_deadline = time.monotonic() + timeout
+        operation_deadline = (
+            timeout_deadline
+            if deadline is None
+            else min(timeout_deadline, deadline)
+        )
+        while time.monotonic() < operation_deadline:
+            nodes = (
+                self.hierarchy()
+                if deadline is None
+                else self.hierarchy(deadline=operation_deadline)
+            )
             matches = [
                 node
-                for node in self.hierarchy()
+                for node in nodes
                 if selector
                 in {
                     node.attributes.get("resource-id", "").rsplit("/", 1)[-1],
@@ -2275,16 +2286,42 @@ class Device:
             if len(matches) == 1:
                 return matches[0]
             if len(matches) > 1:
-                self.capture(f"{evidence_prefix}-cardinality-invalid")
+                if deadline is None:
+                    self.capture(f"{evidence_prefix}-cardinality-invalid")
+                else:
+                    self.capture(
+                        f"{evidence_prefix}-cardinality-invalid",
+                        deadline=operation_deadline,
+                    )
                 raise RuntimeError(
                     f"{surface_name} {selector!r} has cardinality {len(matches)}; "
                     "expected exactly one"
                 )
-            if self.dismiss_system_ui_anr():
-                time.sleep(2)
+            dismissed = (
+                self.dismiss_system_ui_anr()
+                if deadline is None
+                else self.dismiss_system_ui_anr(
+                    nodes,
+                    deadline=operation_deadline,
+                )
+            )
+            if dismissed:
+                _sleep_before_operation_deadline(
+                    2,
+                    deadline=None if deadline is None else operation_deadline,
+                )
                 continue
-            time.sleep(0.75)
-        self.capture(f"{evidence_prefix}-unavailable")
+            _sleep_before_operation_deadline(
+                0.75,
+                deadline=None if deadline is None else operation_deadline,
+            )
+        if deadline is None:
+            self.capture(f"{evidence_prefix}-unavailable")
+        else:
+            self.capture(
+                f"{evidence_prefix}-unavailable",
+                deadline=operation_deadline,
+            )
         raise RuntimeError(
             f"Timed out waiting for exactly one {surface_name.lower()} {selector!r}"
         )
@@ -3600,7 +3637,14 @@ def _phone_runner_route_from_nodes(
     *,
     created: bool | None,
     require_tappable_bounds: bool,
+    deadline: float | None = None,
 ) -> UiNode | None:
+    def capture(name: str) -> None:
+        if deadline is None:
+            device.capture(name)
+        else:
+            device.capture(name, deadline=deadline)
+
     expected_routes = {"phone-runner-create", "phone-runner-sheet"}
     desired_route = (
         None
@@ -3621,7 +3665,7 @@ def _phone_runner_route_from_nodes(
     if len(matches) == 1:
         observed_route, node = matches[0]
         if desired_route is not None and observed_route != desired_route:
-            device.capture("phone-runner-route-lifecycle-mismatch")
+            capture("phone-runner-route-lifecycle-mismatch")
             raise RuntimeError(
                 f"Final phone runner route was {observed_route!r}; "
                 f"expected sole root {desired_route!r}"
@@ -3638,20 +3682,24 @@ def _phone_runner_route_from_nodes(
             or node.attributes.get("focusable") != "false"
             or node.attributes.get("text") != expected_label
         ):
-            device.capture("phone-runner-route-structure-invalid")
+            capture("phone-runner-route-structure-invalid")
             raise RuntimeError(
                 "Exact phone runner lifecycle marker did not expose its pinned "
                 "noninteractive native role and label"
             )
-        if require_tappable_bounds and not device.node_has_tappable_bounds(node):
-            device.capture("phone-runner-route-structure-invalid")
+        if require_tappable_bounds and not (
+            device.node_has_tappable_bounds(node)
+            if deadline is None
+            else device.node_has_tappable_bounds(node, deadline=deadline)
+        ):
+            capture("phone-runner-route-structure-invalid")
             raise RuntimeError(
                 "Exact phone runner lifecycle marker was not visible with its "
                 "pinned native role after the root viewport reset"
             )
         return node
     if len(matches) > 1:
-        device.capture("phone-runner-route-cardinality-invalid")
+        capture("phone-runner-route-cardinality-invalid")
         raise RuntimeError(
             "Final phone runner route exposed both creation and career roots"
         )
@@ -3663,11 +3711,19 @@ def wait_for_phone_runner_route(
     *,
     created: bool | None = None,
     timeout: int = 90,
+    deadline: float | None = None,
 ) -> UiNode:
+    if deadline is None:
+        return return_to_phone_runner_root(
+            device,
+            created=created,
+            timeout=timeout,
+        )
     return return_to_phone_runner_root(
         device,
         created=created,
         timeout=timeout,
+        deadline=deadline,
     )
 
 
@@ -3737,6 +3793,8 @@ def detect_phone_ui_locale(device: Device) -> PhoneUiLocaleBinding:
 def bind_phone_shell_destinations(
     device: Device,
     nodes: list[UiNode] | None = None,
+    *,
+    deadline: float | None = None,
 ) -> tuple[tuple[str, UiNode], ...]:
     """Bind the pinned MAUI Android bottom bar without trusting text aliases.
 
@@ -3745,8 +3803,18 @@ def bind_phone_shell_destinations(
     order, focus/click state and one selected destination form the fail-closed
     identity instead. Any non-empty resource-id fails this pinned contract.
     """
-    hierarchy = device.hierarchy() if nodes is None else nodes
-    display_width, display_height = device.display_size()
+    hierarchy = (
+        device.hierarchy()
+        if nodes is None and deadline is None
+        else device.hierarchy(deadline=deadline)
+        if nodes is None
+        else nodes
+    )
+    display_width, display_height = (
+        device.display_size()
+        if deadline is None
+        else device.display_size(deadline=deadline)
+    )
     candidates = [
         node
         for node in hierarchy
@@ -3868,13 +3936,23 @@ def wait_for_phone_shell_destination_snapshot(
     evidence_prefix: str,
     selected_label: str | None = None,
     required_route_resource_id: str | None = None,
+    deadline: float | None = None,
 ) -> tuple[list[UiNode], tuple[tuple[str, UiNode], ...]]:
-    deadline = time.monotonic() + timeout
+    timeout_deadline = time.monotonic() + timeout
+    operation_deadline = (
+        timeout_deadline
+        if deadline is None
+        else min(timeout_deadline, deadline)
+    )
     last_error = "native phone bottom bar was absent"
     previous_signature: tuple[tuple[object, ...], ...] | None = None
-    while time.monotonic() < deadline:
+    while time.monotonic() < operation_deadline:
         binding_failed = False
-        hierarchy = device.hierarchy()
+        hierarchy = (
+            device.hierarchy()
+            if deadline is None
+            else device.hierarchy(deadline=operation_deadline)
+        )
         route_signature: tuple[object, ...] = ()
         if required_route_resource_id is not None:
             route_matches = [
@@ -3884,7 +3962,13 @@ def wait_for_phone_shell_destination_snapshot(
                 == required_route_resource_id
             ]
             if len(route_matches) > 1:
-                device.capture(f"{evidence_prefix}-route-cardinality-invalid")
+                if deadline is None:
+                    device.capture(f"{evidence_prefix}-route-cardinality-invalid")
+                else:
+                    device.capture(
+                        f"{evidence_prefix}-route-cardinality-invalid",
+                        deadline=operation_deadline,
+                    )
                 raise RuntimeError(
                     f"Required phone route {required_route_resource_id!r} has "
                     f"cardinality {len(route_matches)}; expected one"
@@ -3894,7 +3978,10 @@ def wait_for_phone_shell_destination_snapshot(
                     f"required phone route {required_route_resource_id!r} was absent"
                 )
                 previous_signature = None
-                time.sleep(0.75)
+                _sleep_before_operation_deadline(
+                    0.75,
+                    deadline=None if deadline is None else operation_deadline,
+                )
                 continue
             route = route_matches[0]
             route_signature = (
@@ -3904,7 +3991,15 @@ def wait_for_phone_shell_destination_snapshot(
                 route.attributes.get("bounds", ""),
             )
         try:
-            destinations = bind_phone_shell_destinations(device, hierarchy)
+            destinations = (
+                bind_phone_shell_destinations(device, hierarchy)
+                if deadline is None
+                else bind_phone_shell_destinations(
+                    device,
+                    hierarchy,
+                    deadline=operation_deadline,
+                )
+            )
             selected = [
                 PHONE_SHELL_DESTINATION_MAPPING[resource_id]
                 for resource_id, node in destinations
@@ -3929,11 +4024,31 @@ def wait_for_phone_shell_destination_snapshot(
             last_error = str(error)
             previous_signature = None
             binding_failed = True
-        if binding_failed and device.dismiss_system_ui_anr():
-            time.sleep(2)
+        dismissed = (
+            binding_failed
+            and (
+                device.dismiss_system_ui_anr()
+                if deadline is None
+                else device.dismiss_system_ui_anr(
+                    hierarchy,
+                    deadline=operation_deadline,
+                )
+            )
+        )
+        if dismissed:
+            _sleep_before_operation_deadline(
+                2,
+                deadline=None if deadline is None else operation_deadline,
+            )
             continue
-        time.sleep(0.75)
-    device.capture(f"{evidence_prefix}-invalid")
+        _sleep_before_operation_deadline(
+            0.75,
+            deadline=None if deadline is None else operation_deadline,
+        )
+    if deadline is None:
+        device.capture(f"{evidence_prefix}-invalid")
+    else:
+        device.capture(f"{evidence_prefix}-invalid", deadline=operation_deadline)
     raise RuntimeError(
         f"Timed out waiting for structurally bound phone destinations: {last_error}"
     )
@@ -3945,12 +4060,23 @@ def wait_for_phone_shell_destinations(
     timeout: int,
     evidence_prefix: str,
     selected_label: str | None = None,
+    deadline: float | None = None,
 ) -> tuple[tuple[str, UiNode], ...]:
-    _, destinations = wait_for_phone_shell_destination_snapshot(
-        device,
-        timeout=timeout,
-        evidence_prefix=evidence_prefix,
-        selected_label=selected_label,
+    _, destinations = (
+        wait_for_phone_shell_destination_snapshot(
+            device,
+            timeout=timeout,
+            evidence_prefix=evidence_prefix,
+            selected_label=selected_label,
+        )
+        if deadline is None
+        else wait_for_phone_shell_destination_snapshot(
+            device,
+            timeout=timeout,
+            evidence_prefix=evidence_prefix,
+            selected_label=selected_label,
+            deadline=deadline,
+        )
     )
     return destinations
 
@@ -4011,14 +4137,24 @@ def tap_phone_destination(
     resource_id: str,
     *,
     timeout: int = 45,
+    deadline: float | None = None,
 ) -> None:
     if resource_id not in PHONE_SHELL_DESTINATION_MAPPING:
         raise ValueError(f"Unknown phone shell destination {resource_id!r}")
     label = PHONE_SHELL_DESTINATION_MAPPING[resource_id]
-    destinations = wait_for_phone_shell_destinations(
-        device,
-        timeout=timeout,
-        evidence_prefix=f"{resource_id}-tap-bind",
+    destinations = (
+        wait_for_phone_shell_destinations(
+            device,
+            timeout=timeout,
+            evidence_prefix=f"{resource_id}-tap-bind",
+        )
+        if deadline is None
+        else wait_for_phone_shell_destinations(
+            device,
+            timeout=timeout,
+            evidence_prefix=f"{resource_id}-tap-bind",
+            deadline=deadline,
+        )
     )
     selected_before_tap = next(
         candidate_id
@@ -4028,16 +4164,29 @@ def tap_phone_destination(
     if selected_before_tap == resource_id:
         return
     selected_label_before_tap = PHONE_SHELL_DESTINATION_MAPPING[selected_before_tap]
-    fresh_destinations = wait_for_phone_shell_destinations(
-        device,
-        timeout=timeout,
-        evidence_prefix=f"{resource_id}-tap-reacquire",
-        selected_label=selected_label_before_tap,
+    fresh_destinations = (
+        wait_for_phone_shell_destinations(
+            device,
+            timeout=timeout,
+            evidence_prefix=f"{resource_id}-tap-reacquire",
+            selected_label=selected_label_before_tap,
+        )
+        if deadline is None
+        else wait_for_phone_shell_destinations(
+            device,
+            timeout=timeout,
+            evidence_prefix=f"{resource_id}-tap-reacquire",
+            selected_label=selected_label_before_tap,
+            deadline=deadline,
+        )
     )
     if _phone_shell_destination_signature(fresh_destinations) != (
         _phone_shell_destination_signature(destinations)
     ):
-        device.capture(f"{resource_id}-tap-stale")
+        if deadline is None:
+            device.capture(f"{resource_id}-tap-stale")
+        else:
+            device.capture(f"{resource_id}-tap-stale", deadline=deadline)
         raise RuntimeError(
             "Native phone bottom bar changed between stable binding and tap; "
             "refusing stale coordinates"
@@ -4046,13 +4195,30 @@ def tap_phone_destination(
         node for candidate_id, node in fresh_destinations if candidate_id == resource_id
     )
     x, y = node.center
-    device.shell("input", "tap", str(x), str(y))
-    wait_for_phone_shell_destinations(
-        device,
-        timeout=timeout,
-        evidence_prefix=f"{resource_id}-tap-select",
-        selected_label=label,
-    )
+    if deadline is None:
+        device.shell("input", "tap", str(x), str(y))
+        wait_for_phone_shell_destinations(
+            device,
+            timeout=timeout,
+            evidence_prefix=f"{resource_id}-tap-select",
+            selected_label=label,
+        )
+    else:
+        device.shell(
+            "input",
+            "tap",
+            str(x),
+            str(y),
+            timeout=_remaining_operation_timeout(deadline=deadline, maximum=15),
+            deadline=deadline,
+        )
+        wait_for_phone_shell_destinations(
+            device,
+            timeout=timeout,
+            evidence_prefix=f"{resource_id}-tap-select",
+            selected_label=label,
+            deadline=deadline,
+        )
 
 
 def assert_phone_shell_surface(
@@ -4230,14 +4396,29 @@ def save_and_read_workspace_authority(
     return authority
 
 
-def open_build(device: Device, profile: str) -> None:
+def open_build(
+    device: Device,
+    profile: str,
+    *,
+    deadline: float | None = None,
+) -> None:
     if profile == "tablet":
+        if deadline is not None:
+            raise RuntimeError("Deadline-bound tablet Build navigation is deferred")
         device.open_navigation_drawer()
         device.tap("Build")
         device.wait("tablet-build-layout", timeout=45)
         return
-    tap_phone_destination(device, "phone-destination-runner")
-    return_to_phone_runner_root(device)
+    if deadline is None:
+        tap_phone_destination(device, "phone-destination-runner")
+        return_to_phone_runner_root(device)
+    else:
+        tap_phone_destination(
+            device,
+            "phone-destination-runner",
+            deadline=deadline,
+        )
+        return_to_phone_runner_root(device, deadline=deadline)
 
 
 def reset_scroll_to_top(
@@ -4245,12 +4426,16 @@ def reset_scroll_to_top(
     *,
     x_ratio: float = 0.5,
     swipes: int = 2,
+    deadline: float | None = None,
 ) -> None:
     for _ in range(swipes):
-        device.swipe_down(x_ratio=x_ratio)
-        time.sleep(0.2)
+        if deadline is None:
+            device.swipe_down(x_ratio=x_ratio)
+        else:
+            device.swipe_down(x_ratio=x_ratio, deadline=deadline)
+        _sleep_before_operation_deadline(0.2, deadline=deadline)
     if swipes > 0:
-        time.sleep(0.75)
+        _sleep_before_operation_deadline(0.75, deadline=deadline)
 
 
 def return_to_phone_runner_root(
@@ -4259,6 +4444,7 @@ def return_to_phone_runner_root(
     created: bool | None = None,
     timeout: int = 90,
     max_back_steps: int = 8,
+    deadline: float | None = None,
 ) -> UiNode:
     """Unwind a preserved Shell Build stack and prove its exact root.
 
@@ -4269,23 +4455,63 @@ def return_to_phone_runner_root(
     platform's exact ``Navigate up`` control. This keeps recovery bounded and
     prevents a stale collection editor from being mistaken for the Build root.
     """
-    deadline = time.monotonic() + timeout
+    timeout_deadline = time.monotonic() + timeout
+    operation_deadline = (
+        timeout_deadline
+        if deadline is None
+        else min(timeout_deadline, deadline)
+    )
+    caller_deadline = operation_deadline if deadline is not None else None
+
+    def capture(name: str) -> None:
+        if deadline is None:
+            device.capture(name)
+        else:
+            device.capture(name, deadline=operation_deadline)
+
+    def wait_before_retry(seconds: float) -> None:
+        if caller_deadline is None:
+            time.sleep(seconds)
+        else:
+            _sleep_before_operation_deadline(
+                seconds,
+                deadline=caller_deadline,
+            )
+
     back_steps = 0
     viewport_reset = False
-    while time.monotonic() < deadline:
-        nodes = device.hierarchy(deadline=deadline)
+    while time.monotonic() < operation_deadline:
+        nodes = device.hierarchy(deadline=operation_deadline)
         if not nodes:
-            if device.dismiss_system_ui_anr(nodes):
-                time.sleep(2)
+            dismissed = (
+                device.dismiss_system_ui_anr(nodes)
+                if caller_deadline is None
+                else device.dismiss_system_ui_anr(
+                    nodes,
+                    deadline=caller_deadline,
+                )
+            )
+            if dismissed:
+                wait_before_retry(2)
             else:
-                time.sleep(0.75)
+                wait_before_retry(0.75)
             continue
 
-        route = _phone_runner_route_from_nodes(
-            device,
-            nodes,
-            created=created,
-            require_tappable_bounds=viewport_reset,
+        route = (
+            _phone_runner_route_from_nodes(
+                device,
+                nodes,
+                created=created,
+                require_tappable_bounds=viewport_reset,
+            )
+            if caller_deadline is None
+            else _phone_runner_route_from_nodes(
+                device,
+                nodes,
+                created=created,
+                require_tappable_bounds=viewport_reset,
+                deadline=caller_deadline,
+            )
         )
         page_matches = [
             node
@@ -4295,7 +4521,7 @@ def return_to_phone_runner_root(
             and node.attributes.get("enabled") == "true"
         ]
         if len(page_matches) > 1:
-            device.capture("phone-runner-root-page-cardinality-invalid")
+            capture("phone-runner-root-page-cardinality-invalid")
             raise RuntimeError(
                 "Phone runner root exposed more than one exact phone-runner-page marker"
             )
@@ -4311,36 +4537,67 @@ def return_to_phone_runner_root(
             and node.attributes.get("focusable") == "true"
         ]
         if len(toolbar_matches) > 1:
-            device.capture("phone-runner-root-toolbar-cardinality-invalid")
+            capture("phone-runner-root-toolbar-cardinality-invalid")
             raise RuntimeError(
                 "Phone runner root exposed more than one exact build-save-runner toolbar"
             )
         root_authority = (
             len(page_matches) == 1
             and len(toolbar_matches) == 1
-            and device.node_has_tappable_bounds(page_matches[0])
-            and device.node_has_tappable_bounds(toolbar_matches[0])
+            and (
+                device.node_has_tappable_bounds(page_matches[0])
+                if caller_deadline is None
+                else device.node_has_tappable_bounds(
+                    page_matches[0],
+                    deadline=caller_deadline,
+                )
+            )
+            and (
+                device.node_has_tappable_bounds(toolbar_matches[0])
+                if caller_deadline is None
+                else device.node_has_tappable_bounds(
+                    toolbar_matches[0],
+                    deadline=caller_deadline,
+                )
+            )
         )
         if root_authority:
-            if route is not None and device.node_has_tappable_bounds(route):
+            route_tappable = (
+                False
+                if route is None
+                else device.node_has_tappable_bounds(route)
+                if caller_deadline is None
+                else device.node_has_tappable_bounds(
+                    route,
+                    deadline=caller_deadline,
+                )
+            )
+            if route is not None and route_tappable:
                 return route
             if not viewport_reset:
                 # The lifecycle marker is the first child of BuildPage's
                 # ScrollView and can be clipped by a preserved deep offset.
                 # Only an exact immutable page plus root-only toolbar authorizes
                 # the reset; the route marker must then become visible before return.
-                rewind_surface_to_stable_start(
-                    device,
-                    evidence_prefix="phone-runner-root",
-                )
+                if caller_deadline is None:
+                    rewind_surface_to_stable_start(
+                        device,
+                        evidence_prefix="phone-runner-root",
+                    )
+                else:
+                    rewind_surface_to_stable_start(
+                        device,
+                        evidence_prefix="phone-runner-root",
+                        deadline=caller_deadline,
+                    )
                 viewport_reset = True
                 continue
             # Never treat the toolbar alone as final route authority.
-            time.sleep(0.75)
+            wait_before_retry(0.75)
             continue
 
         if back_steps >= max_back_steps:
-            device.capture("phone-runner-root-unwind-exhausted")
+            capture("phone-runner-root-unwind-exhausted")
             raise RuntimeError(
                 "Phone runner root remained unavailable after "
                 f"{max_back_steps} exact Navigate up activations"
@@ -4358,24 +4615,56 @@ def return_to_phone_runner_root(
             and node.attributes.get("focusable") == "true"
         ]
         if len(navigate_up) > 1:
-            device.capture("phone-runner-root-navigation-cardinality-invalid")
+            capture("phone-runner-root-navigation-cardinality-invalid")
             raise RuntimeError(
                 "Phone runner stack exposed more than one exact Navigate up control"
             )
-        if len(navigate_up) == 1 and device.node_has_tappable_bounds(navigate_up[0]):
+        navigate_up_tappable = (
+            len(navigate_up) == 1
+            and (
+                device.node_has_tappable_bounds(navigate_up[0])
+                if caller_deadline is None
+                else device.node_has_tappable_bounds(
+                    navigate_up[0],
+                    deadline=caller_deadline,
+                )
+            )
+        )
+        if navigate_up_tappable:
             x, y = navigate_up[0].center
-            device.shell("input", "tap", str(x), str(y))
+            if caller_deadline is None:
+                device.shell("input", "tap", str(x), str(y))
+            else:
+                device.shell(
+                    "input",
+                    "tap",
+                    str(x),
+                    str(y),
+                    timeout=_remaining_operation_timeout(
+                        deadline=caller_deadline,
+                        maximum=15,
+                    ),
+                    deadline=caller_deadline,
+                )
             back_steps += 1
             viewport_reset = False
-            time.sleep(0.75)
+            wait_before_retry(0.75)
             continue
 
-        if device.dismiss_system_ui_anr(nodes):
-            time.sleep(2)
+        dismissed = (
+            device.dismiss_system_ui_anr(nodes)
+            if caller_deadline is None
+            else device.dismiss_system_ui_anr(
+                nodes,
+                deadline=caller_deadline,
+            )
+        )
+        if dismissed:
+            wait_before_retry(2)
             continue
-        time.sleep(0.75)
+        wait_before_retry(0.75)
 
-    device.capture("phone-runner-root-unavailable")
+    capture("phone-runner-root-unavailable")
     raise RuntimeError(
         "Timed out proving the exact phone runner root and build-save-runner toolbar"
     )
@@ -4389,6 +4678,7 @@ def open_creation_dashboard(
     toolbar_timeout: int = 90,
     dashboard_timeout: int = 90,
     reset_swipes: int = 48,
+    deadline: float | None = None,
 ) -> UiNode:
     """Open and bind the phone creation dashboard without viewport assumptions.
 
@@ -4404,19 +4694,38 @@ def open_creation_dashboard(
             "The creation dashboard API 36 proof is phone-only; tablet proof is deferred"
         )
     if open_build_route:
-        open_build(device, profile)
+        if deadline is None:
+            open_build(device, profile)
+        else:
+            open_build(device, profile, deadline=deadline)
+    if deadline is None:
+        device.wait_for_single_exact_accessibility_value(
+            "build-save-runner",
+            timeout=toolbar_timeout,
+            evidence_prefix="creation-dashboard-toolbar",
+            surface_name="Creation dashboard toolbar accessibility node",
+        )
+        reset_scroll_to_top(device, swipes=reset_swipes)
+        return device.wait_for_single_exact_resource_id(
+            "creation-wizard-dashboard",
+            timeout=dashboard_timeout,
+            evidence_prefix="creation-dashboard",
+            surface_name="Creation dashboard resource node",
+        )
     device.wait_for_single_exact_accessibility_value(
         "build-save-runner",
         timeout=toolbar_timeout,
         evidence_prefix="creation-dashboard-toolbar",
         surface_name="Creation dashboard toolbar accessibility node",
+        deadline=deadline,
     )
-    reset_scroll_to_top(device, swipes=reset_swipes)
+    reset_scroll_to_top(device, swipes=reset_swipes, deadline=deadline)
     return device.wait_for_single_exact_resource_id(
         "creation-wizard-dashboard",
         timeout=dashboard_timeout,
         evidence_prefix="creation-dashboard",
         surface_name="Creation dashboard resource node",
+        deadline=deadline,
     )
 
 
@@ -4460,6 +4769,7 @@ def rewind_surface_to_stable_start(
     device: Device,
     *,
     evidence_prefix: str,
+    deadline: float | None = None,
 ) -> int:
     """Prove a scroll surface's start through fresh post-gesture snapshots."""
     previous_sha256: str | None = None
@@ -4467,15 +4777,25 @@ def rewind_surface_to_stable_start(
     swipes = 0
     consecutive_empty_reads = 0
     while swipes <= COLLECTION_ROUTE_SCAN_MAX_SCROLLS:
-        nodes = device.hierarchy()
+        nodes = (
+            device.hierarchy()
+            if deadline is None
+            else device.hierarchy(deadline=deadline)
+        )
         if not nodes:
             consecutive_empty_reads += 1
             if consecutive_empty_reads > 3:
-                device.capture(f"{evidence_prefix}-stable-start-empty-hierarchy")
+                if deadline is None:
+                    device.capture(f"{evidence_prefix}-stable-start-empty-hierarchy")
+                else:
+                    device.capture(
+                        f"{evidence_prefix}-stable-start-empty-hierarchy",
+                        deadline=deadline,
+                    )
                 raise RuntimeError(
                     "Collection route stable-start proof exhausted empty hierarchies"
                 )
-            time.sleep(0.75)
+            _sleep_before_operation_deadline(0.75, deadline=deadline)
             continue
         consecutive_empty_reads = 0
         hierarchy_sha256 = Device._hierarchy_sha256(nodes)
@@ -4485,13 +4805,23 @@ def rewind_surface_to_stable_start(
             return swipes - COLLECTION_ROUTE_SCAN_STABLE_REPEATS
         if swipes >= COLLECTION_ROUTE_SCAN_MAX_SCROLLS:
             break
-        device.swipe_down(
-            x_ratio=0.5,
-            distance_ratio=COLLECTION_ROUTE_SCAN_DISTANCE_RATIO,
-        )
+        if deadline is None:
+            device.swipe_down(
+                x_ratio=0.5,
+                distance_ratio=COLLECTION_ROUTE_SCAN_DISTANCE_RATIO,
+            )
+        else:
+            device.swipe_down(
+                x_ratio=0.5,
+                distance_ratio=COLLECTION_ROUTE_SCAN_DISTANCE_RATIO,
+                deadline=deadline,
+            )
         swipes += 1
-        time.sleep(0.2)
-    device.capture(f"{evidence_prefix}-stable-start-unproven")
+        _sleep_before_operation_deadline(0.2, deadline=deadline)
+    if deadline is None:
+        device.capture(f"{evidence_prefix}-stable-start-unproven")
+    else:
+        device.capture(f"{evidence_prefix}-stable-start-unproven", deadline=deadline)
     raise RuntimeError(
         "Collection route surface did not prove its stable start within the exact bound"
     )
@@ -5846,8 +6176,24 @@ def normalize_component(value: str) -> str | None:
     return f"{package}/{activity}"
 
 
-def launcher_component(device: Device) -> str:
-    package_paths = device.shell("pm", "path", "--user", "current", PACKAGE)
+def launcher_component(
+    device: Device,
+    *,
+    deadline: float | None = None,
+) -> str:
+    package_paths = (
+        device.shell("pm", "path", "--user", "current", PACKAGE)
+        if deadline is None
+        else device.shell(
+            "pm",
+            "path",
+            "--user",
+            "current",
+            PACKAGE,
+            timeout=_remaining_operation_timeout(deadline=deadline, maximum=120),
+            deadline=deadline,
+        )
+    )
     installed_paths = [
         line.removeprefix("package:").strip()
         for line in package_paths.splitlines()
@@ -5856,7 +6202,7 @@ def launcher_component(device: Device) -> str:
     if not installed_paths:
         raise RuntimeError(f"The exact E2E package is not installed: {PACKAGE}")
 
-    output = device.shell(
+    resolver_arguments = (
         "cmd",
         "package",
         "resolve-activity",
@@ -5869,6 +6215,15 @@ def launcher_component(device: Device) -> str:
         LAUNCHER_CATEGORY,
         "-p",
         PACKAGE,
+    )
+    output = (
+        device.shell(*resolver_arguments)
+        if deadline is None
+        else device.shell(
+            *resolver_arguments,
+            timeout=_remaining_operation_timeout(deadline=deadline, maximum=120),
+            deadline=deadline,
+        )
     )
     components = {
         normalized
@@ -5912,9 +6267,20 @@ def _write_launch_evidence(device: Device, name: str, value: object) -> None:
     (device.evidence / name).write_text(_bounded_evidence(value), encoding="utf-8")
 
 
-def _safe_shell(device: Device, *arguments: str, timeout: int = 30) -> str:
+def _safe_shell(
+    device: Device,
+    *arguments: str,
+    timeout: int = 30,
+    deadline: float | None = None,
+) -> str:
     try:
-        return device.shell(*arguments, timeout=timeout)
+        if deadline is None:
+            return device.shell(*arguments, timeout=timeout)
+        return device.shell(
+            *arguments,
+            timeout=_remaining_operation_timeout(deadline=deadline, maximum=timeout),
+            deadline=deadline,
+        )
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
         return "\n".join(
             part
@@ -5927,15 +6293,38 @@ def _safe_shell(device: Device, *arguments: str, timeout: int = 30) -> str:
         )
 
 
-def current_launch_state(device: Device) -> LaunchState:
+def current_launch_state(
+    device: Device,
+    *,
+    deadline: float | None = None,
+) -> LaunchState:
     try:
-        process_output = device.shell("pidof", PACKAGE, timeout=15)
+        process_output = (
+            device.shell("pidof", PACKAGE, timeout=15)
+            if deadline is None
+            else device.shell(
+                "pidof",
+                PACKAGE,
+                timeout=_remaining_operation_timeout(deadline=deadline, maximum=15),
+                deadline=deadline,
+            )
+        )
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
         process_output = ""
     process_ids = tuple(
         token for token in process_output.split() if PROCESS_ID.fullmatch(token)
     )
-    activity_dump = _safe_shell(device, "dumpsys", "activity", "activities")
+    activity_dump = (
+        _safe_shell(device, "dumpsys", "activity", "activities")
+        if deadline is None
+        else _safe_shell(
+            device,
+            "dumpsys",
+            "activity",
+            "activities",
+            deadline=deadline,
+        )
+    )
     return LaunchState(
         process_ids=process_ids,
         resumed_component=resumed_activity(activity_dump),
@@ -6322,6 +6711,8 @@ def capture_launch_diagnostics(
     start_result: subprocess.CompletedProcess | None,
     start_error: BaseException | None,
     state: LaunchState,
+    *,
+    deadline: float | None = None,
 ) -> str:
     prefix = f"launch-attempt-{attempt}"
     _write_launch_evidence(
@@ -6358,16 +6749,37 @@ def capture_launch_diagnostics(
     _write_launch_evidence(
         device,
         f"{prefix}-window.txt",
-        _safe_shell(device, "dumpsys", "window", "windows"),
+        (
+            _safe_shell(device, "dumpsys", "window", "windows")
+            if deadline is None
+            else _safe_shell(
+                device,
+                "dumpsys",
+                "window",
+                "windows",
+                deadline=deadline,
+            )
+        ),
     )
     _write_launch_evidence(
         device,
         f"{prefix}-exit-info.txt",
-        _safe_shell(device, "dumpsys", "activity", "exit-info", PACKAGE),
+        (
+            _safe_shell(device, "dumpsys", "activity", "exit-info", PACKAGE)
+            if deadline is None
+            else _safe_shell(
+                device,
+                "dumpsys",
+                "activity",
+                "exit-info",
+                PACKAGE,
+                deadline=deadline,
+            )
+        ),
     )
     diagnostic_logs: list[str] = []
     try:
-        logcat_result = device.run(
+        logcat_arguments = (
             "logcat",
             "-d",
             "-b",
@@ -6376,8 +6788,16 @@ def capture_launch_diagnostics(
             "threadtime",
             "-t",
             "4000",
-            timeout=60,
-            check=False,
+        )
+        logcat_result = (
+            device.run(*logcat_arguments, timeout=60, check=False)
+            if deadline is None
+            else device.run(
+                *logcat_arguments,
+                timeout=_remaining_operation_timeout(deadline=deadline, maximum=60),
+                check=False,
+                deadline=deadline,
+            )
         )
         logcat = _bounded_evidence(logcat_result.stdout)
         if logcat_result.stderr:
@@ -6388,15 +6808,26 @@ def capture_launch_diagnostics(
     diagnostic_logs.append(logcat)
     for buffer_name in ("events", "crash"):
         try:
-            buffer_result = device.run(
+            buffer_arguments = (
                 "logcat",
                 "-d",
                 "-b",
                 buffer_name,
                 "-v",
                 "threadtime",
-                timeout=60,
-                check=False,
+            )
+            buffer_result = (
+                device.run(*buffer_arguments, timeout=60, check=False)
+                if deadline is None
+                else device.run(
+                    *buffer_arguments,
+                    timeout=_remaining_operation_timeout(
+                        deadline=deadline,
+                        maximum=60,
+                    ),
+                    check=False,
+                    deadline=deadline,
+                )
             )
             buffer_log = _bounded_evidence(buffer_result.stdout)
             if buffer_result.stderr:
@@ -6415,7 +6846,10 @@ def capture_launch_diagnostics(
             buffer_log,
         )
         diagnostic_logs.append(buffer_log)
-    device.capture(f"{prefix}-failure")
+    if deadline is None:
+        device.capture(f"{prefix}-failure")
+    else:
+        device.capture(f"{prefix}-failure", deadline=deadline)
     return "\n".join(diagnostic_logs)
 
 
@@ -6466,39 +6900,80 @@ def _wait_for_resumed_component(
     device: Device,
     component: str,
     timeout: float,
+    *,
+    deadline: float | None = None,
 ) -> tuple[LaunchState, bool]:
-    deadline = time.monotonic() + timeout
+    timeout_deadline = time.monotonic() + timeout
+    operation_deadline = (
+        timeout_deadline
+        if deadline is None
+        else min(timeout_deadline, deadline)
+    )
     saw_process = False
     while True:
-        state = current_launch_state(device)
+        state = (
+            current_launch_state(device)
+            if deadline is None
+            else current_launch_state(device, deadline=operation_deadline)
+        )
         if state.process_ids:
             saw_process = True
         if state.process_ids and state.resumed_component == component:
             return state, saw_process
         if saw_process and not state.process_ids:
             return state, saw_process
-        if time.monotonic() >= deadline:
+        if time.monotonic() >= operation_deadline:
             return state, saw_process
-        time.sleep(0.5)
+        _sleep_before_operation_deadline(0.5, deadline=operation_deadline)
 
 
-def launch_app(device: Device, attempts: int = 3, resume_timeout: float = 20) -> LaunchState:
+def launch_app(
+    device: Device,
+    attempts: int = 3,
+    resume_timeout: float = 20,
+    *,
+    deadline: float | None = None,
+) -> LaunchState:
     if attempts < 1 or resume_timeout < 0:
         raise ValueError("Launch attempts must be positive and resume timeout nonnegative")
-    component = launcher_component(device)
+    component = (
+        launcher_component(device)
+        if deadline is None
+        else launcher_component(device, deadline=deadline)
+    )
     for attempt in range(1, attempts + 1):
-        device.run("logcat", "-c", timeout=30, check=False)
+        if deadline is None:
+            device.run("logcat", "-c", timeout=30, check=False)
+        else:
+            device.run(
+                "logcat",
+                "-c",
+                timeout=_remaining_operation_timeout(deadline=deadline, maximum=30),
+                check=False,
+                deadline=deadline,
+            )
         start_result: subprocess.CompletedProcess | None = None
         start_error: BaseException | None = None
         try:
             # The journey owns its clear/force-stop lifecycle boundary. On API 36,
             # combining that stop with this start via `-S` can return Status: ok and
             # LaunchState: UNKNOWN without ever scheduling the package process.
-            start_result = device.run(
-                *workspace_authority_start_arguments(component),
-                timeout=60,
-                check=False,
-            )
+            if deadline is None:
+                start_result = device.run(
+                    *workspace_authority_start_arguments(component),
+                    timeout=60,
+                    check=False,
+                )
+            else:
+                start_result = device.run(
+                    *workspace_authority_start_arguments(component),
+                    timeout=_remaining_operation_timeout(
+                        deadline=deadline,
+                        maximum=60,
+                    ),
+                    check=False,
+                    deadline=deadline,
+                )
         except subprocess.TimeoutExpired as error:
             start_error = error
 
@@ -6535,10 +7010,15 @@ def launch_app(device: Device, attempts: int = 3, resume_timeout: float = 20) ->
             and start_result.returncode == 0
             and _start_output_matches_component(start_result.stdout, component)
         )
-        state, saw_process = _wait_for_resumed_component(
-            device,
-            component,
-            resume_timeout,
+        state, saw_process = (
+            _wait_for_resumed_component(device, component, resume_timeout)
+            if deadline is None
+            else _wait_for_resumed_component(
+                device,
+                component,
+                resume_timeout,
+                deadline=deadline,
+            )
         )
         wait_timed_out = isinstance(start_error, subprocess.TimeoutExpired)
         if (command_succeeded or wait_timed_out) \
@@ -6559,13 +7039,25 @@ def launch_app(device: Device, attempts: int = 3, resume_timeout: float = 20) ->
             )
             return state
 
-        logcat = capture_launch_diagnostics(
-            device,
-            attempt,
-            component,
-            start_result,
-            start_error,
-            state,
+        logcat = (
+            capture_launch_diagnostics(
+                device,
+                attempt,
+                component,
+                start_result,
+                start_error,
+                state,
+            )
+            if deadline is None
+            else capture_launch_diagnostics(
+                device,
+                attempt,
+                component,
+                start_result,
+                start_error,
+                state,
+                deadline=deadline,
+            )
         )
         if saw_process or _package_crash_is_visible(logcat):
             raise RuntimeError(
@@ -6583,20 +7075,29 @@ def launch_app(device: Device, attempts: int = 3, resume_timeout: float = 20) ->
                 "Android could not launch the exact Chummer component after "
                 f"{attempts} attempts; component={component!r}"
             )
-        time.sleep(3)
+        _sleep_before_operation_deadline(3, deadline=deadline)
 
 
 def force_stop_and_launch_new_process(
     device: Device,
     previous: LaunchState,
+    *,
+    deadline: float | None = None,
 ) -> ProcessRestartProof:
     if not previous.process_ids:
         raise RuntimeError("Process-restart proof requires an initial Chummer PID")
 
-    before_force_stop = current_launch_state(device)
+    before_force_stop = (
+        current_launch_state(device)
+        if deadline is None
+        else current_launch_state(device, deadline=deadline)
+    )
     if before_force_stop.process_ids != previous.process_ids \
         or before_force_stop.resumed_component != previous.resumed_component:
-        device.capture("process-restart-precondition-changed")
+        if deadline is None:
+            device.capture("process-restart-precondition-changed")
+        else:
+            device.capture("process-restart-precondition-changed", deadline=deadline)
         raise RuntimeError(
             "Chummer launch identity changed before the owned force-stop boundary: "
             f"launch_process_ids={previous.process_ids!r}, "
@@ -6605,19 +7106,42 @@ def force_stop_and_launch_new_process(
             f"live_resumed={before_force_stop.resumed_component!r}"
         )
 
-    device.shell("am", "force-stop", PACKAGE)
-    after_force_stop = current_launch_state(device)
+    if deadline is None:
+        device.shell("am", "force-stop", PACKAGE)
+    else:
+        device.shell(
+            "am",
+            "force-stop",
+            PACKAGE,
+            timeout=_remaining_operation_timeout(deadline=deadline, maximum=120),
+            deadline=deadline,
+        )
+    after_force_stop = (
+        current_launch_state(device)
+        if deadline is None
+        else current_launch_state(device, deadline=deadline)
+    )
     if after_force_stop.process_ids:
-        device.capture("process-restart-force-stop-not-empty")
+        if deadline is None:
+            device.capture("process-restart-force-stop-not-empty")
+        else:
+            device.capture("process-restart-force-stop-not-empty", deadline=deadline)
         raise RuntimeError(
             "Chummer package PID set remained non-empty after force-stop: "
             + " ".join(after_force_stop.process_ids)
         )
 
-    restarted = launch_app(device)
+    restarted = (
+        launch_app(device)
+        if deadline is None
+        else launch_app(device, deadline=deadline)
+    )
     reused = sorted(set(before_force_stop.process_ids).intersection(restarted.process_ids))
     if reused:
-        device.capture("process-restart-pid-reused")
+        if deadline is None:
+            device.capture("process-restart-pid-reused")
+        else:
+            device.capture("process-restart-pid-reused", deadline=deadline)
         raise RuntimeError(
             "Chummer process restart reused an existing PID instead of proving a new process: "
             + " ".join(reused)
