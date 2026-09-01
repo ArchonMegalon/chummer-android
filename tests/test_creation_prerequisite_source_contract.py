@@ -12424,6 +12424,21 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertNotIn("Coordinator.LoadCreationAttributes()", resolver)
         self.assertNotIn("Coordinator.LoadCreationSkills()", resolver)
 
+    def test_dashboard_does_not_retain_typed_authority_across_auxiliary_route_mutations(self) -> None:
+        source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
+        disappearing = source[source.index("protected override void OnDisappearing()") :]
+        disappearing = disappearing[: disappearing.index("protected override void Refresh()")]
+
+        self.assertLess(
+            disappearing.index("CancelCreationProjectionQueues();"),
+            disappearing.index("_creationProjection = null;"),
+        )
+        self.assertLess(
+            disappearing.index("_creationProjection = null;"),
+            disappearing.index("base.OnDisappearing();"),
+        )
+        self.assertIn("auxiliary-state-stale", disappearing)
+
     def test_dashboard_bootstrap_does_not_require_authority_before_loading_it(self) -> None:
         source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
         binding = source[

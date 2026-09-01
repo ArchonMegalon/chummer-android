@@ -466,6 +466,13 @@ public sealed class BuildPage : NativePageBase
         _creationDashboardRouteReadyLifetime = null;
         _creationDashboardAppearanceGeneration++;
         CancelCreationProjectionQueues();
+        // Child creation pages persist auxiliary drafts without necessarily changing the
+        // character XML revision represented by CharacterOverviewState.  A completed typed
+        // projection can therefore be revision-current yet auxiliary-state-stale when this
+        // page reappears.  Never retain those terminal results across a route boundary: the
+        // next appearance must reload every typed authority from Core's current auxiliary
+        // state.  The individual presenters keep the strict revision and digest checks.
+        _creationProjection = null;
         base.OnDisappearing();
     }
 
