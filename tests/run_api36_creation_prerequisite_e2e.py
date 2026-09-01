@@ -6823,14 +6823,26 @@ def choose_and_prove_talent_grant(
         scan_observer=scan_observer,
         deadline=active_deadline(),
     )
-    wait_for_exact_talent_option_transition(
-        device,
-        reset_id,
-        _measured_talent_resource_detail(navigation, reset_id),
-        selected_slots[reset_id],
+    preserved_route = device.wait_for_single_exact_resource_id(
+        "creation-prerequisite-talent-grant-page",
+        timeout=45,
         evidence_prefix=f"{scan_id_prefix}-preserved-route",
-        deadline=active_deadline(),
+        surface_name=f"Preserved {expected_kind} Talent grant route",
+        deadline=preservation_deadline,
     )
+    _require_canonical_chummer_resource_id(
+        device,
+        preserved_route,
+        "creation-prerequisite-talent-grant-page",
+        evidence_prefix=f"{scan_id_prefix}-preserved-route",
+        surface_name=f"Preserved {expected_kind} Talent grant route",
+        deadline=preservation_deadline,
+    )
+    # A newly pushed grant page owns a fresh ScrollView at its native start.
+    # The exact top route therefore rebinds physical state to catalog viewport
+    # zero before measured grouped reacquisition; the old page's terminal
+    # logical viewport must never be reused across this navigation boundary.
+    current_viewport = 0
     preserved_state, current_viewport = read_talent_grant_grouped_state(
         device,
         expected_kind,

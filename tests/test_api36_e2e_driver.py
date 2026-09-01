@@ -827,6 +827,68 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         reset_scroll.assert_not_called()
         device.shell.assert_not_called()
 
+    def test_creation_phone_runner_root_accepts_two_stable_direct_observations_when_owned_dump_is_absent(
+        self,
+    ) -> None:
+        device = Mock(spec=DRIVER.Device)
+        root = [
+            self.phone_runner_page(),
+            self.phone_runner_toolbar(),
+            self.phone_runner_route("phone-runner-create"),
+        ]
+        device.hierarchy.return_value = []
+        device.read_only_hierarchy.side_effect = (root, root)
+        device.node_has_tappable_bounds.return_value = True
+
+        with patch.object(DRIVER, "_sleep_before_operation_deadline") as delay:
+            observed = DRIVER.return_to_phone_runner_root(
+                device,
+                created=False,
+                timeout=30,
+            )
+
+        self.assertIs(root[2], observed)
+        self.assertEqual(2, device.read_only_hierarchy.call_count)
+        first_deadline = device.read_only_hierarchy.call_args_list[0].kwargs[
+            "deadline"
+        ]
+        self.assertEqual(
+            first_deadline,
+            device.read_only_hierarchy.call_args_list[1].kwargs["deadline"],
+        )
+        delay.assert_called_once_with(
+            DRIVER.ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_DELAY_SECONDS,
+            deadline=first_deadline,
+        )
+        device.shell.assert_not_called()
+
+    def test_phone_runner_root_rejects_nonconsecutive_direct_observations(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        route = self.phone_runner_route()
+        page = self.phone_runner_page()
+        toolbar = self.phone_runner_toolbar()
+        device.hierarchy.return_value = []
+        device.read_only_hierarchy.side_effect = (
+            [page, toolbar, route],
+            [page, toolbar],
+            [page, toolbar, route],
+        )
+        device.dismiss_system_ui_anr.return_value = False
+
+        with (
+            patch.object(
+                DRIVER.time,
+                "monotonic",
+                side_effect=[0.0, 0.0, 2.0],
+            ),
+            patch.object(DRIVER, "_sleep_before_operation_deadline"),
+            patch.object(DRIVER.time, "sleep"),
+            self.assertRaisesRegex(RuntimeError, "Timed out proving the exact"),
+        ):
+            DRIVER.return_to_phone_runner_root(device, timeout=1)
+
+        device.shell.assert_not_called()
+
     def test_phone_runner_root_rejects_toolbar_outside_viewport(self) -> None:
         device = Mock(spec=DRIVER.Device)
         toolbar = self.phone_runner_toolbar()

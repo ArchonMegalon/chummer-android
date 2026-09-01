@@ -4478,10 +4478,62 @@ def return_to_phone_runner_root(
                 deadline=caller_deadline,
             )
 
+    def stable_direct_current_hierarchy() -> list[UiNode]:
+        """Recover an inaccessible owned dump with stable read-only authority.
+
+        API 36 can acknowledge a file-backed UIAutomator dump while never
+        publishing its freshly removed target file. Two consecutive identical
+        direct observations are safe current-state evidence: they do not replay
+        navigation or any product mutation, and they remain bounded by the same
+        root deadline. A single direct frame is never accepted.
+        """
+        previous_sha256: str | None = None
+        consecutive = 0
+        for observation in range(
+            1,
+            ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_MAX_OBSERVATIONS + 1,
+        ):
+            try:
+                observed = device.read_only_hierarchy(
+                    deadline=operation_deadline,
+                )
+            except (AdbOperationDeadlineExceeded, AdbTransportError):
+                return []
+            if not observed:
+                previous_sha256 = None
+                consecutive = 0
+            else:
+                observed_sha256 = Device._hierarchy_sha256(observed)
+                consecutive = (
+                    consecutive + 1
+                    if observed_sha256 == previous_sha256
+                    else 1
+                )
+                previous_sha256 = observed_sha256
+                if (
+                    consecutive
+                    >= ADB_HIERARCHY_DUMP_RECONCILIATION_REQUIRED_CONSECUTIVE
+                ):
+                    return observed
+            if (
+                observation
+                < ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_MAX_OBSERVATIONS
+            ):
+                try:
+                    _sleep_before_operation_deadline(
+                        ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_DELAY_SECONDS,
+                        deadline=operation_deadline,
+                    )
+                except AdbOperationDeadlineExceeded:
+                    return []
+        return []
+
     back_steps = 0
     viewport_reset = False
     while time.monotonic() < operation_deadline:
         nodes = device.hierarchy(deadline=operation_deadline)
+        if not nodes:
+            nodes = stable_direct_current_hierarchy()
         if not nodes:
             dismissed = (
                 device.dismiss_system_ui_anr(nodes)

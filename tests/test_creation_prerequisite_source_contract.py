@@ -4807,9 +4807,14 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         events: list[str] = []
         tapped_resource_ids: list[str] = []
         preferred_final_resources: list[str | None] = []
+        grouped_start_viewports: list[int] = []
         propagated_deadlines: list[float] = []
-        deadline_values = iter(float(value) for value in range(1, 17))
+        deadline_values = iter(float(value) for value in range(1, 16))
         device = mock.Mock()
+        device.wait_for_single_exact_resource_id.side_effect = (
+            self.canonical_node("creation-prerequisite-talent-page"),
+            self.canonical_node("creation-prerequisite-talent-grant-page"),
+        )
 
         def inventory(*_args, navigation_out=None, **_kwargs):
             propagated_deadlines.append(_kwargs["deadline"])
@@ -4823,6 +4828,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
         def grouped(*_args, **_kwargs):
             propagated_deadlines.append(_kwargs["deadline"])
+            grouped_start_viewports.append(_args[4])
             preferred_final_resources.append(
                 _kwargs.get("preferred_final_resource_id")
             )
@@ -4867,12 +4873,12 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
         self.assertEqual(1, inventory_scan.call_count)
         self.assertEqual(4, grouped_scan.call_count)
-        self.assertEqual(5, transition_wait.call_count)
+        self.assertEqual(4, transition_wait.call_count)
         self.assertEqual(5, measured_tap.call_count)
         self.assertEqual(
             [
                 float(value)
-                for value in range(1, 17)
+                for value in range(1, 16)
                 if value != 7
             ],
             propagated_deadlines,
@@ -4884,6 +4890,12 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             if call.args == ("creation-prerequisite-talent-page",)
         )
         self.assertEqual(7.0, back_route_call.kwargs["deadline"])
+        preserved_route_call = next(
+            call
+            for call in device.wait_for_single_exact_resource_id.call_args_list
+            if call.args == ("creation-prerequisite-talent-grant-page",)
+        )
+        self.assertEqual(7.0, preserved_route_call.kwargs["deadline"])
         self.assertEqual(list(option_ids), proof.receipt["allOptionAutomationIds"])
         self.assertEqual(list(chosen), proof.receipt["selectedOptionAutomationIds"])
         self.assertEqual([chosen[1], chosen[0]], tapped_resource_ids[:2])
@@ -4904,6 +4916,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             [None, chosen[0], chosen[0], None],
             preferred_final_resources,
         )
+        self.assertEqual([2, 0, 2, 2], grouped_start_viewports)
 
     def test_authority_option_collector_rejects_zero_candidates(self) -> None:
         device = mock.Mock()
