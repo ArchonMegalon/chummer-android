@@ -4485,33 +4485,156 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
     def test_prerequisite_navigation_uses_exact_bounded_bidirectional_search(self) -> None:
         device = mock.Mock()
+        device.node_has_tappable_bounds.return_value = True
+        device.wait_exact_resource_id_bidirectional.return_value = driver.shared.UiNode(
+            {
+                "resource-id": "creation-stage-method",
+                "content-desc": "Priority",
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[40,300][1040,520]",
+            }
+        )
 
         with mock.patch.object(driver.shared, "reset_scroll_to_top") as reset:
             driver.open_prerequisite(device)
 
-        device.tap_bidirectional.assert_called_once_with(
-            "creation-stage-method",
-            timeout=180,
-            backward_scrolls=0,
-            forward_scrolls=8,
-            scroll_distance_ratio=0.68,
-            exact_resource_id=True,
-        )
-        device.wait_exact_resource_id_bidirectional.assert_called_once_with(
-            "creation-prerequisite-method",
-            timeout=90,
-            backward_scrolls=0,
-            forward_scrolls=4,
-            scroll_distance_ratio=0.18,
-            evidence_prefix="creation-prerequisite-method",
-            surface_name="Creation prerequisite build-method authority",
-            require_tappable=False,
+        self.assertEqual(
+            [
+                mock.call(
+                    "creation-stage-method",
+                    timeout=180,
+                    backward_scrolls=driver.DASHBOARD_SCAN_MAX_SCROLLS,
+                    forward_scrolls=driver.DASHBOARD_SCAN_MAX_SCROLLS,
+                    scroll_distance_ratio=driver.DASHBOARD_SCAN_GESTURE_RATIO,
+                    evidence_prefix="creation-stage-method-open",
+                    surface_name="Creation method navigation",
+                    require_tappable=True,
+                ),
+                mock.call(
+                    "creation-prerequisite-method",
+                    timeout=90,
+                    backward_scrolls=0,
+                    forward_scrolls=4,
+                    scroll_distance_ratio=0.18,
+                    evidence_prefix="creation-prerequisite-method",
+                    surface_name="Creation prerequisite build-method authority",
+                    require_tappable=False,
+                ),
+            ],
+            device.wait_exact_resource_id_bidirectional.call_args_list,
         )
         self.assertEqual(
             [mock.call(device, swipes=8), mock.call(device, swipes=4)],
             reset.call_args_list,
         )
+        device.shell.assert_called_once_with("input", "tap", "540", "410")
         device.tap_until_visible.assert_not_called()
+        device.tap_bidirectional.assert_not_called()
+
+    def test_prerequisite_resume_taps_only_the_exact_reacquired_method_node(self) -> None:
+        node = driver.shared.UiNode(
+            {
+                "resource-id": "creation-stage-method",
+                "content-desc": "Priority",
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[40,300][1040,520]",
+            }
+        )
+        device = mock.Mock()
+        device.node_has_tappable_bounds.return_value = True
+
+        with mock.patch.object(driver.shared, "reset_scroll_to_top"):
+            driver.open_prerequisite(device, ready_method_node=node)
+
+        device.tap_bidirectional.assert_not_called()
+        device.shell.assert_called_once_with("input", "tap", "540", "410")
+        device.wait.assert_any_call("creation-prerequisite-page", timeout=60)
+
+    def test_prerequisite_resume_rejects_a_stale_or_non_tappable_method_node(self) -> None:
+        for attributes in (
+            {
+                "resource-id": "creation-finalization-step-method",
+                "content-desc": "Method · complete",
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[40,300][1040,520]",
+            },
+            {
+                "resource-id": "creation-stage-method",
+                "content-desc": "Priority",
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[40,300][1040,520]",
+            },
+        ):
+            with self.subTest(resource_id=attributes["resource-id"]):
+                node = driver.shared.UiNode(attributes)
+                device = mock.Mock()
+                device.node_has_tappable_bounds.return_value = (
+                    attributes["resource-id"] == "creation-finalization-step-method"
+                )
+
+                with self.assertRaisesRegex(
+                    RuntimeError,
+                    "exact tappable creation-stage-method",
+                ):
+                    driver.open_prerequisite(device, ready_method_node=node)
+
+                device.capture.assert_called_once_with(
+                    "creation-stage-method-resume-node-invalid"
+                )
+                device.shell.assert_not_called()
+                device.tap_bidirectional.assert_not_called()
+
+    def test_same_process_resume_reacquires_method_upward_from_the_proven_bottom(self) -> None:
+        source = inspect.getsource(driver.execute)
+        start = source.index('progress.advance("same-process-reopen")')
+        end = source.index('progress.advance("resources-preview-confirm")', start)
+        resume_source = source[start:end]
+        navigation_source = resume_source[: resume_source.index("resumed_authority =")]
+
+        self.assertIn(
+            'progress.active_phase_deadline("same-process-reopen")',
+            resume_source,
+        )
+        self.assertIn("reacquire_exact_ready_creation_method(", resume_source)
+        self.assertIn(
+            "expected_detail=post_confirm_dashboard.method_detail",
+            resume_source,
+        )
+        self.assertIn("max_swipes=DASHBOARD_SCAN_MAX_SCROLLS", resume_source)
+        self.assertIn("deadline=same_process_deadline", resume_source)
+        self.assertIn(
+            "open_prerequisite(device, ready_method_node=resumed_method_node)",
+            resume_source,
+        )
+        self.assertNotIn("shared.open_creation_dashboard(", navigation_source)
+
+    def test_process_restart_reacquires_method_from_its_fresh_dashboard_proof(self) -> None:
+        source = inspect.getsource(driver.execute)
+        start = source.index('progress.advance("process-restart-reopen")')
+        restart_source = source[start:]
+
+        self.assertIn(
+            'progress.active_phase_deadline(\n        "process-restart-reopen"',
+            restart_source,
+        )
+        self.assertIn(
+            "process_restart_dashboard = assert_uncreated_advanced_editor_gated(",
+            restart_source,
+        )
+        self.assertIn("deadline=process_restart_deadline", restart_source)
+        self.assertIn(
+            "expected_detail=process_restart_dashboard.method_detail",
+            restart_source,
+        )
+        self.assertIn("max_swipes=DASHBOARD_SCAN_MAX_SCROLLS", restart_source)
+        self.assertIn(
+            "open_prerequisite(device, ready_method_node=restarted_method_node)",
+            restart_source,
+        )
 
     def test_prerequisite_navigation_proves_route_before_reading_content(self) -> None:
         device = mock.Mock()
@@ -4519,9 +4642,22 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         device.wait.side_effect = lambda *args, **kwargs: events.append(
             ("wait", args, kwargs)
         )
-        device.wait_exact_resource_id_bidirectional.side_effect = (
-            lambda *args, **kwargs: events.append(("wait_bidirectional", args, kwargs))
-        )
+        device.node_has_tappable_bounds.return_value = True
+
+        def wait_bidirectional(*args: object, **kwargs: object) -> driver.shared.UiNode:
+            events.append(("wait_bidirectional", args, kwargs))
+            selector = str(args[0])
+            return driver.shared.UiNode(
+                {
+                    "resource-id": selector,
+                    "content-desc": "Priority",
+                    "enabled": "true",
+                    "clickable": "true",
+                    "bounds": "[40,300][1040,520]",
+                }
+            )
+
+        device.wait_exact_resource_id_bidirectional.side_effect = wait_bidirectional
 
         with mock.patch.object(driver.shared, "reset_scroll_to_top") as reset:
             reset.side_effect = lambda *args, **kwargs: events.append(
@@ -4531,6 +4667,19 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
         self.assertEqual(
             [
+                (
+                    "wait_bidirectional",
+                    ("creation-stage-method",),
+                    {
+                        "timeout": 180,
+                        "backward_scrolls": driver.DASHBOARD_SCAN_MAX_SCROLLS,
+                        "forward_scrolls": driver.DASHBOARD_SCAN_MAX_SCROLLS,
+                        "scroll_distance_ratio": driver.DASHBOARD_SCAN_GESTURE_RATIO,
+                        "evidence_prefix": "creation-stage-method-open",
+                        "surface_name": "Creation method navigation",
+                        "require_tappable": True,
+                    },
+                ),
                 ("wait", ("creation-prerequisite-page",), {"timeout": 60}),
                 ("reset", (device,), {"swipes": 8}),
                 (

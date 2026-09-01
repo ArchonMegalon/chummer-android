@@ -4690,15 +4690,34 @@ def select_priority_rank(
     return selected_resource_id
 
 
-def open_prerequisite(device: shared.Device) -> None:
-    device.tap_bidirectional(
-        "creation-stage-method",
-        timeout=180,
-        backward_scrolls=0,
-        forward_scrolls=8,
-        scroll_distance_ratio=0.68,
-        exact_resource_id=True,
-    )
+def open_prerequisite(
+    device: shared.Device,
+    *,
+    ready_method_node: shared.UiNode | None = None,
+) -> None:
+    if ready_method_node is None:
+        ready_method_node = device.wait_exact_resource_id_bidirectional(
+            "creation-stage-method",
+            timeout=180,
+            backward_scrolls=DASHBOARD_SCAN_MAX_SCROLLS,
+            forward_scrolls=DASHBOARD_SCAN_MAX_SCROLLS,
+            scroll_distance_ratio=DASHBOARD_SCAN_GESTURE_RATIO,
+            evidence_prefix="creation-stage-method-open",
+            surface_name="Creation method navigation",
+            require_tappable=True,
+        )
+    if (
+        _exact_resource_id(ready_method_node) != "creation-stage-method"
+        or not device.node_has_tappable_bounds(ready_method_node)
+    ):
+        device.capture("creation-stage-method-resume-node-invalid")
+        raise RuntimeError(
+            "Creation prerequisite resume did not retain one exact tappable "
+            "creation-stage-method node"
+        )
+    require_creation_method_navigation(ready_method_node, ready=True)
+    x, y = ready_method_node.center
+    device.shell("input", "tap", str(x), str(y))
     device.wait("creation-prerequisite-page", timeout=60)
     # Android can carry the deeply scrolled Build viewport into this newly pushed page.
     # Bind the route first, then establish the native page origin before reading top cards.
@@ -8311,7 +8330,14 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     # Prove the prerequisite receipt before the Resources write legitimately advances
     # the shared auxiliary-state revision.
     progress.advance("same-process-reopen")
-    open_prerequisite(device)
+    same_process_deadline = progress.active_phase_deadline("same-process-reopen")
+    resumed_method_node, _, _ = reacquire_exact_ready_creation_method(
+        device,
+        expected_detail=post_confirm_dashboard.method_detail,
+        max_swipes=DASHBOARD_SCAN_MAX_SCROLLS,
+        deadline=same_process_deadline,
+    )
+    open_prerequisite(device, ready_method_node=resumed_method_node)
     resumed_authority = read_persisted_prerequisite_authority(device)
     assert_persisted_prerequisite_authority(
         resumed_authority,
@@ -8403,6 +8429,9 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     )
 
     progress.advance("process-restart-reopen")
+    process_restart_deadline = progress.active_phase_deadline(
+        "process-restart-reopen"
+    )
     restart = shared.force_stop_and_launch_new_process(device, initial_launch)
     shared.wait_for_phone_runner_route(device, created=False)
     shared.open_creation_dashboard(
@@ -8410,12 +8439,19 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         open_build_route=False,
         reset_swipes=22,
     )
-    assert_uncreated_advanced_editor_gated(
+    process_restart_dashboard = assert_uncreated_advanced_editor_gated(
         device,
         scan_observer=progress.record_scan,
         scan_id="advanced-editor-gate-process-restart",
+        deadline=process_restart_deadline,
     )
-    open_prerequisite(device)
+    restarted_method_node, _, _ = reacquire_exact_ready_creation_method(
+        device,
+        expected_detail=process_restart_dashboard.method_detail,
+        max_swipes=DASHBOARD_SCAN_MAX_SCROLLS,
+        deadline=process_restart_deadline,
+    )
+    open_prerequisite(device, ready_method_node=restarted_method_node)
     restarted_authority = read_persisted_prerequisite_authority(device)
     assert_persisted_prerequisite_authority(
         restarted_authority,
