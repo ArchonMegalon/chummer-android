@@ -489,12 +489,17 @@ internal static class CreationResourcesPhoneAuthority
                state.Binding.RawCharacterXmlDigest,
                wizard.ContentDigest)
            && CharacterCreationResourcesRules.IsCanonicalDigest(state.SnapshotDigest)
-           && CharacterCreationResourcesRules.IsCanonicalDigest(state.Binding.AuxiliaryStateDigest)
+           && IsLowerRawSha256(state.Binding.AuxiliaryStateDigest)
            && CharacterCreationResourcesRules.IsCanonicalDigest(state.Binding.PrerequisiteDraftDigest)
            && CharacterCreationResourcesRules.IsCanonicalDigest(state.Binding.AuthorityDigest)
            && CharacterCreationResourcesRules.IsCanonicalDigest(state.Binding.SourceDigest)
            && CharacterCreationResourcesRules.IsCanonicalDigest(state.Binding.RulesDigest)
            && CharacterCreationResourcesRules.IsCanonicalDigest(state.Binding.RuntimeDigest);
+
+    private static bool IsLowerRawSha256(string? value)
+        => value is { Length: 64 }
+           && value.All(static character =>
+               character is >= '0' and <= '9' or >= 'a' and <= 'f');
 
     public static bool IsReady(
         CharacterCreationResourcesInteractionState state,

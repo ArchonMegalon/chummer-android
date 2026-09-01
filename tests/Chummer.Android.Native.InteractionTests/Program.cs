@@ -40,6 +40,7 @@ internal static class Program
             (nameof(CreationAuthorityPhaseMergesAreIndependentAndDeterministicAsync), CreationAuthorityPhaseMergesAreIndependentAndDeterministicAsync),
             (nameof(CreationDashboardReadyMarkerRequiresCurrentTerminalAuthorityAsync), CreationDashboardReadyMarkerRequiresCurrentTerminalAuthorityAsync),
             (nameof(ExactTypedCreationAuthorityRehydratesConservativeStageAsync), ExactTypedCreationAuthorityRehydratesConservativeStageAsync),
+            (nameof(ResourcesAuxiliaryStateDigestUsesRawLowerSha256Async), ResourcesAuxiliaryStateDigestUsesRawLowerSha256Async),
             (nameof(ResourcesStageRehydrationRejectsEveryHostileAuthorityShapeAsync), ResourcesStageRehydrationRejectsEveryHostileAuthorityShapeAsync),
             (nameof(CompletedCreationProjectionSurvivesADeferredUiConsumerAsync), CompletedCreationProjectionSurvivesADeferredUiConsumerAsync),
             (nameof(RejectedCreationProjectionForcesCurrentBindingRefreshAsync), RejectedCreationProjectionForcesCurrentBindingRefreshAsync),
@@ -280,6 +281,43 @@ internal static class Program
                 CharacterCreationResourcesBlockers.AuthorityUnavailable,
                 StringComparison.Ordinal),
             "A terminal-loaded but semantically blocked Resources result hid its direct typed blocker.");
+        return Task.CompletedTask;
+    }
+
+    private static Task ResourcesAuxiliaryStateDigestUsesRawLowerSha256Async()
+    {
+        ResourcesFixture fixture = NewResourcesFixture();
+        Require(
+            fixture.State.Binding.AuxiliaryStateDigest == new string('2', 64),
+            "The valid Resources fixture did not use the Core/Workspace raw auxiliary SHA-256 contract.");
+        Require(
+            BuildPageUiProjection.HasExactTypedResourcesAuthority(fixture.Load, fixture.Overview),
+            "An exact 64-character lowercase raw Resources auxiliary SHA-256 was rejected.");
+
+        (string Name, string Digest)[] hostile =
+        [
+            ("prefixed", CanonicalDigest('2')),
+            ("uppercase", new string('A', 64)),
+            ("short", new string('a', 63)),
+            ("nonhex", new string('g', 64)),
+            ("empty", string.Empty)
+        ];
+        foreach ((string name, string digest) in hostile)
+        {
+            CharacterCreationResourcesInteractionLoadResult load = fixture.Load with
+            {
+                State = fixture.State with
+                {
+                    Binding = fixture.State.Binding with
+                    {
+                        AuxiliaryStateDigest = digest
+                    }
+                }
+            };
+            Require(
+                !BuildPageUiProjection.HasExactTypedResourcesAuthority(load, fixture.Overview),
+                $"The {name} Resources auxiliary digest escaped the exact raw lowercase SHA-256 boundary.");
+        }
         return Task.CompletedTask;
     }
 
@@ -2213,7 +2251,7 @@ internal static class Program
         var workspaceId = new CharacterWorkspaceId("resources-authority-runner");
         const long revision = 8;
         string contentDigest = CanonicalDigest('1');
-        string auxiliaryDigest = CanonicalDigest('2');
+        string auxiliaryDigest = new string('2', 64);
         string prerequisiteDigest = CanonicalDigest('3');
         string sourceDigest = CanonicalDigest('4');
         string profileDigest = CanonicalDigest('5');
