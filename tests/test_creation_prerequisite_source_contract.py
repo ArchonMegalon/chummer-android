@@ -6837,6 +6837,19 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         )
         self.assertNotIn("Navigation.NavigationStack", callback)
 
+    def test_confirmed_prerequisite_back_returns_to_shell_root_atomically(self) -> None:
+        source = (
+            NATIVE / "CreationPrerequisitePreviewPage.cs"
+        ).read_text(encoding="utf-8")
+        callback = source[
+            source.index("private async Task BackToBuildAsync()") :
+            source.index("private static string FormatBudget(")
+        ]
+
+        self.assertEqual(1, callback.count("Navigation.PopToRootAsync(animated: false)"))
+        self.assertNotIn("Navigation.PopAsync", callback)
+        self.assertNotIn("Navigation.NavigationStack", callback)
+
     def test_dashboard_ready_marker_is_armed_on_loaded_and_every_refresh(self) -> None:
         source = inspect.getsource(driver.execute)
         self.assertEqual(1, source.count("tap_exact_confirmed_receipt_back("))

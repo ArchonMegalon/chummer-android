@@ -497,9 +497,11 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
 
     private async Task BackToBuildAsync()
     {
-        await Navigation.PopAsync(animated: false);
-        if (Navigation.NavigationStack.LastOrDefault() is CreationPrerequisitePage)
-            await Navigation.PopAsync();
+        // Shell omits the current tab's ShellContent root (BuildPage) from this
+        // child navigation stack. Pop the prerequisite and preview routes as one
+        // non-animated operation so BuildPage receives one stable return rather
+        // than a transient prerequisite appearance between two separate pops.
+        await Navigation.PopToRootAsync(animated: false);
     }
 
     private static string FormatBudget(decimal value, string unit)
