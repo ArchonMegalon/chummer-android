@@ -269,6 +269,10 @@ public sealed class BuildPage : NativePageBase
     };
     private static readonly TimeSpan CreationDashboardRouteReadySettleDelay =
         TimeSpan.FromMilliseconds(750);
+    private static readonly TimeSpan CreationDashboardRouteReadyPollDelay =
+        TimeSpan.FromMilliseconds(250);
+    private static readonly TimeSpan CreationDashboardRouteReadyMaximumWait =
+        TimeSpan.FromSeconds(25);
     private readonly VerticalStackLayout _body = new()
     {
         Padding = new Thickness(20, 18, 20, 40),
@@ -565,15 +569,22 @@ public sealed class BuildPage : NativePageBase
         header.Add(NativeTheme.Body(
             "Build this runner step by step. The full character editor unlocks after creation is complete.",
             NativeTheme.Muted));
+        long appearanceGeneration = _creationDashboardAppearanceGeneration;
         if (snapshot is not null)
         {
-            long appearanceGeneration = _creationDashboardAppearanceGeneration;
             header.Loaded += (_, _) => ScheduleCreationDashboardRouteReady(
                 header,
                 snapshot,
                 appearanceGeneration);
         }
         _body.Add(header);
+        if (snapshot is not null)
+        {
+            ScheduleCreationDashboardRouteReady(
+                header,
+                snapshot,
+                appearanceGeneration);
+        }
 
         if (snapshot is null)
         {
@@ -695,47 +706,72 @@ public sealed class BuildPage : NativePageBase
     {
         try
         {
+            long waitStarted = System.Diagnostics.Stopwatch.GetTimestamp();
             await Task.Delay(CreationDashboardRouteReadySettleDelay, cancellationToken);
-            await MainThread.InvokeOnMainThreadAsync(() =>
+            while (System.Diagnostics.Stopwatch.GetElapsedTime(waitStarted)
+                   < CreationDashboardRouteReadyMaximumWait)
             {
-                if (cancellationToken.IsCancellationRequested
-                    || appearanceGeneration != _creationDashboardAppearanceGeneration
-                    || _creationDashboardRouteReadyEmittedGeneration == appearanceGeneration
-                    || header.Handler is null
-                    || !header.IsVisible
-                    || header.Width <= 0
-                    || header.Height <= 0
-                    || !_body.Children.Contains(header)
-                    || !ReferenceEquals(Shell.Current?.CurrentPage, this)
-                    || Coordinator.State.CreationWizard is not { } currentSnapshot
-                    || !string.Equals(
-                        currentSnapshot.SnapshotDigest,
-                        capturedSnapshot.SnapshotDigest,
-                        StringComparison.Ordinal))
+                bool terminal = false;
+                bool emitted = false;
+                await MainThread.InvokeOnMainThreadAsync(() =>
                 {
-                    return;
-                }
+                    if (cancellationToken.IsCancellationRequested
+                        || appearanceGeneration != _creationDashboardAppearanceGeneration
+                        || _creationDashboardRouteReadyEmittedGeneration == appearanceGeneration
+                        || !_body.Children.Contains(header)
+                        || Coordinator.State.CreationWizard is not { } currentSnapshot
+                        || !string.Equals(
+                            currentSnapshot.SnapshotDigest,
+                            capturedSnapshot.SnapshotDigest,
+                            StringComparison.Ordinal))
+                    {
+                        terminal = true;
+                        return;
+                    }
 
-                CreationDashboardRouteReadyMarker? marker =
-                    BuildPageUiProjection.CreationDashboardRouteReady(
-                        Coordinator.State,
-                        currentSnapshot,
-                        _creationProjection);
-                if (marker is null)
-                    return;
+                    if (header.Handler is null
+                        || !header.IsVisible
+                        || header.Width <= 0
+                        || header.Height <= 0
+                        || !ReferenceEquals(Shell.Current?.CurrentPage, this))
+                    {
+                        return;
+                    }
 
-                _creationDashboardRouteReadyEmittedGeneration = appearanceGeneration;
-                string payload = JsonSerializer.Serialize(
-                    marker,
-                    CreationDashboardRouteReadyJson);
+                    CreationDashboardRouteReadyMarker? marker =
+                        BuildPageUiProjection.CreationDashboardRouteReady(
+                            Coordinator.State,
+                            currentSnapshot,
+                            _creationProjection);
+                    if (marker is null)
+                        return;
+
+                    _creationDashboardRouteReadyEmittedGeneration = appearanceGeneration;
+                    string payload = JsonSerializer.Serialize(
+                        marker,
+                        CreationDashboardRouteReadyJson);
 #if ANDROID
-                global::Android.Util.Log.Info(
-                    CreationDashboardRouteReadyLogTag,
-                    CreationDashboardRouteReadyLogPrefix + payload);
+                    global::Android.Util.Log.Info(
+                        CreationDashboardRouteReadyLogTag,
+                        CreationDashboardRouteReadyLogPrefix + payload);
 #else
-                Console.WriteLine(CreationDashboardRouteReadyLogPrefix + payload);
+                    Console.WriteLine(CreationDashboardRouteReadyLogPrefix + payload);
 #endif
-            });
+                    emitted = true;
+                });
+                if (terminal || emitted)
+                    return;
+
+                TimeSpan remaining = CreationDashboardRouteReadyMaximumWait
+                                     - System.Diagnostics.Stopwatch.GetElapsedTime(waitStarted);
+                if (remaining <= TimeSpan.Zero)
+                    return;
+                await Task.Delay(
+                    remaining < CreationDashboardRouteReadyPollDelay
+                        ? remaining
+                        : CreationDashboardRouteReadyPollDelay,
+                    cancellationToken);
+            }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {

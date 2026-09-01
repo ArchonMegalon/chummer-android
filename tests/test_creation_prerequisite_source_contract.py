@@ -6837,6 +6837,77 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         )
         self.assertNotIn("Navigation.NavigationStack", callback)
 
+    def test_dashboard_ready_marker_is_armed_on_loaded_and_every_refresh(self) -> None:
+        source = inspect.getsource(driver.execute)
+        self.assertEqual(1, source.count("tap_exact_confirmed_receipt_back("))
+
+        build_page = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
+        dashboard = build_page[
+            build_page.index("private void AddCreationWizardDashboard()") :
+            build_page.index("private void ScheduleCreationDashboardRouteReady(")
+        ]
+        attached = dashboard.index("header.Loaded +=")
+        added = dashboard.index("_body.Add(header);")
+        immediate = dashboard.index(
+            "ScheduleCreationDashboardRouteReady(",
+            added,
+        )
+        self.assertLess(attached, added)
+        self.assertLess(added, immediate)
+        self.assertEqual(2, dashboard.count("ScheduleCreationDashboardRouteReady("))
+
+    def test_dashboard_ready_marker_poll_is_bounded_and_generation_idempotent(
+        self,
+    ) -> None:
+        source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
+        self.assertIn(
+            "CreationDashboardRouteReadySettleDelay =\n"
+            "        TimeSpan.FromMilliseconds(750);",
+            source,
+        )
+        self.assertIn(
+            "CreationDashboardRouteReadyPollDelay =\n"
+            "        TimeSpan.FromMilliseconds(250);",
+            source,
+        )
+        self.assertIn(
+            "CreationDashboardRouteReadyMaximumWait =\n"
+            "        TimeSpan.FromSeconds(25);",
+            source,
+        )
+        callback = source[
+            source.index("private async Task EmitCreationDashboardRouteReadyAsync(") :
+            source.index("private void AddCreationMethodRoute(")
+        ]
+        self.assertIn("Stopwatch.GetElapsedTime(waitStarted)", callback)
+        self.assertIn("< CreationDashboardRouteReadyMaximumWait", callback)
+        self.assertIn(
+            "remaining < CreationDashboardRouteReadyPollDelay",
+            callback,
+        )
+        self.assertIn(
+            "_creationDashboardRouteReadyEmittedGeneration == appearanceGeneration",
+            callback,
+        )
+        self.assertIn(
+            "_creationDashboardRouteReadyEmittedGeneration = appearanceGeneration;",
+            callback,
+        )
+        self.assertLess(
+            callback.index(
+                "_creationDashboardRouteReadyEmittedGeneration = appearanceGeneration;"
+            ),
+            callback.index("global::Android.Util.Log.Info("),
+        )
+        for terminal_guard in (
+            "cancellationToken.IsCancellationRequested",
+            "appearanceGeneration != _creationDashboardAppearanceGeneration",
+            "!_body.Children.Contains(header)",
+            "Coordinator.State.CreationWizard is not { } currentSnapshot",
+        ):
+            with self.subTest(terminal_guard=terminal_guard):
+                self.assertIn(terminal_guard, callback)
+
     def test_post_back_dashboard_ready_marker_rejects_stale_duplicate_and_malformed(
         self,
     ) -> None:

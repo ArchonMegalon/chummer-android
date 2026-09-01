@@ -810,6 +810,19 @@ internal static class Program
         Require(
             BuildPageUiProjection.CreationDashboardRouteReady(
                 overview,
+                snapshot,
+                projection with
+                {
+                    Progress = ready with
+                    {
+                        Resources = CreationDashboardAuthorityPhaseState.Failed
+                    },
+                    ResourcesFailureReason = "creation-resources-authority-load-failed"
+                }) is null,
+            "A failed dashboard authority phase emitted a route-ready marker.");
+        Require(
+            BuildPageUiProjection.CreationDashboardRouteReady(
+                overview,
                 snapshot with { SnapshotDigest = CanonicalDigest('5') },
                 projection) is null,
             "A stale snapshot emitted the current dashboard route-ready marker.");
