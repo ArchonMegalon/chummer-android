@@ -14,8 +14,8 @@ from typing import Mapping
 
 SOURCE_GRAPH_CONTRACT = "chummer.android.release-source-graph/v2"
 PACKAGE_AUTHORITY_CONTRACT = "chummer.android.release-package-authority/v2"
-PRESENTATION_SOURCE_COMMIT = "d02368a24a7c4d7ae1a5ddd031475e1e54141904"
-PRESENTATION_SOURCE_TREE = "defc9586ec0296fb40dcad86202a3b5f2f73ba38"
+PRESENTATION_SOURCE_COMMIT = "732a33cb8d3c704b8a86e1249eab46508339a105"
+PRESENTATION_SOURCE_TREE = "db56a83e5fee94d9aec7fd56a4b0df078c7dda62"
 LOCKED_DEPENDENCY_MODE = "locked_package"
 SOURCE_COMPATIBILITY_MODE = "source_compatibility"
 SHA40 = 40

@@ -25,11 +25,11 @@ public sealed record Sr5CareerSkillGroupRuntimeAuthority(
     public const string CurrentCoreRevision =
         "c06f22c185c7b733637fdb76b3cf333f31716781";
     public const string CurrentPresentationRevision =
-        "d02368a24a7c4d7ae1a5ddd031475e1e54141904";
+        "732a33cb8d3c704b8a86e1249eab46508339a105";
     public const string CurrentContentDigest =
         "d35912b66d30deb251b8befc189e29db9c29e1f8d07a65f39199655781f27201";
     public const string CurrentRuntimeDigest =
-        "b8de10f264cc7bf484f50c3a066a7b19ac6e94fcc0430e916fad15b0739995e9";
+        "865e798cb8647e8a34febed519590b8eacb5960ec700efa6db22cebabd712a0a";
 
     public static Sr5CareerSkillGroupRuntimeAuthority Embedded { get; } = new(
         CurrentContractName,

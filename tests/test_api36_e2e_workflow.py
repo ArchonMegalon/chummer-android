@@ -10,7 +10,7 @@ BUILD_SCRIPT = REPO_ROOT / "scripts" / "build-debug.sh"
 GITIGNORE = REPO_ROOT / ".gitignore"
 COMPATIBILITY_GRAPH = {
     "ArchonMegalon/chummer6-ui":
-        "d02368a24a7c4d7ae1a5ddd031475e1e54141904",
+        "732a33cb8d3c704b8a86e1249eab46508339a105",
     "ArchonMegalon/chummer6-core":
         "60112dccb6a3faad330d32c3c98eef0aa81d97af",
     "ArchonMegalon/chummer6-hub":

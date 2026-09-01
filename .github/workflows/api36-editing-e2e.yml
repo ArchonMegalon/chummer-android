@@ -51,7 +51,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: ArchonMegalon/chummer6-ui
-          ref: d02368a24a7c4d7ae1a5ddd031475e1e54141904
+          ref: 732a33cb8d3c704b8a86e1249eab46508339a105
           path: chummer-presentation
           persist-credentials: false
           fetch-depth: 1
@@ -282,7 +282,7 @@ jobs:
           python3 chummer-android/scripts/materialize-api36-hosted-arm64-candidate.py \
             materialize \
             --source android https://github.com/ArchonMegalon/chummer-android.git "$GITHUB_SHA" "$GITHUB_WORKSPACE/chummer-android" \
-            --source presentation https://github.com/ArchonMegalon/chummer6-ui.git d02368a24a7c4d7ae1a5ddd031475e1e54141904 "$GITHUB_WORKSPACE/chummer-presentation" \
+            --source presentation https://github.com/ArchonMegalon/chummer6-ui.git 732a33cb8d3c704b8a86e1249eab46508339a105 "$GITHUB_WORKSPACE/chummer-presentation" \
             --source core-runtime https://github.com/ArchonMegalon/chummer6-core.git 60112dccb6a3faad330d32c3c98eef0aa81d97af "$GITHUB_WORKSPACE/chummer-core-engine" \
             --source core-content https://github.com/ArchonMegalon/chummer6-core.git c06f22c185c7b733637fdb76b3cf333f31716781 "$GITHUB_WORKSPACE/chummer-core-content" \
             --source hub https://github.com/ArchonMegalon/chummer6-hub.git bc199cbe0982833ec2fc9ce625826e612759d67a "$GITHUB_WORKSPACE/chummer.run-services" \
@@ -357,7 +357,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: ArchonMegalon/chummer6-ui
-          ref: d02368a24a7c4d7ae1a5ddd031475e1e54141904
+          ref: 732a33cb8d3c704b8a86e1249eab46508339a105
           path: chummer-presentation
           persist-credentials: false
           fetch-depth: 1

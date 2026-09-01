@@ -289,9 +289,9 @@ jq -n \
   --arg androidTree "$android_tree" \
   --arg presentationCommit "$presentation_commit" \
   --arg presentationTree "$presentation_tree" \
-  --arg authorityReceiptSha256 "a670f95bb8a7cca9819d9824a0353ad84165b86207bac97ff6eb7e49d8e52bd1" \
-  --arg authorityCacheManifestSha256 "886b47f0b9b6c92c6b769ca2a0cc444bc98e0854916a0d9f5148f96d3b8cf5b5" \
-  --arg packageAuthoritySha256 "d8acf3920287c2918e01dc69e8a41bab6375e726f70891b4bafe2a4982ab015d" \
+  --arg authorityReceiptSha256 "d99fd73db6bec5cdf3a83476d9e84e1f8df3bd7b4f8ee6e878d9b51c78e3602b" \
+  --arg authorityCacheManifestSha256 "779b4230cd400983b3777c5f00d9a8e6247c7f1cc9949a6a8ecfc390acc5690e" \
+  --arg packageAuthoritySha256 "fce976ba629f8871da69c1163c9c642d9f9878cf53e9ad5a34f718a41cb76e57" \
   --arg authorityBindingSha256 "$authority_binding_sha256" \
   --arg journalSha256 "$journal_sha256" \
   --argjson journalSizeBytes "$journal_size" \
