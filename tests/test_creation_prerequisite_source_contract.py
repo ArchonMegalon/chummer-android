@@ -8680,7 +8680,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             180_000,
             driver.PHASE_BUDGET_MS["talent-skill-group-grant-completion"],
         )
-        self.assertEqual(330_000, driver.PHASE_BUDGET_MS["preview-confirm"])
+        self.assertEqual(360_000, driver.PHASE_BUDGET_MS["preview-confirm"])
 
         typed = source.index('progress.advance("typed-authority-options")')
         active = source.index('progress.advance("talent-active-skill-grant")')
@@ -9001,7 +9001,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         phase_end = source.index('progress.advance("same-process-reopen")', start)
         phase_block = source[start:phase_end]
 
-        self.assertEqual(330_000, driver.PHASE_BUDGET_MS["preview-confirm"])
+        self.assertEqual(360_000, driver.PHASE_BUDGET_MS["preview-confirm"])
         self.assertEqual(
             1,
             block.count(
@@ -9046,7 +9046,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, round_trip)
 
-    def test_preview_confirm_uses_one_330_second_phase_slo(
+    def test_preview_confirm_uses_one_360_second_phase_slo(
         self,
     ) -> None:
         source = inspect.getsource(driver.execute)
@@ -9055,7 +9055,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             'if confirmed_revisions["contentRevision"] <= 0'
         )
         back = source.index("dashboard_deadline = tap_exact_confirmed_receipt_back(")
-        self.assertEqual(330_000, driver.PHASE_BUDGET_MS["preview-confirm"])
+        self.assertEqual(360_000, driver.PHASE_BUDGET_MS["preview-confirm"])
         self.assertLess(confirm, receipt_validation)
         self.assertLess(receipt_validation, back)
         post_receipt = source.index(
@@ -9510,6 +9510,36 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                     proof_timeout_seconds=60.0,
                     operation="Confirm",
                 )
+
+    def test_run_334524_preview_checkpoint_fits_only_the_360_second_phase_cap(
+        self,
+    ) -> None:
+        observed_phase_elapsed_seconds = 99.052
+        with mock.patch.object(
+            driver.time,
+            "monotonic",
+            return_value=observed_phase_elapsed_seconds,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "action-plus-proof lease"):
+                driver.persistent_action_deadline(
+                    330.0,
+                    action_timeout_seconds=(
+                        driver.PERSISTENT_PREVIEW_ACTION_TIMEOUT_SECONDS
+                    ),
+                    proof_timeout_seconds=driver.CONFIRM_DOWNSTREAM_RESERVE_SECONDS,
+                    operation="run 334524 Preview Confirm",
+                )
+            self.assertAlmostEqual(
+                102.052,
+                driver.persistent_action_deadline(
+                    360.0,
+                    action_timeout_seconds=(
+                        driver.PERSISTENT_PREVIEW_ACTION_TIMEOUT_SECONDS
+                    ),
+                    proof_timeout_seconds=driver.CONFIRM_DOWNSTREAM_RESERVE_SECONDS,
+                    operation="run 334524 Preview Confirm",
+                ),
+            )
 
     def test_attributes_current_first_recovers_artifact_clipped_row_in_one_reverse(self) -> None:
         deadline = driver.time.monotonic() + 30

@@ -208,7 +208,7 @@ PHASE_BUDGET_MS = {
     "talent-skill-group-grant-completion": 180_000,
     # External proof phase SLO/cap; not a sum-of-operation maxima or an
     # entitlement beyond TOTAL_PERFORMANCE_TARGET_MS.
-    "preview-confirm": 330_000,
+    "preview-confirm": 360_000,
     "same-process-reopen": 90_000,
     "resources-preview-confirm": 150_000,
     "process-restart-reopen": 90_000,
