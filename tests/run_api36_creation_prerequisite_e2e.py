@@ -210,10 +210,15 @@ PHASE_BUDGET_MS = {
     # entitlement beyond TOTAL_PERFORMANCE_TARGET_MS.
     "preview-confirm": 360_000,
     "same-process-reopen": 90_000,
+    # Heritage and Talent are two independent restored catalogs. The selected
+    # Talent grant lives on a third pushed route and must retain its own stable
+    # start/end and cardinality proof instead of consuming the catalog tail.
     "same-process-authority-options": 90_000,
+    "same-process-restored-talent-grant": 60_000,
     "resources-preview-confirm": 150_000,
     "process-restart-reopen": 90_000,
     "process-restart-authority-options": 90_000,
+    "process-restart-restored-talent-grant": 60_000,
     "process-restart-resources": 90_000,
 }
 PHASE_ORDER = tuple(PHASE_BUDGET_MS)
@@ -9961,6 +9966,10 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     )
     if resumed_talent_option.selected_node is None:
         raise RuntimeError("Same-process Talent proof retained no selected option node")
+    progress.advance("same-process-restored-talent-grant")
+    same_process_grant_deadline = progress.active_phase_deadline(
+        "same-process-restored-talent-grant"
+    )
     resumed_talent_grant = require_restored_talent_grant(
         device,
         typed_selections["talent"],
@@ -9970,7 +9979,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         skill_group_selected_option_ids,
         scan_observer=progress.record_scan,
         scan_id="same-process-restored-talent-skill-group-grant",
-        deadline=same_process_options_deadline,
+        deadline=same_process_grant_deadline,
     )
     resumed_attributes = resumed_authority.attributes_authority
     if resumed_attributes != attributes_before:
@@ -10152,6 +10161,10 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     )
     if restarted_talent_option.selected_node is None:
         raise RuntimeError("Process-restart Talent proof retained no selected option node")
+    progress.advance("process-restart-restored-talent-grant")
+    process_restart_grant_deadline = progress.active_phase_deadline(
+        "process-restart-restored-talent-grant"
+    )
     restarted_talent_grant = require_restored_talent_grant(
         device,
         typed_selections["talent"],
@@ -10161,7 +10174,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         skill_group_selected_option_ids,
         scan_observer=progress.record_scan,
         scan_id="process-restart-restored-talent-skill-group-grant",
-        deadline=process_restart_options_deadline,
+        deadline=process_restart_grant_deadline,
     )
     if (
         restarted_authority.attributes_authority != attributes_before

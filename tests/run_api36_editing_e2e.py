@@ -597,6 +597,41 @@ def _hierarchy_dump_attempt_timeout(
     return min(maximum, available)
 
 
+def _direct_hierarchy_observation_timeout(
+    *,
+    deadline: float,
+    consecutive: int,
+) -> float:
+    """Reserve enough lease for the stable frames still required.
+
+    Direct reconciliation owns its observation loop.  Each UIAutomator command
+    is therefore one-shot: the current attempt may consume only the portion of
+    the lease left after reserving every still-required later frame, its
+    spacing delay, and a small handoff margin.  This prevents an inner generic
+    read-only retry loop from starving the second authority frame.
+    """
+    required = ADB_HIERARCHY_DUMP_RECONCILIATION_REQUIRED_CONSECUTIVE
+    if type(consecutive) is not int or consecutive < 0 or consecutive >= required:
+        raise ValueError("Direct hierarchy consecutive count is outside its authority bound")
+    remaining = deadline - time.monotonic()
+    later_frames = required - consecutive - 1
+    reserved = (
+        later_frames
+        * ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_READ_ATTEMPT_MAX_SECONDS
+        + later_frames * ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_DELAY_SECONDS
+        + ADB_READ_ONLY_DEADLINE_HEADROOM_SECONDS
+    )
+    available = remaining - reserved
+    if available <= 0:
+        raise AdbOperationDeadlineExceeded(
+            "ADB direct hierarchy lease cannot preserve two stable observations"
+        )
+    return min(
+        ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_READ_ATTEMPT_MAX_SECONDS,
+        available,
+    )
+
+
 def _sleep_before_operation_deadline(
     seconds: float,
     *,
@@ -1766,6 +1801,58 @@ class Device:
             "last-read-only-invalid-hierarchy.txt",
         )
 
+    def _read_only_hierarchy_xml_once(
+        self,
+        *,
+        deadline: float,
+        attempt_max_seconds: float,
+    ) -> str:
+        """Perform exactly one caller-owned direct hierarchy observation.
+
+        This primitive deliberately bypasses ``run``'s generic read-only retry
+        policy.  Its callers own the bounded stable-observation loop and must
+        decide whether another fresh frame is permitted by the same deadline.
+        """
+        if (
+            isinstance(attempt_max_seconds, bool)
+            or not isinstance(attempt_max_seconds, (int, float))
+            or not math.isfinite(attempt_max_seconds)
+            or attempt_max_seconds <= 0
+            or attempt_max_seconds
+            > ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_READ_ATTEMPT_MAX_SECONDS
+        ):
+            raise ValueError("One-shot hierarchy attempt maximum is invalid")
+        timeout = _remaining_operation_timeout(
+            deadline=deadline,
+            maximum=attempt_max_seconds,
+        )
+        try:
+            xml = self._invoke_once(
+                ADB_READ_ONLY_HIERARCHY_ARGUMENTS,
+                timeout=timeout,
+                text=True,
+                check=True,
+            ).stdout
+        except subprocess.TimeoutExpired as error:
+            completed = _complete_timed_out_hierarchy_output(error)
+            if completed is None:
+                raise
+            xml = completed[0]
+        return xml
+
+    def read_only_hierarchy_once(
+        self,
+        *,
+        deadline: float,
+        attempt_max_seconds: float,
+        diagnostic_name: str = "last-read-only-once-invalid-hierarchy.txt",
+    ) -> list[UiNode]:
+        xml = self._read_only_hierarchy_xml_once(
+            deadline=deadline,
+            attempt_max_seconds=attempt_max_seconds,
+        )
+        return Device._parse_hierarchy(self, xml, diagnostic_name)
+
     def _parse_hierarchy(self, xml: str, diagnostic_name: str) -> list[UiNode]:
         hierarchy_start = xml.find("<hierarchy")
         if hierarchy_start < 0:
@@ -1990,21 +2077,19 @@ class Device:
             ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_MAX_OBSERVATIONS + 1,
         ):
             try:
-                xml = self.run(
-                    *ADB_READ_ONLY_HIERARCHY_ARGUMENTS,
-                    timeout=_remaining_operation_timeout(
-                        deadline=direct_deadline,
-                        maximum=(
-                            ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_READ_ATTEMPT_MAX_SECONDS
-                        ),
-                    ),
+                attempt_max_seconds = _direct_hierarchy_observation_timeout(
                     deadline=direct_deadline,
-                ).stdout
-                _remaining_operation_timeout(
-                    deadline=direct_deadline,
-                    maximum=ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_MAX_SECONDS,
+                    consecutive=consecutive,
                 )
-            except (AdbOperationDeadlineExceeded, AdbTransportError):
+                xml = self._read_only_hierarchy_xml_once(
+                    deadline=direct_deadline,
+                    attempt_max_seconds=attempt_max_seconds,
+                )
+            except (
+                AdbOperationDeadlineExceeded,
+                subprocess.CalledProcessError,
+                subprocess.TimeoutExpired,
+            ):
                 return None
             if self._transport_event_index != expected_transport_event_index:
                 return None
@@ -4494,10 +4579,19 @@ def return_to_phone_runner_root(
             ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_MAX_OBSERVATIONS + 1,
         ):
             try:
-                observed = device.read_only_hierarchy(
+                attempt_max_seconds = _direct_hierarchy_observation_timeout(
                     deadline=operation_deadline,
+                    consecutive=consecutive,
                 )
-            except (AdbOperationDeadlineExceeded, AdbTransportError):
+                observed = device.read_only_hierarchy_once(
+                    deadline=operation_deadline,
+                    attempt_max_seconds=attempt_max_seconds,
+                )
+            except (
+                AdbOperationDeadlineExceeded,
+                subprocess.CalledProcessError,
+                subprocess.TimeoutExpired,
+            ):
                 return []
             if not observed:
                 previous_sha256 = None

@@ -837,7 +837,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             self.phone_runner_route("phone-runner-create"),
         ]
         device.hierarchy.return_value = []
-        device.read_only_hierarchy.side_effect = (root, root)
+        device.read_only_hierarchy_once.side_effect = (root, root)
         device.node_has_tappable_bounds.return_value = True
 
         with patch.object(DRIVER, "_sleep_before_operation_deadline") as delay:
@@ -848,13 +848,20 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             )
 
         self.assertIs(root[2], observed)
-        self.assertEqual(2, device.read_only_hierarchy.call_count)
-        first_deadline = device.read_only_hierarchy.call_args_list[0].kwargs[
+        self.assertEqual(2, device.read_only_hierarchy_once.call_count)
+        first_deadline = device.read_only_hierarchy_once.call_args_list[0].kwargs[
             "deadline"
         ]
         self.assertEqual(
             first_deadline,
-            device.read_only_hierarchy.call_args_list[1].kwargs["deadline"],
+            device.read_only_hierarchy_once.call_args_list[1].kwargs["deadline"],
+        )
+        self.assertTrue(
+            all(
+                invocation.kwargs["attempt_max_seconds"]
+                <= DRIVER.ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_READ_ATTEMPT_MAX_SECONDS
+                for invocation in device.read_only_hierarchy_once.call_args_list
+            )
         )
         delay.assert_called_once_with(
             DRIVER.ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_DELAY_SECONDS,
@@ -868,7 +875,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         page = self.phone_runner_page()
         toolbar = self.phone_runner_toolbar()
         device.hierarchy.return_value = []
-        device.read_only_hierarchy.side_effect = (
+        device.read_only_hierarchy_once.side_effect = (
             [page, toolbar, route],
             [page, toolbar],
             [page, toolbar, route],
@@ -880,6 +887,11 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 DRIVER.time,
                 "monotonic",
                 side_effect=[0.0, 0.0, 2.0],
+            ),
+            patch.object(
+                DRIVER,
+                "_direct_hierarchy_observation_timeout",
+                return_value=1.0,
             ),
             patch.object(DRIVER, "_sleep_before_operation_deadline"),
             patch.object(DRIVER.time, "sleep"),

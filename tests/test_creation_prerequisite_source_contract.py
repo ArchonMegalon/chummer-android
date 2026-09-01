@@ -1724,8 +1724,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             driver.PHASE_BUDGET_MS["prerequisite-authority-inventory"],
         )
         self.assertEqual(1_800_000, driver.TOTAL_PERFORMANCE_TARGET_MS)
-        self.assertEqual(28, len(driver.PHASE_ORDER))
-        self.assertEqual(14, driver.TIMING_ROUNDING_TOLERANCE_MS)
+        self.assertEqual(30, len(driver.PHASE_ORDER))
+        self.assertEqual(15, driver.TIMING_ROUNDING_TOLERANCE_MS)
         self.assertLess(navigation_start, cold_launch)
         self.assertLess(cold_launch, dialog_ready)
         self.assertLess(dialog_ready, authority_start)
@@ -1778,7 +1778,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             driver.TIMING_ROUNDING_TOLERANCE_MS,
             aggregate.CREATION_TIMING_ROUNDING_TOLERANCE_MS,
         )
-        self.assertEqual(14, driver.TIMING_ROUNDING_TOLERANCE_MS)
+        self.assertEqual(15, driver.TIMING_ROUNDING_TOLERANCE_MS)
         for phase_id in (
             "talent-active-skill-grant",
             "talent-active-grant-completion",
@@ -1789,6 +1789,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "talent-skill-group-reset",
             "talent-skill-group-reselection",
             "talent-skill-group-grant-completion",
+            "same-process-restored-talent-grant",
+            "process-restart-restored-talent-grant",
         ):
             with self.subTest(phase_id=phase_id):
                 self.assertIn(phase_id, aggregate.CREATION_PHASE_BUDGETS_MS)
@@ -1809,6 +1811,10 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         )
         same_options = phase_slice(
             "same-process-authority-options",
+            "same-process-restored-talent-grant",
+        )
+        same_grant = phase_slice(
+            "same-process-restored-talent-grant",
             "resources-preview-confirm",
         )
         restart_reopen = phase_slice(
@@ -1817,6 +1823,10 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         )
         restart_options = phase_slice(
             "process-restart-authority-options",
+            "process-restart-restored-talent-grant",
+        )
+        restart_grant = phase_slice(
+            "process-restart-restored-talent-grant",
             "process-restart-resources",
         )
         restart_resources = phase_slice("process-restart-resources", None)
@@ -1825,8 +1835,9 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertIn("deadline=same_process_deadline", same_reopen)
         self.assertNotIn("require_exact_restored_authority_option(", same_reopen)
         self.assertEqual(2, same_options.count("require_exact_restored_authority_option("))
-        self.assertIn("require_restored_talent_grant(", same_options)
-        self.assertIn("deadline=same_process_options_deadline", same_options)
+        self.assertNotIn("require_restored_talent_grant(", same_options)
+        self.assertIn("require_restored_talent_grant(", same_grant)
+        self.assertIn("deadline=same_process_grant_deadline", same_grant)
 
         self.assertIn("shared.force_stop_and_launch_new_process", restart_reopen)
         self.assertIn("read_persisted_prerequisite_authority(", restart_reopen)
@@ -1836,8 +1847,9 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             2,
             restart_options.count("require_exact_restored_authority_option("),
         )
-        self.assertIn("require_restored_talent_grant(", restart_options)
-        self.assertIn("deadline=process_restart_options_deadline", restart_options)
+        self.assertNotIn("require_restored_talent_grant(", restart_options)
+        self.assertIn("require_restored_talent_grant(", restart_grant)
+        self.assertIn("deadline=process_restart_grant_deadline", restart_grant)
 
         self.assertIn(
             "open_resources(device, deadline=process_restart_resources_deadline)",

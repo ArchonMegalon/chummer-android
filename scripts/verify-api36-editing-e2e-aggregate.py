@@ -93,9 +93,11 @@ CREATION_PHASE_BUDGETS_MS = {
     "preview-confirm": 360_000,
     "same-process-reopen": 90_000,
     "same-process-authority-options": 90_000,
+    "same-process-restored-talent-grant": 60_000,
     "resources-preview-confirm": 150_000,
     "process-restart-reopen": 90_000,
     "process-restart-authority-options": 90_000,
+    "process-restart-restored-talent-grant": 60_000,
     "process-restart-resources": 90_000,
 }
 CREATION_MILESTONES = (

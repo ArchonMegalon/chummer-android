@@ -1025,6 +1025,41 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
                     maximum=driver.ADB_FILE_HIERARCHY_DUMP_ATTEMPT_MAX_SECONDS,
                 )
 
+    def test_direct_hierarchy_attempt_preserves_each_required_future_frame(self) -> None:
+        future_reserve = (
+            driver.ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_READ_ATTEMPT_MAX_SECONDS
+            + driver.ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_DELAY_SECONDS
+            + driver.ADB_READ_ONLY_DEADLINE_HEADROOM_SECONDS
+        )
+        with mock.patch.object(driver.time, "monotonic", return_value=100.0):
+            self.assertEqual(
+                driver.ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_READ_ATTEMPT_MAX_SECONDS,
+                driver._direct_hierarchy_observation_timeout(
+                    deadline=(
+                        100.0
+                        + future_reserve
+                        + driver.ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_READ_ATTEMPT_MAX_SECONDS
+                    ),
+                    consecutive=0,
+                ),
+            )
+            self.assertEqual(
+                driver.ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_READ_ATTEMPT_MAX_SECONDS,
+                driver._direct_hierarchy_observation_timeout(
+                    deadline=(
+                        100.0
+                        + driver.ADB_READ_ONLY_DEADLINE_HEADROOM_SECONDS
+                        + driver.ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_READ_ATTEMPT_MAX_SECONDS
+                    ),
+                    consecutive=1,
+                ),
+            )
+            with self.assertRaises(driver.AdbOperationDeadlineExceeded):
+                driver._direct_hierarchy_observation_timeout(
+                    deadline=100.0 + future_reserve,
+                    consecutive=0,
+                )
+
     def test_missing_owned_dump_uses_two_stable_direct_reads_without_replay(self) -> None:
         xml = (
             "<hierarchy><node text='Stable direct preview' "
@@ -1197,7 +1232,7 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
             run.assert_not_called()
             self.assertEqual(1, device.transport_summary()["terminalFailureCount"])
 
-    def test_direct_transport_recovery_preserves_original_blocker(self) -> None:
+    def test_direct_transport_failure_is_one_shot_and_preserves_original_blocker(self) -> None:
         xml = "<hierarchy><node text='Recovered transport' /></hierarchy>"
         remove_arguments = (
             "shell",
@@ -1227,7 +1262,11 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
                 completed(driver.ADB_READ_ONLY_HIERARCHY_ARGUMENTS, xml),
             ]
             with (
-                mock.patch.object(driver.subprocess, "run", side_effect=responses),
+                mock.patch.object(
+                    driver.subprocess,
+                    "run",
+                    side_effect=responses,
+                ) as run,
                 mock.patch.object(driver.time, "sleep"),
             ):
                 with self.assertRaises(driver.AdbTransportError):
@@ -1238,9 +1277,14 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
             statuses = [
                 event["status"] for event in device.transport_summary()["events"]
             ]
+            self.assertEqual(["fail", "fail"], statuses)
+            issued = [
+                tuple(invocation.args[0][3:])
+                for invocation in run.call_args_list
+            ]
             self.assertEqual(
-                ["fail", "retrying-read-only", "recovered-read-only", "fail"],
-                statuses,
+                1,
+                issued.count(driver.ADB_READ_ONLY_HIERARCHY_ARGUMENTS),
             )
             self.assertEqual(
                 "prior-mutation-outcome-unknown",
