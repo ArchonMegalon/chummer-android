@@ -2503,7 +2503,44 @@ class Device:
             else next((node for node in nodes if self._matches(node, "aerr_wait")), None)
         )
         if wait_button is None:
-            return False
+            if nodes is None:
+                return False
+            packages = {
+                node.attributes.get("package", "")
+                for node in nodes
+                if node.attributes.get("package", "")
+            }
+            resource_ids = {
+                node.attributes.get("resource-id", "")
+                for node in nodes
+                if node.attributes.get("resource-id", "")
+            }
+            notification_shade_expanded = (
+                PACKAGE not in packages
+                and packages == {"com.android.systemui"}
+                and "com.android.systemui:id/notification_stack_scroller"
+                in resource_ids
+                and (
+                    "com.android.systemui:id/legacy_window_root" in resource_ids
+                    or "com.android.systemui:id/split_shade_status_bar"
+                    in resource_ids
+                )
+            )
+            if not notification_shade_expanded:
+                return False
+            arguments = ("cmd", "statusbar", "collapse")
+            if deadline is None:
+                self.shell(*arguments, timeout=15)
+            else:
+                self.shell(
+                    *arguments,
+                    timeout=_remaining_operation_timeout(
+                        deadline=deadline,
+                        maximum=15,
+                    ),
+                    deadline=deadline,
+                )
+            return True
         if deadline is None:
             self.capture_product_anr_evidence()
         else:

@@ -3936,6 +3936,69 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         device.capture_product_anr_evidence.assert_called_once_with()
         device.shell.assert_not_called()
 
+    def test_expanded_notification_shade_is_collapsed_before_product_reobservation(
+        self,
+    ) -> None:
+        device = Mock(spec=DRIVER.Device)
+        device._matches.side_effect = DRIVER.Device._matches
+        nodes = [
+            DRIVER.UiNode(
+                {
+                    "package": "com.android.systemui",
+                    "resource-id": "com.android.systemui:id/legacy_window_root",
+                }
+            ),
+            DRIVER.UiNode(
+                {
+                    "package": "com.android.systemui",
+                    "resource-id": (
+                        "com.android.systemui:id/notification_stack_scroller"
+                    ),
+                }
+            ),
+        ]
+
+        self.assertTrue(DRIVER.Device.dismiss_system_ui_anr(device, nodes))
+
+        device.shell.assert_called_once_with(
+            "cmd",
+            "statusbar",
+            "collapse",
+            timeout=15,
+        )
+        device.capture_product_anr_evidence.assert_not_called()
+
+    def test_system_ui_nodes_do_not_hide_a_present_product_window(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        device._matches.side_effect = DRIVER.Device._matches
+        nodes = [
+            DRIVER.UiNode(
+                {
+                    "package": DRIVER.PACKAGE,
+                    "resource-id": "creation-wizard-dashboard",
+                }
+            ),
+            DRIVER.UiNode(
+                {
+                    "package": "com.android.systemui",
+                    "resource-id": (
+                        "com.android.systemui:id/notification_stack_scroller"
+                    ),
+                }
+            ),
+            DRIVER.UiNode(
+                {
+                    "package": "com.android.systemui",
+                    "resource-id": "com.android.systemui:id/legacy_window_root",
+                }
+            ),
+        ]
+
+        self.assertFalse(DRIVER.Device.dismiss_system_ui_anr(device, nodes))
+
+        device.shell.assert_not_called()
+        device.capture_product_anr_evidence.assert_not_called()
+
     def test_deadline_bound_exact_wait_stops_anr_diagnostics_at_the_deadline(self) -> None:
         wait_button = DRIVER.UiNode(
             {
