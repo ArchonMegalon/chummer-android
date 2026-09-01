@@ -4097,6 +4097,127 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         )
         device.capture.assert_not_called()
 
+    def test_exact_resource_transition_scrolls_when_target_is_below_safe_tap_zone(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        source = DRIVER.UiNode(
+            {
+                "resource-id": f"{DRIVER.PACKAGE}:id/home-new-runner",
+                "clickable": "true",
+                "bounds": "[40,400][1040,560]",
+            }
+        )
+        surface = DRIVER.UiNode(
+            {
+                "resource-id": f"{DRIVER.PACKAGE}:id/dialog-surface",
+                "bounds": "[0,275][1080,2400]",
+            }
+        )
+        clipped_target = DRIVER.UiNode(
+            {
+                "resource-id": f"{DRIVER.PACKAGE}:id/dialog-action-create-character",
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[53,2241][528,2373]",
+            }
+        )
+        tappable_target = DRIVER.UiNode(
+            {
+                "resource-id": f"{DRIVER.PACKAGE}:id/dialog-action-create-character",
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[53,1980][528,2112]",
+            }
+        )
+        device.hierarchy.side_effect = [
+            [source],
+            [surface, clipped_target],
+            [surface, tappable_target],
+        ]
+        device.node_has_tappable_bounds.side_effect = [True, False, True, True]
+        device.display_size.return_value = (1080, 2400)
+        device.dismiss_system_ui_anr.return_value = False
+
+        with patch.object(DRIVER.time, "sleep"):
+            actual = DRIVER.Device.tap_exact_resource_id_until_exact_resource_id(
+                device,
+                "home-new-runner",
+                "dialog-action-create-character",
+                target_scroll_surface="dialog-surface",
+                max_target_scrolls=4,
+            )
+
+        self.assertIs(tappable_target, actual)
+        device.shell.assert_called_once_with("input", "tap", "540", "480")
+        device.swipe_up.assert_called_once_with(
+            x_ratio=0.5,
+            distance_ratio=0.22,
+        )
+        device.capture.assert_not_called()
+
+    def test_observed_create_target_center_is_three_pixels_below_safe_tap_zone(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        device.display_size.return_value = (1080, 2400)
+        clipped_target = DRIVER.UiNode(
+            {
+                "bounds": "[53,2241][528,2373]",
+            }
+        )
+        shifted_target = DRIVER.UiNode(
+            {
+                "bounds": "[53,2233][528,2365]",
+            }
+        )
+
+        self.assertEqual(2307, clipped_target.center[1])
+        self.assertEqual(2304, 2400 * 0.96)
+        self.assertFalse(
+            DRIVER.Device.node_has_tappable_bounds(device, clipped_target)
+        )
+        self.assertTrue(
+            DRIVER.Device.node_has_tappable_bounds(device, shifted_target)
+        )
+
+    def test_exact_resource_transition_fails_closed_when_clipped_target_cannot_scroll(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        clipped_target = DRIVER.UiNode(
+            {
+                "resource-id": f"{DRIVER.PACKAGE}:id/dialog-action-create-character",
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[53,2241][528,2373]",
+            }
+        )
+        surface = DRIVER.UiNode(
+            {
+                "resource-id": f"{DRIVER.PACKAGE}:id/dialog-surface",
+                "bounds": "[0,275][1080,2400]",
+            }
+        )
+        device.hierarchy.return_value = [surface, clipped_target]
+        device.node_has_tappable_bounds.side_effect = [False, True]
+
+        with patch.object(DRIVER.time, "monotonic", side_effect=[0.0, 0.0]), \
+             self.assertRaisesRegex(
+                 RuntimeError,
+                 "Timed out waiting for exact create-character build-method action",
+             ):
+            DRIVER.Device.tap_exact_resource_id_until_exact_resource_id(
+                device,
+                "home-new-runner",
+                "dialog-action-create-character",
+                timeout=1,
+                evidence_prefix="new-runner-build-method-dialog",
+                target_name="Create-character build-method action",
+                target_scroll_surface="dialog-surface",
+                max_target_scrolls=0,
+            )
+
+        device.swipe_up.assert_not_called()
+        device.shell.assert_not_called()
+        device.capture.assert_called_once_with(
+            "new-runner-build-method-dialog-target-unavailable"
+        )
+
     def test_exact_resource_transition_bounds_target_surface_scrolling(self) -> None:
         device = Mock(spec=DRIVER.Device)
         source = DRIVER.UiNode(

@@ -2916,7 +2916,12 @@ class Device:
                 == target
             ]
             if len(targets) == 1:
-                return targets[0]
+                target_node = targets[0]
+                if (
+                    target_scroll_surface is None
+                    or self.node_has_tappable_bounds(target_node)
+                ):
+                    return target_node
             if len(targets) > 1:
                 self.capture(f"{evidence_prefix}-target-cardinality-invalid")
                 raise RuntimeError(
