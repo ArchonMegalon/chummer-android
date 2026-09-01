@@ -5423,6 +5423,7 @@ def read_talent_grant_surface(
     scan_id: str | None = None,
     navigation_out: dict[str, object] | None = None,
     deadline: float | None = None,
+    route_node: shared.UiNode | None = None,
 ) -> TalentGrantSurface:
     """Read one complete, exact Core-projected Talent grant prompt.
 
@@ -5438,13 +5439,14 @@ def read_talent_grant_surface(
     opposite_prefix = TALENT_GRANT_OPTION_PREFIX[
         next(kind for kind in TALENT_GRANT_KINDS if kind != expected_kind)
     ]
-    route_node = device.wait_for_single_exact_resource_id(
-        "creation-prerequisite-talent-grant-page",
-        timeout=45,
-        evidence_prefix="creation-prerequisite-talent-grant-route",
-        surface_name=f"{expected_kind} Talent grant route",
-        deadline=deadline,
-    )
+    if route_node is None:
+        route_node = device.wait_for_single_exact_resource_id(
+            "creation-prerequisite-talent-grant-page",
+            timeout=45,
+            evidence_prefix="creation-prerequisite-talent-grant-route",
+            surface_name=f"{expected_kind} Talent grant route",
+            deadline=deadline,
+        )
     _require_canonical_chummer_resource_id(
         device,
         route_node,
@@ -5457,12 +5459,11 @@ def read_talent_grant_surface(
         "talent-grant-cardinality-"
         + re.sub(r"[^a-z0-9]+", "-", expected_kind.casefold()).strip("-")
     )
-    rewind_to_stable_start(
+    origin = acquire_stable_start_origin(
         device,
         scan_id=f"{scan_token}-start",
-        max_scrolls=max_scrolls,
+        max_reverse_swipes=max_scrolls,
         distance_ratio=TALENT_GRANT_SCAN_GESTURE_RATIO,
-        observer=scan_observer,
         deadline=deadline,
     )
     scan = scan_forward_with_receipt(
@@ -5470,6 +5471,8 @@ def read_talent_grant_surface(
         scan_id=scan_token,
         max_scrolls=max_scrolls,
         distance_ratio=TALENT_GRANT_SCAN_GESTURE_RATIO,
+        initial_observation=origin,
+        initial_observation_max_reverse_swipes=max_scrolls,
         observer=scan_observer,
         deadline=deadline,
     )
@@ -5765,6 +5768,66 @@ def _validated_talent_navigation_end(
             "Talent grant inventory navigation is not an exact bounded scan topology"
         )
     return end_viewport
+
+
+def choose_navigation_local_talent_options(
+    available_option_ids: tuple[str, ...],
+    required_count: int,
+    navigation: dict[str, object],
+) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """Choose valid options nearest the measured completion authority.
+
+    The option identifiers remain the deterministic selection authority. The
+    measured inventory is used only to choose an equally legal subset and an
+    efficient tap order, avoiding repeated full-surface traversals from the
+    stable scan end. The returned selection is canonical-ID sorted for all
+    subsequent digest/state comparisons; the tap order is navigation-local.
+    """
+    if (
+        not available_option_ids
+        or len(available_option_ids) != len(set(available_option_ids))
+        or type(required_count) is not int
+        or required_count <= 0
+        or len(available_option_ids) < required_count
+    ):
+        raise ValueError(
+            "Talent navigation-local selection requires distinct sufficient options"
+        )
+    end_viewport = navigation.get("endViewport")
+    if type(end_viewport) is not int:
+        raise RuntimeError("Talent grant inventory emitted no exact end viewport")
+    _validated_talent_navigation_end(navigation, end_viewport)
+    completion_viewport = _measured_resource_viewport(
+        navigation,
+        "creation-prerequisite-talent-grant-complete",
+    )
+    option_viewports = {
+        resource_id: _measured_resource_viewport(navigation, resource_id)
+        for resource_id in available_option_ids
+    }
+    selected = tuple(
+        sorted(
+            sorted(
+                available_option_ids,
+                key=lambda resource_id: (
+                    abs(option_viewports[resource_id] - completion_viewport),
+                    abs(option_viewports[resource_id] - end_viewport),
+                    resource_id,
+                ),
+            )[:required_count]
+        )
+    )
+    tap_order = tuple(
+        sorted(
+            selected,
+            key=lambda resource_id: (
+                abs(option_viewports[resource_id] - end_viewport),
+                -option_viewports[resource_id],
+                resource_id,
+            ),
+        )
+    )
+    return selected, tap_order
 
 
 def reacquire_exact_talent_state_group(
@@ -6534,6 +6597,106 @@ class TalentGrantChoiceProof(NamedTuple):
     current_viewport: int
 
 
+def wait_for_exact_talent_option_transition(
+    device: shared.Device,
+    resource_id: str,
+    expected_detail: tuple[str, ...],
+    expected_slot: int | None,
+    *,
+    evidence_prefix: str,
+    deadline: float | None = None,
+    timeout_seconds: float = 45,
+) -> shared.UiNode:
+    """Synchronize one mutation on its changed option and exact route.
+
+    A route marker alone can still belong to the pre-tap frame.  This waits for
+    the canonical route and mutated option in one fresh hierarchy, proving the
+    immutable detail and exact selected-slot decorator before grouped scans.
+    """
+    if (
+        not resource_id
+        or not expected_detail
+        or any(not value for value in expected_detail)
+        or (
+            expected_slot is not None
+            and (type(expected_slot) is not int or expected_slot <= 0)
+        )
+        or isinstance(timeout_seconds, bool)
+        or not isinstance(timeout_seconds, (int, float))
+        or not math.isfinite(timeout_seconds)
+        or timeout_seconds <= 0
+    ):
+        raise ValueError("Exact Talent transition authority is required")
+    operation_deadline = min(
+        deadline if deadline is not None else math.inf,
+        time.monotonic() + timeout_seconds,
+    )
+    hierarchy_durations_ms: list[int] = []
+    route_id = "creation-prerequisite-talent-grant-page"
+    while True:
+        nodes = fresh_hierarchy_timed(
+            device,
+            hierarchy_durations_ms,
+            deadline=operation_deadline,
+        )
+        route_matches = [
+            node for node in nodes if _exact_resource_id(node) == route_id
+        ]
+        option_matches = [
+            node for node in nodes if _exact_resource_id(node) == resource_id
+        ]
+        if len(route_matches) > 1 or len(option_matches) > 1:
+            device.capture(
+                f"{evidence_prefix}-cardinality-invalid",
+                deadline=operation_deadline,
+            )
+            raise RuntimeError(
+                "Talent transition exposed ambiguous route or option cardinality"
+            )
+        if len(route_matches) == 1 and len(option_matches) == 1:
+            route = route_matches[0]
+            option = option_matches[0]
+            _require_canonical_chummer_resource_id(
+                device,
+                route,
+                route_id,
+                evidence_prefix=f"{evidence_prefix}-route",
+                surface_name="Mutated Talent grant route",
+                deadline=operation_deadline,
+            )
+            _require_canonical_chummer_resource_id(
+                device,
+                option,
+                resource_id,
+                evidence_prefix=f"{evidence_prefix}-option",
+                surface_name="Mutated Talent grant option",
+                deadline=operation_deadline,
+            )
+            if _talent_option_identity_values(option) != expected_detail:
+                device.capture(
+                    f"{evidence_prefix}-detail-drift",
+                    deadline=operation_deadline,
+                )
+                raise RuntimeError(
+                    f"Talent transition changed exact option detail for {resource_id!r}"
+                )
+            if (
+                _talent_option_matches_exact_slot(option, expected_slot)
+                and option.attributes.get("enabled") == "true"
+                and option.attributes.get("clickable") == "true"
+                and device.node_has_tappable_bounds(
+                    option,
+                    deadline=operation_deadline,
+                )
+            ):
+                return option
+        sleep_before_phase_deadline(
+            0.2,
+            deadline=operation_deadline,
+            operation="Talent option transition synchronization",
+        )
+
+
 def choose_and_prove_talent_grant(
     device: shared.Device,
     expected_kind: str,
@@ -6566,6 +6729,7 @@ def choose_and_prove_talent_grant(
         scan_observer=scan_observer,
         scan_id=f"{scan_id_prefix}-initial",
         navigation_out=navigation,
+        deadline=active_deadline(),
     )
     if initial.selected_count != 0 or initial.completion_enabled:
         device.capture(f"{scan_id_prefix}-initial-selection-not-empty")
@@ -6583,9 +6747,17 @@ def choose_and_prove_talent_grant(
             f"{expected_kind} Talent prompt exposed too few enabled exact choices: "
             f"required={initial.required_count}, available={available!r}"
         )
-    chosen = tuple(sorted(available)[: initial.required_count])
+    chosen, tap_order = choose_navigation_local_talent_options(
+        available,
+        initial.required_count,
+        navigation,
+    )
+    selected_slots = {
+        resource_id: ordinal
+        for ordinal, resource_id in enumerate(tap_order, start=1)
+    }
     current_viewport = int(navigation["endViewport"])
-    for resource_id in chosen:
+    for resource_id in tap_order:
         current_viewport = tap_exact_measured_talent_resource(
             device,
             resource_id,
@@ -6595,11 +6767,13 @@ def choose_and_prove_talent_grant(
             scan_observer=scan_observer,
             deadline=active_deadline(),
         )
-        device.wait_for_single_exact_resource_id(
-            "creation-prerequisite-talent-grant-page",
-            timeout=45,
+        wait_for_exact_talent_option_transition(
+            device,
+            resource_id,
+            _measured_talent_resource_detail(navigation, resource_id),
+            selected_slots[resource_id],
             evidence_prefix=f"{scan_id_prefix}-choice-refresh",
-            surface_name=f"Refreshed {expected_kind} Talent grant route",
+            deadline=active_deadline(),
         )
     complete_state, current_viewport = read_talent_grant_grouped_state(
         device,
@@ -6607,7 +6781,7 @@ def choose_and_prove_talent_grant(
         initial,
         navigation,
         current_viewport,
-        expected_selected_option_ids=chosen,
+        expected_selected_option_ids=tap_order,
         expected_completion_enabled=True,
         evidence_prefix=f"{scan_id_prefix}-complete",
         scan_observer=scan_observer,
@@ -6629,12 +6803,15 @@ def choose_and_prove_talent_grant(
     # A native Back followed by the exact same Talent option must preserve the
     # in-memory typed choices.  Toggling one selected row off and on again then
     # proves explicit reset/reselection without any implicit default.
-    device.back()
+    reset_id = chosen[0]
+    preservation_deadline = active_deadline()
+    device.back(deadline=preservation_deadline)
     device.wait_for_single_exact_resource_id(
         "creation-prerequisite-talent-page",
         timeout=45,
         evidence_prefix=f"{scan_id_prefix}-back-to-talent",
         surface_name="Talent detail route after grant Back",
+        deadline=preservation_deadline,
     )
     talent_viewport = int(talent_option_navigation["endViewport"])
     tap_exact_measured_talent_resource(
@@ -6646,20 +6823,21 @@ def choose_and_prove_talent_grant(
         scan_observer=scan_observer,
         deadline=active_deadline(),
     )
-    device.wait_for_single_exact_resource_id(
-        "creation-prerequisite-talent-grant-page",
-        timeout=45,
+    wait_for_exact_talent_option_transition(
+        device,
+        reset_id,
+        _measured_talent_resource_detail(navigation, reset_id),
+        selected_slots[reset_id],
         evidence_prefix=f"{scan_id_prefix}-preserved-route",
-        surface_name=f"Preserved {expected_kind} Talent grant route",
+        deadline=active_deadline(),
     )
-    reset_id = chosen[0]
     preserved_state, current_viewport = read_talent_grant_grouped_state(
         device,
         expected_kind,
         initial,
         navigation,
         current_viewport,
-        expected_selected_option_ids=chosen,
+        expected_selected_option_ids=tap_order,
         expected_completion_enabled=True,
         preferred_final_resource_id=reset_id,
         evidence_prefix=f"{scan_id_prefix}-preserved",
@@ -6684,11 +6862,13 @@ def choose_and_prove_talent_grant(
         scan_observer=scan_observer,
         deadline=active_deadline(),
     )
-    device.wait_for_single_exact_resource_id(
-        "creation-prerequisite-talent-grant-page",
-        timeout=45,
+    wait_for_exact_talent_option_transition(
+        device,
+        reset_id,
+        _measured_talent_resource_detail(navigation, reset_id),
+        None,
         evidence_prefix=f"{scan_id_prefix}-explicit-reset-route",
-        surface_name=f"Reset {expected_kind} Talent grant route",
+        deadline=active_deadline(),
     )
     expected_after_reset = tuple(resource_id for resource_id in chosen if resource_id != reset_id)
     incomplete_state, current_viewport = read_talent_grant_grouped_state(
@@ -6726,11 +6906,13 @@ def choose_and_prove_talent_grant(
         scan_observer=scan_observer,
         deadline=active_deadline(),
     )
-    device.wait_for_single_exact_resource_id(
-        "creation-prerequisite-talent-grant-page",
-        timeout=45,
+    wait_for_exact_talent_option_transition(
+        device,
+        reset_id,
+        _measured_talent_resource_detail(navigation, reset_id),
+        initial.required_count,
         evidence_prefix=f"{scan_id_prefix}-explicit-reselect-route",
-        surface_name=f"Reselected {expected_kind} Talent grant route",
+        deadline=active_deadline(),
     )
     restored_state, current_viewport = read_talent_grant_grouped_state(
         device,
@@ -8035,6 +8217,7 @@ def require_restored_talent_grant(
         scan_observer=scan_observer,
         scan_id=scan_id,
         deadline=deadline,
+        route_node=grant_route,
     )
     if (
         surface.grant_digest != expected_grant_digest
@@ -8342,6 +8525,150 @@ def require_exact_restored_authority_option(
     )
 
 
+def scan_deadline_bound_resources_surface(
+    device: shared.Device,
+    required_selectors: tuple[str, ...],
+    *,
+    scan_id: str,
+    deadline: float,
+    scan_observer: Callable[[dict[str, object]], None] | None = None,
+    required_terminal_selectors: tuple[str, ...] = (),
+) -> dict[str, shared.UiNode]:
+    """Read one Resources surface once and reject identity/cardinality drift."""
+    if (
+        not required_selectors
+        or len(required_selectors) != len(set(required_selectors))
+        or len(required_terminal_selectors) != len(set(required_terminal_selectors))
+        or not set(required_terminal_selectors).issubset(required_selectors)
+    ):
+        raise ValueError("Resources surface scan requires distinct exact selectors")
+    origin = acquire_stable_start_origin(
+        device,
+        scan_id=f"{scan_id}-start",
+        max_reverse_swipes=22,
+        distance_ratio=0.68,
+        deadline=deadline,
+    )
+    scan = scan_forward_with_receipt(
+        device,
+        scan_id=scan_id,
+        max_scrolls=22,
+        distance_ratio=0.22,
+        initial_observation=origin,
+        initial_observation_max_reverse_swipes=22,
+        delay_seconds=0.0,
+        observer=scan_observer,
+        deadline=deadline,
+    )
+    required = set(required_selectors)
+    representatives: dict[str, shared.UiNode] = {}
+    signatures: dict[str, set[tuple[str, ...]]] = {
+        selector: set() for selector in required_selectors
+    }
+    duplicate_ids: set[str] = set()
+    for nodes in scan.screens:
+        screen_ids: list[str] = []
+        for node in nodes:
+            resource_id = _exact_resource_id(node)
+            if resource_id not in required:
+                continue
+            _require_canonical_chummer_resource_id(
+                device,
+                node,
+                resource_id,
+                evidence_prefix=f"{scan_id}-{resource_id}",
+                surface_name="Creation Resources authority",
+                deadline=deadline,
+            )
+            screen_ids.append(resource_id)
+            # Keep the freshest occurrence from the latest observed viewport;
+            # action rows near the stable end may then be tapped without a
+            # second whole-surface search.
+            representatives[resource_id] = node
+            signatures[resource_id].add(
+                (
+                    node.attributes.get("text", ""),
+                    node.attributes.get("content-desc", ""),
+                    node.attributes.get("enabled", ""),
+                    node.attributes.get("clickable", ""),
+                    node.attributes.get("class", ""),
+                )
+            )
+        duplicate_ids.update(
+            resource_id
+            for resource_id in set(screen_ids)
+            if screen_ids.count(resource_id) > 1
+        )
+    missing = sorted(required - set(representatives))
+    terminal_ids = {
+        _exact_resource_id(node)
+        for node in (scan.screens[-1] if scan.screens else [])
+        if _exact_resource_id(node) in required
+    }
+    missing_terminal = sorted(set(required_terminal_selectors) - terminal_ids)
+    drifted = sorted(
+        selector for selector, values in signatures.items() if len(values) != 1
+    )
+    if missing or missing_terminal or duplicate_ids or drifted:
+        device.capture(f"{scan_id}-authority-invalid", deadline=deadline)
+        raise RuntimeError(
+            "Creation Resources surface authority was incomplete or ambiguous: "
+            f"missing={missing!r}, terminalMissing={missing_terminal!r}, "
+            f"duplicates={sorted(duplicate_ids)!r}, "
+            f"drifted={drifted!r}"
+        )
+    return representatives
+
+
+def required_resources_text(
+    nodes: dict[str, shared.UiNode],
+    selector: str,
+) -> str:
+    node = nodes.get(selector)
+    value = (
+        ""
+        if node is None
+        else node.attributes.get("text")
+        or node.attributes.get("content-desc")
+        or ""
+    ).strip()
+    if not value:
+        raise RuntimeError(f"{selector} did not expose one exact Resources value")
+    return value
+
+
+def required_resources_integer(
+    nodes: dict[str, shared.UiNode],
+    selector: str,
+) -> int:
+    value = required_resources_text(nodes, selector)
+    if re.fullmatch(r"[0-9]+", value) is None:
+        raise RuntimeError(f"{selector} did not expose one nonnegative integer: {value!r}")
+    return int(value)
+
+
+def required_resources_digest(
+    nodes: dict[str, shared.UiNode],
+    selector: str,
+) -> str:
+    value = required_resources_text(nodes, selector)
+    if CANONICAL_AUTHORITY_DIGEST.fullmatch(value) is None:
+        raise RuntimeError(f"{selector} did not expose one canonical digest: {value!r}")
+    return value
+
+
+def required_resources_auxiliary_digest(
+    nodes: dict[str, shared.UiNode],
+    selector: str,
+) -> str:
+    value = required_resources_text(nodes, selector)
+    if CANONICAL_AUXILIARY_STATE_DIGEST.fullmatch(value) is None:
+        raise RuntimeError(
+            f"{selector} did not expose one canonical auxiliary-state digest: {value!r}"
+        )
+    return value
+
+
 def open_resources(
     device: shared.Device,
     *,
@@ -8474,39 +8801,89 @@ def read_resources_binding(
     device: shared.Device,
     *,
     deadline: float | None = None,
+    scan_observer: Callable[[dict[str, object]], None] | None = None,
+    scan_id: str = "creation-resources-binding-authority",
 ) -> dict[str, object]:
-    def integer(selector: str) -> int:
-        if deadline is None:
-            return nonnegative_integer(device, selector, scroll=True)
-        return nonnegative_integer(
+    if deadline is not None:
+        nodes = scan_deadline_bound_resources_surface(
             device,
-            selector,
-            scroll=True,
+            (
+                "creation-resources-page",
+                "creation-resources-binding-content-revision",
+                "creation-resources-binding-saved-revision",
+                "creation-resources-binding-snapshot-digest",
+                "creation-resources-binding-raw-character-xml-digest",
+                "creation-resources-binding-auxiliary-state-digest",
+                "creation-resources-binding-prerequisite-draft-digest",
+                "creation-resources-authority-digest",
+                "creation-resources-budget-priority-nuyen",
+                "creation-resources-budget-total-starting-nuyen",
+            ),
+            scan_id=scan_id,
             deadline=deadline,
+            scan_observer=scan_observer,
         )
+        authority = {
+            "contentRevision": required_resources_integer(
+                nodes,
+                "creation-resources-binding-content-revision",
+            ),
+            "savedRevision": required_resources_integer(
+                nodes,
+                "creation-resources-binding-saved-revision",
+            ),
+            "snapshotDigest": required_resources_digest(
+                nodes,
+                "creation-resources-binding-snapshot-digest",
+            ),
+            "rawCharacterXmlDigest": required_resources_digest(
+                nodes,
+                "creation-resources-binding-raw-character-xml-digest",
+            ),
+            "auxiliaryStateDigest": required_resources_auxiliary_digest(
+                nodes,
+                "creation-resources-binding-auxiliary-state-digest",
+            ),
+            "prerequisiteDraftDigest": required_resources_digest(
+                nodes,
+                "creation-resources-binding-prerequisite-draft-digest",
+            ),
+            "authorityDigest": required_resources_digest(
+                nodes,
+                "creation-resources-authority-digest",
+            ),
+            "priorityNuyen": required_resources_integer(
+                nodes,
+                "creation-resources-budget-priority-nuyen",
+            ),
+            "totalStartingNuyen": required_resources_integer(
+                nodes,
+                "creation-resources-budget-total-starting-nuyen",
+            ),
+        }
+        if authority["contentRevision"] <= 0:
+            raise RuntimeError(f"Resources authority revision was invalid: {authority!r}")
+        if (
+            authority["priorityNuyen"] != 50_000
+            or authority["totalStartingNuyen"] != 50_000
+        ):
+            raise RuntimeError(
+                "Priority Resources rank D did not project the canonical 50,000 "
+                f"nuyen grant: {authority!r}"
+            )
+        return authority
+
+    def integer(selector: str) -> int:
+        return nonnegative_integer(device, selector, scroll=True)
 
     def digest(selector: str) -> str:
-        if deadline is None:
-            return canonical_digest(device, selector, scroll=True)
-        return canonical_digest(
-            device,
-            selector,
-            scroll=True,
-            deadline=deadline,
-        )
+        return canonical_digest(device, selector, scroll=True)
 
     def auxiliary_digest(selector: str) -> str:
-        if deadline is None:
-            return canonical_auxiliary_state_digest(
-                device,
-                selector,
-                scroll=True,
-            )
         return canonical_auxiliary_state_digest(
             device,
             selector,
             scroll=True,
-            deadline=deadline,
         )
 
     authority = {
@@ -8543,6 +8920,8 @@ def select_and_confirm_resources(
     before: dict[str, object],
     *,
     deadline: float | None = None,
+    scan_observer: Callable[[dict[str, object]], None] | None = None,
+    scan_id_prefix: str = "creation-resources-confirm",
 ) -> dict[str, object]:
     def capture(name: str) -> None:
         if deadline is None:
@@ -8623,6 +9002,7 @@ def select_and_confirm_resources(
     if deadline is None:
         preview_route = device.wait("creation-resources-preview-page", timeout=60)
         shared.reset_scroll_to_top(device, swipes=22)
+        preview_nodes: dict[str, shared.UiNode] | None = None
     else:
         preview_route = device.wait_for_single_exact_resource_id(
             "creation-resources-preview-page",
@@ -8639,16 +9019,51 @@ def select_and_confirm_resources(
             surface_name="Creation Resources preview route",
             deadline=deadline,
         )
-        shared.reset_scroll_to_top(device, swipes=22, deadline=deadline)
+        preview_nodes = scan_deadline_bound_resources_surface(
+            device,
+            (
+                "creation-resources-preview-page",
+                "creation-resources-preview-option-id",
+                "creation-resources-preview-priority-grant",
+                "creation-resources-preview-total-starting-nuyen",
+                "creation-resources-preview-digest",
+                "creation-resources-confirm",
+            ),
+            scan_id=f"{scan_id_prefix}-preview-authority",
+            deadline=deadline,
+            scan_observer=scan_observer,
+            required_terminal_selectors=("creation-resources-confirm",),
+        )
 
-    preview = {
-        "optionId": text("creation-resources-preview-option-id").strip(),
-        "priorityGrant": integer("creation-resources-preview-priority-grant"),
-        "totalStartingNuyen": integer(
-            "creation-resources-preview-total-starting-nuyen"
-        ),
-        "previewDigest": digest("creation-resources-preview-digest"),
-    }
+    preview = (
+        {
+            "optionId": text("creation-resources-preview-option-id").strip(),
+            "priorityGrant": integer("creation-resources-preview-priority-grant"),
+            "totalStartingNuyen": integer(
+                "creation-resources-preview-total-starting-nuyen"
+            ),
+            "previewDigest": digest("creation-resources-preview-digest"),
+        }
+        if preview_nodes is None
+        else {
+            "optionId": required_resources_text(
+                preview_nodes,
+                "creation-resources-preview-option-id",
+            ),
+            "priorityGrant": required_resources_integer(
+                preview_nodes,
+                "creation-resources-preview-priority-grant",
+            ),
+            "totalStartingNuyen": required_resources_integer(
+                preview_nodes,
+                "creation-resources-preview-total-starting-nuyen",
+            ),
+            "previewDigest": required_resources_digest(
+                preview_nodes,
+                "creation-resources-preview-digest",
+            ),
+        }
+    )
     if (
         preview["optionId"] != "karma:0"
         or preview["priorityGrant"] != 50_000
@@ -8657,20 +9072,18 @@ def select_and_confirm_resources(
         capture("creation-resources-preview-authority-mismatch")
         raise RuntimeError(f"Resources preview changed the exact rank-D grant: {preview!r}")
 
-    confirm_options: dict[str, object] = {
-        "timeout": 90,
-        "backward_scrolls": 22,
-        "forward_scrolls": 22,
-        "scroll_distance_ratio": 0.22,
-        "evidence_prefix": "creation-resources-explicit-confirm",
-        "surface_name": "Explicit Resources confirmation",
-    }
-    if deadline is not None:
-        confirm_options["deadline"] = deadline
-    confirm = device.wait_exact_resource_id_bidirectional(
-        "creation-resources-confirm",
-        **confirm_options,
-    )
+    if preview_nodes is None:
+        confirm = device.wait_exact_resource_id_bidirectional(
+            "creation-resources-confirm",
+            timeout=90,
+            backward_scrolls=22,
+            forward_scrolls=22,
+            scroll_distance_ratio=0.22,
+            evidence_prefix="creation-resources-explicit-confirm",
+            surface_name="Explicit Resources confirmation",
+        )
+    else:
+        confirm = preview_nodes["creation-resources-confirm"]
     _require_canonical_chummer_resource_id(
         device,
         confirm,
@@ -8679,7 +9092,16 @@ def select_and_confirm_resources(
         surface_name="Explicit Resources confirmation",
         deadline=deadline,
     )
-    if confirm.attributes.get("enabled") != "true" or confirm.attributes.get("clickable") != "true":
+    confirm_is_tappable = (
+        True
+        if deadline is None
+        else device.node_has_tappable_bounds(confirm, deadline=deadline)
+    )
+    if (
+        confirm.attributes.get("enabled") != "true"
+        or confirm.attributes.get("clickable") != "true"
+        or not confirm_is_tappable
+    ):
         capture("creation-resources-confirm-disabled")
         raise RuntimeError("Exact Resources preview was not explicitly confirmable")
     if deadline is None:
@@ -8700,6 +9122,7 @@ def select_and_confirm_resources(
             max_scrolls=22,
         )
         shared.reset_scroll_to_top(device, swipes=22)
+        receipt_nodes: dict[str, shared.UiNode] | None = None
     else:
         receipt_route = device.wait_for_single_exact_resource_id(
             "creation-resources-confirm-receipt",
@@ -8718,22 +9141,75 @@ def select_and_confirm_resources(
             surface_name="Creation Resources confirmation receipt",
             deadline=deadline,
         )
-        shared.reset_scroll_to_top(device, swipes=22, deadline=deadline)
+        receipt_nodes = scan_deadline_bound_resources_surface(
+            device,
+            (
+                "creation-resources-confirm-receipt",
+                "creation-resources-receipt-option-id",
+                "creation-resources-receipt-workspace-revision",
+                "creation-resources-receipt-saved-revision",
+                "creation-resources-receipt-draft-revision",
+                "creation-resources-receipt-total-starting-nuyen",
+                "creation-resources-receipt-preview-digest",
+                "creation-resources-receipt-draft-digest",
+                "creation-resources-receipt-digest",
+            ),
+            scan_id=f"{scan_id_prefix}-receipt-authority",
+            deadline=deadline,
+            scan_observer=scan_observer,
+        )
 
-    receipt = {
-        "optionId": text("creation-resources-receipt-option-id").strip(),
-        "workspaceRevision": integer(
-            "creation-resources-receipt-workspace-revision"
-        ),
-        "savedRevision": integer("creation-resources-receipt-saved-revision"),
-        "draftRevision": integer("creation-resources-receipt-draft-revision"),
-        "totalStartingNuyen": integer(
-            "creation-resources-receipt-total-starting-nuyen"
-        ),
-        "previewDigest": digest("creation-resources-receipt-preview-digest"),
-        "draftDigest": digest("creation-resources-receipt-draft-digest"),
-        "receiptDigest": digest("creation-resources-receipt-digest"),
-    }
+    receipt = (
+        {
+            "optionId": text("creation-resources-receipt-option-id").strip(),
+            "workspaceRevision": integer(
+                "creation-resources-receipt-workspace-revision"
+            ),
+            "savedRevision": integer("creation-resources-receipt-saved-revision"),
+            "draftRevision": integer("creation-resources-receipt-draft-revision"),
+            "totalStartingNuyen": integer(
+                "creation-resources-receipt-total-starting-nuyen"
+            ),
+            "previewDigest": digest("creation-resources-receipt-preview-digest"),
+            "draftDigest": digest("creation-resources-receipt-draft-digest"),
+            "receiptDigest": digest("creation-resources-receipt-digest"),
+        }
+        if receipt_nodes is None
+        else {
+            "optionId": required_resources_text(
+                receipt_nodes,
+                "creation-resources-receipt-option-id",
+            ),
+            "workspaceRevision": required_resources_integer(
+                receipt_nodes,
+                "creation-resources-receipt-workspace-revision",
+            ),
+            "savedRevision": required_resources_integer(
+                receipt_nodes,
+                "creation-resources-receipt-saved-revision",
+            ),
+            "draftRevision": required_resources_integer(
+                receipt_nodes,
+                "creation-resources-receipt-draft-revision",
+            ),
+            "totalStartingNuyen": required_resources_integer(
+                receipt_nodes,
+                "creation-resources-receipt-total-starting-nuyen",
+            ),
+            "previewDigest": required_resources_digest(
+                receipt_nodes,
+                "creation-resources-receipt-preview-digest",
+            ),
+            "draftDigest": required_resources_digest(
+                receipt_nodes,
+                "creation-resources-receipt-draft-digest",
+            ),
+            "receiptDigest": required_resources_digest(
+                receipt_nodes,
+                "creation-resources-receipt-digest",
+            ),
+        }
+    )
     if (
         receipt["optionId"] != "karma:0"
         or receipt["workspaceRevision"] != before["contentRevision"] + 1
@@ -8755,7 +9231,110 @@ def read_persisted_resources_authority(
     expected_receipt: dict[str, object],
     *,
     deadline: float | None = None,
+    scan_observer: Callable[[dict[str, object]], None] | None = None,
+    scan_id: str = "creation-resources-persisted-authority",
 ) -> dict[str, object]:
+    if deadline is not None:
+        nodes = scan_deadline_bound_resources_surface(
+            device,
+            (
+                "creation-resources-page",
+                "creation-resources-binding-content-revision",
+                "creation-resources-binding-saved-revision",
+                "creation-resources-binding-snapshot-digest",
+                "creation-resources-binding-raw-character-xml-digest",
+                "creation-resources-binding-auxiliary-state-digest",
+                "creation-resources-binding-prerequisite-draft-digest",
+                "creation-resources-authority-digest",
+                "creation-resources-budget-priority-nuyen",
+                "creation-resources-budget-total-starting-nuyen",
+                "creation-resources-saved-option-id",
+                "creation-resources-saved-draft-revision",
+                "creation-resources-saved-draft-digest",
+            ),
+            scan_id=scan_id,
+            deadline=deadline,
+            scan_observer=scan_observer,
+        )
+        binding = {
+            "contentRevision": required_resources_integer(
+                nodes,
+                "creation-resources-binding-content-revision",
+            ),
+            "savedRevision": required_resources_integer(
+                nodes,
+                "creation-resources-binding-saved-revision",
+            ),
+            "snapshotDigest": required_resources_digest(
+                nodes,
+                "creation-resources-binding-snapshot-digest",
+            ),
+            "rawCharacterXmlDigest": required_resources_digest(
+                nodes,
+                "creation-resources-binding-raw-character-xml-digest",
+            ),
+            "auxiliaryStateDigest": required_resources_auxiliary_digest(
+                nodes,
+                "creation-resources-binding-auxiliary-state-digest",
+            ),
+            "prerequisiteDraftDigest": required_resources_digest(
+                nodes,
+                "creation-resources-binding-prerequisite-draft-digest",
+            ),
+            "authorityDigest": required_resources_digest(
+                nodes,
+                "creation-resources-authority-digest",
+            ),
+            "priorityNuyen": required_resources_integer(
+                nodes,
+                "creation-resources-budget-priority-nuyen",
+            ),
+            "totalStartingNuyen": required_resources_integer(
+                nodes,
+                "creation-resources-budget-total-starting-nuyen",
+            ),
+        }
+        if binding["contentRevision"] <= 0:
+            raise RuntimeError(f"Resources authority revision was invalid: {binding!r}")
+        if (
+            binding["priorityNuyen"] != 50_000
+            or binding["totalStartingNuyen"] != 50_000
+        ):
+            raise RuntimeError(
+                "Priority Resources rank D did not project the canonical 50,000 "
+                f"nuyen grant: {binding!r}"
+            )
+        saved = {
+            "optionId": required_resources_text(
+                nodes,
+                "creation-resources-saved-option-id",
+            ),
+            "draftRevision": required_resources_integer(
+                nodes,
+                "creation-resources-saved-draft-revision",
+            ),
+            "draftDigest": required_resources_digest(
+                nodes,
+                "creation-resources-saved-draft-digest",
+            ),
+        }
+        if (
+            binding["contentRevision"] != expected_receipt["workspaceRevision"]
+            or binding["savedRevision"] != expected_receipt["savedRevision"]
+            or saved["optionId"] != expected_receipt["optionId"]
+            or saved["draftRevision"] != expected_receipt["draftRevision"]
+            or saved["draftDigest"] != expected_receipt["draftDigest"]
+        ):
+            device.capture(
+                "creation-resources-persisted-authority-mismatch",
+                deadline=deadline,
+            )
+            raise RuntimeError(
+                "Persisted Resources authority changed across reopen/restart: "
+                f"expected={expected_receipt!r}, binding={binding!r}, saved={saved!r}"
+            )
+        return {"binding": binding, "savedDraft": saved}
+
     def capture(name: str) -> None:
         if deadline is None:
             device.capture(name)
@@ -9401,11 +9980,18 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         deadline=resources_deadline,
     )
     open_resources(device, deadline=resources_deadline)
-    resources_before = read_resources_binding(device, deadline=resources_deadline)
+    resources_before = read_resources_binding(
+        device,
+        deadline=resources_deadline,
+        scan_observer=progress.record_scan,
+        scan_id="creation-resources-initial-binding-authority",
+    )
     resources_confirmation = select_and_confirm_resources(
         device,
         resources_before,
         deadline=resources_deadline,
+        scan_observer=progress.record_scan,
+        scan_id_prefix="creation-resources-initial-confirm",
     )
     resources_receipt = resources_confirmation["receipt"]
     device.capture("creation-resources-confirmed", deadline=resources_deadline)
@@ -9414,6 +10000,8 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         device,
         resources_receipt,
         deadline=resources_deadline,
+        scan_observer=progress.record_scan,
+        scan_id="creation-resources-same-process-persisted-authority",
     )
     device.back(deadline=resources_deadline)
     shared.open_creation_dashboard(
@@ -9588,6 +10176,8 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         device,
         resources_receipt,
         deadline=process_restart_resources_deadline,
+        scan_observer=progress.record_scan,
+        scan_id="creation-resources-process-restart-persisted-authority",
     )
     device.capture(
         "creation-prerequisite-process-restart",

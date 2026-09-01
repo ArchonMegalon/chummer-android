@@ -1919,6 +1919,221 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             for call in helper.call_args_list:
                 self.assertNotIn("deadline", call.kwargs)
 
+    def test_deadline_resources_surface_uses_one_complete_authority_scan(self) -> None:
+        selectors = (
+            "creation-resources-page",
+            "creation-resources-binding-content-revision",
+        )
+        nodes = [
+            self.canonical_node(selectors[0]),
+            self.canonical_node(selectors[1], text="2"),
+        ]
+        origin = self.priority_rank_origin(nodes)
+        deadline = driver.time.monotonic() + 30
+        observer = mock.Mock()
+        device = mock.Mock()
+
+        with mock.patch.object(
+            driver,
+            "acquire_stable_start_origin",
+            return_value=origin,
+        ) as acquire, mock.patch.object(
+            driver,
+            "scan_forward_with_receipt",
+            return_value=driver.StableViewportScan([nodes], 3),
+        ) as scan:
+            actual = driver.scan_deadline_bound_resources_surface(
+                device,
+                selectors,
+                scan_id="resources-one-scan",
+                deadline=deadline,
+                scan_observer=observer,
+            )
+
+        self.assertEqual(set(selectors), set(actual))
+        acquire.assert_called_once_with(
+            device,
+            scan_id="resources-one-scan-start",
+            max_reverse_swipes=22,
+            distance_ratio=0.68,
+            deadline=deadline,
+        )
+        scan.assert_called_once_with(
+            device,
+            scan_id="resources-one-scan",
+            max_scrolls=22,
+            distance_ratio=0.22,
+            initial_observation=origin,
+            initial_observation_max_reverse_swipes=22,
+            delay_seconds=0.0,
+            observer=observer,
+            deadline=deadline,
+        )
+        device.capture.assert_not_called()
+
+    def test_deadline_resources_surface_rejects_missing_duplicate_drift_and_identity(
+        self,
+    ) -> None:
+        selectors = (
+            "creation-resources-page",
+            "creation-resources-binding-content-revision",
+        )
+        base = [
+            self.canonical_node(selectors[0]),
+            self.canonical_node(selectors[1], text="2"),
+        ]
+        drift = self.canonical_node(selectors[1], text="3")
+        wrong_identity = self.canonical_node(selectors[1], text="2")
+        wrong_identity.attributes["resource-id"] = (
+            f"com.example.forged:id/{selectors[1]}"
+        )
+        cases = (
+            ("missing", [[base[0]]], "incomplete or ambiguous"),
+            ("duplicate", [[*base, base[1]]], "incomplete or ambiguous"),
+            ("drift", [base, [base[0], drift]], "incomplete or ambiguous"),
+            ("identity", [[base[0], wrong_identity]], "canonical Chummer"),
+        )
+        for name, screens, expected in cases:
+            with self.subTest(name=name):
+                device = mock.Mock()
+                with mock.patch.object(
+                    driver,
+                    "acquire_stable_start_origin",
+                    return_value=self.priority_rank_origin(base),
+                ), mock.patch.object(
+                    driver,
+                    "scan_forward_with_receipt",
+                    return_value=driver.StableViewportScan(screens, 1),
+                ), self.assertRaisesRegex(RuntimeError, expected):
+                    driver.scan_deadline_bound_resources_surface(
+                        device,
+                        selectors,
+                        scan_id=f"resources-{name}",
+                        deadline=driver.time.monotonic() + 30,
+                    )
+
+    def test_deadline_resources_surface_requires_action_on_terminal_viewport(self) -> None:
+        selectors = (
+            "creation-resources-preview-page",
+            "creation-resources-confirm",
+        )
+        route = self.canonical_node(selectors[0])
+        confirm = self.canonical_node(selectors[1])
+        device = mock.Mock()
+        with mock.patch.object(
+            driver,
+            "acquire_stable_start_origin",
+            return_value=self.priority_rank_origin([route, confirm]),
+        ), mock.patch.object(
+            driver,
+            "scan_forward_with_receipt",
+            return_value=driver.StableViewportScan(
+                [[route, confirm], [route]],
+                1,
+            ),
+        ), self.assertRaisesRegex(RuntimeError, "terminalMissing"):
+            driver.scan_deadline_bound_resources_surface(
+                device,
+                selectors,
+                scan_id="resources-terminal-action",
+                deadline=driver.time.monotonic() + 30,
+                required_terminal_selectors=("creation-resources-confirm",),
+            )
+
+    def test_deadline_resources_preview_and_receipt_each_use_one_scan(self) -> None:
+        digest = "sha256:" + "a" * 64
+        option = self.canonical_node(
+            "creation-resources-option-karma-0",
+            **{"content-desc": "0 Karma · 50,000 nuyen"},
+        )
+        confirm = self.canonical_node("creation-resources-confirm")
+        preview_nodes = {
+            "creation-resources-preview-page": self.canonical_node(
+                "creation-resources-preview-page"
+            ),
+            "creation-resources-preview-option-id": self.canonical_node(
+                "creation-resources-preview-option-id",
+                text="karma:0",
+            ),
+            "creation-resources-preview-priority-grant": self.canonical_node(
+                "creation-resources-preview-priority-grant",
+                text="50000",
+            ),
+            "creation-resources-preview-total-starting-nuyen": self.canonical_node(
+                "creation-resources-preview-total-starting-nuyen",
+                text="50000",
+            ),
+            "creation-resources-preview-digest": self.canonical_node(
+                "creation-resources-preview-digest",
+                text=digest,
+            ),
+            "creation-resources-confirm": confirm,
+        }
+        receipt_nodes = {
+            "creation-resources-confirm-receipt": self.canonical_node(
+                "creation-resources-confirm-receipt"
+            ),
+            "creation-resources-receipt-option-id": self.canonical_node(
+                "creation-resources-receipt-option-id",
+                text="karma:0",
+            ),
+            "creation-resources-receipt-workspace-revision": self.canonical_node(
+                "creation-resources-receipt-workspace-revision",
+                text="2",
+            ),
+            "creation-resources-receipt-saved-revision": self.canonical_node(
+                "creation-resources-receipt-saved-revision",
+                text="2",
+            ),
+            "creation-resources-receipt-draft-revision": self.canonical_node(
+                "creation-resources-receipt-draft-revision",
+                text="1",
+            ),
+            "creation-resources-receipt-total-starting-nuyen": self.canonical_node(
+                "creation-resources-receipt-total-starting-nuyen",
+                text="50000",
+            ),
+            "creation-resources-receipt-preview-digest": self.canonical_node(
+                "creation-resources-receipt-preview-digest",
+                text=digest,
+            ),
+            "creation-resources-receipt-draft-digest": self.canonical_node(
+                "creation-resources-receipt-draft-digest",
+                text=digest,
+            ),
+            "creation-resources-receipt-digest": self.canonical_node(
+                "creation-resources-receipt-digest",
+                text=digest,
+            ),
+        }
+        device = mock.Mock()
+        device.wait_exact_resource_id_bidirectional.return_value = option
+        device.wait_for_single_exact_resource_id.side_effect = (
+            preview_nodes["creation-resources-preview-page"],
+            receipt_nodes["creation-resources-confirm-receipt"],
+        )
+        deadline = driver.time.monotonic() + 30
+        with mock.patch.object(
+            driver,
+            "scan_deadline_bound_resources_surface",
+            side_effect=(preview_nodes, receipt_nodes),
+        ) as scan:
+            result = driver.select_and_confirm_resources(
+                device,
+                {"contentRevision": 1, "savedRevision": 1},
+                deadline=deadline,
+            )
+
+        self.assertEqual("karma:0", result["receipt"]["optionId"])
+        self.assertEqual(2, scan.call_count)
+        self.assertEqual(
+            ("creation-resources-confirm",),
+            scan.call_args_list[0].kwargs["required_terminal_selectors"],
+        )
+        self.assertNotIn("required_terminal_selectors", scan.call_args_list[1].kwargs)
+        self.assertEqual(1, device.wait_exact_resource_id_bidirectional.call_count)
+        self.assertEqual(2, device.shell.call_count)
+
     def test_creation_karma_budget_cards_expose_readable_semantic_totals(self) -> None:
         page = (NATIVE / "CreationPrerequisitePage.cs").read_text(encoding="utf-8")
         preview = (NATIVE / "CreationPrerequisitePreviewPage.cs").read_text(encoding="utf-8")
@@ -2211,7 +2426,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                     )
                     with mock.patch.object(
                         driver,
-                        "rewind_to_stable_start",
+                        "acquire_stable_start_origin",
+                        return_value=self.priority_rank_origin(nodes),
                     ), mock.patch.object(
                         driver,
                         "scan_forward_with_receipt",
@@ -2239,7 +2455,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         )
         with mock.patch.object(
             driver,
-            "rewind_to_stable_start",
+            "acquire_stable_start_origin",
+            return_value=self.priority_rank_origin(nodes),
         ), mock.patch.object(
             driver,
             "scan_forward_with_receipt",
@@ -2258,7 +2475,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 )
                 with mock.patch.object(
                     driver,
-                    "rewind_to_stable_start",
+                    "acquire_stable_start_origin",
+                    return_value=self.priority_rank_origin(nodes),
                 ), mock.patch.object(
                     driver,
                     "scan_forward_with_receipt",
@@ -4464,6 +4682,91 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertNotIn("reacquisition_distance_ratio", reacquisition)
         self.assertNotIn("measured_distance_ratio", reacquisition)
 
+    def test_talent_choice_prefers_completion_local_options_and_tap_order(self) -> None:
+        prefix = driver.TALENT_GRANT_OPTION_PREFIX["Active skills"]
+        option_ids = tuple(prefix + suffix for suffix in ("a", "b", "c"))
+        selected, tap_order = driver.choose_navigation_local_talent_options(
+            option_ids,
+            2,
+            {
+                "endViewport": 5,
+                "resourceViewports": {
+                    option_ids[0]: 1,
+                    option_ids[1]: 2,
+                    option_ids[2]: 3,
+                    "creation-prerequisite-talent-grant-complete": 5,
+                },
+            },
+        )
+
+        self.assertEqual(option_ids[1:], selected)
+        self.assertEqual((option_ids[2], option_ids[1]), tap_order)
+
+    def test_talent_transition_waits_for_mutated_exact_option_and_same_route(self) -> None:
+        option_id = (
+            driver.TALENT_GRANT_OPTION_PREFIX["Active skills"] + "arcana"
+        )
+        route = self.canonical_node("creation-prerequisite-talent-grant-page")
+        stale = self.canonical_node(
+            option_id,
+            text="",
+            **{"content-desc": "Arcana. Magical Active"},
+        )
+        ready = self.canonical_node(
+            option_id,
+            text="",
+            **{"content-desc": "✓ Arcana. Selected slot 1 · Magical Active"},
+        )
+        device = mock.Mock()
+        device.node_has_tappable_bounds.return_value = True
+
+        with mock.patch.object(
+            driver,
+            "fresh_hierarchy_timed",
+            side_effect=([route, stale], [route, ready]),
+        ) as hierarchy, mock.patch.object(
+            driver,
+            "sleep_before_phase_deadline",
+        ) as sleep:
+            observed = driver.wait_for_exact_talent_option_transition(
+                device,
+                option_id,
+                ("Arcana. Magical Active",),
+                1,
+                evidence_prefix="transition",
+            )
+
+        self.assertIs(ready, observed)
+        self.assertEqual(2, hierarchy.call_count)
+        sleep.assert_called_once()
+
+    def test_talent_transition_rejects_forged_option_identity(self) -> None:
+        option_id = (
+            driver.TALENT_GRANT_OPTION_PREFIX["Active skills"] + "arcana"
+        )
+        route = self.canonical_node("creation-prerequisite-talent-grant-page")
+        forged = self.canonical_node(
+            option_id,
+            package="org.example.forged",
+            text="",
+            **{"content-desc": "✓ Arcana. Selected slot 1 · Magical Active"},
+        )
+        device = mock.Mock()
+
+        with mock.patch.object(
+            driver,
+            "fresh_hierarchy_timed",
+            return_value=[route, forged],
+        ):
+            with self.assertRaisesRegex(RuntimeError, "canonical Chummer resource identity"):
+                driver.wait_for_exact_talent_option_transition(
+                    device,
+                    option_id,
+                    ("Arcana. Magical Active",),
+                    1,
+                    evidence_prefix="transition-forged",
+                )
+
     def test_talent_choice_runs_one_inventory_then_four_fresh_grouped_states(self) -> None:
         prefix = driver.TALENT_GRANT_OPTION_PREFIX["Active skills"]
         option_ids = tuple(prefix + suffix for suffix in ("a", "b", "c"))
@@ -4485,30 +4788,37 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 "creation-prerequisite-talent-grant-digest": 0,
                 "creation-prerequisite-talent-grant-complete": 5,
             },
+            "resourceDetails": {
+                resource_id: (f"Option {index + 1}",)
+                for index, resource_id in enumerate(option_ids)
+            },
         }
         talent_option_id = "creation-prerequisite-talent-option-adept"
         talent_navigation = {
             "endViewport": 2,
             "resourceViewports": {talent_option_id: 2},
         }
-        chosen = option_ids[:2]
+        chosen = option_ids[1:]
         complete = driver.TalentGrantMutableState(2, chosen, True)
         incomplete = driver.TalentGrantMutableState(1, (chosen[1],), False)
         grouped_states = iter(
             ((complete, 5), (complete, 5), (incomplete, 5), (complete, 5))
         )
         events: list[str] = []
+        tapped_resource_ids: list[str] = []
         preferred_final_resources: list[str | None] = []
         propagated_deadlines: list[float] = []
-        deadline_values = iter(float(value) for value in range(1, 10))
+        deadline_values = iter(float(value) for value in range(1, 17))
         device = mock.Mock()
 
         def inventory(*_args, navigation_out=None, **_kwargs):
+            propagated_deadlines.append(_kwargs["deadline"])
             navigation_out.update(grant_navigation)
             return baseline
 
         def measured(_device, resource_id, navigation, _current, **_kwargs):
             propagated_deadlines.append(_kwargs["deadline"])
+            tapped_resource_ids.append(resource_id)
             return int(navigation["resourceViewports"][resource_id])
 
         def grouped(*_args, **_kwargs):
@@ -4520,6 +4830,10 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             events.append(f"grouped-{ordinal}")
             return next(grouped_states)
 
+        def transition(*_args, **_kwargs):
+            propagated_deadlines.append(_kwargs["deadline"])
+            return mock.Mock()
+
         with mock.patch.object(
             driver,
             "read_talent_grant_surface",
@@ -4529,6 +4843,10 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "tap_exact_measured_talent_resource",
             side_effect=measured,
         ) as measured_tap, mock.patch.object(
+            driver,
+            "wait_for_exact_talent_option_transition",
+            side_effect=transition,
+        ) as transition_wait, mock.patch.object(
             driver,
             "read_talent_grant_grouped_state",
             side_effect=grouped,
@@ -4549,13 +4867,26 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
         self.assertEqual(1, inventory_scan.call_count)
         self.assertEqual(4, grouped_scan.call_count)
+        self.assertEqual(5, transition_wait.call_count)
         self.assertEqual(5, measured_tap.call_count)
         self.assertEqual(
-            [float(value) for value in range(1, 10)],
+            [
+                float(value)
+                for value in range(1, 17)
+                if value != 7
+            ],
             propagated_deadlines,
         )
+        device.back.assert_called_once_with(deadline=7.0)
+        back_route_call = next(
+            call
+            for call in device.wait_for_single_exact_resource_id.call_args_list
+            if call.args == ("creation-prerequisite-talent-page",)
+        )
+        self.assertEqual(7.0, back_route_call.kwargs["deadline"])
         self.assertEqual(list(option_ids), proof.receipt["allOptionAutomationIds"])
         self.assertEqual(list(chosen), proof.receipt["selectedOptionAutomationIds"])
+        self.assertEqual([chosen[1], chosen[0]], tapped_resource_ids[:2])
         self.assertEqual(5, proof.current_viewport)
         self.assertEqual(
             [
@@ -4813,6 +5144,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             scan_observer=None,
             scan_id="direct-selected-talent-reuse",
             deadline=deadline,
+            route_node=mock.ANY,
         )
 
     def test_persisted_authority_rejects_digest_and_revision_drift(self) -> None:
