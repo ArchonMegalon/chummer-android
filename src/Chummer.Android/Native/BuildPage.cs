@@ -207,6 +207,72 @@ public static class BuildPageUiProjection
     public static string SaveToolbarText(bool hasDurableSaveNotice)
         => hasDurableSaveNotice ? "Saved." : "Save";
 
+    /// <summary>
+    /// Lets an exact, revision-bound typed domain projection rehydrate a Creation route whose
+    /// generic wizard snapshot still carries the conservative legal-options placeholder.  The
+    /// placeholder is not a competing domain authority: Attributes, Skills, Contacts, and
+    /// Resources are opened only by their dedicated typed projections.  No stage becomes
+    /// available from the generic snapshot alone.
+    /// </summary>
+    public static bool CanOpenExactTypedCreationStage(
+        CharacterCreationWizardStageState stage,
+        bool exactTypedAuthorityReady)
+    {
+        ArgumentNullException.ThrowIfNull(stage);
+        if (!exactTypedAuthorityReady
+            || stage.StepId is not (CharacterCreationWizardStepIds.Attributes
+                or CharacterCreationWizardStepIds.Skills
+                or CharacterCreationWizardStepIds.ContactsLifestyles
+                or CharacterCreationWizardStepIds.Resources))
+        {
+            return false;
+        }
+
+        return stage.IsAvailable
+            ? stage.Blockers.Count == 0
+            : stage.Blockers.Count == 1
+              && string.Equals(
+                  stage.Blockers[0],
+                  "creation-wizard-legal-options-authority-unavailable",
+                  StringComparison.Ordinal);
+    }
+
+    public static bool HasExactTypedResourcesAuthority(
+        CharacterCreationResourcesInteractionLoadResult? result,
+        CharacterOverviewState overview)
+    {
+        ArgumentNullException.ThrowIfNull(overview);
+        return result is
+               {
+                   Outcome: CharacterCreationResourcesOutcomes.Available,
+                   State: { } state
+               }
+               && CreationResourcesPhoneAuthority.IsReady(state, overview);
+    }
+
+    public static string CreationResourcesStageBlocker(
+        CreationDashboardAuthorityProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        return projection.Progress.Resources switch
+        {
+            CreationDashboardAuthorityPhaseState.Loading => "creation-authority-loading",
+            CreationDashboardAuthorityPhaseState.Failed => projection.ResourcesFailureReason
+                ?? "creation-resources-authority-load-failed",
+            _ => FirstBlocker(
+                     projection.Resources?.Blockers,
+                     projection.Resources?.State?.Blockers,
+                     projection.Resources?.State?.Budget.Blockers)
+                 ?? "creation-resources-authority-unavailable"
+        };
+    }
+
+    private static string? FirstBlocker(params IEnumerable<string>?[] candidates)
+        => candidates
+            .Where(static candidate => candidate is not null)
+            .SelectMany(static candidate => candidate!)
+            .FirstOrDefault(static blocker => !string.IsNullOrWhiteSpace(blocker));
+
     public static CreationDashboardRouteReadyMarker? CreationDashboardRouteReady(
         CharacterOverviewState state,
         CharacterCreationWizardSnapshot snapshot,
@@ -1401,10 +1467,13 @@ public sealed class BuildPage : NativePageBase
                 stage.StepId,
                 CharacterCreationWizardStepIds.Attributes,
                 StringComparison.Ordinal);
-            bool canOpenAttributes = attributeStage
-                                     && HasAuthoritativeAttributes(attributes);
+            bool canOpenAttributes = BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                stage,
+                HasAuthoritativeAttributes(attributes));
             bool skillStage = string.Equals(stage.StepId, CharacterCreationWizardStepIds.Skills, StringComparison.Ordinal);
-            bool canOpenSkills = skillStage && HasAuthoritativeSkills(skills);
+            bool canOpenSkills = BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                stage,
+                HasAuthoritativeSkills(skills));
             bool qualitiesStage = string.Equals(
                 stage.StepId,
                 CharacterCreationWizardStepIds.Qualities,
@@ -1420,13 +1489,13 @@ public sealed class BuildPage : NativePageBase
                                          && stage.IsAvailable
                                          && HasAuthoritativeMagicResonance();
             bool contactsStage = IsContactsStage(stage.StepId);
-            bool canOpenContacts = contactsStage
-                                   && stage.IsAvailable
-                                   && HasAuthoritativeCreationContacts(creationContacts);
+            bool canOpenContacts = BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                stage,
+                HasAuthoritativeCreationContacts(creationContacts));
             bool resourcesStage = IsResourcesStage(stage.StepId);
-            bool canOpenResources = resourcesStage
-                                    && stage.IsAvailable
-                                    && HasAuthoritativeResources(creationResources);
+            bool canOpenResources = BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                stage,
+                HasAuthoritativeResources(creationResources));
             bool identityStage = string.Equals(
                 stage.StepId,
                 CharacterCreationWizardStepIds.IdentityStory,
@@ -1606,10 +1675,13 @@ public sealed class BuildPage : NativePageBase
                                      && !lifeModuleStep
                                      && stage.IsAvailable
                                      && HasAuthoritativeFoundationOptions();
-            bool canOpenAttributes = attributeStep
-                                     && HasAuthoritativeAttributes(attributeResult);
+            bool canOpenAttributes = BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                stage,
+                HasAuthoritativeAttributes(attributeResult));
             bool skillStep = string.Equals(stepId, CharacterCreationWizardStepIds.Skills, StringComparison.Ordinal);
-            bool canOpenSkills = skillStep && HasAuthoritativeSkills(skillsResult);
+            bool canOpenSkills = BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                stage,
+                HasAuthoritativeSkills(skillsResult));
             bool qualitiesStep = string.Equals(stepId, CharacterCreationWizardStepIds.Qualities, StringComparison.Ordinal);
             bool canOpenQualities = qualitiesStep
                                     && stage.IsAvailable
@@ -1622,13 +1694,13 @@ public sealed class BuildPage : NativePageBase
                                          && stage.IsAvailable
                                          && HasAuthoritativeMagicResonance();
             bool contactsStep = IsContactsStage(stepId);
-            bool canOpenContacts = contactsStep
-                                   && stage.IsAvailable
-                                   && HasAuthoritativeCreationContacts(creationContacts);
+            bool canOpenContacts = BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                stage,
+                HasAuthoritativeCreationContacts(creationContacts));
             bool resourcesStep = IsResourcesStage(stepId);
-            bool canOpenResources = resourcesStep
-                                    && stage.IsAvailable
-                                    && HasAuthoritativeResources(creationResources);
+            bool canOpenResources = BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                stage,
+                HasAuthoritativeResources(creationResources));
             bool identityStep = string.Equals(
                 stepId,
                 CharacterCreationWizardStepIds.IdentityStory,
@@ -1781,13 +1853,7 @@ public sealed class BuildPage : NativePageBase
         }
         if (resourcesStage)
         {
-            return projection.Progress.Resources switch
-            {
-                CreationDashboardAuthorityPhaseState.Loading => "creation-authority-loading",
-                CreationDashboardAuthorityPhaseState.Failed => projection.ResourcesFailureReason
-                    ?? "creation-resources-authority-load-failed",
-                _ => null
-            };
+            return BuildPageUiProjection.CreationResourcesStageBlocker(projection);
         }
         return null;
     }
@@ -1849,12 +1915,7 @@ public sealed class BuildPage : NativePageBase
 
     private bool HasAuthoritativeResources(
         CharacterCreationResourcesInteractionLoadResult? result)
-        => result is
-           {
-               Outcome: CharacterCreationResourcesOutcomes.Available,
-               State: { } state
-           }
-           && CreationResourcesPhoneAuthority.IsReady(state, Coordinator.State);
+        => BuildPageUiProjection.HasExactTypedResourcesAuthority(result, Coordinator.State);
 
     private static bool IsPrerequisiteStage(string stepId, string buildMethod)
         => string.Equals(stepId, CharacterCreationWizardStepIds.Method, StringComparison.Ordinal)

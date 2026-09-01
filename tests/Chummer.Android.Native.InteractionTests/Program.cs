@@ -39,6 +39,8 @@ internal static class Program
             (nameof(PrerequisiteAuthorityPublishesBeforeSlowLaterPhasesAsync), PrerequisiteAuthorityPublishesBeforeSlowLaterPhasesAsync),
             (nameof(CreationAuthorityPhaseMergesAreIndependentAndDeterministicAsync), CreationAuthorityPhaseMergesAreIndependentAndDeterministicAsync),
             (nameof(CreationDashboardReadyMarkerRequiresCurrentTerminalAuthorityAsync), CreationDashboardReadyMarkerRequiresCurrentTerminalAuthorityAsync),
+            (nameof(ExactTypedCreationAuthorityRehydratesConservativeStageAsync), ExactTypedCreationAuthorityRehydratesConservativeStageAsync),
+            (nameof(ResourcesStageRehydrationRejectsEveryHostileAuthorityShapeAsync), ResourcesStageRehydrationRejectsEveryHostileAuthorityShapeAsync),
             (nameof(CompletedCreationProjectionSurvivesADeferredUiConsumerAsync), CompletedCreationProjectionSurvivesADeferredUiConsumerAsync),
             (nameof(RejectedCreationProjectionForcesCurrentBindingRefreshAsync), RejectedCreationProjectionForcesCurrentBindingRefreshAsync),
             (nameof(LateCreationDashboardProjectionCannotOverwriteNewerBindingAsync), LateCreationDashboardProjectionCannotOverwriteNewerBindingAsync),
@@ -103,6 +105,196 @@ internal static class Program
             "The missing Creation Identity contract was not exposed explicitly.");
         return Task.CompletedTask;
     }
+
+    private static Task ExactTypedCreationAuthorityRehydratesConservativeStageAsync()
+    {
+        CharacterCreationWizardStageState resources = ConservativeStage(
+            CharacterCreationWizardStepIds.Resources);
+        string[] admitted =
+        [
+            CharacterCreationWizardStepIds.Attributes,
+            CharacterCreationWizardStepIds.Skills,
+            CharacterCreationWizardStepIds.ContactsLifestyles,
+            CharacterCreationWizardStepIds.Resources
+        ];
+        string[] rejected =
+        [
+            CharacterCreationWizardStepIds.Qualities,
+            CharacterCreationWizardStepIds.MagicResonance,
+            CharacterCreationWizardStepIds.IdentityStory,
+            CharacterCreationWizardStepIds.Review,
+            "unknown-created-stage"
+        ];
+
+        Require(
+            BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                resources,
+                exactTypedAuthorityReady: true),
+            "An exact typed Resources projection did not rehydrate its conservative generic stage after reopen.");
+        Require(
+            !BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                resources,
+                exactTypedAuthorityReady: false),
+            "A generic Resources placeholder opened without exact typed authority.");
+        foreach (string stepId in admitted)
+        {
+            Require(
+                BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                    ConservativeStage(stepId),
+                    exactTypedAuthorityReady: true),
+                $"The exact typed {stepId} route was omitted from the closed rehydration set.");
+            Require(
+                !BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                    ConservativeStage(stepId) with { IsAvailable = true },
+                    exactTypedAuthorityReady: false),
+                $"The generic {stepId} flag opened without exact typed authority.");
+        }
+        foreach (string stepId in rejected)
+        {
+            Require(
+                !BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                    ConservativeStage(stepId),
+                    exactTypedAuthorityReady: true),
+                $"Typed route rehydration escaped to non-owned stage {stepId}.");
+        }
+        Require(
+            !resources.IsAvailable
+            && resources.Blockers.SequenceEqual(
+                ["creation-wizard-legal-options-authority-unavailable"],
+                StringComparer.Ordinal),
+            "Typed route rehydration mutated or discarded the immutable generic snapshot evidence.");
+        Require(
+            !BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                resources with
+                {
+                    Blockers = ["creation-stage-prerequisite-incomplete"]
+                },
+                exactTypedAuthorityReady: true),
+            "Exact typed authority overrode a generic blocker that was not the conservative legal-options placeholder.");
+        Require(
+            !BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                resources with
+                {
+                    IsAvailable = true,
+                    Blockers = ["creation-stage-prerequisite-incomplete"]
+                },
+                exactTypedAuthorityReady: true),
+            "Exact typed authority trusted a contradictory generic available flag with a semantic blocker.");
+        return Task.CompletedTask;
+    }
+
+    private static Task ResourcesStageRehydrationRejectsEveryHostileAuthorityShapeAsync()
+    {
+        ResourcesFixture fixture = NewResourcesFixture();
+        Require(
+            BuildPageUiProjection.HasExactTypedResourcesAuthority(
+                fixture.Load,
+                fixture.Overview),
+            "The valid exact typed Resources authority was not accepted.");
+        Require(
+            BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                ConservativeStage(CharacterCreationWizardStepIds.Resources),
+                BuildPageUiProjection.HasExactTypedResourcesAuthority(
+                    fixture.Load,
+                    fixture.Overview)),
+            "A conservative generic Resources stage did not open from its exact typed authority.");
+
+        var foreignWorkspace = new CharacterWorkspaceId("resources-foreign-workspace");
+        var disabledOption = fixture.State.Options.Single() with { IsEnabled = false };
+        var invalidAllocationDigest = fixture.State.Options.Single() with { OptionDigest = "invalid" };
+        CharacterCreationResourcePriorityOption priority = fixture.State.Authority.PriorityOptions.Single();
+        (string Name, CharacterCreationResourcesInteractionLoadResult Load, CharacterOverviewState Overview)[] hostile =
+        [
+            ("outcome", fixture.Load with { Outcome = CharacterCreationResourcesOutcomes.Blocked }, fixture.Overview),
+            ("wrong workspace", fixture.Load with { State = fixture.State with { Binding = fixture.State.Binding with { WorkspaceId = foreignWorkspace } } }, fixture.Overview),
+            ("workspace revision", fixture.Load with { State = fixture.State with { Binding = fixture.State.Binding with { WorkspaceRevision = fixture.State.Binding.WorkspaceRevision + 1 } } }, fixture.Overview),
+            ("content revision", fixture.Load with { State = fixture.State with { Binding = fixture.State.Binding with { ContentRevision = fixture.State.Binding.ContentRevision + 1 } } }, fixture.Overview),
+            ("saved revision", fixture.Load with { State = fixture.State with { Binding = fixture.State.Binding with { SavedRevision = fixture.State.Binding.SavedRevision + 1 } } }, fixture.Overview),
+            ("raw XML mismatch", fixture.Load with { State = fixture.State with { Binding = fixture.State.Binding with { RawCharacterXmlDigest = CanonicalDigest('e') } } }, fixture.Overview),
+            ("raw XML digest", fixture.Load with { State = fixture.State with { Binding = fixture.State.Binding with { RawCharacterXmlDigest = "invalid" } } }, fixture.Overview),
+            ("auxiliary digest", fixture.Load with { State = fixture.State with { Binding = fixture.State.Binding with { AuxiliaryStateDigest = "invalid" } } }, fixture.Overview),
+            ("prerequisite digest", fixture.Load with { State = fixture.State with { Binding = fixture.State.Binding with { PrerequisiteDraftDigest = "invalid" } } }, fixture.Overview),
+            ("binding authority digest", fixture.Load with { State = fixture.State with { Binding = fixture.State.Binding with { AuthorityDigest = "invalid" } } }, fixture.Overview),
+            ("binding source digest", fixture.Load with { State = fixture.State with { Binding = fixture.State.Binding with { SourceDigest = "invalid" } } }, fixture.Overview),
+            ("binding rules digest", fixture.Load with { State = fixture.State with { Binding = fixture.State.Binding with { RulesDigest = "invalid" } } }, fixture.Overview),
+            ("binding runtime digest", fixture.Load with { State = fixture.State with { Binding = fixture.State.Binding with { RuntimeDigest = "invalid" } } }, fixture.Overview),
+            ("snapshot digest", fixture.Load with { State = fixture.State with { SnapshotDigest = "invalid" } }, fixture.Overview),
+            ("canonical binding authority mismatch", fixture.Load with { State = fixture.State with { Binding = fixture.State.Binding with { AuthorityDigest = CanonicalDigest('b') } } }, fixture.Overview),
+            ("canonical binding source mismatch", fixture.Load with { State = fixture.State with { Binding = fixture.State.Binding with { SourceDigest = CanonicalDigest('c') } } }, fixture.Overview),
+            ("canonical binding rules mismatch", fixture.Load with { State = fixture.State with { Binding = fixture.State.Binding with { RulesDigest = CanonicalDigest('d') } } }, fixture.Overview),
+            ("canonical binding runtime mismatch", fixture.Load with { State = fixture.State with { Binding = fixture.State.Binding with { RuntimeDigest = CanonicalDigest('e') } } }, fixture.Overview),
+            ("authority digest", fixture.Load with { State = fixture.State with { Authority = fixture.State.Authority with { AuthorityDigest = "invalid" } } }, fixture.Overview),
+            ("authority source digest", fixture.Load with { State = fixture.State with { Authority = fixture.State.Authority with { SourceDigest = "invalid" } } }, fixture.Overview),
+            ("authority profile digest", fixture.Load with { State = fixture.State with { Authority = fixture.State.Authority with { ProfileDigest = "invalid" } } }, fixture.Overview),
+            ("authority rules digest", fixture.Load with { State = fixture.State with { Authority = fixture.State.Authority with { RulesDigest = "invalid" } } }, fixture.Overview),
+            ("authority runtime digest", fixture.Load with { State = fixture.State with { Authority = fixture.State.Authority with { RuntimeDigest = "invalid" } } }, fixture.Overview),
+            ("priority source node digest", fixture.Load with { State = fixture.State with { Authority = fixture.State.Authority with { PriorityOptions = [priority with { SourceNodeDigest = "invalid" }] } } }, fixture.Overview),
+            ("priority option digest", fixture.Load with { State = fixture.State with { Authority = fixture.State.Authority with { PriorityOptions = [priority with { OptionDigest = "invalid" }] } } }, fixture.Overview),
+            ("allocation option digest", fixture.Load with { State = fixture.State with { Options = [invalidAllocationDigest] } }, fixture.Overview),
+            ("cannot edit", fixture.Load with { State = fixture.State with { CanEdit = false } }, fixture.Overview),
+            ("state blocker", fixture.Load with { State = fixture.State with { Blockers = [CharacterCreationResourcesBlockers.AuthorityUnavailable] } }, fixture.Overview),
+            ("budget blocker", fixture.Load with { State = fixture.State with { Budget = fixture.State.Budget with { Blockers = [CharacterCreationResourcesBlockers.InsufficientCreationKarma] } } }, fixture.Overview),
+            ("budget inexact", fixture.Load with { State = fixture.State with { Budget = fixture.State.Budget with { IsExact = false } } }, fixture.Overview),
+            ("budget mismatch", fixture.Load with { State = fixture.State with { Budget = fixture.State.Budget with { TotalStartingNuyen = fixture.State.Budget.TotalStartingNuyen + 1m } } }, fixture.Overview),
+            ("zero options", fixture.Load with { State = fixture.State with { Options = [] } }, fixture.Overview),
+            ("no enabled option", fixture.Load with { State = fixture.State with { Options = [disabledOption] } }, fixture.Overview)
+        ];
+        foreach ((string name, CharacterCreationResourcesInteractionLoadResult load, CharacterOverviewState overview) in hostile)
+        {
+            bool ready = BuildPageUiProjection.HasExactTypedResourcesAuthority(load, overview);
+            Require(!ready, $"Hostile Resources authority shape '{name}' was accepted.");
+            Require(
+                !BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                    ConservativeStage(CharacterCreationWizardStepIds.Resources) with { IsAvailable = true },
+                    ready),
+                $"Hostile Resources authority shape '{name}' opened through the generic stage flag.");
+        }
+
+        Require(
+            CreationDashboardProjectionBinding.TryCreate(
+                fixture.Overview,
+                fixture.Overview.CreationWizard!,
+                out CreationDashboardProjectionBinding? projectionBinding)
+            && projectionBinding is not null,
+            "The Resources blocker fixture did not produce an exact dashboard binding.");
+        var blockedLoad = fixture.Load with
+        {
+            State = fixture.State with
+            {
+                Blockers = [CharacterCreationResourcesBlockers.AuthorityUnavailable]
+            }
+        };
+        var blockedProjection = new CreationDashboardAuthorityProjection(
+            projectionBinding!,
+            CreationDashboardAuthorityPhaseProgress
+                .ForBuildMethod(CharacterCreationBuildMethods.Priority)
+                .WithTerminal(CreationDashboardAuthorityPhase.Resources, failed: false),
+            Prerequisite: null,
+            Attributes: null,
+            Skills: null,
+            Contacts: null,
+            Resources: blockedLoad);
+        Require(
+            string.Equals(
+                BuildPageUiProjection.CreationResourcesStageBlocker(blockedProjection),
+                CharacterCreationResourcesBlockers.AuthorityUnavailable,
+                StringComparison.Ordinal),
+            "A terminal-loaded but semantically blocked Resources result hid its direct typed blocker.");
+        return Task.CompletedTask;
+    }
+
+    private static CharacterCreationWizardStageState ConservativeStage(string stepId)
+        => new(
+            stepId,
+            stepId,
+            CharacterCreationWizardStepStatuses.Blocked,
+            IsRequired: true,
+            IsAvailable: false,
+            IsComplete: false,
+            [CharacterCreationBudgetIds.Resources],
+            ["creation-wizard-legal-options-authority-unavailable"],
+            [],
+            []);
 
     private static Task PreAuthorityCreationSnapshotCanScheduleBootstrapAsync()
     {
@@ -2016,6 +2208,131 @@ internal static class Program
             [],
             "points");
 
+    private static ResourcesFixture NewResourcesFixture()
+    {
+        var workspaceId = new CharacterWorkspaceId("resources-authority-runner");
+        const long revision = 8;
+        string contentDigest = CanonicalDigest('1');
+        string auxiliaryDigest = CanonicalDigest('2');
+        string prerequisiteDigest = CanonicalDigest('3');
+        string sourceDigest = CanonicalDigest('4');
+        string profileDigest = CanonicalDigest('5');
+        string rulesDigest = CanonicalDigest('6');
+        string runtimeDigest = CanonicalDigest('7');
+
+        var priority = new CharacterCreationResourcePriorityOption(
+            "11111111-1111-1111-1111-111111111111",
+            "D",
+            50_000m,
+            CanonicalDigest('8'),
+            [CharacterCreationResourcesSourceAnchors.PriorityCatalog],
+            string.Empty);
+        priority = priority with
+        {
+            OptionDigest = CharacterCreationResourcesRules.ComputePriorityOptionDigest(priority)
+        };
+        var authority = new CharacterCreationResourcesAuthority(
+            CharacterCreationResourcesSchemas.AuthorityV1,
+            RulesetDefaults.Sr5,
+            "standard",
+            CharacterCreationBuildMethods.Priority,
+            2_000m,
+            10,
+            5_000m,
+            12,
+            UnrestrictedNuyen: false,
+            [priority],
+            CharacterCreationResourcesSourceAnchors.All,
+            [],
+            IsAuthoritative: true,
+            sourceDigest,
+            profileDigest,
+            rulesDigest,
+            runtimeDigest,
+            string.Empty);
+        authority = authority with
+        {
+            AuthorityDigest = CharacterCreationResourcesRules.ComputeAuthorityDigest(authority)
+        };
+        var option = new CharacterCreationResourceAllocationOption(
+            "karma:0",
+            KarmaInvestment: 0,
+            NuyenFromKarma: 0m,
+            TotalStartingNuyen: 50_000m,
+            IsEnabled: true,
+            [],
+            [CharacterCreationResourcesSourceAnchors.Step],
+            string.Empty);
+        option = option with
+        {
+            OptionDigest = CharacterCreationResourcesRules.ComputeAllocationOptionDigest(option)
+        };
+        var budget = new CharacterCreationResourcesBudget(
+            PriorityNuyen: 50_000m,
+            KarmaInvestment: 0,
+            NuyenFromKarma: 0m,
+            TotalStartingNuyen: 50_000m,
+            KnownPurchaseCost: 0m,
+            RemainingNuyen: 50_000m,
+            Overspend: 0m,
+            CarryoverLimit: 5_000m,
+            CarryoverExcess: 45_000m,
+            IsExact: true,
+            [],
+            [CharacterCreationResourcesSourceAnchors.Step]);
+        var binding = new CharacterCreationResourcesBinding(
+            workspaceId,
+            WorkspaceRevision: revision,
+            ContentRevision: revision,
+            SavedRevision: revision,
+            contentDigest,
+            auxiliaryDigest,
+            PrerequisiteDraftRevision: 1,
+            prerequisiteDigest,
+            authority.AuthorityDigest,
+            sourceDigest,
+            rulesDigest,
+            runtimeDigest);
+        var state = new CharacterCreationResourcesInteractionState(
+            binding,
+            authority,
+            PrerequisiteDraft: null,
+            PendingDraft: null,
+            [option],
+            budget,
+            [],
+            CanEdit: true,
+            CanonicalDigest('9'));
+        CharacterOverviewState overview = NewCreationOverview(workspaceId, revision, revision) with
+        {
+            CreationWizard = new CharacterCreationWizardSnapshot(
+                CharacterCreationWizardSchemas.SnapshotV1,
+                workspaceId.Value,
+                WorkspaceRevision: revision,
+                contentDigest,
+                SourceDigest: CanonicalDigest('f'),
+                RulesetDefaults.Sr5,
+                RuntimeFingerprint: string.Empty,
+                CharacterCreationBuildMethods.Priority,
+                CharacterCreated: false,
+                CharacterCreationWizardStepIds.Resources,
+                [ConservativeStage(CharacterCreationWizardStepIds.Resources)],
+                [],
+                new Dictionary<string, IReadOnlyList<CharacterCreationLegalOption>>(),
+                [],
+                [],
+                CanFinalize: false,
+                CanonicalDigest('a'))
+        };
+        return new ResourcesFixture(
+            state,
+            overview,
+            new CharacterCreationResourcesInteractionLoadResult(
+                CharacterCreationResourcesOutcomes.Available,
+                state,
+                []));
+    }
+
     private static CharacterOverviewState NewCreationOverview(
         CharacterWorkspaceId workspaceId,
         long contentRevision,
@@ -2081,6 +2398,11 @@ internal static class Program
         CharacterOverviewState Overview,
         CharacterCreationAttributesPreview Preview,
         IReadOnlyList<CharacterCreationAttributeAllocation> Allocations);
+
+    private sealed record ResourcesFixture(
+        CharacterCreationResourcesInteractionState State,
+        CharacterOverviewState Overview,
+        CharacterCreationResourcesInteractionLoadResult Load);
 
     private static async Task QueuedOlderUnfocusedCannotOverwriteActionInputAsync()
     {

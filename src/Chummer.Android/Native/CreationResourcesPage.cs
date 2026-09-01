@@ -505,8 +505,33 @@ internal static class CreationResourcesPhoneAuthority
            && state.Budget.IsExact
            && state.Budget.Blockers.Count == 0
            && CharacterCreationResourcesRules.IsValidAuthority(state.Authority)
-           && state.Options.Count > 0
-           && state.Options.Any(option => option.IsEnabled && option.Blockers.Count == 0);
+           && CharacterCreationResourcesRules.DigestsEqual(
+               state.Binding.AuthorityDigest,
+               state.Authority.AuthorityDigest)
+           && CharacterCreationResourcesRules.DigestsEqual(
+               state.Binding.SourceDigest,
+               state.Authority.SourceDigest)
+           && CharacterCreationResourcesRules.DigestsEqual(
+               state.Binding.RulesDigest,
+               state.Authority.RulesDigest)
+           && CharacterCreationResourcesRules.DigestsEqual(
+               state.Binding.RuntimeDigest,
+               state.Authority.RuntimeDigest)
+           && state.Options.Any(option => BudgetMatchesEnabledOption(option, state.Budget));
+
+    private static bool BudgetMatchesEnabledOption(
+        CharacterCreationResourceAllocationOption option,
+        CharacterCreationResourcesBudget budget)
+        => option.IsEnabled
+           && option.Blockers.Count == 0
+           && CharacterCreationResourcesRules.IsCanonicalDigest(option.OptionDigest)
+           && CharacterCreationResourcesRules.DigestsEqual(
+               option.OptionDigest,
+               CharacterCreationResourcesRules.ComputeAllocationOptionDigest(option))
+           && option.KarmaInvestment == budget.KarmaInvestment
+           && option.NuyenFromKarma == budget.NuyenFromKarma
+           && option.TotalStartingNuyen == budget.TotalStartingNuyen
+           && budget.PriorityNuyen + budget.NuyenFromKarma == budget.TotalStartingNuyen;
 
     public static bool PreparedMatches(
         CharacterCreationResourcesPreparedPreview prepared,
