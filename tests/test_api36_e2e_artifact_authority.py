@@ -748,7 +748,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             "talent-skill-group-grant-completion": 180_000,
             "preview-confirm": 360_000,
             "same-process-reopen": 90_000,
-            "same-process-authority-options": 90_000,
+            "same-process-authority-options": 120_000,
             "same-process-restored-talent-grant": 60_000,
             "resources-initial-authority": 120_000,
             "resources-preview-confirm": 240_000,
@@ -770,6 +770,15 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             sum(CREATION_PROSPECTIVE_PHASE_ELAPSED_MS.values()),
         )
 
+    def test_same_process_authority_reserve_does_not_widen_journey_target(self) -> None:
+        self.assertEqual(
+            120_000,
+            AGGREGATE.CREATION_PHASE_BUDGETS_MS[
+                "same-process-authority-options"
+            ],
+        )
+        self.assertEqual(45 * 60 * 1000, AGGREGATE.CREATION_TOTAL_TARGET_MS)
+
     def test_each_new_authority_phase_accepts_exact_limit_and_rejects_plus_one(
         self,
     ) -> None:
@@ -782,6 +791,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             "talent-skill-group-reselection",
             "talent-skill-group-grant-completion",
             "same-process-restored-talent-grant",
+            "same-process-authority-options",
             "resources-initial-authority",
             "resources-preview-confirm",
             "resources-same-process-reopen",

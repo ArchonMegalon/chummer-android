@@ -218,7 +218,9 @@ PHASE_BUDGET_MS = {
     # Heritage and Talent are two independent restored catalogs. The selected
     # Talent grant lives on a third pushed route and must retain its own stable
     # start/end and cardinality proof instead of consuming the catalog tail.
-    "same-process-authority-options": 90_000,
+    # Preserve the same retry/reconciliation reserve as process restart; this
+    # does not alter the whole-journey cap.
+    "same-process-authority-options": 120_000,
     "same-process-restored-talent-grant": 60_000,
     # The initial Resources authority inventory already establishes the exact
     # scroll topology.  Its zero-conversion option is reacquired from that

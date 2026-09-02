@@ -104,7 +104,7 @@ CREATION_PHASE_BUDGETS_MS = {
     "talent-skill-group-grant-completion": 180_000,
     "preview-confirm": 360_000,
     "same-process-reopen": 90_000,
-    "same-process-authority-options": 90_000,
+    "same-process-authority-options": 120_000,
     "same-process-restored-talent-grant": 60_000,
     "resources-initial-authority": 120_000,
     "resources-preview-confirm": 240_000,
