@@ -8766,12 +8766,55 @@ def open_resources(
     device: shared.Device,
     *,
     deadline: float | None = None,
+    observed_dashboard: shared.UiNode | None = None,
+    authority_scan_owns_origin: bool = False,
 ) -> None:
+    """Open Resources without duplicating an already-proven viewport boundary.
+
+    The deadline-bound Creation journey can pass the exact dashboard node that
+    ``open_creation_dashboard`` just observed.  In that mode the dashboard is
+    already at its product-owned appearance origin, so Resources acquisition is
+    forward-only.  When the caller immediately performs the exhaustive
+    Resources authority scan, that scan owns the fresh stable-start proof and
+    this transition must not spend a second fixed reset first.
+    """
+    if authority_scan_owns_origin and observed_dashboard is None:
+        raise ValueError(
+            "Resources authority-scan origin ownership requires an observed dashboard"
+        )
+    if observed_dashboard is not None:
+        _require_canonical_chummer_resource_id(
+            device,
+            observed_dashboard,
+            "creation-wizard-dashboard",
+            evidence_prefix="creation-resources-observed-dashboard",
+            surface_name="Observed Creation dashboard origin",
+            deadline=deadline,
+        )
+        visible = (
+            device.node_has_tappable_bounds(observed_dashboard)
+            if deadline is None
+            else device.node_has_tappable_bounds(
+                observed_dashboard,
+                deadline=deadline,
+            )
+        )
+        if not visible:
+            if deadline is None:
+                device.capture("creation-resources-observed-dashboard-not-visible")
+            else:
+                device.capture(
+                    "creation-resources-observed-dashboard-not-visible",
+                    deadline=deadline,
+                )
+            raise RuntimeError(
+                "Observed Creation dashboard origin was not visible before Resources navigation"
+            )
     if deadline is None:
         row = device.wait_exact_resource_id_bidirectional(
             "creation-stage-resources",
             timeout=180,
-            backward_scrolls=22,
+            backward_scrolls=0 if observed_dashboard is not None else 22,
             forward_scrolls=22,
             scroll_distance_ratio=0.22,
             evidence_prefix="creation-resources-stage",
@@ -8785,12 +8828,13 @@ def open_resources(
             raise RuntimeError("Core-authoritative Resources stage was not enabled")
         device.shell("input", "tap", *(str(value) for value in row.center))
         device.wait("creation-resources-page", timeout=60)
-        shared.reset_scroll_to_top(device, swipes=22)
+        if not authority_scan_owns_origin:
+            shared.reset_scroll_to_top(device, swipes=22)
         return
     row = device.wait_exact_resource_id_bidirectional(
         "creation-stage-resources",
         timeout=180,
-        backward_scrolls=22,
+        backward_scrolls=0 if observed_dashboard is not None else 22,
         forward_scrolls=22,
         scroll_distance_ratio=0.22,
         evidence_prefix="creation-resources-stage",
@@ -8833,7 +8877,8 @@ def open_resources(
         surface_name="Creation Resources route",
         deadline=deadline,
     )
-    shared.reset_scroll_to_top(device, swipes=22, deadline=deadline)
+    if not authority_scan_owns_origin:
+        shared.reset_scroll_to_top(device, swipes=22, deadline=deadline)
 
 
 def reopen_resources(
@@ -10151,14 +10196,19 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         "resources-initial-authority"
     )
     device.back(deadline=resources_initial_deadline)
-    shared.open_creation_dashboard(
+    resources_dashboard = shared.open_creation_dashboard(
         device,
         open_build_route=False,
         dashboard_timeout=60,
-        reset_swipes=22,
+        reset_swipes=0,
         deadline=resources_initial_deadline,
     )
-    open_resources(device, deadline=resources_initial_deadline)
+    open_resources(
+        device,
+        deadline=resources_initial_deadline,
+        observed_dashboard=resources_dashboard,
+        authority_scan_owns_origin=True,
+    )
     resources_before, resources_zero_option = read_resources_binding_with_zero_option(
         device,
         deadline=resources_initial_deadline,
@@ -10363,14 +10413,19 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         "process-restart-resources"
     )
     device.back(deadline=process_restart_resources_deadline)
-    shared.open_creation_dashboard(
+    process_restart_resources_dashboard = shared.open_creation_dashboard(
         device,
         open_build_route=False,
         dashboard_timeout=60,
-        reset_swipes=22,
+        reset_swipes=0,
         deadline=process_restart_resources_deadline,
     )
-    open_resources(device, deadline=process_restart_resources_deadline)
+    open_resources(
+        device,
+        deadline=process_restart_resources_deadline,
+        observed_dashboard=process_restart_resources_dashboard,
+        authority_scan_owns_origin=True,
+    )
     resources_restarted = read_persisted_resources_authority(
         device,
         resources_receipt,

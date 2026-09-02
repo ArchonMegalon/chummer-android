@@ -1872,6 +1872,10 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
         self.assertIn("open_creation_dashboard(", resources_initial)
         self.assertIn("open_resources(", resources_initial)
+        self.assertIn("resources_dashboard = shared.open_creation_dashboard(", resources_initial)
+        self.assertIn("reset_swipes=0", resources_initial)
+        self.assertIn("observed_dashboard=resources_dashboard", resources_initial)
+        self.assertIn("authority_scan_owns_origin=True", resources_initial)
         self.assertIn("read_resources_binding_with_zero_option(", resources_initial)
         self.assertNotIn("select_and_confirm_resources(", resources_initial)
         self.assertIn("select_and_confirm_resources(", resources_confirm)
@@ -1900,9 +1904,16 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertIn("deadline=process_restart_grant_deadline", restart_grant)
 
         self.assertIn(
-            "open_resources(device, deadline=process_restart_resources_deadline)",
+            "process_restart_resources_dashboard = shared.open_creation_dashboard(",
             restart_resources,
         )
+        self.assertIn("reset_swipes=0", restart_resources)
+        self.assertIn("open_resources(", restart_resources)
+        self.assertIn(
+            "observed_dashboard=process_restart_resources_dashboard",
+            restart_resources,
+        )
+        self.assertIn("authority_scan_owns_origin=True", restart_resources)
         self.assertIn("read_persisted_resources_authority(", restart_resources)
         self.assertIn(
             "deadline=process_restart_resources_deadline",
@@ -1939,6 +1950,77 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             )
         confirm_device.shell.assert_not_called()
         confirm_device.wait_for_single_exact_resource_id.assert_not_called()
+
+    def test_resources_open_reuses_observed_dashboard_and_defers_origin_to_scan(
+        self,
+    ) -> None:
+        dashboard = self.canonical_node(
+            "creation-wizard-dashboard",
+            clickable="false",
+        )
+        resources_row = self.canonical_node(
+            "creation-stage-resources",
+            **{"content-desc": "Resources"},
+        )
+        resources_route = self.canonical_node(
+            "creation-resources-page",
+            clickable="false",
+        )
+        deadline = driver.time.monotonic() + 30
+        device = mock.Mock()
+        device.node_has_tappable_bounds.return_value = True
+        device.wait_exact_resource_id_bidirectional.return_value = resources_row
+        device.wait_for_single_exact_resource_id.return_value = resources_route
+
+        with mock.patch.object(driver.shared, "reset_scroll_to_top") as reset:
+            driver.open_resources(
+                device,
+                deadline=deadline,
+                observed_dashboard=dashboard,
+                authority_scan_owns_origin=True,
+            )
+
+        device.wait_exact_resource_id_bidirectional.assert_called_once_with(
+            "creation-stage-resources",
+            timeout=180,
+            backward_scrolls=0,
+            forward_scrolls=22,
+            scroll_distance_ratio=0.22,
+            evidence_prefix="creation-resources-stage",
+            surface_name="Core-authoritative Resources stage",
+            deadline=deadline,
+        )
+        device.shell.assert_called_once_with(
+            "input",
+            "tap",
+            *(str(value) for value in resources_row.center),
+            timeout=15,
+            deadline=deadline,
+        )
+        device.wait_for_single_exact_resource_id.assert_called_once_with(
+            "creation-resources-page",
+            timeout=60,
+            evidence_prefix="creation-resources-route",
+            surface_name="Creation Resources route",
+            deadline=deadline,
+        )
+        reset.assert_not_called()
+
+    def test_resources_authority_scan_origin_requires_observed_dashboard(self) -> None:
+        device = mock.Mock()
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "requires an observed dashboard",
+        ):
+            driver.open_resources(
+                device,
+                deadline=driver.time.monotonic() + 30,
+                authority_scan_owns_origin=True,
+            )
+
+        device.wait_exact_resource_id_bidirectional.assert_not_called()
+        device.shell.assert_not_called()
 
     def test_resources_legacy_calls_do_not_inject_none_deadlines(self) -> None:
         device = mock.Mock()

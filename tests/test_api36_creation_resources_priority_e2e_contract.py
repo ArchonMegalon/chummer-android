@@ -35,9 +35,16 @@ class Api36CreationResourcesPriorityE2EContractTests(unittest.TestCase):
         restart = text[text.index('progress.advance("process-restart-reopen")') :]
         self.assertIn("shared.force_stop_and_launch_new_process", restart)
         self.assertIn(
-            "open_resources(device, deadline=process_restart_resources_deadline)",
+            "process_restart_resources_dashboard = shared.open_creation_dashboard(",
             restart,
         )
+        self.assertIn("reset_swipes=0", restart)
+        self.assertIn("open_resources(\n        device,", restart)
+        self.assertIn(
+            "observed_dashboard=process_restart_resources_dashboard",
+            restart,
+        )
+        self.assertIn("authority_scan_owns_origin=True", restart)
         self.assertIn("read_persisted_resources_authority(\n        device,", restart)
         self.assertIn("deadline=process_restart_resources_deadline", restart)
         for field in (
