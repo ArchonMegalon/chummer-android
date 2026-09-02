@@ -733,7 +733,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             "dashboard-proof": 30_000,
             "dashboard-authority-inventory": 30_000,
             "advanced-editor-gate-inventory": 90_000,
-            "prerequisite-authority-inventory": 60_000,
+            "prerequisite-authority-inventory": 120_000,
             "priority-ranks": 150_000,
             "typed-authority-options": 150_000,
             "talent-active-skill-grant": 180_000,
@@ -771,6 +771,30 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             1_268_512,
             sum(CREATION_PROSPECTIVE_PHASE_ELAPSED_MS.values()),
         )
+
+    def test_prerequisite_observer_budget_rejects_upper_bound_tampering(self) -> None:
+        phase_id = "prerequisite-authority-inventory"
+        self.assertEqual(
+            120_000,
+            AGGREGATE.CREATION_PHASE_BUDGETS_MS[phase_id],
+        )
+        self.assertEqual(45 * 60 * 1000, AGGREGATE.CREATION_TOTAL_TARGET_MS)
+
+        timing = json.loads(json.dumps(
+            self.raw_receipt("creation-prerequisite")["timing"]
+        ))
+        timing["phaseBudgetsMs"][phase_id] += 1
+        phase = next(
+            item for item in timing["phases"] if item["phaseId"] == phase_id
+        )
+        phase["budgetMs"] += 1
+        with self.assertRaisesRegex(
+            ValueError,
+            "creation prerequisite phase timing budgets differ",
+        ):
+            AGGREGATE.require_creation_timing_within_budget(
+                creation_receipt_with_timing(timing)
+            )
 
     def test_same_process_observer_reserves_do_not_widen_journey_target(self) -> None:
         self.assertEqual(

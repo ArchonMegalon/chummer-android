@@ -1844,7 +1844,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             driver.PHASE_BUDGET_MS["advanced-editor-gate-inventory"],
         )
         self.assertEqual(
-            60_000,
+            120_000,
             driver.PHASE_BUDGET_MS["prerequisite-authority-inventory"],
         )
         self.assertEqual(2_700_000, driver.TOTAL_PERFORMANCE_TARGET_MS)
@@ -7633,7 +7633,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             driver.PHASE_BUDGET_MS["advanced-editor-gate-inventory"],
         )
         self.assertEqual(
-            60_000,
+            120_000,
             driver.PHASE_BUDGET_MS["prerequisite-authority-inventory"],
         )
 

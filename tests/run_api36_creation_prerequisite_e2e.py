@@ -175,7 +175,15 @@ PHASE_BUDGET_MS = {
     # aggregate target; no authority field or stable-end proof is removed.
     "dashboard-authority-inventory": 30_000,
     "advanced-editor-gate-inventory": 90_000,
-    "prerequisite-authority-inventory": 60_000,
+    # Hosted run 33680699208 proved every preceding phase and the product UI,
+    # then safely recovered the first post-tap file-backed hierarchy through
+    # one fresh read-only retry plus metadata/content/stat reconciliation. The
+    # former 60-second slice expired before the required origin and stable-end
+    # traversal could begin. The resolved origin is already reused as viewport
+    # zero, so retain every fail-closed observation and give this external
+    # tap/origin/scan proof one bounded retry reserve. The independently
+    # authoritative product transaction and 45-minute journey SLOs are unchanged.
+    "prerequisite-authority-inventory": 120_000,
     "priority-ranks": 150_000,
     "typed-authority-options": 150_000,
     # The grant proof ends by reacquiring viewport zero after the exhaustive

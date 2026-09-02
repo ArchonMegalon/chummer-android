@@ -87,7 +87,10 @@ CREATION_PHASE_BUDGETS_MS = {
     "dashboard-proof": 30_000,
     "dashboard-authority-inventory": 30_000,
     "advanced-editor-gate-inventory": 90_000,
-    "prerequisite-authority-inventory": 60_000,
+    # Run 33680699208 exhausted the former external observer slice only after
+    # a safe hierarchy retry and strict owned-file reconciliation. Preserve the
+    # complete tap/origin/stable-scan proof under one exact bounded phase cap.
+    "prerequisite-authority-inventory": 120_000,
     "priority-ranks": 150_000,
     "typed-authority-options": 150_000,
     "talent-active-skill-grant": 180_000,
