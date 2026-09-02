@@ -1646,6 +1646,9 @@ class AndroidContractTests(unittest.TestCase):
     def test_release_automation_is_fail_closed(self) -> None:
         build = (REPO / "scripts" / "build-release.sh").read_text(encoding="utf-8")
         prepare = (REPO / "scripts" / "prepare-release-inputs.sh").read_text(encoding="utf-8")
+        restore_routing = (REPO / "eng" / "ReleaseRestoreRouting.props").read_text(
+            encoding="utf-8"
+        )
         debug_build = (REPO / "scripts" / "build-debug.sh").read_text(encoding="utf-8")
         source_graph = (REPO / "scripts" / "verify_release_source_graph.py").read_text(encoding="utf-8")
         bootstrap = (REPO / "scripts" / "bootstrap-build-environment.sh").read_text(encoding="utf-8")
@@ -1681,6 +1684,10 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("locked-restore-consumption-post-publish", build)
         self.assertIn('NUGET_PACKAGES="$isolated_packages"', build)
         self.assertIn("release-workspace-stale-bin-obj", build)
+        self.assertIn("--routed-lock-root", build)
+        self.assertIn("ChummerReleaseLockRoot", build)
+        self.assertIn("Chummer.Desktop.Runtime.packages.lock.json", build)
+        self.assertIn("Chummer.Presentation.packages.lock.json", build)
         self.assertIn("--no-restore", build)
         self.assertIn("-m:1", build)
         self.assertIn("--disable-build-servers", build)
@@ -1723,6 +1730,11 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("--verify-existing", prepare)
         self.assertIn("release-input-directory-not-empty", prepare)
         self.assertIn("publication_authorized=false", prepare)
+        self.assertIn("ChummerReleaseIntermediateRoot", prepare)
+        self.assertIn("ChummerReleaseLockRoot", prepare)
+        self.assertIn("--assets-root", prepare)
+        self.assertIn("$(MSBuildProjectName).packages.lock.json", restore_routing)
+        self.assertIn("$(MSBuildProjectName)/", restore_routing)
         self.assertNotIn("google play", prepare.lower())
         self.assertIn('"google_play_upload"', source_graph)
         self.assertIn('"tester_installation"', source_graph)
