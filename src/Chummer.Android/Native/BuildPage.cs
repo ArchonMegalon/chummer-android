@@ -341,13 +341,10 @@ public sealed class BuildPage : NativePageBase
         TimeSpan.FromSeconds(25);
     private readonly VerticalStackLayout _body = new()
     {
-        Padding = new Thickness(20, 16, 20, 40),
+        Padding = new Thickness(20, 18, 20, 40),
         Spacing = 16
     };
-    private readonly ContentView _routeMarkerHost = new()
-    {
-        Padding = new Thickness(20, 18, 20, 0)
-    };
+    private readonly ScrollView _bodyScroll;
     private readonly ToolbarItem _save;
     private readonly LatestBackgroundProjectionQueue<
         CreationDashboardProjectionBinding,
@@ -378,6 +375,7 @@ public sealed class BuildPage : NativePageBase
     private CancellationTokenSource? _creationDashboardRouteReadyLifetime;
     private long _creationDashboardAppearanceGeneration;
     private long _creationDashboardRouteReadyEmittedGeneration = -1;
+    private bool _resetScrollOnNextRefresh;
 
     public BuildPage(
         RunnerSessionCoordinator coordinator,
@@ -451,23 +449,13 @@ public sealed class BuildPage : NativePageBase
             ScheduleCreationFinalizationAcceptance(completion.Request);
         _creationFinalizationQueue.Failed += failure =>
             ScheduleCreationFinalizationAcceptance(failure.Request);
-        ScrollView bodyScroll = new() { Content = _body };
-        Grid page = new()
-        {
-            RowDefinitions =
-            {
-                new RowDefinition(GridLength.Auto),
-                new RowDefinition(GridLength.Star)
-            }
-        };
-        page.Add(_routeMarkerHost);
-        page.Add(bodyScroll);
-        Grid.SetRow(bodyScroll, 1);
-        Content = page;
+        _bodyScroll = new ScrollView { Content = _body };
+        Content = _bodyScroll;
     }
 
     protected override void OnAppearing()
     {
+        _resetScrollOnNextRefresh = true;
         _creationDashboardRouteReadyLifetime?.Cancel();
         _creationDashboardRouteReadyLifetime?.Dispose();
         _creationDashboardRouteReadyLifetime = new CancellationTokenSource();
@@ -495,11 +483,11 @@ public sealed class BuildPage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
-        _routeMarkerHost.Content = null;
         _save.Text = BuildPageUiProjection.SaveToolbarText(Coordinator.HasDurableSaveNotice);
         _save.IsEnabled = Coordinator.State.Profile is not null;
         BuildPageRouteMarker routeMarker = BuildPageUiProjection.RouteMarker(Coordinator.State.Profile);
         AddRouteMarker(routeMarker.AutomationId, routeMarker.Label);
+        ResetScrollForCurrentAppearance();
         if (Coordinator.State.Profile is null)
         {
             Title = "Runner";
@@ -541,13 +529,26 @@ public sealed class BuildPage : NativePageBase
         marker.AutomationId = automationId;
         CharacterCreationFinalizationReceipt? persistedReceipt =
             Coordinator.LoadPersistedPriorityCreationReceipt();
-        _routeMarkerHost.Content = persistedReceipt is null
+        _body.Add(persistedReceipt is null
             ? marker
             : NativeAuthoritySemantics.Overlay(
                 marker,
                 NativeAuthoritySemantics.Digest(
                     "phone-workspace-creation-receipt-digest",
-                    persistedReceipt.ReceiptDigest));
+                    persistedReceipt.ReceiptDigest)));
+    }
+
+    private void ResetScrollForCurrentAppearance()
+    {
+        if (!_resetScrollOnNextRefresh)
+            return;
+
+        _resetScrollOnNextRefresh = false;
+        Dispatcher.Dispatch(async () =>
+        {
+            await Task.Yield();
+            await _bodyScroll.ScrollToAsync(0, 0, animated: false);
+        });
     }
 
     private void AddSr5CareerWizardRoute()
