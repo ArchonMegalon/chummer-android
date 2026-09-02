@@ -4790,11 +4790,12 @@ def scan_persisted_prerequisite_authority(
                 or node.attributes.get("clickable") != "true"
                 or not tappable
             ):
-                capture(f"{scan_id}-{category}-selection-not-tappable")
-                raise RuntimeError(
-                    f"Persisted {category} selection row was not enabled, clickable, "
-                    "and tappable"
-                )
+                # A row can be present in an overlap viewport while clipped or
+                # offscreen.  It is evidence of identity/semantics only, never
+                # navigation authority.  Continue the measured scan so a later
+                # viewport can provide the one genuinely tappable occurrence;
+                # invalid_navigation below still fails closed if none does.
+                continue
             selection_viewports[category].add(min(viewport_index, scan.swipes))
 
     invalid_values = {

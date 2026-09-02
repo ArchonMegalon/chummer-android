@@ -10193,6 +10193,55 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         )
         device.capture.assert_not_called()
 
+    def test_persisted_authority_scan_skips_clipped_selection_until_tappable_viewport(self) -> None:
+        nodes = self.persisted_prerequisite_authority_nodes()
+        later_nodes = [
+            driver.shared.UiNode(dict(node.attributes))
+            for node in nodes
+        ]
+        device = mock.Mock()
+        # The first overlap viewport sees both selection rows clipped; the
+        # later viewport exposes the same semantic rows with tappable bounds.
+        device.node_has_tappable_bounds.side_effect = (False, False, True, True)
+        origin = driver.PriorityRankOrigin(nodes[:3], 0, 1, (1,), 0)
+        with mock.patch.object(
+            driver,
+            "scan_forward_with_receipt",
+            return_value=driver.StableViewportScan([nodes, later_nodes], 6),
+        ):
+            proof = driver.scan_persisted_prerequisite_authority(
+                device,
+                initial_observation=origin,
+                deadline=1234.0,
+                scan_observer=None,
+                scan_id="persisted-clipped-selection",
+            )
+
+        self.assertEqual({"heritage": 1, "talent": 1}, proof.selection_viewports)
+        device.capture.assert_not_called()
+
+    def test_persisted_authority_scan_fails_at_end_when_selection_never_tappable(self) -> None:
+        nodes = self.persisted_prerequisite_authority_nodes()
+        device = mock.Mock()
+        device.node_has_tappable_bounds.return_value = False
+        origin = driver.PriorityRankOrigin(nodes[:3], 0, 1, (1,), 0)
+        with mock.patch.object(
+            driver,
+            "scan_forward_with_receipt",
+            return_value=driver.StableViewportScan([nodes], 6),
+        ), self.assertRaisesRegex(RuntimeError, "navigation"):
+            driver.scan_persisted_prerequisite_authority(
+                device,
+                initial_observation=origin,
+                deadline=1234.0,
+                scan_observer=None,
+                scan_id="persisted-never-tappable-selection",
+            )
+        self.assertNotIn(
+            mock.call("persisted-never-tappable-selection-heritage-selection-not-tappable", deadline=1234.0),
+            device.capture.call_args_list,
+        )
+
     def test_persisted_authority_scan_rejects_missing_duplicate_drift_and_bad_identity(
         self,
     ) -> None:
