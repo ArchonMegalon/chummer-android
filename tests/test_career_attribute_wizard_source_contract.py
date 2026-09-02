@@ -132,11 +132,17 @@ class CareerAttributeWizardSourceContractTests(unittest.TestCase):
     def test_career_and_build_surfaces_enter_the_phone_wizard(self) -> None:
         career = self.read("Sr5CareerWizardPage.cs")
         build = self.read("BuildPage.cs")
+        phone_model = self.read("Sr5CareerWizardPhoneModel.cs")
         for source in (career, build):
             self.assertIn("Sr5CareerAttributeCoordinator", source)
             self.assertIn("new Sr5CareerAttributeWizardPage", source)
         self.assertIn("OpenAttributeWizardAsync", career)
-        self.assertGreaterEqual(career.count('"attribute");'), 2)
+        self.assertIn(
+            "Sr5CareerWizardActionIds.AdvanceAttribute => OpenAttributeWizardAsync()",
+            career,
+        )
+        self.assertIn("Sr5CareerWizardActionIds.AdvanceAttribute", phone_model)
+        self.assertIn('"sr5-career/advancement/attribute/choose"', phone_model)
         self.assertIn('automationId: "build-career-attribute"', build)
 
     def test_behavioral_authority_harness_covers_restart_tampering_and_blockers(self) -> None:
