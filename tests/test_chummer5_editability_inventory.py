@@ -6584,6 +6584,30 @@ public sealed class Demo
             )
         )
         recognition = payload["generationInputs"]["api36JourneyRecognition"]
+        gate = payload["generationInputs"]["phoneBetaWizardGate"]
+        self.assertEqual("sr5_wizards_only", gate["proofScope"])
+        self.assertEqual(3, gate["requiredJourneyCount"])
+        self.assertEqual(
+            [
+                "creation-prerequisite",
+                "career-active-skill-advance",
+                "career-weapon-fire",
+            ],
+            gate["requiredJourneys"],
+        )
+        self.assertEqual(
+            [
+                {
+                    "matrixJourney": "full-editing",
+                    "status": "not_required_not_proven",
+                    "maySatisfyRequiredJourney": False,
+                }
+            ],
+            gate["excludedFromGate"],
+        )
+        self.assertEqual(0, gate["inventoryCompletionCountContribution"])
+        self.assertFalse(gate["publicationAuthorized"])
+        self.assertFalse(payload["completionProven"])
         self.assertEqual(
             "sr5-table-wizard-before-run-playtime",
             recognition["journeyId"],

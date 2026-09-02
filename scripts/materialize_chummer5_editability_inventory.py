@@ -21,6 +21,16 @@ from pathlib import Path
 from pathlib import PurePosixPath
 from typing import Any, Iterable
 
+SCRIPT_DIRECTORY = Path(__file__).resolve().parent
+if str(SCRIPT_DIRECTORY) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIRECTORY))
+
+from api36_wizard_gate_contract import (  # noqa: E402
+    DEFAULT_CONTRACT as WIZARD_GATE_CONTRACT_PATH,
+    contract_binding as wizard_gate_contract_binding,
+    load_contract as load_wizard_gate_contract,
+)
+
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PHONE_E2E_PACKAGE = "com.myexternalbrain.chummer"
@@ -98,10 +108,15 @@ SR5_TABLE_WIZARD_TEST_INPUTS = (
 )
 SR5_TABLE_WIZARD_GATE_INPUTS = (
     ".github/workflows/api36-editing-e2e.yml",
+    "eng/api36-sr5-wizard-gate-authority.json",
+    "scripts/api36_wizard_gate_contract.py",
+    "scripts/finalize-api36-e2e-journey-receipt.py",
     "scripts/run-api36-editing-e2e-ci.sh",
+    "scripts/verify-api36-editing-e2e-aggregate.py",
     "src/Chummer.Android/Chummer.Android.csproj",
     "tests/Chummer.Android.Native.CompileCheck/NativeCompileInputs.props",
     "tests/test_api36_e2e_workflow.py",
+    "tests/test_api36_e2e_artifact_authority.py",
     "tests/test_chummer5_editability_inventory.py",
     "tests/test_sr5_contextual_wizard_scope.py",
 )
@@ -23654,6 +23669,8 @@ def build_inventory(
     if not registry_path.is_file():
         raise FileNotFoundError(f"Missing Android parity registry: {registry_path}")
     registry = json.loads(_read_text(registry_path))
+    wizard_gate_contract = load_wizard_gate_contract(WIZARD_GATE_CONTRACT_PATH)
+    wizard_gate_binding = wizard_gate_contract_binding(WIZARD_GATE_CONTRACT_PATH)
     rows, source_summary = extract_legacy_rows(chummer5_root)
     enrich_rows(rows, registry, chummer5_root, presentation_root, core_engine_root)
 
@@ -24156,6 +24173,16 @@ def build_inventory(
             "androidParityRegistry": {
                 "path": "chummer-design/products/chummer/ANDROID_WINDOWS_FEATURE_PARITY.yaml",
                 "sha256": _sha256_file(registry_path),
+            },
+            "phoneBetaWizardGate": {
+                **wizard_gate_binding,
+                "excludedFromGate": wizard_gate_contract["excludedFromGate"],
+                "relationshipToExhaustiveInventory": (
+                    "This wizard-only phone-beta gate does not mark the exhaustive "
+                    "Chummer5 editability inventory complete and receives no completion "
+                    "credit from Full Editing evidence."
+                ),
+                "inventoryCompletionCountContribution": 0,
             },
             "androidAndPresenterSources": [
                 {

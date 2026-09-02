@@ -100,6 +100,28 @@ explicitly deferred: that lane does not start a tablet emulator, and a passing
 phone receipt is not a tablet-readiness claim or a substitute for the tablet
 journeys required before a general Play release.
 
+The current phone-beta runtime authority is narrower than general Chummer5 edit
+parity. It is the exact SR5 wizard-only contract in
+`eng/api36-sr5-wizard-gate-authority.json`. The protected aggregate check
+requires exactly these three digest-bound API-36 journeys against one APK:
+
+1. Creation Prerequisite;
+2. Career Active Skill Advance;
+3. Career Weapon Fire.
+
+General Full Editing is not required by this gate. Its product code, fixtures,
+and standalone tests remain available, but no old Full Editing receipt may
+count toward or coexist with the three required aggregate artifacts. This is a
+scope decision, not a Full Editing pass claim. The exhaustive editability and
+Character Settings inventories remain fail-closed parity backlogs and do not
+become the phone-beta denominator.
+
+The wizard aggregate uses schema
+`chummer.android.api36-sr5-wizard-e2e-aggregate/v1` and always records
+`publicationAuthorized: false`. Even a passing three-journey aggregate proves
+only the stated phone wizard scope; it does not itself authorize a Play upload,
+tablet support, broad Android parity, or public release.
+
 1. parity and privacy contract tests pass;
 2. Release AAB builds from a clean, pinned source graph;
 3. bundle inspection confirms package id, version, SDK bounds, app links, and

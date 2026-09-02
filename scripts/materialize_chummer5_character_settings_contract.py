@@ -18,6 +18,15 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Iterable
 
+SCRIPT_DIRECTORY = Path(__file__).resolve().parent
+if str(SCRIPT_DIRECTORY) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIRECTORY))
+
+from api36_wizard_gate_contract import (  # noqa: E402
+    DEFAULT_CONTRACT as WIZARD_GATE_CONTRACT_PATH,
+    contract_binding as wizard_gate_contract_binding,
+)
+
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CHUMMER5_ROOT = Path(
@@ -335,11 +344,18 @@ def build_contract(chummer5_root: Path, inventory_path: Path) -> dict[str, objec
         / "CharacterSettings.cs"
     )
     settings_xml_path = chummer5_root / "Chummer" / "data" / "settings.xml"
-    for path in (form_path, character_settings_path, settings_xml_path, inventory_path):
+    for path in (
+        form_path,
+        character_settings_path,
+        settings_xml_path,
+        inventory_path,
+        WIZARD_GATE_CONTRACT_PATH,
+    ):
         if not path.is_file():
             raise FileNotFoundError(path)
 
     inventory = json.loads(inventory_path.read_text(encoding="utf-8"))
+    wizard_gate_binding = wizard_gate_contract_binding(WIZARD_GATE_CONTRACT_PATH)
     rows = [
         row
         for row in inventory["rows"]
@@ -418,6 +434,14 @@ def build_contract(chummer5_root: Path, inventory_path: Path) -> dict[str, objec
         "schema": "chummer.android.character-settings-contract/v1",
         "status": "complete" if not unresolved else "unresolved_fail_closed",
         "implementationEvidence": False,
+        "phoneBetaWizardGate": {
+            **wizard_gate_binding,
+            "settingsContractRequiredJourney": False,
+            "relationship": (
+                "Character Settings remains exhaustive-parity implementation input; "
+                "it is not a required SR5 wizard journey and cannot authorize publication."
+            ),
+        },
         "summary": {
             "controlCount": len(controls),
             "resolvedControlCount": len(controls) - len(unresolved),
@@ -433,7 +457,13 @@ def build_contract(chummer5_root: Path, inventory_path: Path) -> dict[str, objec
                 "path": _source_label(path, chummer5_root),
                 "sha256": _sha256(path),
             }
-            for path in (form_path, character_settings_path, settings_xml_path, inventory_path)
+            for path in (
+                form_path,
+                character_settings_path,
+                settings_xml_path,
+                inventory_path,
+                WIZARD_GATE_CONTRACT_PATH,
+            )
         ],
         "controls": controls,
     }

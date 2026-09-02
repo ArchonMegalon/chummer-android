@@ -13793,10 +13793,10 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         prerequisite = "python3 chummer-android/tests/run_api36_creation_prerequisite_e2e.py"
         self.assertIn('if [[ "$profile" != "phone" ]]; then', runner)
         self.assertIn("tablet beta proof is deferred", runner)
-        self.assertIn(generic, runner)
+        self.assertNotIn(generic, runner)
         self.assertIn(prerequisite, runner)
         guard = runner.index('if [[ "$profile" != "phone" ]]; then')
-        self.assertLess(guard, runner.index(generic))
+        self.assertLess(guard, runner.index(prerequisite))
         self.assertIn(
             'journey="${CHUMMER_E2E_JOURNEY:?CHUMMER_E2E_JOURNEY is required}"',
             runner,

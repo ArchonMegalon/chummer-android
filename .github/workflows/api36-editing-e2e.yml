@@ -1,4 +1,4 @@
-name: API 36 phone beta editing E2E
+name: API 36 phone beta SR5 wizard E2E
 
 on:
   pull_request:
@@ -10,6 +10,7 @@ on:
       - "docs/ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json"
       - "docs/CHUMMER5_CHARACTER_SETTINGS_CONTRACT.generated.json"
       - "docs/editability-evidence/**"
+      - "eng/api36-sr5-wizard-gate-authority.json"
       - "global.json"
       - "scripts/**"
       - "src/**"
@@ -169,6 +170,12 @@ jobs:
           python3 scripts/materialize_chummer5_editability_inventory.py --check
           python3 scripts/materialize_chummer5_character_settings_contract.py --check
 
+      - name: Verify the exact wizard-only API 36 gate contract
+        working-directory: chummer-android
+        run: >-
+          python3 scripts/api36_wizard_gate_contract.py
+          --manifest eng/api36-sr5-wizard-gate-authority.json
+
       - name: Verify the pinned phone-beta contract
         run: python3 chummer-design/scripts/ai/validate_android_phone_beta_contract.py
 
@@ -322,15 +329,15 @@ jobs:
           overwrite: false
           include-hidden-files: false
 
-  phone-editing-e2e:
+  phone-wizard-e2e:
     # Tablet acceptance is deferred; this lane launches only pixel_6 and makes no tablet-readiness claim.
-    name: phone API 36 persistence (${{ matrix.journey }})
+    # General Full Editing remains a product/backlog test, not phone-beta wizard authority.
+    name: phone API 36 SR5 wizard persistence (${{ matrix.journey }})
     needs: build
     strategy:
       fail-fast: false
       matrix:
         journey:
-          - full-editing
           - creation-prerequisite
           - career-active-skill-advance
           - career-weapon-fire
@@ -433,7 +440,7 @@ jobs:
     name: Aggregate exact API 36 phone evidence
     needs:
       - build
-      - phone-editing-e2e
+      - phone-wizard-e2e
     if: ${{ always() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -445,17 +452,17 @@ jobs:
           persist-credentials: false
           fetch-depth: 1
 
-      - name: Download the four stable journey evidence artifacts
+      - name: Download the three stable wizard evidence artifacts
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           pattern: chummer-android-api36-phone-*-evidence-${{ github.run_id }}
           path: ${{ runner.temp }}/chummer-api36-journey-evidence
           merge-multiple: false
 
-      - name: Require one shared authority and exactly four passing journeys
+      - name: Require one shared authority and exactly three passing wizard journeys
         env:
           CHUMMER_BUILD_RESULT: ${{ needs.build.result }}
-          CHUMMER_MATRIX_RESULT: ${{ needs.phone-editing-e2e.result }}
+          CHUMMER_MATRIX_RESULT: ${{ needs.phone-wizard-e2e.result }}
           CHUMMER_E2E_APK_ARTIFACT_ID: ${{ needs.build.outputs.apk-artifact-id }}
           CHUMMER_E2E_APK_ARTIFACT_DIGEST: ${{ needs.build.outputs.apk-artifact-digest }}
           CHUMMER_E2E_APK_ARTIFACT_NAME: ${{ needs.build.outputs.apk-artifact-name }}
@@ -465,6 +472,7 @@ jobs:
           python3 chummer-android/scripts/verify-api36-editing-e2e-aggregate.py
           --evidence-root "${{ runner.temp }}/chummer-api36-journey-evidence"
           --receipt "${{ runner.temp }}/chummer-api36-aggregate/receipt.json"
+          --gate-contract chummer-android/eng/api36-sr5-wizard-gate-authority.json
           --run-id "${{ github.run_id }}"
           --build-result "$CHUMMER_BUILD_RESULT"
           --matrix-result "$CHUMMER_MATRIX_RESULT"
@@ -477,7 +485,7 @@ jobs:
       - name: Upload the aggregate phone authority receipt
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: chummer-android-api36-phone-aggregate-${{ github.run_id }}-${{ github.run_attempt }}
+          name: chummer-android-api36-phone-sr5-wizard-aggregate-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/chummer-api36-aggregate/receipt.json
           if-no-files-found: error
           retention-days: 30

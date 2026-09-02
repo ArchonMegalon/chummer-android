@@ -255,6 +255,16 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         self.assertLess(self.text.index(settings_check), self.text.index("actions/setup-dotnet@"))
         self.assertLess(self.text.index(check), self.text.index(settings_check))
         self.assertLess(self.text.index(check), self.text.index("run: scripts/build-debug.sh"))
+        wizard_check = "python3 scripts/api36_wizard_gate_contract.py"
+        self.assertEqual(1, self.text.count(wizard_check))
+        self.assertIn(
+            "--manifest eng/api36-sr5-wizard-gate-authority.json",
+            self.text,
+        )
+        self.assertLess(
+            self.text.index(wizard_check),
+            self.text.index("run: scripts/build-debug.sh"),
+        )
         self.assertIn("needs: build", self.text)
 
     def test_sr5_table_wizard_development_journey_is_recognized_without_release_claim(
@@ -401,16 +411,16 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
             "bash chummer-android/scripts/run-api36-editing-e2e-ci.sh",
             self.text,
         )
-        self.assertEqual(1, runner.count("tests/run_api36_editing_e2e.py"))
+        self.assertEqual(0, runner.count("tests/run_api36_editing_e2e.py"))
         self.assertIn("--serial emulator-5554", runner)
-        self.assertIn('--profile "$profile"', runner)
-        self.assertIn("--journey full", runner)
         self.assertIn('--receipt "$evidence_root/receipt.json"', runner)
         self.assertNotIn('--journey contact-pet', runner)
         self.assertNotIn("contact_pet_root", runner)
         standalone_driver = (
             REPO_ROOT / "tests" / "run_api36_editing_e2e.py"
         ).read_text(encoding="utf-8")
+        self.assertIn('--journey', standalone_driver)
+        self.assertIn('"full"', standalone_driver)
         self.assertIn('"contact-pet"', standalone_driver)
         self.assertTrue(
             (REPO_ROOT / "tests" / "fixtures" / "creation-contact-pet-e2e.chum5").is_file()
@@ -419,7 +429,6 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         self.assertIn("tablet beta proof is deferred", runner)
         self.assertNotIn('phone|tablet', runner)
         journeys = (
-            ("full-editing", "tests/run_api36_editing_e2e.py"),
             (
                 "creation-prerequisite",
                 "tests/run_api36_creation_prerequisite_e2e.py",
@@ -432,6 +441,18 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
                 "career-weapon-fire",
                 "tests/run_api36_career_weapon_fire_e2e.py",
             ),
+        )
+        matrix_block = self.text[
+            self.text.index("        journey:"):
+            self.text.index("    runs-on:", self.text.index("        journey:"))
+        ]
+        self.assertEqual(
+            [journey for journey, _driver in journeys],
+            [
+                line.strip().removeprefix("- ")
+                for line in matrix_block.splitlines()
+                if line.strip().startswith("- ")
+            ],
         )
         self.assertIn(
             'journey="${CHUMMER_E2E_JOURNEY:?CHUMMER_E2E_JOURNEY is required}"',
@@ -457,10 +478,12 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
                 self.assertIn(f"  {journey})", runner)
                 self.assertEqual(1, runner.count(driver))
                 self.assertIn(f"          - {journey}", self.text)
+        self.assertNotIn("          - full-editing", self.text)
+        self.assertNotIn("  full-editing)", runner)
         self.assertIn("CHUMMER_E2E_JOURNEY: ${{ matrix.journey }}", self.text)
         self.assertIn("fail-fast: false", self.text)
         self.assertIn(
-            "phone API 36 persistence (${{ matrix.journey }})",
+            "phone API 36 SR5 wizard persistence (${{ matrix.journey }})",
             self.text,
         )
         self.assertIn(
@@ -496,7 +519,7 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         self.assertLess(download, verify)
         self.assertLess(verify, emulator)
         build_block = self.text[
-            self.text.index("  build:"):self.text.index("  phone-editing-e2e:")
+            self.text.index("  build:"):self.text.index("  phone-wizard-e2e:")
         ]
         self.assertIn("id: upload-apk", build_block)
         for output in (
@@ -509,7 +532,7 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
             with self.subTest(output=output):
                 self.assertIn(output, build_block)
         phone_block = self.text[
-            self.text.index("  phone-editing-e2e:"):
+            self.text.index("  phone-wizard-e2e:"):
             self.text.index("  phone-evidence-aggregate:")
         ]
         self.assertNotIn("gh api", phone_block)
@@ -533,9 +556,9 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
             verify_block,
         )
 
-    def test_aggregate_requires_four_stable_authority_bound_receipts(self) -> None:
+    def test_aggregate_requires_three_stable_wizard_authority_bound_receipts(self) -> None:
         aggregate = self.text[self.text.index("  phone-evidence-aggregate:"):]
-        self.assertIn("needs:\n      - build\n      - phone-editing-e2e", aggregate)
+        self.assertIn("needs:\n      - build\n      - phone-wizard-e2e", aggregate)
         self.assertIn("if: ${{ always() }}", aggregate)
         self.assertIn(
             "pattern: chummer-android-api36-phone-*-evidence-"
@@ -544,6 +567,11 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         )
         self.assertIn("merge-multiple: false", aggregate)
         self.assertIn("verify-api36-editing-e2e-aggregate.py", aggregate)
+        self.assertIn(
+            "--gate-contract chummer-android/eng/api36-sr5-wizard-gate-authority.json",
+            aggregate,
+        )
+        self.assertIn("exactly three passing wizard journeys", aggregate)
         for authority_output in (
             "needs.build.outputs.apk-artifact-id",
             "needs.build.outputs.apk-artifact-digest",
@@ -554,7 +582,7 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
             with self.subTest(authority_output=authority_output):
                 self.assertIn(authority_output, aggregate)
         matrix = self.text[
-            self.text.index("  phone-editing-e2e:"):
+            self.text.index("  phone-wizard-e2e:"):
             self.text.index("  phone-evidence-aggregate:")
         ]
         self.assertIn(

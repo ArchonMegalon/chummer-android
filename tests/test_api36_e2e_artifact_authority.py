@@ -1,3 +1,4 @@
+import copy
 import hashlib
 import importlib.util
 import json
@@ -23,6 +24,10 @@ FINALIZE = load_script(
     "api36_finalize_journey_receipt",
     "scripts/finalize-api36-e2e-journey-receipt.py",
 )
+GATE = load_script(
+    "api36_wizard_gate_contract",
+    "scripts/api36_wizard_gate_contract.py",
+)
 AGGREGATE = load_script(
     "api36_verify_evidence_aggregate",
     "scripts/verify-api36-editing-e2e-aggregate.py",
@@ -33,7 +38,6 @@ ARTIFACT_ID = "987654"
 ARTIFACT_DIGEST = "a" * 64
 APK_SHA256 = "b" * 64
 JOURNEYS = {
-    "full-editing": "full",
     "creation-prerequisite": "creation-prerequisite",
     "career-active-skill-advance": "career-active-skill-advance",
     "career-weapon-fire": "career-weapon-fire",
@@ -429,6 +433,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                     "profile=phone",
                     f"matrix_journey={journey}",
                     f"driver_journey={driver_journey}",
+                    f"gate_contract_sha256={GATE.contract_binding()['contractSha256']}",
                     f"artifact_id={authority['artifact_id']}",
                     f"artifact_digest={authority['artifact_digest']}",
                     f"artifact_name={authority['artifact_name']}",
@@ -461,39 +466,37 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             encoding="utf-8",
         )
 
-    def test_explicit_full_editing_mapping_rejects_default_drift(self) -> None:
-        receipt = self.raw_receipt("full-editing")
-        receipt["journey"] = "contact-pet"
-        with self.assertRaisesRegex(ValueError, "driver route differs"):
+    def test_finalizer_rejects_full_editing_as_wizard_authority(self) -> None:
+        receipt = {
+            "schema": "chummer.android.editing-e2e/v1",
+            "status": "pass",
+            "profile": "phone",
+            "apkSha256": APK_SHA256,
+            "journey": "full",
+        }
+        with self.assertRaisesRegex(ValueError, "unsupported matrix journey"):
             FINALIZE.bind_receipt(
                 receipt,
                 matrix_journey="full-editing",
                 driver_journey="full",
-                **self.authority(),
-            )
-        with self.assertRaisesRegex(ValueError, "matrix/driver journey mismatch"):
-            FINALIZE.bind_receipt(
-                self.raw_receipt("full-editing"),
-                matrix_journey="full-editing",
-                driver_journey="condition-monitor",
                 **self.authority(),
             )
 
     def test_finalizer_rejects_mismatched_apk_sha_and_attempt_name(self) -> None:
-        receipt = self.raw_receipt("full-editing")
+        receipt = self.raw_receipt("career-active-skill-advance")
         receipt["apkSha256"] = "c" * 64
         with self.assertRaisesRegex(ValueError, "APK SHA-256 differs"):
             FINALIZE.bind_receipt(
                 receipt,
-                matrix_journey="full-editing",
-                driver_journey="full",
+                matrix_journey="career-active-skill-advance",
+                driver_journey="career-active-skill-advance",
                 **self.authority(),
             )
         with self.assertRaisesRegex(ValueError, "not bound to run and attempt"):
             FINALIZE.bind_receipt(
-                self.raw_receipt("full-editing"),
-                matrix_journey="full-editing",
-                driver_journey="full",
+                self.raw_receipt("career-active-skill-advance"),
+                matrix_journey="career-active-skill-advance",
+                driver_journey="career-active-skill-advance",
                 **self.authority(artifact_name="stale-snapshot"),
             )
 
@@ -503,9 +506,14 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             self.materialize_all(root, attempt="1")
             # A rerun-failed replaces only its stable journey artifact and retains
             # the original build authority used by the successful prerequisite jobs.
-            self.materialize_journey(root, "full-editing", attempt="1")
+            self.materialize_journey(root, "career-weapon-fire", attempt="1")
             aggregate = self.validate(root, attempt="1")
-            self.assertEqual(4, aggregate["journeyCount"])
+            self.assertEqual(3, aggregate["journeyCount"])
+            self.assertEqual(3, aggregate["requiredJourneyCount"])
+            self.assertEqual(list(JOURNEYS), aggregate["requiredJourneys"])
+            self.assertEqual(GATE.AGGREGATE_SCHEMA, aggregate["schema"])
+            self.assertEqual("sr5_wizards_only", aggregate["proofScope"])
+            self.assertFalse(aggregate["publicationAuthorized"])
             self.assertEqual(ARTIFACT_ID, aggregate["artifactAuthority"]["artifactId"])
 
     def test_rerun_all_replaces_all_stable_evidence_with_new_build_authority(self) -> None:
@@ -565,15 +573,28 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             self.materialize_all(root)
-            full = root / AGGREGATE.expected_artifact_directory("full-editing", RUN_ID)
-            nested = full / "duplicate"
+            weapon = root / AGGREGATE.expected_artifact_directory(
+                "career-weapon-fire", RUN_ID
+            )
+            nested = weapon / "duplicate"
             nested.mkdir()
-            shutil.copy2(full / "receipt.json", nested / "receipt.json")
-            with self.assertRaisesRegex(ValueError, "exactly 4"):
+            shutil.copy2(weapon / "receipt.json", nested / "receipt.json")
+            with self.assertRaisesRegex(ValueError, "exactly 3"):
                 self.validate(root)
 
             shutil.rmtree(nested)
-            (root / f"{full.name}-old-attempt").mkdir()
+            (root / f"{weapon.name}-old-attempt").mkdir()
+            with self.assertRaisesRegex(ValueError, "cardinality/name mismatch"):
+                self.validate(root)
+
+    def test_full_editing_artifact_is_rejected_as_extra_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self.materialize_all(root)
+            full = root / AGGREGATE.expected_artifact_directory(
+                "full-editing", RUN_ID
+            )
+            full.mkdir()
             with self.assertRaisesRegex(ValueError, "cardinality/name mismatch"):
                 self.validate(root)
 
@@ -581,16 +602,18 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             self.materialize_all(root)
-            full = root / AGGREGATE.expected_artifact_directory("full-editing", RUN_ID)
-            (full / "receipt.json").write_text(
+            weapon = root / AGGREGATE.expected_artifact_directory(
+                "career-weapon-fire", RUN_ID
+            )
+            (weapon / "receipt.json").write_text(
                 '{"schema":"x","schema":"y"}\n',
                 encoding="utf-8",
             )
-            self.reseal(full)
+            self.reseal(weapon)
             with self.assertRaisesRegex(ValueError, "duplicate JSON key"):
                 self.validate(root)
 
-            self.materialize_journey(root, "full-editing")
+            self.materialize_journey(root, "career-weapon-fire")
             with self.assertRaisesRegex(ValueError, "matrix did not succeed"):
                 AGGREGATE.validate_aggregate(
                     root,
@@ -598,6 +621,63 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                     matrix_result="failure",
                     **self.authority(),
                 )
+
+    def test_gate_contract_rejects_missing_extra_full_editing_and_stale_count(self) -> None:
+        cases = {}
+        missing = GATE.expected_contract()
+        missing["requiredJourneys"].pop()
+        cases["missing"] = missing
+        extra = GATE.expected_contract()
+        extra["requiredJourneys"].append(
+            {
+                "matrixJourney": "career-before-run",
+                "driverJourney": "career-before-run",
+                "receiptSchema": "chummer.android.editing-e2e/v1",
+            }
+        )
+        cases["extra"] = extra
+        full_required = GATE.expected_contract()
+        full_required["requiredJourneys"][0] = {
+            "matrixJourney": "full-editing",
+            "driverJourney": "full",
+            "receiptSchema": "chummer.android.editing-e2e/v1",
+        }
+        cases["full-editing-required"] = full_required
+        stale_count = GATE.expected_contract()
+        stale_count["requiredJourneyCount"] = 4
+        cases["stale-four-journey-count"] = stale_count
+
+        for name, value in cases.items():
+            with self.subTest(name=name), self.assertRaisesRegex(
+                ValueError,
+                "exact three-journey wizard-only authority",
+            ):
+                GATE.validate_contract(copy.deepcopy(value))
+
+    def test_aggregate_receipt_rejects_stale_four_journey_schema(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self.materialize_all(root)
+            aggregate = self.validate(root)
+            gate_authority = GATE.contract_binding()
+
+            stale_schema = copy.deepcopy(aggregate)
+            stale_schema["schema"] = (
+                "chummer.android.api36-editing-e2e-aggregate/v1"
+            )
+            with self.assertRaisesRegex(ValueError, "stale or unsupported"):
+                AGGREGATE.validate_aggregate_receipt(
+                    stale_schema,
+                    gate_authority,
+                )
+
+            stale_four = copy.deepcopy(aggregate)
+            stale_four["requiredJourneyCount"] = 4
+            stale_four["journeyCount"] = 4
+            stale_four["requiredJourneys"].append("full-editing")
+            stale_four["journeys"]["full-editing"] = {"status": "pass"}
+            with self.assertRaisesRegex(ValueError, "exactly three"):
+                AGGREGATE.validate_aggregate_receipt(stale_four, gate_authority)
 
     def test_creation_timing_outside_explicit_budgets_fails_closed(self) -> None:
         cases = (

@@ -35,6 +35,19 @@ class Chummer5CharacterSettingsContractTests(unittest.TestCase):
         self.assertEqual(162, payload["summary"]["resolvedControlCount"])
         self.assertEqual(0, payload["summary"]["unresolvedControlCount"])
         self.assertEqual([], payload["unresolvedControls"])
+        gate = payload["phoneBetaWizardGate"]
+        self.assertEqual("sr5_wizards_only", gate["proofScope"])
+        self.assertEqual(3, gate["requiredJourneyCount"])
+        self.assertEqual(
+            [
+                "creation-prerequisite",
+                "career-active-skill-advance",
+                "career-weapon-fire",
+            ],
+            gate["requiredJourneys"],
+        )
+        self.assertFalse(gate["settingsContractRequiredJourney"])
+        self.assertFalse(gate["publicationAuthorized"])
         self.assertTrue(
             all(row["persistencePaths"] for row in payload["controls"])
         )
@@ -79,6 +92,7 @@ class Chummer5CharacterSettingsContractTests(unittest.TestCase):
                 "chummer5a/Chummer/Backend/Character Settings/CharacterSettings.cs",
                 "chummer5a/Chummer/data/settings.xml",
                 "docs/ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json",
+                "eng/api36-sr5-wizard-gate-authority.json",
             ],
             [row["path"] for row in payload["sourceInputs"]],
         )

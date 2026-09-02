@@ -65,6 +65,29 @@
       "path": "chummer-design/products/chummer/ANDROID_WINDOWS_FEATURE_PARITY.yaml",
       "sha256": "1788acfe921d260dfc662cce5ee75cd264da0e520221088e13a4bc652cf8d25b"
     },
+    "phoneBetaWizardGate": {
+      "schema": "chummer.android.api36-sr5-wizard-gate-binding/v1",
+      "contractPath": "eng/api36-sr5-wizard-gate-authority.json",
+      "contractSha256": "921b088e8814695915789ef420e49ad1793116e9d23238ff3a92709d066fd82e",
+      "authorityClass": "internal_phone_beta_sr5_wizard_only",
+      "proofScope": "sr5_wizards_only",
+      "requiredJourneyCount": 3,
+      "requiredJourneys": [
+        "creation-prerequisite",
+        "career-active-skill-advance",
+        "career-weapon-fire"
+      ],
+      "publicationAuthorized": false,
+      "excludedFromGate": [
+        {
+          "matrixJourney": "full-editing",
+          "status": "not_required_not_proven",
+          "maySatisfyRequiredJourney": false
+        }
+      ],
+      "relationshipToExhaustiveInventory": "This wizard-only phone-beta gate does not mark the exhaustive Chummer5 editability inventory complete and receives no completion credit from Full Editing evidence.",
+      "inventoryCompletionCountContribution": 0
+    },
     "androidAndPresenterSources": [
       {
         "path": "src/Chummer.Android/Native/AttributeEditPage.cs",
@@ -739,12 +762,32 @@
       {
         "path": ".github/workflows/api36-editing-e2e.yml",
         "exists": true,
-        "sha256": "ac4461a354ab4184e89244ce5cbb55aa5b6ae2ab80f1980495f7b320778d1fbe"
+        "sha256": "84065eab3304d0bfbe18ea32f981bdce96cf642bb8aa908769fe136bf48d6dd2"
+      },
+      {
+        "path": "eng/api36-sr5-wizard-gate-authority.json",
+        "exists": true,
+        "sha256": "921b088e8814695915789ef420e49ad1793116e9d23238ff3a92709d066fd82e"
+      },
+      {
+        "path": "scripts/api36_wizard_gate_contract.py",
+        "exists": true,
+        "sha256": "f43b8c454eb524281577726e80666f19d5ea9cb63c45af03be21047aca120099"
+      },
+      {
+        "path": "scripts/finalize-api36-e2e-journey-receipt.py",
+        "exists": true,
+        "sha256": "ad4d22c826ab9728dac1de43aa8a4e7116ab6b6d15e90b6fbd33ef46a154216a"
       },
       {
         "path": "scripts/run-api36-editing-e2e-ci.sh",
         "exists": true,
-        "sha256": "bb0c2e6c7d7d60481f611a3d520662cd9d4e32af442e89abfa41b6800e3b42bb"
+        "sha256": "484a05f15ccdc3df13d42a110dceb80b6332b8812547b2f17bf66f2956d71aa7"
+      },
+      {
+        "path": "scripts/verify-api36-editing-e2e-aggregate.py",
+        "exists": true,
+        "sha256": "ff82d4fedabfbe6e0e4bb5d7614f952328b4ed9d51f1a8a35f7a3f2dfe53a463"
       },
       {
         "path": "src/Chummer.Android/Chummer.Android.csproj",
@@ -759,12 +802,17 @@
       {
         "path": "tests/test_api36_e2e_workflow.py",
         "exists": true,
-        "sha256": "ec1c426c7db44c48bad84def6068b705d0687b2b020c43077a41d497c8a41f42"
+        "sha256": "d26a579ccea1d6f3c814213a0f32e7e2b6227292131c039ecd246a9cf0f642c6"
+      },
+      {
+        "path": "tests/test_api36_e2e_artifact_authority.py",
+        "exists": true,
+        "sha256": "8938a0c3a05dd25ab552d981f692fc4e06c295fe7b44756b24a3781eb713e6f8"
       },
       {
         "path": "tests/test_chummer5_editability_inventory.py",
         "exists": true,
-        "sha256": "1760874353fc2fedb34a58dacb015b27e7e540645e6d4cad54d57c3064c31b46"
+        "sha256": "a88828b11e5c82232226266af26f5563c53447c7955e1917ac5805c635f02804"
       },
       {
         "path": "tests/test_sr5_contextual_wizard_scope.py",
@@ -2602,10 +2650,15 @@
       ],
       "gatePaths": [
         ".github/workflows/api36-editing-e2e.yml",
+        "eng/api36-sr5-wizard-gate-authority.json",
+        "scripts/api36_wizard_gate_contract.py",
+        "scripts/finalize-api36-e2e-journey-receipt.py",
         "scripts/run-api36-editing-e2e-ci.sh",
+        "scripts/verify-api36-editing-e2e-aggregate.py",
         "src/Chummer.Android/Chummer.Android.csproj",
         "tests/Chummer.Android.Native.CompileCheck/NativeCompileInputs.props",
         "tests/test_api36_e2e_workflow.py",
+        "tests/test_api36_e2e_artifact_authority.py",
         "tests/test_chummer5_editability_inventory.py",
         "tests/test_sr5_contextual_wizard_scope.py"
       ],
@@ -2648,7 +2701,7 @@
     },
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "9b653e9c4d617a4f95717d9edafa1694ddc7bc56447e1370ef0f9161a75acb2c"
+      "sha256": "2710b4354252061569224045c96284f55983e44a9d7ab89660d7fa1bd7cf80c3"
     }
   },
   "coverageByFamily": {

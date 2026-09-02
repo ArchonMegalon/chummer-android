@@ -8,20 +8,32 @@ import hashlib
 import json
 import os
 import re
+import sys
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+SCRIPT_DIRECTORY = Path(__file__).resolve().parent
+if str(SCRIPT_DIRECTORY) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIRECTORY))
+
+from api36_wizard_gate_contract import (  # noqa: E402
+    AGGREGATE_SCHEMA,
+    AUTHORITY_CLASS,
+    DEFAULT_CONTRACT,
+    PROOF_SCOPE,
+    contract_binding,
+    journey_map,
+)
 
 
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
 ARTIFACT_DIGEST = re.compile(r"^(?:sha256:)?[0-9a-f]{64}$")
 POSITIVE_INTEGER = re.compile(r"^[1-9][0-9]*$")
 JOURNEYS = {
-    "full-editing": "full",
-    "creation-prerequisite": "creation-prerequisite",
-    "career-active-skill-advance": "career-active-skill-advance",
-    "career-weapon-fire": "career-weapon-fire",
+    matrix_journey: driver_and_schema[0]
+    for matrix_journey, driver_and_schema in journey_map().items()
 }
 CREATION_PROGRESS_SCHEMA = "chummer.android.creation-prerequisite-progress/v5"
 CREATION_TOTAL_TARGET_MS = 45 * 60 * 1000
@@ -117,6 +129,7 @@ STARTED_FIELDS = {
     "profile",
     "matrix_journey",
     "driver_journey",
+    "gate_contract_sha256",
     "artifact_id",
     "artifact_digest",
     "artifact_name",
@@ -1033,6 +1046,7 @@ def validate_aggregate(
     artifact_name: str,
     artifact_attempt: str,
     apk_sha256: str,
+    gate_contract_path: Path = DEFAULT_CONTRACT,
 ) -> dict[str, Any]:
     if build_result != "success":
         raise ValueError(f"build job did not succeed: {build_result!r}")
@@ -1041,6 +1055,7 @@ def validate_aggregate(
     if evidence_root.is_symlink() or not evidence_root.is_dir():
         raise ValueError("journey evidence root is not one regular directory")
 
+    gate_authority = contract_binding(gate_contract_path)
     authority = canonical_authority(
         run_id=run_id,
         artifact_id=artifact_id,
@@ -1095,6 +1110,7 @@ def validate_aggregate(
             "profile": "phone",
             "matrix_journey": journey,
             "driver_journey": driver_journey,
+            "gate_contract_sha256": gate_authority["contractSha256"],
             "artifact_id": artifact_id,
             "artifact_digest": artifact_digest,
             "artifact_name": artifact_name,
@@ -1113,6 +1129,8 @@ def validate_aggregate(
             raise ValueError(f"matrix journey receipt binding differs: {journey}")
         if receipt.get("driverJourney") != driver_journey:
             raise ValueError(f"driver journey receipt binding differs: {journey}")
+        if receipt.get("gateAuthority") != gate_authority:
+            raise ValueError(f"wizard gate authority differs: {journey}")
         if receipt.get("apkSha256") != apk_sha256:
             raise ValueError(f"APK SHA-256 differs: {journey}")
         if receipt.get("artifactAuthority") != authority:
@@ -1125,14 +1143,66 @@ def validate_aggregate(
             "receiptSha256": receipt_sha256,
         }
 
-    return {
-        "schema": "chummer.android.api36-editing-e2e-aggregate/v1",
+    aggregate = {
+        "schema": AGGREGATE_SCHEMA,
         "status": "pass",
         "generatedAtUtc": datetime.now(timezone.utc).isoformat(),
+        "authorityClass": AUTHORITY_CLASS,
+        "proofScope": PROOF_SCOPE,
+        "publicationAuthorized": False,
+        "gateAuthority": gate_authority,
         "artifactAuthority": authority,
+        "requiredJourneyCount": len(JOURNEYS),
+        "requiredJourneys": list(JOURNEYS),
         "journeyCount": len(JOURNEYS),
         "journeys": aggregate_journeys,
     }
+    validate_aggregate_receipt(aggregate, gate_authority)
+    return aggregate
+
+
+def validate_aggregate_receipt(
+    value: dict[str, Any],
+    gate_authority: dict[str, Any],
+) -> None:
+    expected_fields = {
+        "schema",
+        "status",
+        "generatedAtUtc",
+        "authorityClass",
+        "proofScope",
+        "publicationAuthorized",
+        "gateAuthority",
+        "artifactAuthority",
+        "requiredJourneyCount",
+        "requiredJourneys",
+        "journeyCount",
+        "journeys",
+    }
+    if set(value) != expected_fields:
+        raise ValueError("wizard aggregate schema fields differ")
+    if value.get("schema") != AGGREGATE_SCHEMA:
+        raise ValueError("wizard aggregate schema is stale or unsupported")
+    if (
+        value.get("status") != "pass"
+        or value.get("authorityClass") != AUTHORITY_CLASS
+        or value.get("proofScope") != PROOF_SCOPE
+        or value.get("publicationAuthorized") is not False
+        or value.get("gateAuthority") != gate_authority
+    ):
+        raise ValueError("wizard aggregate authority or publication posture differs")
+    required = list(JOURNEYS)
+    if (
+        value.get("requiredJourneyCount") != 3
+        or value.get("journeyCount") != 3
+        or value.get("requiredJourneys") != required
+    ):
+        raise ValueError("wizard aggregate must contain exactly three required journeys")
+    journeys = value.get("journeys")
+    if not isinstance(journeys, dict) or set(journeys) != set(required):
+        raise ValueError("wizard aggregate journey set differs")
+    if "full-editing" in required or "full-editing" in journeys:
+        raise ValueError("Full Editing cannot satisfy wizard aggregate authority")
 
 
 def write_atomically(path: Path, value: dict[str, Any]) -> None:
@@ -1164,6 +1234,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--evidence-root", type=Path, required=True)
     parser.add_argument("--receipt", type=Path, required=True)
+    parser.add_argument("--gate-contract", type=Path, default=DEFAULT_CONTRACT)
     parser.add_argument("--run-id", required=True)
     parser.add_argument("--build-result", required=True)
     parser.add_argument("--matrix-result", required=True)
@@ -1191,12 +1262,14 @@ def main() -> int:
         artifact_name=args.artifact_name,
         artifact_attempt=args.artifact_attempt,
         apk_sha256=args.apk_sha256,
+        gate_contract_path=args.gate_contract,
     )
     write_atomically(receipt_path, aggregate)
     print(
         "api36_phone_evidence_aggregate=pass "
-        f"journeys={len(JOURNEYS)} artifact_id={args.artifact_id} "
-        f"apk_sha256={args.apk_sha256}"
+        f"scope={PROOF_SCOPE} journeys={len(JOURNEYS)} "
+        f"artifact_id={args.artifact_id} apk_sha256={args.apk_sha256} "
+        "publication_authorized=false"
     )
     return 0
 
