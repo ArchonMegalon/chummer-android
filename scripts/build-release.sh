@@ -310,7 +310,7 @@ cmp --silent \
 assets_path="$repo_dir/src/Chummer.Android/obj/project.assets.json"
 [[ -f "$assets_path" && ! -L "$assets_path" ]] || fail "locked-restore-assets-missing"
 jq -e --arg package_root "$isolated_packages" \
-  '.packageFolders | keys | length == 1 and \
+  '.packageFolders | keys | length == 1 and
    ((.[0] | rtrimstr("/")) == $package_root)' "$assets_path" >/dev/null \
   || fail "locked-restore-assets-package-root-drift"
 python3 "$repo_dir/scripts/verify_native_compile_graph.py" \

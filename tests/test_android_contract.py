@@ -1679,6 +1679,8 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED", build)
         self.assertIn("--authority-root", build)
         self.assertIn("locked-restore-assets-package-root-drift", build)
+        self.assertIn(".packageFolders | keys | length == 1 and\n", build)
+        self.assertNotIn(".packageFolders | keys | length == 1 and \\\n", build)
         self.assertIn("seal_release_restore_consumption.py", build)
         self.assertIn("locked-restore-consumption-pre-publish", build)
         self.assertIn("locked-restore-consumption-post-publish", build)
