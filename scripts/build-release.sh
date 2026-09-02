@@ -102,7 +102,7 @@ trap 'exit 129' HUP
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-for required in basename chmod cmp cut dirname git id install jq ln mkdir mktemp openssl python3 realpath rm sha256sum stat; do
+for required in basename chmod cmp cut dirname env git id install jq ln mkdir mktemp openssl python3 realpath rm sha256sum stat; do
   require_command "$required"
 done
 require_command "$dotnet_command"
@@ -160,28 +160,22 @@ python3 "$repo_dir/scripts/preflight_native_android_toolchain.py" \
   --android-sdk "$AndroidSdkDirectory" \
   --java-sdk "$JavaSdkDirectory"
 
-require_private_regular_file AndroidSigningKeyStore
-require_private_regular_file CHUMMER_ANDROID_UPLOAD_CERTIFICATE_PATH
-require_private_regular_file CHUMMER_BUNDLETOOL_JAR
-case "$AndroidSigningKeyStore" in
-  "$repo_dir"/*) fail "signing-keystore-inside-repository" ;;
-esac
-case "$CHUMMER_ANDROID_UPLOAD_CERTIFICATE_PATH" in
-  "$repo_dir"/*) fail "upload-certificate-inside-repository" ;;
-esac
-require_secret_variable ChummerAndroidSigningStorePass
-require_secret_variable ChummerAndroidSigningKeyPass
-require_secret_variable ChummerAndroidSigningKeyAlias
-[[ "$ChummerAndroidSigningKeyAlias" =~ ^[A-Za-z0-9._-]+$ ]] \
-  || fail "signing-key-alias-invalid"
-
-bundletool_sha256="$(sha256sum "$CHUMMER_BUNDLETOOL_JAR" | cut -d' ' -f1)"
-[[ "$bundletool_sha256" == "$expected_bundletool_sha256" ]] \
-  || fail "bundletool-digest-mismatch"
-certificate_sha256="$(openssl x509 -in "$CHUMMER_ANDROID_UPLOAD_CERTIFICATE_PATH" \
-  -noout -fingerprint -sha256 | cut -d= -f2)"
-[[ "$certificate_sha256" == "$expected_upload_certificate_sha256" ]] \
-  || fail "upload-certificate-pin-mismatch"
+# The complete test process tree must never inherit signing material. Keep
+# this boundary before any signing-variable dereference/export and scrub both
+# the release inputs and adjacent provisioning/recovery secrets by name.
+release_test_environment=(
+  -u AndroidSigningKeyStore
+  -u ChummerAndroidSigningStorePass
+  -u ChummerAndroidSigningKeyPass
+  -u ChummerAndroidSigningKeyAlias
+  -u CHUMMER_ANDROID_UPLOAD_CERTIFICATE_PATH
+  -u CHUMMER_ANDROID_PREFLIGHT_STORE_PASSWORD
+  -u CHUMMER_ANDROID_SIGNING_DIR
+  -u CHUMMER_PROVISION_STORE_PASSWORD
+  -u CHUMMER_RECOVERY_STORE_PASSWORD
+)
+env "${release_test_environment[@]}" \
+  python3 -m unittest discover -s "$repo_dir/tests" -v
 
 IFS=$'\t' read -r version_name version_code < <(
   python3 "$repo_dir/scripts/read_android_version.py" "$project_path"
@@ -295,6 +289,31 @@ python3 "$repo_dir/scripts/seal_release_restore_consumption.py" materialize \
   --manifest "$restore_manifest" \
   || fail "locked-restore-consumption-seal"
 
+# Signing material is admitted only after every test and non-signing release
+# preflight has completed. None of these values is written to argv or logs.
+require_private_regular_file AndroidSigningKeyStore
+require_private_regular_file CHUMMER_ANDROID_UPLOAD_CERTIFICATE_PATH
+require_private_regular_file CHUMMER_BUNDLETOOL_JAR
+case "$AndroidSigningKeyStore" in
+  "$repo_dir"/*) fail "signing-keystore-inside-repository" ;;
+esac
+case "$CHUMMER_ANDROID_UPLOAD_CERTIFICATE_PATH" in
+  "$repo_dir"/*) fail "upload-certificate-inside-repository" ;;
+esac
+require_secret_variable ChummerAndroidSigningStorePass
+require_secret_variable ChummerAndroidSigningKeyPass
+require_secret_variable ChummerAndroidSigningKeyAlias
+[[ "$ChummerAndroidSigningKeyAlias" =~ ^[A-Za-z0-9._-]+$ ]] \
+  || fail "signing-key-alias-invalid"
+
+bundletool_sha256="$(sha256sum "$CHUMMER_BUNDLETOOL_JAR" | cut -d' ' -f1)"
+[[ "$bundletool_sha256" == "$expected_bundletool_sha256" ]] \
+  || fail "bundletool-digest-mismatch"
+certificate_sha256="$(openssl x509 -in "$CHUMMER_ANDROID_UPLOAD_CERTIFICATE_PATH" \
+  -noout -fingerprint -sha256 | cut -d= -f2)"
+[[ "$certificate_sha256" == "$expected_upload_certificate_sha256" ]] \
+  || fail "upload-certificate-pin-mismatch"
+
 export CHUMMER_ANDROID_PREFLIGHT_STORE_PASSWORD="$ChummerAndroidSigningStorePass"
 if ! "$CHUMMER_KEYTOOL" -exportcert -rfc \
   -keystore "$AndroidSigningKeyStore" \
@@ -312,8 +331,6 @@ keystore_certificate_sha256="$(openssl x509 -in "$release_tmp/keystore-certifica
 [[ "$keystore_certificate_sha256" == "$expected_upload_certificate_sha256" ]] \
   || fail "signing-keystore-certificate-mismatch"
 
-python3 -m unittest discover -s "$repo_dir/tests" -v
-
 python3 "$repo_dir/scripts/seal_release_restore_consumption.py" verify \
   --input-root "$release_tmp" \
   --workspace-root "$workspace_root" \
@@ -323,7 +340,6 @@ python3 "$repo_dir/scripts/seal_release_restore_consumption.py" verify \
   --project-lock "$repo_dir/src/Chummer.Android/packages.lock.json" \
   --manifest "$restore_manifest" \
   || fail "locked-restore-consumption-pre-publish"
-
 "$dotnet_command" publish "$project_path" \
   --configuration "$configuration" \
   --framework "$framework" \
@@ -353,6 +369,11 @@ python3 "$repo_dir/scripts/seal_release_restore_consumption.py" verify \
   -p:JavaSdkDirectory="$JavaSdkDirectory" \
   -p:PublishDir="$staged_publish_dir/" \
   -p:AndroidPackageFormats=aab
+
+unset ChummerAndroidSigningStorePass
+unset ChummerAndroidSigningKeyPass
+unset ChummerAndroidSigningKeyAlias
+unset AndroidSigningKeyStore
 
 python3 "$repo_dir/scripts/seal_release_restore_consumption.py" verify \
   --input-root "$release_tmp" \

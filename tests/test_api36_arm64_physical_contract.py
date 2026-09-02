@@ -236,6 +236,12 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
                 "owner_repository": owner,
                 "source_commit": repository_map[owner]["commit"],
                 "source_tree": repository_map[owner]["tree"],
+                "source_authority": {
+                    "owner_head_commit": repository_map[owner]["commit"],
+                    "owner_head_tree": repository_map[owner]["tree"],
+                    "relationship": "ancestor_or_equal",
+                    "verification": "git-merge-base-is-ancestor-without-replace-objects",
+                },
                 "authority_receipt_sha256": f"{index + 300:064x}",
                 "package_inventory_sha256": f"{index + 400:064x}",
                 "package_plane_lock_sha256": f"{index + 500:064x}",
@@ -243,16 +249,28 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
             }
             for index, (package_id, owner) in enumerate(contract.OWNER_PACKAGE_SPECS)
         ]
+        generator_path = SCRIPTS / "verify_release_source_graph.py"
+        generator_bytes = generator_path.read_bytes()
         return {
             "contractName": contract.SOURCE_GRAPH_SCHEMA,
             "generatedAtUtc": "2026-08-28T00:00:00Z",
             "authorityState": "local_review_required",
             "publicationAuthorized": False,
-            "generator": {"path": "scripts/verify_release_source_graph.py", "sha256": "1" * 64, "size_bytes": 1},
+            "generator": {
+                "path": "scripts/verify_release_source_graph.py",
+                "sha256": hashlib.sha256(generator_bytes).hexdigest(),
+                "size_bytes": len(generator_bytes),
+            },
             "repositories": repositories, "packagePins": package_pins,
             "ownerPackagePins": owner_pins,
             "dependencyClosure": [
-                {"package_id": package_id, "dependencies": []}
+                {
+                    "package_id": package_id,
+                    "dependencies": (
+                        ["Chummer.Play.Contracts"]
+                        if package_id == "Chummer.Run.Contracts" else []
+                    ),
+                }
                 for package_id, _owner in contract.OWNER_PACKAGE_SPECS
             ],
             "presentationSource": {
@@ -263,6 +281,47 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
             },
             "doesNotAssert": list(contract.SOURCE_GRAPH_DOES_NOT_ASSERT),
         }
+
+    @staticmethod
+    def bound_graph(payload: dict[str, object]) -> contract.BoundBytes:
+        data = (json.dumps(payload, sort_keys=True) + "\n").encode("utf-8")
+        return contract.BoundBytes(
+            Path("/nonexistent/release-source-graph.json"),
+            data,
+            hashlib.sha256(data).hexdigest(),
+            len(data),
+        )
+
+    def test_source_graph_requires_exact_generator_and_owner_head_provenance(self) -> None:
+        payload = self.graph_payload()
+        contract.validate_source_graph(self.bound_graph(payload))
+
+        forged_generator = copy.deepcopy(payload)
+        forged_generator["generator"]["sha256"] = "f" * 64
+        with self.assertRaisesRegex(ValueError, "generator bytes are not exact"):
+            contract.validate_source_graph(self.bound_graph(forged_generator))
+
+        forged_owner_head = copy.deepcopy(payload)
+        forged_owner_head["ownerPackagePins"][0]["source_authority"][
+            "owner_head_commit"
+        ] = "f" * 40
+        with self.assertRaisesRegex(ValueError, "not bound to its pinned repository head"):
+            contract.validate_source_graph(self.bound_graph(forged_owner_head))
+
+        forged_current_tree = copy.deepcopy(payload)
+        forged_current_tree["ownerPackagePins"][0]["source_tree"] = "f" * 40
+        with self.assertRaisesRegex(ValueError, "current source tree differs"):
+            contract.validate_source_graph(self.bound_graph(forged_current_tree))
+
+    def test_source_graph_reasserts_run_to_play_dependency(self) -> None:
+        payload = self.graph_payload()
+        run = next(
+            row for row in payload["dependencyClosure"]
+            if row["package_id"] == "Chummer.Run.Contracts"
+        )
+        run["dependencies"].remove("Chummer.Play.Contracts")
+        with self.assertRaisesRegex(ValueError, "missing Chummer.Play.Contracts"):
+            contract.validate_source_graph(self.bound_graph(payload))
 
     def provenance_payload(self) -> dict[str, object]:
         apk_bytes = self.apk.read_bytes()

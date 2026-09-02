@@ -3,6 +3,8 @@ import importlib.util
 import os
 import re
 import struct
+import subprocess
+import sys
 import tempfile
 import unittest
 import zipfile
@@ -1784,6 +1786,91 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("-p:JavaSdkDirectory", bootstrap)
         self.assertIn('chmod 0600 "$environment_temp"', bootstrap)
         self.assertNotIn("AcceptAndroidSDKLicenses=True", build)
+
+    def test_release_suite_and_its_subprocesses_receive_no_signing_environment(self) -> None:
+        signing_variables = (
+            "AndroidSigningKeyStore",
+            "ChummerAndroidSigningStorePass",
+            "ChummerAndroidSigningKeyPass",
+            "ChummerAndroidSigningKeyAlias",
+            "CHUMMER_ANDROID_UPLOAD_CERTIFICATE_PATH",
+            "CHUMMER_ANDROID_PREFLIGHT_STORE_PASSWORD",
+            "CHUMMER_ANDROID_SIGNING_DIR",
+            "CHUMMER_PROVISION_STORE_PASSWORD",
+            "CHUMMER_RECOVERY_STORE_PASSWORD",
+        )
+        build = (REPO / "scripts" / "build-release.sh").read_text(encoding="utf-8")
+        suite_boundary = build.index('env "${release_test_environment[@]}"')
+        for variable in signing_variables:
+            self.assertIn(f"-u {variable}", build[:suite_boundary])
+        for first_secret_use in (
+            "require_private_regular_file AndroidSigningKeyStore",
+            "require_private_regular_file CHUMMER_ANDROID_UPLOAD_CERTIFICATE_PATH",
+            "require_secret_variable ChummerAndroidSigningStorePass",
+            "require_secret_variable ChummerAndroidSigningKeyPass",
+            "require_secret_variable ChummerAndroidSigningKeyAlias",
+        ):
+            self.assertGreater(build.index(first_secret_use), suite_boundary)
+        publish_boundary = build.index('"$dotnet_command" publish')
+        post_publish_boundary = build.index('source_aab="$(python3')
+        for secret_cleanup in (
+            "unset ChummerAndroidSigningStorePass",
+            "unset ChummerAndroidSigningKeyPass",
+            "unset ChummerAndroidSigningKeyAlias",
+            "unset AndroidSigningKeyStore",
+        ):
+            cleanup_index = build.index(secret_cleanup)
+            self.assertGreater(cleanup_index, publish_boundary)
+            self.assertLess(cleanup_index, post_publish_boundary)
+
+        with tempfile.TemporaryDirectory() as temporary:
+            tests_root = Path(temporary)
+            probe = tests_root / "test_signing_environment_probe.py"
+            child_probe = (
+                "import os, sys\n"
+                f"SIGNING_VARIABLES = {signing_variables!r}\n"
+                "sys.exit(1 if set(SIGNING_VARIABLES) & set(os.environ) else 0)\n"
+            )
+            probe.write_text(
+                "import os\n"
+                "import subprocess\n"
+                "import sys\n"
+                "import unittest\n"
+                f"SIGNING_VARIABLES = {signing_variables!r}\n"
+                f"CHILD_PROBE = {child_probe!r}\n"
+                "class SigningEnvironmentProbe(unittest.TestCase):\n"
+                "    def test_suite_and_child_are_scrubbed(self):\n"
+                "        self.assertFalse(set(SIGNING_VARIABLES) & set(os.environ))\n"
+                "        child = subprocess.run(\n"
+                "            [sys.executable, '-c', CHILD_PROBE],\n"
+                "            check=False,\n"
+                "        )\n"
+                "        self.assertEqual(0, child.returncode)\n",
+                encoding="utf-8",
+            )
+            hostile_environment = dict(os.environ)
+            canaries = {
+                variable: f"must-not-reach-tests-{index}"
+                for index, variable in enumerate(signing_variables, start=1)
+            }
+            hostile_environment.update(canaries)
+            command = ["env"]
+            for variable in signing_variables:
+                command.extend(("-u", variable))
+            command.extend((
+                sys.executable, "-m", "unittest", "discover", "-s", str(tests_root), "-v",
+            ))
+            completed = subprocess.run(
+                command,
+                check=False,
+                capture_output=True,
+                env=hostile_environment,
+                text=True,
+            )
+            self.assertEqual(0, completed.returncode, completed.stdout + completed.stderr)
+            combined_output = completed.stdout + completed.stderr
+            for canary in canaries.values():
+                self.assertNotIn(canary, combined_output)
 
     def test_release_version_reader_matches_project(self) -> None:
         import importlib.util

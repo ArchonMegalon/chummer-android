@@ -799,7 +799,16 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
             row["commit"] = repositories["chummer6-core"]["commit"]
         for row in graph["ownerPackagePins"]:
             owner = repositories[row["owner_repository"]]
-            row.update({"source_commit": owner["commit"], "source_tree": owner["tree"]})
+            row.update({
+                "source_commit": owner["commit"],
+                "source_tree": owner["tree"],
+                "source_authority": {
+                    "owner_head_commit": owner["commit"],
+                    "owner_head_tree": owner["tree"],
+                    "relationship": "ancestor_or_equal",
+                    "verification": "git-merge-base-is-ancestor-without-replace-objects",
+                },
+            })
         graph["presentationSource"].update({
             "commit": presentation["commit"], "tree": presentation["tree"],
         })

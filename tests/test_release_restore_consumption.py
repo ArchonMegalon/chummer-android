@@ -86,6 +86,7 @@ def fixture(root: Path):
         nupkg = f"sealed:{package_id}".encode()
         content_hash = base64.b64encode(hashlib.sha512(nupkg).digest()).decode()
         libraries[f"{package_id}/{version}"] = {
+            "type": "package",
             "sha512": content_hash,
             "path": f"{package_id.lower()}/{version}",
         }
@@ -94,6 +95,13 @@ def fixture(root: Path):
                 {"Chummer.Play.Contracts": version}
                 if package_id == "Chummer.Run.Contracts" else {}
             ),
+        }
+    for project_id in ("Chummer.Desktop.Runtime", "Chummer.Presentation"):
+        project_path = f"../{project_id}/{project_id}.csproj"
+        libraries[f"{project_id}/1.0.0"] = {
+            "type": "project",
+            "path": project_path,
+            "msbuildProject": project_path,
         }
     assets = {
         "packageFolders": {os.fspath(packages) + os.sep: {}},
@@ -174,6 +182,10 @@ class ReleaseRestoreConsumptionTests(unittest.TestCase):
             self.assertIn("Chummer.Engine.Contracts", {
                 row["packageId"] for row in payload["chummerClosure"]
             })
+            self.assertEqual(
+                {"Chummer.Desktop.Runtime", "Chummer.Presentation"},
+                {row["projectId"] for row in payload["sourceProjectReferences"]},
+            )
             module.verify_post_publish(
                 payload, packages_root=packages, workspace_root=workspace,
                 owner_feed=selected, project_lock=lock,
@@ -238,6 +250,36 @@ class ReleaseRestoreConsumptionTests(unittest.TestCase):
                     assets = json.loads(assets_path.read_text())
                     assets["targets"]["net10.0-android36.0"]["Chummer.Run.Contracts/1.2.3"]["dependencies"] = {}
                     private_file(assets_path, json.dumps(assets).encode())
+                with self.assertRaisesRegex(ValueError, message):
+                    module.materialize_payload(
+                        input_root=input_root, workspace_root=workspace,
+                        authority_path=authority, owner_feed=selected,
+                        packages_root=packages, project_lock=lock,
+                    )
+
+    def test_source_projects_are_separate_from_packages_and_fail_closed(self) -> None:
+        for mutation, message in (
+            ("extra-project", "source project references are not exact"),
+            ("missing-project", "source project references are not exact"),
+            ("bad-project-type", "Chummer library type is invalid"),
+        ):
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as temporary:
+                values = fixture(Path(temporary))
+                module, workspace, input_root, authority, _feed, selected, packages, intermediate, _output, lock = values
+                assets_path = intermediate / "project.assets.json"
+                assets = json.loads(assets_path.read_text())
+                libraries = assets["libraries"]
+                if mutation == "extra-project":
+                    libraries["Chummer.Unexpected/1.0.0"] = {
+                        "type": "project",
+                        "path": "../unexpected.csproj",
+                        "msbuildProject": "../unexpected.csproj",
+                    }
+                elif mutation == "missing-project":
+                    del libraries["Chummer.Presentation/1.0.0"]
+                else:
+                    libraries["Chummer.Presentation/1.0.0"]["type"] = "unknown"
+                private_file(assets_path, json.dumps(assets).encode())
                 with self.assertRaisesRegex(ValueError, message):
                     module.materialize_payload(
                         input_root=input_root, workspace_root=workspace,

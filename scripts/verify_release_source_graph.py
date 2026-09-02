@@ -83,13 +83,38 @@ REPOSITORY_SPECS = (
 
 
 def git(root: Path, *arguments: str, binary: bool = False) -> str | bytes:
+    environment = dict(os.environ)
+    environment["GIT_NO_REPLACE_OBJECTS"] = "1"
     completed = subprocess.run(
         ["git", "-C", os.fspath(root), *arguments],
         check=True,
         capture_output=True,
+        env=environment,
         text=not binary,
     )
     return completed.stdout if binary else completed.stdout.strip()
+
+
+def _require_ancestor(
+    root: Path,
+    ancestor: str,
+    descendant: str,
+    label: str,
+) -> None:
+    environment = dict(os.environ)
+    environment["GIT_NO_REPLACE_OBJECTS"] = "1"
+    completed = subprocess.run(
+        ["git", "-C", os.fspath(root), "merge-base", "--is-ancestor", ancestor, descendant],
+        check=False,
+        capture_output=True,
+        env=environment,
+        text=True,
+    )
+    if completed.returncode == 0:
+        return
+    if completed.returncode == 1:
+        raise ValueError(f"{label} is not an ancestor of the pinned owner repository head")
+    raise ValueError(f"cannot verify {label} reachability from the pinned owner repository head")
 
 
 def _sha256(path: Path) -> str:
@@ -265,12 +290,24 @@ def _canonical_owner_package_pins(
             row.get("source_commit"), SHA40, f"{package_id}.source_commit"
         )
         try:
+            resolved_source_commit = str(
+                git(roots[owner], "rev-parse", "--verify", f"{source_commit}^{{commit}}")
+            )
+            if resolved_source_commit != source_commit:
+                raise ValueError(
+                    f"owner package source authority is not an exact commit for {package_id}"
+                )
             source_tree = str(git(roots[owner], "rev-parse", f"{source_commit}^{{tree}}"))
         except subprocess.CalledProcessError as error:
             raise ValueError(f"owner package source commit is unavailable for {package_id}") from error
         _require_hex(source_tree, SHA40, f"{package_id}.source_tree")
         if row.get("source_tree") != source_tree:
             raise ValueError(f"owner package source authority is incorrect for {package_id}")
+        owner_head_commit = repositories[owner]["commit"]
+        owner_head_tree = repositories[owner]["tree"]
+        _require_ancestor(
+            roots[owner], source_commit, owner_head_commit, f"{package_id}.source_commit"
+        )
         if row.get("dependency_mode") != LOCKED_DEPENDENCY_MODE:
             raise ValueError(f"locked owner package cannot fall back to source: {package_id}")
         version = _require_string(row.get("version"), f"{package_id}.version")
@@ -297,6 +334,12 @@ def _canonical_owner_package_pins(
             "owner_repository": owner,
             "source_commit": source_commit,
             "source_tree": source_tree,
+            "source_authority": {
+                "owner_head_commit": owner_head_commit,
+                "owner_head_tree": owner_head_tree,
+                "relationship": "ancestor_or_equal",
+                "verification": "git-merge-base-is-ancestor-without-replace-objects",
+            },
             "authority_receipt_sha256": receipt,
             "package_inventory_sha256": inventory,
             "package_plane_lock_sha256": lock,

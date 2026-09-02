@@ -234,6 +234,90 @@ class ReleaseSourceGraphTests(unittest.TestCase):
                             roots["chummer-android"], workspace, payload, authority_root, revisions
                         )
 
+    def test_historical_owner_source_is_bound_to_exact_tree_and_pinned_head_ancestry(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            module, workspace, roots, revisions, authority_root, authority = seed_workspace(
+                Path(temporary)
+            )
+            hub = roots["chummer6-hub"]
+            historical_commit = authority["ownerPackagePins"][0]["source_commit"]
+            historical_tree = authority["ownerPackagePins"][0]["source_tree"]
+            (hub / "current-authority.txt").write_text("new pinned head\n", encoding="utf-8")
+            subprocess.run(["git", "-C", str(hub), "add", "current-authority.txt"], check=True)
+            subprocess.run(
+                [
+                    "git", "-C", str(hub), "-c", "user.name=Release Test",
+                    "-c", "user.email=release-test@invalid.example", "commit", "-q",
+                    "-m", "advance pinned owner head",
+                ],
+                check=True,
+            )
+            revisions["CHUMMER_RUN_SERVICES_REVISION"] = subprocess.run(
+                ["git", "-C", str(hub), "rev-parse", "HEAD"],
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+
+            graph = module.build_graph(
+                roots["chummer-android"], workspace, authority, authority_root, revisions
+            )
+            hub_pins = [
+                row for row in graph["ownerPackagePins"]
+                if row["owner_repository"] == "chummer6-hub"
+            ]
+            for row in hub_pins:
+                self.assertEqual(historical_commit, row["source_commit"])
+                self.assertEqual(historical_tree, row["source_tree"])
+                self.assertEqual(
+                    {
+                        "owner_head_commit": revisions["CHUMMER_RUN_SERVICES_REVISION"],
+                        "owner_head_tree": subprocess.run(
+                            ["git", "-C", str(hub), "rev-parse", "HEAD^{tree}"],
+                            check=True,
+                            capture_output=True,
+                            text=True,
+                        ).stdout.strip(),
+                        "relationship": "ancestor_or_equal",
+                        "verification": "git-merge-base-is-ancestor-without-replace-objects",
+                    },
+                    row["source_authority"],
+                )
+
+    def test_existing_owner_commit_with_exact_tree_but_no_head_ancestry_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            module, workspace, roots, revisions, authority_root, authority = seed_workspace(
+                Path(temporary)
+            )
+            hub = roots["chummer6-hub"]
+            tree = subprocess.run(
+                ["git", "-C", str(hub), "rev-parse", "HEAD^{tree}"],
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+            orphan = subprocess.run(
+                [
+                    "git", "-C", str(hub), "-c", "user.name=Release Test",
+                    "-c", "user.email=release-test@invalid.example", "commit-tree", tree,
+                    "-m", "unreachable owner package source",
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+            for row in authority["ownerPackagePins"]:
+                if row["owner_repository"] == "chummer6-hub":
+                    row["source_commit"] = orphan
+                    row["source_tree"] = tree
+
+            with self.assertRaisesRegex(
+                ValueError, "not an ancestor of the pinned owner repository head"
+            ):
+                module.build_graph(
+                    roots["chummer-android"], workspace, authority, authority_root, revisions
+                )
+
     def test_locked_mode_rejects_source_fallback_and_authority_path_escape(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             module, workspace, roots, revisions, authority_root, authority = seed_workspace(Path(temporary))

@@ -1174,10 +1174,16 @@ def validate_source_graph(bound: BoundBytes) -> dict[str, object]:
     generator = require_exact_keys(
         graph.get("generator"), {"path", "sha256", "size_bytes"}, "source graph generator",
     )
-    if generator.get("path") != "scripts/verify_release_source_graph.py":
-        raise ValueError("source graph generator path is not exact")
-    require_hex(generator.get("sha256"), "source graph generator sha256")
-    require_integer(generator.get("size_bytes"), "source graph generator size", minimum=1)
+    generator_path = Path(__file__).with_name("verify_release_source_graph.py")
+    if generator_path.is_symlink() or not generator_path.is_file():
+        raise ValueError("source graph generator is not one local regular file")
+    generator_bytes = generator_path.read_bytes()
+    if generator != {
+        "path": "scripts/verify_release_source_graph.py",
+        "sha256": hashlib.sha256(generator_bytes).hexdigest(),
+        "size_bytes": len(generator_bytes),
+    }:
+        raise ValueError("source graph generator bytes are not exact")
     repositories = graph.get("repositories")
     if not isinstance(repositories, list) or len(repositories) != len(REPOSITORY_NAMES):
         raise ValueError("source graph must bind exactly eight repositories")
@@ -1220,7 +1226,7 @@ def validate_source_graph(bound: BoundBytes) -> dict[str, object]:
         require_hex(row.get("sha256"), f"Core package {expected_id} sha256")
     owner_fields = {
         "package_id", "version", "sha256", "size_bytes", "owner_repository",
-        "source_commit", "source_tree", "authority_receipt_sha256",
+        "source_commit", "source_tree", "source_authority", "authority_receipt_sha256",
         "package_inventory_sha256", "package_plane_lock_sha256", "dependency_mode",
     }
     for (expected_id, expected_owner), row in zip(OWNER_PACKAGE_SPECS, owner_pins, strict=True):
@@ -1231,8 +1237,31 @@ def validate_source_graph(bound: BoundBytes) -> dict[str, object]:
             or row.get("dependency_mode") != "locked_package"
         ):
             raise ValueError("source graph owner package authority/order is not exact")
-        require_hex(row.get("source_commit"), f"owner package {expected_id} source commit", length=40)
-        require_hex(row.get("source_tree"), f"owner package {expected_id} source tree", length=40)
+        source_commit = require_hex(
+            row.get("source_commit"), f"owner package {expected_id} source commit", length=40
+        )
+        source_tree = require_hex(
+            row.get("source_tree"), f"owner package {expected_id} source tree", length=40
+        )
+        owner_repository = repository_map[expected_owner]
+        source_authority = require_exact_keys(
+            row.get("source_authority"), {
+                "owner_head_commit", "owner_head_tree", "relationship", "verification",
+            }, f"owner package {expected_id} source authority",
+        )
+        if source_authority != {
+            "owner_head_commit": owner_repository["commit"],
+            "owner_head_tree": owner_repository["tree"],
+            "relationship": "ancestor_or_equal",
+            "verification": "git-merge-base-is-ancestor-without-replace-objects",
+        }:
+            raise ValueError(
+                f"owner package {expected_id} source is not bound to its pinned repository head"
+            )
+        if source_commit == owner_repository["commit"] and source_tree != owner_repository["tree"]:
+            raise ValueError(
+                f"owner package {expected_id} current source tree differs from its repository tree"
+            )
         require_string(row.get("version"), f"owner package {expected_id} version")
         require_integer(row.get("size_bytes"), f"owner package {expected_id} size", minimum=1)
         for field in (
@@ -1248,6 +1277,10 @@ def validate_source_graph(bound: BoundBytes) -> dict[str, object]:
         dependencies = require_string_list(row.get("dependencies"), f"closure {expected_id} dependencies")
         if row.get("package_id") != expected_id or dependencies != sorted(set(dependencies)):
             raise ValueError("source graph dependency closure order/uniqueness is not exact")
+        if expected_id == "Chummer.Run.Contracts" and "Chummer.Play.Contracts" not in dependencies:
+            raise ValueError(
+                "source graph Chummer.Run.Contracts closure is missing Chummer.Play.Contracts"
+            )
     presentation = require_exact_keys(
         graph.get("presentationSource"), {
             "repository", "commit", "tree", "source_path", "authority_state",

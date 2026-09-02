@@ -22,6 +22,10 @@ from typing import Any, Iterable, Mapping
 
 CONTRACT = "chummer.android.release-restore-consumption/v1"
 AUTHORITY_CONTRACT = "chummer.android.release-package-authority/v2"
+EXPECTED_SOURCE_PROJECTS = {
+    "Chummer.Desktop.Runtime",
+    "Chummer.Presentation",
+}
 
 
 def _strict_json_bytes(data: bytes, label: str) -> dict[str, Any]:
@@ -245,7 +249,7 @@ def snapshot_feed(authority_path: Path, source: Path, destination: Path) -> dict
 
 def _closure(
     assets: Mapping[str, Any], packages_root: Path, expected: list[dict[str, str]],
-) -> list[dict[str, str]]:
+) -> tuple[list[dict[str, str]], list[dict[str, str]]]:
     package_folders = assets.get("packageFolders")
     if (
         not isinstance(package_folders, dict)
@@ -257,15 +261,25 @@ def _closure(
     if not isinstance(libraries, dict):
         raise ValueError("project.assets.json libraries are unavailable")
     selected: dict[str, tuple[str, Mapping[str, Any]]] = {}
+    source_projects: dict[str, tuple[str, Mapping[str, Any]]] = {}
     for identity, row in libraries.items():
         if not isinstance(identity, str) or "/" not in identity or not isinstance(row, dict):
             continue
         package_id, version = identity.rsplit("/", 1)
-        if package_id.startswith("Chummer."):
+        if not package_id.startswith("Chummer."):
+            continue
+        library_type = row.get("type")
+        if library_type == "package":
             selected[package_id] = (version, row)
+        elif library_type == "project":
+            source_projects[package_id] = (version, row)
+        else:
+            raise ValueError(f"project.assets.json Chummer library type is invalid: {package_id}")
     expected_by_id = {row["packageId"]: row for row in expected}
     if set(selected) != set(expected_by_id):
         raise ValueError("project.assets.json does not select the exact twelve-package Chummer closure")
+    if set(source_projects) != EXPECTED_SOURCE_PROJECTS:
+        raise ValueError("project.assets.json source project references are not exact")
     run_version, _run_row = selected["Chummer.Run.Contracts"]
     targets = assets.get("targets")
     run_target_rows = []
@@ -309,7 +323,25 @@ def _closure(
             "packageDirectorySha256": _inventory_digest(rows),
             "authorityNupkgSha256": expected_row["nupkgSha256"],
         })
-    return result
+    project_result: list[dict[str, str]] = []
+    for project_id in sorted(source_projects):
+        version, row = source_projects[project_id]
+        path = row.get("path")
+        msbuild_project = row.get("msbuildProject")
+        if (
+            not isinstance(path, str) or not path
+            or not isinstance(msbuild_project, str) or not msbuild_project
+        ):
+            raise ValueError(
+                f"project.assets.json source project metadata is incomplete: {project_id}"
+            )
+        project_result.append({
+            "projectId": project_id,
+            "version": version,
+            "path": path,
+            "msbuildProject": msbuild_project,
+        })
+    return result, project_result
 
 
 def materialize_payload(
@@ -348,6 +380,7 @@ def materialize_payload(
         raise ValueError("restore must produce exactly one primary Android project.assets.json and dgspec")
     assets_path = workspace_root / PurePosixPath(assets_candidates[0]["path"])
     assets = _strict_json(assets_path, "project.assets.json")
+    chummer_closure, source_projects = _closure(assets, packages_root, expected)
     lock_row = _file_row(project_lock, project_lock.name, "packages.lock.json")
     return {
         "contractName": CONTRACT,
@@ -357,7 +390,8 @@ def materialize_payload(
         "projectLock": lock_row,
         "projectAssets": assets_candidates[0],
         "dependencyGraphSpec": dgspec_candidates[0],
-        "chummerClosure": _closure(assets, packages_root, expected),
+        "chummerClosure": chummer_closure,
+        "sourceProjectReferences": source_projects,
         "ownerFeed": {
             "files": _tree_inventory(owner_feed, "private selected package feed"),
         },
