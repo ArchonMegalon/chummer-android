@@ -707,7 +707,10 @@ def _hierarchy_dump_attempt_timeout(
         available_for_each_dump = available / 2
     else:
         available_for_each_dump = (
-            remaining - current_freshness_reserve - reconciliation_reserve
+            remaining
+            - current_freshness_reserve
+            - reconciliation_reserve
+            - ADB_READ_ONLY_DEADLINE_HEADROOM_SECONDS
         )
     if available_for_each_dump < ADB_FILE_HIERARCHY_MINIMUM_DUMP_ATTEMPT_SECONDS:
         raise AdbOperationDeadlineExceeded(

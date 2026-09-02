@@ -87,6 +87,7 @@ class Api36FileHierarchyObserverRetryTests(unittest.TestCase):
                 deadline=(
                     reconciliation
                     + driver.ADB_FILE_HIERARCHY_FRESHNESS_BARRIER_ATTEMPT_MAX_SECONDS
+                    + driver.ADB_READ_ONLY_DEADLINE_HEADROOM_SECONDS
                     + 7.0
                 ),
                 maximum=20.0,
@@ -242,11 +243,19 @@ class Api36FileHierarchyObserverRetryTests(unittest.TestCase):
             self.assertEqual("Short lease retry", nodes[0].attributes["text"])
             self.assertEqual(2, dump_count)
             self.assertEqual(7.25, dump_timeouts[0])
+            self.assertEqual(7.25, dump_timeouts[1])
             retry_headroom = driver._file_hierarchy_retry_headroom(
                 dump_attempt_max_seconds=dump_timeouts[0],
             )
             self.assertGreater(26.5 - (2.0 + dump_timeouts[0]) - retry_headroom, 0.49)
             self.assertLessEqual(now[0], 26.5)
+            self.assertGreater(
+                26.5
+                - now[0]
+                - 3 * driver.ADB_FILE_HIERARCHY_IDENTITY_READ_ATTEMPT_MAX_SECONDS
+                - driver.ADB_FILE_HIERARCHY_IDENTITY_HEADROOM_SECONDS,
+                0.49,
+            )
             receipt = self.retry_receipt(evidence)
             self.assertEqual("pass", receipt["status"])
             self.assertEqual(
