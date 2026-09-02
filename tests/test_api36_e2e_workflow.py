@@ -353,6 +353,23 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
             with self.subTest(contextual_authority=authority[:40]):
                 self.assertNotIn(contextual_id, authority)
 
+        after_run = payload["generationInputs"]["afterRunSettlementJourneyRecognition"]
+        self.assertEqual("sr5-after-run-settlement", after_run["journeyId"])
+        self.assertEqual("sr5-career/after-run", after_run["parentCareerLane"])
+        self.assertEqual(
+            [
+                {
+                    "route": "sr5-career/after-run/settlement",
+                    "matrixJourney": "after-run-settlement",
+                    "gateStatus": "required",
+                    "executionStatus": "not_executed",
+                }
+            ],
+            after_run["matrixJourneys"],
+        )
+        self.assertFalse(after_run["releaseClaim"])
+        self.assertEqual(0, after_run["completionCountContribution"])
+
     def test_phone_path_validates_the_pinned_phone_beta_contract(self) -> None:
         check = "python3 chummer-design/scripts/ai/validate_android_phone_beta_contract.py"
         self.assertEqual(1, self.text.count(check))
@@ -487,6 +504,10 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
                 "downtime-calendar",
                 "tests/run_api36_sr5_downtime_calendar_hosted_e2e.py",
             ),
+            (
+                "after-run-settlement",
+                "tests/run_api36_sr5_after_run_settlement_hosted_e2e.py",
+            ),
         )
         matrix_block = self.text[
             self.text.index("        journey:"):
@@ -526,8 +547,6 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
                 self.assertIn(f"          - {journey}", self.text)
         self.assertNotIn("          - full-editing", self.text)
         self.assertNotIn("  full-editing)", runner)
-        self.assertNotIn("          - after-run", self.text)
-        self.assertNotIn("  after-run)", runner)
         self.assertIn("CHUMMER_E2E_JOURNEY: ${{ matrix.journey }}", self.text)
         self.assertIn("fail-fast: false", self.text)
         self.assertIn(

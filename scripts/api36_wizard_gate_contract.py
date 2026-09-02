@@ -51,6 +51,11 @@ REQUIRED_JOURNEY_SPECS = (
         "driverJourney": "sr5-downtime-calendar",
         "receiptSchema": "chummer.android.editing-e2e/v1",
     },
+    {
+        "matrixJourney": "after-run-settlement",
+        "driverJourney": "sr5-after-run-settlement",
+        "receiptSchema": "chummer.android.sr5-after-run-settlement-hosted-e2e/v1",
+    },
 )
 EXCLUDED_FROM_GATE = (
     {

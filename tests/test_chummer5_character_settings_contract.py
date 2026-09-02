@@ -44,6 +44,7 @@ class Chummer5CharacterSettingsContractTests(unittest.TestCase):
             "before-run-edge",
             "playtime-short-burst",
             "downtime-calendar",
+            "after-run-settlement",
         ]
         self.assertEqual(len(expected_gate_journeys), gate["requiredJourneyCount"])
         self.assertEqual(

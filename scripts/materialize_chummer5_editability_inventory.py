@@ -65,7 +65,9 @@ DEFAULT_REGISTRY = Path(
 DEFAULT_OUTPUT = REPO_ROOT / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json"
 SR5_TABLE_WIZARD_API36_JOURNEY_ID = "sr5-table-wizard-before-run-playtime"
 SR5_CONTEXTUAL_MUTATION_API36_JOURNEY_ID = "sr5-downtime-playtime-typed-transactions"
+SR5_AFTER_RUN_SETTLEMENT_API36_JOURNEY_ID = "sr5-after-run-settlement"
 SR5_TABLE_WIZARD_ANDROID_SOURCE_INPUTS = (
+    "src/Chummer.Android/Native/AndroidAfterRunWorkspaceSnapshotSource.cs",
     "src/Chummer.Android/Native/PhoneShellPages.cs",
     "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
     "src/Chummer.Android/Native/RunnerSessionSr5CareerWizardPhoneAuthority.cs",
@@ -74,6 +76,12 @@ SR5_TABLE_WIZARD_ANDROID_SOURCE_INPUTS = (
     "src/Chummer.Android/Native/Sr5CareerWizardModel.cs",
     "src/Chummer.Android/Native/Sr5CareerWizardPage.cs",
     "src/Chummer.Android/Native/Sr5CareerWizardPhoneModel.cs",
+    "src/Chummer.Android/Native/Sr5AfterRunManualProposalPage.cs",
+    "src/Chummer.Android/Native/Sr5AfterRunManualProposalSource.cs",
+    "src/Chummer.Android/Native/Sr5AfterRunSettlementCheckpointStore.cs",
+    "src/Chummer.Android/Native/Sr5AfterRunSettlementCoordinator.cs",
+    "src/Chummer.Android/Native/Sr5AfterRunSettlementWizardPage.cs",
+    "src/Chummer.Android/Native/Sr5AfterRunWizardModel.cs",
     "src/Chummer.Android/Native/Sr5TableWizardPage.cs",
     "src/Chummer.Android/Native/Sr5TableWizardPhoneModel.cs",
     "src/Chummer.Android/Native/Sr5TableWizardTypedTransaction.cs",
@@ -123,6 +131,10 @@ SR5_TABLE_WIZARD_GATE_INPUTS = (
     "tests/test_api36_sr5_playtime_short_burst_e2e_driver.py",
     "tests/run_api36_sr5_downtime_calendar_hosted_e2e.py",
     "tests/test_api36_sr5_downtime_calendar_hosted_e2e_driver.py",
+    "tests/fixtures/sr5-after-run-settlement-e2e.json",
+    "tests/run_api36_sr5_after_run_settlement_e2e.py",
+    "tests/run_api36_sr5_after_run_settlement_hosted_e2e.py",
+    "tests/test_api36_sr5_after_run_settlement_hosted_contract.py",
     "tests/test_api36_sr5_career_run_contextual_contract.py",
     "tests/test_chummer5_editability_inventory.py",
     "tests/test_sr5_contextual_wizard_scope.py",
@@ -246,6 +258,17 @@ SR5_TABLE_WIZARD_AUTHORITY_MARKERS = {
     "tests/test_api36_sr5_downtime_calendar_hosted_e2e_driver.py": (
         "test_hosted_driver_is_phone_api36_only_and_uses_typed_wizard",
         "test_hosted_driver_requires_explicit_receipt_and_committed_fixture",
+    ),
+    "tests/run_api36_sr5_after_run_settlement_hosted_e2e.py": (
+        'JOURNEY = "sr5-after-run-settlement"',
+        'MATRIX_JOURNEY = "after-run-settlement"',
+        "settlement.prove_after_run(",
+        '"publicationAuthorized": False',
+    ),
+    "tests/test_api36_sr5_after_run_settlement_hosted_contract.py": (
+        "test_driver_reuses_the_exact_typed_settlement_authority",
+        "test_hosted_execution_is_phone_api36_x64_source_and_cleanup_bound",
+        "test_foreign_fixture_fails_before_device_access",
     ),
     "tests/test_api36_sr5_career_run_contextual_contract.py": (
         "test_before_run_driver_semantics_are_typed_but_not_release_claimed",
@@ -23726,6 +23749,44 @@ def _sr5_contextual_mutation_api36_recognition(
     }
 
 
+def _sr5_after_run_settlement_api36_recognition(
+    table_recognition: dict[str, Any],
+) -> dict[str, Any]:
+    return {
+        "journeyId": SR5_AFTER_RUN_SETTLEMENT_API36_JOURNEY_ID,
+        "parentCareerLane": "sr5-career/after-run",
+        "routes": ["sr5-career/after-run/settlement"],
+        "supportedTypedMutations": [
+            "after-run-heat",
+            "after-run-street-cred",
+            "after-run-notoriety",
+            "after-run-public-awareness",
+            "after-run-contacts",
+        ],
+        "explicitBlockers": [
+            "after-run-injuries",
+            "after-run-ammo",
+            "after-run-loot",
+            "after-run-expenses",
+            "after-run-log",
+        ],
+        "recognitionStatus": "recognized",
+        "sourceAuthorityStatus": table_recognition["sourceAuthorityStatus"],
+        "executionStatus": "not_executed",
+        "matrixJourneys": [
+            {
+                "route": "sr5-career/after-run/settlement",
+                "matrixJourney": "after-run-settlement",
+                "gateStatus": "required",
+                "executionStatus": "not_executed",
+            },
+        ],
+        "releaseClaim": False,
+        "completionCountContribution": 0,
+        "blockers": list(table_recognition["blockers"]),
+    }
+
+
 def build_inventory(
     chummer5_root: Path,
     registry_path: Path,
@@ -24274,6 +24335,13 @@ def build_inventory(
             ),
             "contextualMutationJourneyRecognition":
                 _sr5_contextual_mutation_api36_recognition(
+                    _sr5_table_wizard_api36_recognition(
+                        android_inputs,
+                        presentation_root,
+                    )
+                ),
+            "afterRunSettlementJourneyRecognition":
+                _sr5_after_run_settlement_api36_recognition(
                     _sr5_table_wizard_api36_recognition(
                         android_inputs,
                         presentation_root,

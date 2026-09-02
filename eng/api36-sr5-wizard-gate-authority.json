@@ -2,7 +2,7 @@
   "schema": "chummer.android.api36-sr5-wizard-gate-authority/v1",
   "authorityClass": "internal_phone_beta_sr5_wizard_only",
   "proofScope": "sr5_wizards_only",
-  "requiredJourneyCount": 6,
+  "requiredJourneyCount": 7,
   "requiredJourneys": [
     {
       "matrixJourney": "creation-prerequisite",
@@ -33,6 +33,11 @@
       "matrixJourney": "downtime-calendar",
       "driverJourney": "sr5-downtime-calendar",
       "receiptSchema": "chummer.android.editing-e2e/v1"
+    },
+    {
+      "matrixJourney": "after-run-settlement",
+      "driverJourney": "sr5-after-run-settlement",
+      "receiptSchema": "chummer.android.sr5-after-run-settlement-hosted-e2e/v1"
     }
   ],
   "excludedFromGate": [

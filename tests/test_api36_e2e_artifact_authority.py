@@ -44,6 +44,7 @@ JOURNEYS = {
     "before-run-edge": "before-run-edge",
     "playtime-short-burst": "playtime-short-burst",
     "downtime-calendar": "sr5-downtime-calendar",
+    "after-run-settlement": "sr5-after-run-settlement",
 }
 CREATION_PROSPECTIVE_PHASE_ELAPSED_MS = {
     # Exact prefix timings from hosted run 33309423140, followed by phase
@@ -292,6 +293,9 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             "before-run-edge": "chummer.android.sr5-before-run-edge-e2e/v1",
             "playtime-short-burst": "chummer.android.editing-e2e/v1",
             "downtime-calendar": "chummer.android.editing-e2e/v1",
+            "after-run-settlement": (
+                "chummer.android.sr5-after-run-settlement-hosted-e2e/v1"
+            ),
         }
         receipt: dict[str, object] = {
             "schema": receipt_schemas[journey],
@@ -411,6 +415,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             "before-run-edge",
             "playtime-short-burst",
             "downtime-calendar",
+            "after-run-settlement",
         }:
             receipt["publicationAuthorized"] = False
         return receipt
@@ -424,6 +429,10 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             "downtime-calendar": (
                 "sr5-downtime-calendar",
                 "chummer.android.editing-e2e/v1",
+            ),
+            "after-run-settlement": (
+                "sr5-after-run-settlement",
+                "chummer.android.sr5-after-run-settlement-hosted-e2e/v1",
             ),
         }
         for matrix_journey, (driver_journey, schema) in expected.items():
@@ -516,23 +525,14 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                 **self.authority(),
             )
 
-    def test_finalizer_rejects_after_run_until_unique_driver_is_registered(self) -> None:
-        self.assertNotIn("after-run", GATE.journey_map())
-        receipt = {
-            "schema": "chummer.android.editing-e2e/v1",
-            "status": "pass",
-            "profile": "phone",
-            "apkSha256": APK_SHA256,
-            "journey": "after-run",
-            "publicationAuthorized": False,
-        }
-        with self.assertRaisesRegex(ValueError, "unsupported matrix journey"):
-            FINALIZE.bind_receipt(
-                receipt,
-                matrix_journey="after-run",
-                driver_journey="after-run",
-                **self.authority(),
-            )
+    def test_after_run_uses_only_its_unique_hosted_driver_contract(self) -> None:
+        self.assertEqual(
+            (
+                "sr5-after-run-settlement",
+                "chummer.android.sr5-after-run-settlement-hosted-e2e/v1",
+            ),
+            GATE.journey_map()["after-run-settlement"],
+        )
 
     def test_finalizer_rejects_mismatched_apk_sha_and_attempt_name(self) -> None:
         receipt = self.raw_receipt("career-active-skill-advance")
@@ -557,6 +557,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             "before-run-edge",
             "playtime-short-burst",
             "downtime-calendar",
+            "after-run-settlement",
         ):
             with self.subTest(matrix_journey=matrix_journey):
                 receipt = self.raw_receipt(matrix_journey)
@@ -672,6 +673,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             "before-run-edge",
             "playtime-short-burst",
             "downtime-calendar",
+            "after-run-settlement",
         ):
             with self.subTest(matrix_journey=matrix_journey), tempfile.TemporaryDirectory() as temporary:
                 root = Path(temporary)

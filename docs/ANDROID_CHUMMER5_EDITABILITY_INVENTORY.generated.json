@@ -68,17 +68,18 @@
     "phoneBetaWizardGate": {
       "schema": "chummer.android.api36-sr5-wizard-gate-binding/v1",
       "contractPath": "eng/api36-sr5-wizard-gate-authority.json",
-      "contractSha256": "6a4e0e40a4e3388eb4b3e833ffbb2800ff74a3d47305925b267bf93c55808a50",
+      "contractSha256": "dd12b08b04c293fa47eb33409182b244d95c0ed4a3df4da2617ab54dc6abbc21",
       "authorityClass": "internal_phone_beta_sr5_wizard_only",
       "proofScope": "sr5_wizards_only",
-      "requiredJourneyCount": 6,
+      "requiredJourneyCount": 7,
       "requiredJourneys": [
         "creation-prerequisite",
         "career-active-skill-advance",
         "career-weapon-fire",
         "before-run-edge",
         "playtime-short-burst",
-        "downtime-calendar"
+        "downtime-calendar",
+        "after-run-settlement"
       ],
       "publicationAuthorized": false,
       "excludedFromGate": [
@@ -628,6 +629,11 @@
         "sha256": "352d251725ed809213fb2541f4a2bd736bddad2c4bcd44ef11d7ca1954d512ec"
       },
       {
+        "path": "src/Chummer.Android/Native/AndroidAfterRunWorkspaceSnapshotSource.cs",
+        "exists": true,
+        "sha256": "e4da1f185f4343d4c81ab3888509eff2fecf9f33468d50e53259c106a5f458fe"
+      },
+      {
         "path": "src/Chummer.Android/Native/PhoneShellPages.cs",
         "exists": true,
         "sha256": "9ade36dc0f677b0c8a3888450f05cb4271eeb4391fd9ce9fb081637a472e02ad"
@@ -666,6 +672,36 @@
         "path": "src/Chummer.Android/Native/Sr5CareerWizardPhoneModel.cs",
         "exists": true,
         "sha256": "64c03d1d1531626fbea8a5a4364d3ba22f91dcedcbc12547e35bf2b1edf145e3"
+      },
+      {
+        "path": "src/Chummer.Android/Native/Sr5AfterRunManualProposalPage.cs",
+        "exists": true,
+        "sha256": "4e98cb1438ad529e68a9e072041f26398650f7e266293566a0fdc4f209d1606f"
+      },
+      {
+        "path": "src/Chummer.Android/Native/Sr5AfterRunManualProposalSource.cs",
+        "exists": true,
+        "sha256": "9e7d47af138e02516044287dc01ed47847b503213360e28584426ff891d7a4a1"
+      },
+      {
+        "path": "src/Chummer.Android/Native/Sr5AfterRunSettlementCheckpointStore.cs",
+        "exists": true,
+        "sha256": "25e2ae3c76c72a5c95281ffff2fdef8cf5becb10daa388a05b2c59b5f276acd2"
+      },
+      {
+        "path": "src/Chummer.Android/Native/Sr5AfterRunSettlementCoordinator.cs",
+        "exists": true,
+        "sha256": "4b3e88abf7d16cc52b157d1e2ba1315198a402491fc3f6130476953da6902159"
+      },
+      {
+        "path": "src/Chummer.Android/Native/Sr5AfterRunSettlementWizardPage.cs",
+        "exists": true,
+        "sha256": "8790349761bc1d2bc4f32d945da5adeb2adc1e9af8f4322ce3792959c18036fc"
+      },
+      {
+        "path": "src/Chummer.Android/Native/Sr5AfterRunWizardModel.cs",
+        "exists": true,
+        "sha256": "ef5495785819cf9bc500e05d623d3a7366e3abda90051a565abe5e4fb48299e9"
       },
       {
         "path": "src/Chummer.Android/Native/Sr5TableWizardPage.cs",
@@ -765,17 +801,17 @@
       {
         "path": ".github/workflows/api36-editing-e2e.yml",
         "exists": true,
-        "sha256": "64d4c83c78b056f8bcef76fd550d1c516ae5a99381bc1d535b9df5e888f8f4bd"
+        "sha256": "2d262be74e6b52b1868752e56c2a5fdc7777926860708facf6986e8fc75e2bea"
       },
       {
         "path": "eng/api36-sr5-wizard-gate-authority.json",
         "exists": true,
-        "sha256": "6a4e0e40a4e3388eb4b3e833ffbb2800ff74a3d47305925b267bf93c55808a50"
+        "sha256": "dd12b08b04c293fa47eb33409182b244d95c0ed4a3df4da2617ab54dc6abbc21"
       },
       {
         "path": "scripts/api36_wizard_gate_contract.py",
         "exists": true,
-        "sha256": "eb4ed19ea1390a8fe52867bb8618b38106d4521ec44f2d5c779cbc5116c6f8b2"
+        "sha256": "83612a4785088716e8666902e60a7c0012a10861eead6f7d1651cdcf65a9956d"
       },
       {
         "path": "scripts/finalize-api36-e2e-journey-receipt.py",
@@ -785,7 +821,7 @@
       {
         "path": "scripts/run-api36-editing-e2e-ci.sh",
         "exists": true,
-        "sha256": "eeadd9dc452a2d59e0596e0e5a4b4215cfe0512963fc3149115c0d219450815e"
+        "sha256": "83245beda77e00279a0ba5c8ed3a2fbc5e6da522a4f982b30855fdf5dde8b181"
       },
       {
         "path": "scripts/verify-api36-editing-e2e-aggregate.py",
@@ -805,12 +841,12 @@
       {
         "path": "tests/test_api36_e2e_workflow.py",
         "exists": true,
-        "sha256": "3608d2a62064cfc8a7875466871f64afbd743f33add10c5444b192da93647669"
+        "sha256": "4a84d7c8f9490d99458213091e94ed32cc4bbc61362afb3b5d3dc47bbb719a24"
       },
       {
         "path": "tests/test_api36_e2e_artifact_authority.py",
         "exists": true,
-        "sha256": "5a8bf299ce7fbb778546e1f88707148c15689939511bc58ef621d0059132bc25"
+        "sha256": "434e38703e5e691f5ea38f2e801e4090cf3903e549df1a862c21cbdbdc25166f"
       },
       {
         "path": "tests/run_api36_sr5_before_run_edge_e2e.py",
@@ -843,14 +879,34 @@
         "sha256": "7575ac9a371ed9ff212b8448080e0ee06c2a251165e797fe71b4f5f9ae0c7a7f"
       },
       {
+        "path": "tests/fixtures/sr5-after-run-settlement-e2e.json",
+        "exists": true,
+        "sha256": "332b14a29b697907f5778b6880885613298f65bbad0661da0fe0772f258efe98"
+      },
+      {
+        "path": "tests/run_api36_sr5_after_run_settlement_e2e.py",
+        "exists": true,
+        "sha256": "7a99ee3b5ac23f496294bf9565cb324c6db7d45322be6f464e87c8cfe0229d78"
+      },
+      {
+        "path": "tests/run_api36_sr5_after_run_settlement_hosted_e2e.py",
+        "exists": true,
+        "sha256": "ba6a5502261d4876ec696d2f4399abcf586331186079de6550f9cf64ebf15d08"
+      },
+      {
+        "path": "tests/test_api36_sr5_after_run_settlement_hosted_contract.py",
+        "exists": true,
+        "sha256": "d7ab1b3879837079da59bf7784af8d7f3bcd2de5649980c90013047857b8e7c3"
+      },
+      {
         "path": "tests/test_api36_sr5_career_run_contextual_contract.py",
         "exists": true,
-        "sha256": "54747bb27d245ef93e3ffbe33d87365d9c1774d78bac484e71f6db750f1bc333"
+        "sha256": "f9e69cb95ac6b33138af78b17ad00d2bc9d2cb0113995b4d3426a53417cde679"
       },
       {
         "path": "tests/test_chummer5_editability_inventory.py",
         "exists": true,
-        "sha256": "7a553ebe3d2a6bb3a0ae8680e77bf2b03291472ef4870a9b6a613224a18f2b96"
+        "sha256": "a868964b6299c26b1d5efe16e8af4eb02b6ad4fc70fb0023fb112c03f97babeb"
       },
       {
         "path": "tests/test_sr5_contextual_wizard_scope.py",
@@ -2665,6 +2721,7 @@
       "releaseClaim": false,
       "completionCountContribution": 0,
       "androidSourcePaths": [
+        "src/Chummer.Android/Native/AndroidAfterRunWorkspaceSnapshotSource.cs",
         "src/Chummer.Android/Native/PhoneShellPages.cs",
         "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "src/Chummer.Android/Native/RunnerSessionSr5CareerWizardPhoneAuthority.cs",
@@ -2673,6 +2730,12 @@
         "src/Chummer.Android/Native/Sr5CareerWizardModel.cs",
         "src/Chummer.Android/Native/Sr5CareerWizardPage.cs",
         "src/Chummer.Android/Native/Sr5CareerWizardPhoneModel.cs",
+        "src/Chummer.Android/Native/Sr5AfterRunManualProposalPage.cs",
+        "src/Chummer.Android/Native/Sr5AfterRunManualProposalSource.cs",
+        "src/Chummer.Android/Native/Sr5AfterRunSettlementCheckpointStore.cs",
+        "src/Chummer.Android/Native/Sr5AfterRunSettlementCoordinator.cs",
+        "src/Chummer.Android/Native/Sr5AfterRunSettlementWizardPage.cs",
+        "src/Chummer.Android/Native/Sr5AfterRunWizardModel.cs",
         "src/Chummer.Android/Native/Sr5TableWizardPage.cs",
         "src/Chummer.Android/Native/Sr5TableWizardPhoneModel.cs",
         "src/Chummer.Android/Native/Sr5TableWizardTypedTransaction.cs"
@@ -2716,6 +2779,10 @@
         "tests/test_api36_sr5_playtime_short_burst_e2e_driver.py",
         "tests/run_api36_sr5_downtime_calendar_hosted_e2e.py",
         "tests/test_api36_sr5_downtime_calendar_hosted_e2e_driver.py",
+        "tests/fixtures/sr5-after-run-settlement-e2e.json",
+        "tests/run_api36_sr5_after_run_settlement_e2e.py",
+        "tests/run_api36_sr5_after_run_settlement_hosted_e2e.py",
+        "tests/test_api36_sr5_after_run_settlement_hosted_contract.py",
         "tests/test_api36_sr5_career_run_contextual_contract.py",
         "tests/test_chummer5_editability_inventory.py",
         "tests/test_sr5_contextual_wizard_scope.py"
@@ -2770,9 +2837,44 @@
       "completionCountContribution": 0,
       "blockers": []
     },
+    "afterRunSettlementJourneyRecognition": {
+      "journeyId": "sr5-after-run-settlement",
+      "parentCareerLane": "sr5-career/after-run",
+      "routes": [
+        "sr5-career/after-run/settlement"
+      ],
+      "supportedTypedMutations": [
+        "after-run-heat",
+        "after-run-street-cred",
+        "after-run-notoriety",
+        "after-run-public-awareness",
+        "after-run-contacts"
+      ],
+      "explicitBlockers": [
+        "after-run-injuries",
+        "after-run-ammo",
+        "after-run-loot",
+        "after-run-expenses",
+        "after-run-log"
+      ],
+      "recognitionStatus": "recognized",
+      "sourceAuthorityStatus": "ready",
+      "executionStatus": "not_executed",
+      "matrixJourneys": [
+        {
+          "route": "sr5-career/after-run/settlement",
+          "matrixJourney": "after-run-settlement",
+          "gateStatus": "required",
+          "executionStatus": "not_executed"
+        }
+      ],
+      "releaseClaim": false,
+      "completionCountContribution": 0,
+      "blockers": []
+    },
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "c604967d9797c9f938608de26f7fe7d8b905d4571327d684fddb03d48afe2aad"
+      "sha256": "c6b9b43b14362a36f26d22b5710ef67cea6c00dfe3dc10d4d3f55d2818e6cb13"
     }
   },
   "coverageByFamily": {
