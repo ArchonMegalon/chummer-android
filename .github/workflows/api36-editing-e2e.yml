@@ -12,6 +12,7 @@ on:
       - "docs/editability-evidence/**"
       - "eng/api36-sr5-wizard-gate-authority.json"
       - "global.json"
+      - "play/**"
       - "scripts/**"
       - "src/**"
       - "tests/**"
@@ -175,6 +176,12 @@ jobs:
         run: >-
           python3 scripts/api36_wizard_gate_contract.py
           --manifest eng/api36-sr5-wizard-gate-authority.json
+
+      - name: Verify the recorded Preview.10 Play Internal publication truth
+        working-directory: chummer-android
+        run: |
+          python3 -m unittest discover -s tests -p 'test_play_internal_publication_receipt.py' -v
+          python3 scripts/verify_play_internal_publication_receipt.py
 
       - name: Verify the pinned phone-beta contract
         run: python3 chummer-design/scripts/ai/validate_android_phone_beta_contract.py

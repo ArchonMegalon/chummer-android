@@ -25,9 +25,9 @@ Upload keys and passwords are never committed. Release automation supplies:
 - `ChummerAndroidSigningKeyAlias`
 - `ChummerAndroidSigningKeyPass`
 
-Logs must not print these values. A release receipt records only the AAB digest,
-certificate digest, version code, package id, track, rollout state, and Play
-operation id.
+Logs must not print these values. The v2 Internal-publication receipt records
+only public Play identity/readback fields and local artifact/source-graph
+digests. It records no credential, session, signing secret, or private key.
 
 Provision a dedicated Chummer upload identity into an explicit directory outside
 this repository. The command creates a mode-`0600` PKCS#12 keystore, public PEM
@@ -222,6 +222,18 @@ available under either kill switch.
 A locally signed AAB is not publication. Publication requires a Chummer-scoped
 Play Console session or service account. Memorial or PropertyQuarry browser
 sessions and app identities must never be reused for Chummer.
+
+The recorded Preview.10 Internal-testing publication truth is
+`play/evidence/preview10-internal-publication.json`. Verify the durable record
+with `scripts/verify_play_internal_publication_receipt.py`. Its Play application,
+track, release status, displayed release time, and join URL came from an
+authenticated browser readback. Its AAB and source-graph digests came from the
+local release-build sidecar. Google Play did not expose either digest for
+readback and the AAB was not downloaded back from Play. The receipt therefore
+does not claim tester installation, production rollout, public release, tablet
+support, full edit parity, live Rook rule authority, or Play-side artifact-byte
+retrievability. The Console exposed the release time only as `3 Sept 01:04`,
+without an authoritative timezone; no UTC instant is invented.
 
 ## Current preview.7 release evidence (source 2026-08-12, Play 2026-08-14)
 
