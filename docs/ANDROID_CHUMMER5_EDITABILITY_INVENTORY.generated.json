@@ -641,7 +641,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "f6e61a78b5399ae1d1c262ca911a728418b99cb889f608b9d54305c0c764cd0b"
+        "sha256": "63808ba5aa328bb8d0a9631031f9df6b29bb191868dd4e372207b121b6b63a7e"
       },
       {
         "path": "src/Chummer.Android/Native/RunnerSessionSr5CareerWizardPhoneAuthority.cs",
@@ -801,7 +801,7 @@
       {
         "path": ".github/workflows/api36-editing-e2e.yml",
         "exists": true,
-        "sha256": "2d262be74e6b52b1868752e56c2a5fdc7777926860708facf6986e8fc75e2bea"
+        "sha256": "5a0952c01c922a444614b3dd1988f6b41086b701fbc803efdf680520f470a581"
       },
       {
         "path": "eng/api36-sr5-wizard-gate-authority.json",
