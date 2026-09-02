@@ -125,7 +125,11 @@ class CreationGearSourceContractTests(unittest.TestCase):
         text = source(BUILD_PAGE)
         self.assertIn("ICharacterCreationGearInteractionPresenter? gearPresenter = null", text)
         self.assertIn("_gearPresenter = gearPresenter", text)
-        self.assertIn("_overviewPresenter,\n                _gearPresenter", text)
+        self.assertRegex(
+            text,
+            r"new CreationResourcesPage\(\s*Coordinator,\s*_resourcesPresenter,"
+            r"\s*_overviewPresenter,\s*_gearPresenter\)",
+        )
         self.assertNotIn("CreationDashboardAuthorityPhase.Gear", text)
 
 
