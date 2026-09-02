@@ -1345,6 +1345,41 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertEqual(2, device.up)
         self.assertEqual(1, observations[0]["emptyHierarchyReads"])
 
+    def test_stable_end_scan_accepts_exactly_four_cold_restart_empty_reads(
+        self,
+    ) -> None:
+        stable = [
+            driver.shared.UiNode(
+                {"resource-id": "stable-row", "bounds": "[0,0][1,1]"}
+            )
+        ]
+        device = mock.Mock()
+        device.hierarchy.side_effect = [[], [], [], [], stable, stable, stable]
+        observations: list[dict[str, object]] = []
+
+        with mock.patch.object(driver.time, "sleep"):
+            screens = driver.scan_forward_until_stable(
+                device,
+                scan_id=driver.PROCESS_RESTART_RESOURCES_SCAN_ID,
+                max_scrolls=2,
+                distance_ratio=0.22,
+                max_consecutive_empty_reads=(
+                    driver.PROCESS_RESTART_RESOURCES_MAX_CONSECUTIVE_EMPTY_READS
+                ),
+                observer=observations.append,
+            )
+
+        self.assertEqual(3, len(screens))
+        self.assertEqual(7, device.hierarchy.call_count)
+        self.assertEqual(2, device.swipe_up.call_count)
+        device.capture.assert_not_called()
+        self.assertEqual("stable-end", observations[0]["status"])
+        self.assertEqual(4, observations[0]["emptyHierarchyReads"])
+        self.assertEqual(
+            driver.PROCESS_RESTART_RESOURCES_MAX_CONSECUTIVE_EMPTY_READS,
+            observations[0]["maximumConsecutiveEmptyReads"],
+        )
+
     def test_stable_end_scan_fails_closed_on_repeated_empty_hierarchies(self) -> None:
         device = mock.Mock()
         device.hierarchy.return_value = []
@@ -2156,6 +2191,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         ) as acquire, mock.patch.object(
             driver,
             "scan_forward_with_receipt",
+            autospec=True,
             return_value=driver.StableViewportScan([nodes], 3),
         ) as scan:
             actual = driver.scan_deadline_bound_resources_surface(
@@ -2182,10 +2218,123 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             initial_observation=origin,
             initial_observation_max_reverse_swipes=22,
             delay_seconds=0.0,
+            max_consecutive_empty_reads=(
+                driver.RESOURCES_SURFACE_MAX_CONSECUTIVE_EMPTY_READS
+            ),
             observer=observer,
             deadline=deadline,
         )
         device.capture.assert_not_called()
+
+    def test_process_restart_resources_scan_alone_accepts_four_empty_reads(self) -> None:
+        selectors = (
+            "creation-resources-page",
+            "creation-resources-binding-content-revision",
+        )
+        nodes = [
+            self.canonical_node(selectors[0]),
+            self.canonical_node(selectors[1], text="3"),
+        ]
+        origin = self.priority_rank_origin(nodes)
+        deadline = driver.time.monotonic() + 30
+        device = mock.Mock()
+
+        with mock.patch.object(
+            driver,
+            "acquire_stable_start_origin",
+            return_value=origin,
+        ) as acquire, mock.patch.object(
+            driver,
+            "scan_forward_with_receipt",
+            autospec=True,
+            return_value=driver.StableViewportScan([nodes], 10),
+        ) as scan:
+            actual = driver.scan_deadline_bound_resources_surface(
+                device,
+                selectors,
+                scan_id=driver.PROCESS_RESTART_RESOURCES_SCAN_ID,
+                deadline=deadline,
+            )
+
+        self.assertEqual(set(selectors), set(actual))
+        acquire.assert_called_once_with(
+            device,
+            scan_id=f"{driver.PROCESS_RESTART_RESOURCES_SCAN_ID}-start",
+            max_reverse_swipes=22,
+            distance_ratio=0.68,
+            deadline=deadline,
+        )
+        self.assertEqual(
+            driver.PROCESS_RESTART_RESOURCES_MAX_CONSECUTIVE_EMPTY_READS,
+            scan.call_args.kwargs["max_consecutive_empty_reads"],
+        )
+
+    def test_process_restart_resources_real_wrapper_recovers_four_empty_reads(
+        self,
+    ) -> None:
+        selectors = (
+            "creation-resources-page",
+            "creation-resources-binding-content-revision",
+        )
+        nodes = [
+            self.canonical_node(selectors[0]),
+            self.canonical_node(selectors[1], text="3"),
+        ]
+        origin = self.priority_rank_origin(nodes)
+        device = mock.Mock()
+        device.hierarchy.side_effect = [[], [], [], [], nodes, nodes]
+        deadline = driver.time.monotonic() + 30
+
+        with mock.patch.object(
+            driver,
+            "acquire_stable_start_origin",
+            return_value=origin,
+        ), mock.patch.object(driver.time, "sleep"):
+            actual = driver.scan_deadline_bound_resources_surface(
+                device,
+                selectors,
+                scan_id=driver.PROCESS_RESTART_RESOURCES_SCAN_ID,
+                deadline=deadline,
+            )
+
+        self.assertEqual(set(selectors), set(actual))
+        self.assertEqual(6, device.hierarchy.call_count)
+        self.assertEqual(2, device.swipe_up.call_count)
+        device.capture.assert_not_called()
+        for invocation in device.hierarchy.call_args_list:
+            self.assertEqual(deadline, invocation.kwargs["deadline"])
+
+    def test_resources_scan_id_lookalike_keeps_default_empty_read_bound(self) -> None:
+        selectors = (
+            "creation-resources-page",
+            "creation-resources-binding-content-revision",
+        )
+        nodes = [
+            self.canonical_node(selectors[0]),
+            self.canonical_node(selectors[1], text="3"),
+        ]
+        device = mock.Mock()
+        with mock.patch.object(
+            driver,
+            "acquire_stable_start_origin",
+            return_value=self.priority_rank_origin(nodes),
+        ), mock.patch.object(
+            driver,
+            "scan_forward_with_receipt",
+            autospec=True,
+            return_value=driver.StableViewportScan([nodes], 10),
+        ) as scan:
+            driver.scan_deadline_bound_resources_surface(
+                device,
+                selectors,
+                scan_id=f"{driver.PROCESS_RESTART_RESOURCES_SCAN_ID}-lookalike",
+                deadline=driver.time.monotonic() + 30,
+            )
+
+        self.assertEqual(
+            driver.RESOURCES_SURFACE_MAX_CONSECUTIVE_EMPTY_READS,
+            scan.call_args.kwargs["max_consecutive_empty_reads"],
+        )
 
     def test_deadline_resources_surface_rejects_missing_duplicate_drift_and_identity(
         self,

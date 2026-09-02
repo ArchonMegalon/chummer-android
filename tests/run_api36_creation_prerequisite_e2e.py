@@ -297,6 +297,11 @@ CONFIRM_DOWNSTREAM_RESERVE_SECONDS = (
 DASHBOARD_SCAN_GESTURE_RATIO = 0.60
 DASHBOARD_SCAN_MAX_SCROLLS = 18
 PROCESS_RESTART_METHOD_MAX_EMPTY_HIERARCHY_READS = 4
+RESOURCES_SURFACE_MAX_CONSECUTIVE_EMPTY_READS = 3
+PROCESS_RESTART_RESOURCES_SCAN_ID = (
+    "creation-resources-process-restart-persisted-authority"
+)
+PROCESS_RESTART_RESOURCES_MAX_CONSECUTIVE_EMPTY_READS = 4
 CREATION_METHOD_REACQUISITION_PHASE_AUTHORITY = {
     "advanced-editor-gate-inventory": (
         PHASE_BUDGET_MS["advanced-editor-gate-inventory"],
@@ -1526,6 +1531,7 @@ def scan_forward_with_receipt(
     distance_ratio: float,
     initial_observation: PriorityRankOrigin | None = None,
     initial_observation_max_reverse_swipes: int = 8,
+    max_consecutive_empty_reads: int = 3,
     delay_seconds: float = 0.2,
     observer: Callable[[dict[str, object]], None] | None = None,
     deadline: float | None = None,
@@ -1550,6 +1556,7 @@ def scan_forward_with_receipt(
         initial_observation_max_reverse_swipes=(
             initial_observation_max_reverse_swipes
         ),
+        max_consecutive_empty_reads=max_consecutive_empty_reads,
         delay_seconds=delay_seconds,
         observer=record,
         deadline=deadline,
@@ -8736,6 +8743,11 @@ def scan_deadline_bound_resources_surface(
         or type(return_scan_proof) is not bool
     ):
         raise ValueError("Resources surface scan requires distinct exact selectors")
+    max_consecutive_empty_reads = (
+        PROCESS_RESTART_RESOURCES_MAX_CONSECUTIVE_EMPTY_READS
+        if scan_id == PROCESS_RESTART_RESOURCES_SCAN_ID
+        else RESOURCES_SURFACE_MAX_CONSECUTIVE_EMPTY_READS
+    )
     origin = acquire_stable_start_origin(
         device,
         scan_id=f"{scan_id}-start",
@@ -8751,6 +8763,7 @@ def scan_deadline_bound_resources_surface(
         initial_observation=origin,
         initial_observation_max_reverse_swipes=22,
         delay_seconds=0.0,
+        max_consecutive_empty_reads=max_consecutive_empty_reads,
         observer=scan_observer,
         deadline=deadline,
     )
@@ -10581,7 +10594,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         resources_receipt,
         deadline=process_restart_resources_deadline,
         scan_observer=progress.record_scan,
-        scan_id="creation-resources-process-restart-persisted-authority",
+        scan_id=PROCESS_RESTART_RESOURCES_SCAN_ID,
     )
     if resources_restarted != resources_same_process:
         raise RuntimeError(
