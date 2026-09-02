@@ -63,11 +63,13 @@ class Api36CreationResourcesPriorityE2EContractTests(unittest.TestCase):
         for expression in (
             'post_resources_prerequisite_authority = read_persisted_prerequisite_authority(',
             'scan_id="post-resources-persisted-prerequisite-authority"',
-            'post_resources_binding_digests["auxiliaryState"]',
-            '== confirmed_binding_digests["auxiliaryState"]',
+            'require_resources_confirmation_authority_transition(',
+            'confirmed_binding_digests,\n            confirmed_revisions,\n            confirmed_draft_digest,\n            resources_before,',
+            'post_resources_prerequisite_binding_digests',
             'int(resources_receipt["workspaceRevision"])',
             'int(resources_receipt["savedRevision"])',
             'post_resources_prerequisite_authority.authority',
+            'resources_restarted != resources_same_process',
         ):
             self.assertIn(expression, text)
 

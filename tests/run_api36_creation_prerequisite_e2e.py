@@ -4208,6 +4208,73 @@ def assert_persisted_prerequisite_authority(
         raise RuntimeError("Persisted prerequisite saved revision changed across re-entry")
 
 
+def require_resources_confirmation_authority_transition(
+    confirmed_prerequisite_binding_digests: dict[str, str],
+    confirmed_prerequisite_revisions: dict[str, int],
+    confirmed_prerequisite_draft_digest: str,
+    resources_before: dict[str, object],
+    resources_after: dict[str, object],
+) -> dict[str, str]:
+    """Bind one Resources mutation without conflating domain authorities.
+
+    Prerequisite and Resources authority digests are independently typed Core
+    authorities.  They are intentionally not comparable to each other.  The
+    workspace revisions plus content and auxiliary-state digests are the
+    cross-domain binding: Resources must start from the exact confirmed
+    content/saved revisions and prerequisite state, preserve raw character XML
+    and the prerequisite draft, advance auxiliary state, and preserve its own
+    Resources authority.  Re-entering Prerequisite must then expose the new
+    workspace binding while preserving the confirmed Prerequisite authority.
+    """
+    before_raw = str(resources_before.get("rawCharacterXmlDigest", ""))
+    before_auxiliary = str(resources_before.get("auxiliaryStateDigest", ""))
+    before_resources_authority = str(resources_before.get("authorityDigest", ""))
+    before_content_revision = int(resources_before.get("contentRevision", -1))
+    before_saved_revision = int(resources_before.get("savedRevision", -1))
+    before_prerequisite_draft = str(
+        resources_before.get("prerequisiteDraftDigest", "")
+    )
+    after_raw = str(resources_after.get("rawCharacterXmlDigest", ""))
+    after_auxiliary = str(resources_after.get("auxiliaryStateDigest", ""))
+    after_resources_authority = str(resources_after.get("authorityDigest", ""))
+    after_prerequisite_draft = str(
+        resources_after.get("prerequisiteDraftDigest", "")
+    )
+
+    if (
+        before_content_revision
+        != confirmed_prerequisite_revisions["contentRevision"]
+        or before_saved_revision
+        != confirmed_prerequisite_revisions["savedRevision"]
+        or before_raw != confirmed_prerequisite_binding_digests["rawCharacterXml"]
+        or before_auxiliary
+        != confirmed_prerequisite_binding_digests["auxiliaryState"]
+        or before_prerequisite_draft != confirmed_prerequisite_draft_digest
+    ):
+        raise RuntimeError(
+            "Resources did not start from the confirmed prerequisite workspace binding: "
+            f"prerequisite={confirmed_prerequisite_binding_digests!r}, "
+            f"resourcesBefore={resources_before!r}"
+        )
+    if (
+        after_raw != before_raw
+        or after_resources_authority != before_resources_authority
+        or after_prerequisite_draft != before_prerequisite_draft
+        or after_auxiliary == before_auxiliary
+    ):
+        raise RuntimeError(
+            "Resources confirmation changed raw XML, Resources authority, or prerequisite "
+            "draft, or failed to advance auxiliary state: "
+            f"before={resources_before!r}, after={resources_after!r}"
+        )
+
+    return {
+        "rawCharacterXml": after_raw,
+        "auxiliaryState": after_auxiliary,
+        "authority": confirmed_prerequisite_binding_digests["authority"],
+    }
+
+
 def read_source_authority_digests(device: shared.Device) -> list[str]:
     """Read source authority by stable IDs; localized labels are not authority."""
     digests: set[str] = set()
@@ -10277,27 +10344,19 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     resources_binding = resources_same_process.get("binding")
     if not isinstance(resources_binding, dict):
         raise RuntimeError("Reopened Resources binding receipt is absent")
-    post_resources_binding_digests = {
-        "rawCharacterXml": str(resources_binding.get("rawCharacterXmlDigest", "")),
-        "auxiliaryState": str(resources_binding.get("auxiliaryStateDigest", "")),
-        "authority": str(resources_binding.get("authorityDigest", "")),
-    }
-    if (
-        post_resources_binding_digests["rawCharacterXml"]
-        != confirmed_binding_digests["rawCharacterXml"]
-        or post_resources_binding_digests["authority"]
-        != confirmed_binding_digests["authority"]
-        or post_resources_binding_digests["auxiliaryState"]
-        == confirmed_binding_digests["auxiliaryState"]
-    ):
-        raise RuntimeError(
-            "Resources confirmation changed raw/rules authority or failed to advance auxiliary state: "
-            f"prerequisite={confirmed_binding_digests!r}, resources={resources_binding!r}"
+    post_resources_prerequisite_binding_digests = (
+        require_resources_confirmation_authority_transition(
+            confirmed_binding_digests,
+            confirmed_revisions,
+            confirmed_draft_digest,
+            resources_before,
+            resources_binding,
         )
+    )
     assert_persisted_prerequisite_authority(
         post_resources_prerequisite_authority.authority,
         confirmed_draft_digest,
-        post_resources_binding_digests,
+        post_resources_prerequisite_binding_digests,
         int(resources_receipt["workspaceRevision"]),
         int(resources_receipt["savedRevision"]),
     )
@@ -10349,7 +10408,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     assert_persisted_prerequisite_authority(
         restarted_authority.authority,
         confirmed_draft_digest,
-        post_resources_binding_digests,
+        post_resources_prerequisite_binding_digests,
         int(resources_receipt["workspaceRevision"]),
         int(resources_receipt["savedRevision"]),
     )
@@ -10433,6 +10492,11 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         scan_observer=progress.record_scan,
         scan_id="creation-resources-process-restart-persisted-authority",
     )
+    if resources_restarted != resources_same_process:
+        raise RuntimeError(
+            "Resources authority changed across the exact process restart: "
+            f"sameProcess={resources_same_process!r}, restarted={resources_restarted!r}"
+        )
     device.capture(
         "creation-prerequisite-process-restart",
         deadline=process_restart_resources_deadline,

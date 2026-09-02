@@ -12495,6 +12495,130 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 "Revision 7 · saved 7 · snapshot unavailable · authority unavailable"
             )
 
+    def test_resources_transition_preserves_each_typed_authority_domain(self) -> None:
+        prerequisite = {
+            "rawCharacterXml": "sha256:" + "a" * 64,
+            "auxiliaryState": "b" * 64,
+            "authority": "sha256:" + "c" * 64,
+        }
+        prerequisite_revisions = {"contentRevision": 2, "savedRevision": 2}
+        resources_before = {
+            "contentRevision": prerequisite_revisions["contentRevision"],
+            "savedRevision": prerequisite_revisions["savedRevision"],
+            "rawCharacterXmlDigest": prerequisite["rawCharacterXml"],
+            "auxiliaryStateDigest": prerequisite["auxiliaryState"],
+            "authorityDigest": "sha256:" + "d" * 64,
+            "prerequisiteDraftDigest": "sha256:" + "f" * 64,
+        }
+        resources_after = {
+            **resources_before,
+            "auxiliaryStateDigest": "e" * 64,
+        }
+
+        expected_prerequisite_binding = (
+            driver.require_resources_confirmation_authority_transition(
+                prerequisite,
+                prerequisite_revisions,
+                resources_before["prerequisiteDraftDigest"],
+                resources_before,
+                resources_after,
+            )
+        )
+
+        self.assertEqual(
+            {
+                "rawCharacterXml": prerequisite["rawCharacterXml"],
+                "auxiliaryState": "e" * 64,
+                "authority": prerequisite["authority"],
+            },
+            expected_prerequisite_binding,
+        )
+        self.assertNotEqual(
+            prerequisite["authority"],
+            resources_before["authorityDigest"],
+            "Prerequisite and Resources authority digests are domain-specific",
+        )
+
+    def test_resources_transition_rejects_cross_domain_workspace_drift(self) -> None:
+        prerequisite = {
+            "rawCharacterXml": "sha256:" + "a" * 64,
+            "auxiliaryState": "b" * 64,
+            "authority": "sha256:" + "c" * 64,
+        }
+        prerequisite_revisions = {"contentRevision": 2, "savedRevision": 2}
+        resources_before = {
+            "contentRevision": prerequisite_revisions["contentRevision"],
+            "savedRevision": prerequisite_revisions["savedRevision"],
+            "rawCharacterXmlDigest": prerequisite["rawCharacterXml"],
+            "auxiliaryStateDigest": prerequisite["auxiliaryState"],
+            "authorityDigest": "sha256:" + "d" * 64,
+            "prerequisiteDraftDigest": "sha256:" + "f" * 64,
+        }
+        valid_after = {
+            **resources_before,
+            "auxiliaryStateDigest": "e" * 64,
+        }
+
+        invalid_cases = (
+            (
+                {**resources_before, "contentRevision": 3},
+                valid_after,
+                "did not start",
+            ),
+            (
+                {**resources_before, "savedRevision": 3},
+                valid_after,
+                "did not start",
+            ),
+            (
+                {**resources_before, "rawCharacterXmlDigest": "sha256:" + "f" * 64},
+                valid_after,
+                "did not start",
+            ),
+            (
+                {**resources_before, "auxiliaryStateDigest": "0" * 64},
+                valid_after,
+                "did not start",
+            ),
+            (
+                {**resources_before, "prerequisiteDraftDigest": "sha256:" + "0" * 64},
+                valid_after,
+                "did not start",
+            ),
+            (
+                resources_before,
+                {**valid_after, "rawCharacterXmlDigest": "sha256:" + "f" * 64},
+                "changed raw XML, Resources authority",
+            ),
+            (
+                resources_before,
+                {**valid_after, "authorityDigest": "sha256:" + "f" * 64},
+                "changed raw XML, Resources authority",
+            ),
+            (
+                resources_before,
+                {**valid_after, "prerequisiteDraftDigest": "sha256:" + "0" * 64},
+                "prerequisite draft",
+            ),
+            (
+                resources_before,
+                {**valid_after, "auxiliaryStateDigest": prerequisite["auxiliaryState"]},
+                "failed to advance auxiliary state",
+            ),
+        )
+        for before, after, message in invalid_cases:
+            with self.subTest(message=message), self.assertRaisesRegex(
+                RuntimeError,
+                message,
+            ):
+                driver.require_resources_confirmation_authority_transition(
+                    prerequisite,
+                    prerequisite_revisions,
+                    resources_before["prerequisiteDraftDigest"],
+                    before,
+                    after,
+                )
+
     def test_physical_blocked_tap_rechecks_same_row_before_scrolled_dashboard_marker(self) -> None:
         blocked = driver.shared.UiNode(
             {
