@@ -1800,6 +1800,9 @@ class AndroidContractTests(unittest.TestCase):
             "CHUMMER_RECOVERY_STORE_PASSWORD",
         )
         build = (REPO / "scripts" / "build-release.sh").read_text(encoding="utf-8")
+        deexport_boundary = build.index("for release_secret_variable in")
+        self.assertLess(deexport_boundary, build.index('repo_dir="$(cd'))
+        self.assertIn('export -n "$release_secret_variable"', build[:build.index('repo_dir="$(cd')])
         suite_boundary = build.index('env "${release_test_environment[@]}"')
         for variable in signing_variables:
             self.assertIn(f"-u {variable}", build[:suite_boundary])
@@ -1811,7 +1814,14 @@ class AndroidContractTests(unittest.TestCase):
             "require_secret_variable ChummerAndroidSigningKeyAlias",
         ):
             self.assertGreater(build.index(first_secret_use), suite_boundary)
+        pre_publish_verify = build.index('|| fail "locked-restore-consumption-pre-publish"')
+        pre_publish_verify_start = build.rfind(
+            'env "${release_test_environment[@]}"', 0, pre_publish_verify
+        )
+        signing_intake = build.index("require_private_regular_file AndroidSigningKeyStore")
+        self.assertGreater(pre_publish_verify_start, signing_intake)
         publish_boundary = build.index('"$dotnet_command" publish')
+        self.assertLess(pre_publish_verify_start, publish_boundary)
         post_publish_boundary = build.index('source_aab="$(python3')
         for secret_cleanup in (
             "unset ChummerAndroidSigningStorePass",

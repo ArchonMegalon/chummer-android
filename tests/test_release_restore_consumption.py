@@ -270,7 +270,7 @@ class ReleaseRestoreConsumptionTests(unittest.TestCase):
                 assets = json.loads(assets_path.read_text())
                 libraries = assets["libraries"]
                 if mutation == "extra-project":
-                    libraries["Chummer.Unexpected/1.0.0"] = {
+                    libraries["Vendor.Unexpected/1.0.0"] = {
                         "type": "project",
                         "path": "../unexpected.csproj",
                         "msbuildProject": "../unexpected.csproj",

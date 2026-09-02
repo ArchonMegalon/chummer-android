@@ -266,13 +266,13 @@ def _closure(
         if not isinstance(identity, str) or "/" not in identity or not isinstance(row, dict):
             continue
         package_id, version = identity.rsplit("/", 1)
-        if not package_id.startswith("Chummer."):
-            continue
         library_type = row.get("type")
-        if library_type == "package":
-            selected[package_id] = (version, row)
-        elif library_type == "project":
+        if library_type == "project":
             source_projects[package_id] = (version, row)
+        elif not package_id.startswith("Chummer."):
+            continue
+        elif library_type == "package":
+            selected[package_id] = (version, row)
         else:
             raise ValueError(f"project.assets.json Chummer library type is invalid: {package_id}")
     expected_by_id = {row["packageId"]: row for row in expected}

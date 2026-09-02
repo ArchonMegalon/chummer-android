@@ -2,6 +2,35 @@
 set -euo pipefail
 umask 077
 
+# Imported release secrets remain available to this shell for the later signing
+# phase, but no child process inherits them before that explicit boundary.
+release_test_environment=(
+  -u AndroidSigningKeyStore
+  -u ChummerAndroidSigningStorePass
+  -u ChummerAndroidSigningKeyPass
+  -u ChummerAndroidSigningKeyAlias
+  -u CHUMMER_ANDROID_UPLOAD_CERTIFICATE_PATH
+  -u CHUMMER_ANDROID_PREFLIGHT_STORE_PASSWORD
+  -u CHUMMER_ANDROID_SIGNING_DIR
+  -u CHUMMER_PROVISION_STORE_PASSWORD
+  -u CHUMMER_RECOVERY_STORE_PASSWORD
+)
+for release_secret_variable in \
+  AndroidSigningKeyStore \
+  ChummerAndroidSigningStorePass \
+  ChummerAndroidSigningKeyPass \
+  ChummerAndroidSigningKeyAlias \
+  CHUMMER_ANDROID_UPLOAD_CERTIFICATE_PATH \
+  CHUMMER_ANDROID_PREFLIGHT_STORE_PASSWORD \
+  CHUMMER_ANDROID_SIGNING_DIR \
+  CHUMMER_PROVISION_STORE_PASSWORD \
+  CHUMMER_RECOVERY_STORE_PASSWORD; do
+  if [[ -v "$release_secret_variable" ]]; then
+    export -n "$release_secret_variable"
+  fi
+done
+unset release_secret_variable
+
 repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 project_path="$repo_dir/src/Chummer.Android/Chummer.Android.csproj"
 dotnet_command="${CHUMMER_DOTNET:-dotnet}"
@@ -160,20 +189,8 @@ python3 "$repo_dir/scripts/preflight_native_android_toolchain.py" \
   --android-sdk "$AndroidSdkDirectory" \
   --java-sdk "$JavaSdkDirectory"
 
-# The complete test process tree must never inherit signing material. Keep
-# this boundary before any signing-variable dereference/export and scrub both
-# the release inputs and adjacent provisioning/recovery secrets by name.
-release_test_environment=(
-  -u AndroidSigningKeyStore
-  -u ChummerAndroidSigningStorePass
-  -u ChummerAndroidSigningKeyPass
-  -u ChummerAndroidSigningKeyAlias
-  -u CHUMMER_ANDROID_UPLOAD_CERTIFICATE_PATH
-  -u CHUMMER_ANDROID_PREFLIGHT_STORE_PASSWORD
-  -u CHUMMER_ANDROID_SIGNING_DIR
-  -u CHUMMER_PROVISION_STORE_PASSWORD
-  -u CHUMMER_RECOVERY_STORE_PASSWORD
-)
+# The complete test process tree receives a second, defensive environment
+# scrub even though the imported variables are already non-exported.
 env "${release_test_environment[@]}" \
   python3 -m unittest discover -s "$repo_dir/tests" -v
 
@@ -331,7 +348,8 @@ keystore_certificate_sha256="$(openssl x509 -in "$release_tmp/keystore-certifica
 [[ "$keystore_certificate_sha256" == "$expected_upload_certificate_sha256" ]] \
   || fail "signing-keystore-certificate-mismatch"
 
-python3 "$repo_dir/scripts/seal_release_restore_consumption.py" verify \
+env "${release_test_environment[@]}" \
+  python3 "$repo_dir/scripts/seal_release_restore_consumption.py" verify \
   --input-root "$release_tmp" \
   --workspace-root "$workspace_root" \
   --authority "$CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY" \
