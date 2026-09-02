@@ -66,14 +66,36 @@ CHUMMER_BUNDLETOOL_JAR=/secure/tools/bundletool-all-1.18.3.jar \
   scripts/build-release.sh
 ```
 
+Before the signed build, prepare the package authority and `--no-restore` assets
+from the retained UI package-plane receipt and its exact private package cache.
+The input directory must be a new empty owner-only directory outside the
+repository. The preparer derives `chummer.android.release-package-authority/v2`
+from the authenticated locks, receipts, package bytes, and package nuspecs; it
+does not accept handwritten package pins. It then performs a locked restore into
+an isolated NuGet package root and emits an owner-only environment handoff:
+
+```sh
+install -d -m 0700 /absolute/private/chummer-preview10-release-inputs
+CHUMMER_ANDROID_RELEASE_INPUT_DIR=/absolute/private/chummer-preview10-release-inputs \
+CHUMMER_CURRENT_UI_PACKAGE_AUTHORITY_RECEIPT=/absolute/private/UI_CURRENT_MAIN_PACKAGE_PLANE.generated.json \
+CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED=/absolute/private/ui-package-cache/packages \
+  scripts/prepare-release-inputs.sh
+. /absolute/private/chummer-preview10-release-inputs/release-inputs.env
+```
+
+The preparer does not sign, publish, upload, or authorize publication. The
+release build re-derives and verifies the package authority before and after the
+signed AAB build.
+
 Run `scripts/build-release.sh` only from a complete coherent workspace whose
 `chummer-android` sibling is accompanied by exact clean Presentation, Core, UI
 Kit, Hub, Hub Registry, Media Factory, and Design checkouts. Set
 `CHUMMER_COMPLETE_ROOT` to that workspace and supply all eight exact
 `CHUMMER_*_REVISION` variables required by `verify_release_source_graph.py`.
-The packager requires already-materialized arm64 assets and explicit canonical
-`AndroidSdkDirectory` and `JavaSdkDirectory` paths; it never restores or installs
-tooling. It also requires the pinned bundletool JAR and all five signing/certificate
+The packager requires the assets and isolated `NUGET_PACKAGES` produced by the
+preparer plus explicit canonical `AndroidSdkDirectory` and `JavaSdkDirectory`
+paths; it never restores or installs tooling. It also requires the pinned
+bundletool JAR and all five signing/certificate
 environment values. Passwords remain in the environment and are never printed or
 interpolated into process arguments.
 

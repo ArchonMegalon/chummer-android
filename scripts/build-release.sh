@@ -69,6 +69,17 @@ require_exact_directory() {
   export "${variable_name?}"
 }
 
+require_private_directory() {
+  local variable_name="$1"
+  local value permissions
+  require_exact_directory "$variable_name"
+  value="${!variable_name}"
+  permissions="$(stat -c '%a' -- "$value")"
+  (( (8#$permissions & 077) == 0 )) || fail "input-$variable_name-not-owner-only"
+  [[ "$(stat -c '%u' -- "$value")" == "$(id -u)" ]] \
+    || fail "input-$variable_name-not-owner-owned"
+}
+
 seal_file_no_clobber() {
   local source_path="$1"
   local destination_path="$2"
@@ -103,7 +114,10 @@ workspace_root="$(realpath -e -- "$workspace_root")"
 
 require_exact_directory AndroidSdkDirectory
 require_exact_directory JavaSdkDirectory
+require_exact_directory CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED
+require_private_directory NUGET_PACKAGES
 require_private_regular_file CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY
+require_private_regular_file CHUMMER_CURRENT_UI_PACKAGE_AUTHORITY_RECEIPT
 [[ -f "$AndroidSdkDirectory/platforms/android-36/android.jar" ]] \
   || fail "android-api36-platform-missing"
 [[ -x "$AndroidSdkDirectory/build-tools/36.0.0/aapt2" ]] \
@@ -116,6 +130,17 @@ export CHUMMER_JARSIGNER="$JavaSdkDirectory/bin/jarsigner"
 export CHUMMER_KEYTOOL="$JavaSdkDirectory/bin/keytool"
 export DOTNET_CLI_USE_MSBUILD_SERVER=0
 export MSBUILDDISABLENODEREUSE=1
+authority_root="$(dirname -- "$CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED")"
+[[ ! -L "$authority_root" && -d "$authority_root" \
+  && "$(realpath -e -- "$authority_root")" == "$authority_root" ]] \
+  || fail "release-authority-root-invalid"
+python3 "$repo_dir/scripts/materialize_release_package_authority.py" \
+  --android-root "$repo_dir" \
+  --workspace-root "$workspace_root" \
+  --presentation-root "$workspace_root/chummer-presentation" \
+  --receipt "$CHUMMER_CURRENT_UI_PACKAGE_AUTHORITY_RECEIPT" \
+  --package-feed "$CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED" \
+  --verify-existing "$CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY"
 python3 "$repo_dir/scripts/preflight_native_android_toolchain.py" \
   --repo-root "$repo_dir" \
   --dotnet "$dotnet_command" \
@@ -168,10 +193,26 @@ chmod 0700 "$release_tmp"
 staged_graph="$release_tmp/source-graph.json"
 staged_publish_dir="$release_tmp/publish"
 mkdir -m 0700 -- "$staged_publish_dir"
+core_version="$(jq -er \
+  '.packagePins | map(.version) | unique | if length == 1 then .[0] else error("Core versions disagree") end' \
+  "$CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY")"
+campaign_version="$(jq -er \
+  '.ownerPackagePins[] | select(.package_id == "Chummer.Campaign.Contracts") | .version' \
+  "$CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY")"
+run_version="$(jq -er \
+  '.ownerPackagePins[] | select(.package_id == "Chummer.Run.Contracts") | .version' \
+  "$CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY")"
+registry_version="$(jq -er \
+  '.ownerPackagePins[] | select(.package_id == "Chummer.Hub.Registry.Contracts") | .version' \
+  "$CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY")"
+ui_kit_version="$(jq -er \
+  '.ownerPackagePins[] | select(.package_id == "Chummer.Ui.Kit") | .version' \
+  "$CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY")"
 python3 "$repo_dir/scripts/verify_release_source_graph.py" \
   --android-root "$repo_dir" \
   --workspace-root "$workspace_root" \
   --package-authority "$CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY" \
+  --authority-root "$authority_root" \
   --output "$staged_graph"
 python3 "$repo_dir/scripts/verify_release_publish_output.py" \
   --publish-dir "$staged_publish_dir" \
@@ -179,9 +220,13 @@ python3 "$repo_dir/scripts/verify_release_publish_output.py" \
   --require-empty
 
 [[ -f "$assets_path" && ! -L "$assets_path" ]] || fail "no-restore-assets-missing"
+jq -e --arg package_root "$NUGET_PACKAGES/" \
+  '.packageFolders | keys == [$package_root]' "$assets_path" >/dev/null \
+  || fail "no-restore-assets-package-root-drift"
 python3 "$repo_dir/scripts/verify_native_compile_graph.py" \
   --repo-root "$repo_dir" \
   --project "$project_path" \
+  --workspace-root "$workspace_root" \
   --assets-only
 
 export CHUMMER_ANDROID_PREFLIGHT_STORE_PASSWORD="$ChummerAndroidSigningStorePass"
@@ -215,7 +260,19 @@ python3 -m unittest discover -s "$repo_dir/tests" -v
   -p:BuildInParallel=false \
   -p:ChummerAndroidRuntimeIdentifier="$runtime_id" \
   -p:ChummerDesktopRuntimeIdentifiers= \
-  -p:ChummerUseLocalCompatibilityTree=true \
+  -p:ChummerPresentationRoot="$workspace_root/chummer-presentation" \
+  -p:ChummerCoreEngineRoot="$workspace_root/chummer-core-engine" \
+  -p:ChummerUseLocalCompatibilityTree=false \
+  -p:ChummerUseLockedOwnerContractPackages=true \
+  -p:RestoreLockedMode=true \
+  -p:RestorePackagesWithLockFile=true \
+  -p:NuGetAudit=false \
+  -p:ChummerContractsPackageVersion="$core_version" \
+  -p:ChummerCoreRuntimePackageVersion="$core_version" \
+  -p:ChummerCampaignContractsPackageVersion="$campaign_version" \
+  -p:ChummerRunContractsPackageVersion="$run_version" \
+  -p:ChummerHubRegistryContractsPackageVersion="$registry_version" \
+  -p:ChummerUiKitPackageVersion="$ui_kit_version" \
   -p:AndroidSdkDirectory="$AndroidSdkDirectory" \
   -p:JavaSdkDirectory="$JavaSdkDirectory" \
   -p:PublishDir="$staged_publish_dir/" \
@@ -231,7 +288,15 @@ python3 "$repo_dir/scripts/verify_release_source_graph.py" \
   --android-root "$repo_dir" \
   --workspace-root "$workspace_root" \
   --package-authority "$CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY" \
+  --authority-root "$authority_root" \
   --verify-existing "$staged_graph"
+python3 "$repo_dir/scripts/materialize_release_package_authority.py" \
+  --android-root "$repo_dir" \
+  --workspace-root "$workspace_root" \
+  --presentation-root "$workspace_root/chummer-presentation" \
+  --receipt "$CHUMMER_CURRENT_UI_PACKAGE_AUTHORITY_RECEIPT" \
+  --package-feed "$CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED" \
+  --verify-existing "$CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY"
 
 source_sha256="$(sha256sum "$source_aab" | cut -d' ' -f1)"
 graph_sha256="$(sha256sum "$staged_graph" | cut -d' ' -f1)"

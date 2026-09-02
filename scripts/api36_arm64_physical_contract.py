@@ -289,8 +289,6 @@ OWNER_PACKAGE_SPECS = (
     ("Chummer.Campaign.Contracts", "chummer6-hub"),
     ("Chummer.Play.Contracts", "chummer6-hub"),
     ("Chummer.Run.Contracts", "chummer6-hub"),
-    ("Chummer.Run.Hub.Contracts", "chummer6-hub"),
-    ("Chummer.Run.Hub", "chummer6-hub"),
     ("Chummer.Hub.Registry.Contracts", "chummer6-hub-registry"),
     ("Chummer.Ui.Kit", "chummer6-ui-kit"),
 )
@@ -1204,9 +1202,9 @@ def validate_source_graph(bound: BoundBytes) -> dict[str, object]:
     owner_pins = graph.get("ownerPackagePins")
     if (
         not isinstance(package_pins, list) or len(package_pins) != 6
-        or not isinstance(owner_pins, list) or len(owner_pins) != 7
+        or not isinstance(owner_pins, list) or len(owner_pins) != len(OWNER_PACKAGE_SPECS)
     ):
-        raise ValueError("source graph must bind six Core and seven owner package pins")
+        raise ValueError("source graph must bind six Core and five owner package pins")
     core_commit = repository_map["chummer6-core"]["commit"]
     for expected_id, row in zip(CORE_PACKAGE_IDS, package_pins, strict=True):
         row = require_exact_keys(
@@ -1227,15 +1225,14 @@ def validate_source_graph(bound: BoundBytes) -> dict[str, object]:
     }
     for (expected_id, expected_owner), row in zip(OWNER_PACKAGE_SPECS, owner_pins, strict=True):
         row = require_exact_keys(row, owner_fields, f"owner package pin {expected_id}")
-        owner_repository = repository_map[expected_owner]
         if (
             row.get("package_id") != expected_id
             or row.get("owner_repository") != expected_owner
-            or row.get("source_commit") != owner_repository["commit"]
-            or row.get("source_tree") != owner_repository["tree"]
             or row.get("dependency_mode") != "locked_package"
         ):
             raise ValueError("source graph owner package authority/order is not exact")
+        require_hex(row.get("source_commit"), f"owner package {expected_id} source commit", length=40)
+        require_hex(row.get("source_tree"), f"owner package {expected_id} source tree", length=40)
         require_string(row.get("version"), f"owner package {expected_id} version")
         require_integer(row.get("size_bytes"), f"owner package {expected_id} size", minimum=1)
         for field in (
