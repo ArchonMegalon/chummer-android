@@ -261,6 +261,8 @@ class ReleaseRestoreConsumptionTests(unittest.TestCase):
         for mutation, message in (
             ("extra-project", "source project references are not exact"),
             ("missing-project", "source project references are not exact"),
+            ("duplicate-project-version", "duplicates source project identity"),
+            ("duplicate-package-version", "duplicates Chummer package identity"),
             ("bad-project-type", "Chummer library type is invalid"),
         ):
             with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as temporary:
@@ -277,6 +279,17 @@ class ReleaseRestoreConsumptionTests(unittest.TestCase):
                     }
                 elif mutation == "missing-project":
                     del libraries["Chummer.Presentation/1.0.0"]
+                elif mutation == "duplicate-project-version":
+                    duplicate = dict(libraries["Chummer.Presentation/1.0.0"])
+                    libraries["Chummer.Presentation/9.9.9"] = duplicate
+                elif mutation == "duplicate-package-version":
+                    duplicate = dict(libraries["Chummer.Application/1.2.3"])
+                    duplicate["path"] = "chummer.application/9.9.9"
+                    libraries = {
+                        "Chummer.Application/9.9.9": duplicate,
+                        **libraries,
+                    }
+                    assets["libraries"] = libraries
                 else:
                     libraries["Chummer.Presentation/1.0.0"]["type"] = "unknown"
                 private_file(assets_path, json.dumps(assets).encode())

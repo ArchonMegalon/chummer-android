@@ -268,10 +268,18 @@ def _closure(
         package_id, version = identity.rsplit("/", 1)
         library_type = row.get("type")
         if library_type == "project":
+            if package_id in source_projects:
+                raise ValueError(
+                    f"project.assets.json duplicates source project identity: {package_id}"
+                )
             source_projects[package_id] = (version, row)
         elif not package_id.startswith("Chummer."):
             continue
         elif library_type == "package":
+            if package_id in selected:
+                raise ValueError(
+                    f"project.assets.json duplicates Chummer package identity: {package_id}"
+                )
             selected[package_id] = (version, row)
         else:
             raise ValueError(f"project.assets.json Chummer library type is invalid: {package_id}")
