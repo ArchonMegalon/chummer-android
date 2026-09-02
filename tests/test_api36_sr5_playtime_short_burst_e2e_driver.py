@@ -1,0 +1,202 @@
+from __future__ import annotations
+
+import argparse
+import ast
+import copy
+import importlib.util
+from pathlib import Path
+import sys
+import tempfile
+import unittest
+from unittest import mock
+import xml.etree.ElementTree as ET
+
+
+ROOT = Path(__file__).resolve().parents[1]
+DRIVER = ROOT / "tests/run_api36_sr5_playtime_short_burst_e2e.py"
+FIXTURE = ROOT / "tests/fixtures/sr5-playtime-weapon-physical-e2e.chum5"
+sys.path.insert(0, str(DRIVER.parent))
+MODULE_SPEC = importlib.util.spec_from_file_location("playtime_short_burst_driver", DRIVER)
+assert MODULE_SPEC is not None and MODULE_SPEC.loader is not None
+driver = importlib.util.module_from_spec(MODULE_SPEC)
+sys.modules[MODULE_SPEC.name] = driver
+MODULE_SPEC.loader.exec_module(driver)
+
+
+class Api36Sr5PlaytimeShortBurstDriverTests(unittest.TestCase):
+    def test_hosted_wrapper_is_exactly_one_nonpublication_phone_action(self) -> None:
+        source = DRIVER.read_text(encoding="utf-8")
+        ast.parse(source)
+        self.assertEqual("playtime-short-burst", driver.SPEC.journey)
+        self.assertEqual("chummer.android.editing-e2e/v1", driver.SPEC.receipt_schema)
+        self.assertEqual("playtime", driver.SPEC.lane)
+        self.assertEqual(1, driver.SPEC.lane_value)
+        self.assertEqual(2, driver.SPEC.action_kind)
+        self.assertEqual("playtime.weapon.fire", driver.SPEC.expected_action_id)
+        self.assertEqual(1, driver.SPEC.successor_action_count)
+        self.assertIn("Full Editing", driver.SPEC.excluded_scope)
+        self.assertIn("tablet", driver.SPEC.excluded_scope)
+        self.assertIn('api != "36"', source)
+        self.assertIn('abi != "x86_64"', source)
+        self.assertNotIn('"profile": "tablet"', source)
+        self.assertNotIn('"publicationAuthorized": True', source)
+
+    def test_wrapper_reuses_exact_typed_review_apply_receipt_and_xml_authority(self) -> None:
+        root = ET.parse(FIXTURE).getroot()
+        preserved = driver.playtime.assert_before_state(root)
+        saved = copy.deepcopy(root)
+        saved_clip = driver.playtime.weapon.active_clip(saved).find("count")
+        saved_ammo = driver.playtime.weapon.linked_ammo(saved).find("qty")
+        assert saved_clip is not None and saved_ammo is not None
+        saved_clip.text = "8"
+        saved_ammo.text = "8"
+        result = driver.playtime.assert_after_state(saved, preserved)
+        self.assertEqual("ShortBurst", result["fireMode"])
+        self.assertEqual(3, result["roundsConsumed"])
+        self.assertEqual(8, result["ammoRemaining"])
+        hostile = copy.deepcopy(saved)
+        hostile.find("karma").text = "18"  # type: ignore[union-attr]
+        with self.assertRaisesRegex(RuntimeError, "outside the exact"):
+            driver.playtime.assert_after_state(hostile, preserved)
+
+    def test_source_graph_binds_existing_app_presentation_core_and_shared_proof(self) -> None:
+        paths = driver.source_paths(Path("/workspace"))
+        self.assertEqual(
+            Path(driver.lane.__file__).resolve(),
+            paths["typedLaneAuthorityHelperSha256"],
+        )
+        self.assertEqual(
+            Path(driver.playtime.__file__).resolve(),
+            paths["playtimeShortBurstAuthorityHelperSha256"],
+        )
+        self.assertEqual(
+            ROOT / "src/Chummer.Android/Native/Sr5TableWizardPage.cs",
+            paths["tableWizardPageSha256"],
+        )
+        self.assertEqual(
+            Path(
+                "/workspace/chummer-presentation/Chummer.Presentation/Overview/"
+                "Sr5TableWizardSession.cs"
+            ),
+            paths["tableWizardSessionSha256"],
+        )
+        self.assertEqual(
+            Path(
+                "/workspace/chummer-core-engine/Chummer.Contracts/Characters/"
+                "CharacterWeaponFireRules.cs"
+            ),
+            paths["careerWeaponRulesSha256"],
+        )
+
+    def _args(self, root: Path, *, serial: str = "emulator-5554") -> argparse.Namespace:
+        apk = root / "candidate.apk"
+        apk.write_bytes(b"apk")
+        evidence = root / "evidence"
+        return argparse.Namespace(
+            adb=root / "adb",
+            apk=apk,
+            serial=serial,
+            evidence=evidence,
+            receipt=root / "receipt.json",
+            workspace_root=root,
+            career_runner=FIXTURE,
+        )
+
+    def test_execute_delegates_one_exact_hosted_journey_and_emits_fail_closed_scope(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            authority = root / "source"
+            authority.write_text("authority", encoding="utf-8")
+            device = mock.Mock(spec=driver.shared.Device)
+            device.shell.side_effect = ["36", "x86_64"]
+            device.push_verified.return_value = driver.shared.sha256(FIXTURE)
+            proof = {
+                "scope": {
+                    "representativeAction": driver.SPEC.representative_action,
+                    "excluded": list(driver.SPEC.excluded_scope),
+                    "claim": "one representative typed action only",
+                }
+            }
+            args = self._args(root)
+            with (
+                mock.patch.object(driver, "source_paths", return_value={"sourceSha256": authority}),
+                mock.patch.object(driver.shared, "Device", return_value=device),
+                mock.patch.object(driver.subprocess, "run") as install,
+                mock.patch.object(driver.lane, "prove_lane", return_value=proof) as prove,
+            ):
+                receipt = driver.execute(args)
+
+            install.assert_called_once()
+            prove.assert_called_once_with(
+                device,
+                driver.SPEC,
+                FIXTURE,
+                driver.shared.sha256(FIXTURE),
+                assert_before=driver.playtime.assert_before_state,
+                assert_after=driver.playtime.assert_after_state,
+            )
+            self.assertEqual("pass", receipt["status"])
+            self.assertEqual("phone", receipt["profile"])
+            self.assertEqual("playtime-short-burst", receipt["journey"])
+            self.assertEqual(36, receipt["apiLevel"])
+            self.assertEqual("x86_64", receipt["abi"])
+            self.assertFalse(receipt["publicationAuthorized"])
+            self.assertEqual({driver.CONTROL: "pass"}, receipt["controls"])
+            self.assertEqual(set(driver.PROOF_STAGES), set(receipt["journeys"]))
+            self.assertEqual(
+                ["Full Editing", "tablet readiness", "publication authority"],
+                receipt["doesNotAssert"],
+            )
+
+    def test_hosted_device_contract_rejects_wrong_api_abi_and_unsafe_serial(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            authority = root / "source"
+            authority.write_text("authority", encoding="utf-8")
+            cases = (
+                ("unsafe serial!", [], "safe ASCII"),
+                ("emulator-5554", ["35"], "requires API 36"),
+                ("emulator-5554", ["36", "arm64-v8a"], "hosted x86_64"),
+            )
+            for serial, observations, message in cases:
+                with self.subTest(serial=serial, observations=observations):
+                    device = mock.Mock(spec=driver.shared.Device)
+                    device.shell.side_effect = observations
+                    with (
+                        mock.patch.object(
+                            driver,
+                            "source_paths",
+                            return_value={"sourceSha256": authority},
+                        ),
+                        mock.patch.object(driver.shared, "Device", return_value=device),
+                        mock.patch.object(driver.subprocess, "run") as install,
+                        self.assertRaisesRegex(RuntimeError, message),
+                    ):
+                        driver.execute(self._args(root, serial=serial))
+                    install.assert_not_called()
+
+    def test_source_graph_change_after_proof_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            authority = root / "source"
+            authority.write_text("before", encoding="utf-8")
+            device = mock.Mock(spec=driver.shared.Device)
+            device.shell.side_effect = ["36", "x86_64"]
+            device.push_verified.return_value = driver.shared.sha256(FIXTURE)
+
+            def mutate_authority(*_args: object, **_kwargs: object) -> dict[str, object]:
+                authority.write_text("after", encoding="utf-8")
+                return {"scope": {}}
+
+            with (
+                mock.patch.object(driver, "source_paths", return_value={"sourceSha256": authority}),
+                mock.patch.object(driver.shared, "Device", return_value=device),
+                mock.patch.object(driver.subprocess, "run"),
+                mock.patch.object(driver.lane, "prove_lane", side_effect=mutate_authority),
+                self.assertRaisesRegex(RuntimeError, "source authority changed"),
+            ):
+                driver.execute(self._args(root))
+
+
+if __name__ == "__main__":
+    unittest.main()
