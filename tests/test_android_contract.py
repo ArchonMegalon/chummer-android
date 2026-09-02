@@ -252,6 +252,63 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn('"Unlink this device?"', privacy)
         self.assertIn('"Account & privacy"', more + privacy)
 
+    def test_account_unlink_failure_retains_retryable_grant_authority(self) -> None:
+        service = (PROJECT / "Platform" / "AndroidAccountLinkService.cs").read_text(encoding="utf-8")
+        unlink = service[
+            service.index("public async Task UnlinkAsync"):
+            service.index("public async Task OpenAccountAsync")
+        ]
+        response_failure = unlink[
+            unlink.index("if (!response.IsSuccessStatusCode"):
+            unlink.index("ClearAllCredentials();")
+        ]
+        transport_failure = unlink[
+            unlink.index("catch (HttpRequestException)"):
+            unlink.index("finally")
+        ]
+
+        self.assertIn(
+            "DateTimeOffset? grantExpiresAtUtc = _snapshot.GrantExpiresAtUtc;",
+            unlink,
+        )
+        self.assertIn("grantExpiresAtUtc ??= await ReadGrantExpiryAsync();", unlink)
+        self.assertEqual(
+            2,
+            unlink.count("AndroidAccountLinkStatus.Linked"),
+            "HTTP response and transport failures must both remain linked",
+        )
+        self.assertEqual(
+            4,
+            unlink.count("grantExpiresAtUtc"),
+            "both failure snapshots must preserve the grant expiry",
+        )
+        self.assertNotIn("AndroidAccountLinkStatus.Error", unlink)
+        self.assertIn("return;", response_failure)
+        self.assertNotIn("ClearAllCredentials();", response_failure + transport_failure)
+
+    def test_account_unlink_success_alone_clears_linked_collections(self) -> None:
+        service = (PROJECT / "Platform" / "AndroidAccountLinkService.cs").read_text(encoding="utf-8")
+        unlink = service[
+            service.index("public async Task UnlinkAsync"):
+            service.index("public async Task OpenAccountAsync")
+        ]
+        coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+        coordinator_unlink = coordinator[
+            coordinator.index("public async Task UnlinkAccountAsync"):
+            coordinator.index("public Task OpenAccountAsync")
+        ]
+
+        credentials_clear = unlink.index("ClearAllCredentials();")
+        confirmed_unlinked = unlink.index("AndroidAccountLinkStatus.Unlinked")
+        self.assertLess(credentials_clear, confirmed_unlinked)
+        self.assertIn(
+            "if (_account.Snapshot.Status == AndroidAccountLinkStatus.Unlinked)",
+            coordinator_unlink,
+        )
+        clear_guard = coordinator_unlink.index("AndroidAccountLinkStatus.Unlinked")
+        for collection in ("_onlineCharacters = [];", "_groups = [];", "_chronicles = [];"):
+            self.assertGreater(coordinator_unlink.index(collection), clear_guard)
+
     def test_account_deletion_is_native_confirmed_and_server_first(self) -> None:
         service = (PROJECT / "Platform" / "AndroidAccountLinkService.cs").read_text(encoding="utf-8")
         contract = (PROJECT / "Platform" / "IAndroidAccountLinkService.cs").read_text(encoding="utf-8")

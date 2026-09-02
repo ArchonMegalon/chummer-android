@@ -339,8 +339,10 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
     public async Task UnlinkAsync(CancellationToken cancellationToken = default)
     {
         await _gate.WaitAsync(cancellationToken);
+        DateTimeOffset? grantExpiresAtUtc = _snapshot.GrantExpiresAtUtc;
         try
         {
+            grantExpiresAtUtc ??= await ReadGrantExpiryAsync();
             string? installationId = await SecureStorage.Default.GetAsync(InstallationIdKey);
             string? accessToken = await SecureStorage.Default.GetAsync(AccessTokenKey);
             if (!string.IsNullOrWhiteSpace(installationId) && !string.IsNullOrWhiteSpace(accessToken))
@@ -352,7 +354,11 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
                     cancellationToken);
                 if (!response.IsSuccessStatusCode && response.StatusCode != HttpStatusCode.Unauthorized)
                 {
-                    SetSnapshot(new(AndroidAccountLinkStatus.Error, "Still linked", "Could not reach Chummer. Try unlinking again."));
+                    SetSnapshot(new(
+                        AndroidAccountLinkStatus.Linked,
+                        "Still linked",
+                        "Could not reach Chummer. Try unlinking again.",
+                        grantExpiresAtUtc));
                     return;
                 }
             }
@@ -362,7 +368,11 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         }
         catch (HttpRequestException)
         {
-            SetSnapshot(new(AndroidAccountLinkStatus.Error, "Still linked", "Connect to the internet and try again."));
+            SetSnapshot(new(
+                AndroidAccountLinkStatus.Linked,
+                "Still linked",
+                "Connect to the internet and try again.",
+                grantExpiresAtUtc));
         }
         finally
         {

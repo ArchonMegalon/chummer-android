@@ -5732,9 +5732,12 @@ public sealed class RunnerSessionCoordinator : IDisposable
     public async Task UnlinkAccountAsync(CancellationToken cancellationToken = default)
     {
         await _account.UnlinkAsync(cancellationToken);
-        _onlineCharacters = [];
-        _groups = [];
-        _chronicles = [];
+        if (_account.Snapshot.Status == AndroidAccountLinkStatus.Unlinked)
+        {
+            _onlineCharacters = [];
+            _groups = [];
+            _chronicles = [];
+        }
         NotifyChanged();
     }
 
