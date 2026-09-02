@@ -114,7 +114,7 @@ CREATION_PHASE_BUDGETS_MS = {
     "resources-preview-confirm": 240_000,
     "resources-same-process-reopen": 120_000,
     "resources-prerequisite-rebind": 180_000,
-    "process-restart-reopen": 120_000,
+    "process-restart-reopen": 180_000,
     "process-restart-authority-options": 120_000,
     "process-restart-restored-talent-grant": 90_000,
     "process-restart-resources": 120_000,

@@ -243,7 +243,14 @@ PHASE_BUDGET_MS = {
     "resources-preview-confirm": 240_000,
     "resources-same-process-reopen": 120_000,
     "resources-prerequisite-rebind": 180_000,
-    "process-restart-reopen": 120_000,
+    # Exact run 33654065073 proved the new process, exact PID transition, and
+    # exact resumed MainActivity, then spent 30.556 seconds on the fresh
+    # dashboard scan before UIAutomator returned four transient empty roots.
+    # The immediately following fail-closed capture recovered a valid 53-node
+    # Chummer hierarchy.  Give only this cold-process restoration one extra
+    # empty-root observation and the bounded reserve needed to reconcile it;
+    # the independent 45-minute whole-journey cap remains unchanged.
+    "process-restart-reopen": 180_000,
     "process-restart-authority-options": 120_000,
     "process-restart-restored-talent-grant": 90_000,
     "process-restart-resources": 120_000,
@@ -289,6 +296,25 @@ CONFIRM_DOWNSTREAM_RESERVE_SECONDS = (
 )
 DASHBOARD_SCAN_GESTURE_RATIO = 0.60
 DASHBOARD_SCAN_MAX_SCROLLS = 18
+PROCESS_RESTART_METHOD_MAX_EMPTY_HIERARCHY_READS = 4
+CREATION_METHOD_REACQUISITION_PHASE_AUTHORITY = {
+    "advanced-editor-gate-inventory": (
+        PHASE_BUDGET_MS["advanced-editor-gate-inventory"],
+        3,
+    ),
+    "same-process-reopen": (
+        PHASE_BUDGET_MS["same-process-reopen"],
+        3,
+    ),
+    "resources-prerequisite-rebind": (
+        PHASE_BUDGET_MS["resources-prerequisite-rebind"],
+        3,
+    ),
+    "process-restart-reopen": (
+        PHASE_BUDGET_MS["process-restart-reopen"],
+        PROCESS_RESTART_METHOD_MAX_EMPTY_HIERARCHY_READS,
+    ),
+}
 CREATION_METHOD_REACQUISITION_SCAN_ID = (
     "creation-stage-method-ready-reacquisition"
 )
@@ -1920,6 +1946,17 @@ def require_creation_method_reacquisition_receipt(
     require_deadline: bool = False,
 ) -> None:
     """Validate one resolved, bounded dashboard-method restoration receipt."""
+    effective_phase_id = expected_phase_id or "advanced-editor-gate-inventory"
+    if (
+        type(effective_phase_id) is not str
+        or effective_phase_id
+        not in CREATION_METHOD_REACQUISITION_PHASE_AUTHORITY
+    ):
+        raise ValueError("Creation method receipt phase authority is invalid")
+    (
+        expected_phase_budget_ms,
+        expected_max_empty_hierarchy_reads,
+    ) = CREATION_METHOD_REACQUISITION_PHASE_AUTHORITY[effective_phase_id]
     required_literals: dict[str, object] = {
         "scanId": CREATION_METHOD_REACQUISITION_SCAN_ID,
         "status": "resolved",
@@ -1927,9 +1964,9 @@ def require_creation_method_reacquisition_receipt(
         "distanceRatio": DASHBOARD_SCAN_GESTURE_RATIO,
         "configuredMaxScrolls": DASHBOARD_SCAN_MAX_SCROLLS,
         "stableRepeats": 2,
-        "maximumEmptyHierarchyReads": 3,
+        "maximumEmptyHierarchyReads": expected_max_empty_hierarchy_reads,
         "maximumSystemUiDismissals": 3,
-        "phaseBudgetMs": PHASE_BUDGET_MS["advanced-editor-gate-inventory"],
+        "phaseBudgetMs": expected_phase_budget_ms,
     }
     if expected_phase_id is not None:
         required_literals["phaseId"] = expected_phase_id
@@ -1990,7 +2027,7 @@ def require_creation_method_reacquisition_receipt(
     relationships_hold = (
         1 <= value["screens"]
         and 0 <= value["swipes"] <= DASHBOARD_SCAN_MAX_SCROLLS
-        and value["emptyHierarchyReads"] <= 3
+        and value["emptyHierarchyReads"] <= expected_max_empty_hierarchy_reads
         and value["systemUiDismissals"] <= 3
         and value["hierarchyReadCount"]
         == value["screens"] + value["emptyHierarchyReads"]
@@ -2007,7 +2044,7 @@ def require_creation_method_reacquisition_receipt(
             <= value["elapsedMs"] + read_rounding_ms + 1
         )
         and value["elapsedMs"]
-        <= PHASE_BUDGET_MS["advanced-editor-gate-inventory"]
+        <= expected_phase_budget_ms
         and (
             phase_elapsed_ms is None
             or (
@@ -3369,8 +3406,8 @@ def reacquire_exact_ready_creation_method(
     max_swipes: int,
     scan_observer: Callable[[dict[str, object]], None] | None = None,
     stable_repeats: int = 2,
-    max_empty_hierarchy_reads: int = 3,
     max_system_ui_dismissals: int = 3,
+    phase_id: str = "advanced-editor-gate-inventory",
     deadline: float | None = None,
 ) -> tuple[shared.UiNode, str, int]:
     """Observe back to the exact method without assuming swipe-count symmetry.
@@ -3386,15 +3423,18 @@ def reacquire_exact_ready_creation_method(
         or max_swipes > DASHBOARD_SCAN_MAX_SCROLLS
         or type(stable_repeats) is not int
         or stable_repeats < 1
-        or type(max_empty_hierarchy_reads) is not int
-        or max_empty_hierarchy_reads < 0
         or type(max_system_ui_dismissals) is not int
         or max_system_ui_dismissals < 0
+        or type(phase_id) is not str
+        or phase_id not in CREATION_METHOD_REACQUISITION_PHASE_AUTHORITY
     ):
         raise ValueError(
             "Creation method restoration requires exact gesture, stable-start, "
             "empty-hierarchy, and system-UI bounds"
         )
+    phase_budget_ms, max_empty_hierarchy_reads = (
+        CREATION_METHOD_REACQUISITION_PHASE_AUTHORITY[phase_id]
+    )
 
     started = time.monotonic()
     hierarchy_durations_ms: list[int] = []
@@ -3427,12 +3467,16 @@ def reacquire_exact_ready_creation_method(
             "systemUiDismissals": system_ui_dismissals,
             "maximumSystemUiDismissals": max_system_ui_dismissals,
             "deadlineEnforced": deadline is not None,
-            "phaseBudgetMs": PHASE_BUDGET_MS["advanced-editor-gate-inventory"],
+            "phaseId": phase_id,
+            "phaseBudgetMs": phase_budget_ms,
             **hierarchy_timing_fields(hierarchy_durations_ms),
             "elapsedMs": round((time.monotonic() - started) * 1000),
         }
         if status == "resolved":
-            require_creation_method_reacquisition_receipt(receipt)
+            require_creation_method_reacquisition_receipt(
+                receipt,
+                expected_phase_id=phase_id,
+            )
         if scan_observer is not None:
             scan_observer(receipt)
 
@@ -10225,6 +10269,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         device,
         expected_detail=post_confirm_dashboard.method_detail,
         max_swipes=DASHBOARD_SCAN_MAX_SCROLLS,
+        phase_id="same-process-reopen",
         deadline=same_process_deadline,
     )
     resumed_origin = open_prerequisite(
@@ -10371,6 +10416,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         device,
         expected_detail=post_confirm_dashboard.method_detail,
         max_swipes=DASHBOARD_SCAN_MAX_SCROLLS,
+        phase_id="resources-prerequisite-rebind",
         deadline=resources_rebind_deadline,
     )
     post_resources_origin = open_prerequisite(
@@ -10435,6 +10481,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         device,
         expected_detail=process_restart_dashboard.method_detail,
         max_swipes=DASHBOARD_SCAN_MAX_SCROLLS,
+        phase_id="process-restart-reopen",
         deadline=process_restart_deadline,
     )
     restarted_origin = open_prerequisite(

@@ -5919,6 +5919,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             restart_source,
         )
         self.assertIn("max_swipes=DASHBOARD_SCAN_MAX_SCROLLS", restart_source)
+        self.assertIn('phase_id="process-restart-reopen"', restart_source)
         self.assertIn(
             "ready_method_node=restarted_method_node",
             restart_source,
@@ -8812,6 +8813,18 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         device.hierarchy.assert_not_called()
         device.swipe_down.assert_not_called()
 
+        for kwargs in ({"phase_id": "unknown-phase"}, {"phase_id": []}):
+            with self.subTest(kwargs=kwargs), self.assertRaisesRegex(
+                ValueError,
+                "exact gesture",
+            ):
+                driver.reacquire_exact_ready_creation_method(
+                    device,
+                    expected_detail="Priority",
+                    max_swipes=driver.DASHBOARD_SCAN_MAX_SCROLLS,
+                    **kwargs,
+                )
+
     def test_dashboard_method_reacquisition_threads_one_active_deadline(
         self,
     ) -> None:
@@ -9075,6 +9088,77 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         )
         self.assertEqual("reverse-empty-hierarchy-exhausted", observations[0]["status"])
         self.assertEqual(0, observations[0]["swipes"])
+
+    def test_cold_restart_method_reacquisition_accepts_four_transient_empty_roots(
+        self,
+    ) -> None:
+        method = driver.shared.UiNode({
+            "resource-id": "creation-stage-method",
+            "content-desc": "Priority",
+            "enabled": "true",
+            "clickable": "true",
+            "bounds": "[53,350][1028,550]",
+        })
+        device = mock.Mock()
+        device.hierarchy.side_effect = [[], [], [], [], [method]]
+        device.node_has_tappable_bounds.return_value = True
+        observations: list[dict[str, object]] = []
+
+        with mock.patch.object(driver.time, "sleep"):
+            node, detail, swipes = driver.reacquire_exact_ready_creation_method(
+                device,
+                expected_detail="Priority",
+                max_swipes=driver.DASHBOARD_SCAN_MAX_SCROLLS,
+                phase_id="process-restart-reopen",
+                scan_observer=observations.append,
+            )
+
+        self.assertIs(method, node)
+        self.assertEqual("Priority", detail)
+        self.assertEqual(0, swipes)
+        self.assertEqual(5, device.hierarchy.call_count)
+        device.swipe_down.assert_not_called()
+        device.capture.assert_not_called()
+        self.assertEqual("resolved", observations[0]["status"])
+        self.assertEqual(4, observations[0]["emptyHierarchyReads"])
+        self.assertEqual(
+            driver.PROCESS_RESTART_METHOD_MAX_EMPTY_HIERARCHY_READS,
+            observations[0]["maximumEmptyHierarchyReads"],
+        )
+        self.assertEqual("process-restart-reopen", observations[0]["phaseId"])
+        self.assertEqual(
+            driver.PHASE_BUDGET_MS["process-restart-reopen"],
+            observations[0]["phaseBudgetMs"],
+        )
+
+    def test_non_restart_method_phases_reject_a_fourth_transient_empty_root(
+        self,
+    ) -> None:
+        for phase_id in (
+            "advanced-editor-gate-inventory",
+            "same-process-reopen",
+            "resources-prerequisite-rebind",
+        ):
+            with self.subTest(phase_id=phase_id):
+                device = mock.Mock()
+                device.hierarchy.return_value = []
+                observations: list[dict[str, object]] = []
+                with mock.patch.object(driver.time, "sleep"), self.assertRaisesRegex(
+                    RuntimeError,
+                    "transient empty-hierarchy budget of 3 reads",
+                ):
+                    driver.reacquire_exact_ready_creation_method(
+                        device,
+                        expected_detail="Priority",
+                        max_swipes=driver.DASHBOARD_SCAN_MAX_SCROLLS,
+                        phase_id=phase_id,
+                        scan_observer=observations.append,
+                    )
+                self.assertEqual(4, device.hierarchy.call_count)
+                self.assertEqual(
+                    "reverse-empty-hierarchy-exhausted",
+                    observations[0]["status"],
+                )
 
     def test_dashboard_method_reacquisition_bounds_system_ui_separately(
         self,
