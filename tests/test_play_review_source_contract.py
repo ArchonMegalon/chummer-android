@@ -1,12 +1,35 @@
 from pathlib import Path
 import unittest
+import xml.etree.ElementTree as ET
 
 
 REPO = Path(__file__).resolve().parents[1]
 PROJECT = REPO / "src" / "Chummer.Android"
+REVIEW_RESOURCES = PROJECT / "Resources" / "Localization"
 
 
 class PlayReviewSourceContractTests(unittest.TestCase):
+    def test_review_strings_have_exact_nonempty_de_en_es_parity(self) -> None:
+        catalogs = {}
+        for language, filename in (
+            ("en", "ReviewStrings.resx"),
+            ("de", "ReviewStrings.de.resx"),
+            ("es", "ReviewStrings.es.resx"),
+        ):
+            root = ET.parse(REVIEW_RESOURCES / filename).getroot()
+            catalogs[language] = {
+                entry.attrib["name"]: (entry.findtext("value") or "").strip()
+                for entry in root.findall("data")
+            }
+
+        expected_keys = set(catalogs["en"])
+        self.assertEqual({"SettingsSection", "RateOnGooglePlay", "RateOnGooglePlayDescription"}, expected_keys)
+        for language, catalog in catalogs.items():
+            with self.subTest(language=language):
+                self.assertEqual(expected_keys, set(catalog))
+                self.assertTrue(all(catalog.values()))
+        self.assertEqual("Valorar Chummer en Google Play", catalogs["es"]["RateOnGooglePlay"])
+
     def test_official_play_review_binding_and_unchanged_flow_are_used(self) -> None:
         project = (PROJECT / "Chummer.Android.csproj").read_text(encoding="utf-8")
         launcher = (
