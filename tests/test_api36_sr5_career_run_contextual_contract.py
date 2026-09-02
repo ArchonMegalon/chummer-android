@@ -39,8 +39,8 @@ class Sr5CareerRunContextualContractTests(unittest.TestCase):
                 },
                 {
                     "route": "sr5-career/playtime",
-                    "matrixJourney": None,
-                    "gateStatus": "not_required",
+                    "matrixJourney": "playtime-short-burst",
+                    "gateStatus": "required",
                     "executionStatus": "not_executed",
                 },
             ],
@@ -59,6 +59,10 @@ class Sr5CareerRunContextualContractTests(unittest.TestCase):
         self.assertNotIn("phone-table-before-run", runner)
         self.assertIn("before-run-edge", workflow)
         self.assertIn("before-run-edge", runner)
+        self.assertIn("playtime-short-burst", workflow)
+        self.assertIn("playtime-short-burst", runner)
+        self.assertIn("downtime-calendar", workflow)
+        self.assertIn("downtime-calendar", runner)
 
     def test_contextual_scope_is_explicit_and_generic_mutation_is_absent(self) -> None:
         catalog = (

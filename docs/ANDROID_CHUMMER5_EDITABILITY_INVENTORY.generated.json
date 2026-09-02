@@ -68,15 +68,17 @@
     "phoneBetaWizardGate": {
       "schema": "chummer.android.api36-sr5-wizard-gate-binding/v1",
       "contractPath": "eng/api36-sr5-wizard-gate-authority.json",
-      "contractSha256": "7e25c8b93d7377f10b0551fc4baadb91395636290c037264c0f6c4f6bbba7a83",
+      "contractSha256": "6a4e0e40a4e3388eb4b3e833ffbb2800ff74a3d47305925b267bf93c55808a50",
       "authorityClass": "internal_phone_beta_sr5_wizard_only",
       "proofScope": "sr5_wizards_only",
-      "requiredJourneyCount": 4,
+      "requiredJourneyCount": 6,
       "requiredJourneys": [
         "creation-prerequisite",
         "career-active-skill-advance",
         "career-weapon-fire",
-        "before-run-edge"
+        "before-run-edge",
+        "playtime-short-burst",
+        "downtime-calendar"
       ],
       "publicationAuthorized": false,
       "excludedFromGate": [
@@ -763,17 +765,17 @@
       {
         "path": ".github/workflows/api36-editing-e2e.yml",
         "exists": true,
-        "sha256": "58f486e7eb69d6a62a61a9c5407e426de35444831122f78e206cf9cb602dd88f"
+        "sha256": "64d4c83c78b056f8bcef76fd550d1c516ae5a99381bc1d535b9df5e888f8f4bd"
       },
       {
         "path": "eng/api36-sr5-wizard-gate-authority.json",
         "exists": true,
-        "sha256": "7e25c8b93d7377f10b0551fc4baadb91395636290c037264c0f6c4f6bbba7a83"
+        "sha256": "6a4e0e40a4e3388eb4b3e833ffbb2800ff74a3d47305925b267bf93c55808a50"
       },
       {
         "path": "scripts/api36_wizard_gate_contract.py",
         "exists": true,
-        "sha256": "5e1485ce2722eb91581059219363bd9c42c5cd0954aff91634cdc44f01965c2f"
+        "sha256": "eb4ed19ea1390a8fe52867bb8618b38106d4521ec44f2d5c779cbc5116c6f8b2"
       },
       {
         "path": "scripts/finalize-api36-e2e-journey-receipt.py",
@@ -783,7 +785,7 @@
       {
         "path": "scripts/run-api36-editing-e2e-ci.sh",
         "exists": true,
-        "sha256": "caecdc68ba7882bd6b68d1089efa6c937289cba3305ca26abca624b96ecd20b4"
+        "sha256": "eeadd9dc452a2d59e0596e0e5a4b4215cfe0512963fc3149115c0d219450815e"
       },
       {
         "path": "scripts/verify-api36-editing-e2e-aggregate.py",
@@ -803,12 +805,12 @@
       {
         "path": "tests/test_api36_e2e_workflow.py",
         "exists": true,
-        "sha256": "bf5cbbe7b26eefaa98f30399434c09d27b3c0b09b2f8e6e495a15470964f9ef2"
+        "sha256": "3608d2a62064cfc8a7875466871f64afbd743f33add10c5444b192da93647669"
       },
       {
         "path": "tests/test_api36_e2e_artifact_authority.py",
         "exists": true,
-        "sha256": "da9dbe86b040dd700cfd7ef23bcb26107056e389668a91c83bae1c92a2b70a22"
+        "sha256": "5a8bf299ce7fbb778546e1f88707148c15689939511bc58ef621d0059132bc25"
       },
       {
         "path": "tests/run_api36_sr5_before_run_edge_e2e.py",
@@ -821,14 +823,34 @@
         "sha256": "0f26ae6f567270947d67d721c946acbfeb6cda8c85f5a1fdd43f78312a373871"
       },
       {
+        "path": "tests/run_api36_sr5_playtime_short_burst_e2e.py",
+        "exists": true,
+        "sha256": "45fba480f4bc4c1cd2ab90356f9359239868a01921096bffa86b3437ed6a64ba"
+      },
+      {
+        "path": "tests/test_api36_sr5_playtime_short_burst_e2e_driver.py",
+        "exists": true,
+        "sha256": "68c347a8ed7fbf15dacbe93d1f5533222e8177db535407d3119e0b90603f6ca9"
+      },
+      {
+        "path": "tests/run_api36_sr5_downtime_calendar_hosted_e2e.py",
+        "exists": true,
+        "sha256": "ff1a1ae5b81b8941f8ac0b942455b1dc1bff3ab7f29623e7a439c53b73d3f9fb"
+      },
+      {
+        "path": "tests/test_api36_sr5_downtime_calendar_hosted_e2e_driver.py",
+        "exists": true,
+        "sha256": "7575ac9a371ed9ff212b8448080e0ee06c2a251165e797fe71b4f5f9ae0c7a7f"
+      },
+      {
         "path": "tests/test_api36_sr5_career_run_contextual_contract.py",
         "exists": true,
-        "sha256": "b13c4e598324ef810f6c5f3635c9f007b5676c04fe86fdf85fa1b6a0225f009e"
+        "sha256": "54747bb27d245ef93e3ffbe33d87365d9c1774d78bac484e71f6db750f1bc333"
       },
       {
         "path": "tests/test_chummer5_editability_inventory.py",
         "exists": true,
-        "sha256": "45837156c0cc0558a00ccf3932bacec4bed18f4dd9a250619fd7ab7e47765682"
+        "sha256": "7a553ebe3d2a6bb3a0ae8680e77bf2b03291472ef4870a9b6a613224a18f2b96"
       },
       {
         "path": "tests/test_sr5_contextual_wizard_scope.py",
@@ -2635,8 +2657,8 @@
         },
         {
           "route": "sr5-career/playtime",
-          "matrixJourney": null,
-          "gateStatus": "not_required",
+          "matrixJourney": "playtime-short-burst",
+          "gateStatus": "required",
           "executionStatus": "not_executed"
         }
       ],
@@ -2690,6 +2712,10 @@
         "tests/test_api36_e2e_artifact_authority.py",
         "tests/run_api36_sr5_before_run_edge_e2e.py",
         "tests/test_run_api36_sr5_before_run_edge_e2e_driver.py",
+        "tests/run_api36_sr5_playtime_short_burst_e2e.py",
+        "tests/test_api36_sr5_playtime_short_burst_e2e_driver.py",
+        "tests/run_api36_sr5_downtime_calendar_hosted_e2e.py",
+        "tests/test_api36_sr5_downtime_calendar_hosted_e2e_driver.py",
         "tests/test_api36_sr5_career_run_contextual_contract.py",
         "tests/test_chummer5_editability_inventory.py",
         "tests/test_sr5_contextual_wizard_scope.py"
@@ -2729,14 +2755,14 @@
       "matrixJourneys": [
         {
           "route": "sr5-career/downtime",
-          "matrixJourney": null,
-          "gateStatus": "not_required",
+          "matrixJourney": "downtime-calendar",
+          "gateStatus": "required",
           "executionStatus": "not_executed"
         },
         {
           "route": "sr5-career/playtime",
-          "matrixJourney": null,
-          "gateStatus": "not_required",
+          "matrixJourney": "playtime-short-burst",
+          "gateStatus": "required",
           "executionStatus": "not_executed"
         }
       ],
@@ -2746,7 +2772,7 @@
     },
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "055d6f09c9b524394b1bfb2b1c3b7cd221b761b2e876981ff2eaa885e9fc5886"
+      "sha256": "c604967d9797c9f938608de26f7fe7d8b905d4571327d684fddb03d48afe2aad"
     }
   },
   "coverageByFamily": {

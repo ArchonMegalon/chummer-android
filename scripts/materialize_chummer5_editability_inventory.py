@@ -119,6 +119,10 @@ SR5_TABLE_WIZARD_GATE_INPUTS = (
     "tests/test_api36_e2e_artifact_authority.py",
     "tests/run_api36_sr5_before_run_edge_e2e.py",
     "tests/test_run_api36_sr5_before_run_edge_e2e_driver.py",
+    "tests/run_api36_sr5_playtime_short_burst_e2e.py",
+    "tests/test_api36_sr5_playtime_short_burst_e2e_driver.py",
+    "tests/run_api36_sr5_downtime_calendar_hosted_e2e.py",
+    "tests/test_api36_sr5_downtime_calendar_hosted_e2e_driver.py",
     "tests/test_api36_sr5_career_run_contextual_contract.py",
     "tests/test_chummer5_editability_inventory.py",
     "tests/test_sr5_contextual_wizard_scope.py",
@@ -224,6 +228,24 @@ SR5_TABLE_WIZARD_AUTHORITY_MARKERS = {
         "test_hosted_identity_is_distinct_and_narrow",
         "test_device_authority_requires_api36_x86_64_emulator",
         "test_exact_fixture_and_unrelated_xml_are_bound",
+    ),
+    "tests/run_api36_sr5_playtime_short_burst_e2e.py": (
+        'JOURNEY = "playtime-short-burst"',
+        "lane.prove_lane(",
+        '"publicationAuthorized": False',
+    ),
+    "tests/test_api36_sr5_playtime_short_burst_e2e_driver.py": (
+        "test_hosted_wrapper_is_exactly_one_nonpublication_phone_action",
+        "test_hosted_device_contract_rejects_wrong_api_abi_and_unsafe_serial",
+    ),
+    "tests/run_api36_sr5_downtime_calendar_hosted_e2e.py": (
+        'JOURNEY = "sr5-downtime-calendar"',
+        "downtime.prove_downtime(",
+        '"executionStatus": "pass"',
+    ),
+    "tests/test_api36_sr5_downtime_calendar_hosted_e2e_driver.py": (
+        "test_hosted_driver_is_phone_api36_only_and_uses_typed_wizard",
+        "test_hosted_driver_requires_explicit_receipt_and_committed_fixture",
     ),
     "tests/test_api36_sr5_career_run_contextual_contract.py": (
         "test_before_run_driver_semantics_are_typed_but_not_release_claimed",
@@ -23637,8 +23659,8 @@ def _sr5_table_wizard_api36_recognition(
             },
             {
                 "route": "sr5-career/playtime",
-                "matrixJourney": None,
-                "gateStatus": "not_required",
+                "matrixJourney": "playtime-short-burst",
+                "gateStatus": "required",
                 "executionStatus": "not_executed",
             },
         ],
@@ -23687,14 +23709,14 @@ def _sr5_contextual_mutation_api36_recognition(
         "matrixJourneys": [
             {
                 "route": "sr5-career/downtime",
-                "matrixJourney": None,
-                "gateStatus": "not_required",
+                "matrixJourney": "downtime-calendar",
+                "gateStatus": "required",
                 "executionStatus": "not_executed",
             },
             {
                 "route": "sr5-career/playtime",
-                "matrixJourney": None,
-                "gateStatus": "not_required",
+                "matrixJourney": "playtime-short-burst",
+                "gateStatus": "required",
                 "executionStatus": "not_executed",
             },
         ],

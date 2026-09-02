@@ -297,8 +297,8 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
                 },
                 {
                     "route": "sr5-career/playtime",
-                    "matrixJourney": None,
-                    "gateStatus": "not_required",
+                    "matrixJourney": "playtime-short-burst",
+                    "gateStatus": "required",
                     "executionStatus": "not_executed",
                 },
             ],
@@ -335,8 +335,12 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
             [
                 {
                     "route": route,
-                    "matrixJourney": None,
-                    "gateStatus": "not_required",
+                    "matrixJourney": (
+                        "downtime-calendar"
+                        if route == "sr5-career/downtime"
+                        else "playtime-short-burst"
+                    ),
+                    "gateStatus": "required",
                     "executionStatus": "not_executed",
                 }
                 for route in ("sr5-career/downtime", "sr5-career/playtime")
@@ -475,6 +479,14 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
                 "before-run-edge",
                 "tests/run_api36_sr5_before_run_edge_e2e.py",
             ),
+            (
+                "playtime-short-burst",
+                "tests/run_api36_sr5_playtime_short_burst_e2e.py",
+            ),
+            (
+                "downtime-calendar",
+                "tests/run_api36_sr5_downtime_calendar_hosted_e2e.py",
+            ),
         )
         matrix_block = self.text[
             self.text.index("        journey:"):
@@ -514,6 +526,8 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
                 self.assertIn(f"          - {journey}", self.text)
         self.assertNotIn("          - full-editing", self.text)
         self.assertNotIn("  full-editing)", runner)
+        self.assertNotIn("          - after-run", self.text)
+        self.assertNotIn("  after-run)", runner)
         self.assertIn("CHUMMER_E2E_JOURNEY: ${{ matrix.journey }}", self.text)
         self.assertIn("fail-fast: false", self.text)
         self.assertIn(
@@ -533,7 +547,8 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
             self.text.count(
                 "if: ${{ matrix.journey == 'career-active-skill-advance' || "
                 "matrix.journey == 'career-weapon-fire' || "
-                "matrix.journey == 'before-run-edge' }}"
+                "matrix.journey == 'before-run-edge' || "
+                "matrix.journey == 'playtime-short-burst' }}"
             ),
         )
         self.assertIn("path: chummer-presentation", self.text)

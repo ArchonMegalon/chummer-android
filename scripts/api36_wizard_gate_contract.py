@@ -41,6 +41,16 @@ REQUIRED_JOURNEY_SPECS = (
         "driverJourney": "before-run-edge",
         "receiptSchema": "chummer.android.sr5-before-run-edge-e2e/v1",
     },
+    {
+        "matrixJourney": "playtime-short-burst",
+        "driverJourney": "playtime-short-burst",
+        "receiptSchema": "chummer.android.editing-e2e/v1",
+    },
+    {
+        "matrixJourney": "downtime-calendar",
+        "driverJourney": "sr5-downtime-calendar",
+        "receiptSchema": "chummer.android.editing-e2e/v1",
+    },
 )
 EXCLUDED_FROM_GATE = (
     {

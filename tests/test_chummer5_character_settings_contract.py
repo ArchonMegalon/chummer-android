@@ -42,6 +42,8 @@ class Chummer5CharacterSettingsContractTests(unittest.TestCase):
             "career-active-skill-advance",
             "career-weapon-fire",
             "before-run-edge",
+            "playtime-short-burst",
+            "downtime-calendar",
         ]
         self.assertEqual(len(expected_gate_journeys), gate["requiredJourneyCount"])
         self.assertEqual(

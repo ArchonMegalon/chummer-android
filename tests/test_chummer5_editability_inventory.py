@@ -6591,6 +6591,8 @@ public sealed class Demo
             "career-active-skill-advance",
             "career-weapon-fire",
             "before-run-edge",
+            "playtime-short-burst",
+            "downtime-calendar",
         ]
         self.assertEqual(len(expected_gate_journeys), gate["requiredJourneyCount"])
         self.assertEqual(
@@ -6631,8 +6633,8 @@ public sealed class Demo
                 },
                 {
                     "route": "sr5-career/playtime",
-                    "matrixJourney": None,
-                    "gateStatus": "not_required",
+                    "matrixJourney": "playtime-short-burst",
+                    "gateStatus": "required",
                     "executionStatus": "not_executed",
                 },
             ],
@@ -6676,8 +6678,12 @@ public sealed class Demo
             [
                 {
                     "route": route,
-                    "matrixJourney": None,
-                    "gateStatus": "not_required",
+                    "matrixJourney": (
+                        "downtime-calendar"
+                        if route == "sr5-career/downtime"
+                        else "playtime-short-burst"
+                    ),
+                    "gateStatus": "required",
                     "executionStatus": "not_executed",
                 }
                 for route in ("sr5-career/downtime", "sr5-career/playtime")

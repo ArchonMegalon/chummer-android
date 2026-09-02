@@ -342,6 +342,8 @@ jobs:
           - career-active-skill-advance
           - career-weapon-fire
           - before-run-edge
+          - playtime-short-burst
+          - downtime-calendar
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     env:
@@ -361,7 +363,7 @@ jobs:
           fetch-depth: 1
 
       - name: Check out the typed-mutation presentation evidence graph
-        if: ${{ matrix.journey == 'career-active-skill-advance' || matrix.journey == 'career-weapon-fire' || matrix.journey == 'before-run-edge' }}
+        if: ${{ matrix.journey == 'career-active-skill-advance' || matrix.journey == 'career-weapon-fire' || matrix.journey == 'before-run-edge' || matrix.journey == 'playtime-short-burst' }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: ArchonMegalon/chummer6-ui
@@ -371,7 +373,7 @@ jobs:
           fetch-depth: 1
 
       - name: Check out the typed-mutation Core evidence graph
-        if: ${{ matrix.journey == 'career-active-skill-advance' || matrix.journey == 'career-weapon-fire' || matrix.journey == 'before-run-edge' }}
+        if: ${{ matrix.journey == 'career-active-skill-advance' || matrix.journey == 'career-weapon-fire' || matrix.journey == 'before-run-edge' || matrix.journey == 'playtime-short-burst' }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: ArchonMegalon/chummer6-core

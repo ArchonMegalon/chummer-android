@@ -42,6 +42,8 @@ JOURNEYS = {
     "career-active-skill-advance": "career-active-skill-advance",
     "career-weapon-fire": "career-weapon-fire",
     "before-run-edge": "before-run-edge",
+    "playtime-short-burst": "playtime-short-burst",
+    "downtime-calendar": "sr5-downtime-calendar",
 }
 CREATION_PROSPECTIVE_PHASE_ELAPSED_MS = {
     # Exact prefix timings from hosted run 33309423140, followed by phase
@@ -288,6 +290,8 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             "career-active-skill-advance": "chummer.android.editing-e2e/v1",
             "career-weapon-fire": "chummer.android.editing-e2e/v1",
             "before-run-edge": "chummer.android.sr5-before-run-edge-e2e/v1",
+            "playtime-short-burst": "chummer.android.editing-e2e/v1",
+            "downtime-calendar": "chummer.android.editing-e2e/v1",
         }
         receipt: dict[str, object] = {
             "schema": receipt_schemas[journey],
@@ -403,9 +407,32 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             }
         else:
             receipt["journey"] = driver_journey
-        if journey == "before-run-edge":
+        if journey in {
+            "before-run-edge",
+            "playtime-short-burst",
+            "downtime-calendar",
+        }:
             receipt["publicationAuthorized"] = False
         return receipt
+
+    def test_contextual_journeys_are_gate_driven_in_finalizer_and_aggregate(self) -> None:
+        expected = {
+            "playtime-short-burst": (
+                "playtime-short-burst",
+                "chummer.android.editing-e2e/v1",
+            ),
+            "downtime-calendar": (
+                "sr5-downtime-calendar",
+                "chummer.android.editing-e2e/v1",
+            ),
+        }
+        for matrix_journey, (driver_journey, schema) in expected.items():
+            with self.subTest(matrix_journey=matrix_journey):
+                self.assertEqual(
+                    (driver_journey, schema),
+                    FINALIZE.JOURNEYS[matrix_journey],
+                )
+                self.assertEqual(driver_journey, AGGREGATE.JOURNEYS[matrix_journey])
 
     def materialize_journey(
         self,
@@ -489,6 +516,24 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                 **self.authority(),
             )
 
+    def test_finalizer_rejects_after_run_until_unique_driver_is_registered(self) -> None:
+        self.assertNotIn("after-run", GATE.journey_map())
+        receipt = {
+            "schema": "chummer.android.editing-e2e/v1",
+            "status": "pass",
+            "profile": "phone",
+            "apkSha256": APK_SHA256,
+            "journey": "after-run",
+            "publicationAuthorized": False,
+        }
+        with self.assertRaisesRegex(ValueError, "unsupported matrix journey"):
+            FINALIZE.bind_receipt(
+                receipt,
+                matrix_journey="after-run",
+                driver_journey="after-run",
+                **self.authority(),
+            )
+
     def test_finalizer_rejects_mismatched_apk_sha_and_attempt_name(self) -> None:
         receipt = self.raw_receipt("career-active-skill-advance")
         receipt["apkSha256"] = "c" * 64
@@ -507,16 +552,22 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                 **self.authority(artifact_name="stale-snapshot"),
             )
 
-    def test_before_run_cannot_authorize_publication(self) -> None:
-        receipt = self.raw_receipt("before-run-edge")
-        receipt["publicationAuthorized"] = True
-        with self.assertRaisesRegex(ValueError, "cannot authorize publication"):
-            FINALIZE.bind_receipt(
-                receipt,
-                matrix_journey="before-run-edge",
-                driver_journey="before-run-edge",
-                **self.authority(),
-            )
+    def test_contextual_journeys_cannot_authorize_publication(self) -> None:
+        for matrix_journey in (
+            "before-run-edge",
+            "playtime-short-burst",
+            "downtime-calendar",
+        ):
+            with self.subTest(matrix_journey=matrix_journey):
+                receipt = self.raw_receipt(matrix_journey)
+                receipt["publicationAuthorized"] = True
+                with self.assertRaisesRegex(ValueError, "cannot authorize publication"):
+                    FINALIZE.bind_receipt(
+                        receipt,
+                        matrix_journey=matrix_journey,
+                        driver_journey=JOURNEYS[matrix_journey],
+                        **self.authority(),
+                    )
 
     def test_rerun_failed_keeps_one_stable_receipt_per_journey(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -616,20 +667,25 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "cardinality/name mismatch"):
                 self.validate(root)
 
-    def test_aggregate_rejects_publication_claim_in_before_run_receipt(self) -> None:
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            self.materialize_all(root)
-            directory = root / AGGREGATE.expected_artifact_directory(
-                "before-run-edge", RUN_ID
-            )
-            receipt_path = directory / "receipt.json"
-            receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
-            receipt["publicationAuthorized"] = True
-            receipt_path.write_text(json.dumps(receipt) + "\n", encoding="utf-8")
-            self.reseal(directory)
-            with self.assertRaisesRegex(ValueError, "cannot authorize publication"):
-                self.validate(root)
+    def test_aggregate_rejects_publication_claim_in_contextual_receipts(self) -> None:
+        for matrix_journey in (
+            "before-run-edge",
+            "playtime-short-burst",
+            "downtime-calendar",
+        ):
+            with self.subTest(matrix_journey=matrix_journey), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                self.materialize_all(root)
+                directory = root / AGGREGATE.expected_artifact_directory(
+                    matrix_journey, RUN_ID
+                )
+                receipt_path = directory / "receipt.json"
+                receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+                receipt["publicationAuthorized"] = True
+                receipt_path.write_text(json.dumps(receipt) + "\n", encoding="utf-8")
+                self.reseal(directory)
+                with self.assertRaisesRegex(ValueError, "cannot authorize publication"):
+                    self.validate(root)
 
     def test_duplicate_json_keys_and_failed_matrix_fail_closed(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

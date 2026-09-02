@@ -5,15 +5,17 @@
   "phoneBetaWizardGate": {
     "schema": "chummer.android.api36-sr5-wizard-gate-binding/v1",
     "contractPath": "eng/api36-sr5-wizard-gate-authority.json",
-    "contractSha256": "7e25c8b93d7377f10b0551fc4baadb91395636290c037264c0f6c4f6bbba7a83",
+    "contractSha256": "6a4e0e40a4e3388eb4b3e833ffbb2800ff74a3d47305925b267bf93c55808a50",
     "authorityClass": "internal_phone_beta_sr5_wizard_only",
     "proofScope": "sr5_wizards_only",
-    "requiredJourneyCount": 4,
+    "requiredJourneyCount": 6,
     "requiredJourneys": [
       "creation-prerequisite",
       "career-active-skill-advance",
       "career-weapon-fire",
-      "before-run-edge"
+      "before-run-edge",
+      "playtime-short-burst",
+      "downtime-calendar"
     ],
     "publicationAuthorized": false,
     "settingsContractRequiredJourney": false,
@@ -42,11 +44,11 @@
     },
     {
       "path": "docs/ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json",
-      "sha256": "5e867b8d63f57984eb4502b1a3ad1180d1910ac8523169e1bcbd65b9304ac4b3"
+      "sha256": "053bd7b5537894967b9afca4fbf6e18c9ebbec0c293223a6b547a42d26344cf7"
     },
     {
       "path": "eng/api36-sr5-wizard-gate-authority.json",
-      "sha256": "7e25c8b93d7377f10b0551fc4baadb91395636290c037264c0f6c4f6bbba7a83"
+      "sha256": "6a4e0e40a4e3388eb4b3e833ffbb2800ff74a3d47305925b267bf93c55808a50"
     }
   ],
   "controls": [
