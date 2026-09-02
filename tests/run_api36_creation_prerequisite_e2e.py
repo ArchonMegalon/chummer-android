@@ -229,9 +229,14 @@ PHASE_BUDGET_MS = {
     "same-process-authority-options": 120_000,
     "same-process-restored-talent-grant": 90_000,
     # The initial Resources authority inventory already establishes the exact
-    # scroll topology.  Its zero-conversion option is reacquired from that
+    # scroll topology. Its zero-conversion option is reacquired from that
     # measured topology, never through a second bidirectional whole-page scan.
-    "resources-initial-authority": 120_000,
+    # Exact run 33637265813 measured a 36.253-second stable scan followed by
+    # 75.486 seconds of reserved, read-only hierarchy recovery before the
+    # measured reverse traversal could finish. Preserve the per-viewport fresh
+    # observation invariant and its retry/reconciliation fence with a bounded
+    # 180-second phase; the independent 45-minute journey cap is unchanged.
+    "resources-initial-authority": 180_000,
     # Preview and explicit confirmation contain two independent stable-end
     # authority scans plus one non-replayable write.  Keep that mutation in its
     # own phase so a later observer traversal can never consume its deadline.

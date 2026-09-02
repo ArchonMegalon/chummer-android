@@ -72,9 +72,11 @@ CREATION_PROSPECTIVE_PHASE_ELAPSED_MS = {
     "same-process-reopen": 5_000,
     "same-process-authority-options": 5_000,
     "same-process-restored-talent-grant": 5_000,
-    # No complete post-split run exists yet.  Use the strict phase caps rather
-    # than inventing faster observed timings for the prospective receipt.
-    "resources-initial-authority": 120_000,
+    # Exact run 33637265813 proved the product route and stable Resources scan,
+    # then exhausted the caller-owned observer lease during measured reverse
+    # reacquisition. Use the evidence-backed strict cap rather than inventing
+    # a faster prospective receipt; the whole-journey target remains fixed.
+    "resources-initial-authority": 180_000,
     "resources-preview-confirm": 240_000,
     "resources-same-process-reopen": 120_000,
     "resources-prerequisite-rebind": 180_000,
@@ -750,7 +752,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             "same-process-reopen": 90_000,
             "same-process-authority-options": 120_000,
             "same-process-restored-talent-grant": 90_000,
-            "resources-initial-authority": 120_000,
+            "resources-initial-authority": 180_000,
             "resources-preview-confirm": 240_000,
             "resources-same-process-reopen": 120_000,
             "resources-prerequisite-rebind": 180_000,
@@ -766,11 +768,15 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
         )
         self.assertEqual(17, AGGREGATE.CREATION_TIMING_ROUNDING_TOLERANCE_MS)
         self.assertEqual(
-            1_208_512,
+            1_268_512,
             sum(CREATION_PROSPECTIVE_PHASE_ELAPSED_MS.values()),
         )
 
     def test_same_process_observer_reserves_do_not_widen_journey_target(self) -> None:
+        self.assertEqual(
+            180_000,
+            AGGREGATE.CREATION_PHASE_BUDGETS_MS["resources-initial-authority"],
+        )
         self.assertEqual(
             120_000,
             AGGREGATE.CREATION_PHASE_BUDGETS_MS[

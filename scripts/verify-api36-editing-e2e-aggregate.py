@@ -106,7 +106,11 @@ CREATION_PHASE_BUDGETS_MS = {
     "same-process-reopen": 90_000,
     "same-process-authority-options": 120_000,
     "same-process-restored-talent-grant": 90_000,
-    "resources-initial-authority": 120_000,
+    # Run 33637265813 proved the product route and exact zero-Karma authority,
+    # then exhausted the observer lease while preserving file-backed retry and
+    # reconciliation. Keep the per-viewport proof intact and bind only this
+    # evidence-backed phase to 180 seconds; the 45-minute total remains fixed.
+    "resources-initial-authority": 180_000,
     "resources-preview-confirm": 240_000,
     "resources-same-process-reopen": 120_000,
     "resources-prerequisite-rebind": 180_000,

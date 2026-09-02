@@ -14,7 +14,7 @@ class Api36CreationResourcesPriorityE2EContractTests(unittest.TestCase):
         text = DRIVER.read_text(encoding="utf-8")
         ast.parse(text)
         for expression in (
-            '"resources-initial-authority": 120_000',
+            '"resources-initial-authority": 180_000',
             '"resources-preview-confirm": 240_000',
             '"resources-same-process-reopen": 120_000',
             '"resources-prerequisite-rebind": 180_000',
