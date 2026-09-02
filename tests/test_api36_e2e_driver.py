@@ -774,6 +774,38 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         device.hierarchy.assert_called_once_with(deadline=11.0)
         device.dismiss_system_ui_anr.assert_not_called()
 
+    def test_phone_runner_root_preserves_outer_deadline_for_local_timeout_diagnostics(
+        self,
+    ) -> None:
+        device = Mock(spec=DRIVER.Device)
+        device.hierarchy.return_value = []
+        device.dismiss_system_ui_anr.return_value = False
+
+        with (
+            patch.object(DRIVER.time, "monotonic", side_effect=[0.0, 0.0, 1.0]),
+            patch.object(
+                DRIVER,
+                "_direct_hierarchy_observation_timeout",
+                side_effect=DRIVER.AdbOperationDeadlineExceeded(
+                    "direct observer exhausted its nested route lease"
+                ),
+            ),
+            self.assertRaisesRegex(RuntimeError, "Timed out proving the exact"),
+        ):
+            DRIVER.return_to_phone_runner_root(
+                device,
+                created=False,
+                timeout=1,
+                deadline=10.0,
+            )
+
+        device.hierarchy.assert_called_once_with(deadline=1.0)
+        device.capture.assert_called_once_with(
+            "phone-runner-root-unavailable",
+            deadline=10.0,
+        )
+        device.shell.assert_not_called()
+
     def test_phone_runner_root_does_not_accept_toolbar_without_exact_route(self) -> None:
         device = Mock(spec=DRIVER.Device)
         device.hierarchy.return_value = [self.phone_runner_toolbar()]

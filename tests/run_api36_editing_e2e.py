@@ -4940,14 +4940,17 @@ def return_to_phone_runner_root(
         else:
             device.capture(name, deadline=operation_deadline)
 
-    def wait_before_retry(seconds: float) -> None:
+    def wait_before_retry(seconds: float) -> bool:
         if caller_deadline is None:
             time.sleep(seconds)
-        else:
-            _sleep_before_operation_deadline(
-                seconds,
-                deadline=caller_deadline,
-            )
+            return True
+        if caller_deadline - time.monotonic() < seconds:
+            return False
+        _sleep_before_operation_deadline(
+            seconds,
+            deadline=caller_deadline,
+        )
+        return True
 
     def stable_direct_current_hierarchy() -> list[UiNode]:
         """Recover an inaccessible owned dump with stable read-only authority.
@@ -5024,9 +5027,11 @@ def return_to_phone_runner_root(
                 )
             )
             if dismissed:
-                wait_before_retry(2)
+                if not wait_before_retry(2):
+                    break
             else:
-                wait_before_retry(0.75)
+                if not wait_before_retry(0.75):
+                    break
             continue
 
         route = (
@@ -5125,7 +5130,8 @@ def return_to_phone_runner_root(
                 viewport_reset = True
                 continue
             # Never treat the toolbar alone as final route authority.
-            wait_before_retry(0.75)
+            if not wait_before_retry(0.75):
+                break
             continue
 
         if back_steps >= max_back_steps:
@@ -5180,7 +5186,8 @@ def return_to_phone_runner_root(
                 )
             back_steps += 1
             viewport_reset = False
-            wait_before_retry(0.75)
+            if not wait_before_retry(0.75):
+                break
             continue
 
         dismissed = (
@@ -5192,11 +5199,20 @@ def return_to_phone_runner_root(
             )
         )
         if dismissed:
-            wait_before_retry(2)
+            if not wait_before_retry(2):
+                break
             continue
-        wait_before_retry(0.75)
+        if not wait_before_retry(0.75):
+            break
 
-    capture("phone-runner-root-unavailable")
+    if deadline is None:
+        device.capture("phone-runner-root-unavailable")
+    else:
+        # The bounded route SLO can expire while the caller-owned phase still
+        # has time to preserve the exact final screenshot/XML. Diagnostics are
+        # not route authority and must not silently inherit the expired nested
+        # deadline that caused the failure they are intended to explain.
+        device.capture("phone-runner-root-unavailable", deadline=deadline)
     raise RuntimeError(
         "Timed out proving the exact phone runner root and build-save-runner toolbar"
     )
