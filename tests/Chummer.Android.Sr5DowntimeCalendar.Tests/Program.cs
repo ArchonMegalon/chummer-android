@@ -13,7 +13,8 @@ internal static class Program
         await ReviewApplyReceiptIsExactAsync();
         RestartDropsConfirmationAndStaleCasFails();
         UnexpectedPostconditionFailsClosed();
-        Console.WriteLine("SR5 Downtime Calendar Android authority tests passed: 3");
+        ResolvedJournalCannotOrphanSharedMutationOwner();
+        Console.WriteLine("SR5 Downtime Calendar Android authority tests passed: 4");
         return 0;
     }
 
@@ -89,6 +90,61 @@ internal static class Program
         CareerCalendarEditorState unexpected = Editor(42, "different");
         RequireThrows<InvalidOperationException>(() => Sr5DowntimeCalendarPersistenceReceipt.Create(
             applying, Binding(unexpected, 42, 'c', 'd'), unexpected), "unexpected postcondition");
+    }
+
+    private static void ResolvedJournalCannotOrphanSharedMutationOwner()
+    {
+        CareerCalendarEditorState before = Editor(41, "old notes");
+        var session = new Sr5DowntimeCalendarDesktopSession();
+        session.Bind(Binding(before, 41, 'a', 'b'), before);
+        Require(session.TryPreviewEdit(WeekId, "resolved", "Chocolate", out string blocker), blocker);
+
+        var journalBackend = new MemoryBackend();
+        var ownerBackend = new FaultingRemoveBackend();
+        var ownerStore = new Sr5CareerMutationOwnerStore(ownerBackend);
+        var store = new Sr5DowntimeCalendarJournalStore(journalBackend, ownerStore);
+        Require(store.TryWriteReview(
+            session,
+            Guid.Parse("33333333-3333-3333-3333-333333333333"),
+            out Sr5DowntimeCalendarJournal review,
+            out blocker), blocker);
+        Require(store.TryBeginApplying(
+            review,
+            out Sr5DowntimeCalendarJournal applying,
+            out blocker), blocker);
+
+        CareerCalendarEditorState after = Editor(42, "resolved");
+        Sr5DowntimeCalendarPersistenceReceipt receipt =
+            Sr5DowntimeCalendarPersistenceReceipt.Create(
+                applying,
+                Binding(after, 42, 'c', 'd'),
+                after);
+        ownerBackend.FailRemove = true;
+        Require(!store.TryComplete(
+            applying,
+            receipt,
+            out Sr5DowntimeCalendarJournal applied,
+            out blocker), "owner-release failure was hidden");
+        Require(applied.IsExact()
+            && applied.Phase == Sr5DowntimeCalendarJournalPhase.Applied,
+            "resolved journal was not durable before owner-release failure");
+        Require(!store.TryClearResolved(applied, out blocker),
+            "resolved journal was cleared while its shared owner remained durable");
+        Require(!string.IsNullOrWhiteSpace(journalBackend.Payload),
+            "failed reconciliation orphaned the shared owner by clearing its domain journal");
+        Require(!ownerStore.TryRunWhenUnowned(
+            () => (true, string.Empty),
+            out _), "a foreign Career mutation entered while the stale owner remained");
+
+        ownerBackend.FailRemove = false;
+        Require(store.TryRead(out Sr5DowntimeCalendarJournal? recovered, out blocker), blocker);
+        Require(recovered == applied, "resolved journal changed during owner reconciliation");
+        Require(ownerStore.TryRunWhenUnowned(
+            () => (true, string.Empty),
+            out blocker), blocker);
+        Require(store.TryClearResolved(applied, out blocker), blocker);
+        Require(string.IsNullOrWhiteSpace(journalBackend.Payload),
+            "reconciled resolved journal was not cleared");
     }
 
     private static CareerCalendarEditorState Editor(long revision, string notes)
