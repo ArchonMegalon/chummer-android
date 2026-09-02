@@ -7387,13 +7387,38 @@ def capture_launch_diagnostics(
 
 def _start_output_matches_component(output: str, component: str) -> bool:
     lines = [line.strip() for line in output.splitlines()]
-    statuses = [line.partition(":")[2].strip() for line in lines if line.startswith("Status:")]
+    statuses = [
+        line.partition(":")[2].strip()
+        for line in lines
+        if line.startswith("Status:")
+    ]
     activities = [
         normalize_component(line.partition(":")[2].strip())
         for line in lines
         if line.startswith("Activity:")
     ]
     return statuses == ["ok"] and activities == [component]
+
+
+def _start_output_reports_wait_timeout_for_component(
+    output: str,
+    component: str,
+) -> bool:
+    """Recognize API 36's in-band ``am start -W`` wait timeout.
+
+    ``am start -W`` can return normally with ``Status: timeout`` even though
+    the requested activity has started and is the exact resumed component.
+    Keep this distinct from a successful command result so callers must also
+    prove the live package PID and resumed activity before accepting it.
+    """
+    lines = [line.strip() for line in output.splitlines()]
+    statuses = [line.partition(":")[2].strip() for line in lines if line.startswith("Status:")]
+    activities = [
+        normalize_component(line.partition(":")[2].strip())
+        for line in lines
+        if line.startswith("Activity:")
+    ]
+    return statuses == ["timeout"] and activities == [component]
 
 
 def workspace_authority_start_arguments(component: str) -> tuple[str, ...]:
@@ -7542,6 +7567,14 @@ def launch_app(
             and start_result.returncode == 0
             and _start_output_matches_component(start_result.stdout, component)
         )
+        command_wait_timed_out = (
+            start_result is not None
+            and start_result.returncode == 0
+            and _start_output_reports_wait_timeout_for_component(
+                start_result.stdout,
+                component,
+            )
+        )
         state, saw_process = (
             _wait_for_resumed_component(device, component, resume_timeout)
             if deadline is None
@@ -7553,7 +7586,7 @@ def launch_app(
             )
         )
         wait_timed_out = isinstance(start_error, subprocess.TimeoutExpired)
-        if (command_succeeded or wait_timed_out) \
+        if (command_succeeded or command_wait_timed_out or wait_timed_out) \
             and state.process_ids \
             and state.resumed_component == component:
             _write_launch_evidence(

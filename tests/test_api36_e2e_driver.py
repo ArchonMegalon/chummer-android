@@ -1793,6 +1793,61 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
 
         self.assertEqual(2, device.run.call_count)
 
+    def test_launch_app_accepts_am_in_band_wait_timeout_only_with_exact_component_state(self) -> None:
+        component = "com.myexternalbrain.chummer/crccurrent.MainActivity"
+        in_band_timeout = subprocess.CompletedProcess(
+            args=["adb", "shell", "am", "start", "-W"],
+            returncode=0,
+            stdout=(
+                "Starting: Intent { act=android.intent.action.MAIN "
+                f"cat=[android.intent.category.LAUNCHER] cmp={component} }}\n"
+                "Status: timeout\n"
+                "LaunchState: UNKNOWN (-1)\n"
+                f"Activity: {component}\n"
+                "Complete\n"
+            ),
+            stderr="",
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            device = Mock(spec=DRIVER.Device)
+            device.evidence = Path(temporary)
+            device.shell.side_effect = [
+                "package:/data/app/exact/base.apk",
+                component,
+                "7351",
+                f"topResumedActivity=ActivityRecord{{123 u0 {component} t9}}",
+            ]
+            device.run.side_effect = [
+                subprocess.CompletedProcess(
+                    args=["logcat", "-c"],
+                    returncode=0,
+                    stdout="",
+                    stderr="",
+                ),
+                in_band_timeout,
+            ]
+
+            state = DRIVER.launch_app(device, resume_timeout=0)
+
+            verified = Path(temporary) / "launch-attempt-1-verified.txt"
+            self.assertTrue(verified.is_file())
+            self.assertIn("process_ids=7351", verified.read_text(encoding="utf-8"))
+            self.assertEqual(("7351",), state.process_ids)
+            self.assertEqual(component, state.resumed_component)
+
+        self.assertFalse(
+            DRIVER._start_output_reports_wait_timeout_for_component(
+                in_band_timeout.stdout.replace(component, "com.example/.OtherActivity"),
+                component,
+            )
+        )
+        self.assertFalse(
+            DRIVER._start_output_reports_wait_timeout_for_component(
+                in_band_timeout.stdout.replace("Status: timeout", "Status: ok"),
+                component,
+            )
+        )
+
     def test_launch_failure_captures_command_activity_window_and_all_log_buffers(self) -> None:
         component = "com.myexternalbrain.chummer/crccurrent.MainActivity"
         launcher = "com.google.android.apps.nexuslauncher/.NexusLauncherActivity"
