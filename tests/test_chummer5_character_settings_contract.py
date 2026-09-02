@@ -37,13 +37,15 @@ class Chummer5CharacterSettingsContractTests(unittest.TestCase):
         self.assertEqual([], payload["unresolvedControls"])
         gate = payload["phoneBetaWizardGate"]
         self.assertEqual("sr5_wizards_only", gate["proofScope"])
-        self.assertEqual(3, gate["requiredJourneyCount"])
+        expected_gate_journeys = [
+            "creation-prerequisite",
+            "career-active-skill-advance",
+            "career-weapon-fire",
+            "before-run-edge",
+        ]
+        self.assertEqual(len(expected_gate_journeys), gate["requiredJourneyCount"])
         self.assertEqual(
-            [
-                "creation-prerequisite",
-                "career-active-skill-advance",
-                "career-weapon-fire",
-            ],
+            expected_gate_journeys,
             gate["requiredJourneys"],
         )
         self.assertFalse(gate["settingsContractRequiredJourney"])

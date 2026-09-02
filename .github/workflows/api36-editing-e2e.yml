@@ -341,6 +341,7 @@ jobs:
           - creation-prerequisite
           - career-active-skill-advance
           - career-weapon-fire
+          - before-run-edge
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     env:
@@ -360,7 +361,7 @@ jobs:
           fetch-depth: 1
 
       - name: Check out the typed-mutation presentation evidence graph
-        if: ${{ matrix.journey == 'career-active-skill-advance' || matrix.journey == 'career-weapon-fire' }}
+        if: ${{ matrix.journey == 'career-active-skill-advance' || matrix.journey == 'career-weapon-fire' || matrix.journey == 'before-run-edge' }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: ArchonMegalon/chummer6-ui
@@ -370,7 +371,7 @@ jobs:
           fetch-depth: 1
 
       - name: Check out the typed-mutation Core evidence graph
-        if: ${{ matrix.journey == 'career-active-skill-advance' || matrix.journey == 'career-weapon-fire' }}
+        if: ${{ matrix.journey == 'career-active-skill-advance' || matrix.journey == 'career-weapon-fire' || matrix.journey == 'before-run-edge' }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: ArchonMegalon/chummer6-core
@@ -452,14 +453,14 @@ jobs:
           persist-credentials: false
           fetch-depth: 1
 
-      - name: Download the three stable wizard evidence artifacts
+      - name: Download the stable wizard evidence artifacts
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           pattern: chummer-android-api36-phone-*-evidence-${{ github.run_id }}
           path: ${{ runner.temp }}/chummer-api36-journey-evidence
           merge-multiple: false
 
-      - name: Require one shared authority and exactly three passing wizard journeys
+      - name: Require one shared authority and every required wizard journey
         env:
           CHUMMER_BUILD_RESULT: ${{ needs.build.result }}
           CHUMMER_MATRIX_RESULT: ${{ needs.phone-wizard-e2e.result }}

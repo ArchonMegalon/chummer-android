@@ -2,7 +2,7 @@
   "schema": "chummer.android.api36-sr5-wizard-gate-authority/v1",
   "authorityClass": "internal_phone_beta_sr5_wizard_only",
   "proofScope": "sr5_wizards_only",
-  "requiredJourneyCount": 3,
+  "requiredJourneyCount": 4,
   "requiredJourneys": [
     {
       "matrixJourney": "creation-prerequisite",
@@ -18,6 +18,11 @@
       "matrixJourney": "career-weapon-fire",
       "driverJourney": "career-weapon-fire",
       "receiptSchema": "chummer.android.editing-e2e/v1"
+    },
+    {
+      "matrixJourney": "before-run-edge",
+      "driverJourney": "before-run-edge",
+      "receiptSchema": "chummer.android.sr5-before-run-edge-e2e/v1"
     }
   ],
   "excludedFromGate": [

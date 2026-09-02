@@ -117,6 +117,9 @@ SR5_TABLE_WIZARD_GATE_INPUTS = (
     "tests/Chummer.Android.Native.CompileCheck/NativeCompileInputs.props",
     "tests/test_api36_e2e_workflow.py",
     "tests/test_api36_e2e_artifact_authority.py",
+    "tests/run_api36_sr5_before_run_edge_e2e.py",
+    "tests/test_run_api36_sr5_before_run_edge_e2e_driver.py",
+    "tests/test_api36_sr5_career_run_contextual_contract.py",
     "tests/test_chummer5_editability_inventory.py",
     "tests/test_sr5_contextual_wizard_scope.py",
 )
@@ -210,6 +213,21 @@ SR5_TABLE_WIZARD_AUTHORITY_MARKERS = {
     ),
     "tests/test_api36_e2e_workflow.py": (
         "test_sr5_table_wizard_development_journey_is_recognized_without_release_claim",
+        '"before-run-edge"',
+    ),
+    "tests/run_api36_sr5_before_run_edge_e2e.py": (
+        'JOURNEY = "before-run-edge"',
+        "lane.prove_lane(",
+        '"publicationAuthorized": False',
+    ),
+    "tests/test_run_api36_sr5_before_run_edge_e2e_driver.py": (
+        "test_hosted_identity_is_distinct_and_narrow",
+        "test_device_authority_requires_api36_x86_64_emulator",
+        "test_exact_fixture_and_unrelated_xml_are_bound",
+    ),
+    "tests/test_api36_sr5_career_run_contextual_contract.py": (
+        "test_before_run_driver_semantics_are_typed_but_not_release_claimed",
+        '"before-run-edge"',
     ),
     "tests/test_chummer5_editability_inventory.py": (
         "test_sr5_table_wizard_development_lane_is_exactly_bound_without_completion_claim",
@@ -23610,7 +23628,20 @@ def _sr5_table_wizard_api36_recognition(
         "recognitionStatus": "recognized",
         "sourceAuthorityStatus": "ready" if not blockers else "blocked",
         "executionStatus": "not_executed",
-        "matrixJourney": None,
+        "matrixJourneys": [
+            {
+                "route": "sr5-career/before-run",
+                "matrixJourney": "before-run-edge",
+                "gateStatus": "required",
+                "executionStatus": "not_executed",
+            },
+            {
+                "route": "sr5-career/playtime",
+                "matrixJourney": None,
+                "gateStatus": "not_required",
+                "executionStatus": "not_executed",
+            },
+        ],
         "releaseClaim": False,
         "completionCountContribution": 0,
         "androidSourcePaths": list(SR5_TABLE_WIZARD_ANDROID_SOURCE_INPUTS),
@@ -23653,7 +23684,20 @@ def _sr5_contextual_mutation_api36_recognition(
         "recognitionStatus": "recognized",
         "sourceAuthorityStatus": table_recognition["sourceAuthorityStatus"],
         "executionStatus": "not_executed",
-        "matrixJourney": None,
+        "matrixJourneys": [
+            {
+                "route": "sr5-career/downtime",
+                "matrixJourney": None,
+                "gateStatus": "not_required",
+                "executionStatus": "not_executed",
+            },
+            {
+                "route": "sr5-career/playtime",
+                "matrixJourney": None,
+                "gateStatus": "not_required",
+                "executionStatus": "not_executed",
+            },
+        ],
         "releaseClaim": False,
         "completionCountContribution": 0,
         "blockers": list(table_recognition["blockers"]),

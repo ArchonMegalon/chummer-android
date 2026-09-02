@@ -41,6 +41,7 @@ JOURNEYS = {
     "creation-prerequisite": "creation-prerequisite",
     "career-active-skill-advance": "career-active-skill-advance",
     "career-weapon-fire": "career-weapon-fire",
+    "before-run-edge": "before-run-edge",
 }
 CREATION_PROSPECTIVE_PHASE_ELAPSED_MS = {
     # Exact prefix timings from hosted run 33309423140, followed by phase
@@ -282,12 +283,14 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
 
     def raw_receipt(self, journey: str) -> dict[str, object]:
         driver_journey = JOURNEYS[journey]
+        receipt_schemas = {
+            "creation-prerequisite": "chummer.android.creation-prerequisite-e2e/v1",
+            "career-active-skill-advance": "chummer.android.editing-e2e/v1",
+            "career-weapon-fire": "chummer.android.editing-e2e/v1",
+            "before-run-edge": "chummer.android.sr5-before-run-edge-e2e/v1",
+        }
         receipt: dict[str, object] = {
-            "schema": (
-                "chummer.android.creation-prerequisite-e2e/v1"
-                if journey == "creation-prerequisite"
-                else "chummer.android.editing-e2e/v1"
-            ),
+            "schema": receipt_schemas[journey],
             "status": "pass",
             "profile": "phone",
             "apkSha256": APK_SHA256,
@@ -400,6 +403,8 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             }
         else:
             receipt["journey"] = driver_journey
+        if journey == "before-run-edge":
+            receipt["publicationAuthorized"] = False
         return receipt
 
     def materialize_journey(
@@ -502,6 +507,17 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                 **self.authority(artifact_name="stale-snapshot"),
             )
 
+    def test_before_run_cannot_authorize_publication(self) -> None:
+        receipt = self.raw_receipt("before-run-edge")
+        receipt["publicationAuthorized"] = True
+        with self.assertRaisesRegex(ValueError, "cannot authorize publication"):
+            FINALIZE.bind_receipt(
+                receipt,
+                matrix_journey="before-run-edge",
+                driver_journey="before-run-edge",
+                **self.authority(),
+            )
+
     def test_rerun_failed_keeps_one_stable_receipt_per_journey(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -510,8 +526,8 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             # the original build authority used by the successful prerequisite jobs.
             self.materialize_journey(root, "career-weapon-fire", attempt="1")
             aggregate = self.validate(root, attempt="1")
-            self.assertEqual(3, aggregate["journeyCount"])
-            self.assertEqual(3, aggregate["requiredJourneyCount"])
+            self.assertEqual(len(JOURNEYS), aggregate["journeyCount"])
+            self.assertEqual(len(JOURNEYS), aggregate["requiredJourneyCount"])
             self.assertEqual(list(JOURNEYS), aggregate["requiredJourneys"])
             self.assertEqual(GATE.AGGREGATE_SCHEMA, aggregate["schema"])
             self.assertEqual("sr5_wizards_only", aggregate["proofScope"])
@@ -581,7 +597,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             nested = weapon / "duplicate"
             nested.mkdir()
             shutil.copy2(weapon / "receipt.json", nested / "receipt.json")
-            with self.assertRaisesRegex(ValueError, "exactly 3"):
+            with self.assertRaisesRegex(ValueError, f"exactly {len(JOURNEYS)}"):
                 self.validate(root)
 
             shutil.rmtree(nested)
@@ -598,6 +614,21 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             )
             full.mkdir()
             with self.assertRaisesRegex(ValueError, "cardinality/name mismatch"):
+                self.validate(root)
+
+    def test_aggregate_rejects_publication_claim_in_before_run_receipt(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self.materialize_all(root)
+            directory = root / AGGREGATE.expected_artifact_directory(
+                "before-run-edge", RUN_ID
+            )
+            receipt_path = directory / "receipt.json"
+            receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+            receipt["publicationAuthorized"] = True
+            receipt_path.write_text(json.dumps(receipt) + "\n", encoding="utf-8")
+            self.reseal(directory)
+            with self.assertRaisesRegex(ValueError, "cannot authorize publication"):
                 self.validate(root)
 
     def test_duplicate_json_keys_and_failed_matrix_fail_closed(self) -> None:
@@ -646,17 +677,17 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
         }
         cases["full-editing-required"] = full_required
         stale_count = GATE.expected_contract()
-        stale_count["requiredJourneyCount"] = 4
-        cases["stale-four-journey-count"] = stale_count
+        stale_count["requiredJourneyCount"] = len(GATE.REQUIRED_JOURNEY_SPECS) - 1
+        cases["stale-journey-count"] = stale_count
 
         for name, value in cases.items():
             with self.subTest(name=name), self.assertRaisesRegex(
                 ValueError,
-                "exact three-journey wizard-only authority",
+                f"exact {len(GATE.REQUIRED_JOURNEY_SPECS)}-journey wizard-only authority",
             ):
                 GATE.validate_contract(copy.deepcopy(value))
 
-    def test_aggregate_receipt_rejects_stale_four_journey_schema(self) -> None:
+    def test_aggregate_receipt_rejects_stale_five_journey_schema(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             self.materialize_all(root)
@@ -673,13 +704,13 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                     gate_authority,
                 )
 
-            stale_four = copy.deepcopy(aggregate)
-            stale_four["requiredJourneyCount"] = 4
-            stale_four["journeyCount"] = 4
-            stale_four["requiredJourneys"].append("full-editing")
-            stale_four["journeys"]["full-editing"] = {"status": "pass"}
-            with self.assertRaisesRegex(ValueError, "exactly three"):
-                AGGREGATE.validate_aggregate_receipt(stale_four, gate_authority)
+            stale_five = copy.deepcopy(aggregate)
+            stale_five["requiredJourneyCount"] = len(JOURNEYS) + 1
+            stale_five["journeyCount"] = len(JOURNEYS) + 1
+            stale_five["requiredJourneys"].append("full-editing")
+            stale_five["journeys"]["full-editing"] = {"status": "pass"}
+            with self.assertRaisesRegex(ValueError, f"exactly {len(JOURNEYS)}"):
+                AGGREGATE.validate_aggregate_receipt(stale_five, gate_authority)
 
     def test_creation_timing_outside_explicit_budgets_fails_closed(self) -> None:
         cases = (

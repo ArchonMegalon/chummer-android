@@ -29,7 +29,23 @@ class Sr5CareerRunContextualContractTests(unittest.TestCase):
         recognition = inventory["generationInputs"]["api36JourneyRecognition"]
         self.assertEqual("recognized", recognition["recognitionStatus"])
         self.assertEqual("not_executed", recognition["executionStatus"])
-        self.assertIsNone(recognition["matrixJourney"])
+        self.assertEqual(
+            [
+                {
+                    "route": "sr5-career/before-run",
+                    "matrixJourney": "before-run-edge",
+                    "gateStatus": "required",
+                    "executionStatus": "not_executed",
+                },
+                {
+                    "route": "sr5-career/playtime",
+                    "matrixJourney": None,
+                    "gateStatus": "not_required",
+                    "executionStatus": "not_executed",
+                },
+            ],
+            recognition["matrixJourneys"],
+        )
         self.assertFalse(recognition["releaseClaim"])
         self.assertEqual(0, recognition["completionCountContribution"])
 
@@ -41,6 +57,8 @@ class Sr5CareerRunContextualContractTests(unittest.TestCase):
         )
         self.assertNotIn("phone-table-before-run", workflow)
         self.assertNotIn("phone-table-before-run", runner)
+        self.assertIn("before-run-edge", workflow)
+        self.assertIn("before-run-edge", runner)
 
     def test_contextual_scope_is_explicit_and_generic_mutation_is_absent(self) -> None:
         catalog = (

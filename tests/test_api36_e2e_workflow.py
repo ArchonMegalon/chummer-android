@@ -287,7 +287,23 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         )
         self.assertEqual("recognized", recognition["recognitionStatus"])
         self.assertEqual("not_executed", recognition["executionStatus"])
-        self.assertIsNone(recognition["matrixJourney"])
+        self.assertEqual(
+            [
+                {
+                    "route": "sr5-career/before-run",
+                    "matrixJourney": "before-run-edge",
+                    "gateStatus": "required",
+                    "executionStatus": "not_executed",
+                },
+                {
+                    "route": "sr5-career/playtime",
+                    "matrixJourney": None,
+                    "gateStatus": "not_required",
+                    "executionStatus": "not_executed",
+                },
+            ],
+            recognition["matrixJourneys"],
+        )
         self.assertFalse(recognition["releaseClaim"])
         self.assertEqual(0, recognition["completionCountContribution"])
 
@@ -303,6 +319,9 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         for authority in (self.text, runner, aggregate, finalizer):
             with self.subTest(authority=authority[:40]):
                 self.assertNotIn(journey_id, authority)
+        for authority in (self.text, runner):
+            with self.subTest(before_run_authority=authority[:40]):
+                self.assertIn("before-run-edge", authority)
 
         contextual = payload["generationInputs"]["contextualMutationJourneyRecognition"]
         contextual_id = "sr5-downtime-playtime-typed-transactions"
@@ -312,7 +331,18 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
             contextual["routes"],
         )
         self.assertEqual("not_executed", contextual["executionStatus"])
-        self.assertIsNone(contextual["matrixJourney"])
+        self.assertEqual(
+            [
+                {
+                    "route": route,
+                    "matrixJourney": None,
+                    "gateStatus": "not_required",
+                    "executionStatus": "not_executed",
+                }
+                for route in ("sr5-career/downtime", "sr5-career/playtime")
+            ],
+            contextual["matrixJourneys"],
+        )
         self.assertFalse(contextual["releaseClaim"])
         self.assertEqual(0, contextual["completionCountContribution"])
         for authority in (self.text, runner, aggregate, finalizer):
@@ -441,6 +471,10 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
                 "career-weapon-fire",
                 "tests/run_api36_career_weapon_fire_e2e.py",
             ),
+            (
+                "before-run-edge",
+                "tests/run_api36_sr5_before_run_edge_e2e.py",
+            ),
         )
         matrix_block = self.text[
             self.text.index("        journey:"):
@@ -498,7 +532,8 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
             2,
             self.text.count(
                 "if: ${{ matrix.journey == 'career-active-skill-advance' || "
-                "matrix.journey == 'career-weapon-fire' }}"
+                "matrix.journey == 'career-weapon-fire' || "
+                "matrix.journey == 'before-run-edge' }}"
             ),
         )
         self.assertIn("path: chummer-presentation", self.text)
@@ -556,7 +591,7 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
             verify_block,
         )
 
-    def test_aggregate_requires_three_stable_wizard_authority_bound_receipts(self) -> None:
+    def test_aggregate_requires_every_stable_wizard_authority_bound_receipt(self) -> None:
         aggregate = self.text[self.text.index("  phone-evidence-aggregate:"):]
         self.assertIn("needs:\n      - build\n      - phone-wizard-e2e", aggregate)
         self.assertIn("if: ${{ always() }}", aggregate)
@@ -571,7 +606,7 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
             "--gate-contract chummer-android/eng/api36-sr5-wizard-gate-authority.json",
             aggregate,
         )
-        self.assertIn("exactly three passing wizard journeys", aggregate)
+        self.assertIn("every required wizard journey", aggregate)
         for authority_output in (
             "needs.build.outputs.apk-artifact-id",
             "needs.build.outputs.apk-artifact-digest",

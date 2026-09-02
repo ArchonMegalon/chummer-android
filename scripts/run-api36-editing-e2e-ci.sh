@@ -8,7 +8,7 @@ if [[ "$profile" != "phone" ]]; then
 fi
 journey="${CHUMMER_E2E_JOURNEY:?CHUMMER_E2E_JOURNEY is required}"
 case "$journey" in
-  creation-prerequisite|career-active-skill-advance|career-weapon-fire) ;;
+  creation-prerequisite|career-active-skill-advance|career-weapon-fire|before-run-edge) ;;
   *)
     echo "Unsupported CHUMMER_E2E_JOURNEY: $journey" >&2
     exit 64
@@ -46,6 +46,7 @@ declare -Ar driver_journeys=(
   [creation-prerequisite]="creation-prerequisite"
   [career-active-skill-advance]="career-active-skill-advance"
   [career-weapon-fire]="career-weapon-fire"
+  [before-run-edge]="before-run-edge"
 )
 driver_journey="${driver_journeys[$journey]:?missing explicit driver journey mapping}"
 printf 'profile=%s\nmatrix_journey=%s\ndriver_journey=%s\ngate_contract_sha256=%s\nartifact_id=%s\nartifact_digest=%s\nartifact_name=%s\nartifact_attempt=%s\napk_sha256=%s\n' \
@@ -80,6 +81,15 @@ case "$journey" in
     ;;
   career-weapon-fire)
     python3 chummer-android/tests/run_api36_career_weapon_fire_e2e.py \
+      --adb "$adb_path" \
+      --apk "$apk_path" \
+      --serial emulator-5554 \
+      --workspace-root "${GITHUB_WORKSPACE:?GITHUB_WORKSPACE is required}" \
+      --evidence "$evidence_root/screenshots" \
+      --receipt "$evidence_root/receipt.json"
+    ;;
+  before-run-edge)
+    python3 chummer-android/tests/run_api36_sr5_before_run_edge_e2e.py \
       --adb "$adb_path" \
       --apk "$apk_path" \
       --serial emulator-5554 \

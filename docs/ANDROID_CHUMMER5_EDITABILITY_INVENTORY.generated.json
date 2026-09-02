@@ -68,14 +68,15 @@
     "phoneBetaWizardGate": {
       "schema": "chummer.android.api36-sr5-wizard-gate-binding/v1",
       "contractPath": "eng/api36-sr5-wizard-gate-authority.json",
-      "contractSha256": "921b088e8814695915789ef420e49ad1793116e9d23238ff3a92709d066fd82e",
+      "contractSha256": "7e25c8b93d7377f10b0551fc4baadb91395636290c037264c0f6c4f6bbba7a83",
       "authorityClass": "internal_phone_beta_sr5_wizard_only",
       "proofScope": "sr5_wizards_only",
-      "requiredJourneyCount": 3,
+      "requiredJourneyCount": 4,
       "requiredJourneys": [
         "creation-prerequisite",
         "career-active-skill-advance",
-        "career-weapon-fire"
+        "career-weapon-fire",
+        "before-run-edge"
       ],
       "publicationAuthorized": false,
       "excludedFromGate": [
@@ -762,32 +763,32 @@
       {
         "path": ".github/workflows/api36-editing-e2e.yml",
         "exists": true,
-        "sha256": "84065eab3304d0bfbe18ea32f981bdce96cf642bb8aa908769fe136bf48d6dd2"
+        "sha256": "58f486e7eb69d6a62a61a9c5407e426de35444831122f78e206cf9cb602dd88f"
       },
       {
         "path": "eng/api36-sr5-wizard-gate-authority.json",
         "exists": true,
-        "sha256": "921b088e8814695915789ef420e49ad1793116e9d23238ff3a92709d066fd82e"
+        "sha256": "7e25c8b93d7377f10b0551fc4baadb91395636290c037264c0f6c4f6bbba7a83"
       },
       {
         "path": "scripts/api36_wizard_gate_contract.py",
         "exists": true,
-        "sha256": "f43b8c454eb524281577726e80666f19d5ea9cb63c45af03be21047aca120099"
+        "sha256": "5e1485ce2722eb91581059219363bd9c42c5cd0954aff91634cdc44f01965c2f"
       },
       {
         "path": "scripts/finalize-api36-e2e-journey-receipt.py",
         "exists": true,
-        "sha256": "ad4d22c826ab9728dac1de43aa8a4e7116ab6b6d15e90b6fbd33ef46a154216a"
+        "sha256": "627587ba066c98b18b1ffb8bbf20f1fc95746952f0162707af0ca08beb2b73a0"
       },
       {
         "path": "scripts/run-api36-editing-e2e-ci.sh",
         "exists": true,
-        "sha256": "484a05f15ccdc3df13d42a110dceb80b6332b8812547b2f17bf66f2956d71aa7"
+        "sha256": "caecdc68ba7882bd6b68d1089efa6c937289cba3305ca26abca624b96ecd20b4"
       },
       {
         "path": "scripts/verify-api36-editing-e2e-aggregate.py",
         "exists": true,
-        "sha256": "0a94cdc2ac78e622cbd91de36b4d703ce28f5fd817268541b6bfe984f2f83088"
+        "sha256": "3ed3ed1ea3e384e2165ee67de685793b99b675d57eb31476cd6e1500bc46b5a8"
       },
       {
         "path": "src/Chummer.Android/Chummer.Android.csproj",
@@ -802,17 +803,32 @@
       {
         "path": "tests/test_api36_e2e_workflow.py",
         "exists": true,
-        "sha256": "d26a579ccea1d6f3c814213a0f32e7e2b6227292131c039ecd246a9cf0f642c6"
+        "sha256": "bf5cbbe7b26eefaa98f30399434c09d27b3c0b09b2f8e6e495a15470964f9ef2"
       },
       {
         "path": "tests/test_api36_e2e_artifact_authority.py",
         "exists": true,
-        "sha256": "9b50e9c6dc2ed3cbdfadca9b4e0fab11ca22ae86c4805cd5d5286fe799fa9c0a"
+        "sha256": "da9dbe86b040dd700cfd7ef23bcb26107056e389668a91c83bae1c92a2b70a22"
+      },
+      {
+        "path": "tests/run_api36_sr5_before_run_edge_e2e.py",
+        "exists": true,
+        "sha256": "3f79d6e8f6a856173b82c64b57cfe4506a0362176905bb2e87db455381974227"
+      },
+      {
+        "path": "tests/test_run_api36_sr5_before_run_edge_e2e_driver.py",
+        "exists": true,
+        "sha256": "0f26ae6f567270947d67d721c946acbfeb6cda8c85f5a1fdd43f78312a373871"
+      },
+      {
+        "path": "tests/test_api36_sr5_career_run_contextual_contract.py",
+        "exists": true,
+        "sha256": "b13c4e598324ef810f6c5f3635c9f007b5676c04fe86fdf85fa1b6a0225f009e"
       },
       {
         "path": "tests/test_chummer5_editability_inventory.py",
         "exists": true,
-        "sha256": "a88828b11e5c82232226266af26f5563c53447c7955e1917ac5805c635f02804"
+        "sha256": "45837156c0cc0558a00ccf3932bacec4bed18f4dd9a250619fd7ab7e47765682"
       },
       {
         "path": "tests/test_sr5_contextual_wizard_scope.py",
@@ -2610,7 +2626,20 @@
       "recognitionStatus": "recognized",
       "sourceAuthorityStatus": "ready",
       "executionStatus": "not_executed",
-      "matrixJourney": null,
+      "matrixJourneys": [
+        {
+          "route": "sr5-career/before-run",
+          "matrixJourney": "before-run-edge",
+          "gateStatus": "required",
+          "executionStatus": "not_executed"
+        },
+        {
+          "route": "sr5-career/playtime",
+          "matrixJourney": null,
+          "gateStatus": "not_required",
+          "executionStatus": "not_executed"
+        }
+      ],
       "releaseClaim": false,
       "completionCountContribution": 0,
       "androidSourcePaths": [
@@ -2659,6 +2688,9 @@
         "tests/Chummer.Android.Native.CompileCheck/NativeCompileInputs.props",
         "tests/test_api36_e2e_workflow.py",
         "tests/test_api36_e2e_artifact_authority.py",
+        "tests/run_api36_sr5_before_run_edge_e2e.py",
+        "tests/test_run_api36_sr5_before_run_edge_e2e_driver.py",
+        "tests/test_api36_sr5_career_run_contextual_contract.py",
         "tests/test_chummer5_editability_inventory.py",
         "tests/test_sr5_contextual_wizard_scope.py"
       ],
@@ -2694,14 +2726,27 @@
       "recognitionStatus": "recognized",
       "sourceAuthorityStatus": "ready",
       "executionStatus": "not_executed",
-      "matrixJourney": null,
+      "matrixJourneys": [
+        {
+          "route": "sr5-career/downtime",
+          "matrixJourney": null,
+          "gateStatus": "not_required",
+          "executionStatus": "not_executed"
+        },
+        {
+          "route": "sr5-career/playtime",
+          "matrixJourney": null,
+          "gateStatus": "not_required",
+          "executionStatus": "not_executed"
+        }
+      ],
       "releaseClaim": false,
       "completionCountContribution": 0,
       "blockers": []
     },
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "2710b4354252061569224045c96284f55983e44a9d7ab89660d7fa1bd7cf80c3"
+      "sha256": "055d6f09c9b524394b1bfb2b1c3b7cd221b761b2e876981ff2eaa885e9fc5886"
     }
   },
   "coverageByFamily": {

@@ -36,6 +36,11 @@ REQUIRED_JOURNEY_SPECS = (
         "driverJourney": "career-weapon-fire",
         "receiptSchema": "chummer.android.editing-e2e/v1",
     },
+    {
+        "matrixJourney": "before-run-edge",
+        "driverJourney": "before-run-edge",
+        "receiptSchema": "chummer.android.sr5-before-run-edge-e2e/v1",
+    },
 )
 EXCLUDED_FROM_GATE = (
     {
@@ -78,13 +83,16 @@ def expected_contract() -> dict[str, Any]:
 
 def validate_contract(value: dict[str, Any]) -> dict[str, Any]:
     expected = expected_contract()
+    required_count = len(REQUIRED_JOURNEY_SPECS)
     if value != expected:
         raise ValueError(
-            "API-36 wizard gate contract differs from the exact three-journey "
+            f"API-36 wizard gate contract differs from the exact {required_count}-journey "
             "wizard-only authority"
         )
-    if value["requiredJourneyCount"] != 3:
-        raise ValueError("API-36 wizard gate must require exactly three journeys")
+    if value["requiredJourneyCount"] != required_count:
+        raise ValueError(
+            f"API-36 wizard gate must require exactly {required_count} journeys"
+        )
     required = [row["matrixJourney"] for row in value["requiredJourneys"]]
     if "full-editing" in required:
         raise ValueError("Full Editing cannot be a required wizard-gate journey")

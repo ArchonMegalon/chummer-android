@@ -97,6 +97,8 @@ def bind_receipt(
         raise ValueError("journey execution status is not passing")
     if receipt.get("profile") != "phone":
         raise ValueError("journey receipt is not phone-only")
+    if receipt.get("publicationAuthorized", False) is not False:
+        raise ValueError("journey receipt cannot authorize publication")
     if receipt.get("apkSha256") != apk_sha256:
         raise ValueError("journey receipt APK SHA-256 differs from build authority")
     receipt_driver_journey = receipt.get("journey")
