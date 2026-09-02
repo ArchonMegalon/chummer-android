@@ -218,9 +218,13 @@ staged_graph="$release_tmp/source-graph.json"
 staged_publish_dir="$release_tmp/publish"
 selected_package_feed="$release_tmp/selected-owner-feed"
 isolated_packages="$release_tmp/nuget-packages"
+routed_locks="$release_tmp/project-locks"
 restore_manifest="$release_tmp/restore-consumption.json"
 mkdir -m 0700 -- "$staged_publish_dir" "$selected_package_feed" \
-  "$isolated_packages"
+  "$isolated_packages" "$routed_locks"
+install -m 0600 -- \
+  "$repo_dir/src/Chummer.Android/packages.lock.json" \
+  "$routed_locks/Chummer.Android.packages.lock.json"
 core_version="$(jq -er \
   '.packagePins | map(.version) | unique | if length == 1 then .[0] else error("Core versions disagree") end' \
   "$CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY")"
@@ -274,6 +278,8 @@ export NUGET_PACKAGES
   -p:ChummerUseLockedOwnerContractPackages=true \
   -p:RestoreLockedMode=true \
   -p:RestorePackagesWithLockFile=true \
+  -p:CustomBeforeMicrosoftCommonProps="$repo_dir/eng/ReleaseRestoreRouting.props" \
+  -p:ChummerReleaseLockRoot="$routed_locks" \
   -p:NuGetAudit=false \
   -p:ChummerContractsPackageVersion="$core_version" \
   -p:ChummerCoreRuntimePackageVersion="$core_version" \
@@ -283,6 +289,23 @@ export NUGET_PACKAGES
   -p:ChummerUiKitPackageVersion="$ui_kit_version" \
   -p:AndroidSdkDirectory="$AndroidSdkDirectory" \
   -p:JavaSdkDirectory="$JavaSdkDirectory"
+
+for lock_name in \
+  Chummer.Android.packages.lock.json \
+  Chummer.Desktop.Runtime.packages.lock.json \
+  Chummer.Presentation.packages.lock.json; do
+  lock_path="$routed_locks/$lock_name"
+  [[ ! -L "$lock_path" && -f "$lock_path" \
+    && "$(stat -c '%u' -- "$lock_path")" == "$(id -u)" ]] \
+    || fail "routed-project-lock-$lock_name-invalid"
+  lock_permissions="$(stat -c '%a' -- "$lock_path")"
+  (( (8#$lock_permissions & 077) == 0 )) \
+    || fail "routed-project-lock-$lock_name-not-owner-only"
+done
+cmp --silent \
+  "$repo_dir/src/Chummer.Android/packages.lock.json" \
+  "$routed_locks/Chummer.Android.packages.lock.json" \
+  || fail "routed-android-lock-drift"
 
 assets_path="$repo_dir/src/Chummer.Android/obj/project.assets.json"
 [[ -f "$assets_path" && ! -L "$assets_path" ]] || fail "locked-restore-assets-missing"
@@ -302,6 +325,7 @@ python3 "$repo_dir/scripts/seal_release_restore_consumption.py" materialize \
   --authority "$CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY" \
   --owner-feed "$selected_package_feed" \
   --packages-root "$isolated_packages" \
+  --routed-lock-root "$routed_locks" \
   --project-lock "$repo_dir/src/Chummer.Android/packages.lock.json" \
   --manifest "$restore_manifest" \
   || fail "locked-restore-consumption-seal"
@@ -355,6 +379,7 @@ env "${release_test_environment[@]}" \
   --authority "$CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY" \
   --owner-feed "$selected_package_feed" \
   --packages-root "$isolated_packages" \
+  --routed-lock-root "$routed_locks" \
   --project-lock "$repo_dir/src/Chummer.Android/packages.lock.json" \
   --manifest "$restore_manifest" \
   || fail "locked-restore-consumption-pre-publish"
@@ -376,6 +401,8 @@ env "${release_test_environment[@]}" \
   -p:ChummerUseLockedOwnerContractPackages=true \
   -p:RestoreLockedMode=true \
   -p:RestorePackagesWithLockFile=true \
+  -p:CustomBeforeMicrosoftCommonProps="$repo_dir/eng/ReleaseRestoreRouting.props" \
+  -p:ChummerReleaseLockRoot="$routed_locks" \
   -p:NuGetAudit=false \
   -p:ChummerContractsPackageVersion="$core_version" \
   -p:ChummerCoreRuntimePackageVersion="$core_version" \
@@ -399,6 +426,7 @@ python3 "$repo_dir/scripts/seal_release_restore_consumption.py" verify \
   --authority "$CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY" \
   --owner-feed "$selected_package_feed" \
   --packages-root "$isolated_packages" \
+  --routed-lock-root "$routed_locks" \
   --project-lock "$repo_dir/src/Chummer.Android/packages.lock.json" \
   --manifest "$restore_manifest" \
   || fail "locked-restore-consumption-post-publish"

@@ -1,0 +1,10 @@
+<Project>
+  <PropertyGroup Condition="'$(ChummerReleaseLockRoot)' != ''">
+    <NuGetLockFilePath>$(ChummerReleaseLockRoot)/$(MSBuildProjectName).packages.lock.json</NuGetLockFilePath>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(ChummerReleaseIntermediateRoot)' != ''">
+    <BaseIntermediateOutputPath>$(ChummerReleaseIntermediateRoot)/$(MSBuildProjectName)/</BaseIntermediateOutputPath>
+    <MSBuildProjectExtensionsPath>$(ChummerReleaseIntermediateRoot)/$(MSBuildProjectName)/</MSBuildProjectExtensionsPath>
+  </PropertyGroup>
+</Project>

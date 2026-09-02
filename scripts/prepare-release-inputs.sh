@@ -44,7 +44,7 @@ require_private_regular_file() {
   export "${variable_name?}"
 }
 
-for required in dirname find git id jq mkdir python3 realpath stat; do
+for required in cmp dirname find git id install jq mkdir python3 realpath stat; do
   require_command "$required"
 done
 require_command "$dotnet_command"
@@ -85,8 +85,12 @@ input_permissions="$(stat -c '%a' -- "$input_dir")"
 authority="$input_dir/chummer.android.release-package-authority.v2.json"
 nuget_packages="$input_dir/nuget-packages"
 preparation_obj="$input_dir/preparation-obj"
+project_locks="$input_dir/project-locks"
 environment_file="$input_dir/release-inputs.env"
-mkdir -m 0700 -- "$nuget_packages" "$preparation_obj"
+mkdir -m 0700 -- "$nuget_packages" "$preparation_obj" "$project_locks"
+install -m 0600 -- \
+  "$repo_dir/src/Chummer.Android/packages.lock.json" \
+  "$project_locks/Chummer.Android.packages.lock.json"
 
 python3 "$repo_dir/scripts/materialize_release_package_authority.py" \
   --android-root "$repo_dir" \
@@ -120,6 +124,9 @@ package_arguments=(
   "-p:ChummerUseLockedOwnerContractPackages=true"
   "-p:RestoreLockedMode=true"
   "-p:RestorePackagesWithLockFile=true"
+  "-p:CustomBeforeMicrosoftCommonProps=$repo_dir/eng/ReleaseRestoreRouting.props"
+  "-p:ChummerReleaseLockRoot=$project_locks"
+  "-p:ChummerReleaseIntermediateRoot=$preparation_obj"
   "-p:NuGetAudit=false"
   "-p:AndroidSdkDirectory=$AndroidSdkDirectory"
   "-p:AndroidSdkBuildToolsVersion=36.0.0"
@@ -143,9 +150,29 @@ export NUGET_PACKAGES="$nuget_packages"
   --packages "$nuget_packages" \
   --source "$CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED" \
   --source "$nuget_org_source" \
-  -p:BaseIntermediateOutputPath="$preparation_obj/" \
-  -p:MSBuildProjectExtensionsPath="$preparation_obj/" \
   "${package_arguments[@]}"
+for lock_name in \
+  Chummer.Android.packages.lock.json \
+  Chummer.Desktop.Runtime.packages.lock.json \
+  Chummer.Presentation.packages.lock.json; do
+  lock_path="$project_locks/$lock_name"
+  [[ ! -L "$lock_path" && -f "$lock_path" \
+    && "$(stat -c '%u' -- "$lock_path")" == "$(id -u)" ]] \
+    || fail "routed-project-lock-$lock_name-invalid"
+  lock_permissions="$(stat -c '%a' -- "$lock_path")"
+  (( (8#$lock_permissions & 077) == 0 )) \
+    || fail "routed-project-lock-$lock_name-not-owner-only"
+done
+cmp --silent \
+  "$repo_dir/src/Chummer.Android/packages.lock.json" \
+  "$project_locks/Chummer.Android.packages.lock.json" \
+  || fail "routed-android-lock-drift"
+python3 "$repo_dir/scripts/verify_native_compile_graph.py" \
+  --repo-root "$repo_dir" \
+  --project "$project_path" \
+  --workspace-root "$workspace_root" \
+  --assets-root "$preparation_obj/Chummer.Android" \
+  --assets-only
 python3 "$repo_dir/scripts/materialize_release_package_authority.py" \
   --android-root "$repo_dir" \
   --workspace-root "$workspace_root" \

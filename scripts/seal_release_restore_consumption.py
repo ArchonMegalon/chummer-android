@@ -23,8 +23,18 @@ from typing import Any, Iterable, Mapping
 CONTRACT = "chummer.android.release-restore-consumption/v1"
 AUTHORITY_CONTRACT = "chummer.android.release-package-authority/v2"
 EXPECTED_SOURCE_PROJECTS = {
-    "Chummer.Desktop.Runtime",
-    "Chummer.Presentation",
+    "Chummer.Desktop.Runtime": (
+        "1.0.0",
+        PurePosixPath("chummer-presentation/Chummer.Desktop.Runtime/Chummer.Desktop.Runtime.csproj"),
+    ),
+    "Chummer.Presentation": (
+        "1.0.0",
+        PurePosixPath("chummer-presentation/Chummer.Presentation/Chummer.Presentation.csproj"),
+    ),
+}
+EXPECTED_ANDROID_TARGETS = {
+    "net10.0-android36.0",
+    "net10.0-android36.0/android-arm64",
 }
 
 
@@ -247,9 +257,99 @@ def snapshot_feed(authority_path: Path, source: Path, destination: Path) -> dict
     }
 
 
+def _resolve_project_path(raw: object, project_dir: Path, label: str) -> Path:
+    if not isinstance(raw, str) or not raw or not raw.endswith(".csproj"):
+        raise ValueError(f"{label} is not one project path")
+    candidate = Path(raw)
+    try:
+        resolved = (candidate if candidate.is_absolute() else project_dir / candidate).resolve(
+            strict=True
+        )
+    except OSError as error:
+        raise ValueError(f"{label} does not resolve to a project") from error
+    if not resolved.is_file() or resolved.is_symlink():
+        raise ValueError(f"{label} is not one regular non-symlinked project")
+    return resolved
+
+
+def _dgspec_projects(
+    dgspec: Mapping[str, Any], workspace_root: Path, project_dir: Path,
+) -> list[dict[str, str]]:
+    root_project = project_dir / "Chummer.Android.csproj"
+    expected_projects = {
+        (workspace_root / relative).resolve(strict=True)
+        for _version, relative in EXPECTED_SOURCE_PROJECTS.values()
+    }
+    expected_graph = {root_project.resolve(strict=True), *expected_projects}
+    projects = dgspec.get("projects")
+    if not isinstance(projects, dict):
+        raise ValueError("restore dgspec projects are unavailable")
+    actual: dict[Path, Mapping[str, Any]] = {}
+    for raw_identity, metadata in projects.items():
+        path = _resolve_project_path(raw_identity, project_dir, "restore dgspec project identity")
+        if path in actual or not isinstance(metadata, dict):
+            raise ValueError("restore dgspec project identity is duplicated or malformed")
+        actual[path] = metadata
+    if set(actual) != expected_graph:
+        raise ValueError("restore dgspec does not bind the exact three-project source graph")
+    presentation_path = (
+        workspace_root / EXPECTED_SOURCE_PROJECTS["Chummer.Presentation"][1]
+    ).resolve(strict=True)
+    desktop_path = (
+        workspace_root / EXPECTED_SOURCE_PROJECTS["Chummer.Desktop.Runtime"][1]
+    ).resolve(strict=True)
+    expected_restore_graph = {
+        root_project.resolve(strict=True): (
+            "net10.0-android36.0", {desktop_path, presentation_path}
+        ),
+        desktop_path: ("net10.0", {presentation_path}),
+        presentation_path: ("net10.0", set()),
+    }
+    for project_path, metadata in actual.items():
+        restore = metadata.get("restore")
+        if not isinstance(restore, dict):
+            raise ValueError("restore dgspec project restore binding is unavailable")
+        for key in ("projectPath", "projectUniqueName"):
+            if _resolve_project_path(
+                restore.get(key), project_dir, f"restore dgspec {key}"
+            ) != project_path:
+                raise ValueError("restore dgspec project self-binding is incorrect")
+        expected_framework, expected_references = expected_restore_graph[project_path]
+        restore_frameworks = restore.get("frameworks")
+        if (
+            not isinstance(restore_frameworks, dict)
+            or set(restore_frameworks) != {expected_framework}
+        ):
+            raise ValueError("restore dgspec project framework is not exact")
+        framework = restore_frameworks[expected_framework]
+        references = framework.get("projectReferences") if isinstance(framework, dict) else None
+        if not isinstance(references, dict):
+            raise ValueError("restore dgspec project references are unavailable")
+        actual_references: set[Path] = set()
+        for raw_reference, binding in references.items():
+            reference = _resolve_project_path(
+                raw_reference, project_dir, "restore dgspec project reference"
+            )
+            if reference in actual_references or not isinstance(binding, dict):
+                raise ValueError("restore dgspec duplicates or malforms a project reference")
+            if _resolve_project_path(
+                binding.get("projectPath"), project_dir,
+                "restore dgspec project reference binding",
+            ) != reference:
+                raise ValueError("restore dgspec project reference binding is incorrect")
+            actual_references.add(reference)
+        if actual_references != expected_references:
+            raise ValueError("restore dgspec project references are not exact")
+    return [
+        {"path": path.relative_to(workspace_root).as_posix()}
+        for path in sorted(actual)
+    ]
+
+
 def _closure(
-    assets: Mapping[str, Any], packages_root: Path, expected: list[dict[str, str]],
-) -> tuple[list[dict[str, str]], list[dict[str, str]]]:
+    assets: Mapping[str, Any], dgspec: Mapping[str, Any], packages_root: Path,
+    expected: list[dict[str, str]], workspace_root: Path,
+) -> tuple[list[dict[str, str]], list[dict[str, str]], list[dict[str, str]]]:
     package_folders = assets.get("packageFolders")
     if (
         not isinstance(package_folders, dict)
@@ -260,9 +360,25 @@ def _closure(
     libraries = assets.get("libraries")
     if not isinstance(libraries, dict):
         raise ValueError("project.assets.json libraries are unavailable")
+    project_restore = assets.get("project")
+    restore = project_restore.get("restore") if isinstance(project_restore, dict) else None
+    project_dir = workspace_root / "chummer-android/src/Chummer.Android"
+    if (
+        not isinstance(restore, dict)
+        or _resolve_project_path(
+            restore.get("projectPath"), project_dir, "project.assets.json restore project"
+        ) != (project_dir / "Chummer.Android.csproj").resolve(strict=True)
+    ):
+        raise ValueError("project.assets.json is not bound to the exact Android project")
     selected: dict[str, tuple[str, Mapping[str, Any]]] = {}
     source_projects: dict[str, tuple[str, Mapping[str, Any]]] = {}
     for identity, row in libraries.items():
+        malformed_chummer = (
+            isinstance(identity, str) and identity.startswith("Chummer.")
+            and ("/" not in identity or not isinstance(row, dict))
+        )
+        if malformed_chummer:
+            raise ValueError("project.assets.json contains a malformed Chummer library identity")
         if not isinstance(identity, str) or "/" not in identity or not isinstance(row, dict):
             continue
         package_id, version = identity.rsplit("/", 1)
@@ -286,10 +402,29 @@ def _closure(
     expected_by_id = {row["packageId"]: row for row in expected}
     if set(selected) != set(expected_by_id):
         raise ValueError("project.assets.json does not select the exact twelve-package Chummer closure")
-    if set(source_projects) != EXPECTED_SOURCE_PROJECTS:
+    if set(source_projects) != set(EXPECTED_SOURCE_PROJECTS):
         raise ValueError("project.assets.json source project references are not exact")
-    run_version, _run_row = selected["Chummer.Run.Contracts"]
+    expected_project_identities = {
+        f"{project_id}/{version}"
+        for project_id, (version, _path) in EXPECTED_SOURCE_PROJECTS.items()
+    }
     targets = assets.get("targets")
+    if not isinstance(targets, dict) or set(targets) != EXPECTED_ANDROID_TARGETS:
+        raise ValueError("project.assets.json Android targets are not exact")
+    for target_name, target in targets.items():
+        if not isinstance(target, dict):
+            raise ValueError("project.assets.json target is malformed")
+        target_project_identities: set[str] = set()
+        for identity, row in target.items():
+            if isinstance(row, dict) and row.get("type") == "project":
+                if not isinstance(identity, str):
+                    raise ValueError("project.assets.json target project identity is malformed")
+                target_project_identities.add(identity)
+        if target_project_identities != expected_project_identities:
+            raise ValueError(
+                f"project.assets.json target project identities are not exact: {target_name}"
+            )
+    run_version, _run_row = selected["Chummer.Run.Contracts"]
     run_target_rows = []
     if isinstance(targets, dict):
         for target in targets.values():
@@ -334,6 +469,12 @@ def _closure(
     project_result: list[dict[str, str]] = []
     for project_id in sorted(source_projects):
         version, row = source_projects[project_id]
+        expected_version, expected_relative = EXPECTED_SOURCE_PROJECTS[project_id]
+        expected_path = (workspace_root / expected_relative).resolve(strict=True)
+        if version != expected_version:
+            raise ValueError(
+                f"project.assets.json source project version is not exact: {project_id}"
+            )
         path = row.get("path")
         msbuild_project = row.get("msbuildProject")
         if (
@@ -343,18 +484,29 @@ def _closure(
             raise ValueError(
                 f"project.assets.json source project metadata is incomplete: {project_id}"
             )
+        if (
+            _resolve_project_path(path, project_dir, f"{project_id}.path") != expected_path
+            or _resolve_project_path(
+                msbuild_project, project_dir, f"{project_id}.msbuildProject"
+            ) != expected_path
+        ):
+            raise ValueError(
+                f"project.assets.json source project path is not exact: {project_id}"
+            )
         project_result.append({
             "projectId": project_id,
             "version": version,
             "path": path,
             "msbuildProject": msbuild_project,
+            "canonicalPath": expected_relative.as_posix(),
         })
-    return result, project_result
+    dgspec_result = _dgspec_projects(dgspec, workspace_root, project_dir)
+    return result, project_result, dgspec_result
 
 
 def materialize_payload(
     *, input_root: Path, workspace_root: Path, authority_path: Path, owner_feed: Path,
-    packages_root: Path, project_lock: Path,
+    packages_root: Path, routed_lock_root: Path, project_lock: Path,
 ) -> dict[str, Any]:
     input_root = _private_directory(input_root, "release restore input root")
     workspace_root = workspace_root.resolve(strict=True)
@@ -362,6 +514,7 @@ def materialize_payload(
     for path, label in (
         (owner_feed, "private selected package feed"),
         (packages_root, "isolated global-packages cache"),
+        (routed_lock_root, "routed project-lock root"),
     ):
         _private_directory(path, label)
         try:
@@ -388,7 +541,11 @@ def materialize_payload(
         raise ValueError("restore must produce exactly one primary Android project.assets.json and dgspec")
     assets_path = workspace_root / PurePosixPath(assets_candidates[0]["path"])
     assets = _strict_json(assets_path, "project.assets.json")
-    chummer_closure, source_projects = _closure(assets, packages_root, expected)
+    dgspec_path = workspace_root / PurePosixPath(dgspec_candidates[0]["path"])
+    dgspec = _strict_json(dgspec_path, "restore dgspec")
+    chummer_closure, source_projects, dgspec_projects = _closure(
+        assets, dgspec, packages_root, expected, workspace_root
+    )
     lock_row = _file_row(project_lock, project_lock.name, "packages.lock.json")
     return {
         "contractName": CONTRACT,
@@ -400,10 +557,14 @@ def materialize_payload(
         "dependencyGraphSpec": dgspec_candidates[0],
         "chummerClosure": chummer_closure,
         "sourceProjectReferences": source_projects,
+        "dependencyGraphProjects": dgspec_projects,
         "ownerFeed": {
             "files": _tree_inventory(owner_feed, "private selected package feed"),
         },
         "packages": {"files": package_rows, "inventorySha256": _inventory_digest(package_rows)},
+        "routedProjectLocks": {
+            "files": _tree_inventory(routed_lock_root, "routed project-lock root"),
+        },
         "workspaceBuildState": {
             "roots": build_roots,
             "files": intermediate_rows,
@@ -447,7 +608,7 @@ def _rows_by_path(rows: object, label: str) -> dict[str, Mapping[str, Any]]:
 
 def verify_post_publish(
     manifest: Mapping[str, Any], *, packages_root: Path, workspace_root: Path,
-    owner_feed: Path, project_lock: Path,
+    owner_feed: Path, routed_lock_root: Path, project_lock: Path,
 ) -> None:
     if manifest.get("contractName") != CONTRACT or manifest.get("publicationAuthorized") is not False:
         raise ValueError("restore consumption manifest posture is not exact")
@@ -459,6 +620,15 @@ def verify_post_publish(
     expected_feed = manifest.get("ownerFeed", {}).get("files") if isinstance(manifest.get("ownerFeed"), dict) else None
     if _rows_by_path(actual_feed, "actual owner feed") != _rows_by_path(expected_feed, "sealed owner feed"):
         raise ValueError("private selected package feed changed after snapshot")
+    actual_locks = _tree_inventory(routed_lock_root, "routed project-lock root")
+    expected_locks = (
+        manifest.get("routedProjectLocks", {}).get("files")
+        if isinstance(manifest.get("routedProjectLocks"), dict) else None
+    )
+    if _rows_by_path(actual_locks, "actual routed locks") != _rows_by_path(
+        expected_locks, "sealed routed locks"
+    ):
+        raise ValueError("routed project locks changed after restore")
     lock = _file_row(project_lock, project_lock.name, "packages.lock.json")
     if lock != manifest.get("projectLock"):
         raise ValueError("packages.lock.json changed after restore")
@@ -476,7 +646,7 @@ def verify_post_publish(
 
 def verify_context(
     manifest: Mapping[str, Any], *, input_root: Path, workspace_root: Path,
-    authority_path: Path, owner_feed: Path, packages_root: Path,
+    authority_path: Path, owner_feed: Path, packages_root: Path, routed_lock_root: Path,
 ) -> None:
     input_root = _private_directory(input_root, "release restore input root")
     workspace_root = workspace_root.resolve(strict=True)
@@ -489,6 +659,7 @@ def verify_context(
     for path, label in (
         (owner_feed, "private selected package feed"),
         (packages_root, "isolated global-packages cache"),
+        (routed_lock_root, "routed project-lock root"),
     ):
         _private_directory(path, label)
         try:
@@ -514,6 +685,7 @@ def main() -> int:
         command.add_argument("--authority", required=True, type=Path)
         command.add_argument("--owner-feed", required=True, type=Path)
         command.add_argument("--packages-root", required=True, type=Path)
+        command.add_argument("--routed-lock-root", required=True, type=Path)
         command.add_argument("--project-lock", required=True, type=Path)
         command.add_argument("--manifest", required=True, type=Path)
     args = parser.parse_args()
@@ -530,7 +702,8 @@ def main() -> int:
             payload = materialize_payload(
                 input_root=args.input_root, workspace_root=args.workspace_root,
                 authority_path=args.authority, owner_feed=args.owner_feed,
-                packages_root=args.packages_root, project_lock=args.project_lock,
+                packages_root=args.packages_root, routed_lock_root=args.routed_lock_root,
+                project_lock=args.project_lock,
             )
             _write_exclusive(args.manifest, payload)
             print(json.dumps({"contractName": CONTRACT, "status": "sealed", "publicationAuthorized": False}, sort_keys=True))
@@ -540,11 +713,12 @@ def main() -> int:
             verify_context(
                 manifest, input_root=args.input_root, workspace_root=args.workspace_root,
                 authority_path=args.authority, owner_feed=args.owner_feed,
-                packages_root=args.packages_root,
+                packages_root=args.packages_root, routed_lock_root=args.routed_lock_root,
             )
             verify_post_publish(
                 manifest, packages_root=args.packages_root, workspace_root=args.workspace_root,
-                owner_feed=args.owner_feed, project_lock=args.project_lock,
+                owner_feed=args.owner_feed, routed_lock_root=args.routed_lock_root,
+                project_lock=args.project_lock,
             )
             print(json.dumps({"contractName": CONTRACT, "status": "verified", "publicationAuthorized": False}, sort_keys=True))
             return 0

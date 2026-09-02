@@ -51,8 +51,27 @@ def fixture(root: Path):
     feed = private_directory(root / "retained-feed")
     selected_feed = private_directory(input_root / "selected-feed")
     packages = private_directory(input_root / "packages")
+    routed_locks = private_directory(input_root / "project-locks")
+    for name in (
+        "Chummer.Android.packages.lock.json",
+        "Chummer.Desktop.Runtime.packages.lock.json",
+        "Chummer.Presentation.packages.lock.json",
+    ):
+        private_file(routed_locks / name, f"sealed:{name}".encode())
     intermediate = private_directory(workspace / "chummer-android/src/Chummer.Android/obj")
     primary_intermediate = intermediate
+    android_project = private_file(
+        workspace / "chummer-android/src/Chummer.Android/Chummer.Android.csproj",
+        b"<Project />",
+    )
+    desktop_project = private_file(
+        workspace / "chummer-presentation/Chummer.Desktop.Runtime/Chummer.Desktop.Runtime.csproj",
+        b"<Project />",
+    )
+    presentation_project = private_file(
+        workspace / "chummer-presentation/Chummer.Presentation/Chummer.Presentation.csproj",
+        b"<Project />",
+    )
     output = workspace / "chummer-android/src/Chummer.Android/bin"
     core = []
     owners = []
@@ -97,24 +116,64 @@ def fixture(root: Path):
             ),
         }
     for project_id in ("Chummer.Desktop.Runtime", "Chummer.Presentation"):
-        project_path = f"../{project_id}/{project_id}.csproj"
+        absolute_project = (
+            desktop_project if project_id == "Chummer.Desktop.Runtime" else presentation_project
+        )
+        project_path = os.path.relpath(absolute_project, android_project.parent)
         libraries[f"{project_id}/1.0.0"] = {
             "type": "project",
             "path": project_path,
             "msbuildProject": project_path,
         }
+        target[f"{project_id}/1.0.0"] = {"type": "project"}
     assets = {
         "packageFolders": {os.fspath(packages) + os.sep: {}},
         "libraries": libraries,
-        "targets": {"net10.0-android36.0": target},
+        "targets": {
+            "net10.0-android36.0": target,
+            "net10.0-android36.0/android-arm64": copy.deepcopy(target),
+        },
+        "project": {"restore": {"projectPath": os.fspath(android_project)}},
     }
     private_file(primary_intermediate / "project.assets.json", json.dumps(assets).encode())
-    private_file(primary_intermediate / "Chummer.Android.csproj.nuget.dgspec.json", b"{}")
+    def dgspec_project(path: Path, framework: str, references: tuple[Path, ...]):
+        return {
+            "restore": {
+                "projectPath": os.fspath(path),
+                "projectUniqueName": os.fspath(path),
+                "frameworks": {
+                    framework: {
+                        "projectReferences": {
+                            os.fspath(reference): {"projectPath": os.fspath(reference)}
+                            for reference in references
+                        }
+                    }
+                },
+            }
+        }
+    dgspec = {
+        "projects": {
+            os.fspath(android_project): dgspec_project(
+                android_project, "net10.0-android36.0",
+                (desktop_project, presentation_project),
+            ),
+            os.fspath(desktop_project): dgspec_project(
+                desktop_project, "net10.0", (presentation_project,),
+            ),
+            os.fspath(presentation_project): dgspec_project(
+                presentation_project, "net10.0", (),
+            ),
+        }
+    }
+    private_file(
+        primary_intermediate / "Chummer.Android.csproj.nuget.dgspec.json",
+        json.dumps(dgspec).encode(),
+    )
     private_file(primary_intermediate / "Chummer.Android.csproj.nuget.g.props", b"<Project />")
     lock = private_file(root / "packages.lock.json", b'{"version":2}')
     return (
         module, workspace, input_root, authority_path, feed, selected_feed,
-        packages, intermediate, output, lock,
+        packages, routed_locks, intermediate, output, lock,
     )
 
 
@@ -123,7 +182,7 @@ class ReleaseRestoreConsumptionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             (
                 module, _workspace, _input_root, authority, feed, selected,
-                _packages, _intermediate, _output, _lock,
+                _packages, _routed_locks, _intermediate, _output, _lock,
             ) = fixture(Path(temporary))
             second = private_directory(Path(temporary) / "second-feed")
             result = module.snapshot_feed(authority, feed, second)
@@ -145,7 +204,7 @@ class ReleaseRestoreConsumptionTests(unittest.TestCase):
             with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as temporary:
                 (
                     module, _workspace, _input_root, authority, feed, _selected,
-                    _packages, _intermediate, _output, _lock,
+                    _packages, _routed_locks, _intermediate, _output, _lock,
                 ) = fixture(Path(temporary))
                 destination = private_directory(Path(temporary) / "snapshot")
                 if mutation == "missing-engine":
@@ -169,10 +228,11 @@ class ReleaseRestoreConsumptionTests(unittest.TestCase):
     def test_manifest_binds_assets_dgspec_lock_cache_and_complete_closure(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             values = fixture(Path(temporary))
-            module, workspace, input_root, authority, _feed, selected, packages, intermediate, output, lock = values
+            module, workspace, input_root, authority, _feed, selected, packages, routed_locks, intermediate, output, lock = values
             payload = module.materialize_payload(
                 input_root=input_root, workspace_root=workspace, authority_path=authority,
-                owner_feed=selected, packages_root=packages, project_lock=lock,
+                owner_feed=selected, packages_root=packages,
+                routed_lock_root=routed_locks, project_lock=lock,
             )
             self.assertEqual(module.CONTRACT, payload["contractName"])
             self.assertFalse(payload["publicationAuthorized"])
@@ -188,7 +248,7 @@ class ReleaseRestoreConsumptionTests(unittest.TestCase):
             )
             module.verify_post_publish(
                 payload, packages_root=packages, workspace_root=workspace,
-                owner_feed=selected, project_lock=lock,
+                owner_feed=selected, routed_lock_root=routed_locks, project_lock=lock,
             )
 
     def test_tamper_extra_missing_symlink_cache_asset_and_lock_fail_closed(self) -> None:
@@ -203,10 +263,11 @@ class ReleaseRestoreConsumptionTests(unittest.TestCase):
         for mutation, message in mutations:
             with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as temporary:
                 values = fixture(Path(temporary))
-                module, workspace, input_root, authority, _feed, selected, packages, intermediate, output, lock = values
+                module, workspace, input_root, authority, _feed, selected, packages, routed_locks, intermediate, output, lock = values
                 payload = module.materialize_payload(
                     input_root=input_root, workspace_root=workspace, authority_path=authority,
-                    owner_feed=selected, packages_root=packages, project_lock=lock,
+                    owner_feed=selected, packages_root=packages,
+                    routed_lock_root=routed_locks, project_lock=lock,
                 )
                 engine_dir = packages / "chummer.engine.contracts" / "1.2.3"
                 if mutation == "package-tamper":
@@ -225,7 +286,8 @@ class ReleaseRestoreConsumptionTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, message):
                     module.verify_post_publish(
                         payload, packages_root=packages, workspace_root=workspace,
-                        owner_feed=selected, project_lock=lock,
+                        owner_feed=selected, routed_lock_root=routed_locks,
+                        project_lock=lock,
                     )
 
     def test_materialize_rejects_workspace_input_nonempty_output_missing_dgspec_and_run_play_drift(self) -> None:
@@ -238,7 +300,7 @@ class ReleaseRestoreConsumptionTests(unittest.TestCase):
         for mutation, message in mutations:
             with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as temporary:
                 values = fixture(Path(temporary))
-                module, workspace, input_root, authority, _feed, selected, packages, intermediate, output, lock = values
+                module, workspace, input_root, authority, _feed, selected, packages, routed_locks, intermediate, output, lock = values
                 if mutation == "inside-workspace":
                     workspace = private_directory(Path(temporary))
                 elif mutation == "nonempty-output":
@@ -254,7 +316,8 @@ class ReleaseRestoreConsumptionTests(unittest.TestCase):
                     module.materialize_payload(
                         input_root=input_root, workspace_root=workspace,
                         authority_path=authority, owner_feed=selected,
-                        packages_root=packages, project_lock=lock,
+                        packages_root=packages, routed_lock_root=routed_locks,
+                        project_lock=lock,
                     )
 
     def test_source_projects_are_separate_from_packages_and_fail_closed(self) -> None:
@@ -267,7 +330,7 @@ class ReleaseRestoreConsumptionTests(unittest.TestCase):
         ):
             with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as temporary:
                 values = fixture(Path(temporary))
-                module, workspace, input_root, authority, _feed, selected, packages, intermediate, _output, lock = values
+                module, workspace, input_root, authority, _feed, selected, packages, routed_locks, intermediate, _output, lock = values
                 assets_path = intermediate / "project.assets.json"
                 assets = json.loads(assets_path.read_text())
                 libraries = assets["libraries"]
@@ -297,7 +360,74 @@ class ReleaseRestoreConsumptionTests(unittest.TestCase):
                     module.materialize_payload(
                         input_root=input_root, workspace_root=workspace,
                         authority_path=authority, owner_feed=selected,
-                        packages_root=packages, project_lock=lock,
+                        packages_root=packages, routed_lock_root=routed_locks,
+                        project_lock=lock,
+                    )
+
+    def test_assets_and_dgspec_bind_the_exact_three_project_graph(self) -> None:
+        for mutation, message in (
+            ("malformed-chummer", "malformed Chummer library identity"),
+            ("wrong-project-version", "source project version is not exact"),
+            ("spoof-project-path", "source project path is not exact"),
+            ("wrong-assets-root", "exact Android project"),
+            ("missing-rid-project", "target project identities are not exact"),
+            ("dgspec-extra-project", "exact three-project source graph"),
+            ("dgspec-root-edge", "project references are not exact"),
+            ("dgspec-desktop-edge", "project references are not exact"),
+        ):
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as temporary:
+                values = fixture(Path(temporary))
+                module, workspace, input_root, authority, _feed, selected, packages, routed_locks, intermediate, _output, lock = values
+                assets_path = intermediate / "project.assets.json"
+                dgspec_path = intermediate / "Chummer.Android.csproj.nuget.dgspec.json"
+                assets = json.loads(assets_path.read_text())
+                dgspec = json.loads(dgspec_path.read_text())
+                android_project = workspace / "chummer-android/src/Chummer.Android/Chummer.Android.csproj"
+                desktop_project = workspace / "chummer-presentation/Chummer.Desktop.Runtime/Chummer.Desktop.Runtime.csproj"
+                presentation_project = workspace / "chummer-presentation/Chummer.Presentation/Chummer.Presentation.csproj"
+                if mutation == "malformed-chummer":
+                    assets["libraries"]["Chummer.Malformed"] = {"type": "package"}
+                elif mutation == "wrong-project-version":
+                    row = assets["libraries"].pop("Chummer.Presentation/1.0.0")
+                    assets["libraries"]["Chummer.Presentation/9.9.9"] = row
+                elif mutation == "spoof-project-path":
+                    spoof = private_file(workspace / "spoof/Chummer.Presentation.csproj", b"<Project />")
+                    relative = os.path.relpath(spoof, android_project.parent)
+                    assets["libraries"]["Chummer.Presentation/1.0.0"].update({
+                        "path": relative,
+                        "msbuildProject": relative,
+                    })
+                elif mutation == "wrong-assets-root":
+                    assets["project"]["restore"]["projectPath"] = os.fspath(presentation_project)
+                elif mutation == "missing-rid-project":
+                    del assets["targets"]["net10.0-android36.0/android-arm64"][
+                        "Chummer.Presentation/1.0.0"
+                    ]
+                elif mutation == "dgspec-extra-project":
+                    extra = private_file(workspace / "extra/Extra.csproj", b"<Project />")
+                    dgspec["projects"][os.fspath(extra)] = {
+                        "restore": {
+                            "projectPath": os.fspath(extra),
+                            "projectUniqueName": os.fspath(extra),
+                            "frameworks": {"net10.0": {"projectReferences": {}}},
+                        }
+                    }
+                else:
+                    owner = android_project if mutation == "dgspec-root-edge" else desktop_project
+                    framework = (
+                        "net10.0-android36.0" if mutation == "dgspec-root-edge" else "net10.0"
+                    )
+                    del dgspec["projects"][os.fspath(owner)]["restore"]["frameworks"][framework][
+                        "projectReferences"
+                    ][os.fspath(presentation_project)]
+                private_file(assets_path, json.dumps(assets).encode())
+                private_file(dgspec_path, json.dumps(dgspec).encode())
+                with self.assertRaisesRegex(ValueError, message):
+                    module.materialize_payload(
+                        input_root=input_root, workspace_root=workspace,
+                        authority_path=authority, owner_feed=selected,
+                        packages_root=packages, routed_lock_root=routed_locks,
+                        project_lock=lock,
                     )
 
 
