@@ -2182,30 +2182,18 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                     device.hierarchy(deadline=12.0)
 
         reserved = (
-            DRIVER.ADB_HIERARCHY_DUMP_RECONCILIATION_REQUIRED_CONSECUTIVE
-            * DRIVER.ADB_HIERARCHY_DUMP_RECONCILIATION_READ_ATTEMPT_MAX_SECONDS
-            + (
-                DRIVER.ADB_HIERARCHY_DUMP_RECONCILIATION_REQUIRED_CONSECUTIVE - 1
-            )
-            * DRIVER.ADB_HIERARCHY_DUMP_RECONCILIATION_DELAY_SECONDS
-            + DRIVER.ADB_HIERARCHY_DUMP_RECONCILIATION_HEADROOM_SECONDS
+            3 * DRIVER.ADB_FILE_HIERARCHY_IDENTITY_READ_ATTEMPT_MAX_SECONDS
+            + DRIVER.ADB_FILE_HIERARCHY_IDENTITY_HEADROOM_SECONDS
         )
         self.assertEqual([12.0 - reserved], observed_dump_timeouts)
-        self.assertGreaterEqual(len(observed_owned_read_timeouts), 2)
-        self.assertTrue(
-            all(
-                timeout
-                <= DRIVER.ADB_HIERARCHY_DUMP_RECONCILIATION_READ_ATTEMPT_MAX_SECONDS
-                for timeout in observed_owned_read_timeouts
-            )
-        )
+        self.assertEqual([], observed_owned_read_timeouts)
         self.assertLessEqual(now[0], 12.0)
         issued = [tuple(invocation.args[0][3:]) for invocation in run.call_args_list]
         self.assertEqual(
             1,
             issued.count(("shell", *DRIVER.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS)),
         )
-        self.assertIn(
+        self.assertNotIn(
             ("exec-out", "cat", DRIVER.ADB_FILE_HIERARCHY_REMOTE_PATH),
             issued,
         )
@@ -2239,7 +2227,8 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 "shell",
                 *DRIVER.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
             ):
-                self.assertEqual(30.0, timeout)
+                self.assertGreater(timeout, 0.0)
+                self.assertLessEqual(timeout, 30.0)
                 now[0] += timeout
                 raise subprocess.TimeoutExpired(command, timeout)
             if arguments == (
@@ -2283,18 +2272,18 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
 
         issued = [tuple(invocation.args[0][3:]) for invocation in run.call_args_list]
         self.assertEqual(
-            1,
+            DRIVER.ADB_FILE_HIERARCHY_MAX_ATTEMPTS,
             issued.count(("shell", *DRIVER.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS)),
         )
-        self.assertGreaterEqual(
+        self.assertEqual(
             issued.count(("exec-out", "cat", DRIVER.ADB_FILE_HIERARCHY_REMOTE_PATH)),
-            1,
+            0,
         )
         self.assertNotIn(DRIVER.ADB_READ_ONLY_HIERARCHY_ARGUMENTS, issued)
-        self.assertEqual("adb-transport-event-0001.json", raised.exception.receipt["evidenceFile"])
-        self.assertEqual(1, summary["eventCount"])
+        self.assertEqual("adb-transport-event-0003.json", raised.exception.receipt["evidenceFile"])
+        self.assertEqual(3, summary["eventCount"])
         self.assertEqual(1, summary["terminalFailureCount"])
-        self.assertIsNotNone(device._mutation_blocker)
+        self.assertIsNone(device._mutation_blocker)
 
     def test_invalid_hierarchy_is_retryable_and_preserved(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -3015,9 +3004,11 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             transport_evidence = evidence / "adb-transport-event-0001.json"
             failure = DRIVER.AdbTransportError(
                 {
+                    "status": "fail",
                     "classification": "unclassified-adb-failure",
                     "commandPolicy": "non-replayable",
                     "replay": {"performed": False, "suppressed": True},
+                    "evidenceFile": "adb-transport-event-0001.json",
                 },
                 transport_evidence,
             )
@@ -3039,9 +3030,11 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             transport_evidence = evidence / "adb-transport-event-0001.json"
             failure = DRIVER.AdbTransportError(
                 {
+                    "status": "fail",
                     "classification": "unclassified-adb-failure",
                     "commandPolicy": "non-replayable",
                     "replay": {"performed": False, "suppressed": True},
+                    "evidenceFile": "adb-transport-event-0001.json",
                 },
                 transport_evidence,
             )
@@ -3091,7 +3084,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 ),
                 call(
                     *DRIVER.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
-                    timeout=7.25,
+                    timeout=3.5,
                     deadline=100.0,
                 ),
             ],
@@ -3155,7 +3148,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 ),
                 call(
                     *DRIVER.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
-                    timeout=7.25,
+                    timeout=3.5,
                     deadline=100.0,
                 ),
             ],

@@ -84,6 +84,9 @@ ADB_FILE_HIERARCHY_DUMP_ARGUMENTS_SHA256 = hashlib.sha256(
 ADB_FILE_HIERARCHY_OBSERVATION_ARGUMENTS = (
     "exec-out", "cat", ADB_FILE_HIERARCHY_REMOTE_PATH,
 )
+ADB_FILE_HIERARCHY_STAT_ARGUMENTS = (
+    "shell", "stat", "-c", "%d:%i:%s:%Y:%f", ADB_FILE_HIERARCHY_REMOTE_PATH,
+)
 ADB_FILE_HIERARCHY_OBSERVATION_READ_ATTEMPT_MAX_SECONDS = 1.0
 ADB_FILE_HIERARCHY_OBSERVATION_MAX_SECONDS = 10.0
 ADB_READ_ONLY_HIERARCHY_ARGUMENTS = (
@@ -1881,6 +1884,8 @@ def read_only_adb_policy_reason(arguments: Sequence[str]) -> str | None:
         return "exact framebuffer observation"
     if values == ADB_READ_ONLY_HIERARCHY_ARGUMENTS:
         return "exact accessibility-hierarchy observation without app mutation"
+    if values == ADB_FILE_HIERARCHY_DUMP_ARGUMENTS:
+        return "exact fenced file-backed accessibility-hierarchy observation"
     if (
         len(values) == 3
         and values[:2] == ("exec-out", "cat")
@@ -1919,6 +1924,8 @@ def read_only_adb_policy_reason(arguments: Sequence[str]) -> str | None:
         and ADB_SAFE_READ_ONLY_REMOTE_PATH.fullmatch(shell_arguments[3]) is not None
     ):
         return "exact remote-path absence observation"
+    if values == ADB_FILE_HIERARCHY_STAT_ARGUMENTS:
+        return "exact hierarchy temporary-file identity observation"
     if shell_arguments in {
         ("dumpsys", "input_method"),
         ("dumpsys", "activity", "activities"),
@@ -2388,6 +2395,7 @@ def validate_adb_transport(value: object, *, serial: str, label: str) -> None:
 
     retryable_classification_authorities = {
         "timeout-unknown-outcome": "timeout-with-unknown-command-outcome",
+        "observer-process-killed": "exact-file-hierarchy-observer-exit-137",
         "device-offline": "recognized-transient-transport-marker",
         "device-missing": "recognized-transient-transport-marker",
         "transport-closed": "recognized-transient-transport-marker",
@@ -2562,6 +2570,7 @@ def validate_adb_transport(value: object, *, serial: str, label: str) -> None:
         retryable_classification = (
             classification in retryable_classification_authorities
         )
+        observer_process_killed = classification == "observer-process-killed"
         expected_replay = {
             "eligible": retryable_classification,
             "performed": attempt > 1 and not deadline_before_retry,
@@ -2575,6 +2584,14 @@ def validate_adb_transport(value: object, *, serial: str, label: str) -> None:
             is not retryable_classification
             or event.get("failure") is None
             or event.get("replay") != expected_replay
+            or (
+                observer_process_killed
+                and (
+                    tuple(arguments) != ADB_FILE_HIERARCHY_DUMP_ARGUMENTS
+                    or event["failure"].get("type") != "CalledProcessError"
+                    or event["failure"].get("returnCode") != 137
+                )
+            )
             or (
                 deadline_before_retry
                 and (

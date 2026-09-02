@@ -100,6 +100,9 @@ MAX_LAUNCH_EVIDENCE_CHARACTERS = 1_000_000
 ADB_TRANSPORT_EVENT_SCHEMA = "chummer.android.adb-transport-event/v1"
 ADB_TRANSPORT_PREFLIGHT_SCHEMA = "chummer.android.adb-transport-preflight/v1"
 ADB_TRANSPORT_SUMMARY_SCHEMA = "chummer.android.adb-transport-summary/v1"
+ADB_FILE_HIERARCHY_RETRY_SCHEMA = (
+    "chummer.android.file-hierarchy-retry-evidence/v1"
+)
 DURABLE_SAVE_OUTCOME_FAILURE_SCHEMA = (
     "chummer.android.durable-save-outcome-failure/v1"
 )
@@ -140,13 +143,21 @@ ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS = (
     "--compressed",
     ADB_FILE_HIERARCHY_REMOTE_PATH,
 )
-# A cold API-36 emulator can need more than ten seconds for its first file-backed
-# UIAutomator observation even after transport preflight and launch verification.
-# Keep this a single non-replayable command, but give that one attempt a bounded
-# twenty-second window. Run 33406127634 proved that the former ten-second cap
-# could reject an otherwise healthy candidate before any product route was
-# exercised; twenty seconds still preserves the existing 75-second caller lease
-# for owned-file and direct read-only reconciliation.
+ADB_FILE_HIERARCHY_STAT_SHELL_ARGUMENTS = (
+    "stat",
+    "-c",
+    "%d:%i:%s:%Y:%f",
+    ADB_FILE_HIERARCHY_REMOTE_PATH,
+)
+# This exact command observes accessibility state and writes only the driver's
+# disposable hierarchy file. A failed invocation may therefore be followed by
+# a new observation, but only through Device.hierarchy: every attempt first
+# removes the owned path, and any retried result must pass stat/content/stat
+# identity reconciliation. Generic shell retry remains forbidden.
+ADB_FILE_HIERARCHY_MAX_ATTEMPTS = 3
+ADB_FILE_HIERARCHY_RETRY_DELAY_SECONDS = 1.0
+ADB_FILE_HIERARCHY_IDENTITY_READ_ATTEMPT_MAX_SECONDS = 2.0
+ADB_FILE_HIERARCHY_IDENTITY_HEADROOM_SECONDS = 0.5
 ADB_FILE_HIERARCHY_DUMP_ATTEMPT_MAX_SECONDS = 20.0
 ADB_FILE_HIERARCHY_ABSENT_OUTPUT = (
     f"cat: {ADB_FILE_HIERARCHY_REMOTE_PATH}: No such file or directory"
@@ -190,6 +201,10 @@ MAX_ADB_TRANSPORT_EVENTS = 64
 MAX_ADB_FAILURE_DETAIL_CHARACTERS = 4000
 SAFE_READ_ONLY_REMOTE_PATH = re.compile(r"^/[A-Za-z0-9._/:-]{1,511}$")
 SAFE_ANDROID_PROPERTY = re.compile(r"^[A-Za-z0-9._-]{1,255}$")
+ADB_FILE_HIERARCHY_STAT = re.compile(
+    r"^(?P<device>[0-9]+):(?P<inode>[0-9]+):(?P<size>[0-9]+):"
+    r"(?P<modified>-?[0-9]+):(?P<mode>[0-9a-fA-F]+)$"
+)
 
 
 def _bounded_adb_detail(value: object) -> str:
@@ -307,6 +322,80 @@ def _complete_timed_out_hierarchy_output(
     return output, payload, node_count
 
 
+def _parse_file_hierarchy_metadata(output: object) -> dict[str, int] | None:
+    if not isinstance(output, str):
+        return None
+    match = ADB_FILE_HIERARCHY_STAT.fullmatch(output.strip())
+    if match is None:
+        return None
+    metadata = {
+        "device": int(match.group("device"), 10),
+        "inode": int(match.group("inode"), 10),
+        "sizeBytes": int(match.group("size"), 10),
+        "modifiedEpochSeconds": int(match.group("modified"), 10),
+        "mode": int(match.group("mode"), 16),
+    }
+    if (
+        metadata["inode"] <= 0
+        or not 0 < metadata["sizeBytes"] <= ADB_TIMEOUT_HIERARCHY_MAX_BYTES
+        or metadata["modifiedEpochSeconds"] <= 0
+        or metadata["mode"] & 0o170000 != 0o100000
+    ):
+        return None
+    return metadata
+
+
+def _complete_file_hierarchy(raw: object) -> tuple[str, int, str] | None:
+    if not isinstance(raw, bytes) or len(raw) > ADB_TIMEOUT_HIERARCHY_MAX_BYTES:
+        return None
+    try:
+        output = raw.decode("utf-8", errors="strict")
+    except UnicodeDecodeError:
+        return None
+    hierarchy_start = output.find("<hierarchy")
+    hierarchy_close = "</hierarchy>"
+    hierarchy_end = output.find(hierarchy_close, hierarchy_start + 1)
+    if (
+        hierarchy_start < 0
+        or hierarchy_end < hierarchy_start
+        or output.find("<hierarchy", hierarchy_start + 1) >= 0
+        or output.find(hierarchy_close, hierarchy_end + len(hierarchy_close)) >= 0
+        or re.fullmatch(
+            r"\s*(?:<\?xml[^>]*\?>\s*)?",
+            output[:hierarchy_start],
+        ) is None
+        or output[hierarchy_end + len(hierarchy_close):].strip()
+    ):
+        return None
+    payload = output[hierarchy_start:hierarchy_end + len(hierarchy_close)]
+    try:
+        root = ET.fromstring(payload)
+    except ET.ParseError:
+        return None
+    nodes = list(root.iter("node"))
+    if (
+        root.tag != "hierarchy"
+        or set(root.attrib) != {"rotation"}
+        or root.attrib["rotation"] not in {"0", "1", "2", "3"}
+        or any(element.tag != "node" for element in root.iter() if element is not root)
+        or not nodes
+    ):
+        return None
+    return output, len(nodes), root.attrib["rotation"]
+
+
+def classify_file_hierarchy_dump_failure(
+    arguments: tuple[str, ...],
+    error: BaseException,
+) -> tuple[str, bool]:
+    exact = ("shell", *ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS)
+    if arguments != exact:
+        return ("unclassified-adb-failure", False)
+    if isinstance(error, subprocess.CalledProcessError) and error.returncode == 137:
+        return ("observer-process-killed", True)
+    return classify_adb_failure(error)
+
+
 def _adb_arguments_sha256(arguments: tuple[str, ...]) -> str:
     return hashlib.sha256("\0".join(arguments).encode("utf-8")).hexdigest()
 
@@ -419,6 +508,8 @@ def adb_classification_authority(classification: str) -> str:
         return "recognized-nonretryable-transport-marker"
     if classification == "timeout-unknown-outcome":
         return "timeout-with-unknown-command-outcome"
+    if classification == "observer-process-killed":
+        return "exact-file-hierarchy-observer-exit-137"
     if classification == "caller-deadline-exhausted-before-retry":
         return "caller-owned-deadline-before-command"
     return "unclassified-fail-closed"
@@ -434,6 +525,11 @@ def adb_command_retry_policy(arguments: tuple[str, ...]) -> tuple[str, str]:
         return (
             "read-only-retryable",
             "exact accessibility-hierarchy observation without app mutation",
+        )
+    if arguments == ("shell", *ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS):
+        return (
+            "read-only-retryable",
+            "exact fenced file-backed accessibility-hierarchy observation",
         )
     if (
         len(arguments) == 3
@@ -482,6 +578,11 @@ def adb_command_retry_policy(arguments: tuple[str, ...]) -> tuple[str, str]:
         and SAFE_READ_ONLY_REMOTE_PATH.fullmatch(shell_arguments[3]) is not None
     ):
         return ("read-only-retryable", "exact remote-path absence observation")
+    if shell_arguments == ADB_FILE_HIERARCHY_STAT_SHELL_ARGUMENTS:
+        return (
+            "read-only-retryable",
+            "exact hierarchy temporary-file identity observation",
+        )
     read_only_dumpsys = (
         ("dumpsys", "input_method"),
         ("dumpsys", "activity", "activities"),
@@ -570,23 +671,11 @@ def _hierarchy_dump_attempt_timeout(
     deadline: float,
     maximum: float,
 ) -> float:
-    """Keep enough caller lease for two stable owned-file observations.
-
-    A file-backed UIAutomator process can remain alive after it has written the
-    requested hierarchy. The dump itself is never replayed. Reserve only the
-    exact time required for two single-shot, read-only file observations plus
-    their bounded spacing and a small deadline handoff margin. If that reserve
-    does not fit, fail before starting another outcome-ambiguous dump.
-    """
+    """Keep enough caller lease for strict metadata/content reconciliation."""
     remaining = deadline - time.monotonic()
     reserved = (
-        ADB_HIERARCHY_DUMP_RECONCILIATION_REQUIRED_CONSECUTIVE
-        * ADB_HIERARCHY_DUMP_RECONCILIATION_READ_ATTEMPT_MAX_SECONDS
-        + (
-            ADB_HIERARCHY_DUMP_RECONCILIATION_REQUIRED_CONSECUTIVE - 1
-        )
-        * ADB_HIERARCHY_DUMP_RECONCILIATION_DELAY_SECONDS
-        + ADB_HIERARCHY_DUMP_RECONCILIATION_HEADROOM_SECONDS
+        3 * ADB_FILE_HIERARCHY_IDENTITY_READ_ATTEMPT_MAX_SECONDS
+        + ADB_FILE_HIERARCHY_IDENTITY_HEADROOM_SECONDS
     )
     available = remaining - reserved
     if available <= 0:
@@ -785,6 +874,8 @@ class Device:
         self.evidence = evidence
         self._display_size: tuple[int, int] | None = None
         self._transport_event_index = 0
+        self._file_hierarchy_retry_index = 0
+        self._file_hierarchy_context: tuple[int, int] | None = None
         self._transport_events: list[dict[str, object]] = []
         self._transport_preflight: dict[str, object] | None = None
         self._mutation_blocker: dict[str, object] | None = None
@@ -796,6 +887,10 @@ class Device:
                 self.evidence / "adb-transport-preflight.json",
                 *(
                     self.evidence / f"adb-transport-event-{index:04d}.json"
+                    for index in range(1, MAX_ADB_TRANSPORT_EVENTS + 1)
+                ),
+                *(
+                    self.evidence / f"adb-file-hierarchy-retry-{index:04d}.json"
                     for index in range(1, MAX_ADB_TRANSPORT_EVENTS + 1)
                 ),
             )
@@ -1143,6 +1238,15 @@ class Device:
         deadline: float | None = None,
     ) -> subprocess.CompletedProcess:
         adb_arguments = tuple(arguments)
+        file_hierarchy_dump = (
+            adb_arguments
+            == ("shell", *ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS)
+        )
+        file_hierarchy_context = self._file_hierarchy_context
+        if file_hierarchy_dump and file_hierarchy_context is None:
+            raise ValueError(
+                "File-backed hierarchy dumps require Device.hierarchy's freshness fence"
+            )
         command_policy, policy_reason = adb_command_retry_policy(adb_arguments)
         package_process_observation = adb_arguments == ("shell", "pidof", PACKAGE)
         if command_policy != "read-only-retryable" and self._mutation_blocker is not None:
@@ -1167,12 +1271,17 @@ class Device:
                 blocked_by=blocker,
             )
             raise AdbTransportError(receipt, path) from suppression
-        maximum_attempts = (
+        maximum_attempts = 1 if file_hierarchy_context is not None else (
             ADB_READ_ONLY_MAX_ATTEMPTS
             if command_policy == "read-only-retryable"
             else 1
         )
         for attempt in range(1, maximum_attempts + 1):
+            receipt_attempt, receipt_maximum_attempts = (
+                file_hierarchy_context
+                if file_hierarchy_context is not None
+                else (attempt, maximum_attempts)
+            )
             try:
                 result = self._invoke_once(
                     adb_arguments,
@@ -1222,14 +1331,14 @@ class Device:
                         or classification != "unclassified-adb-failure"
                     ):
                         raise synthetic_error
-                if attempt > 1:
+                if receipt_attempt > 1:
                     self._write_recovered_transport_event(
                         arguments=adb_arguments,
-                        attempts=attempt,
+                        attempts=receipt_attempt,
                     )
                 return result
             except AdbOperationDeadlineExceeded as error:
-                if attempt <= 1:
+                if receipt_attempt <= 1:
                     raise
                 receipt, path = self._write_transport_event(
                     arguments=adb_arguments,
@@ -1237,8 +1346,8 @@ class Device:
                     policy_reason=policy_reason,
                     classification="caller-deadline-exhausted-before-retry",
                     retryable_classification=False,
-                    attempt=attempt,
-                    maximum_attempts=maximum_attempts,
+                    attempt=receipt_attempt,
+                    maximum_attempts=receipt_maximum_attempts,
                     status="fail",
                     error=error,
                     replay_performed=False,
@@ -1271,15 +1380,29 @@ class Device:
                             stdout=output,
                             stderr=_bounded_adb_detail(error.stderr),
                         )
-                classification, retryable = classify_adb_failure(error)
-                retry_delay = ADB_READ_ONLY_RETRY_DELAY_SECONDS
+                classification, retryable = (
+                    classify_file_hierarchy_dump_failure(adb_arguments, error)
+                    if file_hierarchy_dump
+                    else classify_adb_failure(error)
+                )
+                retry_delay = (
+                    ADB_FILE_HIERARCHY_RETRY_DELAY_SECONDS
+                    if file_hierarchy_dump
+                    else ADB_READ_ONLY_RETRY_DELAY_SECONDS
+                )
+                retry_headroom = retry_delay
+                if file_hierarchy_dump:
+                    retry_headroom += (
+                        3 * ADB_FILE_HIERARCHY_IDENTITY_READ_ATTEMPT_MAX_SECONDS
+                        + ADB_FILE_HIERARCHY_IDENTITY_HEADROOM_SECONDS
+                    )
                 may_retry = (
                     command_policy == "read-only-retryable"
                     and retryable
-                    and attempt < maximum_attempts
+                    and receipt_attempt < receipt_maximum_attempts
                     and (
                         deadline is None
-                        or deadline - time.monotonic() > retry_delay
+                        or deadline - time.monotonic() > retry_headroom
                     )
                 )
                 receipt, path = self._write_transport_event(
@@ -1288,11 +1411,11 @@ class Device:
                     policy_reason=policy_reason,
                     classification=classification,
                     retryable_classification=retryable,
-                    attempt=attempt,
-                    maximum_attempts=maximum_attempts,
+                    attempt=receipt_attempt,
+                    maximum_attempts=receipt_maximum_attempts,
                     status="retrying-read-only" if may_retry else "fail",
                     error=error,
-                    replay_performed=attempt > 1,
+                    replay_performed=receipt_attempt > 1,
                     replay_suppressed=not may_retry,
                 )
                 if command_policy != "read-only-retryable":
@@ -1302,6 +1425,10 @@ class Device:
                         "evidenceFile": receipt["evidenceFile"],
                     }
                 if not may_retry:
+                    raise AdbTransportError(receipt, path) from error
+                if file_hierarchy_context is not None:
+                    # Device.hierarchy owns the next fresh remove+dump invocation.
+                    # Never let this generic command loop replay the file writer.
                     raise AdbTransportError(receipt, path) from error
                 time.sleep(retry_delay)
         raise AssertionError("bounded ADB retry loop exhausted without a terminal result")
@@ -1588,6 +1715,118 @@ class Device:
             )
         return actual
 
+    def _write_file_hierarchy_retry_evidence(
+        self,
+        *,
+        status: str,
+        attempts: list[dict[str, object]],
+        observation: dict[str, object] | None,
+    ) -> None:
+        if self._file_hierarchy_retry_index >= MAX_ADB_TRANSPORT_EVENTS:
+            raise RuntimeError("File-hierarchy retry evidence bound exhausted")
+        self._file_hierarchy_retry_index += 1
+        filename = f"adb-file-hierarchy-retry-{self._file_hierarchy_retry_index:04d}.json"
+        dump_arguments = ("shell", *ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS)
+        receipt = {
+            "schema": ADB_FILE_HIERARCHY_RETRY_SCHEMA,
+            "status": status,
+            "serial": self.serial,
+            "commandPolicy": "read-only-retryable",
+            "policyReason": adb_command_retry_policy(dump_arguments)[1],
+            "adbArguments": list(dump_arguments),
+            "adbArgumentsSha256": _adb_arguments_sha256(dump_arguments),
+            "maximumAttempts": ADB_FILE_HIERARCHY_MAX_ATTEMPTS,
+            "freshnessBarrierArguments": [
+                "shell",
+                *ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS,
+            ],
+            "attempts": attempts,
+            "acceptedObservation": observation,
+            "mutationCommandsRetried": 0,
+            "evidenceFile": filename,
+        }
+        _write_new_json_receipt(self.evidence / filename, receipt)
+
+    def _read_retried_file_hierarchy_identity(
+        self,
+        *,
+        deadline: float | None,
+    ) -> tuple[list[UiNode], dict[str, object]]:
+        stat_arguments = ("shell", *ADB_FILE_HIERARCHY_STAT_SHELL_ARGUMENTS)
+        content_arguments = (
+            "exec-out",
+            "cat",
+            ADB_FILE_HIERARCHY_REMOTE_PATH,
+        )
+        before = self.run(
+            *stat_arguments,
+            timeout=_remaining_operation_timeout(
+                deadline=deadline,
+                maximum=ADB_FILE_HIERARCHY_IDENTITY_READ_ATTEMPT_MAX_SECONDS,
+            ),
+            deadline=deadline,
+            check=False,
+        )
+        content = self.run(
+            *content_arguments,
+            timeout=_remaining_operation_timeout(
+                deadline=deadline,
+                maximum=ADB_FILE_HIERARCHY_IDENTITY_READ_ATTEMPT_MAX_SECONDS,
+            ),
+            deadline=deadline,
+            text=False,
+            check=False,
+        )
+        after = self.run(
+            *stat_arguments,
+            timeout=_remaining_operation_timeout(
+                deadline=deadline,
+                maximum=ADB_FILE_HIERARCHY_IDENTITY_READ_ATTEMPT_MAX_SECONDS,
+            ),
+            deadline=deadline,
+            check=False,
+        )
+        before_metadata = _parse_file_hierarchy_metadata(before.stdout)
+        after_metadata = _parse_file_hierarchy_metadata(after.stdout)
+        raw = content.stdout
+        complete = _complete_file_hierarchy(raw)
+        valid = (
+            before.returncode == 0
+            and content.returncode == 0
+            and after.returncode == 0
+            and before_metadata is not None
+            and before_metadata == after_metadata
+            and isinstance(raw, bytes)
+            and len(raw) == before_metadata["sizeBytes"]
+            and complete is not None
+        )
+        observation: dict[str, object] = {
+            "status": "pass" if valid else "fail",
+            "metadataArguments": list(stat_arguments),
+            "contentArguments": list(content_arguments),
+            "metadataBefore": before_metadata,
+            "metadataAfter": after_metadata,
+            "contentBytes": len(raw) if isinstance(raw, bytes) else None,
+            "contentSha256": (
+                hashlib.sha256(raw).hexdigest() if isinstance(raw, bytes) else None
+            ),
+            "root": "hierarchy" if complete is not None else None,
+            "nodeCount": complete[1] if complete is not None else 0,
+            "rotation": complete[2] if complete is not None else None,
+            "reconciliation": "metadata-content-metadata-identity",
+        }
+        if not valid or complete is None:
+            return [], observation
+        nodes = Device._parse_hierarchy(
+            self,
+            complete[0],
+            "last-invalid-hierarchy.txt",
+        )
+        if len(nodes) != complete[1]:
+            observation["status"] = "fail"
+            return [], observation
+        return nodes, observation
+
     def hierarchy(
         self,
         *,
@@ -1608,52 +1847,79 @@ class Device:
             )
         if type(allow_direct_reconciliation) is not bool:
             raise TypeError("Hierarchy direct-reconciliation policy must be boolean")
+        retry_attempts: list[dict[str, object]] = []
         try:
-            if deadline is None:
+            for dump_attempt in range(1, ADB_FILE_HIERARCHY_MAX_ATTEMPTS + 1):
                 # ADB does not preserve an argv element as the script operand of
-                # ``sh -c``. Keep the freshness barrier as two exact one-shot
-                # commands instead of relying on host/remote shell quoting.
-                self.shell(*ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS)
-            else:
-                self.shell(
-                    *ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS,
-                    timeout=_remaining_operation_timeout(
-                        deadline=deadline,
-                        maximum=120,
-                    ),
-                    deadline=deadline,
-                )
-                _remaining_operation_timeout(deadline=deadline, maximum=120)
-            dump_arguments = (
-                "shell",
-                *ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
-            )
-            try:
+                # ``sh -c``. Keep one exact one-shot remove as the identity fence
+                # for each new observer invocation.
                 if deadline is None:
-                    dump_output = self.shell(
-                        *ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
-                        timeout=dump_attempt_max_seconds,
-                    )
+                    self.shell(*ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS)
                 else:
-                    dump_output = self.shell(
-                        *ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
-                        timeout=_hierarchy_dump_attempt_timeout(
+                    self.shell(
+                        *ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS,
+                        timeout=_remaining_operation_timeout(
                             deadline=deadline,
-                            maximum=dump_attempt_max_seconds,
+                            maximum=120,
                         ),
                         deadline=deadline,
                     )
-            except AdbTransportError as error:
-                reconciled = Device._reconcile_unknown_hierarchy_dump(
-                    self,
-                    error,
-                    dump_arguments,
-                    deadline=deadline,
-                    allow_direct_reconciliation=allow_direct_reconciliation,
+                    _remaining_operation_timeout(deadline=deadline, maximum=120)
+                self._file_hierarchy_context = (
+                    dump_attempt,
+                    ADB_FILE_HIERARCHY_MAX_ATTEMPTS,
                 )
-                if reconciled is not None:
-                    return reconciled
-                raise
+                try:
+                    if deadline is None:
+                        dump_output = self.shell(
+                            *ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
+                            timeout=dump_attempt_max_seconds,
+                        )
+                    else:
+                        dump_output = self.shell(
+                            *ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
+                            timeout=_hierarchy_dump_attempt_timeout(
+                                deadline=deadline,
+                                maximum=dump_attempt_max_seconds,
+                            ),
+                            deadline=deadline,
+                        )
+                except AdbTransportError as error:
+                    retry_attempts.append(
+                        {
+                            "attempt": dump_attempt,
+                            "status": error.receipt["status"],
+                            "freshnessBarrierPerformed": True,
+                            "transportEvidenceFile": error.receipt["evidenceFile"],
+                            "classification": error.receipt["classification"],
+                        }
+                    )
+                    if error.receipt["status"] != "retrying-read-only":
+                        if len(retry_attempts) > 1:
+                            self._write_file_hierarchy_retry_evidence(
+                                status="fail",
+                                attempts=retry_attempts,
+                                observation=None,
+                            )
+                        raise
+                    time.sleep(ADB_FILE_HIERARCHY_RETRY_DELAY_SECONDS)
+                    continue
+                finally:
+                    self._file_hierarchy_context = None
+                if dump_attempt > 1:
+                    recovery = self._transport_events[-1]
+                    retry_attempts.append(
+                        {
+                            "attempt": dump_attempt,
+                            "status": "pass",
+                            "freshnessBarrierPerformed": True,
+                            "transportEvidenceFile": recovery["evidenceFile"],
+                            "classification": recovery["classification"],
+                        }
+                    )
+                break
+            else:
+                raise AssertionError("bounded file-hierarchy retry loop exhausted")
             if deadline is not None:
                 _remaining_operation_timeout(deadline=deadline, maximum=120)
             normalized_dump_output = dump_output.strip().lower()
@@ -1671,6 +1937,21 @@ class Device:
                         encoding="utf-8",
                     )
                     return []
+            if dump_attempt > 1:
+                nodes, observation = self._read_retried_file_hierarchy_identity(
+                    deadline=deadline,
+                )
+                self._write_file_hierarchy_retry_evidence(
+                    status="pass" if nodes else "fail",
+                    attempts=retry_attempts,
+                    observation=observation,
+                )
+                if not nodes:
+                    (self.evidence / "last-invalid-hierarchy.txt").write_text(
+                        "Retried hierarchy file failed metadata/content identity reconciliation",
+                        encoding="utf-8",
+                    )
+                return nodes
             if deadline is None:
                 xml = self.run(
                     "exec-out", "cat", ADB_FILE_HIERARCHY_REMOTE_PATH

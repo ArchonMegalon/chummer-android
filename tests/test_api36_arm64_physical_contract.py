@@ -25,6 +25,84 @@ def write_json(path: Path, value: object) -> None:
 
 
 class Api36Arm64PhysicalContractTests(unittest.TestCase):
+    def test_file_hierarchy_observer_retry_allowlist_is_exact(self) -> None:
+        self.assertEqual(
+            "exact fenced file-backed accessibility-hierarchy observation",
+            contract.read_only_adb_policy_reason(
+                contract.ADB_FILE_HIERARCHY_DUMP_ARGUMENTS
+            ),
+        )
+        self.assertEqual(
+            "exact hierarchy temporary-file identity observation",
+            contract.read_only_adb_policy_reason(
+                contract.ADB_FILE_HIERARCHY_STAT_ARGUMENTS
+            ),
+        )
+        for arguments in (
+            contract.ADB_FILE_HIERARCHY_DUMP_ARGUMENTS[:-1],
+            (*contract.ADB_FILE_HIERARCHY_DUMP_ARGUMENTS, "extra"),
+            (
+                "shell", "uiautomator", "dump", "--compressed",
+                "/sdcard/other.xml",
+            ),
+            (
+                "shell", "stat", "-c", "%d:%i:%s:%Y:%f",
+                "/sdcard/other.xml",
+            ),
+        ):
+            with self.subTest(arguments=arguments):
+                self.assertIsNone(contract.read_only_adb_policy_reason(arguments))
+
+        payload = self.recovered_read_only_transport_payload()
+        events = payload["events"]
+        retry = events[0]
+        recovered = events[2]
+        arguments = contract.ADB_FILE_HIERARCHY_DUMP_ARGUMENTS
+        arguments_sha256 = hashlib.sha256(
+            "\0".join(arguments).encode("utf-8")
+        ).hexdigest()
+        retry.update({
+            "classification": "observer-process-killed",
+            "classificationAuthority": "exact-file-hierarchy-observer-exit-137",
+            "policyReason": "exact fenced file-backed accessibility-hierarchy observation",
+            "adbArguments": list(arguments),
+            "adbArgumentsSha256": arguments_sha256,
+            "failure": {
+                "type": "CalledProcessError", "returnCode": 137,
+                "stdout": "", "stderr": "",
+            },
+        })
+        recovered.update({
+            "policyReason": "exact fenced file-backed accessibility-hierarchy observation",
+            "adbArguments": list(arguments),
+            "adbArgumentsSha256": arguments_sha256,
+            "attempt": 2,
+            "evidenceFile": "adb-transport-event-0002.json",
+        })
+        payload.update({"eventCount": 2, "events": [retry, recovered]})
+        contract.validate_adb_transport(
+            payload,
+            serial=self.device_payload()["serial"],
+            label="exact file hierarchy observer retry",
+        )
+
+        retry["adbArguments"] = list(contract.ADB_FILE_HIERARCHY_OBSERVATION_ARGUMENTS)
+        retry["adbArgumentsSha256"] = hashlib.sha256(
+            "\0".join(retry["adbArguments"]).encode("utf-8")
+        ).hexdigest()
+        retry["policyReason"] = "exact remote-file byte observation"
+        recovered.update({
+            "adbArguments": list(retry["adbArguments"]),
+            "adbArgumentsSha256": retry["adbArgumentsSha256"],
+            "policyReason": retry["policyReason"],
+        })
+        with self.assertRaisesRegex(ValueError, "failure/replay is not exact"):
+            contract.validate_adb_transport(
+                payload,
+                serial=self.device_payload()["serial"],
+                label="forged file hierarchy observer retry",
+            )
+
     def test_creation_dashboard_ready_snapshot_is_exactly_retry_allowlisted(self) -> None:
         self.assertEqual(
             "bounded exact-tag creation-dashboard route-ready snapshot observation",
