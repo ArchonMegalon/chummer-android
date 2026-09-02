@@ -7,6 +7,7 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 REPO = Path(__file__).resolve().parents[1]
@@ -39,82 +40,503 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
             write_private(path, payload)
             return self.module.validate_manifest(path)
 
-    def test_exact_internal_binding_is_valid_and_never_public_ready(self) -> None:
+    def validate_presentation_checkout(
+        self,
+        *,
+        origin: str,
+        commit: str | None = None,
+        tree: str | None = None,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            authority = root / self.module.EXPECTED_LOCK_PATH
+            authority.parent.mkdir(parents=True)
+            authority.write_bytes(b"x" * self.module.EXPECTED_LOCK_SIZE)
+            answers = {
+                ("status", "--porcelain", "--untracked-files=all"): "",
+                ("rev-parse", "HEAD"): commit or self.module.EXPECTED_PRESENTATION_COMMIT,
+                ("rev-parse", "HEAD^{tree}"): tree or self.module.EXPECTED_PRESENTATION_TREE,
+                ("remote", "get-url", "origin"): origin,
+                (
+                    "rev-parse",
+                    f"HEAD:{self.module.EXPECTED_LOCK_PATH}",
+                ): self.module.EXPECTED_LOCK_BLOB,
+            }
+
+            def fake_git(_root: Path, *arguments: str) -> str:
+                return answers[arguments]
+
+            with (
+                patch.object(self.module, "git", side_effect=fake_git),
+                patch.object(
+                    self.module,
+                    "sha256",
+                    return_value=self.module.EXPECTED_LOCK_SHA256,
+                ),
+                patch.object(
+                    self.module,
+                    "validate_package_plane_lock",
+                    return_value={},
+                ),
+                patch.object(self.module, "strict_json", return_value={}),
+            ):
+                self.module.validate_presentation_repository(root)
+
+    def bound_authority_fixture(self) -> tuple[dict[str, object], dict[str, object]]:
+        source_graph = self.module.EXPECTED_SOURCE_GRAPH
+
+        def package_row(package_id: str, commit: str, version: str) -> dict[str, object]:
+            return {
+                "commit": commit,
+                "fileName": f"{package_id}.{version}.nupkg",
+                "packageId": package_id,
+                "project": f"{package_id}/{package_id}.csproj",
+                "repository": "https://github.com/ArchonMegalon/example.git",
+                "sha256": "1" * 64,
+                "sizeBytes": 100,
+                "version": version,
+            }
+
+        core_rows = [
+            package_row(
+                package_id,
+                source_graph["coreRuntimeSourceCommit"],
+                self.module.CORE_VERSION,
+            )
+            for package_id in (
+                "Chummer.Engine.Contracts", "Chummer.Application",
+                "Chummer.Rulesets.Hosting", "Chummer.Rulesets.Sr4",
+                "Chummer.Rulesets.Sr5", "Chummer.Rulesets.Sr6",
+                "Chummer.Infrastructure", "Chummer.Engine.GmCharacterEdits",
+            )
+        ]
+        hub_rows = [
+            package_row(package_id, source_graph["hubProducerCommit"], self.module.HUB_VERSION)
+            for package_id in ("Chummer.Play.Contracts", "Chummer.Run.Contracts")
+        ]
+        hub_rows.extend(
+            package_row(package_id, source_graph["registryCommit"], self.module.HUB_VERSION)
+            for package_id in ("Chummer.Hub.Registry.Contracts", "Chummer.Run.Registry")
+        )
+        legacy_version = "0.0.0-packageplane.20260721.1"
+        legacy_rows = [
+            package_row(package_id, "4" * 40, legacy_version)
+            for package_id in (
+                "Chummer.Engine.Contracts", "Chummer.Hub.Registry.Contracts",
+                "Chummer.Play.Contracts", "Chummer.Run.Contracts",
+            )
+        ]
+        ui_kit_row = package_row(
+            "Chummer.Ui.Kit",
+            source_graph["uiKitCommit"],
+            self.module.UI_KIT_VERSION,
+        )
+        campaign_row = package_row(
+            "Chummer.Campaign.Contracts",
+            source_graph["hubProducerCommit"],
+            self.module.CAMPAIGN_VERSION,
+        )
+        for row in (ui_kit_row, campaign_row):
+            row.update({
+                "ownerDirectory": "owner",
+                "projectSha256": "2" * 64,
+                "sourceTree": "3" * 40,
+            })
+
+        lock = {
+            "approvedPackageSources": [],
+            "canonicalOwnerFeed": {
+                "inventoryContract": "hub-inventory",
+                "inventoryFileName": "hub-inventory.json",
+                "inventorySha256": "4" * 64,
+                "lockContract": "hub-lock",
+                "lockPath": "hub-lock.json",
+                "lockSha256": "5" * 64,
+                "packageVersion": self.module.HUB_VERSION,
+                "packages": hub_rows,
+                "producerCommit": source_graph["hubProducerCommit"],
+                "producerDirectory": "hub",
+                "producerPath": "producer.py",
+                "producerRepository": "https://github.com/ArchonMegalon/chummer6-hub.git",
+                "producerSha256": "6" * 64,
+                "receiptContract": "hub-receipt",
+                "receiptFileName": "hub-receipt.json",
+                "receiptSha256": "7" * 64,
+            },
+            "consumer": {},
+            "contractName": self.module.LOCK_CONTRACT,
+            "contractVersion": 11,
+            "coreRuntimeFeed": {
+                "inventoryContract": "core-inventory",
+                "inventoryFileName": "core-inventory.json",
+                "inventorySha256": "8" * 64,
+                "lockContract": "core-lock",
+                "lockFileName": "core-lock.json",
+                "lockSha256": "9" * 64,
+                "packageRecipeCommit": source_graph["corePackageRecipeCommit"],
+                "packageVersion": self.module.CORE_VERSION,
+                "packages": core_rows,
+                "receiptContract": "core-receipt",
+                "receiptFileName": "core-receipt.json",
+                "receiptSha256": "a" * 64,
+                "repository": "https://github.com/ArchonMegalon/chummer6-core.git",
+                "runtimeSourceCommit": source_graph["coreRuntimeSourceCommit"],
+            },
+            "currentOwnerContractFeed": {
+                "inventoryContract": "legacy-inventory",
+                "inventoryFileName": "legacy-inventory.json",
+                "inventorySha256": "5" * 64,
+                "lockContract": "legacy-lock",
+                "lockPath": "legacy-lock.json",
+                "lockSha256": "6" * 64,
+                "ownerDirectory": "legacy",
+                "packageFeedInventorySha256": "7" * 64,
+                "packageVersion": legacy_version,
+                "packages": legacy_rows,
+                "producerCommit": "8" * 40,
+                "producerPath": "legacy-producer.py",
+                "producerRepository": "https://github.com/ArchonMegalon/chummer6-core.git",
+                "producerSha256": "9" * 64,
+                "selectedForCoreRuntimeCompatibility": True,
+            },
+            "externalPackages": [],
+            "owners": [],
+            "packages": [],
+            "sdkArchive": {
+                "fileName": "dotnet-sdk.tar.gz",
+                "rid": "linux-x64",
+                "sha512": "b" * 128,
+                "source": "https://example.invalid/dotnet-sdk.tar.gz",
+                "version": "10.0.103",
+            },
+            "sdkVersion": "10.0.103",
+            "uiOwnerFeed": {
+                "dependencyAuthorityCacheKey": "c" * 64,
+                "inventoryContract": "ui-inventory",
+                "inventoryFileName": "ui-inventory.json",
+                "inventorySha256": "d" * 64,
+                "packageRecipeCommit": self.module.EXPECTED_PRESENTATION_COMMIT,
+                "packageRecipeSha256": "e" * 64,
+                "packages": [campaign_row, ui_kit_row],
+                "producerLockFileName": "ui-owner-lock.json",
+                "producerLockPath": "config/ui-owner-lock.json",
+                "producerLockSha256": "f" * 64,
+                "receiptContract": "ui-receipt",
+                "receiptFileName": "ui-receipt.json",
+                "receiptSha256": "0" * 64,
+                "sdkVersion": "10.0.103",
+            },
+        }
+        package_authority = self.module.validate_package_plane_lock(lock)
+
+        def receipt_feed(projection: dict[str, object], **extra: object) -> dict[str, object]:
+            return {**copy.deepcopy(projection), **extra}
+
+        receipt = {
+            "sdkVersion": package_authority["packageProofSdkVersion"],
+            "coreRuntimeFeed": receipt_feed(
+                package_authority["coreRuntimeFeed"],
+                packageCount=len(package_authority["coreRuntimeFeed"]["packages"]),
+                selectedForCanonicalFullFeed=True,
+                status="passed",
+            ),
+            "canonicalOwnerFeed": receipt_feed(
+                package_authority["canonicalOwnerFeed"],
+                packageCount=len(package_authority["canonicalOwnerFeed"]["packages"]),
+                projectLockFilesEnforced=True,
+                status="passed",
+            ),
+            "currentOwnerContractFeed": receipt_feed(
+                package_authority["currentOwnerContractFeed"],
+                compatibilityPurpose="exact-core-runtime-transitive-dependencies",
+                materializedFeedValidated=True,
+                packageCount=len(package_authority["currentOwnerContractFeed"]["packages"]),
+                selectedForCanonicalFullFeed=True,
+                selectedForCoreRuntimeCompatibility=True,
+                status="passed",
+            ),
+            "uiOwnerFeed": receipt_feed(
+                package_authority["uiOwnerFeed"],
+                packageCount=len(package_authority["uiOwnerFeed"]["packages"]),
+                status="passed",
+            ),
+        }
+        receipt["canonicalOwnerFeed"].pop("receiptContract")
+        receipt["canonicalOwnerFeed"].pop("receiptSha256")
+        receipt["packageInventory"] = sorted(
+            [
+                copy.deepcopy(row)
+                for field in (
+                    "coreRuntimeFeed", "canonicalOwnerFeed",
+                    "currentOwnerContractFeed", "uiOwnerFeed",
+                )
+                for row in receipt[field]["packages"]
+            ],
+            key=lambda row: row["fileName"],
+        )
+        return package_authority, receipt
+
+    def current_main_receipt_fixture(self) -> dict[str, object]:
+        _, authority_receipt = self.bound_authority_fixture()
+        receipt = {key: None for key in self.module.RECEIPT_TOP_LEVEL_KEYS}
+        receipt.update(authority_receipt)
+        receipt.update({
+            "contractName": self.module.RECEIPT_CONTRACT,
+            "contractVersion": 11,
+            "status": "passed",
+            "mode": "integration",
+            "consumerCommit": self.module.EXPECTED_PRESENTATION_COMMIT,
+            "localCompatibilityTree": False,
+            "packageCacheWasFresh": True,
+            "consumerPackagePlaneLock": {
+                "path": self.module.EXPECTED_LOCK_PATH,
+                "sha256": self.module.EXPECTED_LOCK_SHA256,
+                "sizeBytes": self.module.EXPECTED_LOCK_SIZE,
+            },
+            "ownerPackageArtifactCache": {
+                "coldProducerFallbackOnCacheMiss": True,
+                "contract": self.module.CACHE_CONTRACT,
+                "status": "not_supplied",
+                "used": False,
+            },
+        })
+        return receipt
+
+    def validate_receipt_copy(self, payload: dict[str, object]) -> dict[str, object]:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary).resolve() / "current-main-receipt.json"
+            write_private(path, payload)
+            with (
+                patch.object(self.module, "EXPECTED_RECEIPT_SIZE", path.stat().st_size),
+                patch.object(self.module, "EXPECTED_RECEIPT_SHA256", self.module.sha256(path)),
+            ):
+                return self.module.validate_receipt(path)
+
+    def retained_cache_fixture(self, receipt: dict[str, object]) -> dict[str, object]:
+        packages = []
+        for index, row in enumerate(receipt["packageInventory"]):
+            packages.append({
+                "commit": f"{index:040x}",
+                "fileName": row["fileName"],
+                "packageId": f"Package.{index}",
+                "plane": "test-owner",
+                "repository": "https://github.com/ArchonMegalon/example.git",
+                "sha256": row["sha256"],
+                "sizeBytes": row["sizeBytes"],
+                "version": "1.0.0",
+            })
+        return {
+            "authorities": {},
+            "authorityArtifacts": [{"fileName": "authority.json", "sha256": "a" * 64}],
+            "cacheKey": self.module.EXPECTED_CACHE_KEY,
+            "contract": self.module.CACHE_CONTRACT,
+            "packages": packages,
+        }
+
+    def test_exact_current_graph_is_valid_and_never_public_ready(self) -> None:
         validated = self.module.validate_manifest(MANIFEST)
         binding = self.module.build_binding(validated)
         self.assertEqual(self.module.CONTRACT, binding["contractName"])
-        self.assertEqual("internal_phone_beta_only", binding["authorityClass"])
-        self.assertEqual("independently_audited", binding["authorityState"])
+        self.assertEqual("current_graph_verified", binding["authorityState"])
         self.assertFalse(binding["publicationAuthorized"])
         self.assertIn("public_release_readiness", binding["doesNotAssert"])
-        self.assertIn("api36_device_execution", binding["doesNotAssert"])
+        self.assertEqual(18, binding["artifactCache"]["packageCount"])
 
-    def test_production_presentation_source_pin_is_preserved_separately(self) -> None:
-        source = self.payload["presentationSource"]
-        self.assertEqual(self.module.EXPECTED_PRODUCTION_COMMIT, source["productionCommit"])
-        self.assertEqual(self.module.EXPECTED_PRODUCTION_TREE, source["productionTree"])
-        self.assertEqual(self.module.EXPECTED_PRESENTATION_COMMIT, source["packageAuthorityCommit"])
-        self.assertEqual(self.module.EXPECTED_PRESENTATION_TREE, source["packageAuthorityTree"])
-        release_source = (REPO / "scripts/verify_release_source_graph.py").read_text(encoding="utf-8")
-        self.assertIn(f'PRESENTATION_SOURCE_COMMIT = "{self.module.EXPECTED_PRODUCTION_COMMIT}"', release_source)
-        self.assertIn(f'PRESENTATION_SOURCE_TREE = "{self.module.EXPECTED_PRODUCTION_TREE}"', release_source)
-        self.assertNotIn(self.module.EXPECTED_PRESENTATION_COMMIT, release_source)
+    def test_exact_core_hub_ui_and_cache_authorities_are_bound(self) -> None:
+        self.assertEqual(self.module.EXPECTED_PRESENTATION_COMMIT, self.payload["presentationSource"]["commit"])
+        self.assertEqual(self.module.EXPECTED_PRESENTATION_TREE, self.payload["presentationSource"]["tree"])
+        self.assertEqual(self.module.EXPECTED_SOURCE_GRAPH, self.payload["sourceGraph"])
+        self.assertEqual(self.module.EXPECTED_CACHE_KEY, self.payload["artifactCache"]["cacheKey"])
+        self.assertEqual(self.module.EXPECTED_CACHE_MANIFEST_SHA256, self.payload["artifactCache"]["manifestSha256"])
+        workflow = (REPO / ".github/workflows/api36-editing-e2e.yml").read_text(encoding="utf-8")
+        self.assertIn(self.module.EXPECTED_PRESENTATION_COMMIT, workflow)
+        self.assertIn(self.module.EXPECTED_SOURCE_GRAPH["coreRuntimeSourceCommit"], workflow)
+        self.assertIn(self.module.EXPECTED_SOURCE_GRAPH["hubProducerCommit"], workflow)
 
-    def test_preserves_exact_six_core_and_seven_owner_pin_graph(self) -> None:
-        self.assertEqual(
-            list(self.module.EXPECTED_CORE_IDS),
-            [row["package_id"] for row in self.payload["packagePins"]],
+    def test_canonical_presentation_origin_is_accepted(self) -> None:
+        self.validate_presentation_checkout(
+            origin=self.module.EXPECTED_PRESENTATION_REPOSITORY,
         )
-        self.assertEqual(
-            list(self.module.EXPECTED_OWNER_IDS),
-            [row["package_id"] for row in self.payload["ownerPackagePins"]],
-        )
-        expected = {row[0]: row for row in self.module.EXPECTED_PACKAGES}
-        for row in [*self.payload["packagePins"], *self.payload["ownerPackagePins"]]:
-            package = expected[row["package_id"]]
-            self.assertEqual((package[1], package[2], package[3]), (row["version"], row["sha256"], row["size_bytes"]))
 
-    def test_missing_extra_duplicate_reordered_and_misowned_pins_fail_closed(self) -> None:
+    def test_ui_kit_compatibility_origin_is_not_presentation_authority(self) -> None:
+        self.assertIn("uiKitCommit", self.payload["sourceGraph"])
+        self.assertNotIn("compatibilityCheckoutRepository", self.payload["presentationSource"])
+        with self.assertRaisesRegex(ValueError, "repository authority drifted"):
+            self.validate_presentation_checkout(
+                origin="https://github.com/ArchonMegalon/chummer6-ui-kit.git",
+            )
+
+    def test_fork_origin_is_not_presentation_authority(self) -> None:
+        with self.assertRaisesRegex(ValueError, "repository authority drifted"):
+            self.validate_presentation_checkout(
+                origin="https://github.com/example/chummer6-ui.git",
+            )
+
+    def test_presentation_commit_and_tree_remain_exact(self) -> None:
+        with self.assertRaisesRegex(ValueError, "commit drifted"):
+            self.validate_presentation_checkout(
+                origin=self.module.EXPECTED_PRESENTATION_REPOSITORY,
+                commit="0" * 40,
+            )
+        with self.assertRaisesRegex(ValueError, "tree drifted"):
+            self.validate_presentation_checkout(
+                origin=self.module.EXPECTED_PRESENTATION_REPOSITORY,
+                tree="0" * 40,
+            )
+
+    def test_current_receipt_lock_cache_and_source_tamper_fail_closed(self) -> None:
+        mutations: list[tuple[dict[str, object], str]] = []
+        for section, field, value, message in (
+            ("presentationSource", "commit", "0" * 40, "Presentation current graph"),
+            ("packagePlaneLock", "sha256", "0" * 64, "package-plane lock"),
+            ("verificationReceipt", "sha256", "0" * 64, "verification receipt"),
+            ("artifactCache", "cacheKey", "0" * 64, "artifact-cache"),
+            ("sourceGraph", "coreRuntimeSourceCommit", "0" * 40, "source graph"),
+        ):
+            payload = copy.deepcopy(self.payload)
+            payload[section][field] = value
+            mutations.append((payload, message))
+        for payload, message in mutations:
+            with self.subTest(message=message):
+                with self.assertRaisesRegex(ValueError, message):
+                    self.validate_copy(payload)
+
+    def test_bound_ui_lock_schema_and_duplicate_json_fail_closed(self) -> None:
+        package_authority, _ = self.bound_authority_fixture()
+        self.assertEqual(self.module.EXPECTED_SOURCE_GRAPH, package_authority["sourceGraph"])
+
+        with tempfile.TemporaryDirectory() as temporary:
+            duplicate = Path(temporary) / "duplicate-lock.json"
+            duplicate.write_text(
+                '{"contractName":"first","contractName":"second"}\n',
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ValueError, "duplicate key"):
+                self.module.strict_json(duplicate, "Presentation package-plane lock")
+
+        lock = {
+            key: None
+            for key in self.module.LOCK_TOP_LEVEL_KEYS
+        }
+        lock.update({"contractName": self.module.LOCK_CONTRACT, "contractVersion": 11})
+        lock["unexpectedAuthority"] = "must-fail"
+        with self.assertRaisesRegex(ValueError, "schema is not exact"):
+            self.module.validate_package_plane_lock(lock)
+
+    def test_coordinated_source_graph_and_receipt_tamper_fail_closed(self) -> None:
+        package_authority, receipt = self.bound_authority_fixture()
+        manifest = copy.deepcopy(self.payload)
+        tampered_commit = "f" * 40
+        manifest["sourceGraph"]["coreRuntimeSourceCommit"] = tampered_commit
+        receipt["coreRuntimeFeed"]["runtimeSourceCommit"] = tampered_commit
+
+        with self.assertRaisesRegex(ValueError, "not derived from the bound UI package lock"):
+            self.module.validate_bound_authority_claims(
+                manifest,
+                package_authority,
+                receipt,
+            )
+
+    def test_coordinated_sdk_manifest_and_receipt_tamper_fail_closed(self) -> None:
+        package_authority, receipt = self.bound_authority_fixture()
+        manifest = copy.deepcopy(self.payload)
+        manifest["sdkAuthority"]["packageProofSdkVersion"] = "10.0.999"
+        receipt["sdkVersion"] = "10.0.999"
+        receipt["uiOwnerFeed"]["sdkVersion"] = "10.0.999"
+
+        with self.assertRaisesRegex(ValueError, "not derived from the bound UI package lock"):
+            self.module.validate_bound_authority_claims(
+                manifest,
+                package_authority,
+                receipt,
+            )
+
+    def test_bound_receipt_feed_tamper_fails_closed_even_when_manifest_is_unchanged(self) -> None:
+        package_authority, receipt = self.bound_authority_fixture()
+        receipt["canonicalOwnerFeed"]["producerCommit"] = "e" * 40
+
+        with self.assertRaisesRegex(ValueError, "receipt Hub authority disagrees"):
+            self.module.validate_bound_authority_claims(
+                self.payload,
+                package_authority,
+                receipt,
+            )
+
+    def test_exact_final_current_main_receipt_non_use_posture_is_accepted(self) -> None:
+        receipt = self.current_main_receipt_fixture()
+        validated = self.validate_receipt_copy(receipt)
+        self.assertEqual(
+            {
+                "coldProducerFallbackOnCacheMiss": True,
+                "contract": self.module.CACHE_CONTRACT,
+                "status": "not_supplied",
+                "used": False,
+            },
+            validated["ownerPackageArtifactCache"],
+        )
+
+    def test_current_main_receipt_cache_status_and_used_combinations_fail_closed(self) -> None:
+        mutations = (
+            {"status": "not_supplied", "used": True},
+            {"status": "passed", "used": False},
+            {"status": "passed", "used": True},
+            {"status": "not_supplied"},
+        )
+        for cache in mutations:
+            payload = self.current_main_receipt_fixture()
+            payload["ownerPackageArtifactCache"] = {
+                "coldProducerFallbackOnCacheMiss": True,
+                "contract": self.module.CACHE_CONTRACT,
+                **cache,
+            }
+            with self.subTest(cache=cache):
+                with self.assertRaisesRegex(ValueError, "cache non-use posture is not exact"):
+                    self.validate_receipt_copy(payload)
+
+    def test_final_receipt_and_retained_cache_are_byte_equivalent(self) -> None:
+        receipt = self.current_main_receipt_fixture()
+        cache = self.retained_cache_fixture(receipt)
+        self.module.validate_receipt_cache_equivalence(receipt, cache)
+
+    def test_final_receipt_and_retained_cache_divergence_fails_closed(self) -> None:
+        base_receipt = self.current_main_receipt_fixture()
+        base_cache = self.retained_cache_fixture(base_receipt)
+
+        inventory_tamper = copy.deepcopy(base_receipt)
+        inventory_tamper["packageInventory"][0]["sha256"] = "b" * 64
+        owner_feed_tamper = copy.deepcopy(base_receipt)
+        owner_feed_tamper["coreRuntimeFeed"]["packages"][0]["sizeBytes"] += 1
+        cache_tamper = copy.deepcopy(base_cache)
+        cache_tamper["packages"][0]["sha256"] = "c" * 64
+        for receipt, cache, message in (
+            (inventory_tamper, base_cache, "package inventory diverges"),
+            (owner_feed_tamper, base_cache, "owner feeds diverge"),
+            (base_receipt, cache_tamper, "owner feeds diverge"),
+        ):
+            with self.subTest(message=message):
+                with self.assertRaisesRegex(ValueError, message):
+                    self.module.validate_receipt_cache_equivalence(receipt, cache)
+
+    def test_lock_missing_extra_reordered_and_byte_tamper_fail_closed(self) -> None:
         mutations: list[tuple[dict[str, object], str]] = []
         missing = copy.deepcopy(self.payload)
-        missing["packagePins"].pop()
-        mutations.append((missing, "exact ordered six"))
+        missing["androidConsumerLocks"].pop()
+        mutations.append((missing, "consumer lock"))
         extra = copy.deepcopy(self.payload)
-        extra["ownerPackagePins"].append(copy.deepcopy(extra["ownerPackagePins"][-1]))
-        mutations.append((extra, "exact ordered seven"))
-        duplicate = copy.deepcopy(self.payload)
-        duplicate["ownerPackagePins"][1] = copy.deepcopy(duplicate["ownerPackagePins"][0])
-        mutations.append((duplicate, "exact ordered seven"))
+        extra["androidConsumerLocks"].append(copy.deepcopy(extra["androidConsumerLocks"][-1]))
+        mutations.append((extra, "consumer lock"))
         reordered = copy.deepcopy(self.payload)
-        reordered["packagePins"][0], reordered["packagePins"][1] = reordered["packagePins"][1], reordered["packagePins"][0]
-        mutations.append((reordered, "exact ordered six"))
-        misowned = copy.deepcopy(self.payload)
-        misowned["ownerPackagePins"][0]["owner"] = "registry"
-        mutations.append((misowned, "owner is not exact"))
+        reordered["androidConsumerLocks"].reverse()
+        mutations.append((reordered, "consumer lock"))
+        digest = copy.deepcopy(self.payload)
+        digest["androidConsumerLocks"][0]["sha256"] = "0" * 64
+        mutations.append((digest, "consumer lock"))
         for payload, message in mutations:
             with self.subTest(message=message):
                 with self.assertRaisesRegex(ValueError, message):
                     self.validate_copy(payload)
 
-    def test_package_hash_version_size_and_receipt_tamper_fail_closed(self) -> None:
-        mutations: list[tuple[dict[str, object], str]] = []
-        for field, value in (("sha256", "0" * 64), ("version", "9.9.9"), ("size_bytes", 1)):
-            payload = copy.deepcopy(self.payload)
-            payload["packagePins"][0][field] = value
-            mutations.append((payload, "package pin bytes are not exact"))
-        receipt = copy.deepcopy(self.payload)
-        receipt["verificationReceipt"]["sha256"] = "0" * 64
-        mutations.append((receipt, "receipt binding is not exact"))
-        authority = copy.deepcopy(self.payload)
-        authority["authority"]["sha256"] = "0" * 64
-        mutations.append((authority, "authority file binding is not exact"))
-        for payload, message in mutations:
-            with self.subTest(message=message):
-                with self.assertRaisesRegex(ValueError, message):
-                    self.validate_copy(payload)
-
-    def test_source_fallback_siblings_and_publication_fail_closed(self) -> None:
-        mutations: list[tuple[dict[str, object], str]] = []
+    def test_source_fallback_and_publication_fail_closed(self) -> None:
         for field, value in (
             ("packageOnly", False),
             ("restoreLockedMode", False),
@@ -123,74 +545,35 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
         ):
             payload = copy.deepcopy(self.payload)
             payload["dependencyMode"][field] = value
-            mutations.append((payload, "dependency mode"))
+            with self.subTest(field=field):
+                with self.assertRaisesRegex(ValueError, "dependency mode"):
+                    self.validate_copy(payload)
         publication = copy.deepcopy(self.payload)
         publication["publicationAuthorized"] = True
-        mutations.append((publication, "cannot authorize publication"))
-        for payload, message in mutations:
-            with self.subTest(message=message):
-                with self.assertRaisesRegex(ValueError, message):
-                    self.validate_copy(payload)
+        with self.assertRaisesRegex(ValueError, "cannot authorize publication"):
+            self.validate_copy(publication)
 
-    def test_sdk_selection_separates_w41_producer_from_android_consumer_authority(self) -> None:
-        sdk = self.payload["sdkAuthority"]
-        self.assertEqual("10.0.103", sdk["packageProofSdkVersion"])
-        self.assertEqual("10.0.110", sdk["androidGlobalPolicy"]["version"])
-        self.assertEqual("latestPatch", sdk["androidGlobalPolicy"]["rollForward"])
-        self.assertEqual("10.0.111", sdk["releaseWorkflow"]["dotnetVersion"])
-        self.assertEqual("10.0.111", sdk["selectedAndroidConsumerSdkVersion"])
-        self.module.validate_android_sdk_authority(REPO, self.module.validate_manifest(MANIFEST))
-        for field, value in (
-            ("packageProofSdkVersion", "10.0.111"),
-            ("selectedAndroidConsumerSdkVersion", "10.0.103"),
-        ):
-            payload = copy.deepcopy(self.payload)
-            payload["sdkAuthority"][field] = value
-            with self.subTest(field=field):
-                with self.assertRaisesRegex(ValueError, "SDK authority"):
-                    self.validate_copy(payload)
+    def test_android_sdk_and_both_consumer_locks_are_current(self) -> None:
+        manifest = self.module.validate_manifest(MANIFEST)
+        self.module.validate_android_sdk_authority(REPO, manifest)
+        self.assertEqual(
+            [row[1] for row in self.module.EXPECTED_ANDROID_LOCKS],
+            [row["path"] for row in self.payload["androidConsumerLocks"]],
+        )
+        self.assertEqual("10.0.103", self.payload["sdkAuthority"]["packageProofSdkVersion"])
+        self.assertEqual("10.0.111", self.payload["sdkAuthority"]["selectedAndroidConsumerSdkVersion"])
 
-    def test_stale_commit_tree_lock_and_production_source_tamper_fail_closed(self) -> None:
-        mutations: list[tuple[dict[str, object], str]] = []
-        for field in ("packageAuthorityCommit", "packageAuthorityTree", "productionCommit", "productionTree"):
-            payload = copy.deepcopy(self.payload)
-            payload["presentationSource"][field] = "0" * 40
-            mutations.append((payload, "source and internal package authority pins"))
-        lock = copy.deepcopy(self.payload)
-        lock["lockFiles"][1]["sha256"] = "0" * 64
-        mutations.append((lock, "exact five W4.1 locks"))
-        consumer_lock = copy.deepcopy(self.payload)
-        consumer_lock["androidConsumerLock"]["sha256"] = "0" * 64
-        mutations.append((consumer_lock, "consumer lock binding is not exact"))
-        for payload, message in mutations:
-            with self.subTest(message=message):
-                with self.assertRaisesRegex(ValueError, message):
-                    self.validate_copy(payload)
-
-    def test_receipt_commands_require_bounded_locked_serialized_proof(self) -> None:
-        restore = {
-            "command": [
-                "dotnet", "restore", "project.csproj", "--locked-mode",
-                "--ignore-failed-sources", "-p:RestoreLockedMode=true",
-                "-p:RestorePackagesWithLockFile=true",
-                "-p:ChummerUseLocalCompatibilityTree=false",
-                "-p:ChummerUseLockedOwnerContractPackages=true",
-            ],
-            "exitCode": 0, "outputSha256": "0" * 64, "outputTail": "",
-        }
-        build = {
-            "command": ["dotnet", "build", "project.csproj", "--no-restore", "-m:1"],
-            "exitCode": 0, "outputSha256": "0" * 64, "outputTail": "",
-        }
-        executable = {
-            "command": ["test-binary"], "exitCode": 0,
-            "outputSha256": "0" * 64, "outputTail": "",
-        }
-        commands = [copy.deepcopy(restore) for _ in range(5)] + [copy.deepcopy(build) for _ in range(5)] + [copy.deepcopy(executable) for _ in range(3)]
-        self.module._validate_commands(commands)
-        commands[0]["command"].remove("--locked-mode")
-        with self.assertRaisesRegex(ValueError, "locked package-only"):
-            self.module._validate_commands(commands)
+    def test_compile_closure_uses_current_versions_only(self) -> None:
+        self.assertEqual(12, len(self.module.EXPECTED_COMPILE_PACKAGES))
+        self.assertEqual(
+            self.module.CORE_VERSION,
+            self.module.EXPECTED_COMPILE_PACKAGES["Chummer.Application"],
+        )
+        self.assertEqual(
+            self.module.HUB_VERSION,
+            self.module.EXPECTED_COMPILE_PACKAGES["Chummer.Run.Contracts"],
+        )
+        self.assertNotIn("Chummer.Run.Hub", self.module.EXPECTED_COMPILE_PACKAGES)
 
     def test_exclusive_output_cannot_be_replaced(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

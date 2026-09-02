@@ -7,29 +7,26 @@ import argparse
 import json
 import os
 import re
+import sys
 import tempfile
 from pathlib import Path
 from typing import Any
+
+SCRIPT_DIRECTORY = Path(__file__).resolve().parent
+if str(SCRIPT_DIRECTORY) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIRECTORY))
+
+from api36_wizard_gate_contract import (  # noqa: E402
+    DEFAULT_CONTRACT,
+    contract_binding,
+    journey_map,
+)
 
 
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
 ARTIFACT_DIGEST = re.compile(r"^(?:sha256:)?[0-9a-f]{64}$")
 POSITIVE_INTEGER = re.compile(r"^[1-9][0-9]*$")
-JOURNEYS = {
-    "full-editing": ("full", "chummer.android.editing-e2e/v1"),
-    "creation-prerequisite": (
-        "creation-prerequisite",
-        "chummer.android.creation-prerequisite-e2e/v1",
-    ),
-    "career-active-skill-advance": (
-        "career-active-skill-advance",
-        "chummer.android.editing-e2e/v1",
-    ),
-    "career-weapon-fire": (
-        "career-weapon-fire",
-        "chummer.android.editing-e2e/v1",
-    ),
-}
+JOURNEYS = journey_map()
 
 
 def object_without_duplicates(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -62,7 +59,9 @@ def bind_receipt(
     artifact_name: str,
     artifact_attempt: str,
     apk_sha256: str,
+    gate_contract_path: Path = DEFAULT_CONTRACT,
 ) -> dict[str, Any]:
+    gate_authority = contract_binding(gate_contract_path)
     expected = JOURNEYS.get(matrix_journey)
     if expected is None:
         raise ValueError(f"unsupported matrix journey: {matrix_journey}")
@@ -105,12 +104,18 @@ def bind_receipt(
         raise ValueError(
             "journey receipt driver route differs from the explicit matrix mapping"
         )
-    for reserved in ("matrixJourney", "driverJourney", "artifactAuthority"):
+    for reserved in (
+        "matrixJourney",
+        "driverJourney",
+        "gateAuthority",
+        "artifactAuthority",
+    ):
         if reserved in receipt:
             raise ValueError(f"journey receipt already contains reserved field {reserved}")
 
     receipt["matrixJourney"] = matrix_journey
     receipt["driverJourney"] = driver_journey
+    receipt["gateAuthority"] = gate_authority
     receipt["artifactAuthority"] = {
         "schema": "chummer.android.api36-apk-authority/v1",
         "runId": int(run_id),
@@ -148,6 +153,7 @@ def write_atomically(path: Path, value: dict[str, Any]) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--receipt", type=Path, required=True)
+    parser.add_argument("--gate-contract", type=Path, default=DEFAULT_CONTRACT)
     parser.add_argument("--run-id", required=True)
     parser.add_argument("--matrix-journey", required=True)
     parser.add_argument("--driver-journey", required=True)
@@ -173,12 +179,14 @@ def main() -> int:
         artifact_name=args.artifact_name,
         artifact_attempt=args.artifact_attempt,
         apk_sha256=args.apk_sha256,
+        gate_contract_path=args.gate_contract,
     )
     write_atomically(receipt_path, receipt)
     print(
         "api36_journey_receipt=bound "
         f"matrix_journey={args.matrix_journey} "
-        f"artifact_id={args.artifact_id} apk_sha256={args.apk_sha256}"
+        f"scope=sr5_wizards_only artifact_id={args.artifact_id} "
+        f"apk_sha256={args.apk_sha256} publication_authorized=false"
     )
     return 0
 

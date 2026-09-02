@@ -489,12 +489,17 @@ internal static class CreationResourcesPhoneAuthority
                state.Binding.RawCharacterXmlDigest,
                wizard.ContentDigest)
            && CharacterCreationResourcesRules.IsCanonicalDigest(state.SnapshotDigest)
-           && CharacterCreationResourcesRules.IsCanonicalDigest(state.Binding.AuxiliaryStateDigest)
+           && IsLowerRawSha256(state.Binding.AuxiliaryStateDigest)
            && CharacterCreationResourcesRules.IsCanonicalDigest(state.Binding.PrerequisiteDraftDigest)
            && CharacterCreationResourcesRules.IsCanonicalDigest(state.Binding.AuthorityDigest)
            && CharacterCreationResourcesRules.IsCanonicalDigest(state.Binding.SourceDigest)
            && CharacterCreationResourcesRules.IsCanonicalDigest(state.Binding.RulesDigest)
            && CharacterCreationResourcesRules.IsCanonicalDigest(state.Binding.RuntimeDigest);
+
+    private static bool IsLowerRawSha256(string? value)
+        => value is { Length: 64 }
+           && value.All(static character =>
+               character is >= '0' and <= '9' or >= 'a' and <= 'f');
 
     public static bool IsReady(
         CharacterCreationResourcesInteractionState state,
@@ -505,8 +510,33 @@ internal static class CreationResourcesPhoneAuthority
            && state.Budget.IsExact
            && state.Budget.Blockers.Count == 0
            && CharacterCreationResourcesRules.IsValidAuthority(state.Authority)
-           && state.Options.Count > 0
-           && state.Options.Any(option => option.IsEnabled && option.Blockers.Count == 0);
+           && CharacterCreationResourcesRules.DigestsEqual(
+               state.Binding.AuthorityDigest,
+               state.Authority.AuthorityDigest)
+           && CharacterCreationResourcesRules.DigestsEqual(
+               state.Binding.SourceDigest,
+               state.Authority.SourceDigest)
+           && CharacterCreationResourcesRules.DigestsEqual(
+               state.Binding.RulesDigest,
+               state.Authority.RulesDigest)
+           && CharacterCreationResourcesRules.DigestsEqual(
+               state.Binding.RuntimeDigest,
+               state.Authority.RuntimeDigest)
+           && state.Options.Any(option => BudgetMatchesEnabledOption(option, state.Budget));
+
+    private static bool BudgetMatchesEnabledOption(
+        CharacterCreationResourceAllocationOption option,
+        CharacterCreationResourcesBudget budget)
+        => option.IsEnabled
+           && option.Blockers.Count == 0
+           && CharacterCreationResourcesRules.IsCanonicalDigest(option.OptionDigest)
+           && CharacterCreationResourcesRules.DigestsEqual(
+               option.OptionDigest,
+               CharacterCreationResourcesRules.ComputeAllocationOptionDigest(option))
+           && option.KarmaInvestment == budget.KarmaInvestment
+           && option.NuyenFromKarma == budget.NuyenFromKarma
+           && option.TotalStartingNuyen == budget.TotalStartingNuyen
+           && budget.PriorityNuyen + budget.NuyenFromKarma == budget.TotalStartingNuyen;
 
     public static bool PreparedMatches(
         CharacterCreationResourcesPreparedPreview prepared,

@@ -86,6 +86,7 @@ def main(argv: list[str] | None = None) -> int:
             _apk, graph, _provenance, payload = capture_build_inputs(
                 apk_path=args.apk, source_graph_path=args.source_graph,
                 build_provenance_path=args.build_provenance,
+                repository_root=args.android_repository,
             )
             capture_driver_authority(
                 repository_root=args.android_repository,

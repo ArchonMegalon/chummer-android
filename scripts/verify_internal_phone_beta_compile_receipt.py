@@ -51,7 +51,7 @@ PASS_ONLY_FIELDS = (
     "presentationCommit",
     "presentationTree",
     "authorityReceiptSha256",
-    "authorityJournalSha256",
+    "authorityCacheManifestSha256",
     "authorityBindingSha256",
     "executionBounds",
     "compileGraphSha256",
@@ -66,7 +66,6 @@ PASS_ONLY_FIELDS = (
     "androidWorktreeClean",
     "lockSizeBytes",
     "packageAuthoritySha256",
-    "desktopRuntimeLockSha256",
     "producerSdkVersion",
     "packageOnly",
     "restoreLockedMode",
@@ -86,8 +85,8 @@ PASS_ALLOWED_KEYS = frozenset({
     "restoreLockedMode", "sourceCheckoutsPresent", "siblingsAllowed",
     "serializedBuild", "sdkVersion", "producerSdkVersion", "androidCommit",
     "androidTree", "androidWorktreeClean", "presentationCommit",
-    "presentationTree", "authorityReceiptSha256", "authorityJournalSha256",
-    "packageAuthoritySha256", "desktopRuntimeLockSha256",
+    "presentationTree", "authorityReceiptSha256", "authorityCacheManifestSha256",
+    "packageAuthoritySha256",
     "authorityBindingSha256", "executionBounds", "journalSha256",
     "journalSizeBytes", "evidenceDirectory", "evidence", "evidenceBindings",
     "compileGraphSha256", "restoreOutputSha256", "buildOutputSha256",
@@ -110,15 +109,14 @@ LATER_DEVICE_REQUIREMENTS = (
     "apk_install",
     "physical_api36_execution",
 )
-PRESENTATION_COMMIT = "a8a317aff534dc5fd47f2db1bc39466799021990"
-PRESENTATION_TREE = "f8214243280030de5d134351f39ea4b23afbe394"
-AUTHORITY_RECEIPT_SHA256 = "aaf2c755ef7233f2b21bc257e306ea5de60ac42125c3c8b47501aa05a3b949dd"
-AUTHORITY_JOURNAL_SHA256 = "4b41a6c2afded5acf83b07a59ac73605faf5037948a0dd0fbed772440ff54bec"
-PACKAGE_AUTHORITY_SHA256 = "4dfc8bff234ced999792797b7ac4e5f5dd5d371c1c261bc56b2f6adcfa382c4b"
-DESKTOP_RUNTIME_LOCK_SHA256 = "202a29a35b4768c3306349ee40a34d8f23ada97c0b0ef11e104763b5ff9cc60e"
-AUTHORITY_BINDING_SHA256 = "7f7ab5b827f69eee79addcc5cd47204d9cfa7387acd06c6894329088b6bae839"
-ANDROID_LOCK_SHA256 = "64454d5420e2a5430a046d392c6eea2ca41d9105c1667f2b8a66e1f61064cccc"
-ANDROID_LOCK_SIZE = 17968
+PRESENTATION_COMMIT = "732a33cb8d3c704b8a86e1249eab46508339a105"
+PRESENTATION_TREE = "db56a83e5fee94d9aec7fd56a4b0df078c7dda62"
+AUTHORITY_RECEIPT_SHA256 = "d99fd73db6bec5cdf3a83476d9e84e1f8df3bd7b4f8ee6e878d9b51c78e3602b"
+AUTHORITY_CACHE_MANIFEST_SHA256 = "779b4230cd400983b3777c5f00d9a8e6247c7f1cc9949a6a8ecfc390acc5690e"
+PACKAGE_AUTHORITY_SHA256 = "fce976ba629f8871da69c1163c9c642d9f9878cf53e9ad5a34f718a41cb76e57"
+AUTHORITY_BINDING_SHA256 = "fb44b2dc23f3dcc0bc45c17bbc7fe3f0e59d1ee0d29c374fff7705d252fc96e9"
+ANDROID_LOCK_SHA256 = "f421578231b43f5bd81eebedb5b82fd4b9345dc91bc2af005cbefcaab117b00b"
+ANDROID_LOCK_SIZE = 16178
 PRODUCER_SDK_VERSION = "10.0.103"
 CONSUMER_SDK_VERSION = "10.0.111"
 EXPECTED_PHASE_RESULTS = {
@@ -133,10 +131,10 @@ AUTHORITY_INTAKE_KEYS = frozenset({
     "packagePinCount", "publicationAuthorized", "receiptSha256", "status",
 })
 AUTHORITY_BINDING_KEYS = frozenset({
-    "androidConsumerLock", "authority", "authorityClass", "authorityState",
+    "androidConsumerLocks", "artifactCache", "authorityClass", "authorityState",
     "contractName", "dependencyMode", "doesNotAssert", "headlessRuntimeBinding",
-    "lockFiles", "ownerPackagePins", "packagePins", "presentationSource",
-    "publicationAuthorized", "sdkAuthority", "verificationReceipt",
+    "packagePlaneLock", "presentationSource", "publicationAuthorized",
+    "sdkAuthority", "sourceGraph", "verificationReceipt",
 })
 OWNED_GRAPH_KEYS = frozenset({
     "compileProject", "compiledOwnedSourceCount", "generatedProjectReferenceCount",
@@ -283,9 +281,8 @@ def validate_pass_contract(payload: dict[str, object], android_root: Path | None
         "presentationCommit": PRESENTATION_COMMIT,
         "presentationTree": PRESENTATION_TREE,
         "authorityReceiptSha256": AUTHORITY_RECEIPT_SHA256,
-        "authorityJournalSha256": AUTHORITY_JOURNAL_SHA256,
+        "authorityCacheManifestSha256": AUTHORITY_CACHE_MANIFEST_SHA256,
         "packageAuthoritySha256": PACKAGE_AUTHORITY_SHA256,
-        "desktopRuntimeLockSha256": DESKTOP_RUNTIME_LOCK_SHA256,
         "authorityBindingSha256": AUTHORITY_BINDING_SHA256,
         "lockSha256": ANDROID_LOCK_SHA256,
         "lockSizeBytes": ANDROID_LOCK_SIZE,
@@ -389,13 +386,13 @@ def validate_authority_evidence(paths: dict[str, Path], facts: JournalFacts) -> 
             require_exact_keys(intake, AUTHORITY_INTAKE_KEYS, "authority intake evidence")
             expected = {
                 "authorityClass": AUTHORITY_CLASS,
-                "contractName": "chummer.android.internal-phone-beta-package-authority/v1",
+                "contractName": "chummer.android.internal-phone-beta-package-authority/v2",
                 "doesNotAssert": [
                     "api36_device_execution", "google_play_upload", "public_release_readiness",
                     "publication_authority", "tablet_readiness",
                 ],
-                "ownerPackagePinCount": 7,
-                "packagePinCount": 6,
+                "ownerPackagePinCount": 6,
+                "packagePinCount": 18,
                 "publicationAuthorized": False,
                 "receiptSha256": AUTHORITY_RECEIPT_SHA256,
                 "status": "pass",
@@ -414,21 +411,27 @@ def validate_authority_evidence(paths: dict[str, Path], facts: JournalFacts) -> 
         verification = require_object(authority.get("verificationReceipt"), "verificationReceipt")
         sdk = require_object(authority.get("sdkAuthority"), "sdkAuthority")
         dependency = require_object(authority.get("dependencyMode"), "dependencyMode")
-        android_lock = require_object(authority.get("androidConsumerLock"), "androidConsumerLock")
-        desktop_locks = [
-            row for row in authority.get("lockFiles", [])
-            if isinstance(row, dict) and row.get("path") == "Chummer.Desktop.Runtime/packages.lock.json"
-        ]
+        package_lock = require_object(authority.get("packagePlaneLock"), "packagePlaneLock")
+        cache = require_object(authority.get("artifactCache"), "artifactCache")
+        android_locks = authority.get("androidConsumerLocks")
+        compile_lock = next(
+            (
+                row for row in android_locks
+                if isinstance(row, dict)
+                and row.get("path") == "tests/Chummer.Android.Native.CompileCheck/packages.lock.json"
+            ),
+            None,
+        ) if isinstance(android_locks, list) else None
         checks = (
-            authority.get("contractName") == "chummer.android.internal-phone-beta-package-authority/v1",
+            authority.get("contractName") == "chummer.android.internal-phone-beta-package-authority/v2",
             authority.get("authorityClass") == AUTHORITY_CLASS,
-            authority.get("authorityState") == "independently_audited",
+            authority.get("authorityState") == "current_graph_verified",
             authority.get("publicationAuthorized") is False,
-            presentation.get("packageAuthorityCommit") == PRESENTATION_COMMIT,
-            presentation.get("packageAuthorityTree") == PRESENTATION_TREE,
+            presentation.get("commit") == PRESENTATION_COMMIT,
+            presentation.get("tree") == PRESENTATION_TREE,
             verification.get("sha256") == AUTHORITY_RECEIPT_SHA256,
-            verification.get("journalSha256") == AUTHORITY_JOURNAL_SHA256,
-            require_object(authority.get("authority"), "authority").get("sha256") == PACKAGE_AUTHORITY_SHA256,
+            cache.get("manifestSha256") == AUTHORITY_CACHE_MANIFEST_SHA256,
+            package_lock.get("sha256") == PACKAGE_AUTHORITY_SHA256,
             sdk.get("packageProofSdkVersion") == PRODUCER_SDK_VERSION,
             sdk.get("selectedAndroidConsumerSdkVersion") == CONSUMER_SDK_VERSION,
             dependency == {
@@ -437,10 +440,9 @@ def validate_authority_evidence(paths: dict[str, Path], facts: JournalFacts) -> 
                 "sourceCheckoutsPresent": False,
                 "siblingsAllowed": False,
             },
-            android_lock.get("sha256") == ANDROID_LOCK_SHA256,
-            android_lock.get("sizeBytes") == ANDROID_LOCK_SIZE,
-            len(desktop_locks) == 1,
-            desktop_locks[0].get("sha256") == DESKTOP_RUNTIME_LOCK_SHA256 if desktop_locks else False,
+            isinstance(compile_lock, dict),
+            compile_lock.get("sha256") == ANDROID_LOCK_SHA256 if isinstance(compile_lock, dict) else False,
+            compile_lock.get("sizeBytes") == ANDROID_LOCK_SIZE if isinstance(compile_lock, dict) else False,
         )
         if not all(checks):
             raise ValueError("authority binding evidence facts mismatch")
@@ -483,7 +485,7 @@ def validate_graph_evidence(paths: dict[str, Path], facts: JournalFacts) -> None
         if package is not None:
             require_exact_keys(package, PACKAGE_GRAPH_KEYS, "package compile graph evidence")
             expected = {
-                "chummerPackageCount": 14,
+                "chummerPackageCount": 12,
                 "contractName": "chummer.android.internal-phone-beta-compile-graph/v1",
                 "dependencyMode": "locked_package_no_siblings",
                 "doesNotAssert": ["api36_device_execution", "public_release_readiness"],

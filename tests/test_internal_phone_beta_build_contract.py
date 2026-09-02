@@ -78,9 +78,19 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
 
     def test_workflow_is_inactive_internal_only_and_exactly_pinned(self) -> None:
         text = WORKFLOW.read_text(encoding="utf-8")
-        self.assertIn("on: []", text)
+        self.assertIn('on:\n  push:\n    branches-ignore:\n      - "**"', text)
+        self.assertNotIn("\non: []\n", text)
         self.assertIn("if: ${{ false }}", text)
-        self.assertIn("a8a317aff534dc5fd47f2db1bc39466799021990", text)
+        self.assertIn("732a33cb8d3c704b8a86e1249eab46508339a105", text)
+        final_receipt_name = "UI_CURRENT_MAIN_PACKAGE_PLANE.generated.json"
+        self.assertEqual(1, text.count(final_receipt_name))
+        self.assertIn(
+            "CHUMMER_CURRENT_UI_PACKAGE_AUTHORITY_RECEIPT: "
+            "${{ runner.temp }}/current-ui-input/" + final_receipt_name,
+            text,
+        )
+        self.assertNotIn("ui-current-authority-1438978f-main-cache-hit.receipt.json", text)
+        self.assertNotIn("ui-current-authority-", text)
         self.assertIn("Chummer.Desktop.Runtime", text)
         self.assertIn("Chummer.Presentation", text)
         self.assertIn("dotnet-version: 10.0.111", text)
@@ -107,7 +117,7 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
         lock = REPO / "tests/Chummer.Android.Native.CompileCheck/packages.lock.json"
         self.assertTrue(lock.is_file())
         self.assertEqual(
-            "64454d5420e2a5430a046d392c6eea2ca41d9105c1667f2b8a66e1f61064cccc",
+            "f421578231b43f5bd81eebedb5b82fd4b9345dc91bc2af005cbefcaab117b00b",
             self.authority.sha256(lock),
         )
 
@@ -206,13 +216,13 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
         evidence_payloads = {
             "authority-intake.log": json.dumps({
                 "authorityClass": self.receipt.AUTHORITY_CLASS,
-                "contractName": "chummer.android.internal-phone-beta-package-authority/v1",
+                "contractName": "chummer.android.internal-phone-beta-package-authority/v2",
                 "doesNotAssert": [
                     "api36_device_execution", "google_play_upload", "public_release_readiness",
                     "publication_authority", "tablet_readiness",
                 ],
-                "ownerPackagePinCount": 7,
-                "packagePinCount": 6,
+                "ownerPackagePinCount": 6,
+                "packagePinCount": 18,
                 "publicationAuthorized": False,
                 "receiptSha256": self.receipt.AUTHORITY_RECEIPT_SHA256,
                 "status": "pass",
@@ -231,7 +241,7 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
                 "workspaceRoot": str(root.parent),
             }, sort_keys=True) + "\n",
             "compile-graph.json": json.dumps({
-                "chummerPackageCount": 14,
+                "chummerPackageCount": 12,
                 "contractName": "chummer.android.internal-phone-beta-compile-graph/v1",
                 "dependencyMode": "locked_package_no_siblings",
                 "doesNotAssert": ["api36_device_execution", "public_release_readiness"],
@@ -330,9 +340,8 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
             "presentationCommit": self.receipt.PRESENTATION_COMMIT,
             "presentationTree": self.receipt.PRESENTATION_TREE,
             "authorityReceiptSha256": self.receipt.AUTHORITY_RECEIPT_SHA256,
-            "authorityJournalSha256": self.receipt.AUTHORITY_JOURNAL_SHA256,
+            "authorityCacheManifestSha256": self.receipt.AUTHORITY_CACHE_MANIFEST_SHA256,
             "packageAuthoritySha256": self.receipt.PACKAGE_AUTHORITY_SHA256,
-            "desktopRuntimeLockSha256": self.receipt.DESKTOP_RUNTIME_LOCK_SHA256,
             "evidenceDirectory": str(evidence),
             "evidence": rows,
             "evidenceBindings": {
@@ -495,15 +504,25 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     self.receipt.verify_receipt(receipt)
 
+    def test_pass_receipt_rejects_orphaned_desktop_runtime_lock_claim(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            receipt, _evidence, payload = self.seed_compile_receipt(Path(temporary))
+            payload["desktopRuntimeLockSha256"] = "0" * 64
+            receipt.write_text(json.dumps(payload), encoding="utf-8")
+            with self.assertRaisesRegex(
+                ValueError,
+                "extra=.*desktopRuntimeLockSha256",
+            ):
+                self.receipt.verify_receipt(receipt)
+
     def test_pass_receipt_rejects_wrong_values_in_every_authority_group(self) -> None:
         cases = (
             ("schema", "schema", "forged/v1"),
             ("android", "androidWorktreeClean", False),
             ("lock", "lockSha256", "0" * 64),
             ("presentation", "presentationCommit", "0" * 40),
-            ("w41-receipt", "authorityReceiptSha256", "0" * 64),
-            ("w41-authority", "packageAuthoritySha256", "0" * 64),
-            ("desktop-lock", "desktopRuntimeLockSha256", "0" * 64),
+            ("current-ui-receipt", "authorityReceiptSha256", "0" * 64),
+            ("v2-package-authority", "packageAuthoritySha256", "0" * 64),
             ("producer-sdk", "producerSdkVersion", "10.0.111"),
             ("consumer-sdk", "sdkVersion", "10.0.103"),
             ("dependency", "siblingsAllowed", True),
@@ -990,8 +1009,7 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
                 "CHUMMER_PRESENTATION_ROOT": str(presentation),
                 "CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED": str(feed),
                 "CHUMMER_INTERNAL_PHONE_BETA_NUGET_PACKAGES": str(packages),
-                "CHUMMER_W41_PACKAGE_AUTHORITY_RECEIPT": str(authority_receipt),
-                "CHUMMER_W41_PACKAGE_AUTHORITY_JOURNAL": str(authority_journal),
+                "CHUMMER_CURRENT_UI_PACKAGE_AUTHORITY_RECEIPT": str(authority_receipt),
                 "CHUMMER_INTERNAL_PHONE_BETA_BUILD_RECEIPT": str(build_receipt),
             })
             completed = subprocess.run(
@@ -1044,10 +1062,10 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
             path = presentation / relative
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text("<Project />\n", encoding="utf-8")
-        expected_rows = {row[0]: row for row in self.authority.EXPECTED_PACKAGES}
+        expected_versions = self.authority.EXPECTED_COMPILE_PACKAGES
         package_ids = self.graph.EXPECTED_CHUMMER_IDS
         libraries = {
-            f"{package_id}/{expected_rows[package_id][1]}": {"type": "package"}
+            f"{package_id}/{expected_versions[package_id]}": {"type": "package"}
             for package_id in package_ids
         }
         libraries.update({
@@ -1071,7 +1089,7 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
                 "net10.0": {
                     package_id: {
                         "type": "Transitive",
-                        "resolved": expected_rows[package_id][1],
+                        "resolved": expected_versions[package_id],
                         "contentHash": "fixture",
                     }
                     for package_id in package_ids
@@ -1100,7 +1118,7 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
             key = next(key for key in missing["libraries"] if key.startswith("Chummer.Play.Contracts/"))
             del missing["libraries"][key]
             (project.parent / "obj/project.assets.json").write_text(json.dumps(missing), encoding="utf-8")
-            with self.assertRaisesRegex(ValueError, "exact fourteen-package"):
+            with self.assertRaisesRegex(ValueError, "exact current compile closure"):
                 self.graph.validate_compile_graph(project, android, presentation)
 
 

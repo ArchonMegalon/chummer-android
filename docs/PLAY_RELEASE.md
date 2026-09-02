@@ -66,14 +66,36 @@ CHUMMER_BUNDLETOOL_JAR=/secure/tools/bundletool-all-1.18.3.jar \
   scripts/build-release.sh
 ```
 
+Before the signed build, prepare the package authority and `--no-restore` assets
+from the retained UI package-plane receipt and its exact private package cache.
+The input directory must be a new empty owner-only directory outside the
+repository. The preparer derives `chummer.android.release-package-authority/v2`
+from the authenticated locks, receipts, package bytes, and package nuspecs; it
+does not accept handwritten package pins. It then performs a locked restore into
+an isolated NuGet package root and emits an owner-only environment handoff:
+
+```sh
+install -d -m 0700 /absolute/private/chummer-preview10-release-inputs
+CHUMMER_ANDROID_RELEASE_INPUT_DIR=/absolute/private/chummer-preview10-release-inputs \
+CHUMMER_CURRENT_UI_PACKAGE_AUTHORITY_RECEIPT=/absolute/private/UI_CURRENT_MAIN_PACKAGE_PLANE.generated.json \
+CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED=/absolute/private/ui-package-cache/packages \
+  scripts/prepare-release-inputs.sh
+. /absolute/private/chummer-preview10-release-inputs/release-inputs.env
+```
+
+The preparer does not sign, publish, upload, or authorize publication. The
+release build re-derives and verifies the package authority before and after the
+signed AAB build.
+
 Run `scripts/build-release.sh` only from a complete coherent workspace whose
 `chummer-android` sibling is accompanied by exact clean Presentation, Core, UI
 Kit, Hub, Hub Registry, Media Factory, and Design checkouts. Set
 `CHUMMER_COMPLETE_ROOT` to that workspace and supply all eight exact
 `CHUMMER_*_REVISION` variables required by `verify_release_source_graph.py`.
-The packager requires already-materialized arm64 assets and explicit canonical
-`AndroidSdkDirectory` and `JavaSdkDirectory` paths; it never restores or installs
-tooling. It also requires the pinned bundletool JAR and all five signing/certificate
+The packager requires the assets and isolated `NUGET_PACKAGES` produced by the
+preparer plus explicit canonical `AndroidSdkDirectory` and `JavaSdkDirectory`
+paths; it never restores or installs tooling. It also requires the pinned
+bundletool JAR and all five signing/certificate
 environment values. Passwords remain in the environment and are never printed or
 interpolated into process arguments.
 
@@ -99,6 +121,28 @@ The pull-request API 36 beta gate is currently phone-only. Tablet acceptance is
 explicitly deferred: that lane does not start a tablet emulator, and a passing
 phone receipt is not a tablet-readiness claim or a substitute for the tablet
 journeys required before a general Play release.
+
+The current phone-beta runtime authority is narrower than general Chummer5 edit
+parity. It is the exact SR5 wizard-only contract in
+`eng/api36-sr5-wizard-gate-authority.json`. The protected aggregate check
+requires exactly these three digest-bound API-36 journeys against one APK:
+
+1. Creation Prerequisite;
+2. Career Active Skill Advance;
+3. Career Weapon Fire.
+
+General Full Editing is not required by this gate. Its product code, fixtures,
+and standalone tests remain available, but no old Full Editing receipt may
+count toward or coexist with the three required aggregate artifacts. This is a
+scope decision, not a Full Editing pass claim. The exhaustive editability and
+Character Settings inventories remain fail-closed parity backlogs and do not
+become the phone-beta denominator.
+
+The wizard aggregate uses schema
+`chummer.android.api36-sr5-wizard-e2e-aggregate/v1` and always records
+`publicationAuthorized: false`. Even a passing three-journey aggregate proves
+only the stated phone wizard scope; it does not itself authorize a Play upload,
+tablet support, broad Android parity, or public release.
 
 1. parity and privacy contract tests pass;
 2. Release AAB builds from a clean, pinned source graph;

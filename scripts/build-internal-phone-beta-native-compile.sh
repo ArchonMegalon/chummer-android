@@ -146,8 +146,7 @@ command -v "$dotnet_command" >/dev/null 2>&1 || fail "missing-dotnet"
 require_canonical_directory CHUMMER_PRESENTATION_ROOT
 require_canonical_directory CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED
 require_canonical_directory CHUMMER_INTERNAL_PHONE_BETA_NUGET_PACKAGES
-require_canonical_file CHUMMER_W41_PACKAGE_AUTHORITY_RECEIPT
-require_canonical_file CHUMMER_W41_PACKAGE_AUTHORITY_JOURNAL
+require_canonical_file CHUMMER_CURRENT_UI_PACKAGE_AUTHORITY_RECEIPT
 require_absent_output CHUMMER_INTERNAL_PHONE_BETA_BUILD_RECEIPT
 receipt_output="$CHUMMER_INTERNAL_PHONE_BETA_BUILD_RECEIPT"
 evidence_output="$receipt_output.evidence"
@@ -201,8 +200,7 @@ run_bounded authority-intake "$proof_tmp/authority-intake.log" \
   python3 "$repo_dir/scripts/verify_internal_phone_beta_package_authority.py" \
   --android-root "$repo_dir" \
   --presentation-root "$CHUMMER_PRESENTATION_ROOT" \
-  --receipt "$CHUMMER_W41_PACKAGE_AUTHORITY_RECEIPT" \
-  --journal "$CHUMMER_W41_PACKAGE_AUTHORITY_JOURNAL" \
+  --receipt "$CHUMMER_CURRENT_UI_PACKAGE_AUTHORITY_RECEIPT" \
   --package-feed "$CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED" \
   --output "$authority_binding"
 
@@ -214,14 +212,12 @@ package_args=(
   "-p:RestoreLockedMode=true"
   "-p:RestorePackagesWithLockFile=true"
   "-p:NuGetAudit=false"
-  "-p:ChummerContractsPackageVersion=0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819"
-  "-p:ChummerCoreRuntimePackageVersion=0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819"
-  "-p:ChummerCampaignContractsPackageVersion=0.1.0-packageplane.android.sh1215f9389779e"
-  "-p:ChummerRunContractsPackageVersion=0.1.0-packageplane.android.sh1215f9389779e"
-  "-p:ChummerRunHubContractsPackageVersion=0.1.0-packageplane.android.sh1215f9389779e"
-  "-p:ChummerRunHubPackageVersion=0.1.0-packageplane.android.sh1215f9389779e"
-  "-p:ChummerHubRegistryContractsPackageVersion=0.1.0-packageplane.candidate.sh66c418a5004f"
-  "-p:ChummerUiKitPackageVersion=0.1.0-packageplane.android.shd51ecd99cf720"
+  "-p:ChummerContractsPackageVersion=0.0.0-packageplane.candidate.sh60112dccb6a3f"
+  "-p:ChummerCoreRuntimePackageVersion=0.0.0-packageplane.candidate.sh60112dccb6a3f"
+  "-p:ChummerCampaignContractsPackageVersion=0.1.0-preview"
+  "-p:ChummerRunContractsPackageVersion=0.1.0-packageplane.candidate.sh1852ea4eef6d"
+  "-p:ChummerHubRegistryContractsPackageVersion=0.1.0-packageplane.candidate.sh1852ea4eef6d"
+  "-p:ChummerUiKitPackageVersion=0.1.0-preview"
 )
 
 export DOTNET_CLI_USE_MSBUILD_SERVER=0
@@ -293,10 +289,9 @@ jq -n \
   --arg androidTree "$android_tree" \
   --arg presentationCommit "$presentation_commit" \
   --arg presentationTree "$presentation_tree" \
-  --arg authorityReceiptSha256 "aaf2c755ef7233f2b21bc257e306ea5de60ac42125c3c8b47501aa05a3b949dd" \
-  --arg authorityJournalSha256 "4b41a6c2afded5acf83b07a59ac73605faf5037948a0dd0fbed772440ff54bec" \
-  --arg packageAuthoritySha256 "4dfc8bff234ced999792797b7ac4e5f5dd5d371c1c261bc56b2f6adcfa382c4b" \
-  --arg desktopRuntimeLockSha256 "202a29a35b4768c3306349ee40a34d8f23ada97c0b0ef11e104763b5ff9cc60e" \
+  --arg authorityReceiptSha256 "d99fd73db6bec5cdf3a83476d9e84e1f8df3bd7b4f8ee6e878d9b51c78e3602b" \
+  --arg authorityCacheManifestSha256 "779b4230cd400983b3777c5f00d9a8e6247c7f1cc9949a6a8ecfc390acc5690e" \
+  --arg packageAuthoritySha256 "fce976ba629f8871da69c1163c9c642d9f9878cf53e9ad5a34f718a41cb76e57" \
   --arg authorityBindingSha256 "$authority_binding_sha256" \
   --arg journalSha256 "$journal_sha256" \
   --argjson journalSizeBytes "$journal_size" \
@@ -331,9 +326,8 @@ jq -n \
     presentationCommit: $presentationCommit,
     presentationTree: $presentationTree,
     authorityReceiptSha256: $authorityReceiptSha256,
-    authorityJournalSha256: $authorityJournalSha256,
+    authorityCacheManifestSha256: $authorityCacheManifestSha256,
     packageAuthoritySha256: $packageAuthoritySha256,
-    desktopRuntimeLockSha256: $desktopRuntimeLockSha256,
     authorityBindingSha256: $authorityBindingSha256,
     executionBounds: {perCommandSeconds: 900, totalSeconds: 3600, processGroupTermination: true},
     journalSha256: $journalSha256,

@@ -56,8 +56,8 @@ class CareerSkillGroupWizardSourceContractTests(unittest.TestCase):
         content = constant("CurrentContentDigest")
         runtime = constant("CurrentRuntimeDigest")
         self.assertEqual(content, manifest["bundleDigest"])
-        self.assertEqual(core, "4450825f53a5a96778e6061c16689e7c5993baf7")
-        self.assertEqual(presentation, "4c88c1810e6ce2754fe7b00e03db9b36b75d517c")
+        self.assertEqual(core, "c06f22c185c7b733637fdb76b3cf333f31716781")
+        self.assertEqual(presentation, "732a33cb8d3c704b8a86e1249eab46508339a105")
         payload = f"{contract}\n{core}\n{presentation}\n{content}\n".encode()
         self.assertEqual(runtime, hashlib.sha256(payload).hexdigest())
         self.assertIn("contentDigest", shared := self.read("Sr5CareerWizardModel.cs"))
@@ -175,11 +175,17 @@ class CareerSkillGroupWizardSourceContractTests(unittest.TestCase):
     def test_career_and_build_surfaces_enter_the_phone_wizard(self) -> None:
         career = self.read("Sr5CareerWizardPage.cs")
         build = self.read("BuildPage.cs")
+        phone_model = self.read("Sr5CareerWizardPhoneModel.cs")
         for source in (career, build):
             self.assertIn("Sr5CareerSkillGroupCoordinator", source)
             self.assertIn("new Sr5CareerSkillGroupWizardPage", source)
         self.assertIn("OpenSkillGroupWizardAsync", career)
-        self.assertGreaterEqual(career.count('"skill-group");'), 2)
+        self.assertIn(
+            "Sr5CareerWizardActionIds.AdvanceSkillGroup => OpenSkillGroupWizardAsync()",
+            career,
+        )
+        self.assertIn("Sr5CareerWizardActionIds.AdvanceSkillGroup", phone_model)
+        self.assertIn('"sr5-career/advancement/skill-group/choose"', phone_model)
         self.assertIn('automationId: "build-career-skill-group"', build)
 
     def test_all_career_domains_use_the_shared_created_sr5_guard(self) -> None:

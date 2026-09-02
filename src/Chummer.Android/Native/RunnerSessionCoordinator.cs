@@ -73,6 +73,67 @@ public static class AndroidE2EAuthority
     }
 }
 
+internal sealed record NativeCreationBootstrapTimingSnapshot(
+    long StartedTimestamp,
+    long LoadStartedTimestamp,
+    long WorkspaceStatePublishedTimestamp,
+    string? PublishedWorkspaceId)
+{
+    public bool LoadStartObserved => LoadStartedTimestamp > 0;
+    public bool WorkspaceStatePublished => WorkspaceStatePublishedTimestamp > 0;
+}
+
+internal sealed class NativeCreationBootstrapTiming
+{
+    private readonly object _sync = new();
+    private long _loadStartedTimestamp;
+    private long _workspaceStatePublishedTimestamp;
+    private string? _publishedWorkspaceId;
+
+    public NativeCreationBootstrapTiming()
+    {
+        StartedTimestamp = System.Diagnostics.Stopwatch.GetTimestamp();
+    }
+
+    public long StartedTimestamp { get; }
+
+    public void Observe(CharacterOverviewState state)
+    {
+        long observedTimestamp = System.Diagnostics.Stopwatch.GetTimestamp();
+        lock (_sync)
+        {
+            if (_loadStartedTimestamp == 0 && state.IsBusy)
+            {
+                _loadStartedTimestamp = observedTimestamp;
+                return;
+            }
+
+            if (_loadStartedTimestamp > 0
+                && _workspaceStatePublishedTimestamp == 0
+                && !state.IsBusy
+                && state.Error is null
+                && state.WorkspaceId is { } workspaceId
+                && state.Profile?.Created == false)
+            {
+                _workspaceStatePublishedTimestamp = observedTimestamp;
+                _publishedWorkspaceId = workspaceId.Value;
+            }
+        }
+    }
+
+    public NativeCreationBootstrapTimingSnapshot Snapshot()
+    {
+        lock (_sync)
+        {
+            return new NativeCreationBootstrapTimingSnapshot(
+                StartedTimestamp,
+                _loadStartedTimestamp,
+                _workspaceStatePublishedTimestamp,
+                _publishedWorkspaceId);
+        }
+    }
+}
+
 public sealed record NativeAccountErasureResult(
     AndroidAccountErasureReceipt Receipt,
     bool LocalRunnersRemoved);
@@ -185,6 +246,10 @@ public static class CreationMagicResonancePhoneBlockers
 
 public sealed class RunnerSessionCoordinator : IDisposable
 {
+    private const string CreateCharacterActionId = "create_character";
+    private const string CreationBootstrapTimingLogTag = "ChummerBootstrap";
+    private const string CreationBootstrapTimingLogPrefix =
+        "CHUMMER_CREATION_BOOTSTRAP_TIMING ";
     private const string WorkspaceAuthorityDigestSchema =
         "chummer.android.workspace-document-authority/v1";
     private const string WorkspaceVerificationUnavailableNotice =
@@ -5512,20 +5577,113 @@ public sealed class RunnerSessionCoordinator : IDisposable
 
     private async Task ExecuteDialogActionCoreAsync(string actionId, CancellationToken cancellationToken)
     {
+        CharacterWorkspaceId? workspaceBeforeAction = State.WorkspaceId;
+        NativeCreationBootstrapTiming? bootstrapTiming = string.Equals(
+            actionId,
+            CreateCharacterActionId,
+            StringComparison.Ordinal)
+                ? new NativeCreationBootstrapTiming()
+                : null;
+        EventHandler? bootstrapObserver = bootstrapTiming is null
+            ? null
+            : (_, _) => bootstrapTiming.Observe(State);
+        if (bootstrapObserver is not null)
+        {
+            _presenter.StateChanged += bootstrapObserver;
+        }
+
         long contentRevision = State.ContentRevision;
         WorkspaceSurfaceActionDefinition? activeSectionAction = _surface.WorkspaceActions.FirstOrDefault(action =>
             action.Kind == WorkspaceSurfaceActionKind.Section
             && (string.Equals(action.Id, State.ActiveActionId, StringComparison.Ordinal)
                 || string.Equals(action.TargetId, State.ActiveSectionId, StringComparison.Ordinal)));
-        await _presenter.ExecuteDialogActionAsync(actionId, cancellationToken);
+        try
+        {
+            await _presenter.ExecuteDialogActionAsync(actionId, cancellationToken);
+        }
+        finally
+        {
+            if (bootstrapObserver is not null)
+            {
+                _presenter.StateChanged -= bootstrapObserver;
+            }
+        }
+
+        long presenterCompletedTimestamp = System.Diagnostics.Stopwatch.GetTimestamp();
         if (activeSectionAction is not null
             && State.ActiveDialog is null
             && State.ContentRevision > contentRevision)
         {
             await _presenter.ExecuteWorkspaceActionAsync(activeSectionAction, cancellationToken);
         }
-        await SyncShellAsync(cancellationToken);
+        long activeSectionCompletedTimestamp = System.Diagnostics.Stopwatch.GetTimestamp();
+        NativeCreationBootstrapTimingSnapshot? bootstrapSnapshot = bootstrapTiming?.Snapshot();
+        bool reusePresenterShellSync = CanReusePresenterShellSync(
+            actionId,
+            workspaceBeforeAction,
+            State,
+            bootstrapSnapshot);
+        await ExecutePostDialogShellSyncAsync(
+            reusePresenterShellSync,
+            SyncShellAsync,
+            RefreshShellAfterPresenterSyncAsync,
+            cancellationToken);
+        long androidShellCompletedTimestamp = System.Diagnostics.Stopwatch.GetTimestamp();
         await ProcessPendingOutputsAsync(cancellationToken);
+        long pendingOutputsCompletedTimestamp = System.Diagnostics.Stopwatch.GetTimestamp();
+        if (bootstrapSnapshot is not null && AndroidE2EAuthority.Enabled)
+        {
+            TraceCreationBootstrapTiming(
+                bootstrapSnapshot,
+                presenterCompletedTimestamp,
+                activeSectionCompletedTimestamp,
+                androidShellCompletedTimestamp,
+                pendingOutputsCompletedTimestamp,
+                reusePresenterShellSync,
+                State);
+        }
+    }
+
+    internal static bool CanReusePresenterShellSync(
+        string actionId,
+        CharacterWorkspaceId? workspaceBeforeAction,
+        CharacterOverviewState stateAfterAction,
+        NativeCreationBootstrapTimingSnapshot? timing)
+        => string.Equals(actionId, CreateCharacterActionId, StringComparison.Ordinal)
+           && timing is
+           {
+               LoadStartObserved: true,
+               WorkspaceStatePublished: true,
+               PublishedWorkspaceId: { } publishedWorkspaceId
+           }
+           && stateAfterAction is
+           {
+               IsBusy: false,
+               Error: null,
+               ActiveDialog: null,
+               WorkspaceId: { } workspaceAfterAction,
+               Profile.Created: false
+           }
+           && !string.Equals(
+               workspaceBeforeAction?.Value,
+               workspaceAfterAction.Value,
+               StringComparison.Ordinal)
+           && string.Equals(
+               publishedWorkspaceId,
+               workspaceAfterAction.Value,
+               StringComparison.Ordinal);
+
+    internal static Task ExecutePostDialogShellSyncAsync(
+        bool reusePresenterShellSync,
+        Func<CancellationToken, Task> fullShellSync,
+        Func<CancellationToken, Task> retainedAndroidRefresh,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(fullShellSync);
+        ArgumentNullException.ThrowIfNull(retainedAndroidRefresh);
+        return reusePresenterShellSync
+            ? retainedAndroidRefresh(cancellationToken)
+            : fullShellSync(cancellationToken);
     }
 
     public Task CloseDialogAsync(CancellationToken cancellationToken = default)
@@ -6130,7 +6288,15 @@ public sealed class RunnerSessionCoordinator : IDisposable
         }
     }
 
-    private async Task SyncShellAsync(CancellationToken cancellationToken)
+    private Task SyncShellAsync(CancellationToken cancellationToken)
+        => FinalizeShellAsync(syncPresenterContext: true, cancellationToken);
+
+    private Task RefreshShellAfterPresenterSyncAsync(CancellationToken cancellationToken)
+        => FinalizeShellAsync(syncPresenterContext: false, cancellationToken);
+
+    private async Task FinalizeShellAsync(
+        bool syncPresenterContext,
+        CancellationToken cancellationToken)
     {
         await _shellSyncGate.WaitAsync(cancellationToken);
         try
@@ -6144,13 +6310,83 @@ public sealed class RunnerSessionCoordinator : IDisposable
             {
                 Preferences.Default.Remove(SelectedWorkspacePreferenceKey);
             }
-            await _shellPresenter.SyncWorkspaceContextAsync(active, cancellationToken);
+            if (syncPresenterContext)
+            {
+                await _shellPresenter.SyncWorkspaceContextAsync(active, cancellationToken);
+            }
             RefreshSurface();
         }
         finally
         {
             _shellSyncGate.Release();
         }
+    }
+
+    private static void TraceCreationBootstrapTiming(
+        NativeCreationBootstrapTimingSnapshot timing,
+        long presenterCompletedTimestamp,
+        long activeSectionCompletedTimestamp,
+        long androidShellCompletedTimestamp,
+        long pendingOutputsCompletedTimestamp,
+        bool reusedPresenterShellSync,
+        CharacterOverviewState finalState)
+    {
+        static long ElapsedMilliseconds(long started, long completed)
+            => started > 0 && completed >= started
+                ? checked((long)Math.Round(
+                    System.Diagnostics.Stopwatch.GetElapsedTime(started, completed).TotalMilliseconds,
+                    MidpointRounding.AwayFromZero))
+                : -1;
+
+        long coreCreateMilliseconds = ElapsedMilliseconds(
+            timing.StartedTimestamp,
+            timing.LoadStartedTimestamp);
+        long presenterLoadMilliseconds = ElapsedMilliseconds(
+            timing.LoadStartedTimestamp,
+            timing.WorkspaceStatePublishedTimestamp);
+        long presenterNavigationAndShellMilliseconds = ElapsedMilliseconds(
+            timing.WorkspaceStatePublishedTimestamp,
+            presenterCompletedTimestamp);
+        long activeSectionMilliseconds = ElapsedMilliseconds(
+            presenterCompletedTimestamp,
+            activeSectionCompletedTimestamp);
+        long androidShellMilliseconds = ElapsedMilliseconds(
+            activeSectionCompletedTimestamp,
+            androidShellCompletedTimestamp);
+        long pendingOutputsMilliseconds = ElapsedMilliseconds(
+            androidShellCompletedTimestamp,
+            pendingOutputsCompletedTimestamp);
+        long totalMilliseconds = ElapsedMilliseconds(
+            timing.StartedTimestamp,
+            pendingOutputsCompletedTimestamp);
+        bool exactPublishedWorkspace = finalState.WorkspaceId is { } workspaceId
+            && string.Equals(
+                timing.PublishedWorkspaceId,
+                workspaceId.Value,
+                StringComparison.Ordinal);
+        string payload = "{"
+                         + "\"schema\":\"chummer.android.creation-bootstrap-timing/v1\","
+                         + "\"actionId\":\"create_character\","
+                         + $"\"loadStartObserved\":{timing.LoadStartObserved.ToString().ToLowerInvariant()},"
+                         + $"\"workspaceStatePublished\":{timing.WorkspaceStatePublished.ToString().ToLowerInvariant()},"
+                         + $"\"exactPublishedWorkspace\":{exactPublishedWorkspace.ToString().ToLowerInvariant()},"
+                         + $"\"reusedPresenterShellSync\":{reusedPresenterShellSync.ToString().ToLowerInvariant()},"
+                         + $"\"coreCreateMs\":{coreCreateMilliseconds},"
+                         + $"\"presenterLoadMs\":{presenterLoadMilliseconds},"
+                         + $"\"presenterNavigationAndShellMs\":{presenterNavigationAndShellMilliseconds},"
+                         + $"\"activeSectionMs\":{activeSectionMilliseconds},"
+                         + $"\"androidRetainedRefreshMs\":{(reusedPresenterShellSync ? androidShellMilliseconds : -1)},"
+                         + $"\"androidFullShellSyncMs\":{(reusedPresenterShellSync ? -1 : androidShellMilliseconds)},"
+                         + $"\"processPendingOutputsMs\":{pendingOutputsMilliseconds},"
+                         + $"\"totalMs\":{totalMilliseconds}"
+                         + "}";
+#if ANDROID
+        global::Android.Util.Log.Info(
+            CreationBootstrapTimingLogTag,
+            CreationBootstrapTimingLogPrefix + payload);
+#else
+        Console.WriteLine(CreationBootstrapTimingLogPrefix + payload);
+#endif
     }
 
     private async Task RestoreSelectedWorkspaceAsync(CancellationToken cancellationToken)

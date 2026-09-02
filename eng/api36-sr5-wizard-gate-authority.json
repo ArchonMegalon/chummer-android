@@ -1,0 +1,39 @@
+{
+  "schema": "chummer.android.api36-sr5-wizard-gate-authority/v1",
+  "authorityClass": "internal_phone_beta_sr5_wizard_only",
+  "proofScope": "sr5_wizards_only",
+  "requiredJourneyCount": 3,
+  "requiredJourneys": [
+    {
+      "matrixJourney": "creation-prerequisite",
+      "driverJourney": "creation-prerequisite",
+      "receiptSchema": "chummer.android.creation-prerequisite-e2e/v1"
+    },
+    {
+      "matrixJourney": "career-active-skill-advance",
+      "driverJourney": "career-active-skill-advance",
+      "receiptSchema": "chummer.android.editing-e2e/v1"
+    },
+    {
+      "matrixJourney": "career-weapon-fire",
+      "driverJourney": "career-weapon-fire",
+      "receiptSchema": "chummer.android.editing-e2e/v1"
+    }
+  ],
+  "excludedFromGate": [
+    {
+      "matrixJourney": "full-editing",
+      "status": "not_required_not_proven",
+      "maySatisfyRequiredJourney": false
+    }
+  ],
+  "publicationAuthorized": false,
+  "doesNotAssert": [
+    "full_editing_pass",
+    "exhaustive_chummer5_edit_parity",
+    "tablet_readiness",
+    "google_play_upload",
+    "public_release_readiness",
+    "publication_authority"
+  ]
+}

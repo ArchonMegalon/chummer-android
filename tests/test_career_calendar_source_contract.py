@@ -7,29 +7,40 @@ REPO = Path(__file__).resolve().parents[1]
 
 class CareerCalendarSourceContractTests(unittest.TestCase):
     def test_phone_page_exposes_exact_crud_and_fail_closed_start_shift(self) -> None:
-        page = (REPO / "src/Chummer.Android/Native/CareerCalendarPage.cs").read_text(
+        page = (
+            REPO / "src/Chummer.Android/Native/Sr5DowntimeCalendarWizardPage.cs"
+        ).read_text(
             encoding="utf-8"
         )
         for automation_id in (
-            "career-calendar-page",
-            "career-calendar-week-picker",
-            "career-calendar-first-year",
-            "career-calendar-first-week",
-            "career-calendar-add",
-            "career-calendar-notes",
-            "career-calendar-notes-color",
-            "career-calendar-save",
-            "career-calendar-delete",
-            "career-calendar-change-start-disabled",
-            "career-calendar-change-start-blocker",
+            "sr5-downtime-calendar-page",
+            "sr5-downtime-calendar-binding",
+            "sr5-downtime-calendar-operation",
+            "sr5-downtime-calendar-week",
+            "sr5-downtime-calendar-year",
+            "sr5-downtime-calendar-iso-week",
+            "sr5-downtime-calendar-notes",
+            "sr5-downtime-calendar-notes-color",
+            "sr5-downtime-calendar-review",
+            "sr5-downtime-calendar-preview",
+            "sr5-downtime-calendar-confirm",
+            "sr5-downtime-calendar-apply",
+            "sr5-downtime-calendar-status",
+            "sr5-downtime-calendar-outcome-unknown",
+            "sr5-downtime-calendar-receipt",
+            "sr5-downtime-calendar-clear-applied",
         ):
             self.assertIn(f'"{automation_id}"', page)
-        self.assertIn("CharacterCareerCalendarRules.TryPlanAdd", page)
-        self.assertIn("CharacterCareerCalendarRules.TryEdit", page)
-        self.assertIn("CharacterCareerCalendarRules.CanDelete", page)
-        self.assertIn("new(Guid.NewGuid())", page)
-        self.assertIn("Confirmed: true", page)
-        self.assertIn("changeStart.IsEnabled = false", page)
+        self.assertIn("_session.TryPreviewAdd(Guid.NewGuid()", page)
+        self.assertIn("_session.TryPreviewEdit", page)
+        self.assertIn("_session.TryPreviewDelete", page)
+        self.assertIn("_session.TryConfirm", page)
+        self.assertIn("_journalStore.TryWriteReview", page)
+        self.assertIn("_journalStore.TryBeginApplying", page)
+        self.assertIn("_journalStore.TryComplete", page)
+        self.assertIn("_operation.SelectedIndex == 0", page)
+        self.assertIn("(_load?.Editor?.Weeks.Count ?? 0) == 0", page)
+        self.assertIn("_week.IsVisible = _year.IsVisible", page)
 
     def test_coordinator_requires_exact_revision_then_atomic_durable_save(self) -> None:
         coordinator = (
@@ -49,11 +60,19 @@ class CareerCalendarSourceContractTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn('automationId: "build-career-calendar"', build)
-        self.assertIn("PrepareCareerCalendarEditAsync", build)
-        self.assertIn("new CareerCalendarPage", build)
-        page = (REPO / "src/Chummer.Android/Native/CareerCalendarPage.cs").read_text(
+        self.assertIn("new Sr5DowntimeCalendarWizardPage(Coordinator)", build)
+        page = (
+            REPO / "src/Chummer.Android/Native/Sr5DowntimeCalendarWizardPage.cs"
+        ).read_text(
             encoding="utf-8"
         )
+        authority = (
+            REPO
+            / "src/Chummer.Android/Native/RunnerSessionSr5DowntimeCalendarAuthority.cs"
+        ).read_text(encoding="utf-8")
+        self.assertIn("new RunnerSessionSr5DowntimeCalendarAuthority(coordinator)", page)
+        self.assertIn("PrepareCareerCalendarEditAsync", authority)
+        self.assertIn("CaptureSr5CareerWizardWorkspaceAuthorityAsync", authority)
         self.assertNotIn("tablet", page.lower())
 
 

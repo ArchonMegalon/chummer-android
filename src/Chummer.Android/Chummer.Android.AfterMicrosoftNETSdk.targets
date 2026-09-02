@@ -1,0 +1,11 @@
+<Project>
+  <Target Name="_ChummerRequirePinnedAndroidSdkForRelease"
+          BeforeTargets="PrepareForBuild"
+          Condition="'$(Configuration)' == 'Release'">
+    <Error Condition="'$(AndroidNETSdkVersion)' != '36.1.69'"
+           Text="Chummer Android Release requires Microsoft.Android.Sdk.Linux 36.1.69; resolved '$(AndroidNETSdkVersion)'." />
+  </Target>
+
+  <Import Project="Microsoft.Android.Sdk.Linux.36.1.69.Workaround.targets"
+          Condition="'$(AndroidNETSdkVersion)' == '36.1.69'" />
+</Project>

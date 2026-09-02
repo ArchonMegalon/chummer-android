@@ -126,14 +126,30 @@ CONTROL_PROOF_KEYS = (
 class CharacterSettingsDevice(shared.Device):
     """Keep this long journey resilient without invalidating unrelated E2E receipts."""
 
-    def shell(self, *arguments: str, timeout: int = 120) -> str:
-        if arguments[:2] == ("uiautomator", "dump"):
+    def shell(
+        self,
+        *arguments: str,
+        timeout: float = 120,
+        deadline: float | None = None,
+    ) -> str:
+        if arguments in (
+            shared.ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS,
+            shared.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
+        ):
             timeout = min(timeout, 30)
-        return super().shell(*arguments, timeout=timeout)
+        return super().shell(
+            *arguments,
+            timeout=timeout,
+            deadline=deadline,
+        )
 
-    def hierarchy(self) -> list[shared.UiNode]:
+    def hierarchy(
+        self,
+        *,
+        deadline: float | None = None,
+    ) -> list[shared.UiNode]:
         try:
-            return super().hierarchy()
+            return super().hierarchy(deadline=deadline)
         except subprocess.TimeoutExpired as error:
             detail_parts: list[str] = []
             for part in (str(error), error.stdout, error.stderr):

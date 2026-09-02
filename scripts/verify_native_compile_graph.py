@@ -170,11 +170,12 @@ def _project_references_from_dgspec(dgspec: dict[str, Any]) -> Iterable[tuple[st
 def verify_asset_graph(
     project_path: Path,
     workspace_root: Path,
+    assets_root: Path | None = None,
 ) -> tuple[list[Path], list[str]]:
     project_path = project_path.resolve()
     workspace_root = workspace_root.resolve()
     project_dir = project_path.parent
-    obj_dir = project_dir / "obj"
+    obj_dir = (assets_root or project_dir / "obj").resolve()
     assets_path = obj_dir / "project.assets.json"
     issues: list[str] = []
     referenced: list[Path] = []
@@ -222,6 +223,7 @@ def main() -> int:
     parser.add_argument("--workspace-root", type=Path)
     parser.add_argument("--require-assets", action="store_true")
     parser.add_argument("--assets-only", action="store_true")
+    parser.add_argument("--assets-root", type=Path)
     args = parser.parse_args()
 
     repo_root = args.repo_root.resolve()
@@ -233,7 +235,9 @@ def main() -> int:
         compiled, issues = verify_source_graph(repo_root, project_path)
     referenced: list[Path] = []
     if args.require_assets or args.assets_only:
-        referenced, asset_issues = verify_asset_graph(project_path, workspace_root)
+        referenced, asset_issues = verify_asset_graph(
+            project_path, workspace_root, args.assets_root,
+        )
         issues.extend(asset_issues)
     payload = {
         "schema": SCHEMA,

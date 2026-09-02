@@ -27,6 +27,8 @@ internal static class Program
             (nameof(BuildPageProjectsExactlyOneLifecycleRouteAsync), BuildPageProjectsExactlyOneLifecycleRouteAsync),
             (nameof(CreationIdentityGapFailsClosedAsync), CreationIdentityGapFailsClosedAsync),
             (nameof(DurableSaveNoticeFailsClosedAcrossStateChangesAsync), DurableSaveNoticeFailsClosedAcrossStateChangesAsync),
+            (nameof(AuthoritativeCreateReusesExactlyOnePresenterShellSyncAsync), AuthoritativeCreateReusesExactlyOnePresenterShellSyncAsync),
+            (nameof(AmbiguousOrFailedCreateRetainsFullAndroidShellSyncAsync), AmbiguousOrFailedCreateRetainsFullAndroidShellSyncAsync),
             (nameof(PlayReviewPolicyEnforcesUsageVersionAndCooldownAsync), PlayReviewPolicyEnforcesUsageVersionAndCooldownAsync),
             (nameof(PlayReviewSafetyRejectsEveryMutationBoundaryAsync), PlayReviewSafetyRejectsEveryMutationBoundaryAsync),
             (nameof(PlayReviewInstallGateAndBackupBindingFailClosedAsync), PlayReviewInstallGateAndBackupBindingFailClosedAsync),
@@ -36,6 +38,10 @@ internal static class Program
             (nameof(SlowCreationDashboardProjectionDoesNotBlockCallerAsync), SlowCreationDashboardProjectionDoesNotBlockCallerAsync),
             (nameof(PrerequisiteAuthorityPublishesBeforeSlowLaterPhasesAsync), PrerequisiteAuthorityPublishesBeforeSlowLaterPhasesAsync),
             (nameof(CreationAuthorityPhaseMergesAreIndependentAndDeterministicAsync), CreationAuthorityPhaseMergesAreIndependentAndDeterministicAsync),
+            (nameof(CreationDashboardReadyMarkerRequiresCurrentTerminalAuthorityAsync), CreationDashboardReadyMarkerRequiresCurrentTerminalAuthorityAsync),
+            (nameof(ExactTypedCreationAuthorityRehydratesConservativeStageAsync), ExactTypedCreationAuthorityRehydratesConservativeStageAsync),
+            (nameof(ResourcesAuxiliaryStateDigestUsesRawLowerSha256Async), ResourcesAuxiliaryStateDigestUsesRawLowerSha256Async),
+            (nameof(ResourcesStageRehydrationRejectsEveryHostileAuthorityShapeAsync), ResourcesStageRehydrationRejectsEveryHostileAuthorityShapeAsync),
             (nameof(CompletedCreationProjectionSurvivesADeferredUiConsumerAsync), CompletedCreationProjectionSurvivesADeferredUiConsumerAsync),
             (nameof(RejectedCreationProjectionForcesCurrentBindingRefreshAsync), RejectedCreationProjectionForcesCurrentBindingRefreshAsync),
             (nameof(LateCreationDashboardProjectionCannotOverwriteNewerBindingAsync), LateCreationDashboardProjectionCannotOverwriteNewerBindingAsync),
@@ -100,6 +106,233 @@ internal static class Program
             "The missing Creation Identity contract was not exposed explicitly.");
         return Task.CompletedTask;
     }
+
+    private static Task ExactTypedCreationAuthorityRehydratesConservativeStageAsync()
+    {
+        CharacterCreationWizardStageState resources = ConservativeStage(
+            CharacterCreationWizardStepIds.Resources);
+        string[] admitted =
+        [
+            CharacterCreationWizardStepIds.Attributes,
+            CharacterCreationWizardStepIds.Skills,
+            CharacterCreationWizardStepIds.ContactsLifestyles,
+            CharacterCreationWizardStepIds.Resources
+        ];
+        string[] rejected =
+        [
+            CharacterCreationWizardStepIds.Qualities,
+            CharacterCreationWizardStepIds.MagicResonance,
+            CharacterCreationWizardStepIds.IdentityStory,
+            CharacterCreationWizardStepIds.Review,
+            "unknown-created-stage"
+        ];
+
+        Require(
+            BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                resources,
+                exactTypedAuthorityReady: true),
+            "An exact typed Resources projection did not rehydrate its conservative generic stage after reopen.");
+        Require(
+            !BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                resources,
+                exactTypedAuthorityReady: false),
+            "A generic Resources placeholder opened without exact typed authority.");
+        foreach (string stepId in admitted)
+        {
+            Require(
+                BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                    ConservativeStage(stepId),
+                    exactTypedAuthorityReady: true),
+                $"The exact typed {stepId} route was omitted from the closed rehydration set.");
+            Require(
+                !BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                    ConservativeStage(stepId) with { IsAvailable = true },
+                    exactTypedAuthorityReady: false),
+                $"The generic {stepId} flag opened without exact typed authority.");
+        }
+        foreach (string stepId in rejected)
+        {
+            Require(
+                !BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                    ConservativeStage(stepId),
+                    exactTypedAuthorityReady: true),
+                $"Typed route rehydration escaped to non-owned stage {stepId}.");
+        }
+        Require(
+            !resources.IsAvailable
+            && resources.Blockers.SequenceEqual(
+                ["creation-wizard-legal-options-authority-unavailable"],
+                StringComparer.Ordinal),
+            "Typed route rehydration mutated or discarded the immutable generic snapshot evidence.");
+        Require(
+            !BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                resources with
+                {
+                    Blockers = ["creation-stage-prerequisite-incomplete"]
+                },
+                exactTypedAuthorityReady: true),
+            "Exact typed authority overrode a generic blocker that was not the conservative legal-options placeholder.");
+        Require(
+            !BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                resources with
+                {
+                    IsAvailable = true,
+                    Blockers = ["creation-stage-prerequisite-incomplete"]
+                },
+                exactTypedAuthorityReady: true),
+            "Exact typed authority trusted a contradictory generic available flag with a semantic blocker.");
+        return Task.CompletedTask;
+    }
+
+    private static Task ResourcesStageRehydrationRejectsEveryHostileAuthorityShapeAsync()
+    {
+        ResourcesFixture fixture = NewResourcesFixture();
+        Require(
+            BuildPageUiProjection.HasExactTypedResourcesAuthority(
+                fixture.Load,
+                fixture.Overview),
+            "The valid exact typed Resources authority was not accepted.");
+        Require(
+            BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                ConservativeStage(CharacterCreationWizardStepIds.Resources),
+                BuildPageUiProjection.HasExactTypedResourcesAuthority(
+                    fixture.Load,
+                    fixture.Overview)),
+            "A conservative generic Resources stage did not open from its exact typed authority.");
+
+        var foreignWorkspace = new CharacterWorkspaceId("resources-foreign-workspace");
+        var disabledOption = fixture.State.Options.Single() with { IsEnabled = false };
+        var invalidAllocationDigest = fixture.State.Options.Single() with { OptionDigest = "invalid" };
+        CharacterCreationResourcePriorityOption priority = fixture.State.Authority.PriorityOptions.Single();
+        (string Name, CharacterCreationResourcesInteractionLoadResult Load, CharacterOverviewState Overview)[] hostile =
+        [
+            ("outcome", fixture.Load with { Outcome = CharacterCreationResourcesOutcomes.Blocked }, fixture.Overview),
+            ("wrong workspace", fixture.Load with { State = fixture.State with { Binding = fixture.State.Binding with { WorkspaceId = foreignWorkspace } } }, fixture.Overview),
+            ("workspace revision", fixture.Load with { State = fixture.State with { Binding = fixture.State.Binding with { WorkspaceRevision = fixture.State.Binding.WorkspaceRevision + 1 } } }, fixture.Overview),
+            ("content revision", fixture.Load with { State = fixture.State with { Binding = fixture.State.Binding with { ContentRevision = fixture.State.Binding.ContentRevision + 1 } } }, fixture.Overview),
+            ("saved revision", fixture.Load with { State = fixture.State with { Binding = fixture.State.Binding with { SavedRevision = fixture.State.Binding.SavedRevision + 1 } } }, fixture.Overview),
+            ("raw XML mismatch", fixture.Load with { State = fixture.State with { Binding = fixture.State.Binding with { RawCharacterXmlDigest = CanonicalDigest('e') } } }, fixture.Overview),
+            ("raw XML digest", fixture.Load with { State = fixture.State with { Binding = fixture.State.Binding with { RawCharacterXmlDigest = "invalid" } } }, fixture.Overview),
+            ("auxiliary digest", fixture.Load with { State = fixture.State with { Binding = fixture.State.Binding with { AuxiliaryStateDigest = "invalid" } } }, fixture.Overview),
+            ("prerequisite digest", fixture.Load with { State = fixture.State with { Binding = fixture.State.Binding with { PrerequisiteDraftDigest = "invalid" } } }, fixture.Overview),
+            ("binding authority digest", fixture.Load with { State = fixture.State with { Binding = fixture.State.Binding with { AuthorityDigest = "invalid" } } }, fixture.Overview),
+            ("binding source digest", fixture.Load with { State = fixture.State with { Binding = fixture.State.Binding with { SourceDigest = "invalid" } } }, fixture.Overview),
+            ("binding rules digest", fixture.Load with { State = fixture.State with { Binding = fixture.State.Binding with { RulesDigest = "invalid" } } }, fixture.Overview),
+            ("binding runtime digest", fixture.Load with { State = fixture.State with { Binding = fixture.State.Binding with { RuntimeDigest = "invalid" } } }, fixture.Overview),
+            ("snapshot digest", fixture.Load with { State = fixture.State with { SnapshotDigest = "invalid" } }, fixture.Overview),
+            ("canonical binding authority mismatch", fixture.Load with { State = fixture.State with { Binding = fixture.State.Binding with { AuthorityDigest = CanonicalDigest('b') } } }, fixture.Overview),
+            ("canonical binding source mismatch", fixture.Load with { State = fixture.State with { Binding = fixture.State.Binding with { SourceDigest = CanonicalDigest('c') } } }, fixture.Overview),
+            ("canonical binding rules mismatch", fixture.Load with { State = fixture.State with { Binding = fixture.State.Binding with { RulesDigest = CanonicalDigest('d') } } }, fixture.Overview),
+            ("canonical binding runtime mismatch", fixture.Load with { State = fixture.State with { Binding = fixture.State.Binding with { RuntimeDigest = CanonicalDigest('e') } } }, fixture.Overview),
+            ("authority digest", fixture.Load with { State = fixture.State with { Authority = fixture.State.Authority with { AuthorityDigest = "invalid" } } }, fixture.Overview),
+            ("authority source digest", fixture.Load with { State = fixture.State with { Authority = fixture.State.Authority with { SourceDigest = "invalid" } } }, fixture.Overview),
+            ("authority profile digest", fixture.Load with { State = fixture.State with { Authority = fixture.State.Authority with { ProfileDigest = "invalid" } } }, fixture.Overview),
+            ("authority rules digest", fixture.Load with { State = fixture.State with { Authority = fixture.State.Authority with { RulesDigest = "invalid" } } }, fixture.Overview),
+            ("authority runtime digest", fixture.Load with { State = fixture.State with { Authority = fixture.State.Authority with { RuntimeDigest = "invalid" } } }, fixture.Overview),
+            ("priority source node digest", fixture.Load with { State = fixture.State with { Authority = fixture.State.Authority with { PriorityOptions = [priority with { SourceNodeDigest = "invalid" }] } } }, fixture.Overview),
+            ("priority option digest", fixture.Load with { State = fixture.State with { Authority = fixture.State.Authority with { PriorityOptions = [priority with { OptionDigest = "invalid" }] } } }, fixture.Overview),
+            ("allocation option digest", fixture.Load with { State = fixture.State with { Options = [invalidAllocationDigest] } }, fixture.Overview),
+            ("cannot edit", fixture.Load with { State = fixture.State with { CanEdit = false } }, fixture.Overview),
+            ("state blocker", fixture.Load with { State = fixture.State with { Blockers = [CharacterCreationResourcesBlockers.AuthorityUnavailable] } }, fixture.Overview),
+            ("budget blocker", fixture.Load with { State = fixture.State with { Budget = fixture.State.Budget with { Blockers = [CharacterCreationResourcesBlockers.InsufficientCreationKarma] } } }, fixture.Overview),
+            ("budget inexact", fixture.Load with { State = fixture.State with { Budget = fixture.State.Budget with { IsExact = false } } }, fixture.Overview),
+            ("budget mismatch", fixture.Load with { State = fixture.State with { Budget = fixture.State.Budget with { TotalStartingNuyen = fixture.State.Budget.TotalStartingNuyen + 1m } } }, fixture.Overview),
+            ("zero options", fixture.Load with { State = fixture.State with { Options = [] } }, fixture.Overview),
+            ("no enabled option", fixture.Load with { State = fixture.State with { Options = [disabledOption] } }, fixture.Overview)
+        ];
+        foreach ((string name, CharacterCreationResourcesInteractionLoadResult load, CharacterOverviewState overview) in hostile)
+        {
+            bool ready = BuildPageUiProjection.HasExactTypedResourcesAuthority(load, overview);
+            Require(!ready, $"Hostile Resources authority shape '{name}' was accepted.");
+            Require(
+                !BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                    ConservativeStage(CharacterCreationWizardStepIds.Resources) with { IsAvailable = true },
+                    ready),
+                $"Hostile Resources authority shape '{name}' opened through the generic stage flag.");
+        }
+
+        Require(
+            CreationDashboardProjectionBinding.TryCreate(
+                fixture.Overview,
+                fixture.Overview.CreationWizard!,
+                out CreationDashboardProjectionBinding? projectionBinding)
+            && projectionBinding is not null,
+            "The Resources blocker fixture did not produce an exact dashboard binding.");
+        var blockedLoad = fixture.Load with
+        {
+            State = fixture.State with
+            {
+                Blockers = [CharacterCreationResourcesBlockers.AuthorityUnavailable]
+            }
+        };
+        var blockedProjection = new CreationDashboardAuthorityProjection(
+            projectionBinding!,
+            CreationDashboardAuthorityPhaseProgress
+                .ForBuildMethod(CharacterCreationBuildMethods.Priority)
+                .WithTerminal(CreationDashboardAuthorityPhase.Resources, failed: false),
+            Prerequisite: null,
+            Attributes: null,
+            Skills: null,
+            Contacts: null,
+            Resources: blockedLoad);
+        Require(
+            string.Equals(
+                BuildPageUiProjection.CreationResourcesStageBlocker(blockedProjection),
+                CharacterCreationResourcesBlockers.AuthorityUnavailable,
+                StringComparison.Ordinal),
+            "A terminal-loaded but semantically blocked Resources result hid its direct typed blocker.");
+        return Task.CompletedTask;
+    }
+
+    private static Task ResourcesAuxiliaryStateDigestUsesRawLowerSha256Async()
+    {
+        ResourcesFixture fixture = NewResourcesFixture();
+        Require(
+            fixture.State.Binding.AuxiliaryStateDigest == new string('2', 64),
+            "The valid Resources fixture did not use the Core/Workspace raw auxiliary SHA-256 contract.");
+        Require(
+            BuildPageUiProjection.HasExactTypedResourcesAuthority(fixture.Load, fixture.Overview),
+            "An exact 64-character lowercase raw Resources auxiliary SHA-256 was rejected.");
+
+        (string Name, string Digest)[] hostile =
+        [
+            ("prefixed", CanonicalDigest('2')),
+            ("uppercase", new string('A', 64)),
+            ("short", new string('a', 63)),
+            ("nonhex", new string('g', 64)),
+            ("empty", string.Empty)
+        ];
+        foreach ((string name, string digest) in hostile)
+        {
+            CharacterCreationResourcesInteractionLoadResult load = fixture.Load with
+            {
+                State = fixture.State with
+                {
+                    Binding = fixture.State.Binding with
+                    {
+                        AuxiliaryStateDigest = digest
+                    }
+                }
+            };
+            Require(
+                !BuildPageUiProjection.HasExactTypedResourcesAuthority(load, fixture.Overview),
+                $"The {name} Resources auxiliary digest escaped the exact raw lowercase SHA-256 boundary.");
+        }
+        return Task.CompletedTask;
+    }
+
+    private static CharacterCreationWizardStageState ConservativeStage(string stepId)
+        => new(
+            stepId,
+            stepId,
+            CharacterCreationWizardStepStatuses.Blocked,
+            IsRequired: true,
+            IsAvailable: false,
+            IsComplete: false,
+            [CharacterCreationBudgetIds.Resources],
+            ["creation-wizard-legal-options-authority-unavailable"],
+            [],
+            []);
 
     private static Task PreAuthorityCreationSnapshotCanScheduleBootstrapAsync()
     {
@@ -194,6 +427,113 @@ internal static class Program
             && BuildPageUiProjection.SaveToolbarText(hasDurableSaveNotice: false) == "Save",
             "The toolbar must expose Saved. only for an exact durable notice match.");
         return Task.CompletedTask;
+    }
+
+    private static async Task AuthoritativeCreateReusesExactlyOnePresenterShellSyncAsync()
+    {
+        var previousWorkspace = new CharacterWorkspaceId("previous-runner");
+        var createdWorkspace = new CharacterWorkspaceId("created-runner");
+        CharacterOverviewState created = NewCreationOverview(createdWorkspace, 1, 1);
+        var timing = new NativeCreationBootstrapTimingSnapshot(
+            StartedTimestamp: 10,
+            LoadStartedTimestamp: 20,
+            WorkspaceStatePublishedTimestamp: 30,
+            PublishedWorkspaceId: createdWorkspace.Value);
+
+        bool reuse = RunnerSessionCoordinator.CanReusePresenterShellSync(
+            "create_character",
+            previousWorkspace,
+            created,
+            timing);
+        Require(
+            reuse,
+            "An exact successful authoritative create must reuse Presentation's completed shell sync.");
+
+        int fullShellSyncCount = 0;
+        int retainedAndroidRefreshCount = 0;
+        await RunnerSessionCoordinator.ExecutePostDialogShellSyncAsync(
+            reuse,
+            _ =>
+            {
+                fullShellSyncCount++;
+                return Task.CompletedTask;
+            },
+            _ =>
+            {
+                retainedAndroidRefreshCount++;
+                return Task.CompletedTask;
+            },
+            CancellationToken.None);
+        Require(
+            fullShellSyncCount == 0 && retainedAndroidRefreshCount == 1,
+            "Successful create must skip exactly the one duplicate shell sync while retaining one Android refresh.");
+    }
+
+    private static async Task AmbiguousOrFailedCreateRetainsFullAndroidShellSyncAsync()
+    {
+        var previousWorkspace = new CharacterWorkspaceId("previous-runner");
+        var createdWorkspace = new CharacterWorkspaceId("created-runner");
+        CharacterOverviewState created = NewCreationOverview(createdWorkspace, 1, 1);
+        var exactTiming = new NativeCreationBootstrapTimingSnapshot(
+            StartedTimestamp: 10,
+            LoadStartedTimestamp: 20,
+            WorkspaceStatePublishedTimestamp: 30,
+            PublishedWorkspaceId: createdWorkspace.Value);
+        DesktopDialogState stillOpen = new(
+            "dialog.new_character",
+            "New runner",
+            null,
+            [],
+            [new DesktopDialogAction("create_character", "Create")]);
+        (string Name, string ActionId, CharacterWorkspaceId? Before, CharacterOverviewState State, NativeCreationBootstrapTimingSnapshot? Timing)[] rejected =
+        [
+            ("other action", "save", previousWorkspace, created, exactTiming),
+            ("missing timing", "create_character", previousWorkspace, created, null),
+            ("load start absent", "create_character", previousWorkspace, created,
+                exactTiming with { LoadStartedTimestamp = 0 }),
+            ("workspace publication absent", "create_character", previousWorkspace, created,
+                exactTiming with { WorkspaceStatePublishedTimestamp = 0 }),
+            ("published workspace mismatch", "create_character", previousWorkspace, created,
+                exactTiming with { PublishedWorkspaceId = "different-runner" }),
+            ("same workspace", "create_character", createdWorkspace, created, exactTiming),
+            ("presenter failure", "create_character", previousWorkspace,
+                created with { Error = "bootstrap failed" }, exactTiming),
+            ("presenter still busy", "create_character", previousWorkspace,
+                created with { IsBusy = true }, exactTiming),
+            ("dialog still open", "create_character", previousWorkspace,
+                created with { ActiveDialog = stillOpen }, exactTiming),
+            ("career profile", "create_character", previousWorkspace,
+                created with { Profile = created.Profile! with { Created = true } }, exactTiming)
+        ];
+
+        foreach (var candidate in rejected)
+        {
+            bool reuse = RunnerSessionCoordinator.CanReusePresenterShellSync(
+                candidate.ActionId,
+                candidate.Before,
+                candidate.State,
+                candidate.Timing);
+            Require(!reuse, $"{candidate.Name} must not reuse Presenter shell synchronization.");
+
+            int fullShellSyncCount = 0;
+            int retainedAndroidRefreshCount = 0;
+            await RunnerSessionCoordinator.ExecutePostDialogShellSyncAsync(
+                reuse,
+                _ =>
+                {
+                    fullShellSyncCount++;
+                    return Task.CompletedTask;
+                },
+                _ =>
+                {
+                    retainedAndroidRefreshCount++;
+                    return Task.CompletedTask;
+                },
+                CancellationToken.None);
+            Require(
+                fullShellSyncCount == 1 && retainedAndroidRefreshCount == 0,
+                $"{candidate.Name} must retain exactly one full Android shell sync.");
+        }
     }
 
     private static Task PlayReviewPolicyEnforcesUsageVersionAndCooldownAsync()
@@ -616,6 +956,114 @@ internal static class Program
             && sumToTen.Skills == CreationDashboardAuthorityPhaseState.NotApplicable
             && sumToTen.Contacts == CreationDashboardAuthorityPhaseState.Loading,
             "Contacts must remain an independent Core phase even when Priority-only Skills do not apply.");
+        return Task.CompletedTask;
+    }
+
+    private static Task CreationDashboardReadyMarkerRequiresCurrentTerminalAuthorityAsync()
+    {
+        var workspaceId = new CharacterWorkspaceId("phone-dashboard-ready-marker");
+        CharacterOverviewState overview = NewCreationOverview(workspaceId, 12, 11);
+        var snapshot = new CharacterCreationWizardSnapshot(
+            CharacterCreationWizardSchemas.SnapshotV1,
+            workspaceId.Value,
+            WorkspaceRevision: 12,
+            ContentDigest: CanonicalDigest('1'),
+            SourceDigest: CanonicalDigest('2'),
+            RulesetDefaults.Sr5,
+            RuntimeFingerprint: string.Empty,
+            CharacterCreationBuildMethods.Priority,
+            CharacterCreated: false,
+            CharacterCreationWizardStepIds.Foundation,
+            [],
+            [],
+            new Dictionary<string, IReadOnlyList<CharacterCreationLegalOption>>(),
+            [],
+            [],
+            CanFinalize: false,
+            SnapshotDigest: CanonicalDigest('4'));
+        Require(
+            CreationDashboardProjectionBinding.TryCreate(
+                overview,
+                snapshot,
+                out CreationDashboardProjectionBinding? binding)
+            && binding is not null,
+            "The exact dashboard marker fixture did not produce a current binding.");
+
+        CreationDashboardAuthorityPhaseProgress ready =
+            CreationDashboardAuthorityPhaseProgress
+                .ForBuildMethod(CharacterCreationBuildMethods.Priority)
+                .WithTerminal(CreationDashboardAuthorityPhase.Prerequisite, failed: false)
+                .WithTerminal(CreationDashboardAuthorityPhase.Attributes, failed: false)
+                .WithTerminal(CreationDashboardAuthorityPhase.Skills, failed: false)
+                .WithTerminal(CreationDashboardAuthorityPhase.Contacts, failed: false)
+                .WithTerminal(CreationDashboardAuthorityPhase.Resources, failed: false);
+        var projection = new CreationDashboardAuthorityProjection(
+            binding!,
+            ready,
+            Prerequisite: null,
+            Attributes: null,
+            Skills: null,
+            Contacts: null,
+            Resources: null);
+        CreationDashboardRouteReadyMarker? marker =
+            BuildPageUiProjection.CreationDashboardRouteReady(
+                overview,
+                snapshot,
+                projection);
+        Require(
+            marker is
+            {
+                Schema: "chummer.android.creation-dashboard-route-ready/v1",
+                RouteAutomationId: "phone-runner-create",
+                DashboardAutomationId: "creation-wizard-dashboard",
+                CharacterCreated: false,
+                AuthorityReady: true
+            }
+            && marker.WorkspaceId == workspaceId.Value
+            && marker.ContentRevision == 12
+            && marker.SavedRevision == 11
+            && marker.RuntimeFingerprint == string.Empty
+            && marker.BuildMethod == CharacterCreationBuildMethods.Priority
+            && marker.SnapshotDigest == snapshot.SnapshotDigest,
+            "The ready marker did not preserve the exact current workspace, typed build method, absent runtime authority, and route authority.");
+
+        Require(
+            BuildPageUiProjection.CreationDashboardRouteReady(
+                overview,
+                snapshot,
+                projection with
+                {
+                    Progress = ready with
+                    {
+                        Contacts = CreationDashboardAuthorityPhaseState.Loading
+                    }
+                }) is null,
+            "A still-loading dashboard emitted a route-ready marker.");
+        Require(
+            BuildPageUiProjection.CreationDashboardRouteReady(
+                overview,
+                snapshot,
+                projection with
+                {
+                    Progress = ready with
+                    {
+                        Resources = CreationDashboardAuthorityPhaseState.Failed
+                    },
+                    ResourcesFailureReason = "creation-resources-authority-load-failed"
+                }) is null,
+            "A failed dashboard authority phase emitted a route-ready marker.");
+        Require(
+            BuildPageUiProjection.CreationDashboardRouteReady(
+                overview,
+                snapshot with { SnapshotDigest = CanonicalDigest('5') },
+                projection) is null,
+            "A stale snapshot emitted the current dashboard route-ready marker.");
+        Require(
+            BuildPageUiProjection.CreationDashboardRouteReady(
+                overview with { Profile = overview.Profile! with { Created = true } },
+                snapshot,
+                projection) is null,
+            "A Career runner emitted a Creation dashboard route-ready marker.");
         return Task.CompletedTask;
     }
 
@@ -1798,6 +2246,131 @@ internal static class Program
             [],
             "points");
 
+    private static ResourcesFixture NewResourcesFixture()
+    {
+        var workspaceId = new CharacterWorkspaceId("resources-authority-runner");
+        const long revision = 8;
+        string contentDigest = CanonicalDigest('1');
+        string auxiliaryDigest = new string('2', 64);
+        string prerequisiteDigest = CanonicalDigest('3');
+        string sourceDigest = CanonicalDigest('4');
+        string profileDigest = CanonicalDigest('5');
+        string rulesDigest = CanonicalDigest('6');
+        string runtimeDigest = CanonicalDigest('7');
+
+        var priority = new CharacterCreationResourcePriorityOption(
+            "11111111-1111-1111-1111-111111111111",
+            "D",
+            50_000m,
+            CanonicalDigest('8'),
+            [CharacterCreationResourcesSourceAnchors.PriorityCatalog],
+            string.Empty);
+        priority = priority with
+        {
+            OptionDigest = CharacterCreationResourcesRules.ComputePriorityOptionDigest(priority)
+        };
+        var authority = new CharacterCreationResourcesAuthority(
+            CharacterCreationResourcesSchemas.AuthorityV1,
+            RulesetDefaults.Sr5,
+            "standard",
+            CharacterCreationBuildMethods.Priority,
+            2_000m,
+            10,
+            5_000m,
+            12,
+            UnrestrictedNuyen: false,
+            [priority],
+            CharacterCreationResourcesSourceAnchors.All,
+            [],
+            IsAuthoritative: true,
+            sourceDigest,
+            profileDigest,
+            rulesDigest,
+            runtimeDigest,
+            string.Empty);
+        authority = authority with
+        {
+            AuthorityDigest = CharacterCreationResourcesRules.ComputeAuthorityDigest(authority)
+        };
+        var option = new CharacterCreationResourceAllocationOption(
+            "karma:0",
+            KarmaInvestment: 0,
+            NuyenFromKarma: 0m,
+            TotalStartingNuyen: 50_000m,
+            IsEnabled: true,
+            [],
+            [CharacterCreationResourcesSourceAnchors.Step],
+            string.Empty);
+        option = option with
+        {
+            OptionDigest = CharacterCreationResourcesRules.ComputeAllocationOptionDigest(option)
+        };
+        var budget = new CharacterCreationResourcesBudget(
+            PriorityNuyen: 50_000m,
+            KarmaInvestment: 0,
+            NuyenFromKarma: 0m,
+            TotalStartingNuyen: 50_000m,
+            KnownPurchaseCost: 0m,
+            RemainingNuyen: 50_000m,
+            Overspend: 0m,
+            CarryoverLimit: 5_000m,
+            CarryoverExcess: 45_000m,
+            IsExact: true,
+            [],
+            [CharacterCreationResourcesSourceAnchors.Step]);
+        var binding = new CharacterCreationResourcesBinding(
+            workspaceId,
+            WorkspaceRevision: revision,
+            ContentRevision: revision,
+            SavedRevision: revision,
+            contentDigest,
+            auxiliaryDigest,
+            PrerequisiteDraftRevision: 1,
+            prerequisiteDigest,
+            authority.AuthorityDigest,
+            sourceDigest,
+            rulesDigest,
+            runtimeDigest);
+        var state = new CharacterCreationResourcesInteractionState(
+            binding,
+            authority,
+            PrerequisiteDraft: null,
+            PendingDraft: null,
+            [option],
+            budget,
+            [],
+            CanEdit: true,
+            CanonicalDigest('9'));
+        CharacterOverviewState overview = NewCreationOverview(workspaceId, revision, revision) with
+        {
+            CreationWizard = new CharacterCreationWizardSnapshot(
+                CharacterCreationWizardSchemas.SnapshotV1,
+                workspaceId.Value,
+                WorkspaceRevision: revision,
+                contentDigest,
+                SourceDigest: CanonicalDigest('f'),
+                RulesetDefaults.Sr5,
+                RuntimeFingerprint: string.Empty,
+                CharacterCreationBuildMethods.Priority,
+                CharacterCreated: false,
+                CharacterCreationWizardStepIds.Resources,
+                [ConservativeStage(CharacterCreationWizardStepIds.Resources)],
+                [],
+                new Dictionary<string, IReadOnlyList<CharacterCreationLegalOption>>(),
+                [],
+                [],
+                CanFinalize: false,
+                CanonicalDigest('a'))
+        };
+        return new ResourcesFixture(
+            state,
+            overview,
+            new CharacterCreationResourcesInteractionLoadResult(
+                CharacterCreationResourcesOutcomes.Available,
+                state,
+                []));
+    }
+
     private static CharacterOverviewState NewCreationOverview(
         CharacterWorkspaceId workspaceId,
         long contentRevision,
@@ -1863,6 +2436,11 @@ internal static class Program
         CharacterOverviewState Overview,
         CharacterCreationAttributesPreview Preview,
         IReadOnlyList<CharacterCreationAttributeAllocation> Allocations);
+
+    private sealed record ResourcesFixture(
+        CharacterCreationResourcesInteractionState State,
+        CharacterOverviewState Overview,
+        CharacterCreationResourcesInteractionLoadResult Load);
 
     private static async Task QueuedOlderUnfocusedCannotOverwriteActionInputAsync()
     {

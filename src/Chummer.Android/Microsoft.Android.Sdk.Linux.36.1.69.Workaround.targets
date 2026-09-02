@@ -1,0 +1,142 @@
+<Project>
+  <!--
+    Microsoft.Android.Sdk.Linux 36.1.69 leaves untrimmed satellite resource
+    assemblies in ResolvedAssemblies with their immutable NuGet-cache identity.
+    The official post-link AssemblyModifierPipeline writes .jlo.xml/.typemap.xml
+    sidecars beside every resolved assembly, and later shrink-copy targets write
+    there too, so an otherwise read-only restore cache is mutated.
+
+    Stage only exact unprocessed satellite inputs into a build-owned directory
+    before the SDK captures _AllResolvedAssemblies. All official Android targets
+    and task arguments remain intact; their resolved, sidecar, shrink, AOT, and
+    packaging paths now consistently refer to build-owned files.
+  -->
+  <Target Name="_ChummerStageAndroidSdk36169Satellites"
+          BeforeTargets="_LinkAssembliesNoShrinkInputs"
+          Condition="'$(Configuration)' == 'Release' And '$(PublishTrimmed)' == 'true'">
+    <PropertyGroup>
+      <_ChummerSatellitePipelineRoot>$([MSBuild]::EnsureTrailingSlash($([MSBuild]::NormalizePath('$(IntermediateOutputPath)', 'chummer-android-sdk-36.1.69-satellites'))))</_ChummerSatellitePipelineRoot>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <_ChummerSatelliteRegular Remove="@(_ChummerSatelliteRegular)" />
+      <_ChummerSatelliteSource Remove="@(_ChummerSatelliteSource)" />
+      <_ChummerSatelliteStaged Remove="@(_ChummerSatelliteStaged)" />
+      <_ChummerSatelliteUserSource Remove="@(_ChummerSatelliteUserSource)" />
+      <_ChummerSatelliteFrameworkSource Remove="@(_ChummerSatelliteFrameworkSource)" />
+      <_ChummerSatelliteMembership Remove="@(_ChummerSatelliteMembership)" />
+      <_ChummerSatelliteMembershipMismatch Remove="@(_ChummerSatelliteMembershipMismatch)" />
+      <_ChummerSatelliteSymbolSource Remove="@(_ChummerSatelliteSymbolSource)" />
+      <_ChummerSatelliteShrunkSource Remove="@(_ChummerSatelliteShrunkSource)" />
+      <_ChummerSatelliteStagedShrunk Remove="@(_ChummerSatelliteStagedShrunk)" />
+      <_ChummerSatelliteUnsupported Remove="@(_ChummerSatelliteUnsupported)" />
+      <_ChummerSatelliteUnexpectedPostprocessed Remove="@(_ChummerSatelliteUnexpectedPostprocessed)" />
+      <_ChummerSatelliteUnsafe Remove="@(_ChummerSatelliteUnsafe)" />
+      <_ChummerSatelliteMissingAfterCopy Remove="@(_ChummerSatelliteMissingAfterCopy)" />
+
+      <_ChummerSatelliteRegular
+          Include="@(ResolvedAssemblies->WithMetadataValue('PostprocessAssembly', 'true'))" />
+      <_ChummerSatelliteSource
+          Include="@(ResolvedAssemblies)"
+          Exclude="@(_ChummerSatelliteRegular)"
+          Condition="'%(ResolvedAssemblies.Extension)' == '.dll' And $([System.String]::new('%(ResolvedAssemblies.Filename)').EndsWith('.resources', System.StringComparison.Ordinal)) And '%(ResolvedAssemblies.AssetType)' == 'resources' And '%(ResolvedAssemblies.DestinationSubPath)' != '' And '%(ResolvedAssemblies.DestinationSubPath)' != '%(ResolvedAssemblies.Filename)%(ResolvedAssemblies.Extension)'">
+        <ChummerOriginalIdentity>%(ResolvedAssemblies.Identity)</ChummerOriginalIdentity>
+        <ChummerStagedIdentity>$([MSBuild]::NormalizePath('$(_ChummerSatellitePipelineRoot)', '%(ResolvedAssemblies.DestinationSubPath)'))</ChummerStagedIdentity>
+      </_ChummerSatelliteSource>
+      <_ChummerSatelliteStaged Include="@(_ChummerSatelliteSource->'%(ChummerStagedIdentity)')" />
+      <_ChummerSatelliteUnsupported
+          Include="@(ResolvedAssemblies)"
+          Exclude="@(_ChummerSatelliteRegular);@(_ChummerSatelliteSource)" />
+      <_ChummerSatelliteUnexpectedPostprocessed
+          Include="@(_ChummerSatelliteRegular)"
+          Condition="'%(_ChummerSatelliteRegular.Extension)' == '.dll' And $([System.String]::new('%(_ChummerSatelliteRegular.Filename)').EndsWith('.resources', System.StringComparison.Ordinal))" />
+      <_ChummerSatelliteUnsafe
+          Include="@(_ChummerSatelliteSource)"
+          Condition="!$([System.String]::new('%(_ChummerSatelliteSource.ChummerStagedIdentity)').StartsWith('$(_ChummerSatellitePipelineRoot)', System.StringComparison.Ordinal)) Or $([System.String]::new('%(_ChummerSatelliteSource.DestinationSubPath)').Contains('\'))" />
+
+      <_ChummerSatelliteUserSource
+          Include="@(ResolvedUserAssemblies)"
+          Condition="'%(ResolvedUserAssemblies.Extension)' == '.dll' And $([System.String]::new('%(ResolvedUserAssemblies.Filename)').EndsWith('.resources', System.StringComparison.Ordinal)) And '%(ResolvedUserAssemblies.AssetType)' == 'resources' And '%(ResolvedUserAssemblies.DestinationSubPath)' != '' And '%(ResolvedUserAssemblies.DestinationSubPath)' != '%(ResolvedUserAssemblies.Filename)%(ResolvedUserAssemblies.Extension)'" />
+      <_ChummerSatelliteFrameworkSource
+          Include="@(ResolvedFrameworkAssemblies)"
+          Condition="'%(ResolvedFrameworkAssemblies.Extension)' == '.dll' And $([System.String]::new('%(ResolvedFrameworkAssemblies.Filename)').EndsWith('.resources', System.StringComparison.Ordinal)) And '%(ResolvedFrameworkAssemblies.AssetType)' == 'resources' And '%(ResolvedFrameworkAssemblies.DestinationSubPath)' != '' And '%(ResolvedFrameworkAssemblies.DestinationSubPath)' != '%(ResolvedFrameworkAssemblies.Filename)%(ResolvedFrameworkAssemblies.Extension)'" />
+      <_ChummerSatelliteMembership Include="@(_ChummerSatelliteUserSource);@(_ChummerSatelliteFrameworkSource)" />
+      <_ChummerSatelliteMembershipMismatch
+          Include="@(_ChummerSatelliteSource)"
+          Exclude="@(_ChummerSatelliteMembership)" />
+      <_ChummerSatelliteMembershipMismatch
+          Include="@(_ChummerSatelliteMembership)"
+          Exclude="@(_ChummerSatelliteSource)" />
+      <_ChummerSatelliteSymbolSource
+          Include="@(ResolvedSymbols)"
+          Condition="'%(ResolvedSymbols.Extension)' == '.pdb' And $([System.String]::new('%(ResolvedSymbols.Filename)').EndsWith('.resources', System.StringComparison.Ordinal))" />
+      <_ChummerSatelliteShrunkSource
+          Include="@(_ShrunkAssemblies)"
+          Condition="'%(_ShrunkAssemblies.Extension)' == '.dll' And $([System.String]::new('%(_ShrunkAssemblies.Filename)').EndsWith('.resources', System.StringComparison.Ordinal)) And '%(_ShrunkAssemblies.AssetType)' == 'resources' And '%(_ShrunkAssemblies.DestinationSubPath)' != '' And '%(_ShrunkAssemblies.DestinationSubPath)' != '%(_ShrunkAssemblies.Filename)%(_ShrunkAssemblies.Extension)'" />
+      <_ChummerSatelliteStagedShrunk Include="@(_ChummerSatelliteStaged->'%(RootDir)%(Directory)shrunk/%(Filename)%(Extension)')" />
+    </ItemGroup>
+
+    <Error
+        Condition="'@(_ChummerSatelliteUnsupported)' != ''"
+        Text="Microsoft.Android.Sdk.Linux 36.1.69 workaround found unsupported unprocessed assemblies: @(_ChummerSatelliteUnsupported, ', ')" />
+    <Error
+        Condition="'@(_ChummerSatelliteUnexpectedPostprocessed)' != ''"
+        Text="Microsoft.Android.Sdk.Linux 36.1.69 marked satellite resource assemblies for post-processing: @(_ChummerSatelliteUnexpectedPostprocessed, ', ')" />
+    <Error
+        Condition="'@(_ChummerSatelliteUnsafe)' != ''"
+        Text="Microsoft.Android.Sdk.Linux 36.1.69 workaround refused an unsafe satellite staging path: @(_ChummerSatelliteUnsafe, ', ')" />
+    <Error
+        Condition="'@(_ChummerSatelliteStaged->Count())' != '@(_ChummerSatelliteStaged->Distinct()->Count())'"
+        Text="Microsoft.Android.Sdk.Linux 36.1.69 workaround found colliding satellite staging paths." />
+    <Error
+        Condition="'@(_ChummerSatelliteMembershipMismatch)' != '' Or '@(_ChummerSatelliteSource->Count())' != '@(_ChummerSatelliteMembership->Count())'"
+        Text="Microsoft.Android.Sdk.Linux 36.1.69 workaround could not map every satellite to exactly one user/framework list." />
+    <Error
+        Condition="'@(_ChummerSatelliteSource->Count())' != '@(_ChummerSatelliteShrunkSource->Count())'"
+        Text="Microsoft.Android.Sdk.Linux 36.1.69 workaround could not map every satellite shrunk-assembly destination." />
+    <Error
+        Condition="'@(_ChummerSatelliteSource)' != '' And ('$(AndroidIncludeDebugSymbols)' == 'true' Or '@(_ChummerSatelliteSymbolSource)' != '')"
+        Text="Microsoft.Android.Sdk.Linux 36.1.69 satellite staging is bound to the Release symbols-disabled pipeline." />
+
+    <MakeDir Directories="@(_ChummerSatelliteStaged->'%(RootDir)%(Directory)')" />
+    <CopyIfChanged SourceFiles="@(_ChummerSatelliteSource)"
+                   DestinationFiles="@(_ChummerSatelliteStaged)" />
+
+    <ItemGroup>
+      <_ChummerSatelliteMissingAfterCopy
+          Include="@(_ChummerSatelliteStaged)"
+          Condition="!Exists('%(_ChummerSatelliteStaged.Identity)')" />
+    </ItemGroup>
+    <Error
+        Condition="'@(_ChummerSatelliteMissingAfterCopy)' != ''"
+        Text="Microsoft.Android.Sdk.Linux 36.1.69 workaround failed to stage satellite inputs: @(_ChummerSatelliteMissingAfterCopy, ', ')" />
+
+    <ItemGroup>
+      <ResolvedAssemblies Remove="@(_ChummerSatelliteSource)" />
+      <ResolvedAssemblies Include="@(_ChummerSatelliteStaged)" />
+      <ResolvedUserAssemblies Remove="@(_ChummerSatelliteUserSource)" />
+      <ResolvedUserAssemblies Include="@(_ChummerSatelliteStaged)"
+                              Condition="'%(FrameworkAssembly)' != 'true'" />
+      <ResolvedFrameworkAssemblies Remove="@(_ChummerSatelliteFrameworkSource)" />
+      <ResolvedFrameworkAssemblies Include="@(_ChummerSatelliteStaged)"
+                                   Condition="'%(FrameworkAssembly)' == 'true'" />
+      <_ShrunkAssemblies Remove="@(_ChummerSatelliteShrunkSource)" />
+      <_ShrunkAssemblies Include="@(_ChummerSatelliteStagedShrunk)" />
+
+      <FileWrites Include="@(_ChummerSatelliteStaged)" />
+      <FileWrites Include="@(_ChummerSatelliteStaged->'%(RootDir)%(Directory)%(Filename).jlo.xml')" />
+      <FileWrites Include="@(_ChummerSatelliteStaged->'%(RootDir)%(Directory)%(Filename).typemap.xml')" />
+      <FileWrites Include="@(_ChummerSatelliteStagedShrunk)" />
+    </ItemGroup>
+
+    <Hash ItemsToHash="@(ResolvedAssemblies)">
+      <Output TaskParameter="HashResult" PropertyName="_ResolvedUserAssembliesHash" />
+    </Hash>
+    <WriteLinesToFile File="$(_ResolvedUserAssembliesHashFile)"
+                      Lines="$(_ResolvedUserAssembliesHash)"
+                      Overwrite="true"
+                      WriteOnlyWhenDifferent="true" />
+    <Delete Files="$(_AdditionalPostLinkerStepsFlag)"
+            Condition="'@(_ChummerSatelliteSource)' != ''" />
+  </Target>
+</Project>

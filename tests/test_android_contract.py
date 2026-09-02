@@ -1,8 +1,13 @@
 import json
+import importlib.util
 import os
 import re
 import struct
+import subprocess
+import sys
+import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 
 
@@ -61,6 +66,61 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("AllowBackup = false", app)
         self.assertIn("UsesCleartextTraffic = false", app)
 
+    def test_content_manifest_json_fails_closed_on_duplicate_and_nonfinite_values(self) -> None:
+        verifier_path = REPO / "scripts" / "verify_android_content_bundle.py"
+        specification = importlib.util.spec_from_file_location(
+            "android_content_bundle_verifier",
+            verifier_path,
+        )
+        self.assertIsNotNone(specification)
+        self.assertIsNotNone(specification.loader)
+        verifier = importlib.util.module_from_spec(specification)
+        specification.loader.exec_module(verifier)
+
+        for payload, marker in (
+            (b'{"schema":"first","schema":"second"}', "duplicate-key:schema"),
+            (b'{"bundleDigest":NaN}', "nonfinite:NaN"),
+        ):
+            with self.subTest(marker=marker):
+                with self.assertRaisesRegex(ValueError, marker):
+                    verifier._strict_json_bytes(payload, "content-manifest-json")
+
+    def test_packaged_content_manifest_json_fails_closed_on_duplicate_and_nonfinite_values(self) -> None:
+        verifier_path = REPO / "scripts" / "verify_android_content_bundle.py"
+        specification = importlib.util.spec_from_file_location(
+            "android_packaged_content_bundle_verifier",
+            verifier_path,
+        )
+        self.assertIsNotNone(specification)
+        self.assertIsNotNone(specification.loader)
+        verifier = importlib.util.module_from_spec(specification)
+        specification.loader.exec_module(verifier)
+        checked_manifest = {
+            "schema": verifier.SCHEMA,
+            "coreRevision": verifier.CORE_REVISION,
+            "bundleDigest": "0" * 64,
+            "files": [],
+        }
+        checked_manifest_bytes = json.dumps(checked_manifest).encode("utf-8")
+
+        for payload, marker in (
+            (b'{"schema":"first","schema":"second"}', "duplicate-key:schema"),
+            (b'{"bundleDigest":Infinity}', "nonfinite:Infinity"),
+        ):
+            with self.subTest(marker=marker), tempfile.TemporaryDirectory() as directory:
+                apk_path = Path(directory) / "candidate.apk"
+                with zipfile.ZipFile(apk_path, "w") as archive:
+                    archive.writestr(verifier.MANIFEST_ENTRY, payload)
+                _, issues = verifier.verify_apk(
+                    apk_path,
+                    checked_manifest,
+                    checked_manifest_bytes,
+                )
+                self.assertTrue(
+                    any(marker in issue for issue in issues),
+                    issues,
+                )
+
     def test_play_identity_and_release_target_are_stable(self) -> None:
         project = (PROJECT / "Chummer.Android.csproj").read_text(encoding="utf-8")
         self.assertIn("<ApplicationId>com.myexternalbrain.chummer</ApplicationId>", project)
@@ -81,16 +141,16 @@ class AndroidContractTests(unittest.TestCase):
         )
 
         for dependency, commits in (
-            ("ArchonMegalon/chummer6-ui", ("4c88c1810e6ce2754fe7b00e03db9b36b75d517c",) * 2),
+            ("ArchonMegalon/chummer6-ui", ("732a33cb8d3c704b8a86e1249eab46508339a105",) * 2),
             (
                 "ArchonMegalon/chummer6-core",
                 (
-                    "4450825f53a5a96778e6061c16689e7c5993baf7",
-                    "2fb2ae9bb48e5a1a6b25a174ba88008ce995fcd5",
-                    "4450825f53a5a96778e6061c16689e7c5993baf7",
+                    "60112dccb6a3faad330d32c3c98eef0aa81d97af",
+                    "c06f22c185c7b733637fdb76b3cf333f31716781",
+                    "60112dccb6a3faad330d32c3c98eef0aa81d97af",
                 ),
             ),
-            ("ArchonMegalon/chummer6-hub", ("d29a880f624ec94aabedd0c2901ae8fed2f93ed4",)),
+            ("ArchonMegalon/chummer6-hub", ("bc199cbe0982833ec2fc9ce625826e612759d67a",)),
             ("ArchonMegalon/chummer6-ui-kit", ("d51ecd99cf72098d4adc8db0192bff7bf9fd8e61",)),
             ("ArchonMegalon/chummer6-hub-registry", ("af9a7e19c3bf331e96411dfb8f9e7820a98cab29",)),
             ("ArchonMegalon/chummer6-media-factory", ("415c8163d3d90b1211e4014fef332bdec6d75f73",)),
@@ -280,6 +340,11 @@ class AndroidContractTests(unittest.TestCase):
             self.assertIn(f'"{route}"', routes)
             self.assertIn('$"phone-destination-{route}"', shell)
         self.assertIn('AutomationId = "phone-runner-page"', build)
+        self.assertIn("private readonly ScrollView _bodyScroll", build)
+        self.assertIn("_resetScrollOnNextRefresh = true", build)
+        self.assertIn("ResetScrollForCurrentAppearance();", build)
+        self.assertIn("await _bodyScroll.ScrollToAsync(0, 0, animated: false)", build)
+        self.assertIn("_body.Add(persistedReceipt is null", build)
         self.assertIn('Title = "Create"', build)
         self.assertIn('new("phone-runner-create", "Creation runner")', build)
         self.assertIn('Title = "Sheet"', build)
@@ -1073,7 +1138,7 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("item.CanDelete", phone + tablet)
         self.assertIn("WorkspacePatchCollectionItemRequest", phone + tablet)
         for marker in (
-            "build-section-tab-relationships",
+            'tap_phone_build_section(device, "relationships")',
             "build-action-tab-relationships-contacts",
             "tablet-build-tab-tab-relationships",
             "tablet-build-action-tab-relationships-contacts",
@@ -1580,6 +1645,10 @@ class AndroidContractTests(unittest.TestCase):
 
     def test_release_automation_is_fail_closed(self) -> None:
         build = (REPO / "scripts" / "build-release.sh").read_text(encoding="utf-8")
+        prepare = (REPO / "scripts" / "prepare-release-inputs.sh").read_text(encoding="utf-8")
+        restore_routing = (REPO / "eng" / "ReleaseRestoreRouting.props").read_text(
+            encoding="utf-8"
+        )
         debug_build = (REPO / "scripts" / "build-debug.sh").read_text(encoding="utf-8")
         source_graph = (REPO / "scripts" / "verify_release_source_graph.py").read_text(encoding="utf-8")
         bootstrap = (REPO / "scripts" / "bootstrap-build-environment.sh").read_text(encoding="utf-8")
@@ -1589,6 +1658,7 @@ class AndroidContractTests(unittest.TestCase):
         inspect = (REPO / "scripts" / "inspect_aab.py").read_text(encoding="utf-8")
         version_reader = (REPO / "scripts" / "read_android_version.py").read_text(encoding="utf-8")
         self.assertIn("set -euo pipefail", build)
+        self.assertIn("umask 077", build)
         self.assertIn("set -euo pipefail", debug_build)
         self.assertIn('runtime_identifier="${CHUMMER_ANDROID_RUNTIME_ID:-android-arm64}"', debug_build)
         self.assertIn('android-arm64|android-x64', debug_build)
@@ -1602,7 +1672,31 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("ChummerUseLocalCompatibilityTree=true", debug_build)
         self.assertIn("AndroidSigningKeyStore", build)
         self.assertIn("verify_release_source_graph.py", build)
-        self.assertIn("ChummerUseLocalCompatibilityTree=true", build)
+        self.assertIn("ChummerUseLocalCompatibilityTree=false", build)
+        self.assertIn("ChummerUseLockedOwnerContractPackages=true", build)
+        self.assertIn("materialize_release_package_authority.py", build)
+        self.assertIn("CHUMMER_CURRENT_UI_PACKAGE_AUTHORITY_RECEIPT", build)
+        self.assertIn("CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED", build)
+        self.assertIn("--authority-root", build)
+        self.assertIn("locked-restore-assets-package-root-drift", build)
+        self.assertIn(".packageFolders | keys | length == 1 and\n", build)
+        self.assertNotIn(".packageFolders | keys | length == 1 and \\\n", build)
+        self.assertIn("seal_release_restore_consumption.py", build)
+        self.assertIn("locked-restore-consumption-pre-publish", build)
+        self.assertIn("locked-restore-consumption-post-publish", build)
+        self.assertIn('release_attempt_id="$(basename -- "$release_tmp")"', build)
+        self.assertIn(
+            'restore_drift_diagnostic="$release_input_root/$release_attempt_id.restore-drift.json"',
+            build,
+        )
+        self.assertIn("restore-drift-diagnostic-already-exists", build)
+        self.assertIn('--drift-diagnostic "$restore_drift_diagnostic"', build)
+        self.assertIn('NUGET_PACKAGES="$isolated_packages"', build)
+        self.assertIn("release-workspace-stale-bin-obj", build)
+        self.assertIn("--routed-lock-root", build)
+        self.assertIn("ChummerReleaseLockRoot", build)
+        self.assertIn("Chummer.Desktop.Runtime.packages.lock.json", build)
+        self.assertIn("Chummer.Presentation.packages.lock.json", build)
         self.assertIn("--no-restore", build)
         self.assertIn("-m:1", build)
         self.assertIn("--disable-build-servers", build)
@@ -1633,6 +1727,24 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("local_review_required", source_graph)
         self.assertIn("--package-authority", build)
         self.assertIn("CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY", build)
+        self.assertIn("set -euo pipefail", prepare)
+        self.assertIn("umask 077", prepare)
+        self.assertIn("release-input-directory-inside-workspace", prepare)
+        self.assertIn("--locked-mode", prepare)
+        self.assertIn("--force-evaluate", prepare)
+        self.assertIn("--no-http-cache", prepare)
+        self.assertIn("ChummerUseLocalCompatibilityTree=false", prepare)
+        self.assertIn("ChummerUseLockedOwnerContractPackages=true", prepare)
+        self.assertIn("materialize_release_package_authority.py", prepare)
+        self.assertIn("--verify-existing", prepare)
+        self.assertIn("release-input-directory-not-empty", prepare)
+        self.assertIn("publication_authorized=false", prepare)
+        self.assertIn("ChummerReleaseIntermediateRoot", prepare)
+        self.assertIn("ChummerReleaseLockRoot", prepare)
+        self.assertIn("--assets-root", prepare)
+        self.assertIn("$(MSBuildProjectName).packages.lock.json", restore_routing)
+        self.assertIn("$(MSBuildProjectName)/", restore_routing)
+        self.assertNotIn("google play", prepare.lower())
         self.assertIn('"google_play_upload"', source_graph)
         self.assertIn('"tester_installation"', source_graph)
         self.assertIn('"status", "--porcelain", "--untracked-files=all"', source_graph)
@@ -1695,6 +1807,101 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("-p:JavaSdkDirectory", bootstrap)
         self.assertIn('chmod 0600 "$environment_temp"', bootstrap)
         self.assertNotIn("AcceptAndroidSDKLicenses=True", build)
+
+    def test_release_suite_and_its_subprocesses_receive_no_signing_environment(self) -> None:
+        signing_variables = (
+            "AndroidSigningKeyStore",
+            "ChummerAndroidSigningStorePass",
+            "ChummerAndroidSigningKeyPass",
+            "ChummerAndroidSigningKeyAlias",
+            "CHUMMER_ANDROID_UPLOAD_CERTIFICATE_PATH",
+            "CHUMMER_ANDROID_PREFLIGHT_STORE_PASSWORD",
+            "CHUMMER_ANDROID_SIGNING_DIR",
+            "CHUMMER_PROVISION_STORE_PASSWORD",
+            "CHUMMER_RECOVERY_STORE_PASSWORD",
+        )
+        build = (REPO / "scripts" / "build-release.sh").read_text(encoding="utf-8")
+        deexport_boundary = build.index("for release_secret_variable in")
+        self.assertLess(deexport_boundary, build.index('repo_dir="$(cd'))
+        self.assertIn('export -n "$release_secret_variable"', build[:build.index('repo_dir="$(cd')])
+        suite_boundary = build.index('env "${release_test_environment[@]}"')
+        for variable in signing_variables:
+            self.assertIn(f"-u {variable}", build[:suite_boundary])
+        for first_secret_use in (
+            "require_private_regular_file AndroidSigningKeyStore",
+            "require_private_regular_file CHUMMER_ANDROID_UPLOAD_CERTIFICATE_PATH",
+            "require_secret_variable ChummerAndroidSigningStorePass",
+            "require_secret_variable ChummerAndroidSigningKeyPass",
+            "require_secret_variable ChummerAndroidSigningKeyAlias",
+        ):
+            self.assertGreater(build.index(first_secret_use), suite_boundary)
+        pre_publish_verify = build.index('|| fail "locked-restore-consumption-pre-publish"')
+        pre_publish_verify_start = build.rfind(
+            'env "${release_test_environment[@]}"', 0, pre_publish_verify
+        )
+        signing_intake = build.index("require_private_regular_file AndroidSigningKeyStore")
+        self.assertGreater(pre_publish_verify_start, signing_intake)
+        publish_boundary = build.index('"$dotnet_command" publish')
+        self.assertLess(pre_publish_verify_start, publish_boundary)
+        post_publish_boundary = build.index('source_aab="$(python3')
+        for secret_cleanup in (
+            "unset ChummerAndroidSigningStorePass",
+            "unset ChummerAndroidSigningKeyPass",
+            "unset ChummerAndroidSigningKeyAlias",
+            "unset AndroidSigningKeyStore",
+        ):
+            cleanup_index = build.index(secret_cleanup)
+            self.assertGreater(cleanup_index, publish_boundary)
+            self.assertLess(cleanup_index, post_publish_boundary)
+
+        with tempfile.TemporaryDirectory() as temporary:
+            tests_root = Path(temporary)
+            probe = tests_root / "test_signing_environment_probe.py"
+            child_probe = (
+                "import os, sys\n"
+                f"SIGNING_VARIABLES = {signing_variables!r}\n"
+                "sys.exit(1 if set(SIGNING_VARIABLES) & set(os.environ) else 0)\n"
+            )
+            probe.write_text(
+                "import os\n"
+                "import subprocess\n"
+                "import sys\n"
+                "import unittest\n"
+                f"SIGNING_VARIABLES = {signing_variables!r}\n"
+                f"CHILD_PROBE = {child_probe!r}\n"
+                "class SigningEnvironmentProbe(unittest.TestCase):\n"
+                "    def test_suite_and_child_are_scrubbed(self):\n"
+                "        self.assertFalse(set(SIGNING_VARIABLES) & set(os.environ))\n"
+                "        child = subprocess.run(\n"
+                "            [sys.executable, '-c', CHILD_PROBE],\n"
+                "            check=False,\n"
+                "        )\n"
+                "        self.assertEqual(0, child.returncode)\n",
+                encoding="utf-8",
+            )
+            hostile_environment = dict(os.environ)
+            canaries = {
+                variable: f"must-not-reach-tests-{index}"
+                for index, variable in enumerate(signing_variables, start=1)
+            }
+            hostile_environment.update(canaries)
+            command = ["env"]
+            for variable in signing_variables:
+                command.extend(("-u", variable))
+            command.extend((
+                sys.executable, "-m", "unittest", "discover", "-s", str(tests_root), "-v",
+            ))
+            completed = subprocess.run(
+                command,
+                check=False,
+                capture_output=True,
+                env=hostile_environment,
+                text=True,
+            )
+            self.assertEqual(0, completed.returncode, completed.stdout + completed.stderr)
+            combined_output = completed.stdout + completed.stderr
+            for canary in canaries.values():
+                self.assertNotIn(canary, combined_output)
 
     def test_release_version_reader_matches_project(self) -> None:
         import importlib.util

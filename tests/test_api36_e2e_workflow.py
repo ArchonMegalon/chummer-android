@@ -6,13 +6,15 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = REPO_ROOT / ".github" / "workflows" / "api36-editing-e2e.yml"
 PREVIEW_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "preview9-arm64-aab.yml"
+BUILD_SCRIPT = REPO_ROOT / "scripts" / "build-debug.sh"
+GITIGNORE = REPO_ROOT / ".gitignore"
 COMPATIBILITY_GRAPH = {
     "ArchonMegalon/chummer6-ui":
-        "4c88c1810e6ce2754fe7b00e03db9b36b75d517c",
+        "732a33cb8d3c704b8a86e1249eab46508339a105",
     "ArchonMegalon/chummer6-core":
-        "4450825f53a5a96778e6061c16689e7c5993baf7",
+        "60112dccb6a3faad330d32c3c98eef0aa81d97af",
     "ArchonMegalon/chummer6-hub":
-        "d29a880f624ec94aabedd0c2901ae8fed2f93ed4",
+        "bc199cbe0982833ec2fc9ce625826e612759d67a",
     "ArchonMegalon/chummer6-hub-registry":
         "af9a7e19c3bf331e96411dfb8f9e7820a98cab29",
     "ArchonMegalon/chummer6-ui-kit":
@@ -33,6 +35,8 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.text = WORKFLOW.read_text(encoding="utf-8")
         cls.preview_text = PREVIEW_WORKFLOW.read_text(encoding="utf-8")
+        cls.build_script_text = BUILD_SCRIPT.read_text(encoding="utf-8")
+        cls.gitignore_text = GITIGNORE.read_text(encoding="utf-8")
 
     def test_runs_only_the_phone_beta_profile_on_api_36(self) -> None:
         self.assertIn("api-level: 36", self.text)
@@ -72,8 +76,13 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
             seal,
         )
         content_check = "python3 chummer-android/scripts/verify_android_content_bundle.py"
-        self.assertEqual(2, self.text.count(content_check))
+        self.assertEqual(3, self.text.count(content_check))
         self.assertEqual(2, self.text.count("--core-root chummer-core-content"))
+        x64_content = self.text[
+            self.text.index("Verify canonical content in the exact signed APK") :
+            self.text.index("Upload the exact APK under test")
+        ]
+        self.assertEqual(1, x64_content.count(content_check))
         self.assertIn(
             '--apk "$RUNNER_TEMP/chummer-android-apk/chummer-android-x64-debug.apk"',
             self.text,
@@ -84,10 +93,10 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         )
         self.assertLess(
             self.text.index("Seal the unique signed debug APK"),
-            self.text.rindex(content_check),
+            self.text.index(content_check, self.text.index("Seal the unique signed debug APK")),
         )
         self.assertLess(
-            self.text.rindex(content_check),
+            self.text.index(content_check, self.text.index("Seal the unique signed debug APK")),
             self.text.index("Upload the exact APK under test"),
         )
         self.assertLess(
@@ -95,6 +104,56 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
             self.text.index("Install the governed .NET SDK"),
         )
         self.assertIn("needs: build", self.text)
+
+    def test_local_compatibility_restore_preserves_tracked_package_locks(self) -> None:
+        pre_build_clean_step = (
+            "Verify clean Android source before local-compatibility restores"
+        )
+        post_x64_clean_step = (
+            "Verify clean Android source after x64 local-compatibility restore"
+        )
+        self.assertEqual(1, self.text.count(pre_build_clean_step))
+        self.assertEqual(1, self.text.count(post_x64_clean_step))
+        self.assertEqual(
+            2,
+            self.text.count(
+                "git -C chummer-android status --porcelain=v1 --untracked-files=no"
+            ),
+        )
+        self.assertIn(
+            'git -C chummer-android status --porcelain=v1 --untracked-files=no',
+            self.text,
+        )
+        self.assertLess(
+            self.text.index(pre_build_clean_step),
+            self.text.index("Build the emulator APK and native compile gate"),
+        )
+        self.assertLess(
+            self.text.index("Build the emulator APK and native compile gate"),
+            self.text.index(post_x64_clean_step),
+        )
+        self.assertLess(
+            self.text.index(post_x64_clean_step),
+            self.text.index("Seal the unique signed debug APK"),
+        )
+        self.assertIn(
+            '"-p:RestorePackagesWithLockFile=true"',
+            self.build_script_text,
+        )
+        self.assertIn(
+            '"-p:NuGetLockFilePath=obj/chummer.local-compat.${runtime_identifier}.packages.lock.json"',
+            self.build_script_text,
+        )
+        self.assertNotIn(
+            "src/Chummer.Android/packages.lock.json",
+            self.build_script_text,
+        )
+        self.assertNotIn(
+            "tests/Chummer.Android.Native.CompileCheck/packages.lock.json",
+            self.build_script_text,
+        )
+        self.assertIn("obj/", self.gitignore_text.splitlines())
+        self.assertNotIn("git restore", self.build_script_text)
 
     def test_full_local_compatibility_tree_is_commit_pinned(self) -> None:
         for repository, commit in COMPATIBILITY_GRAPH.items():
@@ -147,7 +206,7 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         ]
         self.assertIn("repository: ArchonMegalon/chummer6-core", content_checkout)
         self.assertIn(
-            "ref: 2fb2ae9bb48e5a1a6b25a174ba88008ce995fcd5",
+            "ref: c06f22c185c7b733637fdb76b3cf333f31716781",
             content_checkout,
         )
         self.assertIn("path: chummer-core-content", content_checkout)
@@ -196,6 +255,16 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         self.assertLess(self.text.index(settings_check), self.text.index("actions/setup-dotnet@"))
         self.assertLess(self.text.index(check), self.text.index(settings_check))
         self.assertLess(self.text.index(check), self.text.index("run: scripts/build-debug.sh"))
+        wizard_check = "python3 scripts/api36_wizard_gate_contract.py"
+        self.assertEqual(1, self.text.count(wizard_check))
+        self.assertIn(
+            "--manifest eng/api36-sr5-wizard-gate-authority.json",
+            self.text,
+        )
+        self.assertLess(
+            self.text.index(wizard_check),
+            self.text.index("run: scripts/build-debug.sh"),
+        )
         self.assertIn("needs: build", self.text)
 
     def test_sr5_table_wizard_development_journey_is_recognized_without_release_claim(
@@ -256,19 +325,23 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         self.assertLess(self.text.index(check), self.text.index("actions/setup-dotnet@"))
         self.assertLess(self.text.index(check), self.text.index("run: scripts/build-debug.sh"))
 
-    def test_inventory_inputs_trigger_the_phone_gate(self) -> None:
+    def test_every_pull_request_runs_the_phone_gate_while_push_stays_bounded(self) -> None:
+        trigger_block = self.text[self.text.index("on:\n") : self.text.index("permissions:\n")]
+        self.assertIn("  pull_request:\n  push:\n", trigger_block)
+        self.assertNotIn("  pull_request:\n    paths:", trigger_block)
+        self.assertIn("  push:\n    branches:\n      - main\n    paths:\n", trigger_block)
         self.assertEqual(
-            2,
+            1,
             self.text.count(
                 '"docs/ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json"'
             ),
         )
         self.assertEqual(
-            2,
+            1,
             self.text.count('"docs/CHUMMER5_CHARACTER_SETTINGS_CONTRACT.generated.json"'),
         )
-        self.assertEqual(2, self.text.count('"docs/editability-evidence/**"'))
-        self.assertEqual(2, self.text.count('"scripts/**"'))
+        self.assertEqual(1, self.text.count('"docs/editability-evidence/**"'))
+        self.assertEqual(1, self.text.count('"scripts/**"'))
 
     def test_preview_release_remains_independently_commit_pinned(self) -> None:
         self.assertNotIn("uses: actions/checkout@v", self.preview_text)
@@ -276,20 +349,59 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
             with self.subTest(repository=repository):
                 self.assertIn(f"repository: {repository}", self.preview_text)
 
-    def test_build_also_emits_an_honest_arm64_physical_candidate_manifest(self) -> None:
+    def test_build_emits_a_non_attested_arm64_hosted_debug_candidate(self) -> None:
         self.assertIn("CHUMMER_ANDROID_RUNTIME_ID: android-arm64", self.text)
-        self.assertIn("materialize-api36-physical-build-provenance.py", self.text)
-        self.assertIn("--android-root \"$GITHUB_WORKSPACE/chummer-android\"", self.text)
-        self.assertIn("--core-root \"$GITHUB_WORKSPACE/chummer-core-engine\"", self.text)
-        self.assertIn(
-            "--presentation-root \"$GITHUB_WORKSPACE/chummer-presentation\"",
-            self.text,
+        start = self.text.index("Seal ARM64 hosted debug candidate observation")
+        end = self.text.index("Upload ARM64 hosted debug candidate")
+        seal = self.text[start:end]
+        invocation = (
+            "python3 chummer-android/scripts/materialize-api36-hosted-arm64-candidate.py "
+            "\\\n            materialize \\\n"
         )
-        self.assertIn("build-provenance.json", self.text)
+        self.assertIn(invocation, seal)
+        self.assertEqual(1, seal.count("materialize-api36-hosted-arm64-candidate.py"))
+        self.assertNotIn("materialize-api36-physical-build-provenance.py", seal)
+        self.assertNotIn("build-provenance.json", seal)
+        self.assertIn("hosted-build-candidate.json", seal)
+        self.assertIn("--runtime android-arm64", seal)
+        self.assertIn("--application-id com.myexternalbrain.chummer", seal)
+        self.assertIn(
+            "android-arm64/com.myexternalbrain.chummer-Signed.apk",
+            seal,
+        )
+        for role, repository in (
+            ("android", "ArchonMegalon/chummer-android.git"),
+            ("presentation", "ArchonMegalon/chummer6-ui.git"),
+            ("core-runtime", "ArchonMegalon/chummer6-core.git"),
+            ("core-content", "ArchonMegalon/chummer6-core.git"),
+            ("hub", "ArchonMegalon/chummer6-hub.git"),
+            ("registry", "ArchonMegalon/chummer6-hub-registry.git"),
+            ("ui-kit", "ArchonMegalon/chummer6-ui-kit.git"),
+            ("media", "ArchonMegalon/chummer6-media-factory.git"),
+        ):
+            with self.subTest(role=role):
+                self.assertIn(f"--source {role} https://github.com/{repository}", seal)
         self.assertIn("chummer-android-arm64-debug.apk.sha256", self.text)
         self.assertIn("id: upload-arm64", self.text)
         self.assertIn("arm64-artifact-id: ${{ steps.upload-arm64.outputs.artifact-id }}", self.text)
-        self.assertNotIn("releaseAttested: true", self.text)
+        self.assertIn("chummer-android-api36-arm64-hosted-debug-candidate-", seal)
+        self.assertNotIn("physical-candidate", seal)
+        self.assertNotIn("candidate authority", seal.lower())
+        self.assertNotIn("physical-phone", seal)
+        self.assertNotIn("releaseAttested: true", seal)
+
+    def test_hosted_arm64_materializer_subcommand_order_is_fail_closed(self) -> None:
+        start = self.text.index("Seal ARM64 hosted debug candidate observation")
+        end = self.text.index("Upload ARM64 hosted debug candidate")
+        tokens = self.text[start:end].replace("\\\n", " ").split()
+        script_index = tokens.index(
+            "chummer-android/scripts/materialize-api36-hosted-arm64-candidate.py"
+        )
+        self.assertEqual("python3", tokens[script_index - 1])
+        self.assertEqual("materialize", tokens[script_index + 1])
+        self.assertEqual("--source", tokens[script_index + 2])
+        self.assertNotIn("check-inputs", tokens[script_index + 1 : script_index + 3])
+        self.assertNotIn("verify", tokens[script_index + 1 : script_index + 3])
 
     def test_executes_every_persistence_driver_as_an_isolated_matrix_journey(self) -> None:
         runner = (
@@ -299,16 +411,16 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
             "bash chummer-android/scripts/run-api36-editing-e2e-ci.sh",
             self.text,
         )
-        self.assertEqual(1, runner.count("tests/run_api36_editing_e2e.py"))
+        self.assertEqual(0, runner.count("tests/run_api36_editing_e2e.py"))
         self.assertIn("--serial emulator-5554", runner)
-        self.assertIn('--profile "$profile"', runner)
-        self.assertIn("--journey full", runner)
         self.assertIn('--receipt "$evidence_root/receipt.json"', runner)
         self.assertNotIn('--journey contact-pet', runner)
         self.assertNotIn("contact_pet_root", runner)
         standalone_driver = (
             REPO_ROOT / "tests" / "run_api36_editing_e2e.py"
         ).read_text(encoding="utf-8")
+        self.assertIn('--journey', standalone_driver)
+        self.assertIn('"full"', standalone_driver)
         self.assertIn('"contact-pet"', standalone_driver)
         self.assertTrue(
             (REPO_ROOT / "tests" / "fixtures" / "creation-contact-pet-e2e.chum5").is_file()
@@ -317,7 +429,6 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         self.assertIn("tablet beta proof is deferred", runner)
         self.assertNotIn('phone|tablet', runner)
         journeys = (
-            ("full-editing", "tests/run_api36_editing_e2e.py"),
             (
                 "creation-prerequisite",
                 "tests/run_api36_creation_prerequisite_e2e.py",
@@ -330,6 +441,18 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
                 "career-weapon-fire",
                 "tests/run_api36_career_weapon_fire_e2e.py",
             ),
+        )
+        matrix_block = self.text[
+            self.text.index("        journey:"):
+            self.text.index("    runs-on:", self.text.index("        journey:"))
+        ]
+        self.assertEqual(
+            [journey for journey, _driver in journeys],
+            [
+                line.strip().removeprefix("- ")
+                for line in matrix_block.splitlines()
+                if line.strip().startswith("- ")
+            ],
         )
         self.assertIn(
             'journey="${CHUMMER_E2E_JOURNEY:?CHUMMER_E2E_JOURNEY is required}"',
@@ -355,10 +478,12 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
                 self.assertIn(f"  {journey})", runner)
                 self.assertEqual(1, runner.count(driver))
                 self.assertIn(f"          - {journey}", self.text)
+        self.assertNotIn("          - full-editing", self.text)
+        self.assertNotIn("  full-editing)", runner)
         self.assertIn("CHUMMER_E2E_JOURNEY: ${{ matrix.journey }}", self.text)
         self.assertIn("fail-fast: false", self.text)
         self.assertIn(
-            "phone API 36 persistence (${{ matrix.journey }})",
+            "phone API 36 SR5 wizard persistence (${{ matrix.journey }})",
             self.text,
         )
         self.assertIn(
@@ -394,7 +519,7 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         self.assertLess(download, verify)
         self.assertLess(verify, emulator)
         build_block = self.text[
-            self.text.index("  build:"):self.text.index("  phone-editing-e2e:")
+            self.text.index("  build:"):self.text.index("  phone-wizard-e2e:")
         ]
         self.assertIn("id: upload-apk", build_block)
         for output in (
@@ -407,7 +532,7 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
             with self.subTest(output=output):
                 self.assertIn(output, build_block)
         phone_block = self.text[
-            self.text.index("  phone-editing-e2e:"):
+            self.text.index("  phone-wizard-e2e:"):
             self.text.index("  phone-evidence-aggregate:")
         ]
         self.assertNotIn("gh api", phone_block)
@@ -431,9 +556,9 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
             verify_block,
         )
 
-    def test_aggregate_requires_four_stable_authority_bound_receipts(self) -> None:
+    def test_aggregate_requires_three_stable_wizard_authority_bound_receipts(self) -> None:
         aggregate = self.text[self.text.index("  phone-evidence-aggregate:"):]
-        self.assertIn("needs:\n      - build\n      - phone-editing-e2e", aggregate)
+        self.assertIn("needs:\n      - build\n      - phone-wizard-e2e", aggregate)
         self.assertIn("if: ${{ always() }}", aggregate)
         self.assertIn(
             "pattern: chummer-android-api36-phone-*-evidence-"
@@ -442,6 +567,11 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         )
         self.assertIn("merge-multiple: false", aggregate)
         self.assertIn("verify-api36-editing-e2e-aggregate.py", aggregate)
+        self.assertIn(
+            "--gate-contract chummer-android/eng/api36-sr5-wizard-gate-authority.json",
+            aggregate,
+        )
+        self.assertIn("exactly three passing wizard journeys", aggregate)
         for authority_output in (
             "needs.build.outputs.apk-artifact-id",
             "needs.build.outputs.apk-artifact-digest",
@@ -452,7 +582,7 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
             with self.subTest(authority_output=authority_output):
                 self.assertIn(authority_output, aggregate)
         matrix = self.text[
-            self.text.index("  phone-editing-e2e:"):
+            self.text.index("  phone-wizard-e2e:"):
             self.text.index("  phone-evidence-aggregate:")
         ]
         self.assertIn(

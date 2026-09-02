@@ -16,17 +16,19 @@ import subprocess
 import tempfile
 from typing import Callable, Mapping, Sequence
 import zipfile
+import xml.etree.ElementTree as ET
 
 
 DEVICE_SCHEMA = "chummer.android.api36-arm64-physical-device/v1"
 SEAL_SCHEMA = "chummer.android.api36-arm64-physical-journey-seal/v1"
 AGGREGATE_SCHEMA = "chummer.android.api36-arm64-physical-six-journey/v1"
-BUILD_PROVENANCE_SCHEMA = "chummer.android.api36-arm64-physical-build-provenance/v2"
+BUILD_PROVENANCE_SCHEMA = "chummer.android.api36-arm64-physical-build-provenance/v3"
 SOURCE_GRAPH_SCHEMA = "chummer.android.release-source-graph/v2"
 PACKAGE = "com.myexternalbrain.chummer"
 TARGET_FRAMEWORK = "net10.0-android36.0"
 RUNTIME_IDENTIFIER = "android-arm64"
 ABI = "arm64-v8a"
+ADB_TIMEOUT_HIERARCHY_MAX_BYTES = 1_000_000
 JOURNEY_ORDER = (
     "priority", "career", "before-run", "after-run", "downtime", "playtime",
 )
@@ -65,6 +67,48 @@ SHA256 = re.compile(r"^[0-9a-f]{64}$")
 PID = re.compile(r"^[1-9][0-9]*$")
 SERIAL = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 COMPONENT = re.compile(r"^com\.myexternalbrain\.chummer/[A-Za-z0-9._$]+$")
+ADB_FILE_HIERARCHY_REMOTE_PATH = "/sdcard/chummer-editing-window.xml"
+ADB_FILE_HIERARCHY_REMOVE_ARGUMENTS = (
+    "shell", "rm", "-f", ADB_FILE_HIERARCHY_REMOTE_PATH,
+)
+ADB_FILE_HIERARCHY_DUMP_ARGUMENTS = (
+    "shell", "uiautomator", "dump", "--compressed",
+    ADB_FILE_HIERARCHY_REMOTE_PATH,
+)
+ADB_FILE_HIERARCHY_DUMP_REDACTED_ARGUMENTS = (
+    "shell", "uiautomator", "<3 redacted argument(s)>",
+)
+ADB_FILE_HIERARCHY_DUMP_ARGUMENTS_SHA256 = hashlib.sha256(
+    "\0".join(ADB_FILE_HIERARCHY_DUMP_ARGUMENTS).encode("utf-8")
+).hexdigest()
+ADB_FILE_HIERARCHY_OBSERVATION_ARGUMENTS = (
+    "exec-out", "cat", ADB_FILE_HIERARCHY_REMOTE_PATH,
+)
+ADB_FILE_HIERARCHY_STAT_ARGUMENTS = (
+    "shell", "stat", "-c", "%d:%i:%s:%Y:%f", ADB_FILE_HIERARCHY_REMOTE_PATH,
+)
+ADB_FILE_HIERARCHY_OBSERVATION_READ_ATTEMPT_MAX_SECONDS = 1.0
+ADB_FILE_HIERARCHY_OBSERVATION_MAX_SECONDS = 10.0
+ADB_READ_ONLY_HIERARCHY_ARGUMENTS = (
+    "exec-out", "uiautomator", "dump", "--compressed", "/dev/tty",
+)
+ADB_DIRECT_HIERARCHY_OBSERVATION_READ_ATTEMPT_MAX_SECONDS = 10.0
+ADB_DIRECT_HIERARCHY_OBSERVATION_MAX_SECONDS = 48.0
+ADB_HIERARCHY_OBSERVATION_MATCHING_AUTHORITY = (
+    "exact-observation-bytes"
+)
+ADB_SWIPE_REDACTED_ARGUMENTS = (
+    "shell", "input", "swipe", "<5 redacted argument(s)>",
+)
+ADB_CREATION_BOOTSTRAP_LOGCAT_ARGUMENTS = (
+    "logcat", "-d", "-t", "50", "-s", "ChummerBootstrap:I", "*:S",
+)
+ADB_CREATION_DASHBOARD_READY_LOGCAT_ARGUMENTS = (
+    "logcat", "-d", "-b", "main", "-v", "raw",
+    "-s", "ChummerRoute:I", "*:S",
+)
+ADB_SAFE_READ_ONLY_REMOTE_PATH = re.compile(r"^/[A-Za-z0-9._/:-]{1,511}$")
+ADB_SAFE_ANDROID_PROPERTY = re.compile(r"^[A-Za-z0-9._-]{1,255}$")
 VIRTUAL_MARKERS = (
     "aosp_cf_", "cuttlefish", "emulator", "generic", "goldfish", "qemu",
     "ranchu", "sdk_gphone", "vbox", "virtualbox",
@@ -78,10 +122,26 @@ WP1_DOES_NOT_ASSERT = (
     "google_play_upload", "google_play_processing", "tester_installation",
     "public_release_readiness", "publication_authority", "tablet_readiness",
 )
-WP1_COMMITTED_ADAPTER = "wp1-33e69-v2"
-WP1_SOURCE_GRAPH_FIELDS = {
-    "sha256", "sizeBytes", "contractName", "repositories", "packageAuthority",
-    "packageAuthorityContract", "packageAuthorityPublicationAuthorized",
+WP1_COMMITTED_ADAPTER = "trusted-host-physical-build-provenance-v3"
+WP1_SOURCE_HEAD_FIELDS = {
+    "commit", "tree", "repository", "publicationAuthorized",
+}
+WP1_PRESENTATION_SOURCE_FIELDS = {
+    "commit", "tree", "authorityClass", "productionSource",
+    "publicationAuthorized", "packagePlaneLock", "producerLock", "remoteRef",
+}
+WP1_PACKAGE_AUTHORITY_FIELDS = {
+    "sha256", "sizeBytes", "contractName", "authorityState", "sourceGraph",
+    "uiReceipt", "cacheManifest", "intakeBinding", "postBuildBinding",
+}
+WP1_PACKAGE_SOURCE_GRAPH_FIELDS = {
+    "corePackageRecipeCommit", "coreRuntimeSourceCommit", "hubProducerCommit",
+    "registryCommit", "uiKitCommit",
+}
+WP1_CONTENT_FIELDS = {
+    "sourceReceipt", "apkReceipt", "coreRevision", "bundleDigest",
+    "manifestSha256", "canonicalFileCount", "canonicalByteCount",
+    "sourceRepository",
 }
 WP1_ARTIFACT_FIELDS = {
     "basename", "sha256", "sizeBytes", "package", "abis", "apiLevel",
@@ -89,9 +149,11 @@ WP1_ARTIFACT_FIELDS = {
     "installed", "signing",
 }
 WP1_EXECUTION_EVIDENCE_FIELDS = {
-    "toolchainLog", "sourceGraphLog", "contentSourceLog", "buildInputsLog",
+    "toolchainLog", "packageAuthorityLog", "packageAuthorityBinding",
+    "contentSourceLog", "buildInputsLog",
     "restoreLog", "buildLog", "signingPhaseLog", "apksignerLog",
-    "jarsignerLog", "signingReceipt", "contentApkLog", "sourceGraphSealLog",
+    "jarsignerLog", "signingReceipt", "contentApkLog", "packageAuthoritySealLog",
+    "packageAuthoritySeal",
     "commandJournal", "rawCommandJournal", "delegateCommandJournal",
     "boundedProcessGroups", "warnings", "errors",
 }
@@ -101,6 +163,104 @@ WP1_TOOLCHAIN_FIELDS = {
     "keytool", "jdkRelease", "androidSdk", "androidBuildToolsVersion",
     "androidPlatformLabel", "targetFramework", "targetSdkVersion",
     "runtimeIdentifier", "configuration", "serializedBuild",
+}
+TRUSTED_ANDROID_SDK_ROOT = "/home/tibor/.cache/chummer-android-toolchain/android-sdk"
+TRUSTED_JDK_RELEASE_FIELDS = {
+    "IMPLEMENTOR", "IMPLEMENTOR_VERSION", "JAVA_RUNTIME_VERSION", "JAVA_VERSION",
+    "JAVA_VERSION_DATE", "LIBC", "MODULES", "OS_ARCH", "OS_NAME", "SOURCE",
+}
+TRUSTED_TOOLCHAIN_SHA256 = {
+    "dotnet": "1c13be7f10008294dfd25f0fc0cd7c88e26d3dbaf8e16019af6c5bb53dd0259d",
+    "jdk_release": "6bd25f1446259442ae9cfdd1d9d7b6094aa7e3cf05bcbddb842e2f2b5facac4c",
+    "java": "2878f3c82270ae7f2bc0c94dbde65718a5a97387ed3ad4b1ce9047948f8b401e",
+    "javac": "899fa6dab44db00429d59959cb2ca53169ad4393841dbbae14a0debcdb9fe2a8",
+    "jarsigner": "07e52b7729ed7355c280f6766970b8d5dc9942e741ed5af0330cfc09699eb548",
+    "keytool": "7bb11637313a640810ec568ffb7e12d90e423c8c81356fc0416d7547047fa144",
+    "platform_package": "2110f8ec9c213a77e287e4e92d89e28dd770e4377c24350758cbddebb75de9f3",
+    "android_jar": "d9eb9da824d9e247a352f570f01e1169e725b2954bca9e283a71786c59b59f9a",
+    "build_tools_package": "a1d29ea87385aa2b8997c7f65968e0c52e8efb4f73ed4cf1df54df808acde6b8",
+    "apksigner": "b47549e373b895ce6ca620d0c7887e674d9615ffa837a86ac601dcfd04adb0f0",
+    "apksigner_jar": "3716d9311e55d2b0918a2fd9d54ba9e406c5f6abeea700b287f11259bc163dec",
+    "aapt2": "1a6a396b9cd071f7040071fdd108718cb98c3c9f4960044f373b288993d19eb7",
+    "zipalign": "c5f559e946de5a9e7d58792181db20383b228877812136bc469d97ae00a43b0a",
+    "platform_tools_package": "b7253bc2352e6bd5fdc2aa5da4f452ee4c3b6bdc93f20a87d39ee680a91af97c",
+    "adb": "372d800c04c3272729afade8a85d95a70fb1c7e74062d9ab17a92eb7b618096c",
+    "android_workload_manifest": "e520a5f491b933774ed06c48e8adf3a6878ad8a6cd320180a3395080cf362644",
+    "maui_workload_manifest": "e2506ea1897fca4cf528fa2e950d3267477e28e5253f1e7781520058742ced10",
+}
+TRUSTED_TOOLCHAIN_SIZE_BYTES = {
+    "dotnet": 73016,
+    "jdk_release": 1279,
+    "java": 12368,
+    "javac": 12416,
+    "jarsigner": 12392,
+    "keytool": 12392,
+    "platform_package": 1655,
+    "android_jar": 27768026,
+    "build_tools_package": 17886,
+    "apksigner": 2959,
+    "apksigner_jar": 1100545,
+    "aapt2": 5735384,
+    "zipalign": 227696,
+    "platform_tools_package": 17882,
+    "adb": 8709272,
+    "android_workload_manifest": 3608,
+    "maui_workload_manifest": 4098,
+}
+TRUSTED_JAVA_VERSION_LINES = {
+    "java": 'openjdk version "17.0.14" 2025-01-21 LTS',
+    "javac": "javac 17.0.14",
+}
+TRUSTED_JDK_RELEASE_VALUES = {
+    "IMPLEMENTOR": "Microsoft",
+    "IMPLEMENTOR_VERSION": "Microsoft-10800290",
+    "JAVA_RUNTIME_VERSION": "17.0.14+7-LTS",
+    "JAVA_VERSION": "17.0.14",
+    "JAVA_VERSION_DATE": "2025-01-21",
+    "LIBC": "gnu",
+    "MODULES": "java.base java.compiler java.datatransfer java.xml java.prefs java.desktop java.instrument java.logging java.management java.security.sasl java.naming java.rmi java.management.rmi java.net.http java.scripting java.security.jgss java.transaction.xa java.sql java.sql.rowset java.xml.crypto java.se java.smartcardio jdk.accessibility jdk.internal.jvmstat jdk.attach jdk.charsets jdk.compiler jdk.crypto.ec jdk.crypto.cryptoki jdk.dynalink jdk.internal.ed jdk.editpad jdk.hotspot.agent jdk.httpserver jdk.incubator.foreign jdk.incubator.vector jdk.internal.le jdk.internal.opt jdk.internal.vm.ci jdk.internal.vm.compiler jdk.internal.vm.compiler.management jdk.jartool jdk.javadoc jdk.jcmd jdk.management jdk.management.agent jdk.jconsole jdk.jdeps jdk.jdwp.agent jdk.jdi jdk.jfr jdk.jlink jdk.jpackage jdk.jshell jdk.jsobject jdk.jstatd jdk.localedata jdk.management.jfr jdk.naming.dns jdk.naming.rmi jdk.net jdk.nio.mapmode jdk.random jdk.sctp jdk.security.auth jdk.security.jgss jdk.unsupported jdk.unsupported.desktop jdk.xml.dom jdk.zipfs",
+    "OS_ARCH": "x86_64",
+    "OS_NAME": "Linux",
+    "SOURCE": ".:git:261f4ed0a496",
+}
+TRUSTED_PRESENTATION_PRODUCER_LOCK = {
+    "sha256": "b771842cbfc3466191ce6349916e51cd9d59b66637e0c8724975b0dc71508de7",
+    "sizeBytes": 2019,
+}
+TRUSTED_FULL_PROJECT_LOCK = {
+    "sha256": "66bbd296462b8db4838672af7af011a03ace6fa3c5a98bd7b5cc5c65a20464e6",
+    "sizeBytes": 70375,
+}
+TRUSTED_CORE_CONTENT_TREE = "ee7696362ccfc18bddd49d42afa5fbf775be846d"
+WP1_REFERENCE_EVIDENCE_FILES = {
+    "executionEvidence.toolchainLog": "toolchain.log",
+    "executionEvidence.packageAuthorityLog": "package-authority.log",
+    "executionEvidence.packageAuthorityBinding": "package-authority-binding.json",
+    "executionEvidence.contentSourceLog": "content-source.log",
+    "executionEvidence.buildInputsLog": "build-inputs.log",
+    "executionEvidence.restoreLog": "restore.log",
+    "executionEvidence.buildLog": "build.log",
+    "executionEvidence.signingPhaseLog": "signing-phase.log",
+    "executionEvidence.apksignerLog": "apksigner.log",
+    "executionEvidence.jarsignerLog": "jarsigner.log",
+    "executionEvidence.signingReceipt": "signing-receipt.json",
+    "executionEvidence.contentApkLog": "content-apk.log",
+    "executionEvidence.packageAuthoritySealLog": "package-authority-seal.log",
+    "executionEvidence.packageAuthoritySeal": "package-authority-seal.json",
+    "executionEvidence.commandJournal": "command-journal.jsonl",
+    "executionEvidence.rawCommandJournal": "raw-command-journal.jsonl",
+    "executionEvidence.delegateCommandJournal": "delegate-command-journal.jsonl",
+    "toolchain.dotnetWorkloads": "dotnet-workloads.json",
+    "toolchain.androidSdk.selectedInventory": "selected-packages.xml",
+}
+PACKAGE_AUTHORITY_RELATIVE_PATH = Path("eng/internal-phone-beta-package-authority.json")
+CONTENT_MANIFEST_RELATIVE_PATH = Path(
+    "src/Chummer.Android/Content/chummer-content-manifest.json"
+)
+CONTENT_RECEIPT_FIELDS = {
+    "status", "schema", "coreRevision", "bundleDigest", "manifestSha256",
+    "apkSha256", "canonicalFileCount", "canonicalByteCount",
+    "apkCanonicalFileCount", "apkVerified", "issues",
 }
 REPOSITORY_NAMES = (
     "chummer-android", "chummer6-ui", "chummer6-core", "chummer6-ui-kit",
@@ -122,15 +282,13 @@ REPOSITORY_URLS = (
     "https://github.com/ArchonMegalon/chummer6-design.git",
 )
 CORE_PACKAGE_IDS = (
-    "Chummer.Application", "Chummer.Infrastructure", "Chummer.Rulesets.Hosting",
+    "Chummer.Application", "Chummer.Engine.Contracts", "Chummer.Infrastructure", "Chummer.Rulesets.Hosting",
     "Chummer.Rulesets.Sr4", "Chummer.Rulesets.Sr5", "Chummer.Rulesets.Sr6",
 )
 OWNER_PACKAGE_SPECS = (
     ("Chummer.Campaign.Contracts", "chummer6-hub"),
     ("Chummer.Play.Contracts", "chummer6-hub"),
     ("Chummer.Run.Contracts", "chummer6-hub"),
-    ("Chummer.Run.Hub.Contracts", "chummer6-hub"),
-    ("Chummer.Run.Hub", "chummer6-hub"),
     ("Chummer.Hub.Registry.Contracts", "chummer6-hub-registry"),
     ("Chummer.Ui.Kit", "chummer6-ui-kit"),
 )
@@ -435,6 +593,19 @@ class BoundBytes:
         }
 
 
+@dataclass(frozen=True)
+class BuildProvenanceReferences:
+    package_authority: BoundBytes
+    package_authority_intake: BoundBytes
+    package_authority_post_build: BoundBytes
+    content_manifest: BoundBytes
+    content_source_receipt: BoundBytes
+    content_apk_receipt: BoundBytes
+    full_project_lock: BoundBytes
+    project_assets: BoundBytes
+    evidence: tuple[tuple[str, BoundBytes], ...]
+
+
 def reject_duplicate_keys(pairs: list[tuple[str, object]]) -> dict[str, object]:
     result: dict[str, object] = {}
     for key, value in pairs:
@@ -572,6 +743,382 @@ def require_unchanged(bound: BoundBytes, label: str) -> None:
         raise ValueError(f"{label} bytes changed across the authentication boundary")
 
 
+def capture_build_provenance_references(
+    provenance: BoundBytes, repository_root: Path,
+) -> BuildProvenanceReferences:
+    if (
+        not repository_root.is_absolute()
+        or repository_root.resolve(strict=True) != repository_root
+    ):
+        raise ValueError("build-provenance repository root must be canonical")
+    evidence_root = Path(f"{provenance.path}.evidence")
+    if (
+        not evidence_root.is_absolute()
+        or evidence_root.resolve(strict=True) != evidence_root
+        or not evidence_root.is_dir()
+        or evidence_root.stat().st_mode & 0o077
+    ):
+        raise ValueError("WP1 evidence root must be a canonical owner-only directory")
+    _reject_symlink_components(evidence_root)
+    evidence = tuple(
+        (
+            field,
+            bind_regular(evidence_root / filename, f"WP1 referenced evidence {field}"),
+        )
+        for field, filename in sorted(WP1_REFERENCE_EVIDENCE_FILES.items())
+    )
+    return BuildProvenanceReferences(
+        package_authority=bind_regular(
+            repository_root / PACKAGE_AUTHORITY_RELATIVE_PATH,
+            "committed package authority",
+        ),
+        package_authority_intake=bind_regular(
+            evidence_root / "package-authority-binding.json",
+            "package authority intake",
+        ),
+        package_authority_post_build=bind_regular(
+            evidence_root / "package-authority-seal.json",
+            "package authority post-build seal",
+        ),
+        content_manifest=bind_regular(
+            repository_root / CONTENT_MANIFEST_RELATIVE_PATH,
+            "committed Android content manifest",
+        ),
+        content_source_receipt=bind_regular(
+            evidence_root / "content-source-receipt.json",
+            "Core content source receipt",
+        ),
+        content_apk_receipt=bind_regular(
+            evidence_root / "content-apk-receipt.json",
+            "APK content receipt",
+        ),
+        full_project_lock=bind_regular(
+            repository_root / "src/Chummer.Android/packages.lock.json",
+            "committed ARM64 full-project lock",
+        ),
+        project_assets=bind_regular(
+            evidence_root / "project-assets.json",
+            "ARM64 restore assets",
+        ),
+        evidence=evidence,
+    )
+
+
+def _evidence_reference_map(
+    references: BuildProvenanceReferences,
+) -> dict[str, BoundBytes]:
+    result: dict[str, BoundBytes] = {}
+    for field, bound in references.evidence:
+        if field in result:
+            raise ValueError(f"duplicate WP1 referenced evidence field: {field}")
+        result[field] = bound
+    if set(result) != set(WP1_REFERENCE_EVIDENCE_FILES):
+        raise ValueError("WP1 referenced evidence field set is not exact")
+    return result
+
+
+def _require_evidence_binding(
+    binding: object, references: Mapping[str, BoundBytes], field: str,
+) -> None:
+    try:
+        bound = references[field]
+    except KeyError as error:
+        raise ValueError(f"missing WP1 referenced evidence: {field}") from error
+    if not isinstance(binding, dict):
+        raise ValueError(f"WP1 referenced evidence {field} must be one object")
+    projected = {
+        "sha256": binding.get("sha256"),
+        "sizeBytes": binding.get("sizeBytes"),
+    }
+    _require_bound_binding(projected, bound, f"WP1 referenced evidence {field}")
+
+
+def _all_build_provenance_references(
+    references: BuildProvenanceReferences,
+) -> tuple[tuple[BoundBytes, str], ...]:
+    direct = (
+        (references.package_authority, "committed package authority"),
+        (references.package_authority_intake, "package authority intake"),
+        (references.package_authority_post_build, "package authority post-build seal"),
+        (references.content_manifest, "committed Android content manifest"),
+        (references.content_source_receipt, "Core content source receipt"),
+        (references.content_apk_receipt, "APK content receipt"),
+        (references.full_project_lock, "committed ARM64 full-project lock"),
+        (references.project_assets, "ARM64 restore assets"),
+    )
+    evidence = tuple(
+        (bound, f"WP1 referenced evidence {field}")
+        for field, bound in references.evidence
+    )
+    return direct + evidence
+
+
+def _validate_referenced_provenance_bytes(
+    value: Mapping[str, object], apk: BoundBytes,
+    references: BuildProvenanceReferences,
+    evidence: Mapping[str, BoundBytes],
+) -> None:
+    presentation = require_exact_keys(
+        value.get("presentationBuildSource"), WP1_PRESENTATION_SOURCE_FIELDS,
+        "WP1 Presentation build source",
+    )
+    package_authority = require_exact_keys(
+        value.get("packageAuthority"), WP1_PACKAGE_AUTHORITY_FIELDS,
+        "WP1 package authority",
+    )
+    restore = require_exact_keys(value.get("restore"), {
+        "lockedMode", "networkSourcesAllowed", "ownerSourceFallbackAllowed",
+        "fullProjectLock", "projectAssets",
+    }, "WP1 restore")
+    execution = require_exact_keys(
+        value.get("executionEvidence"), WP1_EXECUTION_EVIDENCE_FIELDS,
+        "WP1 execution evidence",
+    )
+    toolchain = require_exact_keys(
+        value.get("toolchain"), WP1_TOOLCHAIN_FIELDS, "WP1 toolchain",
+    )
+    artifact = require_exact_keys(
+        value.get("artifact"), WP1_ARTIFACT_FIELDS, "WP1 artifact",
+    )
+    signing = require_exact_keys(
+        artifact.get("signing"), {"certificateSha256", "verifiedSchemes", "receipt"},
+        "WP1 artifact signing",
+    )
+
+    for field in WP1_EXECUTION_EVIDENCE_FIELDS - {
+        "boundedProcessGroups", "warnings", "errors",
+    }:
+        _require_evidence_binding(
+            execution.get(field), evidence, f"executionEvidence.{field}",
+        )
+    _require_bound_binding(
+        restore.get("fullProjectLock"), references.full_project_lock,
+        "WP1 restore full-project lock",
+    )
+    if restore.get("fullProjectLock") != TRUSTED_FULL_PROJECT_LOCK:
+        raise ValueError("WP1 restore full-project lock is not exact")
+    _require_bound_binding(
+        restore.get("projectAssets"), references.project_assets,
+        "WP1 restore project assets",
+    )
+    _require_evidence_binding(
+        toolchain.get("dotnetWorkloads"), evidence, "toolchain.dotnetWorkloads",
+    )
+    android_sdk = require_exact_keys(toolchain.get("androidSdk"), {
+        "root", "selectedInventory", "installedPackages", "androidJar", "aapt2",
+        "zipalign", "adb", "apksigner", "apksignerJar",
+    }, "WP1 Android SDK")
+    _require_evidence_binding(
+        android_sdk.get("selectedInventory"), evidence,
+        "toolchain.androidSdk.selectedInventory",
+    )
+    if signing.get("receipt") != execution.get("signingReceipt"):
+        raise ValueError("WP1 signing receipt bindings are not identical")
+    signing_receipt_bound = evidence["executionEvidence.signingReceipt"]
+    _require_bound_binding(
+        signing.get("receipt"), signing_receipt_bound, "WP1 artifact signing receipt",
+    )
+    receipt = strict_json_bytes(signing_receipt_bound.data, "APK signing receipt")
+    require_exact_keys(receipt, {
+        "contractName", "status", "apkSha256", "certificateSha256",
+        "verifiedSchemes", "apksignerSha256", "jarsignerSha256",
+        "apksignerOutputSha256", "jarsignerOutputSha256", "warningsAsErrors",
+        "publicationAuthorized",
+    }, "APK signing receipt")
+    if (
+        receipt.get("contractName") != "chummer.android.apk-signing-verification/v1"
+        or receipt.get("status") != "pass"
+        or receipt.get("publicationAuthorized") is not False
+        or receipt.get("warningsAsErrors") is not True
+        or receipt.get("apkSha256") != apk.sha256
+        or receipt.get("apksignerSha256") != TRUSTED_TOOLCHAIN_SHA256["apksigner"]
+        or receipt.get("jarsignerSha256") != TRUSTED_TOOLCHAIN_SHA256["jarsigner"]
+        or receipt.get("apksignerOutputSha256")
+        != evidence["executionEvidence.apksignerLog"].sha256
+        or receipt.get("jarsignerOutputSha256")
+        != evidence["executionEvidence.jarsignerLog"].sha256
+        or receipt.get("certificateSha256") != signing.get("certificateSha256")
+        or receipt.get("verifiedSchemes") != signing.get("verifiedSchemes")
+    ):
+        raise ValueError("WP1 signing facts differ from exact signing receipt bytes")
+    if execution.get("packageAuthorityBinding") != package_authority.get("intakeBinding"):
+        raise ValueError("WP1 package-authority intake evidence bindings differ")
+    if execution.get("packageAuthoritySeal") != package_authority.get("postBuildBinding"):
+        raise ValueError("WP1 package-authority seal evidence bindings differ")
+
+
+def _require_bound_binding(
+    binding: object, bound: BoundBytes, label: str,
+) -> None:
+    value = _validate_wp1_binding(binding, label)
+    if (value.get("sha256"), value.get("sizeBytes")) != (
+        bound.sha256, bound.size_bytes,
+    ):
+        raise ValueError(f"{label} does not bind the exact referenced bytes")
+
+
+def _validate_package_authority_references(
+    package_authority: Mapping[str, object],
+    presentation_source: Mapping[str, object],
+    references: BuildProvenanceReferences,
+    repository_root: Path,
+    android_source: Mapping[str, object],
+) -> None:
+    if (
+        references.package_authority.path
+        != repository_root / PACKAGE_AUTHORITY_RELATIVE_PATH
+        or references.content_manifest.path
+        != repository_root / CONTENT_MANIFEST_RELATIVE_PATH
+    ):
+        raise ValueError("WP1 committed authority paths are outside the bound Android checkout")
+    if (
+        run_git(repository_root, ("rev-parse", "HEAD")).strip()
+        != android_source.get("commit")
+        or run_git(repository_root, ("rev-parse", "HEAD^{tree}")).strip()
+        != android_source.get("tree")
+        or run_git(
+            repository_root,
+            ("status", "--porcelain=v1", "--untracked-files=all"),
+        )
+    ):
+        raise ValueError("WP1 Android checkout is not the exact clean source-graph authority")
+    if (package_authority.get("sha256"), package_authority.get("sizeBytes")) != (
+        references.package_authority.sha256, references.package_authority.size_bytes,
+    ):
+        raise ValueError("WP1 package authority does not bind the exact committed bytes")
+    _require_bound_binding(
+        package_authority.get("intakeBinding"), references.package_authority_intake,
+        "WP1 package authority intake",
+    )
+    _require_bound_binding(
+        package_authority.get("postBuildBinding"), references.package_authority_post_build,
+        "WP1 package authority post-build seal",
+    )
+    if not (
+        references.package_authority.data
+        == references.package_authority_intake.data
+        == references.package_authority_post_build.data
+    ):
+        raise ValueError("WP1 package authority bytes changed during the physical build")
+    authority = strict_json_bytes(
+        references.package_authority.data, "committed package authority",
+    )
+    if (
+        authority.get("contractName") != package_authority.get("contractName")
+        or authority.get("authorityState") != package_authority.get("authorityState")
+        or authority.get("publicationAuthorized") is not False
+        or authority.get("sourceGraph") != package_authority.get("sourceGraph")
+    ):
+        raise ValueError("WP1 package authority payload differs from exact referenced bytes")
+    verification_receipt = require_exact_keys(
+        authority.get("verificationReceipt"), {
+            "contractName", "contractVersion", "sha256", "sizeBytes", "status",
+        }, "committed package authority verification receipt",
+    )
+    artifact_cache = require_exact_keys(
+        authority.get("artifactCache"), {
+            "contractName", "cacheKey", "manifestFileName", "manifestSha256",
+            "manifestSizeBytes", "packageCount",
+        }, "committed package authority cache",
+    )
+    committed_package_lock = require_exact_keys(
+        authority.get("packagePlaneLock"), {
+            "path", "contractName", "contractVersion", "sha256", "sizeBytes", "gitBlob",
+        }, "committed package authority package-plane lock",
+    )
+    expected_ui_receipt = {
+        "sha256": verification_receipt.get("sha256"),
+        "sizeBytes": verification_receipt.get("sizeBytes"),
+    }
+    expected_cache_manifest = {
+        "sha256": artifact_cache.get("manifestSha256"),
+        "sizeBytes": artifact_cache.get("manifestSizeBytes"),
+    }
+    expected_package_lock = {
+        "sha256": committed_package_lock.get("sha256"),
+        "sizeBytes": committed_package_lock.get("sizeBytes"),
+    }
+    if package_authority.get("uiReceipt") != expected_ui_receipt:
+        raise ValueError("WP1 UI authority receipt differs from committed package authority")
+    if package_authority.get("cacheManifest") != expected_cache_manifest:
+        raise ValueError("WP1 package cache differs from committed package authority")
+    if presentation_source.get("packagePlaneLock") != expected_package_lock:
+        raise ValueError("WP1 Presentation package-plane lock differs from committed authority")
+    if presentation_source.get("producerLock") != TRUSTED_PRESENTATION_PRODUCER_LOCK:
+        raise ValueError("WP1 Presentation producer lock is not exact")
+    authority_presentation = require_exact_keys(
+        authority.get("presentationSource"), {"commit", "tree", "repository"},
+        "committed package authority presentation source",
+    )
+    if (
+        authority_presentation.get("commit") != presentation_source.get("commit")
+        or authority_presentation.get("tree") != presentation_source.get("tree")
+        or authority_presentation.get("repository") != REPOSITORY_URLS[1]
+    ):
+        raise ValueError("WP1 Presentation source differs from exact package authority bytes")
+
+
+def _validate_content_references(
+    content: Mapping[str, object], apk: BoundBytes,
+    references: BuildProvenanceReferences,
+) -> None:
+    _require_bound_binding(
+        content.get("sourceReceipt"), references.content_source_receipt,
+        "WP1 content source receipt",
+    )
+    _require_bound_binding(
+        content.get("apkReceipt"), references.content_apk_receipt,
+        "WP1 content APK receipt",
+    )
+    manifest = strict_json_bytes(references.content_manifest.data, "Android content manifest")
+    require_exact_keys(manifest, {"schema", "coreRevision", "bundleDigest", "files"}, "Android content manifest")
+    files = manifest.get("files")
+    if not isinstance(files, list) or not files:
+        raise ValueError("Android content manifest files are not exact")
+    manifest_count = 0
+    manifest_bytes = 0
+    for index, row in enumerate(files):
+        entry = require_exact_keys(row, {"path", "size", "sha256"}, f"Android content manifest file {index}")
+        require_string(entry.get("path"), f"Android content manifest file {index} path")
+        manifest_bytes += require_integer(entry.get("size"), f"Android content manifest file {index} size")
+        require_hex(entry.get("sha256"), f"Android content manifest file {index} sha256")
+        manifest_count += 1
+    if (
+        manifest.get("schema") != "chummer.android.content-bundle/v1"
+        or content.get("coreRevision") != manifest.get("coreRevision")
+        or content.get("bundleDigest") != manifest.get("bundleDigest")
+        or content.get("manifestSha256") != references.content_manifest.sha256
+        or content.get("canonicalFileCount") != manifest_count
+        or content.get("canonicalByteCount") != manifest_bytes
+    ):
+        raise ValueError("WP1 content payload differs from exact committed content manifest bytes")
+    source = strict_json_bytes(references.content_source_receipt.data, "Core content source receipt")
+    apk_receipt = strict_json_bytes(references.content_apk_receipt.data, "APK content receipt")
+    for label, receipt, apk_verified in (
+        ("Core content source receipt", source, False),
+        ("APK content receipt", apk_receipt, True),
+    ):
+        require_exact_keys(receipt, CONTENT_RECEIPT_FIELDS, label)
+        if (
+            receipt.get("status") != "pass"
+            or receipt.get("schema") != "chummer.android.content-bundle/v1"
+            or receipt.get("coreRevision") != content.get("coreRevision")
+            or receipt.get("bundleDigest") != content.get("bundleDigest")
+            or receipt.get("manifestSha256") != content.get("manifestSha256")
+            or receipt.get("canonicalFileCount") != content.get("canonicalFileCount")
+            or receipt.get("canonicalByteCount") != content.get("canonicalByteCount")
+            or receipt.get("apkVerified") is not apk_verified
+            or receipt.get("issues") != []
+        ):
+            raise ValueError(f"{label} differs from authenticated WP1 content")
+    if (
+        source.get("apkSha256") is not None or source.get("apkCanonicalFileCount") != 0
+        or apk_receipt.get("apkSha256") != apk.sha256
+        or apk_receipt.get("apkCanonicalFileCount") != content.get("canonicalFileCount")
+    ):
+        raise ValueError("WP1 content receipts do not bind the exact APK/source posture")
+
+
 def validate_external_output(path: Path, repository_root: Path) -> None:
     if not path.is_absolute() or any(part in {".", ".."} for part in path.parts):
         raise ValueError("output path must be absolute and normalized")
@@ -627,10 +1174,16 @@ def validate_source_graph(bound: BoundBytes) -> dict[str, object]:
     generator = require_exact_keys(
         graph.get("generator"), {"path", "sha256", "size_bytes"}, "source graph generator",
     )
-    if generator.get("path") != "scripts/verify_release_source_graph.py":
-        raise ValueError("source graph generator path is not exact")
-    require_hex(generator.get("sha256"), "source graph generator sha256")
-    require_integer(generator.get("size_bytes"), "source graph generator size", minimum=1)
+    generator_path = Path(__file__).with_name("verify_release_source_graph.py")
+    if generator_path.is_symlink() or not generator_path.is_file():
+        raise ValueError("source graph generator is not one local regular file")
+    generator_bytes = generator_path.read_bytes()
+    if generator != {
+        "path": "scripts/verify_release_source_graph.py",
+        "sha256": hashlib.sha256(generator_bytes).hexdigest(),
+        "size_bytes": len(generator_bytes),
+    }:
+        raise ValueError("source graph generator bytes are not exact")
     repositories = graph.get("repositories")
     if not isinstance(repositories, list) or len(repositories) != len(REPOSITORY_NAMES):
         raise ValueError("source graph must bind exactly eight repositories")
@@ -654,10 +1207,10 @@ def validate_source_graph(bound: BoundBytes) -> dict[str, object]:
     package_pins = graph.get("packagePins")
     owner_pins = graph.get("ownerPackagePins")
     if (
-        not isinstance(package_pins, list) or len(package_pins) != 6
-        or not isinstance(owner_pins, list) or len(owner_pins) != 7
+        not isinstance(package_pins, list) or len(package_pins) != len(CORE_PACKAGE_IDS)
+        or not isinstance(owner_pins, list) or len(owner_pins) != len(OWNER_PACKAGE_SPECS)
     ):
-        raise ValueError("source graph must bind six Core and seven owner package pins")
+        raise ValueError("source graph must bind seven Core and five owner package pins")
     core_commit = repository_map["chummer6-core"]["commit"]
     for expected_id, row in zip(CORE_PACKAGE_IDS, package_pins, strict=True):
         row = require_exact_keys(
@@ -673,20 +1226,42 @@ def validate_source_graph(bound: BoundBytes) -> dict[str, object]:
         require_hex(row.get("sha256"), f"Core package {expected_id} sha256")
     owner_fields = {
         "package_id", "version", "sha256", "size_bytes", "owner_repository",
-        "source_commit", "source_tree", "authority_receipt_sha256",
+        "source_commit", "source_tree", "source_authority", "authority_receipt_sha256",
         "package_inventory_sha256", "package_plane_lock_sha256", "dependency_mode",
     }
     for (expected_id, expected_owner), row in zip(OWNER_PACKAGE_SPECS, owner_pins, strict=True):
         row = require_exact_keys(row, owner_fields, f"owner package pin {expected_id}")
-        owner_repository = repository_map[expected_owner]
         if (
             row.get("package_id") != expected_id
             or row.get("owner_repository") != expected_owner
-            or row.get("source_commit") != owner_repository["commit"]
-            or row.get("source_tree") != owner_repository["tree"]
             or row.get("dependency_mode") != "locked_package"
         ):
             raise ValueError("source graph owner package authority/order is not exact")
+        source_commit = require_hex(
+            row.get("source_commit"), f"owner package {expected_id} source commit", length=40
+        )
+        source_tree = require_hex(
+            row.get("source_tree"), f"owner package {expected_id} source tree", length=40
+        )
+        owner_repository = repository_map[expected_owner]
+        source_authority = require_exact_keys(
+            row.get("source_authority"), {
+                "owner_head_commit", "owner_head_tree", "relationship", "verification",
+            }, f"owner package {expected_id} source authority",
+        )
+        if source_authority != {
+            "owner_head_commit": owner_repository["commit"],
+            "owner_head_tree": owner_repository["tree"],
+            "relationship": "ancestor_or_equal",
+            "verification": "git-merge-base-is-ancestor-without-replace-objects",
+        }:
+            raise ValueError(
+                f"owner package {expected_id} source is not bound to its pinned repository head"
+            )
+        if source_commit == owner_repository["commit"] and source_tree != owner_repository["tree"]:
+            raise ValueError(
+                f"owner package {expected_id} current source tree differs from its repository tree"
+            )
         require_string(row.get("version"), f"owner package {expected_id} version")
         require_integer(row.get("size_bytes"), f"owner package {expected_id} size", minimum=1)
         for field in (
@@ -702,6 +1277,10 @@ def validate_source_graph(bound: BoundBytes) -> dict[str, object]:
         dependencies = require_string_list(row.get("dependencies"), f"closure {expected_id} dependencies")
         if row.get("package_id") != expected_id or dependencies != sorted(set(dependencies)):
             raise ValueError("source graph dependency closure order/uniqueness is not exact")
+        if expected_id == "Chummer.Run.Contracts" and "Chummer.Play.Contracts" not in dependencies:
+            raise ValueError(
+                "source graph Chummer.Run.Contracts closure is missing Chummer.Play.Contracts"
+            )
     presentation = require_exact_keys(
         graph.get("presentationSource"), {
             "repository", "commit", "tree", "source_path", "authority_state",
@@ -817,7 +1396,37 @@ def _validate_wp1_binding(value: object, label: str) -> dict[str, object]:
     return binding
 
 
-def _validate_wp1_successor_surfaces(value: Mapping[str, object]) -> None:
+def _validate_wp1_successor_surfaces(
+    value: Mapping[str, object],
+) -> None:
+    trusted_tool_names = {
+        "dotnet", "jdk_release", "java", "javac", "jarsigner", "keytool",
+        "platform_package", "android_jar", "build_tools_package", "apksigner",
+        "apksigner_jar", "aapt2", "zipalign", "platform_tools_package", "adb",
+        "android_workload_manifest", "maui_workload_manifest",
+    }
+    if (
+        set(TRUSTED_TOOLCHAIN_SHA256) != trusted_tool_names
+        or set(TRUSTED_TOOLCHAIN_SIZE_BYTES) != trusted_tool_names
+        or any(type(size) is not int or size <= 0 for size in TRUSTED_TOOLCHAIN_SIZE_BYTES.values())
+        or any(
+        re.fullmatch(r"[0-9a-f]{64}", digest) is None
+        for digest in TRUSTED_TOOLCHAIN_SHA256.values()
+        )
+    ):
+        raise ValueError("trusted WP1 toolchain digest authority is not exact")
+
+    def require_authorized_binding(
+        binding: object, label: str, authority_name: str,
+    ) -> dict[str, object]:
+        entry = _validate_wp1_binding(binding, label)
+        if (
+            entry.get("sha256") != TRUSTED_TOOLCHAIN_SHA256[authority_name]
+            or entry.get("sizeBytes") != TRUSTED_TOOLCHAIN_SIZE_BYTES[authority_name]
+        ):
+            raise ValueError(f"{label} bytes are not trusted-host authorized")
+        return entry
+
     evidence = require_exact_keys(
         value.get("executionEvidence"), WP1_EXECUTION_EVIDENCE_FIELDS,
         f"{WP1_COMMITTED_ADAPTER} execution evidence",
@@ -851,27 +1460,46 @@ def _validate_wp1_successor_surfaces(value: Mapping[str, object]) -> None:
         or toolchain.get("serializedBuild") is not True
     ):
         raise ValueError("WP1 toolchain release selection is not exact")
-    for field in ("dotnetHost", "jarsigner", "keytool"):
-        _validate_wp1_binding(toolchain.get(field), f"WP1 toolchain {field}")
-    for field in ("java", "javac"):
+    for field, authority_name in (
+        ("dotnetHost", "dotnet"), ("jarsigner", "jarsigner"),
+        ("keytool", "keytool"),
+    ):
+        require_authorized_binding(
+            toolchain.get(field), f"WP1 toolchain {field}", authority_name,
+        )
+    for field, authority_name in (("java", "java"), ("javac", "javac")):
         entry = require_exact_keys(
             toolchain.get(field), {"sha256", "sizeBytes", "version", "versionLine"},
             f"WP1 toolchain {field}",
         )
-        require_hex(entry.get("sha256"), f"WP1 toolchain {field} sha256")
+        if (
+            entry.get("sha256") != TRUSTED_TOOLCHAIN_SHA256[authority_name]
+            or entry.get("sizeBytes") != TRUSTED_TOOLCHAIN_SIZE_BYTES[authority_name]
+        ):
+            raise ValueError(f"WP1 toolchain {field} bytes are not trusted-host authorized")
         require_integer(entry.get("sizeBytes"), f"WP1 toolchain {field} size", minimum=1)
-        if entry.get("version") != "17.0.14" or not isinstance(entry.get("versionLine"), str):
+        if (
+            entry.get("version") != "17.0.14"
+            or entry.get("versionLine") != TRUSTED_JAVA_VERSION_LINES[field]
+        ):
             raise ValueError(f"WP1 toolchain {field} identity is not exact")
     manifests = require_exact_keys(
         toolchain.get("workloadManifests"), {"android", "maui"},
         "WP1 workload manifests",
     )
-    for field, version in (("android", "36.1.69"), ("maui", "10.0.20")):
+    for field, version, authority_name in (
+        ("android", "36.1.69", "android_workload_manifest"),
+        ("maui", "10.0.20", "maui_workload_manifest"),
+    ):
         entry = require_exact_keys(
             manifests.get(field), {"sha256", "sizeBytes", "version"},
             f"WP1 workload manifest {field}",
         )
-        require_hex(entry.get("sha256"), f"WP1 workload manifest {field} sha256")
+        if (
+            entry.get("sha256") != TRUSTED_TOOLCHAIN_SHA256[authority_name]
+            or entry.get("sizeBytes") != TRUSTED_TOOLCHAIN_SIZE_BYTES[authority_name]
+        ):
+            raise ValueError(f"WP1 workload manifest {field} bytes are not trusted-host authorized")
         require_integer(entry.get("sizeBytes"), f"WP1 workload manifest {field} size", minimum=1)
         if entry.get("version") != version:
             raise ValueError(f"WP1 workload manifest {field} version is not exact")
@@ -896,42 +1524,52 @@ def _validate_wp1_successor_surfaces(value: Mapping[str, object]) -> None:
         toolchain.get("jdkRelease"), {"sha256", "sizeBytes", "fields"},
         "WP1 JDK release identity",
     )
-    require_hex(jdk_release.get("sha256"), "WP1 JDK release sha256")
-    require_integer(jdk_release.get("sizeBytes"), "WP1 JDK release size", minimum=1)
-    release_fields = require_exact_keys(jdk_release.get("fields"), {
-        "IMPLEMENTOR", "IMPLEMENTOR_VERSION", "JAVA_RUNTIME_VERSION", "JAVA_VERSION",
-        "JAVA_VERSION_DATE", "LIBC", "MODULES", "OS_ARCH", "OS_NAME", "SOURCE",
-    }, "WP1 JDK release fields")
     if (
-        release_fields.get("IMPLEMENTOR") != "Microsoft"
-        or release_fields.get("JAVA_VERSION") != "17.0.14"
-        or any(type(field) is not str for field in release_fields.values())
+        jdk_release.get("sha256") != TRUSTED_TOOLCHAIN_SHA256["jdk_release"]
+        or jdk_release.get("sizeBytes") != TRUSTED_TOOLCHAIN_SIZE_BYTES["jdk_release"]
+    ):
+        raise ValueError("WP1 JDK release bytes are not trusted-host authorized")
+    require_integer(jdk_release.get("sizeBytes"), "WP1 JDK release size", minimum=1)
+    release_fields = jdk_release.get("fields")
+    if (
+        not isinstance(release_fields, dict)
+        or set(release_fields) != TRUSTED_JDK_RELEASE_FIELDS
+        or release_fields != TRUSTED_JDK_RELEASE_VALUES
     ):
         raise ValueError("WP1 JDK release identity is not exact")
     android_sdk = require_exact_keys(toolchain.get("androidSdk"), {
         "root", "selectedInventory", "installedPackages", "androidJar", "aapt2",
         "zipalign", "adb", "apksigner", "apksignerJar",
     }, "WP1 Android SDK")
-    if android_sdk.get("root") != "/home/tibor/.cache/chummer-android-toolchain/android-sdk":
+    android_sdk_root = android_sdk.get("root")
+    if android_sdk_root != TRUSTED_ANDROID_SDK_ROOT:
         raise ValueError("WP1 Android SDK root is not exact")
-    for field in (
-        "selectedInventory", "androidJar", "aapt2", "zipalign", "adb",
-        "apksigner", "apksignerJar",
+    _validate_wp1_binding(android_sdk.get("selectedInventory"), "WP1 Android SDK selectedInventory")
+    for field, authority_name in (
+        ("androidJar", "android_jar"), ("aapt2", "aapt2"),
+        ("zipalign", "zipalign"), ("adb", "adb"),
+        ("apksigner", "apksigner"), ("apksignerJar", "apksigner_jar"),
     ):
-        _validate_wp1_binding(android_sdk.get(field), f"WP1 Android SDK {field}")
+        require_authorized_binding(
+            android_sdk.get(field), f"WP1 Android SDK {field}", authority_name,
+        )
     packages = require_exact_keys(android_sdk.get("installedPackages"), {
         "platforms;android-36", "build-tools;36.0.0", "platform-tools",
     }, "WP1 Android SDK installed packages")
-    for package_id, revision in (
-        ("platforms;android-36", "2.0.0"),
-        ("build-tools;36.0.0", "36.0.0"),
-        ("platform-tools", "36.0.0"),
+    for package_id, revision, authority_name in (
+        ("platforms;android-36", "2.0.0", "platform_package"),
+        ("build-tools;36.0.0", "36.0.0", "build_tools_package"),
+        ("platform-tools", "36.0.0", "platform_tools_package"),
     ):
         package = require_exact_keys(
             packages.get(package_id), {"sha256", "sizeBytes", "revision"},
             f"WP1 Android SDK package {package_id}",
         )
-        require_hex(package.get("sha256"), f"WP1 Android SDK package {package_id} sha256")
+        if (
+            package.get("sha256") != TRUSTED_TOOLCHAIN_SHA256[authority_name]
+            or package.get("sizeBytes") != TRUSTED_TOOLCHAIN_SIZE_BYTES[authority_name]
+        ):
+            raise ValueError(f"WP1 Android SDK package {package_id} bytes are not trusted-host authorized")
         require_integer(package.get("sizeBytes"), f"WP1 Android SDK package {package_id} size", minimum=1)
         if package.get("revision") != revision:
             raise ValueError(f"WP1 Android SDK package {package_id} revision is not exact")
@@ -940,13 +1578,15 @@ def _validate_wp1_successor_surfaces(value: Mapping[str, object]) -> None:
 def validate_build_provenance(
     bound: BoundBytes, graph: BoundBytes, apk: BoundBytes,
     *, adapter: str = WP1_COMMITTED_ADAPTER,
+    repository_root: Path | None = None,
+    references: BuildProvenanceReferences | None = None,
 ) -> dict[str, object]:
     if adapter != WP1_COMMITTED_ADAPTER:
         raise ValueError(f"unsupported explicit WP1 adapter: {adapter!r}")
     value = strict_json_bytes(bound.data, "WP1 build provenance")
     require_exact_keys(value, {
         "schema", "status", "authorityClass", "publicationAuthorized", "proofScope",
-        "dependencyMode", "sourceGraph", "w5CompileProof", "presentationBuildSource",
+        "dependencyMode", "sourceHead", "presentationBuildSource",
         "packageAuthority", "content", "restore", "executionEvidence", "toolchain",
         "artifact", "doesNotAssert", "authoritySha256", "generatedAtUtc",
     }, "WP1 build provenance")
@@ -955,7 +1595,7 @@ def validate_build_provenance(
         or value.get("publicationAuthorized") is not False
         or value.get("proofScope") != "full_maui_arm64_apk_build_only"
         or value.get("authorityClass") != "internal_phone_beta_physical_candidate_only"
-        or value.get("dependencyMode") != "locked_w5_packages_no_owner_siblings"
+        or value.get("dependencyMode") != "locked_current_packages_no_owner_siblings"
     ):
         raise ValueError("WP1 build provenance pass/scope/publication posture is not exact")
     require_utc_timestamp(value.get("generatedAtUtc"), "WP1 generatedAtUtc", canonical_z=True)
@@ -966,31 +1606,117 @@ def validate_build_provenance(
         raise ValueError("WP1 authority digest is not canonical")
     if canonical_sha256(authority) != authority_sha:
         raise ValueError("WP1 authority digest does not authenticate its payload")
-    source = require_exact_keys(value.get("sourceGraph"), WP1_SOURCE_GRAPH_FIELDS, f"{WP1_COMMITTED_ADAPTER} source graph binding")
+
     graph_payload = validate_source_graph(graph)
-    if (
-        source.get("sha256") != graph.sha256 or source.get("sizeBytes") != graph.size_bytes
-        or source.get("contractName") != SOURCE_GRAPH_SCHEMA
-        or source.get("repositories") != graph_payload["repositories"]
-    ):
-        raise ValueError("WP1 build provenance does not bind the supplied v2 source graph bytes")
-    package_authority = require_exact_keys(
-        source.get("packageAuthority"), {"sha256", "sizeBytes"},
-        f"{WP1_COMMITTED_ADAPTER} source graph package authority",
+    repository_rows = {
+        row["name"]: row for row in graph_payload["repositories"]
+        if isinstance(row, dict) and isinstance(row.get("name"), str)
+    }
+    if references is None:
+        references = capture_build_provenance_references(
+            bound, repository_root or Path(__file__).resolve().parents[1],
+        )
+    evidence = _evidence_reference_map(references)
+    source_head = require_exact_keys(
+        value.get("sourceHead"), WP1_SOURCE_HEAD_FIELDS,
+        f"{WP1_COMMITTED_ADAPTER} source head",
     )
-    require_hex(package_authority.get("sha256"), "WP1 source graph package authority sha256")
-    require_integer(package_authority.get("sizeBytes"), "WP1 source graph package authority size", minimum=1)
+    android_row = repository_rows["chummer-android"]
     if (
-        source.get("packageAuthorityContract") != "chummer.android.release-package-authority/v2"
-        or source.get("packageAuthorityPublicationAuthorized") is not False
+        source_head.get("commit") != android_row["commit"]
+        or source_head.get("tree") != android_row["tree"]
+        or source_head.get("repository") != REPOSITORY_URLS[0]
+        or source_head.get("publicationAuthorized") is not False
     ):
-        raise ValueError("WP1 source graph package authority contract/publication posture is not exact")
-    presentation_source = value.get("presentationBuildSource")
-    if not isinstance(presentation_source, dict) or (
-        presentation_source.get("productionSource") is not False
+        raise ValueError("WP1 build provenance source head does not bind the supplied source graph")
+    require_hex(source_head.get("commit"), "WP1 source head commit", length=40)
+    require_hex(source_head.get("tree"), "WP1 source head tree", length=40)
+
+    presentation_source = require_exact_keys(
+        value.get("presentationBuildSource"), WP1_PRESENTATION_SOURCE_FIELDS,
+        f"{WP1_COMMITTED_ADAPTER} Presentation build source",
+    )
+    presentation_row = repository_rows["chummer6-ui"]
+    if (
+        presentation_source.get("commit") != presentation_row["commit"]
+        or presentation_source.get("tree") != presentation_row["tree"]
+        or presentation_source.get("authorityClass") != "verified_current_ui_source"
+        or presentation_source.get("productionSource") is not False
         or presentation_source.get("publicationAuthorized") is not False
+        or presentation_source.get("remoteRef") != "refs/remotes/origin/main"
     ):
-        raise ValueError("WP1 Presentation build source is not internal/non-publication-only")
+        raise ValueError("WP1 Presentation build source is not the exact current internal source")
+    require_hex(presentation_source.get("commit"), "WP1 Presentation commit", length=40)
+    require_hex(presentation_source.get("tree"), "WP1 Presentation tree", length=40)
+    _validate_wp1_binding(presentation_source.get("packagePlaneLock"), "WP1 Presentation package-plane lock")
+    _validate_wp1_binding(presentation_source.get("producerLock"), "WP1 Presentation producer lock")
+
+    package_authority = require_exact_keys(
+        value.get("packageAuthority"), WP1_PACKAGE_AUTHORITY_FIELDS,
+        f"{WP1_COMMITTED_ADAPTER} package authority",
+    )
+    require_hex(package_authority.get("sha256"), "WP1 package authority sha256")
+    require_integer(package_authority.get("sizeBytes"), "WP1 package authority size", minimum=1)
+    if (
+        package_authority.get("contractName")
+        != "chummer.android.internal-phone-beta-package-authority/v2"
+        or package_authority.get("authorityState") != "current_graph_verified"
+    ):
+        raise ValueError("WP1 package authority contract/state is not exact")
+    package_source_graph = require_exact_keys(
+        package_authority.get("sourceGraph"), WP1_PACKAGE_SOURCE_GRAPH_FIELDS,
+        "WP1 package authority source graph",
+    )
+    expected_package_source_graph = {
+        "coreRuntimeSourceCommit": repository_rows["chummer6-core"]["commit"],
+        "hubProducerCommit": repository_rows["chummer6-hub"]["commit"],
+        "registryCommit": repository_rows["chummer6-hub-registry"]["commit"],
+        "uiKitCommit": repository_rows["chummer6-ui-kit"]["commit"],
+    }
+    for field, expected_value in expected_package_source_graph.items():
+        if package_source_graph.get(field) != expected_value:
+            raise ValueError(f"WP1 package authority source graph is not exact: {field}")
+    require_hex(package_source_graph.get("corePackageRecipeCommit"), "WP1 Core package recipe commit", length=40)
+    authority_bindings = [
+        _validate_wp1_binding(package_authority.get(field), f"WP1 package authority {field}")
+        for field in ("uiReceipt", "cacheManifest", "intakeBinding", "postBuildBinding")
+    ]
+    if authority_bindings[2] != authority_bindings[3] or (
+        package_authority.get("sha256"), package_authority.get("sizeBytes")
+    ) != (
+        authority_bindings[2].get("sha256"), authority_bindings[2].get("sizeBytes")
+    ):
+        raise ValueError("WP1 package authority intake/post-build bindings are not identical")
+    _validate_package_authority_references(
+        package_authority, presentation_source, references,
+        repository_root or Path(__file__).resolve().parents[1], android_row,
+    )
+
+    content = require_exact_keys(
+        value.get("content"), WP1_CONTENT_FIELDS, f"{WP1_COMMITTED_ADAPTER} content",
+    )
+    for field in ("sourceReceipt", "apkReceipt"):
+        _validate_wp1_binding(content.get(field), f"WP1 content {field}")
+    for field in ("coreRevision",):
+        require_hex(content.get(field), f"WP1 content {field}", length=40)
+    for field in ("bundleDigest", "manifestSha256"):
+        require_hex(content.get(field), f"WP1 content {field}")
+    for field in ("canonicalFileCount", "canonicalByteCount"):
+        require_integer(content.get(field), f"WP1 content {field}", minimum=1)
+    content_source = require_exact_keys(
+        content.get("sourceRepository"), {"commit", "tree"},
+        "WP1 Core content source repository",
+    )
+    require_hex(content_source.get("commit"), "WP1 Core content source commit", length=40)
+    require_hex(content_source.get("tree"), "WP1 Core content source tree", length=40)
+    if (
+        content.get("coreRevision") != content_source.get("commit")
+        or content_source.get("commit") != package_source_graph.get("corePackageRecipeCommit")
+        or content_source.get("tree") != TRUSTED_CORE_CONTENT_TREE
+    ):
+        raise ValueError("WP1 Core content source is not bound to current package authority")
+    _validate_content_references(content, apk, references)
+
     artifact = require_exact_keys(value.get("artifact"), WP1_ARTIFACT_FIELDS, f"{WP1_COMMITTED_ADAPTER} artifact")
     expected = {
         "basename": apk.path.name, "sha256": apk.sha256, "sizeBytes": apk.size_bytes,
@@ -1014,11 +1740,23 @@ def validate_build_provenance(
         raise ValueError("WP1 artifact signing schemes are not a canonical modern set")
     _validate_wp1_binding(signing.get("receipt"), "WP1 artifact signing receipt")
     _validate_wp1_successor_surfaces(value)
+    _validate_referenced_provenance_bytes(value, apk, references, evidence)
     if value.get("doesNotAssert") != list(WP1_DOES_NOT_ASSERT):
         raise ValueError("WP1 non-claim boundary is not exact")
-    restore = value.get("restore")
-    if not isinstance(restore, dict) or restore.get("lockedMode") is not True or restore.get("networkSourcesAllowed") is not False:
+    restore = require_exact_keys(value.get("restore"), {
+        "lockedMode", "networkSourcesAllowed", "ownerSourceFallbackAllowed",
+        "fullProjectLock", "projectAssets",
+    }, f"{WP1_COMMITTED_ADAPTER} restore")
+    if (
+        restore.get("lockedMode") is not True
+        or restore.get("networkSourcesAllowed") is not False
+        or restore.get("ownerSourceFallbackAllowed") is not False
+    ):
         raise ValueError("WP1 restore posture is not locked and offline")
+    _validate_wp1_binding(restore.get("fullProjectLock"), "WP1 full-project lock")
+    _validate_wp1_binding(restore.get("projectAssets"), "WP1 project assets")
+    for captured, label in _all_build_provenance_references(references):
+        require_unchanged(captured, label)
     return value
 
 
@@ -1167,6 +1905,140 @@ def _raw_device_matches(
         raise ValueError(f"{journey_id} nested device observation differs from the shared device bytes")
 
 
+def read_only_adb_policy_reason(arguments: Sequence[str]) -> str | None:
+    """Independently classify the driver's closed-world read-only ADB surface."""
+    values = tuple(arguments)
+    if values == ("get-state",):
+        return "exact adb transport-state observation"
+    if values == ("exec-out", "screencap", "-p"):
+        return "exact framebuffer observation"
+    if values == ADB_READ_ONLY_HIERARCHY_ARGUMENTS:
+        return "exact accessibility-hierarchy observation without app mutation"
+    if values == ADB_FILE_HIERARCHY_DUMP_ARGUMENTS:
+        return "exact fenced file-backed accessibility-hierarchy observation"
+    if (
+        len(values) == 3
+        and values[:2] == ("exec-out", "cat")
+        and ADB_SAFE_READ_ONLY_REMOTE_PATH.fullmatch(values[2]) is not None
+    ):
+        return "exact remote-file byte observation"
+    if values == ("logcat", "-d", "-t", "500"):
+        return "bounded logcat dump observation"
+    if values == ADB_CREATION_BOOTSTRAP_LOGCAT_ARGUMENTS:
+        return "bounded exact-tag creation-bootstrap timing observation"
+    if values == ADB_CREATION_DASHBOARD_READY_LOGCAT_ARGUMENTS:
+        return "bounded exact-tag creation-dashboard route-ready snapshot observation"
+    if values[:1] != ("shell",):
+        return None
+
+    shell_arguments = values[1:]
+    if (
+        len(shell_arguments) == 2
+        and shell_arguments[0] == "getprop"
+        and ADB_SAFE_ANDROID_PROPERTY.fullmatch(shell_arguments[1]) is not None
+    ):
+        return "exact Android property observation"
+    if shell_arguments == ("wm", "size"):
+        return "exact display-size observation"
+    if shell_arguments == ("pidof", PACKAGE):
+        return "exact package process-id observation"
+    if (
+        len(shell_arguments) == 2
+        and shell_arguments[0] in {"cat", "sha256sum"}
+        and ADB_SAFE_READ_ONLY_REMOTE_PATH.fullmatch(shell_arguments[1]) is not None
+    ):
+        return "exact remote-file observation"
+    if (
+        len(shell_arguments) == 4
+        and shell_arguments[:3] == ("test", "!", "-e")
+        and ADB_SAFE_READ_ONLY_REMOTE_PATH.fullmatch(shell_arguments[3]) is not None
+    ):
+        return "exact remote-path absence observation"
+    if values == ADB_FILE_HIERARCHY_STAT_ARGUMENTS:
+        return "exact hierarchy temporary-file identity observation"
+    if shell_arguments in {
+        ("dumpsys", "input_method"),
+        ("dumpsys", "activity", "activities"),
+        ("dumpsys", "activity", "lastanr"),
+        ("dumpsys", "activity", "processes"),
+        ("dumpsys", "activity", "exit-info", PACKAGE),
+        ("dumpsys", "window", "windows"),
+    }:
+        return "exact dumpsys observation"
+    if shell_arguments == ("ls", "-la", "/data/anr"):
+        return "exact ANR-directory observation"
+    if shell_arguments == (
+        "logcat", "-d", "-b", "all", "-v", "threadtime", "-t", "4000",
+    ):
+        return "bounded logcat dump observation"
+    return None
+
+
+def validate_complete_timeout_hierarchy_output(output: object) -> tuple[str, int]:
+    """Re-derive the exact hierarchy payload and node count from bound stdout."""
+    if not isinstance(output, str):
+        raise ValueError("ADB timeout hierarchy stdout must be UTF-8 text")
+    try:
+        output_bytes = output.encode("utf-8", errors="strict")
+    except UnicodeEncodeError as error:
+        raise ValueError("ADB timeout hierarchy stdout is not strict UTF-8") from error
+    if len(output_bytes) > ADB_TIMEOUT_HIERARCHY_MAX_BYTES:
+        raise ValueError("ADB timeout hierarchy stdout exceeds its byte bound")
+    hierarchy_start = output.find("<hierarchy")
+    hierarchy_close = "</hierarchy>"
+    hierarchy_end = output.find(hierarchy_close, hierarchy_start + 1)
+    if (
+        hierarchy_start < 0
+        or hierarchy_end < hierarchy_start
+        or output.find("<hierarchy", hierarchy_start + 1) >= 0
+        or output.find(hierarchy_close, hierarchy_end + len(hierarchy_close)) >= 0
+    ):
+        raise ValueError("ADB timeout hierarchy envelope is not single and complete")
+    prefix = output[:hierarchy_start]
+    suffix = output[hierarchy_end + len(hierarchy_close):]
+    if re.fullmatch(r"\s*(?:<\?xml[^>]*\?>\s*)?", prefix) is None or re.fullmatch(
+        r"\s*(?:UI (?:hierarchy|hierchary) dumped to:\s*/dev/tty\s*)?",
+        suffix,
+        flags=re.IGNORECASE,
+    ) is None:
+        raise ValueError("ADB timeout hierarchy has an unauthorized prefix or suffix")
+    payload = output[hierarchy_start:hierarchy_end + len(hierarchy_close)]
+    try:
+        root = ET.fromstring(payload)
+    except ET.ParseError as error:
+        raise ValueError("ADB timeout hierarchy XML is malformed") from error
+    if (
+        root.tag != "hierarchy"
+        or set(root.attrib) != {"rotation"}
+        or root.attrib["rotation"] not in {"0", "1", "2", "3"}
+    ):
+        raise ValueError("ADB timeout hierarchy root authority is not exact")
+    required_attributes = {
+        "index", "text", "resource-id", "class", "package", "content-desc",
+        "checkable", "checked", "clickable", "enabled", "focusable", "focused",
+        "scrollable", "long-clickable", "password", "selected", "bounds",
+    }
+    boolean_attributes = {
+        "checkable", "checked", "clickable", "enabled", "focusable", "focused",
+        "scrollable", "long-clickable", "password", "selected",
+    }
+    bounds = re.compile(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]")
+    nodes = list(root.iter("node"))
+    if any(element.tag != "node" for element in root.iter() if element is not root):
+        raise ValueError("ADB timeout hierarchy contains a foreign element")
+    if not nodes or any(
+        not required_attributes.issubset(node.attrib)
+        or re.fullmatch(r"[0-9]+", node.attrib["index"]) is None
+        or not node.attrib["class"]
+        or node.attrib["package"] != PACKAGE
+        or bounds.fullmatch(node.attrib["bounds"]) is None
+        or any(node.attrib[name] not in {"true", "false"} for name in boolean_attributes)
+        for node in nodes
+    ):
+        raise ValueError("ADB timeout hierarchy node authority is not exact")
+    return payload, len(nodes)
+
+
 def validate_adb_transport(value: object, *, serial: str, label: str) -> None:
     summary = require_exact_keys(value, {
         "schema", "status", "preflight", "eventCount", "terminalFailureCount", "events",
@@ -1271,13 +2143,26 @@ def validate_adb_transport(value: object, *, serial: str, label: str) -> None:
         "adbArgumentsSha256", "attempt", "maximumAttempts", "commandInvocationPerformed",
         "outcomeMutationAuthority", "replay", "failure", "evidenceFile",
     }
+    reconciliation_statuses = {
+        "reconciled-unknown-swipe",
+        "reconciled-unknown-hierarchy-dump",
+    }
+    allowed_statuses = {
+        "fail", "retrying-read-only", "recovered-read-only",
+        *reconciliation_statuses,
+    }
     for index, event in enumerate(events, start=1):
         if not isinstance(event, dict):
             raise ValueError(f"{label} ADB event must be one object")
         status = event.get("status")
         fields = set(base_event_fields)
-        if status == "reconciled-unknown-swipe":
+        if status in reconciliation_statuses:
             fields.update({"reconcilesEvidenceFile", "readOnlyObservation"})
+        if (
+            status == "recovered-read-only"
+            and event.get("classification") == "timeout-output-complete"
+        ):
+            fields.add("timeoutOutput")
         require_exact_keys(event, fields, f"{label} ADB event")
         require_field_types(event, {
             "schema": str, "status": str, "serial": str, "classification": str,
@@ -1290,7 +2175,7 @@ def validate_adb_transport(value: object, *, serial: str, label: str) -> None:
         if (
             event.get("schema") != "chummer.android.adb-transport-event/v1"
             or event.get("serial") != serial
-            or status not in {"retrying-read-only", "recovered-read-only", "reconciled-unknown-swipe"}
+            or status not in allowed_statuses
             or not isinstance(event.get("adbArguments"), list)
             or any(not isinstance(row, str) for row in event["adbArguments"])
             or SHA256.fullmatch(str(event.get("adbArgumentsSha256"))) is None
@@ -1306,11 +2191,476 @@ def validate_adb_transport(value: object, *, serial: str, label: str) -> None:
         failure = event.get("failure")
         if failure is not None:
             require_exact_keys(failure, {"type", "returnCode", "stdout", "stderr"}, f"{label} ADB event failure")
+            require_field_types(failure, {
+                "type": str, "returnCode": (int, type(None)),
+                "stdout": str, "stderr": str,
+            }, f"{label} ADB event failure")
+        if status == "fail":
+            if failure is None:
+                raise ValueError(f"{label} ADB fail event has no failure")
+            if event.get("commandPolicy") == "read-only-retryable":
+                if (
+                    index <= 1
+                    or not isinstance(events[index - 2], dict)
+                    or events[index - 2].get("status") != "retrying-read-only"
+                ):
+                    raise ValueError(
+                        f"{label} ADB terminal read-only failure has no adjacent retry"
+                    )
+            elif index >= len(events):
+                raise ValueError(
+                    f"{label} ADB fail event is terminal or has no adjacent reconciliation"
+                )
+            else:
+                following = events[index]
+                if (
+                    not isinstance(following, dict)
+                    or following.get("status") not in reconciliation_statuses
+                    or following.get("reconcilesEvidenceFile")
+                    != event.get("evidenceFile")
+                ):
+                    raise ValueError(
+                        f"{label} ADB fail event is not followed by its exact reconciliation"
+                    )
+        if status in reconciliation_statuses:
+            if index <= 1:
+                raise ValueError(f"{label} ADB reconciliation is orphaned")
+            preceding = events[index - 2]
+            if (
+                not isinstance(preceding, dict)
+                or preceding.get("status") != "fail"
+                or event.get("reconcilesEvidenceFile")
+                != preceding.get("evidenceFile")
+                or event.get("serial") != preceding.get("serial")
+                or event.get("adbArguments") != preceding.get("adbArguments")
+                or event.get("adbArgumentsSha256")
+                != preceding.get("adbArgumentsSha256")
+            ):
+                raise ValueError(
+                    f"{label} ADB reconciliation does not exactly bind the adjacent fail event"
+                )
         if status == "reconciled-unknown-swipe":
+            preceding = events[index - 2]
             observation = require_exact_keys(event.get("readOnlyObservation"), {
                 "arguments", "consecutiveMatching", "observationsPerformed", "hierarchySha256",
             }, f"{label} ADB reconciliation")
             require_hex(observation.get("hierarchySha256"), f"{label} ADB hierarchy sha256")
+            expected_original = {
+                "classification": "timeout-unknown-outcome",
+                "classificationAuthority": "timeout-with-unknown-command-outcome",
+                "retryableTransportClassification": True,
+                "commandPolicy": "non-replayable",
+                "policyReason": "shell mutation or ambiguous shell command is never replayed",
+                "adbArguments": list(ADB_SWIPE_REDACTED_ARGUMENTS),
+                "attempt": 1,
+                "maximumAttempts": 1,
+                "commandInvocationPerformed": True,
+                "outcomeMutationAuthority": "unknown-fail-closed",
+            }
+            expected_reconciliation = {
+                "classification": "timeout-unknown-outcome",
+                "classificationAuthority": (
+                    "bounded-consecutive-read-only-hierarchy-observations"
+                ),
+                "retryableTransportClassification": True,
+                "commandPolicy": "non-replayable",
+                "policyReason": (
+                    "swipe was never replayed; current viewport became authority"
+                ),
+                "adbArguments": list(ADB_SWIPE_REDACTED_ARGUMENTS),
+                "attempt": 1,
+                "maximumAttempts": 1,
+                "commandInvocationPerformed": False,
+                "outcomeMutationAuthority": "current-viewport-observed-no-replay",
+            }
+            if (
+                any(
+                    preceding.get(key) != expected
+                    for key, expected in expected_original.items()
+                )
+                or any(
+                    event.get(key) != expected
+                    for key, expected in expected_reconciliation.items()
+                )
+                or preceding.get("failure", {}).get("type") != "TimeoutExpired"
+                or preceding.get("failure", {}).get("returnCode") is not None
+                or preceding.get("replay") != {
+                    "eligible": False, "performed": False,
+                    "scheduled": False, "suppressed": True,
+                }
+                or event.get("failure") is not None
+                or event.get("replay") != {
+                    "eligible": False, "performed": False,
+                    "scheduled": False, "suppressed": True,
+                }
+                or observation.get("arguments") != list(ADB_READ_ONLY_HIERARCHY_ARGUMENTS)
+                or observation.get("consecutiveMatching") != 2
+                or type(observation.get("observationsPerformed")) is not int
+                or not 2 <= observation["observationsPerformed"] <= 3
+            ):
+                raise ValueError(f"{label} ADB swipe reconciliation is not exact")
+        if status == "reconciled-unknown-hierarchy-dump":
+            preceding = events[index - 2]
+            observation = require_exact_keys(event.get("readOnlyObservation"), {
+                "mode", "arguments", "freshnessBarrierArguments",
+                "consecutiveMatching", "matchingAuthority",
+                "observationsPerformed", "readAttemptMaximumSeconds",
+                "maximumObservationSeconds",
+                "hierarchySha256", "observationBytesSha256",
+            }, f"{label} ADB hierarchy-dump reconciliation")
+            require_field_types(observation, {
+                "mode": str, "arguments": list, "freshnessBarrierArguments": list,
+                "consecutiveMatching": int, "matchingAuthority": str,
+                "observationsPerformed": int,
+                "readAttemptMaximumSeconds": (int, float),
+                "maximumObservationSeconds": (int, float),
+                "hierarchySha256": str, "observationBytesSha256": str,
+            }, f"{label} ADB hierarchy-dump reconciliation")
+            require_hex(
+                observation.get("hierarchySha256"),
+                f"{label} ADB hierarchy-dump hierarchy sha256",
+            )
+            require_hex(
+                observation.get("observationBytesSha256"),
+                f"{label} ADB hierarchy-dump observation-bytes sha256",
+            )
+            expected_original = {
+                "classification": "timeout-unknown-outcome",
+                "classificationAuthority": "timeout-with-unknown-command-outcome",
+                "retryableTransportClassification": True,
+                "commandPolicy": "non-replayable",
+                "policyReason": "shell mutation or ambiguous shell command is never replayed",
+                "adbArguments": list(ADB_FILE_HIERARCHY_DUMP_REDACTED_ARGUMENTS),
+                "adbArgumentsSha256": ADB_FILE_HIERARCHY_DUMP_ARGUMENTS_SHA256,
+                "attempt": 1,
+                "maximumAttempts": 1,
+                "commandInvocationPerformed": True,
+                "outcomeMutationAuthority": "unknown-fail-closed",
+            }
+            expected_reconciliation = {
+                "classification": "timeout-unknown-outcome",
+                "classificationAuthority": (
+                    "bounded-consecutive-read-only-hierarchy-observations"
+                ),
+                "retryableTransportClassification": True,
+                "commandPolicy": "non-replayable",
+                "policyReason": (
+                    "file-backed dump was never replayed; bounded stable current "
+                    "hierarchy became observation authority"
+                ),
+                "adbArguments": list(ADB_FILE_HIERARCHY_DUMP_REDACTED_ARGUMENTS),
+                "adbArgumentsSha256": ADB_FILE_HIERARCHY_DUMP_ARGUMENTS_SHA256,
+                "attempt": 1,
+                "maximumAttempts": 1,
+                "commandInvocationPerformed": False,
+                "outcomeMutationAuthority": (
+                    "current-hierarchy-observed-no-dump-replay"
+                ),
+            }
+            if any(preceding.get(key) != expected for key, expected in expected_original.items()):
+                raise ValueError(
+                    f"{label} ADB hierarchy-dump timeout event is not exact"
+                )
+            if any(event.get(key) != expected for key, expected in expected_reconciliation.items()):
+                raise ValueError(
+                    f"{label} ADB hierarchy-dump reconciliation metadata is not exact"
+                )
+            if (
+                preceding.get("failure", {}).get("type") != "TimeoutExpired"
+                or preceding.get("failure", {}).get("returnCode") is not None
+                or preceding.get("replay") != {
+                    "eligible": False, "performed": False,
+                    "scheduled": False, "suppressed": True,
+                }
+                or event.get("failure") is not None
+                or event.get("replay") != {
+                    "eligible": False, "performed": False,
+                    "scheduled": False, "suppressed": True,
+                }
+                or observation.get("freshnessBarrierArguments")
+                != list(ADB_FILE_HIERARCHY_REMOVE_ARGUMENTS)
+                or observation.get("consecutiveMatching") != 2
+            ):
+                raise ValueError(
+                    f"{label} ADB hierarchy-dump reconciliation proof is not exact"
+                )
+            observation_mode = observation.get("mode")
+            if observation_mode == "fresh-owned-file":
+                observation_arguments = ADB_FILE_HIERARCHY_OBSERVATION_ARGUMENTS
+                maximum_observations = 8
+                read_attempt_maximum_seconds = (
+                    ADB_FILE_HIERARCHY_OBSERVATION_READ_ATTEMPT_MAX_SECONDS
+                )
+                maximum_observation_seconds = (
+                    ADB_FILE_HIERARCHY_OBSERVATION_MAX_SECONDS
+                )
+            elif observation_mode == "direct-current-hierarchy":
+                observation_arguments = ADB_READ_ONLY_HIERARCHY_ARGUMENTS
+                maximum_observations = 3
+                read_attempt_maximum_seconds = (
+                    ADB_DIRECT_HIERARCHY_OBSERVATION_READ_ATTEMPT_MAX_SECONDS
+                )
+                maximum_observation_seconds = (
+                    ADB_DIRECT_HIERARCHY_OBSERVATION_MAX_SECONDS
+                )
+            else:
+                raise ValueError(
+                    f"{label} ADB hierarchy-dump observation mode is not exact"
+                )
+            if (
+                observation.get("arguments") != list(observation_arguments)
+                or observation.get("matchingAuthority")
+                != ADB_HIERARCHY_OBSERVATION_MATCHING_AUTHORITY
+                or observation.get("readAttemptMaximumSeconds")
+                != read_attempt_maximum_seconds
+                or observation.get("maximumObservationSeconds")
+                != maximum_observation_seconds
+                or not 2
+                <= observation.get("observationsPerformed", 0)
+                <= maximum_observations
+            ):
+                raise ValueError(
+                    f"{label} ADB hierarchy-dump observation is not exact"
+                )
+
+    retryable_classification_authorities = {
+        "timeout-unknown-outcome": "timeout-with-unknown-command-outcome",
+        "observer-process-killed": "exact-file-hierarchy-observer-exit-137",
+        "device-offline": "recognized-transient-transport-marker",
+        "device-missing": "recognized-transient-transport-marker",
+        "transport-closed": "recognized-transient-transport-marker",
+        "daemon-unavailable": "recognized-transient-transport-marker",
+    }
+    terminal_classification_authorities = {
+        **retryable_classification_authorities,
+        "caller-deadline-exhausted-before-retry": (
+            "caller-owned-deadline-before-command"
+        ),
+        "device-unauthorized": "recognized-nonretryable-transport-marker",
+        "unclassified-adb-failure": "unclassified-fail-closed",
+    }
+    read_only_statuses = {"retrying-read-only", "recovered-read-only"}
+    terminal_read_only_failure_seen = False
+
+    def require_read_only_binding(
+        earlier: Mapping[str, object],
+        later: Mapping[str, object],
+        chain_label: str,
+    ) -> None:
+        for field in (
+            "serial", "commandPolicy", "policyReason", "adbArguments",
+            "adbArgumentsSha256", "maximumAttempts",
+        ):
+            if later.get(field) != earlier.get(field):
+                raise ValueError(
+                    f"{label} ADB {chain_label} changes read-only {field}"
+                )
+        if later.get("attempt") != earlier.get("attempt", 0) + 1:
+            raise ValueError(
+                f"{label} ADB {chain_label} attempt progression is not exact"
+            )
+
+    for event_index, event in enumerate(events):
+        status = event["status"]
+        is_terminal_read_only = (
+            status == "fail"
+            and event.get("commandPolicy") == "read-only-retryable"
+        )
+        if status not in read_only_statuses and not is_terminal_read_only:
+            continue
+
+        arguments = event["adbArguments"]
+        expected_arguments_sha256 = hashlib.sha256(
+            "\0".join(arguments).encode("utf-8")
+        ).hexdigest()
+        expected_policy_reason = read_only_adb_policy_reason(arguments)
+        attempt = event["attempt"]
+        maximum_attempts = event["maximumAttempts"]
+        deadline_before_retry = (
+            event.get("classification")
+            == "caller-deadline-exhausted-before-retry"
+        )
+        if (
+            event.get("commandPolicy") != "read-only-retryable"
+            or expected_policy_reason is None
+            or event.get("policyReason") != expected_policy_reason
+            or event.get("serial") != serial
+            or event.get("adbArgumentsSha256") != expected_arguments_sha256
+            or type(attempt) is not int
+            or type(maximum_attempts) is not int
+            or maximum_attempts != summary["readOnlyMaximumAttempts"]
+            or not 1 <= attempt <= maximum_attempts
+            or event.get("commandInvocationPerformed")
+            is not (not deadline_before_retry)
+            or event.get("outcomeMutationAuthority") != "none-read-only-command"
+        ):
+            raise ValueError(f"{label} ADB read-only event identity/bounds are not exact")
+
+        if status == "recovered-read-only":
+            if event.get("classification") == "transport-recovered":
+                if (
+                    event.get("classificationAuthority")
+                    != "fresh-read-only-command-succeeded"
+                    or event.get("retryableTransportClassification") is not True
+                    or event.get("failure") is not None
+                    or event.get("replay") != {
+                        "eligible": True, "performed": True,
+                        "scheduled": False, "suppressed": False,
+                    }
+                    or attempt <= 1
+                    or event_index == 0
+                    or events[event_index - 1].get("status")
+                    != "retrying-read-only"
+                ):
+                    raise ValueError(f"{label} ADB read-only recovery is not exact")
+                require_read_only_binding(
+                    events[event_index - 1], event, "retry recovery",
+                )
+            elif event.get("classification") == "timeout-output-complete":
+                timeout_output = require_exact_keys(
+                    event.get("timeoutOutput"),
+                    {
+                        "validation", "stdout", "stdoutSha256",
+                        "stdoutBytes", "hierarchySha256", "hierarchyBytes",
+                        "hierarchyNodeCount",
+                    },
+                    f"{label} ADB timeout hierarchy output",
+                )
+                require_field_types(timeout_output, {
+                    "validation": str, "stdout": str,
+                    "stdoutSha256": str, "stdoutBytes": int,
+                    "hierarchySha256": str, "hierarchyBytes": int,
+                    "hierarchyNodeCount": int,
+                }, f"{label} ADB timeout hierarchy output")
+                try:
+                    hierarchy_payload, hierarchy_node_count = (
+                        validate_complete_timeout_hierarchy_output(
+                            timeout_output.get("stdout")
+                        )
+                    )
+                except ValueError as error:
+                    raise ValueError(
+                        f"{label} ADB timeout hierarchy recovery is not exact"
+                    ) from error
+                stdout_bytes = timeout_output["stdout"].encode("utf-8")
+                hierarchy_bytes = hierarchy_payload.encode("utf-8")
+                if (
+                    event.get("classificationAuthority")
+                    != "complete-well-formed-read-only-timeout-stdout"
+                    or event.get("retryableTransportClassification") is not True
+                    or not isinstance(failure, dict)
+                    or failure.get("type") != "TimeoutExpired"
+                    or failure.get("returnCode") is not None
+                    or event.get("replay") != {
+                        "eligible": True, "performed": attempt > 1,
+                        "scheduled": False, "suppressed": True,
+                    }
+                    or event.get("adbArguments")
+                    != list(ADB_READ_ONLY_HIERARCHY_ARGUMENTS)
+                    or timeout_output.get("validation")
+                    != "complete-well-formed-single-hierarchy"
+                    or timeout_output.get("stdoutSha256")
+                    != hashlib.sha256(stdout_bytes).hexdigest()
+                    or timeout_output.get("stdoutBytes") != len(stdout_bytes)
+                    or timeout_output.get("hierarchySha256")
+                    != hashlib.sha256(hierarchy_bytes).hexdigest()
+                    or timeout_output.get("hierarchyBytes") != len(hierarchy_bytes)
+                    or timeout_output.get("hierarchyNodeCount")
+                    != hierarchy_node_count
+                    or failure.get("stdout")
+                    != timeout_output["stdout"][:4000]
+                    or failure.get("stderr") != ""
+                ):
+                    raise ValueError(
+                        f"{label} ADB timeout hierarchy recovery is not exact"
+                    )
+                if attempt > 1:
+                    if (
+                        event_index == 0
+                        or events[event_index - 1].get("status")
+                        != "retrying-read-only"
+                    ):
+                        raise ValueError(
+                            f"{label} ADB timeout hierarchy recovery is orphaned"
+                        )
+                    require_read_only_binding(
+                        events[event_index - 1], event,
+                        "timeout hierarchy recovery",
+                    )
+            else:
+                raise ValueError(f"{label} ADB read-only recovery is not exact")
+            continue
+
+        classification = event.get("classification")
+        expected_authority = (
+            retryable_classification_authorities.get(classification)
+            if status == "retrying-read-only"
+            else terminal_classification_authorities.get(classification)
+        )
+        retryable_classification = (
+            classification in retryable_classification_authorities
+        )
+        observer_process_killed = classification == "observer-process-killed"
+        expected_replay = {
+            "eligible": retryable_classification,
+            "performed": attempt > 1 and not deadline_before_retry,
+            "scheduled": status == "retrying-read-only",
+            "suppressed": status == "fail",
+        }
+        if (
+            expected_authority is None
+            or event.get("classificationAuthority") != expected_authority
+            or event.get("retryableTransportClassification")
+            is not retryable_classification
+            or event.get("failure") is None
+            or event.get("replay") != expected_replay
+            or (
+                observer_process_killed
+                and (
+                    tuple(arguments) != ADB_FILE_HIERARCHY_DUMP_ARGUMENTS
+                    or event["failure"].get("type") != "CalledProcessError"
+                    or event["failure"].get("returnCode") != 137
+                )
+            )
+            or (
+                deadline_before_retry
+                and (
+                    event["failure"].get("type")
+                    != "AdbOperationDeadlineExceeded"
+                    or event["failure"].get("returnCode") is not None
+                )
+            )
+        ):
+            raise ValueError(f"{label} ADB read-only failure/replay is not exact")
+
+        if attempt > 1:
+            if (
+                event_index == 0
+                or events[event_index - 1].get("status") != "retrying-read-only"
+            ):
+                raise ValueError(f"{label} ADB read-only retry is orphaned")
+            require_read_only_binding(
+                events[event_index - 1], event, "retry attempt",
+            )
+
+        if status == "retrying-read-only":
+            if attempt >= maximum_attempts or event_index + 1 >= len(events):
+                raise ValueError(f"{label} ADB read-only retry is dangling")
+            following = events[event_index + 1]
+            if (
+                not isinstance(following, dict)
+                or following.get("status")
+                not in {"retrying-read-only", "recovered-read-only", "fail"}
+            ):
+                raise ValueError(
+                    f"{label} ADB read-only retry has no adjacent completion"
+                )
+            require_read_only_binding(event, following, "retry completion")
+        else:
+            terminal_read_only_failure_seen = True
+
+    if terminal_read_only_failure_seen:
+        raise ValueError(f"{label} ADB pass summary contains a terminal read-only failure")
 
 
 def validate_workspace(value: object, label: str) -> None:
@@ -1981,6 +3331,7 @@ def capture_authority_inputs(
     apk, graph, provenance, provenance_payload = capture_build_inputs(
         apk_path=apk_path, source_graph_path=source_graph_path,
         build_provenance_path=build_provenance_path,
+        repository_root=repository_root,
     )
     device = bind_regular(device_observation_path, "physical device observation")
     device_payload = validate_device_observation(device)
@@ -1993,13 +3344,19 @@ def capture_authority_inputs(
 
 def capture_build_inputs(
     *, apk_path: Path, source_graph_path: Path, build_provenance_path: Path,
+    repository_root: Path | None = None,
+    references: BuildProvenanceReferences | None = None,
 ) -> tuple[BoundBytes, BoundBytes, BoundBytes, dict[str, object]]:
     apk = bind_regular(apk_path, "ARM64 APK")
     validate_apk(apk)
     graph = bind_regular(source_graph_path, "v2 source graph")
     validate_source_graph(graph)
     provenance = bind_regular(build_provenance_path, "WP1 build provenance")
-    provenance_payload = validate_build_provenance(provenance, graph, apk)
+    provenance_payload = validate_build_provenance(
+        provenance, graph, apk,
+        repository_root=repository_root,
+        references=references,
+    )
     return apk, graph, provenance, provenance_payload
 
 

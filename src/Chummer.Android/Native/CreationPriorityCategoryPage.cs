@@ -9,6 +9,7 @@ namespace Chummer.Android.Native;
 public sealed class CreationPriorityCategoryPage : NativePageBase
 {
     private readonly CreationPrerequisitePhoneDraft _draft;
+    private readonly CharacterCreationPrerequisiteState _state;
     private readonly string _categoryId;
     private readonly VerticalStackLayout _body = new()
     {
@@ -19,9 +20,11 @@ public sealed class CreationPriorityCategoryPage : NativePageBase
     internal CreationPriorityCategoryPage(
         RunnerSessionCoordinator coordinator,
         CreationPrerequisitePhoneDraft draft,
+        CharacterCreationPrerequisiteState state,
         string categoryId) : base(coordinator)
     {
         _draft = draft ?? throw new ArgumentNullException(nameof(draft));
+        _state = state ?? throw new ArgumentNullException(nameof(state));
         _categoryId = CharacterCreationPriorityCategoryIds.Ordered.Contains(
             categoryId,
             StringComparer.Ordinal)
@@ -39,18 +42,9 @@ public sealed class CreationPriorityCategoryPage : NativePageBase
         string categoryFallback = RunnerSessionCoordinator.HumanizeId(_categoryId);
         _body.Add(NativeTheme.Title(WizardStrings.PriorityCategory(_categoryId, categoryFallback)));
 
-        CharacterCreationFoundationResult<CharacterCreationPrerequisiteState> load =
-            Coordinator.LoadCreationPrerequisite();
-        if (!string.Equals(
-                load.Outcome,
-                CharacterCreationFoundationOutcomes.Success,
-                StringComparison.Ordinal)
-            || load.Value is not { } state
-            || !_draft.Matches(state, Coordinator.State))
+        if (!_draft.Matches(_state, Coordinator.State))
         {
-            AddBlockers(load.Blockers.Count > 0
-                ? load.Blockers
-                : [CharacterCreationPrerequisiteBlockers.StaleWorkspaceRevision]);
+            AddBlockers([CharacterCreationPrerequisiteBlockers.StaleWorkspaceRevision]);
             return;
         }
 
@@ -58,14 +52,14 @@ public sealed class CreationPriorityCategoryPage : NativePageBase
             WizardStrings.Format(
                 "Priority.CategoryPage.Binding",
                 "Revision {0} · snapshot {1}",
-                state.Binding.ContentRevision,
-                ShortDigest(state.SnapshotDigest)),
+                _state.Binding.ContentRevision,
+                ShortDigest(_state.SnapshotDigest)),
             NativeTheme.Muted);
         binding.AutomationId = "creation-prerequisite-category-binding";
         _body.Add(binding);
 
         IReadOnlyList<CreationPrerequisitePhoneRankOption> options =
-            _draft.OptionsForCategory(state, Coordinator.State, _categoryId);
+            _draft.OptionsForCategory(_state, Coordinator.State, _categoryId);
         if (options.Count == 0)
         {
             AddBlockers([CharacterCreationPrerequisiteBlockers.AuthorityUnavailable]);
@@ -73,7 +67,7 @@ public sealed class CreationPriorityCategoryPage : NativePageBase
         }
 
         CharacterCreationPriorityOptionProjection? selected =
-            _draft.SelectedOption(state, Coordinator.State, _categoryId);
+            _draft.SelectedOption(_state, Coordinator.State, _categoryId);
         foreach (CreationPrerequisitePhoneRankOption option in options)
         {
             CharacterCreationPriorityOptionProjection projection = option.Projection;
@@ -104,15 +98,15 @@ public sealed class CreationPriorityCategoryPage : NativePageBase
             _body.Add(NativeTheme.NavigationRow(
                 WizardStrings.Format("Common.Rank", "Rank {0}", projection.Rank),
                 detail,
-                () => SelectAsync(state, projection.Rank),
+                () => SelectAsync(projection.Rank),
                 option.IsEnabled,
                 $"creation-prerequisite-rank-{Token(_categoryId)}-{Token(projection.Rank)}"));
         }
     }
 
-    private async Task SelectAsync(CharacterCreationPrerequisiteState state, string rank)
+    private async Task SelectAsync(string rank)
     {
-        if (!_draft.TrySelect(state, Coordinator.State, _categoryId, rank))
+        if (!_draft.TrySelect(_state, Coordinator.State, _categoryId, rank))
         {
             Refresh();
             return;

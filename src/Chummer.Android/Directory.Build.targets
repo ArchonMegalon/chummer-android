@@ -1,0 +1,5 @@
+<Project>
+  <PropertyGroup>
+    <AfterMicrosoftNETSdkTargets>$(AfterMicrosoftNETSdkTargets);$(MSBuildThisFileDirectory)Chummer.Android.AfterMicrosoftNETSdk.targets</AfterMicrosoftNETSdkTargets>
+  </PropertyGroup>
+</Project>

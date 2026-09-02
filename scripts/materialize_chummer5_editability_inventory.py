@@ -21,6 +21,16 @@ from pathlib import Path
 from pathlib import PurePosixPath
 from typing import Any, Iterable
 
+SCRIPT_DIRECTORY = Path(__file__).resolve().parent
+if str(SCRIPT_DIRECTORY) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIRECTORY))
+
+from api36_wizard_gate_contract import (  # noqa: E402
+    DEFAULT_CONTRACT as WIZARD_GATE_CONTRACT_PATH,
+    contract_binding as wizard_gate_contract_binding,
+    load_contract as load_wizard_gate_contract,
+)
+
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PHONE_E2E_PACKAGE = "com.myexternalbrain.chummer"
@@ -98,10 +108,15 @@ SR5_TABLE_WIZARD_TEST_INPUTS = (
 )
 SR5_TABLE_WIZARD_GATE_INPUTS = (
     ".github/workflows/api36-editing-e2e.yml",
+    "eng/api36-sr5-wizard-gate-authority.json",
+    "scripts/api36_wizard_gate_contract.py",
+    "scripts/finalize-api36-e2e-journey-receipt.py",
     "scripts/run-api36-editing-e2e-ci.sh",
+    "scripts/verify-api36-editing-e2e-aggregate.py",
     "src/Chummer.Android/Chummer.Android.csproj",
     "tests/Chummer.Android.Native.CompileCheck/NativeCompileInputs.props",
     "tests/test_api36_e2e_workflow.py",
+    "tests/test_api36_e2e_artifact_authority.py",
     "tests/test_chummer5_editability_inventory.py",
     "tests/test_sr5_contextual_wizard_scope.py",
 )
@@ -7314,6 +7329,57 @@ def _contains(path: Path, *markers: str) -> bool:
     return all(marker in text for marker in markers)
 
 
+def _csharp_method_source(
+    path: Path,
+    method_name: str,
+    declaration_marker: str,
+) -> str | None:
+    """Return one exact C# method member, bounded by its declaring indentation."""
+
+    if not path.is_file():
+        return None
+    text = _read_text(path)
+    declaration = re.compile(
+        rf"(?m)^(?P<indent>[ \t]*)(?:public|private|protected|internal)"
+        rf"[^\n]*\b{re.escape(method_name)}\s*\("
+    )
+    matches = [
+        match
+        for match in declaration.finditer(text)
+        if declaration_marker in match.group(0)
+    ]
+    if len(matches) != 1:
+        return None
+    match = matches[0]
+    indent = re.escape(match.group("indent"))
+    next_member = re.compile(
+        rf"(?m)^{indent}(?:public|private|protected|internal)"
+        r"[^\n]*(?:\(|=>|\{)"
+    ).search(text, match.end())
+    end = next_member.start() if next_member is not None else len(text)
+    return text[match.start():end].rstrip()
+
+
+def _csharp_method_contains(
+    path: Path,
+    method_name: str,
+    declaration_marker: str,
+    *markers: str,
+) -> bool:
+    """Require reviewed markers in order inside one exact C# method."""
+
+    source = _csharp_method_source(path, method_name, declaration_marker)
+    if source is None:
+        return False
+    offset = 0
+    for marker in markers:
+        found = source.find(marker, offset)
+        if found < 0:
+            return False
+        offset = found + len(marker)
+    return True
+
+
 def _career_weapon_ammo_equality_guarded(path: Path) -> bool:
     if not path.is_file():
         return False
@@ -7756,8 +7822,14 @@ def _known_phone_mapping(
         e2e_driver = REPO_ROOT / "tests" / "run_api36_new_character_settings_e2e.py"
         dialog_factory = presentation_root / "Chummer.Presentation" / "Overview" / "DesktopDialogFactory.cs"
         dialog_coordinator = presentation_root / "Chummer.Presentation" / "Overview" / "DialogCoordinator.cs"
+        legacy_completion_blocked = _contains(
+            dialog_coordinator,
+            "This legacy setup cannot create an authoritative runner.",
+            "Start the real Creation Wizard from New Runner.",
+        )
         implementation_complete = (
-            _contains(native_dialog, 'AutomationId = $"dialog-field-{Token(field.Id)}"', 'AutomationId = $"dialog-action-{Token(action.Id)}"')
+            not legacy_completion_blocked
+            and _contains(native_dialog, 'AutomationId = $"dialog-field-{Token(field.Id)}"', 'AutomationId = $"dialog-action-{Token(action.Id)}"')
             and _contains(build_page, 'NativeTheme.Metric("Character Setting"', "Coordinator.State.Rules?.Settings")
             and _contains(dialog_factory, '"newCharacterSetting"', '"newCharacterIgnoreRules"', '"newCharacterWorkflowSetting"', '"newCharacterWorkflowIgnoreRules"')
             and _contains(dialog_coordinator, '"newCharacterSetting"', '"newCharacterIgnoreRules"', '"settings"', '"ignorerules"', "CompleteNewCharacterWorkflowAsync")
@@ -7827,8 +7899,14 @@ def _known_phone_mapping(
         helper_driver = REPO_ROOT / "tests" / "run_api36_new_character_priority_e2e.py"
         dialog_factory = presentation_root / "Chummer.Presentation" / "Overview" / "DesktopDialogFactory.cs"
         dialog_coordinator = presentation_root / "Chummer.Presentation" / "Overview" / "DialogCoordinator.cs"
+        legacy_completion_blocked = _contains(
+            dialog_coordinator,
+            "This legacy setup cannot create an authoritative runner.",
+            "Start the real Creation Wizard from New Runner.",
+        )
         implementation_complete = (
-            _contains(
+            not legacy_completion_blocked
+            and _contains(
                 native_dialog,
                 'AutomationId = $"dialog-field-{Token(field.Id)}"',
                 'AutomationId = $"dialog-action-{Token(action.Id)}"',
@@ -7990,11 +8068,27 @@ def _known_phone_mapping(
                 "CharacterCreationPrerequisiteConfirmRequest",
             )
         )
-        rank_authority = shared_authority and _contains(
-            category_page,
-            "_draft.OptionsForCategory(state, Coordinator.State, _categoryId)",
-            "_draft.TrySelect(state, Coordinator.State, _categoryId, rank)",
-            '$"creation-prerequisite-rank-',
+        rank_authority = (
+            shared_authority
+            and _contains(
+                prerequisite_page,
+                "CharacterCreationFoundationResult<CharacterCreationPrerequisiteState> load =",
+                "new CreationPriorityCategoryPage(\n"
+                "                    Coordinator,\n"
+                "                    _draft,\n"
+                "                    state,\n"
+                "                    category)",
+            )
+            and _contains(
+                category_page,
+                "private readonly CharacterCreationPrerequisiteState _state;",
+                "CharacterCreationPrerequisiteState state,",
+                "_state = state ?? throw new ArgumentNullException(nameof(state));",
+                "if (!_draft.Matches(_state, Coordinator.State))",
+                "_draft.OptionsForCategory(_state, Coordinator.State, _categoryId)",
+                "_draft.TrySelect(_state, Coordinator.State, _categoryId, rank)",
+                '$"creation-prerequisite-rank-',
+            )
         )
         heritage_authority = shared_authority and _contains(
             detail_page,
@@ -20385,13 +20479,57 @@ def _known_phone_mapping(
                 "TryValidateRequestedValue",
             )
             and _contains(resolver_contract, "TryResolveSpiritCatalogNames")
-            and _contains(
+            and _csharp_method_contains(
                 resolver,
                 "TryResolveSpiritCatalogNames",
+                "public bool TryResolveSpiritCatalogNames(",
+                "using IDisposable sourceInputScope = _sourceInputs.Enter();",
+                "if (_sourceInputs.HasSourceDrift)",
                 'TryLoadEffectiveDocument(_catalog, fileName',
-                'EnumerateFiles(directory.Path, $"*_{fileName}"',
-                'TryResolveTarget(',
                 'Elements("spirits").Take(2)',
+                'EnumerateSourceFiles(\n'
+                '                            directory.Path,\n'
+                '                            $"*_{fileName}",\n'
+                '                            SearchOption.AllDirectories)',
+                'TryResolveTarget(',
+            )
+            and _csharp_method_contains(
+                resolver,
+                "TryResolveTarget",
+                "private bool TryResolveTarget(",
+                "TryLoadEffectiveDocument(_catalog, fileName",
+                'EnumerateSourceFiles(\n'
+                '                            directory.Path,\n'
+                '                            $"*_{fileName}",\n'
+                '                            SearchOption.AllDirectories)',
+                "TryLoadXml(path, out XDocument? customDocument)",
+                "TryApplyCustomFile(",
+            )
+            and _csharp_method_contains(
+                resolver,
+                "EnumerateSourceFiles",
+                "private static string[] EnumerateSourceFiles(",
+                "ActiveSourceInputs.Value?.EnumerateFiles(directory, searchPattern, searchOption)",
+                "?? Directory.EnumerateFiles(directory, searchPattern, searchOption).ToArray();",
+            )
+            and _csharp_method_contains(
+                resolver,
+                "TryLoadEffectiveDocument",
+                "private static bool TryLoadEffectiveDocument(",
+                'string cacheKey = CreateSourceCacheKey("effective-document", fileName);',
+                "cachedInputs.TryGetEffectiveDocument(cacheKey, out document)",
+                "TryLoadXml(basePath, out document)",
+                "EnumerateSourceFiles(pack.DataPath, \"*.xml\", SearchOption.TopDirectoryOnly)",
+                "ActiveSourceInputs.Value?.SetEffectiveDocument(cacheKey, document);",
+            )
+            and _csharp_method_contains(
+                resolver,
+                "TryLoadXml",
+                "private static bool TryLoadXml(",
+                "if (ActiveSourceInputs.Value is { } sourceInputs)",
+                "return sourceInputs.TryLoadXml(path, out document);",
+                "DtdProcessing = DtdProcessing.Prohibit",
+                "XmlResolver = null",
             )
             and _contains(traditions_catalog, "<spirits>", "Spirit of Fire", "Spirit of Air")
             and _contains(
@@ -23531,6 +23669,8 @@ def build_inventory(
     if not registry_path.is_file():
         raise FileNotFoundError(f"Missing Android parity registry: {registry_path}")
     registry = json.loads(_read_text(registry_path))
+    wizard_gate_contract = load_wizard_gate_contract(WIZARD_GATE_CONTRACT_PATH)
+    wizard_gate_binding = wizard_gate_contract_binding(WIZARD_GATE_CONTRACT_PATH)
     rows, source_summary = extract_legacy_rows(chummer5_root)
     enrich_rows(rows, registry, chummer5_root, presentation_root, core_engine_root)
 
@@ -24033,6 +24173,16 @@ def build_inventory(
             "androidParityRegistry": {
                 "path": "chummer-design/products/chummer/ANDROID_WINDOWS_FEATURE_PARITY.yaml",
                 "sha256": _sha256_file(registry_path),
+            },
+            "phoneBetaWizardGate": {
+                **wizard_gate_binding,
+                "excludedFromGate": wizard_gate_contract["excludedFromGate"],
+                "relationshipToExhaustiveInventory": (
+                    "This wizard-only phone-beta gate does not mark the exhaustive "
+                    "Chummer5 editability inventory complete and receives no completion "
+                    "credit from Full Editing evidence."
+                ),
+                "inventoryCompletionCountContribution": 0,
             },
             "androidAndPresenterSources": [
                 {

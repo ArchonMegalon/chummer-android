@@ -1,26 +1,42 @@
 {
-  "contractName": "chummer.android.internal-phone-beta-package-authority/v1",
+  "contractName": "chummer.android.internal-phone-beta-package-authority/v2",
   "authorityClass": "internal_phone_beta_only",
-  "authorityState": "independently_audited",
+  "authorityState": "current_graph_verified",
   "publicationAuthorized": false,
   "presentationSource": {
-    "productionCommit": "3a5ca054e1ce126a02dec4199dc92233dfee8804",
-    "productionTree": "25def23deef40822e3ff89549cc509e01c149ed4",
-    "packageAuthorityCommit": "a8a317aff534dc5fd47f2db1bc39466799021990",
-    "packageAuthorityTree": "f8214243280030de5d134351f39ea4b23afbe394",
+    "commit": "732a33cb8d3c704b8a86e1249eab46508339a105",
+    "tree": "db56a83e5fee94d9aec7fd56a4b0df078c7dda62",
     "repository": "https://github.com/ArchonMegalon/chummer6-ui.git"
   },
-  "authority": {
-    "path": "config/android-presentation-package-authority.json",
-    "sha256": "4dfc8bff234ced999792797b7ac4e5f5dd5d371c1c261bc56b2f6adcfa382c4b",
-    "sizeBytes": 8207,
-    "gitBlob": "2a4acfe802a51b275793338fa660b5f69275751b"
+  "packagePlaneLock": {
+    "path": "config/package-plane.lock.json",
+    "contractName": "chummer6-ui.fresh-package-plane-lock",
+    "contractVersion": 11,
+    "sha256": "fce976ba629f8871da69c1163c9c642d9f9878cf53e9ad5a34f718a41cb76e57",
+    "sizeBytes": 54835,
+    "gitBlob": "316fac3a1c2c2334155c1189c05af008feb5dda4"
   },
   "verificationReceipt": {
-    "sha256": "aaf2c755ef7233f2b21bc257e306ea5de60ac42125c3c8b47501aa05a3b949dd",
-    "sizeBytes": 129553,
-    "journalSha256": "4b41a6c2afded5acf83b07a59ac73605faf5037948a0dd0fbed772440ff54bec",
-    "journalSizeBytes": 38137
+    "contractName": "chummer6-ui.fresh-package-plane-verification",
+    "contractVersion": 11,
+    "sha256": "d99fd73db6bec5cdf3a83476d9e84e1f8df3bd7b4f8ee6e878d9b51c78e3602b",
+    "sizeBytes": 39791,
+    "status": "passed"
+  },
+  "artifactCache": {
+    "contractName": "chummer6-ui.owner-package-artifact-cache/v1",
+    "cacheKey": "7bbc24b8d9cb08b81b4acca837dd34db40830096a8c66ad36a5d49950210a316",
+    "manifestFileName": "owner-package-cache.json",
+    "manifestSha256": "779b4230cd400983b3777c5f00d9a8e6247c7f1cc9949a6a8ecfc390acc5690e",
+    "manifestSizeBytes": 13707,
+    "packageCount": 18
+  },
+  "sourceGraph": {
+    "corePackageRecipeCommit": "c06f22c185c7b733637fdb76b3cf333f31716781",
+    "coreRuntimeSourceCommit": "60112dccb6a3faad330d32c3c98eef0aa81d97af",
+    "hubProducerCommit": "bc199cbe0982833ec2fc9ce625826e612759d67a",
+    "registryCommit": "af9a7e19c3bf331e96411dfb8f9e7820a98cab29",
+    "uiKitCommit": "d51ecd99cf72098d4adc8db0192bff7bf9fd8e61"
   },
   "dependencyMode": {
     "packageOnly": true,
@@ -52,123 +68,20 @@
     "includesBlazorUi": false,
     "desktopReleaseGate": false
   },
-  "packagePins": [
+  "androidConsumerLocks": [
     {
-      "package_id": "Chummer.Application",
-      "version": "0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819",
-      "sha256": "b1d239637100efefaaa36d87cb4a2029a3e91ec26333f8d3be7036cd868f92dd",
-      "size_bytes": 447924
+      "project": "src/Chummer.Android/Chummer.Android.csproj",
+      "path": "src/Chummer.Android/packages.lock.json",
+      "sha256": "66bbd296462b8db4838672af7af011a03ace6fa3c5a98bd7b5cc5c65a20464e6",
+      "sizeBytes": 70375
     },
     {
-      "package_id": "Chummer.Infrastructure",
-      "version": "0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819",
-      "sha256": "24338168a2baa5fa057c5d7841227c7e9bf1a65b0b106c156890e8ad5f5cb696",
-      "size_bytes": 252466
-    },
-    {
-      "package_id": "Chummer.Rulesets.Hosting",
-      "version": "0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819",
-      "sha256": "f707d184da187a0a1f439edb1e7d1fd90d48283d22c67c796ad68a933ad91712",
-      "size_bytes": 14404
-    },
-    {
-      "package_id": "Chummer.Rulesets.Sr4",
-      "version": "0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819",
-      "sha256": "8d74e784f0683766d660c6a275d248315f5e9443054f428541d6c9cf3c1de8ba",
-      "size_bytes": 33912
-    },
-    {
-      "package_id": "Chummer.Rulesets.Sr5",
-      "version": "0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819",
-      "sha256": "d7a5e9d573b787fd5f2097d858015b1d660eeeaa953b7d18137f1287fb8c88db",
-      "size_bytes": 31672
-    },
-    {
-      "package_id": "Chummer.Rulesets.Sr6",
-      "version": "0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819",
-      "sha256": "f775f9370b24731341dac8f9371c6bfae7ce2dab46c9ded876bfd971689e65dd",
-      "size_bytes": 40943
+      "project": "tests/Chummer.Android.Native.CompileCheck/Chummer.Android.Native.CompileCheck.csproj",
+      "path": "tests/Chummer.Android.Native.CompileCheck/packages.lock.json",
+      "sha256": "f421578231b43f5bd81eebedb5b82fd4b9345dc91bc2af005cbefcaab117b00b",
+      "sizeBytes": 16178
     }
   ],
-  "ownerPackagePins": [
-    {
-      "package_id": "Chummer.Campaign.Contracts",
-      "owner": "hub",
-      "version": "0.1.0-packageplane.android.sh1215f9389779e",
-      "sha256": "46d9ed26b3d1dcefc544544ac797123cff3b789dbc7e1d10e751e7a6f03be0b2",
-      "size_bytes": 451361
-    },
-    {
-      "package_id": "Chummer.Play.Contracts",
-      "owner": "hub",
-      "version": "0.1.0-packageplane.android.sh1215f9389779e",
-      "sha256": "9bb54360f1d93dfbc897ad0a73c6cddd81d5167d0a808f6cec7939164624c43f",
-      "size_bytes": 322542
-    },
-    {
-      "package_id": "Chummer.Run.Contracts",
-      "owner": "hub",
-      "version": "0.1.0-packageplane.android.sh1215f9389779e",
-      "sha256": "df750cd521ab8cbd41d479aa3dc94173dfdb2196290619fb6452ef8ae1a9cc98",
-      "size_bytes": 1819542
-    },
-    {
-      "package_id": "Chummer.Run.Hub.Contracts",
-      "owner": "hub",
-      "version": "0.1.0-packageplane.android.sh1215f9389779e",
-      "sha256": "cf8efc62d08619433a7d08e0b94ff40a808834f57ac93676d171bfd42f937697",
-      "size_bytes": 23493
-    },
-    {
-      "package_id": "Chummer.Run.Hub",
-      "owner": "hub",
-      "version": "0.1.0-packageplane.android.sh1215f9389779e",
-      "sha256": "cdca62ef686b83481f05aab7898d44f0b26577192be82739710964bb201cdee8",
-      "size_bytes": 140964
-    },
-    {
-      "package_id": "Chummer.Hub.Registry.Contracts",
-      "owner": "registry",
-      "version": "0.1.0-packageplane.candidate.sh66c418a5004f",
-      "sha256": "2916c9cbfd8da0bc4a13d6a26746ff30ada5e88a593a3e5039d632d58593935d",
-      "size_bytes": 524842
-    },
-    {
-      "package_id": "Chummer.Ui.Kit",
-      "owner": "uiKit",
-      "version": "0.1.0-packageplane.android.shd51ecd99cf720",
-      "sha256": "1cfeb8adb6a0ee9a3e416d9fa6454304870bc30689446afa996fdbd2b5373bf2",
-      "size_bytes": 122029
-    }
-  ],
-  "lockFiles": [
-    {
-      "path": "Chummer.Presentation/packages.lock.json",
-      "sha256": "568fd2c602494329d19fbe8d9a2c83a4c2e82754b50e31141b192c1af7ccf964"
-    },
-    {
-      "path": "Chummer.Desktop.Runtime/packages.lock.json",
-      "sha256": "202a29a35b4768c3306349ee40a34d8f23ada97c0b0ef11e104763b5ff9cc60e"
-    },
-    {
-      "path": "Chummer.Product.UnitTests/Chummer.Presentation.AndroidActivation.Tests.packages.lock.json",
-      "sha256": "c7dc75976db581dfed25adfe9a3057cb7c6845d18138c8f4323f4fd4165b5623"
-    },
-    {
-      "path": "Chummer.Tests/Presentation/Chummer.Presentation.Sr5CareerWizard.Tests.packages.lock.json",
-      "sha256": "c79b3b1827c290ed312254f35e116907c16730b2f69b0bb5dfa6417540bc7f86"
-    },
-    {
-      "path": "Chummer.Tests/Presentation/Chummer.Presentation.Sr5TableWizard.Tests.packages.lock.json",
-      "sha256": "27d88df61af8995e2622a33b31cc198acd82d52ddb8c2641d240c9249a30cb51"
-    }
-  ],
-  "androidConsumerLock": {
-    "project": "tests/Chummer.Android.Native.CompileCheck/Chummer.Android.Native.CompileCheck.csproj",
-    "path": "tests/Chummer.Android.Native.CompileCheck/packages.lock.json",
-    "sha256": "64454d5420e2a5430a046d392c6eea2ca41d9105c1667f2b8a66e1f61064cccc",
-    "sizeBytes": 17968
-  },
   "doesNotAssert": [
     "api36_device_execution",
     "google_play_upload",

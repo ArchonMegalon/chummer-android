@@ -290,20 +290,15 @@ def tap_exact_build_route(
 ) -> None:
     """Recover a preserved Build viewport and tap one unambiguous exact route."""
     shared.reset_scroll_to_top(device, swipes=48)
-    node = device.wait_for_single_exact_resource_id(
+    device.tap_exact_resource_id_bidirectional(
         selector,
         timeout=120,
-        scroll=True,
-        max_scrolls=24,
+        backward_scrolls=0,
+        forward_scrolls=24,
         scroll_distance_ratio=0.22,
         evidence_prefix=evidence_prefix,
         surface_name=surface_name,
     )
-    if not device.node_has_tappable_bounds(node):
-        device.capture(f"{evidence_prefix}-untappable")
-        raise RuntimeError(f"The exact {surface_name.lower()} is not tappable")
-    x, y = node.center
-    device.shell("input", "tap", str(x), str(y))
 
 
 def open_page(device: shared.Device) -> None:

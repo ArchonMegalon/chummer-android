@@ -118,7 +118,7 @@ class CreationResourcesSourceContractTests(unittest.TestCase):
             "creation-resources-saved-draft-digest",
         ):
             self.assertIn(automation_id, text)
-        self.assertIn('AddBudget(state.Budget, "Current exact budget", "creation-resources-budget")', text)
+        self.assertIn('AddBudget(state.Budget, _copy["Resources.CurrentBudget"], "creation-resources-budget")', text)
         self.assertIn('$"{automationId}-priority-nuyen"', text)
         self.assertIn('$"{automationId}-total-starting-nuyen"', text)
 
@@ -134,6 +134,26 @@ class CreationResourcesSourceContractTests(unittest.TestCase):
             "draft.DraftRevision == receipt.DraftRevision",
         ):
             self.assertIn(expression, text)
+
+    def test_phone_authority_uses_the_workspace_raw_auxiliary_sha256_contract(self) -> None:
+        text = source(PAGE)
+        self.assertIn("IsLowerRawSha256(state.Binding.AuxiliaryStateDigest)", text)
+        self.assertNotIn(
+            "CharacterCreationResourcesRules.IsCanonicalDigest(state.Binding.AuxiliaryStateDigest)",
+            text,
+        )
+        for digest in (
+            "state.SnapshotDigest",
+            "state.Binding.PrerequisiteDraftDigest",
+            "state.Binding.AuthorityDigest",
+            "state.Binding.SourceDigest",
+            "state.Binding.RulesDigest",
+            "state.Binding.RuntimeDigest",
+        ):
+            self.assertIn(
+                f"CharacterCreationResourcesRules.IsCanonicalDigest({digest})",
+                text,
+            )
 
     def test_build_dashboard_loads_resources_as_a_bound_background_phase(self) -> None:
         text = source(BUILD_PAGE)

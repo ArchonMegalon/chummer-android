@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import os
 import re
 import subprocess
@@ -88,6 +89,10 @@ COMPONENT = re.compile(
 )
 PROCESS_ID = re.compile(r"[1-9][0-9]*")
 SHA256_TEXT = re.compile(r"[0-9a-f]{64}")
+CANONICAL_COLLECTION_ITEM_RESOURCE_ID = re.compile(
+    r"^collection-item-(?P<kind>[a-z0-9-]+)-"
+    r"(?P<item_id>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$"
+)
 BODY_TOTAL_DESCRIPTION = re.compile(
     r"^Body\.\s+(?:Selected\s+·\s+)?(?P<total>[0-9]+)(?:\s+·|$)"
 )
@@ -95,17 +100,101 @@ MAX_LAUNCH_EVIDENCE_CHARACTERS = 1_000_000
 ADB_TRANSPORT_EVENT_SCHEMA = "chummer.android.adb-transport-event/v1"
 ADB_TRANSPORT_PREFLIGHT_SCHEMA = "chummer.android.adb-transport-preflight/v1"
 ADB_TRANSPORT_SUMMARY_SCHEMA = "chummer.android.adb-transport-summary/v1"
+ADB_FILE_HIERARCHY_RETRY_SCHEMA = (
+    "chummer.android.file-hierarchy-retry-evidence/v1"
+)
+DURABLE_SAVE_OUTCOME_FAILURE_SCHEMA = (
+    "chummer.android.durable-save-outcome-failure/v1"
+)
 ADB_READ_ONLY_MAX_ATTEMPTS = 3
 ADB_READ_ONLY_RETRY_DELAY_SECONDS = 1.0
+ADB_READ_ONLY_HIERARCHY_ATTEMPT_MAX_SECONDS = 8.0
+ADB_READ_ONLY_DEADLINE_HEADROOM_SECONDS = 0.5
+ADB_TIMEOUT_HIERARCHY_MAX_BYTES = 1_000_000
 ADB_SWIPE_RECONCILIATION_REQUIRED_CONSECUTIVE = 2
 ADB_SWIPE_RECONCILIATION_MAX_OBSERVATIONS = 3
 ADB_SWIPE_RECONCILIATION_DELAY_SECONDS = 0.5
+ADB_HIERARCHY_DUMP_RECONCILIATION_REQUIRED_CONSECUTIVE = 2
+ADB_HIERARCHY_DUMP_RECONCILIATION_MAX_OBSERVATIONS = 8
+ADB_HIERARCHY_DUMP_RECONCILIATION_DELAY_SECONDS = 0.25
+ADB_HIERARCHY_DUMP_RECONCILIATION_READ_ATTEMPT_MAX_SECONDS = 1.0
+ADB_HIERARCHY_DUMP_RECONCILIATION_HEADROOM_SECONDS = 0.5
+ADB_HIERARCHY_DUMP_RECONCILIATION_MAX_SECONDS = 10.0
+ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_MAX_OBSERVATIONS = 3
+ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_DELAY_SECONDS = 8.0
+ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_READ_ATTEMPT_MAX_SECONDS = 10.0
+ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_MAX_SECONDS = 48.0
 ADB_READ_ONLY_HIERARCHY_ARGUMENTS = (
     "exec-out",
     "uiautomator",
     "dump",
     "--compressed",
     "/dev/tty",
+)
+ADB_FILE_HIERARCHY_REMOTE_PATH = "/sdcard/chummer-editing-window.xml"
+ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS = (
+    "rm",
+    "-f",
+    ADB_FILE_HIERARCHY_REMOTE_PATH,
+)
+ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS = (
+    "uiautomator",
+    "dump",
+    "--compressed",
+    ADB_FILE_HIERARCHY_REMOTE_PATH,
+)
+ADB_FILE_HIERARCHY_STAT_SHELL_ARGUMENTS = (
+    "stat",
+    "-c",
+    "%d:%i:%s:%Y:%f",
+    ADB_FILE_HIERARCHY_REMOTE_PATH,
+)
+# This exact command observes accessibility state and writes only the driver's
+# disposable hierarchy file. A failed invocation may therefore be followed by
+# a new observation, but only through Device.hierarchy: every attempt first
+# removes the owned path, and any retried result must pass stat/content/stat
+# identity reconciliation. Generic shell retry remains forbidden.
+ADB_FILE_HIERARCHY_MAX_ATTEMPTS = 3
+ADB_FILE_HIERARCHY_RETRY_DELAY_SECONDS = 1.0
+ADB_FILE_HIERARCHY_IDENTITY_READ_ATTEMPT_MAX_SECONDS = 2.0
+ADB_FILE_HIERARCHY_IDENTITY_HEADROOM_SECONDS = 0.5
+ADB_FILE_HIERARCHY_FRESHNESS_BARRIER_ATTEMPT_MAX_SECONDS = 2.0
+ADB_FILE_HIERARCHY_MINIMUM_DUMP_ATTEMPT_SECONDS = 1.0
+ADB_FILE_HIERARCHY_DUMP_ATTEMPT_MAX_SECONDS = 20.0
+ADB_FILE_HIERARCHY_ABSENT_OUTPUT = (
+    f"cat: {ADB_FILE_HIERARCHY_REMOTE_PATH}: No such file or directory"
+)
+ADB_FILE_HIERARCHY_VISIBILITY_MAX_OBSERVATIONS = 8
+ADB_FILE_HIERARCHY_VISIBILITY_DELAY_SECONDS = 0.25
+ADB_FILE_HIERARCHY_VISIBILITY_READ_ATTEMPT_MAX_SECONDS = 1.0
+ADB_FILE_HIERARCHY_VISIBILITY_MAX_SECONDS = 6.0
+DOCUMENTS_UI_PACKAGE = "com.google.android.documentsui"
+DOCUMENTS_UI_DRAWER_MARKER = "Open from"
+DOCUMENTS_UI_DOWNLOADS_ROOT = "Downloads"
+DOCUMENTS_UI_DOWNLOADS_DESTINATION = "Files in Downloads"
+DOCUMENTS_UI_MAX_DOWNLOADS_TAPS = 3
+DOCUMENTS_UI_DOWNLOADS_RETRY_SETTLE_SECONDS = 2.25
+DOCUMENTS_UI_POLL_DELAY_SECONDS = 0.75
+ADB_CREATION_BOOTSTRAP_LOGCAT_ARGUMENTS = (
+    "logcat",
+    "-d",
+    "-t",
+    "50",
+    "-s",
+    "ChummerBootstrap:I",
+    "*:S",
+)
+ADB_CREATION_BOOTSTRAP_LOGCAT_CLEAR_ARGUMENTS = ("logcat", "-c")
+ADB_CREATION_DASHBOARD_READY_LOGCAT_ARGUMENTS = (
+    "logcat",
+    "-d",
+    "-b",
+    "main",
+    "-v",
+    "raw",
+    "-s",
+    "ChummerRoute:I",
+    "*:S",
 )
 ADB_PREFLIGHT_REQUIRED_CONSECUTIVE = 3
 ADB_PREFLIGHT_MAX_OBSERVATIONS = 7
@@ -114,6 +203,10 @@ MAX_ADB_TRANSPORT_EVENTS = 64
 MAX_ADB_FAILURE_DETAIL_CHARACTERS = 4000
 SAFE_READ_ONLY_REMOTE_PATH = re.compile(r"^/[A-Za-z0-9._/:-]{1,511}$")
 SAFE_ANDROID_PROPERTY = re.compile(r"^[A-Za-z0-9._-]{1,255}$")
+ADB_FILE_HIERARCHY_STAT = re.compile(
+    r"^(?P<device>[0-9]+):(?P<inode>[0-9]+):(?P<size>[0-9]+):"
+    r"(?P<modified>-?[0-9]+):(?P<mode>[0-9a-fA-F]+)$"
+)
 
 
 def _bounded_adb_detail(value: object) -> str:
@@ -136,6 +229,175 @@ def _write_new_json_receipt(path: Path, receipt: dict[str, object]) -> None:
         os.fsync(stream.fileno())
 
 
+def _complete_timed_out_hierarchy_output(
+    error: subprocess.TimeoutExpired,
+) -> tuple[str, str, int] | None:
+    """Accept only one complete, well-formed hierarchy emitted before timeout.
+
+    API-36 can leave ``uiautomator dump ... /dev/tty`` alive after it has emitted
+    the complete snapshot.  The command is an exact read-only argv.  Its bytes
+    may therefore become observation authority only when strict UTF-8 decoding,
+    a single hierarchy envelope, a closed root, an allowed prefix/suffix, and at
+    least one accessibility node all agree.  Partial or ambiguous output remains
+    an ordinary timeout and follows the bounded retry/fail-closed path.
+    """
+    raw_stderr = error.stderr
+    if raw_stderr not in (None, "", b""):
+        return None
+    raw = error.stdout
+    if raw is None:
+        return None
+    if isinstance(raw, bytes):
+        try:
+            output = raw.decode("utf-8", errors="strict")
+        except UnicodeDecodeError:
+            return None
+    elif isinstance(raw, str):
+        output = raw
+    else:
+        return None
+    try:
+        output_bytes = output.encode("utf-8", errors="strict")
+    except UnicodeEncodeError:
+        return None
+    if len(output_bytes) > ADB_TIMEOUT_HIERARCHY_MAX_BYTES:
+        return None
+
+    hierarchy_start = output.find("<hierarchy")
+    hierarchy_close = "</hierarchy>"
+    hierarchy_end = output.find(hierarchy_close, hierarchy_start + 1)
+    if (
+        hierarchy_start < 0
+        or hierarchy_end < hierarchy_start
+        or output.find("<hierarchy", hierarchy_start + 1) >= 0
+        or output.find(hierarchy_close, hierarchy_end + len(hierarchy_close)) >= 0
+    ):
+        return None
+
+    prefix = output[:hierarchy_start]
+    suffix = output[hierarchy_end + len(hierarchy_close):]
+    if re.fullmatch(r"\s*(?:<\?xml[^>]*\?>\s*)?", prefix) is None:
+        return None
+    if re.fullmatch(
+        r"\s*(?:UI (?:hierarchy|hierchary) dumped to:\s*/dev/tty\s*)?",
+        suffix,
+        flags=re.IGNORECASE,
+    ) is None:
+        return None
+
+    payload = output[hierarchy_start:hierarchy_end + len(hierarchy_close)]
+    try:
+        root = ET.fromstring(payload)
+    except ET.ParseError:
+        return None
+    if (
+        root.tag != "hierarchy"
+        or set(root.attrib) != {"rotation"}
+        or root.attrib["rotation"] not in {"0", "1", "2", "3"}
+    ):
+        return None
+    required_attributes = {
+        "index", "text", "resource-id", "class", "package", "content-desc",
+        "checkable", "checked", "clickable", "enabled", "focusable", "focused",
+        "scrollable", "long-clickable", "password", "selected", "bounds",
+    }
+    boolean_attributes = {
+        "checkable", "checked", "clickable", "enabled", "focusable", "focused",
+        "scrollable", "long-clickable", "password", "selected",
+    }
+    nodes = list(root.iter("node"))
+    if any(element.tag != "node" for element in root.iter() if element is not root):
+        return None
+    if any(
+        not required_attributes.issubset(node.attrib)
+        or re.fullmatch(r"[0-9]+", node.attrib["index"]) is None
+        or not node.attrib["class"]
+        or node.attrib["package"] != PACKAGE
+        or BOUNDS.fullmatch(node.attrib["bounds"]) is None
+        or any(node.attrib[name] not in {"true", "false"} for name in boolean_attributes)
+        for node in nodes
+    ):
+        return None
+    node_count = len(nodes)
+    if node_count <= 0:
+        return None
+    return output, payload, node_count
+
+
+def _parse_file_hierarchy_metadata(output: object) -> dict[str, int] | None:
+    if not isinstance(output, str):
+        return None
+    match = ADB_FILE_HIERARCHY_STAT.fullmatch(output.strip())
+    if match is None:
+        return None
+    metadata = {
+        "device": int(match.group("device"), 10),
+        "inode": int(match.group("inode"), 10),
+        "sizeBytes": int(match.group("size"), 10),
+        "modifiedEpochSeconds": int(match.group("modified"), 10),
+        "mode": int(match.group("mode"), 16),
+    }
+    if (
+        metadata["inode"] <= 0
+        or not 0 < metadata["sizeBytes"] <= ADB_TIMEOUT_HIERARCHY_MAX_BYTES
+        or metadata["modifiedEpochSeconds"] <= 0
+        or metadata["mode"] & 0o170000 != 0o100000
+    ):
+        return None
+    return metadata
+
+
+def _complete_file_hierarchy(raw: object) -> tuple[str, int, str] | None:
+    if not isinstance(raw, bytes) or len(raw) > ADB_TIMEOUT_HIERARCHY_MAX_BYTES:
+        return None
+    try:
+        output = raw.decode("utf-8", errors="strict")
+    except UnicodeDecodeError:
+        return None
+    hierarchy_start = output.find("<hierarchy")
+    hierarchy_close = "</hierarchy>"
+    hierarchy_end = output.find(hierarchy_close, hierarchy_start + 1)
+    if (
+        hierarchy_start < 0
+        or hierarchy_end < hierarchy_start
+        or output.find("<hierarchy", hierarchy_start + 1) >= 0
+        or output.find(hierarchy_close, hierarchy_end + len(hierarchy_close)) >= 0
+        or re.fullmatch(
+            r"\s*(?:<\?xml[^>]*\?>\s*)?",
+            output[:hierarchy_start],
+        ) is None
+        or output[hierarchy_end + len(hierarchy_close):].strip()
+    ):
+        return None
+    payload = output[hierarchy_start:hierarchy_end + len(hierarchy_close)]
+    try:
+        root = ET.fromstring(payload)
+    except ET.ParseError:
+        return None
+    nodes = list(root.iter("node"))
+    if (
+        root.tag != "hierarchy"
+        or set(root.attrib) != {"rotation"}
+        or root.attrib["rotation"] not in {"0", "1", "2", "3"}
+        or any(element.tag != "node" for element in root.iter() if element is not root)
+        or not nodes
+    ):
+        return None
+    return output, len(nodes), root.attrib["rotation"]
+
+
+def classify_file_hierarchy_dump_failure(
+    arguments: tuple[str, ...],
+    error: BaseException,
+) -> tuple[str, bool]:
+    exact = ("shell", *ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS)
+    if arguments != exact:
+        return ("unclassified-adb-failure", False)
+    if isinstance(error, subprocess.CalledProcessError) and error.returncode == 137:
+        return ("observer-process-killed", True)
+    return classify_adb_failure(error)
+
+
 def _adb_arguments_sha256(arguments: tuple[str, ...]) -> str:
     return hashlib.sha256("\0".join(arguments).encode("utf-8")).hexdigest()
 
@@ -146,7 +408,16 @@ def _adb_arguments_evidence(
 ) -> list[str]:
     if command_policy == "read-only-retryable":
         return list(arguments)
-    visible = 2 if arguments[:1] == ("shell",) else 1
+    # The command kind is non-sensitive and must remain visible so downstream
+    # proof validators cannot relabel one ambiguous shell mutation as another.
+    # Swipe coordinates remain redacted.
+    visible = (
+        3
+        if arguments[:3] == ("shell", "input", "swipe")
+        else 2
+        if arguments[:1] == ("shell",)
+        else 1
+    )
     prefix = list(arguments[:visible])
     hidden = len(arguments) - len(prefix)
     if hidden > 0:
@@ -239,6 +510,10 @@ def adb_classification_authority(classification: str) -> str:
         return "recognized-nonretryable-transport-marker"
     if classification == "timeout-unknown-outcome":
         return "timeout-with-unknown-command-outcome"
+    if classification == "observer-process-killed":
+        return "exact-file-hierarchy-observer-exit-137"
+    if classification == "caller-deadline-exhausted-before-retry":
+        return "caller-owned-deadline-before-command"
     return "unclassified-fail-closed"
 
 
@@ -253,6 +528,11 @@ def adb_command_retry_policy(arguments: tuple[str, ...]) -> tuple[str, str]:
             "read-only-retryable",
             "exact accessibility-hierarchy observation without app mutation",
         )
+    if arguments == ("shell", *ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS):
+        return (
+            "read-only-retryable",
+            "exact fenced file-backed accessibility-hierarchy observation",
+        )
     if (
         len(arguments) == 3
         and arguments[:2] == ("exec-out", "cat")
@@ -261,6 +541,16 @@ def adb_command_retry_policy(arguments: tuple[str, ...]) -> tuple[str, str]:
         return ("read-only-retryable", "exact remote-file byte observation")
     if arguments == ("logcat", "-d", "-t", "500"):
         return ("read-only-retryable", "bounded logcat dump observation")
+    if arguments == ADB_CREATION_BOOTSTRAP_LOGCAT_ARGUMENTS:
+        return (
+            "read-only-retryable",
+            "bounded exact-tag creation-bootstrap timing observation",
+        )
+    if arguments == ADB_CREATION_DASHBOARD_READY_LOGCAT_ARGUMENTS:
+        return (
+            "read-only-retryable",
+            "bounded exact-tag creation-dashboard route-ready snapshot observation",
+        )
     if arguments[:1] != ("shell",):
         return (
             "non-replayable",
@@ -290,6 +580,11 @@ def adb_command_retry_policy(arguments: tuple[str, ...]) -> tuple[str, str]:
         and SAFE_READ_ONLY_REMOTE_PATH.fullmatch(shell_arguments[3]) is not None
     ):
         return ("read-only-retryable", "exact remote-path absence observation")
+    if shell_arguments == ADB_FILE_HIERARCHY_STAT_SHELL_ARGUMENTS:
+        return (
+            "read-only-retryable",
+            "exact hierarchy temporary-file identity observation",
+        )
     read_only_dumpsys = (
         ("dumpsys", "input_method"),
         ("dumpsys", "activity", "activities"),
@@ -333,6 +628,154 @@ class AdbTransportError(RuntimeError):
             f"automaticReplayPerformed={replay['performed']!r}, "
             f"replaySuppressed={replay['suppressed']!r}; evidence={evidence_path}"
         )
+
+
+class AdbOperationDeadlineExceeded(RuntimeError):
+    """Raised before an ADB invocation when its caller-owned deadline expired."""
+
+
+def _remaining_operation_timeout(
+    *,
+    deadline: float | None,
+    maximum: float,
+) -> float:
+    if deadline is None:
+        return maximum
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        raise AdbOperationDeadlineExceeded(
+            "ADB operation deadline expired before command invocation"
+        )
+    return min(maximum, remaining)
+
+
+def _read_only_retry_attempt_timeout(
+    *,
+    deadline: float,
+    maximum: float,
+) -> float:
+    """Share a caller lease across every allowed read-only attempt and delay."""
+    remaining = deadline - time.monotonic()
+    reserved = (
+        (ADB_READ_ONLY_MAX_ATTEMPTS - 1) * ADB_READ_ONLY_RETRY_DELAY_SECONDS
+        + ADB_READ_ONLY_DEADLINE_HEADROOM_SECONDS
+    )
+    available = remaining - reserved
+    if available <= 0:
+        raise AdbOperationDeadlineExceeded(
+            "ADB read-only retry lease expired before command invocation"
+        )
+    return min(maximum, available / ADB_READ_ONLY_MAX_ATTEMPTS)
+
+
+def _hierarchy_dump_attempt_timeout(
+    *,
+    deadline: float,
+    maximum: float,
+    reserve_fresh_retry: bool = True,
+) -> float:
+    """Keep the caller lease for reconciliation and one fresh retry.
+
+    The first file-backed observer invocation is outcome-ambiguous: its
+    process may have written the owned path even when the host sees a timeout.
+    Before allowing that invocation to consume the lease, split the remaining
+    dump budget between the current invocation and one new freshness barrier,
+    retry delay, fresh dump, and strict metadata/content/stat reconciliation.
+    This keeps a viable retry even when the caller has only a short slice left;
+    it does not enlarge the caller-owned deadline.
+    """
+    if type(reserve_fresh_retry) is not bool:
+        raise TypeError("Hierarchy retry reservation policy must be boolean")
+    remaining = deadline - time.monotonic()
+    current_freshness_reserve = ADB_FILE_HIERARCHY_FRESHNESS_BARRIER_ATTEMPT_MAX_SECONDS
+    reconciliation_reserve = (
+        3 * ADB_FILE_HIERARCHY_IDENTITY_READ_ATTEMPT_MAX_SECONDS
+        + ADB_FILE_HIERARCHY_IDENTITY_HEADROOM_SECONDS
+    )
+    if reserve_fresh_retry:
+        fixed_retry_reserve = (
+            current_freshness_reserve
+            + ADB_FILE_HIERARCHY_FRESHNESS_BARRIER_ATTEMPT_MAX_SECONDS
+            + ADB_FILE_HIERARCHY_RETRY_DELAY_SECONDS
+            + reconciliation_reserve
+            + ADB_READ_ONLY_DEADLINE_HEADROOM_SECONDS
+        )
+        available = remaining - fixed_retry_reserve
+        # The current and reserved retry dumps share the remaining slice.  If
+        # the caller lease cannot fund two positive slices, fail before the
+        # freshness barrier so no stale file can be mistaken for this attempt.
+        available_for_each_dump = available / 2
+    else:
+        available_for_each_dump = (
+            remaining
+            - current_freshness_reserve
+            - reconciliation_reserve
+            - ADB_READ_ONLY_DEADLINE_HEADROOM_SECONDS
+        )
+    if available_for_each_dump < ADB_FILE_HIERARCHY_MINIMUM_DUMP_ATTEMPT_SECONDS:
+        raise AdbOperationDeadlineExceeded(
+            "ADB hierarchy-dump lease cannot preserve its owned-file "
+            "retry and reconciliation reserve"
+        )
+    return min(maximum, available_for_each_dump)
+
+
+def _file_hierarchy_retry_headroom(*, dump_attempt_max_seconds: float) -> float:
+    """Return the lease needed after a failed dump for one fresh retry."""
+    return (
+        ADB_FILE_HIERARCHY_FRESHNESS_BARRIER_ATTEMPT_MAX_SECONDS
+        + ADB_FILE_HIERARCHY_RETRY_DELAY_SECONDS
+        + dump_attempt_max_seconds
+        + 3 * ADB_FILE_HIERARCHY_IDENTITY_READ_ATTEMPT_MAX_SECONDS
+        + ADB_FILE_HIERARCHY_IDENTITY_HEADROOM_SECONDS
+    )
+
+
+def _direct_hierarchy_observation_timeout(
+    *,
+    deadline: float,
+    consecutive: int,
+) -> float:
+    """Reserve enough lease for the stable frames still required.
+
+    Direct reconciliation owns its observation loop.  Each UIAutomator command
+    is therefore one-shot: the current attempt may consume only the portion of
+    the lease left after reserving every still-required later frame, its
+    spacing delay, and a small handoff margin.  This prevents an inner generic
+    read-only retry loop from starving the second authority frame.
+    """
+    required = ADB_HIERARCHY_DUMP_RECONCILIATION_REQUIRED_CONSECUTIVE
+    if type(consecutive) is not int or consecutive < 0 or consecutive >= required:
+        raise ValueError("Direct hierarchy consecutive count is outside its authority bound")
+    remaining = deadline - time.monotonic()
+    later_frames = required - consecutive - 1
+    reserved = (
+        later_frames
+        * ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_READ_ATTEMPT_MAX_SECONDS
+        + later_frames * ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_DELAY_SECONDS
+        + ADB_READ_ONLY_DEADLINE_HEADROOM_SECONDS
+    )
+    available = remaining - reserved
+    if available <= 0:
+        raise AdbOperationDeadlineExceeded(
+            "ADB direct hierarchy lease cannot preserve two stable observations"
+        )
+    return min(
+        ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_READ_ATTEMPT_MAX_SECONDS,
+        available,
+    )
+
+
+def _sleep_before_operation_deadline(
+    seconds: float,
+    *,
+    deadline: float | None,
+) -> None:
+    if deadline is not None and deadline - time.monotonic() < seconds:
+        raise AdbOperationDeadlineExceeded(
+            "ADB operation deadline expired before bounded acquisition delay"
+        )
+    time.sleep(seconds)
 
 
 class AdbTransportPreflightError(RuntimeError):
@@ -476,6 +919,8 @@ class Device:
         self.evidence = evidence
         self._display_size: tuple[int, int] | None = None
         self._transport_event_index = 0
+        self._file_hierarchy_retry_index = 0
+        self._file_hierarchy_context: tuple[int, int] | None = None
         self._transport_events: list[dict[str, object]] = []
         self._transport_preflight: dict[str, object] | None = None
         self._mutation_blocker: dict[str, object] | None = None
@@ -487,6 +932,10 @@ class Device:
                 self.evidence / "adb-transport-preflight.json",
                 *(
                     self.evidence / f"adb-transport-event-{index:04d}.json"
+                    for index in range(1, MAX_ADB_TRANSPORT_EVENTS + 1)
+                ),
+                *(
+                    self.evidence / f"adb-file-hierarchy-retry-{index:04d}.json"
                     for index in range(1, MAX_ADB_TRANSPORT_EVENTS + 1)
                 ),
             )
@@ -502,7 +951,7 @@ class Device:
         self,
         arguments: tuple[str, ...],
         *,
-        timeout: int,
+        timeout: float,
         text: bool,
         check: bool,
     ) -> subprocess.CompletedProcess:
@@ -620,6 +1069,78 @@ class Device:
         _write_new_json_receipt(self.evidence / filename, receipt)
         self._transport_events.append(receipt)
 
+    def _write_timeout_output_recovery_event(
+        self,
+        *,
+        arguments: tuple[str, ...],
+        attempt: int,
+        error: subprocess.TimeoutExpired,
+        output: str,
+        hierarchy_payload: str,
+        hierarchy_node_count: int,
+    ) -> None:
+        """Bind a complete read-only hierarchy emitted before process timeout."""
+        verified = _complete_timed_out_hierarchy_output(error)
+        if (
+            arguments != ADB_READ_ONLY_HIERARCHY_ARGUMENTS
+            or adb_command_retry_policy(arguments)[0] != "read-only-retryable"
+            or verified != (output, hierarchy_payload, hierarchy_node_count)
+        ):
+            raise RuntimeError(
+                "Timeout-output recovery requires the exact verified read-only "
+                "hierarchy command and payload"
+            )
+        if self._transport_event_index >= MAX_ADB_TRANSPORT_EVENTS:
+            raise RuntimeError(
+                "ADB transport event bound exhausted; refusing timeout-output recovery"
+            )
+        self._transport_event_index += 1
+        filename = f"adb-transport-event-{self._transport_event_index:04d}.json"
+        output_bytes = output.encode("utf-8")
+        hierarchy_bytes = hierarchy_payload.encode("utf-8")
+        receipt: dict[str, object] = {
+            "schema": ADB_TRANSPORT_EVENT_SCHEMA,
+            "status": "recovered-read-only",
+            "serial": self.serial,
+            "classification": "timeout-output-complete",
+            "classificationAuthority": (
+                "complete-well-formed-read-only-timeout-stdout"
+            ),
+            "retryableTransportClassification": True,
+            "commandPolicy": "read-only-retryable",
+            "policyReason": adb_command_retry_policy(arguments)[1],
+            "adbArguments": list(arguments),
+            "adbArgumentsSha256": _adb_arguments_sha256(arguments),
+            "attempt": attempt,
+            "maximumAttempts": ADB_READ_ONLY_MAX_ATTEMPTS,
+            "commandInvocationPerformed": True,
+            "outcomeMutationAuthority": "none-read-only-command",
+            "replay": {
+                "eligible": True,
+                "performed": attempt > 1,
+                "scheduled": False,
+                "suppressed": True,
+            },
+            "failure": {
+                "type": type(error).__name__,
+                "returnCode": None,
+                "stdout": _bounded_adb_detail(error.stdout),
+                "stderr": _bounded_adb_detail(error.stderr),
+            },
+            "timeoutOutput": {
+                "validation": "complete-well-formed-single-hierarchy",
+                "stdout": output,
+                "stdoutSha256": hashlib.sha256(output_bytes).hexdigest(),
+                "stdoutBytes": len(output_bytes),
+                "hierarchySha256": hashlib.sha256(hierarchy_bytes).hexdigest(),
+                "hierarchyBytes": len(hierarchy_bytes),
+                "hierarchyNodeCount": hierarchy_node_count,
+            },
+            "evidenceFile": filename,
+        }
+        _write_new_json_receipt(self.evidence / filename, receipt)
+        self._transport_events.append(receipt)
+
     def _write_swipe_reconciliation_event(
         self,
         *,
@@ -670,15 +1191,109 @@ class Device:
         _write_new_json_receipt(self.evidence / filename, receipt)
         self._transport_events.append(receipt)
 
+    def _write_hierarchy_dump_reconciliation_event(
+        self,
+        *,
+        failed: AdbTransportError,
+        arguments: tuple[str, ...],
+        observation_mode: str,
+        observation_arguments: tuple[str, ...],
+        observation_count: int,
+        hierarchy_sha256: str,
+        observation_bytes_sha256: str,
+    ) -> None:
+        observation_bounds = {
+            "fresh-owned-file": (
+                ADB_HIERARCHY_DUMP_RECONCILIATION_READ_ATTEMPT_MAX_SECONDS,
+                ADB_HIERARCHY_DUMP_RECONCILIATION_MAX_SECONDS,
+            ),
+            "direct-current-hierarchy": (
+                ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_READ_ATTEMPT_MAX_SECONDS,
+                ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_MAX_SECONDS,
+            ),
+        }
+        if observation_mode not in observation_bounds:
+            raise RuntimeError("Unknown hierarchy-dump reconciliation mode")
+        read_attempt_maximum, observation_maximum = observation_bounds[
+            observation_mode
+        ]
+        if self._transport_event_index >= MAX_ADB_TRANSPORT_EVENTS:
+            raise RuntimeError(
+                "ADB transport event bound exhausted; refusing hierarchy-dump "
+                "reconciliation"
+            )
+        self._transport_event_index += 1
+        filename = f"adb-transport-event-{self._transport_event_index:04d}.json"
+        receipt: dict[str, object] = {
+            "schema": ADB_TRANSPORT_EVENT_SCHEMA,
+            "status": "reconciled-unknown-hierarchy-dump",
+            "serial": self.serial,
+            "classification": "timeout-unknown-outcome",
+            "classificationAuthority": (
+                "bounded-consecutive-read-only-hierarchy-observations"
+            ),
+            "retryableTransportClassification": True,
+            "commandPolicy": "non-replayable",
+            "policyReason": (
+                "file-backed dump was never replayed; bounded stable current "
+                "hierarchy became observation authority"
+            ),
+            "adbArguments": _adb_arguments_evidence(arguments, "non-replayable"),
+            "adbArgumentsSha256": _adb_arguments_sha256(arguments),
+            "attempt": 1,
+            "maximumAttempts": 1,
+            "commandInvocationPerformed": False,
+            "outcomeMutationAuthority": "current-hierarchy-observed-no-dump-replay",
+            "replay": {
+                "eligible": False,
+                "performed": False,
+                "scheduled": False,
+                "suppressed": True,
+            },
+            "failure": None,
+            "reconcilesEvidenceFile": failed.receipt["evidenceFile"],
+            "readOnlyObservation": {
+                "mode": observation_mode,
+                "arguments": list(observation_arguments),
+                "freshnessBarrierArguments": [
+                    "shell",
+                    *ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS,
+                ],
+                "consecutiveMatching": (
+                    ADB_HIERARCHY_DUMP_RECONCILIATION_REQUIRED_CONSECUTIVE
+                ),
+                "matchingAuthority": "exact-observation-bytes",
+                "observationsPerformed": observation_count,
+                "readAttemptMaximumSeconds": read_attempt_maximum,
+                "maximumObservationSeconds": observation_maximum,
+                "hierarchySha256": hierarchy_sha256,
+                "observationBytesSha256": observation_bytes_sha256,
+            },
+            "evidenceFile": filename,
+        }
+        _write_new_json_receipt(self.evidence / filename, receipt)
+        self._transport_events.append(receipt)
+
     def run(
         self,
         *arguments: str,
-        timeout: int = 120,
+        timeout: float = 120,
         text: bool = True,
         check: bool = True,
+        deadline: float | None = None,
     ) -> subprocess.CompletedProcess:
         adb_arguments = tuple(arguments)
+        file_hierarchy_dump = (
+            adb_arguments
+            == ("shell", *ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS)
+        )
+        file_hierarchy_context = self._file_hierarchy_context
+        if file_hierarchy_dump and file_hierarchy_context is None:
+            raise ValueError(
+                "File-backed hierarchy dumps require Device.hierarchy's freshness fence"
+            )
         command_policy, policy_reason = adb_command_retry_policy(adb_arguments)
+        package_process_observation = adb_arguments == ("shell", "pidof", PACKAGE)
         if command_policy != "read-only-retryable" and self._mutation_blocker is not None:
             blocker = dict(self._mutation_blocker)
             suppression = RuntimeError(
@@ -701,19 +1316,44 @@ class Device:
                 blocked_by=blocker,
             )
             raise AdbTransportError(receipt, path) from suppression
-        maximum_attempts = (
+        maximum_attempts = 1 if file_hierarchy_context is not None else (
             ADB_READ_ONLY_MAX_ATTEMPTS
             if command_policy == "read-only-retryable"
             else 1
         )
         for attempt in range(1, maximum_attempts + 1):
+            receipt_attempt, receipt_maximum_attempts = (
+                file_hierarchy_context
+                if file_hierarchy_context is not None
+                else (attempt, maximum_attempts)
+            )
             try:
                 result = self._invoke_once(
                     adb_arguments,
-                    timeout=timeout,
+                    timeout=_remaining_operation_timeout(
+                        deadline=deadline,
+                        maximum=timeout,
+                    ),
                     text=text,
-                    check=check,
+                    # Android pidof uses exit 1 with no output for the exact,
+                    # expected observation "this package has no process".  Run
+                    # only that command unchecked so its result can be bound
+                    # below; every other command retains subprocess check=True.
+                    check=check and not package_process_observation,
                 )
+                if package_process_observation and check and result.returncode != 0:
+                    process_absent = (
+                        result.returncode == 1
+                        and not _bounded_adb_detail(result.stdout).strip()
+                        and not _bounded_adb_detail(result.stderr).strip()
+                    )
+                    if not process_absent:
+                        raise subprocess.CalledProcessError(
+                            result.returncode,
+                            result.args,
+                            output=result.stdout,
+                            stderr=result.stderr,
+                        )
                 if adb_arguments == ("get-state",):
                     observed_state = _bounded_adb_detail(result.stdout).strip()
                     if observed_state != "device":
@@ -736,18 +1376,85 @@ class Device:
                         or classification != "unclassified-adb-failure"
                     ):
                         raise synthetic_error
-                if attempt > 1:
+                if receipt_attempt > 1:
                     self._write_recovered_transport_event(
                         arguments=adb_arguments,
-                        attempts=attempt,
+                        attempts=receipt_attempt,
                     )
                 return result
+            except AdbOperationDeadlineExceeded as error:
+                if receipt_attempt <= 1:
+                    raise
+                receipt, path = self._write_transport_event(
+                    arguments=adb_arguments,
+                    command_policy=command_policy,
+                    policy_reason=policy_reason,
+                    classification="caller-deadline-exhausted-before-retry",
+                    retryable_classification=False,
+                    attempt=receipt_attempt,
+                    maximum_attempts=receipt_maximum_attempts,
+                    status="fail",
+                    error=error,
+                    replay_performed=False,
+                    replay_suppressed=True,
+                    command_invocation_performed=False,
+                )
+                raise AdbTransportError(receipt, path) from error
             except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
-                classification, retryable = classify_adb_failure(error)
+                if (
+                    isinstance(error, subprocess.TimeoutExpired)
+                    and adb_arguments == ADB_READ_ONLY_HIERARCHY_ARGUMENTS
+                    and text
+                ):
+                    completed_hierarchy = _complete_timed_out_hierarchy_output(error)
+                    if completed_hierarchy is not None:
+                        output, hierarchy_payload, hierarchy_node_count = (
+                            completed_hierarchy
+                        )
+                        self._write_timeout_output_recovery_event(
+                            arguments=adb_arguments,
+                            attempt=attempt,
+                            error=error,
+                            output=output,
+                            hierarchy_payload=hierarchy_payload,
+                            hierarchy_node_count=hierarchy_node_count,
+                        )
+                        return subprocess.CompletedProcess(
+                            adb_arguments,
+                            0,
+                            stdout=output,
+                            stderr=_bounded_adb_detail(error.stderr),
+                        )
+                classification, retryable = (
+                    classify_file_hierarchy_dump_failure(adb_arguments, error)
+                    if file_hierarchy_dump
+                    else classify_adb_failure(error)
+                )
+                retry_delay = (
+                    ADB_FILE_HIERARCHY_RETRY_DELAY_SECONDS
+                    if file_hierarchy_dump
+                    else ADB_READ_ONLY_RETRY_DELAY_SECONDS
+                )
+                retry_headroom = (
+                    _file_hierarchy_retry_headroom(
+                        dump_attempt_max_seconds=timeout,
+                    )
+                    if file_hierarchy_dump
+                    else retry_delay
+                )
+                retry_deadline_permits = (
+                    deadline is None
+                    or (
+                        deadline - time.monotonic() >= retry_headroom
+                        if file_hierarchy_dump
+                        else deadline - time.monotonic() > retry_headroom
+                    )
+                )
                 may_retry = (
                     command_policy == "read-only-retryable"
                     and retryable
-                    and attempt < maximum_attempts
+                    and receipt_attempt < receipt_maximum_attempts
+                    and retry_deadline_permits
                 )
                 receipt, path = self._write_transport_event(
                     arguments=adb_arguments,
@@ -755,11 +1462,11 @@ class Device:
                     policy_reason=policy_reason,
                     classification=classification,
                     retryable_classification=retryable,
-                    attempt=attempt,
-                    maximum_attempts=maximum_attempts,
+                    attempt=receipt_attempt,
+                    maximum_attempts=receipt_maximum_attempts,
                     status="retrying-read-only" if may_retry else "fail",
                     error=error,
-                    replay_performed=attempt > 1,
+                    replay_performed=receipt_attempt > 1,
                     replay_suppressed=not may_retry,
                 )
                 if command_policy != "read-only-retryable":
@@ -770,7 +1477,11 @@ class Device:
                     }
                 if not may_retry:
                     raise AdbTransportError(receipt, path) from error
-                time.sleep(ADB_READ_ONLY_RETRY_DELAY_SECONDS)
+                if file_hierarchy_context is not None:
+                    # Device.hierarchy owns the next fresh remove+dump invocation.
+                    # Never let this generic command loop replay the file writer.
+                    raise AdbTransportError(receipt, path) from error
+                time.sleep(retry_delay)
         raise AssertionError("bounded ADB retry loop exhausted without a terminal result")
 
     def require_transport_stability(
@@ -908,11 +1619,29 @@ class Device:
         raise failure from terminal_error
 
     def transport_summary(self) -> dict[str, object]:
-        reconciled = {
-            event["reconcilesEvidenceFile"]
-            for event in self._transport_events
-            if event["status"] == "reconciled-unknown-swipe"
+        reconciled: set[object] = set()
+        reconciliation_statuses = {
+            "reconciled-unknown-swipe",
+            "reconciled-unknown-hierarchy-dump",
         }
+        for index, event in enumerate(self._transport_events):
+            if event.get("status") not in reconciliation_statuses or index == 0:
+                continue
+            failed = self._transport_events[index - 1]
+            if (
+                failed.get("status") == "fail"
+                and failed.get("classification") == "timeout-unknown-outcome"
+                and failed.get("commandPolicy") == "non-replayable"
+                and event.get("classification") == "timeout-unknown-outcome"
+                and event.get("commandPolicy") == "non-replayable"
+                and event.get("reconcilesEvidenceFile")
+                == failed.get("evidenceFile")
+                and event.get("serial") == failed.get("serial")
+                and event.get("adbArgumentsSha256")
+                == failed.get("adbArgumentsSha256")
+                and event.get("replay", {}).get("performed") is False
+            ):
+                reconciled.add(failed.get("evidenceFile"))
         terminal_failures = [
             event
             for event in self._transport_events
@@ -981,8 +1710,20 @@ class Device:
         if command_error is not None:
             raise command_error
 
-    def shell(self, *arguments: str, timeout: int = 120) -> str:
-        return self.run("shell", *arguments, timeout=timeout).stdout.strip()
+    def shell(
+        self,
+        *arguments: str,
+        timeout: float = 120,
+        deadline: float | None = None,
+    ) -> str:
+        if deadline is None:
+            return self.run("shell", *arguments, timeout=timeout).stdout.strip()
+        return self.run(
+            "shell",
+            *arguments,
+            timeout=timeout,
+            deadline=deadline,
+        ).stdout.strip()
 
     def push(self, local_path: Path, remote_path: str) -> None:
         self.run("push", str(local_path.resolve()), remote_path, timeout=120)
@@ -1025,27 +1766,288 @@ class Device:
             )
         return actual
 
-    def hierarchy(self) -> list[UiNode]:
-        try:
-            dump_output = self.shell(
-                "uiautomator",
-                "dump",
-                "--compressed",
-                "/sdcard/chummer-editing-window.xml",
+    def _write_file_hierarchy_retry_evidence(
+        self,
+        *,
+        status: str,
+        attempts: list[dict[str, object]],
+        observation: dict[str, object] | None,
+    ) -> None:
+        if self._file_hierarchy_retry_index >= MAX_ADB_TRANSPORT_EVENTS:
+            raise RuntimeError("File-hierarchy retry evidence bound exhausted")
+        self._file_hierarchy_retry_index += 1
+        filename = f"adb-file-hierarchy-retry-{self._file_hierarchy_retry_index:04d}.json"
+        dump_arguments = ("shell", *ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS)
+        receipt = {
+            "schema": ADB_FILE_HIERARCHY_RETRY_SCHEMA,
+            "status": status,
+            "serial": self.serial,
+            "commandPolicy": "read-only-retryable",
+            "policyReason": adb_command_retry_policy(dump_arguments)[1],
+            "adbArguments": list(dump_arguments),
+            "adbArgumentsSha256": _adb_arguments_sha256(dump_arguments),
+            "maximumAttempts": ADB_FILE_HIERARCHY_MAX_ATTEMPTS,
+            "freshnessBarrierArguments": [
+                "shell",
+                *ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS,
+            ],
+            "attempts": attempts,
+            "acceptedObservation": observation,
+            "mutationCommandsRetried": 0,
+            "evidenceFile": filename,
+        }
+        _write_new_json_receipt(self.evidence / filename, receipt)
+
+    def _read_retried_file_hierarchy_identity(
+        self,
+        *,
+        deadline: float | None,
+    ) -> tuple[list[UiNode], dict[str, object]]:
+        stat_arguments = ("shell", *ADB_FILE_HIERARCHY_STAT_SHELL_ARGUMENTS)
+        content_arguments = (
+            "exec-out",
+            "cat",
+            ADB_FILE_HIERARCHY_REMOTE_PATH,
+        )
+        before = self.run(
+            *stat_arguments,
+            timeout=_remaining_operation_timeout(
+                deadline=deadline,
+                maximum=ADB_FILE_HIERARCHY_IDENTITY_READ_ATTEMPT_MAX_SECONDS,
+            ),
+            deadline=deadline,
+            check=False,
+        )
+        content = self.run(
+            *content_arguments,
+            timeout=_remaining_operation_timeout(
+                deadline=deadline,
+                maximum=ADB_FILE_HIERARCHY_IDENTITY_READ_ATTEMPT_MAX_SECONDS,
+            ),
+            deadline=deadline,
+            text=False,
+            check=False,
+        )
+        after = self.run(
+            *stat_arguments,
+            timeout=_remaining_operation_timeout(
+                deadline=deadline,
+                maximum=ADB_FILE_HIERARCHY_IDENTITY_READ_ATTEMPT_MAX_SECONDS,
+            ),
+            deadline=deadline,
+            check=False,
+        )
+        before_metadata = _parse_file_hierarchy_metadata(before.stdout)
+        after_metadata = _parse_file_hierarchy_metadata(after.stdout)
+        raw = content.stdout
+        complete = _complete_file_hierarchy(raw)
+        valid = (
+            before.returncode == 0
+            and content.returncode == 0
+            and after.returncode == 0
+            and before_metadata is not None
+            and before_metadata == after_metadata
+            and isinstance(raw, bytes)
+            and len(raw) == before_metadata["sizeBytes"]
+            and complete is not None
+        )
+        observation: dict[str, object] = {
+            "status": "pass" if valid else "fail",
+            "metadataArguments": list(stat_arguments),
+            "contentArguments": list(content_arguments),
+            "metadataBefore": before_metadata,
+            "metadataAfter": after_metadata,
+            "contentBytes": len(raw) if isinstance(raw, bytes) else None,
+            "contentSha256": (
+                hashlib.sha256(raw).hexdigest() if isinstance(raw, bytes) else None
+            ),
+            "root": "hierarchy" if complete is not None else None,
+            "nodeCount": complete[1] if complete is not None else 0,
+            "rotation": complete[2] if complete is not None else None,
+            "reconciliation": "metadata-content-metadata-identity",
+        }
+        if not valid or complete is None:
+            return [], observation
+        nodes = Device._parse_hierarchy(
+            self,
+            complete[0],
+            "last-invalid-hierarchy.txt",
+        )
+        if len(nodes) != complete[1]:
+            observation["status"] = "fail"
+            return [], observation
+        return nodes, observation
+
+    def hierarchy(
+        self,
+        *,
+        deadline: float | None = None,
+        dump_attempt_max_seconds: float = ADB_FILE_HIERARCHY_DUMP_ATTEMPT_MAX_SECONDS,
+        allow_direct_reconciliation: bool = True,
+    ) -> list[UiNode]:
+        """Read one hierarchy while sharing an optional caller-owned deadline."""
+        if (
+            isinstance(dump_attempt_max_seconds, bool)
+            or not isinstance(dump_attempt_max_seconds, (int, float))
+            or not math.isfinite(dump_attempt_max_seconds)
+            or dump_attempt_max_seconds <= 0
+            or dump_attempt_max_seconds > 30.0
+        ):
+            raise ValueError(
+                "Hierarchy dump attempt maximum must be within (0, 30] seconds"
             )
-            normalized_dump_output = dump_output.lower()
+        if type(allow_direct_reconciliation) is not bool:
+            raise TypeError("Hierarchy direct-reconciliation policy must be boolean")
+        retry_attempts: list[dict[str, object]] = []
+        try:
+            for dump_attempt in range(1, ADB_FILE_HIERARCHY_MAX_ATTEMPTS + 1):
+                # ADB does not preserve an argv element as the script operand of
+                # ``sh -c``. Keep one exact one-shot remove as the identity fence
+                # for each new observer invocation.
+                dump_timeout = (
+                    dump_attempt_max_seconds
+                    if deadline is None
+                    else _hierarchy_dump_attempt_timeout(
+                        deadline=deadline,
+                        maximum=dump_attempt_max_seconds,
+                        reserve_fresh_retry=dump_attempt == 1,
+                    )
+                )
+                if deadline is None:
+                    self.shell(*ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS)
+                else:
+                    self.shell(
+                        *ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS,
+                        timeout=_remaining_operation_timeout(
+                            deadline=deadline,
+                            maximum=ADB_FILE_HIERARCHY_FRESHNESS_BARRIER_ATTEMPT_MAX_SECONDS,
+                        ),
+                        deadline=deadline,
+                    )
+                    _remaining_operation_timeout(
+                        deadline=deadline,
+                        maximum=ADB_FILE_HIERARCHY_FRESHNESS_BARRIER_ATTEMPT_MAX_SECONDS,
+                    )
+                self._file_hierarchy_context = (
+                    dump_attempt,
+                    ADB_FILE_HIERARCHY_MAX_ATTEMPTS,
+                )
+                try:
+                    if deadline is None:
+                        dump_output = self.shell(
+                            *ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
+                            timeout=dump_attempt_max_seconds,
+                        )
+                    else:
+                        dump_output = self.shell(
+                            *ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
+                            timeout=dump_timeout,
+                            deadline=deadline,
+                        )
+                except AdbTransportError as error:
+                    retry_attempts.append(
+                        {
+                            "attempt": dump_attempt,
+                            "status": error.receipt["status"],
+                            "freshnessBarrierPerformed": True,
+                            "transportEvidenceFile": error.receipt["evidenceFile"],
+                            "classification": error.receipt["classification"],
+                        }
+                    )
+                    if error.receipt["status"] != "retrying-read-only":
+                        if len(retry_attempts) > 1:
+                            self._write_file_hierarchy_retry_evidence(
+                                status="fail",
+                                attempts=retry_attempts,
+                                observation=None,
+                            )
+                        raise
+                    if deadline is None:
+                        time.sleep(ADB_FILE_HIERARCHY_RETRY_DELAY_SECONDS)
+                    else:
+                        time.sleep(
+                            _remaining_operation_timeout(
+                                deadline=deadline,
+                                maximum=ADB_FILE_HIERARCHY_RETRY_DELAY_SECONDS,
+                            )
+                        )
+                    continue
+                finally:
+                    self._file_hierarchy_context = None
+                if dump_attempt > 1:
+                    recovery = self._transport_events[-1]
+                    retry_attempts.append(
+                        {
+                            "attempt": dump_attempt,
+                            "status": "pass",
+                            "freshnessBarrierPerformed": True,
+                            "transportEvidenceFile": recovery["evidenceFile"],
+                            "classification": recovery["classification"],
+                        }
+                    )
+                break
+            else:
+                raise AssertionError("bounded file-hierarchy retry loop exhausted")
+            if deadline is not None:
+                _remaining_operation_timeout(deadline=deadline, maximum=120)
+            normalized_dump_output = dump_output.strip().lower()
             if not any(
                 marker in normalized_dump_output
                 for marker in ("hierarchy dumped", "hierchary dumped")
             ):
-                (self.evidence / "last-invalid-hierarchy.txt").write_text(
-                    dump_output or "uiautomator returned no dump status",
-                    encoding="utf-8",
+                # The preceding exact removal and successful dump are both
+                # single-attempt commands owned by this driver. Empty status
+                # therefore cannot authorize bytes from an older dump; any
+                # nonempty unrecognized status remains a hard rejection.
+                if normalized_dump_output:
+                    (self.evidence / "last-invalid-hierarchy.txt").write_text(
+                        dump_output,
+                        encoding="utf-8",
+                    )
+                    return []
+            if dump_attempt > 1:
+                nodes, observation = self._read_retried_file_hierarchy_identity(
+                    deadline=deadline,
                 )
-                return []
-            xml = self.run(
-                "exec-out", "cat", "/sdcard/chummer-editing-window.xml"
-            ).stdout
+                self._write_file_hierarchy_retry_evidence(
+                    status="pass" if nodes else "fail",
+                    attempts=retry_attempts,
+                    observation=observation,
+                )
+                if not nodes:
+                    (self.evidence / "last-invalid-hierarchy.txt").write_text(
+                        "Retried hierarchy file failed metadata/content identity reconciliation",
+                        encoding="utf-8",
+                    )
+                return nodes
+            if deadline is None:
+                xml = self.run(
+                    "exec-out", "cat", ADB_FILE_HIERARCHY_REMOTE_PATH
+                ).stdout
+            else:
+                xml = self.run(
+                    "exec-out",
+                    "cat",
+                    ADB_FILE_HIERARCHY_REMOTE_PATH,
+                    timeout=_remaining_operation_timeout(
+                        deadline=deadline,
+                        maximum=120,
+                    ),
+                    deadline=deadline,
+                ).stdout
+                _remaining_operation_timeout(deadline=deadline, maximum=120)
+        except AdbOperationDeadlineExceeded as error:
+            (self.evidence / "last-invalid-hierarchy.txt").write_text(
+                f"Hierarchy observation exceeded its caller-owned deadline: {error}",
+                encoding="utf-8",
+            )
+            return []
+        except AdbTransportError as error:
+            (self.evidence / "last-invalid-hierarchy.txt").write_text(
+                f"Fresh file-backed hierarchy observation failed: {error}",
+                encoding="utf-8",
+            )
+            raise
         except subprocess.CalledProcessError as error:
             detail = "\n".join(
                 part for part in (str(error), error.stdout, error.stderr) if part
@@ -1056,16 +2058,149 @@ class Device:
             )
             return []
 
-        return Device._parse_hierarchy(self, xml, "last-invalid-hierarchy.txt")
+        nodes = Device._parse_hierarchy(
+            self,
+            xml,
+            "last-invalid-hierarchy.txt",
+        )
+        if nodes or xml.strip() != ADB_FILE_HIERARCHY_ABSENT_OUTPUT:
+            return nodes
 
-    def read_only_hierarchy(self) -> list[UiNode]:
+        # Some API-36 emulator images acknowledge the exact UIAutomator dump
+        # before its requested /sdcard file becomes observable. The preceding
+        # removal proves that any file which now appears belongs to this exact
+        # dump invocation. Give only that same owned file a small, bounded
+        # visibility window; do not re-run the dump, remove the file again, or
+        # issue any mutation. Every follow-up cat remains a read-only command
+        # under both a small local cap and any earlier caller-owned deadline.
+        local_visibility_deadline = (
+            time.monotonic() + ADB_FILE_HIERARCHY_VISIBILITY_MAX_SECONDS
+        )
+        visibility_deadline = (
+            local_visibility_deadline
+            if deadline is None
+            else min(deadline, local_visibility_deadline)
+        )
+        for _observation in range(1, ADB_FILE_HIERARCHY_VISIBILITY_MAX_OBSERVATIONS):
+            try:
+                visibility_delay = _remaining_operation_timeout(
+                    deadline=visibility_deadline,
+                    maximum=ADB_FILE_HIERARCHY_VISIBILITY_DELAY_SECONDS,
+                )
+                time.sleep(visibility_delay)
+                xml = self.run(
+                    "exec-out",
+                    "cat",
+                    ADB_FILE_HIERARCHY_REMOTE_PATH,
+                    timeout=_remaining_operation_timeout(
+                        deadline=visibility_deadline,
+                        maximum=(
+                            ADB_FILE_HIERARCHY_VISIBILITY_READ_ATTEMPT_MAX_SECONDS
+                        ),
+                    ),
+                    deadline=visibility_deadline,
+                ).stdout
+                _remaining_operation_timeout(
+                    deadline=visibility_deadline,
+                    maximum=ADB_FILE_HIERARCHY_VISIBILITY_MAX_SECONDS,
+                )
+            except AdbOperationDeadlineExceeded as error:
+                (self.evidence / "last-invalid-hierarchy.txt").write_text(
+                    "Fresh file-backed hierarchy observation exceeded its bounded "
+                    f"visibility deadline: {error}",
+                    encoding="utf-8",
+                )
+                return []
+            except AdbTransportError as error:
+                (self.evidence / "last-invalid-hierarchy.txt").write_text(
+                    f"Fresh file-backed hierarchy visibility observation failed: {error}",
+                    encoding="utf-8",
+                )
+                raise
+
+            nodes = Device._parse_hierarchy(
+                self,
+                xml,
+                "last-invalid-hierarchy.txt",
+            )
+            if nodes or xml.strip() != ADB_FILE_HIERARCHY_ABSENT_OUTPUT:
+                return nodes
+        return []
+
+    def read_only_hierarchy(
+        self,
+        *,
+        deadline: float | None = None,
+    ) -> list[UiNode]:
         """Observe accessibility state without writing a device-side dump file."""
-        xml = self.run(*ADB_READ_ONLY_HIERARCHY_ARGUMENTS, timeout=30).stdout
+        if deadline is None:
+            xml = self.run(*ADB_READ_ONLY_HIERARCHY_ARGUMENTS, timeout=30).stdout
+        else:
+            xml = self.run(
+                *ADB_READ_ONLY_HIERARCHY_ARGUMENTS,
+                timeout=_read_only_retry_attempt_timeout(
+                    deadline=deadline,
+                    maximum=ADB_READ_ONLY_HIERARCHY_ATTEMPT_MAX_SECONDS,
+                ),
+                deadline=deadline,
+            ).stdout
         return Device._parse_hierarchy(
             self,
             xml,
             "last-read-only-invalid-hierarchy.txt",
         )
+
+    def _read_only_hierarchy_xml_once(
+        self,
+        *,
+        deadline: float,
+        attempt_max_seconds: float,
+    ) -> str:
+        """Perform exactly one caller-owned direct hierarchy observation.
+
+        This primitive deliberately bypasses ``run``'s generic read-only retry
+        policy.  Its callers own the bounded stable-observation loop and must
+        decide whether another fresh frame is permitted by the same deadline.
+        """
+        if (
+            isinstance(attempt_max_seconds, bool)
+            or not isinstance(attempt_max_seconds, (int, float))
+            or not math.isfinite(attempt_max_seconds)
+            or attempt_max_seconds <= 0
+            or attempt_max_seconds
+            > ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_READ_ATTEMPT_MAX_SECONDS
+        ):
+            raise ValueError("One-shot hierarchy attempt maximum is invalid")
+        timeout = _remaining_operation_timeout(
+            deadline=deadline,
+            maximum=attempt_max_seconds,
+        )
+        try:
+            xml = self._invoke_once(
+                ADB_READ_ONLY_HIERARCHY_ARGUMENTS,
+                timeout=timeout,
+                text=True,
+                check=True,
+            ).stdout
+        except subprocess.TimeoutExpired as error:
+            completed = _complete_timed_out_hierarchy_output(error)
+            if completed is None:
+                raise
+            xml = completed[0]
+        return xml
+
+    def read_only_hierarchy_once(
+        self,
+        *,
+        deadline: float,
+        attempt_max_seconds: float,
+        diagnostic_name: str = "last-read-only-once-invalid-hierarchy.txt",
+    ) -> list[UiNode]:
+        xml = self._read_only_hierarchy_xml_once(
+            deadline=deadline,
+            attempt_max_seconds=attempt_max_seconds,
+        )
+        return Device._parse_hierarchy(self, xml, diagnostic_name)
 
     def _parse_hierarchy(self, xml: str, diagnostic_name: str) -> list[UiNode]:
         hierarchy_start = xml.find("<hierarchy")
@@ -1105,6 +2240,8 @@ class Device:
         self,
         failed: AdbTransportError,
         arguments: tuple[str, ...],
+        *,
+        deadline: float | None = None,
     ) -> bool:
         receipt = failed.receipt
         blocker = self._mutation_blocker
@@ -1116,12 +2253,23 @@ class Device:
             or blocker.get("evidenceFile") != receipt.get("evidenceFile")
         ):
             return False
+        # The stable viewport observations must remain immediately adjacent to
+        # the ambiguous swipe receipt. A transport retry/recovery receipt from
+        # an observation breaks that attribution, so retain the mutation
+        # blocker instead of authorizing another navigation command.
+        expected_transport_event_index = self._transport_event_index
         previous_sha256: str | None = None
         consecutive = 0
         for observation in range(1, ADB_SWIPE_RECONCILIATION_MAX_OBSERVATIONS + 1):
             try:
-                nodes = self.read_only_hierarchy()
+                nodes = (
+                    self.read_only_hierarchy()
+                    if deadline is None
+                    else self.read_only_hierarchy(deadline=deadline)
+                )
             except AdbTransportError:
+                return False
+            if self._transport_event_index != expected_transport_event_index:
                 return False
             if not nodes:
                 return False
@@ -1138,8 +2286,207 @@ class Device:
                 self._mutation_blocker = None
                 return True
             if observation < ADB_SWIPE_RECONCILIATION_MAX_OBSERVATIONS:
+                if deadline is not None:
+                    remaining = deadline - time.monotonic()
+                    if remaining < ADB_SWIPE_RECONCILIATION_DELAY_SECONDS:
+                        raise AdbOperationDeadlineExceeded(
+                            "Swipe reconciliation delay exceeded its caller-owned deadline"
+                        )
                 time.sleep(ADB_SWIPE_RECONCILIATION_DELAY_SECONDS)
         return False
+
+    def _reconcile_unknown_hierarchy_dump(
+        self,
+        failed: AdbTransportError,
+        arguments: tuple[str, ...],
+        *,
+        deadline: float | None = None,
+        allow_direct_reconciliation: bool = True,
+    ) -> list[UiNode] | None:
+        receipt = failed.receipt
+        if (
+            arguments
+            != ("shell", *ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS)
+            or receipt.get("classification") != "timeout-unknown-outcome"
+            or receipt.get("commandPolicy") != "non-replayable"
+            or receipt.get("adbArgumentsSha256") != _adb_arguments_sha256(arguments)
+        ):
+            return None
+        blocker = self._mutation_blocker
+        if (
+            blocker is None
+            or blocker.get("evidenceFile") != receipt.get("evidenceFile")
+        ):
+            return None
+        # A successful owned-file observation must remain immediately adjacent
+        # to the ambiguous dump event. Any transport recovery receipt emitted
+        # while reading the file makes attribution non-canonical and therefore
+        # preserves the original fail-closed mutation blocker.
+        expected_transport_event_index = self._transport_event_index
+        previous_sha256: str | None = None
+        consecutive = 0
+        owned_file_deadline = (
+            time.monotonic() + ADB_HIERARCHY_DUMP_RECONCILIATION_MAX_SECONDS
+        )
+        owned_file_deadline = (
+            owned_file_deadline
+            if deadline is None
+            else min(deadline, owned_file_deadline)
+        )
+        for observation in range(
+            1,
+            ADB_HIERARCHY_DUMP_RECONCILIATION_MAX_OBSERVATIONS + 1,
+        ):
+            try:
+                xml = self.run(
+                    "exec-out",
+                    "cat",
+                    ADB_FILE_HIERARCHY_REMOTE_PATH,
+                    timeout=_remaining_operation_timeout(
+                        deadline=owned_file_deadline,
+                        maximum=(
+                            ADB_HIERARCHY_DUMP_RECONCILIATION_READ_ATTEMPT_MAX_SECONDS
+                        ),
+                    ),
+                    deadline=owned_file_deadline,
+                ).stdout
+                _remaining_operation_timeout(
+                    deadline=owned_file_deadline,
+                    maximum=ADB_HIERARCHY_DUMP_RECONCILIATION_MAX_SECONDS,
+                )
+            except AdbOperationDeadlineExceeded:
+                break
+            except AdbTransportError:
+                return None
+            if self._transport_event_index != expected_transport_event_index:
+                return None
+            nodes = Device._parse_hierarchy(
+                self,
+                xml,
+                "last-hierarchy-dump-reconciliation-invalid.txt",
+            )
+            if not nodes:
+                previous_sha256 = None
+                consecutive = 0
+                if observation < ADB_HIERARCHY_DUMP_RECONCILIATION_MAX_OBSERVATIONS:
+                    try:
+                        delay = _remaining_operation_timeout(
+                            deadline=owned_file_deadline,
+                            maximum=ADB_HIERARCHY_DUMP_RECONCILIATION_DELAY_SECONDS,
+                        )
+                    except AdbOperationDeadlineExceeded:
+                        break
+                    time.sleep(delay)
+                continue
+            observed_sha256 = hashlib.sha256(xml.encode("utf-8")).hexdigest()
+            observed_nodes_sha256 = self._hierarchy_sha256(nodes)
+            consecutive = consecutive + 1 if observed_sha256 == previous_sha256 else 1
+            previous_sha256 = observed_sha256
+            if (
+                consecutive
+                >= ADB_HIERARCHY_DUMP_RECONCILIATION_REQUIRED_CONSECUTIVE
+            ):
+                self._write_hierarchy_dump_reconciliation_event(
+                    failed=failed,
+                    arguments=arguments,
+                    observation_mode="fresh-owned-file",
+                    observation_arguments=(
+                        "exec-out",
+                        "cat",
+                        ADB_FILE_HIERARCHY_REMOTE_PATH,
+                    ),
+                    observation_count=observation,
+                    hierarchy_sha256=observed_nodes_sha256,
+                    observation_bytes_sha256=observed_sha256,
+                )
+                self._mutation_blocker = None
+                return nodes
+            if observation < ADB_HIERARCHY_DUMP_RECONCILIATION_MAX_OBSERVATIONS:
+                try:
+                    delay = _remaining_operation_timeout(
+                        deadline=owned_file_deadline,
+                        maximum=ADB_HIERARCHY_DUMP_RECONCILIATION_DELAY_SECONDS,
+                    )
+                except AdbOperationDeadlineExceeded:
+                    break
+                time.sleep(delay)
+        if not allow_direct_reconciliation:
+            return None
+        direct_deadline = (
+            time.monotonic()
+            + ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_MAX_SECONDS
+        )
+        direct_deadline = (
+            direct_deadline if deadline is None else min(deadline, direct_deadline)
+        )
+        previous_sha256 = None
+        consecutive = 0
+        for observation in range(
+            1,
+            ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_MAX_OBSERVATIONS + 1,
+        ):
+            try:
+                attempt_max_seconds = _direct_hierarchy_observation_timeout(
+                    deadline=direct_deadline,
+                    consecutive=consecutive,
+                )
+                xml = self._read_only_hierarchy_xml_once(
+                    deadline=direct_deadline,
+                    attempt_max_seconds=attempt_max_seconds,
+                )
+            except (
+                AdbOperationDeadlineExceeded,
+                subprocess.CalledProcessError,
+                subprocess.TimeoutExpired,
+            ):
+                return None
+            if self._transport_event_index != expected_transport_event_index:
+                return None
+            nodes = Device._parse_hierarchy(
+                self,
+                xml,
+                "last-hierarchy-dump-direct-reconciliation-invalid.txt",
+            )
+            if not nodes:
+                previous_sha256 = None
+                consecutive = 0
+            else:
+                observed_sha256 = hashlib.sha256(xml.encode("utf-8")).hexdigest()
+                observed_nodes_sha256 = self._hierarchy_sha256(nodes)
+                consecutive = (
+                    consecutive + 1 if observed_sha256 == previous_sha256 else 1
+                )
+                previous_sha256 = observed_sha256
+                if (
+                    consecutive
+                    >= ADB_HIERARCHY_DUMP_RECONCILIATION_REQUIRED_CONSECUTIVE
+                ):
+                    self._write_hierarchy_dump_reconciliation_event(
+                        failed=failed,
+                        arguments=arguments,
+                        observation_mode="direct-current-hierarchy",
+                        observation_arguments=ADB_READ_ONLY_HIERARCHY_ARGUMENTS,
+                        observation_count=observation,
+                        hierarchy_sha256=observed_nodes_sha256,
+                        observation_bytes_sha256=observed_sha256,
+                    )
+                    self._mutation_blocker = None
+                    return nodes
+            if (
+                observation
+                < ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_MAX_OBSERVATIONS
+            ):
+                try:
+                    delay = _remaining_operation_timeout(
+                        deadline=direct_deadline,
+                        maximum=(
+                            ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_DELAY_SECONDS
+                        ),
+                    )
+                except AdbOperationDeadlineExceeded:
+                    return None
+                time.sleep(delay)
+        return None
 
     @staticmethod
     def _matches(node: UiNode, selector: str) -> bool:
@@ -1182,8 +2529,18 @@ class Device:
             return 0.375
         return 0.5
 
-    def find(self, selector: str, *, field_after_label: str | None = None) -> UiNode | None:
-        nodes = self.hierarchy()
+    def find(
+        self,
+        selector: str,
+        *,
+        field_after_label: str | None = None,
+        deadline: float | None = None,
+    ) -> UiNode | None:
+        nodes = (
+            self.hierarchy()
+            if deadline is None
+            else self.hierarchy(deadline=deadline)
+        )
         matches = [node for node in nodes if self._matches(node, selector)]
         if matches:
             return next(
@@ -1228,6 +2585,7 @@ class Device:
         scroll_distance_ratio: float = 0.52,
         evidence_prefix: str = "workspace-authority",
         surface_name: str = "Workspace authority accessibility node",
+        deadline: float | None = None,
     ) -> UiNode:
         """Return exactly one accessibility node with an exact resource id.
 
@@ -1235,15 +2593,30 @@ class Device:
         selector. A missing node means the surface was not published; duplicate
         nodes make the rendered proof ambiguous. Both conditions fail closed.
         """
-        deadline = time.monotonic() + timeout
+        timeout_deadline = time.monotonic() + timeout
+        operation_deadline = (
+            timeout_deadline
+            if deadline is None
+            else min(timeout_deadline, deadline)
+        )
         scrolls = 0
-        while time.monotonic() < deadline:
-            nodes = self.hierarchy()
+        while time.monotonic() < operation_deadline:
+            nodes = (
+                self.hierarchy()
+                if deadline is None
+                else self.hierarchy(deadline=operation_deadline)
+            )
             if not nodes:
                 # A failed/empty UIAutomator dump is not evidence that the target is
                 # outside the viewport.  Advancing here can move a short row through
                 # the viewport without ever observing it.
-                time.sleep(0.75)
+                if deadline is None:
+                    time.sleep(0.75)
+                else:
+                    _sleep_before_operation_deadline(
+                        0.75,
+                        deadline=operation_deadline,
+                    )
                 continue
             matches = [
                 node
@@ -1254,22 +2627,61 @@ class Device:
             if len(matches) == 1:
                 return matches[0]
             if len(matches) > 1:
-                self.capture(f"{evidence_prefix}-cardinality-invalid")
+                if deadline is None:
+                    self.capture(f"{evidence_prefix}-cardinality-invalid")
+                else:
+                    self.capture(
+                        f"{evidence_prefix}-cardinality-invalid",
+                        deadline=operation_deadline,
+                    )
                 raise RuntimeError(
                     f"{surface_name} "
                     f"{selector!r} has cardinality {len(matches)}; expected exactly one"
                 )
-            if self.dismiss_system_ui_anr(nodes):
-                time.sleep(2)
+            system_ui_dismissed = (
+                self.dismiss_system_ui_anr(nodes)
+                if deadline is None
+                else self.dismiss_system_ui_anr(
+                    nodes,
+                    deadline=operation_deadline,
+                )
+            )
+            if system_ui_dismissed:
+                if deadline is None:
+                    time.sleep(2)
+                else:
+                    _sleep_before_operation_deadline(
+                        2,
+                        deadline=operation_deadline,
+                    )
                 continue
             if scroll and scrolls < max_scrolls:
-                self.swipe_up(
-                    x_ratio=self._scroll_x_ratio(selector),
-                    distance_ratio=scroll_distance_ratio,
-                )
+                if deadline is None:
+                    self.swipe_up(
+                        x_ratio=self._scroll_x_ratio(selector),
+                        distance_ratio=scroll_distance_ratio,
+                    )
+                else:
+                    self.swipe_up(
+                        x_ratio=self._scroll_x_ratio(selector),
+                        distance_ratio=scroll_distance_ratio,
+                        deadline=operation_deadline,
+                    )
                 scrolls += 1
-            time.sleep(0.75)
-        self.capture(f"{evidence_prefix}-unavailable")
+            if deadline is None:
+                time.sleep(0.75)
+            else:
+                _sleep_before_operation_deadline(
+                    0.75,
+                    deadline=operation_deadline,
+                )
+        if deadline is None:
+            self.capture(f"{evidence_prefix}-unavailable")
+        else:
+            self.capture(
+                f"{evidence_prefix}-unavailable",
+                deadline=operation_deadline,
+            )
         raise RuntimeError(
             f"Timed out waiting for exactly one {surface_name.lower()} {selector!r}"
         )
@@ -1281,13 +2693,24 @@ class Device:
         timeout: int = 45,
         evidence_prefix: str,
         surface_name: str,
+        deadline: float | None = None,
     ) -> UiNode:
         """Bind one exact resource-id/content-desc value without prefix fallback."""
-        deadline = time.monotonic() + timeout
-        while time.monotonic() < deadline:
+        timeout_deadline = time.monotonic() + timeout
+        operation_deadline = (
+            timeout_deadline
+            if deadline is None
+            else min(timeout_deadline, deadline)
+        )
+        while time.monotonic() < operation_deadline:
+            nodes = (
+                self.hierarchy()
+                if deadline is None
+                else self.hierarchy(deadline=operation_deadline)
+            )
             matches = [
                 node
-                for node in self.hierarchy()
+                for node in nodes
                 if selector
                 in {
                     node.attributes.get("resource-id", "").rsplit("/", 1)[-1],
@@ -1297,16 +2720,42 @@ class Device:
             if len(matches) == 1:
                 return matches[0]
             if len(matches) > 1:
-                self.capture(f"{evidence_prefix}-cardinality-invalid")
+                if deadline is None:
+                    self.capture(f"{evidence_prefix}-cardinality-invalid")
+                else:
+                    self.capture(
+                        f"{evidence_prefix}-cardinality-invalid",
+                        deadline=operation_deadline,
+                    )
                 raise RuntimeError(
                     f"{surface_name} {selector!r} has cardinality {len(matches)}; "
                     "expected exactly one"
                 )
-            if self.dismiss_system_ui_anr():
-                time.sleep(2)
+            dismissed = (
+                self.dismiss_system_ui_anr()
+                if deadline is None
+                else self.dismiss_system_ui_anr(
+                    nodes,
+                    deadline=operation_deadline,
+                )
+            )
+            if dismissed:
+                _sleep_before_operation_deadline(
+                    2,
+                    deadline=None if deadline is None else operation_deadline,
+                )
                 continue
-            time.sleep(0.75)
-        self.capture(f"{evidence_prefix}-unavailable")
+            _sleep_before_operation_deadline(
+                0.75,
+                deadline=None if deadline is None else operation_deadline,
+            )
+        if deadline is None:
+            self.capture(f"{evidence_prefix}-unavailable")
+        else:
+            self.capture(
+                f"{evidence_prefix}-unavailable",
+                deadline=operation_deadline,
+            )
         raise RuntimeError(
             f"Timed out waiting for exactly one {surface_name.lower()} {selector!r}"
         )
@@ -1391,15 +2840,60 @@ class Device:
         self.capture("failure")
         raise RuntimeError(f"Timed out waiting for UI node {selector!r}")
 
-    def dismiss_system_ui_anr(self, nodes: list[UiNode] | None = None) -> bool:
+    def dismiss_system_ui_anr(
+        self,
+        nodes: list[UiNode] | None = None,
+        *,
+        deadline: float | None = None,
+    ) -> bool:
         wait_button = (
             self.find("aerr_wait")
             if nodes is None
             else next((node for node in nodes if self._matches(node, "aerr_wait")), None)
         )
         if wait_button is None:
-            return False
-        self.capture_product_anr_evidence()
+            if nodes is None:
+                return False
+            packages = {
+                node.attributes.get("package", "")
+                for node in nodes
+                if node.attributes.get("package", "")
+            }
+            resource_ids = {
+                node.attributes.get("resource-id", "")
+                for node in nodes
+                if node.attributes.get("resource-id", "")
+            }
+            notification_shade_expanded = (
+                PACKAGE not in packages
+                and packages == {"com.android.systemui"}
+                and "com.android.systemui:id/notification_stack_scroller"
+                in resource_ids
+                and (
+                    "com.android.systemui:id/legacy_window_root" in resource_ids
+                    or "com.android.systemui:id/split_shade_status_bar"
+                    in resource_ids
+                )
+            )
+            if not notification_shade_expanded:
+                return False
+            arguments = ("cmd", "statusbar", "collapse")
+            if deadline is None:
+                self.shell(*arguments, timeout=15)
+            else:
+                self.shell(
+                    *arguments,
+                    timeout=_remaining_operation_timeout(
+                        deadline=deadline,
+                        maximum=15,
+                    ),
+                    deadline=deadline,
+                )
+            return True
+        if deadline is None:
+            self.capture_product_anr_evidence()
+        else:
+            self.capture("product-anr", deadline=deadline)
         raise ProductAnrDetected(
             "Android reported that Chummer is not responding; captured product-ANR "
             "diagnostics and refused to dismiss the dialog as success"
@@ -1429,12 +2923,6 @@ class Device:
             "product-anr-process-ids.txt",
             "\n".join(process_ids) or "process id unavailable",
         )
-        for process_id in process_ids:
-            _write_launch_evidence(
-                self,
-                f"product-anr-sigquit-{process_id}.txt",
-                _safe_shell(self, "kill", "-3", process_id, timeout=15),
-            )
 
         diagnostics = (
             (
@@ -1517,20 +3005,39 @@ class Device:
         selector: str,
         *,
         timeout: int = 45,
+        scroll: bool = False,
+        max_scrolls: int = 6,
+        scroll_distance_ratio: float = 0.52,
         evidence_prefix: str = "exact-resource-tap",
         surface_name: str = "Exact resource-id control",
     ) -> None:
         """Tap one cardinality-checked resource ID without text/prefix fallback."""
-        node = self.wait_for_single_exact_resource_id(
-            selector,
-            timeout=timeout,
-            evidence_prefix=evidence_prefix,
-            surface_name=surface_name,
-        )
-        if not self.node_has_tappable_bounds(node):
+        if scroll:
+            node = self.wait_exact_resource_id_bidirectional(
+                selector,
+                timeout=timeout,
+                backward_scrolls=0,
+                forward_scrolls=max_scrolls,
+                scroll_distance_ratio=scroll_distance_ratio,
+                evidence_prefix=evidence_prefix,
+                surface_name=surface_name,
+                require_tappable=True,
+            )
+        else:
+            node = self.wait_for_single_exact_resource_id(
+                selector,
+                timeout=timeout,
+                evidence_prefix=evidence_prefix,
+                surface_name=surface_name,
+            )
+        if (
+            node.attributes.get("enabled") != "true"
+            or node.attributes.get("clickable") != "true"
+            or not self.node_has_tappable_bounds(node)
+        ):
             self.capture(f"{evidence_prefix}-bounds-invalid")
             raise RuntimeError(
-                f"{surface_name} {selector!r} has no tappable on-screen bounds"
+                f"{surface_name} {selector!r} is not enabled, clickable, and tappable"
             )
         x, y = node.center
         self.shell("input", "tap", str(x), str(y))
@@ -1546,6 +3053,7 @@ class Device:
         evidence_prefix: str = "exact-resource-bidirectional",
         surface_name: str = "Exact resource-id control",
         require_tappable: bool = True,
+        deadline: float | None = None,
     ) -> UiNode:
         """Reset to the top, then scan one exact ID without blind swipes.
 
@@ -1556,23 +3064,45 @@ class Device:
         retain the default tappability gate; read-only authority cards can explicitly
         request cardinality-checked visible-node acquisition instead.
         """
+        if deadline is not None:
+            _remaining_operation_timeout(deadline=deadline, maximum=timeout)
+
+        def capture_evidence(name: str) -> None:
+            if deadline is None:
+                self.capture(name)
+            else:
+                self.capture(name, deadline=deadline)
+
         x_ratio = self._scroll_x_ratio(selector)
         for _ in range(backward_scrolls):
-            self.swipe_down(
-                x_ratio=x_ratio,
-                distance_ratio=scroll_distance_ratio,
-            )
-            time.sleep(0.2)
+            if deadline is None:
+                self.swipe_down(
+                    x_ratio=x_ratio,
+                    distance_ratio=scroll_distance_ratio,
+                )
+            else:
+                self.swipe_down(
+                    x_ratio=x_ratio,
+                    distance_ratio=scroll_distance_ratio,
+                    deadline=deadline,
+                )
+            _sleep_before_operation_deadline(0.2, deadline=deadline)
         if backward_scrolls > 0:
-            time.sleep(0.75)
+            _sleep_before_operation_deadline(0.75, deadline=deadline)
 
-        deadline = time.monotonic() + timeout
+        search_deadline = time.monotonic() + timeout
+        if deadline is not None:
+            search_deadline = min(search_deadline, deadline)
         forward = 0
         backtracks = 0
-        while time.monotonic() < deadline:
-            nodes = self.hierarchy()
+        while time.monotonic() < search_deadline:
+            nodes = (
+                self.hierarchy()
+                if deadline is None
+                else self.hierarchy(deadline=deadline)
+            )
             if not nodes:
-                time.sleep(0.75)
+                _sleep_before_operation_deadline(0.75, deadline=deadline)
                 continue
 
             matches = [
@@ -1582,14 +3112,18 @@ class Device:
                 == selector
             ]
             if len(matches) > 1:
-                self.capture(f"{evidence_prefix}-cardinality-invalid")
+                capture_evidence(f"{evidence_prefix}-cardinality-invalid")
                 raise RuntimeError(
                     f"{surface_name} {selector!r} has cardinality {len(matches)}; "
                     "expected exactly one"
                 )
             if len(matches) == 1:
                 node = matches[0]
-                visible_bounds = self.node_has_tappable_bounds(node)
+                visible_bounds = (
+                    self.node_has_tappable_bounds(node)
+                    if deadline is None
+                    else self.node_has_tappable_bounds(node, deadline=deadline)
+                )
                 if not require_tappable and visible_bounds:
                     return node
                 if (
@@ -1601,12 +3135,16 @@ class Device:
 
                 bounds = BOUNDS.fullmatch(node.attributes.get("bounds", ""))
                 if bounds is None:
-                    self.capture(f"{evidence_prefix}-bounds-invalid")
+                    capture_evidence(f"{evidence_prefix}-bounds-invalid")
                     raise RuntimeError(
                         f"{surface_name} {selector!r} exposed invalid bounds"
                     )
                 _, top, _, bottom = (int(value) for value in bounds.groups())
-                _, height = self.display_size()
+                _, height = (
+                    self.display_size()
+                    if deadline is None
+                    else self.display_size(deadline=deadline)
+                )
                 center_y = (top + bottom) // 2
                 clipped = bottom - top <= 8
                 clipped_above = top < 0 or (clipped and center_y < height // 2)
@@ -1616,50 +3154,128 @@ class Device:
                     or (clipped and center_y >= height // 2)
                 )
                 if clipped_above and forward > 0 and backtracks < forward_scrolls:
-                    self.swipe_down(
-                        x_ratio=x_ratio,
-                        distance_ratio=scroll_distance_ratio,
-                    )
+                    if deadline is None:
+                        self.swipe_down(
+                            x_ratio=x_ratio,
+                            distance_ratio=scroll_distance_ratio,
+                        )
+                    else:
+                        self.swipe_down(
+                            x_ratio=x_ratio,
+                            distance_ratio=scroll_distance_ratio,
+                            deadline=deadline,
+                        )
                     forward -= 1
                     backtracks += 1
-                    time.sleep(0.75)
+                    _sleep_before_operation_deadline(0.75, deadline=deadline)
                     continue
                 if clipped_below and forward < forward_scrolls:
-                    self.swipe_up(
-                        x_ratio=x_ratio,
-                        distance_ratio=scroll_distance_ratio,
-                    )
+                    if deadline is None:
+                        self.swipe_up(
+                            x_ratio=x_ratio,
+                            distance_ratio=scroll_distance_ratio,
+                        )
+                    else:
+                        self.swipe_up(
+                            x_ratio=x_ratio,
+                            distance_ratio=scroll_distance_ratio,
+                            deadline=deadline,
+                        )
                     forward += 1
-                    time.sleep(0.75)
+                    _sleep_before_operation_deadline(0.75, deadline=deadline)
                     continue
 
                 if require_tappable:
-                    self.capture(f"{evidence_prefix}-not-tappable")
+                    capture_evidence(f"{evidence_prefix}-not-tappable")
                     raise RuntimeError(
                         f"{surface_name} {selector!r} was not enabled, clickable, and tappable"
                     )
-                self.capture(f"{evidence_prefix}-not-readable")
+                capture_evidence(f"{evidence_prefix}-not-readable")
                 raise RuntimeError(
                     f"{surface_name} {selector!r} was not fully visible for read-only acquisition"
                 )
 
-            if self.dismiss_system_ui_anr(nodes):
-                time.sleep(2)
+            anr_detected = (
+                self.dismiss_system_ui_anr(nodes)
+                if deadline is None
+                else self.dismiss_system_ui_anr(nodes, deadline=deadline)
+            )
+            if anr_detected:
+                _sleep_before_operation_deadline(2, deadline=deadline)
                 continue
             if forward >= forward_scrolls:
                 break
-            self.swipe_up(
-                x_ratio=x_ratio,
-                distance_ratio=scroll_distance_ratio,
-            )
+            if deadline is None:
+                self.swipe_up(
+                    x_ratio=x_ratio,
+                    distance_ratio=scroll_distance_ratio,
+                )
+            else:
+                self.swipe_up(
+                    x_ratio=x_ratio,
+                    distance_ratio=scroll_distance_ratio,
+                    deadline=deadline,
+                )
             forward += 1
-            time.sleep(0.75)
-        self.capture(f"{evidence_prefix}-unavailable")
+            _sleep_before_operation_deadline(0.75, deadline=deadline)
+        if deadline is not None:
+            _remaining_operation_timeout(deadline=deadline, maximum=timeout)
+        capture_evidence(f"{evidence_prefix}-unavailable")
         qualifier = "tappable " if require_tappable else "visible "
         raise RuntimeError(
             f"Timed out waiting for exactly one {qualifier}{surface_name.lower()} {selector!r} "
             "after a bounded bidirectional search"
         )
+
+    def tap_exact_resource_id_bidirectional(
+        self,
+        selector: str,
+        *,
+        timeout: int = 90,
+        backward_scrolls: int = 24,
+        forward_scrolls: int = 24,
+        scroll_distance_ratio: float = 0.22,
+        evidence_prefix: str = "exact-resource-bidirectional-tap",
+        surface_name: str = "Exact resource-id control",
+        deadline: float | None = None,
+    ) -> None:
+        """Tap the exact cardinality-checked node from one observed hierarchy."""
+        if deadline is None:
+            node = self.wait_exact_resource_id_bidirectional(
+                selector,
+                timeout=timeout,
+                backward_scrolls=backward_scrolls,
+                forward_scrolls=forward_scrolls,
+                scroll_distance_ratio=scroll_distance_ratio,
+                evidence_prefix=evidence_prefix,
+                surface_name=surface_name,
+            )
+        else:
+            node = self.wait_exact_resource_id_bidirectional(
+                selector,
+                timeout=timeout,
+                backward_scrolls=backward_scrolls,
+                forward_scrolls=forward_scrolls,
+                scroll_distance_ratio=scroll_distance_ratio,
+                evidence_prefix=evidence_prefix,
+                surface_name=surface_name,
+                deadline=deadline,
+            )
+        x, y = node.center
+        if deadline is None:
+            self.shell("input", "tap", str(x), str(y))
+        else:
+            self.shell(
+                "input",
+                "tap",
+                str(x),
+                str(y),
+                timeout=_remaining_operation_timeout(
+                    deadline=deadline,
+                    maximum=120,
+                ),
+                deadline=deadline,
+            )
 
     def tap_bidirectional(
         self,
@@ -1716,12 +3332,21 @@ class Device:
             "after a bounded bidirectional search"
         )
 
-    def node_has_tappable_bounds(self, node: UiNode) -> bool:
+    def node_has_tappable_bounds(
+        self,
+        node: UiNode,
+        *,
+        deadline: float | None = None,
+    ) -> bool:
         match = BOUNDS.fullmatch(node.attributes.get("bounds", ""))
         if match is None:
             return False
         left, top, right, bottom = (int(value) for value in match.groups())
-        width, height = self.display_size()
+        width, height = (
+            self.display_size()
+            if deadline is None
+            else self.display_size(deadline=deadline)
+        )
         center_y = (top + bottom) // 2
         return (
             right - left > 8
@@ -1775,6 +3400,9 @@ class Device:
         evidence_prefix: str = "exact-resource-transition",
         source_name: str = "Exact source control",
         target_name: str = "Exact target control",
+        target_scroll_surface: str | None = None,
+        max_target_scrolls: int = 0,
+        target_scroll_distance_ratio: float = 0.22,
     ) -> UiNode:
         """Open a route without depending on localized visible text.
 
@@ -1783,6 +3411,7 @@ class Device:
         or stale/non-tappable source fails closed.
         """
         deadline = time.monotonic() + timeout
+        target_scrolls = 0
         while time.monotonic() < deadline:
             nodes = self.hierarchy()
             if not nodes:
@@ -1795,12 +3424,52 @@ class Device:
                 == target
             ]
             if len(targets) == 1:
-                return targets[0]
+                target_node = targets[0]
+                if (
+                    target_scroll_surface is None
+                    or self.node_has_tappable_bounds(target_node)
+                ):
+                    return target_node
             if len(targets) > 1:
                 self.capture(f"{evidence_prefix}-target-cardinality-invalid")
                 raise RuntimeError(
                     f"{target_name} {target!r} has cardinality {len(targets)}; expected one"
                 )
+            scroll_surfaces = (
+                [
+                    node
+                    for node in nodes
+                    if node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
+                    == target_scroll_surface
+                ]
+                if target_scroll_surface is not None
+                else []
+            )
+            if len(scroll_surfaces) > 1:
+                self.capture(f"{evidence_prefix}-scroll-surface-cardinality-invalid")
+                raise RuntimeError(
+                    f"Target scroll surface {target_scroll_surface!r} has cardinality "
+                    f"{len(scroll_surfaces)}; expected at most one"
+                )
+            if len(scroll_surfaces) == 1:
+                surface = scroll_surfaces[0]
+                if not self.node_has_tappable_bounds(surface):
+                    self.capture(f"{evidence_prefix}-scroll-surface-bounds-invalid")
+                    raise RuntimeError(
+                        f"Target scroll surface {target_scroll_surface!r} did not expose "
+                        "exact on-screen bounds"
+                    )
+                if target_scrolls >= max_target_scrolls:
+                    break
+                left, _, right, _ = surface.bounds
+                display_width, _ = self.display_size()
+                self.swipe_up(
+                    x_ratio=((left + right) / 2) / display_width,
+                    distance_ratio=target_scroll_distance_ratio,
+                )
+                target_scrolls += 1
+                time.sleep(0.75)
+                continue
             sources = [
                 node
                 for node in nodes
@@ -1935,19 +3604,61 @@ class Device:
         self.capture("missing-text")
         raise RuntimeError(f"Expected persisted text {expected!r} was not rendered")
 
-    def back(self) -> None:
-        node = self.find("Navigate up")
-        if node is not None:
-            x, y = node.center
-            self.shell("input", "tap", str(x), str(y))
+    def back(self, *, deadline: float | None = None) -> None:
+        if deadline is None:
+            node = self.find("Navigate up")
+            if node is not None:
+                x, y = node.center
+                self.shell("input", "tap", str(x), str(y))
+                time.sleep(1)
+                return
+            self.shell("input", "keyevent", "4")
             time.sleep(1)
             return
-        self.shell("input", "keyevent", "4")
-        time.sleep(1)
 
-    def display_size(self) -> tuple[int, int]:
+        _remaining_operation_timeout(deadline=deadline, maximum=120)
+        node = self.find("Navigate up", deadline=deadline)
+        _remaining_operation_timeout(deadline=deadline, maximum=120)
+        if node is not None:
+            x, y = node.center
+            self.shell(
+                "input",
+                "tap",
+                str(x),
+                str(y),
+                timeout=_remaining_operation_timeout(
+                    deadline=deadline,
+                    maximum=120,
+                ),
+                deadline=deadline,
+            )
+        else:
+            self.shell(
+                "input",
+                "keyevent",
+                "4",
+                timeout=_remaining_operation_timeout(
+                    deadline=deadline,
+                    maximum=120,
+                ),
+                deadline=deadline,
+            )
+        _sleep_before_operation_deadline(1, deadline=deadline)
+
+    def display_size(self, *, deadline: float | None = None) -> tuple[int, int]:
         if self._display_size is None:
-            output = self.shell("wm", "size")
+            if deadline is None:
+                output = self.shell("wm", "size")
+            else:
+                output = self.shell(
+                    "wm",
+                    "size",
+                    timeout=_remaining_operation_timeout(
+                        deadline=deadline,
+                        maximum=120,
+                    ),
+                    deadline=deadline,
+                )
             sizes = DISPLAY_SIZE.findall(output)
             self._display_size = (
                 (int(sizes[-1][0]), int(sizes[-1][1]))
@@ -1961,8 +3672,16 @@ class Device:
         *,
         x_ratio: float = 0.5,
         distance_ratio: float = 0.52,
+        deadline: float | None = None,
+        allow_direct_reconciliation: bool = True,
     ) -> None:
-        width, height = self.display_size()
+        if type(allow_direct_reconciliation) is not bool:
+            raise ValueError("Direct swipe reconciliation policy must be boolean")
+        width, height = (
+            self.display_size()
+            if deadline is None
+            else self.display_size(deadline=deadline)
+        )
         x = int(round(width * x_ratio))
         start_y = int(round(height * 0.82))
         end_y = int(round(height * max(0.10, 0.82 - distance_ratio)))
@@ -1976,11 +3695,25 @@ class Device:
             "300",
         )
         try:
-            self.shell(*arguments, timeout=15)
+            if deadline is None:
+                self.shell(*arguments, timeout=15)
+            else:
+                self.shell(
+                    *arguments,
+                    timeout=_remaining_operation_timeout(
+                        deadline=deadline,
+                        maximum=15,
+                    ),
+                    deadline=deadline,
+                )
         except AdbTransportError as error:
-            if not self._reconcile_unknown_swipe(
+            if (
+                not allow_direct_reconciliation
+                or not self._reconcile_unknown_swipe(
                 error,
                 ("shell", *arguments),
+                deadline=deadline,
+                )
             ):
                 raise
 
@@ -1989,8 +3722,13 @@ class Device:
         *,
         x_ratio: float = 0.5,
         distance_ratio: float = 0.52,
+        deadline: float | None = None,
     ) -> None:
-        width, height = self.display_size()
+        width, height = (
+            self.display_size()
+            if deadline is None
+            else self.display_size(deadline=deadline)
+        )
         x = int(round(width * x_ratio))
         start_y = int(round(height * 0.30))
         end_y = int(round(height * min(0.90, 0.30 + distance_ratio)))
@@ -2004,11 +3742,22 @@ class Device:
             "300",
         )
         try:
-            self.shell(*arguments, timeout=15)
+            if deadline is None:
+                self.shell(*arguments, timeout=15)
+            else:
+                self.shell(
+                    *arguments,
+                    timeout=_remaining_operation_timeout(
+                        deadline=deadline,
+                        maximum=15,
+                    ),
+                    deadline=deadline,
+                )
         except AdbTransportError as error:
             if not self._reconcile_unknown_swipe(
                 error,
                 ("shell", *arguments),
+                deadline=deadline,
             ):
                 raise
 
@@ -2021,7 +3770,73 @@ class Device:
                 return
         self.shell("input", "tap", "48", "96")
 
-    def capture(self, name: str) -> None:
+    def capture(self, name: str, *, deadline: float | None = None) -> None:
+        if deadline is not None:
+            def deadline_run(
+                *arguments: str,
+                text: bool = True,
+            ) -> subprocess.CompletedProcess | None:
+                try:
+                    return self.run(
+                        *arguments,
+                        timeout=_remaining_operation_timeout(
+                            deadline=deadline,
+                            maximum=120,
+                        ),
+                        text=text,
+                        deadline=deadline,
+                    )
+                except Exception:
+                    # Diagnostic collection is subordinate to the semantic error
+                    # which requested it. Never replace that primary failure.
+                    return None
+
+            screenshot_result = deadline_run(
+                "exec-out",
+                "screencap",
+                "-p",
+                text=False,
+            )
+            if time.monotonic() >= deadline:
+                return
+            if screenshot_result is not None:
+                try:
+                    (self.evidence / f"{name}.png").write_bytes(
+                        screenshot_result.stdout
+                    )
+                except (OSError, TypeError):
+                    pass
+
+            hierarchy_result = deadline_run(
+                "exec-out",
+                "cat",
+                "/sdcard/chummer-editing-window.xml",
+            )
+            if time.monotonic() >= deadline:
+                return
+            if hierarchy_result is not None:
+                try:
+                    (self.evidence / f"{name}.xml").write_text(
+                        hierarchy_result.stdout,
+                        encoding="utf-8",
+                    )
+                except (OSError, TypeError):
+                    pass
+
+            logcat_result = deadline_run("logcat", "-d", "-t", "500")
+            if time.monotonic() >= deadline:
+                return
+            if logcat_result is not None:
+                try:
+                    (self.evidence / f"{name}-logcat.txt").write_text(
+                        logcat_result.stdout,
+                        encoding="utf-8",
+                    )
+                except (OSError, TypeError):
+                    pass
+            return
+
+        # Preserve the no-deadline diagnostic path and its exact ADB call shape.
         try:
             screenshot = self.run("exec-out", "screencap", "-p", text=False).stdout
             (self.evidence / f"{name}.png").write_bytes(screenshot)
@@ -2293,7 +4108,14 @@ def _phone_runner_route_from_nodes(
     *,
     created: bool | None,
     require_tappable_bounds: bool,
+    deadline: float | None = None,
 ) -> UiNode | None:
+    def capture(name: str) -> None:
+        if deadline is None:
+            device.capture(name)
+        else:
+            device.capture(name, deadline=deadline)
+
     expected_routes = {"phone-runner-create", "phone-runner-sheet"}
     desired_route = (
         None
@@ -2314,7 +4136,7 @@ def _phone_runner_route_from_nodes(
     if len(matches) == 1:
         observed_route, node = matches[0]
         if desired_route is not None and observed_route != desired_route:
-            device.capture("phone-runner-route-lifecycle-mismatch")
+            capture("phone-runner-route-lifecycle-mismatch")
             raise RuntimeError(
                 f"Final phone runner route was {observed_route!r}; "
                 f"expected sole root {desired_route!r}"
@@ -2331,20 +4153,24 @@ def _phone_runner_route_from_nodes(
             or node.attributes.get("focusable") != "false"
             or node.attributes.get("text") != expected_label
         ):
-            device.capture("phone-runner-route-structure-invalid")
+            capture("phone-runner-route-structure-invalid")
             raise RuntimeError(
                 "Exact phone runner lifecycle marker did not expose its pinned "
                 "noninteractive native role and label"
             )
-        if require_tappable_bounds and not device.node_has_tappable_bounds(node):
-            device.capture("phone-runner-route-structure-invalid")
+        if require_tappable_bounds and not (
+            device.node_has_tappable_bounds(node)
+            if deadline is None
+            else device.node_has_tappable_bounds(node, deadline=deadline)
+        ):
+            capture("phone-runner-route-structure-invalid")
             raise RuntimeError(
                 "Exact phone runner lifecycle marker was not visible with its "
                 "pinned native role after the root viewport reset"
             )
         return node
     if len(matches) > 1:
-        device.capture("phone-runner-route-cardinality-invalid")
+        capture("phone-runner-route-cardinality-invalid")
         raise RuntimeError(
             "Final phone runner route exposed both creation and career roots"
         )
@@ -2356,11 +4182,19 @@ def wait_for_phone_runner_route(
     *,
     created: bool | None = None,
     timeout: int = 90,
+    deadline: float | None = None,
 ) -> UiNode:
+    if deadline is None:
+        return return_to_phone_runner_root(
+            device,
+            created=created,
+            timeout=timeout,
+        )
     return return_to_phone_runner_root(
         device,
         created=created,
         timeout=timeout,
+        deadline=deadline,
     )
 
 
@@ -2430,6 +4264,8 @@ def detect_phone_ui_locale(device: Device) -> PhoneUiLocaleBinding:
 def bind_phone_shell_destinations(
     device: Device,
     nodes: list[UiNode] | None = None,
+    *,
+    deadline: float | None = None,
 ) -> tuple[tuple[str, UiNode], ...]:
     """Bind the pinned MAUI Android bottom bar without trusting text aliases.
 
@@ -2438,8 +4274,18 @@ def bind_phone_shell_destinations(
     order, focus/click state and one selected destination form the fail-closed
     identity instead. Any non-empty resource-id fails this pinned contract.
     """
-    hierarchy = device.hierarchy() if nodes is None else nodes
-    display_width, display_height = device.display_size()
+    hierarchy = (
+        device.hierarchy()
+        if nodes is None and deadline is None
+        else device.hierarchy(deadline=deadline)
+        if nodes is None
+        else nodes
+    )
+    display_width, display_height = (
+        device.display_size()
+        if deadline is None
+        else device.display_size(deadline=deadline)
+    )
     candidates = [
         node
         for node in hierarchy
@@ -2560,21 +4406,80 @@ def wait_for_phone_shell_destination_snapshot(
     timeout: int,
     evidence_prefix: str,
     selected_label: str | None = None,
+    required_route_resource_id: str | None = None,
+    deadline: float | None = None,
 ) -> tuple[list[UiNode], tuple[tuple[str, UiNode], ...]]:
-    deadline = time.monotonic() + timeout
+    timeout_deadline = time.monotonic() + timeout
+    operation_deadline = (
+        timeout_deadline
+        if deadline is None
+        else min(timeout_deadline, deadline)
+    )
     last_error = "native phone bottom bar was absent"
     previous_signature: tuple[tuple[object, ...], ...] | None = None
-    while time.monotonic() < deadline:
+    while time.monotonic() < operation_deadline:
         binding_failed = False
+        hierarchy = (
+            device.hierarchy()
+            if deadline is None
+            else device.hierarchy(deadline=operation_deadline)
+        )
+        route_signature: tuple[object, ...] = ()
+        if required_route_resource_id is not None:
+            route_matches = [
+                node
+                for node in hierarchy
+                if node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
+                == required_route_resource_id
+            ]
+            if len(route_matches) > 1:
+                if deadline is None:
+                    device.capture(f"{evidence_prefix}-route-cardinality-invalid")
+                else:
+                    device.capture(
+                        f"{evidence_prefix}-route-cardinality-invalid",
+                        deadline=operation_deadline,
+                    )
+                raise RuntimeError(
+                    f"Required phone route {required_route_resource_id!r} has "
+                    f"cardinality {len(route_matches)}; expected one"
+                )
+            if not route_matches:
+                last_error = (
+                    f"required phone route {required_route_resource_id!r} was absent"
+                )
+                previous_signature = None
+                _sleep_before_operation_deadline(
+                    0.75,
+                    deadline=None if deadline is None else operation_deadline,
+                )
+                continue
+            route = route_matches[0]
+            route_signature = (
+                required_route_resource_id,
+                route.attributes.get("class", ""),
+                route.attributes.get("enabled", ""),
+                route.attributes.get("bounds", ""),
+            )
         try:
-            hierarchy = device.hierarchy()
-            destinations = bind_phone_shell_destinations(device, hierarchy)
+            destinations = (
+                bind_phone_shell_destinations(device, hierarchy)
+                if deadline is None
+                else bind_phone_shell_destinations(
+                    device,
+                    hierarchy,
+                    deadline=operation_deadline,
+                )
+            )
             selected = [
                 PHONE_SHELL_DESTINATION_MAPPING[resource_id]
                 for resource_id, node in destinations
                 if node.attributes.get("selected") == "true"
             ]
-            signature = _phone_shell_destination_signature(destinations)
+            signature = (
+                *_phone_shell_destination_signature(destinations),
+                route_signature,
+            )
             if selected_label is not None and selected != [selected_label]:
                 last_error = (
                     f"selected destination remained {selected!r}; "
@@ -2590,11 +4495,31 @@ def wait_for_phone_shell_destination_snapshot(
             last_error = str(error)
             previous_signature = None
             binding_failed = True
-        if binding_failed and device.dismiss_system_ui_anr():
-            time.sleep(2)
+        dismissed = (
+            binding_failed
+            and (
+                device.dismiss_system_ui_anr()
+                if deadline is None
+                else device.dismiss_system_ui_anr(
+                    hierarchy,
+                    deadline=operation_deadline,
+                )
+            )
+        )
+        if dismissed:
+            _sleep_before_operation_deadline(
+                2,
+                deadline=None if deadline is None else operation_deadline,
+            )
             continue
-        time.sleep(0.75)
-    device.capture(f"{evidence_prefix}-invalid")
+        _sleep_before_operation_deadline(
+            0.75,
+            deadline=None if deadline is None else operation_deadline,
+        )
+    if deadline is None:
+        device.capture(f"{evidence_prefix}-invalid")
+    else:
+        device.capture(f"{evidence_prefix}-invalid", deadline=operation_deadline)
     raise RuntimeError(
         f"Timed out waiting for structurally bound phone destinations: {last_error}"
     )
@@ -2606,12 +4531,23 @@ def wait_for_phone_shell_destinations(
     timeout: int,
     evidence_prefix: str,
     selected_label: str | None = None,
+    deadline: float | None = None,
 ) -> tuple[tuple[str, UiNode], ...]:
-    _, destinations = wait_for_phone_shell_destination_snapshot(
-        device,
-        timeout=timeout,
-        evidence_prefix=evidence_prefix,
-        selected_label=selected_label,
+    _, destinations = (
+        wait_for_phone_shell_destination_snapshot(
+            device,
+            timeout=timeout,
+            evidence_prefix=evidence_prefix,
+            selected_label=selected_label,
+        )
+        if deadline is None
+        else wait_for_phone_shell_destination_snapshot(
+            device,
+            timeout=timeout,
+            evidence_prefix=evidence_prefix,
+            selected_label=selected_label,
+            deadline=deadline,
+        )
     )
     return destinations
 
@@ -2621,6 +4557,7 @@ def record_phone_ui_locale_evidence(
     *,
     evidence_prefix: str,
     timeout: int = 45,
+    required_route_resource_id: str | None = None,
 ) -> dict[str, object]:
     """Bind system locale and native no-ID shell labels in one durable receipt."""
     binding = detect_phone_ui_locale(device)
@@ -2628,6 +4565,7 @@ def record_phone_ui_locale_evidence(
         device,
         timeout=timeout,
         evidence_prefix=evidence_prefix,
+        required_route_resource_id=required_route_resource_id,
     )
     observed_labels = tuple(
         node.attributes.get("content-desc", "") for _, node in destinations
@@ -2647,6 +4585,8 @@ def record_phone_ui_locale_evidence(
         "destinationResourceIds": list(PHONE_SHELL_DESTINATION_IDS),
         "nativeResourceIdPosture": "empty-pinned-maui-api36",
     }
+    if required_route_resource_id is not None:
+        receipt["boundRouteResourceId"] = required_route_resource_id
     _write_new_json_receipt(
         device.evidence / f"{evidence_prefix}-phone-ui-locale.json",
         receipt,
@@ -2668,14 +4608,24 @@ def tap_phone_destination(
     resource_id: str,
     *,
     timeout: int = 45,
+    deadline: float | None = None,
 ) -> None:
     if resource_id not in PHONE_SHELL_DESTINATION_MAPPING:
         raise ValueError(f"Unknown phone shell destination {resource_id!r}")
     label = PHONE_SHELL_DESTINATION_MAPPING[resource_id]
-    destinations = wait_for_phone_shell_destinations(
-        device,
-        timeout=timeout,
-        evidence_prefix=f"{resource_id}-tap-bind",
+    destinations = (
+        wait_for_phone_shell_destinations(
+            device,
+            timeout=timeout,
+            evidence_prefix=f"{resource_id}-tap-bind",
+        )
+        if deadline is None
+        else wait_for_phone_shell_destinations(
+            device,
+            timeout=timeout,
+            evidence_prefix=f"{resource_id}-tap-bind",
+            deadline=deadline,
+        )
     )
     selected_before_tap = next(
         candidate_id
@@ -2684,11 +4634,30 @@ def tap_phone_destination(
     )
     if selected_before_tap == resource_id:
         return
-    fresh_destinations = bind_phone_shell_destinations(device)
+    selected_label_before_tap = PHONE_SHELL_DESTINATION_MAPPING[selected_before_tap]
+    fresh_destinations = (
+        wait_for_phone_shell_destinations(
+            device,
+            timeout=timeout,
+            evidence_prefix=f"{resource_id}-tap-reacquire",
+            selected_label=selected_label_before_tap,
+        )
+        if deadline is None
+        else wait_for_phone_shell_destinations(
+            device,
+            timeout=timeout,
+            evidence_prefix=f"{resource_id}-tap-reacquire",
+            selected_label=selected_label_before_tap,
+            deadline=deadline,
+        )
+    )
     if _phone_shell_destination_signature(fresh_destinations) != (
         _phone_shell_destination_signature(destinations)
     ):
-        device.capture(f"{resource_id}-tap-stale")
+        if deadline is None:
+            device.capture(f"{resource_id}-tap-stale")
+        else:
+            device.capture(f"{resource_id}-tap-stale", deadline=deadline)
         raise RuntimeError(
             "Native phone bottom bar changed between stable binding and tap; "
             "refusing stale coordinates"
@@ -2697,13 +4666,30 @@ def tap_phone_destination(
         node for candidate_id, node in fresh_destinations if candidate_id == resource_id
     )
     x, y = node.center
-    device.shell("input", "tap", str(x), str(y))
-    wait_for_phone_shell_destinations(
-        device,
-        timeout=timeout,
-        evidence_prefix=f"{resource_id}-tap-select",
-        selected_label=label,
-    )
+    if deadline is None:
+        device.shell("input", "tap", str(x), str(y))
+        wait_for_phone_shell_destinations(
+            device,
+            timeout=timeout,
+            evidence_prefix=f"{resource_id}-tap-select",
+            selected_label=label,
+        )
+    else:
+        device.shell(
+            "input",
+            "tap",
+            str(x),
+            str(y),
+            timeout=_remaining_operation_timeout(deadline=deadline, maximum=15),
+            deadline=deadline,
+        )
+        wait_for_phone_shell_destinations(
+            device,
+            timeout=timeout,
+            evidence_prefix=f"{resource_id}-tap-select",
+            selected_label=label,
+            deadline=deadline,
+        )
 
 
 def assert_phone_shell_surface(
@@ -2873,14 +4859,7 @@ def save_and_read_workspace_authority(
     tap_phone_destination(device, "phone-destination-runners")
     wait_for_phone_runners(device)
     open_build(device, profile)
-    device.tap("build-save-runner")
-    device.wait(
-        "Saved.",
-        timeout=90,
-        scroll=True,
-        max_scrolls=48,
-        scroll_distance_ratio=0.22,
-    )
+    save_runner_and_wait_for_durable_notice(device)
     tap_phone_destination(device, "phone-destination-runners")
     wait_for_phone_runners(device)
     authority = read_workspace_authority(device)
@@ -2888,14 +4867,29 @@ def save_and_read_workspace_authority(
     return authority
 
 
-def open_build(device: Device, profile: str) -> None:
+def open_build(
+    device: Device,
+    profile: str,
+    *,
+    deadline: float | None = None,
+) -> None:
     if profile == "tablet":
+        if deadline is not None:
+            raise RuntimeError("Deadline-bound tablet Build navigation is deferred")
         device.open_navigation_drawer()
         device.tap("Build")
         device.wait("tablet-build-layout", timeout=45)
         return
-    tap_phone_destination(device, "phone-destination-runner")
-    return_to_phone_runner_root(device)
+    if deadline is None:
+        tap_phone_destination(device, "phone-destination-runner")
+        return_to_phone_runner_root(device)
+    else:
+        tap_phone_destination(
+            device,
+            "phone-destination-runner",
+            deadline=deadline,
+        )
+        return_to_phone_runner_root(device, deadline=deadline)
 
 
 def reset_scroll_to_top(
@@ -2903,12 +4897,16 @@ def reset_scroll_to_top(
     *,
     x_ratio: float = 0.5,
     swipes: int = 2,
+    deadline: float | None = None,
 ) -> None:
     for _ in range(swipes):
-        device.swipe_down(x_ratio=x_ratio)
-        time.sleep(0.2)
+        if deadline is None:
+            device.swipe_down(x_ratio=x_ratio)
+        else:
+            device.swipe_down(x_ratio=x_ratio, deadline=deadline)
+        _sleep_before_operation_deadline(0.2, deadline=deadline)
     if swipes > 0:
-        time.sleep(0.75)
+        _sleep_before_operation_deadline(0.75, deadline=deadline)
 
 
 def return_to_phone_runner_root(
@@ -2917,33 +4915,140 @@ def return_to_phone_runner_root(
     created: bool | None = None,
     timeout: int = 90,
     max_back_steps: int = 8,
+    deadline: float | None = None,
 ) -> UiNode:
     """Unwind a preserved Shell Build stack and prove its exact root.
 
     Selecting an already-selected Shell destination does not pop MAUI's nested
-    navigation stack. Require the immutable BuildPage marker and its fixed Save
-    toolbar before resetting its preserved viewport, then require the lifecycle
-    route marker. Otherwise activate only the platform's exact ``Navigate up``
-    control. This keeps recovery bounded and prevents a stale collection editor
-    from being mistaken for the Build root.
+    navigation stack. Require the immutable BuildPage marker, its fixed Save
+    toolbar, and the exact lifecycle route marker. Reset the preserved viewport
+    only when that exact route marker is clipped. Otherwise activate only the
+    platform's exact ``Navigate up`` control. This keeps recovery bounded and
+    prevents a stale collection editor from being mistaken for the Build root.
     """
-    deadline = time.monotonic() + timeout
+    timeout_deadline = time.monotonic() + timeout
+    operation_deadline = (
+        timeout_deadline
+        if deadline is None
+        else min(timeout_deadline, deadline)
+    )
+    caller_deadline = operation_deadline if deadline is not None else None
+
+    def capture(name: str) -> None:
+        if deadline is None:
+            device.capture(name)
+        else:
+            device.capture(name, deadline=operation_deadline)
+
+    def wait_before_retry(seconds: float) -> bool:
+        if caller_deadline is None:
+            time.sleep(seconds)
+            return True
+        if caller_deadline - time.monotonic() < seconds:
+            return False
+        _sleep_before_operation_deadline(
+            seconds,
+            deadline=caller_deadline,
+        )
+        return True
+
+    def stable_direct_current_hierarchy() -> list[UiNode]:
+        """Recover an inaccessible owned dump with stable read-only authority.
+
+        API 36 can acknowledge a file-backed UIAutomator dump while never
+        publishing its freshly removed target file. Two consecutive identical
+        direct observations are safe current-state evidence: they do not replay
+        navigation or any product mutation, and they remain bounded by the same
+        root deadline. A single direct frame is never accepted.
+        """
+        previous_sha256: str | None = None
+        consecutive = 0
+        for observation in range(
+            1,
+            ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_MAX_OBSERVATIONS + 1,
+        ):
+            try:
+                attempt_max_seconds = _direct_hierarchy_observation_timeout(
+                    deadline=operation_deadline,
+                    consecutive=consecutive,
+                )
+                observed = device.read_only_hierarchy_once(
+                    deadline=operation_deadline,
+                    attempt_max_seconds=attempt_max_seconds,
+                )
+            except (
+                AdbOperationDeadlineExceeded,
+                subprocess.CalledProcessError,
+                subprocess.TimeoutExpired,
+            ):
+                return []
+            if not observed:
+                previous_sha256 = None
+                consecutive = 0
+            else:
+                observed_sha256 = Device._hierarchy_sha256(observed)
+                consecutive = (
+                    consecutive + 1
+                    if observed_sha256 == previous_sha256
+                    else 1
+                )
+                previous_sha256 = observed_sha256
+                if (
+                    consecutive
+                    >= ADB_HIERARCHY_DUMP_RECONCILIATION_REQUIRED_CONSECUTIVE
+                ):
+                    return observed
+            if (
+                observation
+                < ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_MAX_OBSERVATIONS
+            ):
+                try:
+                    _sleep_before_operation_deadline(
+                        ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_DELAY_SECONDS,
+                        deadline=operation_deadline,
+                    )
+                except AdbOperationDeadlineExceeded:
+                    return []
+        return []
+
     back_steps = 0
     viewport_reset = False
-    while time.monotonic() < deadline:
-        nodes = device.hierarchy()
+    while time.monotonic() < operation_deadline:
+        nodes = device.hierarchy(deadline=operation_deadline)
         if not nodes:
-            if device.dismiss_system_ui_anr():
-                time.sleep(2)
+            nodes = stable_direct_current_hierarchy()
+        if not nodes:
+            dismissed = (
+                device.dismiss_system_ui_anr(nodes)
+                if caller_deadline is None
+                else device.dismiss_system_ui_anr(
+                    nodes,
+                    deadline=caller_deadline,
+                )
+            )
+            if dismissed:
+                if not wait_before_retry(2):
+                    break
             else:
-                time.sleep(0.75)
+                if not wait_before_retry(0.75):
+                    break
             continue
 
-        route = _phone_runner_route_from_nodes(
-            device,
-            nodes,
-            created=created,
-            require_tappable_bounds=viewport_reset,
+        route = (
+            _phone_runner_route_from_nodes(
+                device,
+                nodes,
+                created=created,
+                require_tappable_bounds=viewport_reset,
+            )
+            if caller_deadline is None
+            else _phone_runner_route_from_nodes(
+                device,
+                nodes,
+                created=created,
+                require_tappable_bounds=viewport_reset,
+                deadline=caller_deadline,
+            )
         )
         page_matches = [
             node
@@ -2953,7 +5058,7 @@ def return_to_phone_runner_root(
             and node.attributes.get("enabled") == "true"
         ]
         if len(page_matches) > 1:
-            device.capture("phone-runner-root-page-cardinality-invalid")
+            capture("phone-runner-root-page-cardinality-invalid")
             raise RuntimeError(
                 "Phone runner root exposed more than one exact phone-runner-page marker"
             )
@@ -2969,51 +5074,68 @@ def return_to_phone_runner_root(
             and node.attributes.get("focusable") == "true"
         ]
         if len(toolbar_matches) > 1:
-            device.capture("phone-runner-root-toolbar-cardinality-invalid")
+            capture("phone-runner-root-toolbar-cardinality-invalid")
             raise RuntimeError(
                 "Phone runner root exposed more than one exact build-save-runner toolbar"
             )
         root_authority = (
             len(page_matches) == 1
             and len(toolbar_matches) == 1
-            and device.node_has_tappable_bounds(page_matches[0])
-            and device.node_has_tappable_bounds(toolbar_matches[0])
+            and (
+                device.node_has_tappable_bounds(page_matches[0])
+                if caller_deadline is None
+                else device.node_has_tappable_bounds(
+                    page_matches[0],
+                    deadline=caller_deadline,
+                )
+            )
+            and (
+                device.node_has_tappable_bounds(toolbar_matches[0])
+                if caller_deadline is None
+                else device.node_has_tappable_bounds(
+                    toolbar_matches[0],
+                    deadline=caller_deadline,
+                )
+            )
         )
         if root_authority:
-            if route is not None and viewport_reset:
-                expected_label = (
-                    "CREATION RUNNER"
-                    if route.attributes["resource-id"].endswith("phone-runner-create")
-                    else "CAREER RUNNER"
+            route_tappable = (
+                False
+                if route is None
+                else device.node_has_tappable_bounds(route)
+                if caller_deadline is None
+                else device.node_has_tappable_bounds(
+                    route,
+                    deadline=caller_deadline,
                 )
-                if (
-                    route.attributes.get("class") != "android.widget.TextView"
-                    or route.attributes.get("enabled") != "true"
-                    or route.attributes.get("clickable") != "false"
-                    or route.attributes.get("focusable") != "false"
-                    or route.attributes.get("text") != expected_label
-                    or not device.node_has_tappable_bounds(route)
-                ):
-                    device.capture("phone-runner-route-structure-invalid")
-                    raise RuntimeError(
-                        "Exact phone runner lifecycle marker was not visible with its "
-                        "pinned native role and label after the root viewport reset"
-                    )
+            )
+            if route is not None and route_tappable:
                 return route
             if not viewport_reset:
                 # The lifecycle marker is the first child of BuildPage's
                 # ScrollView and can be clipped by a preserved deep offset.
-                # The exact immutable page plus root-only toolbar authorizes the
-                # reset; the route marker must then become visible before return.
-                reset_scroll_to_top(device, swipes=48)
+                # Only an exact immutable page plus root-only toolbar authorizes
+                # the reset; the route marker must then become visible before return.
+                if caller_deadline is None:
+                    rewind_surface_to_stable_start(
+                        device,
+                        evidence_prefix="phone-runner-root",
+                    )
+                else:
+                    rewind_surface_to_stable_start(
+                        device,
+                        evidence_prefix="phone-runner-root",
+                        deadline=caller_deadline,
+                    )
                 viewport_reset = True
                 continue
             # Never treat the toolbar alone as final route authority.
-            time.sleep(0.75)
+            if not wait_before_retry(0.75):
+                break
             continue
 
         if back_steps >= max_back_steps:
-            device.capture("phone-runner-root-unwind-exhausted")
+            capture("phone-runner-root-unwind-exhausted")
             raise RuntimeError(
                 "Phone runner root remained unavailable after "
                 f"{max_back_steps} exact Navigate up activations"
@@ -3031,24 +5153,66 @@ def return_to_phone_runner_root(
             and node.attributes.get("focusable") == "true"
         ]
         if len(navigate_up) > 1:
-            device.capture("phone-runner-root-navigation-cardinality-invalid")
+            capture("phone-runner-root-navigation-cardinality-invalid")
             raise RuntimeError(
                 "Phone runner stack exposed more than one exact Navigate up control"
             )
-        if len(navigate_up) == 1 and device.node_has_tappable_bounds(navigate_up[0]):
+        navigate_up_tappable = (
+            len(navigate_up) == 1
+            and (
+                device.node_has_tappable_bounds(navigate_up[0])
+                if caller_deadline is None
+                else device.node_has_tappable_bounds(
+                    navigate_up[0],
+                    deadline=caller_deadline,
+                )
+            )
+        )
+        if navigate_up_tappable:
             x, y = navigate_up[0].center
-            device.shell("input", "tap", str(x), str(y))
+            if caller_deadline is None:
+                device.shell("input", "tap", str(x), str(y))
+            else:
+                device.shell(
+                    "input",
+                    "tap",
+                    str(x),
+                    str(y),
+                    timeout=_remaining_operation_timeout(
+                        deadline=caller_deadline,
+                        maximum=15,
+                    ),
+                    deadline=caller_deadline,
+                )
             back_steps += 1
             viewport_reset = False
-            time.sleep(0.75)
+            if not wait_before_retry(0.75):
+                break
             continue
 
-        if device.dismiss_system_ui_anr():
-            time.sleep(2)
+        dismissed = (
+            device.dismiss_system_ui_anr(nodes)
+            if caller_deadline is None
+            else device.dismiss_system_ui_anr(
+                nodes,
+                deadline=caller_deadline,
+            )
+        )
+        if dismissed:
+            if not wait_before_retry(2):
+                break
             continue
-        time.sleep(0.75)
+        if not wait_before_retry(0.75):
+            break
 
-    device.capture("phone-runner-root-unavailable")
+    if deadline is None:
+        device.capture("phone-runner-root-unavailable")
+    else:
+        # The bounded route SLO can expire while the caller-owned phase still
+        # has time to preserve the exact final screenshot/XML. Diagnostics are
+        # not route authority and must not silently inherit the expired nested
+        # deadline that caused the failure they are intended to explain.
+        device.capture("phone-runner-root-unavailable", deadline=deadline)
     raise RuntimeError(
         "Timed out proving the exact phone runner root and build-save-runner toolbar"
     )
@@ -3062,6 +5226,7 @@ def open_creation_dashboard(
     toolbar_timeout: int = 90,
     dashboard_timeout: int = 90,
     reset_swipes: int = 48,
+    deadline: float | None = None,
 ) -> UiNode:
     """Open and bind the phone creation dashboard without viewport assumptions.
 
@@ -3077,19 +5242,38 @@ def open_creation_dashboard(
             "The creation dashboard API 36 proof is phone-only; tablet proof is deferred"
         )
     if open_build_route:
-        open_build(device, profile)
+        if deadline is None:
+            open_build(device, profile)
+        else:
+            open_build(device, profile, deadline=deadline)
+    if deadline is None:
+        device.wait_for_single_exact_accessibility_value(
+            "build-save-runner",
+            timeout=toolbar_timeout,
+            evidence_prefix="creation-dashboard-toolbar",
+            surface_name="Creation dashboard toolbar accessibility node",
+        )
+        reset_scroll_to_top(device, swipes=reset_swipes)
+        return device.wait_for_single_exact_resource_id(
+            "creation-wizard-dashboard",
+            timeout=dashboard_timeout,
+            evidence_prefix="creation-dashboard",
+            surface_name="Creation dashboard resource node",
+        )
     device.wait_for_single_exact_accessibility_value(
         "build-save-runner",
         timeout=toolbar_timeout,
         evidence_prefix="creation-dashboard-toolbar",
         surface_name="Creation dashboard toolbar accessibility node",
+        deadline=deadline,
     )
-    reset_scroll_to_top(device, swipes=reset_swipes)
+    reset_scroll_to_top(device, swipes=reset_swipes, deadline=deadline)
     return device.wait_for_single_exact_resource_id(
         "creation-wizard-dashboard",
         timeout=dashboard_timeout,
         evidence_prefix="creation-dashboard",
         surface_name="Creation dashboard resource node",
+        deadline=deadline,
     )
 
 
@@ -3118,11 +5302,595 @@ def tap_collection_item(device: Device, selector: str) -> None:
     )
 
 
+COLLECTION_ROUTE_SCAN_MAX_SCROLLS = 32
+COLLECTION_ROUTE_SCAN_DISTANCE_RATIO = 0.52
+COLLECTION_ROUTE_SCAN_STABLE_REPEATS = 2
+
+
+@dataclass(frozen=True)
+class CollectionRouteInventory:
+    route_viewports: dict[str, int]
+    bottom_movement_swipes: int
+
+
+def rewind_surface_to_stable_start(
+    device: Device,
+    *,
+    evidence_prefix: str,
+    deadline: float | None = None,
+) -> int:
+    """Prove a scroll surface's start through fresh post-gesture snapshots."""
+    previous_sha256: str | None = None
+    unchanged = 0
+    swipes = 0
+    consecutive_empty_reads = 0
+    while swipes <= COLLECTION_ROUTE_SCAN_MAX_SCROLLS:
+        nodes = (
+            device.hierarchy()
+            if deadline is None
+            else device.hierarchy(deadline=deadline)
+        )
+        if not nodes:
+            consecutive_empty_reads += 1
+            if consecutive_empty_reads > 3:
+                if deadline is None:
+                    device.capture(f"{evidence_prefix}-stable-start-empty-hierarchy")
+                else:
+                    device.capture(
+                        f"{evidence_prefix}-stable-start-empty-hierarchy",
+                        deadline=deadline,
+                    )
+                raise RuntimeError(
+                    "Collection route stable-start proof exhausted empty hierarchies"
+                )
+            _sleep_before_operation_deadline(0.75, deadline=deadline)
+            continue
+        consecutive_empty_reads = 0
+        hierarchy_sha256 = Device._hierarchy_sha256(nodes)
+        unchanged = unchanged + 1 if hierarchy_sha256 == previous_sha256 else 0
+        previous_sha256 = hierarchy_sha256
+        if unchanged >= COLLECTION_ROUTE_SCAN_STABLE_REPEATS:
+            return swipes - COLLECTION_ROUTE_SCAN_STABLE_REPEATS
+        if swipes >= COLLECTION_ROUTE_SCAN_MAX_SCROLLS:
+            break
+        if deadline is None:
+            device.swipe_down(
+                x_ratio=0.5,
+                distance_ratio=COLLECTION_ROUTE_SCAN_DISTANCE_RATIO,
+            )
+        else:
+            device.swipe_down(
+                x_ratio=0.5,
+                distance_ratio=COLLECTION_ROUTE_SCAN_DISTANCE_RATIO,
+                deadline=deadline,
+            )
+        swipes += 1
+        _sleep_before_operation_deadline(0.2, deadline=deadline)
+    if deadline is None:
+        device.capture(f"{evidence_prefix}-stable-start-unproven")
+    else:
+        device.capture(f"{evidence_prefix}-stable-start-unproven", deadline=deadline)
+    raise RuntimeError(
+        "Collection route surface did not prove its stable start within the exact bound"
+    )
+
+
+def scan_collection_route_inventory(
+    device: Device,
+    *,
+    kind: str,
+    evidence_prefix: str,
+) -> CollectionRouteInventory:
+    """Inventory typed collection routes from one proven start to stable end."""
+    rewind_surface_to_stable_start(device, evidence_prefix=evidence_prefix)
+    positions: dict[str, int] = {}
+    semantics: dict[str, tuple[str, ...]] = {}
+    previous_sha256: str | None = None
+    unchanged = 0
+    swipes = 0
+    consecutive_empty_reads = 0
+    while swipes <= COLLECTION_ROUTE_SCAN_MAX_SCROLLS:
+        nodes = device.hierarchy()
+        if not nodes:
+            consecutive_empty_reads += 1
+            if consecutive_empty_reads > 3:
+                device.capture(f"{evidence_prefix}-empty-hierarchy")
+                raise RuntimeError(
+                    "Collection route inventory exhausted empty hierarchies"
+                )
+            time.sleep(0.75)
+            continue
+        consecutive_empty_reads = 0
+
+        viewport_routes: set[str] = set()
+        for node in nodes:
+            resource_id = node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
+            match = CANONICAL_COLLECTION_ITEM_RESOURCE_ID.fullmatch(resource_id)
+            if match is None or match.group("kind") != kind:
+                continue
+            if resource_id in viewport_routes:
+                device.capture(f"{evidence_prefix}-route-cardinality-invalid")
+                raise RuntimeError(
+                    f"Typed {kind} collection route {resource_id!r} was duplicated in one viewport"
+                )
+            viewport_routes.add(resource_id)
+            signature = tuple(
+                node.attributes.get(key, "")
+                for key in (
+                    "resource-id",
+                    "class",
+                    "content-desc",
+                    "text",
+                    "enabled",
+                    "clickable",
+                    "focusable",
+                )
+            )
+            prior = semantics.setdefault(resource_id, signature)
+            if signature != prior:
+                device.capture(f"{evidence_prefix}-route-semantics-drift")
+                raise RuntimeError(
+                    f"Typed {kind} collection route {resource_id!r} changed semantics"
+                )
+            if (
+                node.attributes.get("enabled") != "true"
+                or node.attributes.get("clickable") != "true"
+            ):
+                device.capture(f"{evidence_prefix}-route-not-enabled")
+                raise RuntimeError(
+                    f"Typed {kind} collection route {resource_id!r} was not enabled and clickable"
+                )
+            if device.node_has_tappable_bounds(node):
+                positions.setdefault(resource_id, swipes)
+
+        hierarchy_sha256 = Device._hierarchy_sha256(nodes)
+        unchanged = unchanged + 1 if hierarchy_sha256 == previous_sha256 else 0
+        previous_sha256 = hierarchy_sha256
+        if unchanged >= COLLECTION_ROUTE_SCAN_STABLE_REPEATS:
+            return CollectionRouteInventory(
+                route_viewports=dict(positions),
+                bottom_movement_swipes=swipes - COLLECTION_ROUTE_SCAN_STABLE_REPEATS,
+            )
+        if swipes >= COLLECTION_ROUTE_SCAN_MAX_SCROLLS:
+            break
+        device.swipe_up(
+            x_ratio=0.5,
+            distance_ratio=COLLECTION_ROUTE_SCAN_DISTANCE_RATIO,
+        )
+        swipes += 1
+        time.sleep(0.2)
+    device.capture(f"{evidence_prefix}-stable-end-unproven")
+    raise RuntimeError(
+        "Collection route inventory did not prove a stable end within the exact bound"
+    )
+
+
+def tap_typed_collection_route(
+    device: Device,
+    *,
+    inventory: CollectionRouteInventory,
+    route_id: str,
+    evidence_prefix: str,
+) -> str:
+    """Reacquire one scan-proven typed route, tap it, and bind its exact editor."""
+    match = CANONICAL_COLLECTION_ITEM_RESOURCE_ID.fullmatch(route_id)
+    if match is None or route_id not in inventory.route_viewports:
+        raise RuntimeError(f"Unknown scan-proven typed collection route {route_id!r}")
+    target_viewport = inventory.route_viewports[route_id]
+    if (
+        isinstance(target_viewport, bool)
+        or not isinstance(target_viewport, int)
+        or target_viewport < 0
+        or target_viewport > inventory.bottom_movement_swipes
+    ):
+        device.capture(f"{evidence_prefix}-viewport-invalid")
+        raise RuntimeError("Typed collection route produced an invalid measured viewport")
+
+    # Inventory finishes at the stable bottom. Gesture distances are not
+    # reversible on Android ScrollView surfaces because clamping and settling
+    # can make N downward gestures land above or below the viewport discovered
+    # by N upward gestures. Rewind to the independently proven start and
+    # reacquire the exact scan-proven resource ID in the same direction used
+    # by the inventory instead of relying on inverse gesture arithmetic.
+    rewind_surface_to_stable_start(
+        device,
+        evidence_prefix=f"{evidence_prefix}-route-reacquire",
+    )
+    previous_sha256: str | None = None
+    unchanged = 0
+    swipes = 0
+    consecutive_empty_reads = 0
+    node: UiNode | None = None
+    saw_clipped_route = False
+    while swipes <= COLLECTION_ROUTE_SCAN_MAX_SCROLLS:
+        nodes = device.hierarchy()
+        if not nodes:
+            consecutive_empty_reads += 1
+            if consecutive_empty_reads > 3:
+                device.capture(f"{evidence_prefix}-fresh-empty-hierarchy")
+                raise RuntimeError(
+                    "Typed collection route reacquisition exhausted empty hierarchies"
+                )
+            time.sleep(0.75)
+            continue
+        consecutive_empty_reads = 0
+
+        matches = [
+            candidate
+            for candidate in nodes
+            if candidate.attributes.get("resource-id", "").rsplit("/", 1)[-1]
+            == route_id
+        ]
+        if len(matches) > 1:
+            device.capture(f"{evidence_prefix}-fresh-cardinality-invalid")
+            raise RuntimeError(
+                f"Typed collection route {route_id!r} has fresh cardinality {len(matches)}"
+            )
+        if len(matches) == 1:
+            candidate = matches[0]
+            if (
+                candidate.attributes.get("enabled") != "true"
+                or candidate.attributes.get("clickable") != "true"
+            ):
+                device.capture(f"{evidence_prefix}-fresh-not-tappable")
+                raise RuntimeError(
+                    f"Typed collection route {route_id!r} was not freshly tappable"
+                )
+            if device.node_has_tappable_bounds(candidate):
+                node = candidate
+                break
+            # A ScrollView hierarchy may expose the exact enabled/clickable
+            # route while its bounds are still clipped just outside the
+            # tappable viewport. Advance in the same bounded forward search;
+            # never tap the clipped node or fall back to its text.
+            saw_clipped_route = True
+
+        hierarchy_sha256 = Device._hierarchy_sha256(nodes)
+        unchanged = unchanged + 1 if hierarchy_sha256 == previous_sha256 else 0
+        previous_sha256 = hierarchy_sha256
+        if unchanged >= COLLECTION_ROUTE_SCAN_STABLE_REPEATS:
+            if saw_clipped_route:
+                device.capture(f"{evidence_prefix}-fresh-not-tappable")
+                raise RuntimeError(
+                    f"Typed collection route {route_id!r} never became freshly tappable"
+                )
+            device.capture(f"{evidence_prefix}-fresh-route-missing")
+            raise RuntimeError(
+                f"Typed collection route {route_id!r} was not found before the proven stable end"
+            )
+        if swipes >= COLLECTION_ROUTE_SCAN_MAX_SCROLLS:
+            break
+        device.swipe_up(
+            x_ratio=0.5,
+            distance_ratio=COLLECTION_ROUTE_SCAN_DISTANCE_RATIO,
+        )
+        swipes += 1
+        time.sleep(0.2)
+    if node is None:
+        if saw_clipped_route:
+            device.capture(f"{evidence_prefix}-fresh-not-tappable")
+            raise RuntimeError(
+                f"Typed collection route {route_id!r} never became freshly tappable"
+            )
+        device.capture(f"{evidence_prefix}-fresh-route-missing")
+        raise RuntimeError(
+            f"Typed collection route {route_id!r} was not found within the exact bound"
+        )
+    device.shell("input", "tap", *(str(value) for value in node.center))
+
+    editor_id = (
+        f"collection-editor-{match.group('kind')}-{match.group('item_id')}"
+    )
+    device.wait_for_single_exact_resource_id(
+        editor_id,
+        timeout=60,
+        evidence_prefix=f"{evidence_prefix}-editor",
+        surface_name="Typed collection editor route",
+    )
+    rewind_surface_to_stable_start(
+        device,
+        evidence_prefix=f"{evidence_prefix}-editor",
+    )
+    editor_nodes = device.hierarchy()
+    editor_matches = [
+        candidate
+        for candidate in editor_nodes
+        if candidate.attributes.get("resource-id", "").rsplit("/", 1)[-1]
+        == editor_id
+    ]
+    if len(editor_matches) != 1:
+        device.capture(f"{evidence_prefix}-editor-cardinality-invalid")
+        raise RuntimeError(
+            f"Typed collection editor {editor_id!r} has cardinality {len(editor_matches)}"
+        )
+    return match.group("item_id")
+
+
 def reset_collection_editor_to_top(device: Device, profile: str) -> None:
     reset_scroll_to_top(
         device,
         x_ratio=0.82 if profile == "tablet" else 0.5,
         swipes=12,
+    )
+
+
+PHONE_BUILD_SECTION_ORDER = ("attributes", "combat", "gear", "relationships")
+PHONE_BUILD_SECTIONS = frozenset(PHONE_BUILD_SECTION_ORDER)
+PHONE_BUILD_SECTION_SCAN_MAX_SCROLLS = 32
+# Sample overlapping root viewports.  A half-screen gesture can move a short
+# section route from below the tappable viewport to above it without ever
+# exposing the exact resource-id at tappable bounds (Combat is short enough to
+# trigger that on the API 36 phone profile).  Keep inventory traversal aligned
+# with the bounded fresh-route reacquisition quantum so every intervening typed
+# route receives a measured viewport without accepting clipped semantics.
+PHONE_BUILD_SECTION_SCAN_DISTANCE_RATIO = 0.22
+PHONE_BUILD_SECTION_SCAN_STABLE_REPEATS = 2
+PHONE_BUILD_SECTION_REACQUIRE_DISTANCE_RATIO = 0.22
+PHONE_BUILD_SECTION_ROUTE_STABLE_OBSERVATIONS = 3
+PHONE_BUILD_SECTION_ROUTE_STABILITY_DELAY_SECONDS = 0.5
+
+
+@dataclass(frozen=True)
+class PhoneBuildSectionInventory:
+    viewport_by_section: dict[str, int]
+    bottom_movement_swipes: int
+
+
+def scan_phone_build_section_inventory(device: Device) -> PhoneBuildSectionInventory:
+    """Inventory every canonical section route across one measured root traversal."""
+    positions: dict[str, int] = {}
+    semantics: dict[str, tuple[str, ...]] = {}
+    previous_hierarchy_sha256: str | None = None
+    unchanged = 0
+    swipes = 0
+    consecutive_empty_reads = 0
+    while swipes <= PHONE_BUILD_SECTION_SCAN_MAX_SCROLLS:
+        # The direct ``/dev/tty`` UIAutomator stream can replay the pre-swipe
+        # viewport on API 36.  Section inventory is scroll-dependent, so use
+        # the canonical dump-file hierarchy for every measured viewport.
+        nodes = device.hierarchy()
+        if not nodes:
+            consecutive_empty_reads += 1
+            if consecutive_empty_reads > 3:
+                device.capture("phone-build-section-inventory-empty-hierarchy")
+                raise RuntimeError(
+                    "Phone Build section inventory exhausted transient empty hierarchy reads"
+                )
+            time.sleep(0.75)
+            continue
+        consecutive_empty_reads = 0
+
+        for section in PHONE_BUILD_SECTION_ORDER:
+            selector = f"build-section-tab-{section}"
+            matches = [
+                node
+                for node in nodes
+                if node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
+                == selector
+            ]
+            if len(matches) > 1:
+                device.capture(f"{section}-section-route-cardinality-invalid")
+                raise RuntimeError(
+                    f"{section.title()} section route {selector!r} has cardinality "
+                    f"{len(matches)} in one root viewport"
+                )
+            if len(matches) != 1:
+                continue
+            node = matches[0]
+            signature = tuple(
+                node.attributes.get(key, "")
+                for key in (
+                    "resource-id",
+                    "class",
+                    "content-desc",
+                    "text",
+                    "enabled",
+                    "clickable",
+                    "focusable",
+                )
+            )
+            prior = semantics.setdefault(section, signature)
+            if signature != prior:
+                device.capture(f"{section}-section-route-drift")
+                raise RuntimeError(
+                    f"{section.title()} section route changed semantics during root inventory"
+                )
+            if (
+                node.attributes.get("enabled") != "true"
+                or node.attributes.get("clickable") != "true"
+            ):
+                device.capture(f"{section}-section-route-not-enabled")
+                raise RuntimeError(
+                    f"{section.title()} section route was not enabled and clickable"
+                )
+            if device.node_has_tappable_bounds(node):
+                positions.setdefault(section, swipes)
+
+        hierarchy_sha256 = Device._hierarchy_sha256(nodes)
+        unchanged = (
+            unchanged + 1
+            if hierarchy_sha256 == previous_hierarchy_sha256
+            else 0
+        )
+        previous_hierarchy_sha256 = hierarchy_sha256
+        if unchanged >= PHONE_BUILD_SECTION_SCAN_STABLE_REPEATS:
+            missing = [
+                section
+                for section in PHONE_BUILD_SECTION_ORDER
+                if section not in positions
+            ]
+            if missing:
+                device.capture("phone-build-section-inventory-incomplete")
+                raise RuntimeError(
+                    "Phone Build root reached its stable end without one tappable exact "
+                    f"route for every section; missing={missing!r}"
+                )
+            return PhoneBuildSectionInventory(
+                viewport_by_section=dict(positions),
+                bottom_movement_swipes=(
+                    swipes - PHONE_BUILD_SECTION_SCAN_STABLE_REPEATS
+                ),
+            )
+        if swipes >= PHONE_BUILD_SECTION_SCAN_MAX_SCROLLS:
+            break
+        device.swipe_up(
+            x_ratio=0.5,
+            distance_ratio=PHONE_BUILD_SECTION_SCAN_DISTANCE_RATIO,
+        )
+        swipes += 1
+        time.sleep(0.75)
+
+    device.capture("phone-build-section-inventory-end-unproven")
+    raise RuntimeError(
+        "Phone Build section inventory did not prove the outer root surface end "
+        f"within {PHONE_BUILD_SECTION_SCAN_MAX_SCROLLS} gestures"
+    )
+
+
+def tap_phone_build_section(device: Device, section: str) -> None:
+    """Activate one canonical phone Build section from the proven Build root.
+
+    Section routes do not exist on nested collection pages.  Bind the immutable
+    root page, toolbar, and exactly one lifecycle marker before searching for the
+    requested exact resource ID.  ``created=None`` is intentional: this helper is
+    shared by the created full-editing journey and the uncreated contact/pet
+    journey, while the root binder still requires one unambiguous lifecycle
+    marker.  The bound root is already at its measured top viewport, so a blind
+    downward reset would only add latency and could move the search off authority.
+    """
+    if section not in PHONE_BUILD_SECTIONS:
+        raise RuntimeError(f"Unsupported canonical phone Build section {section!r}")
+    return_to_phone_runner_root(device, created=None)
+    inventory = scan_phone_build_section_inventory(device)
+    target_viewport = inventory.viewport_by_section[section]
+    reverse_swipes = inventory.bottom_movement_swipes - target_viewport
+    if reverse_swipes < 0:
+        device.capture(f"{section}-section-route-viewport-invalid")
+        raise RuntimeError(
+            f"{section.title()} section route inventory produced an invalid viewport delta"
+        )
+    for _ in range(reverse_swipes):
+        device.swipe_down(
+            x_ratio=0.5,
+            distance_ratio=PHONE_BUILD_SECTION_SCAN_DISTANCE_RATIO,
+        )
+        time.sleep(0.2)
+    if reverse_swipes > 0:
+        time.sleep(0.75)
+
+    selector = f"build-section-tab-{section}"
+    node = acquire_fresh_phone_build_section_route(
+        device,
+        section=section,
+        selector=selector,
+        measured_target_viewport=target_viewport,
+    )
+    x, y = node.center
+    device.shell("input", "tap", str(x), str(y))
+
+
+def acquire_fresh_phone_build_section_route(
+    device: Device,
+    *,
+    section: str,
+    selector: str,
+    measured_target_viewport: int,
+) -> UiNode:
+    """Bind an exact section node after every gesture/state transition.
+
+    The measured reverse delta remains the fast path, but it is never accepted
+    without a fresh hierarchy.  If that viewport no longer contains the exact
+    route (MAUI can preserve a different offset after navigation), invalidate
+    the measurement, prove the current root's stable start, then use bounded
+    overlapping forward snapshots.  Text, stale nodes, and blind extra taps are
+    never fallbacks.
+    """
+    if measured_target_viewport < 0:
+        raise RuntimeError("Measured phone Build section viewport is invalid")
+
+    def exact_from(nodes: list[UiNode]) -> UiNode | None:
+        matches = [
+            node
+            for node in nodes
+            if node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
+            == selector
+        ]
+        if len(matches) > 1:
+            device.capture(f"{section}-section-route-fresh-cardinality-invalid")
+            raise RuntimeError(
+                f"Measured {section.title()} section viewport exposed cardinality "
+                f"{len(matches)} for exact route {selector!r}; expected at most one"
+            )
+        if len(matches) != 1:
+            return None
+        node = matches[0]
+        if (
+            node.attributes.get("enabled") != "true"
+            or node.attributes.get("clickable") != "true"
+        ):
+            device.capture(f"{section}-section-route-fresh-not-enabled")
+            raise RuntimeError(
+                f"Measured {section.title()} section route was not freshly enabled and clickable"
+            )
+        return node if device.node_has_tappable_bounds(node) else None
+
+    def stable_exact(initial: UiNode) -> UiNode | None:
+        keys = (
+            "resource-id",
+            "class",
+            "content-desc",
+            "text",
+            "enabled",
+            "clickable",
+            "focusable",
+            "bounds",
+        )
+        previous = tuple(initial.attributes.get(key, "") for key in keys)
+        for _ in range(1, PHONE_BUILD_SECTION_ROUTE_STABLE_OBSERVATIONS):
+            time.sleep(PHONE_BUILD_SECTION_ROUTE_STABILITY_DELAY_SECONDS)
+            current = exact_from(device.hierarchy())
+            if current is None:
+                previous = ()
+                continue
+            signature = tuple(current.attributes.get(key, "") for key in keys)
+            if signature == previous:
+                return current
+            previous = signature
+        return None
+
+    measured = exact_from(device.hierarchy())
+    if measured is not None:
+        stable = stable_exact(measured)
+        if stable is not None:
+            return stable
+
+    # A zero-cardinality or clipped measured viewport invalidates that
+    # observation.  Rebind the exact root scroll origin before any new search.
+    rewind_surface_to_stable_start(
+        device,
+        evidence_prefix=f"{section}-section-route-reacquire",
+    )
+    max_forward_swipes = min(
+        PHONE_BUILD_SECTION_SCAN_MAX_SCROLLS * 3,
+        max(8, (measured_target_viewport + 2) * 3),
+    )
+    for forward_swipes in range(max_forward_swipes + 1):
+        node = exact_from(device.hierarchy())
+        if node is not None:
+            stable = stable_exact(node)
+            if stable is not None:
+                return stable
+        if forward_swipes >= max_forward_swipes:
+            break
+        device.swipe_up(
+            x_ratio=0.5,
+            distance_ratio=PHONE_BUILD_SECTION_REACQUIRE_DISTANCE_RATIO,
+        )
+        time.sleep(0.2)
+    device.capture(f"{section}-section-route-fresh-cardinality-invalid")
+    raise RuntimeError(
+        f"Measured {section.title()} section viewport exposed cardinality 0 for "
+        f"exact route {selector!r} after bounded fresh reacquisition"
     )
 
 
@@ -3138,13 +5906,7 @@ def open_attribute_section(
         device.wait(f"tablet-attribute-{attribute_token}", timeout=45)
         device.tap(f"tablet-attribute-{attribute_token}")
         return
-    device.tap_bidirectional(
-        "build-section-tab-attributes",
-        timeout=120,
-        backward_scrolls=24,
-        forward_scrolls=24,
-        scroll_distance_ratio=0.22,
-    )
+    tap_phone_build_section(device, "attributes")
     reset_scroll_to_top(device)
     device.wait(
         f"attribute-{attribute_token}",
@@ -3292,13 +6054,7 @@ def open_condition_monitor_section(device: Device, profile: str) -> None:
             scroll_distance_ratio=0.22,
         )
         return
-    device.tap(
-        "build-section-tab-combat",
-        scroll=True,
-        timeout=120,
-        max_scrolls=24,
-        scroll_distance_ratio=0.22,
-    )
+    tap_phone_build_section(device, "combat")
     device.tap(
         "build-action-tab-combat-conditionmonitor",
         timeout=120,
@@ -3395,21 +6151,35 @@ def open_gear_section(device: Device, profile: str) -> None:
             scroll_distance_ratio=0.22,
         )
         return
-    return_to_phone_runner_root(device, created=True)
-    device.tap_bidirectional(
-        "build-section-tab-gear",
-        timeout=120,
-        backward_scrolls=24,
-        forward_scrolls=24,
-        scroll_distance_ratio=0.22,
-        exact_resource_id=True,
-    )
+    tap_phone_build_section(device, "gear")
     device.wait_exact_resource_id_bidirectional(
         "section-quick-gear-add",
         timeout=180,
         backward_scrolls=24,
         forward_scrolls=48,
         scroll_distance_ratio=0.22,
+    )
+
+
+def open_persisted_phone_gear_after_restart(
+    device: Device,
+    item_id: str,
+) -> str:
+    """Open one exact persisted Gear route without reusing the add gate."""
+    if not item_id.strip():
+        raise RuntimeError("Post-restart Gear proof requires one typed item identity")
+    tap_phone_build_section(device, "gear")
+    restored_inventory = scan_collection_route_inventory(
+        device,
+        kind="gear",
+        evidence_prefix="gear-after-restart",
+    )
+    restored_route = f"collection-item-gear-{item_id}"
+    return tap_typed_collection_route(
+        device,
+        inventory=restored_inventory,
+        route_id=restored_route,
+        evidence_prefix="gear-after-restart",
     )
 
 
@@ -3510,22 +6280,16 @@ def _open_phone_relationship_collection(
     quick_add_selector: str,
     expected_item: str | None,
 ) -> None:
-    device.tap_bidirectional(
-        "build-section-tab-relationships",
-        timeout=120,
-        backward_scrolls=24,
-        forward_scrolls=24,
-        scroll_distance_ratio=0.22,
-        exact_resource_id=True,
-    )
+    tap_phone_build_section(device, "relationships")
     time.sleep(5)
-    device.tap_bidirectional(
+    device.tap_exact_resource_id_bidirectional(
         action_selector,
         timeout=180,
         backward_scrolls=24,
         forward_scrolls=48,
         scroll_distance_ratio=0.22,
-        exact_resource_id=True,
+        evidence_prefix="relationships-collection-route",
+        surface_name="Relationships collection route",
     )
     time.sleep(2)
     if expected_item is not None:
@@ -3666,6 +6430,265 @@ def assert_linked_identity(device: Device, profile: str, kind: str) -> None:
             )
 
 
+def _documents_ui_exact_nodes(nodes: list[UiNode], value: str) -> list[UiNode]:
+    """Return exact DocumentsUI nodes without the driver's prefix fallback."""
+    return [
+        node
+        for node in nodes
+        if node.attributes.get("package") == DOCUMENTS_UI_PACKAGE
+        and value
+        in {
+            node.attributes.get("text", ""),
+            node.attributes.get("content-desc", ""),
+            node.attributes.get("resource-id", "").rsplit("/", 1)[-1],
+        }
+    ]
+
+
+def _capture_documents_ui_before_deadline(
+    device: Device,
+    name: str,
+    *,
+    deadline: float,
+) -> bool:
+    """Start transition diagnostics only while the caller's budget remains."""
+    if time.monotonic() >= deadline:
+        return False
+    try:
+        device.capture(name, deadline=deadline)
+    except Exception:
+        # Evidence is best-effort and must never mask the caller's semantic error.
+        return False
+    return time.monotonic() < deadline
+
+
+def _documents_ui_downloads_state(
+    device: Device,
+    nodes: list[UiNode],
+    *,
+    deadline: float,
+) -> str:
+    drawer_markers = _documents_ui_exact_nodes(nodes, DOCUMENTS_UI_DRAWER_MARKER)
+    destinations = _documents_ui_exact_nodes(
+        nodes,
+        DOCUMENTS_UI_DOWNLOADS_DESTINATION,
+    )
+    if len(drawer_markers) > 1 or len(destinations) > 1:
+        _capture_documents_ui_before_deadline(
+            device,
+            "documentsui-downloads-transition-cardinality-invalid",
+            deadline=deadline,
+        )
+        raise RuntimeError(
+            "DocumentsUI Downloads transition exposed ambiguous exact drawer or "
+            "destination authority"
+        )
+
+    wrong_destinations = sorted(
+        {
+            value
+            for node in nodes
+            if node.attributes.get("package") == DOCUMENTS_UI_PACKAGE
+            for value in (
+                node.attributes.get("text", ""),
+                node.attributes.get("content-desc", ""),
+            )
+            if value.startswith("Files in ")
+            and value != DOCUMENTS_UI_DOWNLOADS_DESTINATION
+        }
+    )
+    if wrong_destinations:
+        _capture_documents_ui_before_deadline(
+            device,
+            "documentsui-downloads-wrong-destination",
+            deadline=deadline,
+        )
+        raise RuntimeError(
+            "DocumentsUI opened a root other than the exact Downloads destination: "
+            f"{wrong_destinations!r}"
+        )
+    if drawer_markers and destinations:
+        _capture_documents_ui_before_deadline(
+            device,
+            "documentsui-downloads-transition-state-ambiguous",
+            deadline=deadline,
+        )
+        raise RuntimeError(
+            "DocumentsUI simultaneously exposed the roots drawer and Downloads "
+            "destination"
+        )
+    if destinations:
+        return "destination"
+    if drawer_markers:
+        return "drawer"
+    return "pending"
+
+
+def _exact_enabled_documents_ui_downloads_row(
+    device: Device,
+    nodes: list[UiNode],
+    *,
+    deadline: float,
+) -> UiNode:
+    matches = [
+        node
+        for node in _documents_ui_exact_nodes(nodes, DOCUMENTS_UI_DOWNLOADS_ROOT)
+        if node.attributes.get("resource-id", "").rsplit("/", 1)[-1] == "title"
+    ]
+    if len(matches) != 1:
+        _capture_documents_ui_before_deadline(
+            device,
+            "documentsui-downloads-row-cardinality-invalid",
+            deadline=deadline,
+        )
+        raise RuntimeError(
+            "DocumentsUI Downloads root row cardinality was "
+            f"{len(matches)}; expected exactly one"
+        )
+    node = matches[0]
+    if (
+        node.attributes.get("enabled") != "true"
+        or not device.node_has_tappable_bounds(node, deadline=deadline)
+    ):
+        _capture_documents_ui_before_deadline(
+            device,
+            "documentsui-downloads-row-not-enabled-tappable",
+            deadline=deadline,
+        )
+        raise RuntimeError(
+            "The exact DocumentsUI Downloads root row is not enabled and tappable"
+        )
+    return node
+
+
+def _documents_ui_observation_before_deadline(
+    device: Device,
+    *,
+    deadline: float,
+) -> list[UiNode] | None:
+    if time.monotonic() >= deadline:
+        return None
+    try:
+        nodes = device.hierarchy(deadline=deadline)
+    except AdbOperationDeadlineExceeded:
+        return None
+    # A hierarchy observation is blocking. Its result cannot authorize a later
+    # mutation if it completed after the caller-owned transition deadline.
+    if time.monotonic() >= deadline:
+        return None
+    return nodes
+
+
+def _documents_ui_sleep_before_deadline(deadline: float) -> bool:
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        return False
+    time.sleep(min(DOCUMENTS_UI_POLL_DELAY_SECONDS, remaining))
+    return time.monotonic() < deadline
+
+
+def select_documents_ui_downloads_root(device: Device, *, timeout: int = 45) -> None:
+    """Select Downloads with at most two fresh retaps under one deadline."""
+    deadline = time.monotonic() + timeout
+    last_state = "pending"
+    for tap_attempt in range(DOCUMENTS_UI_MAX_DOWNLOADS_TAPS):
+        nodes: list[UiNode] = []
+        while True:
+            observed = _documents_ui_observation_before_deadline(
+                device,
+                deadline=deadline,
+            )
+            if observed is None:
+                break
+            nodes = observed
+            if not nodes:
+                if not _documents_ui_sleep_before_deadline(deadline):
+                    break
+                continue
+            last_state = _documents_ui_downloads_state(
+                device,
+                nodes,
+                deadline=deadline,
+            )
+            if last_state == "destination":
+                return
+            if last_state == "drawer":
+                break
+            if not _documents_ui_sleep_before_deadline(deadline):
+                break
+        if not nodes or time.monotonic() >= deadline:
+            break
+
+        row = _exact_enabled_documents_ui_downloads_row(
+            device,
+            nodes,
+            deadline=deadline,
+        )
+        x, y = row.center
+        # Bounds/display acquisition may itself block. Recheck immediately before
+        # issuing the non-replayable tap and pass the same deadline into ADB.
+        tap_timeout = _remaining_operation_timeout(
+            deadline=deadline,
+            maximum=120,
+        )
+        device.shell(
+            "input",
+            "tap",
+            str(x),
+            str(y),
+            timeout=tap_timeout,
+            deadline=deadline,
+        )
+
+        retry_at = min(
+            deadline,
+            time.monotonic() + DOCUMENTS_UI_DOWNLOADS_RETRY_SETTLE_SECONDS,
+        )
+        while True:
+            observed = _documents_ui_observation_before_deadline(
+                device,
+                deadline=deadline,
+            )
+            if observed is None:
+                break
+            nodes = observed
+            if not nodes:
+                if not _documents_ui_sleep_before_deadline(deadline):
+                    break
+                continue
+            last_state = _documents_ui_downloads_state(
+                device,
+                nodes,
+                deadline=deadline,
+            )
+            if last_state == "destination":
+                return
+            if (
+                last_state == "drawer"
+                and tap_attempt + 1 < DOCUMENTS_UI_MAX_DOWNLOADS_TAPS
+                and time.monotonic() >= retry_at
+            ):
+                # The prior tap had no observable effect. Reacquire the exact row
+                # from a fresh hierarchy before issuing the next bounded retap.
+                break
+            if not _documents_ui_sleep_before_deadline(deadline):
+                break
+
+    _capture_documents_ui_before_deadline(
+        device,
+        "documentsui-downloads-transition-unavailable",
+        deadline=deadline,
+    )
+    if last_state == "drawer":
+        raise RuntimeError(
+            "DocumentsUI roots drawer remained open after "
+            f"{DOCUMENTS_UI_MAX_DOWNLOADS_TAPS} exact Downloads taps"
+        )
+    raise RuntimeError(
+        "Timed out waiting for the exact DocumentsUI Downloads destination"
+    )
+
+
 def select_android_document(device: Device, filename: str) -> None:
     roots_drawer_open = (
         device.find("Recent") is not None
@@ -3685,10 +6708,7 @@ def select_android_document(device: Device, filename: str) -> None:
         device.wait("Show roots", timeout=45)
         device.tap("Show roots")
         time.sleep(0.75)
-        device.wait("Downloads", timeout=45)
-        device.tap("Downloads")
-        time.sleep(0.75)
-        device.wait("Files in Downloads", timeout=45)
+        select_documents_ui_downloads_root(device, timeout=45)
         device.wait(filename, timeout=45, scroll=True)
     device.tap(filename, scroll=True)
 
@@ -3704,8 +6724,24 @@ def normalize_component(value: str) -> str | None:
     return f"{package}/{activity}"
 
 
-def launcher_component(device: Device) -> str:
-    package_paths = device.shell("pm", "path", "--user", "current", PACKAGE)
+def launcher_component(
+    device: Device,
+    *,
+    deadline: float | None = None,
+) -> str:
+    package_paths = (
+        device.shell("pm", "path", "--user", "current", PACKAGE)
+        if deadline is None
+        else device.shell(
+            "pm",
+            "path",
+            "--user",
+            "current",
+            PACKAGE,
+            timeout=_remaining_operation_timeout(deadline=deadline, maximum=120),
+            deadline=deadline,
+        )
+    )
     installed_paths = [
         line.removeprefix("package:").strip()
         for line in package_paths.splitlines()
@@ -3714,7 +6750,7 @@ def launcher_component(device: Device) -> str:
     if not installed_paths:
         raise RuntimeError(f"The exact E2E package is not installed: {PACKAGE}")
 
-    output = device.shell(
+    resolver_arguments = (
         "cmd",
         "package",
         "resolve-activity",
@@ -3727,6 +6763,15 @@ def launcher_component(device: Device) -> str:
         LAUNCHER_CATEGORY,
         "-p",
         PACKAGE,
+    )
+    output = (
+        device.shell(*resolver_arguments)
+        if deadline is None
+        else device.shell(
+            *resolver_arguments,
+            timeout=_remaining_operation_timeout(deadline=deadline, maximum=120),
+            deadline=deadline,
+        )
     )
     components = {
         normalized
@@ -3770,9 +6815,20 @@ def _write_launch_evidence(device: Device, name: str, value: object) -> None:
     (device.evidence / name).write_text(_bounded_evidence(value), encoding="utf-8")
 
 
-def _safe_shell(device: Device, *arguments: str, timeout: int = 30) -> str:
+def _safe_shell(
+    device: Device,
+    *arguments: str,
+    timeout: int = 30,
+    deadline: float | None = None,
+) -> str:
     try:
-        return device.shell(*arguments, timeout=timeout)
+        if deadline is None:
+            return device.shell(*arguments, timeout=timeout)
+        return device.shell(
+            *arguments,
+            timeout=_remaining_operation_timeout(deadline=deadline, maximum=timeout),
+            deadline=deadline,
+        )
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
         return "\n".join(
             part
@@ -3785,19 +6841,399 @@ def _safe_shell(device: Device, *arguments: str, timeout: int = 30) -> str:
         )
 
 
-def current_launch_state(device: Device) -> LaunchState:
+def current_launch_state(
+    device: Device,
+    *,
+    deadline: float | None = None,
+) -> LaunchState:
     try:
-        process_output = device.shell("pidof", PACKAGE, timeout=15)
+        process_output = (
+            device.shell("pidof", PACKAGE, timeout=15)
+            if deadline is None
+            else device.shell(
+                "pidof",
+                PACKAGE,
+                timeout=_remaining_operation_timeout(deadline=deadline, maximum=15),
+                deadline=deadline,
+            )
+        )
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
         process_output = ""
     process_ids = tuple(
         token for token in process_output.split() if PROCESS_ID.fullmatch(token)
     )
-    activity_dump = _safe_shell(device, "dumpsys", "activity", "activities")
+    activity_dump = (
+        _safe_shell(device, "dumpsys", "activity", "activities")
+        if deadline is None
+        else _safe_shell(
+            device,
+            "dumpsys",
+            "activity",
+            "activities",
+            deadline=deadline,
+        )
+    )
     return LaunchState(
         process_ids=process_ids,
         resumed_component=resumed_activity(activity_dump),
         activity_dump=activity_dump,
+    )
+
+
+def _launch_state_json(state: LaunchState) -> dict[str, object]:
+    return {
+        "processIds": list(state.process_ids),
+        "resumedComponent": state.resumed_component,
+    }
+
+
+def capture_unknown_durable_save_outcome(
+    device: Device,
+    *,
+    reason: str,
+    expected: LaunchState,
+    observed: LaunchState,
+) -> None:
+    """Capture the first unknown post-save state without attempting recovery.
+
+    A save tap is non-idempotent from the driver's point of view. Once it has
+    been sent, a process or foreground transition must be diagnosed in place;
+    relaunching the task or replaying the tap could turn an unknown commit into
+    a second mutation and could hide a product crash.
+    """
+    _write_new_json_receipt(
+        device.evidence / "durable-save-outcome-failure.json",
+        {
+            "schema": DURABLE_SAVE_OUTCOME_FAILURE_SCHEMA,
+            "status": "fail-closed",
+            "reason": reason,
+            "expected": _launch_state_json(expected),
+            "observed": _launch_state_json(observed),
+            "saveTapReplayAttempted": False,
+            "foregroundRecoveryAttempted": False,
+            "outcomeAuthority": "unknown-no-replay",
+        },
+    )
+    def diagnostic_shell(*arguments: str) -> str:
+        try:
+            return _safe_shell(device, *arguments)
+        except Exception as error:
+            # Diagnostic transport loss must not replace the semantic unknown-
+            # outcome failure which caused this capture.
+            return f"diagnostic command failed: {_bounded_evidence(error)}"
+
+    # Log buffers come first: later UIAutomator/dumpsys diagnostics can be noisy
+    # enough to evict the short-lived crash event that this lane exists to retain.
+    for buffer_name, arguments in (
+        (
+            "all",
+            ("logcat", "-d", "-b", "all", "-v", "threadtime", "-t", "4000"),
+        ),
+        ("events", ("logcat", "-d", "-b", "events", "-v", "threadtime")),
+        ("crash", ("logcat", "-d", "-b", "crash", "-v", "threadtime")),
+    ):
+        try:
+            result = device.run(*arguments, timeout=60, check=False)
+            output = _bounded_evidence(result.stdout)
+            if result.stderr:
+                output = (
+                    f"{output}\n[logcat stderr]\n"
+                    f"{_bounded_evidence(result.stderr)}"
+                )
+        except Exception as error:
+            output = (
+                f"logcat {buffer_name} capture failed: {error}\n"
+                f"{_bounded_evidence(getattr(error, 'stdout', ''))}\n"
+                f"{_bounded_evidence(getattr(error, 'stderr', ''))}"
+            )
+        _write_launch_evidence(
+            device,
+            f"durable-save-outcome-logcat-{buffer_name}.txt",
+            output,
+        )
+
+    diagnostics = (
+        ("durable-save-outcome-activity.txt", observed.activity_dump),
+        (
+            "durable-save-outcome-exit-info.txt",
+            diagnostic_shell("dumpsys", "activity", "exit-info", PACKAGE),
+        ),
+        (
+            "durable-save-outcome-lastanr.txt",
+            diagnostic_shell("dumpsys", "activity", "lastanr"),
+        ),
+        (
+            "durable-save-outcome-processes.txt",
+            diagnostic_shell("dumpsys", "activity", "processes"),
+        ),
+        (
+            "durable-save-outcome-window.txt",
+            diagnostic_shell("dumpsys", "window", "windows"),
+        ),
+    )
+    for name, value in diagnostics:
+        _write_launch_evidence(device, name, value)
+    try:
+        fresh_hierarchy = device.run(
+            *ADB_READ_ONLY_HIERARCHY_ARGUMENTS,
+            timeout=30,
+        ).stdout
+        _write_launch_evidence(
+            device,
+            "durable-save-outcome-fresh-hierarchy.xml",
+            fresh_hierarchy,
+        )
+    except Exception as error:
+        _write_launch_evidence(
+            device,
+            "durable-save-outcome-fresh-hierarchy-error.txt",
+            f"fresh read-only hierarchy capture failed: {_bounded_evidence(error)}",
+        )
+    try:
+        device.capture("durable-save-outcome-failure")
+    except Exception as error:
+        _write_launch_evidence(
+            device,
+            "durable-save-outcome-capture-error.txt",
+            error,
+        )
+
+
+def _is_exact_durable_save_toolbar(device: Device, node: UiNode) -> bool:
+    return (
+        node.attributes.get("resource-id") == ""
+        and node.attributes.get("package") == PACKAGE
+        and node.attributes.get("class") == "android.widget.Button"
+        and node.attributes.get("content-desc") == "build-save-runner"
+        and node.attributes.get("enabled") == "true"
+        and node.attributes.get("clickable") == "true"
+        and node.attributes.get("focusable") == "true"
+        and device.node_has_tappable_bounds(node)
+    )
+
+
+def _launch_state_after_unknown_observation(
+    device: Device,
+    error: BaseException,
+) -> LaunchState:
+    """Best-effort read-only state for an already-unknown save outcome."""
+    try:
+        return current_launch_state(device)
+    except Exception as observation_error:
+        return LaunchState(
+            (),
+            None,
+            "post-save state observation failed: "
+            f"{type(error).__name__}: {_bounded_evidence(error)}; "
+            "follow-up observation failed: "
+            f"{type(observation_error).__name__}: "
+            f"{_bounded_evidence(observation_error)}",
+        )
+
+
+def save_runner_and_wait_for_durable_notice(
+    device: Device,
+    *,
+    timeout: float = 90,
+) -> UiNode:
+    """Issue one exact save and observe its outcome without further UI input.
+
+    The durable notice lives in the always-visible toolbar, so scrolling is
+    neither required nor safe after the mutation. Every post-tap operation is
+    read-only. A disappeared/replaced process or a different resumed activity
+    is an unknown save outcome and fails immediately with crash/exit evidence.
+    """
+    if timeout <= 0:
+        raise ValueError("Durable save observation timeout must be positive")
+
+    toolbar = device.wait_for_single_exact_accessibility_value(
+        "build-save-runner",
+        timeout=45,
+        evidence_prefix="durable-save-toolbar",
+        surface_name="Durable save toolbar control",
+    )
+    if (
+        not _is_exact_durable_save_toolbar(device, toolbar)
+        or toolbar.attributes.get("text") != "Save"
+    ):
+        device.capture("durable-save-toolbar-invalid")
+        raise RuntimeError(
+            "The exact durable save toolbar control does not have the required "
+            "tappable Chummer button topology and exact pre-save text 'Save'"
+        )
+
+    expected = current_launch_state(device)
+    if (
+        len(expected.process_ids) != 1
+        or expected.resumed_component is None
+        or not expected.resumed_component.startswith(f"{PACKAGE}/")
+    ):
+        device.capture("durable-save-precondition-invalid")
+        raise RuntimeError(
+            "Chummer did not have exactly one PID and the exact foreground "
+            "component before the save tap"
+        )
+
+    x, y = toolbar.center
+    # Exactly one non-replayable mutation. Device.shell already suppresses
+    # replay when an ADB outcome is unknown.
+    try:
+        device.shell("input", "tap", str(x), str(y))
+    except AdbTransportError as error:
+        observed = _launch_state_after_unknown_observation(device, error)
+        capture_unknown_durable_save_outcome(
+            device,
+            reason="save-tap-transport-outcome-unknown",
+            expected=expected,
+            observed=observed,
+        )
+        raise RuntimeError(
+            "Durable save outcome is unknown after the non-replayable save tap "
+            "transport failed; no save replay was attempted"
+        ) from error
+
+    deadline = time.monotonic() + timeout
+    observed = expected
+    while time.monotonic() < deadline:
+        try:
+            observed = current_launch_state(device)
+        except AdbTransportError as error:
+            observed = _launch_state_after_unknown_observation(device, error)
+            capture_unknown_durable_save_outcome(
+                device,
+                reason="post-save-launch-state-observation-failed",
+                expected=expected,
+                observed=observed,
+            )
+            raise RuntimeError(
+                "Durable save outcome is unknown because post-save process/"
+                "foreground observation failed; no save replay was attempted"
+            ) from error
+        if (
+            observed.process_ids != expected.process_ids
+            or observed.resumed_component != expected.resumed_component
+        ):
+            capture_unknown_durable_save_outcome(
+                device,
+                reason="process-or-foreground-authority-changed",
+                expected=expected,
+                observed=observed,
+            )
+            raise RuntimeError(
+                "Durable save outcome is unknown because Chummer lost its exact "
+                "process/foreground authority; no save replay or foreground "
+                "recovery was attempted"
+            )
+
+        try:
+            nodes = device.read_only_hierarchy()
+            if nodes:
+                device.dismiss_system_ui_anr(nodes)
+        except (AdbTransportError, ProductAnrDetected) as error:
+            capture_unknown_durable_save_outcome(
+                device,
+                reason=(
+                    "post-save-hierarchy-observation-failed"
+                    if isinstance(error, AdbTransportError)
+                    else "post-save-product-anr-detected"
+                ),
+                expected=expected,
+                observed=observed,
+            )
+            raise RuntimeError(
+                "Durable save outcome is unknown because post-save hierarchy/"
+                "ANR observation failed; no save replay was attempted"
+            ) from error
+        if not nodes:
+            time.sleep(0.75)
+            continue
+        matches = [
+            node
+            for node in nodes
+            if node.attributes.get("content-desc") == "build-save-runner"
+            and node.attributes.get("package") == PACKAGE
+        ]
+        if len(matches) > 1:
+            capture_unknown_durable_save_outcome(
+                device,
+                reason="durable-save-toolbar-cardinality-invalid",
+                expected=expected,
+                observed=observed,
+            )
+            raise RuntimeError(
+                "Durable save toolbar has ambiguous post-mutation cardinality; "
+                "the save outcome remains unknown"
+            )
+        if len(matches) == 1:
+            match = matches[0]
+            try:
+                exact_toolbar = _is_exact_durable_save_toolbar(device, match)
+            except AdbTransportError as error:
+                capture_unknown_durable_save_outcome(
+                    device,
+                    reason="post-save-toolbar-observation-failed",
+                    expected=expected,
+                    observed=observed,
+                )
+                raise RuntimeError(
+                    "Durable save outcome is unknown because exact post-save "
+                    "toolbar observation failed; no save replay was attempted"
+                ) from error
+            if not exact_toolbar:
+                capture_unknown_durable_save_outcome(
+                    device,
+                    reason="durable-save-toolbar-topology-invalid",
+                    expected=expected,
+                    observed=observed,
+                )
+                raise RuntimeError(
+                    "Durable save toolbar changed to an invalid post-mutation "
+                    "topology; the save outcome remains unknown"
+                )
+            if match.attributes.get("text") == "Saved.":
+                try:
+                    confirmed = current_launch_state(device)
+                except AdbTransportError as error:
+                    confirmed = _launch_state_after_unknown_observation(
+                        device,
+                        error,
+                    )
+                    capture_unknown_durable_save_outcome(
+                        device,
+                        reason="post-save-success-authority-observation-failed",
+                        expected=expected,
+                        observed=confirmed,
+                    )
+                    raise RuntimeError(
+                        "Durable save outcome is unknown because final process/"
+                        "foreground confirmation failed; no save replay was attempted"
+                    ) from error
+                if (
+                    confirmed.process_ids != expected.process_ids
+                    or confirmed.resumed_component != expected.resumed_component
+                ):
+                    capture_unknown_durable_save_outcome(
+                        device,
+                        reason="post-save-success-authority-changed",
+                        expected=expected,
+                        observed=confirmed,
+                    )
+                    raise RuntimeError(
+                        "Durable save notice coincided with changed process/foreground "
+                        "authority; the outcome remains unknown"
+                    )
+                return match
+        time.sleep(0.75)
+
+    capture_unknown_durable_save_outcome(
+        device,
+        reason="durable-save-notice-timeout",
+        expected=expected,
+        observed=observed,
+    )
+    raise RuntimeError(
+        "Timed out observing the exact durable save notice without replaying "
+        "the save or sending post-mutation UI input"
     )
 
 
@@ -3823,6 +7259,8 @@ def capture_launch_diagnostics(
     start_result: subprocess.CompletedProcess | None,
     start_error: BaseException | None,
     state: LaunchState,
+    *,
+    deadline: float | None = None,
 ) -> str:
     prefix = f"launch-attempt-{attempt}"
     _write_launch_evidence(
@@ -3859,16 +7297,37 @@ def capture_launch_diagnostics(
     _write_launch_evidence(
         device,
         f"{prefix}-window.txt",
-        _safe_shell(device, "dumpsys", "window", "windows"),
+        (
+            _safe_shell(device, "dumpsys", "window", "windows")
+            if deadline is None
+            else _safe_shell(
+                device,
+                "dumpsys",
+                "window",
+                "windows",
+                deadline=deadline,
+            )
+        ),
     )
     _write_launch_evidence(
         device,
         f"{prefix}-exit-info.txt",
-        _safe_shell(device, "dumpsys", "activity", "exit-info", PACKAGE),
+        (
+            _safe_shell(device, "dumpsys", "activity", "exit-info", PACKAGE)
+            if deadline is None
+            else _safe_shell(
+                device,
+                "dumpsys",
+                "activity",
+                "exit-info",
+                PACKAGE,
+                deadline=deadline,
+            )
+        ),
     )
     diagnostic_logs: list[str] = []
     try:
-        logcat_result = device.run(
+        logcat_arguments = (
             "logcat",
             "-d",
             "-b",
@@ -3877,8 +7336,16 @@ def capture_launch_diagnostics(
             "threadtime",
             "-t",
             "4000",
-            timeout=60,
-            check=False,
+        )
+        logcat_result = (
+            device.run(*logcat_arguments, timeout=60, check=False)
+            if deadline is None
+            else device.run(
+                *logcat_arguments,
+                timeout=_remaining_operation_timeout(deadline=deadline, maximum=60),
+                check=False,
+                deadline=deadline,
+            )
         )
         logcat = _bounded_evidence(logcat_result.stdout)
         if logcat_result.stderr:
@@ -3889,15 +7356,26 @@ def capture_launch_diagnostics(
     diagnostic_logs.append(logcat)
     for buffer_name in ("events", "crash"):
         try:
-            buffer_result = device.run(
+            buffer_arguments = (
                 "logcat",
                 "-d",
                 "-b",
                 buffer_name,
                 "-v",
                 "threadtime",
-                timeout=60,
-                check=False,
+            )
+            buffer_result = (
+                device.run(*buffer_arguments, timeout=60, check=False)
+                if deadline is None
+                else device.run(
+                    *buffer_arguments,
+                    timeout=_remaining_operation_timeout(
+                        deadline=deadline,
+                        maximum=60,
+                    ),
+                    check=False,
+                    deadline=deadline,
+                )
             )
             buffer_log = _bounded_evidence(buffer_result.stdout)
             if buffer_result.stderr:
@@ -3916,11 +7394,39 @@ def capture_launch_diagnostics(
             buffer_log,
         )
         diagnostic_logs.append(buffer_log)
-    device.capture(f"{prefix}-failure")
+    if deadline is None:
+        device.capture(f"{prefix}-failure")
+    else:
+        device.capture(f"{prefix}-failure", deadline=deadline)
     return "\n".join(diagnostic_logs)
 
 
 def _start_output_matches_component(output: str, component: str) -> bool:
+    lines = [line.strip() for line in output.splitlines()]
+    statuses = [
+        line.partition(":")[2].strip()
+        for line in lines
+        if line.startswith("Status:")
+    ]
+    activities = [
+        normalize_component(line.partition(":")[2].strip())
+        for line in lines
+        if line.startswith("Activity:")
+    ]
+    return statuses == ["ok"] and activities == [component]
+
+
+def _start_output_reports_wait_timeout_for_component(
+    output: str,
+    component: str,
+) -> bool:
+    """Recognize API 36's in-band ``am start -W`` wait timeout.
+
+    ``am start -W`` can return normally with ``Status: timeout`` even though
+    the requested activity has started and is the exact resumed component.
+    Keep this distinct from a successful command result so callers must also
+    prove the live package PID and resumed activity before accepting it.
+    """
     lines = [line.strip() for line in output.splitlines()]
     statuses = [line.partition(":")[2].strip() for line in lines if line.startswith("Status:")]
     activities = [
@@ -3928,7 +7434,7 @@ def _start_output_matches_component(output: str, component: str) -> bool:
         for line in lines
         if line.startswith("Activity:")
     ]
-    return statuses == ["ok"] and activities == [component]
+    return statuses == ["timeout"] and activities == [component]
 
 
 def workspace_authority_start_arguments(component: str) -> tuple[str, ...]:
@@ -3967,39 +7473,80 @@ def _wait_for_resumed_component(
     device: Device,
     component: str,
     timeout: float,
+    *,
+    deadline: float | None = None,
 ) -> tuple[LaunchState, bool]:
-    deadline = time.monotonic() + timeout
+    timeout_deadline = time.monotonic() + timeout
+    operation_deadline = (
+        timeout_deadline
+        if deadline is None
+        else min(timeout_deadline, deadline)
+    )
     saw_process = False
     while True:
-        state = current_launch_state(device)
+        state = (
+            current_launch_state(device)
+            if deadline is None
+            else current_launch_state(device, deadline=operation_deadline)
+        )
         if state.process_ids:
             saw_process = True
         if state.process_ids and state.resumed_component == component:
             return state, saw_process
         if saw_process and not state.process_ids:
             return state, saw_process
-        if time.monotonic() >= deadline:
+        if time.monotonic() >= operation_deadline:
             return state, saw_process
-        time.sleep(0.5)
+        _sleep_before_operation_deadline(0.5, deadline=operation_deadline)
 
 
-def launch_app(device: Device, attempts: int = 3, resume_timeout: float = 20) -> LaunchState:
+def launch_app(
+    device: Device,
+    attempts: int = 3,
+    resume_timeout: float = 20,
+    *,
+    deadline: float | None = None,
+) -> LaunchState:
     if attempts < 1 or resume_timeout < 0:
         raise ValueError("Launch attempts must be positive and resume timeout nonnegative")
-    component = launcher_component(device)
+    component = (
+        launcher_component(device)
+        if deadline is None
+        else launcher_component(device, deadline=deadline)
+    )
     for attempt in range(1, attempts + 1):
-        device.run("logcat", "-c", timeout=30, check=False)
+        if deadline is None:
+            device.run("logcat", "-c", timeout=30, check=False)
+        else:
+            device.run(
+                "logcat",
+                "-c",
+                timeout=_remaining_operation_timeout(deadline=deadline, maximum=30),
+                check=False,
+                deadline=deadline,
+            )
         start_result: subprocess.CompletedProcess | None = None
         start_error: BaseException | None = None
         try:
             # The journey owns its clear/force-stop lifecycle boundary. On API 36,
             # combining that stop with this start via `-S` can return Status: ok and
             # LaunchState: UNKNOWN without ever scheduling the package process.
-            start_result = device.run(
-                *workspace_authority_start_arguments(component),
-                timeout=60,
-                check=False,
-            )
+            if deadline is None:
+                start_result = device.run(
+                    *workspace_authority_start_arguments(component),
+                    timeout=60,
+                    check=False,
+                )
+            else:
+                start_result = device.run(
+                    *workspace_authority_start_arguments(component),
+                    timeout=_remaining_operation_timeout(
+                        deadline=deadline,
+                        maximum=60,
+                    ),
+                    check=False,
+                    deadline=deadline,
+                )
         except subprocess.TimeoutExpired as error:
             start_error = error
 
@@ -4036,13 +7583,26 @@ def launch_app(device: Device, attempts: int = 3, resume_timeout: float = 20) ->
             and start_result.returncode == 0
             and _start_output_matches_component(start_result.stdout, component)
         )
-        state, saw_process = _wait_for_resumed_component(
-            device,
-            component,
-            resume_timeout,
+        command_wait_timed_out = (
+            start_result is not None
+            and start_result.returncode == 0
+            and _start_output_reports_wait_timeout_for_component(
+                start_result.stdout,
+                component,
+            )
+        )
+        state, saw_process = (
+            _wait_for_resumed_component(device, component, resume_timeout)
+            if deadline is None
+            else _wait_for_resumed_component(
+                device,
+                component,
+                resume_timeout,
+                deadline=deadline,
+            )
         )
         wait_timed_out = isinstance(start_error, subprocess.TimeoutExpired)
-        if (command_succeeded or wait_timed_out) \
+        if (command_succeeded or command_wait_timed_out or wait_timed_out) \
             and state.process_ids \
             and state.resumed_component == component:
             _write_launch_evidence(
@@ -4060,13 +7620,25 @@ def launch_app(device: Device, attempts: int = 3, resume_timeout: float = 20) ->
             )
             return state
 
-        logcat = capture_launch_diagnostics(
-            device,
-            attempt,
-            component,
-            start_result,
-            start_error,
-            state,
+        logcat = (
+            capture_launch_diagnostics(
+                device,
+                attempt,
+                component,
+                start_result,
+                start_error,
+                state,
+            )
+            if deadline is None
+            else capture_launch_diagnostics(
+                device,
+                attempt,
+                component,
+                start_result,
+                start_error,
+                state,
+                deadline=deadline,
+            )
         )
         if saw_process or _package_crash_is_visible(logcat):
             raise RuntimeError(
@@ -4084,20 +7656,29 @@ def launch_app(device: Device, attempts: int = 3, resume_timeout: float = 20) ->
                 "Android could not launch the exact Chummer component after "
                 f"{attempts} attempts; component={component!r}"
             )
-        time.sleep(3)
+        _sleep_before_operation_deadline(3, deadline=deadline)
 
 
 def force_stop_and_launch_new_process(
     device: Device,
     previous: LaunchState,
+    *,
+    deadline: float | None = None,
 ) -> ProcessRestartProof:
     if not previous.process_ids:
         raise RuntimeError("Process-restart proof requires an initial Chummer PID")
 
-    before_force_stop = current_launch_state(device)
+    before_force_stop = (
+        current_launch_state(device)
+        if deadline is None
+        else current_launch_state(device, deadline=deadline)
+    )
     if before_force_stop.process_ids != previous.process_ids \
         or before_force_stop.resumed_component != previous.resumed_component:
-        device.capture("process-restart-precondition-changed")
+        if deadline is None:
+            device.capture("process-restart-precondition-changed")
+        else:
+            device.capture("process-restart-precondition-changed", deadline=deadline)
         raise RuntimeError(
             "Chummer launch identity changed before the owned force-stop boundary: "
             f"launch_process_ids={previous.process_ids!r}, "
@@ -4106,19 +7687,42 @@ def force_stop_and_launch_new_process(
             f"live_resumed={before_force_stop.resumed_component!r}"
         )
 
-    device.shell("am", "force-stop", PACKAGE)
-    after_force_stop = current_launch_state(device)
+    if deadline is None:
+        device.shell("am", "force-stop", PACKAGE)
+    else:
+        device.shell(
+            "am",
+            "force-stop",
+            PACKAGE,
+            timeout=_remaining_operation_timeout(deadline=deadline, maximum=120),
+            deadline=deadline,
+        )
+    after_force_stop = (
+        current_launch_state(device)
+        if deadline is None
+        else current_launch_state(device, deadline=deadline)
+    )
     if after_force_stop.process_ids:
-        device.capture("process-restart-force-stop-not-empty")
+        if deadline is None:
+            device.capture("process-restart-force-stop-not-empty")
+        else:
+            device.capture("process-restart-force-stop-not-empty", deadline=deadline)
         raise RuntimeError(
             "Chummer package PID set remained non-empty after force-stop: "
             + " ".join(after_force_stop.process_ids)
         )
 
-    restarted = launch_app(device)
+    restarted = (
+        launch_app(device)
+        if deadline is None
+        else launch_app(device, deadline=deadline)
+    )
     reused = sorted(set(before_force_stop.process_ids).intersection(restarted.process_ids))
     if reused:
-        device.capture("process-restart-pid-reused")
+        if deadline is None:
+            device.capture("process-restart-pid-reused")
+        else:
+            device.capture("process-restart-pid-reused", deadline=deadline)
         raise RuntimeError(
             "Chummer process restart reused an existing PID instead of proving a new process: "
             + " ".join(reused)
@@ -4154,14 +7758,24 @@ def prepare_full_editing_runner(
         evidence_prefix="new-runner-build-method-dialog",
         source_name="New runner control",
         target_name="Create-character build-method action",
+        target_scroll_surface="dialog-surface",
+        max_target_scrolls=16,
     )
-    device.tap("dialog-action-create-character", scroll=True)
-    device.wait("dialog-action-complete-new-character-workflow", timeout=45, scroll=True)
-    device.tap("dialog-action-complete-new-character-workflow", scroll=True)
+    device.tap_single_exact_resource_id(
+        "dialog-action-create-character",
+        timeout=45,
+        scroll=True,
+        max_scrolls=12,
+        scroll_distance_ratio=0.22,
+        evidence_prefix="new-runner-create-character-action",
+        surface_name="Create-character build-method action",
+    )
 
     creation_authority: WorkspaceAuthority | None = None
     if profile == "phone":
-        # A new creation-mode runner now routes directly to the fail-closed wizard.
+        # The authoritative bootstrap routes directly to the real Creation
+        # Wizard. The retired legacy metatype dialog is not part of this journey.
+        wait_for_phone_runner_route(device, created=False)
         # The unrestricted editor must remain unavailable until creation is complete.
         open_creation_dashboard(
             device,
@@ -4172,14 +7786,7 @@ def prepare_full_editing_runner(
         # Importing another dossier is correctly blocked while the current workspace
         # is dirty. Persist this incomplete creation draft without claiming that the
         # creation workflow itself has completed, then switch to the signed fixture.
-        device.tap("build-save-runner")
-        device.wait(
-            "Saved.",
-            timeout=90,
-            scroll=True,
-            max_scrolls=48,
-            scroll_distance_ratio=0.22,
-        )
+        save_runner_and_wait_for_durable_notice(device)
         tap_phone_destination(device, "phone-destination-runners")
         wait_for_phone_runners(device)
     else:
@@ -4280,9 +7887,25 @@ def assert_link_persisted_then_remove(
         device.back()
 
 
-def add_and_edit_gear(device: Device, profile: str) -> None:
+def add_and_edit_gear(device: Device, profile: str) -> str | None:
     open_gear_section(device, profile)
-    device.tap("tablet-quick-gear-add" if profile == "tablet" else "section-quick-gear-add", scroll=True)
+    original_routes: frozenset[str] = frozenset()
+    if profile == "phone":
+        before = scan_collection_route_inventory(
+            device,
+            kind="gear",
+            evidence_prefix="gear-before-add",
+        )
+        original_routes = frozenset(before.route_viewports)
+        rewind_surface_to_stable_start(device, evidence_prefix="gear-before-add-action")
+        device.tap_single_exact_resource_id(
+            "section-quick-gear-add",
+            timeout=60,
+            evidence_prefix="gear-add-action",
+            surface_name="Exact gear add action",
+        )
+    else:
+        device.tap("tablet-quick-gear-add", scroll=True)
     device.set_text(
         "dialog-field-uigearname",
         "Gear Name",
@@ -4298,14 +7921,9 @@ def add_and_edit_gear(device: Device, profile: str) -> None:
         max_scrolls=48,
         scroll_distance_ratio=0.28,
     )
-    reset_scroll_to_top(
-        device,
-        x_ratio=0.375 if profile == "tablet" else 0.5,
-        swipes=6,
-    )
-    tap_collection_item(device, "Ares Predator V")
-
     if profile == "tablet":
+        reset_scroll_to_top(device, x_ratio=0.375, swipes=6)
+        tap_collection_item(device, "Ares Predator V")
         device.wait("tablet-inspector-save", timeout=60, scroll=True)
         reset_scroll_to_top(device, x_ratio=0.82, swipes=12)
         device.set_text("tablet-field-customname", "Custom Name", "GearProofE2E")
@@ -4323,13 +7941,45 @@ def add_and_edit_gear(device: Device, profile: str) -> None:
                 "Gear Custom Name was not saved in the tablet inspector: "
                 f"expected 'GearProofE2E', got {saved_custom_name!r}"
             )
-        return
+        return None
 
-    device.set_text("collection-field-customname", "Custom Name", "GearProofE2E")
-    device.tap("Save changes", scroll=True)
-    reset_scroll_to_top(device, swipes=6)
+    after = scan_collection_route_inventory(
+        device,
+        kind="gear",
+        evidence_prefix="gear-after-add",
+    )
+    current_routes = frozenset(after.route_viewports)
+    added_routes = current_routes - original_routes
+    missing_routes = original_routes - current_routes
+    if len(added_routes) != 1 or missing_routes:
+        device.capture("gear-new-route-delta-invalid")
+        raise RuntimeError(
+            "Gear add did not materialize exactly one new typed route while preserving "
+            f"the baseline: added={sorted(added_routes)!r}, missing={sorted(missing_routes)!r}"
+        )
+    new_route = next(iter(added_routes))
+    item_id = tap_typed_collection_route(
+        device,
+        inventory=after,
+        route_id=new_route,
+        evidence_prefix="gear-new-route",
+    )
+    custom_name_id = f"collection-field-customname-{item_id}"
+    save_id = f"collection-save-{item_id}"
+    device.set_text(custom_name_id, "Custom Name", "GearProofE2E")
+    device.tap_exact_resource_id_bidirectional(
+        save_id,
+        timeout=90,
+        backward_scrolls=0,
+        forward_scrolls=32,
+        scroll_distance_ratio=0.22,
+        evidence_prefix="gear-save",
+        surface_name="Exact typed gear save action",
+    )
+    rewind_surface_to_stable_start(device, evidence_prefix="gear-saved-editor")
     device.assert_text("GearProofE2E")
     device.back()
+    return item_id
 
 
 def add_contact_from_dialog(device: Device, profile: str, name: str, role: str) -> None:
@@ -5071,7 +8721,7 @@ def main() -> int:
     if args.profile == "phone":
         device.back()
 
-    add_and_edit_gear(device, args.profile)
+    added_gear_item_id = add_and_edit_gear(device, args.profile)
     if args.profile == "phone":
         device.back()
     add_and_edit_contact(
@@ -5130,14 +8780,20 @@ def main() -> int:
     assert_body_total(device, args.profile, full_editing_contract.improved_body_total)
     if args.profile == "phone":
         device.back()
-    open_gear_section(device, args.profile)
-    reset_scroll_to_top(
-        device,
-        x_ratio=0.375 if args.profile == "tablet" else 0.5,
-        swipes=6,
-    )
-    tap_collection_item(device, "Ares Predator V")
-    gear_field = "tablet-field-customname" if args.profile == "tablet" else "collection-field-customname"
+    if args.profile == "phone":
+        # Post-restart verification does not create another item, so it must not
+        # reuse the add-oriented quick-action route gate. Bind the
+        # exact Gear section, inventory its typed persisted routes, and enter
+        # only the item identity created before restart.
+        if added_gear_item_id is None:
+            raise RuntimeError("Phone gear proof lost its exact typed item identity")
+        open_persisted_phone_gear_after_restart(device, added_gear_item_id)
+        gear_field = f"collection-field-customname-{added_gear_item_id}"
+    else:
+        open_gear_section(device, args.profile)
+        reset_scroll_to_top(device, x_ratio=0.375, swipes=6)
+        tap_collection_item(device, "Ares Predator V")
+        gear_field = "tablet-field-customname"
     persisted_custom_name = selected_text(device, gear_field, "Custom Name", scroll=True)
     if persisted_custom_name != "GearProofE2E":
         device.capture(f"{args.profile}-gear-custom-name-not-persisted")

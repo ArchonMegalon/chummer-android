@@ -1,16 +1,7 @@
-name: API 36 phone beta editing E2E
+name: API 36 phone beta SR5 wizard E2E
 
 on:
   pull_request:
-    paths:
-      - ".github/workflows/api36-editing-e2e.yml"
-      - "docs/ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json"
-      - "docs/CHUMMER5_CHARACTER_SETTINGS_CONTRACT.generated.json"
-      - "docs/editability-evidence/**"
-      - "global.json"
-      - "scripts/**"
-      - "src/**"
-      - "tests/**"
   push:
     branches:
       - main
@@ -19,6 +10,7 @@ on:
       - "docs/ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json"
       - "docs/CHUMMER5_CHARACTER_SETTINGS_CONTRACT.generated.json"
       - "docs/editability-evidence/**"
+      - "eng/api36-sr5-wizard-gate-authority.json"
       - "global.json"
       - "scripts/**"
       - "src/**"
@@ -35,7 +27,7 @@ concurrency:
 
 jobs:
   build:
-    name: Build x64 emulator and ARM64 physical candidates
+    name: Build x64 emulator and ARM64 hosted debug candidates
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     outputs:
@@ -60,7 +52,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: ArchonMegalon/chummer6-ui
-          ref: 4c88c1810e6ce2754fe7b00e03db9b36b75d517c
+          ref: 732a33cb8d3c704b8a86e1249eab46508339a105
           path: chummer-presentation
           persist-credentials: false
           fetch-depth: 1
@@ -76,7 +68,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: ArchonMegalon/chummer6-core
-          ref: 4450825f53a5a96778e6061c16689e7c5993baf7
+          ref: 60112dccb6a3faad330d32c3c98eef0aa81d97af
           path: chummer-core-engine
           persist-credentials: false
           fetch-depth: 1
@@ -85,7 +77,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: ArchonMegalon/chummer6-core
-          ref: 2fb2ae9bb48e5a1a6b25a174ba88008ce995fcd5
+          ref: c06f22c185c7b733637fdb76b3cf333f31716781
           path: chummer-core-content
           persist-credentials: false
           fetch-depth: 1
@@ -97,7 +89,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: ArchonMegalon/chummer6-hub
-          ref: d29a880f624ec94aabedd0c2901ae8fed2f93ed4
+          ref: bc199cbe0982833ec2fc9ce625826e612759d67a
           path: chummer.run-services
           persist-credentials: false
           fetch-depth: 1
@@ -178,6 +170,12 @@ jobs:
           python3 scripts/materialize_chummer5_editability_inventory.py --check
           python3 scripts/materialize_chummer5_character_settings_contract.py --check
 
+      - name: Verify the exact wizard-only API 36 gate contract
+        working-directory: chummer-android
+        run: >-
+          python3 scripts/api36_wizard_gate_contract.py
+          --manifest eng/api36-sr5-wizard-gate-authority.json
+
       - name: Verify the pinned phone-beta contract
         run: python3 chummer-design/scripts/ai/validate_android_phone_beta_contract.py
 
@@ -196,12 +194,24 @@ jobs:
       - name: Restore the pinned MAUI Android workload
         run: dotnet workload restore chummer-android/Chummer.Android.slnx
 
+      - name: Verify clean Android source before local-compatibility restores
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "$(git -C chummer-android status --porcelain=v1 --untracked-files=no)"
+
       - name: Build the emulator APK and native compile gate
         working-directory: chummer-android
         env:
           CHUMMER_ANDROID_RUNTIME_ID: android-x64
           CHUMMER_CORE_ENGINE_ROOT: ${{ github.workspace }}/chummer-core-engine
         run: scripts/build-debug.sh
+
+      - name: Verify clean Android source after x64 local-compatibility restore
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "$(git -C chummer-android status --porcelain=v1 --untracked-files=no)"
 
       - name: Seal the unique signed debug APK
         id: apk
@@ -253,14 +263,14 @@ jobs:
           overwrite: false
           include-hidden-files: false
 
-      - name: Build the ARM64 physical-phone candidate
+      - name: Build the ARM64 hosted debug candidate
         working-directory: chummer-android
         env:
           CHUMMER_ANDROID_RUNTIME_ID: android-arm64
           CHUMMER_CORE_ENGINE_ROOT: ${{ github.workspace }}/chummer-core-engine
         run: scripts/build-debug.sh
 
-      - name: Seal ARM64 APK and exact source/build provenance
+      - name: Seal ARM64 hosted debug candidate observation
         id: arm64
         shell: bash
         run: |
@@ -270,21 +280,44 @@ jobs:
           install -d -m 0755 "$RUNNER_TEMP/chummer-android-arm64"
           install -m 0644 "$arm64_apk" \
             "$RUNNER_TEMP/chummer-android-arm64/chummer-android-arm64-debug.apk"
-          python3 chummer-android/scripts/materialize-api36-physical-build-provenance.py \
-            --android-root "$GITHUB_WORKSPACE/chummer-android" \
-            --core-root "$GITHUB_WORKSPACE/chummer-core-engine" \
-            --presentation-root "$GITHUB_WORKSPACE/chummer-presentation" \
+          python3 chummer-android/scripts/verify_android_content_bundle.py \
+            --repo-root "$GITHUB_WORKSPACE/chummer-android" \
+            --core-root "$GITHUB_WORKSPACE/chummer-core-content" \
             --apk "$RUNNER_TEMP/chummer-android-arm64/chummer-android-arm64-debug.apk" \
-            --output "$RUNNER_TEMP/chummer-android-arm64/build-provenance.json"
+            --receipt "$RUNNER_TEMP/chummer-android-arm64/canonical-content-receipt.json" \
+            --check
+          python3 chummer-android/scripts/materialize-api36-hosted-arm64-candidate.py \
+            materialize \
+            --source android https://github.com/ArchonMegalon/chummer-android.git "$GITHUB_SHA" "$GITHUB_WORKSPACE/chummer-android" \
+            --source presentation https://github.com/ArchonMegalon/chummer6-ui.git 732a33cb8d3c704b8a86e1249eab46508339a105 "$GITHUB_WORKSPACE/chummer-presentation" \
+            --source core-runtime https://github.com/ArchonMegalon/chummer6-core.git 60112dccb6a3faad330d32c3c98eef0aa81d97af "$GITHUB_WORKSPACE/chummer-core-engine" \
+            --source core-content https://github.com/ArchonMegalon/chummer6-core.git c06f22c185c7b733637fdb76b3cf333f31716781 "$GITHUB_WORKSPACE/chummer-core-content" \
+            --source hub https://github.com/ArchonMegalon/chummer6-hub.git bc199cbe0982833ec2fc9ce625826e612759d67a "$GITHUB_WORKSPACE/chummer.run-services" \
+            --source registry https://github.com/ArchonMegalon/chummer6-hub-registry.git af9a7e19c3bf331e96411dfb8f9e7820a98cab29 "$GITHUB_WORKSPACE/chummer-hub-registry" \
+            --source ui-kit https://github.com/ArchonMegalon/chummer6-ui-kit.git d51ecd99cf72098d4adc8db0192bff7bf9fd8e61 "$GITHUB_WORKSPACE/chummer-ui-kit" \
+            --source media https://github.com/ArchonMegalon/chummer6-media-factory.git 415c8163d3d90b1211e4014fef332bdec6d75f73 "$GITHUB_WORKSPACE/fleet/repos/chummer-media-factory" \
+            --runtime android-arm64 \
+            --application-id com.myexternalbrain.chummer \
+            --apk "$RUNNER_TEMP/chummer-android-arm64/chummer-android-arm64-debug.apk" \
+            --content-receipt "$RUNNER_TEMP/chummer-android-arm64/canonical-content-receipt.json" \
+            --workflow "$GITHUB_WORKSPACE/chummer-android/.github/workflows/api36-editing-e2e.yml" \
+            --build-script "$GITHUB_WORKSPACE/chummer-android/scripts/build-debug.sh" \
+            --event-name "$GITHUB_EVENT_NAME" \
+            --event-sha "$GITHUB_SHA" \
+            --head-sha "${{ github.event.pull_request.head.sha || github.sha }}" \
+            --base-sha "${{ github.event.pull_request.base.sha || github.sha }}" \
+            --run-id "$GITHUB_RUN_ID" \
+            --run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --output "$RUNNER_TEMP/chummer-android-arm64/hosted-build-candidate.json"
           apk_sha256="$(sha256sum "$RUNNER_TEMP/chummer-android-arm64/chummer-android-arm64-debug.apk" | cut -d ' ' -f 1)"
           printf '%s  %s\n' "$apk_sha256" chummer-android-arm64-debug.apk \
             >"$RUNNER_TEMP/chummer-android-arm64/chummer-android-arm64-debug.apk.sha256"
           {
             echo "apk-sha256=$apk_sha256"
-            echo "artifact-name=chummer-android-api36-arm64-physical-candidate-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+            echo "artifact-name=chummer-android-api36-arm64-hosted-debug-candidate-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           } >>"$GITHUB_OUTPUT"
 
-      - name: Upload ARM64 physical-phone candidate authority
+      - name: Upload ARM64 hosted debug candidate
         id: upload-arm64
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -296,15 +329,15 @@ jobs:
           overwrite: false
           include-hidden-files: false
 
-  phone-editing-e2e:
+  phone-wizard-e2e:
     # Tablet acceptance is deferred; this lane launches only pixel_6 and makes no tablet-readiness claim.
-    name: phone API 36 persistence (${{ matrix.journey }})
+    # General Full Editing remains a product/backlog test, not phone-beta wizard authority.
+    name: phone API 36 SR5 wizard persistence (${{ matrix.journey }})
     needs: build
     strategy:
       fail-fast: false
       matrix:
         journey:
-          - full-editing
           - creation-prerequisite
           - career-active-skill-advance
           - career-weapon-fire
@@ -331,7 +364,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: ArchonMegalon/chummer6-ui
-          ref: 4c88c1810e6ce2754fe7b00e03db9b36b75d517c
+          ref: 732a33cb8d3c704b8a86e1249eab46508339a105
           path: chummer-presentation
           persist-credentials: false
           fetch-depth: 1
@@ -341,7 +374,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: ArchonMegalon/chummer6-core
-          ref: 4450825f53a5a96778e6061c16689e7c5993baf7
+          ref: 60112dccb6a3faad330d32c3c98eef0aa81d97af
           path: chummer-core-engine
           persist-credentials: false
           fetch-depth: 1
@@ -407,7 +440,7 @@ jobs:
     name: Aggregate exact API 36 phone evidence
     needs:
       - build
-      - phone-editing-e2e
+      - phone-wizard-e2e
     if: ${{ always() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -419,17 +452,17 @@ jobs:
           persist-credentials: false
           fetch-depth: 1
 
-      - name: Download the four stable journey evidence artifacts
+      - name: Download the three stable wizard evidence artifacts
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           pattern: chummer-android-api36-phone-*-evidence-${{ github.run_id }}
           path: ${{ runner.temp }}/chummer-api36-journey-evidence
           merge-multiple: false
 
-      - name: Require one shared authority and exactly four passing journeys
+      - name: Require one shared authority and exactly three passing wizard journeys
         env:
           CHUMMER_BUILD_RESULT: ${{ needs.build.result }}
-          CHUMMER_MATRIX_RESULT: ${{ needs.phone-editing-e2e.result }}
+          CHUMMER_MATRIX_RESULT: ${{ needs.phone-wizard-e2e.result }}
           CHUMMER_E2E_APK_ARTIFACT_ID: ${{ needs.build.outputs.apk-artifact-id }}
           CHUMMER_E2E_APK_ARTIFACT_DIGEST: ${{ needs.build.outputs.apk-artifact-digest }}
           CHUMMER_E2E_APK_ARTIFACT_NAME: ${{ needs.build.outputs.apk-artifact-name }}
@@ -439,6 +472,7 @@ jobs:
           python3 chummer-android/scripts/verify-api36-editing-e2e-aggregate.py
           --evidence-root "${{ runner.temp }}/chummer-api36-journey-evidence"
           --receipt "${{ runner.temp }}/chummer-api36-aggregate/receipt.json"
+          --gate-contract chummer-android/eng/api36-sr5-wizard-gate-authority.json
           --run-id "${{ github.run_id }}"
           --build-result "$CHUMMER_BUILD_RESULT"
           --matrix-result "$CHUMMER_MATRIX_RESULT"
@@ -451,7 +485,7 @@ jobs:
       - name: Upload the aggregate phone authority receipt
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: chummer-android-api36-phone-aggregate-${{ github.run_id }}-${{ github.run_attempt }}
+          name: chummer-android-api36-phone-sr5-wizard-aggregate-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/chummer-api36-aggregate/receipt.json
           if-no-files-found: error
           retention-days: 30

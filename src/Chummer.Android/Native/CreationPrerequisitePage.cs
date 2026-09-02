@@ -45,9 +45,15 @@ public sealed class CreationPrerequisitePage : NativePageBase
         }
 
         _draft.Bind(state, Coordinator.State);
+        // Keep the build-method authority in the first native viewport.  The
+        // following digest and Karma cards are deliberately tall; rendering the
+        // short method card between them can move it through Android's
+        // accessibility viewport between two otherwise overlapping swipes.
+        // This is presentation order only.  Every value still comes from the
+        // same revision-bound prerequisite state.
+        AddMethod(state);
         AddBinding(state);
         AddCreationKarma(state.CreationKarmaBudget);
-        AddMethod(state);
         if (state.PendingDraft is { } pending)
             AddPendingDraft(pending);
 
@@ -185,6 +191,7 @@ public sealed class CreationPrerequisitePage : NativePageBase
         }
         Border border = NativeTheme.Card(card);
         border.AutomationId = "creation-prerequisite-method";
+        SemanticProperties.SetDescription(border, state.BuildMethod);
         _body.Add(NativeAuthoritySemantics.Overlay(
             border,
             NativeAuthoritySemantics.Identifier(
@@ -254,6 +261,7 @@ public sealed class CreationPrerequisitePage : NativePageBase
                 () => Navigation.PushAsync(new CreationPriorityCategoryPage(
                     Coordinator,
                     _draft,
+                    state,
                     category)),
                 automationId: $"creation-prerequisite-category-{Token(category)}"));
 

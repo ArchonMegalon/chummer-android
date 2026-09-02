@@ -25,6 +25,99 @@ def write_json(path: Path, value: object) -> None:
 
 
 class Api36Arm64PhysicalContractTests(unittest.TestCase):
+    def test_file_hierarchy_observer_retry_allowlist_is_exact(self) -> None:
+        self.assertEqual(
+            "exact fenced file-backed accessibility-hierarchy observation",
+            contract.read_only_adb_policy_reason(
+                contract.ADB_FILE_HIERARCHY_DUMP_ARGUMENTS
+            ),
+        )
+        self.assertEqual(
+            "exact hierarchy temporary-file identity observation",
+            contract.read_only_adb_policy_reason(
+                contract.ADB_FILE_HIERARCHY_STAT_ARGUMENTS
+            ),
+        )
+        for arguments in (
+            contract.ADB_FILE_HIERARCHY_DUMP_ARGUMENTS[:-1],
+            (*contract.ADB_FILE_HIERARCHY_DUMP_ARGUMENTS, "extra"),
+            (
+                "shell", "uiautomator", "dump", "--compressed",
+                "/sdcard/other.xml",
+            ),
+            (
+                "shell", "stat", "-c", "%d:%i:%s:%Y:%f",
+                "/sdcard/other.xml",
+            ),
+        ):
+            with self.subTest(arguments=arguments):
+                self.assertIsNone(contract.read_only_adb_policy_reason(arguments))
+
+        payload = self.recovered_read_only_transport_payload()
+        events = payload["events"]
+        retry = events[0]
+        recovered = events[2]
+        arguments = contract.ADB_FILE_HIERARCHY_DUMP_ARGUMENTS
+        arguments_sha256 = hashlib.sha256(
+            "\0".join(arguments).encode("utf-8")
+        ).hexdigest()
+        retry.update({
+            "classification": "observer-process-killed",
+            "classificationAuthority": "exact-file-hierarchy-observer-exit-137",
+            "policyReason": "exact fenced file-backed accessibility-hierarchy observation",
+            "adbArguments": list(arguments),
+            "adbArgumentsSha256": arguments_sha256,
+            "failure": {
+                "type": "CalledProcessError", "returnCode": 137,
+                "stdout": "", "stderr": "",
+            },
+        })
+        recovered.update({
+            "policyReason": "exact fenced file-backed accessibility-hierarchy observation",
+            "adbArguments": list(arguments),
+            "adbArgumentsSha256": arguments_sha256,
+            "attempt": 2,
+            "evidenceFile": "adb-transport-event-0002.json",
+        })
+        payload.update({"eventCount": 2, "events": [retry, recovered]})
+        contract.validate_adb_transport(
+            payload,
+            serial=self.device_payload()["serial"],
+            label="exact file hierarchy observer retry",
+        )
+
+        retry["adbArguments"] = list(contract.ADB_FILE_HIERARCHY_OBSERVATION_ARGUMENTS)
+        retry["adbArgumentsSha256"] = hashlib.sha256(
+            "\0".join(retry["adbArguments"]).encode("utf-8")
+        ).hexdigest()
+        retry["policyReason"] = "exact remote-file byte observation"
+        recovered.update({
+            "adbArguments": list(retry["adbArguments"]),
+            "adbArgumentsSha256": retry["adbArgumentsSha256"],
+            "policyReason": retry["policyReason"],
+        })
+        with self.assertRaisesRegex(ValueError, "failure/replay is not exact"):
+            contract.validate_adb_transport(
+                payload,
+                serial=self.device_payload()["serial"],
+                label="forged file hierarchy observer retry",
+            )
+
+    def test_creation_dashboard_ready_snapshot_is_exactly_retry_allowlisted(self) -> None:
+        self.assertEqual(
+            "bounded exact-tag creation-dashboard route-ready snapshot observation",
+            contract.read_only_adb_policy_reason(
+                contract.ADB_CREATION_DASHBOARD_READY_LOGCAT_ARGUMENTS
+            ),
+        )
+        for arguments in (
+            contract.ADB_CREATION_DASHBOARD_READY_LOGCAT_ARGUMENTS[:-1],
+            ("logcat", "-d", "-s", "ChummerRoute:I", "*:S"),
+            ("logcat", "-b", "main", "-v", "raw", "-T", "1"),
+        ):
+            with self.subTest(arguments=arguments):
+                self.assertIsNone(contract.read_only_adb_policy_reason(arguments))
+
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
         self.root = Path(self.temporary.name).resolve()
@@ -69,8 +162,49 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
             contract, "capture_driver_authority", return_value=self.driver_authority,
         )
         self.driver_patch.start()
+        dummy = contract.bind_regular(self.provenance, "fixture provenance reference")
+        self.reference_patches = [
+            mock.patch.object(
+                contract, "capture_build_provenance_references",
+                return_value=contract.BuildProvenanceReferences(
+                    dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy,
+                    tuple(
+                        (field, dummy)
+                        for field in sorted(contract.WP1_REFERENCE_EVIDENCE_FILES)
+                    ),
+                ),
+            ),
+            mock.patch.object(contract, "_validate_package_authority_references"),
+            mock.patch.object(contract, "_validate_content_references"),
+            mock.patch.object(contract, "_validate_referenced_provenance_bytes"),
+            mock.patch.object(
+                contract, "TRUSTED_TOOLCHAIN_SIZE_BYTES",
+                {field: 8 for field in contract.TRUSTED_TOOLCHAIN_SIZE_BYTES},
+            ),
+            mock.patch.object(contract, "TRUSTED_JAVA_VERSION_LINES", {
+                "java": 'openjdk version "17.0.14"', "javac": "javac 17.0.14",
+            }),
+            mock.patch.object(contract, "TRUSTED_JDK_RELEASE_VALUES", {
+                "IMPLEMENTOR": "Microsoft", "IMPLEMENTOR_VERSION": "Microsoft-10800290",
+                "JAVA_RUNTIME_VERSION": "17.0.14+7-LTS", "JAVA_VERSION": "17.0.14",
+                "JAVA_VERSION_DATE": "2025-01-21", "LIBC": "gnu",
+                "MODULES": "java.base", "OS_ARCH": "x86_64", "OS_NAME": "Linux",
+                "SOURCE": ".:git:fixture",
+            }),
+            mock.patch.object(
+                contract, "TRUSTED_CORE_CONTENT_TREE",
+                next(
+                    row["tree"] for row in self.graph_payload()["repositories"]
+                    if row["name"] == "chummer6-core"
+                ),
+            ),
+        ]
+        for patcher in self.reference_patches:
+            patcher.start()
 
     def tearDown(self) -> None:
+        for patcher in reversed(self.reference_patches):
+            patcher.stop()
         self.driver_patch.stop()
         self.temporary.cleanup()
 
@@ -102,6 +236,12 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
                 "owner_repository": owner,
                 "source_commit": repository_map[owner]["commit"],
                 "source_tree": repository_map[owner]["tree"],
+                "source_authority": {
+                    "owner_head_commit": repository_map[owner]["commit"],
+                    "owner_head_tree": repository_map[owner]["tree"],
+                    "relationship": "ancestor_or_equal",
+                    "verification": "git-merge-base-is-ancestor-without-replace-objects",
+                },
                 "authority_receipt_sha256": f"{index + 300:064x}",
                 "package_inventory_sha256": f"{index + 400:064x}",
                 "package_plane_lock_sha256": f"{index + 500:064x}",
@@ -109,16 +249,28 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
             }
             for index, (package_id, owner) in enumerate(contract.OWNER_PACKAGE_SPECS)
         ]
+        generator_path = SCRIPTS / "verify_release_source_graph.py"
+        generator_bytes = generator_path.read_bytes()
         return {
             "contractName": contract.SOURCE_GRAPH_SCHEMA,
             "generatedAtUtc": "2026-08-28T00:00:00Z",
             "authorityState": "local_review_required",
             "publicationAuthorized": False,
-            "generator": {"path": "scripts/verify_release_source_graph.py", "sha256": "1" * 64, "size_bytes": 1},
+            "generator": {
+                "path": "scripts/verify_release_source_graph.py",
+                "sha256": hashlib.sha256(generator_bytes).hexdigest(),
+                "size_bytes": len(generator_bytes),
+            },
             "repositories": repositories, "packagePins": package_pins,
             "ownerPackagePins": owner_pins,
             "dependencyClosure": [
-                {"package_id": package_id, "dependencies": []}
+                {
+                    "package_id": package_id,
+                    "dependencies": (
+                        ["Chummer.Play.Contracts"]
+                        if package_id == "Chummer.Run.Contracts" else []
+                    ),
+                }
                 for package_id, _owner in contract.OWNER_PACKAGE_SPECS
             ],
             "presentationSource": {
@@ -130,10 +282,55 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
             "doesNotAssert": list(contract.SOURCE_GRAPH_DOES_NOT_ASSERT),
         }
 
+    @staticmethod
+    def bound_graph(payload: dict[str, object]) -> contract.BoundBytes:
+        data = (json.dumps(payload, sort_keys=True) + "\n").encode("utf-8")
+        return contract.BoundBytes(
+            Path("/nonexistent/release-source-graph.json"),
+            data,
+            hashlib.sha256(data).hexdigest(),
+            len(data),
+        )
+
+    def test_source_graph_requires_exact_generator_and_owner_head_provenance(self) -> None:
+        payload = self.graph_payload()
+        contract.validate_source_graph(self.bound_graph(payload))
+
+        forged_generator = copy.deepcopy(payload)
+        forged_generator["generator"]["sha256"] = "f" * 64
+        with self.assertRaisesRegex(ValueError, "generator bytes are not exact"):
+            contract.validate_source_graph(self.bound_graph(forged_generator))
+
+        forged_owner_head = copy.deepcopy(payload)
+        forged_owner_head["ownerPackagePins"][0]["source_authority"][
+            "owner_head_commit"
+        ] = "f" * 40
+        with self.assertRaisesRegex(ValueError, "not bound to its pinned repository head"):
+            contract.validate_source_graph(self.bound_graph(forged_owner_head))
+
+        forged_current_tree = copy.deepcopy(payload)
+        forged_current_tree["ownerPackagePins"][0]["source_tree"] = "f" * 40
+        with self.assertRaisesRegex(ValueError, "current source tree differs"):
+            contract.validate_source_graph(self.bound_graph(forged_current_tree))
+
+    def test_source_graph_reasserts_run_to_play_dependency(self) -> None:
+        payload = self.graph_payload()
+        run = next(
+            row for row in payload["dependencyClosure"]
+            if row["package_id"] == "Chummer.Run.Contracts"
+        )
+        run["dependencies"].remove("Chummer.Play.Contracts")
+        with self.assertRaisesRegex(ValueError, "missing Chummer.Play.Contracts"):
+            contract.validate_source_graph(self.bound_graph(payload))
+
     def provenance_payload(self) -> dict[str, object]:
-        graph_bytes = self.graph.read_bytes()
         apk_bytes = self.apk.read_bytes()
         binding = {"sha256": "8" * 64, "sizeBytes": 8}
+        trusted = contract.TRUSTED_TOOLCHAIN_SHA256
+        package_binding = {"sha256": "7" * 64, "sizeBytes": 7}
+        repository_map = {
+            row["name"]: row for row in self.graph_payload()["repositories"]
+        }
         execution_evidence = {
             field: dict(binding)
             for field in contract.WP1_EXECUTION_EVIDENCE_FIELDS
@@ -142,7 +339,9 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
         execution_evidence.update({"boundedProcessGroups": True, "warnings": 0, "errors": 0})
         toolchain = {
             "dotnetSdkVersion": "10.0.111", "dotnetRuntimeVersion": "10.0.11",
-            "workloadSetVersion": "10.0.110.1", "dotnetHost": dict(binding),
+            "workloadSetVersion": "10.0.110.1", "dotnetHost": {
+                **binding, "sha256": trusted["dotnet"],
+            },
             "dotnetWorkloads": {
                 **binding, "installed": ["maui-android"], "updateAvailable": [],
                 "workloadSetVersion": "10.0.110.1",
@@ -153,13 +352,14 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
                 "runtimeVersion": "10.0.11",
             },
             "workloadManifests": {
-                "android": {**binding, "version": "36.1.69"},
-                "maui": {**binding, "version": "10.0.20"},
+                "android": {**binding, "sha256": trusted["android_workload_manifest"], "version": "36.1.69"},
+                "maui": {**binding, "sha256": trusted["maui_workload_manifest"], "version": "10.0.20"},
             },
-            "java": {**binding, "version": "17.0.14", "versionLine": 'openjdk version "17.0.14"'},
-            "javac": {**binding, "version": "17.0.14", "versionLine": "javac 17.0.14"},
-            "jarsigner": dict(binding), "keytool": dict(binding),
-            "jdkRelease": {**binding, "fields": {
+            "java": {**binding, "sha256": trusted["java"], "version": "17.0.14", "versionLine": 'openjdk version "17.0.14"'},
+            "javac": {**binding, "sha256": trusted["javac"], "version": "17.0.14", "versionLine": "javac 17.0.14"},
+            "jarsigner": {**binding, "sha256": trusted["jarsigner"]},
+            "keytool": {**binding, "sha256": trusted["keytool"]},
+            "jdkRelease": {**binding, "sha256": trusted["jdk_release"], "fields": {
                 "IMPLEMENTOR": "Microsoft", "IMPLEMENTOR_VERSION": "Microsoft-10800290",
                 "JAVA_RUNTIME_VERSION": "17.0.14+7-LTS", "JAVA_VERSION": "17.0.14",
                 "JAVA_VERSION_DATE": "2025-01-21", "LIBC": "gnu", "MODULES": "java.base",
@@ -169,12 +369,16 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
                 "root": "/home/tibor/.cache/chummer-android-toolchain/android-sdk",
                 "selectedInventory": dict(binding),
                 "installedPackages": {
-                    "platforms;android-36": {**binding, "revision": "2.0.0"},
-                    "build-tools;36.0.0": {**binding, "revision": "36.0.0"},
-                    "platform-tools": {**binding, "revision": "36.0.0"},
-                }, "androidJar": dict(binding), "aapt2": dict(binding),
-                "zipalign": dict(binding), "adb": dict(binding), "apksigner": dict(binding),
-                "apksignerJar": dict(binding),
+                    "platforms;android-36": {**binding, "sha256": trusted["platform_package"], "revision": "2.0.0"},
+                    "build-tools;36.0.0": {**binding, "sha256": trusted["build_tools_package"], "revision": "36.0.0"},
+                    "platform-tools": {**binding, "sha256": trusted["platform_tools_package"], "revision": "36.0.0"},
+                },
+                "androidJar": {**binding, "sha256": trusted["android_jar"]},
+                "aapt2": {**binding, "sha256": trusted["aapt2"]},
+                "zipalign": {**binding, "sha256": trusted["zipalign"]},
+                "adb": {**binding, "sha256": trusted["adb"]},
+                "apksigner": {**binding, "sha256": trusted["apksigner"]},
+                "apksignerJar": {**binding, "sha256": trusted["apksigner_jar"]},
             },
             "androidBuildToolsVersion": "36.0.0", "androidPlatformLabel": "Android 16",
             "targetFramework": contract.TARGET_FRAMEWORK, "targetSdkVersion": 36,
@@ -187,21 +391,51 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
             "authorityClass": "internal_phone_beta_physical_candidate_only",
             "publicationAuthorized": False,
             "proofScope": "full_maui_arm64_apk_build_only",
-            "dependencyMode": "locked_w5_packages_no_owner_siblings",
-            "sourceGraph": {
-                "sha256": hashlib.sha256(graph_bytes).hexdigest(),
-                "sizeBytes": len(graph_bytes),
-                "contractName": contract.SOURCE_GRAPH_SCHEMA,
-                "repositories": self.graph_payload()["repositories"],
-                "packageAuthority": {"sha256": "7" * 64, "sizeBytes": 7},
-                "packageAuthorityContract": "chummer.android.release-package-authority/v2",
-                "packageAuthorityPublicationAuthorized": False,
+            "dependencyMode": "locked_current_packages_no_owner_siblings",
+            "sourceHead": {
+                "commit": repository_map["chummer-android"]["commit"],
+                "tree": repository_map["chummer-android"]["tree"],
+                "repository": "https://github.com/ArchonMegalon/chummer-android.git",
+                "publicationAuthorized": False,
             },
-            "w5CompileProof": {},
-            "presentationBuildSource": {"productionSource": False, "publicationAuthorized": False},
-            "packageAuthority": {},
-            "content": {},
-            "restore": {"lockedMode": True, "networkSourcesAllowed": False},
+            "presentationBuildSource": {
+                "commit": repository_map["chummer6-ui"]["commit"],
+                "tree": repository_map["chummer6-ui"]["tree"],
+                "authorityClass": "verified_current_ui_source",
+                "productionSource": False, "publicationAuthorized": False,
+                "packagePlaneLock": dict(binding), "producerLock": dict(binding),
+                "remoteRef": "refs/remotes/origin/main",
+            },
+            "packageAuthority": {
+                **package_binding,
+                "contractName": "chummer.android.internal-phone-beta-package-authority/v2",
+                "authorityState": "current_graph_verified",
+                "sourceGraph": {
+                    "corePackageRecipeCommit": "6" * 40,
+                    "coreRuntimeSourceCommit": repository_map["chummer6-core"]["commit"],
+                    "hubProducerCommit": repository_map["chummer6-hub"]["commit"],
+                    "registryCommit": repository_map["chummer6-hub-registry"]["commit"],
+                    "uiKitCommit": repository_map["chummer6-ui-kit"]["commit"],
+                },
+                "uiReceipt": dict(binding), "cacheManifest": dict(binding),
+                "intakeBinding": dict(package_binding),
+                "postBuildBinding": dict(package_binding),
+            },
+            "content": {
+                "sourceReceipt": dict(binding), "apkReceipt": dict(binding),
+                "coreRevision": "6" * 40,
+                "bundleDigest": "5" * 64, "manifestSha256": "4" * 64,
+                "canonicalFileCount": 1, "canonicalByteCount": 1,
+                "sourceRepository": {
+                    "commit": "6" * 40,
+                    "tree": repository_map["chummer6-core"]["tree"],
+                },
+            },
+            "restore": {
+                "lockedMode": True, "networkSourcesAllowed": False,
+                "ownerSourceFallbackAllowed": False,
+                "fullProjectLock": dict(binding), "projectAssets": dict(binding),
+            },
             "executionEvidence": execution_evidence,
             "toolchain": toolchain,
             "artifact": {
@@ -318,6 +552,312 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
             "explicitAdbReconnectCommandAllowed": False,
             "nonReplayableCommandMaximumAttempts": 1,
         }
+
+    def recovered_read_only_transport_payload(self) -> dict[str, object]:
+        payload = self.adb_transport_payload()
+        serial = self.device_payload()["serial"]
+        arguments = contract.ADB_FILE_HIERARCHY_OBSERVATION_ARGUMENTS
+        arguments_sha256 = hashlib.sha256(
+            "\0".join(arguments).encode("utf-8")
+        ).hexdigest()
+
+        def retrying(attempt: int) -> dict[str, object]:
+            return {
+                "schema": "chummer.android.adb-transport-event/v1",
+                "status": "retrying-read-only",
+                "serial": serial,
+                "classification": "timeout-unknown-outcome",
+                "classificationAuthority": "timeout-with-unknown-command-outcome",
+                "retryableTransportClassification": True,
+                "commandPolicy": "read-only-retryable",
+                "policyReason": "exact remote-file byte observation",
+                "adbArguments": list(arguments),
+                "adbArgumentsSha256": arguments_sha256,
+                "attempt": attempt,
+                "maximumAttempts": 3,
+                "commandInvocationPerformed": True,
+                "outcomeMutationAuthority": "none-read-only-command",
+                "replay": {
+                    "eligible": True, "performed": attempt > 1,
+                    "scheduled": True, "suppressed": False,
+                },
+                "failure": {
+                    "type": "TimeoutExpired", "returnCode": None,
+                    "stdout": "", "stderr": "",
+                },
+                "evidenceFile": f"adb-transport-event-{attempt:04d}.json",
+            }
+
+        recovered = {
+            "schema": "chummer.android.adb-transport-event/v1",
+            "status": "recovered-read-only",
+            "serial": serial,
+            "classification": "transport-recovered",
+            "classificationAuthority": "fresh-read-only-command-succeeded",
+            "retryableTransportClassification": True,
+            "commandPolicy": "read-only-retryable",
+            "policyReason": "exact remote-file byte observation",
+            "adbArguments": list(arguments),
+            "adbArgumentsSha256": arguments_sha256,
+            "attempt": 3,
+            "maximumAttempts": 3,
+            "commandInvocationPerformed": True,
+            "outcomeMutationAuthority": "none-read-only-command",
+            "replay": {
+                "eligible": True, "performed": True,
+                "scheduled": False, "suppressed": False,
+            },
+            "failure": None,
+            "evidenceFile": "adb-transport-event-0003.json",
+        }
+        events = [retrying(1), retrying(2), recovered]
+        payload.update({
+            "eventCount": len(events),
+            "terminalFailureCount": 0,
+            "events": events,
+        })
+        return payload
+
+    def timeout_output_recovered_transport_payload(self) -> dict[str, object]:
+        payload = self.adb_transport_payload()
+        serial = self.device_payload()["serial"]
+        arguments = contract.ADB_READ_ONLY_HIERARCHY_ARGUMENTS
+        hierarchy = (
+            "<hierarchy rotation='0'><node index='0' text='Priorities' "
+            "resource-id='com.myexternalbrain.chummer:id/creation-prerequisite-page' "
+            "class='android.view.ViewGroup' package='com.myexternalbrain.chummer' "
+            "content-desc='' checkable='false' checked='false' clickable='false' "
+            "enabled='true' focusable='false' focused='false' scrollable='false' "
+            "long-clickable='false' password='false' selected='false' "
+            "bounds='[0,0][1080,2400]' /></hierarchy>"
+        )
+        hierarchy_bytes = hierarchy.encode("utf-8")
+        arguments_sha256 = hashlib.sha256(
+            "\0".join(arguments).encode("utf-8")
+        ).hexdigest()
+        event = {
+            "schema": "chummer.android.adb-transport-event/v1",
+            "status": "recovered-read-only",
+            "serial": serial,
+            "classification": "timeout-output-complete",
+            "classificationAuthority": (
+                "complete-well-formed-read-only-timeout-stdout"
+            ),
+            "retryableTransportClassification": True,
+            "commandPolicy": "read-only-retryable",
+            "policyReason": (
+                "exact accessibility-hierarchy observation without app mutation"
+            ),
+            "adbArguments": list(arguments),
+            "adbArgumentsSha256": arguments_sha256,
+            "attempt": 1,
+            "maximumAttempts": 3,
+            "commandInvocationPerformed": True,
+            "outcomeMutationAuthority": "none-read-only-command",
+            "replay": {
+                "eligible": True, "performed": False,
+                "scheduled": False, "suppressed": True,
+            },
+            "failure": {
+                "type": "TimeoutExpired", "returnCode": None,
+                "stdout": hierarchy[:4000], "stderr": "",
+            },
+            "timeoutOutput": {
+                "validation": "complete-well-formed-single-hierarchy",
+                "stdout": hierarchy,
+                "stdoutSha256": hashlib.sha256(hierarchy_bytes).hexdigest(),
+                "stdoutBytes": len(hierarchy_bytes),
+                "hierarchySha256": hashlib.sha256(hierarchy_bytes).hexdigest(),
+                "hierarchyBytes": len(hierarchy_bytes),
+                "hierarchyNodeCount": 1,
+            },
+            "evidenceFile": "adb-transport-event-0001.json",
+        }
+        payload.update({
+            "eventCount": 1,
+            "terminalFailureCount": 0,
+            "events": [event],
+        })
+        return payload
+
+    def reconciled_hierarchy_dump_transport_payload(
+        self,
+        *,
+        observation_mode: str = "fresh-owned-file",
+    ) -> dict[str, object]:
+        payload = self.adb_transport_payload()
+        serial = self.device_payload()["serial"]
+        original = {
+            "schema": "chummer.android.adb-transport-event/v1",
+            "status": "fail",
+            "serial": serial,
+            "classification": "timeout-unknown-outcome",
+            "classificationAuthority": "timeout-with-unknown-command-outcome",
+            "retryableTransportClassification": True,
+            "commandPolicy": "non-replayable",
+            "policyReason": "shell mutation or ambiguous shell command is never replayed",
+            "adbArguments": list(
+                contract.ADB_FILE_HIERARCHY_DUMP_REDACTED_ARGUMENTS
+            ),
+            "adbArgumentsSha256": (
+                contract.ADB_FILE_HIERARCHY_DUMP_ARGUMENTS_SHA256
+            ),
+            "attempt": 1,
+            "maximumAttempts": 1,
+            "commandInvocationPerformed": True,
+            "outcomeMutationAuthority": "unknown-fail-closed",
+            "replay": {
+                "eligible": False, "performed": False,
+                "scheduled": False, "suppressed": True,
+            },
+            "failure": {
+                "type": "TimeoutExpired", "returnCode": None,
+                "stdout": "", "stderr": "",
+            },
+            "evidenceFile": "adb-transport-event-0001.json",
+        }
+        reconciliation = {
+            "schema": "chummer.android.adb-transport-event/v1",
+            "status": "reconciled-unknown-hierarchy-dump",
+            "serial": serial,
+            "classification": "timeout-unknown-outcome",
+            "classificationAuthority": (
+                "bounded-consecutive-read-only-hierarchy-observations"
+            ),
+            "retryableTransportClassification": True,
+            "commandPolicy": "non-replayable",
+            "policyReason": (
+                "file-backed dump was never replayed; bounded stable current "
+                "hierarchy became observation authority"
+            ),
+            "adbArguments": list(
+                contract.ADB_FILE_HIERARCHY_DUMP_REDACTED_ARGUMENTS
+            ),
+            "adbArgumentsSha256": (
+                contract.ADB_FILE_HIERARCHY_DUMP_ARGUMENTS_SHA256
+            ),
+            "attempt": 1,
+            "maximumAttempts": 1,
+            "commandInvocationPerformed": False,
+            "outcomeMutationAuthority": (
+                "current-hierarchy-observed-no-dump-replay"
+            ),
+            "replay": {
+                "eligible": False, "performed": False,
+                "scheduled": False, "suppressed": True,
+            },
+            "failure": None,
+            "reconcilesEvidenceFile": original["evidenceFile"],
+            "readOnlyObservation": {
+                "mode": observation_mode,
+                "arguments": list(
+                    contract.ADB_FILE_HIERARCHY_OBSERVATION_ARGUMENTS
+                    if observation_mode == "fresh-owned-file"
+                    else contract.ADB_READ_ONLY_HIERARCHY_ARGUMENTS
+                ),
+                "freshnessBarrierArguments": list(
+                    contract.ADB_FILE_HIERARCHY_REMOVE_ARGUMENTS
+                ),
+                "consecutiveMatching": 2,
+                "matchingAuthority": (
+                    contract.ADB_HIERARCHY_OBSERVATION_MATCHING_AUTHORITY
+                ),
+                "observationsPerformed": 2,
+                "readAttemptMaximumSeconds": (
+                    contract.ADB_FILE_HIERARCHY_OBSERVATION_READ_ATTEMPT_MAX_SECONDS
+                    if observation_mode == "fresh-owned-file"
+                    else contract.ADB_DIRECT_HIERARCHY_OBSERVATION_READ_ATTEMPT_MAX_SECONDS
+                ),
+                "maximumObservationSeconds": (
+                    contract.ADB_FILE_HIERARCHY_OBSERVATION_MAX_SECONDS
+                    if observation_mode == "fresh-owned-file"
+                    else contract.ADB_DIRECT_HIERARCHY_OBSERVATION_MAX_SECONDS
+                ),
+                "hierarchySha256": "1" * 64,
+                "observationBytesSha256": "2" * 64,
+            },
+            "evidenceFile": "adb-transport-event-0002.json",
+        }
+        payload.update({
+            "eventCount": 2,
+            "terminalFailureCount": 0,
+            "events": [original, reconciliation],
+        })
+        return payload
+
+    def reconciled_swipe_transport_payload(self) -> dict[str, object]:
+        payload = self.adb_transport_payload()
+        serial = self.device_payload()["serial"]
+        swipe_arguments = (
+            "shell", "input", "swipe", "540", "1968", "540", "720", "300",
+        )
+        swipe_digest = hashlib.sha256(
+            "\0".join(swipe_arguments).encode("utf-8")
+        ).hexdigest()
+        original = {
+            "schema": "chummer.android.adb-transport-event/v1",
+            "status": "fail",
+            "serial": serial,
+            "classification": "timeout-unknown-outcome",
+            "classificationAuthority": "timeout-with-unknown-command-outcome",
+            "retryableTransportClassification": True,
+            "commandPolicy": "non-replayable",
+            "policyReason": "shell mutation or ambiguous shell command is never replayed",
+            "adbArguments": list(contract.ADB_SWIPE_REDACTED_ARGUMENTS),
+            "adbArgumentsSha256": swipe_digest,
+            "attempt": 1,
+            "maximumAttempts": 1,
+            "commandInvocationPerformed": True,
+            "outcomeMutationAuthority": "unknown-fail-closed",
+            "replay": {
+                "eligible": False, "performed": False,
+                "scheduled": False, "suppressed": True,
+            },
+            "failure": {
+                "type": "TimeoutExpired", "returnCode": None,
+                "stdout": "", "stderr": "",
+            },
+            "evidenceFile": "adb-transport-event-0001.json",
+        }
+        reconciliation = {
+            "schema": "chummer.android.adb-transport-event/v1",
+            "status": "reconciled-unknown-swipe",
+            "serial": serial,
+            "classification": "timeout-unknown-outcome",
+            "classificationAuthority": (
+                "bounded-consecutive-read-only-hierarchy-observations"
+            ),
+            "retryableTransportClassification": True,
+            "commandPolicy": "non-replayable",
+            "policyReason": (
+                "swipe was never replayed; current viewport became authority"
+            ),
+            "adbArguments": list(contract.ADB_SWIPE_REDACTED_ARGUMENTS),
+            "adbArgumentsSha256": swipe_digest,
+            "attempt": 1,
+            "maximumAttempts": 1,
+            "commandInvocationPerformed": False,
+            "outcomeMutationAuthority": "current-viewport-observed-no-replay",
+            "replay": {
+                "eligible": False, "performed": False,
+                "scheduled": False, "suppressed": True,
+            },
+            "failure": None,
+            "reconcilesEvidenceFile": original["evidenceFile"],
+            "readOnlyObservation": {
+                "arguments": list(contract.ADB_READ_ONLY_HIERARCHY_ARGUMENTS),
+                "consecutiveMatching": 2,
+                "observationsPerformed": 2,
+                "hierarchySha256": "3" * 64,
+            },
+            "evidenceFile": "adb-transport-event-0002.json",
+        }
+        payload.update({
+            "eventCount": 2,
+            "terminalFailureCount": 0,
+            "events": [original, reconciliation],
+        })
+        return payload
 
     def source_authority_payload(self, journey: str) -> dict[str, object]:
         authority = {
@@ -684,6 +1224,486 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
         self.assertFalse(verified["publicationAuthorized"])
         self.assertEqual(contract.PACKAGE, verified["artifact"]["package"])
 
+    def test_owned_file_hierarchy_dump_reconciliation_is_accepted(self) -> None:
+        contract.validate_adb_transport(
+            self.reconciled_hierarchy_dump_transport_payload(),
+            serial=str(self.device_payload()["serial"]),
+            label="priority",
+        )
+
+    def test_canonical_read_only_retry_chain_is_accepted(self) -> None:
+        contract.validate_adb_transport(
+            self.recovered_read_only_transport_payload(),
+            serial=str(self.device_payload()["serial"]),
+            label="priority",
+        )
+
+    def test_complete_timeout_hierarchy_output_recovery_is_accepted(self) -> None:
+        contract.validate_adb_transport(
+            self.timeout_output_recovered_transport_payload(),
+            serial=str(self.device_payload()["serial"]),
+            label="priority",
+        )
+
+    def test_timeout_hierarchy_output_recovery_rejects_forgery(self) -> None:
+        def replace_stdout_with_consistent_forgery(
+            value: dict[str, object],
+            stdout: str,
+        ) -> None:
+            event = value["events"][0]
+            timeout_output = event["timeoutOutput"]
+            encoded = stdout.encode("utf-8")
+            timeout_output.update({
+                "stdout": stdout,
+                "stdoutSha256": hashlib.sha256(encoded).hexdigest(),
+                "stdoutBytes": len(encoded),
+                "hierarchySha256": hashlib.sha256(encoded).hexdigest(),
+                "hierarchyBytes": len(encoded),
+                "hierarchyNodeCount": 1,
+            })
+            event["failure"]["stdout"] = stdout[:4000]
+
+        mutations = (
+            (
+                "wrong-command",
+                lambda value: value["events"][0].update({
+                    "adbArguments": ["get-state"],
+                    "adbArgumentsSha256": hashlib.sha256(b"get-state").hexdigest(),
+                }),
+            ),
+            (
+                "missing-timeout-output",
+                lambda value: value["events"][0].pop("timeoutOutput"),
+            ),
+            (
+                "partial-validation",
+                lambda value: value["events"][0]["timeoutOutput"].update({
+                    "validation": "partial-hierarchy",
+                }),
+            ),
+            (
+                "forged-stdout",
+                lambda value: value["events"][0]["timeoutOutput"].update({
+                    "stdout": value["events"][0]["timeoutOutput"]["stdout"].replace(
+                        "Priorities", "Forged", 1
+                    ),
+                }),
+            ),
+            (
+                "zero-nodes",
+                lambda value: value["events"][0]["timeoutOutput"].update({
+                    "hierarchyNodeCount": 0,
+                }),
+            ),
+            (
+                "wrong-size",
+                lambda value: value["events"][0]["timeoutOutput"].update({
+                    "stdoutBytes": 1,
+                }),
+            ),
+            (
+                "invalid-hash",
+                lambda value: value["events"][0]["timeoutOutput"].update({
+                    "hierarchySha256": "invalid",
+                }),
+            ),
+            (
+                "stderr-transport-failure",
+                lambda value: value["events"][0]["failure"].update({
+                    "stderr": "error: device unauthorized",
+                }),
+            ),
+            (
+                "foreign-wrapper-with-recomputed-metadata",
+                lambda value: replace_stdout_with_consistent_forgery(
+                    value,
+                    "<hierarchy rotation='0'><foreign><node /></foreign></hierarchy>",
+                ),
+            ),
+            (
+                "attribute-less-node-with-recomputed-metadata",
+                lambda value: replace_stdout_with_consistent_forgery(
+                    value,
+                    "<hierarchy rotation='0'><node /></hierarchy>",
+                ),
+            ),
+            (
+                "oversized-stdout-with-recomputed-metadata",
+                lambda value: replace_stdout_with_consistent_forgery(
+                    value,
+                    value["events"][0]["timeoutOutput"]["stdout"].replace(
+                        "Priorities",
+                        "x" * (contract.ADB_TIMEOUT_HIERARCHY_MAX_BYTES + 1),
+                        1,
+                    ),
+                ),
+            ),
+            (
+                "replay-not-suppressed",
+                lambda value: value["events"][0]["replay"].update({
+                    "suppressed": False,
+                }),
+            ),
+            (
+                "no-timeout-failure",
+                lambda value: value["events"][0]["failure"].update({
+                    "type": "CalledProcessError",
+                }),
+            ),
+            (
+                "missing-failure",
+                lambda value: value["events"][0].update({"failure": None}),
+            ),
+        )
+        for label, mutate in mutations:
+            with self.subTest(label=label):
+                payload = copy.deepcopy(
+                    self.timeout_output_recovered_transport_payload()
+                )
+                mutate(payload)
+                with self.assertRaises(ValueError):
+                    contract.validate_adb_transport(
+                        payload,
+                        serial=str(self.device_payload()["serial"]),
+                        label="priority",
+                    )
+
+    def test_read_only_retry_chain_rejects_dangling_and_forged_links(self) -> None:
+        def dangling(value: dict[str, object]) -> None:
+            value["events"].pop()
+            value["eventCount"] = len(value["events"])
+
+        def wrong_command(value: dict[str, object]) -> None:
+            recovered = value["events"][-1]
+            recovered["adbArguments"] = ["get-state"]
+            recovered["adbArgumentsSha256"] = hashlib.sha256(
+                b"get-state"
+            ).hexdigest()
+
+        def terminal_failure(value: dict[str, object]) -> None:
+            terminal = value["events"][-1]
+            terminal.update({
+                "status": "fail",
+                "classification": "timeout-unknown-outcome",
+                "classificationAuthority": "timeout-with-unknown-command-outcome",
+                "retryableTransportClassification": True,
+                "replay": {
+                    "eligible": True, "performed": True,
+                    "scheduled": False, "suppressed": True,
+                },
+                "failure": {
+                    "type": "TimeoutExpired", "returnCode": None,
+                    "stdout": "", "stderr": "",
+                },
+            })
+
+        def mutating_whole_chain(value: dict[str, object]) -> None:
+            arguments = ("shell", "input", "tap", "10", "20")
+            arguments_sha256 = hashlib.sha256(
+                "\0".join(arguments).encode("utf-8")
+            ).hexdigest()
+            for event in value["events"]:
+                event.update({
+                    "policyReason": "forged read-only viewport observation",
+                    "adbArguments": list(arguments),
+                    "adbArgumentsSha256": arguments_sha256,
+                })
+
+        mutations = (
+            ("dangling", dangling),
+            (
+                "wrong-digest",
+                lambda value: value["events"][-1].update({
+                    "adbArgumentsSha256": "0" * 64,
+                }),
+            ),
+            ("wrong-command", wrong_command),
+            (
+                "attempt-skip",
+                lambda value: value["events"][-1].update({"attempt": 2}),
+            ),
+            (
+                "maximum-attempt-drift",
+                lambda value: value["events"][1].update({"maximumAttempts": 2}),
+            ),
+            (
+                "serial-drift",
+                lambda value: value["events"][-1].update({"serial": "other"}),
+            ),
+            (
+                "retry-not-scheduled",
+                lambda value: value["events"][0]["replay"].update({
+                    "scheduled": False,
+                }),
+            ),
+            (
+                "recovery-not-performed",
+                lambda value: value["events"][-1]["replay"].update({
+                    "performed": False,
+                }),
+            ),
+            ("mutating-whole-chain", mutating_whole_chain),
+            ("terminal-failure-in-pass", terminal_failure),
+        )
+        for label, mutate in mutations:
+            with self.subTest(label=label):
+                payload = copy.deepcopy(
+                    self.recovered_read_only_transport_payload()
+                )
+                mutate(payload)
+                with self.assertRaises(ValueError):
+                    contract.validate_adb_transport(
+                        payload,
+                        serial=str(self.device_payload()["serial"]),
+                        label="priority",
+                    )
+
+    def test_direct_hierarchy_dump_reconciliation_is_accepted(self) -> None:
+        contract.validate_adb_transport(
+            self.reconciled_hierarchy_dump_transport_payload(
+                observation_mode="direct-current-hierarchy",
+            ),
+            serial=str(self.device_payload()["serial"]),
+            label="priority",
+        )
+
+        too_many = self.reconciled_hierarchy_dump_transport_payload(
+            observation_mode="direct-current-hierarchy",
+        )
+        too_many["events"][1]["readOnlyObservation"]["observationsPerformed"] = 4
+        with self.assertRaises(ValueError):
+            contract.validate_adb_transport(
+                too_many,
+                serial=str(self.device_payload()["serial"]),
+                label="priority",
+            )
+
+    def test_exact_swipe_reconciliation_is_accepted(self) -> None:
+        contract.validate_adb_transport(
+            self.reconciled_swipe_transport_payload(),
+            serial=str(self.device_payload()["serial"]),
+            label="priority",
+        )
+
+    def test_swipe_reconciliation_rejects_cross_type_and_metadata_forgery(self) -> None:
+        def relabel_dump(value: dict[str, object]) -> None:
+            value["events"][1].update({
+                "status": "reconciled-unknown-swipe",
+                "readOnlyObservation": {
+                    "arguments": list(contract.ADB_READ_ONLY_HIERARCHY_ARGUMENTS),
+                    "consecutiveMatching": 2,
+                    "observationsPerformed": 2,
+                    "hierarchySha256": "3" * 64,
+                },
+            })
+
+        mutations = (
+            (
+                "cross-type-relabel",
+                self.reconciled_hierarchy_dump_transport_payload,
+                relabel_dump,
+            ),
+            (
+                "original-replay",
+                self.reconciled_swipe_transport_payload,
+                lambda value: value["events"][0]["replay"].update({
+                    "performed": True,
+                }),
+            ),
+            (
+                "reconciliation-invocation",
+                self.reconciled_swipe_transport_payload,
+                lambda value: value["events"][1].update({
+                    "commandInvocationPerformed": True,
+                }),
+            ),
+            (
+                "wrong-original-classification",
+                self.reconciled_swipe_transport_payload,
+                lambda value: value["events"][0].update({
+                    "classification": "transport-recovered",
+                }),
+            ),
+        )
+        for label, factory, mutate in mutations:
+            with self.subTest(label=label):
+                payload = factory()
+                mutate(payload)
+                with self.assertRaises(ValueError):
+                    contract.validate_adb_transport(
+                        payload,
+                        serial=str(self.device_payload()["serial"]),
+                        label="priority",
+                    )
+
+    def test_owned_file_hierarchy_dump_reconciliation_rejects_forgery(self) -> None:
+        def orphan(value: dict[str, object]) -> None:
+            reconciliation = value["events"][1]
+            reconciliation["evidenceFile"] = "adb-transport-event-0001.json"
+            value.update({"eventCount": 1, "events": [reconciliation]})
+
+        def nonadjacent(value: dict[str, object]) -> None:
+            recovered = {
+                "schema": "chummer.android.adb-transport-event/v1",
+                "status": "recovered-read-only",
+                "serial": self.device_payload()["serial"],
+                "classification": "transport-recovered",
+                "classificationAuthority": "fresh-read-only-command-succeeded",
+                "retryableTransportClassification": True,
+                "commandPolicy": "read-only-retryable",
+                "policyReason": "exact remote-file byte observation",
+                "adbArguments": list(
+                    contract.ADB_FILE_HIERARCHY_OBSERVATION_ARGUMENTS
+                ),
+                "adbArgumentsSha256": "3" * 64,
+                "attempt": 2,
+                "maximumAttempts": 3,
+                "commandInvocationPerformed": True,
+                "outcomeMutationAuthority": "none-read-only-command",
+                "replay": {
+                    "eligible": True, "performed": True,
+                    "scheduled": False, "suppressed": False,
+                },
+                "failure": None,
+                "evidenceFile": "adb-transport-event-0002.json",
+            }
+            value["events"].insert(1, recovered)
+            value["events"][2]["evidenceFile"] = "adb-transport-event-0003.json"
+            value["eventCount"] = 3
+
+        mutations = (
+            ("orphan", orphan),
+            ("nonadjacent", nonadjacent),
+            (
+                "wrong-reference",
+                lambda value: value["events"][1].update({
+                    "reconcilesEvidenceFile": "adb-transport-event-9999.json",
+                }),
+            ),
+            (
+                "different-digest",
+                lambda value: value["events"][1].update({
+                    "adbArgumentsSha256": "0" * 64,
+                }),
+            ),
+            (
+                "forged-original-command",
+                lambda value: value["events"][0].update({
+                    "adbArguments": ["shell", "input", "<3 redacted argument(s)>"],
+                }),
+            ),
+            (
+                "forged-freshness-barrier",
+                lambda value: value["events"][1]["readOnlyObservation"].update({
+                    "freshnessBarrierArguments": [
+                        "shell", "rm", "-f", "/sdcard/other.xml",
+                    ],
+                }),
+            ),
+            (
+                "forged-owned-file",
+                lambda value: value["events"][1]["readOnlyObservation"].update({
+                    "arguments": ["exec-out", "cat", "/sdcard/other.xml"],
+                }),
+            ),
+            (
+                "invalid-observation-bytes-digest",
+                lambda value: value["events"][1]["readOnlyObservation"].update({
+                    "observationBytesSha256": "not-a-digest",
+                }),
+            ),
+            (
+                "unknown-observation-mode",
+                lambda value: value["events"][1]["readOnlyObservation"].update({
+                    "mode": "unbounded-fallback",
+                }),
+            ),
+            (
+                "direct-mode-with-owned-file-command",
+                lambda value: value["events"][1]["readOnlyObservation"].update({
+                    "mode": "direct-current-hierarchy",
+                }),
+            ),
+            (
+                "owned-mode-with-direct-command",
+                lambda value: value["events"][1]["readOnlyObservation"].update({
+                    "arguments": list(contract.ADB_READ_ONLY_HIERARCHY_ARGUMENTS),
+                }),
+            ),
+            (
+                "insufficient-observations",
+                lambda value: value["events"][1]["readOnlyObservation"].update({
+                    "observationsPerformed": 1,
+                }),
+            ),
+            (
+                "too-many-observations",
+                lambda value: value["events"][1]["readOnlyObservation"].update({
+                    "observationsPerformed": 9,
+                }),
+            ),
+            (
+                "wrong-consecutive-count",
+                lambda value: value["events"][1]["readOnlyObservation"].update({
+                    "consecutiveMatching": 1,
+                }),
+            ),
+            (
+                "forged-matching-authority",
+                lambda value: value["events"][1]["readOnlyObservation"].update({
+                    "matchingAuthority": "canonical-ui-nodes",
+                }),
+            ),
+            (
+                "unbounded-owned-read-attempt",
+                lambda value: value["events"][1]["readOnlyObservation"].update({
+                    "readAttemptMaximumSeconds": 10.0,
+                }),
+            ),
+            (
+                "unbounded-owned-observation",
+                lambda value: value["events"][1]["readOnlyObservation"].update({
+                    "maximumObservationSeconds": 48.0,
+                }),
+            ),
+            (
+                "replayed-dump",
+                lambda value: value["events"][1]["replay"].update({
+                    "performed": True,
+                }),
+            ),
+            (
+                "not-a-timeout",
+                lambda value: value["events"][0]["failure"].update({
+                    "type": "CalledProcessError",
+                }),
+            ),
+            (
+                "original-not-invoked",
+                lambda value: value["events"][0].update({
+                    "commandInvocationPerformed": False,
+                }),
+            ),
+            (
+                "reconciliation-claims-invocation",
+                lambda value: value["events"][1].update({
+                    "commandInvocationPerformed": True,
+                }),
+            ),
+        )
+        for label, mutate in mutations:
+            with self.subTest(label=label):
+                payload = copy.deepcopy(
+                    self.reconciled_hierarchy_dump_transport_payload()
+                )
+                mutate(payload)
+                with self.assertRaises(ValueError):
+                    contract.validate_adb_transport(
+                        payload,
+                        serial=str(self.device_payload()["serial"]),
+                        label="priority",
+                    )
+
     def test_finalizer_and_aggregate_cli_materialize_then_verify(self) -> None:
         def load(name: str, filename: str):
             spec = importlib.util.spec_from_file_location(name, SCRIPTS / filename)
@@ -991,13 +2011,19 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
 
         pristine = self.provenance_payload()
         mutations = (
-            ("old-source-adapter", lambda value: value["sourceGraph"].pop("packageAuthorityContract")),
-            ("source-publication", lambda value: value["sourceGraph"].update({"packageAuthorityPublicationAuthorized": True})),
+            ("source-head-unknown", lambda value: value["sourceHead"].update({"unknown": True})),
+            ("source-publication", lambda value: value["sourceHead"].update({"publicationAuthorized": True})),
+            ("package-authority-unknown", lambda value: value["packageAuthority"].update({"unknown": True})),
+            ("package-source-drift", lambda value: value["packageAuthority"]["sourceGraph"].update({"hubProducerCommit": "0" * 40})),
             ("artifact-no-signing", lambda value: value["artifact"].pop("signing")),
             ("signing-unknown", lambda value: value["artifact"]["signing"].update({"unknown": True})),
             ("signing-bool-scheme", lambda value: value["artifact"]["signing"].update({"verifiedSchemes": [True, 2]})),
             ("execution-missing", lambda value: value["executionEvidence"].pop("delegateCommandJournal")),
             ("toolchain-unknown", lambda value: value["toolchain"].update({"unknown": True})),
+            ("toolchain-untrusted-dotnet", lambda value: value["toolchain"]["dotnetHost"].update({"sha256": "0" * 64})),
+            ("toolchain-arbitrary-sdk-root", lambda value: value["toolchain"]["androidSdk"].update({"root": "/tmp/android-sdk"})),
+            ("toolchain-incomplete-jdk-map", lambda value: value["toolchain"]["jdkRelease"].update({"fields": {"IMPLEMENTOR": "Microsoft", "JAVA_VERSION": "17.0.14"}})),
+            ("toolchain-extended-jdk-map", lambda value: value["toolchain"]["jdkRelease"]["fields"].update({"UNTRUSTED": "value"})),
             ("wp1-nonclaim", lambda value: value.update({"doesNotAssert": []})),
         )
         for label, mutate in mutations:

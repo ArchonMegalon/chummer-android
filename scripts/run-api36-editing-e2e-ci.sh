@@ -8,7 +8,7 @@ if [[ "$profile" != "phone" ]]; then
 fi
 journey="${CHUMMER_E2E_JOURNEY:?CHUMMER_E2E_JOURNEY is required}"
 case "$journey" in
-  full-editing|creation-prerequisite|career-active-skill-advance|career-weapon-fire) ;;
+  creation-prerequisite|career-active-skill-advance|career-weapon-fire) ;;
   *)
     echo "Unsupported CHUMMER_E2E_JOURNEY: $journey" >&2
     exit 64
@@ -25,6 +25,11 @@ artifact_name="${CHUMMER_E2E_APK_ARTIFACT_NAME:?CHUMMER_E2E_APK_ARTIFACT_NAME is
 artifact_attempt="${CHUMMER_E2E_APK_ARTIFACT_ATTEMPT:?CHUMMER_E2E_APK_ARTIFACT_ATTEMPT is required}"
 expected_apk_sha256="${CHUMMER_E2E_APK_SHA256:?CHUMMER_E2E_APK_SHA256 is required}"
 run_id="${GITHUB_RUN_ID:?GITHUB_RUN_ID is required}"
+gate_contract_path="chummer-android/eng/api36-sr5-wizard-gate-authority.json"
+
+python3 chummer-android/scripts/api36_wizard_gate_contract.py \
+  --manifest "$gate_contract_path"
+gate_contract_sha256="$(sha256sum "$gate_contract_path" | cut -d ' ' -f 1)"
 
 [[ "$artifact_id" =~ ^[1-9][0-9]*$ ]]
 [[ "$artifact_digest" =~ ^(sha256:)?[0-9a-f]{64}$ ]]
@@ -38,16 +43,16 @@ actual_apk_sha256="$(sha256sum "$apk_path" | cut -d ' ' -f 1)"
 test "$actual_apk_sha256" = "$expected_apk_sha256"
 install -d -m 0755 "$evidence_root"
 declare -Ar driver_journeys=(
-  [full-editing]="full"
   [creation-prerequisite]="creation-prerequisite"
   [career-active-skill-advance]="career-active-skill-advance"
   [career-weapon-fire]="career-weapon-fire"
 )
 driver_journey="${driver_journeys[$journey]:?missing explicit driver journey mapping}"
-printf 'profile=%s\nmatrix_journey=%s\ndriver_journey=%s\nartifact_id=%s\nartifact_digest=%s\nartifact_name=%s\nartifact_attempt=%s\napk_sha256=%s\n' \
+printf 'profile=%s\nmatrix_journey=%s\ndriver_journey=%s\ngate_contract_sha256=%s\nartifact_id=%s\nartifact_digest=%s\nartifact_name=%s\nartifact_attempt=%s\napk_sha256=%s\n' \
   "$profile" \
   "$journey" \
   "$driver_journey" \
+  "$gate_contract_sha256" \
   "$artifact_id" \
   "$artifact_digest" \
   "$artifact_name" \
@@ -56,16 +61,6 @@ printf 'profile=%s\nmatrix_journey=%s\ndriver_journey=%s\nartifact_id=%s\nartifa
   >"$evidence_root/execution-started.txt"
 
 case "$journey" in
-  full-editing)
-    python3 chummer-android/tests/run_api36_editing_e2e.py \
-      --adb "$adb_path" \
-      --apk "$apk_path" \
-      --serial emulator-5554 \
-      --profile "$profile" \
-      --journey full \
-      --evidence "$evidence_root/screenshots" \
-      --receipt "$evidence_root/receipt.json"
-    ;;
   creation-prerequisite)
     python3 chummer-android/tests/run_api36_creation_prerequisite_e2e.py \
       --adb "$adb_path" \
@@ -96,6 +91,7 @@ esac
 
 python3 chummer-android/scripts/finalize-api36-e2e-journey-receipt.py \
   --receipt "$evidence_root/receipt.json" \
+  --gate-contract "$gate_contract_path" \
   --run-id "$run_id" \
   --matrix-journey "$journey" \
   --driver-journey "$driver_journey" \

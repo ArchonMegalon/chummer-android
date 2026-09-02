@@ -440,9 +440,21 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
         card.Add(NativeTheme.Metric(
             WizardStrings.Get("Priority.Attributes.TotalSpecialLabel", "Total special Attribute points"),
             receipt.TotalSpecialAttributePoints.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric(
-            WizardStrings.Get("Priority.Preview.DocumentChanged", "Character document changed"),
-            receipt.CharacterDocumentChanged.ToString().ToLowerInvariant()));
+        string documentChangedLabel = WizardStrings.Get(
+            "Priority.Preview.DocumentChanged",
+            "Character document changed");
+        string documentChanged = receipt.CharacterDocumentChanged
+            .ToString()
+            .ToLowerInvariant();
+        Grid documentChangedMetric = NativeTheme.Metric(
+            documentChangedLabel,
+            documentChanged);
+        documentChangedMetric.AutomationId =
+            "creation-prerequisite-confirm-receipt";
+        SemanticProperties.SetDescription(
+            documentChangedMetric,
+            $"{documentChangedLabel} {documentChanged}");
+        card.Add(documentChangedMetric);
         card.Add(NativeTheme.Body(
             refreshed.RequiresMetatypeAttributeAdjustment
                 ? WizardStrings.Get(
@@ -475,7 +487,6 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
             "creation-prerequisite-receipt-authority-digest",
             receipt.AuthorityDigest);
         Border border = NativeTheme.Card(card);
-        border.AutomationId = "creation-prerequisite-confirm-receipt";
         _body.Add(border);
 
         Button back = NativeTheme.SecondaryButton(WizardStrings.Get("Priority.Preview.BackToBuild", "Back to Build"));
@@ -486,9 +497,17 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
 
     private async Task BackToBuildAsync()
     {
-        await Navigation.PopAsync(animated: false);
-        if (Navigation.NavigationStack.LastOrDefault() is CreationPrerequisitePage)
-            await Navigation.PopAsync();
+        // Creation prerequisite pages are pushed outside Shell's visual route
+        // hierarchy.  Reset the phone Shell to its authored Runner route so Shell
+        // owns the CurrentPage/OnAppearing/Loaded transition back to BuildPage.
+        // Do not fall back to child-stack pops: they can leave no attached root.
+        if (Shell.Current is not MainShell { UsesTabletComposition: false } shell)
+        {
+            throw new InvalidOperationException(
+                "The Creation prerequisite preview can return only through the phone Runner route.");
+        }
+
+        await shell.GoToAsync(PhoneShellRoutes.RunnerAbsolute, animate: false);
     }
 
     private static string FormatBudget(decimal value, string unit)

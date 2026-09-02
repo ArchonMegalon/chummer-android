@@ -3066,8 +3066,8 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 547,
-                "missing": 918,
+                "implemented_pending_emulator": 536,
+                "missing": 929,
                 "not_applicable_non_mutating": 478,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 180,
@@ -3781,16 +3781,21 @@ int ammoRemaining = savedAmmoRemaining;
         for control in ("cboCharacterSetting", "chkIgnoreRules", "cmdOK"):
             row = rows[control]
             self.assertTrue(row["editParityRequired"])
-            verified = inventory._validated_new_character_settings_phone_e2e_receipt() is not None
-            self.assertEqual(
-                "implemented_verified_api36" if verified else "implemented_pending_emulator",
-                row["phone"]["status"],
-            )
-            self.assertEqual(
-                "executed_api36" if verified else "scripted_not_executed",
-                row["e2e"]["phone"]["status"],
-            )
+            self.assertEqual("missing", row["phone"]["status"])
+            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
             self.assertEqual("missing", row["tablet"]["status"])
+
+        coordinator = (
+            PRESENTATION_ROOT
+            / "Chummer.Presentation"
+            / "Overview"
+            / "DialogCoordinator.cs"
+        ).read_text(encoding="utf-8")
+        self.assertIn(
+            "This legacy setup cannot create an authoritative runner.",
+            coordinator,
+        )
+        self.assertIn("Start the real Creation Wizard from New Runner.", coordinator)
 
         self.assertEqual("missing", rows["cmdEditCharacterSetting"]["phone"]["status"])
         self.assertEqual("not_applicable_non_mutating", rows["cmdCancel"]["phone"]["status"])
@@ -3974,17 +3979,10 @@ int ammoRemaining = savedAmmoRemaining;
                 if row["editParityRequired"]
             },
         )
-        verified = inventory._validated_new_character_karma_phone_e2e_receipt() is not None
         for control in proven:
             row = rows[control]
-            self.assertEqual(
-                "implemented_verified_api36" if verified else "implemented_pending_emulator",
-                row["phone"]["status"],
-            )
-            self.assertEqual(
-                "executed_api36" if verified else "scripted_not_executed",
-                row["e2e"]["phone"]["status"],
-            )
+            self.assertEqual("missing", row["phone"]["status"])
+            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
             self.assertEqual("missing", row["tablet"]["status"])
             self.assertIn("Select Metatype", row["phone"]["route"])
         self.assertEqual(
@@ -6260,6 +6258,69 @@ public sealed class Demo
             )
         self.assertEqual("missing", drifted["status"])
 
+        rank_handoff_markers = (
+            (
+                "CreationPrerequisitePage.cs",
+                "CharacterCreationFoundationResult<CharacterCreationPrerequisiteState> load =",
+            ),
+            (
+                "CreationPrerequisitePage.cs",
+                "new CreationPriorityCategoryPage(\n"
+                "                    Coordinator,\n"
+                "                    _draft,\n"
+                "                    state,\n"
+                "                    category)",
+            ),
+            (
+                "CreationPriorityCategoryPage.cs",
+                "private readonly CharacterCreationPrerequisiteState _state;",
+            ),
+            (
+                "CreationPriorityCategoryPage.cs",
+                "CharacterCreationPrerequisiteState state,",
+            ),
+            (
+                "CreationPriorityCategoryPage.cs",
+                "_state = state ?? throw new ArgumentNullException(nameof(state));",
+            ),
+            (
+                "CreationPriorityCategoryPage.cs",
+                "if (!_draft.Matches(_state, Coordinator.State))",
+            ),
+            (
+                "CreationPriorityCategoryPage.cs",
+                "_draft.OptionsForCategory(_state, Coordinator.State, _categoryId)",
+            ),
+            (
+                "CreationPriorityCategoryPage.cs",
+                "_draft.TrySelect(_state, Coordinator.State, _categoryId, rank)",
+            ),
+        )
+        for source_name, marker in rank_handoff_markers:
+            def drift_exact_rank_handoff(
+                path: Path,
+                *needles: str,
+                source_name: str = source_name,
+                marker: str = marker,
+            ) -> bool:
+                if path.name == source_name and marker in needles:
+                    return False
+                return original_contains(path, *needles)
+
+            with self.subTest(source=source_name, marker=marker), patch.object(
+                inventory,
+                "_contains",
+                side_effect=drift_exact_rank_handoff,
+            ):
+                drifted = inventory._known_phone_mapping(
+                    rows["cboHeritage"],
+                    inventory.DEFAULT_CHUMMER5_ROOT,
+                    PRESENTATION_ROOT,
+                    CORE_ROOT,
+                    **receipt_arguments,
+                )
+            self.assertEqual("missing", drifted["status"])
+
         def drift_talent_grant_authority(path: Path, *needles: str) -> bool:
             if path.name == "CreationTalentSkillGrantPage.cs":
                 return False
@@ -6275,6 +6336,247 @@ public sealed class Demo
             )
         self.assertEqual("missing", drifted["status"])
 
+    def test_tradition_spirit_categories_require_exact_cached_recursive_source_resolution(self) -> None:
+        import inspect
+
+        payload = json.loads(
+            (REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        spirit_rows = [
+            row
+            for row in payload["rows"]
+            if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
+            and row["legacy"]["controlName"].startswith("cboSpirit")
+        ]
+        self.assertEqual(10, len(spirit_rows))
+        self.assertTrue(
+            all(row["phone"]["status"] == "implemented_pending_emulator" for row in spirit_rows)
+        )
+        row = next(
+            item
+            for item in spirit_rows
+            if item["legacy"]["formOrControl"] == "CharacterCreate"
+            and item["legacy"]["controlName"] == "cboSpiritCombat"
+        )
+        parameters = list(inspect.signature(inventory._known_phone_mapping).parameters)
+        receipt_arguments = {
+            name: {} if name in {"condition_e2e_receipts", "contact_pet_e2e_receipts"} else None
+            for name in parameters[4:]
+        }
+        page_path = REPO / "src/Chummer.Android/Native/TraditionSpiritCategoryPage.cs"
+        resolver_path = (
+            CORE_ROOT
+            / "Chummer.Infrastructure"
+            / "Xml"
+            / "FileSystemCharacterSourceDataResolver.cs"
+        )
+        page_literal = 'AutomationId = $"tradition-spirit-{token}-value"'
+        resolver_call = (
+            'EnumerateSourceFiles(\n'
+            '                            directory.Path,\n'
+            '                            $"*_{fileName}",\n'
+            '                            SearchOption.AllDirectories)'
+        )
+        original_contains = inventory._contains
+        observed_page_needles: set[str] = set()
+
+        def observe_exact_authority(path: Path, *needles: str) -> bool:
+            if path == page_path:
+                observed_page_needles.update(needles)
+            return original_contains(path, *needles)
+
+        with patch.object(inventory, "_contains", side_effect=observe_exact_authority):
+            current = inventory._known_phone_mapping(
+                row,
+                inventory.DEFAULT_CHUMMER5_ROOT,
+                PRESENTATION_ROOT,
+                CORE_ROOT,
+                **receipt_arguments,
+            )
+        self.assertEqual("implemented_pending_emulator", current["status"])
+        self.assertIn(page_literal, observed_page_needles)
+        self.assertNotIn('AutomationId = $"tradition-spirit-combat-value"', observed_page_needles)
+        with patch.object(
+            inventory,
+            "_contains",
+            side_effect=lambda path, *needles: (
+                False
+                if path == page_path and page_literal in needles
+                else original_contains(path, *needles)
+            ),
+        ):
+            page_drifted = inventory._known_phone_mapping(
+                row,
+                inventory.DEFAULT_CHUMMER5_ROOT,
+                PRESENTATION_ROOT,
+                CORE_ROOT,
+                **receipt_arguments,
+            )
+        self.assertEqual("missing", page_drifted["status"])
+
+        method_authorities = {
+            "TryResolveSpiritCatalogNames": (
+                "public bool TryResolveSpiritCatalogNames(",
+                (
+                    "using IDisposable sourceInputScope = _sourceInputs.Enter();",
+                    "if (_sourceInputs.HasSourceDrift)",
+                    'TryLoadEffectiveDocument(_catalog, fileName',
+                    'Elements("spirits").Take(2)',
+                    resolver_call,
+                    'TryResolveTarget(',
+                ),
+            ),
+            "TryResolveTarget": (
+                "private bool TryResolveTarget(",
+                (
+                    "TryLoadEffectiveDocument(_catalog, fileName",
+                    resolver_call,
+                    "TryLoadXml(path, out XDocument? customDocument)",
+                    "TryApplyCustomFile(",
+                ),
+            ),
+            "EnumerateSourceFiles": (
+                "private static string[] EnumerateSourceFiles(",
+                (
+                    "ActiveSourceInputs.Value?.EnumerateFiles(directory, searchPattern, searchOption)",
+                    "?? Directory.EnumerateFiles(directory, searchPattern, searchOption).ToArray();",
+                ),
+            ),
+            "TryLoadEffectiveDocument": (
+                "private static bool TryLoadEffectiveDocument(",
+                (
+                    'string cacheKey = CreateSourceCacheKey("effective-document", fileName);',
+                    "cachedInputs.TryGetEffectiveDocument(cacheKey, out document)",
+                    "TryLoadXml(basePath, out document)",
+                    'EnumerateSourceFiles(pack.DataPath, "*.xml", SearchOption.TopDirectoryOnly)',
+                    "ActiveSourceInputs.Value?.SetEffectiveDocument(cacheKey, document);",
+                ),
+            ),
+            "TryLoadXml": (
+                "private static bool TryLoadXml(",
+                (
+                    "if (ActiveSourceInputs.Value is { } sourceInputs)",
+                    "return sourceInputs.TryLoadXml(path, out document);",
+                    "DtdProcessing = DtdProcessing.Prohibit",
+                    "XmlResolver = null",
+                ),
+            ),
+        }
+        for method_name, (declaration_marker, markers) in method_authorities.items():
+            with self.subTest(current_method=method_name):
+                self.assertTrue(
+                    inventory._csharp_method_contains(
+                        resolver_path,
+                        method_name,
+                        declaration_marker,
+                        *markers,
+                    )
+                )
+
+        original_resolver = resolver_path.read_text(encoding="utf-8-sig")
+        mutations = (
+            (
+                "TryResolveSpiritCatalogNames",
+                "public bool TryResolveSpiritCatalogNames(",
+                "using IDisposable sourceInputScope = _sourceInputs.Enter();\n",
+                "",
+            ),
+            (
+                "TryResolveSpiritCatalogNames",
+                "public bool TryResolveSpiritCatalogNames(",
+                "            if (_sourceInputs.HasSourceDrift)\n                return false;\n",
+                "",
+            ),
+            (
+                "TryResolveSpiritCatalogNames",
+                "public bool TryResolveSpiritCatalogNames(",
+                resolver_call,
+                'Directory.EnumerateFiles(directory.Path, $"*_{fileName}", SearchOption.AllDirectories)',
+            ),
+            (
+                "TryResolveTarget",
+                "private bool TryResolveTarget(",
+                resolver_call,
+                'Directory.EnumerateFiles(directory.Path, $"*_{fileName}", SearchOption.AllDirectories)',
+            ),
+            (
+                "EnumerateSourceFiles",
+                "private static string[] EnumerateSourceFiles(",
+                "ActiveSourceInputs.Value?.EnumerateFiles(directory, searchPattern, searchOption)\n"
+                "           ?? Directory.EnumerateFiles(directory, searchPattern, searchOption).ToArray()",
+                "Directory.EnumerateFiles(directory, searchPattern, searchOption).ToArray()",
+            ),
+            (
+                "TryLoadEffectiveDocument",
+                "private static bool TryLoadEffectiveDocument(",
+                "        if (ActiveSourceInputs.Value is { } cachedInputs\n"
+                "            && cachedInputs.TryGetEffectiveDocument(cacheKey, out document))\n"
+                "        {\n"
+                "            return document?.Root is not null;\n"
+                "        }\n\n",
+                "",
+            ),
+            (
+                "TryLoadEffectiveDocument",
+                "private static bool TryLoadEffectiveDocument(",
+                "        ActiveSourceInputs.Value?.SetEffectiveDocument(cacheKey, document);\n",
+                "",
+            ),
+            (
+                "TryLoadXml",
+                "private static bool TryLoadXml(",
+                "        if (ActiveSourceInputs.Value is { } sourceInputs)\n"
+                "            return sourceInputs.TryLoadXml(path, out document);\n\n",
+                "",
+            ),
+        )
+
+        with tempfile.TemporaryDirectory() as temporary:
+            thin_core = Path(temporary) / "core"
+            thin_core.mkdir()
+            for directory in ("Chummer.Contracts", "Chummer.Application", "Chummer"):
+                (thin_core / directory).symlink_to(CORE_ROOT / directory, target_is_directory=True)
+            infrastructure = thin_core / "Chummer.Infrastructure"
+            infrastructure.mkdir()
+            (infrastructure / "Workspaces").symlink_to(
+                CORE_ROOT / "Chummer.Infrastructure" / "Workspaces",
+                target_is_directory=True,
+            )
+            xml_directory = infrastructure / "Xml"
+            xml_directory.mkdir()
+            mutated_resolver_path = xml_directory / resolver_path.name
+
+            for method_name, declaration_marker, old, new in mutations:
+                with self.subTest(mutated_method=method_name, removed_authority=old):
+                    mutated_resolver_path.write_text(original_resolver, encoding="utf-8")
+                    method_source = inventory._csharp_method_source(
+                        mutated_resolver_path,
+                        method_name,
+                        declaration_marker,
+                    )
+                    self.assertIsNotNone(method_source)
+                    self.assertIn(old, method_source)
+                    mutated_method = method_source.replace(old, new, 1)
+                    mutated_resolver_path.write_text(
+                        original_resolver.replace(method_source, mutated_method, 1),
+                        encoding="utf-8",
+                    )
+                    if old == resolver_call:
+                        self.assertGreaterEqual(
+                            mutated_resolver_path.read_text(encoding="utf-8").count(resolver_call),
+                            1,
+                        )
+                    drifted = inventory._known_phone_mapping(
+                        row,
+                        inventory.DEFAULT_CHUMMER5_ROOT,
+                        PRESENTATION_ROOT,
+                        thin_core,
+                        **receipt_arguments,
+                    )
+                    self.assertEqual("missing", drifted["status"])
+
     def test_sr5_table_wizard_development_lane_is_exactly_bound_without_completion_claim(self) -> None:
         payload = json.loads(
             (REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json").read_text(
@@ -6282,6 +6584,30 @@ public sealed class Demo
             )
         )
         recognition = payload["generationInputs"]["api36JourneyRecognition"]
+        gate = payload["generationInputs"]["phoneBetaWizardGate"]
+        self.assertEqual("sr5_wizards_only", gate["proofScope"])
+        self.assertEqual(3, gate["requiredJourneyCount"])
+        self.assertEqual(
+            [
+                "creation-prerequisite",
+                "career-active-skill-advance",
+                "career-weapon-fire",
+            ],
+            gate["requiredJourneys"],
+        )
+        self.assertEqual(
+            [
+                {
+                    "matrixJourney": "full-editing",
+                    "status": "not_required_not_proven",
+                    "maySatisfyRequiredJourney": False,
+                }
+            ],
+            gate["excludedFromGate"],
+        )
+        self.assertEqual(0, gate["inventoryCompletionCountContribution"])
+        self.assertFalse(gate["publicationAuthorized"])
+        self.assertFalse(payload["completionProven"])
         self.assertEqual(
             "sr5-table-wizard-before-run-playtime",
             recognition["journeyId"],
@@ -6298,8 +6624,8 @@ public sealed class Demo
         self.assertEqual(0, recognition["completionCountContribution"])
         self.assertEqual(
             {
-                "implemented_pending_emulator": 547,
-                "missing": 918,
+                "implemented_pending_emulator": 536,
+                "missing": 929,
                 "not_applicable_non_mutating": 478,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 180,
@@ -6350,9 +6676,9 @@ public sealed class Demo
         )
         for presenter in presenters:
             with self.subTest(presenter=presenter):
-                self.assertFalse(bound[presenter]["exists"])
-                self.assertIsNone(bound[presenter]["sha256"])
-                self.assertIn(f"source-missing:{presenter}", recognition["blockers"])
+                self.assertTrue(bound[presenter]["exists"])
+                self.assertRegex(bound[presenter]["sha256"], r"^[0-9a-f]{64}$")
+                self.assertNotIn(f"source-missing:{presenter}", recognition["blockers"])
         for path in expected - set(presenters):
             with self.subTest(path=path):
                 self.assertTrue(bound[path]["exists"])

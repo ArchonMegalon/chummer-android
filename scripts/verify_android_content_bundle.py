@@ -16,11 +16,30 @@ from typing import Any
 
 
 SCHEMA = "chummer.android.content-bundle/v1"
-CORE_REVISION = "2fb2ae9bb48e5a1a6b25a174ba88008ce995fcd5"
+CORE_REVISION = "c06f22c185c7b733637fdb76b3cf333f31716781"
 PACKAGED_ROOT = "assets/chummer-content"
 MANIFEST_ENTRY = f"{PACKAGED_ROOT}/manifest.json"
 CANONICAL_SEGMENTS = ("data", "lang")
 SHA256_PATTERN = re.compile(r"[0-9a-f]{64}")
+
+
+def _strict_json_bytes(value: bytes, label: str) -> Any:
+    def reject_duplicates(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+        result: dict[str, Any] = {}
+        for key, item in pairs:
+            if key in result:
+                raise ValueError(f"{label}-duplicate-key:{key}")
+            result[key] = item
+        return result
+
+    def reject_nonfinite(item: str) -> Any:
+        raise ValueError(f"{label}-nonfinite:{item}")
+
+    return json.loads(
+        value,
+        object_pairs_hook=reject_duplicates,
+        parse_constant=reject_nonfinite,
+    )
 
 
 def _sha256_bytes(value: bytes) -> str:
@@ -327,7 +346,17 @@ def verify_apk(
             if unexpected:
                 issues.append(f"signed-apk-canonical-content-unexpected:{unexpected}")
             if MANIFEST_ENTRY in actual_names:
-                if archive.read(MANIFEST_ENTRY) != manifest_bytes:
+                packaged_manifest_bytes = archive.read(MANIFEST_ENTRY)
+                try:
+                    packaged_manifest = _strict_json_bytes(
+                        packaged_manifest_bytes,
+                        "signed-apk-content-manifest-json",
+                    )
+                    if not isinstance(packaged_manifest, dict):
+                        issues.append("signed-apk-content-manifest-not-an-object")
+                except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as error:
+                    issues.append(str(error))
+                if packaged_manifest_bytes != manifest_bytes:
                     issues.append("signed-apk-content-manifest-bytes-mismatch")
             for name, (expected_size, expected_digest) in sorted(expected.items()):
                 if name not in actual_names:
@@ -381,12 +410,12 @@ def main() -> int:
         if manifest_path.is_symlink():
             raise OSError("manifest path must not be a symlink")
         manifest_bytes = manifest_path.read_bytes()
-        loaded = json.loads(manifest_bytes)
+        loaded = _strict_json_bytes(manifest_bytes, "content-manifest-json")
         if isinstance(loaded, dict):
             manifest = loaded
         else:
             issues.append("content-manifest-not-an-object")
-    except (OSError, json.JSONDecodeError) as error:
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValueError) as error:
         issues.append(f"content-manifest-unreadable:{manifest_path}:{error}")
 
     if manifest:

@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import re
+import stat
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
@@ -14,8 +15,8 @@ from typing import Mapping
 
 SOURCE_GRAPH_CONTRACT = "chummer.android.release-source-graph/v2"
 PACKAGE_AUTHORITY_CONTRACT = "chummer.android.release-package-authority/v2"
-PRESENTATION_SOURCE_COMMIT = "3a5ca054e1ce126a02dec4199dc92233dfee8804"
-PRESENTATION_SOURCE_TREE = "25def23deef40822e3ff89549cc509e01c149ed4"
+PRESENTATION_SOURCE_COMMIT = "732a33cb8d3c704b8a86e1249eab46508339a105"
+PRESENTATION_SOURCE_TREE = "db56a83e5fee94d9aec7fd56a4b0df078c7dda62"
 LOCKED_DEPENDENCY_MODE = "locked_package"
 SOURCE_COMPATIBILITY_MODE = "source_compatibility"
 SHA40 = 40
@@ -24,6 +25,7 @@ PACKAGE_VERSION_PATTERN = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-
 
 RUNTIME_PACKAGE_IDS = (
     "Chummer.Application",
+    "Chummer.Engine.Contracts",
     "Chummer.Infrastructure",
     "Chummer.Rulesets.Hosting",
     "Chummer.Rulesets.Sr4",
@@ -34,8 +36,6 @@ OWNER_PACKAGE_SPECS = (
     ("Chummer.Campaign.Contracts", "chummer6-hub"),
     ("Chummer.Play.Contracts", "chummer6-hub"),
     ("Chummer.Run.Contracts", "chummer6-hub"),
-    ("Chummer.Run.Hub.Contracts", "chummer6-hub"),
-    ("Chummer.Run.Hub", "chummer6-hub"),
     ("Chummer.Hub.Registry.Contracts", "chummer6-hub-registry"),
     ("Chummer.Ui.Kit", "chummer6-ui-kit"),
 )
@@ -83,13 +83,38 @@ REPOSITORY_SPECS = (
 
 
 def git(root: Path, *arguments: str, binary: bool = False) -> str | bytes:
+    environment = dict(os.environ)
+    environment["GIT_NO_REPLACE_OBJECTS"] = "1"
     completed = subprocess.run(
         ["git", "-C", os.fspath(root), *arguments],
         check=True,
         capture_output=True,
+        env=environment,
         text=not binary,
     )
     return completed.stdout if binary else completed.stdout.strip()
+
+
+def _require_ancestor(
+    root: Path,
+    ancestor: str,
+    descendant: str,
+    label: str,
+) -> None:
+    environment = dict(os.environ)
+    environment["GIT_NO_REPLACE_OBJECTS"] = "1"
+    completed = subprocess.run(
+        ["git", "-C", os.fspath(root), "merge-base", "--is-ancestor", ancestor, descendant],
+        check=False,
+        capture_output=True,
+        env=environment,
+        text=True,
+    )
+    if completed.returncode == 0:
+        return
+    if completed.returncode == 1:
+        raise ValueError(f"{label} is not an ancestor of the pinned owner repository head")
+    raise ValueError(f"cannot verify {label} reachability from the pinned owner repository head")
 
 
 def _sha256(path: Path) -> str:
@@ -140,25 +165,29 @@ def _strict_json(path: Path) -> dict[str, object]:
     return payload
 
 
-def _contained_binding(owner_root: Path, binding: object, label: str) -> str:
+def _contained_binding(authority_root: Path, binding: object, label: str) -> str:
     if not isinstance(binding, dict) or set(binding) != {"path", "sha256"}:
         raise ValueError(f"{label} must use exact path and sha256 fields")
     relative = _require_string(binding.get("path"), f"{label}.path")
     posix = PurePosixPath(relative)
     if posix.is_absolute() or ".." in posix.parts or "\\" in relative:
-        raise ValueError(f"{label} path escapes its owner repository")
-    current = owner_root
+        raise ValueError(f"{label} path escapes the retained authority root")
+    current = authority_root
     for part in posix.parts:
         current = current / part
         if current.is_symlink():
             raise ValueError(f"{label} path traverses a symlink")
     try:
         resolved = current.resolve(strict=True)
-        resolved.relative_to(owner_root.resolve(strict=True))
+        resolved.relative_to(authority_root.resolve(strict=True))
     except (OSError, ValueError) as error:
-        raise ValueError(f"{label} path escapes its owner repository") from error
-    if not resolved.is_file():
-        raise ValueError(f"{label} is not a regular file")
+        raise ValueError(f"{label} path escapes the retained authority root") from error
+    if (
+        not resolved.is_file()
+        or stat.S_IMODE(resolved.stat().st_mode) & 0o077
+        or resolved.stat().st_uid != os.getuid()
+    ):
+        raise ValueError(f"{label} is not an owner-only regular file")
     expected = _require_hex(binding.get("sha256"), SHA256, f"{label}.sha256")
     if _sha256(resolved) != expected:
         raise ValueError(f"{label} digest does not match its exact bytes")
@@ -204,7 +233,7 @@ def repository_record(
 
 def _canonical_runtime_package_pins(rows: object, core: dict[str, str]) -> list[dict[str, str]]:
     if not isinstance(rows, list) or len(rows) != len(RUNTIME_PACKAGE_IDS):
-        raise ValueError("package authority must preserve the exact six Core runtime package pins")
+        raise ValueError("package authority must preserve the exact seven Core runtime package pins")
     result: list[dict[str, str]] = []
     for expected_id, row in zip(RUNTIME_PACKAGE_IDS, rows, strict=True):
         if not isinstance(row, dict) or set(row) != {
@@ -238,9 +267,10 @@ def _canonical_owner_package_pins(
     rows: object,
     roots: Mapping[str, Path],
     repositories: Mapping[str, dict[str, str]],
+    authority_root: Path,
 ) -> list[dict[str, object]]:
     if not isinstance(rows, list) or len(rows) != len(OWNER_PACKAGE_IDS):
-        raise ValueError("package authority must bind the exact seven owner package pins")
+        raise ValueError("package authority must bind the exact five owner package pins")
     expected_fields = {
         "package_id", "version", "sha256", "size_bytes", "owner_repository",
         "source_commit", "source_tree", "authority_receipt", "package_inventory",
@@ -256,9 +286,28 @@ def _canonical_owner_package_pins(
         owner = OWNER_REPOSITORY_BY_PACKAGE[package_id]
         if row.get("owner_repository") != owner:
             raise ValueError(f"owner package pin is misowned: {package_id}")
-        repository = repositories[owner]
-        if row.get("source_commit") != repository["commit"] or row.get("source_tree") != repository["tree"]:
+        source_commit = _require_hex(
+            row.get("source_commit"), SHA40, f"{package_id}.source_commit"
+        )
+        try:
+            resolved_source_commit = str(
+                git(roots[owner], "rev-parse", "--verify", f"{source_commit}^{{commit}}")
+            )
+            if resolved_source_commit != source_commit:
+                raise ValueError(
+                    f"owner package source authority is not an exact commit for {package_id}"
+                )
+            source_tree = str(git(roots[owner], "rev-parse", f"{source_commit}^{{tree}}"))
+        except subprocess.CalledProcessError as error:
+            raise ValueError(f"owner package source commit is unavailable for {package_id}") from error
+        _require_hex(source_tree, SHA40, f"{package_id}.source_tree")
+        if row.get("source_tree") != source_tree:
             raise ValueError(f"owner package source authority is incorrect for {package_id}")
+        owner_head_commit = repositories[owner]["commit"]
+        owner_head_tree = repositories[owner]["tree"]
+        _require_ancestor(
+            roots[owner], source_commit, owner_head_commit, f"{package_id}.source_commit"
+        )
         if row.get("dependency_mode") != LOCKED_DEPENDENCY_MODE:
             raise ValueError(f"locked owner package cannot fall back to source: {package_id}")
         version = _require_string(row.get("version"), f"{package_id}.version")
@@ -268,18 +317,29 @@ def _canonical_owner_package_pins(
         size = row.get("size_bytes")
         if not isinstance(size, int) or isinstance(size, bool) or size <= 0:
             raise ValueError(f"{package_id}.size_bytes must be a positive integer")
-        owner_root = roots[owner]
-        receipt = _contained_binding(owner_root, row.get("authority_receipt"), f"{package_id}.authority_receipt")
-        inventory = _contained_binding(owner_root, row.get("package_inventory"), f"{package_id}.package_inventory")
-        lock = _contained_binding(owner_root, row.get("package_plane_lock"), f"{package_id}.package_plane_lock")
+        receipt = _contained_binding(
+            authority_root, row.get("authority_receipt"), f"{package_id}.authority_receipt"
+        )
+        inventory = _contained_binding(
+            authority_root, row.get("package_inventory"), f"{package_id}.package_inventory"
+        )
+        lock = _contained_binding(
+            authority_root, row.get("package_plane_lock"), f"{package_id}.package_plane_lock"
+        )
         result.append({
             "package_id": package_id,
             "version": version,
             "sha256": digest,
             "size_bytes": size,
             "owner_repository": owner,
-            "source_commit": repository["commit"],
-            "source_tree": repository["tree"],
+            "source_commit": source_commit,
+            "source_tree": source_tree,
+            "source_authority": {
+                "owner_head_commit": owner_head_commit,
+                "owner_head_tree": owner_head_tree,
+                "relationship": "ancestor_or_equal",
+                "verification": "git-merge-base-is-ancestor-without-replace-objects",
+            },
             "authority_receipt_sha256": receipt,
             "package_inventory_sha256": inventory,
             "package_plane_lock_sha256": lock,
@@ -327,6 +387,7 @@ def build_graph(
     android_root: Path,
     workspace_root: Path,
     package_authority: Mapping[str, object],
+    authority_root: Path,
     environment: Mapping[str, str] | None = None,
 ) -> dict[str, object]:
     environment = os.environ if environment is None else environment
@@ -335,6 +396,13 @@ def build_graph(
         raise ValueError("release workspace root must be an exact non-symlinked directory")
     if android_root.resolve() != (workspace_root / "chummer-android").resolve():
         raise ValueError("Android release source must be the coherent workspace chummer-android sibling")
+    if (
+        not authority_root.is_absolute()
+        or authority_root.is_symlink()
+        or not authority_root.is_dir()
+        or authority_root.resolve(strict=True) != authority_root
+    ):
+        raise ValueError("retained package authority root must be one canonical absolute directory")
     repositories: list[dict[str, str]] = []
     roots: dict[str, Path] = {}
     for name, role, relative_parts, revision_variable, expected_repository in REPOSITORY_SPECS:
@@ -361,7 +429,7 @@ def build_graph(
         package_authority.get("packagePins"), by_name["chummer6-core"]
     )
     owner_pins = _canonical_owner_package_pins(
-        package_authority.get("ownerPackagePins"), roots, by_name
+        package_authority.get("ownerPackagePins"), roots, by_name, authority_root
     )
     closure = _canonical_dependency_closure(package_authority.get("dependencyClosure"))
     return {
@@ -427,6 +495,7 @@ def main() -> int:
     parser.add_argument("--android-root", required=True, type=Path)
     parser.add_argument("--workspace-root", required=True, type=Path)
     parser.add_argument("--package-authority", required=True, type=Path)
+    parser.add_argument("--authority-root", required=True, type=Path)
     action = parser.add_mutually_exclusive_group(required=True)
     action.add_argument("--output", type=Path)
     action.add_argument("--verify-existing", type=Path)
@@ -435,6 +504,7 @@ def main() -> int:
         arguments.android_root,
         arguments.workspace_root,
         _strict_json(arguments.package_authority),
+        arguments.authority_root,
     )
     if arguments.output is not None:
         write_graph_exclusive(arguments.output, graph)
