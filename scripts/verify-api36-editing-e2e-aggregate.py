@@ -105,7 +105,7 @@ CREATION_PHASE_BUDGETS_MS = {
     "preview-confirm": 360_000,
     "same-process-reopen": 90_000,
     "same-process-authority-options": 120_000,
-    "same-process-restored-talent-grant": 60_000,
+    "same-process-restored-talent-grant": 90_000,
     "resources-initial-authority": 120_000,
     "resources-preview-confirm": 240_000,
     "resources-same-process-reopen": 120_000,

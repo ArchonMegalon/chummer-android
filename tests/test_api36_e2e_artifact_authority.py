@@ -749,7 +749,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             "preview-confirm": 360_000,
             "same-process-reopen": 90_000,
             "same-process-authority-options": 120_000,
-            "same-process-restored-talent-grant": 60_000,
+            "same-process-restored-talent-grant": 90_000,
             "resources-initial-authority": 120_000,
             "resources-preview-confirm": 240_000,
             "resources-same-process-reopen": 120_000,
@@ -770,11 +770,25 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             sum(CREATION_PROSPECTIVE_PHASE_ELAPSED_MS.values()),
         )
 
-    def test_same_process_authority_reserve_does_not_widen_journey_target(self) -> None:
+    def test_same_process_observer_reserves_do_not_widen_journey_target(self) -> None:
         self.assertEqual(
             120_000,
             AGGREGATE.CREATION_PHASE_BUDGETS_MS[
                 "same-process-authority-options"
+            ],
+        )
+        self.assertEqual(
+            90_000,
+            AGGREGATE.CREATION_PHASE_BUDGETS_MS[
+                "same-process-restored-talent-grant"
+            ],
+        )
+        self.assertEqual(
+            AGGREGATE.CREATION_PHASE_BUDGETS_MS[
+                "process-restart-restored-talent-grant"
+            ],
+            AGGREGATE.CREATION_PHASE_BUDGETS_MS[
+                "same-process-restored-talent-grant"
             ],
         )
         self.assertEqual(45 * 60 * 1000, AGGREGATE.CREATION_TOTAL_TARGET_MS)

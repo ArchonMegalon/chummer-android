@@ -1555,6 +1555,37 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 for phase in progress.phases
             ))
 
+    def test_same_process_restored_grant_budget_accepts_exact_limit_and_rejects_plus_one(
+        self,
+    ) -> None:
+        phase_id = "same-process-restored-talent-grant"
+        budget_ms = driver.PHASE_BUDGET_MS[phase_id]
+        self.assertEqual(90_000, budget_ms)
+        for elapsed_ms, should_pass in (
+            (budget_ms, True),
+            (budget_ms + 1, False),
+        ):
+            with self.subTest(elapsed_ms=elapsed_ms), tempfile.TemporaryDirectory() as temporary, mock.patch(
+                "builtins.print"
+            ):
+                progress = driver.ProgressRecorder(Path(temporary))
+                progress._active_id = phase_id
+                progress._active_started = 10.0
+                ended_at = progress._active_started + (elapsed_ms / 1000)
+
+                if should_pass:
+                    progress._close_active("pass", ended_at=ended_at)
+                    self.assertTrue(progress.phases[-1]["withinBudget"])
+                    self.assertEqual(budget_ms, progress.phases[-1]["elapsedMs"])
+                else:
+                    with self.assertRaisesRegex(
+                        RuntimeError,
+                        "explicit phase timing budget",
+                    ):
+                        progress._close_active("pass", ended_at=ended_at)
+                    self.assertFalse(progress.phases[-1]["withinBudget"])
+                    self.assertEqual(budget_ms + 1, progress.phases[-1]["elapsedMs"])
+
     def test_reselection_and_grant_completion_have_independent_hard_budgets(
         self,
     ) -> None:

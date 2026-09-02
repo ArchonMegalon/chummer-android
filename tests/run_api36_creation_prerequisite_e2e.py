@@ -218,10 +218,16 @@ PHASE_BUDGET_MS = {
     # Heritage and Talent are two independent restored catalogs. The selected
     # Talent grant lives on a third pushed route and must retain its own stable
     # start/end and cardinality proof instead of consuming the catalog tail.
-    # Preserve the same retry/reconciliation reserve as process restart; this
-    # does not alter the whole-journey cap.
+    # Same-process and process-restart restoration call the same exact grant
+    # route proof: stable grouped scan, two read-only route observations and
+    # the file-backed hierarchy retry/reconciliation fence. Hosted run
+    # 33622199489 completed the grouped scan in 14.819 seconds, then proved a
+    # timeout/null-root plus a fresh transport retry could consume the former
+    # 60-second slice before one valid reconciled hierarchy was available.
+    # Give both restoration modes the same bounded observer reserve; this does
+    # not alter the independently authoritative whole-journey cap.
     "same-process-authority-options": 120_000,
-    "same-process-restored-talent-grant": 60_000,
+    "same-process-restored-talent-grant": 90_000,
     # The initial Resources authority inventory already establishes the exact
     # scroll topology.  Its zero-conversion option is reacquired from that
     # measured topology, never through a second bidirectional whole-page scan.
