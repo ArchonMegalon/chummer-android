@@ -65,6 +65,49 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         )
 
     @classmethod
+    def resources_binding_nodes(
+        cls,
+        option: driver.shared.UiNode,
+    ) -> dict[str, driver.shared.UiNode]:
+        digest = "sha256:" + "a" * 64
+        auxiliary = "b" * 64
+        nodes = {
+            selector: cls.canonical_node(selector)
+            for selector in driver.RESOURCES_BINDING_AUTHORITY_SELECTORS
+        }
+        nodes.update({
+            "creation-resources-binding-content-revision": cls.canonical_node(
+                "creation-resources-binding-content-revision", text="2"
+            ),
+            "creation-resources-binding-saved-revision": cls.canonical_node(
+                "creation-resources-binding-saved-revision", text="1"
+            ),
+            "creation-resources-binding-snapshot-digest": cls.canonical_node(
+                "creation-resources-binding-snapshot-digest", text=digest
+            ),
+            "creation-resources-binding-raw-character-xml-digest": cls.canonical_node(
+                "creation-resources-binding-raw-character-xml-digest", text=digest
+            ),
+            "creation-resources-binding-auxiliary-state-digest": cls.canonical_node(
+                "creation-resources-binding-auxiliary-state-digest", text=auxiliary
+            ),
+            "creation-resources-binding-prerequisite-draft-digest": cls.canonical_node(
+                "creation-resources-binding-prerequisite-draft-digest", text=digest
+            ),
+            "creation-resources-authority-digest": cls.canonical_node(
+                "creation-resources-authority-digest", text=digest
+            ),
+            "creation-resources-budget-priority-nuyen": cls.canonical_node(
+                "creation-resources-budget-priority-nuyen", text="50000"
+            ),
+            "creation-resources-budget-total-starting-nuyen": cls.canonical_node(
+                "creation-resources-budget-total-starting-nuyen", text="50000"
+            ),
+            driver.RESOURCES_ZERO_CONVERSION_OPTION_ID: option,
+        })
+        return nodes
+
+    @classmethod
     def dashboard_route_nodes(cls) -> list[driver.shared.UiNode]:
         return [
             cls.canonical_node("phone-runner-create"),
@@ -2157,52 +2200,18 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
     def test_resources_binding_reacquires_zero_option_from_measured_scan_only(
         self,
     ) -> None:
-        digest = "sha256:" + "a" * 64
-        auxiliary = "b" * 64
         option = self.canonical_node(
             driver.RESOURCES_ZERO_CONVERSION_OPTION_ID,
             **{"content-desc": "0 Karma · 50,000 nuyen"},
         )
-        nodes = {
-            selector: self.canonical_node(selector)
-            for selector in driver.RESOURCES_BINDING_AUTHORITY_SELECTORS
-        }
-        nodes.update({
-            "creation-resources-binding-content-revision": self.canonical_node(
-                "creation-resources-binding-content-revision", text="2"
-            ),
-            "creation-resources-binding-saved-revision": self.canonical_node(
-                "creation-resources-binding-saved-revision", text="1"
-            ),
-            "creation-resources-binding-snapshot-digest": self.canonical_node(
-                "creation-resources-binding-snapshot-digest", text=digest
-            ),
-            "creation-resources-binding-raw-character-xml-digest": self.canonical_node(
-                "creation-resources-binding-raw-character-xml-digest", text=digest
-            ),
-            "creation-resources-binding-auxiliary-state-digest": self.canonical_node(
-                "creation-resources-binding-auxiliary-state-digest", text=auxiliary
-            ),
-            "creation-resources-binding-prerequisite-draft-digest": self.canonical_node(
-                "creation-resources-binding-prerequisite-draft-digest", text=digest
-            ),
-            "creation-resources-authority-digest": self.canonical_node(
-                "creation-resources-authority-digest", text=digest
-            ),
-            "creation-resources-budget-priority-nuyen": self.canonical_node(
-                "creation-resources-budget-priority-nuyen", text="50000"
-            ),
-            "creation-resources-budget-total-starting-nuyen": self.canonical_node(
-                "creation-resources-budget-total-starting-nuyen", text="50000"
-            ),
-            driver.RESOURCES_ZERO_CONVERSION_OPTION_ID: option,
-        })
+        nodes = self.resources_binding_nodes(option)
         proof = driver.ResourcesSurfaceScanProof(
             nodes=nodes,
             swipes=10,
             selector_viewports={
                 selector: 10 for selector in driver.RESOURCES_BINDING_AUTHORITY_SELECTORS
             } | {driver.RESOURCES_ZERO_CONVERSION_OPTION_ID: 6},
+            terminal_tappable_nodes={},
         )
         deadline = driver.time.monotonic() + 30
         device = mock.Mock()
@@ -2273,6 +2282,110 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             deadline=deadline,
         )
 
+    def test_resources_binding_reuses_fresh_terminal_option_without_rewind(self) -> None:
+        option = self.canonical_node(
+            driver.RESOURCES_ZERO_CONVERSION_OPTION_ID,
+            **{"content-desc": "0 Karma · 50,000 nuyen"},
+        )
+        nodes = self.resources_binding_nodes(option)
+        proof = driver.ResourcesSurfaceScanProof(
+            nodes=nodes,
+            swipes=8,
+            selector_viewports={
+                selector: 8 for selector in driver.RESOURCES_BINDING_AUTHORITY_SELECTORS
+            } | {driver.RESOURCES_ZERO_CONVERSION_OPTION_ID: 8},
+            terminal_tappable_nodes={
+                driver.RESOURCES_ZERO_CONVERSION_OPTION_ID: option,
+            },
+        )
+        deadline = driver.time.monotonic() + 30
+        device = mock.Mock()
+        with mock.patch.object(
+            driver,
+            "scan_deadline_bound_resources_surface",
+            return_value=proof,
+        ), mock.patch.object(
+            driver,
+            "measured_reverse_reacquisition_bound",
+        ) as measured, mock.patch.object(
+            driver,
+            "rewind_to_exact_resource_id",
+        ) as rewind:
+            authority, actual_option = driver.read_resources_binding_with_zero_option(
+                device,
+                deadline=deadline,
+            )
+
+        self.assertEqual(50_000, authority["priorityNuyen"])
+        self.assertIs(option, actual_option)
+        measured.assert_not_called()
+        rewind.assert_not_called()
+        device.capture.assert_not_called()
+        device.shell.assert_not_called()
+
+    def test_resources_terminal_reuse_rejects_identity_and_viewport_drift(self) -> None:
+        option = self.canonical_node(
+            driver.RESOURCES_ZERO_CONVERSION_OPTION_ID,
+            **{"content-desc": "0 Karma · 50,000 nuyen"},
+        )
+        drifted = self.canonical_node(
+            driver.RESOURCES_ZERO_CONVERSION_OPTION_ID,
+            **{"content-desc": "0 Karma · forged grant"},
+        )
+        base = driver.ResourcesSurfaceScanProof(
+            nodes=self.resources_binding_nodes(option),
+            swipes=8,
+            selector_viewports={
+                selector: 8 for selector in driver.RESOURCES_BINDING_AUTHORITY_SELECTORS
+            } | {driver.RESOURCES_ZERO_CONVERSION_OPTION_ID: 8},
+            terminal_tappable_nodes={
+                driver.RESOURCES_ZERO_CONVERSION_OPTION_ID: drifted,
+            },
+        )
+        cases = (
+            ("identity", base),
+            (
+                "viewport",
+                base._replace(
+                    terminal_tappable_nodes={
+                        driver.RESOURCES_ZERO_CONVERSION_OPTION_ID: option,
+                    },
+                    selector_viewports={
+                        **base.selector_viewports,
+                        driver.RESOURCES_ZERO_CONVERSION_OPTION_ID: 7,
+                    },
+                ),
+            ),
+        )
+        for name, proof in cases:
+            with self.subTest(name=name):
+                deadline = driver.time.monotonic() + 30
+                device = mock.Mock()
+                with mock.patch.object(
+                    driver,
+                    "scan_deadline_bound_resources_surface",
+                    return_value=proof,
+                ), mock.patch.object(
+                    driver,
+                    "measured_reverse_reacquisition_bound",
+                ) as measured, mock.patch.object(
+                    driver,
+                    "rewind_to_exact_resource_id",
+                ) as rewind, self.assertRaisesRegex(
+                    RuntimeError,
+                    "changed between scan and terminal reuse",
+                ):
+                    driver.read_resources_binding_with_zero_option(
+                        device,
+                        deadline=deadline,
+                    )
+                measured.assert_not_called()
+                rewind.assert_not_called()
+                device.capture.assert_called_once_with(
+                    "creation-resources-option-karma-0-terminal-reuse-drift",
+                    deadline=deadline,
+                )
+
     def test_deadline_resources_surface_requires_action_on_terminal_viewport(self) -> None:
         selectors = (
             "creation-resources-preview-page",
@@ -2336,6 +2449,10 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertIs(
             visible,
             proof.nodes[driver.RESOURCES_ZERO_CONVERSION_OPTION_ID],
+        )
+        self.assertNotIn(
+            driver.RESOURCES_ZERO_CONVERSION_OPTION_ID,
+            proof.terminal_tappable_nodes,
         )
 
     def test_deadline_resources_preview_and_receipt_each_use_one_scan(self) -> None:

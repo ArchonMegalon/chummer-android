@@ -8653,6 +8653,7 @@ class ResourcesSurfaceScanProof(NamedTuple):
     nodes: dict[str, shared.UiNode]
     swipes: int
     selector_viewports: dict[str, int]
+    terminal_tappable_nodes: dict[str, shared.UiNode]
 
 
 def scan_deadline_bound_resources_surface(
@@ -8704,8 +8705,10 @@ def scan_deadline_bound_resources_surface(
         selector: set() for selector in required_selectors
     }
     duplicate_ids: set[str] = set()
+    terminal_tappable_nodes: dict[str, shared.UiNode] = {}
     for viewport_index, nodes in enumerate(scan.screens):
         measured_viewport = min(viewport_index, scan.swipes)
+        is_freshest_terminal_viewport = viewport_index == len(scan.screens) - 1
         screen_ids: list[str] = []
         for node in nodes:
             resource_id = _exact_resource_id(node)
@@ -8744,6 +8747,12 @@ def scan_deadline_bound_resources_surface(
                     node.attributes.get("class", ""),
                 )
             )
+            if is_freshest_terminal_viewport and resource_id in tappable_selectors:
+                # The stable-end scan returned this exact node from its final,
+                # unchanged hierarchy.  Preserve that provenance separately:
+                # callers may reuse it without another hierarchy read only
+                # after the scan's global identity/cardinality checks pass.
+                terminal_tappable_nodes[resource_id] = node
         duplicate_ids.update(
             resource_id
             for resource_id in set(screen_ids)
@@ -8776,6 +8785,7 @@ def scan_deadline_bound_resources_surface(
                 for selector, viewports in selector_viewports.items()
                 if viewports
             },
+            terminal_tappable_nodes=terminal_tappable_nodes,
         )
     return representatives
 
@@ -9075,11 +9085,13 @@ def read_resources_binding_with_zero_option(
     scan_observer: Callable[[dict[str, object]], None] | None = None,
     scan_id: str = "creation-resources-binding-authority",
 ) -> tuple[dict[str, object], shared.UiNode]:
-    """Read binding authority once and reacquire its exact zero-conversion row.
+    """Read binding authority once and locate its exact zero-conversion row.
 
-    The exhaustive stable-end scan measures every viewport.  Reacquisition is
-    therefore bounded by that measured topology and cannot fall back to a
-    second bidirectional whole-page search or replay any mutation.
+    The exhaustive stable-end scan measures every viewport.  Its freshest
+    terminal node can be reused directly when exact identity, cardinality and
+    tappability were proven by that scan.  Otherwise reacquisition is bounded
+    by the measured topology and cannot fall back to a second bidirectional
+    whole-page search or replay any mutation.
     """
     scan = scan_deadline_bound_resources_surface(
         device,
@@ -9095,37 +9107,55 @@ def read_resources_binding_with_zero_option(
     option_viewport = scan.selector_viewports.get(RESOURCES_ZERO_CONVERSION_OPTION_ID)
     if option_viewport is None:
         raise RuntimeError("Resources binding scan did not locate the zero-conversion option")
-    reverse_bound = measured_reverse_reacquisition_bound(
-        scan.swipes,
-        option_viewport,
-        maximum_viewport=22,
-    ) + 2
-    option, _ = rewind_to_exact_resource_id(
-        device,
-        RESOURCES_ZERO_CONVERSION_OPTION_ID,
-        max_swipes=reverse_bound,
-        distance_ratio=0.22,
-        evidence_prefix="creation-resources-option-karma-0-measured-reacquisition",
-        surface_name="Exact zero-conversion Resources option",
-        require_tappable=True,
-        deadline=deadline,
-    )
     scanned_option = scan.nodes[RESOURCES_ZERO_CONVERSION_OPTION_ID]
     option_identity_keys = ("text", "content-desc", "enabled", "clickable", "class")
     scanned_identity = tuple(
         scanned_option.attributes.get(key, "") for key in option_identity_keys
     )
-    reacquired_identity = tuple(
-        option.attributes.get(key, "") for key in option_identity_keys
+    terminal_option = scan.terminal_tappable_nodes.get(
+        RESOURCES_ZERO_CONVERSION_OPTION_ID
     )
-    if reacquired_identity != scanned_identity:
-        device.capture(
-            "creation-resources-option-karma-0-measured-reacquisition-drift",
+    if terminal_option is not None:
+        terminal_identity = tuple(
+            terminal_option.attributes.get(key, "") for key in option_identity_keys
+        )
+        if option_viewport != scan.swipes or terminal_identity != scanned_identity:
+            device.capture(
+                "creation-resources-option-karma-0-terminal-reuse-drift",
+                deadline=deadline,
+            )
+            raise RuntimeError(
+                "Measured zero-conversion Resources option changed between scan "
+                "and terminal reuse"
+            )
+        option = terminal_option
+    else:
+        reverse_bound = measured_reverse_reacquisition_bound(
+            scan.swipes,
+            option_viewport,
+            maximum_viewport=22,
+        ) + 2
+        option, _ = rewind_to_exact_resource_id(
+            device,
+            RESOURCES_ZERO_CONVERSION_OPTION_ID,
+            max_swipes=reverse_bound,
+            distance_ratio=0.22,
+            evidence_prefix="creation-resources-option-karma-0-measured-reacquisition",
+            surface_name="Exact zero-conversion Resources option",
+            require_tappable=True,
             deadline=deadline,
         )
-        raise RuntimeError(
-            "Measured zero-conversion Resources option changed between scan and tap"
+        reacquired_identity = tuple(
+            option.attributes.get(key, "") for key in option_identity_keys
         )
+        if reacquired_identity != scanned_identity:
+            device.capture(
+                "creation-resources-option-karma-0-measured-reacquisition-drift",
+                deadline=deadline,
+            )
+            raise RuntimeError(
+                "Measured zero-conversion Resources option changed between scan and tap"
+            )
     return resources_authority_from_nodes(scan.nodes), option
 
 
