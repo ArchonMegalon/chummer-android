@@ -81,7 +81,7 @@ CREATION_AUTHORITY_PENDING_TIMEOUT_HIERARCHY = (
     "/sdcard/chummer-creation-authority-pending-timeout.xml"
 )
 CREATION_AUTHORITY_PENDING_TIMEOUT_TEXT_LIMIT = 1_000_000
-PROGRESS_SCHEMA = "chummer.android.creation-prerequisite-progress/v4"
+PROGRESS_SCHEMA = "chummer.android.creation-prerequisite-progress/v5"
 PROGRESS_FILE_NAME = "creation-prerequisite-progress.json"
 PROGRESS_EVENTS_FILE_NAME = "creation-prerequisite-progress.jsonl"
 CREATION_BOOTSTRAP_TIMING_PREFIX = "CHUMMER_CREATION_BOOTSTRAP_TIMING "
@@ -131,8 +131,13 @@ ADB_CREATION_BOOTSTRAP_LOGCAT_SNAPSHOT_ARGUMENTS = (
 # This is the wall-clock budget for the exhaustive external UIAutomator proof,
 # not the product's Creation transaction SLO.  The proof deliberately performs
 # repeated fresh file-backed hierarchy observations across mutable catalogs;
-# transaction and render timing remain independently bounded below.
-TOTAL_PERFORMANCE_TARGET_MS = 30 * 60 * 1000
+# transaction and render timing remain independently bounded below.  Resources
+# adds preview/receipt, same-process persistence, cross-domain rebinding, and
+# new-process persistence to the original prerequisite journey.  Those are now
+# distinct bounded phases instead of one artificial 150-second phase.  The
+# external proof cap therefore covers the complete expanded evidence surface;
+# it does not widen any product transaction or rendering SLO.
+TOTAL_PERFORMANCE_TARGET_MS = 45 * 60 * 1000
 INITIAL_NAVIGATION_MILESTONE_ORDER = (
     "app-cold-start-complete",
     "phone-shell-locale-complete",
@@ -166,7 +171,7 @@ PHASE_BUDGET_MS = {
     "dashboard-proof": 30_000,
     # Exhaustive scroll inventories remain outside both the product transaction
     # and the visible-dashboard proof. Each semantic surface and the measured
-    # method restore has its own strict bound under the exhaustive 30-minute
+    # method restore has its own strict bound under the exhaustive proof
     # aggregate target; no authority field or stable-end proof is removed.
     "dashboard-authority-inventory": 30_000,
     "advanced-editor-gate-inventory": 90_000,
@@ -178,7 +183,7 @@ PHASE_BUDGET_MS = {
     # swipes before the final single, non-replayable file-backed dump reached
     # the former 150-second boundary. Keep the dump single-shot and preserve
     # fail-closed reconciliation, but reserve 30 seconds for that external
-    # observer. The unchanged 30-minute whole-journey cap remains authoritative.
+    # observer. The whole-journey cap remains independently authoritative.
     "talent-active-skill-grant": 180_000,
     "talent-active-skill-preservation": 150_000,
     "talent-active-skill-reset": 150_000,
@@ -215,11 +220,20 @@ PHASE_BUDGET_MS = {
     # start/end and cardinality proof instead of consuming the catalog tail.
     "same-process-authority-options": 90_000,
     "same-process-restored-talent-grant": 60_000,
-    "resources-preview-confirm": 150_000,
-    "process-restart-reopen": 90_000,
-    "process-restart-authority-options": 90_000,
-    "process-restart-restored-talent-grant": 60_000,
-    "process-restart-resources": 90_000,
+    # The initial Resources authority inventory already establishes the exact
+    # scroll topology.  Its zero-conversion option is reacquired from that
+    # measured topology, never through a second bidirectional whole-page scan.
+    "resources-initial-authority": 120_000,
+    # Preview and explicit confirmation contain two independent stable-end
+    # authority scans plus one non-replayable write.  Keep that mutation in its
+    # own phase so a later observer traversal can never consume its deadline.
+    "resources-preview-confirm": 240_000,
+    "resources-same-process-reopen": 120_000,
+    "resources-prerequisite-rebind": 180_000,
+    "process-restart-reopen": 120_000,
+    "process-restart-authority-options": 120_000,
+    "process-restart-restored-talent-grant": 90_000,
+    "process-restart-resources": 120_000,
 }
 PHASE_ORDER = tuple(PHASE_BUDGET_MS)
 PERSISTENT_PREVIEW_ACTION_TIMEOUT_SECONDS = 3.0
@@ -2083,7 +2097,11 @@ class ProgressRecorder:
             raise RuntimeError(
                 f"Cannot obtain deadline for inactive progress phase {expected_phase!r}"
             )
-        return self._active_started + (PHASE_BUDGET_MS[expected_phase] / 1000)
+        phase_deadline = self._active_started + (
+            PHASE_BUDGET_MS[expected_phase] / 1000
+        )
+        total_deadline = self.started + (TOTAL_PERFORMANCE_TARGET_MS / 1000)
+        return min(phase_deadline, total_deadline)
 
     def record_initial_milestone(self, milestone_id: str) -> None:
         """Emit ordered navigation, product, and observer timing segments."""
@@ -8564,6 +8582,12 @@ def require_exact_restored_authority_option(
     )
 
 
+class ResourcesSurfaceScanProof(NamedTuple):
+    nodes: dict[str, shared.UiNode]
+    swipes: int
+    selector_viewports: dict[str, int]
+
+
 def scan_deadline_bound_resources_surface(
     device: shared.Device,
     required_selectors: tuple[str, ...],
@@ -8572,13 +8596,18 @@ def scan_deadline_bound_resources_surface(
     deadline: float,
     scan_observer: Callable[[dict[str, object]], None] | None = None,
     required_terminal_selectors: tuple[str, ...] = (),
-) -> dict[str, shared.UiNode]:
+    tappable_selectors: tuple[str, ...] = (),
+    return_scan_proof: bool = False,
+) -> dict[str, shared.UiNode] | ResourcesSurfaceScanProof:
     """Read one Resources surface once and reject identity/cardinality drift."""
     if (
         not required_selectors
         or len(required_selectors) != len(set(required_selectors))
         or len(required_terminal_selectors) != len(set(required_terminal_selectors))
         or not set(required_terminal_selectors).issubset(required_selectors)
+        or len(tappable_selectors) != len(set(tappable_selectors))
+        or not set(tappable_selectors).issubset(required_selectors)
+        or type(return_scan_proof) is not bool
     ):
         raise ValueError("Resources surface scan requires distinct exact selectors")
     origin = acquire_stable_start_origin(
@@ -8604,8 +8633,12 @@ def scan_deadline_bound_resources_surface(
     signatures: dict[str, set[tuple[str, ...]]] = {
         selector: set() for selector in required_selectors
     }
+    selector_viewports: dict[str, set[int]] = {
+        selector: set() for selector in required_selectors
+    }
     duplicate_ids: set[str] = set()
-    for nodes in scan.screens:
+    for viewport_index, nodes in enumerate(scan.screens):
+        measured_viewport = min(viewport_index, scan.swipes)
         screen_ids: list[str] = []
         for node in nodes:
             resource_id = _exact_resource_id(node)
@@ -8620,10 +8653,21 @@ def scan_deadline_bound_resources_surface(
                 deadline=deadline,
             )
             screen_ids.append(resource_id)
+            interactive = (
+                resource_id not in tappable_selectors
+                or (
+                    node.attributes.get("enabled") == "true"
+                    and node.attributes.get("clickable") == "true"
+                    and device.node_has_tappable_bounds(node, deadline=deadline)
+                )
+            )
+            if not interactive:
+                continue
             # Keep the freshest occurrence from the latest observed viewport;
             # action rows near the stable end may then be tapped without a
             # second whole-surface search.
             representatives[resource_id] = node
+            selector_viewports[resource_id].add(measured_viewport)
             signatures[resource_id].add(
                 (
                     node.attributes.get("text", ""),
@@ -8655,6 +8699,16 @@ def scan_deadline_bound_resources_surface(
             f"missing={missing!r}, terminalMissing={missing_terminal!r}, "
             f"duplicates={sorted(duplicate_ids)!r}, "
             f"drifted={drifted!r}"
+        )
+    if return_scan_proof:
+        return ResourcesSurfaceScanProof(
+            nodes=representatives,
+            swipes=scan.swipes,
+            selector_viewports={
+                selector: max(viewports)
+                for selector, viewports in selector_viewports.items()
+                if viewports
+            },
         )
     return representatives
 
@@ -8836,6 +8890,133 @@ def reopen_resources(
     )
 
 
+RESOURCES_BINDING_AUTHORITY_SELECTORS = (
+    "creation-resources-page",
+    "creation-resources-binding-content-revision",
+    "creation-resources-binding-saved-revision",
+    "creation-resources-binding-snapshot-digest",
+    "creation-resources-binding-raw-character-xml-digest",
+    "creation-resources-binding-auxiliary-state-digest",
+    "creation-resources-binding-prerequisite-draft-digest",
+    "creation-resources-authority-digest",
+    "creation-resources-budget-priority-nuyen",
+    "creation-resources-budget-total-starting-nuyen",
+)
+RESOURCES_ZERO_CONVERSION_OPTION_ID = "creation-resources-option-karma-0"
+
+
+def resources_authority_from_nodes(
+    nodes: dict[str, shared.UiNode],
+) -> dict[str, object]:
+    authority = {
+        "contentRevision": required_resources_integer(
+            nodes,
+            "creation-resources-binding-content-revision",
+        ),
+        "savedRevision": required_resources_integer(
+            nodes,
+            "creation-resources-binding-saved-revision",
+        ),
+        "snapshotDigest": required_resources_digest(
+            nodes,
+            "creation-resources-binding-snapshot-digest",
+        ),
+        "rawCharacterXmlDigest": required_resources_digest(
+            nodes,
+            "creation-resources-binding-raw-character-xml-digest",
+        ),
+        "auxiliaryStateDigest": required_resources_auxiliary_digest(
+            nodes,
+            "creation-resources-binding-auxiliary-state-digest",
+        ),
+        "prerequisiteDraftDigest": required_resources_digest(
+            nodes,
+            "creation-resources-binding-prerequisite-draft-digest",
+        ),
+        "authorityDigest": required_resources_digest(
+            nodes,
+            "creation-resources-authority-digest",
+        ),
+        "priorityNuyen": required_resources_integer(
+            nodes,
+            "creation-resources-budget-priority-nuyen",
+        ),
+        "totalStartingNuyen": required_resources_integer(
+            nodes,
+            "creation-resources-budget-total-starting-nuyen",
+        ),
+    }
+    if authority["contentRevision"] <= 0:
+        raise RuntimeError(f"Resources authority revision was invalid: {authority!r}")
+    if authority["priorityNuyen"] != 50_000 or authority["totalStartingNuyen"] != 50_000:
+        raise RuntimeError(
+            "Priority Resources rank D did not project the canonical 50,000 "
+            f"nuyen grant: {authority!r}"
+        )
+    return authority
+
+
+def read_resources_binding_with_zero_option(
+    device: shared.Device,
+    *,
+    deadline: float,
+    scan_observer: Callable[[dict[str, object]], None] | None = None,
+    scan_id: str = "creation-resources-binding-authority",
+) -> tuple[dict[str, object], shared.UiNode]:
+    """Read binding authority once and reacquire its exact zero-conversion row.
+
+    The exhaustive stable-end scan measures every viewport.  Reacquisition is
+    therefore bounded by that measured topology and cannot fall back to a
+    second bidirectional whole-page search or replay any mutation.
+    """
+    scan = scan_deadline_bound_resources_surface(
+        device,
+        (*RESOURCES_BINDING_AUTHORITY_SELECTORS, RESOURCES_ZERO_CONVERSION_OPTION_ID),
+        scan_id=scan_id,
+        deadline=deadline,
+        scan_observer=scan_observer,
+        tappable_selectors=(RESOURCES_ZERO_CONVERSION_OPTION_ID,),
+        return_scan_proof=True,
+    )
+    if not isinstance(scan, ResourcesSurfaceScanProof):
+        raise RuntimeError("Resources binding scan did not return measured topology")
+    option_viewport = scan.selector_viewports.get(RESOURCES_ZERO_CONVERSION_OPTION_ID)
+    if option_viewport is None:
+        raise RuntimeError("Resources binding scan did not locate the zero-conversion option")
+    reverse_bound = measured_reverse_reacquisition_bound(
+        scan.swipes,
+        option_viewport,
+        maximum_viewport=22,
+    ) + 2
+    option, _ = rewind_to_exact_resource_id(
+        device,
+        RESOURCES_ZERO_CONVERSION_OPTION_ID,
+        max_swipes=reverse_bound,
+        distance_ratio=0.22,
+        evidence_prefix="creation-resources-option-karma-0-measured-reacquisition",
+        surface_name="Exact zero-conversion Resources option",
+        require_tappable=True,
+        deadline=deadline,
+    )
+    scanned_option = scan.nodes[RESOURCES_ZERO_CONVERSION_OPTION_ID]
+    option_identity_keys = ("text", "content-desc", "enabled", "clickable", "class")
+    scanned_identity = tuple(
+        scanned_option.attributes.get(key, "") for key in option_identity_keys
+    )
+    reacquired_identity = tuple(
+        option.attributes.get(key, "") for key in option_identity_keys
+    )
+    if reacquired_identity != scanned_identity:
+        device.capture(
+            "creation-resources-option-karma-0-measured-reacquisition-drift",
+            deadline=deadline,
+        )
+        raise RuntimeError(
+            "Measured zero-conversion Resources option changed between scan and tap"
+        )
+    return resources_authority_from_nodes(scan.nodes), option
+
+
 def read_resources_binding(
     device: shared.Device,
     *,
@@ -8846,71 +9027,14 @@ def read_resources_binding(
     if deadline is not None:
         nodes = scan_deadline_bound_resources_surface(
             device,
-            (
-                "creation-resources-page",
-                "creation-resources-binding-content-revision",
-                "creation-resources-binding-saved-revision",
-                "creation-resources-binding-snapshot-digest",
-                "creation-resources-binding-raw-character-xml-digest",
-                "creation-resources-binding-auxiliary-state-digest",
-                "creation-resources-binding-prerequisite-draft-digest",
-                "creation-resources-authority-digest",
-                "creation-resources-budget-priority-nuyen",
-                "creation-resources-budget-total-starting-nuyen",
-            ),
+            RESOURCES_BINDING_AUTHORITY_SELECTORS,
             scan_id=scan_id,
             deadline=deadline,
             scan_observer=scan_observer,
         )
-        authority = {
-            "contentRevision": required_resources_integer(
-                nodes,
-                "creation-resources-binding-content-revision",
-            ),
-            "savedRevision": required_resources_integer(
-                nodes,
-                "creation-resources-binding-saved-revision",
-            ),
-            "snapshotDigest": required_resources_digest(
-                nodes,
-                "creation-resources-binding-snapshot-digest",
-            ),
-            "rawCharacterXmlDigest": required_resources_digest(
-                nodes,
-                "creation-resources-binding-raw-character-xml-digest",
-            ),
-            "auxiliaryStateDigest": required_resources_auxiliary_digest(
-                nodes,
-                "creation-resources-binding-auxiliary-state-digest",
-            ),
-            "prerequisiteDraftDigest": required_resources_digest(
-                nodes,
-                "creation-resources-binding-prerequisite-draft-digest",
-            ),
-            "authorityDigest": required_resources_digest(
-                nodes,
-                "creation-resources-authority-digest",
-            ),
-            "priorityNuyen": required_resources_integer(
-                nodes,
-                "creation-resources-budget-priority-nuyen",
-            ),
-            "totalStartingNuyen": required_resources_integer(
-                nodes,
-                "creation-resources-budget-total-starting-nuyen",
-            ),
-        }
-        if authority["contentRevision"] <= 0:
-            raise RuntimeError(f"Resources authority revision was invalid: {authority!r}")
-        if (
-            authority["priorityNuyen"] != 50_000
-            or authority["totalStartingNuyen"] != 50_000
-        ):
-            raise RuntimeError(
-                "Priority Resources rank D did not project the canonical 50,000 "
-                f"nuyen grant: {authority!r}"
-            )
-        return authority
+        if isinstance(nodes, ResourcesSurfaceScanProof):
+            raise RuntimeError("Resources binding scan unexpectedly returned topology")
+        return resources_authority_from_nodes(nodes)
 
     def integer(selector: str) -> int:
         return nonnegative_integer(device, selector, scroll=True)
@@ -8958,6 +9082,7 @@ def select_and_confirm_resources(
     device: shared.Device,
     before: dict[str, object],
     *,
+    prelocated_option: shared.UiNode | None = None,
     deadline: float | None = None,
     scan_observer: Callable[[dict[str, object]], None] | None = None,
     scan_id_prefix: str = "creation-resources-confirm",
@@ -8993,21 +9118,24 @@ def select_and_confirm_resources(
             deadline=deadline,
         )
 
-    option_id = "creation-resources-option-karma-0"
-    option_options: dict[str, object] = {
-        "timeout": 90,
-        "backward_scrolls": 22,
-        "forward_scrolls": 22,
-        "scroll_distance_ratio": 0.22,
-        "evidence_prefix": "creation-resources-option-karma-0",
-        "surface_name": "Exact zero-conversion Resources option",
-    }
-    if deadline is not None:
-        option_options["deadline"] = deadline
-    option = device.wait_exact_resource_id_bidirectional(
-        option_id,
-        **option_options,
-    )
+    option_id = RESOURCES_ZERO_CONVERSION_OPTION_ID
+    if prelocated_option is None:
+        option_options: dict[str, object] = {
+            "timeout": 90,
+            "backward_scrolls": 22,
+            "forward_scrolls": 22,
+            "scroll_distance_ratio": 0.22,
+            "evidence_prefix": "creation-resources-option-karma-0",
+            "surface_name": "Exact zero-conversion Resources option",
+        }
+        if deadline is not None:
+            option_options["deadline"] = deadline
+        option = device.wait_exact_resource_id_bidirectional(
+            option_id,
+            **option_options,
+        )
+    else:
+        option = prelocated_option
     _require_canonical_chummer_resource_id(
         device,
         option,
@@ -9017,9 +9145,15 @@ def select_and_confirm_resources(
         deadline=deadline,
     )
     detail = option.attributes.get("content-desc", "")
+    option_is_tappable = (
+        True
+        if deadline is None
+        else device.node_has_tappable_bounds(option, deadline=deadline)
+    )
     if (
         option.attributes.get("enabled") != "true"
         or option.attributes.get("clickable") != "true"
+        or not option_is_tappable
         or "0 Karma" not in detail
         or "50,000" not in detail
     ):
@@ -10012,63 +10146,81 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     if not resumed_authority.attributes_ready:
         raise RuntimeError("Confirmed prerequisite draft did not restore Attributes readiness")
 
-    progress.advance("resources-preview-confirm")
-    resources_deadline = progress.active_phase_deadline("resources-preview-confirm")
-    device.back(deadline=resources_deadline)
+    progress.advance("resources-initial-authority")
+    resources_initial_deadline = progress.active_phase_deadline(
+        "resources-initial-authority"
+    )
+    device.back(deadline=resources_initial_deadline)
     shared.open_creation_dashboard(
         device,
         open_build_route=False,
         dashboard_timeout=60,
         reset_swipes=22,
-        deadline=resources_deadline,
+        deadline=resources_initial_deadline,
     )
-    open_resources(device, deadline=resources_deadline)
-    resources_before = read_resources_binding(
+    open_resources(device, deadline=resources_initial_deadline)
+    resources_before, resources_zero_option = read_resources_binding_with_zero_option(
         device,
-        deadline=resources_deadline,
+        deadline=resources_initial_deadline,
         scan_observer=progress.record_scan,
         scan_id="creation-resources-initial-binding-authority",
+    )
+
+    progress.advance("resources-preview-confirm")
+    resources_confirm_deadline = progress.active_phase_deadline(
+        "resources-preview-confirm"
     )
     resources_confirmation = select_and_confirm_resources(
         device,
         resources_before,
-        deadline=resources_deadline,
+        prelocated_option=resources_zero_option,
+        deadline=resources_confirm_deadline,
         scan_observer=progress.record_scan,
         scan_id_prefix="creation-resources-initial-confirm",
     )
     resources_receipt = resources_confirmation["receipt"]
-    device.capture("creation-resources-confirmed", deadline=resources_deadline)
-    reopen_resources(device, deadline=resources_deadline)
+    device.capture("creation-resources-confirmed", deadline=resources_confirm_deadline)
+
+    progress.advance("resources-same-process-reopen")
+    resources_reopen_deadline = progress.active_phase_deadline(
+        "resources-same-process-reopen"
+    )
+    reopen_resources(device, deadline=resources_reopen_deadline)
     resources_same_process = read_persisted_resources_authority(
         device,
         resources_receipt,
-        deadline=resources_deadline,
+        deadline=resources_reopen_deadline,
         scan_observer=progress.record_scan,
         scan_id="creation-resources-same-process-persisted-authority",
     )
-    device.back(deadline=resources_deadline)
+
+    progress.advance("resources-prerequisite-rebind")
+    resources_rebind_deadline = progress.active_phase_deadline(
+        "resources-prerequisite-rebind"
+    )
+    device.back(deadline=resources_rebind_deadline)
     shared.open_creation_dashboard(
         device,
         open_build_route=False,
         dashboard_timeout=60,
         reset_swipes=22,
-        deadline=resources_deadline,
+        deadline=resources_rebind_deadline,
     )
     post_resources_method_node, _, _ = reacquire_exact_ready_creation_method(
         device,
         expected_detail=post_confirm_dashboard.method_detail,
         max_swipes=DASHBOARD_SCAN_MAX_SCROLLS,
-        deadline=resources_deadline,
+        deadline=resources_rebind_deadline,
     )
     post_resources_origin = open_prerequisite(
         device,
         ready_method_node=post_resources_method_node,
-        deadline=resources_deadline,
+        deadline=resources_rebind_deadline,
     )
     post_resources_prerequisite_authority = read_persisted_prerequisite_authority(
         device,
         initial_observation=post_resources_origin,
-        deadline=resources_deadline,
+        deadline=resources_rebind_deadline,
         scan_observer=progress.record_scan,
         scan_id="post-resources-persisted-prerequisite-authority",
     )

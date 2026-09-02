@@ -1403,7 +1403,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             ]
             self.assertEqual(snapshot, evidence)
             self.assertEqual(
-                "chummer.android.creation-prerequisite-progress/v4",
+                "chummer.android.creation-prerequisite-progress/v5",
                 evidence["schema"],
             )
             self.assertEqual("timing-complete", evidence["status"])
@@ -1456,6 +1456,21 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             progress.advance(driver.PHASE_ORDER[0])
             with self.assertRaisesRegex(RuntimeError, "progress is incomplete"):
                 progress.finish()
+
+    def test_phase_deadline_is_clipped_by_the_whole_journey_cap(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary, mock.patch("builtins.print"):
+            progress = driver.ProgressRecorder(Path(temporary))
+            progress.advance(driver.PHASE_ORDER[0])
+            progress._active_started = (
+                progress.started
+                + (driver.TOTAL_PERFORMANCE_TARGET_MS / 1000)
+                - 10
+            )
+
+            self.assertEqual(
+                progress.started + (driver.TOTAL_PERFORMANCE_TARGET_MS / 1000),
+                progress.active_phase_deadline(driver.PHASE_ORDER[0]),
+            )
 
     def test_advanced_editor_phase_requires_one_resolved_method_receipt(self) -> None:
         for case in ("omitted", "duplicated"):
@@ -1723,9 +1738,9 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             60_000,
             driver.PHASE_BUDGET_MS["prerequisite-authority-inventory"],
         )
-        self.assertEqual(1_800_000, driver.TOTAL_PERFORMANCE_TARGET_MS)
-        self.assertEqual(30, len(driver.PHASE_ORDER))
-        self.assertEqual(15, driver.TIMING_ROUNDING_TOLERANCE_MS)
+        self.assertEqual(2_700_000, driver.TOTAL_PERFORMANCE_TARGET_MS)
+        self.assertEqual(33, len(driver.PHASE_ORDER))
+        self.assertEqual(17, driver.TIMING_ROUNDING_TOLERANCE_MS)
         self.assertLess(navigation_start, cold_launch)
         self.assertLess(cold_launch, dialog_ready)
         self.assertLess(dialog_ready, authority_start)
@@ -1778,7 +1793,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             driver.TIMING_ROUNDING_TOLERANCE_MS,
             aggregate.CREATION_TIMING_ROUNDING_TOLERANCE_MS,
         )
-        self.assertEqual(15, driver.TIMING_ROUNDING_TOLERANCE_MS)
+        self.assertEqual(17, driver.TIMING_ROUNDING_TOLERANCE_MS)
         for phase_id in (
             "talent-active-skill-grant",
             "talent-active-grant-completion",
@@ -1815,7 +1830,23 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         )
         same_grant = phase_slice(
             "same-process-restored-talent-grant",
+            "resources-initial-authority",
+        )
+        resources_initial = phase_slice(
+            "resources-initial-authority",
             "resources-preview-confirm",
+        )
+        resources_confirm = phase_slice(
+            "resources-preview-confirm",
+            "resources-same-process-reopen",
+        )
+        resources_reopen = phase_slice(
+            "resources-same-process-reopen",
+            "resources-prerequisite-rebind",
+        )
+        resources_rebind = phase_slice(
+            "resources-prerequisite-rebind",
+            "process-restart-reopen",
         )
         restart_reopen = phase_slice(
             "process-restart-reopen",
@@ -1838,6 +1869,23 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertNotIn("require_restored_talent_grant(", same_options)
         self.assertIn("require_restored_talent_grant(", same_grant)
         self.assertIn("deadline=same_process_grant_deadline", same_grant)
+
+        self.assertIn("open_creation_dashboard(", resources_initial)
+        self.assertIn("open_resources(", resources_initial)
+        self.assertIn("read_resources_binding_with_zero_option(", resources_initial)
+        self.assertNotIn("select_and_confirm_resources(", resources_initial)
+        self.assertIn("select_and_confirm_resources(", resources_confirm)
+        self.assertIn("prelocated_option=resources_zero_option", resources_confirm)
+        self.assertIn("resources_confirmation[\"receipt\"]", resources_confirm)
+        self.assertNotIn("reopen_resources(", resources_confirm)
+        self.assertIn("reopen_resources(", resources_reopen)
+        self.assertIn("read_persisted_resources_authority(", resources_reopen)
+        self.assertNotIn("open_creation_dashboard(", resources_reopen)
+        self.assertIn("open_creation_dashboard(", resources_rebind)
+        self.assertIn("reacquire_exact_ready_creation_method(", resources_rebind)
+        self.assertIn("read_persisted_prerequisite_authority(", resources_rebind)
+        self.assertIn("assert_persisted_prerequisite_authority(", resources_rebind)
+        self.assertNotIn("force_stop_and_launch_new_process", resources_rebind)
 
         self.assertIn("shared.force_stop_and_launch_new_process", restart_reopen)
         self.assertIn("read_persisted_prerequisite_authority(", restart_reopen)
@@ -2024,6 +2072,125 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                         deadline=driver.time.monotonic() + 30,
                     )
 
+    def test_resources_binding_reacquires_zero_option_from_measured_scan_only(
+        self,
+    ) -> None:
+        digest = "sha256:" + "a" * 64
+        auxiliary = "b" * 64
+        option = self.canonical_node(
+            driver.RESOURCES_ZERO_CONVERSION_OPTION_ID,
+            **{"content-desc": "0 Karma · 50,000 nuyen"},
+        )
+        nodes = {
+            selector: self.canonical_node(selector)
+            for selector in driver.RESOURCES_BINDING_AUTHORITY_SELECTORS
+        }
+        nodes.update({
+            "creation-resources-binding-content-revision": self.canonical_node(
+                "creation-resources-binding-content-revision", text="2"
+            ),
+            "creation-resources-binding-saved-revision": self.canonical_node(
+                "creation-resources-binding-saved-revision", text="1"
+            ),
+            "creation-resources-binding-snapshot-digest": self.canonical_node(
+                "creation-resources-binding-snapshot-digest", text=digest
+            ),
+            "creation-resources-binding-raw-character-xml-digest": self.canonical_node(
+                "creation-resources-binding-raw-character-xml-digest", text=digest
+            ),
+            "creation-resources-binding-auxiliary-state-digest": self.canonical_node(
+                "creation-resources-binding-auxiliary-state-digest", text=auxiliary
+            ),
+            "creation-resources-binding-prerequisite-draft-digest": self.canonical_node(
+                "creation-resources-binding-prerequisite-draft-digest", text=digest
+            ),
+            "creation-resources-authority-digest": self.canonical_node(
+                "creation-resources-authority-digest", text=digest
+            ),
+            "creation-resources-budget-priority-nuyen": self.canonical_node(
+                "creation-resources-budget-priority-nuyen", text="50000"
+            ),
+            "creation-resources-budget-total-starting-nuyen": self.canonical_node(
+                "creation-resources-budget-total-starting-nuyen", text="50000"
+            ),
+            driver.RESOURCES_ZERO_CONVERSION_OPTION_ID: option,
+        })
+        proof = driver.ResourcesSurfaceScanProof(
+            nodes=nodes,
+            swipes=10,
+            selector_viewports={
+                selector: 10 for selector in driver.RESOURCES_BINDING_AUTHORITY_SELECTORS
+            } | {driver.RESOURCES_ZERO_CONVERSION_OPTION_ID: 6},
+        )
+        deadline = driver.time.monotonic() + 30
+        device = mock.Mock()
+        observer = mock.Mock()
+        with mock.patch.object(
+            driver,
+            "scan_deadline_bound_resources_surface",
+            return_value=proof,
+        ) as scan, mock.patch.object(
+            driver,
+            "measured_reverse_reacquisition_bound",
+            return_value=4,
+        ) as measured, mock.patch.object(
+            driver,
+            "rewind_to_exact_resource_id",
+            return_value=(option, 4),
+        ) as rewind:
+            authority, actual_option = driver.read_resources_binding_with_zero_option(
+                device,
+                deadline=deadline,
+                scan_observer=observer,
+                scan_id="resources-measured-option",
+            )
+
+        self.assertIs(option, actual_option)
+        self.assertEqual(50_000, authority["totalStartingNuyen"])
+        scan.assert_called_once_with(
+            device,
+            (
+                *driver.RESOURCES_BINDING_AUTHORITY_SELECTORS,
+                driver.RESOURCES_ZERO_CONVERSION_OPTION_ID,
+            ),
+            scan_id="resources-measured-option",
+            deadline=deadline,
+            scan_observer=observer,
+            tappable_selectors=(driver.RESOURCES_ZERO_CONVERSION_OPTION_ID,),
+            return_scan_proof=True,
+        )
+        measured.assert_called_once_with(10, 6, maximum_viewport=22)
+        self.assertEqual(6, rewind.call_args.kwargs["max_swipes"])
+        self.assertTrue(rewind.call_args.kwargs["require_tappable"])
+        device.wait_exact_resource_id_bidirectional.assert_not_called()
+
+        drifted_option = self.canonical_node(
+            driver.RESOURCES_ZERO_CONVERSION_OPTION_ID,
+            **{"content-desc": "0 Karma · forged grant"},
+        )
+        device.reset_mock()
+        with mock.patch.object(
+            driver,
+            "scan_deadline_bound_resources_surface",
+            return_value=proof,
+        ), mock.patch.object(
+            driver,
+            "measured_reverse_reacquisition_bound",
+            return_value=4,
+        ), mock.patch.object(
+            driver,
+            "rewind_to_exact_resource_id",
+            return_value=(drifted_option, 4),
+        ), self.assertRaisesRegex(RuntimeError, "changed between scan and tap"):
+            driver.read_resources_binding_with_zero_option(
+                device,
+                deadline=deadline,
+            )
+        device.capture.assert_called_once_with(
+            "creation-resources-option-karma-0-measured-reacquisition-drift",
+            deadline=deadline,
+        )
+
     def test_deadline_resources_surface_requires_action_on_terminal_viewport(self) -> None:
         selectors = (
             "creation-resources-preview-page",
@@ -2051,6 +2218,43 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 deadline=driver.time.monotonic() + 30,
                 required_terminal_selectors=("creation-resources-confirm",),
             )
+
+    def test_resources_scan_measures_only_tappable_action_viewports(self) -> None:
+        route = self.canonical_node("creation-resources-page")
+        clipped = self.canonical_node(driver.RESOURCES_ZERO_CONVERSION_OPTION_ID)
+        visible = self.canonical_node(driver.RESOURCES_ZERO_CONVERSION_OPTION_ID)
+        device = mock.Mock()
+        device.node_has_tappable_bounds.side_effect = (True, False)
+        with mock.patch.object(
+            driver,
+            "acquire_stable_start_origin",
+            return_value=self.priority_rank_origin([route, visible]),
+        ), mock.patch.object(
+            driver,
+            "scan_forward_with_receipt",
+            return_value=driver.StableViewportScan(
+                [[route, visible], [route, clipped]],
+                1,
+            ),
+        ):
+            proof = driver.scan_deadline_bound_resources_surface(
+                device,
+                ("creation-resources-page", driver.RESOURCES_ZERO_CONVERSION_OPTION_ID),
+                scan_id="resources-tappable-viewport",
+                deadline=driver.time.monotonic() + 30,
+                tappable_selectors=(driver.RESOURCES_ZERO_CONVERSION_OPTION_ID,),
+                return_scan_proof=True,
+            )
+
+        self.assertIsInstance(proof, driver.ResourcesSurfaceScanProof)
+        self.assertEqual(
+            0,
+            proof.selector_viewports[driver.RESOURCES_ZERO_CONVERSION_OPTION_ID],
+        )
+        self.assertIs(
+            visible,
+            proof.nodes[driver.RESOURCES_ZERO_CONVERSION_OPTION_ID],
+        )
 
     def test_deadline_resources_preview_and_receipt_each_use_one_scan(self) -> None:
         digest = "sha256:" + "a" * 64
@@ -2133,6 +2337,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             result = driver.select_and_confirm_resources(
                 device,
                 {"contentRevision": 1, "savedRevision": 1},
+                prelocated_option=option,
                 deadline=deadline,
             )
 
@@ -2143,7 +2348,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             scan.call_args_list[0].kwargs["required_terminal_selectors"],
         )
         self.assertNotIn("required_terminal_selectors", scan.call_args_list[1].kwargs)
-        self.assertEqual(1, device.wait_exact_resource_id_bidirectional.call_count)
+        device.wait_exact_resource_id_bidirectional.assert_not_called()
         self.assertEqual(2, device.shell.call_count)
 
     def test_creation_karma_budget_cards_expose_readable_semantic_totals(self) -> None:
@@ -5443,7 +5648,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
     def test_same_process_resume_reacquires_method_upward_from_the_proven_bottom(self) -> None:
         source = inspect.getsource(driver.execute)
         start = source.index('progress.advance("same-process-reopen")')
-        end = source.index('progress.advance("resources-preview-confirm")', start)
+        end = source.index('progress.advance("resources-initial-authority")', start)
         resume_source = source[start:end]
         navigation_source = resume_source[: resume_source.index("resumed_authority =")]
 
@@ -10273,7 +10478,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             final_preview,
         )
         self.assertLess(final_preview, source.index("skill_group_plan_digest ="))
-        self.assertEqual(30 * 60 * 1000, driver.TOTAL_PERFORMANCE_TARGET_MS)
+        self.assertEqual(45 * 60 * 1000, driver.TOTAL_PERFORMANCE_TARGET_MS)
         self.assertEqual(
             (len(driver.PHASE_ORDER) + 1) // 2,
             driver.TIMING_ROUNDING_TOLERANCE_MS,
@@ -10534,7 +10739,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "timeout=CONFIRMED_RECEIPT_BACK_ORIGIN_TIMEOUT_SECONDS",
             receipt_source,
         )
-        self.assertEqual(1_800_000, driver.TOTAL_PERFORMANCE_TARGET_MS)
+        self.assertEqual(2_700_000, driver.TOTAL_PERFORMANCE_TARGET_MS)
 
     def test_exact_attributes_round_trip_uses_one_observed_node_and_preserves_raw_bytes(
         self,

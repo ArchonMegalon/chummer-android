@@ -68,7 +68,12 @@ CREATION_PROSPECTIVE_PHASE_ELAPSED_MS = {
     "same-process-reopen": 5_000,
     "same-process-authority-options": 5_000,
     "same-process-restored-talent-grant": 5_000,
-    "resources-preview-confirm": 9_000,
+    # No complete post-split run exists yet.  Use the strict phase caps rather
+    # than inventing faster observed timings for the prospective receipt.
+    "resources-initial-authority": 120_000,
+    "resources-preview-confirm": 240_000,
+    "resources-same-process-reopen": 120_000,
+    "resources-prerequisite-rebind": 180_000,
     "process-restart-reopen": 5_772,
     "process-restart-authority-options": 5_000,
     "process-restart-restored-talent-grant": 5_000,
@@ -638,7 +643,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, expected_error):
                     self.validate(root)
 
-    def test_creation_timing_uses_the_exact_current_thirty_phase_map(self) -> None:
+    def test_creation_timing_uses_the_exact_current_thirty_three_phase_map(self) -> None:
         expected = {
             "device-preflight-install": 180_000,
             "initial-navigation": 60_000,
@@ -665,20 +670,23 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             "same-process-reopen": 90_000,
             "same-process-authority-options": 90_000,
             "same-process-restored-talent-grant": 60_000,
-            "resources-preview-confirm": 150_000,
-            "process-restart-reopen": 90_000,
-            "process-restart-authority-options": 90_000,
-            "process-restart-restored-talent-grant": 60_000,
-            "process-restart-resources": 90_000,
+            "resources-initial-authority": 120_000,
+            "resources-preview-confirm": 240_000,
+            "resources-same-process-reopen": 120_000,
+            "resources-prerequisite-rebind": 180_000,
+            "process-restart-reopen": 120_000,
+            "process-restart-authority-options": 120_000,
+            "process-restart-restored-talent-grant": 90_000,
+            "process-restart-resources": 120_000,
         }
         self.assertEqual(expected, AGGREGATE.CREATION_PHASE_BUDGETS_MS)
         self.assertEqual(
             tuple(expected),
             tuple(CREATION_PROSPECTIVE_PHASE_ELAPSED_MS),
         )
-        self.assertEqual(15, AGGREGATE.CREATION_TIMING_ROUNDING_TOLERANCE_MS)
+        self.assertEqual(17, AGGREGATE.CREATION_TIMING_ROUNDING_TOLERANCE_MS)
         self.assertEqual(
-            557_512,
+            1_208_512,
             sum(CREATION_PROSPECTIVE_PHASE_ELAPSED_MS.values()),
         )
 
@@ -694,6 +702,10 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             "talent-skill-group-reselection",
             "talent-skill-group-grant-completion",
             "same-process-restored-talent-grant",
+            "resources-initial-authority",
+            "resources-preview-confirm",
+            "resources-same-process-reopen",
+            "resources-prerequisite-rebind",
             "process-restart-restored-talent-grant",
         ):
             with self.subTest(phase_id=phase_id, boundary="exact"):
@@ -1510,7 +1522,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
         self,
     ) -> None:
         current_items = tuple(AGGREGATE.CREATION_PHASE_BUDGETS_MS.items())
-        for phase_count in (11, 14, 16, 19, 20, 21, 25, 28):
+        for phase_count in (11, 14, 16, 19, 20, 21, 25, 28, 30):
             legacy_map = dict(current_items[:phase_count])
             self.assertEqual(phase_count, len(legacy_map))
             with self.subTest(phase_count=phase_count):
@@ -1523,10 +1535,10 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                         creation_receipt_with_timing(timing)
                     )
 
-    def test_creation_timing_reconciles_phase_sum_with_exact_fifteen_ms_tolerance(
+    def test_creation_timing_reconciles_phase_sum_with_exact_seventeen_ms_tolerance(
         self,
     ) -> None:
-        for offset in (-15, 15):
+        for offset in (-17, 17):
             with self.subTest(offset=offset, accepted=True):
                 timing = json.loads(json.dumps(
                     self.raw_receipt("creation-prerequisite")["timing"]
@@ -1535,7 +1547,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                 timing["totalElapsedMs"] = phase_sum + offset
                 AGGREGATE.require_creation_timing_within_budget(creation_receipt_with_timing(timing))
 
-        for offset in (-16, 16):
+        for offset in (-18, 18):
             with self.subTest(offset=offset, accepted=False):
                 timing = json.loads(json.dumps(
                     self.raw_receipt("creation-prerequisite")["timing"]

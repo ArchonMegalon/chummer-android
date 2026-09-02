@@ -14,9 +14,12 @@ class Api36CreationResourcesPriorityE2EContractTests(unittest.TestCase):
         text = DRIVER.read_text(encoding="utf-8")
         ast.parse(text)
         for expression in (
-            '"resources-preview-confirm": 150_000',
+            '"resources-initial-authority": 120_000',
+            '"resources-preview-confirm": 240_000',
+            '"resources-same-process-reopen": 120_000',
+            '"resources-prerequisite-rebind": 180_000',
             '"creation-stage-resources"',
-            'option_id = "creation-resources-option-karma-0"',
+            'RESOURCES_ZERO_CONVERSION_OPTION_ID = "creation-resources-option-karma-0"',
             'preview["optionId"] != "karma:0"',
             'preview["priorityGrant"] != 50_000',
             'preview["totalStartingNuyen"] != 50_000',
@@ -48,7 +51,7 @@ class Api36CreationResourcesPriorityE2EContractTests(unittest.TestCase):
         text = DRIVER.read_text(encoding="utf-8")
         self.assertLess(
             text.index('progress.advance("same-process-reopen")'),
-            text.index('progress.advance("resources-preview-confirm")'),
+            text.index('progress.advance("resources-initial-authority")'),
         )
         for expression in (
             'post_resources_prerequisite_authority = read_persisted_prerequisite_authority(',
