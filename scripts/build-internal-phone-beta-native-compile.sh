@@ -43,7 +43,7 @@ cleanup() {
     fi
     evidence_json="$(build_evidence_json)"
     jq -n \
-      --arg contractName "chummer.android.internal-phone-beta-native-compile/v1" \
+      --arg contractName "chummer.android.internal-phone-beta-native-compile/v2" \
       --arg failureStage "$current_stage" \
       --arg journalSha256 "$journal_sha256" \
       --argjson journalSizeBytes "$journal_size" \
@@ -281,8 +281,8 @@ journal_size="$(stat -c '%s' "$journal")"
 evidence_json="$(build_evidence_json)"
 
 jq -n \
-  --arg contractName "chummer.android.internal-phone-beta-native-compile/v1" \
-  --arg schema "chummer.android.internal-phone-beta-native-compile/v1" \
+  --arg contractName "chummer.android.internal-phone-beta-native-compile/v2" \
+  --arg schema "chummer.android.internal-phone-beta-native-compile/v2" \
   --arg sdkVersion "$sdk_version" \
   --arg producerSdkVersion "10.0.103" \
   --arg androidCommit "$android_commit" \
@@ -312,11 +312,15 @@ jq -n \
     status: "pass",
     authorityClass: "internal_phone_beta_only",
     publicationAuthorized: false,
-    dependencyMode: "locked_package_no_siblings",
-    packageOnly: true,
+    dependencyMode: "locked_package_closure_with_pinned_presentation_source",
+    packageOnly: false,
     restoreLockedMode: true,
-    sourceCheckoutsPresent: false,
-    siblingsAllowed: false,
+    sourceCheckoutsPresent: true,
+    ambientSiblingRootsAllowed: false,
+    presentationSourceProjectLibraries: [
+      "Chummer.Desktop.Runtime/1.0.0",
+      "Chummer.Presentation/1.0.0"
+    ],
     serializedBuild: true,
     sdkVersion: $sdkVersion,
     producerSdkVersion: $producerSdkVersion,

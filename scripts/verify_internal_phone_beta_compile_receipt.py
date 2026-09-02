@@ -14,7 +14,13 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
-CONTRACT = "chummer.android.internal-phone-beta-native-compile/v1"
+CONTRACT = "chummer.android.internal-phone-beta-native-compile/v2"
+COMPILE_GRAPH_CONTRACT = "chummer.android.internal-phone-beta-compile-graph/v2"
+DEPENDENCY_MODE = "locked_package_closure_with_pinned_presentation_source"
+PRESENTATION_SOURCE_PROJECT_LIBRARIES = (
+    "Chummer.Desktop.Runtime/1.0.0",
+    "Chummer.Presentation/1.0.0",
+)
 ROOT = Path(__file__).resolve().parents[1]
 EXPECTED_EVIDENCE = (
     "authority-intake.log",
@@ -70,7 +76,8 @@ PASS_ONLY_FIELDS = (
     "packageOnly",
     "restoreLockedMode",
     "sourceCheckoutsPresent",
-    "siblingsAllowed",
+    "ambientSiblingRootsAllowed",
+    "presentationSourceProjectLibraries",
     "phaseResults",
     "evidenceBindings",
 )
@@ -82,7 +89,8 @@ BLOCKED_ALLOWED_KEYS = frozenset({
 PASS_ALLOWED_KEYS = frozenset({
     "contractName", "schema", "status", "authorityClass",
     "publicationAuthorized", "dependencyMode", "packageOnly",
-    "restoreLockedMode", "sourceCheckoutsPresent", "siblingsAllowed",
+    "restoreLockedMode", "sourceCheckoutsPresent", "ambientSiblingRootsAllowed",
+    "presentationSourceProjectLibraries",
     "serializedBuild", "sdkVersion", "producerSdkVersion", "androidCommit",
     "androidTree", "androidWorktreeClean", "presentationCommit",
     "presentationTree", "authorityReceiptSha256", "authorityCacheManifestSha256",
@@ -141,8 +149,10 @@ OWNED_GRAPH_KEYS = frozenset({
     "issues", "repoRoot", "schema", "status", "workspaceRoot",
 })
 PACKAGE_GRAPH_KEYS = frozenset({
-    "chummerPackageCount", "contractName", "dependencyMode", "doesNotAssert",
-    "projectCount", "projectLibraries", "publicationAuthorized", "status",
+    "ambientSiblingRootsAllowed", "chummerPackageCount", "contractName",
+    "dependencyMode", "doesNotAssert", "packageOnly", "projectCount",
+    "presentationSourceProjectLibraries", "publicationAuthorized",
+    "restoreLockedMode", "sourceCheckoutsPresent", "status",
 })
 JOURNAL_STARTED_KEYS = frozenset({
     "command", "contractName", "event", "phase", "processGroupTermination",
@@ -233,6 +243,42 @@ def require_regular(path: Path, label: str) -> None:
         raise ValueError(f"{label} must be a non-symlink regular file")
 
 
+def require_canonical_journal_root(value: str, phase: str) -> str:
+    if (
+        not value
+        or value != value.strip()
+        or "\x00" in value
+        or not Path(value).is_absolute()
+        or os.path.normpath(value) != value
+        or value == os.sep
+    ):
+        raise ValueError(f"journal Presentation root is not canonical: {phase}")
+    return value
+
+
+def journal_presentation_root(command: list[str], phase: str) -> str | None:
+    if phase in {"authority-intake", "package-compile-graph"}:
+        option = "--presentation-root"
+        positions = [
+            index for index, argument in enumerate(command)
+            if argument == option or argument.startswith(f"{option}=")
+        ]
+        if (
+            len(positions) != 1
+            or command[positions[0]] != option
+            or positions[0] + 1 >= len(command)
+        ):
+            raise ValueError(f"journal Presentation root argument is not exact: {phase}")
+        return require_canonical_journal_root(command[positions[0] + 1], phase)
+    if phase in {"locked-restore", "serialized-native-compile"}:
+        prefix = "-p:ChummerPresentationRoot="
+        values = [argument.removeprefix(prefix) for argument in command if argument.startswith(prefix)]
+        if len(values) != 1:
+            raise ValueError(f"journal Presentation root property is not exact: {phase}")
+        return require_canonical_journal_root(values[0], phase)
+    return None
+
+
 def validate_status_contract(payload: dict[str, object]) -> str:
     status = payload.get("status")
     if status not in {"pass", "blocked"}:
@@ -269,11 +315,12 @@ def validate_pass_contract(payload: dict[str, object], android_root: Path | None
         "schema": CONTRACT,
         "authorityClass": AUTHORITY_CLASS,
         "publicationAuthorized": False,
-        "dependencyMode": "locked_package_no_siblings",
-        "packageOnly": True,
+        "dependencyMode": DEPENDENCY_MODE,
+        "packageOnly": False,
         "restoreLockedMode": True,
-        "sourceCheckoutsPresent": False,
-        "siblingsAllowed": False,
+        "sourceCheckoutsPresent": True,
+        "ambientSiblingRootsAllowed": False,
+        "presentationSourceProjectLibraries": list(PRESENTATION_SOURCE_PROJECT_LIBRARIES),
         "serializedBuild": True,
         "sdkVersion": CONSUMER_SDK_VERSION,
         "producerSdkVersion": PRODUCER_SDK_VERSION,
@@ -410,7 +457,9 @@ def validate_authority_evidence(paths: dict[str, Path], facts: JournalFacts) -> 
         presentation = require_object(authority.get("presentationSource"), "presentationSource")
         verification = require_object(authority.get("verificationReceipt"), "verificationReceipt")
         sdk = require_object(authority.get("sdkAuthority"), "sdkAuthority")
-        dependency = require_object(authority.get("dependencyMode"), "dependencyMode")
+        package_plane_dependency = require_object(
+            authority.get("dependencyMode"), "package-plane dependencyMode"
+        )
         package_lock = require_object(authority.get("packagePlaneLock"), "packagePlaneLock")
         cache = require_object(authority.get("artifactCache"), "artifactCache")
         android_locks = authority.get("androidConsumerLocks")
@@ -434,7 +483,7 @@ def validate_authority_evidence(paths: dict[str, Path], facts: JournalFacts) -> 
             package_lock.get("sha256") == PACKAGE_AUTHORITY_SHA256,
             sdk.get("packageProofSdkVersion") == PRODUCER_SDK_VERSION,
             sdk.get("selectedAndroidConsumerSdkVersion") == CONSUMER_SDK_VERSION,
-            dependency == {
+            package_plane_dependency == {
                 "packageOnly": True,
                 "restoreLockedMode": True,
                 "sourceCheckoutsPresent": False,
@@ -485,15 +534,19 @@ def validate_graph_evidence(paths: dict[str, Path], facts: JournalFacts) -> None
         if package is not None:
             require_exact_keys(package, PACKAGE_GRAPH_KEYS, "package compile graph evidence")
             expected = {
+                "ambientSiblingRootsAllowed": False,
                 "chummerPackageCount": 12,
-                "contractName": "chummer.android.internal-phone-beta-compile-graph/v1",
-                "dependencyMode": "locked_package_no_siblings",
+                "contractName": COMPILE_GRAPH_CONTRACT,
+                "dependencyMode": DEPENDENCY_MODE,
                 "doesNotAssert": ["api36_device_execution", "public_release_readiness"],
+                "packageOnly": False,
                 "projectCount": 3,
-                "projectLibraries": [
-                    "Chummer.Desktop.Runtime/1.0.0", "Chummer.Presentation/1.0.0",
-                ],
+                "presentationSourceProjectLibraries": list(
+                    PRESENTATION_SOURCE_PROJECT_LIBRARIES
+                ),
                 "publicationAuthorized": False,
+                "restoreLockedMode": True,
+                "sourceCheckoutsPresent": True,
                 "status": "pass",
             }
             if passed and package != expected:
@@ -520,6 +573,7 @@ def validate_journal(
     failed_phase_has_result = False
     passed_phases: list[str] = []
     finished_phases: list[str] = []
+    presentation_root: str | None = None
     while row_index < len(rows):
         if phase_index >= len(PHASES):
             raise ValueError("command journal contains a later phase/result after completion")
@@ -590,6 +644,12 @@ def validate_journal(
         if not all(common) or termination.get("groupAbsent") is not True:
             raise ValueError(f"command journal phase facts mismatch: {phase}")
         command = [str(value) for value in started["command"]]
+        phase_presentation_root = journal_presentation_root(command, phase)
+        if phase_presentation_root is not None:
+            if presentation_root is None:
+                presentation_root = phase_presentation_root
+            elif phase_presentation_root != presentation_root:
+                raise ValueError(f"journal Presentation root mismatch: {phase}")
         required_arguments = {
             "authority-intake": (
                 "verify_internal_phone_beta_package_authority.py",

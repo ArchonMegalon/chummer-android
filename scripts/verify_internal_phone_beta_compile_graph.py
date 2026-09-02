@@ -12,7 +12,12 @@ from typing import Any
 import verify_internal_phone_beta_package_authority as authority
 
 
-CONTRACT = "chummer.android.internal-phone-beta-compile-graph/v1"
+CONTRACT = "chummer.android.internal-phone-beta-compile-graph/v2"
+DEPENDENCY_MODE = "locked_package_closure_with_pinned_presentation_source"
+PRESENTATION_SOURCE_PROJECT_LIBRARIES = (
+    "Chummer.Desktop.Runtime/1.0.0",
+    "Chummer.Presentation/1.0.0",
+)
 EXPECTED_CHUMMER_IDS = tuple(authority.EXPECTED_COMPILE_PACKAGES)
 
 
@@ -67,7 +72,7 @@ def validate_compile_graph(
         identity for identity, metadata in libraries.items()
         if isinstance(metadata, dict) and metadata.get("type") == "project"
     }
-    if project_libraries != {"Chummer.Desktop.Runtime/1.0.0", "Chummer.Presentation/1.0.0"}:
+    if project_libraries != set(PRESENTATION_SOURCE_PROJECT_LIBRARIES):
         raise ValueError("internal phone-beta assets contain a missing or sibling project library")
     chummer_libraries: dict[str, str] = {}
     for identity, metadata in libraries.items():
@@ -103,9 +108,13 @@ def validate_compile_graph(
         "status": "pass",
         "publicationAuthorized": False,
         "projectCount": len(actual_projects),
-        "projectLibraries": sorted(project_libraries),
+        "presentationSourceProjectLibraries": sorted(project_libraries),
         "chummerPackageCount": len(chummer_libraries),
-        "dependencyMode": "locked_package_no_siblings",
+        "dependencyMode": DEPENDENCY_MODE,
+        "packageOnly": False,
+        "restoreLockedMode": True,
+        "sourceCheckoutsPresent": True,
+        "ambientSiblingRootsAllowed": False,
         "doesNotAssert": ["api36_device_execution", "public_release_readiness"],
     }
 
