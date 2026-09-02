@@ -1,0 +1,63 @@
+<Project>
+  <!--
+    Microsoft.Android.Sdk.Linux 36.1.69 passes satellite resource assemblies to
+    AssemblyModifierPipeline after trimming. The task expects ordinary managed
+    assemblies there, so keep the SDK target intact except for its two file lists.
+
+    Chummer.Android.AfterMicrosoftNETSdk.targets imports this file after the SDK
+    target list and only for the affected Android SDK version. A later SDK
+    therefore keeps its own target.
+  -->
+  <Target Name="_AfterILLinkAdditionalSteps"
+          DependsOnTargets="_LinkAssembliesNoShrinkInputs"
+          Condition="'$(PublishTrimmed)' == 'true'"
+          Inputs="$(_AndroidLinkFlag)"
+          Outputs="$(_AdditionalPostLinkerStepsFlag)">
+    <ItemGroup>
+      <_ChummerAssemblyModifierPipelineFile
+          Remove="@(_ChummerAssemblyModifierPipelineFile)" />
+      <_ChummerAssemblyModifierPipelineExcludedFile
+          Remove="@(_ChummerAssemblyModifierPipelineExcludedFile)" />
+      <_ChummerAssemblyModifierPipelineUnexpectedExcludedFile
+          Remove="@(_ChummerAssemblyModifierPipelineUnexpectedExcludedFile)" />
+      <_ChummerAssemblyModifierPipelineUnexpectedIncludedSatellite
+          Remove="@(_ChummerAssemblyModifierPipelineUnexpectedIncludedSatellite)" />
+      <_ChummerAssemblyModifierPipelineFile
+          Include="@(ResolvedAssemblies->WithMetadataValue('PostprocessAssembly', 'true'))" />
+      <_ChummerAssemblyModifierPipelineExcludedFile
+          Include="@(ResolvedAssemblies)"
+          Exclude="@(_ChummerAssemblyModifierPipelineFile)" />
+      <_ChummerAssemblyModifierPipelineUnexpectedExcludedFile
+          Include="@(_ChummerAssemblyModifierPipelineExcludedFile)"
+          Condition="'%(Extension)' != '.dll' Or !$([System.String]::new('%(Filename)').EndsWith('.resources', System.StringComparison.Ordinal)) Or '%(AssetType)' != 'resources' Or '%(DestinationSubPath)' == '' Or '%(DestinationSubPath)' == '%(Filename)%(Extension)'" />
+      <_ChummerAssemblyModifierPipelineUnexpectedIncludedSatellite
+          Include="@(_ChummerAssemblyModifierPipelineFile)"
+          Condition="'%(Extension)' == '.dll' And $([System.String]::new('%(Filename)').EndsWith('.resources', System.StringComparison.Ordinal))" />
+    </ItemGroup>
+
+    <Error
+        Condition="'@(_ChummerAssemblyModifierPipelineUnexpectedExcludedFile)' != ''"
+        Text="Microsoft.Android.Sdk.Linux 36.1.69 workaround refused to exclude non-satellite assemblies: @(_ChummerAssemblyModifierPipelineUnexpectedExcludedFile, ', ')" />
+    <Error
+        Condition="'@(_ChummerAssemblyModifierPipelineUnexpectedIncludedSatellite)' != ''"
+        Text="Microsoft.Android.Sdk.Linux 36.1.69 marked satellite resource assemblies for post-processing: @(_ChummerAssemblyModifierPipelineUnexpectedIncludedSatellite, ', ')" />
+
+    <AssemblyModifierPipeline
+        ApplicationJavaClass="$(AndroidApplicationJavaClass)"
+        CodeGenerationTarget="$(_AndroidJcwCodegenTarget)"
+        Debug="$(AndroidIncludeDebugSymbols)"
+        DestinationFiles="@(_ChummerAssemblyModifierPipelineFile)"
+        Deterministic="$(Deterministic)"
+        EnableMarshalMethods="$(_AndroidUseMarshalMethods)"
+        ErrorOnCustomJavaObject="$(AndroidErrorOnCustomJavaObject)"
+        PackageNamingPolicy="$(AndroidPackageNamingPolicy)"
+        ReadSymbols="$(_AndroidLinkAssembliesReadSymbols)"
+        ResolvedAssemblies="@(_AllResolvedAssemblies)"
+        ResolvedUserAssemblies="@(ResolvedUserAssemblies)"
+        SourceFiles="@(_ChummerAssemblyModifierPipelineFile)"
+        TargetName="$(TargetName)">
+    </AssemblyModifierPipeline>
+
+    <Touch Files="$(_AdditionalPostLinkerStepsFlag)" AlwaysCreate="true" />
+  </Target>
+</Project>
