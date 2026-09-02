@@ -2178,19 +2178,14 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                     side_effect=lambda seconds: now.__setitem__(0, now[0] + seconds),
                 ),
             ):
-                with self.assertRaises(DRIVER.AdbTransportError):
-                    device.hierarchy(deadline=12.0)
+                self.assertEqual([], device.hierarchy(deadline=12.0))
 
-        reserved = (
-            3 * DRIVER.ADB_FILE_HIERARCHY_IDENTITY_READ_ATTEMPT_MAX_SECONDS
-            + DRIVER.ADB_FILE_HIERARCHY_IDENTITY_HEADROOM_SECONDS
-        )
-        self.assertEqual([12.0 - reserved], observed_dump_timeouts)
+        self.assertEqual([], observed_dump_timeouts)
         self.assertEqual([], observed_owned_read_timeouts)
-        self.assertLessEqual(now[0], 12.0)
+        self.assertEqual(0.0, now[0])
         issued = [tuple(invocation.args[0][3:]) for invocation in run.call_args_list]
         self.assertEqual(
-            1,
+            0,
             issued.count(("shell", *DRIVER.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS)),
         )
         self.assertNotIn(
@@ -2272,7 +2267,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
 
         issued = [tuple(invocation.args[0][3:]) for invocation in run.call_args_list]
         self.assertEqual(
-            DRIVER.ADB_FILE_HIERARCHY_MAX_ATTEMPTS,
+            2,
             issued.count(("shell", *DRIVER.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS)),
         )
         self.assertEqual(
@@ -2280,8 +2275,8 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             0,
         )
         self.assertNotIn(DRIVER.ADB_READ_ONLY_HIERARCHY_ARGUMENTS, issued)
-        self.assertEqual("adb-transport-event-0003.json", raised.exception.receipt["evidenceFile"])
-        self.assertEqual(3, summary["eventCount"])
+        self.assertEqual("adb-transport-event-0002.json", raised.exception.receipt["evidenceFile"])
+        self.assertEqual(2, summary["eventCount"])
         self.assertEqual(1, summary["terminalFailureCount"])
         self.assertIsNone(device._mutation_blocker)
 
@@ -2782,7 +2777,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 patch.object(DRIVER.time, "monotonic", side_effect=monotonic),
                 patch.object(DRIVER.time, "sleep", side_effect=sleep),
             ):
-                nodes = device.hierarchy(deadline=100.0)
+                nodes = device.hierarchy(deadline=200.0)
 
         self.assertEqual("Current runner root", nodes[0].attributes["text"])
         self.assertEqual(
@@ -2908,7 +2903,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 encoding="utf-8"
             )
             self.assertIn("caller-owned deadline", diagnostic)
-            self.assertIn("cannot preserve its owned-file reconciliation reserve", diagnostic)
+            self.assertIn("cannot preserve its owned-file retry and reconciliation reserve", diagnostic)
 
     def test_missing_fresh_file_visibility_read_fails_closed_on_transport_error(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -3072,20 +3067,20 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             return_value=90.0,
         ):
             device.evidence = Path(temporary)
-            nodes = DRIVER.Device.hierarchy(device, deadline=100.0)
+            nodes = DRIVER.Device.hierarchy(device, deadline=200.0)
 
         self.assertEqual("Current runner root", nodes[0].attributes["text"])
         self.assertEqual(
             [
                 call(
                     *DRIVER.ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS,
-                    timeout=10.0,
-                    deadline=100.0,
+                    timeout=DRIVER.ADB_FILE_HIERARCHY_FRESHNESS_BARRIER_ATTEMPT_MAX_SECONDS,
+                    deadline=200.0,
                 ),
                 call(
                     *DRIVER.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
-                    timeout=3.5,
-                    deadline=100.0,
+                    timeout=20.0,
+                    deadline=200.0,
                 ),
             ],
             device.shell.call_args_list,
@@ -3094,8 +3089,8 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             "exec-out",
             "cat",
             DRIVER.ADB_FILE_HIERARCHY_REMOTE_PATH,
-            timeout=10.0,
-            deadline=100.0,
+            timeout=110.0,
+            deadline=200.0,
         )
 
     def test_empty_dump_status_does_not_read_fresh_file_after_deadline(self) -> None:
@@ -3114,12 +3109,8 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             )
 
         self.assertIn("caller-owned deadline", diagnostic)
-        self.assertIn("deadline expired before command invocation", diagnostic)
-        device.shell.assert_called_once_with(
-            *DRIVER.ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS,
-            timeout=10.0,
-            deadline=100.0,
-        )
+        self.assertIn("cannot preserve its owned-file retry and reconciliation reserve", diagnostic)
+        device.shell.assert_not_called()
         device.run.assert_not_called()
 
     def test_empty_dump_status_does_not_read_file_after_dump_deadline(self) -> None:
@@ -3138,22 +3129,8 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             )
 
         self.assertIn("caller-owned deadline", diagnostic)
-        self.assertIn("deadline expired before command invocation", diagnostic)
-        self.assertEqual(
-            [
-                call(
-                    *DRIVER.ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS,
-                    timeout=10.0,
-                    deadline=100.0,
-                ),
-                call(
-                    *DRIVER.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
-                    timeout=3.5,
-                    deadline=100.0,
-                ),
-            ],
-            device.shell.call_args_list,
-        )
+        self.assertIn("cannot preserve its owned-file retry and reconciliation reserve", diagnostic)
+        device.shell.assert_not_called()
         device.run.assert_not_called()
 
     def test_android_hierchary_success_typo_is_accepted(self) -> None:
@@ -7221,17 +7198,17 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             def dump(*arguments: str, **kwargs: object) -> str:
                 self.assertEqual(45.0, kwargs["deadline"])
                 if arguments == DRIVER.ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS:
-                    self.assertEqual(45.0, kwargs["timeout"])
+                    self.assertEqual(
+                        DRIVER.ADB_FILE_HIERARCHY_FRESHNESS_BARRIER_ATTEMPT_MAX_SECONDS,
+                        kwargs["timeout"],
+                    )
                     now[0] = 12.0
                     return ""
                 self.assertEqual(
                     DRIVER.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
                     arguments,
                 )
-                self.assertEqual(
-                    DRIVER.ADB_FILE_HIERARCHY_DUMP_ATTEMPT_MAX_SECONDS,
-                    kwargs["timeout"],
-                )
+                self.assertEqual(16.5, kwargs["timeout"])
                 now[0] = 20.0
                 return "UI hierarchy dumped"
 

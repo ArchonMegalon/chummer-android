@@ -67,6 +67,68 @@ class Api36FileHierarchyObserverRetryTests(unittest.TestCase):
         self.assertEqual(1, len(paths))
         return json.loads(paths[0].read_text(encoding="utf-8"))
 
+    def test_first_dump_reserves_a_fresh_retry_and_reconciliation(self) -> None:
+        reconciliation = (
+            3 * driver.ADB_FILE_HIERARCHY_IDENTITY_READ_ATTEMPT_MAX_SECONDS
+            + driver.ADB_FILE_HIERARCHY_IDENTITY_HEADROOM_SECONDS
+        )
+        fresh_retry = driver._file_hierarchy_retry_headroom(
+            dump_attempt_max_seconds=20.0,
+        )
+        with mock.patch.object(driver.time, "monotonic", return_value=0.0):
+            timeout = driver._hierarchy_dump_attempt_timeout(
+                deadline=(fresh_retry - 20.0)
+                + driver.ADB_FILE_HIERARCHY_FRESHNESS_BARRIER_ATTEMPT_MAX_SECONDS
+                + driver.ADB_READ_ONLY_DEADLINE_HEADROOM_SECONDS
+                + 14.0,
+                maximum=20.0,
+            )
+            later_timeout = driver._hierarchy_dump_attempt_timeout(
+                deadline=(
+                    reconciliation
+                    + driver.ADB_FILE_HIERARCHY_FRESHNESS_BARRIER_ATTEMPT_MAX_SECONDS
+                    + 7.0
+                ),
+                maximum=20.0,
+                reserve_fresh_retry=False,
+            )
+
+        self.assertEqual(7.0, timeout)
+        self.assertEqual(7.0, later_timeout)
+        self.assertEqual(
+            driver.ADB_FILE_HIERARCHY_FRESHNESS_BARRIER_ATTEMPT_MAX_SECONDS
+            + driver.ADB_FILE_HIERARCHY_RETRY_DELAY_SECONDS
+            + 20.0
+            + reconciliation,
+            fresh_retry,
+        )
+
+    def test_too_little_budget_fails_closed_before_freshness_or_dump(self) -> None:
+        reserve = (
+            2 * driver.ADB_FILE_HIERARCHY_FRESHNESS_BARRIER_ATTEMPT_MAX_SECONDS
+            + driver.ADB_FILE_HIERARCHY_RETRY_DELAY_SECONDS
+            + 3 * driver.ADB_FILE_HIERARCHY_IDENTITY_READ_ATTEMPT_MAX_SECONDS
+            + driver.ADB_FILE_HIERARCHY_IDENTITY_HEADROOM_SECONDS
+            + driver.ADB_READ_ONLY_DEADLINE_HEADROOM_SECONDS
+        )
+        with (
+            mock.patch.object(driver.time, "monotonic", return_value=0.0),
+            self.assertRaises(driver.AdbOperationDeadlineExceeded),
+        ):
+            driver._hierarchy_dump_attempt_timeout(
+                deadline=reserve,
+                maximum=20.0,
+            )
+
+        with tempfile.TemporaryDirectory() as temporary:
+            device = self.make_device(Path(temporary))
+            with (
+                mock.patch.object(driver.time, "monotonic", return_value=0.0),
+                mock.patch.object(driver.subprocess, "run") as run,
+            ):
+                self.assertEqual([], device.hierarchy(deadline=reserve))
+            run.assert_not_called()
+
     def assert_failure_then_success(
         self,
         first_failure: BaseException,
@@ -98,6 +160,7 @@ class Api36FileHierarchyObserverRetryTests(unittest.TestCase):
             )
             receipt = self.retry_receipt(evidence)
             self.assertEqual("pass", receipt["status"])
+            self.assertEqual("retrying-read-only", receipt["attempts"][0]["status"])
             self.assertEqual(0, receipt["mutationCommandsRetried"])
             self.assertEqual(
                 ["retrying-read-only", "pass"],
@@ -126,6 +189,70 @@ class Api36FileHierarchyObserverRetryTests(unittest.TestCase):
             subprocess.TimeoutExpired(DUMP, 20),
             "timeout-unknown-outcome",
         )
+
+    def test_short_remaining_lease_slices_first_dump_to_keep_exact_retry(self) -> None:
+        content = strict_hierarchy("Short lease retry")
+        now = [0.0]
+        dump_timeouts: list[float] = []
+        dump_count = 0
+
+        def monotonic() -> float:
+            return now[0]
+
+        def invoke(
+            command: list[str],
+            *,
+            check: bool,
+            capture_output: bool,
+            text: bool,
+            timeout: float,
+        ) -> subprocess.CompletedProcess:
+            nonlocal dump_count
+            arguments = tuple(command[3:])
+            if arguments == REMOVE:
+                now[0] += timeout
+                return complete(REMOVE)
+            if arguments == DUMP:
+                dump_count += 1
+                dump_timeouts.append(timeout)
+                now[0] += timeout
+                if dump_count == 1:
+                    raise subprocess.TimeoutExpired(command, timeout)
+                return complete(DUMP, "UI hierarchy dumped")
+            if arguments == STAT:
+                return metadata(content)
+            if arguments == CONTENT:
+                return complete_bytes(CONTENT, content)
+            raise AssertionError(f"unexpected ADB arguments: {arguments!r}")
+
+        with tempfile.TemporaryDirectory() as temporary:
+            evidence = Path(temporary)
+            device = self.make_device(evidence)
+            with (
+                mock.patch.object(driver.subprocess, "run", side_effect=invoke),
+                mock.patch.object(driver.time, "monotonic", side_effect=monotonic),
+                mock.patch.object(
+                    driver.time,
+                    "sleep",
+                    side_effect=lambda seconds: now.__setitem__(0, now[0] + seconds),
+                ),
+            ):
+                nodes = device.hierarchy(deadline=26.5)
+
+            self.assertEqual("Short lease retry", nodes[0].attributes["text"])
+            self.assertEqual(2, dump_count)
+            self.assertEqual(7.25, dump_timeouts[0])
+            retry_headroom = driver._file_hierarchy_retry_headroom(
+                dump_attempt_max_seconds=dump_timeouts[0],
+            )
+            self.assertGreater(26.5 - (2.0 + dump_timeouts[0]) - retry_headroom, 0.49)
+            self.assertLessEqual(now[0], 26.5)
+            receipt = self.retry_receipt(evidence)
+            self.assertEqual("pass", receipt["status"])
+            self.assertEqual(
+                "metadata-content-metadata-identity",
+                receipt["acceptedObservation"]["reconciliation"],
+            )
 
     def test_exit_137_then_success_uses_a_new_fenced_observer_invocation(self) -> None:
         self.assert_failure_then_success(

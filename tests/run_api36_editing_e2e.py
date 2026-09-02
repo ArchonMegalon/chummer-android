@@ -158,6 +158,8 @@ ADB_FILE_HIERARCHY_MAX_ATTEMPTS = 3
 ADB_FILE_HIERARCHY_RETRY_DELAY_SECONDS = 1.0
 ADB_FILE_HIERARCHY_IDENTITY_READ_ATTEMPT_MAX_SECONDS = 2.0
 ADB_FILE_HIERARCHY_IDENTITY_HEADROOM_SECONDS = 0.5
+ADB_FILE_HIERARCHY_FRESHNESS_BARRIER_ATTEMPT_MAX_SECONDS = 2.0
+ADB_FILE_HIERARCHY_MINIMUM_DUMP_ATTEMPT_SECONDS = 1.0
 ADB_FILE_HIERARCHY_DUMP_ATTEMPT_MAX_SECONDS = 20.0
 ADB_FILE_HIERARCHY_ABSENT_OUTPUT = (
     f"cat: {ADB_FILE_HIERARCHY_REMOTE_PATH}: No such file or directory"
@@ -670,20 +672,60 @@ def _hierarchy_dump_attempt_timeout(
     *,
     deadline: float,
     maximum: float,
+    reserve_fresh_retry: bool = True,
 ) -> float:
-    """Keep enough caller lease for strict metadata/content reconciliation."""
+    """Keep the caller lease for reconciliation and one fresh retry.
+
+    The first file-backed observer invocation is outcome-ambiguous: its
+    process may have written the owned path even when the host sees a timeout.
+    Before allowing that invocation to consume the lease, split the remaining
+    dump budget between the current invocation and one new freshness barrier,
+    retry delay, fresh dump, and strict metadata/content/stat reconciliation.
+    This keeps a viable retry even when the caller has only a short slice left;
+    it does not enlarge the caller-owned deadline.
+    """
+    if type(reserve_fresh_retry) is not bool:
+        raise TypeError("Hierarchy retry reservation policy must be boolean")
     remaining = deadline - time.monotonic()
-    reserved = (
+    current_freshness_reserve = ADB_FILE_HIERARCHY_FRESHNESS_BARRIER_ATTEMPT_MAX_SECONDS
+    reconciliation_reserve = (
         3 * ADB_FILE_HIERARCHY_IDENTITY_READ_ATTEMPT_MAX_SECONDS
         + ADB_FILE_HIERARCHY_IDENTITY_HEADROOM_SECONDS
     )
-    available = remaining - reserved
-    if available <= 0:
+    if reserve_fresh_retry:
+        fixed_retry_reserve = (
+            current_freshness_reserve
+            + ADB_FILE_HIERARCHY_FRESHNESS_BARRIER_ATTEMPT_MAX_SECONDS
+            + ADB_FILE_HIERARCHY_RETRY_DELAY_SECONDS
+            + reconciliation_reserve
+            + ADB_READ_ONLY_DEADLINE_HEADROOM_SECONDS
+        )
+        available = remaining - fixed_retry_reserve
+        # The current and reserved retry dumps share the remaining slice.  If
+        # the caller lease cannot fund two positive slices, fail before the
+        # freshness barrier so no stale file can be mistaken for this attempt.
+        available_for_each_dump = available / 2
+    else:
+        available_for_each_dump = (
+            remaining - current_freshness_reserve - reconciliation_reserve
+        )
+    if available_for_each_dump < ADB_FILE_HIERARCHY_MINIMUM_DUMP_ATTEMPT_SECONDS:
         raise AdbOperationDeadlineExceeded(
             "ADB hierarchy-dump lease cannot preserve its owned-file "
-            "reconciliation reserve"
+            "retry and reconciliation reserve"
         )
-    return min(maximum, available)
+    return min(maximum, available_for_each_dump)
+
+
+def _file_hierarchy_retry_headroom(*, dump_attempt_max_seconds: float) -> float:
+    """Return the lease needed after a failed dump for one fresh retry."""
+    return (
+        ADB_FILE_HIERARCHY_FRESHNESS_BARRIER_ATTEMPT_MAX_SECONDS
+        + ADB_FILE_HIERARCHY_RETRY_DELAY_SECONDS
+        + dump_attempt_max_seconds
+        + 3 * ADB_FILE_HIERARCHY_IDENTITY_READ_ATTEMPT_MAX_SECONDS
+        + ADB_FILE_HIERARCHY_IDENTITY_HEADROOM_SECONDS
+    )
 
 
 def _direct_hierarchy_observation_timeout(
@@ -1390,20 +1432,26 @@ class Device:
                     if file_hierarchy_dump
                     else ADB_READ_ONLY_RETRY_DELAY_SECONDS
                 )
-                retry_headroom = retry_delay
-                if file_hierarchy_dump:
-                    retry_headroom += (
-                        3 * ADB_FILE_HIERARCHY_IDENTITY_READ_ATTEMPT_MAX_SECONDS
-                        + ADB_FILE_HIERARCHY_IDENTITY_HEADROOM_SECONDS
+                retry_headroom = (
+                    _file_hierarchy_retry_headroom(
+                        dump_attempt_max_seconds=timeout,
                     )
+                    if file_hierarchy_dump
+                    else retry_delay
+                )
+                retry_deadline_permits = (
+                    deadline is None
+                    or (
+                        deadline - time.monotonic() >= retry_headroom
+                        if file_hierarchy_dump
+                        else deadline - time.monotonic() > retry_headroom
+                    )
+                )
                 may_retry = (
                     command_policy == "read-only-retryable"
                     and retryable
                     and receipt_attempt < receipt_maximum_attempts
-                    and (
-                        deadline is None
-                        or deadline - time.monotonic() > retry_headroom
-                    )
+                    and retry_deadline_permits
                 )
                 receipt, path = self._write_transport_event(
                     arguments=adb_arguments,
@@ -1853,6 +1901,15 @@ class Device:
                 # ADB does not preserve an argv element as the script operand of
                 # ``sh -c``. Keep one exact one-shot remove as the identity fence
                 # for each new observer invocation.
+                dump_timeout = (
+                    dump_attempt_max_seconds
+                    if deadline is None
+                    else _hierarchy_dump_attempt_timeout(
+                        deadline=deadline,
+                        maximum=dump_attempt_max_seconds,
+                        reserve_fresh_retry=dump_attempt == 1,
+                    )
+                )
                 if deadline is None:
                     self.shell(*ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS)
                 else:
@@ -1860,11 +1917,14 @@ class Device:
                         *ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS,
                         timeout=_remaining_operation_timeout(
                             deadline=deadline,
-                            maximum=120,
+                            maximum=ADB_FILE_HIERARCHY_FRESHNESS_BARRIER_ATTEMPT_MAX_SECONDS,
                         ),
                         deadline=deadline,
                     )
-                    _remaining_operation_timeout(deadline=deadline, maximum=120)
+                    _remaining_operation_timeout(
+                        deadline=deadline,
+                        maximum=ADB_FILE_HIERARCHY_FRESHNESS_BARRIER_ATTEMPT_MAX_SECONDS,
+                    )
                 self._file_hierarchy_context = (
                     dump_attempt,
                     ADB_FILE_HIERARCHY_MAX_ATTEMPTS,
@@ -1878,10 +1938,7 @@ class Device:
                     else:
                         dump_output = self.shell(
                             *ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
-                            timeout=_hierarchy_dump_attempt_timeout(
-                                deadline=deadline,
-                                maximum=dump_attempt_max_seconds,
-                            ),
+                            timeout=dump_timeout,
                             deadline=deadline,
                         )
                 except AdbTransportError as error:
@@ -1902,7 +1959,15 @@ class Device:
                                 observation=None,
                             )
                         raise
-                    time.sleep(ADB_FILE_HIERARCHY_RETRY_DELAY_SECONDS)
+                    if deadline is None:
+                        time.sleep(ADB_FILE_HIERARCHY_RETRY_DELAY_SECONDS)
+                    else:
+                        time.sleep(
+                            _remaining_operation_timeout(
+                                deadline=deadline,
+                                maximum=ADB_FILE_HIERARCHY_RETRY_DELAY_SECONDS,
+                            )
+                        )
                     continue
                 finally:
                     self._file_hierarchy_context = None
