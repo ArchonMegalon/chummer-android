@@ -341,8 +341,12 @@ public sealed class BuildPage : NativePageBase
         TimeSpan.FromSeconds(25);
     private readonly VerticalStackLayout _body = new()
     {
-        Padding = new Thickness(20, 18, 20, 40),
+        Padding = new Thickness(20, 16, 20, 40),
         Spacing = 16
+    };
+    private readonly ContentView _routeMarkerHost = new()
+    {
+        Padding = new Thickness(20, 18, 20, 0)
     };
     private readonly ToolbarItem _save;
     private readonly LatestBackgroundProjectionQueue<
@@ -447,7 +451,19 @@ public sealed class BuildPage : NativePageBase
             ScheduleCreationFinalizationAcceptance(completion.Request);
         _creationFinalizationQueue.Failed += failure =>
             ScheduleCreationFinalizationAcceptance(failure.Request);
-        Content = new ScrollView { Content = _body };
+        ScrollView bodyScroll = new() { Content = _body };
+        Grid page = new()
+        {
+            RowDefinitions =
+            {
+                new RowDefinition(GridLength.Auto),
+                new RowDefinition(GridLength.Star)
+            }
+        };
+        page.Add(_routeMarkerHost);
+        page.Add(bodyScroll);
+        Grid.SetRow(bodyScroll, 1);
+        Content = page;
     }
 
     protected override void OnAppearing()
@@ -479,6 +495,7 @@ public sealed class BuildPage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
+        _routeMarkerHost.Content = null;
         _save.Text = BuildPageUiProjection.SaveToolbarText(Coordinator.HasDurableSaveNotice);
         _save.IsEnabled = Coordinator.State.Profile is not null;
         BuildPageRouteMarker routeMarker = BuildPageUiProjection.RouteMarker(Coordinator.State.Profile);
@@ -524,13 +541,13 @@ public sealed class BuildPage : NativePageBase
         marker.AutomationId = automationId;
         CharacterCreationFinalizationReceipt? persistedReceipt =
             Coordinator.LoadPersistedPriorityCreationReceipt();
-        _body.Add(persistedReceipt is null
+        _routeMarkerHost.Content = persistedReceipt is null
             ? marker
             : NativeAuthoritySemantics.Overlay(
                 marker,
                 NativeAuthoritySemantics.Digest(
                     "phone-workspace-creation-receipt-digest",
-                    persistedReceipt.ReceiptDigest)));
+                    persistedReceipt.ReceiptDigest));
     }
 
     private void AddSr5CareerWizardRoute()
