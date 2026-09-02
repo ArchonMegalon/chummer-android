@@ -20,13 +20,13 @@ def test_phone_table_exposes_only_typed_contextual_mutations() -> None:
         "training",
         "acquisition/install/repair/crafting",
         "lifestyle/contact/project",
-        "damage/conditions",
         "temporary modifiers",
         "initiative",
         "run-state",
     ):
         assert blocker in source
     assert "No generic mutation fallback is used." in source
+    assert "Physical/Stun damage tracks" in source
 
 
 def test_playtime_uses_one_restart_safe_typed_transaction_presenter() -> None:
@@ -45,8 +45,24 @@ def test_playtime_uses_one_restart_safe_typed_transaction_presenter() -> None:
     assert "ApplyCareerEdgeUseEditAsync(" in page
     assert "ApplyCareerWeaponFireAsync(" in page
 
+    damage_page = (
+        REPO / "src/Chummer.Android/Native/Sr5PlaytimeDamageWizardPage.cs"
+    ).read_text(encoding="utf-8")
+    damage_transaction = (
+        REPO / "src/Chummer.Android/Native/Sr5PlaytimeDamageTransaction.cs"
+    ).read_text(encoding="utf-8")
+    assert 'automationId: $"sr5-table-playtime-damage-{token}"' in page
+    assert "new Sr5PlaytimeDamageWizardPage(" in page
+    assert "state.Snapshot.WorkspaceId" in page
+    assert "Sr5PlaytimeDamageIntegrity.IsSupportedTrack(track.Track)" in page
+    assert "!track.ActsAsAlternateTrack" in page
+    assert "ApplyConditionMonitorEditAsync(" in damage_page
+    assert "Sr5CareerMutationDomains.PlaytimeDamage" in damage_transaction
+    assert "observed.WorkspaceRevision != journal.Quote.Original.WorkspaceRevision + 1" in damage_transaction
+
     for phase in ("Reviewed", "Applying", "Applied"):
         assert phase in transaction
+        assert phase in damage_transaction
     assert "ExpectedPostconditionDigest" in transaction
     assert "IdempotencyKey" in transaction
     assert "TryReturnToReview(" in transaction

@@ -521,7 +521,6 @@ Vista previa: {3}…</value></data>
   <data name="SR5 Career · table-safe actions" xml:space="preserve"><value>Carrera SR5 · acciones seguras para la mesa</value></data>
   <data name="Save not verified" xml:space="preserve"><value>Guardado no verificado</value></data>
   <data name="Saved EdgeUsed changes by exactly one: {0} → {1}." xml:space="preserve"><value>El EdgeUsed guardado cambia exactamente en uno: {0} → {1}.</value></data>
-  <data name="Selection saves a digest-bound review draft. Apply still rechecks workspace revision and uses only the existing typed Edge or Weapon request." xml:space="preserve"><value>La selección guarda un borrador de revisión vinculado al resumen. Aplicar vuelve a comprobar la revisión y solo usa la solicitud tipada existente de Edge o Arma.</value></data>
   <data name="Short Burst" xml:space="preserve"><value>Ráfaga corta</value></data>
   <data name="Single Shot" xml:space="preserve"><value>Disparo único</value></data>
   <data name="Spend 1 Edge" xml:space="preserve"><value>Gastar 1 Edge</value></data>
@@ -535,7 +534,6 @@ Vista previa: {3}…</value></data>
   <data name="The saved review belonged to another runner and was discarded." xml:space="preserve"><value>La revisión guardada pertenecía a otro runner y se descartó.</value></data>
   <data name="The saved review belonged to another table lane and was discarded." xml:space="preserve"><value>La revisión guardada pertenecía a otro carril de mesa y se descartó.</value></data>
   <data name="The saved runner changed. Return to Career and reopen this table wizard." xml:space="preserve"><value>El runner guardado cambió. Vuelve a Carrera y abre otra vez este asistente de mesa.</value></data>
-  <data name="Use exact Edge and direct Weapon-fire actions without opening unrestricted runner editing." xml:space="preserve"><value>Usa acciones exactas de Edge y disparo directo sin abrir la edición irrestricta del runner.</value></data>
   <data name="Workspace {0} · revision {1} · snapshot {2}" xml:space="preserve"><value>Espacio de trabajo {0} · revisión {1} · instantánea {2}</value></data>
   <data name="{0} rounds · ammo {1} → {2}{3}" xml:space="preserve"><value>{0} proyectiles · munición {1} → {2}{3}</value></data>
   <data name="-99.00 through 1000.00" xml:space="preserve"><value>de -99,00 a 1000,00</value></data>
@@ -683,7 +681,52 @@ Vista previa: {3}…</value></data>
   <data name="Settle governed rewards, Heat/reputation, contacts, approvals and the atomic Core receipt" xml:space="preserve"><value>Liquidar recompensas controladas, Heat/reputación, contactos, aprobaciones y el recibo atómico de Core</value></data>
   <data name="Review, confirm and persist one exact SR5 Calendar add, edit or delete with restart recovery" xml:space="preserve"><value>Revisar, confirmar y guardar una adición, edición o eliminación exacta del calendario SR5 con recuperación tras reiniciar</value></data>
   <data name="Playtime" xml:space="preserve"><value>Partida</value></data>
-  <data name="Quote, review and confirm exact Edge or direct-weapon ammunition changes with a restart-safe receipt" xml:space="preserve"><value>Cotizar, revisar y confirmar cambios exactos de Edge o munición de arma directa con un recibo seguro tras reiniciar</value></data>
-  <data name="Before Run exposes only typed Edge, and Playtime exposes only typed Edge and direct-weapon ammunition. Downtime healing, training, acquisition/install/repair/crafting, lifestyle/contact/project planning, and Playtime damage/conditions, temporary modifiers, initiative and run-state remain blocked until composed typed quote/time/receipt authorities exist. No generic mutation fallback is used." xml:space="preserve"><value>Antes del run solo está disponible el Edge tipado, y durante la partida solo están disponibles el Edge tipado y la munición de armas directas. La curación y el entrenamiento de descanso, la adquisición/instalación/reparación/fabricación, la planificación de estilos de vida/contactos/proyectos y el daño/condiciones, los modificadores temporales, la iniciativa y el estado del run durante la partida siguen bloqueados hasta que existan autoridades tipadas compuestas de oferta/tiempo/recibo. No se usa ninguna mutación genérica alternativa.</value></data>
+  <data name="Quote, review and confirm exact Edge, direct-weapon ammunition, or Physical/Stun damage changes with a restart-safe receipt" xml:space="preserve"><value>Cotizar, revisar y confirmar cambios exactos de Edge, munición de arma directa o daño físico/aturdimiento con un recibo seguro tras reiniciar</value></data>
+  <data name="Before Run exposes only typed Edge, and Playtime exposes only typed Edge, direct-weapon ammunition, and Physical/Stun damage tracks. Downtime healing, training, acquisition/install/repair/crafting, lifestyle/contact/project planning, and Playtime temporary modifiers, initiative and run-state remain blocked until composed typed quote/time/receipt authorities exist. No generic mutation fallback is used." xml:space="preserve"><value>Antes del run solo está disponible el Edge tipado; durante la partida están disponibles el Edge tipado, la munición de arma directa y las pistas de daño físico/aturdimiento. La curación y el entrenamiento de descanso, la adquisición/instalación/reparación/fabricación, la planificación de estilos de vida/contactos/proyectos y los modificadores temporales, la iniciativa y el estado del run durante la partida siguen bloqueados hasta que existan autoridades tipadas compuestas de oferta/tiempo/recibo. No se usa ninguna mutación genérica alternativa.</value></data>
   <data name="Before Run" xml:space="preserve"><value>Antes del run</value></data>
+  <data name="A damage transaction for another runner or track occupies this journal." xml:space="preserve"><value>Una transacción de daño de otro runner o pista ocupa este diario.</value></data>
+  <data name="Action {0} · revision {1} · quote {2}" xml:space="preserve"><value>Acción {0} · revisión {1} · oferta {2}</value></data>
+  <data name="Applying is durable before the mutation. Only the exact next revision and selected box count can release its mutation owner." xml:space="preserve"><value>El estado de aplicación se guarda antes de la mutación. Solo la revisión siguiente exacta con la cantidad de casillas elegida puede liberar a su propietario de mutación.</value></data>
+  <data name="Choose a different valid box count before review." xml:space="preserve"><value>Elige otra cantidad válida de casillas antes de revisar.</value></data>
+  <data name="Choose one exact saved box count. Review and confirmation are bound to this runner revision and recover through one durable receipt." xml:space="preserve"><value>Elige una cantidad exacta de casillas guardadas. La revisión y la confirmación quedan vinculadas a esta revisión del runner y se recuperan mediante un recibo duradero.</value></data>
+  <data name="Condition tracks" xml:space="preserve"><value>Pistas de condición</value></data>
+  <data name="Confirm and save exact damage" xml:space="preserve"><value>Confirmar y guardar el daño exacto</value></data>
+  <data name="Confirmation unavailable" xml:space="preserve"><value>Confirmación no disponible</value></data>
+  <data name="Core proved no mutation after restart. Confirm the exact review again." xml:space="preserve"><value>Core demostró que no hubo mutación tras reiniciar. Confirma de nuevo la revisión exacta.</value></data>
+  <data name="Core proved the runner stayed at the reviewed revision. Confirm again if desired." xml:space="preserve"><value>Core demostró que el runner permaneció en la revisión comprobada. Confirma de nuevo si lo deseas.</value></data>
+  <data name="Damage outcome unknown" xml:space="preserve"><value>Resultado del daño desconocido</value></data>
+  <data name="Damage saved" xml:space="preserve"><value>Daño guardado</value></data>
+  <data name="Exact saved boxes {0} / {1} · review and receipt required" xml:space="preserve"><value>Casillas guardadas exactas {0} / {1} · se requieren revisión y recibo</value></data>
+  <data name="Filled boxes" xml:space="preserve"><value>Casillas llenas</value></data>
+  <data name="Filled boxes after this action" xml:space="preserve"><value>Casillas llenas después de esta acción</value></data>
+  <data name="Loading the exact saved damage track…" xml:space="preserve"><value>Cargando la pista de daño guardada exacta…</value></data>
+  <data name="No exact change" xml:space="preserve"><value>Sin cambio exacto</value></data>
+  <data name="No mutation observed" xml:space="preserve"><value>No se observó ninguna mutación</value></data>
+  <data name="Only the exact verified Playtime damage receipt may be acknowledged." xml:space="preserve"><value>Solo se puede confirmar el recibo de daño de partida verificado exacto.</value></data>
+  <data name="Physical" xml:space="preserve"><value>Físico</value></data>
+  <data name="Playtime · {0} damage" xml:space="preserve"><value>Partida · daño {0}</value></data>
+  <data name="Reopen Playtime and quote the current saved damage track." xml:space="preserve"><value>Vuelve a abrir la partida y cotiza la pista de daño guardada actual.</value></data>
+  <data name="Reopen the Playtime damage wizard and review the current track." xml:space="preserve"><value>Vuelve a abrir el asistente de daño de partida y revisa la pista actual.</value></data>
+  <data name="Resume exact damage review" xml:space="preserve"><value>Reanudar la revisión exacta del daño</value></data>
+  <data name="Review Playtime damage" xml:space="preserve"><value>Revisar el daño de partida</value></data>
+  <data name="Review exact damage change" xml:space="preserve"><value>Revisar el cambio exacto de daño</value></data>
+  <data name="SR5 Playtime · typed damage" xml:space="preserve"><value>Partida SR5 · daño tipado</value></data>
+  <data name="Selection saves a digest-bound review draft. Apply rechecks the exact workspace revision and uses only typed Edge, Weapon, or condition-track requests." xml:space="preserve"><value>La selección guarda un borrador de revisión vinculado al resumen. Aplicar vuelve a comprobar la revisión exacta del workspace y solo usa solicitudes tipadas de Edge, arma o pista de condición.</value></data>
+  <data name="Set {0} damage" xml:space="preserve"><value>Fijar daño {0}</value></data>
+  <data name="Stun" xml:space="preserve"><value>Aturdimiento</value></data>
+  <data name="The exact clean saved SR5 damage track is unavailable. No mutation fallback was opened." xml:space="preserve"><value>La pista de daño SR5 guardada, limpia y exacta no está disponible. No se abrió ninguna mutación alternativa.</value></data>
+  <data name="The exact next-revision damage receipt was recovered after restart." xml:space="preserve"><value>El recibo de daño exacto de la revisión siguiente se recuperó tras reiniciar.</value></data>
+  <data name="The exact next-revision postcondition was not observed. The Applying journal remains locked." xml:space="preserve"><value>No se observó la poscondición exacta de la revisión siguiente. El diario de aplicación permanece bloqueado.</value></data>
+  <data name="The previous confirmation is Applying but its exact result could not be classified. It remains mutation-owning and cannot be retried." xml:space="preserve"><value>La confirmación anterior se está aplicando, pero no se pudo clasificar su resultado exacto. Conserva la mutación y no se puede reintentar.</value></data>
+  <data name="The saved damage review was stale and was discarded before mutation." xml:space="preserve"><value>La revisión de daño guardada estaba obsoleta y se descartó antes de la mutación.</value></data>
+  <data name="The saved runner changed after review. This damage action cannot be applied." xml:space="preserve"><value>El runner guardado cambió después de la revisión. Esta acción de daño no se puede aplicar.</value></data>
+  <data name="The saved runner could not be projected after apply. The Applying journal remains locked." xml:space="preserve"><value>No se pudo proyectar el runner guardado después de aplicar. El diario de aplicación permanece bloqueado.</value></data>
+  <data name="This Playtime leaf changes only the selected runner Physical or Stun box count. It does not calculate healing time, temporary modifiers, initiative, or vehicle damage." xml:space="preserve"><value>Este paso de partida solo cambia la cantidad de casillas de daño físico o aturdimiento del runner seleccionado. No calcula el tiempo de curación, los modificadores temporales, la iniciativa ni el daño de vehículos.</value></data>
+  <data name="Use exact Edge, direct Weapon-fire, and Physical or Stun damage actions without opening unrestricted runner editing." xml:space="preserve"><value>Usa acciones exactas de Edge, fuego directo de arma y daño físico o de aturdimiento sin abrir la edición ilimitada del runner.</value></data>
+  <data name="Verified Playtime damage receipt" xml:space="preserve"><value>Recibo verificado de daño de partida</value></data>
+  <data name="Workspace {0} · revision {1} · {2} / {3} boxes" xml:space="preserve"><value>Workspace {0} · revisión {1} · {2} / {3} casillas</value></data>
+  <data name="{0} The durable Applying journal remains locked for recovery." xml:space="preserve"><value>{0} El diario de aplicación duradero permanece bloqueado para su recuperación.</value></data>
+  <data name="{0} boxes {1} → {2} · maximum {3}" xml:space="preserve"><value>{0} casillas {1} → {2} · máximo {3}</value></data>
+  <data name="{0} condition track" xml:space="preserve"><value>Pista de condición {0}</value></data>
+  <data name="{0}: {1} → {2} boxes · revision {3} → {4}" xml:space="preserve"><value>{0}: {1} → {2} casillas · revisión {3} → {4}</value></data>
 </root>

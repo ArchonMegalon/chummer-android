@@ -21,6 +21,12 @@
              Link="Native/Sr5CareerRunCapabilityCatalog.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5TableWizardTypedTransaction.cs"
              Link="Native/Sr5TableWizardTypedTransaction.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5CareerMutationOwnerStore.cs"
+             Link="Native/Sr5CareerMutationOwnerStore.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5PlaytimeDamageTransaction.cs"
+             Link="Native/Sr5PlaytimeDamageTransaction.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5PlaytimeDamageWizardPage.cs"
+             Link="Native/Sr5PlaytimeDamageWizardPage.cs" />
     <Compile Include="../../src/Chummer.Android/Native/RunnerSessionSr5TableWizardPhoneAuthority.cs"
              Link="Native/RunnerSessionSr5TableWizardPhoneAuthority.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5TableWizardPage.cs"
@@ -31,6 +37,10 @@
              Link="Presentation/CareerWeaponFireRequest.cs" />
     <Compile Include="$(ChummerPresentationRoot)/Chummer.Presentation/Overview/Sr5TableWizardSession.cs"
              Link="Presentation/Sr5TableWizardSession.cs" />
+    <Compile Include="$(ChummerPresentationRoot)/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs"
+             Link="Presentation/ConditionMonitorEditRequest.cs" />
+    <Compile Include="$(ChummerPresentationRoot)/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs"
+             Link="Presentation/ConditionMonitorEditorState.cs" />
     <ProjectReference Include="$(ChummerCoreEngineRoot)/Chummer.Contracts/Chummer.Contracts.csproj" />
   </ItemGroup>
 </Project>

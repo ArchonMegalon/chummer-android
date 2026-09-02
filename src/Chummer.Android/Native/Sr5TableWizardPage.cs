@@ -71,7 +71,7 @@ public sealed class Sr5TableWizardPage : NativePageBase
         _body.Add(NativeTheme.Body(
             _lane == Sr5TableWizardLane.BeforeRun
                 ? Text("Review one exact point of Edge use before the run. Loadout, preparation, contacts, and commitments remain unavailable until they have typed authority.")
-                : Text("Use exact Edge and direct Weapon-fire actions without opening unrestricted runner editing."),
+                : Text("Use exact Edge, direct Weapon-fire, and Physical or Stun damage actions without opening unrestricted runner editing."),
             NativeTheme.Muted));
         if (_lane == Sr5TableWizardLane.BeforeRun)
             AddCapabilityScope(Sr5CareerRunCapabilityCatalog.BeforeRun);
@@ -177,7 +177,44 @@ public sealed class Sr5TableWizardPage : NativePageBase
             }
         }
 
-        if (state.Snapshot.Actions.Count == 0)
+        bool hasDamageActions = false;
+        if (_lane == Sr5TableWizardLane.Playtime
+            && Coordinator.State.ActiveConditionMonitor is { CareerEditable: true } conditionMonitor)
+        {
+            ConditionMonitorTrackState[] damageTracks = conditionMonitor.Tracks
+                .Where(track => track is not null
+                                && Sr5PlaytimeDamageIntegrity.IsSupportedTrack(track.Track)
+                                && !track.ActsAsAlternateTrack
+                                && track.EditableMaximum > 0
+                                && track.Filled >= 0
+                                && track.Filled <= track.EditableMaximum)
+                .GroupBy(static track => track.Track)
+                .Where(static group => group.Count() == 1)
+                .Select(static group => group.Single())
+                .OrderBy(static track => track.Track)
+                .ToArray();
+            if (damageTracks.Length > 0)
+            {
+                hasDamageActions = true;
+                _body.Add(NativeTheme.Eyebrow(Text("Condition tracks")));
+                foreach (ConditionMonitorTrackState track in damageTracks)
+                {
+                    string token = Sr5PlaytimeDamageWizardPage.Token(track.Track);
+                    _body.Add(NativeTheme.NavigationRow(
+                        Format("Set {0} damage", track.Label),
+                        Format("Exact saved boxes {0} / {1} · review and receipt required",
+                            track.Filled,
+                            track.EditableMaximum),
+                        () => Navigation.PushAsync(new Sr5PlaytimeDamageWizardPage(
+                            Coordinator,
+                            track.Track,
+                            state.Snapshot.WorkspaceId)),
+                        automationId: $"sr5-table-playtime-damage-{token}"));
+                }
+            }
+        }
+
+        if (state.Snapshot.Actions.Count == 0 && !hasDamageActions)
         {
             AddStatus(
                 Text("No exact table-safe action is available for this runner state."),
@@ -186,7 +223,7 @@ public sealed class Sr5TableWizardPage : NativePageBase
         }
 
         Label boundary = NativeTheme.Body(
-            Text("Selection saves a digest-bound review draft. Apply still rechecks workspace revision and uses only the existing typed Edge or Weapon request."),
+            Text("Selection saves a digest-bound review draft. Apply rechecks the exact workspace revision and uses only typed Edge, Weapon, or condition-track requests."),
             NativeTheme.Muted);
         boundary.AutomationId = "sr5-table-wizard-boundary";
         _body.Add(NativeTheme.Card(boundary));

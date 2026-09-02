@@ -244,7 +244,7 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
                 "compileProject": str(
                     root / "tests/Chummer.Android.Native.CompileCheck/Chummer.Android.Native.CompileCheck.csproj"
                 ),
-                "compiledOwnedSourceCount": 211,
+                "compiledOwnedSourceCount": 213,
                 "generatedProjectReferenceCount": 3,
                 "issues": [],
                 "repoRoot": str(root),
@@ -718,7 +718,7 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
             receipt, evidence, payload = self.seed_compile_receipt(Path(temporary))
             graph_path = evidence / "owned-compile-graph.log"
             graph = json.loads(graph_path.read_text(encoding="utf-8"))
-            graph["compiledOwnedSourceCount"] = 210
+            graph["compiledOwnedSourceCount"] = 212
             graph_path.write_text(json.dumps(graph), encoding="utf-8")
             self.refresh_evidence_binding(
                 receipt, evidence, payload, "owned-compile-graph.log", "owned-compile-graph"

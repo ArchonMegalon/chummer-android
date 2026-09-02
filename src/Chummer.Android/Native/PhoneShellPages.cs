@@ -128,7 +128,7 @@ public sealed class PhoneTablePage : NativePageBase
         _body.Add(downtime);
         View playtime = NativeTheme.NavigationRow(
             Text("Playtime"),
-            Text("Quote, review and confirm exact Edge or direct-weapon ammunition changes with a restart-safe receipt"),
+            Text("Quote, review and confirm exact Edge, direct-weapon ammunition, or Physical/Stun damage changes with a restart-safe receipt"),
             () => Navigation.PushAsync(new Sr5TableWizardPage(
                 Coordinator,
                 Sr5TableWizardLane.Playtime)),
@@ -136,7 +136,7 @@ public sealed class PhoneTablePage : NativePageBase
         playtime.IsEnabled = hasExactSr5CareerAuthority;
         _body.Add(playtime);
         Label blocker = NativeTheme.Body(
-            Text("Before Run exposes only typed Edge, and Playtime exposes only typed Edge and direct-weapon ammunition. Downtime healing, training, acquisition/install/repair/crafting, lifestyle/contact/project planning, and Playtime damage/conditions, temporary modifiers, initiative and run-state remain blocked until composed typed quote/time/receipt authorities exist. No generic mutation fallback is used."),
+            Text("Before Run exposes only typed Edge, and Playtime exposes only typed Edge, direct-weapon ammunition, and Physical/Stun damage tracks. Downtime healing, training, acquisition/install/repair/crafting, lifestyle/contact/project planning, and Playtime temporary modifiers, initiative and run-state remain blocked until composed typed quote/time/receipt authorities exist. No generic mutation fallback is used."),
             NativeTheme.Danger);
         blocker.AutomationId = "phone-table-unavailable-authorities";
         _body.Add(NativeTheme.Card(blocker));

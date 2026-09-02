@@ -521,7 +521,6 @@ Preview: {3}…</value></data>
   <data name="SR5 Career · table-safe actions" xml:space="preserve"><value>SR5 Career · table-safe actions</value></data>
   <data name="Save not verified" xml:space="preserve"><value>Save not verified</value></data>
   <data name="Saved EdgeUsed changes by exactly one: {0} → {1}." xml:space="preserve"><value>Saved EdgeUsed changes by exactly one: {0} → {1}.</value></data>
-  <data name="Selection saves a digest-bound review draft. Apply still rechecks workspace revision and uses only the existing typed Edge or Weapon request." xml:space="preserve"><value>Selection saves a digest-bound review draft. Apply still rechecks workspace revision and uses only the existing typed Edge or Weapon request.</value></data>
   <data name="Short Burst" xml:space="preserve"><value>Short Burst</value></data>
   <data name="Single Shot" xml:space="preserve"><value>Single Shot</value></data>
   <data name="Spend 1 Edge" xml:space="preserve"><value>Spend 1 Edge</value></data>
@@ -535,7 +534,6 @@ Preview: {3}…</value></data>
   <data name="The saved review belonged to another runner and was discarded." xml:space="preserve"><value>The saved review belonged to another runner and was discarded.</value></data>
   <data name="The saved review belonged to another table lane and was discarded." xml:space="preserve"><value>The saved review belonged to another table lane and was discarded.</value></data>
   <data name="The saved runner changed. Return to Career and reopen this table wizard." xml:space="preserve"><value>The saved runner changed. Return to Career and reopen this table wizard.</value></data>
-  <data name="Use exact Edge and direct Weapon-fire actions without opening unrestricted runner editing." xml:space="preserve"><value>Use exact Edge and direct Weapon-fire actions without opening unrestricted runner editing.</value></data>
   <data name="Workspace {0} · revision {1} · snapshot {2}" xml:space="preserve"><value>Workspace {0} · revision {1} · snapshot {2}</value></data>
   <data name="{0} rounds · ammo {1} → {2}{3}" xml:space="preserve"><value>{0} rounds · ammo {1} → {2}{3}</value></data>
   <data name="-99.00 through 1000.00" xml:space="preserve"><value>-99.00 through 1000.00</value></data>
@@ -683,7 +681,52 @@ Preview: {3}…</value></data>
   <data name="Settle governed rewards, Heat/reputation, contacts, approvals and the atomic Core receipt" xml:space="preserve"><value>Settle governed rewards, Heat/reputation, contacts, approvals and the atomic Core receipt</value></data>
   <data name="Review, confirm and persist one exact SR5 Calendar add, edit or delete with restart recovery" xml:space="preserve"><value>Review, confirm and persist one exact SR5 Calendar add, edit or delete with restart recovery</value></data>
   <data name="Playtime" xml:space="preserve"><value>Playtime</value></data>
-  <data name="Quote, review and confirm exact Edge or direct-weapon ammunition changes with a restart-safe receipt" xml:space="preserve"><value>Quote, review and confirm exact Edge or direct-weapon ammunition changes with a restart-safe receipt</value></data>
-  <data name="Before Run exposes only typed Edge, and Playtime exposes only typed Edge and direct-weapon ammunition. Downtime healing, training, acquisition/install/repair/crafting, lifestyle/contact/project planning, and Playtime damage/conditions, temporary modifiers, initiative and run-state remain blocked until composed typed quote/time/receipt authorities exist. No generic mutation fallback is used." xml:space="preserve"><value>Before Run exposes only typed Edge, and Playtime exposes only typed Edge and direct-weapon ammunition. Downtime healing, training, acquisition/install/repair/crafting, lifestyle/contact/project planning, and Playtime damage/conditions, temporary modifiers, initiative and run-state remain blocked until composed typed quote/time/receipt authorities exist. No generic mutation fallback is used.</value></data>
+  <data name="Quote, review and confirm exact Edge, direct-weapon ammunition, or Physical/Stun damage changes with a restart-safe receipt" xml:space="preserve"><value>Quote, review and confirm exact Edge, direct-weapon ammunition, or Physical/Stun damage changes with a restart-safe receipt</value></data>
+  <data name="Before Run exposes only typed Edge, and Playtime exposes only typed Edge, direct-weapon ammunition, and Physical/Stun damage tracks. Downtime healing, training, acquisition/install/repair/crafting, lifestyle/contact/project planning, and Playtime temporary modifiers, initiative and run-state remain blocked until composed typed quote/time/receipt authorities exist. No generic mutation fallback is used." xml:space="preserve"><value>Before Run exposes only typed Edge, and Playtime exposes only typed Edge, direct-weapon ammunition, and Physical/Stun damage tracks. Downtime healing, training, acquisition/install/repair/crafting, lifestyle/contact/project planning, and Playtime temporary modifiers, initiative and run-state remain blocked until composed typed quote/time/receipt authorities exist. No generic mutation fallback is used.</value></data>
   <data name="Before Run" xml:space="preserve"><value>Before Run</value></data>
+  <data name="A damage transaction for another runner or track occupies this journal." xml:space="preserve"><value>A damage transaction for another runner or track occupies this journal.</value></data>
+  <data name="Action {0} · revision {1} · quote {2}" xml:space="preserve"><value>Action {0} · revision {1} · quote {2}</value></data>
+  <data name="Applying is durable before the mutation. Only the exact next revision and selected box count can release its mutation owner." xml:space="preserve"><value>Applying is durable before the mutation. Only the exact next revision and selected box count can release its mutation owner.</value></data>
+  <data name="Choose a different valid box count before review." xml:space="preserve"><value>Choose a different valid box count before review.</value></data>
+  <data name="Choose one exact saved box count. Review and confirmation are bound to this runner revision and recover through one durable receipt." xml:space="preserve"><value>Choose one exact saved box count. Review and confirmation are bound to this runner revision and recover through one durable receipt.</value></data>
+  <data name="Condition tracks" xml:space="preserve"><value>Condition tracks</value></data>
+  <data name="Confirm and save exact damage" xml:space="preserve"><value>Confirm and save exact damage</value></data>
+  <data name="Confirmation unavailable" xml:space="preserve"><value>Confirmation unavailable</value></data>
+  <data name="Core proved no mutation after restart. Confirm the exact review again." xml:space="preserve"><value>Core proved no mutation after restart. Confirm the exact review again.</value></data>
+  <data name="Core proved the runner stayed at the reviewed revision. Confirm again if desired." xml:space="preserve"><value>Core proved the runner stayed at the reviewed revision. Confirm again if desired.</value></data>
+  <data name="Damage outcome unknown" xml:space="preserve"><value>Damage outcome unknown</value></data>
+  <data name="Damage saved" xml:space="preserve"><value>Damage saved</value></data>
+  <data name="Exact saved boxes {0} / {1} · review and receipt required" xml:space="preserve"><value>Exact saved boxes {0} / {1} · review and receipt required</value></data>
+  <data name="Filled boxes" xml:space="preserve"><value>Filled boxes</value></data>
+  <data name="Filled boxes after this action" xml:space="preserve"><value>Filled boxes after this action</value></data>
+  <data name="Loading the exact saved damage track…" xml:space="preserve"><value>Loading the exact saved damage track…</value></data>
+  <data name="No exact change" xml:space="preserve"><value>No exact change</value></data>
+  <data name="No mutation observed" xml:space="preserve"><value>No mutation observed</value></data>
+  <data name="Only the exact verified Playtime damage receipt may be acknowledged." xml:space="preserve"><value>Only the exact verified Playtime damage receipt may be acknowledged.</value></data>
+  <data name="Physical" xml:space="preserve"><value>Physical</value></data>
+  <data name="Playtime · {0} damage" xml:space="preserve"><value>Playtime · {0} damage</value></data>
+  <data name="Reopen Playtime and quote the current saved damage track." xml:space="preserve"><value>Reopen Playtime and quote the current saved damage track.</value></data>
+  <data name="Reopen the Playtime damage wizard and review the current track." xml:space="preserve"><value>Reopen the Playtime damage wizard and review the current track.</value></data>
+  <data name="Resume exact damage review" xml:space="preserve"><value>Resume exact damage review</value></data>
+  <data name="Review Playtime damage" xml:space="preserve"><value>Review Playtime damage</value></data>
+  <data name="Review exact damage change" xml:space="preserve"><value>Review exact damage change</value></data>
+  <data name="SR5 Playtime · typed damage" xml:space="preserve"><value>SR5 Playtime · typed damage</value></data>
+  <data name="Selection saves a digest-bound review draft. Apply rechecks the exact workspace revision and uses only typed Edge, Weapon, or condition-track requests." xml:space="preserve"><value>Selection saves a digest-bound review draft. Apply rechecks the exact workspace revision and uses only typed Edge, Weapon, or condition-track requests.</value></data>
+  <data name="Set {0} damage" xml:space="preserve"><value>Set {0} damage</value></data>
+  <data name="Stun" xml:space="preserve"><value>Stun</value></data>
+  <data name="The exact clean saved SR5 damage track is unavailable. No mutation fallback was opened." xml:space="preserve"><value>The exact clean saved SR5 damage track is unavailable. No mutation fallback was opened.</value></data>
+  <data name="The exact next-revision damage receipt was recovered after restart." xml:space="preserve"><value>The exact next-revision damage receipt was recovered after restart.</value></data>
+  <data name="The exact next-revision postcondition was not observed. The Applying journal remains locked." xml:space="preserve"><value>The exact next-revision postcondition was not observed. The Applying journal remains locked.</value></data>
+  <data name="The previous confirmation is Applying but its exact result could not be classified. It remains mutation-owning and cannot be retried." xml:space="preserve"><value>The previous confirmation is Applying but its exact result could not be classified. It remains mutation-owning and cannot be retried.</value></data>
+  <data name="The saved damage review was stale and was discarded before mutation." xml:space="preserve"><value>The saved damage review was stale and was discarded before mutation.</value></data>
+  <data name="The saved runner changed after review. This damage action cannot be applied." xml:space="preserve"><value>The saved runner changed after review. This damage action cannot be applied.</value></data>
+  <data name="The saved runner could not be projected after apply. The Applying journal remains locked." xml:space="preserve"><value>The saved runner could not be projected after apply. The Applying journal remains locked.</value></data>
+  <data name="This Playtime leaf changes only the selected runner Physical or Stun box count. It does not calculate healing time, temporary modifiers, initiative, or vehicle damage." xml:space="preserve"><value>This Playtime leaf changes only the selected runner Physical or Stun box count. It does not calculate healing time, temporary modifiers, initiative, or vehicle damage.</value></data>
+  <data name="Use exact Edge, direct Weapon-fire, and Physical or Stun damage actions without opening unrestricted runner editing." xml:space="preserve"><value>Use exact Edge, direct Weapon-fire, and Physical or Stun damage actions without opening unrestricted runner editing.</value></data>
+  <data name="Verified Playtime damage receipt" xml:space="preserve"><value>Verified Playtime damage receipt</value></data>
+  <data name="Workspace {0} · revision {1} · {2} / {3} boxes" xml:space="preserve"><value>Workspace {0} · revision {1} · {2} / {3} boxes</value></data>
+  <data name="{0} The durable Applying journal remains locked for recovery." xml:space="preserve"><value>{0} The durable Applying journal remains locked for recovery.</value></data>
+  <data name="{0} boxes {1} → {2} · maximum {3}" xml:space="preserve"><value>{0} boxes {1} → {2} · maximum {3}</value></data>
+  <data name="{0} condition track" xml:space="preserve"><value>{0} condition track</value></data>
+  <data name="{0}: {1} → {2} boxes · revision {3} → {4}" xml:space="preserve"><value>{0}: {1} → {2} boxes · revision {3} → {4}</value></data>
 </root>

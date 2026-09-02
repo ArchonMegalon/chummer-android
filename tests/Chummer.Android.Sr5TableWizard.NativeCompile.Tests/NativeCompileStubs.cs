@@ -14,7 +14,10 @@ public sealed class RunnerStateStub
     public RunnerRulesStub? Rules { get; init; } = new("SR5");
     public CharacterWorkspaceId? WorkspaceId { get; init; } = new("workspace-table-stub");
     public long ContentRevision { get; init; } = 1;
+    public long SavedRevision { get; init; } = 1;
+    public bool IsDirty { get; init; }
     public string? Error { get; init; }
+    public ConditionMonitorEditorState? ActiveConditionMonitor { get; init; }
 }
 
 public sealed class RunnerSessionCoordinator
@@ -40,6 +43,18 @@ public sealed class RunnerSessionCoordinator
         CareerWeaponFireRequest request,
         CancellationToken cancellationToken = default)
         => Task.CompletedTask;
+
+    public Task ApplyConditionMonitorEditAsync(
+        ConditionMonitorEditRequest request,
+        CancellationToken cancellationToken = default)
+        => Task.CompletedTask;
+}
+
+public interface ISr5CareerCheckpointBackend
+{
+    string Read();
+    void Write(string payload);
+    void Remove();
 }
 
 public static class Sr5CareerWizardCatalog
