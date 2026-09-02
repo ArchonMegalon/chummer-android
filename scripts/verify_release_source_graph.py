@@ -25,6 +25,7 @@ PACKAGE_VERSION_PATTERN = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-
 
 RUNTIME_PACKAGE_IDS = (
     "Chummer.Application",
+    "Chummer.Engine.Contracts",
     "Chummer.Infrastructure",
     "Chummer.Rulesets.Hosting",
     "Chummer.Rulesets.Sr4",
@@ -207,7 +208,7 @@ def repository_record(
 
 def _canonical_runtime_package_pins(rows: object, core: dict[str, str]) -> list[dict[str, str]]:
     if not isinstance(rows, list) or len(rows) != len(RUNTIME_PACKAGE_IDS):
-        raise ValueError("package authority must preserve the exact six Core runtime package pins")
+        raise ValueError("package authority must preserve the exact seven Core runtime package pins")
     result: list[dict[str, str]] = []
     for expected_id, row in zip(RUNTIME_PACKAGE_IDS, rows, strict=True):
         if not isinstance(row, dict) or set(row) != {

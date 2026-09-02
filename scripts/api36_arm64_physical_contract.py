@@ -282,7 +282,7 @@ REPOSITORY_URLS = (
     "https://github.com/ArchonMegalon/chummer6-design.git",
 )
 CORE_PACKAGE_IDS = (
-    "Chummer.Application", "Chummer.Infrastructure", "Chummer.Rulesets.Hosting",
+    "Chummer.Application", "Chummer.Engine.Contracts", "Chummer.Infrastructure", "Chummer.Rulesets.Hosting",
     "Chummer.Rulesets.Sr4", "Chummer.Rulesets.Sr5", "Chummer.Rulesets.Sr6",
 )
 OWNER_PACKAGE_SPECS = (
@@ -1201,10 +1201,10 @@ def validate_source_graph(bound: BoundBytes) -> dict[str, object]:
     package_pins = graph.get("packagePins")
     owner_pins = graph.get("ownerPackagePins")
     if (
-        not isinstance(package_pins, list) or len(package_pins) != 6
+        not isinstance(package_pins, list) or len(package_pins) != len(CORE_PACKAGE_IDS)
         or not isinstance(owner_pins, list) or len(owner_pins) != len(OWNER_PACKAGE_SPECS)
     ):
-        raise ValueError("source graph must bind six Core and five owner package pins")
+        raise ValueError("source graph must bind seven Core and five owner package pins")
     core_commit = repository_map["chummer6-core"]["commit"]
     for expected_id, row in zip(CORE_PACKAGE_IDS, package_pins, strict=True):
         row = require_exact_keys(

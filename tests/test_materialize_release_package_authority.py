@@ -105,7 +105,7 @@ def fixture(root: Path):
     core_version = "1.2.3-core"
     owner_version = "1.2.3-owner"
     package_specs: list[tuple[str, str, str, str, str, list[tuple[str, str]]]] = []
-    for package_id in ("Chummer.Engine.Contracts", *module.CORE_PACKAGE_IDS):
+    for package_id in module.CORE_PACKAGE_IDS:
         package_specs.append((
             package_id, core_version, "core-runtime", module.REPOSITORIES["chummer6-core"][1],
             commits["chummer6-core"], [],

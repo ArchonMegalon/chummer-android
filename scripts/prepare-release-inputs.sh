@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+umask 077
 
 repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 project_path="$repo_dir/src/Chummer.Android/Chummer.Android.csproj"
@@ -71,6 +72,9 @@ input_dir="${CHUMMER_ANDROID_RELEASE_INPUT_DIR:-}"
 [[ -n "$input_dir" && "$input_dir" == /* ]] || fail "release-input-directory-not-absolute"
 [[ ! -L "$input_dir" && -d "$input_dir" ]] || fail "release-input-directory-not-directory"
 input_dir="$(realpath -e -- "$input_dir")"
+case "$input_dir/" in
+  "$workspace_root/"*) fail "release-input-directory-inside-workspace" ;;
+esac
 [[ "$(stat -c '%u' -- "$input_dir")" == "$(id -u)" ]] \
   || fail "release-input-directory-not-owner-owned"
 input_permissions="$(stat -c '%a' -- "$input_dir")"
@@ -80,8 +84,9 @@ input_permissions="$(stat -c '%a' -- "$input_dir")"
 
 authority="$input_dir/chummer.android.release-package-authority.v2.json"
 nuget_packages="$input_dir/nuget-packages"
+preparation_obj="$input_dir/preparation-obj"
 environment_file="$input_dir/release-inputs.env"
-mkdir -m 0700 -- "$nuget_packages"
+mkdir -m 0700 -- "$nuget_packages" "$preparation_obj"
 
 python3 "$repo_dir/scripts/materialize_release_package_authority.py" \
   --android-root "$repo_dir" \
@@ -138,17 +143,9 @@ export NUGET_PACKAGES="$nuget_packages"
   --packages "$nuget_packages" \
   --source "$CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED" \
   --source "$nuget_org_source" \
+  -p:BaseIntermediateOutputPath="$preparation_obj/" \
+  -p:MSBuildProjectExtensionsPath="$preparation_obj/" \
   "${package_arguments[@]}"
-
-python3 "$repo_dir/scripts/verify_native_compile_graph.py" \
-  --repo-root "$repo_dir" \
-  --project "$project_path" \
-  --workspace-root "$workspace_root" \
-  --assets-only
-jq -e --arg package_root "$nuget_packages/" \
-  '.packageFolders | keys == [$package_root]' \
-  "$repo_dir/src/Chummer.Android/obj/project.assets.json" >/dev/null \
-  || fail "restored-assets-package-root-drift"
 python3 "$repo_dir/scripts/materialize_release_package_authority.py" \
   --android-root "$repo_dir" \
   --workspace-root "$workspace_root" \
@@ -167,5 +164,5 @@ python3 "$repo_dir/scripts/materialize_release_package_authority.py" \
 } > "$environment_file"
 chmod 0600 "$environment_file"
 
-printf 'android_release_inputs=prepared authority=%s environment=%s assets=%s publication_authorized=false\n' \
-  "$authority" "$environment_file" "$repo_dir/src/Chummer.Android/obj/project.assets.json"
+printf 'android_release_inputs=prepared authority=%s environment=%s package_cache=%s publication_authorized=false\n' \
+  "$authority" "$environment_file" "$nuget_packages"

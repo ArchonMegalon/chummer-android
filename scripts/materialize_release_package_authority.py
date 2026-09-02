@@ -33,6 +33,7 @@ SHA256 = re.compile(r"^[0-9a-f]{64}$")
 
 CORE_PACKAGE_IDS = (
     "Chummer.Application",
+    "Chummer.Engine.Contracts",
     "Chummer.Infrastructure",
     "Chummer.Rulesets.Hosting",
     "Chummer.Rulesets.Sr4",

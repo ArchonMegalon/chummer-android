@@ -72,6 +72,28 @@ class NativeCompileProofInfrastructureTests(unittest.TestCase):
             self.assertEqual([], issues)
             self.assertEqual({project.resolve(), dependency.resolve()}, set(referenced))
 
+    def test_generated_graph_can_bind_one_explicit_isolated_restore_root(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            workspace = root / "workspace"
+            project = workspace / "chummer-android/tests/Compile/Compile.csproj"
+            dependency = workspace / "chummer-core/Contracts/Contracts.csproj"
+            project.parent.mkdir(parents=True)
+            dependency.parent.mkdir(parents=True)
+            project.write_text("<Project />\n", encoding="utf-8")
+            dependency.write_text("<Project />\n", encoding="utf-8")
+            isolated = root / "private-release/obj"
+            isolated.mkdir(parents=True)
+            self._write_assets(isolated, project, dependency)
+            self._write_dgspec(isolated, project, dependency)
+
+            referenced, issues = compile_graph.verify_asset_graph(
+                project, workspace, isolated,
+            )
+
+            self.assertEqual([], issues)
+            self.assertEqual({project.resolve(), dependency.resolve()}, set(referenced))
+
     def test_generated_graph_rejects_deleted_outside_and_copied_authority(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

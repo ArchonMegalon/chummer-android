@@ -1,0 +1,516 @@
+#!/usr/bin/env python3
+"""Seal and revalidate the exact locked restore consumed by an Android release.
+
+The release build uses a fresh owner-only root.  This tool copies the selected
+Chummer nupkgs through no-follow descriptors, inventories every byte in the
+isolated global-packages and restore-intermediate trees, binds assets/dgspec/
+lock inputs, and proves the selected twelve-package Chummer closure.  Publish
+may add controlled bin/obj outputs, but may not alter any sealed restore byte.
+"""
+
+from __future__ import annotations
+
+import argparse
+import base64
+import hashlib
+import json
+import os
+import stat
+from pathlib import Path, PurePosixPath
+from typing import Any, Iterable, Mapping
+
+
+CONTRACT = "chummer.android.release-restore-consumption/v1"
+AUTHORITY_CONTRACT = "chummer.android.release-package-authority/v2"
+
+
+def _strict_json_bytes(data: bytes, label: str) -> dict[str, Any]:
+    def reject_duplicates(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+        result: dict[str, Any] = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError(f"{label} contains duplicate key {key!r}")
+            result[key] = value
+        return result
+
+    try:
+        value = json.loads(
+            data.decode("utf-8"),
+            object_pairs_hook=reject_duplicates,
+            parse_constant=lambda item: (_ for _ in ()).throw(
+                ValueError(f"{label} contains non-finite number {item}")
+            ),
+        )
+    except (UnicodeError, json.JSONDecodeError) as error:
+        raise ValueError(f"cannot read {label}: {error}") from error
+    if not isinstance(value, dict):
+        raise ValueError(f"{label} must be one JSON object")
+    return value
+
+
+def _strict_json(path: Path, label: str) -> dict[str, Any]:
+    data, _ = _stable_file(path, label)
+    return _strict_json_bytes(data, label)
+
+
+def _private_directory(path: Path, label: str, *, empty: bool = False) -> Path:
+    if not path.is_absolute() or path.is_symlink() or not path.is_dir():
+        raise ValueError(f"{label} must be one absolute non-symlinked directory")
+    resolved = path.resolve(strict=True)
+    info = path.stat()
+    if resolved != path or info.st_uid != os.getuid() or stat.S_IMODE(info.st_mode) & 0o077:
+        raise ValueError(f"{label} must be canonical, owner-owned, and owner-only")
+    if empty and any(path.iterdir()):
+        raise ValueError(f"{label} must be empty")
+    return path
+
+
+def _owned_directory(path: Path, label: str) -> Path:
+    if not path.is_absolute() or path.is_symlink() or not path.is_dir():
+        raise ValueError(f"{label} must be one absolute non-symlinked directory")
+    resolved = path.resolve(strict=True)
+    if resolved != path or path.stat().st_uid != os.getuid():
+        raise ValueError(f"{label} must be canonical and owner-owned")
+    return path
+
+
+def _outside(root: Path, workspace: Path) -> None:
+    try:
+        root.relative_to(workspace)
+    except ValueError:
+        return
+    raise ValueError("release restore input root must remain outside the coherent workspace")
+
+
+def _stable_file(path: Path, label: str) -> tuple[bytes, os.stat_result]:
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        descriptor = os.open(path, flags)
+    except OSError as error:
+        raise ValueError(f"cannot open {label} without following links: {error}") from error
+    try:
+        before = os.fstat(descriptor)
+        if (
+            not stat.S_ISREG(before.st_mode)
+            or before.st_uid != os.getuid()
+            or stat.S_IMODE(before.st_mode) & 0o077
+            or before.st_nlink != 1
+        ):
+            raise ValueError(f"{label} must be an owner-only, singly-linked regular file")
+        chunks: list[bytes] = []
+        while True:
+            chunk = os.read(descriptor, 1024 * 1024)
+            if not chunk:
+                break
+            chunks.append(chunk)
+        after = os.fstat(descriptor)
+        if (
+            (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns)
+            != (after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns)
+        ):
+            raise ValueError(f"{label} changed while it was captured")
+        return b"".join(chunks), after
+    finally:
+        os.close(descriptor)
+
+
+def _file_row(path: Path, relative: str, label: str) -> dict[str, Any]:
+    data, info = _stable_file(path, label)
+    return {
+        "path": relative,
+        "sizeBytes": info.st_size,
+        "sha256": hashlib.sha256(data).hexdigest(),
+    }
+
+
+def _tree_inventory(root: Path, label: str) -> list[dict[str, Any]]:
+    root = _private_directory(root, label)
+    rows: list[dict[str, Any]] = []
+    for current_text, directories, files in os.walk(root, topdown=True, followlinks=False):
+        current = Path(current_text)
+        directories.sort()
+        files.sort()
+        for name in directories:
+            path = current / name
+            info = path.lstat()
+            if (
+                not stat.S_ISDIR(info.st_mode)
+                or path.is_symlink()
+                or info.st_uid != os.getuid()
+                or stat.S_IMODE(info.st_mode) & 0o077
+            ):
+                raise ValueError(f"{label} contains an unsafe directory: {path.relative_to(root)}")
+        for name in files:
+            path = current / name
+            relative = path.relative_to(root).as_posix()
+            rows.append(_file_row(path, relative, f"{label} file {relative}"))
+    return rows
+
+
+def _workspace_build_state(workspace_root: Path) -> tuple[list[str], list[dict[str, Any]]]:
+    workspace_root = workspace_root.resolve(strict=True)
+    roots: list[str] = []
+    rows: list[dict[str, Any]] = []
+    for current_text, directories, _files in os.walk(workspace_root, topdown=True, followlinks=False):
+        current = Path(current_text)
+        selected = [name for name in directories if name in {"bin", "obj"}]
+        directories[:] = sorted(name for name in directories if name not in {"bin", "obj"})
+        for name in sorted(selected):
+            root = current / name
+            relative_root = root.relative_to(workspace_root).as_posix()
+            roots.append(relative_root)
+            for row in _tree_inventory(root, f"workspace build-state root {relative_root}"):
+                rows.append({**row, "path": f"{relative_root}/{row['path']}"})
+    return sorted(roots), sorted(rows, key=lambda row: row["path"])
+
+
+def assert_clean_workspace_build_state(workspace_root: Path) -> None:
+    roots, rows = _workspace_build_state(workspace_root)
+    if roots or rows:
+        raise ValueError("coherent release workspace contains stale bin/obj build state")
+
+
+def _inventory_digest(rows: Iterable[Mapping[str, Any]]) -> str:
+    encoded = json.dumps(list(rows), sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _authority_packages(authority: Mapping[str, Any]) -> list[dict[str, str]]:
+    if authority.get("contractName") != AUTHORITY_CONTRACT:
+        raise ValueError("release package authority contract is not exact")
+    core = authority.get("packagePins")
+    owners = authority.get("ownerPackagePins")
+    if not isinstance(core, list) or not isinstance(owners, list):
+        raise ValueError("release package authority pins are unavailable")
+    rows: list[dict[str, str]] = []
+    for row in [*core, *owners]:
+        if not isinstance(row, dict):
+            raise ValueError("release package authority pin is malformed")
+        package_id = row.get("package_id")
+        version = row.get("version")
+        digest = row.get("sha256")
+        if (
+            not isinstance(package_id, str) or not package_id.startswith("Chummer.")
+            or not isinstance(version, str) or not version
+            or not isinstance(digest, str) or len(digest) != 64
+        ):
+            raise ValueError("release package authority pin identity is malformed")
+        rows.append({"packageId": package_id, "version": version, "nupkgSha256": digest})
+    expected_ids = {
+        "Chummer.Engine.Contracts", "Chummer.Application", "Chummer.Infrastructure",
+        "Chummer.Rulesets.Hosting", "Chummer.Rulesets.Sr4", "Chummer.Rulesets.Sr5",
+        "Chummer.Rulesets.Sr6", "Chummer.Campaign.Contracts", "Chummer.Play.Contracts",
+        "Chummer.Run.Contracts", "Chummer.Hub.Registry.Contracts", "Chummer.Ui.Kit",
+    }
+    if len(rows) != 12 or {row["packageId"] for row in rows} != expected_ids:
+        raise ValueError("release package authority must bind the exact twelve-package Chummer closure")
+    return sorted(rows, key=lambda row: row["packageId"])
+
+
+def snapshot_feed(authority_path: Path, source: Path, destination: Path) -> dict[str, Any]:
+    authority_data, _ = _stable_file(authority_path, "release package authority")
+    authority = _strict_json_bytes(authority_data, "release package authority")
+    packages = _authority_packages(authority)
+    source = _owned_directory(source, "retained package feed")
+    destination = _private_directory(destination, "private selected package feed", empty=True)
+    source_files = {path.name.lower(): path for path in source.iterdir() if path.is_file()}
+    for package in packages:
+        name = f'{package["packageId"]}.{package["version"]}.nupkg'
+        source_path = source_files.get(name.lower())
+        if source_path is None:
+            raise ValueError(f"selected package is absent from the retained feed: {name}")
+        data, _ = _stable_file(source_path, f"retained package {name}")
+        if hashlib.sha256(data).hexdigest() != package["nupkgSha256"]:
+            raise ValueError(f"selected retained package digest drifted: {name}")
+        output = destination / name
+        descriptor = os.open(
+            output,
+            os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0),
+            0o600,
+        )
+        try:
+            os.write(descriptor, data)
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
+    inventory = _tree_inventory(destination, "private selected package feed")
+    return {
+        "selectedPackageCount": len(packages),
+        "selectedPackages": packages,
+        "inventory": inventory,
+        "inventorySha256": _inventory_digest(inventory),
+        "publicationAuthorized": False,
+    }
+
+
+def _closure(
+    assets: Mapping[str, Any], packages_root: Path, expected: list[dict[str, str]],
+) -> list[dict[str, str]]:
+    package_folders = assets.get("packageFolders")
+    if (
+        not isinstance(package_folders, dict)
+        or len(package_folders) != 1
+        or Path(next(iter(package_folders))).resolve(strict=True) != packages_root
+    ):
+        raise ValueError("project.assets.json package root does not bind the isolated cache")
+    libraries = assets.get("libraries")
+    if not isinstance(libraries, dict):
+        raise ValueError("project.assets.json libraries are unavailable")
+    selected: dict[str, tuple[str, Mapping[str, Any]]] = {}
+    for identity, row in libraries.items():
+        if not isinstance(identity, str) or "/" not in identity or not isinstance(row, dict):
+            continue
+        package_id, version = identity.rsplit("/", 1)
+        if package_id.startswith("Chummer."):
+            selected[package_id] = (version, row)
+    expected_by_id = {row["packageId"]: row for row in expected}
+    if set(selected) != set(expected_by_id):
+        raise ValueError("project.assets.json does not select the exact twelve-package Chummer closure")
+    run_version, _run_row = selected["Chummer.Run.Contracts"]
+    targets = assets.get("targets")
+    run_target_rows = []
+    if isinstance(targets, dict):
+        for target in targets.values():
+            if isinstance(target, dict):
+                row = target.get(f"Chummer.Run.Contracts/{run_version}")
+                if isinstance(row, dict):
+                    run_target_rows.append(row)
+    if not run_target_rows or any(
+        not isinstance(row.get("dependencies"), dict)
+        or row["dependencies"].get("Chummer.Play.Contracts")
+        != selected["Chummer.Play.Contracts"][0]
+        for row in run_target_rows
+    ):
+        raise ValueError("project.assets.json Run.Contracts does not bind exact Play.Contracts")
+    result: list[dict[str, str]] = []
+    for package_id in sorted(selected):
+        version, row = selected[package_id]
+        expected_row = expected_by_id[package_id]
+        if version != expected_row["version"]:
+            raise ValueError(f"project.assets.json selected version drifted: {package_id}")
+        sha512 = row.get("sha512")
+        path = row.get("path")
+        if not isinstance(sha512, str) or not sha512 or not isinstance(path, str):
+            raise ValueError(f"project.assets.json package metadata is incomplete: {package_id}")
+        package_path = packages_root / PurePosixPath(path)
+        rows = _tree_inventory(package_path, f"selected package directory {package_id}")
+        sha_file = package_path / f"{package_id.lower()}.{version}.nupkg.sha512"
+        sha_bytes, _ = _stable_file(sha_file, f"selected package sha512 {package_id}")
+        if sha_bytes.decode("ascii").strip() != sha512:
+            raise ValueError(f"selected package cache sha512 drifted: {package_id}")
+        try:
+            base64.b64decode(sha512, validate=True)
+        except ValueError as error:
+            raise ValueError(f"selected package cache sha512 is malformed: {package_id}") from error
+        result.append({
+            "packageId": package_id,
+            "version": version,
+            "contentSha512": sha512,
+            "packageDirectorySha256": _inventory_digest(rows),
+            "authorityNupkgSha256": expected_row["nupkgSha256"],
+        })
+    return result
+
+
+def materialize_payload(
+    *, input_root: Path, workspace_root: Path, authority_path: Path, owner_feed: Path,
+    packages_root: Path, project_lock: Path,
+) -> dict[str, Any]:
+    input_root = _private_directory(input_root, "release restore input root")
+    workspace_root = workspace_root.resolve(strict=True)
+    _outside(input_root, workspace_root)
+    for path, label in (
+        (owner_feed, "private selected package feed"),
+        (packages_root, "isolated global-packages cache"),
+    ):
+        _private_directory(path, label)
+        try:
+            path.relative_to(input_root)
+        except ValueError as error:
+            raise ValueError(f"{label} must remain inside the release restore input root") from error
+    authority_data, _ = _stable_file(authority_path, "release package authority")
+    authority = json.loads(authority_data)
+    expected = _authority_packages(authority)
+    package_rows = _tree_inventory(packages_root, "isolated global-packages cache")
+    build_roots, intermediate_rows = _workspace_build_state(workspace_root)
+    if any(PurePosixPath(root).name == "bin" for root in build_roots):
+        raise ValueError("coherent release workspace bin outputs must remain absent before publish")
+    assets_candidates = [
+        row for row in intermediate_rows
+        if PurePosixPath(row["path"]).name == "project.assets.json"
+        and "Chummer.Android" in PurePosixPath(row["path"]).parts
+    ]
+    dgspec_candidates = [
+        row for row in intermediate_rows
+        if PurePosixPath(row["path"]).name == "Chummer.Android.csproj.nuget.dgspec.json"
+    ]
+    if len(assets_candidates) != 1 or len(dgspec_candidates) != 1:
+        raise ValueError("restore must produce exactly one primary Android project.assets.json and dgspec")
+    assets_path = workspace_root / PurePosixPath(assets_candidates[0]["path"])
+    assets = _strict_json(assets_path, "project.assets.json")
+    lock_row = _file_row(project_lock, project_lock.name, "packages.lock.json")
+    return {
+        "contractName": CONTRACT,
+        "publicationAuthorized": False,
+        "inputRoot": os.fspath(input_root),
+        "authoritySha256": hashlib.sha256(authority_data).hexdigest(),
+        "projectLock": lock_row,
+        "projectAssets": assets_candidates[0],
+        "dependencyGraphSpec": dgspec_candidates[0],
+        "chummerClosure": _closure(assets, packages_root, expected),
+        "ownerFeed": {
+            "files": _tree_inventory(owner_feed, "private selected package feed"),
+        },
+        "packages": {"files": package_rows, "inventorySha256": _inventory_digest(package_rows)},
+        "workspaceBuildState": {
+            "roots": build_roots,
+            "files": intermediate_rows,
+            "inventorySha256": _inventory_digest(intermediate_rows),
+        },
+        "buildOutputsInitiallyEmpty": True,
+    }
+
+
+def _write_exclusive(path: Path, payload: Mapping[str, Any]) -> None:
+    _private_directory(path.parent, "restore consumption manifest parent")
+    descriptor = os.open(
+        path,
+        os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0),
+        0o600,
+    )
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+            json.dump(payload, stream, indent=2, sort_keys=True)
+            stream.write("\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+    except Exception:
+        path.unlink(missing_ok=True)
+        raise
+
+
+def _rows_by_path(rows: object, label: str) -> dict[str, Mapping[str, Any]]:
+    if not isinstance(rows, list):
+        raise ValueError(f"{label} inventory is malformed")
+    result: dict[str, Mapping[str, Any]] = {}
+    for row in rows:
+        if not isinstance(row, dict) or set(row) != {"path", "sizeBytes", "sha256"}:
+            raise ValueError(f"{label} inventory row is malformed")
+        path = row.get("path")
+        if not isinstance(path, str) or path in result:
+            raise ValueError(f"{label} inventory path is malformed")
+        result[path] = row
+    return result
+
+
+def verify_post_publish(
+    manifest: Mapping[str, Any], *, packages_root: Path, workspace_root: Path,
+    owner_feed: Path, project_lock: Path,
+) -> None:
+    if manifest.get("contractName") != CONTRACT or manifest.get("publicationAuthorized") is not False:
+        raise ValueError("restore consumption manifest posture is not exact")
+    actual_packages = _tree_inventory(packages_root, "isolated global-packages cache")
+    expected_packages = manifest.get("packages", {}).get("files") if isinstance(manifest.get("packages"), dict) else None
+    if _rows_by_path(actual_packages, "actual packages") != _rows_by_path(expected_packages, "sealed packages"):
+        raise ValueError("isolated global-packages cache changed after restore")
+    actual_feed = _tree_inventory(owner_feed, "private selected package feed")
+    expected_feed = manifest.get("ownerFeed", {}).get("files") if isinstance(manifest.get("ownerFeed"), dict) else None
+    if _rows_by_path(actual_feed, "actual owner feed") != _rows_by_path(expected_feed, "sealed owner feed"):
+        raise ValueError("private selected package feed changed after snapshot")
+    lock = _file_row(project_lock, project_lock.name, "packages.lock.json")
+    if lock != manifest.get("projectLock"):
+        raise ValueError("packages.lock.json changed after restore")
+    _actual_roots, actual_rows = _workspace_build_state(workspace_root)
+    actual_intermediate = _rows_by_path(actual_rows, "actual intermediates")
+    sealed = _rows_by_path(
+        manifest.get("workspaceBuildState", {}).get("files")
+        if isinstance(manifest.get("workspaceBuildState"), dict) else None,
+        "sealed intermediates",
+    )
+    for path, row in sealed.items():
+        if actual_intermediate.get(path) != row:
+            raise ValueError(f"sealed restore intermediate changed during publish: {path}")
+
+
+def verify_context(
+    manifest: Mapping[str, Any], *, input_root: Path, workspace_root: Path,
+    authority_path: Path, owner_feed: Path, packages_root: Path,
+) -> None:
+    input_root = _private_directory(input_root, "release restore input root")
+    workspace_root = workspace_root.resolve(strict=True)
+    _outside(input_root, workspace_root)
+    if manifest.get("inputRoot") != os.fspath(input_root):
+        raise ValueError("restore consumption manifest input root drifted")
+    authority_data, _ = _stable_file(authority_path, "release package authority")
+    if manifest.get("authoritySha256") != hashlib.sha256(authority_data).hexdigest():
+        raise ValueError("release package authority changed after restore")
+    for path, label in (
+        (owner_feed, "private selected package feed"),
+        (packages_root, "isolated global-packages cache"),
+    ):
+        _private_directory(path, label)
+        try:
+            path.relative_to(input_root)
+        except ValueError as error:
+            raise ValueError(f"{label} escaped the release restore input root") from error
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    subparsers = parser.add_subparsers(dest="action", required=True)
+    snapshot = subparsers.add_parser("snapshot-feed")
+    snapshot.add_argument("--authority", required=True, type=Path)
+    snapshot.add_argument("--source", required=True, type=Path)
+    snapshot.add_argument("--destination", required=True, type=Path)
+    clean = subparsers.add_parser("assert-clean")
+    clean.add_argument("--workspace-root", required=True, type=Path)
+    materialize = subparsers.add_parser("materialize")
+    verify = subparsers.add_parser("verify")
+    for command in (materialize, verify):
+        command.add_argument("--input-root", required=True, type=Path)
+        command.add_argument("--workspace-root", required=True, type=Path)
+        command.add_argument("--authority", required=True, type=Path)
+        command.add_argument("--owner-feed", required=True, type=Path)
+        command.add_argument("--packages-root", required=True, type=Path)
+        command.add_argument("--project-lock", required=True, type=Path)
+        command.add_argument("--manifest", required=True, type=Path)
+    args = parser.parse_args()
+    try:
+        if args.action == "snapshot-feed":
+            result = snapshot_feed(args.authority, args.source, args.destination)
+            print(json.dumps(result, sort_keys=True))
+            return 0
+        if args.action == "assert-clean":
+            assert_clean_workspace_build_state(args.workspace_root)
+            print(json.dumps({"contractName": CONTRACT, "status": "clean", "publicationAuthorized": False}, sort_keys=True))
+            return 0
+        if args.action == "materialize":
+            payload = materialize_payload(
+                input_root=args.input_root, workspace_root=args.workspace_root,
+                authority_path=args.authority, owner_feed=args.owner_feed,
+                packages_root=args.packages_root, project_lock=args.project_lock,
+            )
+            _write_exclusive(args.manifest, payload)
+            print(json.dumps({"contractName": CONTRACT, "status": "sealed", "publicationAuthorized": False}, sort_keys=True))
+            return 0
+        manifest = _strict_json(args.manifest, "restore consumption manifest")
+        if args.action == "verify":
+            verify_context(
+                manifest, input_root=args.input_root, workspace_root=args.workspace_root,
+                authority_path=args.authority, owner_feed=args.owner_feed,
+                packages_root=args.packages_root,
+            )
+            verify_post_publish(
+                manifest, packages_root=args.packages_root, workspace_root=args.workspace_root,
+                owner_feed=args.owner_feed, project_lock=args.project_lock,
+            )
+            print(json.dumps({"contractName": CONTRACT, "status": "verified", "publicationAuthorized": False}, sort_keys=True))
+            return 0
+        raise ValueError("unknown action")
+    except (OSError, UnicodeError, ValueError, json.JSONDecodeError) as error:
+        print(json.dumps({"contractName": CONTRACT, "status": "blocked", "publicationAuthorized": False, "error": str(error)}, sort_keys=True))
+        return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
