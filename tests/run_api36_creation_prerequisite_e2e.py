@@ -251,14 +251,13 @@ PHASE_BUDGET_MS = {
     "resources-preview-confirm": 240_000,
     "resources-same-process-reopen": 120_000,
     "resources-prerequisite-rebind": 180_000,
-    # Exact run 33654065073 proved the new process, exact PID transition, and
-    # exact resumed MainActivity, then spent 30.556 seconds on the fresh
-    # dashboard scan before UIAutomator returned four transient empty roots.
-    # The immediately following fail-closed capture recovered a valid 53-node
-    # Chummer hierarchy.  Give only this cold-process restoration one extra
-    # empty-root observation and the bounded reserve needed to reconcile it;
-    # the independent 45-minute whole-journey cap remains unchanged.
-    "process-restart-reopen": 180_000,
+    # Exact run 33683746719 proved the new process, exact PID transition, and
+    # exact resumed MainActivity, then observed four transient empty roots in
+    # the persisted prerequisite traversal before its fail-closed capture
+    # recovered a valid 48-node Chummer hierarchy. Give this cold-process
+    # restoration the bounded observer reserve needed to finish that exact
+    # scan, without changing the independent 45-minute whole-journey cap.
+    "process-restart-reopen": 240_000,
     "process-restart-authority-options": 120_000,
     "process-restart-restored-talent-grant": 90_000,
     "process-restart-resources": 120_000,
@@ -310,6 +309,10 @@ PROCESS_RESTART_RESOURCES_SCAN_ID = (
     "creation-resources-process-restart-persisted-authority"
 )
 PROCESS_RESTART_RESOURCES_MAX_CONSECUTIVE_EMPTY_READS = 5
+PROCESS_RESTART_PERSISTED_PREREQUISITE_SCAN_ID = (
+    "process-restart-persisted-prerequisite-authority"
+)
+PROCESS_RESTART_PERSISTED_PREREQUISITE_MAX_CONSECUTIVE_EMPTY_READS = 4
 CREATION_METHOD_REACQUISITION_PHASE_AUTHORITY = {
     "advanced-editor-gate-inventory": (
         PHASE_BUDGET_MS["advanced-editor-gate-inventory"],
@@ -4208,6 +4211,7 @@ def read_persisted_prerequisite_authority(
     deadline: float,
     scan_observer: Callable[[dict[str, object]], None] | None,
     scan_id: str,
+    max_consecutive_empty_reads: int = 3,
 ) -> PersistedPrerequisiteAuthorityRead:
     proof = scan_persisted_prerequisite_authority(
         device,
@@ -4215,6 +4219,7 @@ def read_persisted_prerequisite_authority(
         deadline=deadline,
         scan_observer=scan_observer,
         scan_id=scan_id,
+        max_consecutive_empty_reads=max_consecutive_empty_reads,
     )
     values = proof.values
     binding = require_prerequisite_binding(
@@ -4721,6 +4726,7 @@ def scan_persisted_prerequisite_authority(
     deadline: float,
     scan_observer: Callable[[dict[str, object]], None] | None,
     scan_id: str,
+    max_consecutive_empty_reads: int = 3,
 ) -> PersistedPrerequisiteAuthorityScanProof:
     """Read the complete resumed root authority in one deadline-bound traversal."""
     if not scan_id:
@@ -4738,6 +4744,7 @@ def scan_persisted_prerequisite_authority(
         delay_seconds=0.0,
         observer=scan_observer,
         deadline=deadline,
+        max_consecutive_empty_reads=max_consecutive_empty_reads,
     )
     observed: dict[str, set[str]] = {
         selector: set()
@@ -10515,7 +10522,10 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         initial_observation=restarted_origin,
         deadline=process_restart_deadline,
         scan_observer=progress.record_scan,
-        scan_id="process-restart-persisted-prerequisite-authority",
+        scan_id=PROCESS_RESTART_PERSISTED_PREREQUISITE_SCAN_ID,
+        max_consecutive_empty_reads=(
+            PROCESS_RESTART_PERSISTED_PREREQUISITE_MAX_CONSECUTIVE_EMPTY_READS
+        ),
     )
     assert_persisted_prerequisite_authority(
         restarted_authority.authority,

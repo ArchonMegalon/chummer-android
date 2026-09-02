@@ -2003,6 +2003,10 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertIn("shared.force_stop_and_launch_new_process", restart_reopen)
         self.assertIn("read_persisted_prerequisite_authority(", restart_reopen)
         self.assertIn("deadline=process_restart_deadline", restart_reopen)
+        self.assertIn(
+            "max_consecutive_empty_reads=(\n            PROCESS_RESTART_PERSISTED_PREREQUISITE_MAX_CONSECUTIVE_EMPTY_READS\n        )",
+            restart_reopen,
+        )
         self.assertNotIn("require_exact_restored_authority_option(", restart_reopen)
         self.assertEqual(
             2,
@@ -10527,8 +10531,53 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             delay_seconds=0.0,
             observer=observer,
             deadline=deadline,
+            max_consecutive_empty_reads=3,
         )
         device.capture.assert_not_called()
+
+        with mock.patch.object(
+            driver,
+            "scan_forward_with_receipt",
+            return_value=driver.StableViewportScan([nodes], 6),
+        ) as exact_scan:
+            driver.scan_persisted_prerequisite_authority(
+                device,
+                initial_observation=origin,
+                deadline=deadline,
+                scan_observer=observer,
+                scan_id=driver.PROCESS_RESTART_PERSISTED_PREREQUISITE_SCAN_ID,
+                max_consecutive_empty_reads=(
+                    driver.PROCESS_RESTART_PERSISTED_PREREQUISITE_MAX_CONSECUTIVE_EMPTY_READS
+                ),
+            )
+        self.assertEqual(
+            driver.PROCESS_RESTART_PERSISTED_PREREQUISITE_MAX_CONSECUTIVE_EMPTY_READS,
+            exact_scan.call_args.kwargs["max_consecutive_empty_reads"],
+        )
+
+        with mock.patch.object(
+            driver,
+            "scan_persisted_prerequisite_authority",
+            return_value=driver.PersistedPrerequisiteAuthorityScanProof(
+                proof.values,
+                6,
+                {"heritage": 0, "talent": 0},
+            ),
+        ) as persisted_scan:
+            driver.read_persisted_prerequisite_authority(
+                device,
+                initial_observation=origin,
+                deadline=deadline,
+                scan_observer=observer,
+                scan_id=driver.PROCESS_RESTART_PERSISTED_PREREQUISITE_SCAN_ID,
+                max_consecutive_empty_reads=(
+                    driver.PROCESS_RESTART_PERSISTED_PREREQUISITE_MAX_CONSECUTIVE_EMPTY_READS
+                ),
+            )
+        self.assertEqual(
+            driver.PROCESS_RESTART_PERSISTED_PREREQUISITE_MAX_CONSECUTIVE_EMPTY_READS,
+            persisted_scan.call_args.kwargs["max_consecutive_empty_reads"],
+        )
 
     def test_persisted_authority_scan_skips_clipped_selection_until_tappable_viewport(self) -> None:
         nodes = self.persisted_prerequisite_authority_nodes()
