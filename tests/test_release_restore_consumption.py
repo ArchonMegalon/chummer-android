@@ -6,6 +6,8 @@ import hashlib
 import importlib.util
 import json
 import os
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -250,6 +252,193 @@ class ReleaseRestoreConsumptionTests(unittest.TestCase):
                 payload, packages_root=packages, workspace_root=workspace,
                 owner_feed=selected, routed_lock_root=routed_locks, project_lock=lock,
             )
+
+    def test_inventory_drift_diagnostic_is_sorted_exact_and_byte_free(self) -> None:
+        module = load_module()
+        expected = [
+            {"path": "changed", "sizeBytes": 3, "sha256": "a" * 64},
+            {"path": "removed", "sizeBytes": 4, "sha256": "b" * 64},
+        ]
+        actual = [
+            {"path": "z-added", "sizeBytes": 5, "sha256": "c" * 64},
+            {"path": "changed", "sizeBytes": 6, "sha256": "d" * 64},
+            {"path": "a-added", "sizeBytes": 7, "sha256": "e" * 64},
+        ]
+
+        drift = module._inventory_drift(actual, expected, label="test cache")
+
+        self.assertIsNotNone(drift)
+        assert drift is not None
+        self.assertEqual(2, drift["addedCount"])
+        self.assertEqual(1, drift["removedCount"])
+        self.assertEqual(1, drift["changedCount"])
+        self.assertTrue(drift["exact"])
+        self.assertEqual(
+            ["a-added", "z-added"],
+            [row["path"] for row in drift["added"]],
+        )
+        self.assertEqual(["removed"], [row["path"] for row in drift["removed"]])
+        self.assertEqual(["changed"], [row["path"] for row in drift["changed"]])
+        for row in [*drift["added"], *drift["removed"]]:
+            self.assertEqual({"path", "sizeBytes", "sha256"}, set(row))
+        for row in drift["changed"]:
+            self.assertEqual({"path", "sealed", "actual"}, set(row))
+            self.assertEqual({"path", "sizeBytes", "sha256"}, set(row["sealed"]))
+            self.assertEqual({"path", "sizeBytes", "sha256"}, set(row["actual"]))
+
+        many = [
+            {
+                "path": f"added-{index:03d}",
+                "sizeBytes": index + 1,
+                "sha256": f"{index:064x}",
+            }
+            for index in range(68)
+        ]
+        exact = module._inventory_drift(many, [], label="exact cache")
+        self.assertIsNotNone(exact)
+        assert exact is not None
+        self.assertTrue(exact["exact"])
+        self.assertEqual(len(many), exact["addedCount"])
+        self.assertEqual(len(many), len(exact["added"]))
+
+    def test_inventory_drift_receipt_survives_release_input_cleanup_boundary(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            values = fixture(Path(temporary))
+            (
+                module, workspace, input_root, authority, _feed, selected,
+                packages, routed_locks, _intermediate, _output, lock,
+            ) = values
+            payload = module.materialize_payload(
+                input_root=input_root,
+                workspace_root=workspace,
+                authority_path=authority,
+                owner_feed=selected,
+                packages_root=packages,
+                routed_lock_root=routed_locks,
+                project_lock=lock,
+            )
+            manifest = private_file(
+                input_root / "restore-consumption.json",
+                json.dumps(payload, sort_keys=True).encode(),
+            )
+            private_file(
+                packages
+                / "chummer.engine.contracts"
+                / "1.2.3"
+                / "lib"
+                / "payload.dll",
+                b"changed after restore",
+            )
+
+            with self.assertRaises(module.InventoryDriftError) as raised:
+                module.verify_post_publish(
+                    payload,
+                    packages_root=packages,
+                    workspace_root=workspace,
+                    owner_feed=selected,
+                    routed_lock_root=routed_locks,
+                    project_lock=lock,
+                )
+
+            validated_manifest_sha256 = hashlib.sha256(manifest.read_bytes()).hexdigest()
+            private_file(manifest, b'{"hostileReplacement":true}')
+            diagnostic = input_root.parent / "restore-drift.json"
+            module._write_drift_diagnostic(
+                diagnostic,
+                input_root=input_root,
+                workspace_root=workspace,
+                manifest_sha256=validated_manifest_sha256,
+                error=raised.exception,
+            )
+            receipt = json.loads(diagnostic.read_text(encoding="utf-8"))
+            self.assertEqual(module.DRIFT_DIAGNOSTIC_CONTRACT, receipt["contractName"])
+            self.assertEqual("blocked", receipt["status"])
+            self.assertFalse(receipt["publicationAuthorized"])
+            self.assertEqual(0, receipt["drift"]["addedCount"])
+            self.assertEqual(0, receipt["drift"]["removedCount"])
+            self.assertEqual(1, receipt["drift"]["changedCount"])
+            self.assertEqual(
+                validated_manifest_sha256,
+                receipt["restoreConsumptionManifestSha256"],
+            )
+            self.assertNotEqual(
+                hashlib.sha256(manifest.read_bytes()).hexdigest(),
+                receipt["restoreConsumptionManifestSha256"],
+            )
+            self.assertEqual(
+                "chummer.engine.contracts/1.2.3/lib/payload.dll",
+                receipt["drift"]["changed"][0]["path"],
+            )
+            self.assertEqual(0, diagnostic.stat().st_mode & 0o077)
+            self.assertFalse(diagnostic.is_relative_to(input_root))
+
+    def test_verify_cli_emits_drift_receipt_and_remains_blocked(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            values = fixture(Path(temporary))
+            (
+                module, workspace, input_root, authority, _feed, selected,
+                packages, routed_locks, _intermediate, _output, lock,
+            ) = values
+            payload = module.materialize_payload(
+                input_root=input_root,
+                workspace_root=workspace,
+                authority_path=authority,
+                owner_feed=selected,
+                packages_root=packages,
+                routed_lock_root=routed_locks,
+                project_lock=lock,
+            )
+            manifest = private_file(
+                input_root / "restore-consumption.json",
+                json.dumps(payload, sort_keys=True).encode(),
+            )
+            private_file(
+                packages
+                / "chummer.engine.contracts"
+                / "1.2.3"
+                / "lib"
+                / "payload.dll",
+                b"changed after restore",
+            )
+            diagnostic = input_root.parent / "restore-drift.json"
+
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    os.fspath(SCRIPT),
+                    "verify",
+                    "--input-root",
+                    os.fspath(input_root),
+                    "--workspace-root",
+                    os.fspath(workspace),
+                    "--authority",
+                    os.fspath(authority),
+                    "--owner-feed",
+                    os.fspath(selected),
+                    "--packages-root",
+                    os.fspath(packages),
+                    "--routed-lock-root",
+                    os.fspath(routed_locks),
+                    "--project-lock",
+                    os.fspath(lock),
+                    "--manifest",
+                    os.fspath(manifest),
+                    "--drift-diagnostic",
+                    os.fspath(diagnostic),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(2, completed.returncode)
+            blocked = json.loads(completed.stdout)
+            self.assertEqual("blocked", blocked["status"])
+            self.assertFalse(blocked["publicationAuthorized"])
+            self.assertEqual(os.fspath(diagnostic), blocked["driftDiagnostic"])
+            receipt = json.loads(diagnostic.read_text(encoding="utf-8"))
+            self.assertEqual(module.DRIFT_DIAGNOSTIC_CONTRACT, receipt["contractName"])
+            self.assertEqual(1, receipt["drift"]["changedCount"])
 
     def test_tamper_extra_missing_symlink_cache_asset_and_lock_fail_closed(self) -> None:
         mutations = (

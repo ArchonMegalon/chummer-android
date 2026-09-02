@@ -21,6 +21,7 @@ from typing import Any, Iterable, Mapping
 
 
 CONTRACT = "chummer.android.release-restore-consumption/v1"
+DRIFT_DIAGNOSTIC_CONTRACT = "chummer.android.release-restore-drift-diagnostic/v1"
 AUTHORITY_CONTRACT = "chummer.android.release-package-authority/v2"
 EXPECTED_SOURCE_PROJECTS = {
     "Chummer.Desktop.Runtime": (
@@ -41,6 +42,14 @@ EXPECTED_ROUTED_LOCKS = {
     "Chummer.Desktop.Runtime.packages.lock.json",
     "Chummer.Presentation.packages.lock.json",
 }
+
+
+class InventoryDriftError(ValueError):
+    """Fail-closed inventory drift carrying complete, byte-free diagnostics."""
+
+    def __init__(self, message: str, diagnostic: Mapping[str, Any]) -> None:
+        super().__init__(message)
+        self.diagnostic = dict(diagnostic)
 
 
 def _strict_json_bytes(data: bytes, label: str) -> dict[str, Any]:
@@ -607,6 +616,36 @@ def _write_exclusive(path: Path, payload: Mapping[str, Any]) -> None:
         raise
 
 
+def _write_drift_diagnostic(
+    path: Path,
+    *,
+    input_root: Path,
+    workspace_root: Path,
+    manifest_sha256: str,
+    error: InventoryDriftError,
+) -> None:
+    if not path.is_absolute() or path.exists() or path.is_symlink():
+        raise ValueError("restore drift diagnostic output must be a fresh absolute path")
+    input_root = input_root.resolve(strict=True)
+    parent = _private_directory(path.parent, "restore drift diagnostic parent")
+    if parent != input_root.parent:
+        raise ValueError(
+            "restore drift diagnostic output must be an owner-only sibling of the release input root"
+        )
+    _outside(parent, workspace_root.resolve(strict=True))
+    _write_exclusive(
+        path,
+        {
+            "contractName": DRIFT_DIAGNOSTIC_CONTRACT,
+            "publicationAuthorized": False,
+            "status": "blocked",
+            "error": str(error),
+            "restoreConsumptionManifestSha256": manifest_sha256,
+            "drift": error.diagnostic,
+        },
+    )
+
+
 def _rows_by_path(rows: object, label: str) -> dict[str, Mapping[str, Any]]:
     if not isinstance(rows, list):
         raise ValueError(f"{label} inventory is malformed")
@@ -621,6 +660,60 @@ def _rows_by_path(rows: object, label: str) -> dict[str, Mapping[str, Any]]:
     return result
 
 
+def _inventory_drift(
+    actual_rows: object,
+    expected_rows: object,
+    *,
+    label: str,
+) -> dict[str, Any] | None:
+    actual = _rows_by_path(actual_rows, f"actual {label}")
+    expected = _rows_by_path(expected_rows, f"sealed {label}")
+    added_paths = sorted(actual.keys() - expected.keys())
+    removed_paths = sorted(expected.keys() - actual.keys())
+    changed_paths = sorted(
+        path for path in actual.keys() & expected.keys()
+        if actual[path] != expected[path]
+    )
+    if not added_paths and not removed_paths and not changed_paths:
+        return None
+
+    return {
+        "label": label,
+        "actualInventorySha256": _inventory_digest(
+            actual[path] for path in sorted(actual)
+        ),
+        "sealedInventorySha256": _inventory_digest(
+            expected[path] for path in sorted(expected)
+        ),
+        "addedCount": len(added_paths),
+        "removedCount": len(removed_paths),
+        "changedCount": len(changed_paths),
+        "exact": True,
+        "added": [dict(actual[path]) for path in added_paths],
+        "removed": [dict(expected[path]) for path in removed_paths],
+        "changed": [
+            {
+                "path": path,
+                "sealed": dict(expected[path]),
+                "actual": dict(actual[path]),
+            }
+            for path in changed_paths
+        ],
+    }
+
+
+def _require_inventory_unchanged(
+    actual_rows: object,
+    expected_rows: object,
+    *,
+    label: str,
+    message: str,
+) -> None:
+    drift = _inventory_drift(actual_rows, expected_rows, label=label)
+    if drift is not None:
+        raise InventoryDriftError(message, drift)
+
+
 def verify_post_publish(
     manifest: Mapping[str, Any], *, packages_root: Path, workspace_root: Path,
     owner_feed: Path, routed_lock_root: Path, project_lock: Path,
@@ -629,21 +722,31 @@ def verify_post_publish(
         raise ValueError("restore consumption manifest posture is not exact")
     actual_packages = _tree_inventory(packages_root, "isolated global-packages cache")
     expected_packages = manifest.get("packages", {}).get("files") if isinstance(manifest.get("packages"), dict) else None
-    if _rows_by_path(actual_packages, "actual packages") != _rows_by_path(expected_packages, "sealed packages"):
-        raise ValueError("isolated global-packages cache changed after restore")
+    _require_inventory_unchanged(
+        actual_packages,
+        expected_packages,
+        label="isolated global-packages cache",
+        message="isolated global-packages cache changed after restore",
+    )
     actual_feed = _tree_inventory(owner_feed, "private selected package feed")
     expected_feed = manifest.get("ownerFeed", {}).get("files") if isinstance(manifest.get("ownerFeed"), dict) else None
-    if _rows_by_path(actual_feed, "actual owner feed") != _rows_by_path(expected_feed, "sealed owner feed"):
-        raise ValueError("private selected package feed changed after snapshot")
+    _require_inventory_unchanged(
+        actual_feed,
+        expected_feed,
+        label="private selected package feed",
+        message="private selected package feed changed after snapshot",
+    )
     actual_locks = _routed_lock_inventory(routed_lock_root)
     expected_locks = (
         manifest.get("routedProjectLocks", {}).get("files")
         if isinstance(manifest.get("routedProjectLocks"), dict) else None
     )
-    if _rows_by_path(actual_locks, "actual routed locks") != _rows_by_path(
-        expected_locks, "sealed routed locks"
-    ):
-        raise ValueError("routed project locks changed after restore")
+    _require_inventory_unchanged(
+        actual_locks,
+        expected_locks,
+        label="routed project locks",
+        message="routed project locks changed after restore",
+    )
     lock = _file_row(project_lock, project_lock.name, "packages.lock.json")
     if lock != manifest.get("projectLock"):
         raise ValueError("packages.lock.json changed after restore")
@@ -703,7 +806,9 @@ def main() -> int:
         command.add_argument("--routed-lock-root", required=True, type=Path)
         command.add_argument("--project-lock", required=True, type=Path)
         command.add_argument("--manifest", required=True, type=Path)
+    verify.add_argument("--drift-diagnostic", type=Path)
     args = parser.parse_args()
+    manifest_sha256: str | None = None
     try:
         if args.action == "snapshot-feed":
             result = snapshot_feed(args.authority, args.source, args.destination)
@@ -723,7 +828,15 @@ def main() -> int:
             _write_exclusive(args.manifest, payload)
             print(json.dumps({"contractName": CONTRACT, "status": "sealed", "publicationAuthorized": False}, sort_keys=True))
             return 0
-        manifest = _strict_json(args.manifest, "restore consumption manifest")
+        manifest_data, _ = _stable_file(
+            args.manifest,
+            "restore consumption manifest",
+        )
+        manifest = _strict_json_bytes(
+            manifest_data,
+            "restore consumption manifest",
+        )
+        manifest_sha256 = hashlib.sha256(manifest_data).hexdigest()
         if args.action == "verify":
             verify_context(
                 manifest, input_root=args.input_root, workspace_root=args.workspace_root,
@@ -739,7 +852,31 @@ def main() -> int:
             return 0
         raise ValueError("unknown action")
     except (OSError, UnicodeError, ValueError, json.JSONDecodeError) as error:
-        print(json.dumps({"contractName": CONTRACT, "status": "blocked", "publicationAuthorized": False, "error": str(error)}, sort_keys=True))
+        blocked: dict[str, Any] = {
+            "contractName": CONTRACT,
+            "status": "blocked",
+            "publicationAuthorized": False,
+            "error": str(error),
+        }
+        drift_output = getattr(args, "drift_diagnostic", None)
+        if (
+            isinstance(error, InventoryDriftError)
+            and drift_output is not None
+            and manifest_sha256 is not None
+        ):
+            try:
+                _write_drift_diagnostic(
+                    drift_output,
+                    input_root=args.input_root,
+                    workspace_root=args.workspace_root,
+                    manifest_sha256=manifest_sha256,
+                    error=error,
+                )
+            except (OSError, UnicodeError, ValueError, json.JSONDecodeError) as diagnostic_error:
+                blocked["diagnosticError"] = str(diagnostic_error)
+            else:
+                blocked["driftDiagnostic"] = os.fspath(drift_output)
+        print(json.dumps(blocked, sort_keys=True))
         return 2
 
 

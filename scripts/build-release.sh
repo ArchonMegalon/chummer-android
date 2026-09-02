@@ -214,6 +214,10 @@ done
 
 release_tmp="$(mktemp -d "$release_input_root/.chummer-android-$version_name.release.XXXXXX")"
 chmod 0700 "$release_tmp"
+release_attempt_id="$(basename -- "$release_tmp")"
+restore_drift_diagnostic="$release_input_root/$release_attempt_id.restore-drift.json"
+[[ ! -e "$restore_drift_diagnostic" && ! -L "$restore_drift_diagnostic" ]] \
+  || fail "restore-drift-diagnostic-already-exists"
 staged_graph="$release_tmp/source-graph.json"
 staged_publish_dir="$release_tmp/publish"
 selected_package_feed="$release_tmp/selected-owner-feed"
@@ -429,6 +433,7 @@ python3 "$repo_dir/scripts/seal_release_restore_consumption.py" verify \
   --routed-lock-root "$routed_locks" \
   --project-lock "$repo_dir/src/Chummer.Android/packages.lock.json" \
   --manifest "$restore_manifest" \
+  --drift-diagnostic "$restore_drift_diagnostic" \
   || fail "locked-restore-consumption-post-publish"
 
 source_aab="$(python3 "$repo_dir/scripts/verify_release_publish_output.py" \

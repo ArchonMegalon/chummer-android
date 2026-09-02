@@ -1684,6 +1684,13 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("seal_release_restore_consumption.py", build)
         self.assertIn("locked-restore-consumption-pre-publish", build)
         self.assertIn("locked-restore-consumption-post-publish", build)
+        self.assertIn('release_attempt_id="$(basename -- "$release_tmp")"', build)
+        self.assertIn(
+            'restore_drift_diagnostic="$release_input_root/$release_attempt_id.restore-drift.json"',
+            build,
+        )
+        self.assertIn("restore-drift-diagnostic-already-exists", build)
+        self.assertIn('--drift-diagnostic "$restore_drift_diagnostic"', build)
         self.assertIn('NUGET_PACKAGES="$isolated_packages"', build)
         self.assertIn("release-workspace-stale-bin-obj", build)
         self.assertIn("--routed-lock-root", build)
