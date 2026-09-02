@@ -36,6 +36,11 @@ EXPECTED_ANDROID_TARGETS = {
     "net10.0-android36.0",
     "net10.0-android36.0/android-arm64",
 }
+EXPECTED_ROUTED_LOCKS = {
+    "Chummer.Android.packages.lock.json",
+    "Chummer.Desktop.Runtime.packages.lock.json",
+    "Chummer.Presentation.packages.lock.json",
+}
 
 
 def _strict_json_bytes(data: bytes, label: str) -> dict[str, Any]:
@@ -159,6 +164,16 @@ def _tree_inventory(root: Path, label: str) -> list[dict[str, Any]]:
             relative = path.relative_to(root).as_posix()
             rows.append(_file_row(path, relative, f"{label} file {relative}"))
     return rows
+
+
+def _routed_lock_inventory(root: Path) -> list[dict[str, Any]]:
+    root = _private_directory(root, "routed project-lock root")
+    entries = list(root.iterdir())
+    if {path.name for path in entries} != EXPECTED_ROUTED_LOCKS or len(entries) != 3:
+        raise ValueError("routed project-lock root must contain exactly three approved locks")
+    if any(path.is_symlink() or not path.is_file() for path in entries):
+        raise ValueError("routed project-lock root contains an unsafe lock")
+    return _tree_inventory(root, "routed project-lock root")
 
 
 def _workspace_build_state(workspace_root: Path) -> tuple[list[str], list[dict[str, Any]]]:
@@ -563,7 +578,7 @@ def materialize_payload(
         },
         "packages": {"files": package_rows, "inventorySha256": _inventory_digest(package_rows)},
         "routedProjectLocks": {
-            "files": _tree_inventory(routed_lock_root, "routed project-lock root"),
+            "files": _routed_lock_inventory(routed_lock_root),
         },
         "workspaceBuildState": {
             "roots": build_roots,
@@ -620,7 +635,7 @@ def verify_post_publish(
     expected_feed = manifest.get("ownerFeed", {}).get("files") if isinstance(manifest.get("ownerFeed"), dict) else None
     if _rows_by_path(actual_feed, "actual owner feed") != _rows_by_path(expected_feed, "sealed owner feed"):
         raise ValueError("private selected package feed changed after snapshot")
-    actual_locks = _tree_inventory(routed_lock_root, "routed project-lock root")
+    actual_locks = _routed_lock_inventory(routed_lock_root)
     expected_locks = (
         manifest.get("routedProjectLocks", {}).get("files")
         if isinstance(manifest.get("routedProjectLocks"), dict) else None

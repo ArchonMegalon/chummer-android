@@ -258,6 +258,10 @@ class ReleaseRestoreConsumptionTests(unittest.TestCase):
             ("package-missing", "global-packages cache changed"),
             ("asset-tamper", "sealed restore intermediate changed"),
             ("lock-tamper", "packages.lock.json changed"),
+            ("routed-lock-tamper", "routed project locks changed"),
+            ("routed-lock-extra", "exactly three approved locks"),
+            ("routed-lock-missing", "exactly three approved locks"),
+            ("routed-lock-symlink", "unsafe lock"),
             ("output-symlink", "unsafe directory|without following links|singly-linked"),
         )
         for mutation, message in mutations:
@@ -280,6 +284,20 @@ class ReleaseRestoreConsumptionTests(unittest.TestCase):
                     private_file(intermediate / "project.assets.json", b"{}")
                 elif mutation == "lock-tamper":
                     private_file(lock, b"tampered")
+                elif mutation == "routed-lock-tamper":
+                    private_file(
+                        routed_locks / "Chummer.Presentation.packages.lock.json", b"tampered"
+                    )
+                elif mutation == "routed-lock-extra":
+                    private_file(routed_locks / "Unexpected.Project.packages.lock.json", b"extra")
+                elif mutation == "routed-lock-missing":
+                    (routed_locks / "Chummer.Presentation.packages.lock.json").unlink()
+                elif mutation == "routed-lock-symlink":
+                    presentation_lock = routed_locks / "Chummer.Presentation.packages.lock.json"
+                    presentation_lock.unlink()
+                    presentation_lock.symlink_to(
+                        routed_locks / "Chummer.Android.packages.lock.json"
+                    )
                 else:
                     private_directory(output)
                     (output / "escape").symlink_to(lock)
