@@ -40,6 +40,11 @@ def main(argv: list[str] | None = None) -> int:
     journey.add_argument("--expected-apk-sha256", required=True)
     journey.add_argument("--journey-receipt", type=Path, required=True)
     journey.add_argument("--matrix-journey", required=True)
+    journey.add_argument(
+        "--emulator-version-observation",
+        type=Path,
+        required=True,
+    )
 
     build = subparsers.add_parser("build", parents=[common])
     build.add_argument("--x64-apk", type=Path, required=True)
@@ -52,15 +57,32 @@ def main(argv: list[str] | None = None) -> int:
     gate_snapshot = StableFile(args.gate_contract, "wizard gate contract")
     policy = load_policy(policy_snapshot)
     gate_authority = contract_binding(gate_snapshot.path)
+    emulator_version_snapshot = (
+        StableFile(args.emulator_version_observation, "emulator version observation")
+        if args.role == "journey"
+        else None
+    )
+    if emulator_version_snapshot is not None:
+        if emulator_version_snapshot.size > 64 * 1024:
+            raise ValueError("emulator version observation is oversized")
+        try:
+            emulator_version_output = emulator_version_snapshot.data.decode("utf-8")
+        except UnicodeDecodeError as error:
+            raise ValueError("emulator version observation is not UTF-8") from error
+    else:
+        emulator_version_output = None
     observation = collect_environment(
         args.android_sdk_root.absolute(),
         os.environ,
         emulator_required=(
             "emulator" in policy["roles"][args.role]["requiredAndroidPackages"]
         ),
+        emulator_version_output=emulator_version_output,
     )
 
     snapshots: list[StableFile] = [policy_snapshot, gate_snapshot]
+    if emulator_version_snapshot is not None:
+        snapshots.append(emulator_version_snapshot)
     if args.role == "journey":
         journey_snapshot = StableFile(args.journey_receipt, "finalized journey receipt")
         apk_snapshot = StableFile(args.apk, "x64 journey APK")

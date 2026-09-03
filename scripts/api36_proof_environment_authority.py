@@ -312,14 +312,34 @@ def _run(command: Sequence[str], *, timeout: int = 60) -> str:
         }
     }
     allowed_environment.update({"LANG": "C", "LC_ALL": "C"})
-    completed = subprocess.run(
-        list(command),
-        check=True,
-        capture_output=True,
-        text=True,
-        timeout=timeout,
-        env=allowed_environment,
-    )
+    try:
+        completed = subprocess.run(
+            list(command),
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            env=allowed_environment,
+        )
+    except subprocess.CalledProcessError as error:
+        def bounded_diagnostic(value: object) -> str:
+            raw = value if isinstance(value, str) else ""
+            safe = "".join(
+                character
+                if character in {"\n", "\r", "\t"} or character.isprintable()
+                else "?"
+                for character in raw
+            )
+            encoded = safe.encode("utf-8")
+            if len(encoded) > 4096:
+                safe = encoded[:4096].decode("utf-8", errors="replace") + "...[truncated]"
+            return safe
+
+        raise RuntimeError(
+            f"exact tool command failed with exit code {error.returncode}; "
+            f"stdout={bounded_diagnostic(error.stdout)!r}; "
+            f"stderr={bounded_diagnostic(error.stderr)!r}"
+        ) from None
     output = (completed.stdout + "\n" + completed.stderr).strip()
     if not output or len(output.encode("utf-8")) > 4 * 1024 * 1024:
         raise ValueError(f"command emitted empty or oversized output: {command[0]}")
@@ -358,6 +378,10 @@ def sdk_executable(
     SDK directories must be canonical. The emulator's exact file may be an
     SDK-internal symlink chain because hosted Android packages use that layout;
     every hop and the final regular executable must remain below the SDK root.
+    After validating the complete chain, return the exact public SDK launcher
+    path rather than its final target. Android's emulator launcher derives its
+    runtime layout from that public path; invoking the internal target directly
+    is not equivalent and may exit before printing its version.
     """
     root = _canonical_sdk_root(android_sdk_root)
     expected = root / relative_path
@@ -395,7 +419,7 @@ def sdk_executable(
             raise ValueError(
                 f"{label} is not one executable regular file under Android SDK root"
             )
-        return current
+        return expected
 
 
 def collect_environment(
@@ -403,6 +427,7 @@ def collect_environment(
     environment: Mapping[str, str],
     *,
     emulator_required: bool = True,
+    emulator_version_output: str | None = None,
     command_runner: Callable[[Sequence[str]], str] = _run,
     kvm_path: Path = Path("/dev/kvm"),
     kvm_module_path: Path = Path("/sys/module/kvm"),
@@ -445,9 +470,14 @@ def collect_environment(
     assert sdkmanager is not None and adb is not None
     sdkmanager_output = command_runner((str(sdkmanager), "--list_installed"))
     adb_output = command_runner((str(adb), "version"))
-    emulator_output = (
-        command_runner((str(emulator), "-version")) if emulator is not None else None
-    )
+    if emulator is None:
+        emulator_output = None
+    elif emulator_version_output is not None:
+        emulator_output = emulator_version_output.strip()
+        if not emulator_output or len(emulator_output.encode("utf-8")) > 64 * 1024:
+            raise ValueError("emulator version observation is empty or oversized")
+    else:
+        emulator_output = command_runner((str(emulator), "-version"))
 
     java_match = JAVA_VERSION.search(java_output)
     javac_match = JAVAC_VERSION.search(javac_output)

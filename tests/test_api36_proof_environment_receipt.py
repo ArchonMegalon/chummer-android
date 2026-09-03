@@ -12,6 +12,7 @@ import tempfile
 from types import SimpleNamespace
 import unittest
 from unittest import mock
+import subprocess
 
 
 REPO = Path(__file__).resolve().parents[1]
@@ -390,7 +391,10 @@ system-images;android-36;google_apis;x86_64 | 10 | image | secret/location
 Available Packages:
 """
 
+        commands: list[tuple[str, ...]] = []
+
         def run(command: tuple[str, ...]) -> str:
+            commands.append(command)
             if command == ("java", "-version"):
                 return 'openjdk version "17.0.16" 2026-07-15'
             if command == ("javac", "-version"):
@@ -444,6 +448,7 @@ Available Packages:
             "36.0.0-13206524",
             observation["androidSdk"]["adb"]["packageVersion"],
         )
+        self.assertIn((str(sdk / "emulator/emulator"), "-version"), commands)
         relocated_sdk = self.root / "relocated-private-sdk"
         for relative in (
             "cmdline-tools/latest/bin/sdkmanager",
@@ -454,6 +459,7 @@ Available Packages:
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text("tool\n", encoding="utf-8")
             path.chmod(0o755)
+        commands_before_precaptured_observation = len(commands)
         relocated = MODULE.collect_environment(
             relocated_sdk,
             {
@@ -462,6 +468,7 @@ Available Packages:
                 "ImageOS": "ubuntu24",
                 "ImageVersion": "20260901.1.0",
             },
+            emulator_version_output="Android emulator version 36.2.11.0",
             command_runner=run,
             kvm_path=Path("/dev/null"),
             kvm_module_path=kvm_module,
@@ -473,6 +480,13 @@ Available Packages:
             ),
         )
         self.assertEqual(observation, relocated)
+        self.assertFalse(
+            any(
+                command[-1] == "-version"
+                and command[0].endswith("/emulator/emulator")
+                for command in commands[commands_before_precaptured_observation:]
+            )
+        )
 
     def test_exact_emulator_allows_only_an_sdk_internal_file_symlink_chain(self) -> None:
         sdk = self.root / "sdk-with-internal-emulator-link"
@@ -484,7 +498,7 @@ Available Packages:
         emulator.parent.mkdir(parents=True, exist_ok=True)
         emulator.symlink_to(Path("qemu/linux-x86_64/qemu-system-x86_64"))
         self.assertEqual(
-            target,
+            emulator,
             MODULE.sdk_executable(
                 sdk,
                 "emulator/emulator",
@@ -499,7 +513,7 @@ Available Packages:
         emulator.unlink()
         emulator.symlink_to(Path("qemu/emulator-dispatch"))
         self.assertEqual(
-            target,
+            emulator,
             MODULE.sdk_executable(
                 sdk,
                 "emulator/emulator",
@@ -508,6 +522,25 @@ Available Packages:
                 allow_internal_file_symlink=True,
             ),
         )
+
+    def test_command_failure_reports_bounded_tool_output_without_environment(self) -> None:
+        stderr = "emulator loader failure\n" + ("x" * 5000)
+        with mock.patch.object(
+            MODULE.subprocess,
+            "run",
+            side_effect=subprocess.CalledProcessError(
+                127,
+                ["/sdk/emulator/emulator", "-version"],
+                output="version probe stdout",
+                stderr=stderr,
+            ),
+        ), self.assertRaisesRegex(
+            RuntimeError,
+            r"exit code 127; stdout='version probe stdout'; stderr='emulator loader failure",
+        ) as failure:
+            MODULE._run(("/sdk/emulator/emulator", "-version"))
+        self.assertIn("...[truncated]", str(failure.exception))
+        self.assertNotIn("PATH=", str(failure.exception))
 
     def test_emulator_symlink_escape_and_symlinked_sdk_directory_fail_closed(self) -> None:
         sdk = self.root / "sdk-with-hostile-emulator-link"
@@ -681,6 +714,10 @@ class Api36ProofEnvironmentSourceContractTests(unittest.TestCase):
             runner.index("materialize-api36-proof-environment-receipt.py"),
         )
         self.assertIn("journey \\", runner)
+        self.assertIn(
+            '--emulator-version-observation "$RUNNER_TEMP/chummer-api36-emulator-version.txt"',
+            runner,
+        )
         self.assertIn("environment-receipt.json.sha256", runner)
 
     def test_workflow_captures_build_environment_with_pinned_java_and_dotnet(self) -> None:
@@ -721,6 +758,22 @@ class Api36ProofEnvironmentSourceContractTests(unittest.TestCase):
         )
         self.assertIn("build-environment-receipt.json", workflow)
         self.assertIn("--build-environment-receipt", workflow)
+        self.assertEqual(1, workflow.count("pre-emulator-launch-script:"))
+        self.assertEqual(
+            1,
+            workflow.count(
+                '"$ANDROID_HOME/emulator/emulator" -version'
+            ),
+        )
+        self.assertEqual(
+            3,
+            workflow.count("chummer-api36-emulator-version.txt"),
+        )
+        self.assertNotIn("emulator_version_observation=", workflow)
+        self.assertIn(
+            '"$ANDROID_HOME/emulator/emulator" -version >"$RUNNER_TEMP/chummer-api36-emulator-version.txt" 2>&1',
+            workflow,
+        )
 
     def test_aggregate_is_v2_and_environment_is_not_an_eighth_journey(self) -> None:
         gate = json.loads(
