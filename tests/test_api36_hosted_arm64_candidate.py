@@ -146,6 +146,13 @@ class Api36HostedArm64CandidateTests(unittest.TestCase):
         self.assertEqual(2, payload["githubRun"]["attempt"])
         self.assertEqual(0, candidate.main(["verify", "--receipt", str(self.output)]))
 
+    def test_merge_group_is_an_allowed_review_trigger(self) -> None:
+        arguments = self.keyword_arguments()
+        arguments["event_name"] = "merge_group"
+        observation = candidate.create_observation(**arguments)
+        self.assertEqual("merge_group", observation["githubRun"]["eventName"])
+        candidate.validate_observation(observation)
+
     def test_cli_requires_the_exact_subcommand_before_options(self) -> None:
         base = [sys.executable, str(SCRIPT)]
         omitted = subprocess.run(

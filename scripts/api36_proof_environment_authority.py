@@ -145,6 +145,50 @@ class StableFile:
         return value
 
 
+def stable_virtual_file_bytes(
+    path: Path,
+    label: str,
+    *,
+    maximum_bytes: int = 64 * 1024,
+) -> bytes:
+    """Double-read a bounded virtual regular file whose stat size may be zero."""
+    candidate = path.absolute()
+    try:
+        resolved = candidate.resolve(strict=True)
+    except (OSError, RuntimeError) as error:
+        raise ValueError(f"{label} is missing or has an unsafe path") from error
+    if resolved != candidate or candidate.is_symlink() or maximum_bytes <= 0:
+        raise ValueError(f"{label} path must contain no symlink component")
+
+    def read_once() -> bytes:
+        flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
+        descriptor = os.open(candidate, flags)
+        try:
+            metadata = os.fstat(descriptor)
+            if not stat.S_ISREG(metadata.st_mode):
+                raise ValueError(f"{label} must be one virtual regular file")
+            chunks: list[bytes] = []
+            remaining = maximum_bytes + 1
+            while remaining > 0:
+                chunk = os.read(descriptor, min(8192, remaining))
+                if not chunk:
+                    break
+                chunks.append(chunk)
+                remaining -= len(chunk)
+        finally:
+            os.close(descriptor)
+        result = b"".join(chunks)
+        if not result or len(result) > maximum_bytes:
+            raise ValueError(f"{label} is empty or exceeds its bounded read")
+        return result
+
+    first = read_once()
+    second = read_once()
+    if first != second:
+        raise ValueError(f"{label} changed between bounded reads")
+    return first
+
+
 def require_exact_fields(value: Any, fields: set[str], label: str) -> None:
     if not isinstance(value, dict):
         raise ValueError(f"{label} must be an object")
@@ -323,8 +367,9 @@ def collect_environment(
         raise ValueError("one or more hosted tool versions could not be parsed")
     dotnet_version = dotnet_version_output.strip()
     _safe_token(dotnet_version, "dotnet SDK version")
+    installed_packages = parse_sdkmanager_inventory(sdkmanager_output)
     uname = uname_provider()
-    proc_version = StableFile(proc_version_path, "kernel version")
+    proc_version = stable_virtual_file_bytes(proc_version_path, "kernel version")
     try:
         kvm_stat = kvm_path.stat()
     except FileNotFoundError:
@@ -334,32 +379,48 @@ def collect_environment(
         "java": {
             "runtimeVersion": java_match.group("version"),
             "compilerVersion": javac_match.group("version"),
-            "versionOutputSha256": hashlib.sha256(java_output.encode()).hexdigest(),
-            "compilerOutputSha256": hashlib.sha256(javac_output.encode()).hexdigest(),
+            "versionOutputSha256": canonical_sha256(
+                {"runtimeVersion": java_match.group("version")}
+            ),
+            "compilerOutputSha256": canonical_sha256(
+                {"compilerVersion": javac_match.group("version")}
+            ),
         },
         "dotnet": {
             "sdkVersion": dotnet_version,
             "runtimeIdentifier": rid_match.group("rid"),
-            "infoOutputSha256": hashlib.sha256(dotnet_info_output.encode()).hexdigest(),
+            "infoOutputSha256": canonical_sha256(
+                {
+                    "sdkVersion": dotnet_version,
+                    "runtimeIdentifier": rid_match.group("rid"),
+                }
+            ),
         },
         "androidSdk": {
-            "installedPackages": parse_sdkmanager_inventory(sdkmanager_output),
-            "inventoryOutputSha256": hashlib.sha256(sdkmanager_output.encode()).hexdigest(),
+            "installedPackages": installed_packages,
+            "inventoryOutputSha256": canonical_sha256(installed_packages),
             "adb": {
                 "protocolVersion": adb_protocol.group("version"),
                 "packageVersion": adb_package.group("version"),
-                "versionOutputSha256": hashlib.sha256(adb_output.encode()).hexdigest(),
+                "versionOutputSha256": canonical_sha256(
+                    {
+                        "protocolVersion": adb_protocol.group("version"),
+                        "packageVersion": adb_package.group("version"),
+                    }
+                ),
             },
             "emulator": {
                 "version": emulator_version.group("version"),
-                "versionOutputSha256": hashlib.sha256(emulator_output.encode()).hexdigest(),
+                "versionOutputSha256": canonical_sha256(
+                    {"version": emulator_version.group("version")}
+                ),
             },
         },
         "kernel": {
             "system": uname.system,
             "release": uname.release,
             "machine": uname.machine,
-            "procVersionSha256": proc_version.sha256,
+            "procVersionSha256": hashlib.sha256(proc_version).hexdigest(),
         },
         "kvm": {
             "devicePresent": kvm_stat is not None,
@@ -401,12 +462,26 @@ def validate_environment(
         _safe_token(java[field], f"Java {field}")
         if java[field].split(".", 1)[0] != str(policy["requiredJavaMajor"]):
             raise ValueError("Java runtime/compiler major differs from proof policy")
+    if (
+        java["versionOutputSha256"]
+        != canonical_sha256({"runtimeVersion": java["runtimeVersion"]})
+        or java["compilerOutputSha256"]
+        != canonical_sha256({"compilerVersion": java["compilerVersion"]})
+    ):
+        raise ValueError("Java canonical output digest differs")
 
     dotnet = observation["dotnet"]
     require_exact_fields(dotnet, {"sdkVersion", "runtimeIdentifier", "infoOutputSha256"}, "dotnet observation")
     if dotnet["sdkVersion"] != policy["requiredDotnetSdkVersion"]:
         raise ValueError("dotnet SDK version differs from proof policy")
     _safe_token(dotnet["runtimeIdentifier"], "dotnet runtime identifier")
+    if dotnet["infoOutputSha256"] != canonical_sha256(
+        {
+            "sdkVersion": dotnet["sdkVersion"],
+            "runtimeIdentifier": dotnet["runtimeIdentifier"],
+        }
+    ):
+        raise ValueError("dotnet canonical output digest differs")
 
     android = observation["androidSdk"]
     require_exact_fields(android, {"installedPackages", "inventoryOutputSha256", "adb", "emulator"}, "Android SDK")
@@ -423,6 +498,10 @@ def validate_environment(
         if package in by_name:
             raise ValueError(f"Android installed package is ambiguous: {package!r}")
         by_name[package] = row
+    if packages != [by_name[key] for key in sorted(by_name)]:
+        raise ValueError("Android installed package inventory is not canonical")
+    if android["inventoryOutputSha256"] != canonical_sha256(packages):
+        raise ValueError("Android SDK canonical inventory digest differs")
     role_policy = policy["roles"][role]
     missing = sorted(set(role_policy["requiredAndroidPackages"]) - set(by_name))
     if missing:
@@ -444,6 +523,17 @@ def validate_environment(
     for field in ("protocolVersion", "packageVersion"):
         _safe_token(android["adb"][field], f"ADB {field}")
     _safe_token(android["emulator"]["version"], "emulator version")
+    if android["adb"]["versionOutputSha256"] != canonical_sha256(
+        {
+            "protocolVersion": android["adb"]["protocolVersion"],
+            "packageVersion": android["adb"]["packageVersion"],
+        }
+    ):
+        raise ValueError("ADB canonical output digest differs")
+    if android["emulator"]["versionOutputSha256"] != canonical_sha256(
+        {"version": android["emulator"]["version"]}
+    ):
+        raise ValueError("emulator canonical output digest differs")
 
     kernel = observation["kernel"]
     require_exact_fields(kernel, {"system", "release", "machine", "procVersionSha256"}, "kernel observation")

@@ -43,7 +43,7 @@ class Api36ProofEnvironmentAuthorityTests(unittest.TestCase):
     @staticmethod
     def environment() -> dict[str, object]:
         digest = "a" * 64
-        return {
+        observation = {
             "runnerImage": {
                 "runnerOs": "Linux",
                 "runnerArch": "X64",
@@ -97,6 +97,34 @@ class Api36ProofEnvironmentAuthorityTests(unittest.TestCase):
                 "kernelModulePresent": True,
             },
         }
+        java = observation["java"]
+        dotnet = observation["dotnet"]
+        android = observation["androidSdk"]
+        java["versionOutputSha256"] = MODULE.canonical_sha256(
+            {"runtimeVersion": java["runtimeVersion"]}
+        )
+        java["compilerOutputSha256"] = MODULE.canonical_sha256(
+            {"compilerVersion": java["compilerVersion"]}
+        )
+        dotnet["infoOutputSha256"] = MODULE.canonical_sha256(
+            {
+                "sdkVersion": dotnet["sdkVersion"],
+                "runtimeIdentifier": dotnet["runtimeIdentifier"],
+            }
+        )
+        android["inventoryOutputSha256"] = MODULE.canonical_sha256(
+            android["installedPackages"]
+        )
+        android["adb"]["versionOutputSha256"] = MODULE.canonical_sha256(
+            {
+                "protocolVersion": android["adb"]["protocolVersion"],
+                "packageVersion": android["adb"]["packageVersion"],
+            }
+        )
+        android["emulator"]["versionOutputSha256"] = MODULE.canonical_sha256(
+            {"version": android["emulator"]["version"]}
+        )
+        return observation
 
     def receipt(self, role: str = "journey") -> dict[str, object]:
         if role == "journey":
@@ -174,6 +202,9 @@ class Api36ProofEnvironmentAuthorityTests(unittest.TestCase):
             for row in environment["androidSdk"]["installedPackages"]
             if not row["package"].startswith("system-images;")
         ]
+        environment["androidSdk"]["inventoryOutputSha256"] = MODULE.canonical_sha256(
+            environment["androidSdk"]["installedPackages"]
+        )
         MODULE.validate_environment(environment, self.policy, "build")
         with self.assertRaisesRegex(ValueError, "required Android packages"):
             MODULE.validate_environment(environment, self.policy, "journey")
@@ -196,6 +227,9 @@ class Api36ProofEnvironmentAuthorityTests(unittest.TestCase):
         cases.append((runner, "runner image"))
         missing = self.environment()
         missing["androidSdk"]["installedPackages"] = missing["androidSdk"]["installedPackages"][1:]
+        missing["androidSdk"]["inventoryOutputSha256"] = MODULE.canonical_sha256(
+            missing["androidSdk"]["installedPackages"]
+        )
         cases.append((missing, "package family"))
         duplicate = self.environment()
         duplicate["androidSdk"]["installedPackages"].append(
@@ -316,11 +350,18 @@ Available Packages:
             if command == ("dotnet", "--info"):
                 return ".NET SDK:\n Version: 10.0.110\n RID: linux-x64"
             if command[-1] == "--list_installed":
-                return inventory
+                return inventory.replace("secret/location", command[0])
             if command[-1] == "version":
-                return "Android Debug Bridge version 1.0.41\nVersion 36.0.0-13206524"
+                return (
+                    "Android Debug Bridge version 1.0.41\n"
+                    "Version 36.0.0-13206524\n"
+                    f"Installed as {command[0]}"
+                )
             if command[-1] == "-version":
-                return "Android emulator version 36.2.11.0"
+                return (
+                    "Android emulator version 36.2.11.0\n"
+                    f"Found emulator at {command[0]}"
+                )
             raise AssertionError(command)
 
         proc_version = self.root / "proc-version"
@@ -353,6 +394,45 @@ Available Packages:
             "36.0.0-13206524",
             observation["androidSdk"]["adb"]["packageVersion"],
         )
+        relocated_sdk = self.root / "relocated-private-sdk"
+        for relative in (
+            "cmdline-tools/latest/bin/sdkmanager",
+            "platform-tools/adb",
+            "emulator/emulator",
+        ):
+            path = relocated_sdk / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("tool\n", encoding="utf-8")
+            path.chmod(0o755)
+        relocated = MODULE.collect_environment(
+            relocated_sdk,
+            {
+                "RUNNER_OS": "Linux",
+                "RUNNER_ARCH": "X64",
+                "ImageOS": "ubuntu24",
+                "ImageVersion": "20260901.1.0",
+            },
+            command_runner=run,
+            kvm_path=Path("/dev/null"),
+            kvm_module_path=kvm_module,
+            proc_version_path=proc_version,
+            uname_provider=lambda: SimpleNamespace(
+                system="Linux",
+                release="6.11.0-hosted",
+                machine="x86_64",
+            ),
+        )
+        self.assertEqual(observation, relocated)
+
+    @unittest.skipUnless(Path("/proc/version").is_file(), "Linux procfs is unavailable")
+    def test_real_proc_version_zero_stat_size_is_bounded_and_repeatable(self) -> None:
+        proc_version = Path("/proc/version")
+        self.assertEqual(0, proc_version.stat().st_size)
+        first = MODULE.stable_virtual_file_bytes(proc_version, "real kernel version")
+        second = MODULE.stable_virtual_file_bytes(proc_version, "real kernel version")
+        self.assertTrue(first.startswith(b"Linux version"))
+        self.assertEqual(first, second)
+        self.assertLessEqual(len(first), 64 * 1024)
 
     def test_duplicate_json_and_input_drift_fail_closed(self) -> None:
         duplicate = self.root / "duplicate.json"

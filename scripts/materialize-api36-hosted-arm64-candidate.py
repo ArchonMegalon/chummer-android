@@ -213,7 +213,7 @@ def create_observation(
         raise ValueError("run ID must be a positive decimal integer")
     if not run_attempt.isdecimal() or int(run_attempt) <= 0:
         raise ValueError("run attempt must be a positive decimal integer")
-    if event_name not in {"pull_request", "push", "workflow_dispatch"}:
+    if event_name not in {"pull_request", "merge_group", "push", "workflow_dispatch"}:
         raise ValueError("GitHub event name is not an allowed workflow trigger")
     for label, value in (
         ("event SHA", event_sha), ("head SHA", head_sha), ("base SHA", base_sha),
@@ -304,7 +304,9 @@ def validate_observation(value: object) -> dict[str, object]:
         or github_run["id"] <= 0
         or not isinstance(github_run["attempt"], int)
         or github_run["attempt"] <= 0
-        or github_run["eventName"] not in {"pull_request", "push", "workflow_dispatch"}
+        or github_run["eventName"] not in {
+            "pull_request", "merge_group", "push", "workflow_dispatch"
+        }
         or any(
             not isinstance(github_run[field], str)
             or SHA40.fullmatch(github_run[field]) is None

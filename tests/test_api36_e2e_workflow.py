@@ -453,10 +453,11 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         self.assertLess(self.text.index(check), self.text.index("actions/setup-dotnet@"))
         self.assertLess(self.text.index(check), self.text.index("run: scripts/build-debug.sh"))
 
-    def test_every_pull_request_runs_the_phone_gate_while_push_stays_bounded(self) -> None:
+    def test_every_review_event_runs_the_phone_gate_while_push_stays_bounded(self) -> None:
         trigger_block = self.text[self.text.index("on:\n") : self.text.index("permissions:\n")]
-        self.assertIn("  pull_request:\n  push:\n", trigger_block)
+        self.assertIn("  pull_request:\n  merge_group:\n  push:\n", trigger_block)
         self.assertNotIn("  pull_request:\n    paths:", trigger_block)
+        self.assertNotIn("  merge_group:\n    paths:", trigger_block)
         self.assertIn("  push:\n    branches:\n      - main\n    paths:\n", trigger_block)
         self.assertEqual(
             1,

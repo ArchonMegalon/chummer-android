@@ -1012,19 +1012,21 @@ def read_execution_started(path: Path) -> dict[str, str]:
 
 
 def require_portable_receipt_seal(
-    receipt: Path,
-    seal: Path,
+    receipt: EnvironmentStableFile,
+    seal: EnvironmentStableFile,
     *,
     expected_name: str = "receipt.json",
 ) -> str:
-    if seal.is_symlink() or not seal.is_file():
-        raise ValueError(f"journey receipt seal is missing: {seal}")
-    fields = seal.read_text(encoding="utf-8").strip().split()
+    try:
+        seal_text = seal.data.decode("utf-8", errors="strict")
+    except UnicodeDecodeError as error:
+        raise ValueError(f"journey receipt seal is not UTF-8: {seal.path}") from error
+    fields = seal_text.strip().split()
     if len(fields) != 2 or fields[1] != expected_name or not SHA256.fullmatch(fields[0]):
-        raise ValueError(f"journey receipt seal is not canonical: {seal}")
-    actual = sha256(receipt)
+        raise ValueError(f"journey receipt seal is not canonical: {seal.path}")
+    actual = receipt.sha256
     if actual != fields[0]:
-        raise ValueError(f"journey receipt seal mismatch: {receipt}")
+        raise ValueError(f"journey receipt seal mismatch: {receipt.path}")
     return actual
 
 
@@ -1242,11 +1244,15 @@ def validate_aggregate(
         build_environment_receipt_path,
         "API-36 build environment receipt",
     )
-    build_environment_receipt_sha256 = require_portable_receipt_seal(
-        build_environment_receipt_path,
+    build_environment_seal_snapshot = EnvironmentStableFile(
         build_environment_receipt_path.with_name(
             f"{build_environment_receipt_path.name}.sha256"
         ),
+        "API-36 build environment receipt seal",
+    )
+    build_environment_receipt_sha256 = require_portable_receipt_seal(
+        build_environment_snapshot,
+        build_environment_seal_snapshot,
         expected_name=build_environment_receipt_path.name,
     )
     if build_environment_receipt_sha256 != build_environment_snapshot.sha256:
@@ -1364,6 +1370,7 @@ def validate_aggregate(
 
     aggregate_journeys: dict[str, Any] = {}
     aggregate_environments: dict[str, Any] = {}
+    journey_snapshots: list[EnvironmentStableFile] = []
     journey_compatibility_sha256: str | None = None
     x64_apk_size = x64_apk_snapshot.size
     if type(x64_apk_size) is not int or x64_apk_size <= 0:
@@ -1372,10 +1379,18 @@ def validate_aggregate(
         driver_journey = JOURNEYS[journey]
         directory = evidence_root / directory_name
         receipt_path = directory / "receipt.json"
-        receipt = read_json_object(receipt_path)
-        receipt_sha256 = require_portable_receipt_seal(
+        receipt_snapshot = EnvironmentStableFile(
             receipt_path,
+            f"{journey} finalized journey receipt",
+        )
+        receipt_seal_snapshot = EnvironmentStableFile(
             directory / "receipt.json.sha256",
+            f"{journey} finalized journey receipt seal",
+        )
+        receipt = receipt_snapshot.json()
+        receipt_sha256 = require_portable_receipt_seal(
+            receipt_snapshot,
+            receipt_seal_snapshot,
         )
         started = read_execution_started(directory / "execution-started.txt")
         expected_started = {
@@ -1412,10 +1427,18 @@ def validate_aggregate(
         if journey == "creation-prerequisite":
             require_creation_timing_within_budget(receipt)
         environment_path = directory / "environment-receipt.json"
-        environment = read_json_object(environment_path)
-        environment_receipt_sha256 = require_portable_receipt_seal(
+        environment_snapshot = EnvironmentStableFile(
             environment_path,
+            f"{journey} environment receipt",
+        )
+        environment_seal_snapshot = EnvironmentStableFile(
             directory / "environment-receipt.json.sha256",
+            f"{journey} environment receipt seal",
+        )
+        environment = environment_snapshot.json()
+        environment_receipt_sha256 = require_portable_receipt_seal(
+            environment_snapshot,
+            environment_seal_snapshot,
             expected_name="environment-receipt.json",
         )
         validate_environment_receipt(environment, environment_policy)
@@ -1424,7 +1447,7 @@ def validate_aggregate(
             "driverJourney": driver_journey,
             "receiptSchema": receipt["schema"],
             "journeyReceiptSha256": receipt_sha256,
-            "journeyReceiptSizeBytes": receipt_path.stat().st_size,
+            "journeyReceiptSizeBytes": receipt_snapshot.size,
             "apkSha256": apk_sha256,
             "apkSizeBytes": x64_apk_size,
             "artifactAuthoritySha256": environment_canonical_sha256(authority),
@@ -1453,6 +1476,14 @@ def validate_aggregate(
             "environmentSha256": environment["environmentSha256"],
             "compatibilitySha256": compatibility_sha256,
         }
+        journey_snapshots.extend(
+            (
+                receipt_snapshot,
+                receipt_seal_snapshot,
+                environment_snapshot,
+                environment_seal_snapshot,
+            )
+        )
 
     aggregate = {
         "schema": AGGREGATE_SCHEMA,
@@ -1480,10 +1511,13 @@ def validate_aggregate(
     }
     environment_policy_snapshot.recheck()
     build_environment_snapshot.recheck()
+    build_environment_seal_snapshot.recheck()
     x64_apk_snapshot.recheck()
     arm64_apk_snapshot.recheck()
     hosted_candidate_snapshot.recheck()
     workflow_snapshot.recheck()
+    for snapshot in journey_snapshots:
+        snapshot.recheck()
     validate_aggregate_receipt(aggregate, gate_authority)
     return aggregate
 

@@ -1,0 +1,51 @@
+{
+  "schema": "chummer.android.api36-two-consecutive-green-policy/v1",
+  "repository": "ArchonMegalon/chummer-android",
+  "sourceWorkflow": {
+    "name": "API 36 phone beta SR5 wizard E2E",
+    "path": ".github/workflows/api36-editing-e2e.yml"
+  },
+  "reviewEvents": [
+    "pull_request",
+    "merge_group"
+  ],
+  "mainRun": {
+    "event": "push",
+    "headBranch": "main",
+    "ref": "refs/heads/main"
+  },
+  "requiredJobs": [
+    "Build x64 emulator and ARM64 hosted debug candidates",
+    "phone API 36 SR5 wizard persistence (creation-prerequisite)",
+    "phone API 36 SR5 wizard persistence (career-active-skill-advance)",
+    "phone API 36 SR5 wizard persistence (career-weapon-fire)",
+    "phone API 36 SR5 wizard persistence (before-run-edge)",
+    "phone API 36 SR5 wizard persistence (playtime-short-burst)",
+    "phone API 36 SR5 wizard persistence (downtime-calendar)",
+    "phone API 36 SR5 wizard persistence (after-run-settlement)",
+    "Aggregate exact API 36 phone evidence"
+  ],
+  "requiredArtifacts": [
+    "chummer-android-api36-phone-sr5-wizard-aggregate",
+    "chummer-android-p0-pr-authority"
+  ],
+  "aggregateSchema": "chummer.android.api36-sr5-wizard-e2e-aggregate/v2",
+  "p0AuthoritySchema": "chummer.android.p0-pr-authority/v1",
+  "eligibilityScope": "preview11_internal_testing_candidate",
+  "requiresDistinctRuns": true,
+  "requiresReviewCompletionBeforeMainStart": true,
+  "requiresExactSameAndroidTree": true,
+  "requiresExactSameAuthorityIdentities": true,
+  "requiresCompatibleEnvironmentFingerprints": true,
+  "internalTestingEligibleWhenSatisfied": true,
+  "publicationAuthorized": false,
+  "doesNotAssert": [
+    "google_play_upload",
+    "google_play_processing",
+    "tester_distribution",
+    "tester_installation",
+    "release_signing",
+    "public_release_readiness",
+    "publication_authority"
+  ]
+}

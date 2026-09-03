@@ -103,4 +103,3 @@ if __name__ == "__main__":
     except (OSError, ValueError, json.JSONDecodeError, subprocess.SubprocessError) as error:
         print(f"API-36 proof environment receipt failed: {error}")
         raise SystemExit(1) from error
-

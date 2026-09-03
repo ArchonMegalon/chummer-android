@@ -1,0 +1,143 @@
+name: API 36 two-consecutive-green eligibility
+
+on:
+  workflow_dispatch:
+    inputs:
+      review_run_id:
+        description: Exact successful pull_request or merge_group API 36 run ID
+        required: true
+        type: string
+      main_run_id:
+        description: Exact later successful refs/heads/main push API 36 run ID
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: api36-two-green-${{ github.repository }}-${{ inputs.main_run_id }}
+  cancel-in-progress: false
+
+jobs:
+  verify-two-consecutive-green:
+    name: Verify exact PR and later main API 36 authority
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Require an exact main dispatch and explicit run IDs
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = refs/heads/main
+          [[ "${{ inputs.review_run_id }}" =~ ^[1-9][0-9]*$ ]]
+          [[ "${{ inputs.main_run_id }}" =~ ^[1-9][0-9]*$ ]]
+          test "${{ inputs.review_run_id }}" != "${{ inputs.main_run_id }}"
+
+      - name: Check out the exact gate implementation
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          path: chummer-android
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Query canonical Actions metadata and download exact proof archives
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REVIEW_RUN_ID: ${{ inputs.review_run_id }}
+          MAIN_RUN_ID: ${{ inputs.main_run_id }}
+        run: |
+          set -euo pipefail
+          evidence="$RUNNER_TEMP/chummer-api36-two-green-inputs"
+          install -d -m 0700 "$evidence"
+          for role in review main; do
+            if test "$role" = review; then
+              run_id="$REVIEW_RUN_ID"
+            else
+              run_id="$MAIN_RUN_ID"
+            fi
+            role_root="$evidence/$role"
+            install -d -m 0700 "$role_root"
+            gh api \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "repos/$GITHUB_REPOSITORY/actions/runs/$run_id" \
+              >"$role_root/run.json"
+            run_attempt="$(jq -er '.run_attempt | select(type == "number" and . >= 1 and floor == .)' "$role_root/run.json")"
+            gh api \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/attempts/$run_attempt/jobs?per_page=100" \
+              >"$role_root/jobs.json"
+            gh api \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/artifacts?per_page=100" \
+              >"$role_root/artifacts.json"
+            aggregate_name="chummer-android-api36-phone-sr5-wizard-aggregate-$run_id-$run_attempt"
+            p0_name="chummer-android-p0-pr-authority-$run_id-$run_attempt"
+            for kind in aggregate p0; do
+              if test "$kind" = aggregate; then
+                artifact_name="$aggregate_name"
+              else
+                artifact_name="$p0_name"
+              fi
+              count="$(jq -er --arg name "$artifact_name" '[.artifacts[] | select(.name == $name)] | length' "$role_root/artifacts.json")"
+              test "$count" = 1
+              artifact_id="$(jq -er --arg name "$artifact_name" '.artifacts[] | select(.name == $name) | .id | select(type == "number" and . >= 1 and floor == .)' "$role_root/artifacts.json")"
+              gh api \
+                -H 'Accept: application/vnd.github+json' \
+                -H 'X-GitHub-Api-Version: 2022-11-28' \
+                "repos/$GITHUB_REPOSITORY/actions/artifacts/$artifact_id/zip" \
+                >"$role_root/$kind.zip"
+            done
+          done
+
+      - name: Materialize and replay eligibility without publication authority
+        shell: bash
+        env:
+          REVIEW_RUN_ID: ${{ inputs.review_run_id }}
+          MAIN_RUN_ID: ${{ inputs.main_run_id }}
+        run: |
+          set -euo pipefail
+          evidence="$RUNNER_TEMP/chummer-api36-two-green-inputs"
+          output_root="$RUNNER_TEMP/chummer-api36-two-green-output"
+          install -d -m 0700 "$output_root"
+          output="$output_root/ANDROID_API36_TWO_GREEN_ELIGIBILITY.generated.json"
+          common=(
+            --android-root "$GITHUB_WORKSPACE/chummer-android"
+            --policy "$GITHUB_WORKSPACE/chummer-android/eng/api36-two-consecutive-green-authority.json"
+            --source-workflow "$GITHUB_WORKSPACE/chummer-android/.github/workflows/api36-editing-e2e.yml"
+            --review-run-id "$REVIEW_RUN_ID"
+            --main-run-id "$MAIN_RUN_ID"
+            --review-run "$evidence/review/run.json"
+            --review-jobs "$evidence/review/jobs.json"
+            --review-artifacts "$evidence/review/artifacts.json"
+            --review-aggregate-archive "$evidence/review/aggregate.zip"
+            --review-p0-archive "$evidence/review/p0.zip"
+            --main-run "$evidence/main/run.json"
+            --main-jobs "$evidence/main/jobs.json"
+            --main-artifacts "$evidence/main/artifacts.json"
+            --main-aggregate-archive "$evidence/main/aggregate.zip"
+            --main-p0-archive "$evidence/main/p0.zip"
+          )
+          python3 chummer-android/scripts/materialize-api36-two-green-eligibility.py \
+            materialize "${common[@]}" --output "$output"
+          python3 chummer-android/scripts/materialize-api36-two-green-eligibility.py \
+            verify "${common[@]}" --authority "$output"
+          jq -e \
+            '.eligible == true and .internalTestingEligible == true and .publicationAuthorized == false and .googlePlayUploadAuthorized == false' \
+            "$output" >/dev/null
+
+      - name: Upload the non-publication eligibility receipt
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: chummer-android-api36-two-green-eligibility-${{ inputs.review_run_id }}-${{ inputs.main_run_id }}
+          path: ${{ runner.temp }}/chummer-api36-two-green-output/ANDROID_API36_TWO_GREEN_ELIGIBILITY.generated.json
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+          overwrite: false
+          include-hidden-files: false

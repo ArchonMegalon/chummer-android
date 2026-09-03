@@ -5,6 +5,7 @@ import json
 import shutil
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 
@@ -332,7 +333,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
     @staticmethod
     def environment() -> dict[str, object]:
         digest = "a" * 64
-        return {
+        observation = {
             "runnerImage": {
                 "runnerOs": "Linux",
                 "runnerArch": "X64",
@@ -386,6 +387,34 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                 "kernelModulePresent": True,
             },
         }
+        java = observation["java"]
+        dotnet = observation["dotnet"]
+        android = observation["androidSdk"]
+        java["versionOutputSha256"] = ENVIRONMENT.canonical_sha256(
+            {"runtimeVersion": java["runtimeVersion"]}
+        )
+        java["compilerOutputSha256"] = ENVIRONMENT.canonical_sha256(
+            {"compilerVersion": java["compilerVersion"]}
+        )
+        dotnet["infoOutputSha256"] = ENVIRONMENT.canonical_sha256(
+            {
+                "sdkVersion": dotnet["sdkVersion"],
+                "runtimeIdentifier": dotnet["runtimeIdentifier"],
+            }
+        )
+        android["inventoryOutputSha256"] = ENVIRONMENT.canonical_sha256(
+            android["installedPackages"]
+        )
+        android["adb"]["versionOutputSha256"] = ENVIRONMENT.canonical_sha256(
+            {
+                "protocolVersion": android["adb"]["protocolVersion"],
+                "packageVersion": android["adb"]["packageVersion"],
+            }
+        )
+        android["emulator"]["versionOutputSha256"] = ENVIRONMENT.canonical_sha256(
+            {"version": android["emulator"]["version"]}
+        )
+        return observation
 
     @staticmethod
     def environment_policy() -> tuple[ENVIRONMENT.StableFile, dict[str, object]]:
@@ -760,6 +789,60 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "journey environment authority differs"):
                 self.validate(root)
 
+    def test_journey_and_environment_receipt_toctou_fail_closed(self) -> None:
+        for target_name in ("receipt.json", "environment-receipt.json"):
+            with self.subTest(target=target_name), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                self.materialize_all(root)
+                directory = root / AGGREGATE.expected_artifact_directory(
+                    "career-active-skill-advance",
+                    RUN_ID,
+                )
+                target = directory / target_name
+                mutated = False
+                if target_name == "receipt.json":
+                    original = AGGREGATE.read_execution_started
+
+                    def mutate_after_snapshot(path: Path):
+                        nonlocal mutated
+                        if path.parent == directory and not mutated:
+                            target.write_bytes(target.read_bytes() + b" ")
+                            mutated = True
+                        return original(path)
+
+                    patcher = mock.patch.object(
+                        AGGREGATE,
+                        "read_execution_started",
+                        side_effect=mutate_after_snapshot,
+                    )
+                else:
+                    original_validation = AGGREGATE.validate_environment_receipt
+
+                    def mutate_after_environment_parse(value, policy):
+                        nonlocal mutated
+                        result = original_validation(value, policy)
+                        subject = value.get("subjectAuthority", {})
+                        if (
+                            subject.get("matrixJourney")
+                            == "career-active-skill-advance"
+                            and not mutated
+                        ):
+                            target.write_bytes(target.read_bytes() + b" ")
+                            mutated = True
+                        return result
+
+                    patcher = mock.patch.object(
+                        AGGREGATE,
+                        "validate_environment_receipt",
+                        side_effect=mutate_after_environment_parse,
+                    )
+                with patcher, self.assertRaisesRegex(
+                    ValueError,
+                    "changed before receipt seal",
+                ):
+                    self.validate(root)
+                self.assertTrue(mutated)
+
     def test_incompatible_or_publishing_environment_fails_closed(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -771,6 +854,9 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             environment_path = directory / "environment-receipt.json"
             environment = json.loads(environment_path.read_text())
             environment["environment"]["androidSdk"]["emulator"]["version"] = "36.2.12.0"
+            environment["environment"]["androidSdk"]["emulator"][
+                "versionOutputSha256"
+            ] = ENVIRONMENT.canonical_sha256({"version": "36.2.12.0"})
             environment["environmentSha256"] = ENVIRONMENT.canonical_sha256(
                 environment["environment"]
             )
