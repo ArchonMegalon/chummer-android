@@ -1,5 +1,8 @@
 using System.Globalization;
 using Chummer.Contracts.Characters;
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+using Chummer.Android.Proof;
+#endif
 
 namespace Chummer.Android.Native;
 
@@ -81,6 +84,17 @@ public sealed class CreationPrerequisitePage : NativePageBase
                 _prepareBlockers,
                 "creation-prerequisite-preview-blockers");
         AddActions(state);
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+        Api36ProofStatePublisher.TryPublishCreationPrerequisiteAttachment(
+            this,
+            Coordinator,
+            state.Binding.WorkspaceId.Value,
+            state.Binding.ContentRevision,
+            state.Binding.SavedRevision,
+            state.Binding.RawCharacterXmlDigest,
+            state.SnapshotDigest,
+            CreationPrerequisitePhoneAuthority.IsReady(state, Coordinator.State));
+#endif
     }
 
     private void AddBinding(CharacterCreationPrerequisiteState state)

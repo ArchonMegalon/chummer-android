@@ -739,6 +739,49 @@ class Api36ProofStateContractTests(unittest.TestCase):
         self.assertIn("rawCharacterXmlDigest", driver)
         self.assertNotIn('"process-restart-resources": 180_000', driver)
 
+    def test_creation_prerequisite_attachment_proof_is_debug_only_and_fail_closed(self) -> None:
+        page = (ROOT / "src/Chummer.Android/Native/CreationPrerequisitePage.cs").read_text(
+            encoding="utf-8"
+        )
+        publisher = (
+            ROOT / "src/Chummer.Android/Proof/Api36ProofStatePublisher.cs"
+        ).read_text(encoding="utf-8")
+        project = (ROOT / "src/Chummer.Android/Chummer.Android.csproj").read_text(
+            encoding="utf-8"
+        )
+        publish_call = page.index(
+            "Api36ProofStatePublisher.TryPublishCreationPrerequisiteAttachment("
+        )
+        self.assertIn(
+            "#if CHUMMER_API36_PROOF_INSTRUMENTATION",
+            page[:publish_call],
+        )
+        for marker in (
+            "page.IsLoaded",
+            "page.Handler is not null",
+            "page.Window is not null",
+            "ReferenceEquals(navigationStack[^1], page)",
+            "navigationStack.Count(candidate => ReferenceEquals(candidate, page)) == 1",
+            'page.AutomationId,\n                "creation-prerequisite-page"',
+            "prerequisiteAuthorityReady",
+            "workspaceId,\n                authority.WorkspaceId",
+            "contentRevision == authority.ContentRevision",
+            "savedRevision == authority.SavedRevision",
+            '$"sha256:{authority.PayloadSha256}"',
+            "DeleteObservation();",
+            '"creation-prerequisite"',
+            '"attachment-authority-ready"',
+        ):
+            self.assertIn(marker, publisher)
+        self.assertIn(
+            "CreationPrerequisitePhoneAuthority.IsReady(state, Coordinator.State)",
+            page,
+        )
+        self.assertIn(
+            '<Compile Remove="Proof/Api36ProofState.cs;Proof/Api36ProofStatePublisher.cs"',
+            project,
+        )
+
     def test_gate_scope_is_unchanged(self) -> None:
         gate = json.loads((ROOT / "eng/api36-sr5-wizard-gate-authority.json").read_text(encoding="utf-8"))
         self.assertEqual(7, gate["requiredJourneyCount"])

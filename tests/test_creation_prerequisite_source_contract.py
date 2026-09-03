@@ -2265,8 +2265,25 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         snapshot = driver.proof_state.ProofStateSnapshot(
             {
                 "schema": driver.proof_state.SCHEMA,
+                "sequence": 7,
                 "processId": 4242,
                 "processInstanceId": "44444444-4444-4444-4444-444444444444",
+                "e2eAuthorityGeneration": 2,
+                "surface": {
+                    "pageAutomationId": "creation-resources-page",
+                    "navigationDepth": 2,
+                    "wizardLane": "creation-resources",
+                    "stage": "authority-ready",
+                    "settled": True,
+                },
+                "workspace": {
+                    "workspaceId": resources["workspaceId"],
+                    "contentRevision": resources["contentRevision"],
+                    "savedRevision": resources["savedRevision"],
+                    "payloadSha256": "c" * 64,
+                    "documentSha256": "d" * 64,
+                    "snapshotDigest": resources["snapshotDigest"],
+                },
                 "stateDigest": digest("a"),
                 "creationResources": resources,
             },
@@ -5971,6 +5988,198 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         device.wait.assert_not_called()
         device.tap_until_visible.assert_not_called()
         device.tap_bidirectional.assert_not_called()
+
+    def test_prerequisite_navigation_waits_for_exact_attachment_after_one_tap(self) -> None:
+        node = self.canonical_node(
+            "creation-stage-method",
+            **{
+                "content-desc": "Priority",
+                "bounds": "[40,300][1040,520]",
+            },
+        )
+        device = mock.Mock()
+        device.node_has_tappable_bounds.return_value = True
+        origin = self.priority_rank_origin([])
+        expectation = mock.Mock(spec=driver.proof_state.ProofBuildExpectation)
+        prior = {"sequence": 7}
+        attachment = {"sequence": 8}
+        retained: list[dict[str, object]] = []
+        order: list[str] = []
+        deadline = driver.time.monotonic() + 30
+
+        device.shell.side_effect = lambda *_args, **_kwargs: order.append("tap")
+        with mock.patch.object(
+            driver,
+            "read_creation_prerequisite_attachment_proof_state",
+            side_effect=lambda *_args, **_kwargs: (
+                order.append("attachment") or attachment
+            ),
+        ) as read_attachment, mock.patch.object(
+            driver,
+            "wait_for_prerequisite_scan_origin",
+            side_effect=lambda *_args, **_kwargs: (
+                order.append("accessibility") or origin
+            ),
+        ):
+            actual = driver.open_prerequisite(
+                device,
+                ready_method_node=node,
+                deadline=deadline,
+                proof_expectation=expectation,
+                expected_prior_proof=prior,
+                attachment_proof_out=retained,
+            )
+
+        self.assertIs(origin, actual)
+        self.assertEqual(["tap", "attachment", "accessibility"], order)
+        self.assertEqual([attachment], retained)
+        self.assertEqual(1, device.shell.call_count)
+        read_attachment.assert_called_once_with(
+            device,
+            expectation,
+            expected_prior_proof=prior,
+            deadline=deadline,
+        )
+
+    def test_prerequisite_navigation_rejects_partial_proof_contract_before_tap(self) -> None:
+        device = mock.Mock()
+        with self.assertRaisesRegex(ValueError, "supplied together"):
+            driver.open_prerequisite(
+                device,
+                proof_expectation=mock.Mock(
+                    spec=driver.proof_state.ProofBuildExpectation
+                ),
+            )
+        device.shell.assert_not_called()
+
+    def test_prerequisite_attachment_proof_binds_later_same_process_workspace(self) -> None:
+        workspace = {
+            "workspaceId": "workspace-1",
+            "contentRevision": 7,
+            "savedRevision": 7,
+            "payloadSha256": "a" * 64,
+            "documentSha256": "b" * 64,
+            "snapshotDigest": "sha256:" + "c" * 64,
+        }
+        prior = {
+            "sequence": 10,
+            "processId": 4242,
+            "processInstanceId": "44444444-4444-4444-4444-444444444444",
+            "e2eAuthorityGeneration": 2,
+            "workspace": {**workspace, "snapshotDigest": "sha256:" + "d" * 64},
+        }
+        payload = {
+            "schema": driver.proof_state.SCHEMA,
+            "sequence": 11,
+            "processId": prior["processId"],
+            "processInstanceId": prior["processInstanceId"],
+            "e2eAuthorityGeneration": prior["e2eAuthorityGeneration"],
+            "surface": {
+                "pageAutomationId": "creation-prerequisite-page",
+                "navigationDepth": 2,
+                "wizardLane": "creation-prerequisite",
+                "stage": "attachment-authority-ready",
+                "settled": True,
+            },
+            "workspace": workspace,
+            "transaction": None,
+            "creationResources": None,
+            "stateDigest": "sha256:" + "e" * 64,
+        }
+        snapshot = driver.proof_state.ProofStateSnapshot(
+            payload,
+            "f" * 64,
+            {"attempt": 1},
+        )
+        device = mock.Mock()
+        expectation = mock.Mock(spec=driver.proof_state.ProofBuildExpectation)
+        with mock.patch.object(
+            driver.proof_state,
+            "wait_for_state",
+            return_value=snapshot,
+        ), mock.patch.object(
+            driver.shared,
+            "_remaining_operation_timeout",
+            return_value=17,
+        ):
+            result = driver.read_creation_prerequisite_attachment_proof_state(
+                device,
+                expectation,
+                expected_prior_proof=prior,
+                deadline=999.0,
+            )
+
+        self.assertEqual("route-attachment-and-core-snapshot-only", result["claimScope"])
+        self.assertEqual(0, result["mutationCommandsRetried"])
+        self.assertEqual(workspace, result["workspace"])
+        device.capture.assert_not_called()
+
+    def test_prerequisite_attachment_proof_rejects_identity_revision_and_scope_drift(
+        self,
+    ) -> None:
+        workspace = {
+            "workspaceId": "workspace-1",
+            "contentRevision": 7,
+            "savedRevision": 7,
+            "payloadSha256": "a" * 64,
+            "documentSha256": "b" * 64,
+            "snapshotDigest": "sha256:" + "c" * 64,
+        }
+        prior = {
+            "sequence": 10,
+            "processId": 4242,
+            "processInstanceId": "44444444-4444-4444-4444-444444444444",
+            "e2eAuthorityGeneration": 2,
+            "workspace": {**workspace, "snapshotDigest": "sha256:" + "d" * 64},
+        }
+        base_payload = {
+            "schema": driver.proof_state.SCHEMA,
+            "sequence": 11,
+            "processId": 4242,
+            "processInstanceId": prior["processInstanceId"],
+            "e2eAuthorityGeneration": 2,
+            "surface": {"navigationDepth": 2},
+            "workspace": workspace,
+            "transaction": None,
+            "creationResources": None,
+            "stateDigest": "sha256:" + "e" * 64,
+        }
+        cases = (
+            ("sequence", {"sequence": 10}),
+            ("process", {"processId": 4243}),
+            ("instance", {"processInstanceId": "55555555-5555-5555-5555-555555555555"}),
+            ("generation", {"e2eAuthorityGeneration": 3}),
+            ("workspace", {"workspace": {**workspace, "workspaceId": "workspace-2"}}),
+            ("revision", {"workspace": {**workspace, "contentRevision": 8}}),
+            ("payload", {"workspace": {**workspace, "payloadSha256": "f" * 64}}),
+            ("not-pushed", {"surface": {"navigationDepth": 1}}),
+            ("transaction", {"transaction": {"unexpected": True}}),
+            ("resources", {"creationResources": {"unexpected": True}}),
+        )
+        expectation = mock.Mock(spec=driver.proof_state.ProofBuildExpectation)
+        for label, replacement in cases:
+            payload = {**base_payload, **replacement}
+            snapshot = driver.proof_state.ProofStateSnapshot(payload, "f" * 64, None)
+            device = mock.Mock()
+            with self.subTest(label=label), mock.patch.object(
+                driver.proof_state,
+                "wait_for_state",
+                return_value=snapshot,
+            ), mock.patch.object(
+                driver.shared,
+                "_remaining_operation_timeout",
+                return_value=17,
+            ), self.assertRaisesRegex(RuntimeError, "later same-process"):
+                driver.read_creation_prerequisite_attachment_proof_state(
+                    device,
+                    expectation,
+                    expected_prior_proof=prior,
+                    deadline=999.0,
+                )
+            device.capture.assert_called_once_with(
+                "creation-prerequisite-attachment-proof-state-mismatch",
+                deadline=999.0,
+            )
 
     def test_prerequisite_resume_taps_only_the_exact_reacquired_method_node(self) -> None:
         node = driver.shared.UiNode(

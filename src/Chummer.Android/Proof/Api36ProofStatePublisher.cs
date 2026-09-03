@@ -307,6 +307,102 @@ public sealed class Api36ProofStatePublisher
         }
     }
 
+    public static void TryPublishCreationPrerequisiteAttachment(
+        Page page,
+        RunnerSessionCoordinator coordinator,
+        string workspaceId,
+        long contentRevision,
+        long savedRevision,
+        string rawCharacterXmlDigest,
+        string snapshotDigest,
+        bool prerequisiteAuthorityReady)
+    {
+        ArgumentNullException.ThrowIfNull(page);
+        Api36ProofStatePublisher? publisher = Current();
+        publisher?.PublishCreationPrerequisiteAttachment(
+            page,
+            coordinator,
+            workspaceId,
+            contentRevision,
+            savedRevision,
+            rawCharacterXmlDigest,
+            snapshotDigest,
+            prerequisiteAuthorityReady);
+    }
+
+    public void PublishCreationPrerequisiteAttachment(
+        Page page,
+        RunnerSessionCoordinator coordinator,
+        string workspaceId,
+        long contentRevision,
+        long savedRevision,
+        string rawCharacterXmlDigest,
+        string snapshotDigest,
+        bool prerequisiteAuthorityReady)
+    {
+        ArgumentNullException.ThrowIfNull(page);
+        ArgumentNullException.ThrowIfNull(coordinator);
+
+        IReadOnlyList<Page> navigationStack = page.Navigation.NavigationStack;
+        NativeWorkspaceAuthoritySnapshot? authority = coordinator.DebugWorkspaceAuthority;
+        bool exactAttachment = page.IsLoaded
+            && page.Handler is not null
+            && page.Window is not null
+            && navigationStack.Count >= 2
+            && ReferenceEquals(navigationStack[^1], page)
+            && navigationStack.Count(candidate => ReferenceEquals(candidate, page)) == 1;
+        bool exactAuthority = authority is not null
+            && prerequisiteAuthorityReady
+            && string.Equals(
+                page.AutomationId,
+                "creation-prerequisite-page",
+                StringComparison.Ordinal)
+            && string.Equals(
+                workspaceId,
+                authority.WorkspaceId,
+                StringComparison.Ordinal)
+            && contentRevision == authority.ContentRevision
+            && savedRevision == authority.SavedRevision
+            && string.Equals(
+                rawCharacterXmlDigest,
+                $"sha256:{authority.PayloadSha256}",
+                StringComparison.Ordinal);
+        if (!AndroidE2EAuthority.Enabled || !exactAttachment || !exactAuthority)
+        {
+            DeleteObservation();
+            return;
+        }
+
+        var surface = new Api36ProofSurfaceState(
+            PhoneShellRoutes.Runner,
+            page.AutomationId,
+            navigationStack.Count,
+            "creation-prerequisite",
+            "attachment-authority-ready",
+            Settled: true);
+        var workspace = new Api36ProofWorkspaceState(
+            authority!.WorkspaceId,
+            authority.ContentRevision,
+            authority.SavedRevision,
+            authority.PayloadSha256,
+            authority.DocumentSha256,
+            snapshotDigest);
+
+        lock (_sync)
+        {
+            Api36ProofState proof = Api36ProofStateContract.Create(
+                checked(++_sequence),
+                Environment.ProcessId,
+                _processInstanceId,
+                AndroidE2EAuthority.Generation,
+                _build,
+                surface,
+                workspace,
+                transaction: null);
+            WriteAtomically(_path, _temporaryPath, Api36ProofStateContract.Serialize(proof));
+        }
+    }
+
     public static void TryPublishCreationResources(
         Page page,
         RunnerSessionCoordinator coordinator,

@@ -5513,7 +5513,25 @@ def open_prerequisite(
     ready_method_node: shared.UiNode | None = None,
     deadline: float | None = None,
     scan_observer: Callable[[dict[str, object]], None] | None = None,
+    proof_expectation: proof_state.ProofBuildExpectation | None = None,
+    expected_prior_proof: dict[str, object] | None = None,
+    attachment_proof_out: list[dict[str, object]] | None = None,
 ) -> PriorityRankOrigin:
+    proof_arguments = (
+        proof_expectation,
+        expected_prior_proof,
+        attachment_proof_out,
+    )
+    if any(argument is not None for argument in proof_arguments) and not all(
+        argument is not None for argument in proof_arguments
+    ):
+        raise ValueError(
+            "Creation prerequisite attachment proof arguments must be supplied together"
+        )
+    if proof_expectation is not None and deadline is None:
+        raise ValueError(
+            "Creation prerequisite attachment proof requires a caller-owned deadline"
+        )
     if ready_method_node is None:
         ready_method_node = device.wait_exact_resource_id_bidirectional(
             "creation-stage-method",
@@ -5569,6 +5587,19 @@ def open_prerequisite(
                 maximum=15,
             ),
             deadline=deadline,
+        )
+    if proof_expectation is not None:
+        if expected_prior_proof is None or attachment_proof_out is None:
+            raise ValueError(
+                "Creation prerequisite attachment proof arguments must be supplied together"
+            )
+        attachment_proof_out.append(
+            read_creation_prerequisite_attachment_proof_state(
+                device,
+                proof_expectation,
+                expected_prior_proof=expected_prior_proof,
+                deadline=deadline,
+            )
         )
     # This single origin acquisition proves the pushed route plus the exact
     # method and binding anchors. Its fresh hierarchy is reused by the complete
@@ -9990,14 +10021,95 @@ def read_creation_resources_proof_state(
     resources = dict(proof_state.require_creation_resources(snapshot))
     evidence = {
         "schema": snapshot.payload["schema"],
+        "sequence": snapshot.payload["sequence"],
         "serializedSha256": snapshot.serialized_sha256,
         "stateDigest": snapshot.payload["stateDigest"],
         "processId": snapshot.payload["processId"],
         "processInstanceId": snapshot.payload["processInstanceId"],
+        "e2eAuthorityGeneration": snapshot.payload["e2eAuthorityGeneration"],
+        "surface": snapshot.payload["surface"],
+        "workspace": snapshot.payload["workspace"],
         "readObservation": snapshot.read_observation,
         "typedResources": resources,
     }
     return resources, evidence
+
+
+def read_creation_prerequisite_attachment_proof_state(
+    device: shared.Device,
+    expectation: proof_state.ProofBuildExpectation,
+    *,
+    expected_prior_proof: dict[str, object],
+    deadline: float,
+) -> dict[str, object]:
+    """Bind the one opening tap to an exact attached prerequisite page.
+
+    This app-private observation proves only the route lifecycle boundary and
+    its revision-bound Core snapshot. The following accessibility traversal
+    still owns every visible-anchor, value, cardinality, and navigation claim.
+    """
+    timeout = shared._remaining_operation_timeout(deadline=deadline, maximum=30)
+    snapshot = proof_state.wait_for_state(
+        device,
+        expected=expectation,
+        page_automation_id="creation-prerequisite-page",
+        stage="attachment-authority-ready",
+        wizard_lane="creation-prerequisite",
+        timeout=timeout,
+    )
+    payload = snapshot.payload
+    workspace = payload.get("workspace")
+    prior_workspace = expected_prior_proof.get("workspace")
+    surface = payload.get("surface")
+    prior_sequence = expected_prior_proof.get("sequence")
+    exact_workspace_fields = (
+        "workspaceId",
+        "contentRevision",
+        "savedRevision",
+        "payloadSha256",
+        "documentSha256",
+    )
+    if (
+        not isinstance(workspace, dict)
+        or not isinstance(prior_workspace, dict)
+        or not isinstance(surface, dict)
+        or type(prior_sequence) is not int
+        or payload["sequence"] <= prior_sequence
+        or payload["processId"] != expected_prior_proof.get("processId")
+        or payload["processInstanceId"]
+        != expected_prior_proof.get("processInstanceId")
+        or payload["e2eAuthorityGeneration"]
+        != expected_prior_proof.get("e2eAuthorityGeneration")
+        or any(
+            workspace.get(field) != prior_workspace.get(field)
+            for field in exact_workspace_fields
+        )
+        or surface.get("navigationDepth", 0) < 2
+        or payload.get("transaction") is not None
+        or payload.get("creationResources") is not None
+    ):
+        device.capture(
+            "creation-prerequisite-attachment-proof-state-mismatch",
+            deadline=deadline,
+        )
+        raise RuntimeError(
+            "Creation prerequisite attachment proof is not a later same-process "
+            "observation of the exact Resources workspace"
+        )
+    return {
+        "schema": payload["schema"],
+        "sequence": payload["sequence"],
+        "serializedSha256": snapshot.serialized_sha256,
+        "stateDigest": payload["stateDigest"],
+        "processId": payload["processId"],
+        "processInstanceId": payload["processInstanceId"],
+        "e2eAuthorityGeneration": payload["e2eAuthorityGeneration"],
+        "surface": surface,
+        "workspace": workspace,
+        "readObservation": snapshot.read_observation,
+        "claimScope": "route-attachment-and-core-snapshot-only",
+        "mutationCommandsRetried": 0,
+    }
 
 
 def read_process_restart_resources_proof_state(
@@ -10741,11 +10853,15 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         phase_id="resources-prerequisite-rebind",
         deadline=resources_rebind_deadline,
     )
+    post_resources_attachment_proofs: list[dict[str, object]] = []
     post_resources_origin = open_prerequisite(
         device,
         ready_method_node=post_resources_method_node,
         deadline=resources_rebind_deadline,
         scan_observer=progress.record_scan,
+        proof_expectation=proof_expectation,
+        expected_prior_proof=resources_same_process_proof,
+        attachment_proof_out=post_resources_attachment_proofs,
     )
     post_resources_prerequisite_authority = read_persisted_prerequisite_authority(
         device,
@@ -10757,6 +10873,24 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     resources_binding = resources_same_process.get("binding")
     if not isinstance(resources_binding, dict):
         raise RuntimeError("Reopened Resources binding receipt is absent")
+    if len(post_resources_attachment_proofs) != 1:
+        raise RuntimeError(
+            "Creation prerequisite navigation did not retain exactly one attachment proof"
+        )
+    post_resources_attachment_proof = post_resources_attachment_proofs[0]
+    attachment_workspace = post_resources_attachment_proof.get("workspace")
+    if (
+        not isinstance(attachment_workspace, dict)
+        or attachment_workspace.get("snapshotDigest")
+        != post_resources_prerequisite_authority.authority.get("snapshotDigest")
+    ):
+        device.capture(
+            "creation-prerequisite-attachment-snapshot-mismatch",
+            deadline=resources_rebind_deadline,
+        )
+        raise RuntimeError(
+            "Attached prerequisite Core snapshot did not match the visible persisted authority"
+        )
     post_resources_prerequisite_binding_digests = (
         require_resources_confirmation_authority_transition(
             confirmed_binding_digests,
@@ -11029,6 +11163,9 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
             "resourcesPreviewAndReceipt": resources_confirmation,
             "resourcesSameProcessPersistedAuthority": resources_same_process,
             "resourcesSameProcessTypedProofState": resources_same_process_proof,
+            "prerequisiteAttachmentAfterResources": (
+                post_resources_attachment_proof
+            ),
             "prerequisiteAuthorityAfterResources": (
                 post_resources_prerequisite_authority.authority
             ),
