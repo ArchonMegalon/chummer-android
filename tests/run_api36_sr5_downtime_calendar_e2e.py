@@ -487,7 +487,15 @@ def _wait_resource_text(
 def open_downtime(device: physical.shared.Device) -> None:
     physical.shared.open_build(device, "phone")
     physical.shared.reset_scroll_to_top(device, swipes=18)
-    _tap_exact(device, "build-sr5-career-wizard")
+    device.tap_exact_resource_id_bidirectional(
+        "build-sr5-career-wizard",
+        timeout=120,
+        backward_scrolls=16,
+        forward_scrolls=48,
+        scroll_distance_ratio=0.18,
+        evidence_prefix="sr5-downtime-career-wizard",
+        surface_name="SR5 Career wizard route",
+    )
     physical.wait_exact_route(device, "sr5-career", timeout=90)
     device.tap_single_exact_resource_id(
         "sr5-career-action-calendar", timeout=120,

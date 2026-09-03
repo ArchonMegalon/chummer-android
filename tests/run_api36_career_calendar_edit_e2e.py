@@ -72,7 +72,10 @@ def prepare_runner(
         if proof_expectation is not None
         else None
     )
-    device.wait("CareerCalendarEditE2E", timeout=120)
+    # The long Career sheet can expose the imported alias below the phone
+    # viewport. Import activation and the immutable Runner route are the
+    # authoritative transition; payload identity is verified from the exact
+    # workspace bytes immediately after returning to the Runners list.
     shared.wait_for_phone_runner_route(device, created=True, timeout=120)
     shared.tap_phone_destination(device, "phone-destination-runners")
     shared.wait_for_phone_runners(device, timeout=120)

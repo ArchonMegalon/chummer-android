@@ -139,7 +139,25 @@ class BeforeRunPhysicalDriverContractTests(unittest.TestCase):
         driver.require_before_run_fixture(root)
         self.assertEqual("True", root.findtext("created"))
         self.assertEqual("SR5", root.findtext("gameedition"))
+        self.assertEqual("0", root.findtext("karma"))
+        self.assertEqual("0", root.findtext("nuyen"))
         self.assertEqual("0", root.findtext("edgeused"))
+
+        for field in ("karma", "nuyen"):
+            with self.subTest(required_decimal=field):
+                missing = ET.fromstring(ET.tostring(root, encoding="unicode"))
+                node = missing.find(field)
+                assert node is not None
+                missing.remove(node)
+                with self.assertRaisesRegex(RuntimeError, f"<{field}>"):
+                    driver.require_before_run_fixture(missing)
+
+                nonzero = ET.fromstring(ET.tostring(root, encoding="unicode"))
+                target = nonzero.find(field)
+                assert target is not None
+                target.text = "1"
+                with self.assertRaisesRegex(RuntimeError, f"<{field}>"):
+                    driver.require_before_run_fixture(nonzero)
 
         saved = ET.fromstring(ET.tostring(root, encoding="unicode"))
         saved.find("edgeused").text = "1"  # type: ignore[union-attr]

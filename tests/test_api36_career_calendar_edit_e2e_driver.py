@@ -45,6 +45,11 @@ class Api36CareerCalendarEditDriverTests(unittest.TestCase):
         self.assertIn('device.tap("Delete"', source)
         self.assertIn('attributes.get("enabled") != "false"', source)
         self.assertIn('notes.attributes.get("text") != "After-run complete"', source)
+        self.assertNotIn('device.wait("CareerCalendarEditE2E"', source)
+        self.assertLess(
+            source.index("shared.wait_for_phone_runner_route"),
+            source.index("shared.read_phone_workspace_authority"),
+        )
 
     def test_fixture_has_exact_stable_weeks_missing_color_and_nested_authority(self) -> None:
         root = ET.parse(FIXTURE).getroot()

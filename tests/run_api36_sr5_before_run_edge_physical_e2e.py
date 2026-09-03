@@ -858,6 +858,8 @@ def require_before_run_fixture(root: ET.Element) -> None:
         "buildmethod": "Priority",
         "created": "True",
         "gameedition": "SR5",
+        "karma": "0",
+        "nuyen": "0",
         "edgeused": "0",
     }
     for field, value in expected.items():

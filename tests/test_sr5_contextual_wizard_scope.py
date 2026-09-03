@@ -44,6 +44,9 @@ def test_playtime_uses_one_restart_safe_typed_transaction_presenter() -> None:
     assert "Acknowledge receipt" in page
     assert "ApplyCareerEdgeUseEditAsync(" in page
     assert "ApplyCareerWeaponFireAsync(" in page
+    assert "RunWithConditionalRefreshAsync(() => QuoteAsync(action.Identity))" in page
+    assert "private async Task<bool> QuoteAsync" in page
+    assert "return false;" in page
 
     damage_page = (
         REPO / "src/Chummer.Android/Native/Sr5PlaytimeDamageWizardPage.cs"

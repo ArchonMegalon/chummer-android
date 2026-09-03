@@ -294,11 +294,11 @@ public sealed class Sr5TableWizardPage : NativePageBase
         _body.Add(NativeTheme.NavigationRow(
             title,
             ActionDetail(action),
-            () => RunAsync(() => QuoteAsync(action.Identity)),
+            () => RunWithConditionalRefreshAsync(() => QuoteAsync(action.Identity)),
             automationId: "sr5-table-action-" + action.Identity.ActionDigest[7..19]));
     }
 
-    private async Task QuoteAsync(Sr5TableWizardActionIdentity identity)
+    private async Task<bool> QuoteAsync(Sr5TableWizardActionIdentity identity)
     {
         if (_session is null
             || !MatchesCurrent(_session.State.Snapshot)
@@ -308,12 +308,16 @@ public sealed class Sr5TableWizardPage : NativePageBase
                 Text("Table authority changed"),
                 Text("Return to Career and load the current runner revision."),
                 Text("OK"));
-            return;
+            return true;
         }
         await Navigation.PushAsync(new Sr5TableWizardQuotePage(
             Coordinator,
             _session,
             _transactionStore));
+        // The quote page owns the next visual and proof state. Refreshing this
+        // disappeared lane page after PushAsync would republish its stale
+        // `ready` state over the quote page's `quote-ready` authority.
+        return false;
     }
 
     private async Task ReloadAsync()
