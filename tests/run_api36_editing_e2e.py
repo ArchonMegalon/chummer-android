@@ -2699,6 +2699,13 @@ class Device:
         return selector in values or any(value.startswith(selector) for value in values if value)
 
     @staticmethod
+    def _has_exact_resource_id(node: UiNode, selector: str) -> bool:
+        """Match one Android resource name without truncating route slashes."""
+        raw_resource_id = node.attributes.get("resource-id", "")
+        _, separator, resource_name = raw_resource_id.partition(":id/")
+        return (resource_name if separator else raw_resource_id) == selector
+
+    @staticmethod
     def _scroll_x_ratio(selector: str) -> float:
         if selector.startswith(
             (
@@ -2765,7 +2772,7 @@ class Device:
         matches = [
             node
             for node in self.hierarchy()
-            if node.attributes.get("resource-id", "").rsplit("/", 1)[-1] == selector
+            if Device._has_exact_resource_id(node, selector)
         ]
         if not matches:
             return None
@@ -2820,8 +2827,7 @@ class Device:
             matches = [
                 node
                 for node in nodes
-                if node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
-                == selector
+                if Device._has_exact_resource_id(node, selector)
             ]
             if len(matches) == 1:
                 return matches[0]
@@ -2910,11 +2916,8 @@ class Device:
             matches = [
                 node
                 for node in nodes
-                if selector
-                in {
-                    node.attributes.get("resource-id", "").rsplit("/", 1)[-1],
-                    node.attributes.get("content-desc", ""),
-                }
+                if Device._has_exact_resource_id(node, selector)
+                or node.attributes.get("content-desc", "") == selector
             ]
             if len(matches) == 1:
                 return matches[0]
@@ -3307,8 +3310,7 @@ class Device:
             matches = [
                 node
                 for node in nodes
-                if node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
-                == selector
+                if Device._has_exact_resource_id(node, selector)
             ]
             if len(matches) > 1:
                 capture_evidence(f"{evidence_prefix}-cardinality-invalid")

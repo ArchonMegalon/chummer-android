@@ -101,6 +101,55 @@ class Api36Sr5PlaytimeShortBurstDriverTests(unittest.TestCase):
             wait_route.call_args_list,
         )
 
+    def test_exact_resource_route_preserves_embedded_slashes(self) -> None:
+        route = driver.shared.UiNode(
+            {
+                "resource-id": (
+                    "com.myexternalbrain.chummer:id/sr5-career/table"
+                ),
+                "content-desc": "At the table",
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[98,366][984,519]",
+            }
+        )
+        self.assertTrue(
+            driver.shared.Device._has_exact_resource_id(route, "sr5-career/table")
+        )
+        self.assertFalse(driver.shared.Device._has_exact_resource_id(route, "table"))
+
+        device = object.__new__(driver.shared.Device)
+        with (
+            mock.patch.object(
+                driver.shared.Device,
+                "hierarchy",
+                return_value=[route],
+            ),
+            mock.patch.object(
+                driver.shared.Device,
+                "node_has_tappable_bounds",
+                return_value=True,
+            ),
+        ):
+            self.assertIs(
+                route,
+                device.wait_exact_resource_id_bidirectional(
+                    "sr5-career/table",
+                    timeout=1,
+                    backward_scrolls=0,
+                    forward_scrolls=0,
+                ),
+            )
+            self.assertIs(
+                route,
+                device.wait_for_single_exact_accessibility_value(
+                    "sr5-career/table",
+                    timeout=1,
+                    evidence_prefix="sr5-career-route",
+                    surface_name="SR5 Career route",
+                ),
+            )
+
     def test_source_graph_binds_existing_app_presentation_core_and_shared_proof(self) -> None:
         paths = driver.source_paths(Path("/workspace"))
         self.assertEqual(
