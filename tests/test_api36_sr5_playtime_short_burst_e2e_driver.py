@@ -59,6 +59,48 @@ class Api36Sr5PlaytimeShortBurstDriverTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "outside the exact"):
             driver.playtime.assert_after_state(hostile, preserved)
 
+    def test_shared_lane_opens_table_family_without_advancement_detour(self) -> None:
+        device = mock.Mock(spec=driver.shared.Device)
+        with (
+            mock.patch.object(driver.lane.physical, "open_career_hub") as open_hub,
+            mock.patch.object(driver.lane.physical, "open_choose") as open_choose,
+            mock.patch.object(driver.lane.physical, "wait_exact_route") as wait_route,
+        ):
+            driver.lane.open_lane(device, driver.SPEC)
+
+        open_hub.assert_called_once_with(device)
+        open_choose.assert_not_called()
+        self.assertEqual(
+            [
+                mock.call(
+                    "sr5-career/table",
+                    timeout=90,
+                    backward_scrolls=0,
+                    forward_scrolls=24,
+                    scroll_distance_ratio=0.18,
+                    evidence_prefix="sr5-career-table-family",
+                    surface_name="SR5 Career table family route",
+                ),
+                mock.call(
+                    driver.SPEC.action_route,
+                    timeout=90,
+                    backward_scrolls=0,
+                    forward_scrolls=24,
+                    scroll_distance_ratio=0.18,
+                    evidence_prefix="sr5-playtime-route",
+                    surface_name="SR5 playtime typed route",
+                ),
+            ],
+            device.tap_exact_resource_id_bidirectional.call_args_list,
+        )
+        self.assertEqual(
+            [
+                mock.call(device, "sr5-career/table", timeout=90),
+                mock.call(device, driver.SPEC.lane_route, timeout=120),
+            ],
+            wait_route.call_args_list,
+        )
+
     def test_source_graph_binds_existing_app_presentation_core_and_shared_proof(self) -> None:
         paths = driver.source_paths(Path("/workspace"))
         self.assertEqual(

@@ -1002,7 +1002,7 @@ def tap_exact_route(device: shared.Device, route: str, *, timeout: int = 90) -> 
     device.shell("input", "tap", str(x), str(y))
 
 
-def open_choose(device: shared.Device) -> None:
+def open_career_hub(device: shared.Device) -> None:
     shared.open_build(device, "phone")
     shared.reset_scroll_to_top(device, swipes=16)
     device.tap_bidirectional(
@@ -1014,6 +1014,10 @@ def open_choose(device: shared.Device) -> None:
         exact_resource_id=True,
     )
     wait_exact_route(device, "sr5-career", timeout=60)
+
+
+def open_choose(device: shared.Device) -> None:
+    open_career_hub(device)
     advancement_route = "sr5-career/advancement"
     tap_exact_route(device, advancement_route, timeout=60)
     wait_exact_route(device, advancement_route, timeout=60)

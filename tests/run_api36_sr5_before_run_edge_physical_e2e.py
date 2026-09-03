@@ -945,12 +945,23 @@ def prepare_runner(
 
 
 def open_lane(device: shared.Device, spec: LaneSpec) -> None:
-    physical.open_choose(device)
-    physical.tap_exact_route(device, "sr5-career/table", timeout=90)
+    physical.open_career_hub(device)
+    device.tap_exact_resource_id_bidirectional(
+        "sr5-career/table",
+        timeout=90,
+        backward_scrolls=0,
+        forward_scrolls=24,
+        scroll_distance_ratio=0.18,
+        evidence_prefix="sr5-career-table-family",
+        surface_name="SR5 Career table family route",
+    )
     physical.wait_exact_route(device, "sr5-career/table", timeout=90)
-    device.tap_single_exact_resource_id(
+    device.tap_exact_resource_id_bidirectional(
         spec.action_route,
         timeout=90,
+        backward_scrolls=0,
+        forward_scrolls=24,
+        scroll_distance_ratio=0.18,
         evidence_prefix=f"sr5-{spec.lane}-route",
         surface_name=f"SR5 {spec.lane} typed route",
     )
