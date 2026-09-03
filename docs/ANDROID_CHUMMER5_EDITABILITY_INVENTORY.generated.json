@@ -147,7 +147,7 @@
       {
         "path": "src/Chummer.Android/Native/HomePage.cs",
         "exists": true,
-        "sha256": "d3bc06cb830d53ca913b9faca1b726501a3ec5160269602d45ef0561af2ff310"
+        "sha256": "4b3c8dec756071bccf5a9efaac99b9d2aa6d999dbbc96249d1fac01d4ac078c1"
       },
       {
         "path": "src/Chummer.Android/MauiProgram.cs",
@@ -642,7 +642,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "7429f2acc6fb4720a6957a81961f9fab3df810beda1bde02812f67588ddf0dda"
+        "sha256": "fa1e85502176215760492aec40a734456fe4af8e27a58d804d27761e4ab60872"
       },
       {
         "path": "src/Chummer.Android/Native/RunnerSessionSr5CareerWizardPhoneAuthority.cs",
