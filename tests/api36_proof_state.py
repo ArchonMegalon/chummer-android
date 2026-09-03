@@ -22,6 +22,12 @@ DIGEST_SCHEMA = "chummer.android.api36-proof-state-digest/v2"
 PACKAGE = "com.myexternalbrain.chummer"
 RELATIVE_PATH = "files/api36-proof/state.v2.json"
 READ_ARGUMENTS = ("exec-out", "run-as", PACKAGE, "cat", RELATIVE_PATH)
+IMPORT_SCHEMA = "chummer.android.api36-import-proof-state/v1"
+IMPORT_DIGEST_SCHEMA = "chummer.android.api36-import-proof-state-digest/v1"
+IMPORT_RELATIVE_PATH = "files/api36-proof/import.v1.json"
+IMPORT_READ_ARGUMENTS = (
+    "exec-out", "run-as", PACKAGE, "cat", IMPORT_RELATIVE_PATH,
+)
 SHA40 = re.compile(r"^[0-9a-f]{40}$")
 SHA64 = re.compile(r"^[0-9a-f]{64}$")
 DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
@@ -59,6 +65,14 @@ CREATION_RESOURCES_FIELDS = {
     "prerequisiteDraftDigest", "priorityNuyen", "totalStartingNuyen",
     "pendingOptionId", "pendingDraftRevision", "pendingDraftDigest",
 }
+IMPORT_ROOT_FIELDS = {
+    "schema", "sequence", "processId", "processInstanceId",
+    "e2eAuthorityGeneration", "build", "operationId", "stage", "picker",
+    "stream", "workspace", "activationIssued", "failureCode", "stateDigest",
+}
+IMPORT_PICKER_FIELDS = {"requestCode", "result", "uriPresent", "uriSha256"}
+IMPORT_STREAM_FIELDS = {"displayName", "mediaType", "byteLength", "contentSha256"}
+IMPORT_WORKSPACE_FIELDS = {"expectedPayloadSha256", "authority"}
 
 
 @dataclass(frozen=True)
@@ -71,6 +85,12 @@ class ProofBuildExpectation:
 
 @dataclass(frozen=True)
 class ProofStateSnapshot:
+    payload: dict[str, Any]
+    serialized_sha256: str
+
+
+@dataclass(frozen=True)
+class ImportProofStateSnapshot:
     payload: dict[str, Any]
     serialized_sha256: str
 
@@ -221,6 +241,184 @@ def expected_state_digest(state: dict[str, Any]) -> str:
             else str(resources["pendingDraftRevision"]),
         None if resources is None else resources["pendingDraftDigest"],
     ])
+
+
+def expected_import_state_digest(state: dict[str, Any]) -> str:
+    build = state["build"]
+    picker = state["picker"]
+    stream = state["stream"]
+    workspace = state["workspace"]
+    authority = None if workspace is None else workspace["authority"]
+    return _length_prefixed_hash([
+        IMPORT_DIGEST_SCHEMA,
+        state["schema"],
+        str(state["sequence"]),
+        str(state["processId"]),
+        state["processInstanceId"],
+        str(state["e2eAuthorityGeneration"]),
+        build["sourceCommit"], build["sourceTree"], build["gateContractSha256"],
+        build["proofBuildId"], build["packageName"], build["versionName"],
+        build["versionCode"], build["runtimeIdentifier"],
+        state["operationId"],
+        state["stage"],
+        None if picker is None else str(picker["requestCode"]),
+        None if picker is None else picker["result"],
+        "true" if picker is not None and picker["uriPresent"] else "false",
+        None if picker is None else picker["uriSha256"],
+        None if stream is None else stream["displayName"],
+        None if stream is None else stream["mediaType"],
+        None if stream is None else str(stream["byteLength"]),
+        None if stream is None else stream["contentSha256"],
+        None if workspace is None else workspace["expectedPayloadSha256"],
+        None if authority is None else authority["workspaceId"],
+        None if authority is None else str(authority["contentRevision"]),
+        None if authority is None else str(authority["savedRevision"]),
+        None if authority is None else authority["payloadSha256"],
+        None if authority is None else authority["documentSha256"],
+        None if authority is None else authority["snapshotDigest"],
+        "true" if state["activationIssued"] else "false",
+        state["failureCode"],
+    ])
+
+
+def _validate_build(build_value: object, expected: ProofBuildExpectation) -> dict[str, Any]:
+    build = _require_exact_object(build_value, BUILD_FIELDS, "Proof build")
+    if build != {
+        "sourceCommit": expected.source_commit,
+        "sourceTree": expected.source_tree,
+        "gateContractSha256": expected.gate_contract_sha256,
+        "proofBuildId": expected.proof_build_id,
+        "packageName": PACKAGE,
+        "versionName": "0.1.0-preview.10",
+        "versionCode": "10",
+        "runtimeIdentifier": "android-x64",
+    }:
+        raise RuntimeError("API-36 proof-state build identity is not exact")
+    return build
+
+
+def validate_import_state(
+    raw: bytes,
+    *,
+    expected: ProofBuildExpectation,
+    live_process_id: int,
+) -> ImportProofStateSnapshot:
+    if not 0 < len(raw) <= 16 * 1024 or raw.endswith(b"\n"):
+        raise RuntimeError("API-36 import proof bytes are empty, oversized, or noncanonical")
+    try:
+        state = json.loads(
+            raw.decode("utf-8", errors="strict"),
+            object_pairs_hook=object_without_duplicates,
+        )
+    except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as error:
+        raise RuntimeError("API-36 import proof JSON is invalid") from error
+    state = _require_exact_object(state, IMPORT_ROOT_FIELDS, "API-36 import proof")
+    if state["schema"] != IMPORT_SCHEMA:
+        raise RuntimeError("API-36 import proof schema is not exact")
+    _require_int(state["sequence"], "Import proof sequence", minimum=1)
+    process_id = _require_int(state["processId"], "Import proof process ID", minimum=1)
+    if process_id != live_process_id:
+        raise RuntimeError("API-36 import proof belongs to a stale process")
+    import uuid
+    try:
+        process_instance = uuid.UUID(state["processInstanceId"])
+        operation_id = uuid.UUID(state["operationId"])
+    except (ValueError, TypeError, AttributeError) as error:
+        raise RuntimeError("Import proof identities are not canonical UUIDs") from error
+    if (
+        str(process_instance) != state["processInstanceId"]
+        or process_instance.int == 0
+        or str(operation_id) != state["operationId"]
+        or operation_id.int == 0
+    ):
+        raise RuntimeError("Import proof identities are not canonical")
+    _require_int(state["e2eAuthorityGeneration"], "Import authority generation")
+    _validate_build(state["build"], expected)
+    stage = _require_token(state["stage"], "Import proof stage", 64)
+    if type(state["activationIssued"]) is not bool:
+        raise RuntimeError("Import activation marker is not Boolean")
+    if state["failureCode"] is not None:
+        _require_token(state["failureCode"], "Import failure code", 128)
+
+    picker = state["picker"]
+    if picker is not None:
+        picker = _require_exact_object(picker, IMPORT_PICKER_FIELDS, "Import picker")
+        if picker["requestCode"] != 6411 or picker["result"] not in {"ok", "cancelled"}:
+            raise RuntimeError("Import picker result is not exact")
+        if type(picker["uriPresent"]) is not bool:
+            raise RuntimeError("Import picker URI marker is not Boolean")
+        if picker["uriPresent"] != (picker["result"] == "ok"):
+            raise RuntimeError("Import picker URI marker contradicts its result")
+        if picker["uriPresent"]:
+            if not isinstance(picker["uriSha256"], str) or SHA64.fullmatch(picker["uriSha256"]) is None:
+                raise RuntimeError("Import picker URI digest is not canonical")
+        elif picker["uriSha256"] is not None:
+            raise RuntimeError("Cancelled import picker retained a URI digest")
+
+    stream = state["stream"]
+    if stream is not None:
+        stream = _require_exact_object(stream, IMPORT_STREAM_FIELDS, "Import stream")
+        if not isinstance(stream["displayName"], str) or not 0 < len(stream["displayName"]) <= 256:
+            raise RuntimeError("Import stream display name is invalid")
+        if stream["mediaType"] is not None and (
+            not isinstance(stream["mediaType"], str) or len(stream["mediaType"]) > 256
+        ):
+            raise RuntimeError("Import stream media type is invalid")
+        byte_length = _require_int(stream["byteLength"], "Import byte length", minimum=1)
+        if byte_length > 8 * 1024 * 1024:
+            raise RuntimeError("Import stream exceeds the bounded input")
+        if not isinstance(stream["contentSha256"], str) or SHA64.fullmatch(stream["contentSha256"]) is None:
+            raise RuntimeError("Import stream digest is not canonical")
+
+    workspace = state["workspace"]
+    if workspace is not None:
+        workspace = _require_exact_object(workspace, IMPORT_WORKSPACE_FIELDS, "Import workspace")
+        if not isinstance(workspace["expectedPayloadSha256"], str) or SHA64.fullmatch(workspace["expectedPayloadSha256"]) is None:
+            raise RuntimeError("Import expected payload digest is not canonical")
+        authority = _require_exact_object(
+            workspace["authority"], WORKSPACE_FIELDS, "Import workspace authority",
+        )
+        if (
+            not isinstance(authority["workspaceId"], str)
+            or not authority["workspaceId"].strip()
+            or len(authority["workspaceId"]) > 256
+        ):
+            raise RuntimeError("Import workspace identity is absent")
+        _require_int(authority["contentRevision"], "Import content revision", minimum=1)
+        _require_int(authority["savedRevision"], "Import saved revision")
+        for key in ("payloadSha256", "documentSha256"):
+            if not isinstance(authority[key], str) or SHA64.fullmatch(authority[key]) is None:
+                raise RuntimeError(f"Import workspace {key} is not canonical")
+        _optional_digest(authority["snapshotDigest"], "Import snapshot digest")
+        if workspace["expectedPayloadSha256"] != authority["payloadSha256"]:
+            raise RuntimeError("Import workspace does not match the selected stream")
+        if stream is None or workspace["expectedPayloadSha256"] != stream["contentSha256"]:
+            raise RuntimeError("Import workspace is not bound to the read document stream")
+
+    successful_picker = picker is not None and picker["result"] == "ok"
+    exact_stage = {
+        "picker-launched": picker is None and stream is None and workspace is None
+            and not state["activationIssued"] and state["failureCode"] is None,
+        "picker-callback": successful_picker and stream is None and workspace is None
+            and not state["activationIssued"] and state["failureCode"] is None,
+        "stream-read": successful_picker and stream is not None and workspace is None
+            and not state["activationIssued"] and state["failureCode"] is None,
+        "workspace-verified": successful_picker and stream is not None and workspace is not None
+            and not state["activationIssued"] and state["failureCode"] is None,
+        "activation-issued": successful_picker and stream is not None and workspace is not None
+            and state["activationIssued"] and state["failureCode"] is None,
+        "cancelled": picker is not None and picker["result"] == "cancelled"
+            and stream is None and workspace is None and not state["activationIssued"]
+            and state["failureCode"] is None,
+        "failed": not state["activationIssued"] and state["failureCode"] is not None,
+    }.get(stage, False)
+    if not exact_stage:
+        raise RuntimeError("Import proof stage does not match its accumulated authority")
+    if not isinstance(state["stateDigest"], str) or DIGEST.fullmatch(state["stateDigest"]) is None:
+        raise RuntimeError("Import proof digest is not canonical")
+    if state["stateDigest"] != expected_import_state_digest(state):
+        raise RuntimeError("Import proof digest does not match the exact fields")
+    return ImportProofStateSnapshot(state, hashlib.sha256(raw).hexdigest())
 
 
 def validate_state(
@@ -459,3 +657,67 @@ def wait_for_state(
         )
         time.sleep(0.2)
     raise RuntimeError(f"Timed out waiting for exact API-36 proof state: {last_detail}")
+
+
+def wait_for_import_activation(
+    device: object,
+    *,
+    expected: ProofBuildExpectation,
+    content_sha256: str,
+    timeout: float = 120,
+) -> ImportProofStateSnapshot:
+    if SHA64.fullmatch(content_sha256) is None:
+        raise RuntimeError("Expected import content digest is not canonical")
+    deadline = time.monotonic() + timeout
+    last_detail = "import proof file unavailable"
+    while time.monotonic() < deadline:
+        process_output = device.shell("pidof", PACKAGE)
+        process_ids = process_output.split()
+        if len(process_ids) != 1 or not process_ids[0].isdigit():
+            last_detail = f"expected one live process, got {process_ids!r}"
+            time.sleep(0.2)
+            continue
+        result = device.run(*IMPORT_READ_ARGUMENTS, text=False, check=False)
+        if result.returncode != 0 or not result.stdout:
+            last_detail = "import proof file unavailable"
+            time.sleep(0.2)
+            continue
+        try:
+            snapshot = validate_import_state(
+                result.stdout,
+                expected=expected,
+                live_process_id=int(process_ids[0]),
+            )
+        except RuntimeError as error:
+            if str(error) != "API-36 import proof belongs to a stale process":
+                raise
+            last_detail = "import proof belongs to the preceding process"
+            time.sleep(0.2)
+            continue
+        state = snapshot.payload
+        stage = state["stage"]
+        stream = state["stream"]
+        if stage in {"cancelled", "failed"}:
+            raise RuntimeError(
+                "Document import failed before workspace activation: "
+                f"stage={stage!r}, failureCode={state['failureCode']!r}, "
+                f"picker={state['picker']!r}"
+            )
+        if stream is not None and stream["contentSha256"] != content_sha256:
+            raise RuntimeError("Document import stream differs from the governed fixture")
+        if stage == "activation-issued":
+            workspace = state["workspace"]
+            if (
+                stream is None
+                or workspace is None
+                or stream["contentSha256"] != content_sha256
+                or workspace["expectedPayloadSha256"] != content_sha256
+                or not state["activationIssued"]
+            ):
+                raise RuntimeError("Document activation is not bound to the governed fixture")
+            return snapshot
+        last_detail = f"stage={stage!r}, sequence={state['sequence']!r}"
+        time.sleep(0.2)
+    raise RuntimeError(
+        f"Timed out waiting for exact API-36 import activation: {last_detail}"
+    )

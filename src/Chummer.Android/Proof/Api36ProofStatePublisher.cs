@@ -1,5 +1,8 @@
 using System.Reflection;
+using System.Security.Cryptography;
+using System.Text;
 using Chummer.Android.Native;
+using Chummer.Android.Platform;
 using Chummer.Contracts.Characters;
 using Chummer.Presentation.Overview;
 using Microsoft.Maui;
@@ -17,22 +20,189 @@ namespace Chummer.Android.Proof;
 public sealed class Api36ProofStatePublisher
 {
     public const string RelativePath = "api36-proof/state.v2.json";
+    public const string ImportRelativePath = "api36-proof/import.v1.json";
     private readonly object _sync = new();
     private readonly string _directory;
     private readonly string _path;
     private readonly string _temporaryPath;
+    private readonly string _importPath;
+    private readonly string _importTemporaryPath;
     private readonly string _processInstanceId = Guid.NewGuid().ToString("D");
     private readonly Api36ProofBuildIdentity _build;
     private long _sequence;
+    private long _importSequence;
+    private string? _importOperationId;
+    private Api36ImportPickerState? _importPicker;
+    private Api36ImportStreamState? _importStream;
+    private Api36ImportWorkspaceState? _importWorkspace;
 
     public Api36ProofStatePublisher()
     {
         _directory = Path.Combine(FileSystem.AppDataDirectory, "api36-proof");
         _path = Path.Combine(FileSystem.AppDataDirectory, RelativePath);
         _temporaryPath = _path + ".tmp";
+        _importPath = Path.Combine(FileSystem.AppDataDirectory, ImportRelativePath);
+        _importTemporaryPath = _importPath + ".tmp";
         _build = ReadBuildIdentity();
         DeleteObservation();
+        DeleteImportObservation();
     }
+
+    public static void TryBeginDocumentImport()
+        => Current()?.BeginDocumentImport();
+
+    public static void TryRecordDocumentPickerCallback(
+        int requestCode,
+        bool resultOk,
+        global::Android.Net.Uri? uri)
+        => Current()?.RecordDocumentPickerCallback(requestCode, resultOk, uri);
+
+    public static void TryRecordDocumentStream(AndroidDocument document)
+        => Current()?.RecordDocumentStream(document);
+
+    public static void TryRecordDocumentWorkspace(
+        string expectedPayloadSha256,
+        NativeWorkspaceAuthoritySnapshot authority,
+        bool activationIssued)
+        => Current()?.RecordDocumentWorkspace(
+            expectedPayloadSha256,
+            authority,
+            activationIssued);
+
+    public static void TryRecordDocumentImportFailure(string failureCode)
+        => Current()?.RecordDocumentImportFailure(failureCode);
+
+    private static Api36ProofStatePublisher? Current()
+        => IPlatformApplication.Current?.Services
+            .GetService(typeof(Api36ProofStatePublisher)) as Api36ProofStatePublisher;
+
+    public void BeginDocumentImport()
+    {
+        if (!AndroidE2EAuthority.Enabled)
+        {
+            DeleteImportObservation();
+            return;
+        }
+        lock (_sync)
+        {
+            _importOperationId = Guid.NewGuid().ToString("D");
+            _importPicker = null;
+            _importStream = null;
+            _importWorkspace = null;
+            PublishImportLocked("picker-launched", activationIssued: false, failureCode: null);
+        }
+    }
+
+    public void RecordDocumentPickerCallback(
+        int requestCode,
+        bool resultOk,
+        global::Android.Net.Uri? uri)
+    {
+        if (!AndroidE2EAuthority.Enabled
+            || requestCode != DocumentIntentBroker.OpenRequestCode)
+        {
+            return;
+        }
+        lock (_sync)
+        {
+            RequireImportOperation();
+            bool accepted = resultOk && uri is not null;
+            _importPicker = new Api36ImportPickerState(
+                requestCode,
+                accepted ? "ok" : "cancelled",
+                accepted,
+                accepted ? Sha256(uri!.ToString() ?? string.Empty) : null);
+            PublishImportLocked(
+                accepted ? "picker-callback" : "cancelled",
+                activationIssued: false,
+                failureCode: null);
+        }
+    }
+
+    public void RecordDocumentStream(AndroidDocument document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        lock (_sync)
+        {
+            RequireImportOperation();
+            if (_importPicker is not { Result: "ok", UriPresent: true })
+                throw new InvalidOperationException("Import stream was observed before an accepted picker callback.");
+            _importStream = new Api36ImportStreamState(
+                document.DisplayName,
+                document.MediaType,
+                document.Content.LongLength,
+                Convert.ToHexString(SHA256.HashData(document.Content)).ToLowerInvariant());
+            PublishImportLocked("stream-read", activationIssued: false, failureCode: null);
+        }
+    }
+
+    public void RecordDocumentWorkspace(
+        string expectedPayloadSha256,
+        NativeWorkspaceAuthoritySnapshot authority,
+        bool activationIssued)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(expectedPayloadSha256);
+        ArgumentNullException.ThrowIfNull(authority);
+        lock (_sync)
+        {
+            RequireImportOperation();
+            if (_importStream is null)
+                throw new InvalidOperationException("Import workspace was observed before its document stream.");
+            _importWorkspace = new Api36ImportWorkspaceState(
+                expectedPayloadSha256,
+                new Api36ProofWorkspaceState(
+                    authority.WorkspaceId,
+                    authority.ContentRevision,
+                    authority.SavedRevision,
+                    authority.PayloadSha256,
+                    authority.DocumentSha256,
+                    null));
+            PublishImportLocked(
+                activationIssued ? "activation-issued" : "workspace-verified",
+                activationIssued,
+                failureCode: null);
+        }
+    }
+
+    public void RecordDocumentImportFailure(string failureCode)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(failureCode);
+        lock (_sync)
+        {
+            if (_importOperationId is null || !AndroidE2EAuthority.Enabled)
+                return;
+            PublishImportLocked("failed", activationIssued: false, failureCode);
+        }
+    }
+
+    private void PublishImportLocked(
+        string stage,
+        bool activationIssued,
+        string? failureCode)
+    {
+        string operationId = RequireImportOperation();
+        Api36ImportProofState state = Api36ImportProofStateContract.Create(
+            checked(++_importSequence),
+            Environment.ProcessId,
+            _processInstanceId,
+            AndroidE2EAuthority.Generation,
+            _build,
+            operationId,
+            stage,
+            _importPicker,
+            _importStream,
+            _importWorkspace,
+            activationIssued,
+            failureCode);
+        WriteAtomically(
+            _importPath,
+            _importTemporaryPath,
+            Api36ImportProofStateContract.Serialize(state));
+    }
+
+    private string RequireImportOperation()
+        => _importOperationId
+           ?? throw new InvalidOperationException("No API-36 document import operation is active.");
 
     public static void TryPublishTableWizard(
         Page page,
@@ -133,7 +303,7 @@ public sealed class Api36ProofStatePublisher
                 surface,
                 workspace,
                 transactionState);
-            WriteAtomically(Api36ProofStateContract.Serialize(state));
+            WriteAtomically(_path, _temporaryPath, Api36ProofStateContract.Serialize(state));
         }
     }
 
@@ -228,17 +398,17 @@ public sealed class Api36ProofStatePublisher
                 workspace,
                 transaction: null,
                 creationResources: resources);
-            WriteAtomically(Api36ProofStateContract.Serialize(state));
+            WriteAtomically(_path, _temporaryPath, Api36ProofStateContract.Serialize(state));
         }
     }
 
-    private void WriteAtomically(byte[] payload)
+    private void WriteAtomically(string path, string temporaryPath, byte[] payload)
     {
         Directory.CreateDirectory(_directory);
         try
         {
             using (var stream = new FileStream(
-                       _temporaryPath,
+                       temporaryPath,
                        FileMode.Create,
                        FileAccess.Write,
                        FileShare.None,
@@ -248,12 +418,12 @@ public sealed class Api36ProofStatePublisher
                 stream.Write(payload);
                 stream.Flush(flushToDisk: true);
             }
-            File.Move(_temporaryPath, _path, overwrite: true);
+            File.Move(temporaryPath, path, overwrite: true);
         }
         finally
         {
-            if (File.Exists(_temporaryPath))
-                File.Delete(_temporaryPath);
+            if (File.Exists(temporaryPath))
+                File.Delete(temporaryPath);
         }
     }
 
@@ -267,6 +437,24 @@ public sealed class Api36ProofStatePublisher
                 File.Delete(_path);
         }
     }
+
+    private void DeleteImportObservation()
+    {
+        lock (_sync)
+        {
+            if (File.Exists(_importTemporaryPath))
+                File.Delete(_importTemporaryPath);
+            if (File.Exists(_importPath))
+                File.Delete(_importPath);
+            _importOperationId = null;
+            _importPicker = null;
+            _importStream = null;
+            _importWorkspace = null;
+        }
+    }
+
+    private static string Sha256(string value)
+        => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value))).ToLowerInvariant();
 
     private static Api36ProofBuildIdentity ReadBuildIdentity()
     {

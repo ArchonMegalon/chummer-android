@@ -536,10 +536,14 @@ def prove_downtime(
     runner: Path,
     runner_sha256: str,
     fixture: dict[str, object],
+    proof_expectation: object | None = None,
 ) -> dict[str, object]:
     device.shell("pm", "clear", physical.shared.PACKAGE)
-    initial_launch, imported = calendar_leaf.prepare_runner(
-        device, runner.name, runner_sha256
+    initial_launch, imported, import_proof = calendar_leaf.prepare_runner(
+        device,
+        runner.name,
+        runner_sha256,
+        proof_expectation,
     )
     assert_calendar(calendar_leaf.root_for_authority(device, imported), fixture, edited=False)
     physical.shared.record_phone_ui_locale_evidence(device, evidence_prefix="sr5-downtime")
@@ -669,7 +673,7 @@ def prove_downtime(
     assert_calendar(calendar_leaf.root_for_authority(device, final_saved), fixture, edited=True)
     if read_journal(device, required=False) is not None:
         raise RuntimeError("Downtime acknowledgement did not survive final restart")
-    return {
+    result = {
         "import": physical.shared.workspace_authority_json(imported),
         "restoredBeforeApply": physical.shared.workspace_authority_json(restored_before),
         "savedSuccessor": physical.shared.workspace_authority_json(saved),
@@ -685,6 +689,15 @@ def prove_downtime(
             list(final_restart.restarted.process_ids),
         ],
     }
+    if proof_expectation is not None:
+        if import_proof is None:
+            raise RuntimeError("API-36 Downtime import proof activation is missing")
+        result["api36ImportProof"] = {
+            "schema": import_proof.payload["schema"],
+            "serializedSha256": import_proof.serialized_sha256,
+            "observation": import_proof.payload,
+        }
+    return result
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:

@@ -29,6 +29,13 @@ API36_PROOF_STATE_READ_ARGUMENTS = (
     "cat",
     "files/api36-proof/state.v2.json",
 )
+API36_IMPORT_PROOF_STATE_READ_ARGUMENTS = (
+    "exec-out",
+    "run-as",
+    PACKAGE,
+    "cat",
+    "files/api36-proof/import.v1.json",
+)
 WORKSPACE_AUTHORITY_RESOURCE_IDS = (
     "home-e2e-workspace-id",
     "home-e2e-content-revision",
@@ -96,6 +103,12 @@ COMPONENT = re.compile(
 )
 PROCESS_ID = re.compile(r"[1-9][0-9]*")
 SHA256_TEXT = re.compile(r"[0-9a-f]{64}")
+CONTENT_URI = re.compile(
+    r"content://media/(?:external|external_primary)/file/[1-9][0-9]*"
+)
+GOVERNED_DOWNLOAD_PATH = re.compile(
+    r"^/sdcard/Download/(?P<name>[A-Za-z0-9][A-Za-z0-9._-]{0,254})$"
+)
 CANONICAL_COLLECTION_ITEM_RESOURCE_ID = re.compile(
     r"^collection-item-(?P<kind>[a-z0-9-]+)-"
     r"(?P<item_id>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$"
@@ -170,6 +183,12 @@ ADB_FILE_HIERARCHY_MINIMUM_DUMP_ATTEMPT_SECONDS = 1.0
 ADB_FILE_HIERARCHY_DUMP_ATTEMPT_MAX_SECONDS = 20.0
 ADB_FILE_HIERARCHY_ABSENT_OUTPUT = (
     f"cat: {ADB_FILE_HIERARCHY_REMOTE_PATH}: No such file or directory"
+)
+MEDIA_PROVIDER_SCAN_URI = "content://media/external"
+MEDIA_PROVIDER_SCAN_METHOD = "scan_file"
+MEDIA_PROVIDER_CANONICAL_DOWNLOAD_ROOT = "/storage/emulated/0/Download/"
+MEDIA_PROVIDER_INDEX_RECEIPT_SCHEMA = (
+    "chummer.android.documentsui-provider-index/v1"
 )
 ADB_FILE_HIERARCHY_VISIBILITY_MAX_OBSERVATIONS = 8
 ADB_FILE_HIERARCHY_VISIBILITY_DELAY_SECONDS = 0.25
@@ -530,7 +549,10 @@ def adb_command_retry_policy(arguments: tuple[str, ...]) -> tuple[str, str]:
         return ("read-only-retryable", "exact adb transport-state observation")
     if arguments == ("exec-out", "screencap", "-p"):
         return ("read-only-retryable", "exact framebuffer observation")
-    if arguments == API36_PROOF_STATE_READ_ARGUMENTS:
+    if arguments in (
+        API36_PROOF_STATE_READ_ARGUMENTS,
+        API36_IMPORT_PROOF_STATE_READ_ARGUMENTS,
+    ):
         return (
             "read-only-retryable",
             "exact app-private API-36 proof-state observation",
@@ -551,6 +573,16 @@ def adb_command_retry_policy(arguments: tuple[str, ...]) -> tuple[str, str]:
         and SAFE_READ_ONLY_REMOTE_PATH.fullmatch(arguments[2]) is not None
     ):
         return ("read-only-retryable", "exact remote-file byte observation")
+    if (
+        len(arguments) == 5
+        and arguments[:3] == ("exec-out", "content", "read")
+        and arguments[3] == "--uri"
+        and CONTENT_URI.fullmatch(arguments[4]) is not None
+    ):
+        return (
+            "read-only-retryable",
+            "exact MediaProvider content-URI byte observation",
+        )
     if arguments == ("logcat", "-d", "-t", "500"):
         return ("read-only-retryable", "bounded logcat dump observation")
     if arguments == ADB_CREATION_BOOTSTRAP_LOGCAT_ARGUMENTS:
@@ -596,6 +628,22 @@ def adb_command_retry_policy(arguments: tuple[str, ...]) -> tuple[str, str]:
         return (
             "read-only-retryable",
             "exact hierarchy temporary-file identity observation",
+        )
+    if (
+        len(shell_arguments) == 8
+        and shell_arguments[:2] == ("content", "query")
+        and shell_arguments[2] == "--uri"
+        and CONTENT_URI.fullmatch(shell_arguments[3]) is not None
+        and shell_arguments[4:] == (
+            "--projection",
+            "_id:_display_name:_data:_size:mime_type",
+            "--user",
+            "0",
+        )
+    ):
+        return (
+            "read-only-retryable",
+            "exact MediaProvider indexed-document metadata observation",
         )
     read_only_dumpsys = (
         ("dumpsys", "input_method"),
@@ -1781,6 +1829,130 @@ class Device:
                 f"expected {expected_sha256}, got {actual or 'unavailable'}"
             )
         return actual
+
+    def index_download_for_documents_ui(
+        self,
+        remote_path: str,
+        expected_sha256: str,
+        expected_size: int,
+    ) -> dict[str, object]:
+        """Synchronously bind one pushed Download to its MediaProvider row.
+
+        ``adb push`` proves filesystem bytes only.  API-36 DocumentsUI obtains
+        its Downloads rows through a provider and can therefore render an empty
+        directory until that provider has indexed the file.  The scan is one
+        non-replayable mutation.  Its returned URI is then checked through both
+        provider metadata and a byte-for-byte content read before the real
+        picker route is allowed to continue.
+        """
+        match = GOVERNED_DOWNLOAD_PATH.fullmatch(remote_path)
+        if match is None:
+            raise RuntimeError(
+                "DocumentsUI provider indexing requires one governed "
+                f"/sdcard/Download basename, got {remote_path!r}"
+            )
+        if SHA256_TEXT.fullmatch(expected_sha256) is None:
+            raise RuntimeError(
+                f"Invalid provider-index fixture SHA-256: {expected_sha256!r}"
+            )
+        if type(expected_size) is not int or expected_size <= 0:
+            raise RuntimeError("Provider-index fixture size must be positive")
+
+        canonical_path = MEDIA_PROVIDER_CANONICAL_DOWNLOAD_ROOT + match.group("name")
+        scan_output = self.shell(
+            "content",
+            "call",
+            "--uri",
+            MEDIA_PROVIDER_SCAN_URI,
+            "--method",
+            MEDIA_PROVIDER_SCAN_METHOD,
+            "--arg",
+            canonical_path,
+        )
+        provider_uris = CONTENT_URI.findall(scan_output)
+        if len(provider_uris) != 1:
+            raise RuntimeError(
+                "MediaProvider scan did not return exactly one indexed content URI"
+            )
+        provider_uri = provider_uris[0]
+        provider_id = provider_uri.rsplit("/", 1)[-1]
+        metadata_output = self.shell(
+            "content",
+            "query",
+            "--uri",
+            provider_uri,
+            "--projection",
+            "_id:_display_name:_data:_size:mime_type",
+            "--user",
+            "0",
+        )
+        lines = [line.strip() for line in metadata_output.splitlines() if line.strip()]
+        if len(lines) != 1 or not lines[0].startswith("Row: 0 "):
+            raise RuntimeError(
+                "MediaProvider indexed-document query did not return exactly one row"
+            )
+        fields: dict[str, str] = {}
+        for item in lines[0][len("Row: 0 ") :].split(", "):
+            key, separator, value = item.partition("=")
+            if not separator or not key or key in fields:
+                raise RuntimeError("MediaProvider indexed-document row is ambiguous")
+            fields[key] = value
+        expected_fields = {"_id", "_display_name", "_data", "_size", "mime_type"}
+        if set(fields) != expected_fields:
+            raise RuntimeError(
+                "MediaProvider indexed-document row has an unexpected projection"
+            )
+        if (
+            fields["_id"] != provider_id
+            or fields["_display_name"] != match.group("name")
+            or fields["_data"] != canonical_path
+            or fields["_size"] != str(expected_size)
+            or not fields["mime_type"]
+            or fields["mime_type"] == "NULL"
+        ):
+            raise RuntimeError(
+                "MediaProvider indexed-document identity differs from the pushed fixture"
+            )
+
+        provider_bytes = self.run(
+            "exec-out",
+            "content",
+            "read",
+            "--uri",
+            provider_uri,
+            timeout=120,
+            text=False,
+        ).stdout
+        if not isinstance(provider_bytes, bytes):
+            raise RuntimeError("MediaProvider document read did not return bytes")
+        provider_sha256 = hashlib.sha256(provider_bytes).hexdigest()
+        if len(provider_bytes) != expected_size or provider_sha256 != expected_sha256:
+            raise RuntimeError(
+                "MediaProvider content URI does not expose the exact pushed fixture bytes"
+            )
+
+        receipt = {
+            "schema": MEDIA_PROVIDER_INDEX_RECEIPT_SCHEMA,
+            "status": "pass",
+            "remotePath": remote_path,
+            "canonicalPath": canonical_path,
+            "displayName": match.group("name"),
+            "providerUri": provider_uri,
+            "mediaType": fields["mime_type"],
+            "size": expected_size,
+            "sha256": provider_sha256,
+            "scanOutputSha256": hashlib.sha256(
+                scan_output.encode("utf-8")
+            ).hexdigest(),
+            "scanInvocation": "one-shot-no-replay",
+            "pickerBypass": False,
+        }
+        receipt_name = hashlib.sha256(remote_path.encode("utf-8")).hexdigest()[:16]
+        _write_new_json_receipt(
+            self.evidence / f"documentsui-provider-index-{receipt_name}.json",
+            receipt,
+        )
+        return receipt
 
     def _write_file_hierarchy_retry_evidence(
         self,
@@ -6731,13 +6903,60 @@ def select_android_document(device: Device, filename: str) -> None:
         )
         time.sleep(0.75)
 
-    if device.find(filename) is None:
+    exact_file_nodes = [
+        node
+        for node in _documents_ui_exact_nodes(device.hierarchy(), filename)
+        if node.attributes.get("text") == filename
+    ]
+    if not exact_file_nodes:
         device.wait("Show roots", timeout=45)
         device.tap("Show roots")
         time.sleep(0.75)
         select_documents_ui_downloads_root(device, timeout=45)
-        device.wait(filename, timeout=45, scroll=True)
-    device.tap(filename, scroll=True)
+    deadline = time.monotonic() + 45
+    scrolls = 0
+    while time.monotonic() < deadline:
+        nodes = device.hierarchy(deadline=deadline)
+        matches = [
+            node
+            for node in _documents_ui_exact_nodes(nodes, filename)
+            if node.attributes.get("text") == filename
+            and node.attributes.get("enabled") == "true"
+            and device.node_has_tappable_bounds(node, deadline=deadline)
+        ]
+        if len(matches) > 1:
+            _capture_documents_ui_before_deadline(
+                device,
+                "documentsui-file-row-cardinality-invalid",
+                deadline=deadline,
+            )
+            raise RuntimeError(
+                f"DocumentsUI exposed {len(matches)} exact rows for {filename!r}"
+            )
+        if len(matches) == 1:
+            x, y = matches[0].center
+            device.shell(
+                "input",
+                "tap",
+                str(x),
+                str(y),
+                timeout=_remaining_operation_timeout(deadline=deadline, maximum=120),
+                deadline=deadline,
+            )
+            return
+        if scrolls < 6:
+            device.swipe_up(deadline=deadline)
+            scrolls += 1
+        if not _documents_ui_sleep_before_deadline(deadline):
+            break
+    _capture_documents_ui_before_deadline(
+        device,
+        "documentsui-file-row-unavailable",
+        deadline=deadline,
+    )
+    raise RuntimeError(
+        f"Timed out waiting for one exact enabled DocumentsUI row {filename!r}"
+    )
 
 
 def normalize_component(value: str) -> str | None:

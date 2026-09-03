@@ -86,6 +86,255 @@ public sealed record Api36ProofState(
     Api36ProofCreationResourcesState? CreationResources,
     string StateDigest);
 
+public sealed record Api36ImportPickerState(
+    int RequestCode,
+    string Result,
+    bool UriPresent,
+    string? UriSha256);
+
+public sealed record Api36ImportStreamState(
+    string DisplayName,
+    string? MediaType,
+    long ByteLength,
+    string ContentSha256);
+
+public sealed record Api36ImportWorkspaceState(
+    string ExpectedPayloadSha256,
+    Api36ProofWorkspaceState Authority);
+
+public sealed record Api36ImportProofState(
+    string Schema,
+    long Sequence,
+    int ProcessId,
+    string ProcessInstanceId,
+    [property: JsonPropertyName("e2eAuthorityGeneration")]
+    long E2eAuthorityGeneration,
+    Api36ProofBuildIdentity Build,
+    string OperationId,
+    string Stage,
+    Api36ImportPickerState? Picker,
+    Api36ImportStreamState? Stream,
+    Api36ImportWorkspaceState? Workspace,
+    bool ActivationIssued,
+    string? FailureCode,
+    string StateDigest);
+
+public static class Api36ImportProofStateContract
+{
+    public const string CurrentSchema = "chummer.android.api36-import-proof-state/v1";
+    private const string DigestSchema = "chummer.android.api36-import-proof-state-digest/v1";
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        WriteIndented = false
+    };
+
+    public static Api36ImportProofState Create(
+        long sequence,
+        int processId,
+        string processInstanceId,
+        long e2eAuthorityGeneration,
+        Api36ProofBuildIdentity build,
+        string operationId,
+        string stage,
+        Api36ImportPickerState? picker,
+        Api36ImportStreamState? stream,
+        Api36ImportWorkspaceState? workspace,
+        bool activationIssued,
+        string? failureCode)
+    {
+        Api36ImportProofState unsigned = new(
+            CurrentSchema,
+            sequence,
+            processId,
+            processInstanceId,
+            e2eAuthorityGeneration,
+            build,
+            operationId,
+            stage,
+            picker,
+            stream,
+            workspace,
+            activationIssued,
+            failureCode,
+            string.Empty);
+        Api36ImportProofState state = unsigned with
+        {
+            StateDigest = ComputeDigest(unsigned)
+        };
+        if (!IsExact(state))
+            throw new InvalidOperationException("The API-36 import proof observation is incomplete.");
+        return state;
+    }
+
+    public static byte[] Serialize(Api36ImportProofState state)
+    {
+        if (!IsExact(state))
+            throw new InvalidOperationException("Only an exact API-36 import proof observation can be serialized.");
+        byte[] payload = JsonSerializer.SerializeToUtf8Bytes(state, JsonOptions);
+        if (payload.Length is 0 or > 16 * 1024)
+            throw new InvalidOperationException("The API-36 import proof observation exceeds its bounded payload.");
+        return payload;
+    }
+
+    public static bool IsExact(Api36ImportProofState? state)
+    {
+        if (state is null
+            || !string.Equals(state.Schema, CurrentSchema, StringComparison.Ordinal)
+            || state.Sequence <= 0
+            || state.ProcessId <= 0
+            || !Guid.TryParseExact(state.ProcessInstanceId, "D", out Guid processInstance)
+            || processInstance == Guid.Empty
+            || state.E2eAuthorityGeneration < 0
+            || !Api36ProofStateContract.IsBuild(state.Build)
+            || !Guid.TryParseExact(state.OperationId, "D", out Guid operationId)
+            || operationId == Guid.Empty
+            || !IsToken(state.Stage, 64)
+            || !IsDigest(state.StateDigest)
+            || !IsPicker(state.Picker)
+            || !IsStream(state.Stream)
+            || !IsWorkspace(state.Workspace)
+            || state.FailureCode is not null && !IsToken(state.FailureCode, 128))
+        {
+            return false;
+        }
+
+        bool exactStage = state.Stage switch
+        {
+            "picker-launched" => state.Picker is null
+                && state.Stream is null
+                && state.Workspace is null
+                && !state.ActivationIssued
+                && state.FailureCode is null,
+            "picker-callback" => state.Picker is not null
+                && state.Stream is null
+                && state.Workspace is null
+                && !state.ActivationIssued
+                && state.FailureCode is null,
+            "stream-read" => IsSuccessfulPicker(state.Picker)
+                && state.Stream is not null
+                && state.Workspace is null
+                && !state.ActivationIssued
+                && state.FailureCode is null,
+            "workspace-verified" => IsSuccessfulPicker(state.Picker)
+                && state.Stream is not null
+                && state.Workspace is not null
+                && IsBound(state.Stream, state.Workspace)
+                && !state.ActivationIssued
+                && state.FailureCode is null,
+            "activation-issued" => IsSuccessfulPicker(state.Picker)
+                && state.Stream is not null
+                && state.Workspace is not null
+                && IsBound(state.Stream, state.Workspace)
+                && state.ActivationIssued
+                && state.FailureCode is null,
+            "cancelled" => state.Picker is { Result: "cancelled", UriPresent: false }
+                && state.Stream is null
+                && state.Workspace is null
+                && !state.ActivationIssued
+                && state.FailureCode is null,
+            "failed" => !state.ActivationIssued && state.FailureCode is not null,
+            _ => false
+        };
+        return exactStage
+            && string.Equals(state.StateDigest, ComputeDigest(state), StringComparison.Ordinal);
+    }
+
+    public static string ComputeDigest(Api36ImportProofState state)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        Api36ImportPickerState? picker = state.Picker;
+        Api36ImportStreamState? stream = state.Stream;
+        Api36ImportWorkspaceState? workspace = state.Workspace;
+        Api36ProofWorkspaceState? authority = workspace?.Authority;
+        return Api36ProofStateContract.Hash(
+            DigestSchema,
+            state.Schema,
+            state.Sequence.ToString(CultureInfo.InvariantCulture),
+            state.ProcessId.ToString(CultureInfo.InvariantCulture),
+            state.ProcessInstanceId,
+            state.E2eAuthorityGeneration.ToString(CultureInfo.InvariantCulture),
+            state.Build.SourceCommit,
+            state.Build.SourceTree,
+            state.Build.GateContractSha256,
+            state.Build.ProofBuildId,
+            state.Build.PackageName,
+            state.Build.VersionName,
+            state.Build.VersionCode,
+            state.Build.RuntimeIdentifier,
+            state.OperationId,
+            state.Stage,
+            picker?.RequestCode.ToString(CultureInfo.InvariantCulture),
+            picker?.Result,
+            picker?.UriPresent is true ? "true" : "false",
+            picker?.UriSha256,
+            stream?.DisplayName,
+            stream?.MediaType,
+            stream?.ByteLength.ToString(CultureInfo.InvariantCulture),
+            stream?.ContentSha256,
+            workspace?.ExpectedPayloadSha256,
+            authority?.WorkspaceId,
+            authority?.ContentRevision.ToString(CultureInfo.InvariantCulture),
+            authority?.SavedRevision.ToString(CultureInfo.InvariantCulture),
+            authority?.PayloadSha256,
+            authority?.DocumentSha256,
+            authority?.SnapshotDigest,
+            state.ActivationIssued ? "true" : "false",
+            state.FailureCode);
+    }
+
+    private static bool IsSuccessfulPicker(Api36ImportPickerState? picker)
+        => picker is { Result: "ok", UriPresent: true };
+
+    private static bool IsBound(
+        Api36ImportStreamState stream,
+        Api36ImportWorkspaceState workspace)
+        => string.Equals(
+            stream.ContentSha256,
+            workspace.ExpectedPayloadSha256,
+            StringComparison.Ordinal);
+
+    private static bool IsPicker(Api36ImportPickerState? picker)
+        => picker is null
+           || picker.RequestCode == 6411
+              && picker.Result is "ok" or "cancelled"
+              && picker.UriPresent == (picker.Result == "ok")
+              && (picker.UriPresent ? IsLowerHex(picker.UriSha256, 64) : picker.UriSha256 is null);
+
+    private static bool IsStream(Api36ImportStreamState? stream)
+        => stream is null
+           || stream.DisplayName is { Length: > 0 and <= 256 }
+              && (stream.MediaType is null || stream.MediaType.Length <= 256)
+              && stream.ByteLength is > 0 and <= 8 * 1024 * 1024
+              && IsLowerHex(stream.ContentSha256, 64);
+
+    private static bool IsWorkspace(Api36ImportWorkspaceState? workspace)
+        => workspace is null
+           || IsLowerHex(workspace.ExpectedPayloadSha256, 64)
+              && workspace.Authority is { } authority
+              && Api36ProofStateContract.IsWorkspace(authority)
+              && string.Equals(
+                  workspace.ExpectedPayloadSha256,
+                  authority.PayloadSha256,
+                  StringComparison.Ordinal);
+
+    private static bool IsDigest(string? value)
+        => value is { Length: 71 }
+           && value.StartsWith("sha256:", StringComparison.Ordinal)
+           && IsLowerHex(value[7..], 64);
+
+    private static bool IsLowerHex(string? value, int length)
+        => value is not null
+           && value.Length == length
+           && value.All(static character => character is >= '0' and <= '9' or >= 'a' and <= 'f');
+
+    private static bool IsToken(string? value, int maximumLength)
+        => value is { Length: > 0 }
+           && value.Length <= maximumLength
+           && value.All(static character => char.IsAsciiLetterOrDigit(character)
+               || character is '.' or '_' or '-' or '/' or ':');
+}
+
 public static class Api36ProofStateContract
 {
     public const string CurrentSchema = "chummer.android.api36-proof-state/v2";
@@ -263,7 +512,7 @@ public static class Api36ProofStateContract
             resources?.PendingDraftDigest);
     }
 
-    private static bool IsBuild(Api36ProofBuildIdentity? build)
+    internal static bool IsBuild(Api36ProofBuildIdentity? build)
         => build is not null
            && IsLowerHex(build.SourceCommit, 40)
            && IsLowerHex(build.SourceTree, 40)
@@ -283,7 +532,7 @@ public static class Api36ProofStateContract
            && (surface.WizardLane is null || IsToken(surface.WizardLane, 64))
            && IsToken(surface.Stage, 64);
 
-    private static bool IsWorkspace(Api36ProofWorkspaceState? workspace)
+    internal static bool IsWorkspace(Api36ProofWorkspaceState? workspace)
         => workspace is null
            || !string.IsNullOrWhiteSpace(workspace.WorkspaceId)
               && workspace.WorkspaceId.Length <= 256
@@ -361,7 +610,7 @@ public static class Api36ProofStateContract
            && value.All(static character => char.IsAsciiLetterOrDigit(character)
                || character is '.' or '_' or '-' or '/' or ':');
 
-    private static string Hash(params string?[] values)
+    internal static string Hash(params string?[] values)
     {
         using IncrementalHash hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         Span<byte> length = stackalloc byte[4];

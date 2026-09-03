@@ -6,6 +6,9 @@ using Android.Window;
 using Android.Gms.Extensions;
 using Chummer.Android.Native;
 using Chummer.Android.Platform;
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+using Chummer.Android.Proof;
+#endif
 using Microsoft.Maui;
 using Xamarin.Google.Android.Play.Core.AppUpdate;
 using Xamarin.Google.Android.Play.Core.AppUpdate.Install;
@@ -320,6 +323,24 @@ public sealed class MainActivity : MauiAppCompatActivity
 
     protected override void OnActivityResult(int requestCode, Result resultCode, Intent? data)
     {
+        bool isDocumentResult = requestCode is Platform.DocumentIntentBroker.OpenRequestCode
+            or Platform.DocumentIntentBroker.CreateRequestCode
+            or Platform.DocumentIntentBroker.ImageOpenRequestCode;
+        // Snapshot the granted URI before delegating to MAUI/AppCompat.  The Java
+        // Intent belongs to this callback and must not be re-read after base
+        // handlers have had an opportunity to consume or dispose its payload.
+        global::Android.Net.Uri? documentUri = isDocumentResult && resultCode == Result.Ok
+            ? data?.Data
+            : null;
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+        if (isDocumentResult)
+        {
+            Api36ProofStatePublisher.TryRecordDocumentPickerCallback(
+                requestCode,
+                resultCode == Result.Ok,
+                documentUri);
+        }
+#endif
         base.OnActivityResult(requestCode, resultCode, data);
         if (requestCode == InAppUpdateRequestCode)
         {
@@ -328,11 +349,9 @@ public sealed class MainActivity : MauiAppCompatActivity
             return;
         }
 
-        if (requestCode is Platform.DocumentIntentBroker.OpenRequestCode
-            or Platform.DocumentIntentBroker.CreateRequestCode
-            or Platform.DocumentIntentBroker.ImageOpenRequestCode)
+        if (isDocumentResult)
         {
-            Platform.DocumentIntentBroker.Complete(resultCode == Result.Ok ? data?.Data : null);
+            Platform.DocumentIntentBroker.Complete(documentUri);
         }
     }
 

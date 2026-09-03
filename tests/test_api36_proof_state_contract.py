@@ -82,11 +82,145 @@ def state_payload() -> dict[str, object]:
     return value
 
 
+def import_state_payload() -> dict[str, object]:
+    value: dict[str, object] = {
+        "schema": proof.IMPORT_SCHEMA,
+        "sequence": 5,
+        "processId": 4242,
+        "processInstanceId": "44444444-4444-4444-4444-444444444444",
+        "e2eAuthorityGeneration": 2,
+        "build": state_payload()["build"],
+        "operationId": "55555555-5555-5555-5555-555555555555",
+        "stage": "activation-issued",
+        "picker": {
+            "requestCode": 6411,
+            "result": "ok",
+            "uriPresent": True,
+            "uriSha256": "a" * 64,
+        },
+        "stream": {
+            "displayName": "career-calendar-edit-e2e.chum5",
+            "mediaType": "application/octet-stream",
+            "byteLength": 123,
+            "contentSha256": "b" * 64,
+        },
+        "workspace": {
+            "expectedPayloadSha256": "b" * 64,
+            "authority": {
+                "workspaceId": "workspace-imported",
+                "contentRevision": 1,
+                "savedRevision": 0,
+                "payloadSha256": "b" * 64,
+                "documentSha256": "c" * 64,
+                "snapshotDigest": None,
+            },
+        },
+        "activationIssued": True,
+        "failureCode": None,
+        "stateDigest": "",
+    }
+    value["stateDigest"] = proof.expected_import_state_digest(value)
+    return value
+
+
 def encoded(value: dict[str, object]) -> bytes:
     return json.dumps(value, separators=(",", ":")).encode("utf-8")
 
 
 class Api36ProofStateContractTests(unittest.TestCase):
+    def test_exact_import_state_binds_callback_stream_workspace_and_activation(self) -> None:
+        value = import_state_payload()
+        snapshot = proof.validate_import_state(
+            encoded(value),
+            expected=expectation(),
+            live_process_id=4242,
+        )
+
+        self.assertEqual("activation-issued", snapshot.payload["stage"])
+        self.assertEqual("b" * 64, snapshot.payload["stream"]["contentSha256"])
+        self.assertEqual(
+            "b" * 64,
+            snapshot.payload["workspace"]["expectedPayloadSha256"],
+        )
+        self.assertEqual(64, len(snapshot.serialized_sha256))
+
+    def test_hostile_import_states_fail_closed(self) -> None:
+        cases = (
+            ("stale process", ("processId",), 9999),
+            ("wrong request", ("picker", "requestCode"), 6412),
+            ("raw URI injection", ("picker", "uri"), "content://private/raw"),
+            ("stream mismatch", ("stream", "contentSha256"), "d" * 64),
+            ("workspace mismatch", ("workspace", "expectedPayloadSha256"), "e" * 64),
+            ("activation withheld", ("activationIssued",), False),
+            ("unbounded display name", ("stream", "displayName"), "x" * 257),
+        )
+        for label, path, replacement in cases:
+            with self.subTest(label=label):
+                value = copy.deepcopy(import_state_payload())
+                target = value
+                for member in path[:-1]:
+                    target = target[member]  # type: ignore[index,assignment]
+                target[path[-1]] = replacement  # type: ignore[index]
+                if label != "stale process":
+                    value["stateDigest"] = proof.expected_import_state_digest(value)
+                with self.assertRaises(RuntimeError):
+                    proof.validate_import_state(
+                        encoded(value),
+                        expected=expectation(),
+                        live_process_id=4242,
+                    )
+
+    def test_import_reader_fails_immediately_on_cancelled_callback(self) -> None:
+        value = import_state_payload()
+        value.update(
+            {
+                "stage": "cancelled",
+                "picker": {
+                    "requestCode": 6411,
+                    "result": "cancelled",
+                    "uriPresent": False,
+                    "uriSha256": None,
+                },
+                "stream": None,
+                "workspace": None,
+                "activationIssued": False,
+            }
+        )
+        value["stateDigest"] = proof.expected_import_state_digest(value)
+
+        class Device:
+            def shell(self, *_arguments: str) -> str:
+                return "4242"
+
+            def run(self, *_arguments: str, **_kwargs: object) -> SimpleNamespace:
+                return SimpleNamespace(returncode=0, stdout=encoded(value))
+
+        with self.assertRaisesRegex(RuntimeError, "stage='cancelled'"):
+            proof.wait_for_import_activation(
+                Device(),
+                expected=expectation(),
+                content_sha256="b" * 64,
+                timeout=1,
+            )
+
+    def test_import_reader_rejects_a_different_governed_fixture(self) -> None:
+        value = import_state_payload()
+
+        class Device:
+            def shell(self, *_arguments: str) -> str:
+                return "4242"
+
+            def run(self, *_arguments: str, **_kwargs: object) -> SimpleNamespace:
+                return SimpleNamespace(returncode=0, stdout=encoded(value))
+
+        with self.assertRaisesRegex(RuntimeError, "differs from the governed fixture"):
+            proof.wait_for_import_activation(
+                Device(),
+                expected=expectation(),
+                content_sha256="d" * 64,
+                timeout=1,
+            )
+
     def test_exact_state_is_digest_process_and_build_bound(self) -> None:
         self.assertEqual(
             "sha256:5d5ec21d03f3054d3f265b5f307357d42646ba229870d595c6f9e3b8b643456f",
@@ -268,6 +402,10 @@ class Api36ProofStateContractTests(unittest.TestCase):
         spec.loader.exec_module(shared)
         self.assertEqual(tuple(shared.API36_PROOF_STATE_READ_ARGUMENTS), proof.READ_ARGUMENTS)
         self.assertEqual(
+            tuple(shared.API36_IMPORT_PROOF_STATE_READ_ARGUMENTS),
+            proof.IMPORT_READ_ARGUMENTS,
+        )
+        self.assertEqual(
             ("read-only-retryable", "exact app-private API-36 proof-state observation"),
             shared.adb_command_retry_policy(proof.READ_ARGUMENTS),
         )
@@ -276,6 +414,41 @@ class Api36ProofStateContractTests(unittest.TestCase):
             shared.adb_command_retry_policy(
                 ("exec-out", "run-as", proof.PACKAGE, "cat", "files/other")
             )[0],
+        )
+
+    def test_import_instrumentation_snapshots_uri_before_base_callback(self) -> None:
+        activity = (ROOT / "src/Chummer.Android/Platforms/Android/MainActivity.cs").read_text(
+            encoding="utf-8"
+        )
+        callback = activity[activity.index("protected override void OnActivityResult") :]
+        callback = callback[: callback.index("public async Task<AndroidUpdateCheckResult>")]
+        uri_snapshot = callback.index("documentUri =")
+        proof_callback = callback.index("TryRecordDocumentPickerCallback")
+        base_callback = callback.index("base.OnActivityResult")
+        broker_complete = callback.index("DocumentIntentBroker.Complete(documentUri)")
+        self.assertLess(uri_snapshot, proof_callback)
+        self.assertLess(proof_callback, base_callback)
+        self.assertLess(base_callback, broker_complete)
+        self.assertNotIn("Complete(resultCode == Result.Ok ? data?.Data", callback)
+
+    def test_import_evidence_is_proof_only_and_covers_stream_and_workspace(self) -> None:
+        document_service = (
+            ROOT / "src/Chummer.Android/Platforms/Android/AndroidDocumentService.cs"
+        ).read_text(encoding="utf-8")
+        coordinator = (
+            ROOT / "src/Chummer.Android/Native/RunnerSessionCoordinator.cs"
+        ).read_text(encoding="utf-8")
+        project = (ROOT / "src/Chummer.Android/Chummer.Android.csproj").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("#if CHUMMER_API36_PROOF_INSTRUMENTATION", document_service)
+        self.assertIn("TryBeginDocumentImport", document_service)
+        self.assertIn("TryRecordDocumentStream", document_service)
+        self.assertIn("TryRecordDocumentWorkspace", coordinator)
+        self.assertIn("workspace-not-activated", coordinator)
+        self.assertIn(
+            '<Compile Remove="Proof/Api36ProofState.cs;Proof/Api36ProofStatePublisher.cs"',
+            project,
         )
 
     def test_before_run_receipt_retains_black_box_proof_and_adds_instrumentation(self) -> None:

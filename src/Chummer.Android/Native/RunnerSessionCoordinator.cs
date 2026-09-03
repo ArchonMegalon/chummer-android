@@ -2,6 +2,9 @@ using System.Buffers.Binary;
 using System.Security.Cryptography;
 using System.Text;
 using Chummer.Android.Platform;
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+using Chummer.Android.Proof;
+#endif
 using Chummer.Application.Characters;
 using Chummer.Application.Tools;
 using Chummer.Contracts.Api;
@@ -2618,6 +2621,12 @@ public sealed class RunnerSessionCoordinator : IDisposable
                     cancellationToken);
                 if (authority is not null)
                 {
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+                    Api36ProofStatePublisher.TryRecordDocumentWorkspace(
+                        expectedPayloadSha256,
+                        authority,
+                        activationIssued: false);
+#endif
                     RememberRosterLocator(importedWorkspaceId, document.ContentUri);
                     _notice = $"Opened {document.DisplayName}.";
                     activatedWorkspaceId = importedWorkspaceId;
@@ -2626,8 +2635,19 @@ public sealed class RunnerSessionCoordinator : IDisposable
                 else
                 {
                     _notice = WorkspaceVerificationUnavailableNotice;
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+                    Api36ProofStatePublisher.TryRecordDocumentImportFailure(
+                        "workspace-verification-unavailable");
+#endif
                 }
             }
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+            else
+            {
+                Api36ProofStatePublisher.TryRecordDocumentImportFailure(
+                    "workspace-not-activated");
+            }
+#endif
             await SyncShellAsync(cancellationToken);
             RestorePlayState();
             if (activatedWorkspaceId is { } stableWorkspaceId
@@ -2637,6 +2657,12 @@ public sealed class RunnerSessionCoordinator : IDisposable
                 activation = new(
                     NativeWorkspaceActivationKind.LocalFile,
                     stableWorkspaceId);
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+                Api36ProofStatePublisher.TryRecordDocumentWorkspace(
+                    expectedPayloadSha256,
+                    verifiedAuthority!,
+                    activationIssued: true);
+#endif
             }
         }
         finally

@@ -7,12 +7,14 @@ import argparse
 from datetime import datetime, timezone
 import hashlib
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
 
 import run_api36_editing_e2e as shared
 import run_api36_sr5_downtime_calendar_e2e as downtime
+import api36_proof_state as proof_state
 
 
 RECEIPT_SCHEMA = "chummer.android.editing-e2e/v1"
@@ -67,10 +69,32 @@ def execute(args: argparse.Namespace) -> dict[str, object]:
     apk_sha256 = shared.sha256(apk)
     runner_sha256 = shared.sha256(runner)
     device.install_verified(apk, apk_sha256, "--no-streaming", "-r")
+    remote_runner_path = f"/sdcard/Download/{runner.name}"
     verified_remote = device.push_verified(
-        runner, f"/sdcard/Download/{runner.name}", runner_sha256
+        runner, remote_runner_path, runner_sha256
     )
-    journey = downtime.prove_downtime(device, runner, runner_sha256, fixture)
+    provider_index = device.index_download_for_documents_ui(
+        remote_runner_path,
+        runner_sha256,
+        runner.stat().st_size,
+    )
+    android_root = Path(__file__).resolve().parents[1]
+    proof_build_id = (
+        f"hosted-{os.environ['GITHUB_RUN_ID']}-"
+        f"{os.environ['CHUMMER_E2E_APK_ARTIFACT_ATTEMPT']}"
+    )
+    proof_expectation = proof_state.expected_build(
+        android_root,
+        android_root / "eng/api36-sr5-wizard-gate-authority.json",
+        proof_build_id,
+    )
+    journey = downtime.prove_downtime(
+        device,
+        runner,
+        runner_sha256,
+        fixture,
+        proof_expectation,
+    )
     return {
         "schema": RECEIPT_SCHEMA,
         "status": "pass",
@@ -88,6 +112,7 @@ def execute(args: argparse.Namespace) -> dict[str, object]:
         "downtimeFixtureSha256": shared.sha256(DEFAULT_FIXTURE),
         "runnerFixtureSha256": runner_sha256,
         "verifiedRemoteRunnerSha256": verified_remote,
+        "documentsUiProviderIndex": provider_index,
         "authorityProofStages": journey,
         "journeys": {
             "exactCalendarEdit": "pass",

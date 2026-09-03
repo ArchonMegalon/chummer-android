@@ -6914,26 +6914,234 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         self.assertIn("max_scrolls=20", helper)
         self.assertIn("scroll_distance_ratio=0.22", helper)
 
-    def test_document_picker_opens_downloads_when_fixture_is_not_recent(self) -> None:
-        device = Mock()
-        device.find.return_value = None
+    def test_documents_ui_provider_index_binds_scan_metadata_and_bytes(self) -> None:
+        payload = b"<chummer-runner/>"
+        expected_sha256 = DRIVER.hashlib.sha256(payload).hexdigest()
+        provider_uri = "content://media/external/file/12345"
+        with tempfile.TemporaryDirectory() as temporary:
+            device = Mock(spec=DRIVER.Device)
+            device.evidence = Path(temporary)
+            device.shell.side_effect = [
+                f"Result: Bundle[{{uri={provider_uri}}}]",
+                "Row: 0 _id=12345, _display_name=runner.chum5, "
+                "_data=/storage/emulated/0/Download/runner.chum5, "
+                f"_size={len(payload)}, mime_type=application/octet-stream",
+            ]
+            device.run.return_value = subprocess.CompletedProcess(
+                args=[], returncode=0, stdout=payload, stderr=b""
+            )
 
-        with patch.object(DRIVER, "select_documents_ui_downloads_root") as select_root:
-            DRIVER.select_android_document(device, "linked-runner-e2e.chum5")
+            receipt = DRIVER.Device.index_download_for_documents_ui(
+                device,
+                "/sdcard/Download/runner.chum5",
+                expected_sha256,
+                len(payload),
+            )
 
+            self.assertEqual("pass", receipt["status"])
+            self.assertEqual(provider_uri, receipt["providerUri"])
+            self.assertEqual(expected_sha256, receipt["sha256"])
+            self.assertFalse(receipt["pickerBypass"])
+            self.assertEqual("one-shot-no-replay", receipt["scanInvocation"])
+            device.shell.assert_has_calls(
+                [
+                    call(
+                        "content",
+                        "call",
+                        "--uri",
+                        DRIVER.MEDIA_PROVIDER_SCAN_URI,
+                        "--method",
+                        DRIVER.MEDIA_PROVIDER_SCAN_METHOD,
+                        "--arg",
+                        "/storage/emulated/0/Download/runner.chum5",
+                    ),
+                    call(
+                        "content",
+                        "query",
+                        "--uri",
+                        provider_uri,
+                        "--projection",
+                        "_id:_display_name:_data:_size:mime_type",
+                        "--user",
+                        "0",
+                    ),
+                ]
+            )
+            device.run.assert_called_once_with(
+                "exec-out",
+                "content",
+                "read",
+                "--uri",
+                provider_uri,
+                timeout=120,
+                text=False,
+            )
+            receipts = list(Path(temporary).glob("documentsui-provider-index-*.json"))
+            self.assertEqual(1, len(receipts))
+
+    def test_documents_ui_provider_index_rejects_absent_or_ambiguous_scan_uri(self) -> None:
+        for scan_output in (
+            "Result: Bundle[{}]",
+            "Result: Bundle[{uri=content://media/external/file/1, "
+            "other=content://media/external/file/2}]",
+        ):
+            with self.subTest(scan_output=scan_output), tempfile.TemporaryDirectory() as temporary:
+                device = Mock(spec=DRIVER.Device)
+                device.evidence = Path(temporary)
+                device.shell.return_value = scan_output
+                with self.assertRaisesRegex(RuntimeError, "exactly one indexed content URI"):
+                    DRIVER.Device.index_download_for_documents_ui(
+                        device,
+                        "/sdcard/Download/runner.chum5",
+                        "a" * 64,
+                        1,
+                    )
+                device.run.assert_not_called()
+
+    def test_documents_ui_provider_index_rejects_wrong_row_or_provider_bytes(self) -> None:
+        payload = b"expected"
+        expected_sha256 = DRIVER.hashlib.sha256(payload).hexdigest()
+        provider_uri = "content://media/external/file/12345"
+        correct_row = (
+            "Row: 0 _id=12345, _display_name=runner.chum5, "
+            "_data=/storage/emulated/0/Download/runner.chum5, "
+            f"_size={len(payload)}, mime_type=application/octet-stream"
+        )
+        cases = (
+            (
+                correct_row.replace("runner.chum5", "other.chum5", 1),
+                payload,
+                "identity differs",
+            ),
+            (correct_row, b"different", "exact pushed fixture bytes"),
+        )
+        for row, provider_bytes, expected_error in cases:
+            with self.subTest(expected_error=expected_error), tempfile.TemporaryDirectory() as temporary:
+                device = Mock(spec=DRIVER.Device)
+                device.evidence = Path(temporary)
+                device.shell.side_effect = [
+                    f"Result: Bundle[{{uri={provider_uri}}}]",
+                    row,
+                ]
+                device.run.return_value = subprocess.CompletedProcess(
+                    args=[], returncode=0, stdout=provider_bytes, stderr=b""
+                )
+                with self.assertRaisesRegex(RuntimeError, expected_error):
+                    DRIVER.Device.index_download_for_documents_ui(
+                        device,
+                        "/sdcard/Download/runner.chum5",
+                        expected_sha256,
+                        len(payload),
+                    )
+
+    def test_documents_ui_provider_commands_have_exact_replay_classification(self) -> None:
+        provider_uri = "content://media/external/file/12345"
         self.assertEqual(
-            [
-                call("Show roots", timeout=45),
-                call("linked-runner-e2e.chum5", timeout=45, scroll=True),
-            ],
-            device.wait.call_args_list,
+            "non-replayable",
+            DRIVER.adb_command_retry_policy(
+                (
+                    "shell",
+                    "content",
+                    "call",
+                    "--uri",
+                    DRIVER.MEDIA_PROVIDER_SCAN_URI,
+                    "--method",
+                    DRIVER.MEDIA_PROVIDER_SCAN_METHOD,
+                    "--arg",
+                    "/storage/emulated/0/Download/runner.chum5",
+                )
+            )[0],
         )
         self.assertEqual(
-            [
-                call("Show roots"),
-                call("linked-runner-e2e.chum5", scroll=True),
-            ],
-            device.tap.call_args_list,
+            "read-only-retryable",
+            DRIVER.adb_command_retry_policy(
+                (
+                    "shell",
+                    "content",
+                    "query",
+                    "--uri",
+                    provider_uri,
+                    "--projection",
+                    "_id:_display_name:_data:_size:mime_type",
+                    "--user",
+                    "0",
+                )
+            )[0],
+        )
+        self.assertEqual(
+            "read-only-retryable",
+            DRIVER.adb_command_retry_policy(
+                ("exec-out", "content", "read", "--uri", provider_uri)
+            )[0],
+        )
+        self.assertEqual(
+            "non-replayable",
+            DRIVER.adb_command_retry_policy(
+                ("exec-out", "content", "read", "--uri", "content://foreign/1")
+            )[0],
+        )
+
+    def test_documents_ui_exact_rows_reject_prefixes_and_foreign_packages(self) -> None:
+        filename = "runner.chum5"
+        nodes = [
+            self._documents_ui_node(text="runner.chum5.backup"),
+            DRIVER.UiNode(
+                {
+                    "package": "com.example.foreign",
+                    "text": filename,
+                    "content-desc": "",
+                    "resource-id": "android:id/title",
+                    "enabled": "true",
+                    "bounds": "[168,617][714,668]",
+                }
+            ),
+        ]
+        self.assertEqual([], DRIVER._documents_ui_exact_nodes(nodes, filename))
+
+    def test_document_picker_rejects_duplicate_exact_rows_without_tapping(self) -> None:
+        filename = "runner.chum5"
+        nodes = [
+            self._documents_ui_node(text=filename),
+            self._documents_ui_node(text=filename, bounds="[168,717][714,768]"),
+        ]
+        device = Mock(spec=DRIVER.Device)
+        device.find.return_value = None
+        device.hierarchy.return_value = nodes
+        device.node_has_tappable_bounds.return_value = True
+
+        with self.assertRaisesRegex(RuntimeError, "exposed 2 exact rows"):
+            DRIVER.select_android_document(device, filename)
+
+        device.capture.assert_called_once_with(
+            "documentsui-file-row-cardinality-invalid",
+            deadline=ANY,
+        )
+        device.shell.assert_not_called()
+
+    def test_document_picker_opens_downloads_when_fixture_is_not_recent(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        device.find.return_value = None
+        device.hierarchy.side_effect = [
+            [],
+            [self._documents_ui_node(text="linked-runner-e2e.chum5")],
+        ]
+        device.node_has_tappable_bounds.return_value = True
+
+        with (
+            patch.object(DRIVER, "select_documents_ui_downloads_root") as select_root,
+            patch.object(DRIVER.time, "sleep"),
+        ):
+            DRIVER.select_android_document(device, "linked-runner-e2e.chum5")
+
+        device.wait.assert_called_once_with("Show roots", timeout=45)
+        device.tap.assert_called_once_with("Show roots")
+        device.shell.assert_called_once_with(
+            "input",
+            "tap",
+            "441",
+            "642",
+            timeout=ANY,
+            deadline=ANY,
         )
         select_root.assert_called_once_with(device, timeout=45)
 
@@ -7472,18 +7680,28 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         )
 
     def test_document_picker_uses_visible_fixture_without_changing_root(self) -> None:
-        device = Mock()
-        device.find.side_effect = lambda selector: (
-            object() if selector == "linked-runner-e2e.chum5" else None
-        )
+        device = Mock(spec=DRIVER.Device)
+        device.find.return_value = None
+        device.hierarchy.return_value = [
+            self._documents_ui_node(text="linked-runner-e2e.chum5")
+        ]
+        device.node_has_tappable_bounds.return_value = True
 
         DRIVER.select_android_document(device, "linked-runner-e2e.chum5")
 
         device.wait.assert_not_called()
-        device.tap.assert_called_once_with("linked-runner-e2e.chum5", scroll=True)
+        device.tap.assert_not_called()
+        device.shell.assert_called_once_with(
+            "input",
+            "tap",
+            "441",
+            "642",
+            timeout=ANY,
+            deadline=ANY,
+        )
 
     def test_document_picker_closes_tablet_roots_drawer_before_fixture_tap(self) -> None:
-        device = Mock()
+        device = Mock(spec=DRIVER.Device)
         device.find.side_effect = lambda selector: (
             object()
             if selector in {
@@ -7493,17 +7711,31 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             }
             else None
         )
+        device.hierarchy.return_value = [
+            self._documents_ui_node(text="invalid-linked-runner-e2e.chum5")
+        ]
+        device.node_has_tappable_bounds.return_value = True
         device.display_size.return_value = (2560, 1800)
 
         with patch.object(DRIVER.time, "sleep") as sleep:
             DRIVER.select_android_document(device, "invalid-linked-runner-e2e.chum5")
 
-        device.shell.assert_called_once_with("input", "tap", "1920", "900")
-        sleep.assert_called_once_with(0.75)
-        device.tap.assert_called_once_with(
-            "invalid-linked-runner-e2e.chum5",
-            scroll=True,
+        self.assertEqual(
+            [
+                call("input", "tap", "1920", "900"),
+                call(
+                    "input",
+                    "tap",
+                    "441",
+                    "642",
+                    timeout=ANY,
+                    deadline=ANY,
+                ),
+            ],
+            device.shell.call_args_list,
         )
+        sleep.assert_called_once_with(0.75)
+        device.tap.assert_not_called()
 
     def test_linked_identity_resets_editor_before_reading_top_fields(self) -> None:
         source = Path(DRIVER.__file__).read_text(encoding="utf-8")

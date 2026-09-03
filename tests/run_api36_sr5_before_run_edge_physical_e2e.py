@@ -917,12 +917,23 @@ def prepare_runner(
     fixture_sha256: str,
     proof_expectation: proof_state.ProofBuildExpectation | None = None,
     proof_trace: list[dict[str, object]] | None = None,
-) -> tuple[shared.LaunchState, shared.WorkspaceAuthority]:
+) -> tuple[shared.LaunchState, shared.WorkspaceAuthority, object | None]:
     launch = shared.launch_app(device)
     shared.wait_for_phone_runners(device, timeout=120)
     shared.record_phone_ui_locale_evidence(device, evidence_prefix=spec.lane)
     device.tap("home-open-file")
     shared.select_android_document(device, fixture_name)
+    if proof_expectation is not None:
+        import api36_proof_state as proof_state_runtime
+
+        import_proof = proof_state_runtime.wait_for_import_activation(
+            device,
+            expected=proof_expectation,
+            content_sha256=fixture_sha256,
+            timeout=120,
+        )
+    else:
+        import_proof = None
     device.wait(spec.fixture_alias, timeout=120)
     shared.wait_for_phone_runner_route(device, created=True, timeout=120)
     shared.tap_phone_destination(device, "phone-destination-runners")
@@ -941,7 +952,7 @@ def prepare_runner(
         else shared.read_phone_workspace_authority(device)
     )
     shared.require_import_authority(authority, fixture_sha256)
-    return launch, authority
+    return launch, authority, import_proof
 
 
 def open_lane(device: shared.Device, spec: LaneSpec) -> None:
@@ -1137,7 +1148,7 @@ def prove_lane(
 ) -> dict[str, object]:
     device.shell("pm", "clear", shared.PACKAGE)
     proof_trace: list[dict[str, object]] = []
-    initial_launch, imported = prepare_runner(
+    initial_launch, imported, import_proof = prepare_runner(
         device,
         spec,
         fixture.name,
@@ -1446,6 +1457,8 @@ def prove_lane(
         ],
     }
     if proof_expectation is not None:
+        if import_proof is None:
+            raise RuntimeError("API-36 import proof activation is missing")
         require_proof_process_transitions(proof_trace)
         result["api36ProofInstrumentation"] = {
             "schema": proof_trace[0]["schema"],
@@ -1453,6 +1466,11 @@ def prove_lane(
             "supplementalOnly": True,
             "blackBoxAssertionsRetained": True,
             "observations": proof_trace,
+        }
+        result["api36ImportProof"] = {
+            "schema": import_proof.payload["schema"],
+            "serializedSha256": import_proof.serialized_sha256,
+            "observation": import_proof.payload,
         }
     return result
 
