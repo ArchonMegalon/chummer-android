@@ -19,16 +19,25 @@ public sealed class CreationPrerequisitePage : NativePageBase
     };
     private readonly CreationPrerequisitePhoneDraft _draft = new();
     private IReadOnlyList<string> _prepareBlockers = [];
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+    private CharacterCreationPrerequisiteState? _latestApi36ProofReadyState;
+#endif
 
     public CreationPrerequisitePage(RunnerSessionCoordinator coordinator) : base(coordinator)
     {
         Title = WizardStrings.Get("Priority.PageTitle", "Priorities");
         AutomationId = "creation-prerequisite-page";
         Content = new ScrollView { Content = _body };
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+        Loaded += PublishApi36AttachmentProofOnceLoaded;
+#endif
     }
 
     protected override void Refresh()
     {
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+        _latestApi36ProofReadyState = null;
+#endif
         _body.Clear();
         _body.Add(NativeTheme.Eyebrow(WizardStrings.Get("Priority.Eyebrow", "Character creation")));
         _body.Add(NativeTheme.Title(WizardStrings.Get("Priority.Heading", "Priority / Sum-to-Ten")));
@@ -85,6 +94,26 @@ public sealed class CreationPrerequisitePage : NativePageBase
                 "creation-prerequisite-preview-blockers");
         AddActions(state);
 #if CHUMMER_API36_PROOF_INSTRUMENTATION
+        _latestApi36ProofReadyState = state;
+        TryPublishApi36AttachmentProof();
+#endif
+    }
+
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+    private void PublishApi36AttachmentProofOnceLoaded(object? sender, EventArgs args)
+    {
+        Loaded -= PublishApi36AttachmentProofOnceLoaded;
+        TryPublishApi36AttachmentProof();
+    }
+
+    private void TryPublishApi36AttachmentProof()
+    {
+        if (_latestApi36ProofReadyState is not { } state
+            || !CreationPrerequisitePhoneAuthority.IsReady(state, Coordinator.State))
+        {
+            return;
+        }
+
         Api36ProofStatePublisher.TryPublishCreationPrerequisiteAttachment(
             this,
             Coordinator,
@@ -93,9 +122,9 @@ public sealed class CreationPrerequisitePage : NativePageBase
             state.Binding.SavedRevision,
             state.Binding.RawCharacterXmlDigest,
             state.SnapshotDigest,
-            CreationPrerequisitePhoneAuthority.IsReady(state, Coordinator.State));
-#endif
+            prerequisiteAuthorityReady: true);
     }
+#endif
 
     private void AddBinding(CharacterCreationPrerequisiteState state)
     {

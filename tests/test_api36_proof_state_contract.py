@@ -782,6 +782,56 @@ class Api36ProofStateContractTests(unittest.TestCase):
             project,
         )
 
+    def test_creation_prerequisite_attachment_publication_is_one_shot_after_loaded(self) -> None:
+        page = (ROOT / "src/Chummer.Android/Native/CreationPrerequisitePage.cs").read_text(
+            encoding="utf-8"
+        )
+        constructor = page[
+            page.index("public CreationPrerequisitePage(") :
+            page.index("protected override void Refresh()")
+        ]
+        refresh = page[
+            page.index("protected override void Refresh()") :
+            page.index("private void PublishApi36AttachmentProofOnceLoaded(")
+        ]
+        loaded_hook = page[
+            page.index("private void PublishApi36AttachmentProofOnceLoaded(") :
+            page.index("private void AddBinding(")
+        ]
+
+        self.assertEqual(
+            1,
+            constructor.count("Loaded += PublishApi36AttachmentProofOnceLoaded;"),
+        )
+        self.assertNotIn("TryPublishCreationPrerequisiteAttachment", refresh)
+        self.assertEqual(
+            1,
+            loaded_hook.count("Loaded -= PublishApi36AttachmentProofOnceLoaded;"),
+        )
+        self.assertEqual(
+            2,
+            page.count("TryPublishApi36AttachmentProof();"),
+        )
+        self.assertIn("_latestApi36ProofReadyState = null;", refresh)
+        self.assertIn("_latestApi36ProofReadyState = state;", refresh)
+        self.assertIn("TryPublishApi36AttachmentProof();", refresh)
+        self.assertIn("TryPublishApi36AttachmentProof();", loaded_hook)
+        readiness = loaded_hook.index(
+            "CreationPrerequisitePhoneAuthority.IsReady(state, Coordinator.State)"
+        )
+        publication = loaded_hook.index(
+            "Api36ProofStatePublisher.TryPublishCreationPrerequisiteAttachment("
+        )
+        self.assertLess(readiness, publication)
+        for forbidden in (
+            "Task.Delay",
+            "while (",
+            "Dispatcher.Dispatch",
+            "Navigation.Push",
+            'device.shell("input", "tap"',
+        ):
+            self.assertNotIn(forbidden, loaded_hook)
+
     def test_gate_scope_is_unchanged(self) -> None:
         gate = json.loads((ROOT / "eng/api36-sr5-wizard-gate-authority.json").read_text(encoding="utf-8"))
         self.assertEqual(7, gate["requiredJourneyCount"])
