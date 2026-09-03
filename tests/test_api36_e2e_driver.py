@@ -7315,6 +7315,43 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                     payload,
                     size="0",
                     is_pending="1",
+                    data_path=(
+                        f"{DRIVER.MEDIA_PROVIDER_PENDING_DOWNLOAD_PREFIX}0-runner.chum5"
+                    ),
+                ),
+                "pending Downloads identity differs",
+            ),
+            (
+                "",
+                self._provider_row(
+                    payload,
+                    size="0",
+                    is_pending="1",
+                    data_path=(
+                        f"{DRIVER.MEDIA_PROVIDER_PENDING_DOWNLOAD_PREFIX}01789030285-runner.chum5"
+                    ),
+                ),
+                "pending Downloads identity differs",
+            ),
+            (
+                "",
+                self._provider_row(
+                    payload,
+                    size="0",
+                    is_pending="1",
+                    data_path=(
+                        f"{DRIVER.MEDIA_PROVIDER_PENDING_DOWNLOAD_PREFIX}"
+                        "9223372036854775808-runner.chum5"
+                    ),
+                ),
+                "pending Downloads identity differs",
+            ),
+            (
+                "",
+                self._provider_row(
+                    payload,
+                    size="0",
+                    is_pending="1",
                     owner_package_name="com.example.foreign",
                 ),
                 "pending Downloads identity differs",
@@ -7445,6 +7482,25 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                     )
                 self.assertEqual(3, run.call_count)
                 invoke_once.assert_not_called()
+
+    def test_documents_ui_provider_registration_rejects_names_that_media_provider_would_trim(
+        self,
+    ) -> None:
+        payload = b"expected"
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Path(temporary) / ("r" * 227 + ".chum5")
+            fixture.write_bytes(payload)
+            device = self._provider_device(str(Path(temporary) / "evidence"))
+            with (
+                patch.object(device, "run") as run,
+                patch.object(device, "_invoke_once") as invoke_once,
+                self.assertRaisesRegex(RuntimeError, "cannot retain exact"),
+            ):
+                device.publish_document_for_documents_ui(
+                    fixture, DRIVER.hashlib.sha256(payload).hexdigest()
+                )
+            run.assert_not_called()
+            invoke_once.assert_not_called()
 
     def test_documents_ui_provider_registration_never_replays_unknown_write(self) -> None:
         payload = b"expected"

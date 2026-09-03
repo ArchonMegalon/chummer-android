@@ -205,6 +205,8 @@ MEDIA_PROVIDER_CANONICAL_DOWNLOAD_ROOT = "/storage/emulated/0/Download/"
 MEDIA_PROVIDER_PENDING_DOWNLOAD_PREFIX = (
     f"{MEDIA_PROVIDER_CANONICAL_DOWNLOAD_ROOT}.pending-"
 )
+MEDIA_PROVIDER_PENDING_EXPIRY_MAX = (1 << 63) - 1
+MEDIA_PROVIDER_FILENAME_MAX_UTF8_BYTES = 255
 MEDIA_PROVIDER_RELATIVE_DOWNLOAD_ROOT = "Download/"
 MEDIA_PROVIDER_DOCUMENT_MIME_TYPE = "application/octet-stream"
 MEDIA_PROVIDER_SHELL_OWNER_PACKAGE_NAME = "com.android.shell"
@@ -237,6 +239,11 @@ def _is_exact_media_provider_pending_path(path: str, display_name: str) -> bool:
     """Accept only MediaProvider's exact pending rename for this fixture."""
     if GOVERNED_DOWNLOAD_BASENAME.fullmatch(display_name) is None:
         return False
+    longest_pending_name = (
+        f".pending-{MEDIA_PROVIDER_PENDING_EXPIRY_MAX}-{display_name}"
+    )
+    if len(longest_pending_name.encode("utf-8")) > MEDIA_PROVIDER_FILENAME_MAX_UTF8_BYTES:
+        return False
     suffix = f"-{display_name}"
     if not path.startswith(MEDIA_PROVIDER_PENDING_DOWNLOAD_PREFIX):
         return False
@@ -244,9 +251,14 @@ def _is_exact_media_provider_pending_path(path: str, display_name: str) -> bool:
     if not pending_identity.endswith(suffix):
         return False
     numeric_identity = pending_identity[: -len(suffix)]
-    return bool(numeric_identity) and all(
-        "0" <= character <= "9" for character in numeric_identity
-    )
+    if (
+        not numeric_identity
+        or numeric_identity[0] == "0"
+        or len(numeric_identity) > 19
+        or not all("0" <= character <= "9" for character in numeric_identity)
+    ):
+        return False
+    return int(numeric_identity) <= MEDIA_PROVIDER_PENDING_EXPIRY_MAX
 
 
 DOCUMENTS_UI_DRAWER_MARKER = "Open from"
@@ -2158,6 +2170,13 @@ class Device:
         display_name = resolved.name
         if GOVERNED_DOWNLOAD_BASENAME.fullmatch(display_name) is None:
             raise RuntimeError("DocumentsUI fixture has an unsafe display name")
+        if not _is_exact_media_provider_pending_path(
+            f"{MEDIA_PROVIDER_PENDING_DOWNLOAD_PREFIX}1-{display_name}",
+            display_name,
+        ):
+            raise RuntimeError(
+                "DocumentsUI fixture name cannot retain exact MediaStore pending identity"
+            )
         if SHA256_TEXT.fullmatch(expected_sha256) is None:
             raise RuntimeError(
                 f"Invalid provider-registration fixture SHA-256: {expected_sha256!r}"
