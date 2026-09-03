@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <ChummerCoreRoot Condition="'$(ChummerCoreRoot)' == ''">../../../../chummer-core-engine</ChummerCoreRoot>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="CoreCompileStubs.cs" />
+    <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CharacterCustomDrugRules.cs"
+             Link="Core/CharacterCustomDrugRules.cs" />
+    <Compile Include="$(ChummerCoreRoot)/Chummer.Application/Characters/ICharacterCustomDrugAuthority.cs"
+             Link="Core/ICharacterCustomDrugAuthority.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5CareerCustomDrugRecipeModel.cs"
+             Link="Native/Sr5CareerCustomDrugRecipeModel.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5CareerCustomDrugRecipeService.cs"
+             Link="Native/Sr5CareerCustomDrugRecipeService.cs" />
+  </ItemGroup>
+</Project>

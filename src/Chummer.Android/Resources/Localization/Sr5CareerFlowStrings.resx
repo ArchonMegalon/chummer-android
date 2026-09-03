@@ -506,6 +506,7 @@ Preview: {3}…</value></data>
   <data name="Edge used {0} → {1}" xml:space="preserve"><value>Edge used {0} → {1}</value></data>
   <data name="Edge, ammunition, modes, or table authority changed; the saved review was discarded." xml:space="preserve"><value>Edge, ammunition, modes, or table authority changed; the saved review was discarded.</value></data>
   <data name="Exact SR5 table authority is unavailable. No fallback action was opened." xml:space="preserve"><value>Exact SR5 table authority is unavailable. No fallback action was opened.</value></data>
+  <data name="Save this runner before opening a table action. No review or resumable transaction was opened." xml:space="preserve"><value>Save this runner before opening a table action. No review or resumable transaction was opened.</value></data>
   <data name="Fire · {0}" xml:space="preserve"><value>Fire · {0}</value></data>
   <data name="Full Burst" xml:space="preserve"><value>Full Burst</value></data>
   <data name="Live / playtime" xml:space="preserve"><value>Live / playtime</value></data>
@@ -521,7 +522,6 @@ Preview: {3}…</value></data>
   <data name="SR5 Career · table-safe actions" xml:space="preserve"><value>SR5 Career · table-safe actions</value></data>
   <data name="Save not verified" xml:space="preserve"><value>Save not verified</value></data>
   <data name="Saved EdgeUsed changes by exactly one: {0} → {1}." xml:space="preserve"><value>Saved EdgeUsed changes by exactly one: {0} → {1}.</value></data>
-  <data name="Selection saves a digest-bound review draft. Apply still rechecks workspace revision and uses only the existing typed Edge or Weapon request." xml:space="preserve"><value>Selection saves a digest-bound review draft. Apply still rechecks workspace revision and uses only the existing typed Edge or Weapon request.</value></data>
   <data name="Short Burst" xml:space="preserve"><value>Short Burst</value></data>
   <data name="Single Shot" xml:space="preserve"><value>Single Shot</value></data>
   <data name="Spend 1 Edge" xml:space="preserve"><value>Spend 1 Edge</value></data>
@@ -535,7 +535,6 @@ Preview: {3}…</value></data>
   <data name="The saved review belonged to another runner and was discarded." xml:space="preserve"><value>The saved review belonged to another runner and was discarded.</value></data>
   <data name="The saved review belonged to another table lane and was discarded." xml:space="preserve"><value>The saved review belonged to another table lane and was discarded.</value></data>
   <data name="The saved runner changed. Return to Career and reopen this table wizard." xml:space="preserve"><value>The saved runner changed. Return to Career and reopen this table wizard.</value></data>
-  <data name="Use exact Edge and direct Weapon-fire actions without opening unrestricted runner editing." xml:space="preserve"><value>Use exact Edge and direct Weapon-fire actions without opening unrestricted runner editing.</value></data>
   <data name="Workspace {0} · revision {1} · snapshot {2}" xml:space="preserve"><value>Workspace {0} · revision {1} · snapshot {2}</value></data>
   <data name="{0} rounds · ammo {1} → {2}{3}" xml:space="preserve"><value>{0} rounds · ammo {1} → {2}{3}</value></data>
   <data name="-99.00 through 1000.00" xml:space="preserve"><value>-99.00 through 1000.00</value></data>
@@ -638,14 +637,12 @@ Preview: {3}…</value></data>
   <data name="Arbitrary expenses" xml:space="preserve"><value>Arbitrary expenses</value></data>
   <data name="Contact selection" xml:space="preserve"><value>Contact selection</value></data>
   <data name="Edge preparation" xml:space="preserve"><value>Edge preparation</value></data>
-  <data name="Gear, Bioware, and installed-implant mutations remain unavailable here until Core exposes their exact typed quote, review, confirmation, receipt, and recovery authorities. Android never opens the generic collection editor from this wizard." xml:space="preserve"><value>Gear, Bioware, and installed-implant mutations remain unavailable here until Core exposes their exact typed quote, review, confirmation, receipt, and recovery authorities. Android never opens the generic collection editor from this wizard.</value></data>
   <data name="Injuries" xml:space="preserve"><value>Injuries</value></data>
   <data name="Karma reward" xml:space="preserve"><value>Karma reward</value></data>
   <data name="Loadout selection" xml:space="preserve"><value>Loadout selection</value></data>
   <data name="Loot acquisition" xml:space="preserve"><value>Loot acquisition</value></data>
   <data name="New contacts and contact Karma expense" xml:space="preserve"><value>New contacts and contact Karma expense</value></data>
   <data name="Nuyen reward" xml:space="preserve"><value>Nuyen reward</value></data>
-  <data name="Only the top-level Cyberware purchase lane is typed end to end in this build." xml:space="preserve"><value>Only the top-level Cyberware purchase lane is typed end to end in this build.</value></data>
   <data name="Preparation purchases and healing" xml:space="preserve"><value>Preparation purchases and healing</value></data>
   <data name="Run commitments" xml:space="preserve"><value>Run commitments</value></data>
   <data name="Run log mutation" xml:space="preserve"><value>Run log mutation</value></data>
@@ -683,7 +680,353 @@ Preview: {3}…</value></data>
   <data name="Settle governed rewards, Heat/reputation, contacts, approvals and the atomic Core receipt" xml:space="preserve"><value>Settle governed rewards, Heat/reputation, contacts, approvals and the atomic Core receipt</value></data>
   <data name="Review, confirm and persist one exact SR5 Calendar add, edit or delete with restart recovery" xml:space="preserve"><value>Review, confirm and persist one exact SR5 Calendar add, edit or delete with restart recovery</value></data>
   <data name="Playtime" xml:space="preserve"><value>Playtime</value></data>
-  <data name="Quote, review and confirm exact Edge or direct-weapon ammunition changes with a restart-safe receipt" xml:space="preserve"><value>Quote, review and confirm exact Edge or direct-weapon ammunition changes with a restart-safe receipt</value></data>
-  <data name="Before Run exposes only typed Edge, and Playtime exposes only typed Edge and direct-weapon ammunition. Downtime healing, training, acquisition/install/repair/crafting, lifestyle/contact/project planning, and Playtime damage/conditions, temporary modifiers, initiative and run-state remain blocked until composed typed quote/time/receipt authorities exist. No generic mutation fallback is used." xml:space="preserve"><value>Before Run exposes only typed Edge, and Playtime exposes only typed Edge and direct-weapon ammunition. Downtime healing, training, acquisition/install/repair/crafting, lifestyle/contact/project planning, and Playtime damage/conditions, temporary modifiers, initiative and run-state remain blocked until composed typed quote/time/receipt authorities exist. No generic mutation fallback is used.</value></data>
+  <data name="Quote, review and confirm exact Edge, direct-weapon ammunition, or Physical/Stun damage changes with a restart-safe receipt" xml:space="preserve"><value>Quote, review and confirm exact Edge, direct-weapon ammunition, or Physical/Stun damage changes with a restart-safe receipt</value></data>
+  <data name="Before Run exposes only typed Edge, and Playtime exposes only typed Edge, direct-weapon ammunition, and Physical/Stun damage tracks. Downtime healing, training, acquisition/install/repair/crafting, lifestyle/contact/project planning, and Playtime temporary modifiers, initiative and run-state remain blocked until composed typed quote/time/receipt authorities exist. No generic mutation fallback is used." xml:space="preserve"><value>Before Run exposes only typed Edge, and Playtime exposes only typed Edge, direct-weapon ammunition, and Physical/Stun damage tracks. Downtime healing, training, acquisition/install/repair/crafting, lifestyle/contact/project planning, and Playtime temporary modifiers, initiative and run-state remain blocked until composed typed quote/time/receipt authorities exist. No generic mutation fallback is used.</value></data>
   <data name="Before Run" xml:space="preserve"><value>Before Run</value></data>
+  <data name="A damage transaction for another runner or track occupies this journal." xml:space="preserve"><value>A damage transaction for another runner or track occupies this journal.</value></data>
+  <data name="Action {0} · revision {1} · quote {2}" xml:space="preserve"><value>Action {0} · revision {1} · quote {2}</value></data>
+  <data name="Applying is durable before the mutation. Only the exact next revision and selected box count can release its mutation owner." xml:space="preserve"><value>Applying is durable before the mutation. Only the exact next revision and selected box count can release its mutation owner.</value></data>
+  <data name="Choose a different valid box count before review." xml:space="preserve"><value>Choose a different valid box count before review.</value></data>
+  <data name="Choose one exact saved box count. Review and confirmation are bound to this runner revision and recover through one durable receipt." xml:space="preserve"><value>Choose one exact saved box count. Review and confirmation are bound to this runner revision and recover through one durable receipt.</value></data>
+  <data name="Condition tracks" xml:space="preserve"><value>Condition tracks</value></data>
+  <data name="Confirm and save exact damage" xml:space="preserve"><value>Confirm and save exact damage</value></data>
+  <data name="Confirmation unavailable" xml:space="preserve"><value>Confirmation unavailable</value></data>
+  <data name="Core proved no mutation after restart. Confirm the exact review again." xml:space="preserve"><value>Core proved no mutation after restart. Confirm the exact review again.</value></data>
+  <data name="Core proved the runner stayed at the reviewed revision. Confirm again if desired." xml:space="preserve"><value>Core proved the runner stayed at the reviewed revision. Confirm again if desired.</value></data>
+  <data name="Damage outcome unknown" xml:space="preserve"><value>Damage outcome unknown</value></data>
+  <data name="Damage saved" xml:space="preserve"><value>Damage saved</value></data>
+  <data name="Exact saved boxes {0} / {1} · review and receipt required" xml:space="preserve"><value>Exact saved boxes {0} / {1} · review and receipt required</value></data>
+  <data name="Filled boxes" xml:space="preserve"><value>Filled boxes</value></data>
+  <data name="Filled boxes after this action" xml:space="preserve"><value>Filled boxes after this action</value></data>
+  <data name="Loading the exact saved damage track…" xml:space="preserve"><value>Loading the exact saved damage track…</value></data>
+  <data name="No exact change" xml:space="preserve"><value>No exact change</value></data>
+  <data name="No mutation observed" xml:space="preserve"><value>No mutation observed</value></data>
+  <data name="Only the exact verified Playtime damage receipt may be acknowledged." xml:space="preserve"><value>Only the exact verified Playtime damage receipt may be acknowledged.</value></data>
+  <data name="Physical" xml:space="preserve"><value>Physical</value></data>
+  <data name="Playtime · {0} damage" xml:space="preserve"><value>Playtime · {0} damage</value></data>
+  <data name="Reopen Playtime and quote the current saved damage track." xml:space="preserve"><value>Reopen Playtime and quote the current saved damage track.</value></data>
+  <data name="Reopen the Playtime damage wizard and review the current track." xml:space="preserve"><value>Reopen the Playtime damage wizard and review the current track.</value></data>
+  <data name="Resume exact damage review" xml:space="preserve"><value>Resume exact damage review</value></data>
+  <data name="Review Playtime damage" xml:space="preserve"><value>Review Playtime damage</value></data>
+  <data name="Review exact damage change" xml:space="preserve"><value>Review exact damage change</value></data>
+  <data name="SR5 Playtime · typed damage" xml:space="preserve"><value>SR5 Playtime · typed damage</value></data>
+  <data name="Selection saves a digest-bound review draft. Apply rechecks the exact workspace revision and uses only typed Edge, Weapon, or condition-track requests." xml:space="preserve"><value>Selection saves a digest-bound review draft. Apply rechecks the exact workspace revision and uses only typed Edge, Weapon, or condition-track requests.</value></data>
+  <data name="Set {0} damage" xml:space="preserve"><value>Set {0} damage</value></data>
+  <data name="Stun" xml:space="preserve"><value>Stun</value></data>
+  <data name="The exact clean saved SR5 damage track is unavailable. No mutation fallback was opened." xml:space="preserve"><value>The exact clean saved SR5 damage track is unavailable. No mutation fallback was opened.</value></data>
+  <data name="The exact next-revision damage receipt was recovered after restart." xml:space="preserve"><value>The exact next-revision damage receipt was recovered after restart.</value></data>
+  <data name="The exact next-revision postcondition was not observed. The Applying journal remains locked." xml:space="preserve"><value>The exact next-revision postcondition was not observed. The Applying journal remains locked.</value></data>
+  <data name="The previous confirmation is Applying but its exact result could not be classified. It remains mutation-owning and cannot be retried." xml:space="preserve"><value>The previous confirmation is Applying but its exact result could not be classified. It remains mutation-owning and cannot be retried.</value></data>
+  <data name="The saved damage review was stale and was discarded before mutation." xml:space="preserve"><value>The saved damage review was stale and was discarded before mutation.</value></data>
+  <data name="The saved runner changed after review. This damage action cannot be applied." xml:space="preserve"><value>The saved runner changed after review. This damage action cannot be applied.</value></data>
+  <data name="The saved runner could not be projected after apply. The Applying journal remains locked." xml:space="preserve"><value>The saved runner could not be projected after apply. The Applying journal remains locked.</value></data>
+  <data name="This Playtime leaf changes only the selected runner Physical or Stun box count. It does not calculate healing time, temporary modifiers, initiative, or vehicle damage." xml:space="preserve"><value>This Playtime leaf changes only the selected runner Physical or Stun box count. It does not calculate healing time, temporary modifiers, initiative, or vehicle damage.</value></data>
+  <data name="Use exact Edge, direct Weapon-fire, and Physical or Stun damage actions without opening unrestricted runner editing." xml:space="preserve"><value>Use exact Edge, direct Weapon-fire, and Physical or Stun damage actions without opening unrestricted runner editing.</value></data>
+  <data name="Verified Playtime damage receipt" xml:space="preserve"><value>Verified Playtime damage receipt</value></data>
+  <data name="Workspace {0} · revision {1} · {2} / {3} boxes" xml:space="preserve"><value>Workspace {0} · revision {1} · {2} / {3} boxes</value></data>
+  <data name="{0} The durable Applying journal remains locked for recovery." xml:space="preserve"><value>{0} The durable Applying journal remains locked for recovery.</value></data>
+  <data name="{0} boxes {1} → {2} · maximum {3}" xml:space="preserve"><value>{0} boxes {1} → {2} · maximum {3}</value></data>
+  <data name="{0} condition track" xml:space="preserve"><value>{0} condition track</value></data>
+  <data name="{0}: {1} → {2} boxes · revision {3} → {4}" xml:space="preserve"><value>{0}: {1} → {2} boxes · revision {3} → {4}</value></data>
+
+  <data name="Custom drug recipe" xml:space="preserve">
+    <value>Custom drug recipe</value>
+  </data>
+  <data name="SR5 Career · Free initial dose" xml:space="preserve">
+    <value>SR5 Career · Free initial dose</value>
+  </data>
+  <data name="Define custom drug" xml:space="preserve">
+    <value>Define custom drug</value>
+  </data>
+  <data name="Name the recipe, choose one exact grade and exactly one Foundation, then add bounded Blocks or Enhancers. Core calculates every effect and saves one unstolen free initial dose." xml:space="preserve">
+    <value>Name the recipe, choose one exact grade and exactly one Foundation, then add bounded Blocks or Enhancers. Core calculates every effect and saves one unstolen free initial dose.</value>
+  </data>
+  <data name="Rules" xml:space="preserve">
+    <value>Rules</value>
+  </data>
+  <data name="Maximum components" xml:space="preserve">
+    <value>Maximum components</value>
+  </data>
+  <data name="Enter a bounded recipe name" xml:space="preserve">
+    <value>Enter a bounded recipe name</value>
+  </data>
+  <data name="Recipe name" xml:space="preserve">
+    <value>Recipe name</value>
+  </data>
+  <data name="Components" xml:space="preserve">
+    <value>Components</value>
+  </data>
+  <data name="Choose exactly one Foundation" xml:space="preserve">
+    <value>Choose exactly one Foundation</value>
+  </data>
+  <data name="{0} selected · choose Foundation, Blocks, or Enhancers" xml:space="preserve">
+    <value>{0} selected · choose Foundation, Blocks, or Enhancers</value>
+  </data>
+  <data name="No components selected" xml:space="preserve">
+    <value>No components selected</value>
+  </data>
+  <data name="Selected components" xml:space="preserve">
+    <value>Selected components</value>
+  </data>
+  <data name="Update recipe quote" xml:space="preserve">
+    <value>Update recipe quote</value>
+  </data>
+  <data name="{0} · level {1} · {2} {3}" xml:space="preserve">
+    <value>{0} · level {1} · {2} {3}</value>
+  </data>
+  <data name="Remove component" xml:space="preserve">
+    <value>Remove component</value>
+  </data>
+  <data name="Recipe" xml:space="preserve">
+    <value>Recipe</value>
+  </data>
+  <data name="Component cost" xml:space="preserve">
+    <value>Component cost</value>
+  </data>
+  <data name="Unit cost" xml:space="preserve">
+    <value>Unit cost</value>
+  </data>
+  <data name="Availability" xml:space="preserve">
+    <value>Availability</value>
+  </data>
+  <data name="Addiction" xml:space="preserve">
+    <value>Addiction</value>
+  </data>
+  <data name="rating {0} / threshold {1}" xml:space="preserve">
+    <value>rating {0} / threshold {1}</value>
+  </data>
+  <data name="Timing effects" xml:space="preserve">
+    <value>Timing effects</value>
+  </data>
+  <data name="Lock exact recipe review" xml:space="preserve">
+    <value>Lock exact recipe review</value>
+  </data>
+  <data name="Confirm and save recipe" xml:space="preserve">
+    <value>Confirm and save recipe</value>
+  </data>
+  <data name="Confirm exact custom-drug recipe" xml:space="preserve">
+    <value>Confirm exact custom-drug recipe</value>
+  </data>
+  <data name="Save this digest-bound recipe and its one unstolen free initial dose to the current clean Career revision?" xml:space="preserve">
+    <value>Save this digest-bound recipe and its one unstolen free initial dose to the current clean Career revision?</value>
+  </data>
+  <data name="New recipe" xml:space="preserve">
+    <value>New recipe</value>
+  </data>
+  <data name="Initial quantity" xml:space="preserve">
+    <value>Initial quantity</value>
+  </data>
+  <data name="New drug instance" xml:space="preserve">
+    <value>New drug instance</value>
+  </data>
+  <data name="New component instances" xml:space="preserve">
+    <value>New component instances</value>
+  </data>
+  <data name="Confirm creates exactly one recipe with one unstolen free initial dose in one atomic saved revision. It creates no expense and performs no later quantity purchase." xml:space="preserve">
+    <value>Confirm creates exactly one recipe with one unstolen free initial dose in one atomic saved revision. It creates no expense and performs no later quantity purchase.</value>
+  </data>
+  <data name="Verified custom-drug receipt" xml:space="preserve">
+    <value>Verified custom-drug receipt</value>
+  </data>
+  <data name="Drug instance" xml:space="preserve">
+    <value>Drug instance</value>
+  </data>
+  <data name="Component instances" xml:space="preserve">
+    <value>Component instances</value>
+  </data>
+  <data name="Undo this recipe" xml:space="preserve">
+    <value>Undo this recipe</value>
+  </data>
+  <data name="Undo exact custom-drug recipe" xml:space="preserve">
+    <value>Undo exact custom-drug recipe</value>
+  </data>
+  <data name="Remove only the recipe and initial dose proven by this receipt in one new atomic saved revision?" xml:space="preserve">
+    <value>Remove only the recipe and initial dose proven by this receipt in one new atomic saved revision?</value>
+  </data>
+  <data name="Keep recipe" xml:space="preserve">
+    <value>Keep recipe</value>
+  </data>
+  <data name="Finish receipt and start another recipe" xml:space="preserve">
+    <value>Finish receipt and start another recipe</value>
+  </data>
+  <data name="Start another recipe" xml:space="preserve">
+    <value>Start another recipe</value>
+  </data>
+  <data name="Close this phone undo receipt and prepare a new recipe from the current saved revision?" xml:space="preserve">
+    <value>Close this phone undo receipt and prepare a new recipe from the current saved revision?</value>
+  </data>
+  <data name="Recovery is locked because neither the exact saved receipt nor an unchanged pre-commit revision can be proven. This phone will not replay the recipe mutation." xml:space="preserve">
+    <value>Recovery is locked because neither the exact saved receipt nor an unchanged pre-commit revision can be proven. This phone will not replay the recipe mutation.</value>
+  </data>
+  <data name="The phone recipe draft was restored for this exact runner and catalog revision." xml:space="preserve">
+    <value>The phone recipe draft was restored for this exact runner and catalog revision.</value>
+  </data>
+  <data name="The runner, catalog, or rules changed. Invalid choices were removed and the old review was discarded." xml:space="preserve">
+    <value>The runner, catalog, or rules changed. Invalid choices were removed and the old review was discarded.</value>
+  </data>
+  <data name="The exact Core quote and new stable identities are durably reviewed. Confirm separately." xml:space="preserve">
+    <value>The exact Core quote and new stable identities are durably reviewed. Confirm separately.</value>
+  </data>
+  <data name="Core saved the recipe, its free initial dose, and the receipt atomically." xml:space="preserve">
+    <value>Core saved the recipe, its free initial dose, and the receipt atomically.</value>
+  </data>
+  <data name="Receipt lookup proved the interrupted recipe was already saved." xml:space="preserve">
+    <value>Receipt lookup proved the interrupted recipe was already saved.</value>
+  </data>
+  <data name="Core proved the recipe was not saved. Review the current quote before confirming again." xml:space="preserve">
+    <value>Core proved the recipe was not saved. Review the current quote before confirming again.</value>
+  </data>
+  <data name="The receipt-bound custom-drug recipe was undone in one saved revision." xml:space="preserve">
+    <value>The receipt-bound custom-drug recipe was undone in one saved revision.</value>
+  </data>
+  <data name="A new recipe draft is bound to the current saved runner revision." xml:space="preserve">
+    <value>A new recipe draft is bound to the current saved runner revision.</value>
+  </data>
+  <data name="The recipe outcome is not provable from the current receipt and runner revision." xml:space="preserve">
+    <value>The recipe outcome is not provable from the current receipt and runner revision.</value>
+  </data>
+  <data name="Custom-drug recipe authority unavailable" xml:space="preserve">
+    <value>Custom-drug recipe authority unavailable</value>
+  </data>
+  <data name="Foundation" xml:space="preserve">
+    <value>Foundation</value>
+  </data>
+  <data name="Block" xml:space="preserve">
+    <value>Block</value>
+  </data>
+  <data name="Enhancer" xml:space="preserve">
+    <value>Enhancer</value>
+  </data>
+  <data name="Component" xml:space="preserve">
+    <value>Component</value>
+  </data>
+  <data name="Legal" xml:space="preserve">
+    <value>Legal</value>
+  </data>
+  <data name="Restricted" xml:space="preserve">
+    <value>Restricted</value>
+  </data>
+  <data name="Forbidden" xml:space="preserve">
+    <value>Forbidden</value>
+  </data>
+  <data name="Unknown" xml:space="preserve">
+    <value>Unknown</value>
+  </data>
+  <data name="Choose custom-drug grade" xml:space="preserve">
+    <value>Choose custom-drug grade</value>
+  </data>
+  <data name="Source-authorized custom-drug grades" xml:space="preserve">
+    <value>Source-authorized custom-drug grades</value>
+  </data>
+  <data name="cost × {0} · addiction threshold {1} · {2}" xml:space="preserve">
+    <value>cost × {0} · addiction threshold {1} · {2}</value>
+  </data>
+  <data name="The exact custom-drug catalog changed or became unavailable. Return to the recipe page." xml:space="preserve">
+    <value>The exact custom-drug catalog changed or became unavailable. Return to the recipe page.</value>
+  </data>
+  <data name="Choose custom-drug components" xml:space="preserve">
+    <value>Choose custom-drug components</value>
+  </data>
+  <data name="Exact component identities and levels" xml:space="preserve">
+    <value>Exact component identities and levels</value>
+  </data>
+  <data name="Choosing a Foundation replaces the previous Foundation. Blocks and Enhancers may repeat only within their source limit and the Core maximum." xml:space="preserve">
+    <value>Choosing a Foundation replaces the previous Foundation. Blocks and Enhancers may repeat only within their source limit and the Core maximum.</value>
+  </data>
+  <data name="level {0} · cost {1} · availability {2} · {3} {4}" xml:space="preserve">
+    <value>level {0} · cost {1} · availability {2} · {3} {4}</value>
+  </data>
+  <data name="Exact components and levels → Core quote → free initial dose → durable receipt" xml:space="preserve">
+    <value>Exact components and levels → Core quote → free initial dose → durable receipt</value>
+  </data>
+  <data name="Gear, Bioware, installed-implant mutations, later custom-drug quantity purchases, and Creation custom-drug finalization remain unavailable here. Android never opens the generic collection editor from this wizard." xml:space="preserve">
+    <value>Gear, Bioware, installed-implant mutations, later custom-drug quantity purchases, and Creation custom-drug finalization remain unavailable here. Android never opens the generic collection editor from this wizard.</value>
+  </data>
+  <data name="attributes {0} · limits {1} · qualities {2} · information {3}" xml:space="preserve"><value>attributes {0} · limits {1} · qualities {2} · information {3}</value></data>
+  <data name="initiative {0} · dice {1} · crash {2} · speed {3} · duration {4}" xml:space="preserve"><value>initiative {0} · dice {1} · crash {2} · speed {3} · duration {4}</value></data>
+  <data name="Add compatible modifications" xml:space="preserve"><value>Add compatible modifications</value></data>
+  <data name="Add modification" xml:space="preserve"><value>Add modification</value></data>
+  <data name="Adjusted total" xml:space="preserve"><value>Adjusted total</value></data>
+  <data name="Build a vehicle or drone" xml:space="preserve"><value>Build a vehicle or drone</value></data>
+  <data name="Chassis" xml:space="preserve"><value>Chassis</value></data>
+  <data name="Choose chassis" xml:space="preserve"><value>Choose chassis</value></data>
+  <data name="Choose compatible modifications" xml:space="preserve"><value>Choose compatible modifications</value></data>
+  <data name="Choose one exact vehicle or drone" xml:space="preserve"><value>Choose one exact vehicle or drone</value></data>
+  <data name="Choose vehicle or drone chassis" xml:space="preserve"><value>Choose vehicle or drone chassis</value></data>
+  <data name="Confirm exact vehicle purchase" xml:space="preserve"><value>Confirm exact vehicle purchase</value></data>
+  <data name="Core applies only the saved rules-profile price multipliers. Manual markup or discount is not available in this wizard." xml:space="preserve"><value>Core applies only the saved rules-profile price multipliers. Manual markup or discount is not available in this wizard.</value></data>
+  <data name="Custom vehicle name" xml:space="preserve"><value>Custom vehicle name</value></data>
+  <data name="Cyberware purchase, custom-drug recipe, and vehicle or drone workshop are typed end to end in this build." xml:space="preserve"><value>Cyberware purchase, custom-drug recipe, and vehicle or drone workshop are typed end to end in this build.</value></data>
+  <data name="Drone" xml:space="preserve"><value>Drone</value></data>
+  <data name="Expense receipt" xml:space="preserve"><value>Expense receipt</value></data>
+  <data name="Forbidden price multiplier" xml:space="preserve"><value>Forbidden price multiplier</value></data>
+  <data name="Lock exact workshop review" xml:space="preserve"><value>Lock exact workshop review</value></data>
+  <data name="Modification capacity" xml:space="preserve"><value>Modification capacity</value></data>
+  <data name="Modification slots" xml:space="preserve"><value>Modification slots</value></data>
+  <data name="Modifications" xml:space="preserve"><value>Modifications</value></data>
+  <data name="New instance" xml:space="preserve"><value>New instance</value></data>
+  <data name="Not compatible with the selected chassis" xml:space="preserve"><value>Not compatible with the selected chassis</value></data>
+  <data name="Not enabled" xml:space="preserve"><value>Not enabled</value></data>
+  <data name="Nuyen change" xml:space="preserve"><value>Nuyen change</value></data>
+  <data name="Optional runner name for this vehicle" xml:space="preserve"><value>Optional runner name for this vehicle</value></data>
+  <data name="Remove" xml:space="preserve"><value>Remove</value></data>
+  <data name="Restricted price multiplier" xml:space="preserve"><value>Restricted price multiplier</value></data>
+  <data name="SR5 Career · Vehicle workshop" xml:space="preserve"><value>SR5 Career · Vehicle workshop</value></data>
+  <data name="Saved purchase receipt" xml:space="preserve"><value>Saved purchase receipt</value></data>
+  <data name="Selected rating" xml:space="preserve"><value>Selected rating</value></data>
+  <data name="Start another vehicle or drone" xml:space="preserve"><value>Start another vehicle or drone</value></data>
+  <data name="The purchase outcome is uncertain. This draft is locked so the mutation cannot be replayed." xml:space="preserve"><value>The purchase outcome is uncertain. This draft is locked so the mutation cannot be replayed.</value></data>
+  <data name="Update workshop quote" xml:space="preserve"><value>Update workshop quote</value></data>
+  <data name="Vehicle" xml:space="preserve"><value>Vehicle</value></data>
+  <data name="Vehicle and drone workshop" xml:space="preserve"><value>Vehicle and drone workshop</value></data>
+  <data name="Vehicle modifications" xml:space="preserve"><value>Vehicle modifications</value></data>
+  <data name="Vehicle or drone" xml:space="preserve"><value>Vehicle or drone</value></data>
+  <data name="{0} modifications selected" xml:space="preserve"><value>{0} modifications selected</value></data>
+  <data name="{0} used · {1} remaining" xml:space="preserve"><value>{0} used · {1} remaining</value></data>
+  <data name="{0} · rating {1}–{2} · {3} {4}" xml:space="preserve"><value>{0} · rating {1}–{2} · {3} {4}</value></data>
+  <data name="{0} · {1} · slots {2} · {3} {4}" xml:space="preserve"><value>{0} · {1} · slots {2} · {3} {4}</value></data>
+  <data name="Lower rating" xml:space="preserve"><value>Lower rating</value></data>
+  <data name="Raise rating" xml:space="preserve"><value>Raise rating</value></data>
+  <data name="The phone workshop draft was restored for this exact runner and catalog revision." xml:space="preserve"><value>The phone workshop draft was restored for this exact runner and catalog revision.</value></data>
+  <data name="The runner or vehicle catalog changed. Invalid choices were removed and the old review was discarded." xml:space="preserve"><value>The runner or vehicle catalog changed. Invalid choices were removed and the old review was discarded.</value></data>
+  <data name="The exact Core workshop quote and stable identities are durably reviewed. Confirm separately." xml:space="preserve"><value>The exact Core workshop quote and stable identities are durably reviewed. Confirm separately.</value></data>
+  <data name="Core recovery proved the interrupted vehicle purchase was already saved." xml:space="preserve"><value>Core recovery proved the interrupted vehicle purchase was already saved.</value></data>
+  <data name="Core proved the vehicle purchase was not saved. Review the current quote before confirming again." xml:space="preserve"><value>Core proved the vehicle purchase was not saved. Review the current quote before confirming again.</value></data>
+  <data name="The receipt-bound vehicle purchase was undone in one saved revision." xml:space="preserve"><value>The receipt-bound vehicle purchase was undone in one saved revision.</value></data>
+  <data name="A new vehicle workshop draft is bound to the current saved runner revision." xml:space="preserve"><value>A new vehicle workshop draft is bound to the current saved runner revision.</value></data>
+  <data name="The vehicle purchase outcome is not provable from the current receipt and runner revision." xml:space="preserve"><value>The vehicle purchase outcome is not provable from the current receipt and runner revision.</value></data>
+  <data name="Choose one exact source chassis, compose modifications and weapon mounts, review Core's cost and legality, then confirm one atomic saved purchase." xml:space="preserve"><value>Choose one exact source chassis, compose modifications and weapon mounts, review Core's cost and legality, then confirm one atomic saved purchase.</value></data>
+  <data name="Weapon mounts" xml:space="preserve"><value>Weapon mounts</value></data>
+  <data name="Compose exact weapon mounts" xml:space="preserve"><value>Compose exact weapon mounts</value></data>
+  <data name="{0} weapon mounts · {1} complete" xml:space="preserve"><value>{0} weapon mounts · {1} complete</value></data>
+  <data name="Weapon-mount component" xml:space="preserve"><value>Weapon-mount component</value></data>
+  <data name="Weapon-mount instance" xml:space="preserve"><value>Weapon-mount instance</value></data>
+  <data name="Component instance" xml:space="preserve"><value>Component instance</value></data>
+  <data name="Save this digest-bound vehicle or drone, modifications, weapon mounts, nuyen change, and expense receipt to the current clean Career revision?" xml:space="preserve"><value>Save this digest-bound vehicle or drone, modifications, weapon mounts, nuyen change, and expense receipt to the current clean Career revision?</value></data>
+  <data name="Core saved the vehicle or drone, modifications, weapon mounts, nuyen change, and expense receipt atomically." xml:space="preserve"><value>Core saved the vehicle or drone, modifications, weapon mounts, nuyen change, and expense receipt atomically.</value></data>
+  <data name="Compose weapon mounts" xml:space="preserve"><value>Compose weapon mounts</value></data>
+  <data name="Each mount needs one exact Size, Visibility, Flexibility, and Control component. Core validates every dependency, conflict, slot, capacity, availability, legality, and price." xml:space="preserve"><value>Each mount needs one exact Size, Visibility, Flexibility, and Control component. Core validates every dependency, conflict, slot, capacity, availability, legality, and price.</value></data>
+  <data name="Weapon mount {0}" xml:space="preserve"><value>Weapon mount {0}</value></data>
+  <data name="Choose four exact components" xml:space="preserve"><value>Choose four exact components</value></data>
+  <data name="Remove weapon mount" xml:space="preserve"><value>Remove weapon mount</value></data>
+  <data name="Add weapon mount" xml:space="preserve"><value>Add weapon mount</value></data>
+  <data name="Configure weapon mount" xml:space="preserve"><value>Configure weapon mount</value></data>
+  <data name="Configure exact mount components" xml:space="preserve"><value>Configure exact mount components</value></data>
+  <data name="The weapon mount draft is no longer available." xml:space="preserve"><value>The weapon mount draft is no longer available.</value></data>
+  <data name="Choose {0} component" xml:space="preserve"><value>Choose {0} component</value></data>
+  <data name="Clear component" xml:space="preserve"><value>Clear component</value></data>
+  <data name="Core composition check" xml:space="preserve"><value>Core composition check</value></data>
+  <data name="Core accepted this complete mount inside the current vehicle quote." xml:space="preserve"><value>Core accepted this complete mount inside the current vehicle quote.</value></data>
+  <data name="Size" xml:space="preserve"><value>Size</value></data>
+  <data name="Visibility" xml:space="preserve"><value>Visibility</value></data>
+  <data name="Flexibility" xml:space="preserve"><value>Flexibility</value></data>
+  <data name="Control" xml:space="preserve"><value>Control</value></data>
+  <data name="Choose {0}" xml:space="preserve"><value>Choose {0}</value></data>
+  <data name="Choose exact {0} component" xml:space="preserve"><value>Choose exact {0} component</value></data>
+  <data name="{0} · slots {1} · capacity {2} · availability {3} · {4} · {5} {6}" xml:space="preserve"><value>{0} · slots {1} · capacity {2} · availability {3} · {4} · {5} {6}</value></data>
+  <data name="Conflicts with another selected mount component" xml:space="preserve"><value>Conflicts with another selected mount component</value></data>
+  <data name="Requires: {0}" xml:space="preserve"><value>Requires: {0}</value></data>
+  <data name="Selected" xml:space="preserve"><value>Selected</value></data>
+  <data name="Choose component" xml:space="preserve"><value>Choose component</value></data>
+  <data name="Exact chassis → modifications and weapon mounts → Core quote → durable purchase receipt" xml:space="preserve"><value>Exact chassis → modifications and weapon mounts → Core quote → durable purchase receipt</value></data>
 </root>

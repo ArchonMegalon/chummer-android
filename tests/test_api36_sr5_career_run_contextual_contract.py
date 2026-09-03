@@ -29,7 +29,23 @@ class Sr5CareerRunContextualContractTests(unittest.TestCase):
         recognition = inventory["generationInputs"]["api36JourneyRecognition"]
         self.assertEqual("recognized", recognition["recognitionStatus"])
         self.assertEqual("not_executed", recognition["executionStatus"])
-        self.assertIsNone(recognition["matrixJourney"])
+        self.assertEqual(
+            [
+                {
+                    "route": "sr5-career/before-run",
+                    "matrixJourney": "before-run-edge",
+                    "gateStatus": "required",
+                    "executionStatus": "not_executed",
+                },
+                {
+                    "route": "sr5-career/playtime",
+                    "matrixJourney": "playtime-short-burst",
+                    "gateStatus": "required",
+                    "executionStatus": "not_executed",
+                },
+            ],
+            recognition["matrixJourneys"],
+        )
         self.assertFalse(recognition["releaseClaim"])
         self.assertEqual(0, recognition["completionCountContribution"])
 
@@ -41,6 +57,29 @@ class Sr5CareerRunContextualContractTests(unittest.TestCase):
         )
         self.assertNotIn("phone-table-before-run", workflow)
         self.assertNotIn("phone-table-before-run", runner)
+        self.assertIn("before-run-edge", workflow)
+        self.assertIn("before-run-edge", runner)
+        self.assertIn("playtime-short-burst", workflow)
+        self.assertIn("playtime-short-burst", runner)
+        self.assertIn("downtime-calendar", workflow)
+        self.assertIn("downtime-calendar", runner)
+        self.assertIn("after-run-settlement", workflow)
+        self.assertIn("after-run-settlement", runner)
+
+        after_run = inventory["generationInputs"]["afterRunSettlementJourneyRecognition"]
+        self.assertEqual("sr5-after-run-settlement", after_run["journeyId"])
+        self.assertEqual(
+            [
+                {
+                    "route": "sr5-career/after-run/settlement",
+                    "matrixJourney": "after-run-settlement",
+                    "gateStatus": "required",
+                    "executionStatus": "not_executed",
+                }
+            ],
+            after_run["matrixJourneys"],
+        )
+        self.assertFalse(after_run["releaseClaim"])
 
     def test_contextual_scope_is_explicit_and_generic_mutation_is_absent(self) -> None:
         catalog = (

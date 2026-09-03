@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -3200,6 +3201,35 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         device.shell.assert_not_called()
         device.run.assert_not_called()
 
+    def test_hierarchy_can_expose_only_the_exact_owned_file_lease_reserve_exhaustion(
+        self,
+    ) -> None:
+        device = Mock(spec=DRIVER.Device)
+        with tempfile.TemporaryDirectory() as temporary, patch.object(
+            DRIVER.time,
+            "monotonic",
+            return_value=90.0,
+        ):
+            evidence = Path(temporary)
+            device.evidence = evidence
+            with self.assertRaises(DRIVER.AdbHierarchyLeaseReserveExceeded):
+                DRIVER.Device.hierarchy(
+                    device,
+                    deadline=100.0,
+                    raise_on_lease_reserve_exhaustion=True,
+                )
+            diagnostic = (evidence / "last-invalid-hierarchy.txt").read_text(
+                encoding="utf-8"
+            )
+
+        self.assertIn("caller-owned deadline", diagnostic)
+        self.assertIn(
+            "cannot preserve its owned-file retry and reconciliation reserve",
+            diagnostic,
+        )
+        device.shell.assert_not_called()
+        device.run.assert_not_called()
+
     def test_empty_dump_status_does_not_read_file_after_dump_deadline(self) -> None:
         device = Mock(spec=DRIVER.Device)
         device.shell.return_value = ""
@@ -5359,6 +5389,54 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 imported.__class__("new", 4, 4, "a" * 64, "c" * 64),
             )
 
+    def test_imported_phone_runner_authority_uses_route_and_exact_payload_not_alias(self) -> None:
+        expected_sha256 = "a" * 64
+        authority = DRIVER.WorkspaceAuthority(
+            "imported", 4, 4, expected_sha256, "b" * 64
+        )
+        device = Mock()
+        with patch.object(DRIVER, "wait_for_phone_runner_route") as wait_route, \
+             patch.object(DRIVER, "tap_phone_destination") as tap_destination, \
+             patch.object(DRIVER, "wait_for_phone_runners") as wait_runners, \
+             patch.object(
+                 DRIVER,
+                 "read_workspace_authority",
+                 return_value=authority,
+             ) as read_authority:
+            observed = DRIVER.read_imported_phone_runner_authority(
+                device,
+                expected_sha256,
+            )
+
+        self.assertEqual(authority, observed)
+        wait_route.assert_called_once_with(device, created=True, timeout=120)
+        tap_destination.assert_called_once_with(device, "phone-destination-runners")
+        wait_runners.assert_called_once_with(device, timeout=120)
+        read_authority.assert_called_once_with(device)
+        device.wait.assert_not_called()
+
+    def test_imported_phone_runner_authority_rejects_wrong_runner_without_recovery(self) -> None:
+        device = Mock()
+        foreign = DRIVER.WorkspaceAuthority(
+            "foreign", 2, 2, "b" * 64, "c" * 64
+        )
+        with patch.object(DRIVER, "wait_for_phone_runner_route") as wait_route, \
+             patch.object(DRIVER, "tap_phone_destination") as tap_destination, \
+             patch.object(DRIVER, "wait_for_phone_runners") as wait_runners, \
+             patch.object(
+                 DRIVER,
+                 "read_workspace_authority",
+                 return_value=foreign,
+             ) as read_authority:
+            with self.assertRaisesRegex(RuntimeError, "exact verified fixture bytes"):
+                DRIVER.read_imported_phone_runner_authority(device, "a" * 64)
+
+        wait_route.assert_called_once_with(device, created=True, timeout=120)
+        tap_destination.assert_called_once_with(device, "phone-destination-runners")
+        wait_runners.assert_called_once_with(device, timeout=120)
+        read_authority.assert_called_once_with(device)
+        device.wait.assert_not_called()
+
     def test_workspace_authority_surface_requires_two_identical_reads(self) -> None:
         authority = DRIVER.WorkspaceAuthority("new", 4, 4, "a" * 64, "b" * 64)
         device = Mock()
@@ -6885,26 +6963,946 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         self.assertIn("max_scrolls=20", helper)
         self.assertIn("scroll_distance_ratio=0.22", helper)
 
-    def test_document_picker_opens_downloads_when_fixture_is_not_recent(self) -> None:
-        device = Mock()
-        device.find.return_value = None
+    @staticmethod
+    def _provider_row(
+        payload: bytes,
+        *,
+        display_name: str = "runner.chum5",
+        provider_id: str = "12345",
+        size: str | None = None,
+        is_pending: str = "0",
+        owner_package_name: str = "com.android.shell",
+        data_path: str | None = None,
+    ) -> str:
+        provider_size = str(len(payload)) if size is None else size
+        if data_path is None:
+            data_path = (
+                f"{DRIVER.MEDIA_PROVIDER_PENDING_DOWNLOAD_PREFIX}1789030285-"
+                f"{display_name}"
+                if is_pending == "1"
+                else f"{DRIVER.MEDIA_PROVIDER_CANONICAL_DOWNLOAD_ROOT}{display_name}"
+            )
+        return (
+            f"Row: 0 _id={provider_id}, _display_name={display_name}, "
+            f"_data={data_path}, "
+            f"_size={provider_size}, mime_type=application/octet-stream, "
+            f"relative_path=Download/, is_pending={is_pending}, "
+            f"owner_package_name={owner_package_name}"
+        )
 
-        with patch.object(DRIVER, "select_documents_ui_downloads_root") as select_root:
-            DRIVER.select_android_document(device, "linked-runner-e2e.chum5")
+    def _provider_device(self, temporary: str) -> DRIVER.Device:
+        return DRIVER.Device(Path("/unused/adb"), "emulator-5554", Path(temporary))
 
-        self.assertEqual(
-            [
-                call("Show roots", timeout=45),
-                call("linked-runner-e2e.chum5", timeout=45, scroll=True),
-            ],
-            device.wait.call_args_list,
+    def test_documents_ui_provider_registration_binds_insert_publish_metadata_and_bytes(
+        self,
+    ) -> None:
+        payload = b"<chummer-runner/>"
+        expected_sha256 = DRIVER.hashlib.sha256(payload).hexdigest()
+        provider_uri = "content://media/external_primary/downloads/12345"
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Path(temporary) / "runner.chum5"
+            fixture.write_bytes(payload)
+            evidence = Path(temporary) / "evidence"
+            device = self._provider_device(str(evidence))
+            with (
+                patch.object(
+                    device,
+                    "run",
+                    side_effect=(
+                        subprocess.CompletedProcess([], 0, "No result found.\n", ""),
+                        subprocess.CompletedProcess([], 0, "", ""),
+                        subprocess.CompletedProcess(
+                            [],
+                            0,
+                            self._provider_row(
+                                payload, size="NULL", is_pending="1"
+                            )
+                            + "\n",
+                            "",
+                        ),
+                        subprocess.CompletedProcess([], 0, "", ""),
+                        subprocess.CompletedProcess(
+                            [], 0, self._provider_row(payload) + "\n", ""
+                        ),
+                        subprocess.CompletedProcess([], 0, payload, b""),
+                    ),
+                ) as run,
+                patch.object(
+                    device,
+                    "_invoke_once",
+                    return_value=subprocess.CompletedProcess([], 0, b"", b""),
+                ) as invoke_once,
+            ):
+                receipt = device.publish_document_for_documents_ui(
+                    fixture, expected_sha256
+                )
+
+            self.assertEqual("pass", receipt["status"])
+            self.assertEqual(
+                "chummer.android.documentsui-provider-registration/v3",
+                receipt["schema"],
+            )
+            self.assertEqual(provider_uri, receipt["providerUri"])
+            self.assertEqual(expected_sha256, receipt["sha256"])
+            self.assertEqual("com.android.shell", receipt["ownerPackageName"])
+            self.assertFalse(receipt["pickerBypass"])
+            self.assertEqual(
+                "three-one-shot-mutations-no-replay",
+                receipt["registrationInvocations"],
+            )
+            invoke_once.assert_called_once_with(
+                (
+                    "shell",
+                    "content",
+                    "write",
+                    "--user",
+                    "0",
+                    "--uri",
+                    provider_uri,
+                ),
+                timeout=120,
+                text=False,
+                check=True,
+                input_bytes=payload,
+            )
+            self.assertEqual(6, run.call_count)
+            self.assertEqual(
+                (
+                    "shell",
+                    "content",
+                    "query",
+                    "--user",
+                    "0",
+                    "--uri",
+                    DRIVER.MEDIA_PROVIDER_PENDING_DOWNLOADS_URI,
+                    "--projection",
+                    DRIVER.MEDIA_PROVIDER_METADATA_PROJECTION,
+                    "--where",
+                    '"_display_name=\'runner.chum5\'"',
+                ),
+                run.call_args_list[0].args,
+            )
+            self.assertEqual(run.call_args_list[0].args, run.call_args_list[2].args)
+            self.assertEqual(
+                DRIVER.MEDIA_PROVIDER_DOWNLOADS_URI,
+                run.call_args_list[4].args[6],
+            )
+            attempt_receipts = list(
+                evidence.glob("documentsui-provider-registration-*.json")
+            )
+            self.assertEqual(7, len(attempt_receipts))
+            insert = next(path for path in attempt_receipts if path.name.endswith("-insert.json"))
+            insert_receipt = json.loads(insert.read_text(encoding="utf-8"))
+            self.assertEqual("", insert_receipt["stdout"]["exact"])
+            insert_calls = [
+                call
+                for call in run.call_args_list
+                if call.args[:3] == ("shell", "content", "insert")
+            ]
+            self.assertEqual(1, len(insert_calls))
+            self.assertEqual(
+                (
+                    "shell",
+                    "content",
+                    "insert",
+                    "--user",
+                    "0",
+                    "--uri",
+                    DRIVER.MEDIA_PROVIDER_DOWNLOADS_URI,
+                    "--bind",
+                    "_display_name:s:runner.chum5",
+                    "--bind",
+                    f"mime_type:s:{DRIVER.MEDIA_PROVIDER_DOCUMENT_MIME_TYPE}",
+                    "--bind",
+                    f"relative_path:s:{DRIVER.MEDIA_PROVIDER_RELATIVE_DOWNLOAD_ROOT}",
+                    "--bind",
+                    f"owner_package_name:s:{DRIVER.MEDIA_PROVIDER_SHELL_OWNER_PACKAGE_NAME}",
+                    "--bind",
+                    "is_pending:i:1",
+                ),
+                insert_calls[0].args,
+            )
+
+    def test_documents_ui_provider_registration_refuses_existing_pending_or_published_name(
+        self,
+    ) -> None:
+        payload = b"expected"
+        for is_pending in ("0", "1"):
+            with self.subTest(is_pending=is_pending), tempfile.TemporaryDirectory() as temporary:
+                fixture = Path(temporary) / "runner.chum5"
+                fixture.write_bytes(payload)
+                device = self._provider_device(str(Path(temporary) / "evidence"))
+                with (
+                    patch.object(
+                        device,
+                        "run",
+                        return_value=subprocess.CompletedProcess(
+                            [],
+                            0,
+                            self._provider_row(payload, is_pending=is_pending) + "\n",
+                            "",
+                        ),
+                    ) as run,
+                    patch.object(device, "_invoke_once") as invoke_once,
+                    self.assertRaisesRegex(RuntimeError, "already contains"),
+                ):
+                    device.publish_document_for_documents_ui(
+                        fixture, DRIVER.hashlib.sha256(payload).hexdigest()
+                    )
+                self.assertEqual(1, run.call_count)
+                self.assertEqual(
+                    DRIVER.MEDIA_PROVIDER_PENDING_DOWNLOADS_URI,
+                    run.call_args.args[6],
+                )
+                invoke_once.assert_not_called()
+
+    def test_documents_ui_provider_registration_rejects_ambiguous_absence_output(
+        self,
+    ) -> None:
+        payload = b"expected"
+        for output in ("", "No result found.\nNo result found.\n"):
+            with self.subTest(output=output), tempfile.TemporaryDirectory() as temporary:
+                fixture = Path(temporary) / "runner.chum5"
+                fixture.write_bytes(payload)
+                device = self._provider_device(str(Path(temporary) / "evidence"))
+                with (
+                    patch.object(
+                        device,
+                        "run",
+                        return_value=subprocess.CompletedProcess([], 0, output, ""),
+                    ) as run,
+                    patch.object(device, "_invoke_once") as invoke_once,
+                    self.assertRaisesRegex(RuntimeError, "query output is ambiguous|row sequence is ambiguous"),
+                ):
+                    device.publish_document_for_documents_ui(
+                        fixture, DRIVER.hashlib.sha256(payload).hexdigest()
+                    )
+                self.assertEqual(1, run.call_count)
+                invoke_once.assert_not_called()
+
+    def test_documents_ui_provider_registration_rejects_query_error_output(
+        self,
+    ) -> None:
+        payload = b"expected"
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Path(temporary) / "runner.chum5"
+            fixture.write_bytes(payload)
+            device = self._provider_device(str(Path(temporary) / "evidence"))
+            with (
+                patch.object(
+                    device,
+                    "run",
+                    return_value=subprocess.CompletedProcess(
+                        [], 0, "No result found.\n", "provider error\n"
+                    ),
+                ) as run,
+                patch.object(device, "_invoke_once") as invoke_once,
+                self.assertRaisesRegex(RuntimeError, "query emitted error output"),
+            ):
+                device.publish_document_for_documents_ui(
+                    fixture, DRIVER.hashlib.sha256(payload).hexdigest()
+                )
+            self.assertEqual(1, run.call_count)
+            invoke_once.assert_not_called()
+
+    def test_documents_ui_provider_registration_requires_exactly_silent_insert(
+        self,
+    ) -> None:
+        for insert_output, insert_error in (
+            ("Inserted content://media/external_primary/downloads/1\n", ""),
+            ("", "Error while accessing provider\n"),
+        ):
+            with self.subTest(
+                insert_output=insert_output,
+                insert_error=insert_error,
+            ), tempfile.TemporaryDirectory() as temporary:
+                payload = b"x"
+                fixture = Path(temporary) / "runner.chum5"
+                fixture.write_bytes(payload)
+                evidence = Path(temporary) / "evidence"
+                device = self._provider_device(str(evidence))
+                with patch.object(
+                    device,
+                    "run",
+                    side_effect=(
+                        subprocess.CompletedProcess([], 0, "No result found.\n", ""),
+                        subprocess.CompletedProcess(
+                            [], 0, insert_output, insert_error
+                        ),
+                    ),
+                ) as run, self.assertRaisesRegex(RuntimeError, "insert command was not exactly silent"):
+                    device.publish_document_for_documents_ui(
+                        fixture, DRIVER.hashlib.sha256(payload).hexdigest()
+                    )
+                self.assertEqual(2, run.call_count)
+                insert_receipts = list(evidence.glob("*-insert.json"))
+                self.assertEqual(1, len(insert_receipts))
+                observed = json.loads(insert_receipts[0].read_text(encoding="utf-8"))
+                self.assertEqual(insert_output, observed["stdout"]["exact"])
+                self.assertEqual(insert_error, observed["stderr"]["exact"])
+
+    def test_documents_ui_provider_registration_rejects_post_insert_cardinality(
+        self,
+    ) -> None:
+        payload = b"expected"
+        rows = (
+            "No result found.\n",
+            self._provider_row(payload, size="0", is_pending="1")
+            + "\n"
+            + self._provider_row(
+                payload,
+                provider_id="12346",
+                size="0",
+                is_pending="1",
+            ).replace("Row: 0 ", "Row: 1 ", 1)
+            + "\n",
+        )
+        for row in rows:
+            with self.subTest(row=row), tempfile.TemporaryDirectory() as temporary:
+                fixture = Path(temporary) / "runner.chum5"
+                fixture.write_bytes(payload)
+                device = self._provider_device(str(Path(temporary) / "evidence"))
+                with (
+                    patch.object(
+                        device,
+                        "run",
+                        side_effect=(
+                            subprocess.CompletedProcess(
+                                [], 0, "No result found.\n", ""
+                            ),
+                            subprocess.CompletedProcess([], 0, "", ""),
+                            subprocess.CompletedProcess([], 0, row, ""),
+                        ),
+                    ) as run,
+                    patch.object(device, "_invoke_once") as invoke_once,
+                    self.assertRaisesRegex(RuntimeError, "exactly one fixture row"),
+                ):
+                    device.publish_document_for_documents_ui(
+                        fixture, DRIVER.hashlib.sha256(payload).hexdigest()
+                    )
+                self.assertEqual(3, run.call_count)
+                invoke_once.assert_not_called()
+
+    def test_documents_ui_provider_registration_rejects_post_insert_identity_drift(
+        self,
+    ) -> None:
+        payload = b"expected"
+        provider_uri = "content://media/external_primary/downloads/12345"
+        hostile = (
+            (
+                "",
+                self._provider_row(payload, size=str(len(payload)), is_pending="1"),
+                "pending Downloads identity differs",
+            ),
+            (
+                "",
+                self._provider_row(payload, size="0", is_pending="0"),
+                "pending Downloads identity differs",
+            ),
+            (
+                "",
+                self._provider_row(
+                    payload,
+                    size="0",
+                    is_pending="1",
+                    owner_package_name="NULL",
+                ),
+                "pending Downloads identity differs",
+            ),
+            (
+                "",
+                self._provider_row(
+                    payload,
+                    size="0",
+                    is_pending="1",
+                    data_path=(
+                        f"{DRIVER.MEDIA_PROVIDER_PENDING_DOWNLOAD_PREFIX}0-runner.chum5"
+                    ),
+                ),
+                "pending Downloads identity differs",
+            ),
+            (
+                "",
+                self._provider_row(
+                    payload,
+                    size="0",
+                    is_pending="1",
+                    data_path=(
+                        f"{DRIVER.MEDIA_PROVIDER_PENDING_DOWNLOAD_PREFIX}01789030285-runner.chum5"
+                    ),
+                ),
+                "pending Downloads identity differs",
+            ),
+            (
+                "",
+                self._provider_row(
+                    payload,
+                    size="0",
+                    is_pending="1",
+                    data_path=(
+                        f"{DRIVER.MEDIA_PROVIDER_PENDING_DOWNLOAD_PREFIX}"
+                        "9223372036854775808-runner.chum5"
+                    ),
+                ),
+                "pending Downloads identity differs",
+            ),
+            (
+                "",
+                self._provider_row(
+                    payload,
+                    size="0",
+                    is_pending="1",
+                    owner_package_name="com.example.foreign",
+                ),
+                "pending Downloads identity differs",
+            ),
+            (
+                "",
+                self._provider_row(
+                    payload,
+                    provider_id="0",
+                    size="0",
+                    is_pending="1",
+                ),
+                "invalid provider identity",
+            ),
+            (
+                "",
+                self._provider_row(
+                    payload,
+                    size="0",
+                    is_pending="1",
+                    data_path=(
+                        f"{DRIVER.MEDIA_PROVIDER_CANONICAL_DOWNLOAD_ROOT}runner.chum5"
+                    ),
+                ),
+                "pending Downloads identity differs",
+            ),
+            (
+                "",
+                self._provider_row(
+                    payload,
+                    size="0",
+                    is_pending="1",
+                    data_path=(
+                        f"{DRIVER.MEDIA_PROVIDER_PENDING_DOWNLOAD_PREFIX}-runner.chum5"
+                    ),
+                ),
+                "pending Downloads identity differs",
+            ),
+            (
+                "",
+                self._provider_row(
+                    payload,
+                    size="0",
+                    is_pending="1",
+                    data_path=(
+                        f"{DRIVER.MEDIA_PROVIDER_PENDING_DOWNLOAD_PREFIX}not-digits-runner.chum5"
+                    ),
+                ),
+                "pending Downloads identity differs",
+            ),
+            (
+                "",
+                self._provider_row(
+                    payload,
+                    size="0",
+                    is_pending="1",
+                    data_path=(
+                        f"{DRIVER.MEDIA_PROVIDER_PENDING_DOWNLOAD_PREFIX}"
+                        "１２３-runner.chum5"
+                    ),
+                ),
+                "pending Downloads identity differs",
+            ),
+            (
+                "",
+                self._provider_row(
+                    payload,
+                    size="0",
+                    is_pending="1",
+                    data_path=(
+                        f"{DRIVER.MEDIA_PROVIDER_PENDING_DOWNLOAD_PREFIX}1789030285-other.chum5"
+                    ),
+                ),
+                "pending Downloads identity differs",
+            ),
+            (
+                "",
+                self._provider_row(
+                    payload,
+                    size="0",
+                    is_pending="1",
+                    data_path=(
+                        "/storage/emulated/0/Documents/"
+                        ".pending-1789030285-runner.chum5"
+                    ),
+                ),
+                "pending Downloads identity differs",
+            ),
+            (
+                "",
+                self._provider_row(
+                    payload,
+                    size="0",
+                    is_pending="1",
+                    data_path=(
+                        f"{DRIVER.MEDIA_PROVIDER_PENDING_DOWNLOAD_PREFIX}"
+                        "1789030285-../runner.chum5"
+                    ),
+                ),
+                "pending Downloads identity differs",
+            ),
+        )
+        for insert_output, row, expected_error in hostile:
+            with (
+                self.subTest(expected_error=expected_error),
+                tempfile.TemporaryDirectory() as temporary,
+            ):
+                fixture = Path(temporary) / "runner.chum5"
+                fixture.write_bytes(payload)
+                device = self._provider_device(str(Path(temporary) / "evidence"))
+                with (
+                    patch.object(
+                        device,
+                        "run",
+                        side_effect=(
+                            subprocess.CompletedProcess(
+                                [], 0, "No result found.\n", ""
+                            ),
+                            subprocess.CompletedProcess([], 0, insert_output, ""),
+                            subprocess.CompletedProcess([], 0, row, ""),
+                        ),
+                    ) as run,
+                    patch.object(device, "_invoke_once") as invoke_once,
+                    self.assertRaisesRegex(RuntimeError, expected_error),
+                ):
+                    device.publish_document_for_documents_ui(
+                        fixture, DRIVER.hashlib.sha256(payload).hexdigest()
+                    )
+                self.assertEqual(3, run.call_count)
+                invoke_once.assert_not_called()
+
+    def test_media_provider_pending_path_accepts_positive_int64_boundaries_only(
+        self,
+    ) -> None:
+        display_name = "runner.chum5"
+        prefix = DRIVER.MEDIA_PROVIDER_PENDING_DOWNLOAD_PREFIX
+        self.assertTrue(
+            DRIVER._is_exact_media_provider_pending_path(
+                f"{prefix}1-{display_name}", display_name
+            )
+        )
+        self.assertTrue(
+            DRIVER._is_exact_media_provider_pending_path(
+                f"{prefix}{DRIVER.MEDIA_PROVIDER_PENDING_EXPIRY_MAX}-{display_name}",
+                display_name,
+            )
+        )
+        for expiry in (
+            "0",
+            "01",
+            str(DRIVER.MEDIA_PROVIDER_PENDING_EXPIRY_MAX + 1),
+            "10000000000000000000",
+        ):
+            with self.subTest(expiry=expiry):
+                self.assertFalse(
+                    DRIVER._is_exact_media_provider_pending_path(
+                        f"{prefix}{expiry}-{display_name}", display_name
+                    )
+                )
+
+    def test_documents_ui_provider_registration_rejects_names_that_media_provider_would_trim(
+        self,
+    ) -> None:
+        payload = b"expected"
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Path(temporary) / ("r" * 227 + ".chum5")
+            fixture.write_bytes(payload)
+            device = self._provider_device(str(Path(temporary) / "evidence"))
+            with (
+                patch.object(device, "run") as run,
+                patch.object(device, "_invoke_once") as invoke_once,
+                self.assertRaisesRegex(RuntimeError, "cannot retain exact"),
+            ):
+                device.publish_document_for_documents_ui(
+                    fixture, DRIVER.hashlib.sha256(payload).hexdigest()
+                )
+            run.assert_not_called()
+            invoke_once.assert_not_called()
+
+    def test_documents_ui_provider_registration_never_replays_unknown_write(self) -> None:
+        payload = b"expected"
+        provider_uri = "content://media/external_primary/downloads/12345"
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Path(temporary) / "runner.chum5"
+            fixture.write_bytes(payload)
+            device = self._provider_device(str(Path(temporary) / "evidence"))
+            write_error = subprocess.TimeoutExpired(("content", "write"), 120)
+            with (
+                patch.object(
+                    device,
+                    "run",
+                    side_effect=(
+                        subprocess.CompletedProcess(
+                            [], 0, "No result found.\n", ""
+                        ),
+                        subprocess.CompletedProcess([], 0, "", ""),
+                        subprocess.CompletedProcess(
+                            [],
+                            0,
+                            self._provider_row(
+                                payload, size="0", is_pending="1"
+                            ),
+                            "",
+                        ),
+                    ),
+                ) as run,
+                patch.object(device, "_invoke_once", side_effect=write_error) as invoke_once,
+                self.assertRaises(DRIVER.AdbTransportError),
+            ):
+                device.publish_document_for_documents_ui(
+                    fixture, DRIVER.hashlib.sha256(payload).hexdigest()
+                )
+            self.assertEqual(3, run.call_count)
+            self.assertEqual(1, invoke_once.call_count)
+            self.assertIsNotNone(device._mutation_blocker)
+            self.assertEqual("timeout-unknown-outcome", device._mutation_blocker["classification"])
+
+    def test_documents_ui_provider_registration_rejects_publish_or_metadata_drift(
+        self,
+    ) -> None:
+        payload = b"expected"
+        provider_uri = "content://media/external_primary/downloads/12345"
+        hostile_rows = (
+            (
+                "Updated 1 row.\n",
+                "",
+                self._provider_row(payload),
+                "publish command was not exactly silent",
+            ),
+            (
+                "",
+                "Error while accessing provider\n",
+                self._provider_row(payload),
+                "publish command was not exactly silent",
+            ),
+            (
+                "",
+                "",
+                self._provider_row(payload)
+                + "\n"
+                + self._provider_row(payload, provider_id="12346").replace(
+                    "Row: 0 ", "Row: 1 ", 1
+                ),
+                "exactly one fixture row",
+            ),
+            (
+                "",
+                "",
+                self._provider_row(payload, display_name="other.chum5"),
+                "identity differs",
+            ),
+            (
+                "",
+                "",
+                self._provider_row(payload).replace("is_pending=0", "is_pending=1"),
+                "identity differs",
+            ),
+            (
+                "",
+                "",
+                self._provider_row(payload, owner_package_name="NULL"),
+                "identity differs",
+            ),
+            (
+                "",
+                "",
+                self._provider_row(payload).replace(
+                    f"_size={len(payload)}", f"_size={len(payload) + 1}"
+                ),
+                "identity differs",
+            ),
+        )
+        for publish_output, publish_error, row, expected_error in hostile_rows:
+            with self.subTest(expected_error=expected_error), tempfile.TemporaryDirectory() as temporary:
+                fixture = Path(temporary) / "runner.chum5"
+                fixture.write_bytes(payload)
+                device = self._provider_device(str(Path(temporary) / "evidence"))
+                responses = [
+                    subprocess.CompletedProcess([], 0, "No result found.\n", ""),
+                    subprocess.CompletedProcess([], 0, "", ""),
+                    subprocess.CompletedProcess(
+                        [],
+                        0,
+                        self._provider_row(payload, size="0", is_pending="1"),
+                        "",
+                    ),
+                    subprocess.CompletedProcess(
+                        [], 0, publish_output, publish_error
+                    ),
+                ]
+                if not publish_output and not publish_error:
+                    responses.append(subprocess.CompletedProcess([], 0, row, ""))
+                with (
+                    patch.object(device, "run", side_effect=responses),
+                    patch.object(
+                        device,
+                        "_invoke_once",
+                        return_value=subprocess.CompletedProcess([], 0, b"", b""),
+                    ),
+                    self.assertRaisesRegex(RuntimeError, expected_error),
+                ):
+                    device.publish_document_for_documents_ui(
+                        fixture, DRIVER.hashlib.sha256(payload).hexdigest()
+                    )
+
+    def test_documents_ui_provider_registration_rejects_wrong_provider_bytes(self) -> None:
+        payload = b"expected"
+        provider_uri = "content://media/external_primary/downloads/12345"
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Path(temporary) / "runner.chum5"
+            fixture.write_bytes(payload)
+            device = self._provider_device(str(Path(temporary) / "evidence"))
+            with (
+                patch.object(
+                    device,
+                    "run",
+                    side_effect=(
+                        subprocess.CompletedProcess([], 0, "No result found.\n", ""),
+                        subprocess.CompletedProcess([], 0, "", ""),
+                        subprocess.CompletedProcess(
+                            [],
+                            0,
+                            self._provider_row(
+                                payload, size="0", is_pending="1"
+                            ),
+                            "",
+                        ),
+                        subprocess.CompletedProcess([], 0, "", ""),
+                        subprocess.CompletedProcess([], 0, self._provider_row(payload), ""),
+                        subprocess.CompletedProcess([], 0, b"expectef", b""),
+                    ),
+                ),
+                patch.object(
+                    device,
+                    "_invoke_once",
+                    return_value=subprocess.CompletedProcess([], 0, b"", b""),
+                ),
+                self.assertRaisesRegex(RuntimeError, "exact fixture bytes"),
+            ):
+                device.publish_document_for_documents_ui(
+                    fixture, DRIVER.hashlib.sha256(payload).hexdigest()
+                )
+
+    def test_documents_ui_provider_registration_rejects_provider_read_error_output(
+        self,
+    ) -> None:
+        payload = b"expected"
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Path(temporary) / "runner.chum5"
+            fixture.write_bytes(payload)
+            device = self._provider_device(str(Path(temporary) / "evidence"))
+            with (
+                patch.object(
+                    device,
+                    "run",
+                    side_effect=(
+                        subprocess.CompletedProcess([], 0, "No result found.\n", ""),
+                        subprocess.CompletedProcess([], 0, "", ""),
+                        subprocess.CompletedProcess(
+                            [],
+                            0,
+                            self._provider_row(
+                                payload, size="0", is_pending="1"
+                            ),
+                            "",
+                        ),
+                        subprocess.CompletedProcess([], 0, "", ""),
+                        subprocess.CompletedProcess(
+                            [], 0, self._provider_row(payload), ""
+                        ),
+                        subprocess.CompletedProcess(
+                            [], 0, payload, b"provider error\n"
+                        ),
+                    ),
+                ),
+                patch.object(
+                    device,
+                    "_invoke_once",
+                    return_value=subprocess.CompletedProcess([], 0, b"", b""),
+                ),
+                self.assertRaisesRegex(RuntimeError, "read emitted error output"),
+            ):
+                device.publish_document_for_documents_ui(
+                    fixture, DRIVER.hashlib.sha256(payload).hexdigest()
+                )
+
+    def test_documents_ui_provider_query_preserves_one_exact_safe_sql_literal(self) -> None:
+        display_name = "sr5-career-before-run.chum5"
+        where = DRIVER._media_provider_display_name_where_argument(display_name)
+
+        self.assertEqual('"_display_name=\'sr5-career-before-run.chum5\'"', where)
+        remote_arguments = shlex.split(
+            " ".join(("content", "query", "--where", where))
         )
         self.assertEqual(
             [
-                call("Show roots"),
-                call("linked-runner-e2e.chum5", scroll=True),
+                "content",
+                "query",
+                "--where",
+                "_display_name='sr5-career-before-run.chum5'",
             ],
-            device.tap.call_args_list,
+            remote_arguments,
+        )
+
+        for hostile in (
+            "runner's.chum5",
+            'runner".chum5',
+            "runner;id.chum5",
+            "runner$(id).chum5",
+            "runner name.chum5",
+        ):
+            with self.subTest(hostile=hostile), self.assertRaisesRegex(
+                RuntimeError, "unsafe display name"
+            ):
+                DRIVER._media_provider_display_name_where_argument(hostile)
+
+    def test_documents_ui_provider_commands_have_exact_replay_classification(self) -> None:
+        provider_uri = "content://media/external_primary/downloads/12345"
+        for arguments in (
+            (
+                "shell",
+                "content",
+                "insert",
+                "--user",
+                "0",
+                "--uri",
+                DRIVER.MEDIA_PROVIDER_DOWNLOADS_URI,
+            ),
+            ("shell", "content", "write", "--user", "0", "--uri", provider_uri),
+            (
+                "shell",
+                "content",
+                "update",
+                "--user",
+                "0",
+                "--uri",
+                provider_uri,
+            ),
+        ):
+            self.assertEqual(
+                "non-replayable", DRIVER.adb_command_retry_policy(arguments)[0]
+            )
+        for query_uri in (
+            DRIVER.MEDIA_PROVIDER_DOWNLOADS_URI,
+            DRIVER.MEDIA_PROVIDER_PENDING_DOWNLOADS_URI,
+        ):
+            query = (
+                "shell",
+                "content",
+                "query",
+                "--user",
+                "0",
+                "--uri",
+                query_uri,
+                "--projection",
+                DRIVER.MEDIA_PROVIDER_METADATA_PROJECTION,
+                "--where",
+                '"_display_name=\'runner.chum5\'"',
+            )
+            self.assertEqual(
+                "read-only-retryable", DRIVER.adb_command_retry_policy(query)[0]
+            )
+        self.assertEqual(
+            "non-replayable",
+            DRIVER.adb_command_retry_policy(
+                (*query[:-1], "_display_name='runner.chum5'")
+            )[0],
+        )
+        self.assertEqual(
+            "read-only-retryable",
+            DRIVER.adb_command_retry_policy(
+                ("exec-out", "content", "read", "--user", "0", "--uri", provider_uri)
+            )[0],
+        )
+        for hostile in (
+            ("exec-out", "content", "read", "--uri", provider_uri),
+            (
+                "exec-out",
+                "content",
+                "read",
+                "--user",
+                "0",
+                "--uri",
+                "content://media/external/file/1",
+            ),
+        ):
+            self.assertEqual(
+                "non-replayable", DRIVER.adb_command_retry_policy(hostile)[0]
+            )
+
+    def test_documents_ui_exact_rows_reject_prefixes_and_foreign_packages(self) -> None:
+        filename = "runner.chum5"
+        nodes = [
+            self._documents_ui_node(text="runner.chum5.backup"),
+            DRIVER.UiNode(
+                {
+                    "package": "com.example.foreign",
+                    "text": filename,
+                    "content-desc": "",
+                    "resource-id": "android:id/title",
+                    "enabled": "true",
+                    "bounds": "[168,617][714,668]",
+                }
+            ),
+        ]
+        self.assertEqual([], DRIVER._documents_ui_exact_nodes(nodes, filename))
+
+    def test_document_picker_rejects_duplicate_exact_rows_without_tapping(self) -> None:
+        filename = "runner.chum5"
+        nodes = [
+            self._documents_ui_node(text=filename),
+            self._documents_ui_node(text=filename, bounds="[168,717][714,768]"),
+        ]
+        device = Mock(spec=DRIVER.Device)
+        device.find.return_value = None
+        device.hierarchy.return_value = nodes
+        device.node_has_tappable_bounds.return_value = True
+
+        with self.assertRaisesRegex(RuntimeError, "exposed 2 exact rows"):
+            DRIVER.select_android_document(device, filename)
+
+        device.capture.assert_called_once_with(
+            "documentsui-file-row-cardinality-invalid",
+            deadline=ANY,
+        )
+        device.shell.assert_not_called()
+
+    def test_document_picker_opens_downloads_when_fixture_is_not_recent(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        device.find.return_value = None
+        device.hierarchy.side_effect = [
+            [],
+            [self._documents_ui_node(text="linked-runner-e2e.chum5")],
+        ]
+        device.node_has_tappable_bounds.return_value = True
+
+        with (
+            patch.object(DRIVER, "select_documents_ui_downloads_root") as select_root,
+            patch.object(DRIVER.time, "sleep"),
+        ):
+            DRIVER.select_android_document(device, "linked-runner-e2e.chum5")
+
+        device.wait.assert_called_once_with("Show roots", timeout=45)
+        device.tap.assert_called_once_with("Show roots")
+        device.shell.assert_called_once_with(
+            "input",
+            "tap",
+            "441",
+            "642",
+            timeout=ANY,
+            deadline=ANY,
         )
         select_root.assert_called_once_with(device, timeout=45)
 
@@ -7443,18 +8441,28 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         )
 
     def test_document_picker_uses_visible_fixture_without_changing_root(self) -> None:
-        device = Mock()
-        device.find.side_effect = lambda selector: (
-            object() if selector == "linked-runner-e2e.chum5" else None
-        )
+        device = Mock(spec=DRIVER.Device)
+        device.find.return_value = None
+        device.hierarchy.return_value = [
+            self._documents_ui_node(text="linked-runner-e2e.chum5")
+        ]
+        device.node_has_tappable_bounds.return_value = True
 
         DRIVER.select_android_document(device, "linked-runner-e2e.chum5")
 
         device.wait.assert_not_called()
-        device.tap.assert_called_once_with("linked-runner-e2e.chum5", scroll=True)
+        device.tap.assert_not_called()
+        device.shell.assert_called_once_with(
+            "input",
+            "tap",
+            "441",
+            "642",
+            timeout=ANY,
+            deadline=ANY,
+        )
 
     def test_document_picker_closes_tablet_roots_drawer_before_fixture_tap(self) -> None:
-        device = Mock()
+        device = Mock(spec=DRIVER.Device)
         device.find.side_effect = lambda selector: (
             object()
             if selector in {
@@ -7464,17 +8472,31 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             }
             else None
         )
+        device.hierarchy.return_value = [
+            self._documents_ui_node(text="invalid-linked-runner-e2e.chum5")
+        ]
+        device.node_has_tappable_bounds.return_value = True
         device.display_size.return_value = (2560, 1800)
 
         with patch.object(DRIVER.time, "sleep") as sleep:
             DRIVER.select_android_document(device, "invalid-linked-runner-e2e.chum5")
 
-        device.shell.assert_called_once_with("input", "tap", "1920", "900")
-        sleep.assert_called_once_with(0.75)
-        device.tap.assert_called_once_with(
-            "invalid-linked-runner-e2e.chum5",
-            scroll=True,
+        self.assertEqual(
+            [
+                call("input", "tap", "1920", "900"),
+                call(
+                    "input",
+                    "tap",
+                    "441",
+                    "642",
+                    timeout=ANY,
+                    deadline=ANY,
+                ),
+            ],
+            device.shell.call_args_list,
         )
+        sleep.assert_called_once_with(0.75)
+        device.tap.assert_not_called()
 
     def test_linked_identity_resets_editor_before_reading_top_fields(self) -> None:
         source = Path(DRIVER.__file__).read_text(encoding="utf-8")

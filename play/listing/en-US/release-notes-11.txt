@@ -1,0 +1,1 @@
+Preview.11 is an Internal testing build for phones. It focuses on SR5 Priority creation and the included Career, Before Run, Playtime, Downtime, and After Run wizards. It includes checks for saving, reopening, and restarting the app. Full Editing, tablet or foldable support, SR4 or SR6 creation, and Rook or live-avatar support remain outside this test.

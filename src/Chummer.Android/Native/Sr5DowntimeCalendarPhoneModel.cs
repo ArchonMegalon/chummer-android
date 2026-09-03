@@ -354,8 +354,12 @@ internal sealed class Sr5DowntimeCalendarJournalStore
 
     public bool TryRead(out Sr5DowntimeCalendarJournal? journal, out string blocker)
     {
+        bool found;
         lock (Gate)
-            return TryReadLocked(out journal, out blocker);
+            found = TryReadLocked(out journal, out blocker);
+        if (found)
+            _ = TryReconcileResolvedOwner(journal!, out _);
+        return found;
     }
 
     public bool TryWriteReview(
@@ -489,10 +493,22 @@ internal sealed class Sr5DowntimeCalendarJournalStore
     public bool TryClearResolved(Sr5DowntimeCalendarJournal expected, out string blocker)
     {
         blocker = string.Empty;
+        if (!expected.IsExact()
+            || expected.Phase != Sr5DowntimeCalendarJournalPhase.Applied)
+        {
+            blocker = "Only an exact Applied Downtime Calendar receipt can be cleared.";
+            return false;
+        }
+        if (!TryReconcileResolvedOwner(expected, out blocker))
+        {
+            blocker = string.IsNullOrWhiteSpace(blocker)
+                ? "The resolved Downtime Calendar mutation owner could not be reconciled."
+                : blocker;
+            return false;
+        }
         lock (Gate)
         {
-            if (expected.Phase != Sr5DowntimeCalendarJournalPhase.Applied
-                || !TryRequireLocked(expected, out blocker))
+            if (!TryRequireLocked(expected, out blocker))
             {
                 blocker = string.IsNullOrWhiteSpace(blocker)
                     ? "Only an exact Applied Downtime Calendar receipt can be cleared."
@@ -516,6 +532,43 @@ internal sealed class Sr5DowntimeCalendarJournalStore
                 return false;
             }
         }
+    }
+
+    private bool TryReconcileResolvedOwner(
+        Sr5DowntimeCalendarJournal journal,
+        out string blocker)
+    {
+        blocker = string.Empty;
+        if (!journal.IsExact()
+            || journal.Version < 3
+            || journal.Phase is not (Sr5DowntimeCalendarJournalPhase.Review
+                or Sr5DowntimeCalendarJournalPhase.Applied))
+        {
+            return true;
+        }
+        var owner = new Sr5CareerMutationOwner(
+            Sr5CareerMutationOwner.CurrentSchemaVersion,
+            Sr5CareerMutationDomains.DowntimeCalendar,
+            journal.Review.WorkspaceId,
+            journal.OwnerId,
+            journal.ActionId,
+            journal.Version - 1,
+            journal.Review.WorkspaceRevision,
+            journal.Review.Preview.PreviewDigest["sha256:".Length..]);
+        return _mutationOwners.TryReconcileResolved(
+            owner,
+            () =>
+            {
+                lock (Gate)
+                {
+                    return TryReadLocked(
+                            out Sr5DowntimeCalendarJournal? current,
+                            out _)
+                        && current == journal
+                        && current.Phase != Sr5DowntimeCalendarJournalPhase.Applying;
+                }
+            },
+            out blocker);
     }
 
     private bool CompleteOwner(

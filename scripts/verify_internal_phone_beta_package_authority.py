@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Authenticate Android's current, package-only Presentation dependency graph."""
+"""Authenticate the locked package plane consumed by pinned Presentation source."""
 
 from __future__ import annotations
 
@@ -270,7 +270,9 @@ def validate_manifest(path: Path) -> dict[str, Any]:
         "sourceCheckoutsPresent": False,
         "siblingsAllowed": False,
     }:
-        raise ValueError("internal dependency mode is not package-only, locked, and sibling-free")
+        raise ValueError(
+            "internal package-plane dependency mode is not package-only, locked, and source-fallback-free"
+        )
     if manifest.get("headlessRuntimeBinding") != {
         "project": "Chummer.Desktop.Runtime/Chummer.Desktop.Runtime.csproj",
         "androidEntryPoint": "AddChummerLocalRuntimeClient",

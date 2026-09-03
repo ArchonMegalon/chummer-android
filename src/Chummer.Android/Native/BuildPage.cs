@@ -510,16 +510,29 @@ public sealed class BuildPage : NativePageBase
 
         Title = "Sheet";
         AddWorkspacePicker();
-        if (Sr5CareerWizardCatalog.IsSr5CareerRunner(
-                Coordinator.State.Profile.Created,
-                Coordinator.State.Rules?.GameEdition))
+        bool isSr5CareerRunner = Sr5CareerWizardCatalog.IsSr5CareerRunner(
+            Coordinator.State.Profile.Created,
+            Coordinator.State.Rules?.GameEdition);
+        if (isSr5CareerRunner)
         {
+            // The phone Career landing surface is deliberately wizard-first. Eagerly
+            // materializing the legacy dossier and every generic build tab creates dozens
+            // of native controls while Android is returning focus from the document picker.
+            // Their implementations remain available for later, separately composed parity
+            // work; the current phone beta does not instantiate them on this critical route.
             AddSr5CareerWizardRoute();
+            AddSummary();
+            AddFeedback();
+            return;
         }
-        AddSummary();
-        AddDossier();
-        AddBuildAreas();
 
+        AddSummary();
+        Label unavailable = NativeTheme.Body(
+            "The phone beta exposes created-runner changes only through the SR5 Career wizards. " +
+            "This runner's edition has no authorized Career wizard, so no generic editor is opened.",
+            NativeTheme.Danger);
+        unavailable.AutomationId = "build-career-wizard-unavailable";
+        _body.Add(NativeTheme.Card(unavailable));
         AddFeedback();
     }
 
@@ -584,6 +597,11 @@ public sealed class BuildPage : NativePageBase
             Sr5CareerFlowStrings.Text("Source-bound catalog → configuration → Core quote → durable receipt"),
             () => Navigation.PushAsync(new Sr5CareerCommerceHubPage(Coordinator)),
             automationId: "build-career-commerce"));
+        card.Add(NativeTheme.NavigationRow(
+            Sr5CareerFlowStrings.Text("Vehicle and drone workshop"),
+            Sr5CareerFlowStrings.Text("Exact chassis → modifications and weapon mounts → Core quote → durable purchase receipt"),
+            () => Navigation.PushAsync(new Sr5CareerVehicleWorkshopPage(Coordinator)),
+            automationId: "build-career-vehicle-workshop"));
         Border route = NativeTheme.Card(card);
         route.AutomationId = Sr5CareerWizardRoutes.Hub;
         _body.Add(route);
@@ -899,7 +917,7 @@ public sealed class BuildPage : NativePageBase
         bool canOpenLifeModule = lifeModuleMethod && Coordinator.CanOpenSr5LifeModuleOrigin();
         bool canOpen = canOpenPrerequisite || canOpenLifeModule;
         Func<Task> selected = canOpenPrerequisite
-            ? OpenCreationPrerequisiteAsync
+            ? () => OpenCreationPrerequisiteAsync(prerequisite!.Value!)
             : canOpenLifeModule
                 ? OpenSr5LifeModuleOriginAsync
                 : static () => Task.CompletedTask;
@@ -1547,7 +1565,7 @@ public sealed class BuildPage : NativePageBase
                 : canOpenResources
                 ? OpenCreationResourcesAsync
                 : canOpenPrerequisite
-                ? OpenCreationPrerequisiteAsync
+                ? () => OpenCreationPrerequisiteAsync(prerequisite!.Value!)
                 : canOpenAttributes
                     ? OpenCreationAttributesAsync
                 : canOpenSkills
@@ -1982,14 +2000,14 @@ public sealed class BuildPage : NativePageBase
         }
 
         var page = new OriginDossierLifeModuleDecisionPage(
-            opened.State,
+            opened,
             CultureInfo.CurrentUICulture.Name,
             async choiceId =>
             {
                 OriginDossierLifeModulePhoneResult prepared =
                     await Coordinator.PrepareSr5LifeModuleOriginAsync(choiceId);
                 if (prepared.IsSuccess)
-                    return prepared.State;
+                    return prepared;
                 await DisplayAlertAsync(
                     copy["Origin.PreviewUnavailableTitle"],
                     prepared.Blockers.FirstOrDefault() ?? copy["Origin.PreviewUnavailableDetail"],
@@ -2011,8 +2029,9 @@ public sealed class BuildPage : NativePageBase
         await Navigation.PushAsync(page);
     }
 
-    private Task OpenCreationPrerequisiteAsync()
-        => Navigation.PushAsync(new CreationPrerequisitePage(Coordinator));
+    private Task OpenCreationPrerequisiteAsync(
+        CharacterCreationPrerequisiteState authority)
+        => Navigation.PushAsync(new CreationPrerequisitePage(Coordinator, authority));
 
     private Task OpenCreationAttributesAsync()
         => Navigation.PushAsync(new CreationAttributesPage(Coordinator));
@@ -2501,15 +2520,8 @@ public sealed class BuildPage : NativePageBase
                         new RunnerSessionSr5AfterRunSettlementPresenter(Coordinator),
                         new PreferencesSr5CareerCheckpointOwnerAuthority());
                     Sr5AfterRunSettlementEditorState editor = await authority.PrepareAsync();
-                    Page destination = editor.Status == Sr5AfterRunCatalogStatus.Missing
-                        && Coordinator.SupportsManualAfterRunProposalEntry
-                            ? new Sr5AfterRunManualProposalPage(
-                                Coordinator,
-                                editor.WorkspaceId,
-                                editor.WorkspaceRevision)
-                            : new Sr5AfterRunSettlementWizardPage(
-                                Coordinator,
-                                editor);
+                    Page destination = Sr5AfterRunSettlementWizardPage
+                        .CreateEntryDestination(Coordinator, editor);
                     await Navigation.PushAsync(destination);
                 },
                 automationId: "build-career-after-run-settlement"));

@@ -1,11 +1,13 @@
 import copy
 from contextlib import redirect_stderr
+from dataclasses import replace
 import hashlib
 import io
 import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 import xml.etree.ElementTree as ET
 
 import run_api36_sr5_after_run_settlement_e2e as driver
@@ -34,6 +36,256 @@ def validate(value: dict[str, object], fixture: dict[str, object], *, applied: b
 
 
 class Api36Sr5AfterRunSettlementContractTests(unittest.TestCase):
+    def test_after_run_exact_tap_uses_stationary_empty_root_cardinality_path_once(self) -> None:
+        device = unittest.mock.Mock(spec=driver.physical.shared.Device)
+
+        driver._tap_exact(device, "sr5-after-run-entry-owner-approved")
+
+        device.tap_exact_resource_id_bidirectional.assert_called_once_with(
+            "sr5-after-run-entry-owner-approved",
+            timeout=120,
+            backward_scrolls=48,
+            forward_scrolls=48,
+            scroll_distance_ratio=0.18,
+            evidence_prefix="sr5-after-run-exact-tap",
+            surface_name="Exact SR5 After Run control",
+        )
+        device.tap_bidirectional.assert_not_called()
+
+    def test_after_run_exact_tap_propagates_cardinality_failure_without_fallback_or_replay(self) -> None:
+        device = unittest.mock.Mock(spec=driver.physical.shared.Device)
+        device.tap_exact_resource_id_bidirectional.side_effect = RuntimeError(
+            "cardinality 2; expected exactly one"
+        )
+
+        with self.assertRaisesRegex(RuntimeError, "cardinality 2"):
+            driver._tap_exact(device, "sr5-after-run-entry-owner-approved")
+
+        device.tap_exact_resource_id_bidirectional.assert_called_once()
+        device.tap_bidirectional.assert_not_called()
+
+    def test_after_run_helper_does_not_restore_legacy_blind_scroll_tap(self) -> None:
+        source = DRIVER.read_text(encoding="utf-8")
+        helper = source.split("def _tap_exact(", 1)[1].split(
+            "\ndef _bounded_post_tap_evidence(", 1
+        )[0]
+        self.assertIn("device.tap_exact_resource_id_bidirectional(", helper)
+        self.assertNotIn("device.tap_bidirectional(", helper)
+        self.assertNotIn("exact_resource_id=True", helper)
+        self.assertEqual(1, helper.count("device.tap_exact_resource_id_bidirectional("))
+
+    def test_each_distinct_contact_reestablishes_the_form_origin_before_forward_scan(self) -> None:
+        source = DRIVER.read_text(encoding="utf-8")
+        contact_loop = source.split('for contact in fixture["contacts"]:', maxsplit=1)[1]
+        contact_loop = contact_loop.split('for role, prefix, label in (', maxsplit=1)[0]
+
+        self.assertIn("physical.shared.reset_scroll_to_top(device, swipes=24)", contact_loop)
+        self.assertLess(
+            contact_loop.index("reset_scroll_to_top"),
+            contact_loop.index('("sr5-after-run-entry-contact-id"'),
+        )
+        self.assertEqual(1, contact_loop.count('"sr5-after-run-entry-contact-add"'))
+
+    def test_import_binding_does_not_require_visible_runner_alias(self) -> None:
+        source = DRIVER.read_text(encoding="utf-8")
+        self.assertIn(
+            "physical.shared.read_imported_phone_runner_authority(",
+            source,
+        )
+        self.assertNotIn("device.wait(alias", source)
+
+    def test_import_is_durably_saved_once_before_after_run_navigation(self) -> None:
+        fixture_sha256 = "a" * 64
+        imported = driver.physical.shared.WorkspaceAuthority(
+            "workspace-after-run", 1, 0, fixture_sha256, "b" * 64
+        )
+        saved = driver.physical.shared.WorkspaceAuthority(
+            "workspace-after-run", 1, 1, fixture_sha256, "c" * 64
+        )
+        device = unittest.mock.Mock(spec=driver.physical.shared.Device)
+        launch = driver.physical.shared.LaunchState(
+            ("731",),
+            f"{driver.physical.shared.PACKAGE}/.MainActivity",
+            "launch",
+        )
+
+        with (
+            patch.object(driver.physical.shared, "launch_app", return_value=launch),
+            patch.object(driver.physical.shared, "wait_for_phone_runners"),
+            patch.object(driver.physical.shared, "select_android_document"),
+            patch.object(
+                driver.physical.shared,
+                "read_imported_phone_runner_authority",
+                return_value=imported,
+            ) as read_import,
+            patch.object(
+                driver.physical.shared,
+                "save_and_read_workspace_authority",
+                return_value=saved,
+            ) as save_once,
+        ):
+            observed = driver.prepare_runner(
+                device,
+                Path("sr5-after-run-settlement-e2e.chum5"),
+                fixture_sha256,
+            )
+
+        self.assertEqual((launch, imported, saved), observed)
+        read_import.assert_called_once_with(device, fixture_sha256)
+        save_once.assert_called_once_with(device, "phone")
+
+    def test_initial_save_authority_rejects_mutation_or_nonexact_revisions(self) -> None:
+        fixture_sha256 = "a" * 64
+        imported = driver.physical.shared.WorkspaceAuthority(
+            "workspace-after-run", 1, 0, fixture_sha256, "b" * 64
+        )
+        exact = driver.physical.shared.WorkspaceAuthority(
+            "workspace-after-run", 1, 1, fixture_sha256, "c" * 64
+        )
+        driver.require_initial_saved_fixture_authority(
+            imported,
+            exact,
+            fixture_sha256,
+        )
+        hostile = (
+            imported,
+            replace(exact, workspace_id="foreign-workspace"),
+            replace(exact, content_revision=2, saved_revision=2),
+            replace(exact, saved_revision=0),
+            replace(exact, payload_sha256="d" * 64),
+        )
+        with self.assertRaises(RuntimeError):
+            driver.require_initial_saved_fixture_authority(
+                replace(imported, saved_revision=1),
+                exact,
+                fixture_sha256,
+            )
+        for candidate in hostile:
+            with self.subTest(candidate=candidate), self.assertRaises(RuntimeError):
+                driver.require_initial_saved_fixture_authority(
+                    imported,
+                    candidate,
+                    fixture_sha256,
+                )
+
+    def test_after_run_tap_captures_immediate_process_exit_and_exception_evidence(self) -> None:
+        component = f"{driver.physical.shared.PACKAGE}/.MainActivity"
+        before = driver.physical.shared.LaunchState(("731",), component, "before")
+        immediate = driver.physical.shared.LaunchState(("731",), component, "immediate")
+        final = driver.physical.shared.LaunchState(("731",), component, "final")
+
+        class Device:
+            def __init__(self, evidence: Path) -> None:
+                self.evidence = evidence
+                self.tap_count = 0
+                self.commands: list[tuple[str, ...]] = []
+
+            def tap_single_exact_resource_id(self, selector: str, **options: object) -> None:
+                self.tap_count += 1
+                self.selector = selector
+                self.options = options
+
+            def run(self, *arguments: str, **_options: object):
+                self.commands.append(arguments)
+                return driver.subprocess.CompletedProcess(
+                    args=list(arguments), returncode=0,
+                    stdout=f"captured {' '.join(arguments)}", stderr="",
+                )
+
+        with tempfile.TemporaryDirectory() as temporary:
+            device = Device(Path(temporary))
+            with patch.object(
+                driver.physical.shared,
+                "current_launch_state",
+                side_effect=(before, immediate, final),
+            ):
+                driver.tap_after_run_action_with_immediate_diagnostics(
+                    device,
+                    "initial-entry",
+                )
+
+            self.assertEqual(1, device.tap_count)
+            self.assertEqual("sr5-career-action-after-run", device.selector)
+            self.assertEqual(4, len(device.commands))
+            self.assertIn(
+                ("shell", "dumpsys", "activity", "exit-info", driver.physical.shared.PACKAGE),
+                device.commands,
+            )
+            for buffer_name in ("all", "events", "crash"):
+                self.assertTrue(any(
+                    command[:4] == ("logcat", "-d", "-b", buffer_name)
+                    for command in device.commands
+                ))
+            state_path = (
+                Path(temporary)
+                / "sr5-after-run-post-tap-initial-entry-state.json"
+            )
+            evidence = json.loads(state_path.read_text(encoding="utf-8"))
+            self.assertEqual(
+                driver.AFTER_RUN_POST_TAP_DIAGNOSTIC_SCHEMA,
+                evidence["schema"],
+            )
+            self.assertEqual(["731"], evidence["before"]["processIds"])
+            self.assertEqual(component, evidence["final"]["resumedComponent"])
+            self.assertEqual(1, evidence["tapCount"])
+            self.assertFalse(evidence["tapReplayAttempted"])
+            self.assertFalse(evidence["foregroundRecoveryAttempted"])
+
+    def test_after_run_tap_fails_immediately_on_launcher_without_replay(self) -> None:
+        component = f"{driver.physical.shared.PACKAGE}/.MainActivity"
+        before = driver.physical.shared.LaunchState(("731",), component, "before")
+        launcher = driver.physical.shared.LaunchState(
+            (),
+            "com.google.android.apps.nexuslauncher/.NexusLauncherActivity",
+            "launcher",
+        )
+
+        class Device:
+            def __init__(self, evidence: Path) -> None:
+                self.evidence = evidence
+                self.tap_count = 0
+
+            def tap_single_exact_resource_id(self, *_args: object, **_options: object) -> None:
+                self.tap_count += 1
+
+            def run(self, *arguments: str, **_options: object):
+                return driver.subprocess.CompletedProcess(
+                    args=list(arguments), returncode=0,
+                    stdout=(
+                        "FATAL EXCEPTION main\n"
+                        f"Process: {driver.physical.shared.PACKAGE}\n"
+                    ),
+                    stderr="",
+                )
+
+        with tempfile.TemporaryDirectory() as temporary:
+            device = Device(Path(temporary))
+            with patch.object(
+                driver.physical.shared,
+                "current_launch_state",
+                side_effect=(before, launcher, launcher),
+            ):
+                with self.assertRaisesRegex(RuntimeError, "without retry"):
+                    driver.tap_after_run_action_with_immediate_diagnostics(
+                        device,
+                        "initial-entry",
+                    )
+            self.assertEqual(1, device.tap_count)
+            evidence = json.loads((
+                Path(temporary)
+                / "sr5-after-run-post-tap-initial-entry-state.json"
+            ).read_text(encoding="utf-8"))
+            self.assertEqual([], evidence["immediate"]["processIds"])
+            self.assertIn("nexuslauncher", evidence["final"]["resumedComponent"])
+            self.assertFalse(evidence["tapReplayAttempted"])
+            self.assertIn(
+                "FATAL EXCEPTION",
+                (
+                    Path(temporary)
+                    / "sr5-after-run-post-tap-initial-entry-logcat-crash.txt"
+                ).read_text(encoding="utf-8"),
+            )
+
     def test_governed_fixture_materializes_exact_runner_bytes(self) -> None:
         fixture = driver.load_fixture()
         payload = driver.render_runner_xml(fixture)

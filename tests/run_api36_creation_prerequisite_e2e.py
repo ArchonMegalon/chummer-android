@@ -11,6 +11,7 @@ import argparse
 import hashlib
 import json
 import math
+import os
 import re
 import subprocess
 import sys
@@ -22,6 +23,7 @@ from typing import NamedTuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import run_api36_editing_e2e as shared
+import api36_proof_state as proof_state
 
 
 CATEGORIES = ("heritage", "talent", "attributes", "skills", "resources")
@@ -305,10 +307,6 @@ DASHBOARD_SCAN_GESTURE_RATIO = 0.60
 DASHBOARD_SCAN_MAX_SCROLLS = 18
 PROCESS_RESTART_METHOD_MAX_EMPTY_HIERARCHY_READS = 4
 RESOURCES_SURFACE_MAX_CONSECUTIVE_EMPTY_READS = 3
-PROCESS_RESTART_RESOURCES_SCAN_ID = (
-    "creation-resources-process-restart-persisted-authority"
-)
-PROCESS_RESTART_RESOURCES_MAX_CONSECUTIVE_EMPTY_READS = 5
 PROCESS_RESTART_PERSISTED_PREREQUISITE_SCAN_ID = (
     "process-restart-persisted-prerequisite-authority"
 )
@@ -460,6 +458,7 @@ def fresh_hierarchy_timed(
     deadline: float | None = None,
     dump_attempt_max_seconds: float | None = None,
     allow_direct_reconciliation: bool = True,
+    raise_on_lease_reserve_exhaustion: bool = False,
 ) -> list[shared.UiNode]:
     """Acquire a post-gesture hierarchy through UIAutomator's dump file.
 
@@ -471,6 +470,8 @@ def fresh_hierarchy_timed(
     """
     if type(allow_direct_reconciliation) is not bool:
         raise ValueError("Direct hierarchy reconciliation policy must be boolean")
+    if type(raise_on_lease_reserve_exhaustion) is not bool:
+        raise ValueError("Hierarchy lease-reserve propagation policy must be boolean")
     if dump_attempt_max_seconds is not None and (
         isinstance(dump_attempt_max_seconds, bool)
         or not isinstance(dump_attempt_max_seconds, (int, float))
@@ -490,6 +491,8 @@ def fresh_hierarchy_timed(
             )
         if not allow_direct_reconciliation:
             hierarchy_options["allow_direct_reconciliation"] = False
+        if raise_on_lease_reserve_exhaustion:
+            hierarchy_options["raise_on_lease_reserve_exhaustion"] = True
         nodes = device.hierarchy(**hierarchy_options)
     finally:
         durations_ms.append(round((time.perf_counter() - started) * 1000))
@@ -4446,6 +4449,8 @@ def wait_for_prerequisite_scan_origin(
     max_reverse_swipes: int = 8,
     distance_ratio: float = 0.68,
     deadline: float | None = None,
+    immediately_after_opening_tap: bool = False,
+    scan_observer: Callable[[dict[str, object]], None] | None = None,
 ) -> PriorityRankOrigin:
     """Acquire and retain the exact top viewport of the pushed prerequisite page.
 
@@ -4455,9 +4460,17 @@ def wait_for_prerequisite_scan_origin(
     acquisition instead reverses only while the exact prerequisite route is
     present but its two top authority anchors are absent.  The hierarchy that
     proves those anchors is returned for direct reuse as the scan's first
-    viewport; duplicate route or anchor nodes still fail closed.
+    viewport; duplicate route or anchor nodes still fail closed.  Only the
+    untouched viewport immediately following its one opening tap may exchange
+    an unfundable owned-file retry reserve for one direct read-only frame.  The
+    complete stable/cardinality traversal still consumes that frame as its
+    initial observation.
     """
-    if timeout <= 0 or max_reverse_swipes < 0:
+    if (
+        timeout <= 0
+        or max_reverse_swipes < 0
+        or type(immediately_after_opening_tap) is not bool
+    ):
         raise ValueError("A positive timeout and nonnegative reverse bound are required")
     route_selector = "creation-prerequisite-page"
     top_selectors = (
@@ -4470,13 +4483,181 @@ def wait_for_prerequisite_scan_origin(
         operation_deadline = min(operation_deadline, deadline)
     reverse_swipes = 0
     empty_hierarchy_reads = 0
+    file_backed_attempts = 0
+    direct_fallback_reads = 0
     hierarchy_durations_ms: list[int] = []
-    while time.monotonic() < operation_deadline:
-        nodes = fresh_hierarchy_timed(
-            device,
-            hierarchy_durations_ms,
-            deadline=operation_deadline,
+
+    def record_origin(
+        status: str,
+        *,
+        lease_reserve_exhausted: bool,
+        direct_fallback_result: str,
+    ) -> None:
+        if scan_observer is None:
+            return
+        scan_observer(
+            {
+                "scanId": "creation-prerequisite-scan-origin",
+                "status": status,
+                "observationMode": (
+                    "fresh-file-backed-with-single-direct-read-only-lease-fallback"
+                ),
+                "immediatelyAfterOpeningTap": immediately_after_opening_tap,
+                "fileBackedObservationAttempts": file_backed_attempts,
+                "fileBackedLeaseReserveExhausted": lease_reserve_exhausted,
+                "directFallbackObservationLimit": 1,
+                "directFallbackReadCount": direct_fallback_reads,
+                "directFallbackResult": direct_fallback_result,
+                "reverseSwipes": reverse_swipes,
+                "emptyHierarchyReads": empty_hierarchy_reads,
+                **hierarchy_timing_fields(hierarchy_durations_ms),
+                "elapsedMs": round((time.monotonic() - started) * 1000),
+                "deadlineEnforced": deadline is not None,
+            }
         )
+
+    def exact_matches(nodes: list[shared.UiNode]) -> dict[str, list[shared.UiNode]]:
+        return {
+            selector: [
+                node for node in nodes if _exact_resource_id(node) == selector
+            ]
+            for selector in (route_selector, *top_selectors)
+        }
+
+    while time.monotonic() < operation_deadline:
+        file_backed_attempts += 1
+        try:
+            nodes = fresh_hierarchy_timed(
+                device,
+                hierarchy_durations_ms,
+                deadline=operation_deadline,
+                raise_on_lease_reserve_exhaustion=(
+                    immediately_after_opening_tap
+                ),
+            )
+        except shared.AdbHierarchyLeaseReserveExceeded as error:
+            if not immediately_after_opening_tap or reverse_swipes != 0:
+                record_origin(
+                    "lease-reserve-exhausted-ineligible",
+                    lease_reserve_exhausted=True,
+                    direct_fallback_result="rejected-after-navigation",
+                )
+                raise RuntimeError(
+                    "Creation prerequisite scan origin exhausted its fresh-file "
+                    "hierarchy lease outside the untouched post-opening viewport"
+                ) from error
+            direct_remaining = (
+                operation_deadline
+                - time.monotonic()
+                - shared.ADB_READ_ONLY_DEADLINE_HEADROOM_SECONDS
+            )
+            if direct_remaining <= 0:
+                record_origin(
+                    "direct-fallback-lease-unavailable",
+                    lease_reserve_exhausted=True,
+                    direct_fallback_result="not-started",
+                )
+                raise RuntimeError(
+                    "Creation prerequisite scan origin had no caller lease for "
+                    "its one allowed direct hierarchy observation"
+                ) from error
+            direct_fallback_reads = 1
+            direct_started = time.perf_counter()
+            try:
+                # This primitive invokes /dev/tty once and bypasses the generic
+                # read-only retry policy. It observes only; it cannot replay
+                # the opening tap or any other mutation command.
+                nodes = device.read_only_hierarchy_once(
+                    deadline=operation_deadline,
+                    attempt_max_seconds=min(
+                        shared.ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_READ_ATTEMPT_MAX_SECONDS,
+                        direct_remaining,
+                    ),
+                    diagnostic_name=(
+                        "creation-prerequisite-scan-origin-direct-invalid.xml"
+                    ),
+                )
+                require_phase_deadline(
+                    operation_deadline,
+                    operation="prerequisite scan-origin direct observation",
+                )
+            except Exception as direct_error:
+                hierarchy_durations_ms.append(
+                    round((time.perf_counter() - direct_started) * 1000)
+                )
+                record_origin(
+                    "direct-fallback-read-failed",
+                    lease_reserve_exhausted=True,
+                    direct_fallback_result="read-failed",
+                )
+                raise RuntimeError(
+                    "Creation prerequisite scan origin direct hierarchy observation failed"
+                ) from direct_error
+            hierarchy_durations_ms.append(
+                round((time.perf_counter() - direct_started) * 1000)
+            )
+            matches = exact_matches(nodes)
+            ambiguous = {
+                selector: len(candidates)
+                for selector, candidates in matches.items()
+                if len(candidates) > 1
+            }
+            if ambiguous:
+                record_origin(
+                    "direct-fallback-cardinality-invalid",
+                    lease_reserve_exhausted=True,
+                    direct_fallback_result="ambiguous",
+                )
+                raise RuntimeError(
+                    "Creation prerequisite direct scan origin was ambiguous: "
+                    f"{ambiguous!r}"
+                )
+            missing = [
+                selector
+                for selector in (route_selector, *top_selectors)
+                if len(matches[selector]) != 1
+            ]
+            if missing:
+                record_origin(
+                    "direct-fallback-origin-incomplete",
+                    lease_reserve_exhausted=True,
+                    direct_fallback_result="missing-route-or-top-anchor",
+                )
+                raise RuntimeError(
+                    "Creation prerequisite direct scan origin did not expose the "
+                    f"route and both top authority anchors: missing={missing!r}"
+                )
+            noncanonical = [
+                selector
+                for selector in (route_selector, *top_selectors)
+                if (
+                    matches[selector][0].attributes.get("package") != shared.PACKAGE
+                    or matches[selector][0].attributes.get("resource-id")
+                    != f"{shared.PACKAGE}:id/{selector}"
+                )
+            ]
+            if noncanonical:
+                record_origin(
+                    "direct-fallback-identity-invalid",
+                    lease_reserve_exhausted=True,
+                    direct_fallback_result="noncanonical",
+                )
+                raise RuntimeError(
+                    "Creation prerequisite direct scan origin did not expose "
+                    f"canonical Chummer resource identities: {noncanonical!r}"
+                )
+            record_origin(
+                "resolved",
+                lease_reserve_exhausted=True,
+                direct_fallback_result="resolved-exact-top-origin",
+            )
+            return PriorityRankOrigin(
+                nodes=nodes,
+                reverse_swipes=reverse_swipes,
+                elapsed_ms=round((time.monotonic() - started) * 1000),
+                hierarchy_durations_ms=tuple(hierarchy_durations_ms),
+                empty_hierarchy_reads=empty_hierarchy_reads,
+            )
         if not nodes:
             empty_hierarchy_reads += 1
             sleep_before_phase_deadline(
@@ -4485,12 +4666,7 @@ def wait_for_prerequisite_scan_origin(
                 operation="prerequisite scan-origin empty-hierarchy wait",
             )
             continue
-        matches = {
-            selector: [
-                node for node in nodes if _exact_resource_id(node) == selector
-            ]
-            for selector in (route_selector, *top_selectors)
-        }
+        matches = exact_matches(nodes)
         ambiguous = {
             selector: len(candidates)
             for selector, candidates in matches.items()
@@ -4517,6 +4693,11 @@ def wait_for_prerequisite_scan_origin(
                     surface_name="Creation prerequisite scan origin",
                     deadline=operation_deadline,
                 )
+            record_origin(
+                "resolved",
+                lease_reserve_exhausted=False,
+                direct_fallback_result="not-needed",
+            )
             return PriorityRankOrigin(
                 nodes=nodes,
                 reverse_swipes=reverse_swipes,
@@ -5331,7 +5512,26 @@ def open_prerequisite(
     *,
     ready_method_node: shared.UiNode | None = None,
     deadline: float | None = None,
+    scan_observer: Callable[[dict[str, object]], None] | None = None,
+    proof_expectation: proof_state.ProofBuildExpectation | None = None,
+    expected_prior_proof: dict[str, object] | None = None,
+    attachment_proof_out: list[dict[str, object]] | None = None,
 ) -> PriorityRankOrigin:
+    proof_arguments = (
+        proof_expectation,
+        expected_prior_proof,
+        attachment_proof_out,
+    )
+    if any(argument is not None for argument in proof_arguments) and not all(
+        argument is not None for argument in proof_arguments
+    ):
+        raise ValueError(
+            "Creation prerequisite attachment proof arguments must be supplied together"
+        )
+    if proof_expectation is not None and deadline is None:
+        raise ValueError(
+            "Creation prerequisite attachment proof requires a caller-owned deadline"
+        )
     if ready_method_node is None:
         ready_method_node = device.wait_exact_resource_id_bidirectional(
             "creation-stage-method",
@@ -5388,12 +5588,27 @@ def open_prerequisite(
             ),
             deadline=deadline,
         )
+    if proof_expectation is not None:
+        if expected_prior_proof is None or attachment_proof_out is None:
+            raise ValueError(
+                "Creation prerequisite attachment proof arguments must be supplied together"
+            )
+        attachment_proof_out.append(
+            read_creation_prerequisite_attachment_proof_state(
+                device,
+                proof_expectation,
+                expected_prior_proof=expected_prior_proof,
+                deadline=deadline,
+            )
+        )
     # This single origin acquisition proves the pushed route plus the exact
     # method and binding anchors. Its fresh hierarchy is reused by the complete
     # root inventory; there are no blind resets or independent card searches.
     return wait_for_prerequisite_scan_origin(
         device,
         deadline=deadline,
+        immediately_after_opening_tap=True,
+        scan_observer=scan_observer,
     )
 
 
@@ -8758,11 +8973,6 @@ def scan_deadline_bound_resources_surface(
         or type(return_scan_proof) is not bool
     ):
         raise ValueError("Resources surface scan requires distinct exact selectors")
-    max_consecutive_empty_reads = (
-        PROCESS_RESTART_RESOURCES_MAX_CONSECUTIVE_EMPTY_READS
-        if scan_id == PROCESS_RESTART_RESOURCES_SCAN_ID
-        else RESOURCES_SURFACE_MAX_CONSECUTIVE_EMPTY_READS
-    )
     origin = acquire_stable_start_origin(
         device,
         scan_id=f"{scan_id}-start",
@@ -8778,7 +8988,7 @@ def scan_deadline_bound_resources_surface(
         initial_observation=origin,
         initial_observation_max_reverse_swipes=22,
         delay_seconds=0.0,
-        max_consecutive_empty_reads=max_consecutive_empty_reads,
+        max_consecutive_empty_reads=RESOURCES_SURFACE_MAX_CONSECUTIVE_EMPTY_READS,
         observer=scan_observer,
         deadline=deadline,
     )
@@ -9792,12 +10002,198 @@ def read_persisted_resources_authority(
     return {"binding": binding, "savedDraft": saved}
 
 
+def read_creation_resources_proof_state(
+    device: shared.Device,
+    expectation: proof_state.ProofBuildExpectation,
+    *,
+    deadline: float,
+) -> tuple[dict[str, object], dict[str, object]]:
+    """Read one exact typed, app-private Resources authority observation."""
+    timeout = shared._remaining_operation_timeout(deadline=deadline, maximum=30)
+    snapshot = proof_state.wait_for_state(
+        device,
+        expected=expectation,
+        page_automation_id="creation-resources-page",
+        stage="authority-ready",
+        wizard_lane="creation-resources",
+        timeout=timeout,
+    )
+    resources = dict(proof_state.require_creation_resources(snapshot))
+    evidence = {
+        "schema": snapshot.payload["schema"],
+        "sequence": snapshot.payload["sequence"],
+        "serializedSha256": snapshot.serialized_sha256,
+        "stateDigest": snapshot.payload["stateDigest"],
+        "processId": snapshot.payload["processId"],
+        "processInstanceId": snapshot.payload["processInstanceId"],
+        "e2eAuthorityGeneration": snapshot.payload["e2eAuthorityGeneration"],
+        "surface": snapshot.payload["surface"],
+        "workspace": snapshot.payload["workspace"],
+        "readObservation": snapshot.read_observation,
+        "typedResources": resources,
+    }
+    return resources, evidence
+
+
+def read_creation_prerequisite_attachment_proof_state(
+    device: shared.Device,
+    expectation: proof_state.ProofBuildExpectation,
+    *,
+    expected_prior_proof: dict[str, object],
+    deadline: float,
+) -> dict[str, object]:
+    """Bind the one opening tap to an exact attached prerequisite page.
+
+    This app-private observation proves only the route lifecycle boundary and
+    its revision-bound Core snapshot. The following accessibility traversal
+    still owns every visible-anchor, value, cardinality, and navigation claim.
+    """
+    timeout = shared._remaining_operation_timeout(deadline=deadline, maximum=30)
+    snapshot = proof_state.wait_for_state(
+        device,
+        expected=expectation,
+        page_automation_id="creation-prerequisite-page",
+        stage="attachment-authority-ready",
+        wizard_lane="creation-prerequisite",
+        timeout=timeout,
+    )
+    payload = snapshot.payload
+    workspace = payload.get("workspace")
+    prior_workspace = expected_prior_proof.get("workspace")
+    surface = payload.get("surface")
+    prior_sequence = expected_prior_proof.get("sequence")
+    exact_workspace_fields = (
+        "workspaceId",
+        "contentRevision",
+        "savedRevision",
+        "payloadSha256",
+        "documentSha256",
+    )
+    if (
+        not isinstance(workspace, dict)
+        or not isinstance(prior_workspace, dict)
+        or not isinstance(surface, dict)
+        or type(prior_sequence) is not int
+        or payload["sequence"] <= prior_sequence
+        or payload["processId"] != expected_prior_proof.get("processId")
+        or payload["processInstanceId"]
+        != expected_prior_proof.get("processInstanceId")
+        or payload["e2eAuthorityGeneration"]
+        != expected_prior_proof.get("e2eAuthorityGeneration")
+        or any(
+            workspace.get(field) != prior_workspace.get(field)
+            for field in exact_workspace_fields
+        )
+        or surface.get("navigationDepth", 0) < 2
+        or payload.get("transaction") is not None
+        or payload.get("creationResources") is not None
+    ):
+        device.capture(
+            "creation-prerequisite-attachment-proof-state-mismatch",
+            deadline=deadline,
+        )
+        raise RuntimeError(
+            "Creation prerequisite attachment proof is not a later same-process "
+            "observation of the exact Resources workspace"
+        )
+    return {
+        "schema": payload["schema"],
+        "sequence": payload["sequence"],
+        "serializedSha256": snapshot.serialized_sha256,
+        "stateDigest": payload["stateDigest"],
+        "processId": payload["processId"],
+        "processInstanceId": payload["processInstanceId"],
+        "e2eAuthorityGeneration": payload["e2eAuthorityGeneration"],
+        "surface": surface,
+        "workspace": workspace,
+        "readObservation": snapshot.read_observation,
+        "claimScope": "route-attachment-and-core-snapshot-only",
+        "mutationCommandsRetried": 0,
+    }
+
+
+def read_process_restart_resources_proof_state(
+    device: shared.Device,
+    expected_receipt: dict[str, object],
+    expected_same_process: dict[str, object],
+    expected_same_process_typed: dict[str, object],
+    expectation: proof_state.ProofBuildExpectation,
+    *,
+    deadline: float,
+) -> tuple[dict[str, object], dict[str, object]]:
+    """Verify typed Resources authority after the real process restart.
+
+    Navigation to this page, the force-stop/new-PID boundary, the screenshot, the
+    same-process save/reopen, and persisted document checks remain black-box. This
+    supplemental read replaces only the unreliable exhaustive accessibility scan
+    of exact semantic values on the already-proven restarted Resources page.
+    """
+    resources, evidence = read_creation_resources_proof_state(
+        device,
+        expectation,
+        deadline=deadline,
+    )
+    binding = {
+        "contentRevision": int(resources["contentRevision"]),
+        "savedRevision": int(resources["savedRevision"]),
+        "snapshotDigest": str(resources["snapshotDigest"]),
+        "rawCharacterXmlDigest": str(resources["rawCharacterXmlDigest"]),
+        "auxiliaryStateDigest": str(resources["auxiliaryStateDigest"]),
+        "prerequisiteDraftDigest": str(resources["prerequisiteDraftDigest"]),
+        "authorityDigest": str(resources["authorityDigest"]),
+        "priorityNuyen": resources["priorityNuyen"],
+        "totalStartingNuyen": resources["totalStartingNuyen"],
+    }
+    saved = {
+        "optionId": str(resources["pendingOptionId"]),
+        "draftRevision": int(resources["pendingDraftRevision"]),
+        "draftDigest": str(resources["pendingDraftDigest"]),
+    }
+    observed = {"binding": binding, "savedDraft": saved}
+    if (
+        int(resources["workspaceRevision"]) != expected_receipt["workspaceRevision"]
+        or binding["contentRevision"] != expected_receipt["workspaceRevision"]
+        or binding["savedRevision"] != expected_receipt["savedRevision"]
+        or binding["priorityNuyen"] != 50_000
+        or binding["totalStartingNuyen"] != 50_000
+        or saved["optionId"] != expected_receipt["optionId"]
+        or saved["draftRevision"] != expected_receipt["draftRevision"]
+        or saved["draftDigest"] != expected_receipt["draftDigest"]
+        or observed != expected_same_process
+        or resources != expected_same_process_typed
+    ):
+        device.capture(
+            "creation-resources-process-restart-proof-state-mismatch",
+            deadline=deadline,
+        )
+        raise RuntimeError(
+            "Typed Resources authority changed across process restart: "
+            f"expectedReceipt={expected_receipt!r}, "
+            f"sameProcess={expected_same_process!r}, restarted={observed!r}, "
+            f"typedSameProcess={expected_same_process_typed!r}, "
+            f"typedRestarted={resources!r}"
+        )
+    return observed, evidence
+
+
 def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     progress.advance("device-preflight-install")
     driver_path = Path(__file__).resolve()
     shared_path = Path(shared.__file__).resolve()
     priority_compatibility_path = driver_path.with_name(
         "run_api36_new_character_priority_e2e.py"
+    )
+    proof_reader_path = driver_path.with_name("api36_proof_state.py")
+    run_id = os.environ.get("GITHUB_RUN_ID", "")
+    artifact_attempt = os.environ.get("CHUMMER_E2E_APK_ARTIFACT_ATTEMPT", "")
+    if re.fullmatch(r"[1-9][0-9]*", run_id) is None or re.fullmatch(
+        r"[1-9][0-9]*", artifact_attempt
+    ) is None:
+        raise RuntimeError("Creation Resources proof build identity is absent or invalid")
+    proof_expectation = proof_state.expected_build(
+        driver_path.parents[1],
+        driver_path.parents[1] / "eng/api36-sr5-wizard-gate-authority.json",
+        f"hosted-{run_id}-{artifact_attempt}",
     )
     device = shared.Device(args.adb.resolve(), args.serial, args.evidence.resolve())
     api = device.shell("getprop", "ro.build.version.sdk")
@@ -9942,6 +10338,8 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     prerequisite_origin = wait_for_prerequisite_scan_origin(
         device,
         deadline=prerequisite_deadline,
+        immediately_after_opening_tap=True,
+        scan_observer=progress.record_scan,
     )
     prerequisite_scan = scan_prerequisite_authority(
         device,
@@ -10304,6 +10702,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         device,
         ready_method_node=resumed_method_node,
         deadline=same_process_deadline,
+        scan_observer=progress.record_scan,
     )
     resumed_authority = read_persisted_prerequisite_authority(
         device,
@@ -10427,6 +10826,13 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         scan_observer=progress.record_scan,
         scan_id="creation-resources-same-process-persisted-authority",
     )
+    resources_same_process_typed, resources_same_process_proof = (
+        read_creation_resources_proof_state(
+            device,
+            proof_expectation,
+            deadline=resources_reopen_deadline,
+        )
+    )
 
     progress.advance("resources-prerequisite-rebind")
     resources_rebind_deadline = progress.active_phase_deadline(
@@ -10447,10 +10853,15 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         phase_id="resources-prerequisite-rebind",
         deadline=resources_rebind_deadline,
     )
+    post_resources_attachment_proofs: list[dict[str, object]] = []
     post_resources_origin = open_prerequisite(
         device,
         ready_method_node=post_resources_method_node,
         deadline=resources_rebind_deadline,
+        scan_observer=progress.record_scan,
+        proof_expectation=proof_expectation,
+        expected_prior_proof=resources_same_process_proof,
+        attachment_proof_out=post_resources_attachment_proofs,
     )
     post_resources_prerequisite_authority = read_persisted_prerequisite_authority(
         device,
@@ -10462,6 +10873,24 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     resources_binding = resources_same_process.get("binding")
     if not isinstance(resources_binding, dict):
         raise RuntimeError("Reopened Resources binding receipt is absent")
+    if len(post_resources_attachment_proofs) != 1:
+        raise RuntimeError(
+            "Creation prerequisite navigation did not retain exactly one attachment proof"
+        )
+    post_resources_attachment_proof = post_resources_attachment_proofs[0]
+    attachment_workspace = post_resources_attachment_proof.get("workspace")
+    if (
+        not isinstance(attachment_workspace, dict)
+        or attachment_workspace.get("snapshotDigest")
+        != post_resources_prerequisite_authority.authority.get("snapshotDigest")
+    ):
+        device.capture(
+            "creation-prerequisite-attachment-snapshot-mismatch",
+            deadline=resources_rebind_deadline,
+        )
+        raise RuntimeError(
+            "Attached prerequisite Core snapshot did not match the visible persisted authority"
+        )
     post_resources_prerequisite_binding_digests = (
         require_resources_confirmation_authority_transition(
             confirmed_binding_digests,
@@ -10516,6 +10945,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         device,
         ready_method_node=restarted_method_node,
         deadline=process_restart_deadline,
+        scan_observer=progress.record_scan,
     )
     restarted_authority = read_persisted_prerequisite_authority(
         device,
@@ -10607,18 +11037,16 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         observed_dashboard=process_restart_resources_dashboard,
         authority_scan_owns_origin=True,
     )
-    resources_restarted = read_persisted_resources_authority(
-        device,
-        resources_receipt,
-        deadline=process_restart_resources_deadline,
-        scan_observer=progress.record_scan,
-        scan_id=PROCESS_RESTART_RESOURCES_SCAN_ID,
-    )
-    if resources_restarted != resources_same_process:
-        raise RuntimeError(
-            "Resources authority changed across the exact process restart: "
-            f"sameProcess={resources_same_process!r}, restarted={resources_restarted!r}"
+    resources_restarted, resources_restart_proof = (
+        read_process_restart_resources_proof_state(
+            device,
+            resources_receipt,
+            resources_same_process,
+            resources_same_process_typed,
+            proof_expectation,
+            deadline=process_restart_resources_deadline,
         )
+    )
     device.capture(
         "creation-prerequisite-process-restart",
         deadline=process_restart_resources_deadline,
@@ -10633,6 +11061,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         "driverSha256": sha256(driver_path),
         "sharedDriverSha256": sha256(shared_path),
         "priorityCompatibilityDriverSha256": sha256(priority_compatibility_path),
+        "api36ProofReaderSha256": sha256(proof_reader_path),
         "progressSnapshotSha256": sha256(progress.evidence_path),
         "progressEventsJsonlSha256": sha256(progress.events_path),
         "creationBootstrapTimingSha256": sha256(
@@ -10733,10 +11162,15 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
             "resourcesRankDCanonicalGrant": resources_before,
             "resourcesPreviewAndReceipt": resources_confirmation,
             "resourcesSameProcessPersistedAuthority": resources_same_process,
+            "resourcesSameProcessTypedProofState": resources_same_process_proof,
+            "prerequisiteAttachmentAfterResources": (
+                post_resources_attachment_proof
+            ),
             "prerequisiteAuthorityAfterResources": (
                 post_resources_prerequisite_authority.authority
             ),
             "resourcesRestartedPersistedAuthority": resources_restarted,
+            "resourcesRestartedTypedProofState": resources_restart_proof,
             "resourcesExplicitConfirmationOnly": "pass",
             "resourcesReceiptRevisionAndDigestBound": "pass",
             "resourcesPendingDraftProcessRestartResume": "pass",

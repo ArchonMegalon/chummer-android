@@ -36,7 +36,8 @@ internal sealed class Sr5CareerLiveReviewedCheckpointAuthority(
                 CurrentOwnerId,
                 draft,
                 _currentBinding());
-        return currentAccess.Owns(checkpoint);
+        return currentAccess.Owns(checkpoint)
+            && OwnsCurrentRunner(checkpoint);
     }
 
     public bool OwnsCurrentRunner(Sr5CareerDraftCheckpoint checkpoint)
@@ -57,29 +58,32 @@ internal sealed class Sr5CareerLiveReviewedCheckpointAuthority(
         return checkpoint.Phase switch
         {
             Sr5CareerCheckpointPhase.Reviewed =>
-                binding.ContentRevision == checkpoint.ExpectedContentRevision
-                && binding.SavedRevision == checkpoint.ExpectedContentRevision
-                && !binding.IsDirty
-                && string.IsNullOrWhiteSpace(binding.Error),
+                OwnsExactCleanReviewedRevision(binding, checkpoint),
             Sr5CareerCheckpointPhase.Applying =>
-                (binding.ContentRevision == checkpoint.ExpectedContentRevision
-                    && binding.SavedRevision == checkpoint.ExpectedContentRevision
-                    && !binding.IsDirty
-                    && string.IsNullOrWhiteSpace(binding.Error))
-                || (checkpoint.ExpectedContentRevision < long.MaxValue
-                    && binding.ContentRevision == checkpoint.ExpectedContentRevision + 1
-                    && binding.SavedRevision == binding.ContentRevision
-                    && !binding.IsDirty
-                    && string.IsNullOrWhiteSpace(binding.Error)),
+                OwnsExactCleanReviewedRevision(binding, checkpoint)
+                || OwnsExactSavedSuccessor(binding, checkpoint),
             Sr5CareerCheckpointPhase.Applied =>
-                checkpoint.ExpectedContentRevision < long.MaxValue
-                && binding.ContentRevision == checkpoint.ExpectedContentRevision + 1
-                && binding.SavedRevision == binding.ContentRevision
-                && !binding.IsDirty
-                && string.IsNullOrWhiteSpace(binding.Error),
+                OwnsExactSavedSuccessor(binding, checkpoint),
             _ => false
         };
     }
+
+    private static bool OwnsExactCleanReviewedRevision(
+        Sr5CareerRunnerBinding binding,
+        Sr5CareerDraftCheckpoint checkpoint)
+        => binding.ContentRevision == checkpoint.ExpectedContentRevision
+            && binding.SavedRevision == checkpoint.ExpectedContentRevision
+            && !binding.IsDirty
+            && string.IsNullOrWhiteSpace(binding.Error);
+
+    private static bool OwnsExactSavedSuccessor(
+        Sr5CareerRunnerBinding binding,
+        Sr5CareerDraftCheckpoint checkpoint)
+        => checkpoint.ExpectedContentRevision < long.MaxValue
+            && binding.ContentRevision == checkpoint.ExpectedContentRevision + 1
+            && binding.SavedRevision == binding.ContentRevision
+            && !binding.IsDirty
+            && string.IsNullOrWhiteSpace(binding.Error);
 }
 
 internal sealed record Sr5CareerActiveSkillWizardDependencies(

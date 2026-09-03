@@ -13,7 +13,9 @@ from pathlib import Path, PurePosixPath
 from typing import Mapping
 
 
-SOURCE_GRAPH_CONTRACT = "chummer.android.release-source-graph/v2"
+SOURCE_GRAPH_CONTRACT = "chummer.android.release-source-graph/v3"
+PACKAGE_ID = "com.myexternalbrain.chummer"
+HISTORICAL_VERSION_CODE_FLOOR = 10
 PACKAGE_AUTHORITY_CONTRACT = "chummer.android.release-package-authority/v2"
 PRESENTATION_SOURCE_COMMIT = "732a33cb8d3c704b8a86e1249eab46508339a105"
 PRESENTATION_SOURCE_TREE = "db56a83e5fee94d9aec7fd56a4b0df078c7dda62"
@@ -22,6 +24,10 @@ SOURCE_COMPATIBILITY_MODE = "source_compatibility"
 SHA40 = 40
 SHA256 = 64
 PACKAGE_VERSION_PATTERN = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?")
+RELEASE_VERSION_NAME_PATTERN = re.compile(
+    r"[0-9]+(?:\.[0-9]+){2}(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?"
+)
+RELEASE_VERSION_CODE_PATTERN = re.compile(r"[1-9][0-9]*")
 
 RUNTIME_PACKAGE_IDS = (
     "Chummer.Application",
@@ -389,6 +395,9 @@ def build_graph(
     package_authority: Mapping[str, object],
     authority_root: Path,
     environment: Mapping[str, str] | None = None,
+    *,
+    expected_version_name: str,
+    expected_version_code: str,
 ) -> dict[str, object]:
     environment = os.environ if environment is None else environment
     workspace_root = workspace_root.absolute()
@@ -432,11 +441,30 @@ def build_graph(
         package_authority.get("ownerPackagePins"), roots, by_name, authority_root
     )
     closure = _canonical_dependency_closure(package_authority.get("dependencyClosure"))
+    if (
+        len(expected_version_name) > 128
+        or RELEASE_VERSION_NAME_PATTERN.fullmatch(expected_version_name) is None
+    ):
+        raise ValueError("release version name must be one canonical explicit value")
+    if RELEASE_VERSION_CODE_PATTERN.fullmatch(expected_version_code) is None:
+        raise ValueError("release version code must be one canonical explicit value")
+    version_code = int(expected_version_code)
+    if version_code <= HISTORICAL_VERSION_CODE_FLOOR:
+        raise ValueError(
+            "release version code must be greater than the immutable Preview.10 floor"
+        )
     return {
         "contractName": SOURCE_GRAPH_CONTRACT,
         "generatedAtUtc": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "authorityState": "local_review_required",
         "publicationAuthorized": False,
+        "releaseIdentity": {
+            "packageId": PACKAGE_ID,
+            "versionName": expected_version_name,
+            "versionCode": version_code,
+            "intentAuthority": "explicit_build_input",
+            "minimumExclusiveVersionCode": HISTORICAL_VERSION_CODE_FLOOR,
+        },
         "generator": _generator_binding(android_root),
         "repositories": repositories,
         "packagePins": package_pins,
@@ -496,6 +524,8 @@ def main() -> int:
     parser.add_argument("--workspace-root", required=True, type=Path)
     parser.add_argument("--package-authority", required=True, type=Path)
     parser.add_argument("--authority-root", required=True, type=Path)
+    parser.add_argument("--expected-version-name", required=True)
+    parser.add_argument("--expected-version-code", required=True)
     action = parser.add_mutually_exclusive_group(required=True)
     action.add_argument("--output", type=Path)
     action.add_argument("--verify-existing", type=Path)
@@ -505,6 +535,8 @@ def main() -> int:
         arguments.workspace_root,
         _strict_json(arguments.package_authority),
         arguments.authority_root,
+        expected_version_name=arguments.expected_version_name,
+        expected_version_code=arguments.expected_version_code,
     )
     if arguments.output is not None:
         write_graph_exclusive(arguments.output, graph)

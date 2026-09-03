@@ -138,6 +138,32 @@ public sealed class Sr5AfterRunSettlementWizardPage : NativePageBase
             checkpointAuthority);
     }
 
+    internal static Page CreateEntryDestination(
+        RunnerSessionCoordinator coordinator,
+        Sr5AfterRunSettlementEditorState editor)
+    {
+        Sr5AfterRunSettlementWizardDependencies dependencies =
+            CreateDependencies(coordinator, editor);
+        bool ownsRecovery = dependencies.Store.TryReadOwnedRecovery(
+            out _,
+            out string recoveryBlocker);
+        if (!ownsRecovery
+            && string.IsNullOrWhiteSpace(recoveryBlocker)
+            && editor.Status == Sr5AfterRunCatalogStatus.Missing
+            && coordinator.SupportsManualAfterRunProposalEntry)
+        {
+            return new Sr5AfterRunManualProposalPage(
+                coordinator,
+                editor.WorkspaceId,
+                editor.WorkspaceRevision);
+        }
+
+        return new Sr5AfterRunSettlementWizardPage(
+            coordinator,
+            editor,
+            dependencies);
+    }
+
     protected override void Refresh() => RefreshEnabledState();
 
     protected override async void OnAppearing()
@@ -169,7 +195,9 @@ public sealed class Sr5AfterRunSettlementWizardPage : NativePageBase
 
     private void LoadCheckpoint()
     {
-        if (_store.TryRead(out Sr5AfterRunSettlementCheckpoint checkpoint, out string blocker))
+        if (_store.TryReadOwnedRecovery(
+                out Sr5AfterRunSettlementCheckpoint checkpoint,
+                out string blocker))
         {
             _checkpoint = checkpoint;
             _recovery.Text = checkpoint.Phase switch

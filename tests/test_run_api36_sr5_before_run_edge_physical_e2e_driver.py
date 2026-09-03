@@ -139,7 +139,25 @@ class BeforeRunPhysicalDriverContractTests(unittest.TestCase):
         driver.require_before_run_fixture(root)
         self.assertEqual("True", root.findtext("created"))
         self.assertEqual("SR5", root.findtext("gameedition"))
+        self.assertEqual("0", root.findtext("karma"))
+        self.assertEqual("0", root.findtext("nuyen"))
         self.assertEqual("0", root.findtext("edgeused"))
+
+        for field in ("karma", "nuyen"):
+            with self.subTest(required_decimal=field):
+                missing = ET.fromstring(ET.tostring(root, encoding="unicode"))
+                node = missing.find(field)
+                assert node is not None
+                missing.remove(node)
+                with self.assertRaisesRegex(RuntimeError, f"<{field}>"):
+                    driver.require_before_run_fixture(missing)
+
+                nonzero = ET.fromstring(ET.tostring(root, encoding="unicode"))
+                target = nonzero.find(field)
+                assert target is not None
+                target.text = "1"
+                with self.assertRaisesRegex(RuntimeError, f"<{field}>"):
+                    driver.require_before_run_fixture(nonzero)
 
         saved = ET.fromstring(ET.tostring(root, encoding="unicode"))
         saved.find("edgeused").text = "1"  # type: ignore[union-attr]
@@ -293,6 +311,77 @@ class BeforeRunPhysicalDriverContractTests(unittest.TestCase):
                 ):
                     driver.observe_successor_actions(device, driver.SPEC, state)
                 device.shell.assert_not_called()
+
+    def test_acknowledgement_observation_polls_read_only_without_replaying_tap(self) -> None:
+        device = mock.Mock(spec=driver.shared.Device)
+        with (
+            mock.patch.object(
+                driver,
+                "read_transaction",
+                side_effect=(mock.sentinel.present, None),
+            ) as read,
+            mock.patch.object(driver.time, "monotonic", return_value=2.0),
+            mock.patch.object(driver.time, "sleep") as sleep,
+        ):
+            driver.wait_for_transaction_absence(
+                device,
+                driver.SPEC.checkpoint_key,
+                deadline=10.0,
+            )
+        self.assertEqual(
+            [
+                mock.call(
+                    device,
+                    driver.SPEC.checkpoint_key,
+                    required=False,
+                    deadline=10.0,
+                ),
+                mock.call(
+                    device,
+                    driver.SPEC.checkpoint_key,
+                    required=False,
+                    deadline=10.0,
+                ),
+            ],
+            read.call_args_list,
+        )
+        sleep.assert_called_once_with(0.25)
+        device.assert_not_called()
+
+    def test_acknowledgement_observation_fails_at_existing_deadline(self) -> None:
+        device = mock.Mock(spec=driver.shared.Device)
+        with (
+            mock.patch.object(
+                driver,
+                "read_transaction",
+                return_value=mock.sentinel.present,
+            ) as read,
+            mock.patch.object(driver.time, "monotonic", return_value=10.0),
+            mock.patch.object(driver.time, "sleep") as sleep,
+            self.assertRaisesRegex(RuntimeError, "existing deadline"),
+        ):
+            driver.wait_for_transaction_absence(
+                device,
+                driver.SPEC.checkpoint_key,
+                deadline=10.0,
+            )
+        read.assert_called_once_with(
+            device,
+            driver.SPEC.checkpoint_key,
+            required=False,
+            deadline=10.0,
+        )
+        sleep.assert_not_called()
+        device.assert_not_called()
+
+    def test_acknowledgement_call_site_keeps_one_tap_and_one_shared_deadline(self) -> None:
+        source = DRIVER.read_text(encoding="utf-8")
+        self.assertEqual(
+            1,
+            source.count('"sr5-table-wizard-receipt-acknowledge"'),
+        )
+        self.assertIn("acknowledge_deadline = time.monotonic() + 90", source)
+        self.assertIn("deadline=acknowledge_deadline", source)
 
     def test_missing_disposable_device_authority_fails_before_manifest_or_adb(self) -> None:
         args = SimpleNamespace(

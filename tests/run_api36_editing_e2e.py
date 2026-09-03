@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import json
 import math
@@ -22,6 +23,29 @@ PACKAGE = "com.myexternalbrain.chummer"
 MAIN_ACTION = "android.intent.action.MAIN"
 LAUNCHER_CATEGORY = "android.intent.category.LAUNCHER"
 E2E_AUTHORITY_EXTRA = "com.myexternalbrain.chummer.extra.E2E_AUTHORITY"
+API36_PROOF_STATE_READ_ARGUMENTS = (
+    "exec-out",
+    "run-as",
+    PACKAGE,
+    "cat",
+    "files/api36-proof/state.v2.json",
+)
+API36_PROOF_STATE_STAT_ARGUMENTS = (
+    "exec-out",
+    "run-as",
+    PACKAGE,
+    "stat",
+    "-c",
+    "%d:%i:%s:%Y:%f",
+    "files/api36-proof/state.v2.json",
+)
+API36_IMPORT_PROOF_STATE_READ_ARGUMENTS = (
+    "exec-out",
+    "run-as",
+    PACKAGE,
+    "cat",
+    "files/api36-proof/import.v1.json",
+)
 WORKSPACE_AUTHORITY_RESOURCE_IDS = (
     "home-e2e-workspace-id",
     "home-e2e-content-revision",
@@ -89,6 +113,15 @@ COMPONENT = re.compile(
 )
 PROCESS_ID = re.compile(r"[1-9][0-9]*")
 SHA256_TEXT = re.compile(r"[0-9a-f]{64}")
+CONTENT_URI = re.compile(
+    r"content://media/external_primary/downloads/[1-9][0-9]*"
+)
+GOVERNED_DOWNLOAD_BASENAME = re.compile(
+    r"[A-Za-z0-9][A-Za-z0-9._-]{0,254}"
+)
+MEDIA_PROVIDER_DISPLAY_NAME_WHERE_ARGUMENT = re.compile(
+    r'"_display_name=\'[A-Za-z0-9][A-Za-z0-9._-]{0,254}\'"'
+)
 CANONICAL_COLLECTION_ITEM_RESOURCE_ID = re.compile(
     r"^collection-item-(?P<kind>[a-z0-9-]+)-"
     r"(?P<item_id>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$"
@@ -164,11 +197,70 @@ ADB_FILE_HIERARCHY_DUMP_ATTEMPT_MAX_SECONDS = 20.0
 ADB_FILE_HIERARCHY_ABSENT_OUTPUT = (
     f"cat: {ADB_FILE_HIERARCHY_REMOTE_PATH}: No such file or directory"
 )
+MEDIA_PROVIDER_DOWNLOADS_URI = "content://media/external_primary/downloads"
+MEDIA_PROVIDER_PENDING_DOWNLOADS_URI = (
+    f"{MEDIA_PROVIDER_DOWNLOADS_URI}?includePending=1"
+)
+MEDIA_PROVIDER_CANONICAL_DOWNLOAD_ROOT = "/storage/emulated/0/Download/"
+MEDIA_PROVIDER_PENDING_DOWNLOAD_PREFIX = (
+    f"{MEDIA_PROVIDER_CANONICAL_DOWNLOAD_ROOT}.pending-"
+)
+MEDIA_PROVIDER_PENDING_EXPIRY_MAX = (1 << 63) - 1
+MEDIA_PROVIDER_FILENAME_MAX_UTF8_BYTES = 255
+MEDIA_PROVIDER_RELATIVE_DOWNLOAD_ROOT = "Download/"
+MEDIA_PROVIDER_DOCUMENT_MIME_TYPE = "application/octet-stream"
+MEDIA_PROVIDER_SHELL_OWNER_PACKAGE_NAME = "com.android.shell"
+MEDIA_PROVIDER_METADATA_PROJECTION = (
+    "_id:_display_name:_data:_size:mime_type:relative_path:is_pending:"
+    "owner_package_name"
+)
+MEDIA_PROVIDER_INDEX_RECEIPT_SCHEMA = (
+    "chummer.android.documentsui-provider-registration/v3"
+)
+MEDIA_PROVIDER_REGISTRATION_ATTEMPT_SCHEMA = (
+    "chummer.android.documentsui-provider-registration-attempt/v1"
+)
+MEDIA_PROVIDER_SHELL_OUTPUT_MAX_BYTES = 16_384
 ADB_FILE_HIERARCHY_VISIBILITY_MAX_OBSERVATIONS = 8
 ADB_FILE_HIERARCHY_VISIBILITY_DELAY_SECONDS = 0.25
 ADB_FILE_HIERARCHY_VISIBILITY_READ_ATTEMPT_MAX_SECONDS = 1.0
 ADB_FILE_HIERARCHY_VISIBILITY_MAX_SECONDS = 6.0
 DOCUMENTS_UI_PACKAGE = "com.google.android.documentsui"
+
+
+def _media_provider_display_name_where_argument(display_name: str) -> str:
+    """Quote one validated SQL literal through adb's remote shell."""
+    if GOVERNED_DOWNLOAD_BASENAME.fullmatch(display_name) is None:
+        raise RuntimeError("MediaStore Downloads query has an unsafe display name")
+    return f'"_display_name=\'{display_name}\'"'
+
+
+def _is_exact_media_provider_pending_path(path: str, display_name: str) -> bool:
+    """Accept only MediaProvider's exact pending rename for this fixture."""
+    if GOVERNED_DOWNLOAD_BASENAME.fullmatch(display_name) is None:
+        return False
+    longest_pending_name = (
+        f".pending-{MEDIA_PROVIDER_PENDING_EXPIRY_MAX}-{display_name}"
+    )
+    if len(longest_pending_name.encode("utf-8")) > MEDIA_PROVIDER_FILENAME_MAX_UTF8_BYTES:
+        return False
+    suffix = f"-{display_name}"
+    if not path.startswith(MEDIA_PROVIDER_PENDING_DOWNLOAD_PREFIX):
+        return False
+    pending_identity = path[len(MEDIA_PROVIDER_PENDING_DOWNLOAD_PREFIX) :]
+    if not pending_identity.endswith(suffix):
+        return False
+    numeric_identity = pending_identity[: -len(suffix)]
+    if (
+        not numeric_identity
+        or numeric_identity[0] == "0"
+        or len(numeric_identity) > 19
+        or not all("0" <= character <= "9" for character in numeric_identity)
+    ):
+        return False
+    return int(numeric_identity) <= MEDIA_PROVIDER_PENDING_EXPIRY_MAX
+
+
 DOCUMENTS_UI_DRAWER_MARKER = "Open from"
 DOCUMENTS_UI_DOWNLOADS_ROOT = "Downloads"
 DOCUMENTS_UI_DOWNLOADS_DESTINATION = "Files in Downloads"
@@ -523,6 +615,15 @@ def adb_command_retry_policy(arguments: tuple[str, ...]) -> tuple[str, str]:
         return ("read-only-retryable", "exact adb transport-state observation")
     if arguments == ("exec-out", "screencap", "-p"):
         return ("read-only-retryable", "exact framebuffer observation")
+    if arguments in (
+        API36_PROOF_STATE_READ_ARGUMENTS,
+        API36_PROOF_STATE_STAT_ARGUMENTS,
+        API36_IMPORT_PROOF_STATE_READ_ARGUMENTS,
+    ):
+        return (
+            "read-only-retryable",
+            "exact app-private API-36 proof-state observation",
+        )
     if arguments == ADB_READ_ONLY_HIERARCHY_ARGUMENTS:
         return (
             "read-only-retryable",
@@ -539,6 +640,16 @@ def adb_command_retry_policy(arguments: tuple[str, ...]) -> tuple[str, str]:
         and SAFE_READ_ONLY_REMOTE_PATH.fullmatch(arguments[2]) is not None
     ):
         return ("read-only-retryable", "exact remote-file byte observation")
+    if (
+        len(arguments) == 7
+        and arguments[:3] == ("exec-out", "content", "read")
+        and arguments[3:6] == ("--user", "0", "--uri")
+        and CONTENT_URI.fullmatch(arguments[6]) is not None
+    ):
+        return (
+            "read-only-retryable",
+            "exact MediaProvider content-URI byte observation",
+        )
     if arguments == ("logcat", "-d", "-t", "500"):
         return ("read-only-retryable", "bounded logcat dump observation")
     if arguments == ADB_CREATION_BOOTSTRAP_LOGCAT_ARGUMENTS:
@@ -584,6 +695,29 @@ def adb_command_retry_policy(arguments: tuple[str, ...]) -> tuple[str, str]:
         return (
             "read-only-retryable",
             "exact hierarchy temporary-file identity observation",
+        )
+    if (
+        len(shell_arguments) == 10
+        and shell_arguments[:5] == (
+            "content",
+            "query",
+            "--user",
+            "0",
+            "--uri",
+        )
+        and shell_arguments[5]
+        in {MEDIA_PROVIDER_DOWNLOADS_URI, MEDIA_PROVIDER_PENDING_DOWNLOADS_URI}
+        and shell_arguments[6:9] == (
+            "--projection",
+            MEDIA_PROVIDER_METADATA_PROJECTION,
+            "--where",
+        )
+        and MEDIA_PROVIDER_DISPLAY_NAME_WHERE_ARGUMENT.fullmatch(shell_arguments[9])
+        is not None
+    ):
+        return (
+            "read-only-retryable",
+            "exact MediaProvider indexed-document metadata observation",
         )
     read_only_dumpsys = (
         ("dumpsys", "input_method"),
@@ -632,6 +766,10 @@ class AdbTransportError(RuntimeError):
 
 class AdbOperationDeadlineExceeded(RuntimeError):
     """Raised before an ADB invocation when its caller-owned deadline expired."""
+
+
+class AdbHierarchyLeaseReserveExceeded(AdbOperationDeadlineExceeded):
+    """Raised when a fresh file hierarchy cannot retain its retry reserve."""
 
 
 def _remaining_operation_timeout(
@@ -713,7 +851,7 @@ def _hierarchy_dump_attempt_timeout(
             - ADB_READ_ONLY_DEADLINE_HEADROOM_SECONDS
         )
     if available_for_each_dump < ADB_FILE_HIERARCHY_MINIMUM_DUMP_ATTEMPT_SECONDS:
-        raise AdbOperationDeadlineExceeded(
+        raise AdbHierarchyLeaseReserveExceeded(
             "ADB hierarchy-dump lease cannot preserve its owned-file "
             "retry and reconciliation reserve"
         )
@@ -954,15 +1092,18 @@ class Device:
         timeout: float,
         text: bool,
         check: bool,
+        input_bytes: bytes | None = None,
     ) -> subprocess.CompletedProcess:
         command = [str(self.adb), "-s", self.serial, *arguments]
-        return subprocess.run(
-            command,
-            check=check,
-            capture_output=True,
-            text=text,
-            timeout=timeout,
-        )
+        invocation: dict[str, object] = {
+            "check": check,
+            "capture_output": True,
+            "text": text,
+            "timeout": timeout,
+        }
+        if input_bytes is not None:
+            invocation["input"] = input_bytes
+        return subprocess.run(command, **invocation)
 
     def _write_transport_event(
         self,
@@ -1766,6 +1907,471 @@ class Device:
             )
         return actual
 
+    def _write_provider_command_attempt(
+        self,
+        *,
+        receipt_name: str,
+        step: str,
+        arguments: tuple[str, ...],
+        result: subprocess.CompletedProcess,
+    ) -> dict[str, object]:
+        """Persist exact bounded provider output before interpreting it."""
+
+        def stream(value: str | bytes | None) -> dict[str, object]:
+            if value is None:
+                payload = b""
+                encoding = "utf-8"
+                exact = ""
+            elif isinstance(value, str):
+                payload = value.encode("utf-8")
+                encoding = "utf-8"
+                exact = value
+            elif isinstance(value, bytes):
+                payload = value
+                encoding = "base64"
+                exact = base64.b64encode(value).decode("ascii")
+            else:
+                raise RuntimeError("Provider command output has an unknown type")
+            within_bound = len(payload) <= MEDIA_PROVIDER_SHELL_OUTPUT_MAX_BYTES
+            return {
+                "encoding": encoding,
+                "bytes": len(payload),
+                "sha256": hashlib.sha256(payload).hexdigest(),
+                "withinBound": within_bound,
+                "exact": exact if within_bound else None,
+            }
+
+        stdout = stream(result.stdout)
+        stderr = stream(result.stderr)
+        receipt = {
+            "schema": MEDIA_PROVIDER_REGISTRATION_ATTEMPT_SCHEMA,
+            "status": "observed",
+            "step": step,
+            "serial": self.serial,
+            "adbArguments": _adb_arguments_evidence(
+                arguments, adb_command_retry_policy(arguments)[0]
+            ),
+            "adbArgumentsSha256": _adb_arguments_sha256(arguments),
+            "returnCode": result.returncode,
+            "stdout": stdout,
+            "stderr": stderr,
+            "evidenceFile": receipt_name,
+        }
+        _write_new_json_receipt(self.evidence / receipt_name, receipt)
+        if not stdout["withinBound"] or not stderr["withinBound"]:
+            raise RuntimeError("MediaProvider command output exceeded its evidence bound")
+        return receipt
+
+    def _write_provider_content_once(
+        self,
+        provider_uri: str,
+        payload: bytes,
+        receipt_name: str,
+    ) -> dict[str, object]:
+        """Write provider bytes exactly once; an unknown outcome blocks all mutations."""
+        if CONTENT_URI.fullmatch(provider_uri) is None:
+            raise RuntimeError("MediaProvider write requires one governed Downloads URI")
+        if not payload:
+            raise RuntimeError("MediaProvider write payload must not be empty")
+        arguments = (
+            "shell",
+            "content",
+            "write",
+            "--user",
+            "0",
+            "--uri",
+            provider_uri,
+        )
+        command_policy, policy_reason = adb_command_retry_policy(arguments)
+        if command_policy != "non-replayable":
+            raise RuntimeError("MediaProvider content write must remain non-replayable")
+        if self._mutation_blocker is not None:
+            blocker = dict(self._mutation_blocker)
+            suppression = RuntimeError(
+                "A prior mutating or ambiguous command has an unknown outcome; "
+                "provider write is prohibited"
+            )
+            receipt, path = self._write_transport_event(
+                arguments=arguments,
+                command_policy=command_policy,
+                policy_reason=policy_reason,
+                classification="prior-mutation-outcome-unknown",
+                retryable_classification=False,
+                attempt=0,
+                maximum_attempts=1,
+                status="fail",
+                error=suppression,
+                replay_performed=False,
+                replay_suppressed=True,
+                command_invocation_performed=False,
+                blocked_by=blocker,
+            )
+            raise AdbTransportError(receipt, path) from suppression
+        try:
+            result = self._invoke_once(
+                arguments,
+                timeout=120,
+                text=False,
+                check=True,
+                input_bytes=payload,
+            )
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
+            classification, retryable = classify_adb_failure(error)
+            receipt, path = self._write_transport_event(
+                arguments=arguments,
+                command_policy=command_policy,
+                policy_reason=policy_reason,
+                classification=classification,
+                retryable_classification=retryable,
+                attempt=1,
+                maximum_attempts=1,
+                status="fail",
+                error=error,
+                replay_performed=False,
+                replay_suppressed=True,
+            )
+            self._mutation_blocker = {
+                "classification": classification,
+                "adbArgumentsSha256": receipt["adbArgumentsSha256"],
+                "evidenceFile": receipt["evidenceFile"],
+            }
+            raise AdbTransportError(receipt, path) from error
+        return self._write_provider_command_attempt(
+            receipt_name=receipt_name,
+            step="write-provider-bytes",
+            arguments=arguments,
+            result=result,
+        )
+
+    def _query_provider_download_rows(
+        self,
+        *,
+        display_name: str,
+        receipt_name: str,
+        step: str,
+        include_pending: bool,
+    ) -> tuple[list[dict[str, str]], dict[str, object]]:
+        """Return canonical Downloads rows and their bounded query receipt."""
+        where = _media_provider_display_name_where_argument(display_name)
+        query_uri = (
+            MEDIA_PROVIDER_PENDING_DOWNLOADS_URI
+            if include_pending
+            else MEDIA_PROVIDER_DOWNLOADS_URI
+        )
+        query_arguments = (
+            "shell",
+            "content",
+            "query",
+            "--user",
+            "0",
+            "--uri",
+            query_uri,
+            "--projection",
+            MEDIA_PROVIDER_METADATA_PROJECTION,
+            "--where",
+            where,
+        )
+        query_result = self.run(*query_arguments, timeout=120)
+        query_attempt = self._write_provider_command_attempt(
+            receipt_name=receipt_name,
+            step=step,
+            arguments=query_arguments,
+            result=query_result,
+        )
+        if query_result.stderr not in {"", b""}:
+            raise RuntimeError("MediaStore Downloads query emitted error output")
+        metadata_output = query_result.stdout.strip()
+        if metadata_output == "No result found.":
+            return [], query_attempt
+        lines = [line.strip() for line in metadata_output.splitlines() if line.strip()]
+        expected_fields = {
+            "_id",
+            "_display_name",
+            "_data",
+            "_size",
+            "mime_type",
+            "relative_path",
+            "is_pending",
+            "owner_package_name",
+        }
+        rows: list[dict[str, str]] = []
+        for row_index, line in enumerate(lines):
+            prefix = f"Row: {row_index} "
+            if not line.startswith(prefix):
+                raise RuntimeError("MediaStore Downloads row sequence is ambiguous")
+            fields: dict[str, str] = {}
+            for item in line[len(prefix) :].split(", "):
+                key, separator, value = item.partition("=")
+                if not separator or not key or key in fields:
+                    raise RuntimeError("MediaStore Downloads row is ambiguous")
+                fields[key] = value
+            if set(fields) != expected_fields:
+                raise RuntimeError(
+                    "MediaStore Downloads row has an unexpected projection"
+                )
+            rows.append(fields)
+        if not rows:
+            raise RuntimeError("MediaStore Downloads query output is ambiguous")
+        return rows, query_attempt
+
+    def _query_exact_provider_download(
+        self,
+        *,
+        display_name: str,
+        receipt_name: str,
+        step: str,
+        include_pending: bool,
+    ) -> tuple[dict[str, str], dict[str, object]]:
+        """Return one exact Downloads row and its bounded query receipt."""
+        rows, query_attempt = self._query_provider_download_rows(
+            display_name=display_name,
+            receipt_name=receipt_name,
+            step=step,
+            include_pending=include_pending,
+        )
+        if len(rows) != 1:
+            raise RuntimeError(
+                "MediaStore Downloads query did not return exactly one fixture row"
+            )
+        return rows[0], query_attempt
+
+    @staticmethod
+    def _require_silent_provider_mutation(
+        result: subprocess.CompletedProcess,
+        operation: str,
+    ) -> None:
+        if result.stdout not in {"", b""} or result.stderr not in {"", b""}:
+            raise RuntimeError(
+                f"MediaStore {operation} command was not exactly silent"
+            )
+
+    def publish_document_for_documents_ui(
+        self,
+        local_path: Path,
+        expected_sha256: str,
+    ) -> dict[str, object]:
+        """Create, fill, publish, and prove one exact MediaStore Download.
+
+        API-36 DocumentsUI obtains Downloads rows from MediaStore.  The fixture
+        is therefore inserted through the supported Downloads collection rather
+        than pushed to a filesystem path and passed to an undocumented provider
+        call.  Shell is assigned as the explicit row owner: MediaProvider lets
+        shell choose ownership, while its path-based fallback cannot infer an
+        owner from the generic Download root and may hide that ownerless row
+        from the exact shell query.  Insert, byte write, and publish are each
+        one-shot mutations.  The real DocumentsUI picker remains the only path
+        into Chummer.
+        """
+        if local_path.is_symlink():
+            raise RuntimeError("DocumentsUI fixture must not be a symlink")
+        resolved = local_path.resolve()
+        if not resolved.is_file():
+            raise RuntimeError("DocumentsUI fixture must be one regular local file")
+        display_name = resolved.name
+        if GOVERNED_DOWNLOAD_BASENAME.fullmatch(display_name) is None:
+            raise RuntimeError("DocumentsUI fixture has an unsafe display name")
+        if not _is_exact_media_provider_pending_path(
+            f"{MEDIA_PROVIDER_PENDING_DOWNLOAD_PREFIX}1-{display_name}",
+            display_name,
+        ):
+            raise RuntimeError(
+                "DocumentsUI fixture name cannot retain exact MediaStore pending identity"
+            )
+        if SHA256_TEXT.fullmatch(expected_sha256) is None:
+            raise RuntimeError(
+                f"Invalid provider-registration fixture SHA-256: {expected_sha256!r}"
+            )
+        payload = resolved.read_bytes()
+        expected_size = len(payload)
+        if expected_size <= 0 or hashlib.sha256(payload).hexdigest() != expected_sha256:
+            raise RuntimeError("Provider-registration fixture bytes do not match authority")
+
+        receipt_stem = hashlib.sha256(display_name.encode("utf-8")).hexdigest()[:16]
+        existing_rows, preinsert_query_attempt = self._query_provider_download_rows(
+            display_name=display_name,
+            receipt_name=(
+                f"documentsui-provider-registration-{receipt_stem}-query-absent.json"
+            ),
+            step="query-absent-download-including-pending",
+            include_pending=True,
+        )
+        if existing_rows:
+            raise RuntimeError(
+                "MediaStore Downloads already contains the governed fixture name"
+            )
+        # A shared Download path cannot imply an application owner. MediaProvider
+        # explicitly permits the shell caller to set ownership; binding that same
+        # identity keeps the pending row observable to the post-insert shell query.
+        insert_arguments = (
+            "shell",
+            "content",
+            "insert",
+            "--user",
+            "0",
+            "--uri",
+            MEDIA_PROVIDER_DOWNLOADS_URI,
+            "--bind",
+            f"_display_name:s:{display_name}",
+            "--bind",
+            f"mime_type:s:{MEDIA_PROVIDER_DOCUMENT_MIME_TYPE}",
+            "--bind",
+            f"relative_path:s:{MEDIA_PROVIDER_RELATIVE_DOWNLOAD_ROOT}",
+            "--bind",
+            f"owner_package_name:s:{MEDIA_PROVIDER_SHELL_OWNER_PACKAGE_NAME}",
+            "--bind",
+            "is_pending:i:1",
+        )
+        insert_result = self.run(*insert_arguments, timeout=120)
+        insert_attempt = self._write_provider_command_attempt(
+            receipt_name=(
+                f"documentsui-provider-registration-{receipt_stem}-insert.json"
+            ),
+            step="insert-pending-download",
+            arguments=insert_arguments,
+            result=insert_result,
+        )
+        self._require_silent_provider_mutation(insert_result, "insert")
+
+        pending_fields, pending_query_attempt = self._query_exact_provider_download(
+            display_name=display_name,
+            receipt_name=(
+                f"documentsui-provider-registration-{receipt_stem}-query-pending.json"
+            ),
+            step="query-inserted-pending-download",
+            include_pending=True,
+        )
+        canonical_path = MEDIA_PROVIDER_CANONICAL_DOWNLOAD_ROOT + display_name
+        if (
+            pending_fields["_display_name"] != display_name
+            or not _is_exact_media_provider_pending_path(
+                pending_fields["_data"], display_name
+            )
+            or pending_fields["_size"] not in {"0", "NULL"}
+            or pending_fields["mime_type"] != MEDIA_PROVIDER_DOCUMENT_MIME_TYPE
+            or pending_fields["relative_path"]
+            != MEDIA_PROVIDER_RELATIVE_DOWNLOAD_ROOT
+            or pending_fields["is_pending"] != "1"
+            or pending_fields["owner_package_name"]
+            != MEDIA_PROVIDER_SHELL_OWNER_PACKAGE_NAME
+        ):
+            raise RuntimeError(
+                "MediaStore pending Downloads identity differs from the governed fixture"
+            )
+        provider_uri = (
+            f"{MEDIA_PROVIDER_DOWNLOADS_URI}/{pending_fields['_id']}"
+        )
+        if CONTENT_URI.fullmatch(provider_uri) is None:
+            raise RuntimeError(
+                "MediaStore pending Downloads row has an invalid provider identity"
+            )
+        provider_id = pending_fields["_id"]
+
+        write_attempt = self._write_provider_content_once(
+            provider_uri,
+            payload,
+            f"documentsui-provider-registration-{receipt_stem}-write.json",
+        )
+
+        update_arguments = (
+            "shell",
+            "content",
+            "update",
+            "--user",
+            "0",
+            "--uri",
+            provider_uri,
+            "--bind",
+            "is_pending:i:0",
+        )
+        update_result = self.run(*update_arguments, timeout=120)
+        update_attempt = self._write_provider_command_attempt(
+            receipt_name=(
+                f"documentsui-provider-registration-{receipt_stem}-publish.json"
+            ),
+            step="publish-download",
+            arguments=update_arguments,
+            result=update_result,
+        )
+        self._require_silent_provider_mutation(update_result, "publish")
+
+        fields, query_attempt = self._query_exact_provider_download(
+            display_name=display_name,
+            receipt_name=(
+                f"documentsui-provider-registration-{receipt_stem}-query-published.json"
+            ),
+            step="query-published-download",
+            include_pending=False,
+        )
+        if (
+            fields["_id"] != provider_id
+            or fields["_display_name"] != display_name
+            or fields["_data"] != canonical_path
+            or fields["_size"] != str(expected_size)
+            or fields["mime_type"] != MEDIA_PROVIDER_DOCUMENT_MIME_TYPE
+            or fields["relative_path"] != MEDIA_PROVIDER_RELATIVE_DOWNLOAD_ROOT
+            or fields["is_pending"] != "0"
+            or fields["owner_package_name"]
+            != MEDIA_PROVIDER_SHELL_OWNER_PACKAGE_NAME
+        ):
+            raise RuntimeError(
+                "MediaStore Downloads identity differs from the governed fixture"
+            )
+
+        provider_read = self.run(
+            "exec-out",
+            "content",
+            "read",
+            "--user",
+            "0",
+            "--uri",
+            provider_uri,
+            timeout=120,
+            text=False,
+        )
+        if provider_read.stderr not in {"", b""}:
+            raise RuntimeError("MediaProvider document read emitted error output")
+        provider_bytes = provider_read.stdout
+        if not isinstance(provider_bytes, bytes):
+            raise RuntimeError("MediaProvider document read did not return bytes")
+        provider_sha256 = hashlib.sha256(provider_bytes).hexdigest()
+        if len(provider_bytes) != expected_size or provider_sha256 != expected_sha256:
+            raise RuntimeError(
+                "MediaProvider content URI does not expose the exact fixture bytes"
+            )
+
+        receipt = {
+            "schema": MEDIA_PROVIDER_INDEX_RECEIPT_SCHEMA,
+            "status": "pass",
+            "displayName": display_name,
+            "canonicalPath": canonical_path,
+            "relativePath": MEDIA_PROVIDER_RELATIVE_DOWNLOAD_ROOT,
+            "ownerPackageName": fields["owner_package_name"],
+            "providerUri": provider_uri,
+            "mediaType": fields["mime_type"],
+            "size": expected_size,
+            "sha256": provider_sha256,
+            "preinsertMetadataOutputSha256": preinsert_query_attempt["stdout"][
+                "sha256"
+            ],
+            "insertOutputSha256": insert_attempt["stdout"]["sha256"],
+            "pendingMetadataOutputSha256": pending_query_attempt["stdout"]["sha256"],
+            "writeOutputSha256": write_attempt["stdout"]["sha256"],
+            "publishOutputSha256": update_attempt["stdout"]["sha256"],
+            "metadataOutputSha256": query_attempt["stdout"]["sha256"],
+            "registrationInvocations": "three-one-shot-mutations-no-replay",
+            "metadataQuery": (
+                "pre-insert-zero-rows-including-pending-then-one-pending-and-"
+                "one-published-exact-display-name-row"
+            ),
+            "pickerBypass": False,
+        }
+        _write_new_json_receipt(
+            self.evidence
+            / f"documentsui-provider-registration-{receipt_stem}-pass.json",
+            receipt,
+        )
+        return receipt
+
     def _write_file_hierarchy_retry_evidence(
         self,
         *,
@@ -1884,6 +2490,7 @@ class Device:
         deadline: float | None = None,
         dump_attempt_max_seconds: float = ADB_FILE_HIERARCHY_DUMP_ATTEMPT_MAX_SECONDS,
         allow_direct_reconciliation: bool = True,
+        raise_on_lease_reserve_exhaustion: bool = False,
     ) -> list[UiNode]:
         """Read one hierarchy while sharing an optional caller-owned deadline."""
         if (
@@ -1898,6 +2505,8 @@ class Device:
             )
         if type(allow_direct_reconciliation) is not bool:
             raise TypeError("Hierarchy direct-reconciliation policy must be boolean")
+        if type(raise_on_lease_reserve_exhaustion) is not bool:
+            raise TypeError("Hierarchy lease-reserve propagation policy must be boolean")
         retry_attempts: list[dict[str, object]] = []
         try:
             for dump_attempt in range(1, ADB_FILE_HIERARCHY_MAX_ATTEMPTS + 1):
@@ -2036,6 +2645,14 @@ class Device:
                     deadline=deadline,
                 ).stdout
                 _remaining_operation_timeout(deadline=deadline, maximum=120)
+        except AdbHierarchyLeaseReserveExceeded as error:
+            (self.evidence / "last-invalid-hierarchy.txt").write_text(
+                f"Hierarchy observation exceeded its caller-owned deadline: {error}",
+                encoding="utf-8",
+            )
+            if raise_on_lease_reserve_exhaustion:
+                raise
+            return []
         except AdbOperationDeadlineExceeded as error:
             (self.evidence / "last-invalid-hierarchy.txt").write_text(
                 f"Hierarchy observation exceeded its caller-owned deadline: {error}",
@@ -2500,6 +3117,13 @@ class Device:
         return selector in values or any(value.startswith(selector) for value in values if value)
 
     @staticmethod
+    def _has_exact_resource_id(node: UiNode, selector: str) -> bool:
+        """Match one Android resource name without truncating route slashes."""
+        raw_resource_id = node.attributes.get("resource-id", "")
+        _, separator, resource_name = raw_resource_id.partition(":id/")
+        return (resource_name if separator else raw_resource_id) == selector
+
+    @staticmethod
     def _scroll_x_ratio(selector: str) -> float:
         if selector.startswith(
             (
@@ -2566,7 +3190,7 @@ class Device:
         matches = [
             node
             for node in self.hierarchy()
-            if node.attributes.get("resource-id", "").rsplit("/", 1)[-1] == selector
+            if Device._has_exact_resource_id(node, selector)
         ]
         if not matches:
             return None
@@ -2621,8 +3245,7 @@ class Device:
             matches = [
                 node
                 for node in nodes
-                if node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
-                == selector
+                if Device._has_exact_resource_id(node, selector)
             ]
             if len(matches) == 1:
                 return matches[0]
@@ -2711,11 +3334,8 @@ class Device:
             matches = [
                 node
                 for node in nodes
-                if selector
-                in {
-                    node.attributes.get("resource-id", "").rsplit("/", 1)[-1],
-                    node.attributes.get("content-desc", ""),
-                }
+                if Device._has_exact_resource_id(node, selector)
+                or node.attributes.get("content-desc", "") == selector
             ]
             if len(matches) == 1:
                 return matches[0]
@@ -3108,8 +3728,7 @@ class Device:
             matches = [
                 node
                 for node in nodes
-                if node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
-                == selector
+                if Device._has_exact_resource_id(node, selector)
             ]
             if len(matches) > 1:
                 capture_evidence(f"{evidence_prefix}-cardinality-invalid")
@@ -3508,6 +4127,7 @@ class Device:
         scroll: bool = False,
         max_scrolls: int = 7,
         scroll_distance_ratio: float = 0.52,
+        exact_accessibility_prefix: str | None = None,
     ) -> None:
         node = None
         attempts = 0
@@ -3549,9 +4169,14 @@ class Device:
             self.shell("input", "keyevent", "67")
         time.sleep(0.25)
         updated = self.find(selector)
-        if updated is None or updated.attributes.get("text") != value:
+        actual = None if updated is None else updated.attributes.get("text")
+        accepted = {value}
+        if exact_accessibility_prefix is not None:
+            if not exact_accessibility_prefix.strip():
+                raise RuntimeError("Exact accessibility prefix must not be blank")
+            accepted.add(f"{exact_accessibility_prefix}, {value}")
+        if actual not in accepted:
             self.capture("field-value-failed")
-            actual = None if updated is None else updated.attributes.get("text")
             raise RuntimeError(
                 f"Field {selector!r} did not receive {value!r}; rendered {actual!r}"
             )
@@ -4690,6 +5315,24 @@ def tap_phone_destination(
             selected_label=label,
             deadline=deadline,
         )
+
+
+def read_imported_phone_runner_authority(
+    device: Device,
+    expected_payload_sha256: str,
+) -> WorkspaceAuthority:
+    """Bind an imported runner without relying on an on-screen alias.
+
+    A valid import can leave the runner alias outside the current Sheet/Build
+    viewport.  The canonical career route, the exact workspace payload digest,
+    and the later fixture-specific XML checks are the authority instead.
+    """
+    wait_for_phone_runner_route(device, created=True, timeout=120)
+    tap_phone_destination(device, "phone-destination-runners")
+    wait_for_phone_runners(device, timeout=120)
+    authority = read_workspace_authority(device)
+    require_import_authority(authority, expected_payload_sha256)
+    return authority
 
 
 def assert_phone_shell_surface(
@@ -6704,13 +7347,60 @@ def select_android_document(device: Device, filename: str) -> None:
         )
         time.sleep(0.75)
 
-    if device.find(filename) is None:
+    exact_file_nodes = [
+        node
+        for node in _documents_ui_exact_nodes(device.hierarchy(), filename)
+        if node.attributes.get("text") == filename
+    ]
+    if not exact_file_nodes:
         device.wait("Show roots", timeout=45)
         device.tap("Show roots")
         time.sleep(0.75)
         select_documents_ui_downloads_root(device, timeout=45)
-        device.wait(filename, timeout=45, scroll=True)
-    device.tap(filename, scroll=True)
+    deadline = time.monotonic() + 45
+    scrolls = 0
+    while time.monotonic() < deadline:
+        nodes = device.hierarchy(deadline=deadline)
+        matches = [
+            node
+            for node in _documents_ui_exact_nodes(nodes, filename)
+            if node.attributes.get("text") == filename
+            and node.attributes.get("enabled") == "true"
+            and device.node_has_tappable_bounds(node, deadline=deadline)
+        ]
+        if len(matches) > 1:
+            _capture_documents_ui_before_deadline(
+                device,
+                "documentsui-file-row-cardinality-invalid",
+                deadline=deadline,
+            )
+            raise RuntimeError(
+                f"DocumentsUI exposed {len(matches)} exact rows for {filename!r}"
+            )
+        if len(matches) == 1:
+            x, y = matches[0].center
+            device.shell(
+                "input",
+                "tap",
+                str(x),
+                str(y),
+                timeout=_remaining_operation_timeout(deadline=deadline, maximum=120),
+                deadline=deadline,
+            )
+            return
+        if scrolls < 6:
+            device.swipe_up(deadline=deadline)
+            scrolls += 1
+        if not _documents_ui_sleep_before_deadline(deadline):
+            break
+    _capture_documents_ui_before_deadline(
+        device,
+        "documentsui-file-row-unavailable",
+        deadline=deadline,
+    )
+    raise RuntimeError(
+        f"Timed out waiting for one exact enabled DocumentsUI row {filename!r}"
+    )
 
 
 def normalize_component(value: str) -> str | None:

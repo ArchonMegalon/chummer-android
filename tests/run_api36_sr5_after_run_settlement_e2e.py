@@ -115,6 +115,11 @@ AFTER_RUN_QUOTE_CONTRACT = "chummer.core.sr5-after-run-settlement-quote/v1"
 AFTER_RUN_REWARD_CONTRACT = "chummer.android.sr5-after-run-reward-context/v1"
 AFTER_RUN_MANUAL_CONTRACT = "chummer.android.sr5-manual-after-run-proposal/v1"
 AFTER_RUN_ACTION_CONTRACT = "chummer.android.sr5-after-run-settlement-action/v1"
+AFTER_RUN_POST_TAP_DIAGNOSTIC_SCHEMA = (
+    "chummer.android.sr5-after-run-post-tap-diagnostic/v1"
+)
+AFTER_RUN_POST_TAP_DIAGNOSTIC_PREFIX = "sr5-after-run-post-tap"
+MAX_POST_TAP_DIAGNOSTIC_BYTES = 1_000_000
 ASCII_TEXT = re.compile(r"^[A-Za-z0-9 .:#_-]{1,128}$")
 
 
@@ -672,19 +677,52 @@ def prepare_runner(
     device: physical.shared.Device,
     fixture: Path,
     fixture_sha256: str,
-    alias: str,
-) -> tuple[physical.shared.LaunchState, physical.shared.WorkspaceAuthority]:
+) -> tuple[
+    physical.shared.LaunchState,
+    physical.shared.WorkspaceAuthority,
+    physical.shared.WorkspaceAuthority,
+]:
     launch = physical.shared.launch_app(device)
     physical.shared.wait_for_phone_runners(device, timeout=120)
     device.tap("home-open-file")
     physical.shared.select_android_document(device, fixture.name)
-    device.wait(alias, timeout=120)
-    physical.shared.wait_for_phone_runner_route(device, created=True, timeout=120)
-    physical.shared.tap_phone_destination(device, "phone-destination-runners")
-    physical.shared.wait_for_phone_runners(device, timeout=120)
-    authority = physical.shared.read_phone_workspace_authority(device)
-    physical.shared.require_import_authority(authority, fixture_sha256)
-    return launch, authority
+    imported = physical.shared.read_imported_phone_runner_authority(
+        device,
+        fixture_sha256,
+    )
+    saved = physical.shared.save_and_read_workspace_authority(device, "phone")
+    require_initial_saved_fixture_authority(imported, saved, fixture_sha256)
+    return launch, imported, saved
+
+
+def require_initial_saved_fixture_authority(
+    imported: physical.shared.WorkspaceAuthority,
+    saved: physical.shared.WorkspaceAuthority,
+    fixture_sha256: str,
+) -> None:
+    """Prove that one explicit product save durably owns the imported bytes.
+
+    Import intentionally activates a new in-memory workspace at revision 1/0;
+    the fixture XML cannot encode workspace persistence metadata. After Run is
+    allowed to open only after the existing one-shot Save control establishes
+    the same bytes as a clean 1/1 revision.
+    """
+    physical.shared.require_import_authority(imported, fixture_sha256)
+    if imported.content_revision != 1 or imported.saved_revision != 0:
+        raise RuntimeError(
+            "After Run import did not expose the exact unsaved revision 1/0 authority"
+        )
+    physical.shared.require_import_authority(saved, fixture_sha256)
+    physical.shared.require_saved_authority(saved)
+    if (
+        saved.workspace_id != imported.workspace_id
+        or saved.content_revision != imported.content_revision
+        or saved.saved_revision != imported.content_revision
+        or saved.payload_sha256 != imported.payload_sha256
+    ):
+        raise RuntimeError(
+            "Initial After Run save changed the imported workspace, revision, or fixture bytes"
+        )
 
 
 def read_checkpoint(
@@ -800,21 +838,177 @@ def _set(device: physical.shared.Device, selector: str, label: str, value: objec
 
 
 def _tap_exact(device: physical.shared.Device, selector: str) -> None:
-    device.tap_bidirectional(
-        selector, timeout=120, backward_scrolls=48, forward_scrolls=48,
-        scroll_distance_ratio=0.18, exact_resource_id=True,
+    device.tap_exact_resource_id_bidirectional(
+        selector,
+        timeout=120,
+        backward_scrolls=48,
+        forward_scrolls=48,
+        scroll_distance_ratio=0.18,
+        evidence_prefix="sr5-after-run-exact-tap",
+        surface_name="Exact SR5 After Run control",
     )
 
 
-def open_after_run(device: physical.shared.Device, expected_route: str) -> None:
-    physical.shared.open_build(device, "phone")
-    physical.shared.reset_scroll_to_top(device, swipes=18)
-    _tap_exact(device, "build-sr5-career-wizard")
-    physical.wait_exact_route(device, "sr5-career", timeout=90)
+def _bounded_post_tap_evidence(value: object) -> str:
+    text = str(value or "")
+    encoded = text.encode("utf-8", errors="replace")
+    if len(encoded) <= MAX_POST_TAP_DIAGNOSTIC_BYTES:
+        return text
+    marker = b"\n[bounded post-tap diagnostic truncated]\n"
+    retained = encoded[: MAX_POST_TAP_DIAGNOSTIC_BYTES - len(marker)] + marker
+    return retained.decode("utf-8", errors="replace")
+
+
+def _write_post_tap_evidence(
+    device: physical.shared.Device,
+    name: str,
+    value: object,
+) -> None:
+    target = device.evidence / name
+    physical.reject_symlink_components(target, label="After Run post-tap evidence")
+    with target.open("x", encoding="utf-8", newline="\n") as stream:
+        stream.write(_bounded_post_tap_evidence(value))
+
+
+def _post_tap_command(
+    device: physical.shared.Device,
+    name: str,
+    *arguments: str,
+) -> dict[str, object]:
+    try:
+        result = device.run(*arguments, timeout=15, check=False)
+        output = _bounded_post_tap_evidence(result.stdout)
+        if result.stderr:
+            output = (
+                f"{output}\n[stderr]\n"
+                f"{_bounded_post_tap_evidence(result.stderr)}"
+            )
+        _write_post_tap_evidence(device, name, output)
+        return {
+            "file": name,
+            "returnCode": result.returncode,
+            "captureStatus": "captured",
+        }
+    except Exception as error:  # noqa: BLE001 - diagnostics must retain their own failure
+        _write_post_tap_evidence(
+            device,
+            name,
+            f"diagnostic command failed: {type(error).__name__}: {error}",
+        )
+        return {
+            "file": name,
+            "returnCode": None,
+            "captureStatus": "capture-failed",
+            "failureType": type(error).__name__,
+        }
+
+
+def _launch_state_payload(state: physical.shared.LaunchState) -> dict[str, object]:
+    return {
+        "processIds": list(state.process_ids),
+        "resumedComponent": state.resumed_component,
+    }
+
+
+def tap_after_run_action_with_immediate_diagnostics(
+    device: physical.shared.Device,
+    evidence_stage: str,
+) -> None:
+    """Tap once, then retain the first observable process/foreground outcome.
+
+    The action is navigation-only, but an async UI exception can still terminate
+    the Android process before the later route timeout captures a useful log.  The
+    tap is therefore issued exactly once and every following operation is read-only.
+    No foreground recovery, relaunch, retry, or mutation replay is permitted here.
+    """
+    if re.fullmatch(r"[a-z0-9-]{1,64}", evidence_stage) is None:
+        raise ValueError("After Run post-tap evidence stage is not bounded ASCII")
+    prefix = f"{AFTER_RUN_POST_TAP_DIAGNOSTIC_PREFIX}-{evidence_stage}"
+    before = physical.shared.current_launch_state(device)
+    if (
+        len(before.process_ids) != 1
+        or before.resumed_component is None
+        or not before.resumed_component.startswith(f"{physical.shared.PACKAGE}/")
+    ):
+        raise RuntimeError(
+            "Chummer did not own one exact PID and foreground component before "
+            "the After Run navigation tap"
+        )
+
     device.tap_single_exact_resource_id(
         "sr5-career-action-after-run", timeout=120,
         evidence_prefix="sr5-after-run-action", surface_name="SR5 After Run action",
     )
+
+    # Observe process/foreground first. The subsequent raw buffers retain the
+    # exception/kill reason without waiting for the 180-second route deadline.
+    immediate = physical.shared.current_launch_state(device)
+    diagnostics = {
+        "logcatAll": _post_tap_command(
+            device,
+            f"{prefix}-logcat-all.txt",
+            "logcat", "-d", "-b", "all", "-v", "threadtime", "-t", "1000",
+        ),
+        "logcatEvents": _post_tap_command(
+            device,
+            f"{prefix}-logcat-events.txt",
+            "logcat", "-d", "-b", "events", "-v", "threadtime", "-t", "500",
+        ),
+        "logcatCrash": _post_tap_command(
+            device,
+            f"{prefix}-logcat-crash.txt",
+            "logcat", "-d", "-b", "crash", "-v", "threadtime", "-t", "200",
+        ),
+        "exitInfo": _post_tap_command(
+            device,
+            f"{prefix}-exit-info.txt",
+            "shell", "dumpsys", "activity", "exit-info", physical.shared.PACKAGE,
+        ),
+    }
+    final = physical.shared.current_launch_state(device)
+    payload = {
+        "schema": AFTER_RUN_POST_TAP_DIAGNOSTIC_SCHEMA,
+        "status": "captured",
+        "tapCount": 1,
+        "tapReplayAttempted": False,
+        "foregroundRecoveryAttempted": False,
+        "evidenceStage": evidence_stage,
+        "before": _launch_state_payload(before),
+        "immediate": _launch_state_payload(immediate),
+        "final": _launch_state_payload(final),
+        "diagnostics": diagnostics,
+    }
+    _write_post_tap_evidence(
+        device,
+        f"{prefix}-state.json",
+        json.dumps(payload, indent=2, sort_keys=True) + "\n",
+    )
+
+    expected_process = before.process_ids
+    states = (immediate, final)
+    if any(
+        state.process_ids != expected_process
+        or state.resumed_component != before.resumed_component
+        for state in states
+    ):
+        raise RuntimeError(
+            "Chummer lost its exact process/foreground authority immediately "
+            "after the one-shot After Run navigation tap; captured exit and "
+            "exception evidence without retry or foreground recovery"
+        )
+
+
+def open_after_run(
+    device: physical.shared.Device,
+    expected_route: str,
+    *,
+    evidence_stage: str,
+) -> None:
+    physical.shared.open_build(device, "phone")
+    physical.shared.reset_scroll_to_top(device, swipes=18)
+    _tap_exact(device, "build-sr5-career-wizard")
+    physical.wait_exact_route(device, "sr5-career", timeout=90)
+    tap_after_run_action_with_immediate_diagnostics(device, evidence_stage)
     physical.wait_exact_route(device, expected_route, timeout=180)
 
 
@@ -858,6 +1052,11 @@ def enter_manual_proposal(device: physical.shared.Device, fixture: dict[str, obj
         if enabled:
             _tap_exact(device, selector)
     for contact in fixture["contacts"]:
+        # Adding a contact re-renders the long form while retaining a lower scroll
+        # position on some API-36 frames. Re-establish the top origin before each
+        # distinct proposal so the forward-only exact field scan cannot overshoot
+        # the reusable contact controls. The Add mutation itself is still tapped once.
+        physical.shared.reset_scroll_to_top(device, swipes=24)
         for field in (
             ("sr5-after-run-entry-contact-id", "Contact UUID", contact["contactId"]),
             ("sr5-after-run-entry-contact-name", "Contact name", contact["name"]),
@@ -995,12 +1194,12 @@ def prove_after_run(
     fixture: dict[str, object],
 ) -> dict[str, object]:
     device.shell("pm", "clear", physical.shared.PACKAGE)
-    initial_launch, imported = prepare_runner(
-        device, runner, runner_sha256, str(fixture["runner"]["alias"])
+    initial_launch, imported, initial_saved = prepare_runner(
+        device, runner, runner_sha256
     )
-    _assert_initial_runner(root_for_authority(device, imported), fixture)
+    _assert_initial_runner(root_for_authority(device, initial_saved), fixture)
     physical.shared.record_phone_ui_locale_evidence(device, evidence_prefix="sr5-after-run")
-    open_after_run(device, ENTER_ROUTE)
+    open_after_run(device, ENTER_ROUTE, evidence_stage="initial-entry")
     enter_manual_proposal(device, fixture)
     context = device.wait_for_single_exact_resource_id(
         "sr5-after-run-proposal-context", timeout=60,
@@ -1025,9 +1224,9 @@ def prove_after_run(
     if reviewed is None:
         raise RuntimeError("Reviewed After Run checkpoint disappeared")
     review_projection = validate_checkpoint(
-        reviewed.payload, fixture, workspace_id=imported.workspace_id,
-        workspace_revision=imported.content_revision,
-        character_projection_digest=imported.payload_sha256, version=1, phase=0,
+        reviewed.payload, fixture, workspace_id=initial_saved.workspace_id,
+        workspace_revision=initial_saved.content_revision,
+        character_projection_digest=initial_saved.payload_sha256, version=1, phase=0,
     )
     device.capture("sr5-after-run-durable-review")
     reviewed_restart = physical.shared.force_stop_and_launch_new_process(device, initial_launch)
@@ -1035,10 +1234,10 @@ def prove_after_run(
     physical.shared.tap_phone_destination(device, "phone-destination-runners")
     physical.shared.wait_for_phone_runners(device, timeout=120)
     restored_before = physical.shared.read_phone_workspace_authority(device)
-    physical.shared.require_restored_authority(imported, restored_before)
+    physical.shared.require_restored_authority(initial_saved, restored_before)
     if read_checkpoint(device) != reviewed:
         raise RuntimeError("Reviewed After Run checkpoint bytes changed across restart")
-    open_after_run(device, CHOOSE_ROUTE)
+    open_after_run(device, CHOOSE_ROUTE, evidence_stage="reviewed-resume")
     _tap_exact(device, "sr5-after-run-resume")
     physical.wait_exact_route(device, REVIEW_ROUTE, timeout=120)
     _tap_exact(device, "sr5-after-run-confirm")
@@ -1047,9 +1246,9 @@ def prove_after_run(
     if applied is None:
         raise RuntimeError("Applied After Run checkpoint disappeared")
     receipt_projection = validate_checkpoint(
-        applied.payload, fixture, workspace_id=imported.workspace_id,
-        workspace_revision=imported.content_revision,
-        character_projection_digest=imported.payload_sha256, version=3, phase=2,
+        applied.payload, fixture, workspace_id=initial_saved.workspace_id,
+        workspace_revision=initial_saved.content_revision,
+        character_projection_digest=initial_saved.payload_sha256, version=3, phase=2,
     )
     require_same_draft(reviewed.payload, applied.payload)
     if any(
@@ -1062,7 +1261,7 @@ def prove_after_run(
         device, reviewed_restart.restarted
     )
     physical.shared.wait_for_phone_runner_route(device, created=True, timeout=120)
-    open_after_run(device, CHOOSE_ROUTE)
+    open_after_run(device, CHOOSE_ROUTE, evidence_stage="applied-recovery")
     _tap_exact(device, "sr5-after-run-resolve")
     physical.wait_exact_route(device, RECEIPT_ROUTE, timeout=180)
     if read_checkpoint(device) != applied:
@@ -1077,9 +1276,10 @@ def prove_after_run(
     physical.shared.wait_for_phone_runners(device, timeout=120)
     saved = physical.shared.read_phone_workspace_authority(device)
     physical.shared.require_saved_authority(saved)
-    if saved.workspace_id != imported.workspace_id or saved.content_revision != imported.content_revision + 1:
+    if (saved.workspace_id != initial_saved.workspace_id
+            or saved.content_revision != initial_saved.content_revision + 1):
         raise RuntimeError("After Run settlement did not save one exact successor revision")
-    if saved.payload_sha256 == imported.payload_sha256:
+    if saved.payload_sha256 == initial_saved.payload_sha256:
         raise RuntimeError("After Run successor did not change the workspace payload digest")
     _assert_successor_runner(
         root_for_authority(device, saved), fixture, review_projection["transactionId"]
@@ -1100,6 +1300,7 @@ def prove_after_run(
         raise RuntimeError("After Run acknowledgement did not survive final restart")
     return {
         "import": physical.shared.workspace_authority_json(imported),
+        "initialSaved": physical.shared.workspace_authority_json(initial_saved),
         "restoredBeforeApply": physical.shared.workspace_authority_json(restored_before),
         "savedSuccessor": physical.shared.workspace_authority_json(saved),
         "finalRestartSuccessor": physical.shared.workspace_authority_json(final_saved),

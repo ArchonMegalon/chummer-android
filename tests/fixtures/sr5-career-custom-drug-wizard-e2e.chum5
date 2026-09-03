@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Career Custom Drug Wizard E2E</name>
+  <alias>CareerCustomDrugWizardE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>True</created>
+  <gameedition>SR5</gameedition>
+  <settings>67e25032-2a4e-42ca-97fa-69f7f608236c</settings>
+  <customdatadirectorynames />
+  <nuyen>10000</nuyen>
+  <customstate>
+    <sentinel guid="custom-drug-unrelated-state">keep-nested-structure</sentinel>
+  </customstate>
+  <drugs />
+  <expenses />
+</character>

@@ -60,6 +60,7 @@ public class Sr5DowntimeCalendarWizardPage : NativePageBase
             ItemsSource = new[] { Text("Add next week"), Text("Edit week"), Text("Delete week") }, SelectedIndex = 0,
             BackgroundColor = NativeTheme.Surface, TextColor = NativeTheme.Text
         };
+        SemanticProperties.SetDescription(_operation, Text("Calendar action"));
         _operation.SelectedIndexChanged += (_, _) => RefreshEnabledState();
         body.Add(NativeTheme.FieldLabel(Text("Action")));
         body.Add(_operation);
@@ -68,6 +69,7 @@ public class Sr5DowntimeCalendarWizardPage : NativePageBase
             AutomationId = "sr5-downtime-calendar-week", Title = Text("Exact saved week"),
             BackgroundColor = NativeTheme.Surface, TextColor = NativeTheme.Text
         };
+        SemanticProperties.SetDescription(_weekPicker, Text("Exact saved week"));
         _weekPicker.SelectedIndexChanged += (_, _) => SelectWeek();
         body.Add(NativeTheme.FieldLabel(Text("Saved week")));
         body.Add(_weekPicker);
@@ -79,16 +81,19 @@ public class Sr5DowntimeCalendarWizardPage : NativePageBase
                     CharacterCareerCalendarRules.FirstWeekMinimumYear,
                     CharacterCareerCalendarRules.FirstWeekMaximumYear).ToString(CultureInfo.InvariantCulture)
         };
+        SemanticProperties.SetDescription(_year, Text("First year (empty calendar only)"));
         _week = new Entry
         {
             AutomationId = "sr5-downtime-calendar-iso-week", Keyboard = Keyboard.Numeric, MaxLength = 2,
             BackgroundColor = NativeTheme.Surface, TextColor = NativeTheme.Text, Text = "1"
         };
+        SemanticProperties.SetDescription(_week, Text("First ISO week"));
         body.Add(NativeTheme.FieldLabel(Text("First year (empty calendar only)")));
         body.Add(_year);
         body.Add(NativeTheme.FieldLabel(Text("First ISO week")));
         body.Add(_week);
         _notes = NativeTheme.TextArea("sr5-downtime-calendar-notes", Text("Exact week notes"), Text("Downtime notes"));
+        SemanticProperties.SetDescription(_notes, Text("Downtime notes"));
         body.Add(NativeTheme.FieldLabel(Text("Notes (edit only)")));
         body.Add(_notes);
         _notesColor = new Entry
@@ -97,10 +102,12 @@ public class Sr5DowntimeCalendarWizardPage : NativePageBase
             BackgroundColor = NativeTheme.Surface, TextColor = NativeTheme.Text,
             Text = CharacterCareerCalendarRules.DefaultNotesColor
         };
+        SemanticProperties.SetDescription(_notesColor, Text("Notes color (edit only)"));
         body.Add(NativeTheme.FieldLabel(Text("Notes color (edit only)")));
         body.Add(_notesColor);
         _review = NativeTheme.PrimaryButton(Text("Create exact preview"));
         _review.AutomationId = "sr5-downtime-calendar-review";
+        SemanticProperties.SetDescription(_review, Text("Create exact preview"));
         _review.Clicked += async (_, _) => await RunAsync(ReviewAsync);
         body.Add(_review);
         _preview = NativeTheme.Body(Text("No reviewed change."), NativeTheme.Muted);
@@ -108,10 +115,12 @@ public class Sr5DowntimeCalendarWizardPage : NativePageBase
         body.Add(NativeTheme.Card(_preview));
         _confirm = NativeTheme.SecondaryButton(Text("Confirm reviewed preview"));
         _confirm.AutomationId = "sr5-downtime-calendar-confirm";
+        SemanticProperties.SetDescription(_confirm, Text("Confirm reviewed preview"));
         _confirm.Clicked += async (_, _) => await RunAsync(ConfirmAsync);
         body.Add(_confirm);
         _apply = NativeTheme.PrimaryButton(Text("Save confirmed change"));
         _apply.AutomationId = "sr5-downtime-calendar-apply";
+        SemanticProperties.SetDescription(_apply, Text("Save confirmed change"));
         _apply.Clicked += async (_, _) => await RunAsync(ApplyAsync);
         body.Add(_apply);
         _status = NativeTheme.Body(string.Empty, NativeTheme.Muted);
@@ -125,6 +134,7 @@ public class Sr5DowntimeCalendarWizardPage : NativePageBase
         body.Add(NativeTheme.Card(_receiptStatus));
         _clear = NativeTheme.SecondaryButton(Text("Start another calendar change"));
         _clear.AutomationId = "sr5-downtime-calendar-clear-applied";
+        SemanticProperties.SetDescription(_clear, Text("Start another calendar change"));
         _clear.Clicked += async (_, _) => await RunAsync(ClearAppliedAsync);
         body.Add(_clear);
         Content = new ScrollView { Content = body };

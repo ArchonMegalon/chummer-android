@@ -1,5 +1,8 @@
 using Chummer.Android.Platform;
 using Chummer.Android.Native;
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+using Chummer.Android.Proof;
+#endif
 using Chummer.Application.Characters;
 using Chummer.Application.LifeModules;
 using Chummer.Application.Tools;
@@ -29,6 +32,9 @@ public static class MauiProgram
             .UseMauiApp<App>();
 
         builder.Services.AddSingleton<IAndroidDocumentService, AndroidDocumentService>();
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+        builder.Services.AddSingleton<Api36ProofStatePublisher>();
+#endif
         builder.Services.AddSingleton<IAndroidImageDocumentService, AndroidImageDocumentService>();
         builder.Services.AddSingleton<IAndroidLinkedCharacterFileService, AndroidLinkedCharacterFileService>();
         builder.Services.AddSingleton<IAndroidSystemService, AndroidSystemService>();
@@ -100,6 +106,16 @@ public static class MauiProgram
         builder.Services.AddSingleton<ISr5CareerCyberwareWorkspaceStore,
             AndroidSr5CareerCyberwareWorkspaceStore>();
         builder.Services.AddSingleton<Sr5CareerCyberwarePurchaseService>();
+        builder.Services.AddSingleton<ISr5CareerCustomDrugRecipeCheckpointStore,
+            PreferencesSr5CareerCustomDrugRecipeCheckpointStore>();
+        builder.Services.AddSingleton<ISr5CareerCustomDrugWorkspaceStore,
+            AndroidSr5CareerCustomDrugWorkspaceStore>();
+        builder.Services.AddSingleton<Sr5CareerCustomDrugRecipeService>();
+        builder.Services.AddSingleton<ISr5CareerVehicleWorkshopCheckpointStore,
+            PreferencesSr5CareerVehicleWorkshopCheckpointStore>();
+        builder.Services.AddSingleton<ISr5CareerVehicleWorkshopWorkspaceStore,
+            AndroidSr5CareerVehicleWorkshopWorkspaceStore>();
+        builder.Services.AddSingleton<Sr5CareerVehicleWorkshopService>();
         builder.Services.AddSingleton(new HttpClient
         {
             BaseAddress = new Uri("https://chummer.run"),

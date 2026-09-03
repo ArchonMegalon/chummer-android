@@ -208,6 +208,31 @@ public sealed class Sr5AfterRunSettlementCheckpointStore
         return found;
     }
 
+    internal bool TryReadOwnedRecovery(
+        out Sr5AfterRunSettlementCheckpoint checkpoint,
+        out string blocker)
+    {
+        if (!TryRead(out checkpoint, out blocker))
+        {
+            return false;
+        }
+
+        bool owned = _authority is not null
+            && (checkpoint.Phase == Sr5CareerCheckpointPhase.Reviewed
+                ? _authority.OwnsReviewed(checkpoint)
+                : _authority.OwnsCurrentRunner(checkpoint));
+        if (owned)
+        {
+            blocker = string.Empty;
+            return true;
+        }
+
+        checkpoint = null!;
+        blocker =
+            "The durable After Run checkpoint does not belong to the exact current owner, runner and saved revision; it remains replay-blocking.";
+        return false;
+    }
+
     public bool TryCreate(
         Sr5AfterRunSettlementCheckpoint checkpoint,
         out Sr5AfterRunSettlementCheckpoint stored,

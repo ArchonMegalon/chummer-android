@@ -27,6 +27,10 @@ internal static class Program
             (nameof(BuildPageProjectsExactlyOneLifecycleRouteAsync), BuildPageProjectsExactlyOneLifecycleRouteAsync),
             (nameof(CreationIdentityGapFailsClosedAsync), CreationIdentityGapFailsClosedAsync),
             (nameof(DurableSaveNoticeFailsClosedAcrossStateChangesAsync), DurableSaveNoticeFailsClosedAcrossStateChangesAsync),
+            (nameof(ExactWorkspaceAuthoritySnapshotRejectsEveryHostileBindingAsync), ExactWorkspaceAuthoritySnapshotRejectsEveryHostileBindingAsync),
+#if DEBUG
+            (nameof(HomeAppearanceAuthorityRefreshFailsClosedForEveryHostileBindingAsync), HomeAppearanceAuthorityRefreshFailsClosedForEveryHostileBindingAsync),
+#endif
             (nameof(AuthoritativeCreateReusesExactlyOnePresenterShellSyncAsync), AuthoritativeCreateReusesExactlyOnePresenterShellSyncAsync),
             (nameof(AmbiguousOrFailedCreateRetainsFullAndroidShellSyncAsync), AmbiguousOrFailedCreateRetainsFullAndroidShellSyncAsync),
             (nameof(PlayReviewPolicyEnforcesUsageVersionAndCooldownAsync), PlayReviewPolicyEnforcesUsageVersionAndCooldownAsync),
@@ -41,6 +45,7 @@ internal static class Program
             (nameof(CreationDashboardReadyMarkerRequiresCurrentTerminalAuthorityAsync), CreationDashboardReadyMarkerRequiresCurrentTerminalAuthorityAsync),
             (nameof(ExactTypedCreationAuthorityRehydratesConservativeStageAsync), ExactTypedCreationAuthorityRehydratesConservativeStageAsync),
             (nameof(ResourcesAuxiliaryStateDigestUsesRawLowerSha256Async), ResourcesAuxiliaryStateDigestUsesRawLowerSha256Async),
+            (nameof(ResourcesRawCharacterXmlDigestNormalizationFailsClosedAsync), ResourcesRawCharacterXmlDigestNormalizationFailsClosedAsync),
             (nameof(ResourcesStageRehydrationRejectsEveryHostileAuthorityShapeAsync), ResourcesStageRehydrationRejectsEveryHostileAuthorityShapeAsync),
             (nameof(CompletedCreationProjectionSurvivesADeferredUiConsumerAsync), CompletedCreationProjectionSurvivesADeferredUiConsumerAsync),
             (nameof(RejectedCreationProjectionForcesCurrentBindingRefreshAsync), RejectedCreationProjectionForcesCurrentBindingRefreshAsync),
@@ -106,6 +111,128 @@ internal static class Program
             "The missing Creation Identity contract was not exposed explicitly.");
         return Task.CompletedTask;
     }
+
+    private static Task ExactWorkspaceAuthoritySnapshotRejectsEveryHostileBindingAsync()
+    {
+        var workspaceId = new CharacterWorkspaceId("proof-workspace");
+        CharacterOverviewState state = NewCreationOverview(workspaceId, 17, 17);
+        string payloadSha256 = new('a', 64);
+        var authority = new NativeWorkspaceAuthoritySnapshot(
+            workspaceId.Value,
+            state.ContentRevision,
+            state.SavedRevision,
+            payloadSha256,
+            new string('b', 64));
+        Require(
+            RunnerSessionCoordinator.ExactWorkspaceAuthoritySnapshotMatches(
+                authority,
+                state,
+                workspaceId,
+                17,
+                17,
+                payloadSha256),
+            "The exact current workspace authority was rejected.");
+
+        (string Name, NativeWorkspaceAuthoritySnapshot? Authority)[] hostile =
+        [
+            ("null", null),
+            ("workspace", authority with { WorkspaceId = "other-workspace" }),
+            ("content revision", authority with { ContentRevision = 18 }),
+            ("saved revision", authority with { SavedRevision = 16 }),
+            ("payload", authority with { PayloadSha256 = new string('c', 64) })
+        ];
+        foreach ((string name, NativeWorkspaceAuthoritySnapshot? candidate) in hostile)
+        {
+            Require(
+                !RunnerSessionCoordinator.ExactWorkspaceAuthoritySnapshotMatches(
+                    candidate,
+                    state,
+                    workspaceId,
+                    17,
+                    17,
+                    payloadSha256),
+                $"Hostile {name} authority matched the exact workspace binding.");
+        }
+
+        (string Name, CharacterOverviewState State)[] stateDrift =
+        [
+            ("workspace", NewCreationOverview(
+                new CharacterWorkspaceId("other-workspace"), 17, 17)),
+            ("content revision", NewCreationOverview(workspaceId, 18, 17)),
+            ("saved revision", NewCreationOverview(workspaceId, 17, 16))
+        ];
+        foreach ((string name, CharacterOverviewState candidate) in stateDrift)
+        {
+            Require(
+                !RunnerSessionCoordinator.ExactWorkspaceAuthoritySnapshotMatches(
+                    authority,
+                    candidate,
+                    workspaceId,
+                    17,
+                    17,
+                    payloadSha256),
+                $"Hostile state-side {name} drift matched the exact workspace binding.");
+        }
+        return Task.CompletedTask;
+    }
+
+#if DEBUG
+    private static Task HomeAppearanceAuthorityRefreshFailsClosedForEveryHostileBindingAsync()
+    {
+        var workspaceId = new CharacterWorkspaceId("home-appearance-workspace");
+        CharacterOverviewState state = NewCreationOverview(workspaceId, 23, 23);
+        var current = new NativeWorkspaceAuthoritySnapshot(
+            workspaceId.Value,
+            state.ContentRevision,
+            state.SavedRevision,
+            new string('a', 64),
+            new string('b', 64));
+
+        Require(
+            !RunnerSessionCoordinator.ShouldRefreshWorkspaceAuthorityForPageAppearance(
+                debugE2EAuthorityEnabled: false,
+                state,
+                authority: null),
+            "A normal product appearance attempted to activate the debug E2E authority surface.");
+        Require(
+            !RunnerSessionCoordinator.ShouldRefreshWorkspaceAuthorityForPageAppearance(
+                debugE2EAuthorityEnabled: true,
+                state,
+                current),
+            "An exact current authority scheduled a redundant page-appearance read.");
+        Require(
+            RunnerSessionCoordinator.ShouldRefreshWorkspaceAuthorityForPageAppearance(
+                debugE2EAuthorityEnabled: true,
+                state,
+                authority: null),
+            "A missing E2E authority was not reacquired for the appearing Runners page.");
+
+        NativeWorkspaceAuthoritySnapshot[] hostile =
+        [
+            current with { WorkspaceId = "foreign-workspace" },
+            current with { ContentRevision = 24 },
+            current with { SavedRevision = 22 }
+        ];
+        foreach (NativeWorkspaceAuthoritySnapshot authority in hostile)
+        {
+            Require(
+                RunnerSessionCoordinator.ShouldRefreshWorkspaceAuthorityForPageAppearance(
+                    debugE2EAuthorityEnabled: true,
+                    state,
+                    authority),
+                "A stale or foreign cached authority suppressed the exact appearance refresh.");
+        }
+
+        CharacterOverviewState noWorkspace = state with { WorkspaceId = null };
+        Require(
+            !RunnerSessionCoordinator.ShouldRefreshWorkspaceAuthorityForPageAppearance(
+                debugE2EAuthorityEnabled: true,
+                noWorkspace,
+                authority: null),
+            "An appearance without an active workspace attempted an authority read.");
+        return Task.CompletedTask;
+    }
+#endif
 
     private static Task ExactTypedCreationAuthorityRehydratesConservativeStageAsync()
     {
@@ -317,6 +444,39 @@ internal static class Program
             Require(
                 !BuildPageUiProjection.HasExactTypedResourcesAuthority(load, fixture.Overview),
                 $"The {name} Resources auxiliary digest escaped the exact raw lowercase SHA-256 boundary.");
+        }
+        return Task.CompletedTask;
+    }
+
+    private static Task ResourcesRawCharacterXmlDigestNormalizationFailsClosedAsync()
+    {
+        string canonical = "sha256:" + new string('a', 64);
+        Require(
+            CreationResourcesPhoneAuthority.TryNormalizeRawCharacterXmlSha256(
+                canonical,
+                out string normalized)
+            && normalized == new string('a', 64),
+            "The canonical Resources raw-XML digest was not normalized exactly.");
+
+        string?[] hostile =
+        [
+            null,
+            string.Empty,
+            "sha256:",
+            "sha256:" + new string('a', 63),
+            "sha256:" + new string('a', 65),
+            "sha256:" + new string('A', 64),
+            "sha512:" + new string('a', 64),
+            canonical + "\n"
+        ];
+        foreach (string? candidate in hostile)
+        {
+            Require(
+                !CreationResourcesPhoneAuthority.TryNormalizeRawCharacterXmlSha256(
+                    candidate,
+                    out string rejected)
+                && rejected == string.Empty,
+                $"Malformed Resources raw-XML digest '{candidate ?? "<null>"}' was normalized.");
         }
         return Task.CompletedTask;
     }

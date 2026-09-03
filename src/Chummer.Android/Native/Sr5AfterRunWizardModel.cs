@@ -176,6 +176,7 @@ public sealed record Sr5AfterRunReviewAcknowledgements(
     bool GmApprovalReviewed,
     bool OwnerApprovalReviewed)
 {
+    [JsonIgnore]
     public bool AllReviewed => RunContextReviewed
         && RewardsReviewed
         && ConsequencesReviewed

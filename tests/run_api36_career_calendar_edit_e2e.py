@@ -15,6 +15,7 @@ import uuid
 import xml.etree.ElementTree as ET
 
 import run_api36_editing_e2e as shared
+import api36_proof_state as proof_state
 
 
 CONTROLS = (
@@ -51,18 +52,36 @@ def prepare_runner(
     device: shared.Device,
     fixture_name: str,
     fixture_sha256: str,
-) -> tuple[shared.LaunchState, shared.WorkspaceAuthority]:
+    proof_expectation: proof_state.ProofBuildExpectation | None = None,
+) -> tuple[
+    shared.LaunchState,
+    shared.WorkspaceAuthority,
+    proof_state.ImportProofStateSnapshot | None,
+]:
     launch = shared.launch_app(device)
     shared.wait_for_phone_runners(device, timeout=120)
     device.tap("home-open-file")
     shared.select_android_document(device, fixture_name)
-    device.wait("CareerCalendarEditE2E", timeout=120)
+    import_proof = (
+        proof_state.wait_for_import_activation(
+            device,
+            expected=proof_expectation,
+            content_sha256=fixture_sha256,
+            timeout=120,
+        )
+        if proof_expectation is not None
+        else None
+    )
+    # The long Career sheet can expose the imported alias below the phone
+    # viewport. Import activation and the immutable Runner route are the
+    # authoritative transition; payload identity is verified from the exact
+    # workspace bytes immediately after returning to the Runners list.
     shared.wait_for_phone_runner_route(device, created=True, timeout=120)
     shared.tap_phone_destination(device, "phone-destination-runners")
     shared.wait_for_phone_runners(device, timeout=120)
     authority = shared.read_phone_workspace_authority(device)
     shared.require_import_authority(authority, fixture_sha256)
-    return launch, authority
+    return launch, authority, import_proof
 
 
 def open_page(device: shared.Device) -> None:
@@ -218,7 +237,11 @@ def prove_calendar_crud(
     fixture_sha256: str,
 ) -> dict[str, object]:
     device.shell("pm", "clear", shared.PACKAGE)
-    initial_launch, imported = prepare_runner(device, fixture.name, fixture_sha256)
+    initial_launch, imported, _ = prepare_runner(
+        device,
+        fixture.name,
+        fixture_sha256,
+    )
     open_page(device)
     device.set_text(
         "career-calendar-notes",

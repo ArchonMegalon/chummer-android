@@ -1,6 +1,9 @@
 using Chummer.Contracts.Characters;
 using Chummer.Presentation.Overview;
 using static Chummer.Android.Native.Sr5CareerFlowStrings;
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+using Chummer.Android.Proof;
+#endif
 
 namespace Chummer.Android.Native;
 
@@ -18,9 +21,15 @@ public sealed class Sr5TableWizardPage : NativePageBase
     private Sr5TableWizardSession? _session;
     private Sr5TableWizardSnapshot? _snapshot;
     private Sr5TableWizardTransactionJournal? _transaction;
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+    private Sr5TableWizardCheckpointReadStatus _checkpointReadStatus =
+        Sr5TableWizardCheckpointReadStatus.Empty;
+#endif
     private string? _notice;
     private bool _loading;
     private long _loadVersion;
+
+    internal Sr5TableWizardLane Lane => _lane;
 
     public Sr5TableWizardPage(
         RunnerSessionCoordinator coordinator,
@@ -71,7 +80,7 @@ public sealed class Sr5TableWizardPage : NativePageBase
         _body.Add(NativeTheme.Body(
             _lane == Sr5TableWizardLane.BeforeRun
                 ? Text("Review one exact point of Edge use before the run. Loadout, preparation, contacts, and commitments remain unavailable until they have typed authority.")
-                : Text("Use exact Edge and direct Weapon-fire actions without opening unrestricted runner editing."),
+                : Text("Use exact Edge, direct Weapon-fire, and Physical or Stun damage actions without opening unrestricted runner editing."),
             NativeTheme.Muted));
         if (_lane == Sr5TableWizardLane.BeforeRun)
             AddCapabilityScope(Sr5CareerRunCapabilityCatalog.BeforeRun);
@@ -79,18 +88,31 @@ public sealed class Sr5TableWizardPage : NativePageBase
         if (_loading)
         {
             AddStatus(Text("Loading exact table authority…"), "sr5-table-wizard-loading", NativeTheme.Muted);
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+            PublishApi36ProofState("loading", settled: false);
+#endif
             return;
         }
         if (_snapshot is null || _session is null)
         {
+            bool saveRequired = Coordinator.State.IsDirty
+                                || Coordinator.State.ContentRevision
+                                != Coordinator.State.SavedRevision;
             AddStatus(
-                Text("Exact SR5 table authority is unavailable. No fallback action was opened."),
-                "sr5-table-wizard-unavailable",
+                saveRequired
+                    ? Text("Save this runner before opening a table action. No review or resumable transaction was opened.")
+                    : Text("Exact SR5 table authority is unavailable. No fallback action was opened."),
+                saveRequired
+                    ? "sr5-table-wizard-save-required"
+                    : "sr5-table-wizard-unavailable",
                 NativeTheme.Danger);
             Button retry = NativeTheme.SecondaryButton(Text("Retry"));
             retry.AutomationId = "sr5-table-wizard-retry";
             retry.Clicked += async (_, _) => await ReloadAsync();
             _body.Add(retry);
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+            PublishApi36ProofState("unavailable", settled: true);
+#endif
             return;
         }
 
@@ -102,6 +124,9 @@ public sealed class Sr5TableWizardPage : NativePageBase
                 Text("The saved runner changed. Return to Career and reopen this table wizard."),
                 "sr5-table-wizard-stale",
                 NativeTheme.Danger);
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+            PublishApi36ProofState("stale", settled: true);
+#endif
             return;
         }
 
@@ -126,6 +151,9 @@ public sealed class Sr5TableWizardPage : NativePageBase
         if (_transaction is { Phase: Sr5TableWizardTransactionPhase.Applied, Receipt: { } receipt })
         {
             AddReceipt(receipt);
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+            PublishApi36ProofState("receipt-ready", settled: true);
+#endif
             return;
         }
         if (_transaction is { Phase: Sr5TableWizardTransactionPhase.Applying })
@@ -134,6 +162,9 @@ public sealed class Sr5TableWizardPage : NativePageBase
                 Text("The prior confirmation is locked because its exact postcondition could not be classified. Reload the current runner before retrying."),
                 "sr5-table-wizard-applying-conflict",
                 NativeTheme.Danger);
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+            PublishApi36ProofState("conflict", settled: true);
+#endif
             return;
         }
         if (_transaction is { Phase: Sr5TableWizardTransactionPhase.Reviewed } reviewed
@@ -177,7 +208,44 @@ public sealed class Sr5TableWizardPage : NativePageBase
             }
         }
 
-        if (state.Snapshot.Actions.Count == 0)
+        bool hasDamageActions = false;
+        if (_lane == Sr5TableWizardLane.Playtime
+            && Coordinator.State.ActiveConditionMonitor is { CareerEditable: true } conditionMonitor)
+        {
+            ConditionMonitorTrackState[] damageTracks = conditionMonitor.Tracks
+                .Where(track => track is not null
+                                && Sr5PlaytimeDamageIntegrity.IsSupportedTrack(track.Track)
+                                && !track.ActsAsAlternateTrack
+                                && track.EditableMaximum > 0
+                                && track.Filled >= 0
+                                && track.Filled <= track.EditableMaximum)
+                .GroupBy(static track => track.Track)
+                .Where(static group => group.Count() == 1)
+                .Select(static group => group.Single())
+                .OrderBy(static track => track.Track)
+                .ToArray();
+            if (damageTracks.Length > 0)
+            {
+                hasDamageActions = true;
+                _body.Add(NativeTheme.Eyebrow(Text("Condition tracks")));
+                foreach (ConditionMonitorTrackState track in damageTracks)
+                {
+                    string token = Sr5PlaytimeDamageWizardPage.Token(track.Track);
+                    _body.Add(NativeTheme.NavigationRow(
+                        Format("Set {0} damage", track.Label),
+                        Format("Exact saved boxes {0} / {1} · review and receipt required",
+                            track.Filled,
+                            track.EditableMaximum),
+                        () => Navigation.PushAsync(new Sr5PlaytimeDamageWizardPage(
+                            Coordinator,
+                            track.Track,
+                            state.Snapshot.WorkspaceId)),
+                        automationId: $"sr5-table-playtime-damage-{token}"));
+                }
+            }
+        }
+
+        if (state.Snapshot.Actions.Count == 0 && !hasDamageActions)
         {
             AddStatus(
                 Text("No exact table-safe action is available for this runner state."),
@@ -186,11 +254,34 @@ public sealed class Sr5TableWizardPage : NativePageBase
         }
 
         Label boundary = NativeTheme.Body(
-            Text("Selection saves a digest-bound review draft. Apply still rechecks workspace revision and uses only the existing typed Edge or Weapon request."),
+            Text("Selection saves a digest-bound review draft. Apply rechecks the exact workspace revision and uses only typed Edge, Weapon, or condition-track requests."),
             NativeTheme.Muted);
         boundary.AutomationId = "sr5-table-wizard-boundary";
         _body.Add(NativeTheme.Card(boundary));
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+        PublishApi36ProofState(
+            _transaction is { Phase: Sr5TableWizardTransactionPhase.Reviewed }
+            && state.Resume.Restored
+                ? "resume-ready"
+                : "ready",
+            settled: true);
+#endif
     }
+
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+    private void PublishApi36ProofState(string stage, bool settled)
+        => Api36ProofStatePublisher.TryPublishTableWizard(
+            this,
+            Coordinator,
+            PhoneShellRoutes.Runner,
+            _lane,
+            stage,
+            settled,
+            _checkpointReadStatus,
+            _session,
+            _transaction,
+            statusCode: null);
+#endif
 
     private void AddAction(Sr5TableWizardActionState action)
     {
@@ -205,11 +296,11 @@ public sealed class Sr5TableWizardPage : NativePageBase
         _body.Add(NativeTheme.NavigationRow(
             title,
             ActionDetail(action),
-            () => RunAsync(() => QuoteAsync(action.Identity)),
+            () => RunWithConditionalRefreshAsync(() => QuoteAsync(action.Identity)),
             automationId: "sr5-table-action-" + action.Identity.ActionDigest[7..19]));
     }
 
-    private async Task QuoteAsync(Sr5TableWizardActionIdentity identity)
+    private async Task<bool> QuoteAsync(Sr5TableWizardActionIdentity identity)
     {
         if (_session is null
             || !MatchesCurrent(_session.State.Snapshot)
@@ -219,12 +310,16 @@ public sealed class Sr5TableWizardPage : NativePageBase
                 Text("Table authority changed"),
                 Text("Return to Career and load the current runner revision."),
                 Text("OK"));
-            return;
+            return true;
         }
         await Navigation.PushAsync(new Sr5TableWizardQuotePage(
             Coordinator,
             _session,
             _transactionStore));
+        // The quote page owns the next visual and proof state. Refreshing this
+        // disappeared lane page after PushAsync would republish its stale
+        // `ready` state over the quote page's `quote-ready` authority.
+        return false;
     }
 
     private async Task ReloadAsync()
@@ -239,6 +334,9 @@ public sealed class Sr5TableWizardPage : NativePageBase
     {
         long version = Interlocked.Increment(ref _loadVersion);
         _loading = true;
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+        _checkpointReadStatus = Sr5TableWizardCheckpointReadStatus.Empty;
+#endif
         _notice = null;
         Refresh();
         try
@@ -256,11 +354,15 @@ public sealed class Sr5TableWizardPage : NativePageBase
             {
                 _snapshot = null;
                 _session = null;
+                _transaction = null;
                 return;
             }
 
             Sr5TableWizardCheckpointReadStatus transactionStatus =
                 _transactionStore.TryRead(out Sr5TableWizardTransactionJournal? transaction);
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+            _checkpointReadStatus = transactionStatus;
+#endif
             if (transactionStatus == Sr5TableWizardCheckpointReadStatus.Unavailable)
             {
                 _snapshot = null;
@@ -320,6 +422,7 @@ public sealed class Sr5TableWizardPage : NativePageBase
             {
                 _snapshot = null;
                 _session = null;
+                _transaction = null;
             }
         }
         finally
@@ -338,7 +441,9 @@ public sealed class Sr5TableWizardPage : NativePageBase
                true,
                Coordinator.State.Rules?.GameEdition)
            && Coordinator.State.WorkspaceId == snapshot.WorkspaceId
-           && Coordinator.State.ContentRevision == snapshot.WorkspaceRevision;
+           && Coordinator.State.ContentRevision == snapshot.WorkspaceRevision
+           && Coordinator.State.SavedRevision == snapshot.WorkspaceRevision
+           && !Coordinator.State.IsDirty;
 
     private void AddStatus(string text, string automationId, Color color)
     {
@@ -518,21 +623,36 @@ public sealed class Sr5TableWizardQuotePage : NativePageBase
 
         Button review = NativeTheme.PrimaryButton(Text("Review exact diff"));
         review.AutomationId = "sr5-table-wizard-open-review";
-        review.Clicked += async (_, _) => await RunAsync(OpenReviewAsync);
+        review.Clicked += async (_, _) => await RunWithConditionalRefreshAsync(OpenReviewAsync);
         _body.Add(review);
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+        Api36ProofStatePublisher.TryPublishTableWizard(
+            this,
+            Coordinator,
+            PhoneShellRoutes.Runner,
+            _session.State.Snapshot.Lane,
+            "quote-ready",
+            settled: true,
+            checkpointReadStatus: Sr5TableWizardCheckpointReadStatus.Empty,
+            session: _session,
+            transaction: null,
+            statusCode: null);
+#endif
     }
 
-    private async Task OpenReviewAsync()
+    private async Task<bool> OpenReviewAsync()
     {
         Sr5TableWizardSnapshot snapshot = _session.State.Snapshot;
         if (Coordinator.State.WorkspaceId != snapshot.WorkspaceId
-            || Coordinator.State.ContentRevision != snapshot.WorkspaceRevision)
+            || Coordinator.State.ContentRevision != snapshot.WorkspaceRevision
+            || Coordinator.State.SavedRevision != snapshot.WorkspaceRevision
+            || Coordinator.State.IsDirty)
         {
             await DisplayAlertAsync(
                 Text("Runner changed"),
                 Text("Reopen Playtime and request a current quote."),
                 Text("OK"));
-            return;
+            return true;
         }
         if (!_transactionStore.TryWriteReview(
                 _session,
@@ -544,13 +664,17 @@ public sealed class Sr5TableWizardQuotePage : NativePageBase
                 Text("Review unavailable"),
                 Text("The exact quote was not opened because its durable review could not be saved and verified."),
                 Text("OK"));
-            return;
+            return true;
         }
         await Navigation.PushAsync(new Sr5TableWizardReviewPage(
             Coordinator,
             _session,
             _transactionStore,
             review!));
+        // The review page owns the next visual and proof state. Rebuilding this
+        // disappeared quote page after PushAsync would publish `quote-ready`
+        // over the review page's `review-ready` authority.
+        return false;
     }
 }
 
@@ -586,7 +710,7 @@ public sealed class Sr5TableWizardReviewPage : NativePageBase
             : Sr5CareerWizardRoutes.PlaytimeReview;
         _confirm = NativeTheme.PrimaryButton(Text("Confirm and save exact action"));
         _confirm.AutomationId = "sr5-table-wizard-confirm";
-        _confirm.Clicked += async (_, _) => await RunAsync(ConfirmAsync);
+        _confirm.Clicked += async (_, _) => await RunWithConditionalRefreshAsync(ConfirmAsync);
         Content = new ScrollView { Content = _body };
     }
 
@@ -626,9 +750,12 @@ public sealed class Sr5TableWizardReviewPage : NativePageBase
         _body.Add(NativeTheme.Body(
             Text("Confirming does not use a generic editor. It sends the exact typed request through the existing revision-checked save boundary."),
             NativeTheme.Muted));
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+        PublishApi36ProofState(current ? "review-ready" : "stale", settled: true);
+#endif
     }
 
-    private async Task ConfirmAsync()
+    private async Task<bool> ConfirmAsync()
     {
         Sr5TableWizardState state = _session.State;
         Sr5TableWizardActionState selected = state.SelectedAction
@@ -639,7 +766,7 @@ public sealed class Sr5TableWizardReviewPage : NativePageBase
                 Text("Runner changed"),
                 Text("Reopen the table wizard and review the current runner revision."),
                 Text("OK"));
-            return;
+            return true;
         }
 
         if (!_transactionStore.TryBeginApplying(
@@ -650,9 +777,12 @@ public sealed class Sr5TableWizardReviewPage : NativePageBase
                 Text("Confirmation already claimed"),
                 Text("This exact review is stale, already applying, or already has a receipt. Reopen Playtime to recover it."),
                 Text("OK"));
-            return;
+            return true;
         }
         _transaction = applying!;
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+        PublishApi36ProofState("applying", settled: false);
+#endif
 
         long expectedRevision = state.Snapshot.WorkspaceRevision;
         if (selected.Identity.Kind == Sr5TableWizardActionKind.FireWeapon)
@@ -681,10 +811,13 @@ public sealed class Sr5TableWizardReviewPage : NativePageBase
                 Text("Save not verified"),
                 Text("The exact next-revision postcondition was not observed. The Applying journal remains locked for restart recovery."),
                 Text("OK"));
-            return;
+            return true;
         }
 
         _transaction = applied!;
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+        PublishApi36ProofState("applied", settled: true);
+#endif
         await DisplayAlertAsync(
             Text("Table action saved"),
             Format(
@@ -692,8 +825,66 @@ public sealed class Sr5TableWizardReviewPage : NativePageBase
                 applied!.Receipt!.AppliedWorkspaceRevision,
                 Sr5TableWizardPage.ShortDigest(applied.Receipt.ReceiptDigest)),
             Text("OK"));
-        await Navigation.PopAsync();
-        await Navigation.PopAsync();
+        await ReturnToOwningLaneAsync();
+        // The Playtime lane owns the final receipt and proof state. Refreshing
+        // this disappeared review page would publish a stale review over it.
+        return false;
+    }
+
+    private async Task ReturnToOwningLaneAsync()
+    {
+        INavigation navigation = Navigation;
+        Page[] navigationStack = navigation.NavigationStack.ToArray();
+        string expectedLaneRoute = _session.State.Snapshot.Lane == Sr5TableWizardLane.BeforeRun
+            ? Sr5CareerWizardRoutes.BeforeRun
+            : Sr5CareerWizardRoutes.Playtime;
+        bool IsOwningLane(Page page)
+            => page is Sr5TableWizardPage lanePage
+               && lanePage.Lane == _session.State.Snapshot.Lane
+               && string.Equals(
+                   lanePage.AutomationId,
+                   expectedLaneRoute,
+                   StringComparison.Ordinal);
+
+        int quoteCount = navigationStack.Count(static page =>
+            page is Sr5TableWizardQuotePage);
+        if (navigationStack.Length < 2
+            || !ReferenceEquals(navigationStack[^1], this)
+            || navigationStack.Count(IsOwningLane) != 1
+            || quoteCount > 1)
+        {
+            throw new InvalidOperationException(
+                "The saved table action could not return through an exact unique lane stack.");
+        }
+
+        if (navigationStack[^2] is Sr5TableWizardQuotePage quotePage)
+        {
+            if (quoteCount != 1
+                || navigationStack.Length < 3
+                || !IsOwningLane(navigationStack[^3]))
+            {
+                throw new InvalidOperationException(
+                    "The saved table action could not return through its exact quote and lane.");
+            }
+            navigation.RemovePage(quotePage);
+        }
+        else if (quoteCount != 0 || !IsOwningLane(navigationStack[^2]))
+        {
+            throw new InvalidOperationException(
+                "The saved table action could not return to its exact resumed lane.");
+        }
+
+        Page[] preparedStack = navigation.NavigationStack.ToArray();
+        if (preparedStack.Length < 2
+            || !ReferenceEquals(preparedStack[^1], this)
+            || !IsOwningLane(preparedStack[^2])
+            || preparedStack.Any(static page => page is Sr5TableWizardQuotePage))
+        {
+            throw new InvalidOperationException(
+                "The saved table action return stack changed before navigation completed.");
+        }
+
+        await navigation.PopAsync();
     }
 
     private bool MatchesCurrent(Sr5TableWizardSnapshot snapshot)
@@ -702,7 +893,24 @@ public sealed class Sr5TableWizardReviewPage : NativePageBase
                true,
                Coordinator.State.Rules?.GameEdition)
            && Coordinator.State.WorkspaceId == snapshot.WorkspaceId
-           && Coordinator.State.ContentRevision == snapshot.WorkspaceRevision;
+           && Coordinator.State.ContentRevision == snapshot.WorkspaceRevision
+           && Coordinator.State.SavedRevision == snapshot.WorkspaceRevision
+           && !Coordinator.State.IsDirty;
+
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+    private void PublishApi36ProofState(string stage, bool settled)
+        => Api36ProofStatePublisher.TryPublishTableWizard(
+            this,
+            Coordinator,
+            PhoneShellRoutes.Runner,
+            _session.State.Snapshot.Lane,
+            stage,
+            settled,
+            Sr5TableWizardCheckpointReadStatus.Ready,
+            _session,
+            _transaction,
+            statusCode: null);
+#endif
 
     internal static string TitleFor(Sr5TableWizardActionState action)
         => action.Identity.Kind switch

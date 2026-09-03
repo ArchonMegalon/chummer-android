@@ -136,6 +136,22 @@ for required in basename chmod cmp cut dirname env git id install jq ln mkdir mk
 done
 require_command "$dotnet_command"
 
+expected_version_name="${CHUMMER_ANDROID_EXPECTED_VERSION_NAME:-}"
+expected_version_code="${CHUMMER_ANDROID_EXPECTED_VERSION_CODE:-}"
+[[ -n "$expected_version_name" && -n "$expected_version_code" ]] \
+  || fail "release-version-intent-missing"
+release_version_pair="$(python3 "$repo_dir/scripts/verify_android_release_intent.py" \
+  --project "$project_path" \
+  --expected-version-name "$expected_version_name" \
+  --expected-version-code "$expected_version_code")" \
+  || fail "release-version-intent-invalid"
+IFS=$'\t' read -r version_name version_code version_extra <<< "$release_version_pair"
+[[ -n "$version_name" && -n "$version_code" && -z "${version_extra:-}" \
+  && "$release_version_pair" == "$version_name"$'\t'"$version_code" ]] \
+  || fail "release-version-intent-ambiguous"
+unset release_version_pair expected_version_name expected_version_code version_extra
+unset CHUMMER_ANDROID_EXPECTED_VERSION_NAME CHUMMER_ANDROID_EXPECTED_VERSION_CODE
+
 workspace_root="${CHUMMER_COMPLETE_ROOT:-}"
 [[ -n "$workspace_root" && "$workspace_root" == /* ]] || fail "coherent-workspace-root-missing"
 [[ ! -L "$workspace_root" && -d "$workspace_root" ]] || fail "coherent-workspace-root-invalid"
@@ -194,12 +210,6 @@ python3 "$repo_dir/scripts/preflight_native_android_toolchain.py" \
 env "${release_test_environment[@]}" \
   python3 -m unittest discover -s "$repo_dir/tests" -v
 
-IFS=$'\t' read -r version_name version_code < <(
-  python3 "$repo_dir/scripts/read_android_version.py" "$project_path"
-)
-[[ "$version_name" == "0.1.0-preview.10" && "$version_code" == "10" ]] \
-  || fail "preview10-version-contract-drift"
-
 artifact_dir="$repo_dir/artifacts"
 mkdir -p -- "$artifact_dir"
 [[ ! -L "$artifact_dir" && "$(realpath -e -- "$artifact_dir")" == "$repo_dir/artifacts" ]] \
@@ -249,6 +259,8 @@ python3 "$repo_dir/scripts/verify_release_source_graph.py" \
   --workspace-root "$workspace_root" \
   --package-authority "$CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY" \
   --authority-root "$authority_root" \
+  --expected-version-name "$version_name" \
+  --expected-version-code "$version_code" \
   --output "$staged_graph"
 python3 "$repo_dir/scripts/verify_release_publish_output.py" \
   --publish-dir "$staged_publish_dir" \
@@ -416,6 +428,8 @@ env "${release_test_environment[@]}" \
   -p:ChummerUiKitPackageVersion="$ui_kit_version" \
   -p:AndroidSdkDirectory="$AndroidSdkDirectory" \
   -p:JavaSdkDirectory="$JavaSdkDirectory" \
+  -p:ApplicationDisplayVersion="$version_name" \
+  -p:ApplicationVersion="$version_code" \
   -p:PublishDir="$staged_publish_dir/" \
   -p:AndroidPackageFormats=aab
 
@@ -447,6 +461,8 @@ python3 "$repo_dir/scripts/verify_release_source_graph.py" \
   --workspace-root "$workspace_root" \
   --package-authority "$CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY" \
   --authority-root "$authority_root" \
+  --expected-version-name "$version_name" \
+  --expected-version-code "$version_code" \
   --verify-existing "$staged_graph"
 python3 "$repo_dir/scripts/materialize_release_package_authority.py" \
   --android-root "$repo_dir" \

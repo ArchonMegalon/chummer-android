@@ -29,8 +29,16 @@ def test_phone_surface_has_every_governed_stage_and_two_entry_points() -> None:
     assert "OpenAfterRunSettlementAsync" in career
     assert "RunnerSessionSr5AfterRunSettlementPresenter" in career
     assert 'automationId: "sr5-career-action-after-run"' in career
+    assert "() => RunAsync(OpenAfterRunSettlementAsync)" in career
+    assert "enabled: canOpenAfterRun" in career
+    assert 'blocker.AutomationId = "sr5-career-after-run-unavailable"' in career
+    assert "Sr5AfterRunSettlementEntryGuard.TryValidate" in career
     assert 'automationId: "phone-table-after-run"' in table
     assert "Sr5AfterRunSettlementWizardPage" in table
+    for surface in (career, table, read("BuildPage.cs")):
+        assert "CreateEntryDestination(Coordinator, editor)" in surface
+        assert "editor.Status == Sr5AfterRunCatalogStatus.Missing" not in surface
+    assert "TryReadOwnedRecovery" in page
     assert "GenericQuickEdit" not in career + table
 
 
@@ -184,6 +192,27 @@ def test_shared_owner_cas_receipt_and_unknown_recovery_fail_closed() -> None:
     assert "Do not replay, clear, or claim success" in coordinator
 
 
+def test_entry_routing_prefers_only_exact_owned_recovery_over_manual_intake() -> None:
+    page = read("Sr5AfterRunSettlementWizardPage.cs")
+    store = read("Sr5AfterRunSettlementCheckpointStore.cs")
+    route = page.split("internal static Page CreateEntryDestination", 1)[1]
+    route = route.split("protected override void Refresh", 1)[0]
+    owned = store.split("internal bool TryReadOwnedRecovery", 1)[1]
+    owned = owned.split("public bool TryCreate", 1)[0]
+
+    assert route.index("TryReadOwnedRecovery") < route.index(
+        "Sr5AfterRunCatalogStatus.Missing"
+    )
+    assert "string.IsNullOrWhiteSpace(recoveryBlocker)" in route
+    assert "SupportsManualAfterRunProposalEntry" in route
+    assert "Sr5AfterRunManualProposalPage" in route
+    assert "Sr5AfterRunSettlementWizardPage" in route
+    assert "checkpoint.Phase == Sr5CareerCheckpointPhase.Reviewed" in owned
+    assert "_authority.OwnsReviewed(checkpoint)" in owned
+    assert "_authority.OwnsCurrentRunner(checkpoint)" in owned
+    assert "replay-blocking" in owned
+
+
 def test_default_runtime_composition_is_explicitly_unavailable() -> None:
     runner = read("RunnerSessionCoordinator.cs")
     assert "ICharacterAfterRunSettlementService? afterRunSettlementService = null" in runner
@@ -194,7 +223,7 @@ def test_default_runtime_composition_is_explicitly_unavailable() -> None:
     assert "service.Settle(command)" in runner
 
 
-def test_physical_contract_and_driver_cannot_claim_a_pass_without_fixture() -> None:
+def test_physical_contract_and_driver_require_the_exact_governed_fixture_and_remain_non_release() -> None:
     model = read("Sr5AfterRunWizardModel.cs")
     driver = (ROOT / "tests" / "run_api36_sr5_after_run_settlement_e2e.py").read_text(
         encoding="utf-8"
@@ -210,9 +239,13 @@ def test_physical_contract_and_driver_cannot_claim_a_pass_without_fixture() -> N
         "RequiredRoutes",
     ):
         assert marker in model
-    assert '"status": "unavailable"' in driver
-    assert '"physicalDeviceProof": False' in driver
-    assert '"releaseEvidenceEligible": False' in driver
+    assert "fixture_path != DEFAULT_FIXTURE.resolve()" in driver
+    assert "load_fixture(fixture_path)" in driver
+    assert '"fixtureSha256": fixture_path' in driver
+    assert "load_and_verify_manifest" in driver
+    assert '"releaseEvidenceStatus": "source-and-apk-bound-local-build-not-release-attested"' in driver
+    assert '"status": "device-pass-source-bound"' in driver
     assert "sr5-after-run-settlement-e2e.json" in driver
-    assert "return 3" in driver
-    assert "device-pass" not in driver
+    assert '"executionStatus": "pass"' in driver
+    assert '"releaseEvidenceEligible": True' not in driver
+    assert '"status": "release-pass"' not in driver

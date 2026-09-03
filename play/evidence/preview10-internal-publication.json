@@ -1,0 +1,68 @@
+{
+  "contractName": "chummer.android.play-internal-publication-receipt/v2",
+  "recordedAtUtc": "2026-09-02T23:36:57Z",
+  "application": {
+    "name": "Chummer",
+    "packageId": "com.myexternalbrain.chummer",
+    "playApplicationId": "4975957268242186974"
+  },
+  "track": {
+    "name": "internal",
+    "consoleName": "Internal testing",
+    "trackId": "4700678198570024687",
+    "active": true,
+    "joinUrl": "https://play.google.com/apps/internaltest/4700678198570024687"
+  },
+  "release": {
+    "name": "10 (0.1.0-preview.10)",
+    "versionCode": 10,
+    "versionName": "0.1.0-preview.10",
+    "status": "Available to internal testers",
+    "releasedAt": {
+      "consoleDisplay": "3 Sept 01:04",
+      "normalizedUtc": null,
+      "precision": "console_minute",
+      "timeZoneAuthority": "not_exposed_by_browser_readback"
+    },
+    "supportedAndroidDevices": 13550
+  },
+  "artifact": {
+    "aabFileName": "chummer-android-0.1.0-preview.10-upload.aab",
+    "aabSha256": "964d81b5d4463e0bd1c6de8172a7a12655e982897202b0151dccc69a566aaae1",
+    "aabSizeBytes": 29197875,
+    "sourceGraphFileName": "chummer-android-0.1.0-preview.10-source-graph.json",
+    "sourceGraphSha256": "257ce53d912aea02416a64288029a589324e037464f76883d925b678b7364a24",
+    "sourceGraphContract": "chummer.android.release-source-graph/v2",
+    "sourceGraphGeneratedAtUtc": "2026-09-02T22:17:57.971042Z",
+    "androidSourceCommit": "f276d4af2d936760f6d21871f281b1f7dd50e261",
+    "androidSourceTree": "6e03b31cf4b1b85225e6d7134db4cc0482210b5e"
+  },
+  "browserReadback": {
+    "surface": "google_play_console_internal_testing",
+    "status": "observed",
+    "fieldsObserved": ["application", "track", "release", "join_url"],
+    "credentialOrSessionDataRecorded": false
+  },
+  "artifactLinkage": {
+    "basis": "local_build_sidecar_plus_operator_upload_action",
+    "localBuildSidecarRecorded": true,
+    "playConsoleExposesArtifactDigest": false,
+    "artifactDownloadedBackFromPlay": false,
+    "sourceGraphRetrievedFromPlay": false
+  },
+  "authorization": {
+    "scope": "google_play_internal_testing_only",
+    "productionAuthorized": false,
+    "testerRosterMutationAuthorized": false
+  },
+  "doesNotClaim": [
+    "tester_installation",
+    "production_rollout",
+    "public_release",
+    "tablet_support",
+    "full_edit_parity",
+    "live_rook_rule_authority",
+    "play_artifact_digest_readback",
+    "play_artifact_byte_retrievability"
+  ]
+}

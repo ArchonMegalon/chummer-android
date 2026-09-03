@@ -5,6 +5,9 @@ using Android.Provider;
 using Microsoft.Maui.ApplicationModel;
 using System.Buffers;
 using System.Security.Cryptography;
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+using Chummer.Android.Proof;
+#endif
 
 namespace Chummer.Android.Platform;
 
@@ -14,33 +17,51 @@ public sealed class AndroidDocumentService : IAndroidDocumentService
 
     public async Task<AndroidDocument?> OpenAsync(CancellationToken cancellationToken)
     {
-        Activity activity = Microsoft.Maui.ApplicationModel.Platform.CurrentActivity
-            ?? throw new InvalidOperationException("No active Android activity is available.");
-        Intent intent = new(Intent.ActionOpenDocument);
-        intent.AddCategory(Intent.CategoryOpenable);
-        intent.SetType("*/*");
-        intent.AddFlags(ActivityFlags.GrantReadUriPermission | ActivityFlags.GrantPersistableUriPermission);
-        intent.PutExtra(Intent.ExtraMimeTypes, new[] { "application/xml", "text/xml", "application/json", "application/octet-stream" });
-
-        global::Android.Net.Uri? uri = await DocumentIntentBroker.LaunchAsync(
-            activity,
-            intent,
-            DocumentIntentBroker.OpenRequestCode,
-            cancellationToken);
-        if (uri is null)
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+        Api36ProofStatePublisher.TryBeginDocumentImport();
+#endif
+        try
         {
-            return null;
-        }
+            Activity activity = Microsoft.Maui.ApplicationModel.Platform.CurrentActivity
+                ?? throw new InvalidOperationException("No active Android activity is available.");
+            Intent intent = new(Intent.ActionOpenDocument);
+            intent.AddCategory(Intent.CategoryOpenable);
+            intent.SetType("*/*");
+            intent.AddFlags(ActivityFlags.GrantReadUriPermission | ActivityFlags.GrantPersistableUriPermission);
+            intent.PutExtra(Intent.ExtraMimeTypes, new[] { "application/xml", "text/xml", "application/json", "application/octet-stream" });
 
-        TryPersistDocumentGrant(activity, uri, ActivityFlags.GrantReadUriPermission);
-        await using Stream source = activity.ContentResolver?.OpenInputStream(uri)
-            ?? throw new IOException("Android did not provide a readable document stream.");
-        byte[] content = await ReadBoundedAsync(source, cancellationToken);
-        return new AndroidDocument(
-            ResolveDisplayName(activity, uri) ?? "Chummer document",
-            uri.ToString() ?? string.Empty,
-            activity.ContentResolver?.GetType(uri),
-            content);
+            global::Android.Net.Uri? uri = await DocumentIntentBroker.LaunchAsync(
+                activity,
+                intent,
+                DocumentIntentBroker.OpenRequestCode,
+                cancellationToken);
+            if (uri is null)
+            {
+                return null;
+            }
+
+            TryPersistDocumentGrant(activity, uri, ActivityFlags.GrantReadUriPermission);
+            await using Stream source = activity.ContentResolver?.OpenInputStream(uri)
+                ?? throw new IOException("Android did not provide a readable document stream.");
+            byte[] content = await ReadBoundedAsync(source, cancellationToken);
+            AndroidDocument document = new(
+                ResolveDisplayName(activity, uri) ?? "Chummer document",
+                uri.ToString() ?? string.Empty,
+                activity.ContentResolver?.GetType(uri),
+                content);
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+            Api36ProofStatePublisher.TryRecordDocumentStream(document);
+#endif
+            return document;
+        }
+        catch (Exception error)
+        {
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+            Api36ProofStatePublisher.TryRecordDocumentImportFailure(
+                "document-open-" + error.GetType().Name);
+#endif
+            throw;
+        }
     }
 
     public async Task<bool> SaveAsAsync(

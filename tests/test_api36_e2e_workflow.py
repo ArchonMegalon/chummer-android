@@ -8,6 +8,7 @@ WORKFLOW = REPO_ROOT / ".github" / "workflows" / "api36-editing-e2e.yml"
 PREVIEW_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "preview9-arm64-aab.yml"
 BUILD_SCRIPT = REPO_ROOT / "scripts" / "build-debug.sh"
 GITIGNORE = REPO_ROOT / ".gitignore"
+PLAY_RELEASE = REPO_ROOT / "docs" / "PLAY_RELEASE.md"
 COMPATIBILITY_GRAPH = {
     "ArchonMegalon/chummer6-ui":
         "732a33cb8d3c704b8a86e1249eab46508339a105",
@@ -37,6 +38,24 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         cls.preview_text = PREVIEW_WORKFLOW.read_text(encoding="utf-8")
         cls.build_script_text = BUILD_SCRIPT.read_text(encoding="utf-8")
         cls.gitignore_text = GITIGNORE.read_text(encoding="utf-8")
+        cls.play_release_text = PLAY_RELEASE.read_text(encoding="utf-8")
+
+    def test_play_release_documents_exact_wizard_gate_and_deferred_full_editing(self) -> None:
+        self.assertIn("exactly these seven digest-bound API-36 journeys", self.play_release_text)
+        for journey in (
+            "Creation Prerequisite",
+            "Career Active Skill Advance",
+            "Career Weapon Fire",
+            "Before Run Edge",
+            "Playtime Short Burst",
+            "Downtime Calendar",
+            "After Run Settlement",
+        ):
+            with self.subTest(journey=journey):
+                self.assertIn(journey, self.play_release_text)
+        self.assertIn("deferred informational evidence", self.play_release_text)
+        self.assertIn("passing seven-journey aggregate", self.play_release_text)
+        self.assertNotIn("three-journey aggregate", self.play_release_text)
 
     def test_runs_only_the_phone_beta_profile_on_api_36(self) -> None:
         self.assertIn("api-level: 36", self.text)
@@ -287,7 +306,23 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         )
         self.assertEqual("recognized", recognition["recognitionStatus"])
         self.assertEqual("not_executed", recognition["executionStatus"])
-        self.assertIsNone(recognition["matrixJourney"])
+        self.assertEqual(
+            [
+                {
+                    "route": "sr5-career/before-run",
+                    "matrixJourney": "before-run-edge",
+                    "gateStatus": "required",
+                    "executionStatus": "not_executed",
+                },
+                {
+                    "route": "sr5-career/playtime",
+                    "matrixJourney": "playtime-short-burst",
+                    "gateStatus": "required",
+                    "executionStatus": "not_executed",
+                },
+            ],
+            recognition["matrixJourneys"],
+        )
         self.assertFalse(recognition["releaseClaim"])
         self.assertEqual(0, recognition["completionCountContribution"])
 
@@ -303,6 +338,9 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         for authority in (self.text, runner, aggregate, finalizer):
             with self.subTest(authority=authority[:40]):
                 self.assertNotIn(journey_id, authority)
+        for authority in (self.text, runner):
+            with self.subTest(before_run_authority=authority[:40]):
+                self.assertIn("before-run-edge", authority)
 
         contextual = payload["generationInputs"]["contextualMutationJourneyRecognition"]
         contextual_id = "sr5-downtime-playtime-typed-transactions"
@@ -312,12 +350,44 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
             contextual["routes"],
         )
         self.assertEqual("not_executed", contextual["executionStatus"])
-        self.assertIsNone(contextual["matrixJourney"])
+        self.assertEqual(
+            [
+                {
+                    "route": route,
+                    "matrixJourney": (
+                        "downtime-calendar"
+                        if route == "sr5-career/downtime"
+                        else "playtime-short-burst"
+                    ),
+                    "gateStatus": "required",
+                    "executionStatus": "not_executed",
+                }
+                for route in ("sr5-career/downtime", "sr5-career/playtime")
+            ],
+            contextual["matrixJourneys"],
+        )
         self.assertFalse(contextual["releaseClaim"])
         self.assertEqual(0, contextual["completionCountContribution"])
         for authority in (self.text, runner, aggregate, finalizer):
             with self.subTest(contextual_authority=authority[:40]):
                 self.assertNotIn(contextual_id, authority)
+
+        after_run = payload["generationInputs"]["afterRunSettlementJourneyRecognition"]
+        self.assertEqual("sr5-after-run-settlement", after_run["journeyId"])
+        self.assertEqual("sr5-career/after-run", after_run["parentCareerLane"])
+        self.assertEqual(
+            [
+                {
+                    "route": "sr5-career/after-run/settlement",
+                    "matrixJourney": "after-run-settlement",
+                    "gateStatus": "required",
+                    "executionStatus": "not_executed",
+                }
+            ],
+            after_run["matrixJourneys"],
+        )
+        self.assertFalse(after_run["releaseClaim"])
+        self.assertEqual(0, after_run["completionCountContribution"])
 
     def test_phone_path_validates_the_pinned_phone_beta_contract(self) -> None:
         check = "python3 chummer-design/scripts/ai/validate_android_phone_beta_contract.py"
@@ -441,6 +511,22 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
                 "career-weapon-fire",
                 "tests/run_api36_career_weapon_fire_e2e.py",
             ),
+            (
+                "before-run-edge",
+                "tests/run_api36_sr5_before_run_edge_e2e.py",
+            ),
+            (
+                "playtime-short-burst",
+                "tests/run_api36_sr5_playtime_short_burst_e2e.py",
+            ),
+            (
+                "downtime-calendar",
+                "tests/run_api36_sr5_downtime_calendar_hosted_e2e.py",
+            ),
+            (
+                "after-run-settlement",
+                "tests/run_api36_sr5_after_run_settlement_hosted_e2e.py",
+            ),
         )
         matrix_block = self.text[
             self.text.index("        journey:"):
@@ -498,7 +584,9 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
             2,
             self.text.count(
                 "if: ${{ matrix.journey == 'career-active-skill-advance' || "
-                "matrix.journey == 'career-weapon-fire' }}"
+                "matrix.journey == 'career-weapon-fire' || "
+                "matrix.journey == 'before-run-edge' || "
+                "matrix.journey == 'playtime-short-burst' }}"
             ),
         )
         self.assertIn("path: chummer-presentation", self.text)
@@ -556,7 +644,7 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
             verify_block,
         )
 
-    def test_aggregate_requires_three_stable_wizard_authority_bound_receipts(self) -> None:
+    def test_aggregate_requires_every_stable_wizard_authority_bound_receipt(self) -> None:
         aggregate = self.text[self.text.index("  phone-evidence-aggregate:"):]
         self.assertIn("needs:\n      - build\n      - phone-wizard-e2e", aggregate)
         self.assertIn("if: ${{ always() }}", aggregate)
@@ -571,7 +659,7 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
             "--gate-contract chummer-android/eng/api36-sr5-wizard-gate-authority.json",
             aggregate,
         )
-        self.assertIn("exactly three passing wizard journeys", aggregate)
+        self.assertIn("every required wizard journey", aggregate)
         for authority_output in (
             "needs.build.outputs.apk-artifact-id",
             "needs.build.outputs.apk-artifact-digest",

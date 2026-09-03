@@ -55,6 +55,14 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
         self.assertIn('proofScope: "Native.CompileCheck_dependency_only"', text)
         self.assertIn("fullMauiBuild: false", text)
         self.assertIn("coreDataLangContentVerified: false", text)
+        self.assertIn(
+            'dependencyMode: "locked_package_closure_with_pinned_presentation_source"',
+            text,
+        )
+        self.assertIn("packageOnly: false", text)
+        self.assertIn("sourceCheckoutsPresent: true", text)
+        self.assertIn("ambientSiblingRootsAllowed: false", text)
+        self.assertNotIn("locked_package_no_siblings", text)
         self.assertNotIn('>"$restore_log"', text)
         self.assertNotIn('>"$build_log"', text)
         self.assertIn("persist_evidence", text)
@@ -64,6 +72,8 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
 
     def test_source_sibling_inputs_are_rejected_not_forwarded(self) -> None:
         text = BUILD.read_text(encoding="utf-8")
+        self.assertIn("require_canonical_directory CHUMMER_PRESENTATION_ROOT", text)
+        self.assertIn('"-p:ChummerPresentationRoot=$CHUMMER_PRESENTATION_ROOT"', text)
         for variable in (
             "CHUMMER_CORE_ENGINE_ROOT", "CHUMMER_RUN_SERVICES_ROOT",
             "CHUMMER_HUB_REGISTRY_ROOT", "CHUMMER_UI_KIT_ROOT",
@@ -95,6 +105,8 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
         self.assertIn("Chummer.Presentation", text)
         self.assertIn("dotnet-version: 10.0.111", text)
         self.assertIn("build-internal-phone-beta-native-compile.sh", text)
+        self.assertIn("pinned-source locked-package", text)
+        self.assertNotIn("package-only", text)
         self.assertNotIn("upload-artifact", text)
         self.assertNotIn("android-emulator", text)
         self.assertNotIn("Google Play", text)
@@ -122,7 +134,7 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
         )
 
     def test_compile_check_pass_cannot_satisfy_api36_or_play_beta_gates(self) -> None:
-        compile_contract = "chummer.android.internal-phone-beta-native-compile/v1"
+        compile_contract = "chummer.android.internal-phone-beta-native-compile/v2"
         aggregate = (REPO / "scripts/verify-api36-editing-e2e-aggregate.py").read_text(encoding="utf-8")
         finalizer = (REPO / "scripts/finalize-api36-e2e-journey-receipt.py").read_text(encoding="utf-8")
         active_workflow = (REPO / ".github/workflows/api36-editing-e2e.yml").read_text(encoding="utf-8")
@@ -232,7 +244,7 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
                 "compileProject": str(
                     root / "tests/Chummer.Android.Native.CompileCheck/Chummer.Android.Native.CompileCheck.csproj"
                 ),
-                "compiledOwnedSourceCount": 211,
+                "compiledOwnedSourceCount": 217,
                 "generatedProjectReferenceCount": 3,
                 "issues": [],
                 "repoRoot": str(root),
@@ -241,15 +253,19 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
                 "workspaceRoot": str(root.parent),
             }, sort_keys=True) + "\n",
             "compile-graph.json": json.dumps({
+                "ambientSiblingRootsAllowed": False,
                 "chummerPackageCount": 12,
-                "contractName": "chummer.android.internal-phone-beta-compile-graph/v1",
-                "dependencyMode": "locked_package_no_siblings",
+                "contractName": "chummer.android.internal-phone-beta-compile-graph/v2",
+                "dependencyMode": "locked_package_closure_with_pinned_presentation_source",
                 "doesNotAssert": ["api36_device_execution", "public_release_readiness"],
+                "packageOnly": False,
                 "projectCount": 3,
-                "projectLibraries": [
+                "presentationSourceProjectLibraries": [
                     "Chummer.Desktop.Runtime/1.0.0", "Chummer.Presentation/1.0.0",
                 ],
                 "publicationAuthorized": False,
+                "restoreLockedMode": True,
+                "sourceCheckoutsPresent": True,
                 "status": "pass",
             }, sort_keys=True) + "\n",
             "build.log": "Build succeeded.\n    0 Warning(s)\n    0 Error(s)\n",
@@ -258,10 +274,15 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
             (evidence / name).write_text(text, encoding="utf-8")
         (evidence / "authority-binding.json").write_bytes(AUTHORITY_MANIFEST.read_bytes())
 
+        presentation_root = str(root / "pinned-presentation")
         phase_commands = {
-            "authority-intake": ["python3", "verify_internal_phone_beta_package_authority.py"],
+            "authority-intake": [
+                "python3", "verify_internal_phone_beta_package_authority.py",
+                "--presentation-root", presentation_root,
+            ],
             "locked-restore": [
                 "dotnet", "restore", "--locked-mode", "--disable-parallel",
+                f"-p:ChummerPresentationRoot={presentation_root}",
                 "-p:ChummerUseLocalCompatibilityTree=false",
                 "-p:ChummerUseLockedOwnerContractPackages=true",
                 "-p:RestoreLockedMode=true", "-p:RestorePackagesWithLockFile=true",
@@ -271,9 +292,11 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
             ],
             "package-compile-graph": [
                 "python3", "verify_internal_phone_beta_compile_graph.py",
+                "--presentation-root", presentation_root,
             ],
             "serialized-native-compile": [
                 "dotnet", "build", "--no-restore", "--warnaserror", "-m:1",
+                f"-p:ChummerPresentationRoot={presentation_root}",
                 "-p:BuildInParallel=false",
                 "-p:ChummerUseLocalCompatibilityTree=false",
                 "-p:ChummerUseLockedOwnerContractPackages=true",
@@ -326,11 +349,14 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
             "authorityClass": self.receipt.AUTHORITY_CLASS,
             "publicationAuthorized": False,
             "proofScope": self.receipt.PROOF_SCOPE,
-            "dependencyMode": "locked_package_no_siblings",
-            "packageOnly": True,
+            "dependencyMode": "locked_package_closure_with_pinned_presentation_source",
+            "packageOnly": False,
             "restoreLockedMode": True,
-            "sourceCheckoutsPresent": False,
-            "siblingsAllowed": False,
+            "sourceCheckoutsPresent": True,
+            "ambientSiblingRootsAllowed": False,
+            "presentationSourceProjectLibraries": [
+                "Chummer.Desktop.Runtime/1.0.0", "Chummer.Presentation/1.0.0",
+            ],
             "serializedBuild": True,
             "sdkVersion": self.receipt.CONSUMER_SDK_VERSION,
             "producerSdkVersion": self.receipt.PRODUCER_SDK_VERSION,
@@ -525,7 +551,15 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
             ("v2-package-authority", "packageAuthoritySha256", "0" * 64),
             ("producer-sdk", "producerSdkVersion", "10.0.111"),
             ("consumer-sdk", "sdkVersion", "10.0.103"),
-            ("dependency", "siblingsAllowed", True),
+            ("dependency-mode", "dependencyMode", "locked_package_no_siblings"),
+            ("package-only", "packageOnly", True),
+            ("source-checkout", "sourceCheckoutsPresent", False),
+            ("ambient-root", "ambientSiblingRootsAllowed", True),
+            (
+                "presentation-projects",
+                "presentationSourceProjectLibraries",
+                ["Chummer.Presentation/1.0.0"],
+            ),
             ("serialization", "serializedBuild", False),
             ("phase-results", "phaseResults", {}),
             ("bounds", "executionBounds", {"perCommandSeconds": 0}),
@@ -540,6 +574,54 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
                 payload[field] = value
                 receipt.write_text(json.dumps(payload), encoding="utf-8")
                 with self.assertRaises(ValueError):
+                    self.receipt.verify_receipt(receipt)
+
+    def test_journal_cross_binds_one_canonical_presentation_root(self) -> None:
+        cases = (
+            ("missing-intake", "authority-intake"),
+            ("duplicate-graph", "package-compile-graph"),
+            ("relative-restore", "locked-restore"),
+            ("mismatched-build", "serialized-native-compile"),
+        )
+        for label, phase in cases:
+            with self.subTest(case=label), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                receipt, evidence, payload = self.seed_compile_receipt(root)
+                journal = evidence / "command-journal.jsonl"
+                rows = [
+                    json.loads(line)
+                    for line in journal.read_text(encoding="utf-8").splitlines()
+                ]
+                started = next(
+                    row for row in rows
+                    if row["phase"] == phase and row["event"] == "started"
+                )
+                command = started["command"]
+                if label == "missing-intake":
+                    index = command.index("--presentation-root")
+                    del command[index:index + 2]
+                elif label == "duplicate-graph":
+                    command.extend(("--presentation-root", str(root / "pinned-presentation")))
+                elif label == "relative-restore":
+                    index = next(
+                        index for index, argument in enumerate(command)
+                        if argument.startswith("-p:ChummerPresentationRoot=")
+                    )
+                    command[index] = "-p:ChummerPresentationRoot=../ambient-presentation"
+                else:
+                    index = next(
+                        index for index, argument in enumerate(command)
+                        if argument.startswith("-p:ChummerPresentationRoot=")
+                    )
+                    command[index] = f"-p:ChummerPresentationRoot={root / 'other-presentation'}"
+                journal.write_text(
+                    "".join(json.dumps(row, sort_keys=True) + "\n" for row in rows),
+                    encoding="utf-8",
+                )
+                self.refresh_evidence_binding(
+                    receipt, evidence, payload, "command-journal.jsonl"
+                )
+                with self.assertRaisesRegex(ValueError, "journal Presentation root"):
                     self.receipt.verify_receipt(receipt)
 
     def test_pass_receipt_binds_current_clean_android_tree_lock_assets_and_artifact(self) -> None:
@@ -636,7 +718,7 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
             receipt, evidence, payload = self.seed_compile_receipt(Path(temporary))
             graph_path = evidence / "owned-compile-graph.log"
             graph = json.loads(graph_path.read_text(encoding="utf-8"))
-            graph["compiledOwnedSourceCount"] = 210
+            graph["compiledOwnedSourceCount"] = 212
             graph_path.write_text(json.dumps(graph), encoding="utf-8")
             self.refresh_evidence_binding(
                 receipt, evidence, payload, "owned-compile-graph.log", "owned-compile-graph"
@@ -1105,6 +1187,17 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
             android, presentation, project, assets, dgspec = self.seed_compile_graph(root)
             payload = self.graph.validate_compile_graph(project, android, presentation)
             self.assertEqual("pass", payload["status"])
+            self.assertEqual(
+                "locked_package_closure_with_pinned_presentation_source",
+                payload["dependencyMode"],
+            )
+            self.assertFalse(payload["packageOnly"])
+            self.assertTrue(payload["sourceCheckoutsPresent"])
+            self.assertFalse(payload["ambientSiblingRootsAllowed"])
+            self.assertEqual(
+                ["Chummer.Desktop.Runtime/1.0.0", "Chummer.Presentation/1.0.0"],
+                payload["presentationSourceProjectLibraries"],
+            )
             extra = root / "chummer-core-engine/Chummer.Contracts/Chummer.Contracts.csproj"
             extra.parent.mkdir(parents=True)
             extra.write_text("<Project />\n", encoding="utf-8")

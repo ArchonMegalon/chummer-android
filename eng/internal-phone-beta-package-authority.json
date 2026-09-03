@@ -55,7 +55,7 @@
     },
     "releaseWorkflow": {
       "path": ".github/workflows/preview9-arm64-aab.yml",
-      "sha256": "173a710ba2a123180b802e003e681b99b7a3681b973b6fe9a5f54fadb06cce3a",
+      "sha256": "5192fc78e484a13ecd1b29e3c230770da5afd896830501f9e2d1332306b5d582",
       "dotnetVersion": "10.0.111"
     },
     "selectedAndroidConsumerSdkVersion": "10.0.111"

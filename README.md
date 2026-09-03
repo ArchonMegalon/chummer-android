@@ -91,6 +91,21 @@ keeps the selected Android runtime aligned across the MAUI app and the shared
 `net10.0` engine graph; a bare multi-runtime solution build cannot preserve that
 restore boundary.
 
+The `sealed_multi_repo_source_assembly` boundary applies to the full
+`Chummer.Android` project whenever `Configuration=Release` or
+`ChummerUseLocalCompatibilityTree=false`. Those governed invocations must pass
+both `ChummerPresentationRoot` and `ChummerCoreEngineRoot` as explicit absolute
+paths. The former supplies the two Presentation project references; the latter
+supplies the `Chummer/data` and `Chummer/lang` content assembled into the app.
+The project fails before `PrepareForBuild` rather than discovering either root
+through its legacy relative sibling defaults. Those defaults remain available
+to ordinary local compatibility builds outside this governed boundary.
+
+This boundary does not reclassify the internal phone-beta Native.CompileCheck:
+that dependency-only proof uses pinned Presentation source plus locked Core
+packages, does not assemble Core source or content, and still authorizes neither
+publication nor any additional API 36 journey.
+
 When Android SDK 36 is not available, the platform-neutral native compile gate
 still checks all Shell/pages and shared-presenter calls without an Android SDK.
 Its checked-in input manifest explicitly owns every source outside the native
@@ -106,7 +121,9 @@ performs the pinned .NET/Android/JDK preflight, validates the no-restore asset
 graph, and runs only the native `Compile` target:
 
 ```sh
-scripts/compile-native-release-no-package.sh
+CHUMMER_PRESENTATION_ROOT=/absolute/chummer-presentation \
+CHUMMER_CORE_ENGINE_ROOT=/absolute/chummer-core-engine \
+  scripts/compile-native-release-no-package.sh
 ```
 
 The preflight exits `78` when the SDK/workload/JDK is unavailable and `64` for
@@ -136,8 +153,15 @@ The repeatable arm64 release lane requires the pinned official bundletool JAR:
 
 ```sh
 CHUMMER_BUNDLETOOL_JAR=/secure/tools/bundletool-all-1.18.3.jar \
+CHUMMER_ANDROID_EXPECTED_VERSION_NAME=0.1.0-preview.11 \
+CHUMMER_ANDROID_EXPECTED_VERSION_CODE=11 \
   scripts/build-release.sh
 ```
+
+The release version pair is explicit and fail-closed: both values must exactly
+match the project and the version code must be greater than the immutable
+Preview.10 code `10`. The build creates only local versioned artifacts and a
+version-bound source graph; it never uploads or changes Google Play.
 
 The script runs contract tests, publishes the AAB, validates it with bundletool,
 inspects identity/SDK/permissions/privacy/app-links/ABI, and prints its SHA-256.

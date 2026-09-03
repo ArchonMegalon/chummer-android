@@ -1,10 +1,12 @@
 import copy
 from contextlib import redirect_stderr
+from dataclasses import replace
 import io
 import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import Mock, call, patch
 import xml.etree.ElementTree as ET
 
 import run_api36_sr5_downtime_calendar_e2e as driver
@@ -38,6 +40,197 @@ def validate(
 
 
 class Api36Sr5DowntimeCalendarDriverTests(unittest.TestCase):
+    def test_recovered_status_uses_one_read_only_bidirectional_exact_acquisition(self) -> None:
+        device = Mock(spec=driver.physical.shared.Device)
+        expected = "Reviewed preview restored. Confirm it again before saving."
+        device.wait_exact_resource_id_bidirectional.return_value = (
+            driver.physical.shared.UiNode({"text": expected})
+        )
+        with patch.object(driver.time, "monotonic", return_value=100.0):
+            actual = driver._acquire_exact_resource_text_bidirectional(
+                device,
+                "sr5-downtime-calendar-status",
+                expected,
+                timeout=90,
+                surface_name="Recovered Downtime status",
+            )
+
+        self.assertEqual(expected, actual)
+        device.wait_exact_resource_id_bidirectional.assert_called_once_with(
+            "sr5-downtime-calendar-status",
+            timeout=90,
+            backward_scrolls=36,
+            forward_scrolls=36,
+            scroll_distance_ratio=0.18,
+            evidence_prefix="sr5-downtime-calendar-status-recovery",
+            surface_name="Recovered Downtime status",
+            require_tappable=False,
+            deadline=190.0,
+        )
+        device.capture.assert_not_called()
+        device.tap.assert_not_called()
+        device.tap_single_exact_resource_id.assert_not_called()
+
+    def test_recovered_status_fails_closed_on_foreign_text_without_action_replay(self) -> None:
+        device = Mock(spec=driver.physical.shared.Device)
+        device.wait_exact_resource_id_bidirectional.return_value = (
+            driver.physical.shared.UiNode({"text": "Foreign recovery state"})
+        )
+        with (
+            patch.object(driver.time, "monotonic", return_value=100.0),
+            self.assertRaisesRegex(RuntimeError, "exact expected text"),
+        ):
+            driver._acquire_exact_resource_text_bidirectional(
+                device,
+                "sr5-downtime-calendar-status",
+                "Reviewed preview restored. Confirm it again before saving.",
+                timeout=90,
+                surface_name="Recovered Downtime status",
+            )
+
+        device.wait_exact_resource_id_bidirectional.assert_called_once()
+        device.capture.assert_called_once_with(
+            "sr5-downtime-calendar-status-recovery-text-mismatch",
+            deadline=190.0,
+        )
+        device.tap.assert_not_called()
+        device.tap_single_exact_resource_id.assert_not_called()
+
+    def test_recovered_receipt_rejects_prefix_only_text_without_ack_replay(self) -> None:
+        device = Mock(spec=driver.physical.shared.Device)
+        digest_prefix = "sha256:" + "a" * 12
+        expected = f"Applied receipt {digest_prefix}… at revision 2."
+        device.wait_exact_resource_id_bidirectional.return_value = (
+            driver.physical.shared.UiNode(
+                {"text": f"Saved with verified receipt {digest_prefix}…"}
+            )
+        )
+        with (
+            patch.object(driver.time, "monotonic", return_value=100.0),
+            self.assertRaisesRegex(RuntimeError, "exact expected text"),
+        ):
+            driver._acquire_exact_resource_text_bidirectional(
+                device,
+                "sr5-downtime-calendar-receipt",
+                expected,
+                timeout=90,
+                surface_name="Recovered Downtime receipt",
+            )
+
+        device.wait_exact_resource_id_bidirectional.assert_called_once_with(
+            "sr5-downtime-calendar-receipt",
+            timeout=90,
+            backward_scrolls=36,
+            forward_scrolls=36,
+            scroll_distance_ratio=0.18,
+            evidence_prefix="sr5-downtime-calendar-receipt-recovery",
+            surface_name="Recovered Downtime receipt",
+            require_tappable=False,
+            deadline=190.0,
+        )
+        device.capture.assert_called_once_with(
+            "sr5-downtime-calendar-receipt-recovery-text-mismatch",
+            deadline=190.0,
+        )
+        device.tap.assert_not_called()
+        device.tap_single_exact_resource_id.assert_not_called()
+
+    def test_review_journal_poll_is_read_only_and_deadline_bound(self) -> None:
+        device = Mock(spec=driver.physical.shared.Device)
+        expected = Mock(spec=driver.physical.CheckpointSnapshot)
+        with (
+            patch.object(driver, "read_journal", side_effect=(None, expected)) as read,
+            patch.object(driver.time, "monotonic", return_value=2.0),
+            patch.object(driver.time, "sleep") as sleep,
+        ):
+            actual = driver.wait_for_journal(device, deadline=10.0)
+        self.assertIs(actual, expected)
+        self.assertEqual(
+            [
+                call(device, required=False, deadline=10.0),
+                call(device, required=False, deadline=10.0),
+            ],
+            read.call_args_list,
+        )
+        sleep.assert_called_once_with(0.25)
+        device.assert_not_called()
+
+    def test_set_text_accepts_only_exact_value_or_explicit_semantic_composition(self) -> None:
+        def exercise(rendered: str, prefix: str | None = None) -> None:
+            device = Mock(spec=driver.physical.shared.Device)
+            node = driver.physical.shared.UiNode(
+                {"focused": "true", "bounds": "[10,20][210,80]"}
+            )
+            updated = driver.physical.shared.UiNode({"text": rendered})
+            device.find.side_effect = [node, node, updated]
+            device.input_node_is_tappable.return_value = True
+            device.keyboard_visible.return_value = False
+            driver.physical.shared.Device.set_text(
+                device,
+                "field",
+                "Label",
+                "After-run recovery complete",
+                exact_accessibility_prefix=prefix,
+            )
+
+        exercise("After-run recovery complete")
+        exercise(
+            "Downtime notes, After-run recovery complete",
+            "Downtime notes",
+        )
+        for hostile in (
+            "Wrong, After-run recovery complete",
+            "Downtime notes, After-run recovery complete extra",
+            "Downtime notes, Downtime notes, After-run recovery complete",
+        ):
+            with self.subTest(hostile=hostile), self.assertRaises(RuntimeError):
+                exercise(hostile, "Downtime notes")
+
+    def test_initial_save_authority_requires_exact_1_1_unchanged_fixture(self) -> None:
+        fixture_sha256 = "a" * 64
+        imported = driver.physical.shared.WorkspaceAuthority(
+            "workspace-downtime", 1, 0, fixture_sha256, "b" * 64
+        )
+        exact = driver.physical.shared.WorkspaceAuthority(
+            "workspace-downtime", 1, 1, fixture_sha256, "c" * 64
+        )
+
+        driver.require_initial_saved_fixture_authority(imported, exact, fixture_sha256)
+
+        hostile_saved = (
+            imported,
+            replace(exact, workspace_id="foreign-workspace"),
+            replace(exact, content_revision=2, saved_revision=2),
+            replace(exact, saved_revision=0),
+            replace(exact, payload_sha256="d" * 64),
+        )
+        with self.assertRaises(RuntimeError):
+            driver.require_initial_saved_fixture_authority(
+                replace(imported, saved_revision=1), exact, fixture_sha256
+            )
+        for candidate in hostile_saved:
+            with self.subTest(candidate=candidate), self.assertRaises(RuntimeError):
+                driver.require_initial_saved_fixture_authority(
+                    imported, candidate, fixture_sha256
+                )
+
+    def test_initial_save_is_established_before_downtime_entry_without_replay(self) -> None:
+        source = DRIVER.read_text(encoding="utf-8")
+        proof = source.split("def prove_downtime(", maxsplit=1)[1].split(
+            "\ndef parse_args", maxsplit=1
+        )[0]
+
+        self.assertEqual(1, proof.count("save_and_read_workspace_authority"))
+        self.assertLess(
+            proof.index("save_and_read_workspace_authority"),
+            proof.index("open_downtime(device)"),
+        )
+        self.assertIn(
+            "require_initial_saved_fixture_authority(imported, initial_saved, runner_sha256)",
+            proof,
+        )
+        self.assertIn('"initialSaved":', proof)
+
     def test_fixture_pins_exact_runner_target_and_preserved_state(self) -> None:
         fixture = driver.load_fixture()
         runner = driver.DEFAULT_FIXTURE.parent / fixture["runnerFixture"]
@@ -152,6 +345,16 @@ class Api36Sr5DowntimeCalendarDriverTests(unittest.TestCase):
     def test_driver_is_apk_source_arm64_restart_reconfirm_ack_and_reopen_bound(self) -> None:
         source = DRIVER.read_text(encoding="utf-8")
         compile(source, str(DRIVER), "exec")
+        self.assertIn('"sr5-career/calendar", timeout=120', source)
+        self.assertIn('"sr5-career-action-calendar", timeout=120', source)
+        self.assertLess(
+            source.index('"sr5-career/calendar", timeout=120'),
+            source.index('physical.wait_exact_route(device, "sr5-career/calendar"'),
+        )
+        self.assertLess(
+            source.index('physical.wait_exact_route(device, "sr5-career/calendar"'),
+            source.index('"sr5-career-action-calendar", timeout=120'),
+        )
         for marker in (
             "load_and_verify_manifest", "source_graph_snapshot",
             "android_device_observation", "expected_apk_sha256",
@@ -163,6 +366,49 @@ class Api36Sr5DowntimeCalendarDriverTests(unittest.TestCase):
         ):
             self.assertIn(marker, source)
         self.assertGreaterEqual(source.count("force_stop_and_launch_new_process"), 3)
+        recovery = source.split(
+            'expected_recovery = "Reviewed preview restored. Confirm it again before saving."',
+            maxsplit=1,
+        )[1].split(
+            '_tap_exact(device, "sr5-downtime-calendar-apply")', maxsplit=1
+        )[0]
+        self.assertEqual(1, recovery.count("_acquire_exact_resource_text_bidirectional("))
+        self.assertLess(
+            recovery.index("_acquire_exact_resource_text_bidirectional("),
+            recovery.index('_tap_exact(device, "sr5-downtime-calendar-confirm")'),
+        )
+        self.assertEqual(
+            1,
+            recovery.count('_tap_exact(device, "sr5-downtime-calendar-confirm")'),
+        )
+        self.assertNotIn("_wait_resource_text(", recovery)
+        self.assertNotIn('sr5-downtime-calendar-review', recovery)
+        receipt_recovery = source.split("    expected_receipt = (", maxsplit=1)[1].split(
+            "    time.sleep(1)", maxsplit=1
+        )[0]
+        self.assertEqual(
+            1,
+            receipt_recovery.count("_acquire_exact_resource_text_bidirectional("),
+        )
+        self.assertLess(
+            receipt_recovery.index("_acquire_exact_resource_text_bidirectional("),
+            receipt_recovery.index(
+                '_tap_exact(device, "sr5-downtime-calendar-clear-applied")'
+            ),
+        )
+        self.assertEqual(
+            1,
+            receipt_recovery.count(
+                '_tap_exact(device, "sr5-downtime-calendar-clear-applied")'
+            ),
+        )
+        self.assertNotIn("_wait_resource_text(", receipt_recovery)
+        for forbidden in (
+            'sr5-downtime-calendar-review")',
+            'sr5-downtime-calendar-confirm")',
+            'sr5-downtime-calendar-apply")',
+        ):
+            self.assertNotIn(forbidden, receipt_recovery)
         self.assertIn('"status": "device-pass-source-bound"', source)
         self.assertNotIn('"releaseAttested": True', source)
 

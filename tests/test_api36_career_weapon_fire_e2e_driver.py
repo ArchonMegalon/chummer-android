@@ -1,5 +1,6 @@
 import ast
 import copy
+from dataclasses import replace
 import importlib.util
 from pathlib import Path
 import sys
@@ -12,6 +13,7 @@ import xml.etree.ElementTree as ET
 REPO = Path(__file__).resolve().parents[1]
 DRIVER = REPO / "tests/run_api36_career_weapon_fire_e2e.py"
 FIXTURE = REPO / "tests/fixtures/career-weapon-fire-e2e.chum5"
+TABLE_WIZARD_PAGE = REPO / "src/Chummer.Android/Native/Sr5TableWizardPage.cs"
 
 sys.path.insert(0, str(DRIVER.parent))
 SPEC = importlib.util.spec_from_file_location("career_weapon_fire_driver", DRIVER)
@@ -21,6 +23,39 @@ SPEC.loader.exec_module(driver)
 
 
 class Api36CareerWeaponFireDriverTests(unittest.TestCase):
+    def test_initial_save_requires_exact_unchanged_fixture_authority(self) -> None:
+        fixture_sha256 = "a" * 64
+        imported = driver.shared.WorkspaceAuthority(
+            "weapon-workspace", 1, 0, fixture_sha256, "b" * 64
+        )
+        exact = driver.shared.WorkspaceAuthority(
+            "weapon-workspace", 1, 1, fixture_sha256, "c" * 64
+        )
+        driver.require_initial_saved_fixture_authority(imported, exact, fixture_sha256)
+
+        hostile = (
+            imported,
+            replace(exact, workspace_id="foreign-workspace"),
+            replace(exact, content_revision=2, saved_revision=2),
+            replace(exact, saved_revision=0),
+            replace(exact, payload_sha256="d" * 64),
+        )
+        for candidate in hostile:
+            with self.subTest(candidate=candidate), self.assertRaises(RuntimeError):
+                driver.require_initial_saved_fixture_authority(
+                    imported, candidate, fixture_sha256
+                )
+
+    def test_exact_initial_save_precedes_first_table_wizard_entry(self) -> None:
+        source = DRIVER.read_text(encoding="utf-8")
+        proof = source.split("def prove_short_burst(", 1)[1].split("\ndef main", 1)[0]
+        self.assertEqual(1, proof.count("save_and_read_workspace_authority"))
+        self.assertLess(
+            proof.index("save_and_read_workspace_authority"),
+            proof.index("open_page(device)"),
+        )
+        self.assertIn('"initialSaved":', proof)
+
     def test_driver_is_phone_only_source_digest_revision_and_new_pid_bound(self) -> None:
         source = DRIVER.read_text(encoding="utf-8")
         ast.parse(source)
@@ -36,263 +71,163 @@ class Api36CareerWeaponFireDriverTests(unittest.TestCase):
             '"presenterMutationSha256"',
             '"presenterPersistenceSha256"',
             '"workspaceStoreSha256"',
+            '"careerWizardPageSha256"',
+            '"tableWizardPageSha256"',
+            '"tableWizardTransactionSha256"',
+            '"tableWizardAuthoritySha256"',
+            '"tableWizardSessionSha256"',
         ):
             self.assertIn(digest, source)
-        self.assertIn("saved.content_revision != imported.content_revision + 1", source)
-        self.assertIn("saved.payload_sha256 == imported.payload_sha256", source)
-        self.assertIn("saved.document_sha256 == imported.document_sha256", source)
+        self.assertIn("saved.content_revision != initial_saved.content_revision + 1", source)
+        self.assertIn("saved.payload_sha256 == initial_saved.payload_sha256", source)
+        self.assertIn("saved.document_sha256 == initial_saved.document_sha256", source)
         self.assertEqual(1, source.count("shared.force_stop_and_launch_new_process"))
         self.assertIn("shared.require_restored_authority(saved, restored)", source)
         self.assertIn('"afterForceStop": list(restart.after_force_stop.process_ids)', source)
-        self.assertIn("shared.reset_scroll_to_top(device, swipes=48)", source)
-        self.assertIn('"build-save-runner"', source)
-        self.assertIn('== "Navigate up"', source)
-        self.assertIn("max_back_steps: int = 6", source)
+        self.assertIn("physical.open_career_hub(device)", source)
         self.assertIn("device.tap_exact_resource_id_bidirectional(", source)
-        self.assertIn('"build-section-tab-gear"', source)
-        self.assertIn('"build-action-tab-gear-weapons"', source)
-        self.assertIn("backward_scrolls=0", source)
-        self.assertIn("forward_scrolls=24", source)
-        self.assertIn(
-            'evidence_prefix="career-weapon-fire-gear-section-route"',
-            source,
-        )
-        self.assertIn(
-            'evidence_prefix="career-weapon-fire-gear-section-entered"',
-            source,
-        )
-        self.assertIn('evidence_prefix="career-weapon-fire-weapons-route"', source)
-        self.assertIn(
-            'evidence_prefix="career-weapon-fire-target-weapon-route"',
-            source,
-        )
-        self.assertEqual(4, source.count("tap_exact_build_route("))
-        self.assertLess(
-            source.index('evidence_prefix="career-weapon-fire-gear-section-entered"'),
-            source.index('evidence_prefix="career-weapon-fire-weapons-route"'),
-        )
-        self.assertLess(
-            source.index('evidence_prefix="career-weapon-fire-weapons-route"'),
-            source.index('evidence_prefix="career-weapon-fire-target-weapon-route"'),
-        )
-        self.assertIn("device.node_has_tappable_bounds(node)", source)
-        self.assertNotIn(
-            'device.tap("build-section-tab-gear", scroll=True',
-            source,
-        )
-        self.assertNotIn(
-            'device.tap("build-action-tab-gear-weapons", scroll=True',
-            source,
-        )
-        self.assertNotIn(
-            'device.tap(\n        f"collection-item-weapon-{WEAPON_ID}"',
-            source,
-        )
-
-    def test_build_route_resets_then_delegates_one_exact_bounded_tap(self) -> None:
-        device = Mock(spec=driver.shared.Device)
-
-        with patch.object(driver.shared, "reset_scroll_to_top") as reset:
-            driver.tap_exact_build_route(
-                device,
-                "build-action-tab-gear-weapons",
-                evidence_prefix="career-weapon-fire-weapons-route",
-                surface_name="Gear Weapons route accessibility node",
-            )
-
-        reset.assert_called_once_with(device, swipes=48)
-        device.tap_exact_resource_id_bidirectional.assert_called_once_with(
+        for legacy_route in (
+            "build-section-tab-gear",
             "build-action-tab-gear-weapons",
-            timeout=120,
-            backward_scrolls=0,
-            forward_scrolls=24,
-            scroll_distance_ratio=0.22,
-            evidence_prefix="career-weapon-fire-weapons-route",
-            surface_name="Gear Weapons route accessibility node",
-        )
-        device.wait_for_single_exact_resource_id.assert_not_called()
-        device.shell.assert_not_called()
-
-    def test_build_route_scrolls_past_artifact_clipped_exact_weapons_node(self) -> None:
-        semantic_container = driver.shared.UiNode(
-            {
-                "content-desc": "Weapons",
-                "enabled": "true",
-                "clickable": "false",
-                "bounds": "[53,2152][1028,2190]",
-            }
-        )
-        clipped = driver.shared.UiNode(
-            {
-                "resource-id": (
-                    "com.myexternalbrain.chummer:id/build-action-tab-gear-weapons"
-                ),
-                "enabled": "true",
-                "clickable": "true",
-                "bounds": "[98,2187][984,2190]",
-            }
-        )
-        visible = driver.shared.UiNode(
-            {
-                "resource-id": (
-                    "com.myexternalbrain.chummer:id/build-action-tab-gear-weapons"
-                ),
-                "enabled": "true",
-                "clickable": "true",
-                "bounds": "[98,1659][984,1812]",
-            }
-        )
-        device = Mock(spec=driver.shared.Device)
-        device._scroll_x_ratio.return_value = 0.5
-        device.display_size.return_value = (1080, 2400)
-        device.hierarchy.side_effect = [
-            [semantic_container, clipped],
-            [semantic_container, visible],
-        ]
-        device.node_has_tappable_bounds.side_effect = (
-            lambda node: driver.shared.Device.node_has_tappable_bounds(device, node)
-        )
-        device.dismiss_system_ui_anr.return_value = False
-        device.wait_exact_resource_id_bidirectional.side_effect = (
-            lambda selector, **kwargs: driver.shared.Device.wait_exact_resource_id_bidirectional(
-                device,
-                selector,
-                **kwargs,
-            )
-        )
-        device.tap_exact_resource_id_bidirectional.side_effect = (
-            lambda selector, **kwargs: driver.shared.Device.tap_exact_resource_id_bidirectional(
-                device,
-                selector,
-                **kwargs,
-            )
-        )
-
-        with (
-            patch.object(driver.shared, "reset_scroll_to_top") as reset,
-            patch.object(driver.shared.time, "sleep"),
+            "collection-item-weapon-",
+            "career-weapon-fire-open-",
         ):
-            driver.tap_exact_build_route(
-                device,
-                "build-action-tab-gear-weapons",
-                evidence_prefix="career-weapon-fire-weapons-route",
-                surface_name="Gear Weapons route accessibility node",
-            )
+            self.assertNotIn(legacy_route, source)
 
-        reset.assert_called_once_with(device, swipes=48)
-        device.swipe_up.assert_called_once_with(
-            x_ratio=0.5,
-            distance_ratio=0.22,
+    def test_short_burst_action_identity_is_digest_derived_and_fail_closed(self) -> None:
+        self.assertEqual(
+            driver.short_burst_action_automation_id(11),
+            "sr5-table-action-b3315e0e390c",
         )
-        device.capture.assert_not_called()
-        device.shell.assert_called_once_with("input", "tap", "541", "1735")
-
-    def test_build_route_propagates_exact_bidirectional_fail_closed_result(self) -> None:
-        device = Mock(spec=driver.shared.Device)
-        device.tap_exact_resource_id_bidirectional.side_effect = RuntimeError(
-            "Gear Weapons route accessibility node was not enabled, clickable, and tappable"
+        self.assertNotEqual(
+            driver.short_burst_action_automation_id(11),
+            driver.short_burst_action_automation_id(8),
         )
+        self.assertRegex(driver.short_burst_action_automation_id(11), r"^sr5-table-action-[0-9a-f]{12}$")
+        for hostile in (None, True, 2, "11"):
+            with self.subTest(hostile=hostile), self.assertRaises(RuntimeError):
+                driver.short_burst_action_automation_id(hostile)  # type: ignore[arg-type]
 
-        with (
-            patch.object(driver.shared, "reset_scroll_to_top"),
-            self.assertRaisesRegex(RuntimeError, "not enabled, clickable, and tappable"),
-        ):
-            driver.tap_exact_build_route(
-                device,
-                "build-action-tab-gear-weapons",
-                evidence_prefix="career-weapon-fire-weapons-route",
-                surface_name="Gear Weapons route accessibility node",
-            )
-
-        device.wait_for_single_exact_resource_id.assert_not_called()
-        device.shell.assert_not_called()
-
-    def test_open_page_binds_exact_gear_transition_before_weapons_route(self) -> None:
+    def test_open_page_uses_only_the_career_table_and_playtime_wizard_routes(self) -> None:
         device = Mock(spec=driver.shared.Device)
-        events: list[tuple[str, str]] = []
-
-        def record_route(
-            _device: object,
-            selector: str,
-            *,
-            evidence_prefix: str,
-            surface_name: str,
-        ) -> None:
-            del evidence_prefix, surface_name
-            events.append(("route", selector))
-
-        def record_transition(selector: str, **_kwargs: object) -> Mock:
-            events.append(("transition", selector))
-            return Mock()
-
-        device.wait_for_single_exact_resource_id.side_effect = record_transition
         with (
-            patch.object(driver, "open_build_root"),
-            patch.object(driver, "tap_exact_build_route", side_effect=record_route),
+            patch.object(driver.physical, "open_career_hub") as open_hub,
+            patch.object(driver.physical, "wait_exact_route") as wait_route,
         ):
             driver.open_page(device)
 
+        open_hub.assert_called_once_with(device)
         self.assertEqual(
+            [call.args[0] for call in device.tap_exact_resource_id_bidirectional.call_args_list],
+            ["sr5-career/table", "sr5-career-action-playtime"],
+        )
+        self.assertEqual(
+            device.tap_exact_resource_id_bidirectional.call_args_list[0]
+            .kwargs["backward_scrolls"],
+            24,
+        )
+        self.assertEqual(
+            [call.args[1] for call in wait_route.call_args_list],
+            ["sr5-career/table", "sr5-career/playtime"],
+        )
+
+    def test_ui_readback_requires_the_exact_digest_action_and_ammo_delta(self) -> None:
+        selector = driver.short_burst_action_automation_id(11)
+        device = Mock(spec=driver.shared.Device)
+        device.wait_exact_resource_id_bidirectional.return_value = driver.shared.UiNode({
+            "resource-id": f"com.myexternalbrain.chummer:id/{selector}",
+            "content-desc": "Fire · Short Burst. 3 rounds · ammo 11 → 8",
+        })
+        driver.assert_ui_readback(device, 11)
+
+        device.wait_exact_resource_id_bidirectional.return_value = driver.shared.UiNode({
+            "content-desc": "Fire · Short Burst. 3 rounds · ammo 10 → 7",
+        })
+        with self.assertRaisesRegex(RuntimeError, "not read back exactly"):
+            driver.assert_ui_readback(device, 11)
+
+    def test_apply_uses_one_exact_quote_review_confirm_and_receipt_sequence(self) -> None:
+        device = Mock(spec=driver.shared.Device)
+        with patch.object(driver.physical, "wait_exact_route") as wait_route:
+            driver.apply_short_burst(device, 11)
+
+        self.assertEqual(
+            [call.args[0] for call in device.tap_single_exact_resource_id.call_args_list],
             [
-                ("route", "build-section-tab-gear"),
-                ("transition", f"collection-item-gear-{driver.AMMO_GEAR_ID}"),
-                ("route", "build-action-tab-gear-weapons"),
-                ("route", f"collection-item-weapon-{driver.WEAPON_ID}"),
+                driver.short_burst_action_automation_id(11),
+                "sr5-table-wizard-open-review",
+                "sr5-table-wizard-confirm",
+                "sr5-table-wizard-receipt-acknowledge",
             ],
-            events,
         )
-        device.wait_for_single_exact_resource_id.assert_called_once_with(
-            f"collection-item-gear-{driver.AMMO_GEAR_ID}",
-            timeout=120,
-            evidence_prefix="career-weapon-fire-gear-section-entered",
-            surface_name="Exact fixture-linked Gear collection transition surface",
+        self.assertEqual(
+            [call.args[1] for call in wait_route.call_args_list],
+            ["sr5-table-wizard-quote", "sr5-career/playtime/review", "sr5-career/playtime"],
+        )
+        device.tap.assert_called_once_with("OK", timeout=180)
+        device.wait_for_single_exact_resource_id.assert_called_once()
+
+    def test_successful_confirm_does_not_refresh_the_disappeared_review_page(self) -> None:
+        source = TABLE_WIZARD_PAGE.read_text(encoding="utf-8")
+        self.assertIn(
+            "_confirm.Clicked += async (_, _) => await "
+            "RunWithConditionalRefreshAsync(ConfirmAsync);",
+            source,
+        )
+        self.assertIn("private async Task<bool> ConfirmAsync()", source)
+        self.assertIn(
+            "// this disappeared review page would publish a stale review over it.\n"
+            "        return false;",
+            source,
         )
 
-    def test_open_build_root_unwinds_exact_navigation_until_root_toolbar(self) -> None:
-        navigate_up = driver.shared.UiNode(
-            {
-                "content-desc": "Navigate up",
-                "clickable": "true",
-                "bounds": "[0,128][147,275]",
-            }
-        )
-        root = driver.shared.UiNode(
-            {
-                "content-desc": "build-save-runner",
-                "clickable": "true",
-                "bounds": "[786,138][912,264]",
-            }
-        )
-        device = Mock(spec=driver.shared.Device)
-        device.hierarchy.side_effect = [[navigate_up], [root]]
-        device.node_has_tappable_bounds.return_value = True
+    def test_successful_confirm_atomically_returns_through_the_exact_existing_lane(self) -> None:
+        source = TABLE_WIZARD_PAGE.read_text(encoding="utf-8")
+        confirm = source.split("private async Task<bool> ConfirmAsync()", 1)[1]
+        confirm = confirm.split("private async Task ReturnToOwningLaneAsync()", 1)[0]
+        return_to_lane = source.split(
+            "private async Task ReturnToOwningLaneAsync()", 1
+        )[1]
+        return_to_lane = return_to_lane.split("private bool MatchesCurrent", 1)[0]
 
-        with (
-            patch.object(driver.shared, "open_build") as open_build,
-            patch.object(driver.time, "sleep") as sleep,
+        self.assertEqual(1, confirm.count("await ReturnToOwningLaneAsync();"))
+        self.assertNotIn("Navigation.PopAsync", confirm)
+        self.assertIn("!ReferenceEquals(navigationStack[^1], this)", return_to_lane)
+        self.assertIn("navigationStack.Count(IsOwningLane) != 1", return_to_lane)
+        self.assertIn("lanePage.Lane == _session.State.Snapshot.Lane", return_to_lane)
+        self.assertIn("quoteCount > 1", return_to_lane)
+        self.assertIn(
+            "navigationStack[^2] is Sr5TableWizardQuotePage quotePage",
+            return_to_lane,
+        )
+        self.assertIn("!IsOwningLane(navigationStack[^3])", return_to_lane)
+        self.assertIn("quoteCount != 0 || !IsOwningLane(navigationStack[^2])", return_to_lane)
+        self.assertLess(
+            return_to_lane.index("navigation.RemovePage(quotePage);"),
+            return_to_lane.index("await navigation.PopAsync();"),
+        )
+        self.assertEqual(1, return_to_lane.count("PopAsync"))
+
+    def test_successful_confirm_return_has_no_replay_poll_or_route_fallback(self) -> None:
+        source = TABLE_WIZARD_PAGE.read_text(encoding="utf-8")
+        return_to_lane = source.split(
+            "private async Task ReturnToOwningLaneAsync()", 1
+        )[1]
+        return_to_lane = return_to_lane.split("private bool MatchesCurrent", 1)[0]
+
+        for forbidden in (
+            "PushAsync",
+            "PopToRootAsync",
+            "Task.Delay",
+            "while (",
+            "ConfirmAsync",
+            "ApplyCareerWeaponFireAsync",
+            "ApplyCareerEdgeUseEditAsync",
         ):
-            driver.open_build_root(device)
-
-        open_build.assert_called_once_with(device, "phone")
-        device.shell.assert_called_once_with("input", "tap", "73", "201")
-        sleep.assert_called_once_with(1.25)
-        device.capture.assert_not_called()
-
-    def test_open_build_root_fails_closed_on_duplicate_root_toolbar(self) -> None:
-        root = driver.shared.UiNode({"content-desc": "build-save-runner"})
-        device = Mock(spec=driver.shared.Device)
-        device.hierarchy.return_value = [root, root]
-
-        with (
-            patch.object(driver.shared, "open_build"),
-            self.assertRaisesRegex(RuntimeError, "toolbar cardinality was 2"),
-        ):
-            driver.open_build_root(device)
-
-        device.capture.assert_called_once_with(
-            "career-weapon-fire-build-root-cardinality-invalid"
-        )
-        device.shell.assert_not_called()
+            with self.subTest(forbidden=forbidden):
+                self.assertNotIn(forbidden, return_to_lane)
+        self.assertIn("preparedStack.Any", return_to_lane)
+        self.assertIn("page is Sr5TableWizardQuotePage", return_to_lane)
 
     def test_fixture_binds_exact_root_weapon_active_clip_linked_ammo_and_burst(self) -> None:
         root = ET.parse(FIXTURE).getroot()
@@ -306,6 +241,16 @@ class Api36CareerWeaponFireDriverTests(unittest.TestCase):
         self.assertEqual("11", driver.linked_ammo(root).findtext("qty"))
         self.assertEqual("19", preserved["karma"])
         self.assertEqual("8765", preserved["nuyen"])
+        self.assertRegex(preserved["edgeUsedSha256"], r"^[0-9a-f]{64}$")
+        self.assertRegex(preserved["edgeAttributeSha256"], r"^[0-9a-f]{64}$")
+        self.assertEqual("0", root.findtext("edgeused"))
+        edge = [
+            attribute
+            for attribute in root.findall("./attributes/attribute")
+            if attribute.findtext("name") == "EDG"
+        ]
+        self.assertEqual(1, len(edge))
+        self.assertEqual("0", edge[0].findtext("totalvalue"))
         for identity in (
             driver.WEAPON_ID,
             driver.AMMO_GEAR_ID,
@@ -326,6 +271,21 @@ class Api36CareerWeaponFireDriverTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "outside the exact clip/ammo quantities"):
             driver.assert_after(hostile, preserved)
 
+        hostile = copy.deepcopy(root)
+        hostile.find("edgeused").text = "1"
+        with self.assertRaisesRegex(RuntimeError, "one exact <edgeused>0</edgeused>"):
+            driver.assert_after(hostile, preserved)
+
+        hostile = copy.deepcopy(root)
+        edge = next(
+            attribute
+            for attribute in hostile.findall("./attributes/attribute")
+            if attribute.findtext("name") == "EDG"
+        )
+        edge.find("totalvalue").text = "1"
+        with self.assertRaisesRegex(RuntimeError, "exact totalvalue 0"):
+            driver.assert_after(hostile, preserved)
+
     def test_fixture_preflight_rejects_every_missing_canonical_loader_field(self) -> None:
         root = ET.parse(FIXTURE).getroot()
         for field in driver.CANONICAL_IMPORT_FIELDS:
@@ -334,6 +294,59 @@ class Api36CareerWeaponFireDriverTests(unittest.TestCase):
                 hostile.remove(hostile.find(field))
                 with self.assertRaisesRegex(RuntimeError, rf"canonical SR5 loader: <{field}>"):
                     driver.require_canonical_import_fixture(hostile)
+
+    def test_fixture_preflight_rejects_missing_duplicate_or_nonzero_edge_authority(self) -> None:
+        root = ET.parse(FIXTURE).getroot()
+        hostile_cases: list[tuple[str, ET.Element, str]] = []
+
+        missing_edge_used = copy.deepcopy(root)
+        missing_edge_used.remove(missing_edge_used.find("edgeused"))
+        hostile_cases.append(("missing-edge-used", missing_edge_used, "one exact"))
+
+        nonzero_edge_used = copy.deepcopy(root)
+        nonzero_edge_used.find("edgeused").text = "1"
+        hostile_cases.append(("nonzero-edge-used", nonzero_edge_used, "one exact"))
+
+        duplicate_edge_used = copy.deepcopy(root)
+        duplicate_edge_used.append(ET.Element("edgeused"))
+        duplicate_edge_used.findall("edgeused")[-1].text = "0"
+        hostile_cases.append(("duplicate-edge-used", duplicate_edge_used, "one exact"))
+
+        missing_edge = copy.deepcopy(root)
+        missing_edge.find("attributes").clear()
+        hostile_cases.append(("missing-edg", missing_edge, "one unique EDG"))
+
+        duplicate_edge = copy.deepcopy(root)
+        duplicate_edge.find("attributes").append(
+            copy.deepcopy(duplicate_edge.find("./attributes/attribute"))
+        )
+        hostile_cases.append(("duplicate-edg", duplicate_edge, "one unique EDG"))
+
+        nonzero_total = copy.deepcopy(root)
+        nonzero_total.find("./attributes/attribute/totalvalue").text = "1"
+        hostile_cases.append(("nonzero-total", nonzero_total, "exact totalvalue 0"))
+
+        duplicate_total = copy.deepcopy(root)
+        edge = duplicate_total.find("./attributes/attribute")
+        extra_total = ET.SubElement(edge, "totalvalue")
+        extra_total.text = "0"
+        hostile_cases.append(("duplicate-total", duplicate_total, "exact totalvalue 0"))
+
+        for name, hostile, message in hostile_cases:
+            with self.subTest(name=name), self.assertRaisesRegex(RuntimeError, message):
+                driver.require_canonical_import_fixture(hostile)
+
+    def test_prepare_runner_has_one_pre_save_import_authority_check(self) -> None:
+        source = DRIVER.read_text(encoding="utf-8")
+        prepare = source.split("def prepare_runner(", 1)[1].split(
+            "\ndef require_initial_saved_fixture_authority(", 1
+        )[0]
+        self.assertEqual(
+            1,
+            prepare.count(
+                "shared.require_import_authority(authority, fixture_sha256)"
+            ),
+        )
 
 
 if __name__ == "__main__":

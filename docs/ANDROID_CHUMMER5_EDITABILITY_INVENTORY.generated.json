@@ -68,20 +68,25 @@
     "phoneBetaWizardGate": {
       "schema": "chummer.android.api36-sr5-wizard-gate-binding/v1",
       "contractPath": "eng/api36-sr5-wizard-gate-authority.json",
-      "contractSha256": "921b088e8814695915789ef420e49ad1793116e9d23238ff3a92709d066fd82e",
+      "contractSha256": "c867b4fd8c2a771e3ddb4c3e20c0b843ea87510a197b476c7ce75dc013fec7b4",
       "authorityClass": "internal_phone_beta_sr5_wizard_only",
       "proofScope": "sr5_wizards_only",
-      "requiredJourneyCount": 3,
+      "requiredJourneyCount": 7,
       "requiredJourneys": [
         "creation-prerequisite",
         "career-active-skill-advance",
-        "career-weapon-fire"
+        "career-weapon-fire",
+        "before-run-edge",
+        "playtime-short-burst",
+        "downtime-calendar",
+        "after-run-settlement"
       ],
       "publicationAuthorized": false,
       "excludedFromGate": [
         {
           "matrixJourney": "full-editing",
-          "status": "not_required_not_proven",
+          "status": "deferred",
+          "evidenceClass": "informational_only",
           "maySatisfyRequiredJourney": false
         }
       ],
@@ -102,7 +107,7 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "fd1b49d3aac1db361abf4312e1408d16ad93d84aa8712fcd70ecbe81e09c243b"
+        "sha256": "feb1d5e42fbb68aed5abd6fd0b9ef2df026eccb05ef11a0f7b40e80870846041"
       },
       {
         "path": "src/Chummer.Android/Native/MorePage.cs",
@@ -142,12 +147,12 @@
       {
         "path": "src/Chummer.Android/Native/HomePage.cs",
         "exists": true,
-        "sha256": "a3a6acf259ab78a1ecfde78958c15bd2c1d4a56aa47e5126a7e31cd3edc3cc69"
+        "sha256": "4b3c8dec756071bccf5a9efaac99b9d2aa6d999dbbc96249d1fac01d4ac078c1"
       },
       {
         "path": "src/Chummer.Android/MauiProgram.cs",
         "exists": true,
-        "sha256": "e813bc48eb4ff5f15980a864a8c1adb0aa1c1788239a039ad4ecea5ba14ae142"
+        "sha256": "6e318c794a72b09d03efa4c8e5106325c7da28a3dc17fabe56b714fa40038a92"
       },
       {
         "path": "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
@@ -597,7 +602,7 @@
       {
         "path": "src/Chummer.Android/Native/CreationPrerequisitePage.cs",
         "exists": true,
-        "sha256": "f34f4909cf95da635b317bf604de996000619d6cace86cdba6782f55d0ff64fe"
+        "sha256": "2ddf26559f338b8edfbfccf6e1a132e224b6603b7c0f20891ab6c291a614bc78"
       },
       {
         "path": "src/Chummer.Android/Native/CreationPriorityCategoryPage.cs",
@@ -625,14 +630,19 @@
         "sha256": "352d251725ed809213fb2541f4a2bd736bddad2c4bcd44ef11d7ca1954d512ec"
       },
       {
+        "path": "src/Chummer.Android/Native/AndroidAfterRunWorkspaceSnapshotSource.cs",
+        "exists": true,
+        "sha256": "e4da1f185f4343d4c81ab3888509eff2fecf9f33468d50e53259c106a5f458fe"
+      },
+      {
         "path": "src/Chummer.Android/Native/PhoneShellPages.cs",
         "exists": true,
-        "sha256": "9ade36dc0f677b0c8a3888450f05cb4271eeb4391fd9ce9fb081637a472e02ad"
+        "sha256": "43a1192605525e055bea0a31138fbba1673119779a1e359c7084fd998dd2b3a5"
       },
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "f6e61a78b5399ae1d1c262ca911a728418b99cb889f608b9d54305c0c764cd0b"
+        "sha256": "fa1e85502176215760492aec40a734456fe4af8e27a58d804d27761e4ab60872"
       },
       {
         "path": "src/Chummer.Android/Native/RunnerSessionSr5CareerWizardPhoneAuthority.cs",
@@ -642,7 +652,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionSr5TableWizardPhoneAuthority.cs",
         "exists": true,
-        "sha256": "91b844da893d70ec8b8913f6e553e726b830af1d10825941cb4b2fda7f083863"
+        "sha256": "9ad6e4b86492bf27064a794ae9c057bd5f97da89205eabf3c89d89b63bbf3d36"
       },
       {
         "path": "src/Chummer.Android/Native/Sr5CareerFlowStrings.cs",
@@ -657,7 +667,7 @@
       {
         "path": "src/Chummer.Android/Native/Sr5CareerWizardPage.cs",
         "exists": true,
-        "sha256": "04c55020cd68e2fa8a0644f03712e1b2cea13b3735e0426c41844212ef48e65c"
+        "sha256": "0f2256d602ca81e3e85679726264596fdd487b05babe90aa0da85c6b26153708"
       },
       {
         "path": "src/Chummer.Android/Native/Sr5CareerWizardPhoneModel.cs",
@@ -665,9 +675,39 @@
         "sha256": "64c03d1d1531626fbea8a5a4364d3ba22f91dcedcbc12547e35bf2b1edf145e3"
       },
       {
+        "path": "src/Chummer.Android/Native/Sr5AfterRunManualProposalPage.cs",
+        "exists": true,
+        "sha256": "4e98cb1438ad529e68a9e072041f26398650f7e266293566a0fdc4f209d1606f"
+      },
+      {
+        "path": "src/Chummer.Android/Native/Sr5AfterRunManualProposalSource.cs",
+        "exists": true,
+        "sha256": "9e7d47af138e02516044287dc01ed47847b503213360e28584426ff891d7a4a1"
+      },
+      {
+        "path": "src/Chummer.Android/Native/Sr5AfterRunSettlementCheckpointStore.cs",
+        "exists": true,
+        "sha256": "25a7ed28a6c35bd086f28bc821d1ab70126b68253ae659b29037100a1f6c54f0"
+      },
+      {
+        "path": "src/Chummer.Android/Native/Sr5AfterRunSettlementCoordinator.cs",
+        "exists": true,
+        "sha256": "003142ddd8611338258d9d8c410010a95e2add545d128f1fc420964868627f02"
+      },
+      {
+        "path": "src/Chummer.Android/Native/Sr5AfterRunSettlementWizardPage.cs",
+        "exists": true,
+        "sha256": "a2910ffe1546cb7d5de62a7ccbdd1d09fb5ab054d69d12860108258a1b4a051a"
+      },
+      {
+        "path": "src/Chummer.Android/Native/Sr5AfterRunWizardModel.cs",
+        "exists": true,
+        "sha256": "4aaf67021d047c34eabf167fc44468cffdf41693fd17c16ca0ecdbe5c32960a0"
+      },
+      {
         "path": "src/Chummer.Android/Native/Sr5TableWizardPage.cs",
         "exists": true,
-        "sha256": "615fe344384d218b600b6e322ef9c66152a8718cac22f3da2699eb862e78a806"
+        "sha256": "6a66e398fe8505bda87ee454da4c8f087cd8ea65f7ec6418e57c59cfa4bdaca1"
       },
       {
         "path": "src/Chummer.Android/Native/Sr5TableWizardPhoneModel.cs",
@@ -692,17 +732,17 @@
       {
         "path": "src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.resx",
         "exists": true,
-        "sha256": "e5b2a794ee70dcafaf48b82426856588c28d860f150965448ac907fc80293562"
+        "sha256": "669b90e2cbaf8b0c661320515cdd31b29838ce10817ae5b4bb2dbcbdb6bf1b8d"
       },
       {
         "path": "src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.de.resx",
         "exists": true,
-        "sha256": "e3549a92b0587327eaed543dd85ae1f7fb41684d3e080793a34f34d4c2b5b936"
+        "sha256": "d8e7d1ba704cb64140ca3c9fee782894bef19205134afa8e03a4101a0161e26d"
       },
       {
         "path": "src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.es.resx",
         "exists": true,
-        "sha256": "9bf8ebe43af47b493d155f1eb66bbe6aec9e1c8b0394ae62498af85f4bfc18eb"
+        "sha256": "076cbeed8b8ce8dba2444c65a5fdf5e6197f0d8d6fff2c0ddc4543e2673eec33"
       },
       {
         "path": "src/Chummer.Android/Resources/Localization/WizardStrings.resx",
@@ -737,62 +777,77 @@
       {
         "path": "tests/Chummer.Android.Sr5CareerFlowLocalization.Tests/Program.cs",
         "exists": true,
-        "sha256": "5f4be9b7e40361f622375bc0a09ab2b09eaff0b095f4892173e104d4b2127b8f"
+        "sha256": "81cc45395efcbf93cba41acb1147f7fc5761f7b3dd72d16481f0397d73fb7203"
       },
       {
         "path": "tests/Chummer.Android.Sr5TableWizard.NativeCompile.Tests/Chummer.Android.Sr5TableWizard.NativeCompile.Tests.csproj",
         "exists": true,
-        "sha256": "815c8717e04a4ca4cefd86b3e2190bd65abbaf291033dc3d3fe792c35d22c3c2"
+        "sha256": "62995b7cb60adb727677a5d580b206cf38e9d50d4e9f67ccb4440d49a8bf6702"
       },
       {
         "path": "tests/Chummer.Android.Sr5TableWizard.NativeCompile.Tests/NativeCompileStubs.cs",
         "exists": true,
-        "sha256": "cb3f65fc08d3775dde7617f4ffac1cd5d954a0e7554d9c2bc03648337dd451b4"
+        "sha256": "7819d810596c9c3cd1b5b1625c2c44fffb9e1bcbc7ede15030d266c2ff021b95"
       },
       {
         "path": "tests/Chummer.Android.Sr5TableWizard.Tests/Chummer.Android.Sr5TableWizard.Tests.csproj",
         "exists": true,
-        "sha256": "f5a331295eb53564789dc8507faeaf81fe6ae4d5d6181a59c24c441070bfd47f"
+        "sha256": "7fe32a055580e6cb1eb060ed8d6244eef5918150b49c6c708389d1a8bc493838"
       },
       {
         "path": "tests/Chummer.Android.Sr5TableWizard.Tests/Program.cs",
         "exists": true,
-        "sha256": "1f27667891bc2d0c59d629b6b0de7c787b5a45dc405d85c1895d57e6fc209c3d"
+        "sha256": "e1c2e6cbb78a3a23c3e19eb5fb02055e535664be822ec4cc9318c2c751702a89"
       },
       {
         "path": ".github/workflows/api36-editing-e2e.yml",
         "exists": true,
-        "sha256": "84065eab3304d0bfbe18ea32f981bdce96cf642bb8aa908769fe136bf48d6dd2"
+        "sha256": "b125180dcb47c703cc8b4f63579a73bf7b3ed2772111800f0df56cbbd322b09a"
       },
       {
         "path": "eng/api36-sr5-wizard-gate-authority.json",
         "exists": true,
-        "sha256": "921b088e8814695915789ef420e49ad1793116e9d23238ff3a92709d066fd82e"
+        "sha256": "c867b4fd8c2a771e3ddb4c3e20c0b843ea87510a197b476c7ce75dc013fec7b4"
+      },
+      {
+        "path": "scripts/build-debug.sh",
+        "exists": true,
+        "sha256": "c2defce5f6cbca41c6119699df1717f86a7e9cb34fd2b1a2aa943ec3e4d52344"
       },
       {
         "path": "scripts/api36_wizard_gate_contract.py",
         "exists": true,
-        "sha256": "f43b8c454eb524281577726e80666f19d5ea9cb63c45af03be21047aca120099"
+        "sha256": "b987c4d3cb605fbf9dfca4a029ec0c6137dff59dc581b032b5d94f077dd324e9"
       },
       {
         "path": "scripts/finalize-api36-e2e-journey-receipt.py",
         "exists": true,
-        "sha256": "ad4d22c826ab9728dac1de43aa8a4e7116ab6b6d15e90b6fbd33ef46a154216a"
+        "sha256": "627587ba066c98b18b1ffb8bbf20f1fc95746952f0162707af0ca08beb2b73a0"
       },
       {
         "path": "scripts/run-api36-editing-e2e-ci.sh",
         "exists": true,
-        "sha256": "484a05f15ccdc3df13d42a110dceb80b6332b8812547b2f17bf66f2956d71aa7"
+        "sha256": "83245beda77e00279a0ba5c8ed3a2fbc5e6da522a4f982b30855fdf5dde8b181"
       },
       {
         "path": "scripts/verify-api36-editing-e2e-aggregate.py",
         "exists": true,
-        "sha256": "0a94cdc2ac78e622cbd91de36b4d703ce28f5fd817268541b6bfe984f2f83088"
+        "sha256": "3ed3ed1ea3e384e2165ee67de685793b99b675d57eb31476cd6e1500bc46b5a8"
       },
       {
         "path": "src/Chummer.Android/Chummer.Android.csproj",
         "exists": true,
-        "sha256": "7d3196e3212aad0e7dd9c06308cbd3abb42eaad05d0acf22896d072fb6121a3f"
+        "sha256": "35d9511b900c427cd41a17a4f6c08462aa64a35a842331eff7518e6ed509f62a"
+      },
+      {
+        "path": "src/Chummer.Android/Proof/Api36ProofState.cs",
+        "exists": true,
+        "sha256": "fba1a321ec72a4497ecf4cd5f95f4d875ea47bbbe60c3358198a0065ab49e149"
+      },
+      {
+        "path": "src/Chummer.Android/Proof/Api36ProofStatePublisher.cs",
+        "exists": true,
+        "sha256": "c8cce8a1f78b85d641f3548eae2d96e228ec2bbc74b4ef90fa79da1541fda7fd"
       },
       {
         "path": "tests/Chummer.Android.Native.CompileCheck/NativeCompileInputs.props",
@@ -802,22 +857,92 @@
       {
         "path": "tests/test_api36_e2e_workflow.py",
         "exists": true,
-        "sha256": "d26a579ccea1d6f3c814213a0f32e7e2b6227292131c039ecd246a9cf0f642c6"
+        "sha256": "e836575682964fc81441382784aa0b0f5fdda72428aa6bdbc9667e360975baa3"
       },
       {
         "path": "tests/test_api36_e2e_artifact_authority.py",
         "exists": true,
-        "sha256": "9b50e9c6dc2ed3cbdfadca9b4e0fab11ca22ae86c4805cd5d5286fe799fa9c0a"
+        "sha256": "fce69459ef7a88ed9b8e9dcb5c62f1fa46ceaaf4fd4b8694ad2c62edfb52601f"
+      },
+      {
+        "path": "tests/run_api36_sr5_before_run_edge_e2e.py",
+        "exists": true,
+        "sha256": "7cc707285e92e43a28a8ce32bb4a4eadf81b615a7e9e433c01b4dd66402fc692"
+      },
+      {
+        "path": "tests/run_api36_sr5_before_run_edge_physical_e2e.py",
+        "exists": true,
+        "sha256": "d1eb8d618aa3b6a2d5e3427bc8ffdf31f74abce6845d2d6457efb2ed463bca81"
+      },
+      {
+        "path": "tests/api36_proof_state.py",
+        "exists": true,
+        "sha256": "38d33f1b55d045b36c3db787c86f197ad7477f34df0de08fe059540d7cac2b9b"
+      },
+      {
+        "path": "tests/test_api36_proof_state_contract.py",
+        "exists": true,
+        "sha256": "321d384631788648134e899419b2f9e55cb291ed276d59afec8df91cf085d4d0"
+      },
+      {
+        "path": "tests/test_run_api36_sr5_before_run_edge_e2e_driver.py",
+        "exists": true,
+        "sha256": "dfdcae33d30e8f2f048ea215996c76d85cab7184c9c380e09290aec4e2c2ac68"
+      },
+      {
+        "path": "tests/run_api36_sr5_playtime_short_burst_e2e.py",
+        "exists": true,
+        "sha256": "a6214f854bc733cb80071f5aa3e61418d50b66809c8f6d9eb573368ac7535513"
+      },
+      {
+        "path": "tests/test_api36_sr5_playtime_short_burst_e2e_driver.py",
+        "exists": true,
+        "sha256": "4a11566b599fdf69c3f4c1dcee6b4cb0203bbe46ec74c8f2e692e23798cda7ec"
+      },
+      {
+        "path": "tests/run_api36_sr5_downtime_calendar_hosted_e2e.py",
+        "exists": true,
+        "sha256": "7cda979fd0fc4a09748cc1833a49fec5121cfc8e575c43812eee23e4e5cb0957"
+      },
+      {
+        "path": "tests/test_api36_sr5_downtime_calendar_hosted_e2e_driver.py",
+        "exists": true,
+        "sha256": "c39816212f594f3b6c5f88581219a4061659008d5782b5fc20578dbe4bb54198"
+      },
+      {
+        "path": "tests/fixtures/sr5-after-run-settlement-e2e.json",
+        "exists": true,
+        "sha256": "332b14a29b697907f5778b6880885613298f65bbad0661da0fe0772f258efe98"
+      },
+      {
+        "path": "tests/run_api36_sr5_after_run_settlement_e2e.py",
+        "exists": true,
+        "sha256": "05c901341f0242cb35f841223c5ae42502badd053869ac2e9a9cc6d05ab299fd"
+      },
+      {
+        "path": "tests/run_api36_sr5_after_run_settlement_hosted_e2e.py",
+        "exists": true,
+        "sha256": "ba6a5502261d4876ec696d2f4399abcf586331186079de6550f9cf64ebf15d08"
+      },
+      {
+        "path": "tests/test_api36_sr5_after_run_settlement_hosted_contract.py",
+        "exists": true,
+        "sha256": "d7ab1b3879837079da59bf7784af8d7f3bcd2de5649980c90013047857b8e7c3"
+      },
+      {
+        "path": "tests/test_api36_sr5_career_run_contextual_contract.py",
+        "exists": true,
+        "sha256": "f9e69cb95ac6b33138af78b17ad00d2bc9d2cb0113995b4d3426a53417cde679"
       },
       {
         "path": "tests/test_chummer5_editability_inventory.py",
         "exists": true,
-        "sha256": "a88828b11e5c82232226266af26f5563c53447c7955e1917ac5805c635f02804"
+        "sha256": "7fb47d65683bdb58acc843166b040e70eeabc458101954869946037678cbdbef"
       },
       {
         "path": "tests/test_sr5_contextual_wizard_scope.py",
         "exists": true,
-        "sha256": "2359891da282993af06c9c2a1babc50ef55463eeab3a2d97c11b10f8cbb8a47b"
+        "sha256": "e09a24d3a6ba9ccecd5b87b777a48eef723f9f477ecafef11d90e188ca42b267"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -832,12 +957,12 @@
       {
         "path": "tests/run_api36_editing_e2e.py",
         "exists": true,
-        "sha256": "1343eca5581b06222001eece29cccda26ce7294be3ebc3d2216d5114f5af7038"
+        "sha256": "bf9e348f7ec9b9bcb068d38529e16cd462187b67ab58ceab89f762ad4af7b0fc"
       },
       {
         "path": "tests/run_api36_career_active_skill_advance_e2e.py",
         "exists": true,
-        "sha256": "31bbeb0e2d72fd1e6bd43ad10f4ffab8a739704b86be743266fcef2541f139e4"
+        "sha256": "93501f4470bfc57d775d02b9405adc31033db1a5b0d7949f6ae373282718a0f6"
       },
       {
         "path": "tests/fixtures/career-active-skill-advance-e2e.chum5",
@@ -847,12 +972,12 @@
       {
         "path": "tests/run_api36_career_weapon_fire_e2e.py",
         "exists": true,
-        "sha256": "75b1abd088816f3749f520edf795c769e8decd402fb67926b870d2cf7ac1c25e"
+        "sha256": "c459059ac9f321b40645afd2b21da28372eff908b74f160c7aa20068fd92ee2d"
       },
       {
         "path": "tests/fixtures/career-weapon-fire-e2e.chum5",
         "exists": true,
-        "sha256": "eb1dee9e9c69c9303b0d772f8696e4531c12cfe360c761af85c6f0c79a6da7df"
+        "sha256": "c7f1b3b7f5ead488094b41ec47addfff2849a3bdbf3ad582c8aca4329bac3710"
       },
       {
         "path": "tests/run_api36_career_notoriety_e2e.py",
@@ -1252,7 +1377,7 @@
       {
         "path": "tests/run_api36_creation_prerequisite_e2e.py",
         "exists": true,
-        "sha256": "13e92bb25e7f6f4fb7e5f1b2088002b1f787e029a0c570d89fa9305315f7e914"
+        "sha256": "e7724e34d1c82d351f1d493bb7321a8550f8ed583d1ef3f4cfff609a846c6a62"
       },
       {
         "path": "tests/fixtures/career-condition-monitor-e2e.chum5",
@@ -2610,10 +2735,24 @@
       "recognitionStatus": "recognized",
       "sourceAuthorityStatus": "ready",
       "executionStatus": "not_executed",
-      "matrixJourney": null,
+      "matrixJourneys": [
+        {
+          "route": "sr5-career/before-run",
+          "matrixJourney": "before-run-edge",
+          "gateStatus": "required",
+          "executionStatus": "not_executed"
+        },
+        {
+          "route": "sr5-career/playtime",
+          "matrixJourney": "playtime-short-burst",
+          "gateStatus": "required",
+          "executionStatus": "not_executed"
+        }
+      ],
       "releaseClaim": false,
       "completionCountContribution": 0,
       "androidSourcePaths": [
+        "src/Chummer.Android/Native/AndroidAfterRunWorkspaceSnapshotSource.cs",
         "src/Chummer.Android/Native/PhoneShellPages.cs",
         "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "src/Chummer.Android/Native/RunnerSessionSr5CareerWizardPhoneAuthority.cs",
@@ -2622,6 +2761,12 @@
         "src/Chummer.Android/Native/Sr5CareerWizardModel.cs",
         "src/Chummer.Android/Native/Sr5CareerWizardPage.cs",
         "src/Chummer.Android/Native/Sr5CareerWizardPhoneModel.cs",
+        "src/Chummer.Android/Native/Sr5AfterRunManualProposalPage.cs",
+        "src/Chummer.Android/Native/Sr5AfterRunManualProposalSource.cs",
+        "src/Chummer.Android/Native/Sr5AfterRunSettlementCheckpointStore.cs",
+        "src/Chummer.Android/Native/Sr5AfterRunSettlementCoordinator.cs",
+        "src/Chummer.Android/Native/Sr5AfterRunSettlementWizardPage.cs",
+        "src/Chummer.Android/Native/Sr5AfterRunWizardModel.cs",
         "src/Chummer.Android/Native/Sr5TableWizardPage.cs",
         "src/Chummer.Android/Native/Sr5TableWizardPhoneModel.cs",
         "src/Chummer.Android/Native/Sr5TableWizardTypedTransaction.cs"
@@ -2651,14 +2796,31 @@
       "gatePaths": [
         ".github/workflows/api36-editing-e2e.yml",
         "eng/api36-sr5-wizard-gate-authority.json",
+        "scripts/build-debug.sh",
         "scripts/api36_wizard_gate_contract.py",
         "scripts/finalize-api36-e2e-journey-receipt.py",
         "scripts/run-api36-editing-e2e-ci.sh",
         "scripts/verify-api36-editing-e2e-aggregate.py",
         "src/Chummer.Android/Chummer.Android.csproj",
+        "src/Chummer.Android/Proof/Api36ProofState.cs",
+        "src/Chummer.Android/Proof/Api36ProofStatePublisher.cs",
         "tests/Chummer.Android.Native.CompileCheck/NativeCompileInputs.props",
         "tests/test_api36_e2e_workflow.py",
         "tests/test_api36_e2e_artifact_authority.py",
+        "tests/run_api36_sr5_before_run_edge_e2e.py",
+        "tests/run_api36_sr5_before_run_edge_physical_e2e.py",
+        "tests/api36_proof_state.py",
+        "tests/test_api36_proof_state_contract.py",
+        "tests/test_run_api36_sr5_before_run_edge_e2e_driver.py",
+        "tests/run_api36_sr5_playtime_short_burst_e2e.py",
+        "tests/test_api36_sr5_playtime_short_burst_e2e_driver.py",
+        "tests/run_api36_sr5_downtime_calendar_hosted_e2e.py",
+        "tests/test_api36_sr5_downtime_calendar_hosted_e2e_driver.py",
+        "tests/fixtures/sr5-after-run-settlement-e2e.json",
+        "tests/run_api36_sr5_after_run_settlement_e2e.py",
+        "tests/run_api36_sr5_after_run_settlement_hosted_e2e.py",
+        "tests/test_api36_sr5_after_run_settlement_hosted_contract.py",
+        "tests/test_api36_sr5_career_run_contextual_contract.py",
         "tests/test_chummer5_editability_inventory.py",
         "tests/test_sr5_contextual_wizard_scope.py"
       ],
@@ -2694,14 +2856,62 @@
       "recognitionStatus": "recognized",
       "sourceAuthorityStatus": "ready",
       "executionStatus": "not_executed",
-      "matrixJourney": null,
+      "matrixJourneys": [
+        {
+          "route": "sr5-career/downtime",
+          "matrixJourney": "downtime-calendar",
+          "gateStatus": "required",
+          "executionStatus": "not_executed"
+        },
+        {
+          "route": "sr5-career/playtime",
+          "matrixJourney": "playtime-short-burst",
+          "gateStatus": "required",
+          "executionStatus": "not_executed"
+        }
+      ],
+      "releaseClaim": false,
+      "completionCountContribution": 0,
+      "blockers": []
+    },
+    "afterRunSettlementJourneyRecognition": {
+      "journeyId": "sr5-after-run-settlement",
+      "parentCareerLane": "sr5-career/after-run",
+      "routes": [
+        "sr5-career/after-run/settlement"
+      ],
+      "supportedTypedMutations": [
+        "after-run-heat",
+        "after-run-street-cred",
+        "after-run-notoriety",
+        "after-run-public-awareness",
+        "after-run-contacts"
+      ],
+      "explicitBlockers": [
+        "after-run-injuries",
+        "after-run-ammo",
+        "after-run-loot",
+        "after-run-expenses",
+        "after-run-log"
+      ],
+      "recognitionStatus": "recognized",
+      "sourceAuthorityStatus": "ready",
+      "executionStatus": "not_executed",
+      "matrixJourneys": [
+        {
+          "route": "sr5-career/after-run/settlement",
+          "matrixJourney": "after-run-settlement",
+          "gateStatus": "required",
+          "executionStatus": "not_executed"
+        }
+      ],
       "releaseClaim": false,
       "completionCountContribution": 0,
       "blockers": []
     },
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "2710b4354252061569224045c96284f55983e44a9d7ab89660d7fa1bd7cf80c3"
+      "sha256": "af0880682b8044a789382d6eadc0d47b4db1053bf4569a2c03f1bf8296b2db7c"
     }
   },
   "coverageByFamily": {

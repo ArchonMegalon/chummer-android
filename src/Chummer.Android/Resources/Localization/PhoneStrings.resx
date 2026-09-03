@@ -35,6 +35,45 @@
   <data name="AccountPrivacy" xml:space="preserve"><value>Account &amp; privacy</value></data>
   <data name="LinkedDeviceDeletion" xml:space="preserve"><value>Linked device and deletion</value></data>
   <data name="LinkingDeletion" xml:space="preserve"><value>Linking and deletion</value></data>
+  <data name="AccountStatus" xml:space="preserve"><value>Status</value></data>
+  <data name="AccountUnlinkDevice" xml:space="preserve"><value>Unlink this device</value></data>
+  <data name="AccountUnlinkDeviceQuestion" xml:space="preserve"><value>Unlink this device?</value></data>
+  <data name="AccountUnlinkImpact" xml:space="preserve"><value>Online runners and groups will no longer be available here.</value></data>
+  <data name="AccountUnlink" xml:space="preserve"><value>Unlink</value></data>
+  <data name="Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="AccountLinkDeviceDetail" xml:space="preserve"><value>Link this device to open online runners, groups, and account controls.</value></data>
+  <data name="AccountHowDeletionWorks" xml:space="preserve"><value>How deletion works</value></data>
+  <data name="AccountDeletionReceiptDetail" xml:space="preserve"><value>What is removed and how long receipts remain</value></data>
+  <data name="DeleteAccount" xml:space="preserve"><value>Delete account</value></data>
+  <data name="AccountStartVerifiedDeletion" xml:space="preserve"><value>Start verified account deletion</value></data>
+  <data name="AccountLinkBeforeDeletion" xml:space="preserve"><value>Link this device before deletion</value></data>
+  <data name="AccountNotLinked" xml:space="preserve"><value>Not linked</value></data>
+  <data name="AccountFinishLinking" xml:space="preserve"><value>Finish linking</value></data>
+  <data name="AccountApproveBrowser" xml:space="preserve"><value>Approve in your browser, then return.</value></data>
+  <data name="AccountLinkExpired" xml:space="preserve"><value>Link expired</value></data>
+  <data name="AccountLinkAgainRestore" xml:space="preserve"><value>Link again to restore account access.</value></data>
+  <data name="AccountLinked" xml:space="preserve"><value>Linked</value></data>
+  <data name="AccountAvailableOffline" xml:space="preserve"><value>Available offline.</value></data>
+  <data name="AccountLinkUnavailable" xml:space="preserve"><value>Link unavailable</value></data>
+  <data name="AccountSecureStorageUnavailable" xml:space="preserve"><value>Android secure storage could not be opened.</value></data>
+  <data name="AccountBrowserUnavailable" xml:space="preserve"><value>Browser unavailable</value></data>
+  <data name="AccountOpenLinkingAgain" xml:space="preserve"><value>Open account linking again.</value></data>
+  <data name="AccountCouldNotLink" xml:space="preserve"><value>Could not link</value></data>
+  <data name="AccountTryAgainMoment" xml:space="preserve"><value>Try again in a moment.</value></data>
+  <data name="AccountReturnRejected" xml:space="preserve"><value>Return rejected</value></data>
+  <data name="AccountStartLinkingAgain" xml:space="preserve"><value>Start linking again from this app.</value></data>
+  <data name="AccountApprovalExpired" xml:space="preserve"><value>Approval expired</value></data>
+  <data name="AccountStartFreshLink" xml:space="preserve"><value>Start a fresh account link.</value></data>
+  <data name="AccountFreshLinkRequired" xml:space="preserve"><value>Fresh link required</value></data>
+  <data name="AccountChooseLinkTryAgain" xml:space="preserve"><value>Choose Link account and try again.</value></data>
+  <data name="AccountCheckConnection" xml:space="preserve"><value>Check your connection and try again.</value></data>
+  <data name="AccountIncompleteReply" xml:space="preserve"><value>The reply was incomplete. Try again.</value></data>
+  <data name="AccountConnectInternet" xml:space="preserve"><value>Connect to the internet and try again.</value></data>
+  <data name="AccountStartLinkingAgainShort" xml:space="preserve"><value>Start linking again.</value></data>
+  <data name="AccountStillLinked" xml:space="preserve"><value>Still linked</value></data>
+  <data name="AccountRevokeUnavailable" xml:space="preserve"><value>Could not reach Chummer. Try unlinking again.</value></data>
+  <data name="AccountRevokeOffline" xml:space="preserve"><value>Connect to the internet and try again.</value></data>
+  <data name="AccountDeleted" xml:space="preserve"><value>Account deleted</value></data>
   <data name="App" xml:space="preserve"><value>App</value></data>
   <data name="Version" xml:space="preserve"><value>Version</value></data>
   <data name="CheckUpdates" xml:space="preserve"><value>Check for updates</value></data>

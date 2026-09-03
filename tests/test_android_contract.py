@@ -7,6 +7,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import xml.etree.ElementTree as ET
 import zipfile
 from pathlib import Path
 
@@ -126,8 +127,8 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("<ApplicationId>com.myexternalbrain.chummer</ApplicationId>", project)
         self.assertIn("<TargetSdkVersion>36</TargetSdkVersion>", project)
         self.assertIn("<AndroidMinSdkVersion>24</AndroidMinSdkVersion>", project)
-        self.assertIn("<ApplicationDisplayVersion>0.1.0-preview.10</ApplicationDisplayVersion>", project)
-        self.assertIn("<ApplicationVersion>10</ApplicationVersion>", project)
+        self.assertIn("<ApplicationDisplayVersion>0.1.0-preview.11</ApplicationDisplayVersion>", project)
+        self.assertIn("<ApplicationVersion>11</ApplicationVersion>", project)
         self.assertIn("<AndroidPackageFormats Condition=\"'$(Configuration)' == 'Release'\">aab</AndroidPackageFormats>", project)
         self.assertIn('<ChummerAndroidRuntimeIdentifier Condition="\'$(ChummerAndroidRuntimeIdentifier)\' == \'\'">android-arm64</ChummerAndroidRuntimeIdentifier>', project)
         self.assertIn('<RuntimeIdentifier Condition="\'$(RuntimeIdentifier)\' == \'\'">$(ChummerAndroidRuntimeIdentifier)</RuntimeIdentifier>', project)
@@ -173,10 +174,11 @@ class AndroidContractTests(unittest.TestCase):
         self.assertEqual(2, workflow.count("--core-root chummer-core-content"))
         self.assertNotIn("--core-root chummer-core-engine", workflow)
 
-    def test_android_uses_play_updates_and_verified_links(self) -> None:
+    def test_android_uses_play_updates_and_declares_exact_auto_verify_link(self) -> None:
         project = (PROJECT / "Chummer.Android.csproj").read_text(encoding="utf-8")
         system_service = (PROJECT / "Platforms" / "Android" / "AndroidSystemService.cs").read_text(encoding="utf-8")
         activity = (PROJECT / "Platforms" / "Android" / "MainActivity.cs").read_text(encoding="utf-8")
+        inspector = (REPO / "scripts" / "inspect_aab.py").read_text(encoding="utf-8")
         policy = (PROJECT / "Platforms" / "Android" / "AndroidInAppUpdatePolicy.cs").read_text(encoding="utf-8")
         review_policy = (PROJECT / "Native" / "PlayReviewPolicy.cs").read_text(encoding="utf-8")
         more = (PROJECT / "Native" / "MorePage.cs").read_text(encoding="utf-8")
@@ -211,8 +213,16 @@ class AndroidContractTests(unittest.TestCase):
         self.assertNotIn("await RunAsync(async () =>", more[more.index("private async Task CheckUpdatesAsync"):])
         self.assertNotIn("DesktopUpdateRuntime", "".join(p.read_text(encoding="utf-8") for p in PROJECT.rglob("*.cs")))
         self.assertIn('DataHost = "chummer.run"', activity)
-        self.assertIn('DataPathPrefix = "/app"', activity)
+        self.assertIn('DataPath = "/app/install-link"', activity)
+        self.assertNotIn('DataPathPrefix = "/app"', activity)
         self.assertIn("AutoVerify = true", activity)
+        self.assertIn('attr(item, "path")', inspector)
+        self.assertNotIn('attr(item, "pathPrefix")', inspector)
+        self.assertIn(
+            "autoVerify-declared https://chummer.run/app/install-link intent filter is missing",
+            inspector,
+        )
+        self.assertNotIn("verified https://chummer.run", inspector)
 
     def test_android_account_link_uses_device_proof_and_encrypted_storage(self) -> None:
         service = (PROJECT / "Platform" / "AndroidAccountLinkService.cs").read_text(encoding="utf-8")
@@ -251,6 +261,174 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("Coordinator.BeginAccountLinkAsync()", home)
         self.assertIn('"Unlink this device?"', privacy)
         self.assertIn('"Account & privacy"', more + privacy)
+
+    def test_account_unlink_failure_retains_retryable_grant_authority(self) -> None:
+        service = (PROJECT / "Platform" / "AndroidAccountLinkService.cs").read_text(encoding="utf-8")
+        unlink = service[
+            service.index("public async Task UnlinkAsync"):
+            service.index("public async Task OpenAccountAsync")
+        ]
+        response_failure = unlink[
+            unlink.index("if (!response.IsSuccessStatusCode"):
+            unlink.index("ClearAllCredentials();")
+        ]
+        transport_failure = unlink[
+            unlink.index("catch (HttpRequestException)"):
+            unlink.index("finally")
+        ]
+
+        self.assertIn(
+            "DateTimeOffset? grantExpiresAtUtc = _snapshot.GrantExpiresAtUtc;",
+            unlink,
+        )
+        self.assertIn("grantExpiresAtUtc ??= await ReadGrantExpiryAsync();", unlink)
+        self.assertEqual(
+            2,
+            unlink.count("AndroidAccountLinkStatus.Linked"),
+            "HTTP response and transport failures must both remain linked",
+        )
+        self.assertEqual(
+            4,
+            unlink.count("grantExpiresAtUtc"),
+            "both failure snapshots must preserve the grant expiry",
+        )
+        self.assertNotIn("AndroidAccountLinkStatus.Error", unlink)
+        self.assertIn("return;", response_failure)
+        self.assertNotIn("ClearAllCredentials();", response_failure + transport_failure)
+
+    def test_account_unlink_success_alone_clears_linked_collections(self) -> None:
+        service = (PROJECT / "Platform" / "AndroidAccountLinkService.cs").read_text(encoding="utf-8")
+        unlink = service[
+            service.index("public async Task UnlinkAsync"):
+            service.index("public async Task OpenAccountAsync")
+        ]
+        coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+        coordinator_unlink = coordinator[
+            coordinator.index("public async Task UnlinkAccountAsync"):
+            coordinator.index("public Task OpenAccountAsync")
+        ]
+
+        credentials_clear = unlink.index("ClearAllCredentials();")
+        confirmed_unlinked = unlink.index("AndroidAccountLinkStatus.Unlinked")
+        self.assertLess(credentials_clear, confirmed_unlinked)
+        self.assertIn(
+            "if (_account.Snapshot.Status == AndroidAccountLinkStatus.Unlinked)",
+            coordinator_unlink,
+        )
+        clear_guard = coordinator_unlink.index("AndroidAccountLinkStatus.Unlinked")
+        for collection in ("_onlineCharacters = [];", "_groups = [];", "_chronicles = [];"):
+            self.assertGreater(coordinator_unlink.index(collection), clear_guard)
+
+    def test_account_link_localization_has_exact_de_en_es_key_parity(self) -> None:
+        localization = PROJECT / "Resources" / "Localization"
+
+        def load(name: str) -> dict[str, str]:
+            entries = ET.parse(localization / name).getroot().findall("data")
+            values = {
+                entry.attrib["name"]: entry.findtext("value") or ""
+                for entry in entries
+            }
+            self.assertEqual(len(entries), len(values), f"duplicate localization key in {name}")
+            return values
+
+        english = load("PhoneStrings.resx")
+        german = load("PhoneStrings.de.resx")
+        spanish = load("PhoneStrings.es.resx")
+
+        self.assertEqual(set(english), set(german))
+        self.assertEqual(set(english), set(spanish))
+        for key in english:
+            self.assertTrue(english[key].strip(), f"empty English value for {key}")
+            self.assertTrue(german[key].strip(), f"empty German value for {key}")
+            self.assertTrue(spanish[key].strip(), f"empty Spanish value for {key}")
+
+        self.assertEqual("Weiterhin verknüpft", german["AccountStillLinked"])
+        self.assertEqual("Sigue vinculada", spanish["AccountStillLinked"])
+        self.assertEqual("Abbrechen", german["Cancel"])
+        self.assertEqual("Cancelar", spanish["Cancel"])
+
+    def test_account_link_localization_fallbacks_match_english_resources(self) -> None:
+        localization = PROJECT / "Resources" / "Localization"
+        english_entries = ET.parse(localization / "PhoneStrings.resx").getroot().findall("data")
+        english = {
+            entry.attrib["name"]: entry.findtext("value") or ""
+            for entry in english_entries
+        }
+        page_source = (PROJECT / "Native" / "AccountPrivacyPage.cs").read_text(encoding="utf-8")
+        page = page_source[:page_source.index("public sealed class AccountDeletionInfoPage")]
+        service = (PROJECT / "Platform" / "AndroidAccountLinkService.cs").read_text(encoding="utf-8")
+        phone_strings = (PROJECT / "Native" / "PhoneStrings.cs").read_text(encoding="utf-8")
+        call_pattern = re.compile(
+            r'(?:PhoneStrings\.Get|AccountText)\(\s*"([^"]+)",\s*"([^"]+)"\s*\)',
+            re.DOTALL,
+        )
+        calls = call_pattern.findall(page + service)
+        called_keys = {key for key, _ in calls}
+        expected_page_keys = {
+            "Account",
+            "AccountDeletionReceiptDetail",
+            "AccountHowDeletionWorks",
+            "AccountLinkBeforeDeletion",
+            "AccountLinkDeviceDetail",
+            "AccountPrivacy",
+            "AccountStartVerifiedDeletion",
+            "AccountStatus",
+            "AccountUnlink",
+            "AccountUnlinkDevice",
+            "AccountUnlinkDeviceQuestion",
+            "AccountUnlinkImpact",
+            "Cancel",
+            "DeleteAccount",
+            "LinkAccount",
+        }
+        expected_service_keys = {
+            "AccountApprovalExpired",
+            "AccountApproveBrowser",
+            "AccountAvailableOffline",
+            "AccountBrowserUnavailable",
+            "AccountCheckConnection",
+            "AccountChooseLinkTryAgain",
+            "AccountConnectInternet",
+            "AccountCouldNotLink",
+            "AccountDeleted",
+            "AccountFinishLinking",
+            "AccountFreshLinkRequired",
+            "AccountIncompleteReply",
+            "AccountLinkAgainRestore",
+            "AccountLinkExpired",
+            "AccountLinkUnavailable",
+            "AccountLinked",
+            "AccountNotLinked",
+            "AccountOpenLinkingAgain",
+            "AccountReturnRejected",
+            "AccountRevokeOffline",
+            "AccountRevokeUnavailable",
+            "AccountSecureStorageUnavailable",
+            "AccountStartFreshLink",
+            "AccountStartLinkingAgain",
+            "AccountStartLinkingAgainShort",
+            "AccountStillLinked",
+            "AccountTryAgainMoment",
+            "Checking",
+        }
+
+        self.assertEqual(expected_page_keys | expected_service_keys, called_keys)
+        for key, fallback in calls:
+            self.assertEqual(english[key], fallback, f"English fallback drift for {key}")
+        for snapshot in re.findall(r"SetSnapshot\(new\((.*?)\)\);", service, re.DOTALL):
+            without_localized_text = call_pattern.sub("", snapshot)
+            self.assertNotRegex(
+                without_localized_text,
+                r'"[^"]+"',
+                "account snapshots must not expose an unlocalized string",
+            )
+        self.assertNotRegex(page, r'Title\s*=\s*"')
+        self.assertNotRegex(
+            page,
+            r'NativeTheme\.(?:Eyebrow|Title|Metric|Body|PrimaryButton|SecondaryButton|NavigationRow)\(\s*"',
+        )
+        self.assertIn("?? englishFallback", phone_strings)
+        self.assertIn("catch (MissingManifestResourceException)", phone_strings)
 
     def test_account_deletion_is_native_confirmed_and_server_first(self) -> None:
         service = (PROJECT / "Platform" / "AndroidAccountLinkService.cs").read_text(encoding="utf-8")
@@ -1714,6 +1892,11 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("--resolve-exact-signed-aab", build)
         self.assertNotIn('publish_dir="$repo_dir/src/Chummer.Android/bin', build)
         self.assertIn("versioned-output-already-exists", build)
+        self.assertIn('output_aab="$artifact_dir/chummer-android-$version_name-upload.aab"', build)
+        self.assertIn(
+            'output_graph="$artifact_dir/chummer-android-$version_name-source-graph.json"',
+            build,
+        )
         self.assertIn("seal_file_no_clobber", build)
         self.assertIn('ln -- "$seal_tmp" "$destination_path"', build)
         self.assertIn("--verify-existing", build)
@@ -1722,9 +1905,19 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("signing-keystore-certificate-mismatch", build)
         self.assertIn("preflight_native_android_toolchain.py", build)
         self.assertNotIn("CHUMMER_ANDROID_PUBLISH_DIR", build)
-        self.assertIn('"chummer.android.release-source-graph/v2"', source_graph)
+        self.assertIn('"chummer.android.release-source-graph/v3"', source_graph)
+        self.assertIn('"releaseIdentity"', source_graph)
         self.assertIn("ownerPackagePins", source_graph)
         self.assertIn("local_review_required", source_graph)
+        self.assertIn("CHUMMER_ANDROID_EXPECTED_VERSION_NAME", build)
+        self.assertIn("CHUMMER_ANDROID_EXPECTED_VERSION_CODE", build)
+        self.assertIn("release-version-intent-missing", build)
+        self.assertIn("release-version-intent-invalid", build)
+        self.assertNotIn("preview10-version-contract-drift", build)
+        self.assertGreaterEqual(build.count('--expected-version-name "$version_name"'), 2)
+        self.assertGreaterEqual(build.count('--expected-version-code "$version_code"'), 2)
+        self.assertIn('-p:ApplicationDisplayVersion="$version_name"', build)
+        self.assertIn('-p:ApplicationVersion="$version_code"', build)
         self.assertIn("--package-authority", build)
         self.assertIn("CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY", build)
         self.assertIn("set -euo pipefail", prepare)
@@ -1772,7 +1965,11 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("CHUMMER_RECOVERY_STORE_PASSWORD", recovery)
         self.assertNotIn("shell=True", recovery)
         self.assertIn("require_private_regular_file CHUMMER_ANDROID_UPLOAD_CERTIFICATE_PATH", build)
-        self.assertIn("read_android_version.py", build)
+        self.assertIn("verify_android_release_intent.py", build)
+        release_intent = (REPO / "scripts" / "verify_android_release_intent.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("read_android_version", release_intent)
         self.assertNotIn('version_name="0.1.0-preview.', build)
         self.assertIn('source_sha256="$(sha256sum "$source_aab"', build)
         self.assertIn('graph_sha256="$(sha256sum "$staged_graph"', build)
@@ -1914,7 +2111,7 @@ class AndroidContractTests(unittest.TestCase):
         spec.loader.exec_module(module)
 
         self.assertEqual(
-            ("0.1.0-preview.10", "10"),
+            ("0.1.0-preview.11", "11"),
             module.read_project_version(PROJECT / "Chummer.Android.csproj"),
         )
 
@@ -1923,10 +2120,10 @@ class AndroidContractTests(unittest.TestCase):
         title = (listing / "title.txt").read_text(encoding="utf-8").strip()
         short_description = (listing / "short-description.txt").read_text(encoding="utf-8").strip()
         full_description = (listing / "full-description.txt").read_text(encoding="utf-8").strip()
-        release_notes = (listing / "release-notes-10.txt").read_text(encoding="utf-8").strip()
+        release_notes = (listing / "release-notes-11.txt").read_text(encoding="utf-8").strip()
         self.assertTrue(
-            (listing / "release-notes-9.txt").is_file(),
-            "preview.9 release notes are immutable historical evidence",
+            (listing / "release-notes-10.txt").is_file(),
+            "preview.10 release notes are immutable historical evidence",
         )
         self.assertLessEqual(len(title), 30)
         self.assertLessEqual(len(short_description), 80)

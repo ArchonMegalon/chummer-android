@@ -1,21 +1,18 @@
-Chummer for Android brings runner building, campaign tools, and live play to phones, tablets, and foldables.
+Chummer Preview.11 is an Internal testing build for phones. Its exact scope is the SR5 Priority creation wizard, the included SR5 Career wizards, and the Before Run, Playtime, Downtime, and After Run table wizards.
 
-BUILD AND ADVANCE RUNNERS
-Create, inspect, edit, and advance characters and critters with the same rules used by the desktop client. Work through attributes, skills, qualities, magic, gear, vehicles, contacts, lifestyles, notes, and clear rule explanations.
+BUILD AN SR5 RUNNER
+Follow guided Priority creation through prerequisites and supported choices for attributes, skills, qualities, magic or resonance, resources, gear, and lifestyle. Review each choice before confirming it.
 
-RUN CAMPAIGNS
-Open campaign command, GM runboards, preparation packets, rosters, organizer tools, rule-environment settings, primers, and mission briefings from an adaptive Android workflow.
+ADVANCE A CAREER
+Use the SR5 Career wizards included in this preview for guided changes. Review costs and changes before confirmation. Supported save, recovery, and undo operations stay tied to the current saved runner.
+
+USE TABLE WIZARDS
+Prepare Edge before a run, record supported Playtime changes, plan downtime on the calendar, and settle supported After Run rewards and consequences. Each wizard shows only the actions available for the current saved runner.
 
 WORK LOCAL-FIRST
-Keep building while offline. Local work remains usable without an account. Connected account, support, assistant, and live-play actions open only when you choose them.
+Open and save runner files you choose through Android's document picker. The app does not request broad storage access. Optional linked-account features use encrypted connections to Chummer services.
 
-USE ANDROID-NATIVE FILES AND OUTPUT
-Open and save only the files you choose through Android Documents. Export or save recovery copies, create PDF output, use Android printing, and share the app through the system share sheet. Chummer does not request broad storage access.
+CURRENT PREVIEW LIMITS
+This Internal testing preview is limited to SR5 phone wizards. Full Editing, tablet or foldable support, SR4 or SR6 creation, Rook or live-avatar support, public availability, and production release are not included.
 
-JOIN LIVE PLAY
-Move from campaign preparation into the phone-first live session experience for reconnect, replay, observer, and turn-companion workflows.
-
-PRIVATE BY DEFAULT
-No advertising SDK, location, contacts, camera, microphone, or broad-storage permission. Connected account, support, sync, and optional assistant features clearly cross the local boundary and use encrypted connections to Chummer services.
-
-Chummer is a community character-management project. It is not an official tabletop game publisher app and does not include rulebook text or replace the books required for play.
+Chummer is a community character-management project. It is not an official tabletop game publisher app, does not include rulebook text, and does not replace the books required for play.

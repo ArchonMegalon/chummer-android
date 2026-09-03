@@ -337,7 +337,12 @@ class CreationWizardSourceContractTests(unittest.TestCase):
             self.assertNotIn(forbidden, creation_branch)
         self.assertNotIn("AddTools", source)
 
-        self.assertLess(end, source.index("AddDossier();", end))
+        refresh = source[source.index("protected override void Refresh()") :]
+        refresh = refresh[: refresh.index("private void AddRouteMarker")]
+        self.assertNotIn("AddDossier();", refresh)
+        self.assertNotIn("AddBuildAreas();", refresh)
+        self.assertGreater(source.index("private void AddDossier()"), end)
+        self.assertGreater(source.index("private void AddBuildAreas()"), end)
         self.assertIn('automationId: "build-free-sprite-conversion"', source)
         self.assertGreater(source.index('automationId: "build-free-sprite-conversion"'), end)
 

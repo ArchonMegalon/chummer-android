@@ -20,6 +20,7 @@ public sealed class Sr5CareerWizardPage : NativePageBase
     private Sr5CareerWizardSnapshot? _snapshot;
     private string? _loadBlocker;
     private string? _checkpointNotice;
+    private string? _afterRunEntryBlocker;
     private long _loadVersion;
     private bool _loading;
 
@@ -130,7 +131,9 @@ public sealed class Sr5CareerWizardPage : NativePageBase
 
         Sr5CareerCyberwarePurchaseSnapshot commerce =
             Coordinator.LoadCareerCyberwarePurchase();
-        bool canOpenCommerce = commerce.IsReady;
+        Sr5CareerCustomDrugRecipeSnapshot customDrug =
+            Coordinator.LoadCareerCustomDrugRecipe();
+        bool canOpenCommerce = commerce.IsReady || customDrug.IsReady;
         if (!state.Snapshot.CanOpenAnyAction && !canOpenCommerce)
         {
             AddStatus(
@@ -175,19 +178,33 @@ public sealed class Sr5CareerWizardPage : NativePageBase
 
         _body.Add(NativeTheme.Eyebrow(
             Sr5CareerFlowStrings.Text("After the run")));
+        RunnerSessionSr5AfterRunSettlementPresenter afterRunPresenter = new(Coordinator);
+        bool canOpenAfterRun = Sr5AfterRunSettlementEntryGuard.TryValidate(
+            afterRunPresenter.Binding,
+            out string afterRunBlocker);
+        _afterRunEntryBlocker = canOpenAfterRun ? null : afterRunBlocker;
         _body.Add(NativeTheme.NavigationRow(
             Sr5CareerFlowStrings.Text("After the run"),
             Sr5CareerFlowStrings.Text(
                 "Only governed proposal, run, and character IDs are selectable. This page never invents a run from the current character file."),
-            OpenAfterRunSettlementAsync,
+            () => RunAsync(OpenAfterRunSettlementAsync),
+            enabled: canOpenAfterRun,
             automationId: "sr5-career-action-after-run"));
+        if (!string.IsNullOrWhiteSpace(_afterRunEntryBlocker))
+        {
+            Label blocker = NativeTheme.Body(
+                _afterRunEntryBlocker,
+                NativeTheme.Danger);
+            blocker.AutomationId = "sr5-career-after-run-unavailable";
+            _body.Add(NativeTheme.Card(blocker));
+        }
 
         _body.Add(NativeTheme.Eyebrow(
             WizardStrings.Get("Career.Commerce", "Commerce")));
         View commerceRoute = NativeTheme.NavigationRow(
-            Sr5CareerFlowStrings.Text("Cyberware purchase"),
+            Sr5CareerFlowStrings.Text("Gear and implants"),
             Sr5CareerFlowStrings.Text(
-                "Source-bound catalog → configuration → Core quote → durable receipt"),
+                "Source-bound Cyberware and custom-drug recipes → Core quote → durable receipt"),
             () => Navigation.PushAsync(new Sr5CareerCommerceHubPage(Coordinator)),
             enabled: canOpenCommerce,
             automationId: Sr5CareerRunCapabilityCatalog.CyberwareCommerceRoute);
@@ -196,8 +213,9 @@ public sealed class Sr5CareerWizardPage : NativePageBase
         {
             Label commerceBlocker = NativeTheme.Body(
                 commerce.Blockers.FirstOrDefault()
+                ?? customDrug.Blockers.FirstOrDefault()
                 ?? Sr5CareerFlowStrings.Text(
-                    "The typed Cyberware purchase authority is unavailable for this exact runner revision."),
+                    "No typed Career commerce authority is available for this exact runner revision."),
                 NativeTheme.Danger);
             commerceBlocker.AutomationId = "sr5-career-commerce-blocker";
             _body.Add(NativeTheme.Card(commerceBlocker));
@@ -215,17 +233,39 @@ public sealed class Sr5CareerWizardPage : NativePageBase
 
     private async Task OpenAfterRunSettlementAsync()
     {
+        RunnerSessionSr5AfterRunSettlementPresenter presenter = new(Coordinator);
+        if (!Sr5AfterRunSettlementEntryGuard.TryValidate(
+                presenter.Binding,
+                out string blocker))
+        {
+            _afterRunEntryBlocker = blocker;
+            return;
+        }
+
         Sr5AfterRunSettlementCoordinator authority = new(
-            new RunnerSessionSr5AfterRunSettlementPresenter(Coordinator),
+            presenter,
             new PreferencesSr5CareerCheckpointOwnerAuthority());
-        Sr5AfterRunSettlementEditorState editor = await authority.PrepareAsync();
-        Page destination = editor.Status == Sr5AfterRunCatalogStatus.Missing
-            && Coordinator.SupportsManualAfterRunProposalEntry
-                ? new Sr5AfterRunManualProposalPage(
-                    Coordinator,
-                    editor.WorkspaceId,
-                    editor.WorkspaceRevision)
-                : new Sr5AfterRunSettlementWizardPage(Coordinator, editor);
+        Sr5AfterRunSettlementEditorState editor;
+        try
+        {
+            editor = await authority.PrepareAsync();
+        }
+        catch (InvalidOperationException)
+        {
+            if (Sr5AfterRunSettlementEntryGuard.TryValidate(
+                    presenter.Binding,
+                    out blocker))
+            {
+                throw;
+            }
+
+            _afterRunEntryBlocker = blocker;
+            return;
+        }
+
+        _afterRunEntryBlocker = null;
+        Page destination = Sr5AfterRunSettlementWizardPage
+            .CreateEntryDestination(Coordinator, editor);
         await Navigation.PushAsync(destination);
     }
 

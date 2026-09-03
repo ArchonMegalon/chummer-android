@@ -1,0 +1,199 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://chummer.run/schemas/android-play-internal-publication-receipt-v3.schema.json",
+  "title": "Chummer Android next Play Internal publication receipt v3",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractName",
+    "recordedAtUtc",
+    "evidenceClass",
+    "publicationAuthorized",
+    "application",
+    "track",
+    "release",
+    "artifact",
+    "browserReadback",
+    "artifactLinkage",
+    "authorization",
+    "doesNotClaim"
+  ],
+  "properties": {
+    "contractName": {
+      "const": "chummer.android.play-internal-publication-receipt/v3"
+    },
+    "recordedAtUtc": { "type": "string", "format": "date-time" },
+    "evidenceClass": {
+      "const": "explicit_internal_browser_readback_plus_exact_local_release_outputs"
+    },
+    "publicationAuthorized": { "const": false },
+    "application": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "packageId", "playApplicationId"],
+      "properties": {
+        "name": { "const": "Chummer" },
+        "packageId": { "const": "com.myexternalbrain.chummer" },
+        "playApplicationId": { "const": "4975957268242186974" }
+      }
+    },
+    "track": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "consoleName", "trackId", "active", "joinUrl"],
+      "properties": {
+        "name": { "const": "internal" },
+        "consoleName": { "const": "Internal testing" },
+        "trackId": { "const": "4700678198570024687" },
+        "active": { "const": true },
+        "joinUrl": {
+          "type": "string",
+          "const": "https://play.google.com/apps/internaltest/4700678198570024687"
+        }
+      }
+    },
+    "release": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "versionCode",
+        "versionName",
+        "status",
+        "releasedAt",
+        "supportedAndroidDevices"
+      ],
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "maxLength": 180 },
+        "versionCode": { "type": "integer", "minimum": 11 },
+        "versionName": {
+          "type": "string",
+          "pattern": "^[0-9]+(?:\\.[0-9]+){2}(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$",
+          "maxLength": 128
+        },
+        "status": { "const": "Available to internal testers" },
+        "releasedAt": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["consoleDisplay", "normalizedUtc", "precision", "timeZoneAuthority"],
+          "properties": {
+            "consoleDisplay": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9 .,:()+-]{0,127}$"
+            },
+            "normalizedUtc": { "type": "null" },
+            "precision": { "const": "console_minute" },
+            "timeZoneAuthority": { "const": "not_exposed_by_browser_readback" }
+          }
+        },
+        "supportedAndroidDevices": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "aabFileName",
+        "aabSha256",
+        "aabSizeBytes",
+        "sourceGraphFileName",
+        "sourceGraphSha256",
+        "sourceGraphSizeBytes",
+        "sourceGraphContract",
+        "sourceGraphGeneratedAtUtc",
+        "androidSourceCommit",
+        "androidSourceTree"
+      ],
+      "properties": {
+        "aabFileName": { "type": "string", "pattern": "^[^/]+\\.aab$" },
+        "aabSha256": { "$ref": "#/$defs/sha256" },
+        "aabSizeBytes": { "type": "integer", "minimum": 1 },
+        "sourceGraphFileName": { "type": "string", "pattern": "^[^/]+\\.json$" },
+        "sourceGraphSha256": { "$ref": "#/$defs/sha256" },
+        "sourceGraphSizeBytes": { "type": "integer", "minimum": 1 },
+        "sourceGraphContract": { "const": "chummer.android.release-source-graph/v3" },
+        "sourceGraphGeneratedAtUtc": { "type": "string", "format": "date-time" },
+        "androidSourceCommit": { "$ref": "#/$defs/commit" },
+        "androidSourceTree": { "$ref": "#/$defs/commit" }
+      }
+    },
+    "browserReadback": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractName",
+        "surface",
+        "status",
+        "fieldsObserved",
+        "credentialOrSessionDataRecorded",
+        "canonicalEvidenceSha256"
+      ],
+      "properties": {
+        "contractName": { "const": "chummer.android.play-internal-browser-readback/v1" },
+        "surface": { "const": "google_play_console_internal_testing" },
+        "status": { "const": "observed" },
+        "fieldsObserved": {
+          "const": ["application", "track", "release", "join_url"]
+        },
+        "credentialOrSessionDataRecorded": { "const": false },
+        "canonicalEvidenceSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "artifactLinkage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "basis",
+        "localAabBytesVerified",
+        "localSourceGraphBytesVerified",
+        "playConsoleExposesArtifactDigest",
+        "artifactDownloadedBackFromPlay",
+        "sourceGraphRetrievedFromPlay"
+      ],
+      "properties": {
+        "basis": { "const": "exact_local_release_outputs_plus_explicit_browser_readback" },
+        "localAabBytesVerified": { "const": true },
+        "localSourceGraphBytesVerified": { "const": true },
+        "playConsoleExposesArtifactDigest": { "const": false },
+        "artifactDownloadedBackFromPlay": { "const": false },
+        "sourceGraphRetrievedFromPlay": { "const": false }
+      }
+    },
+    "authorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scope",
+        "publicationAuthorized",
+        "productionAuthorized",
+        "uploadActionAuthorized",
+        "testerRosterMutationAuthorized"
+      ],
+      "properties": {
+        "scope": { "const": "google_play_internal_testing_evidence_only" },
+        "publicationAuthorized": { "const": false },
+        "productionAuthorized": { "const": false },
+        "uploadActionAuthorized": { "const": false },
+        "testerRosterMutationAuthorized": { "const": false }
+      }
+    },
+    "doesNotClaim": {
+      "const": [
+        "production_rollout",
+        "public_release",
+        "upload_action_authorization",
+        "tester_roster_mutation_authority",
+        "tester_installation",
+        "play_artifact_digest_readback",
+        "play_artifact_byte_retrievability",
+        "source_graph_retrieval_from_play",
+        "exact_local_aab_published_to_play",
+        "successful_internal_test_install"
+      ]
+    }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" }
+  }
+}

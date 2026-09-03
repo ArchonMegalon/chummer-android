@@ -4,6 +4,7 @@ import importlib.util
 from pathlib import Path
 import sys
 import unittest
+from unittest.mock import Mock
 import uuid
 import xml.etree.ElementTree as ET
 
@@ -36,21 +37,75 @@ class Api36CareerActiveSkillAdvanceDriverTests(unittest.TestCase):
         self.assertIn('"activeSkillSourceResolverSha256"', source)
         self.assertIn('"presenterPersistenceSha256"', source)
         self.assertIn('"workspaceStoreSha256"', source)
-        self.assertIn("saved.content_revision != imported.content_revision + 1", source)
-        self.assertIn("saved.payload_sha256 == imported.payload_sha256", source)
+        self.assertIn("saved.content_revision != initial_saved.content_revision + 1", source)
+        self.assertIn("saved.payload_sha256 == initial_saved.payload_sha256", source)
         self.assertEqual(2, source.count("shared.force_stop_and_launch_new_process"))
         self.assertIn("shared.require_restored_authority(saved, first_restored)", source)
         self.assertIn("shared.require_restored_authority(saved, second_restored)", source)
-        self.assertIn('device.tap("Cancel"', source)
-        self.assertIn('device.tap("Advance"', source)
+        for marker in (
+            '"build-sr5-career-wizard"',
+            '"sr5-career/advancement"',
+            '"sr5-career-action-active-skill"',
+            '"sr5-career-active-skill-review"',
+            '"sr5-career-active-skill-apply"',
+            '"sr5-career-active-skill-receipt-acknowledge"',
+        ):
+            self.assertIn(marker, source)
+        self.assertNotIn('"build-career-active-skill"', source)
+        self.assertNotIn('"career-active-skill-advance"', source.split("def main", 1)[0])
+        self.assertNotIn('device.tap("Advance"', source)
+        self.assertNotIn('device.tap("Cancel"', source)
+        self.assertIn("shared.read_imported_phone_runner_authority(", source)
+        self.assertEqual(
+            1,
+            source.count('shared.save_and_read_workspace_authority(device, "phone")'),
+        )
+        self.assertIn("imported.content_revision != 1", source)
+        self.assertIn("imported.saved_revision != 0", source)
+        self.assertIn("saved.content_revision != 1", source)
+        self.assertIn("saved.saved_revision != 1", source)
+        self.assertIn("saved.payload_sha256 != imported.payload_sha256", source)
+        self.assertIn(
+            'device.tap_exact_resource_id_bidirectional(\n'
+            '        "sr5-career-active-skill-receipt-acknowledge"',
+            source,
+        )
+        self.assertIn("forward_scrolls=16", source)
+        self.assertNotIn('device.wait("CareerActiveSkillAdvanceE2E"', source)
         self.assertIn('"Active Skill Pilot Ground Craft 3 -> 4"', source)
         self.assertIn('"ImproveSkill"', source)
 
-    def test_confirm_waits_for_success_notice_before_reading_saved_authority(self) -> None:
+    def test_typed_review_and_receipt_precede_saved_authority_proof(self) -> None:
         source = DRIVER.read_text(encoding="utf-8")
-        confirm = source.index('device.tap("Advance"')
-        success = source.index("device.wait_for_single_exact_text(", confirm)
-        saved_authority = source.index("saved = read_saved_authority(device)", success)
+        initial_save = source.index(
+            "initial_saved = save_initial_import_without_content_mutation"
+        )
+        open_page = source.index("open_page(device)", initial_save)
+        review = source.index(
+            'device.tap_single_exact_resource_id(\n'
+            '        "sr5-career-active-skill-review"'
+        )
+        review_route = source.index(
+            "wait_exact_route(device, REVIEW_ROUTE, timeout=90)", review
+        )
+        unchanged_before_apply = source.index(
+            "assert_before(root_for_authority(device, initial_saved))", review_route
+        )
+        apply = source.index(
+            'device.tap_single_exact_resource_id(\n'
+            '        "sr5-career-active-skill-apply"',
+            unchanged_before_apply,
+        )
+        receipt = source.index(
+            "wait_exact_route(device, RECEIPT_ROUTE, timeout=180)", apply
+        )
+        acknowledge = source.index(
+            'device.tap_exact_resource_id_bidirectional(\n'
+            '        "sr5-career-active-skill-receipt-acknowledge"',
+            receipt,
+        )
+        runner_return = source.index('"phone-runner-page"', acknowledge)
+        saved_authority = source.index("saved = read_saved_authority(device)", runner_return)
         revision = source.index("saved.content_revision", saved_authority)
         digest = source.index("saved.payload_sha256", revision)
         expense = source.index("expense_id = assert_after", digest)
@@ -61,21 +116,17 @@ class Api36CareerActiveSkillAdvanceDriverTests(unittest.TestCase):
         second_restored = source.index("shared.require_restored_authority", second_restart)
 
         self.assertEqual(
-            "Active skill advanced and Karma expense saved.",
-            driver.ADVANCE_SUCCESS_NOTICE,
-        )
-        self.assertIn(
-            "device.wait_for_single_exact_text(\n"
-            "        ADVANCE_SUCCESS_NOTICE,\n"
-            "        timeout=180,\n"
-            "        scroll=True,",
-            source,
-        )
-        self.assertEqual(
             sorted(
                 (
-                    confirm,
-                    success,
+                    initial_save,
+                    open_page,
+                    review,
+                    review_route,
+                    unchanged_before_apply,
+                    apply,
+                    receipt,
+                    acknowledge,
+                    runner_return,
                     saved_authority,
                     revision,
                     digest,
@@ -88,8 +139,15 @@ class Api36CareerActiveSkillAdvanceDriverTests(unittest.TestCase):
                 )
             ),
             [
-                confirm,
-                success,
+                initial_save,
+                open_page,
+                review,
+                review_route,
+                unchanged_before_apply,
+                apply,
+                receipt,
+                acknowledge,
+                runner_return,
                 saved_authority,
                 revision,
                 digest,
@@ -101,49 +159,87 @@ class Api36CareerActiveSkillAdvanceDriverTests(unittest.TestCase):
                 second_restored,
             ],
         )
-        self.assertNotIn(
-            'device.wait("build-career-active-skill", timeout=180',
-            source,
+        self.assertNotIn('device.wait("build-career-active-skill"', source)
+
+    def test_initial_save_authority_requires_exact_1_0_to_1_1_transition(self) -> None:
+        imported = driver.shared.WorkspaceAuthority(
+            "workspace-1",
+            1,
+            0,
+            "a" * 64,
+            "b" * 64,
         )
-
-    def test_success_notice_wait_is_exact_cardinality_bound_and_fail_closed(self) -> None:
-        exact = driver.shared.UiNode({"text": driver.ADVANCE_SUCCESS_NOTICE})
-        prefix = driver.shared.UiNode(
-            {"text": f"{driver.ADVANCE_SUCCESS_NOTICE} stale suffix"}
+        saved = driver.shared.WorkspaceAuthority(
+            "workspace-1",
+            1,
+            1,
+            "a" * 64,
+            "c" * 64,
         )
-        captures: list[str] = []
-        device = object.__new__(driver.shared.Device)
-        device.hierarchy = lambda: [prefix, exact]
-        device.dismiss_system_ui_anr = lambda nodes=None: False
-        device.capture = captures.append
-        device.swipe_up = lambda **kwargs: None
+        device = Mock(spec=driver.shared.Device)
 
-        self.assertIs(
-            exact,
-            device.wait_for_single_exact_text(driver.ADVANCE_SUCCESS_NOTICE),
-        )
-        self.assertEqual([], captures)
-
-        device.hierarchy = lambda: [exact, exact]
-        with self.assertRaisesRegex(RuntimeError, "cardinality 2"):
-            device.wait_for_single_exact_text(driver.ADVANCE_SUCCESS_NOTICE)
-        self.assertEqual(["exact-text-cardinality-invalid"], captures)
-
-        captures.clear()
-        device.hierarchy = lambda: []
-        with self.assertRaisesRegex(RuntimeError, "Timed out waiting for exactly one"):
-            device.wait_for_single_exact_text(
-                driver.ADVANCE_SUCCESS_NOTICE,
-                timeout=0,
+        original = driver.shared.save_and_read_workspace_authority
+        try:
+            driver.shared.save_and_read_workspace_authority = Mock(return_value=saved)
+            self.assertEqual(
+                saved,
+                driver.save_initial_import_without_content_mutation(device, imported),
             )
-        self.assertEqual(["exact-text-unavailable"], captures)
+            driver.shared.save_and_read_workspace_authority.assert_called_once_with(
+                device,
+                "phone",
+            )
 
-        device.hierarchy = lambda: [exact]
-        device.dismiss_system_ui_anr = lambda nodes=None: (_ for _ in ()).throw(
-            driver.shared.ProductAnrDetected("product ANR")
+            hostile_pairs = (
+                (imported.__class__("workspace-1", 2, 0, "a" * 64, "b" * 64), saved),
+                (imported, saved.__class__("workspace-2", 1, 1, "a" * 64, "c" * 64)),
+                (imported, saved.__class__("workspace-1", 1, 0, "a" * 64, "c" * 64)),
+                (imported, saved.__class__("workspace-1", 1, 1, "d" * 64, "c" * 64)),
+            )
+            for hostile_imported, hostile_saved in hostile_pairs:
+                with self.subTest(
+                    imported=hostile_imported,
+                    saved=hostile_saved,
+                ):
+                    driver.shared.save_and_read_workspace_authority = Mock(
+                        return_value=hostile_saved
+                    )
+                    with self.assertRaises(RuntimeError):
+                        driver.save_initial_import_without_content_mutation(
+                            device,
+                            hostile_imported,
+                        )
+        finally:
+            driver.shared.save_and_read_workspace_authority = original
+
+    def test_family_route_tap_requires_one_exact_tappable_authority(self) -> None:
+        exact = driver.shared.UiNode(
+            {
+                "content-desc": driver.ADVANCEMENT_ROUTE,
+                "bounds": "[100,200][300,260]",
+            }
         )
-        with self.assertRaisesRegex(driver.shared.ProductAnrDetected, "product ANR"):
-            device.wait_for_single_exact_text(driver.ADVANCE_SUCCESS_NOTICE)
+        device = Mock(spec=driver.shared.Device)
+        device.wait_for_single_exact_accessibility_value.return_value = exact
+        device.node_has_tappable_bounds.return_value = True
+
+        driver.tap_exact_route(device, driver.ADVANCEMENT_ROUTE, timeout=60)
+
+        device.wait_for_single_exact_accessibility_value.assert_called_once_with(
+            driver.ADVANCEMENT_ROUTE,
+            timeout=60,
+            evidence_prefix="career-active-skill-route",
+            surface_name="SR5 Career Active-Skill route",
+        )
+        device.shell.assert_called_once_with("input", "tap", "200", "230")
+
+        device.reset_mock()
+        device.wait_for_single_exact_accessibility_value.return_value = exact
+        device.node_has_tappable_bounds.return_value = False
+        with self.assertRaisesRegex(RuntimeError, "route is not tappable"):
+            driver.tap_exact_route(device, driver.ADVANCEMENT_ROUTE, timeout=60)
+        device.capture.assert_called_once_with("career-active-skill-route-not-tappable")
+        device.shell.assert_not_called()
 
     def test_fixture_has_exact_guid_source_balance_expense_and_nested_authority(self) -> None:
         root = ET.parse(FIXTURE).getroot()

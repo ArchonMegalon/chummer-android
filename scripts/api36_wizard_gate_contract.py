@@ -36,11 +36,32 @@ REQUIRED_JOURNEY_SPECS = (
         "driverJourney": "career-weapon-fire",
         "receiptSchema": "chummer.android.editing-e2e/v1",
     },
+    {
+        "matrixJourney": "before-run-edge",
+        "driverJourney": "before-run-edge",
+        "receiptSchema": "chummer.android.sr5-before-run-edge-e2e/v1",
+    },
+    {
+        "matrixJourney": "playtime-short-burst",
+        "driverJourney": "playtime-short-burst",
+        "receiptSchema": "chummer.android.editing-e2e/v1",
+    },
+    {
+        "matrixJourney": "downtime-calendar",
+        "driverJourney": "sr5-downtime-calendar",
+        "receiptSchema": "chummer.android.editing-e2e/v1",
+    },
+    {
+        "matrixJourney": "after-run-settlement",
+        "driverJourney": "sr5-after-run-settlement",
+        "receiptSchema": "chummer.android.sr5-after-run-settlement-hosted-e2e/v1",
+    },
 )
 EXCLUDED_FROM_GATE = (
     {
         "matrixJourney": "full-editing",
-        "status": "not_required_not_proven",
+        "status": "deferred",
+        "evidenceClass": "informational_only",
         "maySatisfyRequiredJourney": False,
     },
 )
@@ -78,13 +99,21 @@ def expected_contract() -> dict[str, Any]:
 
 def validate_contract(value: dict[str, Any]) -> dict[str, Any]:
     expected = expected_contract()
+    required_count = len(REQUIRED_JOURNEY_SPECS)
+    if value.get("excludedFromGate") != expected["excludedFromGate"]:
+        raise ValueError(
+            "Full Editing must remain deferred informational evidence and cannot "
+            "satisfy wizard authority"
+        )
     if value != expected:
         raise ValueError(
-            "API-36 wizard gate contract differs from the exact three-journey "
+            f"API-36 wizard gate contract differs from the exact {required_count}-journey "
             "wizard-only authority"
         )
-    if value["requiredJourneyCount"] != 3:
-        raise ValueError("API-36 wizard gate must require exactly three journeys")
+    if value["requiredJourneyCount"] != required_count:
+        raise ValueError(
+            f"API-36 wizard gate must require exactly {required_count} journeys"
+        )
     required = [row["matrixJourney"] for row in value["requiredJourneys"]]
     if "full-editing" in required:
         raise ValueError("Full Editing cannot be a required wizard-gate journey")

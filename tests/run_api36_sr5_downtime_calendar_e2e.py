@@ -394,14 +394,23 @@ def read_journal(
     device: physical.shared.Device,
     *,
     required: bool = True,
+    deadline: float | None = None,
 ) -> physical.CheckpointSnapshot | None:
     listing = device.shell(
         "run-as", physical.shared.PACKAGE, "find", "shared_prefs", "-type", "f",
         "-name", "*.xml",
+        deadline=deadline,
     )
     matches: list[str] = []
     for path in (line.strip() for line in listing.splitlines() if line.strip()):
-        raw = device.run("exec-out", "run-as", physical.shared.PACKAGE, "cat", path).stdout
+        raw = device.run(
+            "exec-out",
+            "run-as",
+            physical.shared.PACKAGE,
+            "cat",
+            path,
+            deadline=deadline,
+        ).stdout
         try:
             root = ET.fromstring(raw)
         except ET.ParseError as error:
@@ -425,6 +434,24 @@ def read_journal(
         _mapping(payload, "Downtime journal"),
         hashlib.sha256(serialized.encode("utf-8")).hexdigest(),
     )
+
+
+def wait_for_journal(
+    device: physical.shared.Device,
+    *,
+    deadline: float,
+) -> physical.CheckpointSnapshot:
+    """Observe the one review tap's durable result without replaying the tap."""
+    while True:
+        snapshot = read_journal(device, required=False, deadline=deadline)
+        if snapshot is not None:
+            return snapshot
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise RuntimeError(
+                "Durable Downtime Calendar journal was not observed within the existing deadline"
+            )
+        time.sleep(min(0.25, remaining))
 
 
 def validate_journal(
@@ -484,11 +511,54 @@ def _wait_resource_text(
     raise RuntimeError(f"Timed out waiting for exact text on {selector}")
 
 
+def _acquire_exact_resource_text_bidirectional(
+    device: physical.shared.Device,
+    selector: str,
+    expected_text: str,
+    *,
+    timeout: int,
+    surface_name: str,
+) -> str:
+    """Scroll one exact read-only text observation into view and validate it."""
+    deadline = time.monotonic() + timeout
+    node = device.wait_exact_resource_id_bidirectional(
+        selector,
+        timeout=timeout,
+        backward_scrolls=36,
+        forward_scrolls=36,
+        scroll_distance_ratio=0.18,
+        evidence_prefix=f"{selector}-recovery",
+        surface_name=surface_name,
+        require_tappable=False,
+        deadline=deadline,
+    )
+    text = node.attributes.get("text") or ""
+    if text != expected_text:
+        device.capture(f"{selector}-recovery-text-mismatch", deadline=deadline)
+        raise RuntimeError(
+            f"{surface_name} {selector!r} did not expose the exact expected text"
+        )
+    return text
+
+
 def open_downtime(device: physical.shared.Device) -> None:
     physical.shared.open_build(device, "phone")
     physical.shared.reset_scroll_to_top(device, swipes=18)
-    _tap_exact(device, "build-sr5-career-wizard")
+    device.tap_exact_resource_id_bidirectional(
+        "build-sr5-career-wizard",
+        timeout=120,
+        backward_scrolls=16,
+        forward_scrolls=48,
+        scroll_distance_ratio=0.18,
+        evidence_prefix="sr5-downtime-career-wizard",
+        surface_name="SR5 Career wizard route",
+    )
     physical.wait_exact_route(device, "sr5-career", timeout=90)
+    device.tap_single_exact_resource_id(
+        "sr5-career/calendar", timeout=120,
+        evidence_prefix="sr5-downtime-family", surface_name="SR5 Calendar family",
+    )
+    physical.wait_exact_route(device, "sr5-career/calendar", timeout=90)
     device.tap_single_exact_resource_id(
         "sr5-career-action-calendar", timeout=120,
         evidence_prefix="sr5-downtime-action", surface_name="SR5 Downtime action",
@@ -531,17 +601,49 @@ def assert_calendar(root: ET.Element, fixture: dict[str, object], *, edited: boo
         )
 
 
+def require_initial_saved_fixture_authority(
+    imported: physical.shared.WorkspaceAuthority,
+    saved: physical.shared.WorkspaceAuthority,
+    fixture_sha256: str,
+) -> None:
+    """Prove one explicit Save established the unchanged imported runner at 1/1."""
+    physical.shared.require_import_authority(imported, fixture_sha256)
+    if imported.content_revision != 1 or imported.saved_revision != 0:
+        raise RuntimeError(
+            "Downtime import did not expose the exact unsaved revision 1/0 authority"
+        )
+    physical.shared.require_import_authority(saved, fixture_sha256)
+    physical.shared.require_saved_authority(saved)
+    if (
+        saved.workspace_id != imported.workspace_id
+        or saved.content_revision != imported.content_revision
+        or saved.saved_revision != imported.content_revision
+        or saved.payload_sha256 != imported.payload_sha256
+    ):
+        raise RuntimeError(
+            "Initial Downtime save changed the imported workspace, revision, or fixture bytes"
+        )
+
+
 def prove_downtime(
     device: physical.shared.Device,
     runner: Path,
     runner_sha256: str,
     fixture: dict[str, object],
+    proof_expectation: object | None = None,
 ) -> dict[str, object]:
     device.shell("pm", "clear", physical.shared.PACKAGE)
-    initial_launch, imported = calendar_leaf.prepare_runner(
-        device, runner.name, runner_sha256
+    initial_launch, imported, import_proof = calendar_leaf.prepare_runner(
+        device,
+        runner.name,
+        runner_sha256,
+        proof_expectation,
     )
-    assert_calendar(calendar_leaf.root_for_authority(device, imported), fixture, edited=False)
+    initial_saved = physical.shared.save_and_read_workspace_authority(device, "phone")
+    require_initial_saved_fixture_authority(imported, initial_saved, runner_sha256)
+    assert_calendar(
+        calendar_leaf.root_for_authority(device, initial_saved), fixture, edited=False
+    )
     physical.shared.record_phone_ui_locale_evidence(device, evidence_prefix="sr5-downtime")
     open_downtime(device)
     _tap_exact(device, "sr5-downtime-calendar-operation")
@@ -560,21 +662,22 @@ def prove_downtime(
     device.set_text(
         "sr5-downtime-calendar-notes", "Notes (edit only)", fixture["edit"]["notes"],
         scroll=True, max_scrolls=24, scroll_distance_ratio=0.18,
+        exact_accessibility_prefix="Downtime notes",
     )
     device.set_text(
         "sr5-downtime-calendar-notes-color", "Notes color (edit only)",
         fixture["edit"]["notesColor"], scroll=True, max_scrolls=24,
         scroll_distance_ratio=0.18,
+        exact_accessibility_prefix="Notes color (edit only)",
     )
+    review_deadline = time.monotonic() + 120
     _tap_exact(device, "sr5-downtime-calendar-review")
-    reviewed = read_journal(device)
-    if reviewed is None:
-        raise RuntimeError("Reviewed Downtime journal disappeared")
+    reviewed = wait_for_journal(device, deadline=review_deadline)
     review_projection = validate_journal(
-        reviewed.payload, fixture, workspace_id=imported.workspace_id,
-        workspace_revision=imported.content_revision,
-        payload_sha256=imported.payload_sha256,
-        document_sha256=imported.document_sha256, version=1, phase=0,
+        reviewed.payload, fixture, workspace_id=initial_saved.workspace_id,
+        workspace_revision=initial_saved.content_revision,
+        payload_sha256=initial_saved.payload_sha256,
+        document_sha256=initial_saved.document_sha256, version=1, phase=0,
     )
     device.capture("sr5-downtime-durable-review")
 
@@ -583,14 +686,15 @@ def prove_downtime(
     physical.shared.tap_phone_destination(device, "phone-destination-runners")
     physical.shared.wait_for_phone_runners(device, timeout=120)
     restored_before = physical.shared.read_phone_workspace_authority(device)
-    physical.shared.require_restored_authority(imported, restored_before)
+    physical.shared.require_restored_authority(initial_saved, restored_before)
     if read_journal(device) != reviewed:
         raise RuntimeError("Downtime reviewed journal bytes changed across restart")
     open_downtime(device)
     expected_recovery = "Reviewed preview restored. Confirm it again before saving."
-    _wait_resource_text(
-        device, "sr5-downtime-calendar-status", lambda text: text == expected_recovery,
+    _acquire_exact_resource_text_bidirectional(
+        device, "sr5-downtime-calendar-status", expected_recovery,
         timeout=90,
+        surface_name="Recovered Downtime status",
     )
     _tap_exact(device, "sr5-downtime-calendar-confirm")
     device.tap("Confirm", timeout=60)
@@ -605,16 +709,19 @@ def prove_downtime(
     device.capture("sr5-downtime-applied-receipt")
     saved = physical.shared.read_phone_workspace_authority(device)
     physical.shared.require_saved_authority(saved)
-    if saved.workspace_id != imported.workspace_id or saved.content_revision != imported.content_revision + 1:
+    if (
+        saved.workspace_id != initial_saved.workspace_id
+        or saved.content_revision != initial_saved.content_revision + 1
+    ):
         raise RuntimeError("Downtime apply did not save one exact successor revision")
-    if saved.payload_sha256 == imported.payload_sha256:
+    if saved.payload_sha256 == initial_saved.payload_sha256:
         raise RuntimeError("Downtime successor payload digest did not change")
     assert_calendar(calendar_leaf.root_for_authority(device, saved), fixture, edited=True)
     applied_projection = validate_journal(
-        applied.payload, fixture, workspace_id=imported.workspace_id,
-        workspace_revision=imported.content_revision,
-        payload_sha256=imported.payload_sha256,
-        document_sha256=imported.document_sha256, version=3, phase=2,
+        applied.payload, fixture, workspace_id=initial_saved.workspace_id,
+        workspace_revision=initial_saved.content_revision,
+        payload_sha256=initial_saved.payload_sha256,
+        document_sha256=initial_saved.document_sha256, version=3, phase=2,
         successor_payload_sha256=saved.payload_sha256,
         successor_document_sha256=saved.document_sha256,
     )
@@ -636,10 +743,14 @@ def prove_downtime(
     open_downtime(device)
     if read_journal(device) != applied:
         raise RuntimeError("Downtime receipt journal bytes changed during restart recovery")
-    _wait_resource_text(
-        device, "sr5-downtime-calendar-receipt",
-        lambda text: applied_projection["receiptDigest"][:19] in text,
+    expected_receipt = (
+        f"Applied receipt {applied_projection['receiptDigest'][:19]}… "
+        f"at revision {saved.content_revision}."
+    )
+    _acquire_exact_resource_text_bidirectional(
+        device, "sr5-downtime-calendar-receipt", expected_receipt,
         timeout=90,
+        surface_name="Recovered Downtime receipt",
     )
     device.capture("sr5-downtime-recovered-receipt")
     _tap_exact(device, "sr5-downtime-calendar-clear-applied")
@@ -669,8 +780,9 @@ def prove_downtime(
     assert_calendar(calendar_leaf.root_for_authority(device, final_saved), fixture, edited=True)
     if read_journal(device, required=False) is not None:
         raise RuntimeError("Downtime acknowledgement did not survive final restart")
-    return {
+    result = {
         "import": physical.shared.workspace_authority_json(imported),
+        "initialSaved": physical.shared.workspace_authority_json(initial_saved),
         "restoredBeforeApply": physical.shared.workspace_authority_json(restored_before),
         "savedSuccessor": physical.shared.workspace_authority_json(saved),
         "finalRestartSuccessor": physical.shared.workspace_authority_json(final_saved),
@@ -685,6 +797,15 @@ def prove_downtime(
             list(final_restart.restarted.process_ids),
         ],
     }
+    if proof_expectation is not None:
+        if import_proof is None:
+            raise RuntimeError("API-36 Downtime import proof activation is missing")
+        result["api36ImportProof"] = {
+            "schema": import_proof.payload["schema"],
+            "serializedSha256": import_proof.serialized_sha256,
+            "observation": import_proof.payload,
+        }
+    return result
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:

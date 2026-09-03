@@ -65,7 +65,9 @@ DEFAULT_REGISTRY = Path(
 DEFAULT_OUTPUT = REPO_ROOT / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json"
 SR5_TABLE_WIZARD_API36_JOURNEY_ID = "sr5-table-wizard-before-run-playtime"
 SR5_CONTEXTUAL_MUTATION_API36_JOURNEY_ID = "sr5-downtime-playtime-typed-transactions"
+SR5_AFTER_RUN_SETTLEMENT_API36_JOURNEY_ID = "sr5-after-run-settlement"
 SR5_TABLE_WIZARD_ANDROID_SOURCE_INPUTS = (
+    "src/Chummer.Android/Native/AndroidAfterRunWorkspaceSnapshotSource.cs",
     "src/Chummer.Android/Native/PhoneShellPages.cs",
     "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
     "src/Chummer.Android/Native/RunnerSessionSr5CareerWizardPhoneAuthority.cs",
@@ -74,6 +76,12 @@ SR5_TABLE_WIZARD_ANDROID_SOURCE_INPUTS = (
     "src/Chummer.Android/Native/Sr5CareerWizardModel.cs",
     "src/Chummer.Android/Native/Sr5CareerWizardPage.cs",
     "src/Chummer.Android/Native/Sr5CareerWizardPhoneModel.cs",
+    "src/Chummer.Android/Native/Sr5AfterRunManualProposalPage.cs",
+    "src/Chummer.Android/Native/Sr5AfterRunManualProposalSource.cs",
+    "src/Chummer.Android/Native/Sr5AfterRunSettlementCheckpointStore.cs",
+    "src/Chummer.Android/Native/Sr5AfterRunSettlementCoordinator.cs",
+    "src/Chummer.Android/Native/Sr5AfterRunSettlementWizardPage.cs",
+    "src/Chummer.Android/Native/Sr5AfterRunWizardModel.cs",
     "src/Chummer.Android/Native/Sr5TableWizardPage.cs",
     "src/Chummer.Android/Native/Sr5TableWizardPhoneModel.cs",
     "src/Chummer.Android/Native/Sr5TableWizardTypedTransaction.cs",
@@ -109,14 +117,31 @@ SR5_TABLE_WIZARD_TEST_INPUTS = (
 SR5_TABLE_WIZARD_GATE_INPUTS = (
     ".github/workflows/api36-editing-e2e.yml",
     "eng/api36-sr5-wizard-gate-authority.json",
+    "scripts/build-debug.sh",
     "scripts/api36_wizard_gate_contract.py",
     "scripts/finalize-api36-e2e-journey-receipt.py",
     "scripts/run-api36-editing-e2e-ci.sh",
     "scripts/verify-api36-editing-e2e-aggregate.py",
     "src/Chummer.Android/Chummer.Android.csproj",
+    "src/Chummer.Android/Proof/Api36ProofState.cs",
+    "src/Chummer.Android/Proof/Api36ProofStatePublisher.cs",
     "tests/Chummer.Android.Native.CompileCheck/NativeCompileInputs.props",
     "tests/test_api36_e2e_workflow.py",
     "tests/test_api36_e2e_artifact_authority.py",
+    "tests/run_api36_sr5_before_run_edge_e2e.py",
+    "tests/run_api36_sr5_before_run_edge_physical_e2e.py",
+    "tests/api36_proof_state.py",
+    "tests/test_api36_proof_state_contract.py",
+    "tests/test_run_api36_sr5_before_run_edge_e2e_driver.py",
+    "tests/run_api36_sr5_playtime_short_burst_e2e.py",
+    "tests/test_api36_sr5_playtime_short_burst_e2e_driver.py",
+    "tests/run_api36_sr5_downtime_calendar_hosted_e2e.py",
+    "tests/test_api36_sr5_downtime_calendar_hosted_e2e_driver.py",
+    "tests/fixtures/sr5-after-run-settlement-e2e.json",
+    "tests/run_api36_sr5_after_run_settlement_e2e.py",
+    "tests/run_api36_sr5_after_run_settlement_hosted_e2e.py",
+    "tests/test_api36_sr5_after_run_settlement_hosted_contract.py",
+    "tests/test_api36_sr5_career_run_contextual_contract.py",
     "tests/test_chummer5_editability_inventory.py",
     "tests/test_sr5_contextual_wizard_scope.py",
 )
@@ -210,6 +235,50 @@ SR5_TABLE_WIZARD_AUTHORITY_MARKERS = {
     ),
     "tests/test_api36_e2e_workflow.py": (
         "test_sr5_table_wizard_development_journey_is_recognized_without_release_claim",
+        '"before-run-edge"',
+    ),
+    "tests/run_api36_sr5_before_run_edge_e2e.py": (
+        'JOURNEY = "before-run-edge"',
+        "lane.prove_lane(",
+        '"publicationAuthorized": False',
+    ),
+    "tests/test_run_api36_sr5_before_run_edge_e2e_driver.py": (
+        "test_hosted_identity_is_distinct_and_narrow",
+        "test_device_authority_requires_api36_x86_64_emulator",
+        "test_exact_fixture_and_unrelated_xml_are_bound",
+    ),
+    "tests/run_api36_sr5_playtime_short_burst_e2e.py": (
+        'JOURNEY = "playtime-short-burst"',
+        "lane.prove_lane(",
+        '"publicationAuthorized": False',
+    ),
+    "tests/test_api36_sr5_playtime_short_burst_e2e_driver.py": (
+        "test_hosted_wrapper_is_exactly_one_nonpublication_phone_action",
+        "test_hosted_device_contract_rejects_wrong_api_abi_and_unsafe_serial",
+    ),
+    "tests/run_api36_sr5_downtime_calendar_hosted_e2e.py": (
+        'JOURNEY = "sr5-downtime-calendar"',
+        "downtime.prove_downtime(",
+        '"executionStatus": "pass"',
+    ),
+    "tests/test_api36_sr5_downtime_calendar_hosted_e2e_driver.py": (
+        "test_hosted_driver_is_phone_api36_only_and_uses_typed_wizard",
+        "test_hosted_driver_requires_explicit_receipt_and_committed_fixture",
+    ),
+    "tests/run_api36_sr5_after_run_settlement_hosted_e2e.py": (
+        'JOURNEY = "sr5-after-run-settlement"',
+        'MATRIX_JOURNEY = "after-run-settlement"',
+        "settlement.prove_after_run(",
+        '"publicationAuthorized": False',
+    ),
+    "tests/test_api36_sr5_after_run_settlement_hosted_contract.py": (
+        "test_driver_reuses_the_exact_typed_settlement_authority",
+        "test_hosted_execution_is_phone_api36_x64_source_and_cleanup_bound",
+        "test_foreign_fixture_fails_before_device_access",
+    ),
+    "tests/test_api36_sr5_career_run_contextual_contract.py": (
+        "test_before_run_driver_semantics_are_typed_but_not_release_claimed",
+        '"before-run-edge"',
     ),
     "tests/test_chummer5_editability_inventory.py": (
         "test_sr5_table_wizard_development_lane_is_exactly_bound_without_completion_claim",
@@ -23610,7 +23679,20 @@ def _sr5_table_wizard_api36_recognition(
         "recognitionStatus": "recognized",
         "sourceAuthorityStatus": "ready" if not blockers else "blocked",
         "executionStatus": "not_executed",
-        "matrixJourney": None,
+        "matrixJourneys": [
+            {
+                "route": "sr5-career/before-run",
+                "matrixJourney": "before-run-edge",
+                "gateStatus": "required",
+                "executionStatus": "not_executed",
+            },
+            {
+                "route": "sr5-career/playtime",
+                "matrixJourney": "playtime-short-burst",
+                "gateStatus": "required",
+                "executionStatus": "not_executed",
+            },
+        ],
         "releaseClaim": False,
         "completionCountContribution": 0,
         "androidSourcePaths": list(SR5_TABLE_WIZARD_ANDROID_SOURCE_INPUTS),
@@ -23653,7 +23735,58 @@ def _sr5_contextual_mutation_api36_recognition(
         "recognitionStatus": "recognized",
         "sourceAuthorityStatus": table_recognition["sourceAuthorityStatus"],
         "executionStatus": "not_executed",
-        "matrixJourney": None,
+        "matrixJourneys": [
+            {
+                "route": "sr5-career/downtime",
+                "matrixJourney": "downtime-calendar",
+                "gateStatus": "required",
+                "executionStatus": "not_executed",
+            },
+            {
+                "route": "sr5-career/playtime",
+                "matrixJourney": "playtime-short-burst",
+                "gateStatus": "required",
+                "executionStatus": "not_executed",
+            },
+        ],
+        "releaseClaim": False,
+        "completionCountContribution": 0,
+        "blockers": list(table_recognition["blockers"]),
+    }
+
+
+def _sr5_after_run_settlement_api36_recognition(
+    table_recognition: dict[str, Any],
+) -> dict[str, Any]:
+    return {
+        "journeyId": SR5_AFTER_RUN_SETTLEMENT_API36_JOURNEY_ID,
+        "parentCareerLane": "sr5-career/after-run",
+        "routes": ["sr5-career/after-run/settlement"],
+        "supportedTypedMutations": [
+            "after-run-heat",
+            "after-run-street-cred",
+            "after-run-notoriety",
+            "after-run-public-awareness",
+            "after-run-contacts",
+        ],
+        "explicitBlockers": [
+            "after-run-injuries",
+            "after-run-ammo",
+            "after-run-loot",
+            "after-run-expenses",
+            "after-run-log",
+        ],
+        "recognitionStatus": "recognized",
+        "sourceAuthorityStatus": table_recognition["sourceAuthorityStatus"],
+        "executionStatus": "not_executed",
+        "matrixJourneys": [
+            {
+                "route": "sr5-career/after-run/settlement",
+                "matrixJourney": "after-run-settlement",
+                "gateStatus": "required",
+                "executionStatus": "not_executed",
+            },
+        ],
         "releaseClaim": False,
         "completionCountContribution": 0,
         "blockers": list(table_recognition["blockers"]),
@@ -24208,6 +24341,13 @@ def build_inventory(
             ),
             "contextualMutationJourneyRecognition":
                 _sr5_contextual_mutation_api36_recognition(
+                    _sr5_table_wizard_api36_recognition(
+                        android_inputs,
+                        presentation_root,
+                    )
+                ),
+            "afterRunSettlementJourneyRecognition":
+                _sr5_after_run_settlement_api36_recognition(
                     _sr5_table_wizard_api36_recognition(
                         android_inputs,
                         presentation_root,

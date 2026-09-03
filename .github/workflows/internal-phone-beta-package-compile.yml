@@ -1,6 +1,7 @@
-name: Internal phone beta package compile (inactive)
+name: Internal phone beta pinned-source package-closure compile (inactive)
 
-# Source-only W5 contract. Activation awaits the full MAUI/content/API36 gate.
+# Pinned Presentation source plus locked package-closure contract.
+# Activation awaits the full MAUI/content/API36 gate.
 # GitHub rejects `on: []`; excluding every branch keeps this workflow inactive.
 on:
   push:
@@ -23,7 +24,7 @@ jobs:
           persist-credentials: false
           fetch-depth: 1
 
-      - name: Check out the exact internal Presentation package authority
+      - name: Check out the exact internal Presentation source and package authority
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: ArchonMegalon/chummer6-ui
@@ -46,7 +47,7 @@ jobs:
         with:
           dotnet-version: 10.0.111
 
-      - name: Run the bounded package-only Native.CompileCheck proof
+      - name: Run the bounded pinned-source locked-package Native.CompileCheck proof
         working-directory: chummer-android
         env:
           CHUMMER_PRESENTATION_ROOT: ${{ github.workspace }}/chummer-presentation

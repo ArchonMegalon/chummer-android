@@ -13,28 +13,33 @@ public sealed class AccountPrivacyPage : NativePageBase
 
     public AccountPrivacyPage(RunnerSessionCoordinator coordinator) : base(coordinator)
     {
-        Title = "Account & privacy";
+        Title = PhoneStrings.Get("AccountPrivacy", "Account & privacy");
         Content = new ScrollView { Content = _body };
     }
 
     protected override void Refresh()
     {
         _body.Clear();
-        _body.Add(NativeTheme.Eyebrow("Account"));
-        _body.Add(NativeTheme.Title("Account & privacy"));
+        _body.Add(NativeTheme.Eyebrow(PhoneStrings.Get("Account", "Account")));
+        _body.Add(NativeTheme.Title(PhoneStrings.Get("AccountPrivacy", "Account & privacy")));
 
         VerticalStackLayout device = new() { Spacing = 10 };
-        device.Add(NativeTheme.Metric("Status", Coordinator.Account.Label));
+        device.Add(NativeTheme.Metric(
+            PhoneStrings.Get("AccountStatus", "Status"),
+            Coordinator.Account.Label));
         if (Coordinator.Account.IsLinked)
         {
-            Button unlink = NativeTheme.SecondaryButton("Unlink this device");
+            Button unlink = NativeTheme.SecondaryButton(
+                PhoneStrings.Get("AccountUnlinkDevice", "Unlink this device"));
             unlink.Clicked += async (_, _) =>
             {
                 bool confirmed = await DisplayAlertAsync(
-                    "Unlink this device?",
-                    "Online runners and groups will no longer be available here.",
-                    "Unlink",
-                    "Cancel");
+                    PhoneStrings.Get("AccountUnlinkDeviceQuestion", "Unlink this device?"),
+                    PhoneStrings.Get(
+                        "AccountUnlinkImpact",
+                        "Online runners and groups will no longer be available here."),
+                    PhoneStrings.Get("AccountUnlink", "Unlink"),
+                    PhoneStrings.Get("Cancel", "Cancel"));
                 if (confirmed)
                 {
                     await RunAsync(() => Coordinator.UnlinkAccountAsync());
@@ -46,23 +51,27 @@ public sealed class AccountPrivacyPage : NativePageBase
         else
         {
             device.Add(NativeTheme.Body(
-                "Link this device to open online runners, groups, and account controls.",
+                PhoneStrings.Get(
+                    "AccountLinkDeviceDetail",
+                    "Link this device to open online runners, groups, and account controls."),
                 NativeTheme.Muted));
-            Button link = NativeTheme.PrimaryButton("Link account");
+            Button link = NativeTheme.PrimaryButton(PhoneStrings.Get("LinkAccount", "Link account"));
             link.Clicked += async (_, _) => await RunAsync(() => Coordinator.BeginAccountLinkAsync());
             device.Add(link);
         }
         _body.Add(NativeTheme.Card(device));
 
         _body.Add(NativeTheme.NavigationRow(
-            "How deletion works",
-            "What is removed and how long receipts remain",
+            PhoneStrings.Get("AccountHowDeletionWorks", "How deletion works"),
+            PhoneStrings.Get(
+                "AccountDeletionReceiptDetail",
+                "What is removed and how long receipts remain"),
             async () => await Navigation.PushAsync(new AccountDeletionInfoPage())));
         _body.Add(NativeTheme.NavigationRow(
-            "Delete account",
+            PhoneStrings.Get("DeleteAccount", "Delete account"),
             Coordinator.Account.IsLinked
-                ? "Start verified account deletion"
-                : "Link this device before deletion",
+                ? PhoneStrings.Get("AccountStartVerifiedDeletion", "Start verified account deletion")
+                : PhoneStrings.Get("AccountLinkBeforeDeletion", "Link this device before deletion"),
             async () => await Navigation.PushAsync(new AccountDeletionPage(Coordinator))));
     }
 }

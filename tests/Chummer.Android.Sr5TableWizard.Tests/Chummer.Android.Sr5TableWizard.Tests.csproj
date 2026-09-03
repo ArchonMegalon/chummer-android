@@ -10,6 +10,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/RunnerSessionSr5TableWizardPhoneAuthority.cs"
+             Link="Native/RunnerSessionSr5TableWizardPhoneAuthority.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5TableWizardPhoneModel.cs"
              Link="Native/Sr5TableWizardPhoneModel.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5CareerFlowStrings.cs"
@@ -18,6 +20,8 @@
              Link="Native/Sr5CareerRunCapabilityCatalog.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5TableWizardTypedTransaction.cs"
              Link="Native/Sr5TableWizardTypedTransaction.cs" />
+    <Compile Include="../../src/Chummer.Android/Proof/Api36ProofState.cs"
+             Link="Proof/Api36ProofState.cs" />
     <Compile Include="$(ChummerPresentationRoot)/Chummer.Presentation/Overview/CareerEdgeUseEditRequest.cs"
              Link="Presentation/CareerEdgeUseEditRequest.cs" />
     <Compile Include="$(ChummerPresentationRoot)/Chummer.Presentation/Overview/CareerWeaponFireRequest.cs"

@@ -2,10 +2,14 @@ using System.Buffers.Binary;
 using System.Security.Cryptography;
 using System.Text;
 using Chummer.Android.Platform;
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+using Chummer.Android.Proof;
+#endif
 using Chummer.Application.Characters;
 using Chummer.Application.Tools;
 using Chummer.Contracts.Api;
 using Chummer.Contracts.Characters;
+using Chummer.Contracts.LifeModules;
 using Chummer.Contracts.Presentation;
 using Chummer.Contracts.Workspaces;
 using Chummer.Presentation;
@@ -275,6 +279,8 @@ public sealed class RunnerSessionCoordinator : IDisposable
     private readonly ICharacterCreationMagicResonanceService? _creationMagicResonanceService;
     private readonly ICharacterCreationFinalizationService? _creationFinalizationService;
     private readonly Sr5CareerCyberwarePurchaseService? _careerCyberwarePurchaseService;
+    private readonly Sr5CareerCustomDrugRecipeService? _careerCustomDrugRecipeService;
+    private readonly Sr5CareerVehicleWorkshopService? _careerVehicleWorkshopService;
     private readonly ICharacterCareerSkillGroupAdvanceService? _careerSkillGroupService;
     private readonly ICharacterAfterRunSettlementService? _afterRunSettlementService;
     private readonly IAndroidAfterRunProposalCatalog? _afterRunProposalCatalog;
@@ -346,7 +352,9 @@ public sealed class RunnerSessionCoordinator : IDisposable
         ICharacterCreationMagicResonanceService? creationMagicResonanceService = null,
         OriginDossierLifeModulePhoneRuntime? originLifeModuleRuntime = null,
         ICharacterCreationFinalizationService? creationFinalizationService = null,
-        Sr5CareerCyberwarePurchaseService? careerCyberwarePurchaseService = null)
+        Sr5CareerCyberwarePurchaseService? careerCyberwarePurchaseService = null,
+        Sr5CareerCustomDrugRecipeService? careerCustomDrugRecipeService = null,
+        Sr5CareerVehicleWorkshopService? careerVehicleWorkshopService = null)
     {
         _presenter = presenter;
         _client = client;
@@ -362,6 +370,8 @@ public sealed class RunnerSessionCoordinator : IDisposable
         _creationMagicResonanceService = creationMagicResonanceService;
         _creationFinalizationService = creationFinalizationService;
         _careerCyberwarePurchaseService = careerCyberwarePurchaseService;
+        _careerCustomDrugRecipeService = careerCustomDrugRecipeService;
+        _careerVehicleWorkshopService = careerVehicleWorkshopService;
         _careerSkillGroupService = careerSkillGroupService;
         _afterRunSettlementService = afterRunSettlementService;
         _afterRunProposalCatalog = afterRunProposalCatalog;
@@ -399,6 +409,54 @@ public sealed class RunnerSessionCoordinator : IDisposable
             expectedPayloadSha256: null,
             cancellationToken,
             allowReadOnlyProductCapture: true);
+
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+    internal async Task<NativeWorkspaceAuthoritySnapshot?> RefreshApi36ProofWorkspaceAuthorityAsync(
+        CharacterWorkspaceId expectedWorkspaceId,
+        long expectedContentRevision,
+        long expectedSavedRevision,
+        string expectedPayloadSha256,
+        CancellationToken cancellationToken = default)
+    {
+        NativeWorkspaceAuthoritySnapshot? authority =
+            await TryRefreshWorkspaceAuthorityAsync(
+                expectedWorkspaceId,
+                expectedPayloadSha256,
+                cancellationToken);
+        if (!ExactWorkspaceAuthoritySnapshotMatches(
+                authority,
+                State,
+                expectedWorkspaceId,
+                expectedContentRevision,
+                expectedSavedRevision,
+                expectedPayloadSha256))
+        {
+            ClearWorkspaceAuthority();
+            return null;
+        }
+        return authority;
+    }
+#endif
+
+    internal static bool ExactWorkspaceAuthoritySnapshotMatches(
+        NativeWorkspaceAuthoritySnapshot? authority,
+        CharacterOverviewState state,
+        CharacterWorkspaceId expectedWorkspaceId,
+        long expectedContentRevision,
+        long expectedSavedRevision,
+        string expectedPayloadSha256)
+        => authority is not null
+           && authority.Matches(state)
+           && string.Equals(
+               authority.WorkspaceId,
+               expectedWorkspaceId.Value,
+               StringComparison.Ordinal)
+           && authority.ContentRevision == expectedContentRevision
+           && authority.SavedRevision == expectedSavedRevision
+           && string.Equals(
+               authority.PayloadSha256,
+               expectedPayloadSha256,
+               StringComparison.Ordinal);
 
     public ShellSurfaceState Surface => _surface;
 
@@ -441,6 +499,32 @@ public sealed class RunnerSessionCoordinator : IDisposable
             }
         }
     }
+
+    internal async Task RefreshDebugWorkspaceAuthorityForPageAppearanceAsync(
+        CancellationToken cancellationToken = default)
+    {
+        CharacterOverviewState state = State;
+        if (!ShouldRefreshWorkspaceAuthorityForPageAppearance(
+                AndroidE2EAuthority.Enabled,
+                state,
+                DebugWorkspaceAuthority))
+        {
+            return;
+        }
+
+        _ = await TryRefreshWorkspaceAuthorityAsync(
+            expectedWorkspaceId: state.WorkspaceId,
+            expectedPayloadSha256: null,
+            cancellationToken);
+    }
+
+    internal static bool ShouldRefreshWorkspaceAuthorityForPageAppearance(
+        bool debugE2EAuthorityEnabled,
+        CharacterOverviewState state,
+        NativeWorkspaceAuthoritySnapshot? authority)
+        => debugE2EAuthorityEnabled
+           && state.WorkspaceId is not null
+           && (authority is null || !authority.Matches(state));
 #endif
 
     public CharacterRosterFavoriteState RosterFavorites => _rosterFavorites;
@@ -572,6 +656,189 @@ public sealed class RunnerSessionCoordinator : IDisposable
                 live.Blockers.FirstOrDefault()
                 ?? CharacterCyberwarePurchaseBlockers.SourceAuthorityUnavailable);
         }
+        return workspaceId;
+    }
+
+    public Sr5CareerCustomDrugRecipeSnapshot LoadCareerCustomDrugRecipe()
+    {
+        if (_careerCustomDrugRecipeService is null
+            || State.WorkspaceId is not { } workspaceId
+            || State.Profile?.Created != true
+            || !string.Equals(State.Rules?.GameEdition, "SR5", StringComparison.OrdinalIgnoreCase)
+            || State.IsDirty
+            || State.ContentRevision != State.SavedRevision
+            || !string.IsNullOrWhiteSpace(State.Error))
+        {
+            return Sr5CareerCustomDrugRecipeSnapshot.Blocked(
+                State.WorkspaceId ?? default,
+                CharacterCustomDrugBlockers.AuthorityUnavailable);
+        }
+        Sr5CareerCustomDrugRecipeSnapshot snapshot =
+            _careerCustomDrugRecipeService.Load(workspaceId);
+        return snapshot.Preparation is { } preparation
+               && preparation.Context == CharacterCustomDrugContext.Career
+               && preparation.Purpose == CharacterCustomDrugQuotePurpose.RecipeDefinition
+               && preparation.ContentRevision == State.ContentRevision
+            ? snapshot
+            : Sr5CareerCustomDrugRecipeSnapshot.Blocked(
+                workspaceId,
+                CharacterCustomDrugBlockers.StaleRevision);
+    }
+
+    public Sr5CareerCustomDrugRecipeSnapshot UpdateCareerCustomDrugRecipeSelection(
+        CharacterCustomDrugSelection selection)
+    {
+        CharacterWorkspaceId workspaceId = RequireCareerCustomDrugRecipeWorkspace();
+        return _careerCustomDrugRecipeService!.UpdateSelection(workspaceId, selection);
+    }
+
+    public Sr5CareerCustomDrugRecipeSnapshot ReviewCareerCustomDrugRecipe()
+    {
+        CharacterWorkspaceId workspaceId = RequireCareerCustomDrugRecipeWorkspace();
+        return _careerCustomDrugRecipeService!.Review(workspaceId);
+    }
+
+    public async Task<Sr5CareerCustomDrugRecipeSnapshot> ConfirmCareerCustomDrugRecipeAsync(
+        CancellationToken cancellationToken = default)
+    {
+        CharacterWorkspaceId workspaceId = RequireCareerCustomDrugRecipeWorkspace();
+        Sr5CareerCustomDrugRecipeSnapshot result =
+            _careerCustomDrugRecipeService!.Confirm(workspaceId);
+        if (result.HasAppliedReceipt || result.IsRecoveryUnknown)
+        {
+            await _presenter.LoadAsync(workspaceId, cancellationToken).ConfigureAwait(false);
+            await SyncShellAsync(cancellationToken).ConfigureAwait(false);
+            NotifyChanged();
+        }
+        return result;
+    }
+
+    public async Task<Sr5CareerCustomDrugRecipeSnapshot> UndoCareerCustomDrugRecipeAsync(
+        CancellationToken cancellationToken = default)
+    {
+        CharacterWorkspaceId workspaceId = RequireCareerCustomDrugRecipeWorkspace();
+        Sr5CareerCustomDrugRecipeSnapshot result =
+            _careerCustomDrugRecipeService!.Undo(workspaceId);
+        if (string.Equals(
+                result.Notice,
+                Sr5CareerCustomDrugRecipeNotices.UndoApplied,
+                StringComparison.Ordinal)
+            || result.IsRecoveryUnknown)
+        {
+            await _presenter.LoadAsync(workspaceId, cancellationToken).ConfigureAwait(false);
+            await SyncShellAsync(cancellationToken).ConfigureAwait(false);
+            NotifyChanged();
+        }
+        return result;
+    }
+
+    public Sr5CareerCustomDrugRecipeSnapshot ReopenCareerCustomDrugRecipe()
+    {
+        if (State.WorkspaceId is not { } workspaceId
+            || _careerCustomDrugRecipeService is null)
+        {
+            throw new InvalidOperationException(CharacterCustomDrugBlockers.AuthorityUnavailable);
+        }
+        Sr5CareerCustomDrugRecipeSnapshot current = LoadCareerCustomDrugRecipe();
+        if (!current.HasAppliedReceipt)
+            throw new InvalidOperationException("Only a verified custom-drug receipt can be closed.");
+        return _careerCustomDrugRecipeService.Reopen(workspaceId);
+    }
+
+    private CharacterWorkspaceId RequireCareerCustomDrugRecipeWorkspace()
+    {
+        Sr5CareerCustomDrugRecipeSnapshot live = LoadCareerCustomDrugRecipe();
+        if (!live.IsReady || State.WorkspaceId is not { } workspaceId)
+        {
+            throw new InvalidOperationException(
+                live.Blockers.FirstOrDefault()
+                ?? CharacterCustomDrugBlockers.AuthorityUnavailable);
+        }
+        return workspaceId;
+    }
+
+    public Sr5CareerVehicleWorkshopSnapshot LoadCareerVehicleWorkshop()
+    {
+        if (_careerVehicleWorkshopService is null
+            || State.WorkspaceId is not { } workspaceId
+            || State.Profile?.Created != true
+            || !string.Equals(State.Rules?.GameEdition, "SR5", StringComparison.OrdinalIgnoreCase)
+            || State.IsDirty
+            || State.ContentRevision != State.SavedRevision
+            || !string.IsNullOrWhiteSpace(State.Error))
+        {
+            return Sr5CareerVehicleWorkshopSnapshot.Blocked(
+                State.WorkspaceId ?? default,
+                CharacterVehicleWorkshopBlockers.SourceAuthorityUnavailable);
+        }
+        Sr5CareerVehicleWorkshopSnapshot snapshot = _careerVehicleWorkshopService.Load(workspaceId);
+        return snapshot.Preparation is { } preparation
+               && preparation.ContentRevision == State.ContentRevision
+            ? snapshot
+            : Sr5CareerVehicleWorkshopSnapshot.Blocked(
+                workspaceId, CharacterVehicleWorkshopBlockers.StaleRevision);
+    }
+
+    public Sr5CareerVehicleWorkshopSnapshot UpdateCareerVehicleWorkshopSelection(
+        CharacterVehicleWorkshopSelection selection)
+    {
+        CharacterWorkspaceId workspaceId = RequireCareerVehicleWorkshopWorkspace();
+        return _careerVehicleWorkshopService!.UpdateSelection(workspaceId, selection);
+    }
+
+    public Sr5CareerVehicleWorkshopSnapshot ReviewCareerVehicleWorkshop()
+    {
+        CharacterWorkspaceId workspaceId = RequireCareerVehicleWorkshopWorkspace();
+        return _careerVehicleWorkshopService!.Review(workspaceId);
+    }
+
+    public async Task<Sr5CareerVehicleWorkshopSnapshot> ConfirmCareerVehicleWorkshopAsync(
+        CancellationToken cancellationToken = default)
+    {
+        CharacterWorkspaceId workspaceId = RequireCareerVehicleWorkshopWorkspace();
+        Sr5CareerVehicleWorkshopSnapshot result =
+            _careerVehicleWorkshopService!.Confirm(workspaceId);
+        if (result.HasAppliedReceipt || result.IsRecoveryUnknown)
+        {
+            await _presenter.LoadAsync(workspaceId, cancellationToken).ConfigureAwait(false);
+            await SyncShellAsync(cancellationToken).ConfigureAwait(false);
+            NotifyChanged();
+        }
+        return result;
+    }
+
+    public async Task<Sr5CareerVehicleWorkshopSnapshot> UndoCareerVehicleWorkshopAsync(
+        CancellationToken cancellationToken = default)
+    {
+        CharacterWorkspaceId workspaceId = RequireCareerVehicleWorkshopWorkspace();
+        Sr5CareerVehicleWorkshopSnapshot result = _careerVehicleWorkshopService!.Undo(workspaceId);
+        if (string.Equals(result.Notice, Sr5CareerVehicleWorkshopNotices.UndoApplied,
+                StringComparison.Ordinal)
+            || result.IsRecoveryUnknown)
+        {
+            await _presenter.LoadAsync(workspaceId, cancellationToken).ConfigureAwait(false);
+            await SyncShellAsync(cancellationToken).ConfigureAwait(false);
+            NotifyChanged();
+        }
+        return result;
+    }
+
+    public Sr5CareerVehicleWorkshopSnapshot ReopenCareerVehicleWorkshop()
+    {
+        if (_careerVehicleWorkshopService is null || State.WorkspaceId is not { } workspaceId)
+            throw new InvalidOperationException(CharacterVehicleWorkshopBlockers.SourceAuthorityUnavailable);
+        Sr5CareerVehicleWorkshopSnapshot current = LoadCareerVehicleWorkshop();
+        if (!current.HasAppliedReceipt)
+            throw new InvalidOperationException("Only a verified vehicle workshop receipt can be closed.");
+        return _careerVehicleWorkshopService.Reopen(workspaceId);
+    }
+
+    private CharacterWorkspaceId RequireCareerVehicleWorkshopWorkspace()
+    {
+        Sr5CareerVehicleWorkshopSnapshot live = LoadCareerVehicleWorkshop();
+        if (!live.IsReady || State.WorkspaceId is not { } workspaceId)
+            throw new InvalidOperationException(live.Blockers.FirstOrDefault()
+                ?? CharacterVehicleWorkshopBlockers.SourceAuthorityUnavailable);
         return workspaceId;
     }
 
@@ -2034,24 +2301,87 @@ public sealed class RunnerSessionCoordinator : IDisposable
            && foundation.Binding.SavedRevision == State.SavedRevision
            && !foundation.CharacterCreated;
 
-    internal Task<OriginDossierLifeModulePhoneResult> OpenSr5LifeModuleOriginAsync(
+    internal async Task<OriginDossierLifeModulePhoneResult> OpenSr5LifeModuleOriginAsync(
         CancellationToken cancellationToken = default)
-        => CanOpenSr5LifeModuleOrigin() && State.WorkspaceId is { } workspaceId
-            ? _originLifeModuleRuntime!.OpenAsync(workspaceId.Value, cancellationToken)
-            : Task.FromResult(new OriginDossierLifeModulePhoneResult(
-                "blocked",
+    {
+        if (!CanOpenSr5LifeModuleOrigin() || State.WorkspaceId is not { } workspaceId)
+        {
+            return new OriginDossierLifeModulePhoneResult(
+                LifeModuleOriginDossierOutcomes.Blocked,
                 null,
-                ["sr5-life-module-origin-authority-unavailable"]));
+                ["sr5-life-module-origin-authority-unavailable"]);
+        }
 
-    internal Task<OriginDossierLifeModulePhoneResult> PrepareSr5LifeModuleOriginAsync(
+        OriginDossierLifeModulePhoneResult result = await _originLifeModuleRuntime!
+            .OpenAsync(workspaceId.Value, cancellationToken);
+        return BindCurrentLifeModuleBudget(result);
+    }
+
+    internal async Task<OriginDossierLifeModulePhoneResult> PrepareSr5LifeModuleOriginAsync(
         string choiceId,
         CancellationToken cancellationToken = default)
-        => CanOpenSr5LifeModuleOrigin() && State.WorkspaceId is { } workspaceId
-            ? _originLifeModuleRuntime!.PrepareAsync(workspaceId.Value, choiceId, cancellationToken)
-            : Task.FromResult(new OriginDossierLifeModulePhoneResult(
-                "blocked",
+    {
+        if (!CanOpenSr5LifeModuleOrigin() || State.WorkspaceId is not { } workspaceId)
+        {
+            return new OriginDossierLifeModulePhoneResult(
+                LifeModuleOriginDossierOutcomes.Blocked,
                 null,
-                ["sr5-life-module-origin-authority-unavailable"]));
+                ["sr5-life-module-origin-authority-unavailable"]);
+        }
+
+        OriginDossierLifeModulePhoneResult result = await _originLifeModuleRuntime!
+            .PrepareAsync(workspaceId.Value, choiceId, cancellationToken);
+        return BindCurrentLifeModuleBudget(result);
+    }
+
+    private OriginDossierLifeModulePhoneResult BindCurrentLifeModuleBudget(
+        OriginDossierLifeModulePhoneResult result)
+    {
+        if (!result.IsSuccess || result.State is not { } decision)
+            return result;
+
+        CharacterCreationFoundationInteractionLoadResult loaded =
+            _foundationInteractionPresenter.Load(State);
+        if (!string.Equals(
+                loaded.Outcome,
+                CharacterCreationFoundationOutcomes.Success,
+                StringComparison.Ordinal)
+            || loaded.State is not { } foundation
+            || foundation.Binding.WorkspaceId.Value != decision.WorkspaceId
+            || foundation.Binding.ContentRevision != decision.WorkspaceRevision
+            || !string.Equals(
+                foundation.Binding.RawCharacterXmlDigest,
+                result.BoundContentDigest,
+                StringComparison.Ordinal)
+            || !string.Equals(
+                foundation.Binding.SourceDigest,
+                result.BoundSourceDigest,
+                StringComparison.Ordinal)
+            || string.IsNullOrWhiteSpace(result.BoundMechanicsSnapshotDigest)
+            || string.IsNullOrWhiteSpace(foundation.FoundationSnapshotDigest)
+            || !string.Equals(
+                foundation.LifeModuleBudget.BudgetId,
+                CharacterCreationBudgetIds.LifeModules,
+                StringComparison.Ordinal)
+            || !foundation.LifeModuleBudget.IsExact
+            || foundation.LifeModuleBudget.Blockers.Count != 0)
+        {
+            return new OriginDossierLifeModulePhoneResult(
+                LifeModuleOriginDossierOutcomes.Blocked,
+                null,
+                loaded.Blockers
+                    .Append("sr5-life-module-budget-authority-unavailable")
+                    .Distinct(StringComparer.Ordinal)
+                    .OrderBy(static blocker => blocker, StringComparer.Ordinal)
+                    .ToArray());
+        }
+
+        return result with
+        {
+            LifeModuleBudget = foundation.LifeModuleBudget,
+            FoundationSnapshotDigest = foundation.FoundationSnapshotDigest
+        };
+    }
 
     internal async Task<OriginDossierLifeModulePhoneResult> ConfirmSr5LifeModuleOriginAsync(
         string choiceId,
@@ -2365,6 +2695,12 @@ public sealed class RunnerSessionCoordinator : IDisposable
                     cancellationToken);
                 if (authority is not null)
                 {
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+                    Api36ProofStatePublisher.TryRecordDocumentWorkspace(
+                        expectedPayloadSha256,
+                        authority,
+                        activationIssued: false);
+#endif
                     RememberRosterLocator(importedWorkspaceId, document.ContentUri);
                     _notice = $"Opened {document.DisplayName}.";
                     activatedWorkspaceId = importedWorkspaceId;
@@ -2373,8 +2709,19 @@ public sealed class RunnerSessionCoordinator : IDisposable
                 else
                 {
                     _notice = WorkspaceVerificationUnavailableNotice;
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+                    Api36ProofStatePublisher.TryRecordDocumentImportFailure(
+                        "workspace-verification-unavailable");
+#endif
                 }
             }
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+            else
+            {
+                Api36ProofStatePublisher.TryRecordDocumentImportFailure(
+                    "workspace-not-activated");
+            }
+#endif
             await SyncShellAsync(cancellationToken);
             RestorePlayState();
             if (activatedWorkspaceId is { } stableWorkspaceId
@@ -2384,6 +2731,12 @@ public sealed class RunnerSessionCoordinator : IDisposable
                 activation = new(
                     NativeWorkspaceActivationKind.LocalFile,
                     stableWorkspaceId);
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+                Api36ProofStatePublisher.TryRecordDocumentWorkspace(
+                    expectedPayloadSha256,
+                    verifiedAuthority!,
+                    activationIssued: true);
+#endif
             }
         }
         finally
@@ -4290,15 +4643,8 @@ public sealed class RunnerSessionCoordinator : IDisposable
             State.SavedRevision,
             State.IsDirty,
             State.Error);
-        Sr5CareerRunnerGuard.RequireCreated(before);
-        if (before.WorkspaceId is not { } workspaceId
-            || before.SavedRevision != before.ContentRevision
-            || before.IsDirty
-            || !string.IsNullOrWhiteSpace(before.Error))
-        {
-            throw new InvalidOperationException(
-                "After Run settlement requires an exact clean saved SR5 runner revision.");
-        }
+        Sr5AfterRunSettlementEntryGuard.Require(before);
+        CharacterWorkspaceId workspaceId = before.WorkspaceId!.Value;
 
         ICharacterAfterRunSettlementService? service = _afterRunSettlementService;
         IAndroidAfterRunProposalCatalog? catalog = _afterRunProposalCatalog;
@@ -5732,9 +6078,12 @@ public sealed class RunnerSessionCoordinator : IDisposable
     public async Task UnlinkAccountAsync(CancellationToken cancellationToken = default)
     {
         await _account.UnlinkAsync(cancellationToken);
-        _onlineCharacters = [];
-        _groups = [];
-        _chronicles = [];
+        if (_account.Snapshot.Status == AndroidAccountLinkStatus.Unlinked)
+        {
+            _onlineCharacters = [];
+            _groups = [];
+            _chronicles = [];
+        }
         NotifyChanged();
     }
 

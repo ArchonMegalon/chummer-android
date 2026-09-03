@@ -1,0 +1,18 @@
+Chummer Preview.11 es una versión de prueba interna para teléfonos. Su alcance exacto incluye el asistente de creación por Prioridades de SR5, los asistentes de Carrera de SR5 incluidos y los asistentes de mesa Antes de la misión, Durante la partida, Tiempo libre y Después de la misión.
+
+CREA UN RUNNER DE SR5
+Sigue la creación guiada por Prioridades con requisitos previos y decisiones disponibles para atributos, habilidades, cualidades, magia o resonancia, recursos, equipo y estilo de vida. Revisa cada decisión antes de confirmarla.
+
+DESARROLLA UNA CARRERA
+Usa los asistentes de Carrera de SR5 incluidos en esta vista previa para realizar cambios guiados. Revisa los cálculos de coste y los cambios antes de confirmarlos. Las operaciones disponibles de guardado, recuperación y deshacer permanecen vinculadas al runner guardado actual.
+
+USA LOS ASISTENTES DE MESA
+Prepara Edge antes de una misión, registra los cambios admitidos durante la partida, planifica el tiempo libre en el calendario y aplica las recompensas y consecuencias admitidas después de la misión. Cada asistente muestra únicamente las acciones disponibles para el runner guardado actual.
+
+TRABAJA PRIMERO EN LOCAL
+Abre y guarda los archivos de runner que elijas mediante el selector de documentos de Android. La aplicación no solicita acceso amplio al almacenamiento. Las funciones opcionales de cuenta vinculada usan conexiones cifradas con los servicios de Chummer.
+
+LÍMITES DE LA VISTA PREVIA ACTUAL
+Esta prueba interna está limitada a los asistentes de SR5 para teléfonos. La edición completa, las tabletas o los plegables, la creación para SR4 o SR6, Rook o los avatares en directo, la disponibilidad pública y la publicación en producción no forman parte de esta prueba.
+
+Chummer es un proyecto comunitario de gestión de personajes. No es una aplicación oficial de una editorial de juegos de rol, no incluye texto de los manuales y no sustituye los libros necesarios para jugar.

@@ -2,6 +2,7 @@ using Chummer.Android.Native;
 using Chummer.Application.Characters;
 using Chummer.Contracts.Characters;
 using Chummer.Contracts.Workspaces;
+using System.Text.Json;
 
 return await AfterRunAuthorityHarness.RunAsync();
 
@@ -23,14 +24,20 @@ internal static class AfterRunAuthorityHarness
         {
             (nameof(ExactDraftBindsProposalReviewsDigestsAndPlan),
                 () => Sync(ExactDraftBindsProposalReviewsDigestsAndPlan)),
+            (nameof(AcknowledgementsPersistExactlySixInputsAndIgnoreDerivedInjection),
+                () => Sync(AcknowledgementsPersistExactlySixInputsAndIgnoreDerivedInjection)),
             (nameof(PendingReviewsAndUnavailableCompositionFailClosed),
                 () => Sync(PendingReviewsAndUnavailableCompositionFailClosed)),
+            (nameof(EntryGuardRejectsEveryNonCleanSavedBinding),
+                () => Sync(EntryGuardRejectsEveryNonCleanSavedBinding)),
             (nameof(CheckpointCasRejectsTamperingAndMalformedPayloadLocks),
                 () => Sync(CheckpointCasRejectsTamperingAndMalformedPayloadLocks)),
             (nameof(SharedMutationOwnerBlocksCrossLaneWhileOutcomeUnknownAsync),
                 SharedMutationOwnerBlocksCrossLaneWhileOutcomeUnknownAsync),
             (nameof(ExactAtomicResultPersistsCoreReceiptAsync),
                 ExactAtomicResultPersistsCoreReceiptAsync),
+            (nameof(OwnedAppliedRecoverySurvivesSettledCatalogRevisionAsync),
+                OwnedAppliedRecoverySurvivesSettledCatalogRevisionAsync),
             (nameof(RestartReplaysOnlyExactCommandAndRecoversReceiptAsync),
                 RestartReplaysOnlyExactCommandAndRecoversReceiptAsync),
             (nameof(ManualProposalPublishesToBothSeamsAndSurvivesRestart),
@@ -78,6 +85,88 @@ internal static class AfterRunAuthorityHarness
         Require(draft.Candidate.RewardContext.IsExact(), "Reward context is not digest-bound.");
     }
 
+    private static void AcknowledgementsPersistExactlySixInputsAndIgnoreDerivedInjection()
+    {
+        string[] expectedFields =
+        [
+            nameof(Sr5AfterRunReviewAcknowledgements.RunContextReviewed),
+            nameof(Sr5AfterRunReviewAcknowledgements.RewardsReviewed),
+            nameof(Sr5AfterRunReviewAcknowledgements.ConsequencesReviewed),
+            nameof(Sr5AfterRunReviewAcknowledgements.ContactsReviewed),
+            nameof(Sr5AfterRunReviewAcknowledgements.GmApprovalReviewed),
+            nameof(Sr5AfterRunReviewAcknowledgements.OwnerApprovalReviewed)
+        ];
+        Sr5AfterRunReviewAcknowledgements reviewed = AllReviewed();
+        string payload = JsonSerializer.Serialize(reviewed);
+        using (JsonDocument document = JsonDocument.Parse(payload))
+        {
+            string[] actualFields = document.RootElement.EnumerateObject()
+                .Select(static property => property.Name)
+                .OrderBy(static name => name, StringComparer.Ordinal)
+                .ToArray();
+            Require(actualFields.SequenceEqual(
+                    expectedFields.OrderBy(static name => name, StringComparer.Ordinal),
+                    StringComparer.Ordinal),
+                $"Review acknowledgements persisted fields outside the closed six-input schema: {payload}");
+            Require(!document.RootElement.TryGetProperty(
+                    nameof(Sr5AfterRunReviewAcknowledgements.AllReviewed),
+                    out _),
+                "Derived AllReviewed leaked into the durable checkpoint schema.");
+        }
+
+        Sr5AfterRunReviewAcknowledgements? roundTrip =
+            JsonSerializer.Deserialize<Sr5AfterRunReviewAcknowledgements>(payload);
+        Require(roundTrip == reviewed && roundTrip.AllReviewed,
+            "Six-input review acknowledgements did not round-trip exactly.");
+
+        Sr5AfterRunSettlementCheckpoint checkpoint =
+            Sr5AfterRunSettlementCheckpoint.FromDraft(Draft(Editor(Input())));
+        string checkpointPayload = JsonSerializer.Serialize(checkpoint);
+        using (JsonDocument checkpointDocument = JsonDocument.Parse(checkpointPayload))
+        {
+            JsonElement persistedAcknowledgements = checkpointDocument.RootElement
+                .GetProperty(nameof(Sr5AfterRunSettlementCheckpoint.Draft))
+                .GetProperty(nameof(Sr5AfterRunSettlementDraft.Acknowledgements));
+            string[] checkpointFields = persistedAcknowledgements.EnumerateObject()
+                .Select(static property => property.Name)
+                .OrderBy(static name => name, StringComparer.Ordinal)
+                .ToArray();
+            Require(checkpointFields.SequenceEqual(
+                    expectedFields.OrderBy(static name => name, StringComparer.Ordinal),
+                    StringComparer.Ordinal),
+                "The actual durable checkpoint did not embed exactly six acknowledgement inputs.");
+        }
+        Sr5AfterRunSettlementCheckpoint? checkpointRoundTrip =
+            JsonSerializer.Deserialize<Sr5AfterRunSettlementCheckpoint>(checkpointPayload);
+        Require(checkpointRoundTrip is not null
+                && checkpointRoundTrip.IsStructurallyValid()
+                && checkpointRoundTrip.Draft.Acknowledgements == reviewed
+                && checkpointRoundTrip.Draft.SemanticallyEquals(checkpoint.Draft),
+            "The actual durable After Run checkpoint did not round-trip exactly.");
+
+        string hostilePayload = payload[..^1]
+            + $",\"{nameof(Sr5AfterRunReviewAcknowledgements.AllReviewed)}\":false}}";
+        Sr5AfterRunReviewAcknowledgements? hostile =
+            JsonSerializer.Deserialize<Sr5AfterRunReviewAcknowledgements>(hostilePayload);
+        Require(hostile == reviewed && hostile.AllReviewed,
+            "Injected derived AllReviewed changed the six authoritative review inputs.");
+        string normalized = JsonSerializer.Serialize(hostile);
+        Require(!normalized.Contains(
+                $"\"{nameof(Sr5AfterRunReviewAcknowledgements.AllReviewed)}\"",
+                StringComparison.Ordinal),
+            "A hostile derived field survived acknowledgement normalization.");
+
+        Sr5AfterRunReviewAcknowledgements pending = reviewed with
+        {
+            OwnerApprovalReviewed = false
+        };
+        Sr5AfterRunReviewAcknowledgements? pendingRoundTrip =
+            JsonSerializer.Deserialize<Sr5AfterRunReviewAcknowledgements>(
+                JsonSerializer.Serialize(pending));
+        Require(pendingRoundTrip == pending && !pendingRoundTrip.AllReviewed,
+            "Round-trip fabricated complete review from one false authoritative input.");
+    }
+
     private static void PendingReviewsAndUnavailableCompositionFailClosed()
     {
         Sr5AfterRunSettlementEditorState pending = Editor(Input() with
@@ -111,6 +200,49 @@ internal static class AfterRunAuthorityHarness
                 out _,
                 out _),
             "Unavailable default composition fabricated a draft.");
+    }
+
+    private static void EntryGuardRejectsEveryNonCleanSavedBinding()
+    {
+        Sr5CareerRunnerBinding exact = Binding(41);
+        Require(Sr5AfterRunSettlementEntryGuard.TryValidate(exact, out string blocker),
+            blocker);
+
+        Sr5CareerRunnerBinding[] hostile =
+        [
+            exact with { SavedRevision = 40 },
+            exact with { IsDirty = true },
+            exact with { Error = "workspace read failed" },
+            exact with { Created = false },
+            exact with { GameEdition = "SR6" },
+            exact with { WorkspaceId = null }
+        ];
+        foreach (Sr5CareerRunnerBinding binding in hostile)
+        {
+            Require(!Sr5AfterRunSettlementEntryGuard.TryValidate(
+                    binding,
+                    out blocker),
+                "A non-clean/saved runner binding opened After Run settlement.");
+            Require(!string.IsNullOrWhiteSpace(blocker),
+                "A rejected After Run binding did not expose a blocker.");
+        }
+
+        foreach (Sr5CareerRunnerBinding binding in hostile)
+        {
+            bool rejected = false;
+            try
+            {
+                Sr5AfterRunSettlementEntryGuard.Require(binding);
+            }
+            catch (InvalidOperationException exception)
+            {
+                rejected = true;
+                Require(!string.IsNullOrWhiteSpace(exception.Message),
+                    "The throwing guard lost its explicit blocker.");
+            }
+            Require(rejected,
+                "A hostile After Run binding bypassed the throwing guard.");
+        }
     }
 
     private static void CheckpointCasRejectsTamperingAndMalformedPayloadLocks()
@@ -246,6 +378,73 @@ internal static class AfterRunAuthorityHarness
             "Wrong Core receipt was stored.");
         Require(string.IsNullOrWhiteSpace(ownerBackend.Payload),
             "Resolved mutation owner was not retired.");
+    }
+
+    private static async Task OwnedAppliedRecoverySurvivesSettledCatalogRevisionAsync()
+    {
+        Sr5AfterRunSettlementEditorState editor = Editor(Input());
+        Sr5AfterRunSettlementDraft draft = Draft(editor);
+        CharacterAfterRunSettlementReceipt receipt = Receipt(draft);
+        var presenter = new FakePresenter(Binding(41));
+        presenter.SettleHandler = command =>
+        {
+            presenter.Binding = Binding(42);
+            return SuccessResult(draft, receipt, command, replayed: false);
+        };
+        var owner = new TestOwner(OwnerId);
+        var checkpointBackend = new MemoryBackend();
+        var authority = new Sr5AfterRunSettlementLiveCheckpointAuthority(
+            owner,
+            editor,
+            () => presenter.Binding);
+        var store = new Sr5AfterRunSettlementCheckpointStore(
+            checkpointBackend,
+            authority,
+            new Sr5CareerMutationOwnerStore(new MemoryBackend()));
+        Require(store.TryCreate(
+            Sr5AfterRunSettlementCheckpoint.FromDraft(draft),
+            out Sr5AfterRunSettlementCheckpoint reviewed,
+            out string blocker), blocker);
+        Require(store.TryBeginApply(
+            Sr5AfterRunSettlementCheckpointCas.From(reviewed),
+            out Sr5AfterRunSettlementCheckpoint applying,
+            out blocker), blocker);
+        var coordinator = new Sr5AfterRunSettlementCoordinator(presenter, owner);
+        Sr5AfterRunSettlementApplyResult result = await coordinator.ApplyAsync(
+            draft,
+            applying,
+            store);
+        Require(store.TryRecordAuthoritativeResolution(
+            Sr5AfterRunSettlementCheckpointCas.From(applying),
+            result.Resolution,
+            out Sr5AfterRunSettlementCheckpoint applied,
+            out blocker), blocker);
+        Require(applied.Phase == Sr5CareerCheckpointPhase.Applied,
+            "Applied checkpoint was not durable before recovery routing.");
+        Require(store.TryReadOwnedRecovery(
+            out Sr5AfterRunSettlementCheckpoint recovered,
+            out blocker), blocker);
+        Require(recovered.Phase == Sr5CareerCheckpointPhase.Applied
+            && recovered.Version == applied.Version
+            && recovered.Draft.SemanticallyEquals(applied.Draft),
+            "The exact Applied checkpoint was not recoverable at successor revision.");
+
+        var foreignAuthority = new Sr5AfterRunSettlementLiveCheckpointAuthority(
+            new TestOwner(Guid.Parse("66666666-6666-6666-6666-666666666666")),
+            editor,
+            () => presenter.Binding);
+        var foreignStore = new Sr5AfterRunSettlementCheckpointStore(
+            checkpointBackend,
+            foreignAuthority,
+            new Sr5CareerMutationOwnerStore(new MemoryBackend()));
+        Require(!foreignStore.TryReadOwnedRecovery(out _, out blocker)
+            && blocker.Contains("replay-blocking", StringComparison.Ordinal),
+            "A foreign owner opened the durable Applied recovery checkpoint.");
+
+        presenter.Binding = Binding(43);
+        Require(!store.TryReadOwnedRecovery(out _, out blocker)
+            && blocker.Contains("replay-blocking", StringComparison.Ordinal),
+            "A later unrelated runner revision opened the stale Applied checkpoint.");
     }
 
     private static async Task RestartReplaysOnlyExactCommandAndRecoversReceiptAsync()

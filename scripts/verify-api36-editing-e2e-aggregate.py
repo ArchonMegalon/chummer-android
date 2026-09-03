@@ -1132,6 +1132,8 @@ def validate_aggregate(
             raise ValueError(f"journey execution did not pass: {journey}")
         if receipt.get("profile") != "phone":
             raise ValueError(f"journey receipt is not phone-only: {journey}")
+        if receipt.get("publicationAuthorized", False) is not False:
+            raise ValueError(f"journey receipt cannot authorize publication: {journey}")
         if receipt.get("matrixJourney") != journey:
             raise ValueError(f"matrix journey receipt binding differs: {journey}")
         if receipt.get("driverJourney") != driver_journey:
@@ -1200,11 +1202,13 @@ def validate_aggregate_receipt(
         raise ValueError("wizard aggregate authority or publication posture differs")
     required = list(JOURNEYS)
     if (
-        value.get("requiredJourneyCount") != 3
-        or value.get("journeyCount") != 3
+        value.get("requiredJourneyCount") != len(required)
+        or value.get("journeyCount") != len(required)
         or value.get("requiredJourneys") != required
     ):
-        raise ValueError("wizard aggregate must contain exactly three required journeys")
+        raise ValueError(
+            f"wizard aggregate must contain exactly {len(required)} required journeys"
+        )
     journeys = value.get("journeys")
     if not isinstance(journeys, dict) or set(journeys) != set(required):
         raise ValueError("wizard aggregate journey set differs")

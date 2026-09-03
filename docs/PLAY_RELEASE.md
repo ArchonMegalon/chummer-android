@@ -25,9 +25,9 @@ Upload keys and passwords are never committed. Release automation supplies:
 - `ChummerAndroidSigningKeyAlias`
 - `ChummerAndroidSigningKeyPass`
 
-Logs must not print these values. A release receipt records only the AAB digest,
-certificate digest, version code, package id, track, rollout state, and Play
-operation id.
+Logs must not print these values. The v2 Internal-publication receipt records
+only public Play identity/readback fields and local artifact/source-graph
+digests. It records no credential, session, signing secret, or private key.
 
 Provision a dedicated Chummer upload identity into an explicit directory outside
 this repository. The command creates a mode-`0600` PKCS#12 keystore, public PEM
@@ -62,9 +62,24 @@ prove that the AAB signer is the intended Chummer upload identity:
 set -a
 . /absolute/private/path/android-release.env
 set +a
+CHUMMER_ANDROID_EXPECTED_VERSION_NAME=0.1.0-preview.11 \
+CHUMMER_ANDROID_EXPECTED_VERSION_CODE=11 \
 CHUMMER_BUNDLETOOL_JAR=/secure/tools/bundletool-all-1.18.3.jar \
   scripts/build-release.sh
 ```
+
+The expected version name and code are mandatory release intent, not defaults.
+They must be canonical, must exactly match the single
+`ApplicationDisplayVersion`/`ApplicationVersion` pair in the Android project,
+and the code must be greater than the already published Preview.10 code `10`.
+Supplying only one value, reusing code `10`, using a leading-zero code, or
+disagreeing with the project fails before workspace, signing, or build inputs
+are admitted. The resolved pair is bound into the AAB/checksum/source-graph
+filenames, the v3 source graph, and the MSBuild publish properties.
+
+The Preview.10 AAB, source graph, publication receipt, and dedicated verifier
+remain immutable historical evidence. This next-release lane neither rebuilds
+nor replaces them.
 
 Before the signed build, prepare the package authority and `--no-restore` assets
 from the retained UI package-plane receipt and its exact private package cache.
@@ -75,12 +90,12 @@ does not accept handwritten package pins. It then performs a locked restore into
 an isolated NuGet package root and emits an owner-only environment handoff:
 
 ```sh
-install -d -m 0700 /absolute/private/chummer-preview10-release-inputs
-CHUMMER_ANDROID_RELEASE_INPUT_DIR=/absolute/private/chummer-preview10-release-inputs \
+install -d -m 0700 /absolute/private/chummer-next-release-inputs
+CHUMMER_ANDROID_RELEASE_INPUT_DIR=/absolute/private/chummer-next-release-inputs \
 CHUMMER_CURRENT_UI_PACKAGE_AUTHORITY_RECEIPT=/absolute/private/UI_CURRENT_MAIN_PACKAGE_PLANE.generated.json \
 CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED=/absolute/private/ui-package-cache/packages \
   scripts/prepare-release-inputs.sh
-. /absolute/private/chummer-preview10-release-inputs/release-inputs.env
+. /absolute/private/chummer-next-release-inputs/release-inputs.env
 ```
 
 The preparer does not sign, publish, upload, or authorize publication. The
@@ -107,6 +122,9 @@ and seals each output with an exclusive no-clobber link. Persistent `bin/`
 outputs are never accepted as release input. A partial failed release is not
 overwritten automatically.
 
+The release packager only seals a local AAB and sidecars. It never uploads to
+Google Play, changes a Play track, edits testers, or authorizes publication.
+
 If SDK API 36 and Java are absent, the guarded
 `scripts/bootstrap-build-environment.sh` uses .NET's official
 `InstallAndroidDependencies` target. It cannot accept Android licenses unless
@@ -125,22 +143,27 @@ journeys required before a general Play release.
 The current phone-beta runtime authority is narrower than general Chummer5 edit
 parity. It is the exact SR5 wizard-only contract in
 `eng/api36-sr5-wizard-gate-authority.json`. The protected aggregate check
-requires exactly these three digest-bound API-36 journeys against one APK:
+requires exactly these seven digest-bound API-36 journeys against one APK:
 
 1. Creation Prerequisite;
 2. Career Active Skill Advance;
-3. Career Weapon Fire.
+3. Career Weapon Fire;
+4. Before Run Edge;
+5. Playtime Short Burst;
+6. Downtime Calendar;
+7. After Run Settlement.
 
 General Full Editing is not required by this gate. Its product code, fixtures,
-and standalone tests remain available, but no old Full Editing receipt may
-count toward or coexist with the three required aggregate artifacts. This is a
-scope decision, not a Full Editing pass claim. The exhaustive editability and
+and standalone evidence remain available as deferred informational evidence,
+but no Full Editing receipt may count toward or coexist with the seven required
+aggregate artifacts. This is a scope decision, not a Full Editing pass claim.
+The exhaustive editability and
 Character Settings inventories remain fail-closed parity backlogs and do not
 become the phone-beta denominator.
 
 The wizard aggregate uses schema
 `chummer.android.api36-sr5-wizard-e2e-aggregate/v1` and always records
-`publicationAuthorized: false`. Even a passing three-journey aggregate proves
+`publicationAuthorized: false`. Even a passing seven-journey aggregate proves
 only the stated phone wizard scope; it does not itself authorize a Play upload,
 tablet support, broad Android parity, or public release.
 
@@ -222,6 +245,59 @@ available under either kill switch.
 A locally signed AAB is not publication. Publication requires a Chummer-scoped
 Play Console session or service account. Memorial or PropertyQuarry browser
 sessions and app identities must never be reused for Chummer.
+
+For the next release, `scripts/materialize_next_play_internal_publication_receipt.py`
+is the offline receipt boundary. It neither opens Play nor uploads anything. Run
+it only after a human or governed browser operator has saved the explicitly
+observed public Internal-testing fields in an owner-only JSON file using
+`chummer.android.play-internal-browser-readback/v1` and the closed
+`play/next-internal-browser-readback.schema.json`. Unknown fields—including
+cookies, tokens, credentials, session data, notes, or screenshots—fail closed.
+The release AAB and v3 source graph must be the exact canonical local build
+outputs; both are reread, structurally checked, hashed, and bound into the
+receipt.
+
+```sh
+python3 scripts/materialize_next_play_internal_publication_receipt.py materialize \
+  --browser-readback /absolute/private/explicit-browser-readback.json \
+  --aab /absolute/path/chummer-android-VERSION-upload.aab \
+  --source-graph /absolute/private/chummer-android-VERSION-source-graph.json \
+  --expected-android-source-commit APPROVED_40_CHARACTER_ANDROID_HEAD \
+  --expected-aab-sha256 APPROVED_64_CHARACTER_AAB_SHA256 \
+  --output /absolute/private/next-internal-publication.json
+
+python3 scripts/materialize_next_play_internal_publication_receipt.py verify \
+  --receipt /absolute/private/next-internal-publication.json \
+  --aab /absolute/path/chummer-android-VERSION-upload.aab \
+  --source-graph /absolute/private/chummer-android-VERSION-source-graph.json \
+  --expected-android-source-commit APPROVED_40_CHARACTER_ANDROID_HEAD \
+  --expected-aab-sha256 APPROVED_64_CHARACTER_AAB_SHA256
+```
+
+A passing v3 receipt records only an observed Internal-testing Console state
+plus the exact explicitly approved local source head and AAB bytes. It always
+sets `publicationAuthorized`, production, upload-action, and tester-roster
+authorization to false. Play does not expose the uploaded AAB digest here, and
+this lane does not prove that the approved local AAB is the artifact processed
+by Play or that a tester installed it. A successful internal-test install and a
+separate provider/upload-side artifact binding remain required before a broader
+publication claim. Browser readback must be fresh when the receipt is first
+materialized; durable verification may occur later against its exact inputs.
+Keep the generated receipt
+outside the repository until a real readback has occurred and its exact evidence
+has been reviewed; this lane deliberately provides no Preview.11 receipt.
+
+The recorded Preview.10 Internal-testing publication truth is
+`play/evidence/preview10-internal-publication.json`. Verify the durable record
+with `scripts/verify_play_internal_publication_receipt.py`. Its Play application,
+track, release status, displayed release time, and join URL came from an
+authenticated browser readback. Its AAB and source-graph digests came from the
+local release-build sidecar. Google Play did not expose either digest for
+readback and the AAB was not downloaded back from Play. The receipt therefore
+does not claim tester installation, production rollout, public release, tablet
+support, full edit parity, live Rook rule authority, or Play-side artifact-byte
+retrievability. The Console exposed the release time only as `3 Sept 01:04`,
+without an authoritative timezone; no UTC instant is invented.
 
 ## Current preview.7 release evidence (source 2026-08-12, Play 2026-08-14)
 

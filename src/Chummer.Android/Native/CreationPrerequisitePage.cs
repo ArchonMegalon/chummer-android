@@ -1,5 +1,8 @@
 using System.Globalization;
 using Chummer.Contracts.Characters;
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+using Chummer.Android.Proof;
+#endif
 
 namespace Chummer.Android.Native;
 
@@ -15,22 +18,60 @@ public sealed class CreationPrerequisitePage : NativePageBase
         Spacing = 14
     };
     private readonly CreationPrerequisitePhoneDraft _draft = new();
+    private CharacterCreationPrerequisiteState? _dashboardAuthority;
     private IReadOnlyList<string> _prepareBlockers = [];
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+    private CharacterCreationPrerequisiteState? _latestApi36ProofReadyState;
+    private bool _api36ProofRouteAppeared;
+    private bool _api36ProofPageLoaded;
+    private bool _api36ProofAttachmentPublished;
+#endif
 
-    public CreationPrerequisitePage(RunnerSessionCoordinator coordinator) : base(coordinator)
+    public CreationPrerequisitePage(
+        RunnerSessionCoordinator coordinator,
+        CharacterCreationPrerequisiteState dashboardAuthority) : base(coordinator)
     {
+        _dashboardAuthority = dashboardAuthority
+            ?? throw new ArgumentNullException(nameof(dashboardAuthority));
         Title = WizardStrings.Get("Priority.PageTitle", "Priorities");
         AutomationId = "creation-prerequisite-page";
         Content = new ScrollView { Content = _body };
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+        Loaded += OnApi36ProofLoaded;
+#endif
     }
+
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+    protected override void OnAppearing()
+    {
+        base.OnAppearing();
+        // NativePageBase may refresh synchronously before its first incomplete await, or later
+        // after initialization. Retain the route, Loaded, and ready-state signals so every
+        // lifecycle order reaches the same exact attachment gate.
+        _api36ProofRouteAppeared = true;
+        TryPublishApi36AttachmentProof();
+    }
+
+    protected override void OnDisappearing()
+    {
+        _api36ProofRouteAppeared = false;
+        _latestApi36ProofReadyState = null;
+        _api36ProofAttachmentPublished = false;
+        base.OnDisappearing();
+    }
+#endif
 
     protected override void Refresh()
     {
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+        _api36ProofAttachmentPublished = false;
+        _latestApi36ProofReadyState = null;
+#endif
         _body.Clear();
         _body.Add(NativeTheme.Eyebrow(WizardStrings.Get("Priority.Eyebrow", "Character creation")));
         _body.Add(NativeTheme.Title(WizardStrings.Get("Priority.Heading", "Priority / Sum-to-Ten")));
         CharacterCreationFoundationResult<CharacterCreationPrerequisiteState> load =
-            Coordinator.LoadCreationPrerequisite();
+            ResolveCurrentAuthority();
         if (!string.Equals(
                 load.Outcome,
                 CharacterCreationFoundationOutcomes.Success,
@@ -81,7 +122,70 @@ public sealed class CreationPrerequisitePage : NativePageBase
                 _prepareBlockers,
                 "creation-prerequisite-preview-blockers");
         AddActions(state);
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+        _latestApi36ProofReadyState = state;
+        TryPublishApi36AttachmentProof();
+#endif
     }
+
+    private CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>
+        ResolveCurrentAuthority()
+    {
+        if (_dashboardAuthority is { } authority
+            && CreationPrerequisitePhoneAuthority.IsReady(authority, Coordinator.State))
+        {
+            return new CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>(
+                CharacterCreationFoundationOutcomes.Success,
+                authority,
+                []);
+        }
+
+        // The dashboard projection is immutable and revision-bound. Once it no longer
+        // matches the live overview, discard it before asking Core for a fresh authority;
+        // an older projection must never become a navigation or mutation fallback.
+        _dashboardAuthority = null;
+        return Coordinator.LoadCreationPrerequisite();
+    }
+
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+    private void OnApi36ProofLoaded(object? sender, EventArgs args)
+    {
+        _api36ProofPageLoaded = true;
+        TryPublishApi36AttachmentProof();
+    }
+
+    private void TryPublishApi36AttachmentProof()
+    {
+        IReadOnlyList<Page> navigationStack = Navigation.NavigationStack;
+        if (_api36ProofAttachmentPublished
+            || !_api36ProofRouteAppeared
+            || !_api36ProofPageLoaded
+            || !IsLoaded
+            || Handler is null
+            || Window is null
+            || navigationStack.Count < 2
+            || !ReferenceEquals(navigationStack[^1], this)
+            || navigationStack.Count(candidate => ReferenceEquals(candidate, this)) != 1
+            || _latestApi36ProofReadyState is not { } state
+            || !CreationPrerequisitePhoneAuthority.IsReady(state, Coordinator.State))
+        {
+            return;
+        }
+
+        if (Api36ProofStatePublisher.TryPublishCreationPrerequisiteAttachment(
+                this,
+                Coordinator,
+                state.Binding.WorkspaceId.Value,
+                state.Binding.ContentRevision,
+                state.Binding.SavedRevision,
+                state.Binding.RawCharacterXmlDigest,
+                state.SnapshotDigest,
+                prerequisiteAuthorityReady: true))
+        {
+            _api36ProofAttachmentPublished = true;
+        }
+    }
+#endif
 
     private void AddBinding(CharacterCreationPrerequisiteState state)
     {

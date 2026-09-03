@@ -1345,7 +1345,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertEqual(2, device.up)
         self.assertEqual(1, observations[0]["emptyHierarchyReads"])
 
-    def test_stable_end_scan_accepts_exactly_five_cold_restart_empty_reads(
+    def test_stable_end_scan_accepts_explicitly_bounded_empty_reads(
         self,
     ) -> None:
         stable = [
@@ -1354,29 +1354,29 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             )
         ]
         device = mock.Mock()
-        device.hierarchy.side_effect = [[], [], [], [], [], stable, stable, stable]
+        device.hierarchy.side_effect = [
+            [], [], [], [], [], [], stable, stable, stable,
+        ]
         observations: list[dict[str, object]] = []
 
         with mock.patch.object(driver.time, "sleep"):
             screens = driver.scan_forward_until_stable(
                 device,
-                scan_id=driver.PROCESS_RESTART_RESOURCES_SCAN_ID,
+                scan_id="explicit-six-empty-read-bound",
                 max_scrolls=2,
                 distance_ratio=0.22,
-                max_consecutive_empty_reads=(
-                    driver.PROCESS_RESTART_RESOURCES_MAX_CONSECUTIVE_EMPTY_READS
-                ),
+                max_consecutive_empty_reads=6,
                 observer=observations.append,
             )
 
         self.assertEqual(3, len(screens))
-        self.assertEqual(8, device.hierarchy.call_count)
+        self.assertEqual(9, device.hierarchy.call_count)
         self.assertEqual(2, device.swipe_up.call_count)
         device.capture.assert_not_called()
         self.assertEqual("stable-end", observations[0]["status"])
-        self.assertEqual(5, observations[0]["emptyHierarchyReads"])
+        self.assertEqual(6, observations[0]["emptyHierarchyReads"])
         self.assertEqual(
-            driver.PROCESS_RESTART_RESOURCES_MAX_CONSECUTIVE_EMPTY_READS,
+            6,
             observations[0]["maximumConsecutiveEmptyReads"],
         )
 
@@ -2027,7 +2027,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             restart_resources,
         )
         self.assertIn("authority_scan_owns_origin=True", restart_resources)
-        self.assertIn("read_persisted_resources_authority(", restart_resources)
+        self.assertIn("read_process_restart_resources_proof_state(", restart_resources)
+        self.assertNotIn("read_persisted_resources_authority(", restart_resources)
         self.assertIn(
             "deadline=process_restart_resources_deadline",
             restart_resources,
@@ -2230,188 +2231,173 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         )
         device.capture.assert_not_called()
 
-    def test_process_restart_resources_scan_alone_accepts_four_empty_reads(self) -> None:
-        selectors = (
-            "creation-resources-page",
-            "creation-resources-binding-content-revision",
+    def test_process_restart_resources_reads_exact_typed_state_without_ui_tree(self) -> None:
+        digest = lambda character: "sha256:" + character * 64
+        binding = {
+            "contentRevision": 3,
+            "savedRevision": 3,
+            "snapshotDigest": digest("1"),
+            "rawCharacterXmlDigest": digest("2"),
+            "auxiliaryStateDigest": "3" * 64,
+            "prerequisiteDraftDigest": digest("4"),
+            "authorityDigest": digest("5"),
+            "priorityNuyen": 50_000,
+            "totalStartingNuyen": 50_000,
+        }
+        saved = {
+            "optionId": "karma:0",
+            "draftRevision": 1,
+            "draftDigest": digest("6"),
+        }
+        resources = {
+            "pageIdentity": "creation-resources-page",
+            "workspaceId": "workspace-resources",
+            "workspaceRevision": 3,
+            **binding,
+            "sourceDigest": digest("7"),
+            "rulesDigest": digest("8"),
+            "runtimeDigest": digest("9"),
+            "prerequisiteDraftRevision": 1,
+            "pendingOptionId": saved["optionId"],
+            "pendingDraftRevision": saved["draftRevision"],
+            "pendingDraftDigest": saved["draftDigest"],
+        }
+        snapshot = driver.proof_state.ProofStateSnapshot(
+            {
+                "schema": driver.proof_state.SCHEMA,
+                "sequence": 7,
+                "processId": 4242,
+                "processInstanceId": "44444444-4444-4444-4444-444444444444",
+                "e2eAuthorityGeneration": 2,
+                "surface": {
+                    "pageAutomationId": "creation-resources-page",
+                    "navigationDepth": 2,
+                    "wizardLane": "creation-resources",
+                    "stage": "authority-ready",
+                    "settled": True,
+                },
+                "workspace": {
+                    "workspaceId": resources["workspaceId"],
+                    "contentRevision": resources["contentRevision"],
+                    "savedRevision": resources["savedRevision"],
+                    "payloadSha256": "c" * 64,
+                    "documentSha256": "d" * 64,
+                    "snapshotDigest": resources["snapshotDigest"],
+                },
+                "stateDigest": digest("a"),
+                "creationResources": resources,
+            },
+            "b" * 64,
         )
-        nodes = [
-            self.canonical_node(selectors[0]),
-            self.canonical_node(selectors[1], text="3"),
-        ]
-        origin = self.priority_rank_origin(nodes)
+        device = mock.Mock()
         deadline = driver.time.monotonic() + 30
-        device = mock.Mock()
-
         with mock.patch.object(
-            driver,
-            "acquire_stable_start_origin",
-            return_value=origin,
-        ) as acquire, mock.patch.object(
-            driver,
-            "scan_forward_with_receipt",
-            autospec=True,
-            return_value=driver.StableViewportScan([nodes], 10),
-        ) as scan:
-            actual = driver.scan_deadline_bound_resources_surface(
-                device,
-                selectors,
-                scan_id=driver.PROCESS_RESTART_RESOURCES_SCAN_ID,
-                deadline=deadline,
-            )
-
-        self.assertEqual(set(selectors), set(actual))
-        acquire.assert_called_once_with(
-            device,
-            scan_id=f"{driver.PROCESS_RESTART_RESOURCES_SCAN_ID}-start",
-            max_reverse_swipes=22,
-            distance_ratio=0.68,
-            deadline=deadline,
-        )
-        self.assertEqual(
-            driver.PROCESS_RESTART_RESOURCES_MAX_CONSECUTIVE_EMPTY_READS,
-            scan.call_args.kwargs["max_consecutive_empty_reads"],
-        )
-
-    def test_process_restart_resources_real_wrapper_recovers_five_empty_reads(
-        self,
-    ) -> None:
-        selectors = (
-            "creation-resources-page",
-            "creation-resources-binding-content-revision",
-        )
-        nodes = [
-            self.canonical_node(selectors[0]),
-            self.canonical_node(selectors[1], text="3"),
-        ]
-        origin = self.priority_rank_origin(nodes)
-        device = mock.Mock()
-        device.hierarchy.side_effect = [[], [], [], [], [], nodes, nodes]
-        deadline = driver.time.monotonic() + 30
-
-        with mock.patch.object(
-            driver,
-            "acquire_stable_start_origin",
-            return_value=origin,
-        ), mock.patch.object(driver.time, "sleep"):
-            actual = driver.scan_deadline_bound_resources_surface(
-                device,
-                selectors,
-                scan_id=driver.PROCESS_RESTART_RESOURCES_SCAN_ID,
-                deadline=deadline,
-            )
-
-        self.assertEqual(set(selectors), set(actual))
-        self.assertEqual(7, device.hierarchy.call_count)
-        self.assertEqual(2, device.swipe_up.call_count)
-        device.capture.assert_not_called()
-        for invocation in device.hierarchy.call_args_list:
-            self.assertEqual(deadline, invocation.kwargs["deadline"])
-
-    def test_process_restart_resources_real_wrapper_fails_on_six_empty_reads(
-        self,
-    ) -> None:
-        selectors = (
-            "creation-resources-page",
-            "creation-resources-binding-content-revision",
-        )
-        origin_nodes = [
-            self.canonical_node(selectors[0]),
-            self.canonical_node(selectors[1], text="3"),
-        ]
-        device = mock.Mock()
-        device.hierarchy.side_effect = [[], [], [], [], [], []]
-        deadline = driver.time.monotonic() + 30
-
-        with mock.patch.object(
-            driver,
-            "acquire_stable_start_origin",
-            return_value=self.priority_rank_origin(origin_nodes),
-        ), mock.patch.object(driver.time, "sleep"), self.assertRaisesRegex(
-            RuntimeError,
-            "exhausted transient empty hierarchy reads",
-        ):
-            driver.scan_deadline_bound_resources_surface(
-                device,
-                selectors,
-                scan_id=driver.PROCESS_RESTART_RESOURCES_SCAN_ID,
-                deadline=deadline,
-            )
-
-        self.assertEqual(6, device.hierarchy.call_count)
-        device.capture.assert_called_once_with(
-            f"{driver.PROCESS_RESTART_RESOURCES_SCAN_ID}-empty-hierarchy-exhausted",
-            deadline=deadline,
-        )
-
-    def test_non_exact_resources_scans_fail_on_four_empty_reads(self) -> None:
-        selectors = (
-            "creation-resources-page",
-            "creation-resources-binding-content-revision",
-        )
-        origin_nodes = [
-            self.canonical_node(selectors[0]),
-            self.canonical_node(selectors[1], text="3"),
-        ]
-        for scan_id in (
-            f"{driver.PROCESS_RESTART_RESOURCES_SCAN_ID}-lookalike",
-            "resources-general",
-        ):
-            with self.subTest(scan_id=scan_id):
-                device = mock.Mock()
-                device.hierarchy.side_effect = [[], [], [], []]
-                deadline = driver.time.monotonic() + 30
-                with mock.patch.object(
-                    driver,
-                    "acquire_stable_start_origin",
-                    return_value=self.priority_rank_origin(origin_nodes),
-                ), mock.patch.object(driver.time, "sleep"), self.assertRaisesRegex(
-                    RuntimeError,
-                    "exhausted transient empty hierarchy reads",
-                ):
-                    driver.scan_deadline_bound_resources_surface(
-                        device,
-                        selectors,
-                        scan_id=scan_id,
-                        deadline=deadline,
-                    )
-                self.assertEqual(4, device.hierarchy.call_count)
-                device.capture.assert_called_once_with(
-                    f"{scan_id}-empty-hierarchy-exhausted",
-                    deadline=deadline,
-                )
-
-    def test_resources_scan_id_lookalike_keeps_default_empty_read_bound(self) -> None:
-        selectors = (
-            "creation-resources-page",
-            "creation-resources-binding-content-revision",
-        )
-        nodes = [
-            self.canonical_node(selectors[0]),
-            self.canonical_node(selectors[1], text="3"),
-        ]
-        device = mock.Mock()
-        with mock.patch.object(
-            driver,
-            "acquire_stable_start_origin",
-            return_value=self.priority_rank_origin(nodes),
+            driver.shared,
+            "_remaining_operation_timeout",
+            return_value=30,
         ), mock.patch.object(
-            driver,
-            "scan_forward_with_receipt",
-            autospec=True,
-            return_value=driver.StableViewportScan([nodes], 10),
-        ) as scan:
-            driver.scan_deadline_bound_resources_surface(
+            driver.proof_state,
+            "wait_for_state",
+            return_value=snapshot,
+        ) as wait:
+            observed, evidence = driver.read_process_restart_resources_proof_state(
                 device,
-                selectors,
-                scan_id=f"{driver.PROCESS_RESTART_RESOURCES_SCAN_ID}-lookalike",
+                {
+                    "workspaceRevision": 3,
+                    "savedRevision": 3,
+                    **saved,
+                },
+                {"binding": binding, "savedDraft": saved},
+                resources,
+                mock.Mock(),
+                deadline=deadline,
+            )
+
+        self.assertEqual({"binding": binding, "savedDraft": saved}, observed)
+        self.assertEqual(digest("7"), evidence["typedResources"]["sourceDigest"])
+        wait.assert_called_once_with(
+            device,
+            expected=mock.ANY,
+            page_automation_id="creation-resources-page",
+            stage="authority-ready",
+            wizard_lane="creation-resources",
+            timeout=30,
+        )
+        device.hierarchy.assert_not_called()
+        device.swipe_up.assert_not_called()
+        device.shell.assert_not_called()
+        device.capture.assert_not_called()
+
+    def test_process_restart_resources_state_absence_and_binding_drift_fail_closed(
+        self,
+    ) -> None:
+        device = mock.Mock()
+        deadline = driver.time.monotonic() + 30
+        absent = driver.proof_state.ProofStateSnapshot(
+            {"creationResources": None},
+            "a" * 64,
+        )
+        with mock.patch.object(
+            driver.shared, "_remaining_operation_timeout", return_value=30
+        ), mock.patch.object(
+            driver.proof_state, "wait_for_state", return_value=absent
+        ), self.assertRaisesRegex(RuntimeError, "no Creation Resources authority"):
+            driver.read_process_restart_resources_proof_state(
+                device, {}, {}, {}, mock.Mock(), deadline=deadline
+            )
+        device.hierarchy.assert_not_called()
+        device.shell.assert_not_called()
+
+    def test_process_restart_resources_rejects_canonical_typed_digest_drift(self) -> None:
+        digest = lambda character: "sha256:" + character * 64
+        binding = {
+            "contentRevision": 3,
+            "savedRevision": 3,
+            "snapshotDigest": digest("1"),
+            "rawCharacterXmlDigest": digest("2"),
+            "auxiliaryStateDigest": "3" * 64,
+            "prerequisiteDraftDigest": digest("4"),
+            "authorityDigest": digest("5"),
+            "priorityNuyen": 50_000,
+            "totalStartingNuyen": 50_000,
+        }
+        saved = {
+            "optionId": "karma:0",
+            "draftRevision": 1,
+            "draftDigest": digest("6"),
+        }
+        same_process = {
+            "pageIdentity": "creation-resources-page",
+            "workspaceId": "workspace-resources",
+            "workspaceRevision": 3,
+            **binding,
+            "sourceDigest": digest("7"),
+            "rulesDigest": digest("8"),
+            "runtimeDigest": digest("9"),
+            "prerequisiteDraftRevision": 1,
+            "pendingOptionId": saved["optionId"],
+            "pendingDraftRevision": saved["draftRevision"],
+            "pendingDraftDigest": saved["draftDigest"],
+        }
+        hostile_restart = dict(same_process)
+        hostile_restart["sourceDigest"] = digest("a")
+        device = mock.Mock()
+        with mock.patch.object(
+            driver,
+            "read_creation_resources_proof_state",
+            return_value=(hostile_restart, {"stateDigest": digest("b")}),
+        ), self.assertRaisesRegex(RuntimeError, "Typed Resources authority changed"):
+            driver.read_process_restart_resources_proof_state(
+                device,
+                {"workspaceRevision": 3, "savedRevision": 3, **saved},
+                {"binding": binding, "savedDraft": saved},
+                same_process,
+                mock.Mock(),
                 deadline=driver.time.monotonic() + 30,
             )
-
-        self.assertEqual(
-            driver.RESOURCES_SURFACE_MAX_CONSECUTIVE_EMPTY_READS,
-            scan.call_args.kwargs["max_consecutive_empty_reads"],
-        )
+        device.capture.assert_called_once()
+        device.hierarchy.assert_not_called()
+        device.shell.assert_not_called()
 
     def test_deadline_resources_surface_rejects_missing_duplicate_drift_and_identity(
         self,
@@ -5961,6 +5947,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             }
         )
         origin = driver.PriorityRankOrigin([], 0, 0, (), 0)
+        scan_observer = mock.Mock()
         with mock.patch.object(
             driver,
             "wait_for_prerequisite_scan_origin",
@@ -5970,7 +5957,11 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "_remaining_operation_timeout",
             return_value=15,
         ), mock.patch.object(driver.shared, "reset_scroll_to_top") as reset:
-            actual = driver.open_prerequisite(device, deadline=deadline)
+            actual = driver.open_prerequisite(
+                device,
+                deadline=deadline,
+                scan_observer=scan_observer,
+            )
 
         self.assertIs(origin, actual)
         device.wait_exact_resource_id_bidirectional.assert_called_once_with(
@@ -5988,10 +5979,207 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         device.shell.assert_called_once_with(
             "input", "tap", "540", "410", timeout=15, deadline=deadline
         )
-        acquire.assert_called_once_with(device, deadline=deadline)
+        acquire.assert_called_once_with(
+            device,
+            deadline=deadline,
+            immediately_after_opening_tap=True,
+            scan_observer=scan_observer,
+        )
         device.wait.assert_not_called()
         device.tap_until_visible.assert_not_called()
         device.tap_bidirectional.assert_not_called()
+
+    def test_prerequisite_navigation_waits_for_exact_attachment_after_one_tap(self) -> None:
+        node = self.canonical_node(
+            "creation-stage-method",
+            **{
+                "content-desc": "Priority",
+                "bounds": "[40,300][1040,520]",
+            },
+        )
+        device = mock.Mock()
+        device.node_has_tappable_bounds.return_value = True
+        origin = self.priority_rank_origin([])
+        expectation = mock.Mock(spec=driver.proof_state.ProofBuildExpectation)
+        prior = {"sequence": 7}
+        attachment = {"sequence": 8}
+        retained: list[dict[str, object]] = []
+        order: list[str] = []
+        deadline = driver.time.monotonic() + 30
+
+        device.shell.side_effect = lambda *_args, **_kwargs: order.append("tap")
+        with mock.patch.object(
+            driver,
+            "read_creation_prerequisite_attachment_proof_state",
+            side_effect=lambda *_args, **_kwargs: (
+                order.append("attachment") or attachment
+            ),
+        ) as read_attachment, mock.patch.object(
+            driver,
+            "wait_for_prerequisite_scan_origin",
+            side_effect=lambda *_args, **_kwargs: (
+                order.append("accessibility") or origin
+            ),
+        ):
+            actual = driver.open_prerequisite(
+                device,
+                ready_method_node=node,
+                deadline=deadline,
+                proof_expectation=expectation,
+                expected_prior_proof=prior,
+                attachment_proof_out=retained,
+            )
+
+        self.assertIs(origin, actual)
+        self.assertEqual(["tap", "attachment", "accessibility"], order)
+        self.assertEqual([attachment], retained)
+        self.assertEqual(1, device.shell.call_count)
+        read_attachment.assert_called_once_with(
+            device,
+            expectation,
+            expected_prior_proof=prior,
+            deadline=deadline,
+        )
+
+    def test_prerequisite_navigation_rejects_partial_proof_contract_before_tap(self) -> None:
+        device = mock.Mock()
+        with self.assertRaisesRegex(ValueError, "supplied together"):
+            driver.open_prerequisite(
+                device,
+                proof_expectation=mock.Mock(
+                    spec=driver.proof_state.ProofBuildExpectation
+                ),
+            )
+        device.shell.assert_not_called()
+
+    def test_prerequisite_attachment_proof_binds_later_same_process_workspace(self) -> None:
+        workspace = {
+            "workspaceId": "workspace-1",
+            "contentRevision": 7,
+            "savedRevision": 7,
+            "payloadSha256": "a" * 64,
+            "documentSha256": "b" * 64,
+            "snapshotDigest": "sha256:" + "c" * 64,
+        }
+        prior = {
+            "sequence": 10,
+            "processId": 4242,
+            "processInstanceId": "44444444-4444-4444-4444-444444444444",
+            "e2eAuthorityGeneration": 2,
+            "workspace": {**workspace, "snapshotDigest": "sha256:" + "d" * 64},
+        }
+        payload = {
+            "schema": driver.proof_state.SCHEMA,
+            "sequence": 11,
+            "processId": prior["processId"],
+            "processInstanceId": prior["processInstanceId"],
+            "e2eAuthorityGeneration": prior["e2eAuthorityGeneration"],
+            "surface": {
+                "pageAutomationId": "creation-prerequisite-page",
+                "navigationDepth": 2,
+                "wizardLane": "creation-prerequisite",
+                "stage": "attachment-authority-ready",
+                "settled": True,
+            },
+            "workspace": workspace,
+            "transaction": None,
+            "creationResources": None,
+            "stateDigest": "sha256:" + "e" * 64,
+        }
+        snapshot = driver.proof_state.ProofStateSnapshot(
+            payload,
+            "f" * 64,
+            {"attempt": 1},
+        )
+        device = mock.Mock()
+        expectation = mock.Mock(spec=driver.proof_state.ProofBuildExpectation)
+        with mock.patch.object(
+            driver.proof_state,
+            "wait_for_state",
+            return_value=snapshot,
+        ), mock.patch.object(
+            driver.shared,
+            "_remaining_operation_timeout",
+            return_value=17,
+        ):
+            result = driver.read_creation_prerequisite_attachment_proof_state(
+                device,
+                expectation,
+                expected_prior_proof=prior,
+                deadline=999.0,
+            )
+
+        self.assertEqual("route-attachment-and-core-snapshot-only", result["claimScope"])
+        self.assertEqual(0, result["mutationCommandsRetried"])
+        self.assertEqual(workspace, result["workspace"])
+        device.capture.assert_not_called()
+
+    def test_prerequisite_attachment_proof_rejects_identity_revision_and_scope_drift(
+        self,
+    ) -> None:
+        workspace = {
+            "workspaceId": "workspace-1",
+            "contentRevision": 7,
+            "savedRevision": 7,
+            "payloadSha256": "a" * 64,
+            "documentSha256": "b" * 64,
+            "snapshotDigest": "sha256:" + "c" * 64,
+        }
+        prior = {
+            "sequence": 10,
+            "processId": 4242,
+            "processInstanceId": "44444444-4444-4444-4444-444444444444",
+            "e2eAuthorityGeneration": 2,
+            "workspace": {**workspace, "snapshotDigest": "sha256:" + "d" * 64},
+        }
+        base_payload = {
+            "schema": driver.proof_state.SCHEMA,
+            "sequence": 11,
+            "processId": 4242,
+            "processInstanceId": prior["processInstanceId"],
+            "e2eAuthorityGeneration": 2,
+            "surface": {"navigationDepth": 2},
+            "workspace": workspace,
+            "transaction": None,
+            "creationResources": None,
+            "stateDigest": "sha256:" + "e" * 64,
+        }
+        cases = (
+            ("sequence", {"sequence": 10}),
+            ("process", {"processId": 4243}),
+            ("instance", {"processInstanceId": "55555555-5555-5555-5555-555555555555"}),
+            ("generation", {"e2eAuthorityGeneration": 3}),
+            ("workspace", {"workspace": {**workspace, "workspaceId": "workspace-2"}}),
+            ("revision", {"workspace": {**workspace, "contentRevision": 8}}),
+            ("payload", {"workspace": {**workspace, "payloadSha256": "f" * 64}}),
+            ("not-pushed", {"surface": {"navigationDepth": 1}}),
+            ("transaction", {"transaction": {"unexpected": True}}),
+            ("resources", {"creationResources": {"unexpected": True}}),
+        )
+        expectation = mock.Mock(spec=driver.proof_state.ProofBuildExpectation)
+        for label, replacement in cases:
+            payload = {**base_payload, **replacement}
+            snapshot = driver.proof_state.ProofStateSnapshot(payload, "f" * 64, None)
+            device = mock.Mock()
+            with self.subTest(label=label), mock.patch.object(
+                driver.proof_state,
+                "wait_for_state",
+                return_value=snapshot,
+            ), mock.patch.object(
+                driver.shared,
+                "_remaining_operation_timeout",
+                return_value=17,
+            ), self.assertRaisesRegex(RuntimeError, "later same-process"):
+                driver.read_creation_prerequisite_attachment_proof_state(
+                    device,
+                    expectation,
+                    expected_prior_proof=prior,
+                    deadline=999.0,
+                )
+            device.capture.assert_called_once_with(
+                "creation-prerequisite-attachment-proof-state-mismatch",
+                deadline=999.0,
+            )
 
     def test_prerequisite_resume_taps_only_the_exact_reacquired_method_node(self) -> None:
         node = driver.shared.UiNode(
@@ -6021,7 +6209,12 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         reset.assert_not_called()
         device.tap_bidirectional.assert_not_called()
         device.shell.assert_called_once_with("input", "tap", "540", "410")
-        acquire.assert_called_once_with(device, deadline=None)
+        acquire.assert_called_once_with(
+            device,
+            deadline=None,
+            immediately_after_opening_tap=True,
+            scan_observer=None,
+        )
         device.wait.assert_not_called()
 
     def test_prerequisite_resume_rejects_a_stale_or_non_tappable_method_node(self) -> None:
@@ -6178,7 +6371,12 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
         self.assertEqual(1, device.wait_exact_resource_id_bidirectional.call_count)
         device.shell.assert_called_once_with("input", "tap", "540", "410")
-        acquire.assert_called_once_with(device, deadline=None)
+        acquire.assert_called_once_with(
+            device,
+            deadline=None,
+            immediately_after_opening_tap=True,
+            scan_observer=None,
+        )
         reset.assert_not_called()
         device.wait.assert_not_called()
 
@@ -10347,6 +10545,198 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             device.captures,
         )
 
+    def test_prerequisite_scan_origin_uses_one_direct_read_for_exact_post_tap_lease_exhaustion(
+        self,
+    ) -> None:
+        route = self.canonical_node("creation-prerequisite-page")
+        method = self.canonical_node("creation-prerequisite-method")
+        binding = self.canonical_node("creation-prerequisite-binding")
+        lease_error = driver.shared.AdbHierarchyLeaseReserveExceeded(
+            "owned-file retry and reconciliation reserve"
+        )
+        device = mock.Mock(spec=driver.shared.Device)
+        device.hierarchy.side_effect = lease_error
+        device.read_only_hierarchy_once.return_value = [route, method, binding]
+        observed_scans: list[dict[str, object]] = []
+
+        origin = driver.wait_for_prerequisite_scan_origin(
+            device,
+            deadline=driver.time.monotonic() + 30,
+            immediately_after_opening_tap=True,
+            scan_observer=observed_scans.append,
+        )
+
+        self.assertEqual([route, method, binding], origin.nodes)
+        self.assertEqual(0, origin.reverse_swipes)
+        self.assertEqual(2, len(origin.hierarchy_durations_ms))
+        self.assertEqual(0, origin.empty_hierarchy_reads)
+        self.assertEqual(1, device.hierarchy.call_count)
+        self.assertTrue(
+            device.hierarchy.call_args.kwargs[
+                "raise_on_lease_reserve_exhaustion"
+            ]
+        )
+        device.read_only_hierarchy_once.assert_called_once()
+        direct = device.read_only_hierarchy_once.call_args.kwargs
+        self.assertGreater(direct["attempt_max_seconds"], 0)
+        self.assertLessEqual(
+            direct["attempt_max_seconds"],
+            driver.shared.ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_READ_ATTEMPT_MAX_SECONDS,
+        )
+        self.assertEqual(
+            "creation-prerequisite-scan-origin-direct-invalid.xml",
+            direct["diagnostic_name"],
+        )
+        self.assertEqual(1, len(observed_scans))
+        self.assertEqual("resolved", observed_scans[0]["status"])
+        self.assertEqual(
+            "resolved-exact-top-origin",
+            observed_scans[0]["directFallbackResult"],
+        )
+        self.assertEqual(1, observed_scans[0]["directFallbackReadCount"])
+        self.assertEqual(1, observed_scans[0]["fileBackedObservationAttempts"])
+        self.assertIs(True, observed_scans[0]["fileBackedLeaseReserveExhausted"])
+        device.swipe_down.assert_not_called()
+        device.shell.assert_not_called()
+
+    def test_prerequisite_scan_origin_direct_fallback_rejects_lower_or_ambiguous_snapshot(
+        self,
+    ) -> None:
+        route = self.canonical_node("creation-prerequisite-page")
+        method = self.canonical_node("creation-prerequisite-method")
+        binding = self.canonical_node("creation-prerequisite-binding")
+        cases = (
+            ("lower", [route, method], "did not expose the route and both"),
+            ("ambiguous", [route, method, binding, binding], "was ambiguous"),
+        )
+        for name, direct_nodes, message in cases:
+            with self.subTest(name=name):
+                device = mock.Mock(spec=driver.shared.Device)
+                device.hierarchy.side_effect = (
+                    driver.shared.AdbHierarchyLeaseReserveExceeded("lease reserve")
+                )
+                device.read_only_hierarchy_once.return_value = direct_nodes
+                observed_scans: list[dict[str, object]] = []
+
+                with self.assertRaisesRegex(RuntimeError, message):
+                    driver.wait_for_prerequisite_scan_origin(
+                        device,
+                        deadline=driver.time.monotonic() + 30,
+                        immediately_after_opening_tap=True,
+                        scan_observer=observed_scans.append,
+                    )
+
+                device.read_only_hierarchy_once.assert_called_once()
+                device.swipe_down.assert_not_called()
+                device.shell.assert_not_called()
+                self.assertEqual(1, observed_scans[0]["directFallbackReadCount"])
+                self.assertIn(
+                    observed_scans[0]["status"],
+                    {
+                        "direct-fallback-origin-incomplete",
+                        "direct-fallback-cardinality-invalid",
+                    },
+                )
+
+    def test_prerequisite_scan_origin_direct_fallback_rejects_noncanonical_identity_or_read_failure(
+        self,
+    ) -> None:
+        route = self.canonical_node("creation-prerequisite-page")
+        method = self.canonical_node("creation-prerequisite-method")
+        forged_binding = driver.shared.UiNode(
+            {
+                "package": "com.example.forged",
+                "resource-id": (
+                    f"{driver.shared.PACKAGE}:id/creation-prerequisite-binding"
+                ),
+            }
+        )
+        cases = (
+            (
+                "noncanonical",
+                [route, method, forged_binding],
+                "canonical Chummer resource identities",
+            ),
+            (
+                "read-failure",
+                subprocess.TimeoutExpired("adb", 1),
+                "direct hierarchy observation failed",
+            ),
+        )
+        for name, direct_result, message in cases:
+            with self.subTest(name=name):
+                device = mock.Mock(spec=driver.shared.Device)
+                device.hierarchy.side_effect = (
+                    driver.shared.AdbHierarchyLeaseReserveExceeded("lease reserve")
+                )
+                if isinstance(direct_result, BaseException):
+                    device.read_only_hierarchy_once.side_effect = direct_result
+                else:
+                    device.read_only_hierarchy_once.return_value = direct_result
+
+                with self.assertRaisesRegex(RuntimeError, message):
+                    driver.wait_for_prerequisite_scan_origin(
+                        device,
+                        deadline=driver.time.monotonic() + 30,
+                        immediately_after_opening_tap=True,
+                        scan_observer=lambda _scan: None,
+                    )
+
+                device.read_only_hierarchy_once.assert_called_once()
+                device.swipe_down.assert_not_called()
+                device.shell.assert_not_called()
+
+    def test_prerequisite_scan_origin_never_direct_falls_back_after_reverse_swipe(
+        self,
+    ) -> None:
+        route = self.canonical_node("creation-prerequisite-page")
+        device = mock.Mock(spec=driver.shared.Device)
+        device.hierarchy.side_effect = (
+            [route],
+            driver.shared.AdbHierarchyLeaseReserveExceeded("lease reserve"),
+        )
+        device.dismiss_system_ui_anr.return_value = False
+        observed_scans: list[dict[str, object]] = []
+
+        with self.assertRaisesRegex(RuntimeError, "untouched post-opening viewport"):
+            driver.wait_for_prerequisite_scan_origin(
+                device,
+                deadline=driver.time.monotonic() + 30,
+                immediately_after_opening_tap=True,
+                scan_observer=observed_scans.append,
+            )
+
+        device.swipe_down.assert_called_once()
+        device.read_only_hierarchy_once.assert_not_called()
+        device.shell.assert_not_called()
+        self.assertEqual(
+            "lease-reserve-exhausted-ineligible",
+            observed_scans[0]["status"],
+        )
+        self.assertEqual(1, observed_scans[0]["reverseSwipes"])
+
+    def test_prerequisite_scan_origin_does_not_direct_fallback_for_an_unclassified_empty_read(
+        self,
+    ) -> None:
+        device = mock.Mock(spec=driver.shared.Device)
+        device.hierarchy.return_value = []
+
+        with mock.patch.object(
+            driver,
+            "sleep_before_phase_deadline",
+            side_effect=RuntimeError("empty hierarchy wait cannot fit"),
+        ), self.assertRaisesRegex(RuntimeError, "empty hierarchy wait cannot fit"):
+            driver.wait_for_prerequisite_scan_origin(
+                device,
+                deadline=driver.time.monotonic() + 30,
+                immediately_after_opening_tap=True,
+                scan_observer=lambda _scan: None,
+            )
+
+        device.read_only_hierarchy_once.assert_not_called()
+        device.swipe_down.assert_not_called()
+        device.shell.assert_not_called()
+
     def test_prerequisite_authority_scan_collects_once_and_rejects_drift(self) -> None:
         digest_values = {
             "creation-prerequisite-snapshot-digest": "sha256:" + "1" * 64,
@@ -13866,7 +14256,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
         for marker in (
             'AutomationId = "creation-prerequisite-page"',
-            "Coordinator.LoadCreationPrerequisite()",
+            "ResolveCurrentAuthority()",
             "budget.Total",
             "budget.Used",
             "budget.Remaining",
@@ -13984,7 +14374,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "Coordinator.LoadCreationPrerequisite",
             "IsPrerequisiteStage(stage.StepId, snapshot.BuildMethod)",
             "CreationPrerequisitePhoneAuthority.IsReady(state, Coordinator.State)",
-            "new CreationPrerequisitePage(Coordinator)",
+            "new CreationPrerequisitePage(Coordinator, authority)",
             "CharacterCreationWizardStepIds.Method",
             "CharacterCreationBuildMethods.Priority",
             "CharacterCreationBuildMethods.SumToTen",
@@ -14014,13 +14404,35 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         options = (NATIVE / "CreationPriorityCategoryPage.cs").read_text(
             encoding="utf-8"
         )
+        dashboard = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
         category_refresh = options[
             options.index("protected override void Refresh()") : options.index(
                 "private async Task SelectAsync("
             )
         ]
 
+        refresh = page[
+            page.index("protected override void Refresh()") :
+            page.index("private void TryPublishApi36AttachmentProof()")
+        ]
+        self.assertEqual(1, refresh.count("            ResolveCurrentAuthority();"))
         self.assertEqual(1, page.count("Coordinator.LoadCreationPrerequisite()"))
+        self.assertIn("CharacterCreationPrerequisiteState dashboardAuthority", page)
+        self.assertIn("_dashboardAuthority = dashboardAuthority", page)
+        self.assertIn(
+            "CreationPrerequisitePhoneAuthority.IsReady(authority, Coordinator.State)",
+            page,
+        )
+        self.assertLess(
+            page.index("_dashboardAuthority = null;"),
+            page.index("return Coordinator.LoadCreationPrerequisite();"),
+        )
+        self.assertIn(
+            "OpenCreationPrerequisiteAsync(prerequisite!.Value!)",
+            dashboard,
+        )
+        self.assertIn("_latestApi36ProofReadyState = null;", refresh)
+        self.assertIn("_latestApi36ProofReadyState = state;", refresh)
         self.assertIn("_draft.Bind(state, Coordinator.State);", page)
         self.assertIn("_draft,\n                    state,\n                    category", page)
 

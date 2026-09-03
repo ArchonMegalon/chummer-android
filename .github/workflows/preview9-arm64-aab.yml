@@ -120,6 +120,8 @@ jobs:
           --self-contained true
           -p:ChummerAndroidRuntimeIdentifier=android-arm64
           -p:ChummerDesktopRuntimeIdentifiers=
+          -p:ChummerPresentationRoot=${{ github.workspace }}/chummer-presentation
+          -p:ChummerCoreEngineRoot=${{ github.workspace }}/chummer-core-engine
           -p:BuildInParallel=false
           -p:ChummerUseLocalCompatibilityTree=true
           -p:ChummerCompatibilityRoot=${{ github.workspace }}/

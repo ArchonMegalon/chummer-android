@@ -20,7 +20,7 @@ class Sr5PriorityLegalPathSourceContractTests(unittest.TestCase):
             "OpenCreationBasicsAsync",
             "new CreationBasicsPage(Coordinator)",
             "OpenCreationPrerequisiteAsync",
-            "new CreationPrerequisitePage(Coordinator)",
+            "new CreationPrerequisitePage(Coordinator, authority)",
             "OpenCreationAttributesAsync",
             "new CreationAttributesPage(Coordinator)",
             "OpenCreationSkillsAsync",

@@ -6586,20 +6586,26 @@ public sealed class Demo
         recognition = payload["generationInputs"]["api36JourneyRecognition"]
         gate = payload["generationInputs"]["phoneBetaWizardGate"]
         self.assertEqual("sr5_wizards_only", gate["proofScope"])
-        self.assertEqual(3, gate["requiredJourneyCount"])
+        expected_gate_journeys = [
+            "creation-prerequisite",
+            "career-active-skill-advance",
+            "career-weapon-fire",
+            "before-run-edge",
+            "playtime-short-burst",
+            "downtime-calendar",
+            "after-run-settlement",
+        ]
+        self.assertEqual(len(expected_gate_journeys), gate["requiredJourneyCount"])
         self.assertEqual(
-            [
-                "creation-prerequisite",
-                "career-active-skill-advance",
-                "career-weapon-fire",
-            ],
+            expected_gate_journeys,
             gate["requiredJourneys"],
         )
         self.assertEqual(
             [
                 {
                     "matrixJourney": "full-editing",
-                    "status": "not_required_not_proven",
+                    "status": "deferred",
+                    "evidenceClass": "informational_only",
                     "maySatisfyRequiredJourney": False,
                 }
             ],
@@ -6619,7 +6625,23 @@ public sealed class Demo
         )
         self.assertEqual("recognized", recognition["recognitionStatus"])
         self.assertEqual("not_executed", recognition["executionStatus"])
-        self.assertIsNone(recognition["matrixJourney"])
+        self.assertEqual(
+            [
+                {
+                    "route": "sr5-career/before-run",
+                    "matrixJourney": "before-run-edge",
+                    "gateStatus": "required",
+                    "executionStatus": "not_executed",
+                },
+                {
+                    "route": "sr5-career/playtime",
+                    "matrixJourney": "playtime-short-burst",
+                    "gateStatus": "required",
+                    "executionStatus": "not_executed",
+                },
+            ],
+            recognition["matrixJourneys"],
+        )
         self.assertFalse(recognition["releaseClaim"])
         self.assertEqual(0, recognition["completionCountContribution"])
         self.assertEqual(
@@ -6654,10 +6676,50 @@ public sealed class Demo
         self.assertIn("downtime.training", contextual["explicitBlockers"])
         self.assertIn("playtime.damage-conditions", contextual["explicitBlockers"])
         self.assertEqual("not_executed", contextual["executionStatus"])
-        self.assertIsNone(contextual["matrixJourney"])
+        self.assertEqual(
+            [
+                {
+                    "route": route,
+                    "matrixJourney": (
+                        "downtime-calendar"
+                        if route == "sr5-career/downtime"
+                        else "playtime-short-burst"
+                    ),
+                    "gateStatus": "required",
+                    "executionStatus": "not_executed",
+                }
+                for route in ("sr5-career/downtime", "sr5-career/playtime")
+            ],
+            contextual["matrixJourneys"],
+        )
         self.assertFalse(contextual["releaseClaim"])
         self.assertEqual(0, contextual["completionCountContribution"])
         self.assertEqual(recognition["blockers"], contextual["blockers"])
+
+        after_run = payload["generationInputs"]["afterRunSettlementJourneyRecognition"]
+        self.assertEqual("sr5-after-run-settlement", after_run["journeyId"])
+        self.assertEqual("sr5-career/after-run", after_run["parentCareerLane"])
+        self.assertEqual(
+            ["sr5-career/after-run/settlement"],
+            after_run["routes"],
+        )
+        self.assertEqual(
+            [
+                {
+                    "route": "sr5-career/after-run/settlement",
+                    "matrixJourney": "after-run-settlement",
+                    "gateStatus": "required",
+                    "executionStatus": "not_executed",
+                }
+            ],
+            after_run["matrixJourneys"],
+        )
+        self.assertIn("after-run-heat", after_run["supportedTypedMutations"])
+        self.assertIn("after-run-injuries", after_run["explicitBlockers"])
+        self.assertEqual("not_executed", after_run["executionStatus"])
+        self.assertFalse(after_run["releaseClaim"])
+        self.assertEqual(0, after_run["completionCountContribution"])
+        self.assertEqual(recognition["blockers"], after_run["blockers"])
 
         expected = set(inventory.SR5_TABLE_WIZARD_AUTHORITY_INPUTS)
         self.assertEqual(len(expected), len(inventory.SR5_TABLE_WIZARD_AUTHORITY_INPUTS))
