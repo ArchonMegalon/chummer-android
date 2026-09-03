@@ -1,4 +1,4 @@
-name: API 36 two-consecutive-green eligibility
+name: API 36 ordered review-to-main green eligibility
 
 on:
   workflow_dispatch:
@@ -21,19 +21,22 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  verify-two-consecutive-green:
-    name: Verify exact PR and later main API 36 authority
+  verify-ordered-review-main-green:
+    name: Verify an exact reviewed green followed by a later main green
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - name: Require an exact main dispatch and explicit run IDs
         shell: bash
+        env:
+          REVIEW_RUN_ID: ${{ inputs.review_run_id }}
+          MAIN_RUN_ID: ${{ inputs.main_run_id }}
         run: |
           set -euo pipefail
           test "$GITHUB_REF" = refs/heads/main
-          [[ "${{ inputs.review_run_id }}" =~ ^[1-9][0-9]*$ ]]
-          [[ "${{ inputs.main_run_id }}" =~ ^[1-9][0-9]*$ ]]
-          test "${{ inputs.review_run_id }}" != "${{ inputs.main_run_id }}"
+          [[ "$REVIEW_RUN_ID" =~ ^[1-9][0-9]*$ ]]
+          [[ "$MAIN_RUN_ID" =~ ^[1-9][0-9]*$ ]]
+          test "$REVIEW_RUN_ID" != "$MAIN_RUN_ID"
 
       - name: Check out the exact gate implementation
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4

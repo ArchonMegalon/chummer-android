@@ -1,5 +1,5 @@
 {
-  "schema": "chummer.android.api36-two-consecutive-green-policy/v1",
+  "schema": "chummer.android.api36-ordered-review-main-green-policy/v1",
   "repository": "ArchonMegalon/chummer-android",
   "sourceWorkflow": {
     "name": "API 36 phone beta SR5 wizard E2E",
@@ -34,6 +34,7 @@
   "eligibilityScope": "preview11_internal_testing_candidate",
   "requiresDistinctRuns": true,
   "requiresReviewCompletionBeforeMainStart": true,
+  "sequenceSemantics": "reviewed_green_followed_later_by_main_green_not_run_adjacency",
   "requiresExactSameAndroidTree": true,
   "requiresExactSameAuthorityIdentities": true,
   "requiresCompatibleEnvironmentFingerprints": true,
@@ -46,6 +47,7 @@
     "tester_installation",
     "release_signing",
     "public_release_readiness",
-    "publication_authority"
+    "publication_authority",
+    "zero_intervening_workflow_runs"
   ]
 }

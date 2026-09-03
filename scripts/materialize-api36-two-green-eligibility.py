@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""Materialize a read-only two-consecutive-green Android eligibility receipt.
+"""Materialize a read-only ordered review-to-main green eligibility receipt.
 
 The input metadata must be the canonical GitHub Actions REST responses for two
-explicit operator-selected runs.  This tool never discovers a run by branch or
-"latest" ordering and never grants signing, Play upload, or publication
-authority.
+explicit operator-selected runs: one reviewed green followed by one later main
+green for the same source tree. This lifecycle ordering does not assert that no
+other workflow runs occurred between them. This tool never discovers a run by
+branch or "latest" ordering and never grants signing, Play upload, or
+publication authority.
 """
 
 from __future__ import annotations
@@ -55,8 +57,8 @@ P0 = _load_p0_module()
 REPO_ROOT = SCRIPT_DIRECTORY.parent
 POLICY_PATH = REPO_ROOT / "eng/api36-two-consecutive-green-authority.json"
 SOURCE_WORKFLOW = REPO_ROOT / ".github/workflows/api36-editing-e2e.yml"
-POLICY_SCHEMA = "chummer.android.api36-two-consecutive-green-policy/v1"
-CONTRACT = "chummer.android.api36-two-consecutive-green-eligibility/v1"
+POLICY_SCHEMA = "chummer.android.api36-ordered-review-main-green-policy/v1"
+CONTRACT = "chummer.android.api36-ordered-review-main-green-eligibility/v1"
 OUTPUT_NAME = "ANDROID_API36_TWO_GREEN_ELIGIBILITY.generated.json"
 REPOSITORY = "ArchonMegalon/chummer-android"
 WORKFLOW_NAME = "API 36 phone beta SR5 wizard E2E"
@@ -89,6 +91,7 @@ DOES_NOT_ASSERT = (
     "release_signing",
     "public_release_readiness",
     "publication_authority",
+    "zero_intervening_workflow_runs",
 )
 
 
@@ -188,6 +191,9 @@ def expected_policy() -> dict[str, object]:
         "eligibilityScope": ELIGIBILITY_SCOPE,
         "requiresDistinctRuns": True,
         "requiresReviewCompletionBeforeMainStart": True,
+        "sequenceSemantics": (
+            "reviewed_green_followed_later_by_main_green_not_run_adjacency"
+        ),
         "requiresExactSameAndroidTree": True,
         "requiresExactSameAuthorityIdentities": True,
         "requiresCompatibleEnvironmentFingerprints": True,
@@ -745,14 +751,14 @@ def main(argv: list[str] | None = None) -> int:
     }
     expected = create_authority(**keyword_arguments)
     if args.command == "materialize":
-        write_atomically(args.output.resolve(), expected)
+        write_atomically(args.output, expected)
         print(
             f"two_green_eligibility=pass review_run={args.review_run_id} "
             f"main_run={args.main_run_id} internal_testing_eligible=true "
             "publication_authorized=false"
         )
         return 0
-    observed = StableFile(args.authority.resolve(), "two-green authority").json()
+    observed = StableFile(args.authority, "two-green authority").json()
     validate_authority(observed)
     if observed != expected:
         raise ValueError("two-green authority does not replay from exact inputs")

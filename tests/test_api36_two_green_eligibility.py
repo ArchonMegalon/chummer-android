@@ -5,6 +5,7 @@ import hashlib
 import importlib.util
 import json
 from pathlib import Path
+import re
 import subprocess
 import tempfile
 import unittest
@@ -494,6 +495,27 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
         self.assertNotRegex(encoded, r'"(?:review|main)RunId"')
         self.assertFalse(policy["publicationAuthorized"])
         self.assertTrue(policy["internalTestingEligibleWhenSatisfied"])
+        self.assertEqual(
+            "reviewed_green_followed_later_by_main_green_not_run_adjacency",
+            policy["sequenceSemantics"],
+        )
+        self.assertIn("zero_intervening_workflow_runs", policy["doesNotAssert"])
+
+    def test_cli_rejects_symlinked_output_and_authority_before_resolution(self) -> None:
+        output_target = self.root / "output-target.json"
+        output_target.write_text("{}\n", encoding="utf-8")
+        output_link = self.root / gate.OUTPUT_NAME
+        output_link.symlink_to(output_target)
+        with self.assertRaisesRegex(ValueError, "absolute non-symlink"):
+            gate.main(["materialize", *self.cli_inputs(), "--output", str(output_link)])
+
+        output_link.unlink()
+        authority = self.create()
+        gate.write_atomically(self.output, authority)
+        authority_link = self.root / "authority-link.json"
+        authority_link.symlink_to(self.output)
+        with self.assertRaisesRegex(ValueError, "absolute canonical non-symlink"):
+            gate.main(["verify", *self.cli_inputs(), "--authority", str(authority_link)])
 
 
 class Api36TwoGreenWorkflowSourceTests(unittest.TestCase):
@@ -521,6 +543,31 @@ class Api36TwoGreenWorkflowSourceTests(unittest.TestCase):
         self.assertNotIn("gradle-play-publisher", self.text)
         self.assertIn("publicationAuthorized == false", self.text)
         self.assertIn("googlePlayUploadAuthorized == false", self.text)
+
+    def test_workflow_dispatch_inputs_never_interpolate_inside_run_scripts(self) -> None:
+        run_blocks: list[str] = []
+        lines = self.text.splitlines()
+        index = 0
+        while index < len(lines):
+            match = re.fullmatch(r"(\s*)run:\s*\|\s*", lines[index])
+            if match is None:
+                index += 1
+                continue
+            indentation = len(match.group(1))
+            index += 1
+            body: list[str] = []
+            while index < len(lines):
+                line = lines[index]
+                if line.strip() and len(line) - len(line.lstrip()) <= indentation:
+                    break
+                body.append(line)
+                index += 1
+            run_blocks.append("\n".join(body))
+        self.assertTrue(run_blocks)
+        for body in run_blocks:
+            self.assertNotRegex(body, re.escape("${{ inputs."))
+        self.assertIn("REVIEW_RUN_ID: ${{ inputs.review_run_id }}", self.text)
+        self.assertIn("MAIN_RUN_ID: ${{ inputs.main_run_id }}", self.text)
 
 
 if __name__ == "__main__":
