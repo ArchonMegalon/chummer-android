@@ -77,12 +77,19 @@ class PlaytimePhysicalDriverContractTests(unittest.TestCase):
     def test_import_uses_exact_career_route_workspace_and_payload_not_visible_alias(self) -> None:
         fixture_payload = FIXTURE.read_text(encoding="utf-8")
         fixture_sha256 = hashlib.sha256(fixture_payload.encode("utf-8")).hexdigest()
-        authority = driver.lane.shared.WorkspaceAuthority(
+        pending = driver.lane.shared.WorkspaceAuthority(
             "workspace-playtime",
-            41,
-            41,
+            1,
+            0,
             fixture_sha256,
             "d" * 64,
+        )
+        checkpointed = pending.__class__(
+            pending.workspace_id,
+            1,
+            1,
+            pending.payload_sha256,
+            pending.document_sha256,
         )
         expectation = object()
         trace: list[dict[str, object]] = []
@@ -105,10 +112,15 @@ class PlaytimePhysicalDriverContractTests(unittest.TestCase):
                 "wait_for_phone_runner_route",
             ) as career_runner,
             mock.patch.object(driver.lane.shared, "tap_phone_destination") as destination,
+            mock.patch.object(driver.lane.shared, "open_build") as open_build,
+            mock.patch.object(
+                driver.lane.shared,
+                "save_runner_and_wait_for_durable_notice",
+            ) as save_runner,
             mock.patch.object(
                 driver.lane,
                 "read_proof_workspace_authority",
-                return_value=authority,
+                side_effect=[pending, checkpointed],
             ) as workspace,
             mock.patch.object(
                 driver.lane,
@@ -126,9 +138,10 @@ class PlaytimePhysicalDriverContractTests(unittest.TestCase):
             )
 
         self.assertIs(launch, observed[0])
-        self.assertEqual(authority, observed[1])
-        self.assertIs(import_proof, observed[2])
-        self.assertEqual(driver.FIXTURE_ALIAS, observed[3].findtext("alias"))
+        self.assertEqual(pending, observed[1])
+        self.assertEqual(checkpointed, observed[2])
+        self.assertIs(import_proof, observed[3])
+        self.assertEqual(driver.FIXTURE_ALIAS, observed[4].findtext("alias"))
         device.wait.assert_not_called()
         device.tap.assert_called_once_with("home-open-file")
         select.assert_called_once_with(device, FIXTURE.name)
@@ -139,16 +152,161 @@ class PlaytimePhysicalDriverContractTests(unittest.TestCase):
             timeout=120,
         )
         career_runner.assert_called_once_with(device, created=True, timeout=120)
-        destination.assert_called_once_with(device, "phone-destination-runners")
-        self.assertEqual(2, runners.call_count)
-        workspace.assert_called_once_with(
-            device,
-            expectation,
-            trace,
-            label="imported-runner",
-            page_automation_id="phone-runners",
-            stage="runners-ready",
-            wizard_lane=None,
+        self.assertEqual(
+            [
+                mock.call(device, "phone-destination-runners"),
+                mock.call(device, "phone-destination-runners"),
+            ],
+            destination.call_args_list,
+        )
+        self.assertEqual(3, runners.call_count)
+        open_build.assert_called_once_with(device, "phone")
+        save_runner.assert_called_once_with(device)
+        self.assertEqual(
+            [
+                mock.call(
+                    device,
+                    expectation,
+                    trace,
+                    label="imported-runner-pending-save",
+                    page_automation_id="phone-runners",
+                    stage="runners-ready",
+                    wizard_lane=None,
+                ),
+                mock.call(
+                    device,
+                    expectation,
+                    trace,
+                    label="imported-runner-checkpointed",
+                    page_automation_id="phone-runners",
+                    stage="runners-ready",
+                    wizard_lane=None,
+                ),
+            ],
+            workspace.call_args_list,
+        )
+
+    def test_import_checkpoint_requires_exact_one_zero_to_one_one_identity_transition(self) -> None:
+        pending = driver.lane.shared.WorkspaceAuthority(
+            "workspace-playtime", 1, 0, "a" * 64, "b" * 64
+        )
+        checkpointed = pending.__class__(
+            pending.workspace_id, 1, 1, pending.payload_sha256, pending.document_sha256
+        )
+        driver.lane.require_exact_pending_import_checkpoint(pending)
+        driver.lane.require_exact_import_checkpoint_transition(pending, checkpointed)
+
+        hostile_pending = (
+            pending.__class__("workspace-playtime", 1, 1, "a" * 64, "b" * 64),
+            pending.__class__("workspace-playtime", 2, 1, "a" * 64, "b" * 64),
+        )
+        for hostile in hostile_pending:
+            with self.subTest(hostile=hostile), self.assertRaises(RuntimeError):
+                driver.lane.require_exact_pending_import_checkpoint(hostile)
+
+        hostile_saved = (
+            checkpointed.__class__("other", 1, 1, "a" * 64, "b" * 64),
+            checkpointed.__class__("workspace-playtime", 2, 2, "a" * 64, "b" * 64),
+            checkpointed.__class__("workspace-playtime", 1, 0, "a" * 64, "b" * 64),
+            checkpointed.__class__("workspace-playtime", 1, 1, "c" * 64, "b" * 64),
+            checkpointed.__class__("workspace-playtime", 1, 1, "a" * 64, "c" * 64),
+        )
+        for hostile in hostile_saved:
+            with self.subTest(hostile=hostile), self.assertRaises(RuntimeError):
+                driver.lane.require_exact_import_checkpoint_transition(pending, hostile)
+
+    def test_black_box_lane_checkpoints_import_once_before_returning_runner(self) -> None:
+        fixture_payload = FIXTURE.read_text(encoding="utf-8")
+        fixture_sha256 = hashlib.sha256(fixture_payload.encode("utf-8")).hexdigest()
+        pending = driver.lane.shared.WorkspaceAuthority(
+            "workspace-playtime", 1, 0, fixture_sha256, "d" * 64
+        )
+        checkpointed = pending.__class__(
+            pending.workspace_id, 1, 1, pending.payload_sha256, pending.document_sha256
+        )
+        device = mock.Mock(spec=driver.lane.shared.Device)
+        events: list[str] = []
+
+        with (
+            mock.patch.object(driver.lane.shared, "launch_app", return_value=object()),
+            mock.patch.object(driver.lane.shared, "wait_for_phone_runners"),
+            mock.patch.object(driver.lane.shared, "record_phone_ui_locale_evidence"),
+            mock.patch.object(driver.lane.shared, "select_android_document"),
+            mock.patch.object(driver.lane.shared, "wait_for_phone_runner_route"),
+            mock.patch.object(driver.lane.shared, "tap_phone_destination"),
+            mock.patch.object(
+                driver.lane.shared,
+                "read_phone_workspace_authority",
+                return_value=pending,
+            ) as read_pending,
+            mock.patch.object(
+                driver.lane.shared,
+                "read_workspace_authority",
+                side_effect=lambda _device: events.append("read-checkpointed")
+                or checkpointed,
+            ) as read_checkpointed,
+            mock.patch.object(
+                driver.lane.shared,
+                "open_build",
+                side_effect=lambda *_args: events.append("open-build"),
+            ) as open_build,
+            mock.patch.object(
+                driver.lane.shared,
+                "save_runner_and_wait_for_durable_notice",
+                side_effect=lambda *_args: events.append("save"),
+            ) as save_runner,
+            mock.patch.object(
+                driver.lane,
+                "workspace_payloads",
+                return_value=[fixture_payload],
+            ),
+        ):
+            observed = driver.lane.prepare_runner(
+                device,
+                driver.SPEC,
+                FIXTURE.name,
+                fixture_sha256,
+            )
+
+        self.assertEqual(pending, observed[1])
+        self.assertEqual(checkpointed, observed[2])
+        read_pending.assert_called_once_with(device)
+        open_build.assert_called_once_with(device, "phone")
+        save_runner.assert_called_once_with(device)
+        read_checkpointed.assert_called_once_with(device)
+        self.assertEqual(["open-build", "save", "read-checkpointed"], events)
+
+    def test_product_table_authority_and_every_review_gate_require_clean_saved_revision(self) -> None:
+        authority = (
+            ROOT
+            / "src/Chummer.Android/Native/RunnerSessionSr5TableWizardPhoneAuthority.cs"
+        ).read_text(encoding="utf-8")
+        page = (ROOT / "src/Chummer.Android/Native/Sr5TableWizardPage.cs").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("_coordinator.State.IsDirty", authority)
+        self.assertIn(
+            "_coordinator.State.SavedRevision != _coordinator.State.ContentRevision",
+            authority,
+        )
+        matches = authority[authority.index("private bool Matches(") :]
+        self.assertIn("_coordinator.State.SavedRevision == revision", matches)
+        self.assertIn("!_coordinator.State.IsDirty", matches)
+        self.assertGreaterEqual(
+            page.count("Coordinator.State.SavedRevision == snapshot.WorkspaceRevision"),
+            2,
+        )
+        self.assertIn(
+            "Coordinator.State.SavedRevision != snapshot.WorkspaceRevision",
+            page,
+        )
+        self.assertGreaterEqual(page.count("Coordinator.State.IsDirty"), 3)
+        self.assertIn('"sr5-table-wizard-save-required"', page)
+        self.assertIn("No review or resumable transaction was opened", page)
+        self.assertGreaterEqual(page.count("_transaction = null;"), 3)
+        self.assertLess(
+            page.index(".LoadAsync(_lane, cancellationToken)"),
+            page.index("_transactionStore.TryRead"),
         )
 
     def test_payload_bound_import_rejects_a_different_fixture_alias(self) -> None:
@@ -357,6 +515,8 @@ class PlaytimePhysicalDriverContractTests(unittest.TestCase):
     def test_shared_driver_contract_covers_review_restart_apply_receipt_ack_successor(self) -> None:
         shared_source = Path(driver.lane.__file__).read_text(encoding="utf-8")
         for marker in (
+            '"explicitDurableSaveOperations": 1',
+            '"checkpointImportedRunnerBeforeTable": "pass"',
             "read_transaction(device, spec.checkpoint_key)",
             'phase=0,\n        version=1,\n        require_receipt=False',
             '"sr5-table-wizard-resume-review"',

@@ -93,9 +93,16 @@ public sealed class Sr5TableWizardPage : NativePageBase
         }
         if (_snapshot is null || _session is null)
         {
+            bool saveRequired = Coordinator.State.IsDirty
+                                || Coordinator.State.ContentRevision
+                                != Coordinator.State.SavedRevision;
             AddStatus(
-                Text("Exact SR5 table authority is unavailable. No fallback action was opened."),
-                "sr5-table-wizard-unavailable",
+                saveRequired
+                    ? Text("Save this runner before opening a table action. No review or resumable transaction was opened.")
+                    : Text("Exact SR5 table authority is unavailable. No fallback action was opened."),
+                saveRequired
+                    ? "sr5-table-wizard-save-required"
+                    : "sr5-table-wizard-unavailable",
                 NativeTheme.Danger);
             Button retry = NativeTheme.SecondaryButton(Text("Retry"));
             retry.AutomationId = "sr5-table-wizard-retry";
@@ -341,6 +348,7 @@ public sealed class Sr5TableWizardPage : NativePageBase
             {
                 _snapshot = null;
                 _session = null;
+                _transaction = null;
                 return;
             }
 
@@ -408,6 +416,7 @@ public sealed class Sr5TableWizardPage : NativePageBase
             {
                 _snapshot = null;
                 _session = null;
+                _transaction = null;
             }
         }
         finally
@@ -426,7 +435,9 @@ public sealed class Sr5TableWizardPage : NativePageBase
                true,
                Coordinator.State.Rules?.GameEdition)
            && Coordinator.State.WorkspaceId == snapshot.WorkspaceId
-           && Coordinator.State.ContentRevision == snapshot.WorkspaceRevision;
+           && Coordinator.State.ContentRevision == snapshot.WorkspaceRevision
+           && Coordinator.State.SavedRevision == snapshot.WorkspaceRevision
+           && !Coordinator.State.IsDirty;
 
     private void AddStatus(string text, string automationId, Color color)
     {
@@ -627,7 +638,9 @@ public sealed class Sr5TableWizardQuotePage : NativePageBase
     {
         Sr5TableWizardSnapshot snapshot = _session.State.Snapshot;
         if (Coordinator.State.WorkspaceId != snapshot.WorkspaceId
-            || Coordinator.State.ContentRevision != snapshot.WorkspaceRevision)
+            || Coordinator.State.ContentRevision != snapshot.WorkspaceRevision
+            || Coordinator.State.SavedRevision != snapshot.WorkspaceRevision
+            || Coordinator.State.IsDirty)
         {
             await DisplayAlertAsync(
                 Text("Runner changed"),
@@ -812,7 +825,9 @@ public sealed class Sr5TableWizardReviewPage : NativePageBase
                true,
                Coordinator.State.Rules?.GameEdition)
            && Coordinator.State.WorkspaceId == snapshot.WorkspaceId
-           && Coordinator.State.ContentRevision == snapshot.WorkspaceRevision;
+           && Coordinator.State.ContentRevision == snapshot.WorkspaceRevision
+           && Coordinator.State.SavedRevision == snapshot.WorkspaceRevision
+           && !Coordinator.State.IsDirty;
 
 #if CHUMMER_API36_PROOF_INSTRUMENTATION
     private void PublishApi36ProofState(string stage, bool settled)

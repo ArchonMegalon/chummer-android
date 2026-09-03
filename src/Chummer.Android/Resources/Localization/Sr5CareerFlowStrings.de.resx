@@ -506,6 +506,7 @@ Vorschau: {3}…</value></data>
   <data name="Edge used {0} → {1}" xml:space="preserve"><value>Verwendetes Edge {0} → {1}</value></data>
   <data name="Edge, ammunition, modes, or table authority changed; the saved review was discarded." xml:space="preserve"><value>Edge, Munition, Modi oder Spieltischinstanz wurden geändert; die gespeicherte Prüfung wurde verworfen.</value></data>
   <data name="Exact SR5 table authority is unavailable. No fallback action was opened." xml:space="preserve"><value>Die exakte SR5-Spieltischinstanz ist nicht verfügbar. Es wurde keine Ausweichaktion geöffnet.</value></data>
+  <data name="Save this runner before opening a table action. No review or resumable transaction was opened." xml:space="preserve"><value>Speichere diesen Runner, bevor du eine Spieltischaktion öffnest. Es wurde keine Prüfung oder fortsetzbare Transaktion geöffnet.</value></data>
   <data name="Fire · {0}" xml:space="preserve"><value>Feuern · {0}</value></data>
   <data name="Full Burst" xml:space="preserve"><value>Lange volle Salve</value></data>
   <data name="Live / playtime" xml:space="preserve"><value>Live / Spielzeit</value></data>

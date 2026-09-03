@@ -6,6 +6,7 @@ using Chummer.Presentation.Overview;
 
 var backend = new MemoryBackend();
 var store = new Sr5TableWizardCheckpointStore(backend);
+await AssertTableAuthorityRequiresDurableCheckpointAsync();
 Sr5TableWizardSnapshot snapshot = Sr5TableWizardProjector.Project(
     Sr5TableWizardLane.BeforeRun,
     new CareerEdgeUseEditorState(
@@ -265,6 +266,138 @@ AssertApi36ProofStateContract();
 
 Console.WriteLine("SR5 Before Run / Playtime Android draft-store tests passed.");
 
+static async Task AssertTableAuthorityRequiresDurableCheckpointAsync()
+{
+    var workspaceId = new CharacterWorkspaceId("workspace-table-authority");
+
+    RunnerSessionCoordinator dirty = AuthorityCoordinator(
+        workspaceId,
+        contentRevision: 1,
+        savedRevision: 0,
+        isDirty: true);
+    Assert(await new RunnerSessionSr5TableWizardPhoneAuthority(dirty)
+            .LoadAsync(Sr5TableWizardLane.Playtime) is null,
+        "Playtime must not expose table authority for the imported dirty 1/0 workspace");
+    Assert(dirty.EdgeReadCount == 0 && dirty.WeaponReadCount == 0,
+        "dirty authority must fail before any typed table projection is read");
+
+    RunnerSessionCoordinator mismatched = AuthorityCoordinator(
+        workspaceId,
+        contentRevision: 2,
+        savedRevision: 1,
+        isDirty: false);
+    Assert(await new RunnerSessionSr5TableWizardPhoneAuthority(mismatched)
+            .LoadAsync(Sr5TableWizardLane.BeforeRun) is null,
+        "revision mismatch must fail closed even when a hostile state reports IsDirty=false");
+    Assert(mismatched.EdgeReadCount == 0,
+        "revision mismatch must fail before composing table authority");
+
+    RunnerSessionCoordinator hostileDirtyFlag = AuthorityCoordinator(
+        workspaceId,
+        contentRevision: 3,
+        savedRevision: 3,
+        isDirty: true);
+    Assert(await new RunnerSessionSr5TableWizardPhoneAuthority(hostileDirtyFlag)
+            .LoadAsync(Sr5TableWizardLane.BeforeRun) is null,
+        "IsDirty must fail closed even when revision numbers appear checkpointed");
+
+    RunnerSessionCoordinator clean = AuthorityCoordinator(
+        workspaceId,
+        contentRevision: 4,
+        savedRevision: 4,
+        isDirty: false);
+    Sr5TableWizardSnapshot? cleanSnapshot =
+        await new RunnerSessionSr5TableWizardPhoneAuthority(clean)
+            .LoadAsync(Sr5TableWizardLane.BeforeRun);
+    Assert(cleanSnapshot is { WorkspaceRevision: 4 },
+        "a clean exact saved workspace must preserve Before Run table authority");
+    Assert(clean.EdgeReadCount == 1 && clean.WeaponReadCount == 0,
+        "Before Run clean authority must read only its typed Edge projection");
+
+    var weaponIdentity = new CharacterWeaponFireIdentity(
+        Guid.Parse("77777777-7777-4777-8777-777777777777"),
+        AmmoSlot: 1,
+        Guid.Empty);
+    Assert(CharacterWeaponFireRules.TryCreateState(
+            weaponIdentity,
+            created: true,
+            displayName: "Checkpoint Test Weapon",
+            ammoRemaining: 6,
+            ammoGearQuantity: null,
+            new CharacterWeaponFireSource(
+                RangeType: "Ranged",
+                Ammo: "6(c)",
+                BaseModes: "BF",
+                AllowSingleShot: false,
+                AllowShortBurst: true,
+                AllowLongBurst: false,
+                AllowFullBurst: false,
+                AllowSuppressiveFire: false,
+                SingleShot: 1,
+                ShortBurst: 3,
+                LongBurst: 6,
+                FullBurst: 10,
+                SuppressiveFire: 20,
+                Accessories: []),
+            hasUnsupportedModeSemantics: false,
+            out CharacterWeaponFireState weapon),
+        "clean Playtime authority fixture must be valid");
+    RunnerSessionCoordinator cleanPlaytime = AuthorityCoordinator(
+        workspaceId,
+        contentRevision: 4,
+        savedRevision: 4,
+        isDirty: false);
+    cleanPlaytime.WeaponState = new CareerWeaponFireCatalogEditorState(
+        workspaceId,
+        4,
+        [new CareerWeaponFireEditorState(workspaceId, 4, weapon)]);
+    Sr5TableWizardSnapshot? cleanPlaytimeSnapshot =
+        await new RunnerSessionSr5TableWizardPhoneAuthority(cleanPlaytime)
+            .LoadAsync(Sr5TableWizardLane.Playtime);
+    Assert(cleanPlaytimeSnapshot is { WorkspaceRevision: 4 }
+           && cleanPlaytimeSnapshot.Actions.Any(action =>
+               action.Identity.Kind == Sr5TableWizardActionKind.FireWeapon),
+        "a clean exact saved workspace must preserve Playtime weapon authority");
+    Assert(cleanPlaytime.EdgeReadCount == 1 && cleanPlaytime.WeaponReadCount == 1,
+        "clean Playtime authority must compose each typed projection once");
+
+    RunnerSessionCoordinator raced = AuthorityCoordinator(
+        workspaceId,
+        contentRevision: 5,
+        savedRevision: 5,
+        isDirty: false);
+    raced.AfterEdgeRead = () =>
+    {
+        raced.State.ContentRevision = 6;
+        raced.State.IsDirty = true;
+    };
+    Assert(await new RunnerSessionSr5TableWizardPhoneAuthority(raced)
+            .LoadAsync(Sr5TableWizardLane.BeforeRun) is null,
+        "a workspace that becomes dirty during projection must not establish a review snapshot");
+}
+
+static RunnerSessionCoordinator AuthorityCoordinator(
+    CharacterWorkspaceId workspaceId,
+    long contentRevision,
+    long savedRevision,
+    bool isDirty)
+{
+    var coordinator = new RunnerSessionCoordinator();
+    coordinator.State.WorkspaceId = workspaceId;
+    coordinator.State.ContentRevision = contentRevision;
+    coordinator.State.SavedRevision = savedRevision;
+    coordinator.State.IsDirty = isDirty;
+    coordinator.EdgeState = new CareerEdgeUseEditorState(
+        workspaceId,
+        contentRevision,
+        new CharacterCareerEdgeUseState(
+            EdgeUsed: 0,
+            TotalEdge: 4,
+            CanSpend: true,
+            CanRegain: false));
+    return coordinator;
+}
+
 static void AssertApi36ProofStateContract()
 {
     var build = new Api36ProofBuildIdentity(
@@ -501,4 +634,56 @@ internal sealed class MemoryBackend : ISr5TableWizardCheckpointBackend
 
     public void Write(string payload) => Payload = payload;
     public void Remove() => Payload = string.Empty;
+}
+
+namespace Chummer.Android.Native
+{
+    public sealed record RunnerProfileStub(bool Created);
+    public sealed record RunnerRulesStub(string? GameEdition);
+
+    public sealed class RunnerStateStub
+    {
+        public RunnerProfileStub? Profile { get; set; } = new(true);
+        public RunnerRulesStub? Rules { get; set; } = new("SR5");
+        public CharacterWorkspaceId? WorkspaceId { get; set; } =
+            new("workspace-table-authority");
+        public long ContentRevision { get; set; } = 1;
+        public long SavedRevision { get; set; } = 1;
+        public bool IsDirty { get; set; }
+    }
+
+    public sealed class RunnerSessionCoordinator
+    {
+        public RunnerStateStub State { get; } = new();
+        public CareerEdgeUseEditorState? EdgeState { get; set; }
+        public CareerWeaponFireCatalogEditorState? WeaponState { get; set; }
+        public Action? AfterEdgeRead { get; set; }
+        public int EdgeReadCount { get; private set; }
+        public int WeaponReadCount { get; private set; }
+
+        public Task<CareerEdgeUseEditorState?> PrepareCareerEdgeUseEditAsync(
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            EdgeReadCount++;
+            CareerEdgeUseEditorState? result = EdgeState;
+            AfterEdgeRead?.Invoke();
+            return Task.FromResult(result);
+        }
+
+        public Task<CareerWeaponFireCatalogEditorState?> PrepareCareerWeaponFireCatalogAsync(
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            WeaponReadCount++;
+            return Task.FromResult(WeaponState);
+        }
+    }
+
+    public static class Sr5CareerWizardCatalog
+    {
+        public static bool IsSr5CareerRunner(bool characterCreated, string? gameEdition)
+            => characterCreated
+               && string.Equals(gameEdition, "SR5", StringComparison.OrdinalIgnoreCase);
+    }
 }

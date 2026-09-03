@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -7061,7 +7062,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                     "--projection",
                     DRIVER.MEDIA_PROVIDER_METADATA_PROJECTION,
                     "--where",
-                    "_display_name='runner.chum5'",
+                    '"_display_name=\'runner.chum5\'"',
                 ),
                 run.call_args_list[1].args,
             )
@@ -7344,6 +7345,36 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                     fixture, DRIVER.hashlib.sha256(payload).hexdigest()
                 )
 
+    def test_documents_ui_provider_query_preserves_one_exact_safe_sql_literal(self) -> None:
+        display_name = "sr5-career-before-run.chum5"
+        where = DRIVER._media_provider_display_name_where_argument(display_name)
+
+        self.assertEqual('"_display_name=\'sr5-career-before-run.chum5\'"', where)
+        remote_arguments = shlex.split(
+            " ".join(("content", "query", "--where", where))
+        )
+        self.assertEqual(
+            [
+                "content",
+                "query",
+                "--where",
+                "_display_name='sr5-career-before-run.chum5'",
+            ],
+            remote_arguments,
+        )
+
+        for hostile in (
+            "runner's.chum5",
+            'runner".chum5',
+            "runner;id.chum5",
+            "runner$(id).chum5",
+            "runner name.chum5",
+        ):
+            with self.subTest(hostile=hostile), self.assertRaisesRegex(
+                RuntimeError, "unsafe display name"
+            ):
+                DRIVER._media_provider_display_name_where_argument(hostile)
+
     def test_documents_ui_provider_commands_have_exact_replay_classification(self) -> None:
         provider_uri = "content://media/external_primary/downloads/12345"
         for arguments in (
@@ -7381,10 +7412,16 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             "--projection",
             DRIVER.MEDIA_PROVIDER_METADATA_PROJECTION,
             "--where",
-            "_display_name='runner.chum5'",
+            '"_display_name=\'runner.chum5\'"',
         )
         self.assertEqual(
             "read-only-retryable", DRIVER.adb_command_retry_policy(query)[0]
+        )
+        self.assertEqual(
+            "non-replayable",
+            DRIVER.adb_command_retry_policy(
+                (*query[:-1], "_display_name='runner.chum5'")
+            )[0],
         )
         self.assertEqual(
             "read-only-retryable",

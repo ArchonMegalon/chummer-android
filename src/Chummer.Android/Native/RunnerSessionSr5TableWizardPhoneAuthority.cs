@@ -22,7 +22,9 @@ internal sealed class RunnerSessionSr5TableWizardPhoneAuthority
         if (!Enum.IsDefined(lane)
             || !IsCurrentCreatedSr5()
             || _coordinator.State.WorkspaceId is not { } workspaceId
-            || _coordinator.State.ContentRevision <= 0)
+            || _coordinator.State.ContentRevision <= 0
+            || _coordinator.State.IsDirty
+            || _coordinator.State.SavedRevision != _coordinator.State.ContentRevision)
         {
             return null;
         }
@@ -68,7 +70,9 @@ internal sealed class RunnerSessionSr5TableWizardPhoneAuthority
     private bool Matches(Chummer.Contracts.Workspaces.CharacterWorkspaceId workspaceId, long revision)
         => IsCurrentCreatedSr5()
            && _coordinator.State.WorkspaceId == workspaceId
-           && _coordinator.State.ContentRevision == revision;
+           && _coordinator.State.ContentRevision == revision
+           && _coordinator.State.SavedRevision == revision
+           && !_coordinator.State.IsDirty;
 
     private bool IsCurrentCreatedSr5()
         => _coordinator.State.Profile?.Created == true

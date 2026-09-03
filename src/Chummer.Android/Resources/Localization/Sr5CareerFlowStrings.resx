@@ -506,6 +506,7 @@ Preview: {3}…</value></data>
   <data name="Edge used {0} → {1}" xml:space="preserve"><value>Edge used {0} → {1}</value></data>
   <data name="Edge, ammunition, modes, or table authority changed; the saved review was discarded." xml:space="preserve"><value>Edge, ammunition, modes, or table authority changed; the saved review was discarded.</value></data>
   <data name="Exact SR5 table authority is unavailable. No fallback action was opened." xml:space="preserve"><value>Exact SR5 table authority is unavailable. No fallback action was opened.</value></data>
+  <data name="Save this runner before opening a table action. No review or resumable transaction was opened." xml:space="preserve"><value>Save this runner before opening a table action. No review or resumable transaction was opened.</value></data>
   <data name="Fire · {0}" xml:space="preserve"><value>Fire · {0}</value></data>
   <data name="Full Burst" xml:space="preserve"><value>Full Burst</value></data>
   <data name="Live / playtime" xml:space="preserve"><value>Live / playtime</value></data>

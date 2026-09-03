@@ -651,7 +651,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionSr5TableWizardPhoneAuthority.cs",
         "exists": true,
-        "sha256": "91b844da893d70ec8b8913f6e553e726b830af1d10825941cb4b2fda7f083863"
+        "sha256": "9ad6e4b86492bf27064a794ae9c057bd5f97da89205eabf3c89d89b63bbf3d36"
       },
       {
         "path": "src/Chummer.Android/Native/Sr5CareerFlowStrings.cs",
@@ -706,7 +706,7 @@
       {
         "path": "src/Chummer.Android/Native/Sr5TableWizardPage.cs",
         "exists": true,
-        "sha256": "fcf73d1689acde9767513bc76d07c1d4c8580f4947d0f092dc054d55d1b51ca4"
+        "sha256": "9d4fc138a4a19aadd5b746d972eeadaf93e7eb5bebefaa28d1bc9a879435ef4e"
       },
       {
         "path": "src/Chummer.Android/Native/Sr5TableWizardPhoneModel.cs",
@@ -731,17 +731,17 @@
       {
         "path": "src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.resx",
         "exists": true,
-        "sha256": "8ac47d1e9fea948454c01efa98374e61c292b5c57805c7c9188c01bce1dc3645"
+        "sha256": "669b90e2cbaf8b0c661320515cdd31b29838ce10817ae5b4bb2dbcbdb6bf1b8d"
       },
       {
         "path": "src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.de.resx",
         "exists": true,
-        "sha256": "3b07303b4b887e2f9a5f1aeaa7400c9ebc4b6e796b91d193cf2656d63ddff891"
+        "sha256": "d8e7d1ba704cb64140ca3c9fee782894bef19205134afa8e03a4101a0161e26d"
       },
       {
         "path": "src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.es.resx",
         "exists": true,
-        "sha256": "424c03a617f1d01d9deeb28fe9230ec070a481939828e1c7c62d5dd783c1163c"
+        "sha256": "076cbeed8b8ce8dba2444c65a5fdf5e6197f0d8d6fff2c0ddc4543e2673eec33"
       },
       {
         "path": "src/Chummer.Android/Resources/Localization/WizardStrings.resx",
@@ -791,12 +791,12 @@
       {
         "path": "tests/Chummer.Android.Sr5TableWizard.Tests/Chummer.Android.Sr5TableWizard.Tests.csproj",
         "exists": true,
-        "sha256": "b121a0dda395baee45f562324379124c2a66ba377dd840c4d7b07b6a4c43e00a"
+        "sha256": "7fe32a055580e6cb1eb060ed8d6244eef5918150b49c6c708389d1a8bc493838"
       },
       {
         "path": "tests/Chummer.Android.Sr5TableWizard.Tests/Program.cs",
         "exists": true,
-        "sha256": "39f17dd07505bd9baba367de95a01270d40aabe2ab6fe54fe8eaa392905f61b5"
+        "sha256": "30c89c6fd2067185ba9362aa88097ffbc0eb07665e2a75b74d7aaa5e1dee39dd"
       },
       {
         "path": ".github/workflows/api36-editing-e2e.yml",
@@ -871,7 +871,7 @@
       {
         "path": "tests/run_api36_sr5_before_run_edge_physical_e2e.py",
         "exists": true,
-        "sha256": "b130ce27e31231d6e51026171a892eed6bca736d92c0bfb8529f50353ceff526"
+        "sha256": "824756c675726e7988f2d0029607e14ec340aafa0f2d02d18122a39a148ece79"
       },
       {
         "path": "tests/api36_proof_state.py",
@@ -956,7 +956,7 @@
       {
         "path": "tests/run_api36_editing_e2e.py",
         "exists": true,
-        "sha256": "31433a8a9c21eccc418c847eca34254a5e3a952978376d07ab1f34254552f00c"
+        "sha256": "1aa18326d096b0efc9db7b39673989c15b58a7ac277a677bec140e7f3ec3c386"
       },
       {
         "path": "tests/run_api36_career_active_skill_advance_e2e.py",

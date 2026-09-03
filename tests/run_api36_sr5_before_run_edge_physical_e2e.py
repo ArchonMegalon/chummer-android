@@ -920,6 +920,7 @@ def prepare_runner(
 ) -> tuple[
     shared.LaunchState,
     shared.WorkspaceAuthority,
+    shared.WorkspaceAuthority,
     object | None,
     ET.Element,
 ]:
@@ -946,12 +947,12 @@ def prepare_runner(
     shared.wait_for_phone_runner_route(device, created=True, timeout=120)
     shared.tap_phone_destination(device, "phone-destination-runners")
     shared.wait_for_phone_runners(device, timeout=120)
-    authority = (
+    pending_save = (
         read_proof_workspace_authority(
             device,
             proof_expectation,
             proof_trace,
-            label="imported-runner",
+            label="imported-runner-pending-save",
             page_automation_id="phone-runners",
             stage="runners-ready",
             wizard_lane=None,
@@ -959,9 +960,64 @@ def prepare_runner(
         if proof_expectation is not None and proof_trace is not None
         else shared.read_phone_workspace_authority(device)
     )
-    shared.require_import_authority(authority, fixture_sha256)
-    imported_root = root_for_authority(device, authority, spec.fixture_alias)
-    return launch, authority, import_proof, imported_root
+    shared.require_import_authority(pending_save, fixture_sha256)
+    require_exact_pending_import_checkpoint(pending_save)
+    imported_root = root_for_authority(device, pending_save, spec.fixture_alias)
+
+    # Import intentionally activates a dirty in-memory workspace. Establish one
+    # explicit durable checkpoint before any table quote or review is exposed.
+    # The save helper issues exactly one non-replayable tap and performs only
+    # read-only observations afterwards; an unknown outcome fails closed.
+    shared.open_build(device, "phone")
+    shared.save_runner_and_wait_for_durable_notice(device)
+    shared.tap_phone_destination(device, "phone-destination-runners")
+    shared.wait_for_phone_runners(device, timeout=120)
+    checkpointed = (
+        read_proof_workspace_authority(
+            device,
+            proof_expectation,
+            proof_trace,
+            label="imported-runner-checkpointed",
+            page_automation_id="phone-runners",
+            stage="runners-ready",
+            wizard_lane=None,
+        )
+        if proof_expectation is not None and proof_trace is not None
+        else shared.read_workspace_authority(device)
+    )
+    require_exact_import_checkpoint_transition(pending_save, checkpointed)
+    return launch, pending_save, checkpointed, import_proof, imported_root
+
+
+def require_exact_pending_import_checkpoint(
+    authority: shared.WorkspaceAuthority,
+) -> None:
+    if authority.content_revision != 1 or authority.saved_revision != 0:
+        raise RuntimeError(
+            "Imported runner did not expose the exact pending durable checkpoint "
+            f"authority 1/0: observed {authority.content_revision}/"
+            f"{authority.saved_revision}"
+        )
+
+
+def require_exact_import_checkpoint_transition(
+    pending: shared.WorkspaceAuthority,
+    checkpointed: shared.WorkspaceAuthority,
+) -> None:
+    require_exact_pending_import_checkpoint(pending)
+    shared.require_saved_authority(checkpointed)
+    if checkpointed.content_revision != 1 or checkpointed.saved_revision != 1:
+        raise RuntimeError(
+            "The one explicit import checkpoint did not establish exact 1/1 authority"
+        )
+    if (
+        checkpointed.workspace_id != pending.workspace_id
+        or checkpointed.payload_sha256 != pending.payload_sha256
+        or checkpointed.document_sha256 != pending.document_sha256
+    ):
+        raise RuntimeError(
+            "The explicit import checkpoint changed workspace or document authority"
+        )
 
 
 def open_lane(device: shared.Device, spec: LaneSpec) -> None:
@@ -1157,7 +1213,7 @@ def prove_lane(
 ) -> dict[str, object]:
     device.shell("pm", "clear", shared.PACKAGE)
     proof_trace: list[dict[str, object]] = []
-    initial_launch, imported, import_proof, imported_root = prepare_runner(
+    initial_launch, pending_import, imported, import_proof, imported_root = prepare_runner(
         device,
         spec,
         fixture.name,
@@ -1444,6 +1500,11 @@ def prove_lane(
             "excluded": list(spec.excluded_scope),
             "claim": "one representative typed action only",
         },
+        "importCheckpoint": {
+            "explicitDurableSaveOperations": 1,
+            "pending": shared.workspace_authority_json(pending_import),
+            "checkpointed": shared.workspace_authority_json(imported),
+        },
         "import": shared.workspace_authority_json(imported),
         "restoredBeforeApply": shared.workspace_authority_json(restored_before_apply),
         "savedSuccessor": shared.workspace_authority_json(saved),
@@ -1485,14 +1546,16 @@ def prove_lane(
 def require_proof_process_transitions(trace: list[dict[str, object]]) -> None:
     by_label = {str(item["label"]): str(item["processInstanceId"]) for item in trace}
     expected_labels = {
-        "imported-runner", "before-run-ready", "quote-ready", "review-ready",
+        "imported-runner-pending-save", "imported-runner-checkpointed",
+        "before-run-ready", "quote-ready", "review-ready",
         "review-restart-runner", "review-resumed", "receipt-ready", "saved-runner",
         "receipt-recovered", "final-restored-runner", "saved-successor-ready",
     }
     if set(by_label) != expected_labels:
         raise RuntimeError("API-36 proof-state process trace is incomplete")
     process_groups = (
-        ("imported-runner", "before-run-ready", "quote-ready", "review-ready"),
+        ("imported-runner-pending-save", "imported-runner-checkpointed",
+         "before-run-ready", "quote-ready", "review-ready"),
         ("review-restart-runner", "review-resumed", "receipt-ready", "saved-runner"),
         ("receipt-recovered",),
         ("final-restored-runner", "saved-successor-ready"),
@@ -1692,6 +1755,7 @@ def execute_lane(
         "scope": journey["scope"],
         "journeys": {
             "importExactCareerFixture": "pass",
+            "checkpointImportedRunnerBeforeTable": "pass",
             "persistDurableReview": "pass",
             "restartAndResumeReview": "pass",
             "applyRepresentativeTypedActionOnce": "pass",

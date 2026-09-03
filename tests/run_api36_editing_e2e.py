@@ -119,6 +119,9 @@ CONTENT_URI = re.compile(
 GOVERNED_DOWNLOAD_BASENAME = re.compile(
     r"[A-Za-z0-9][A-Za-z0-9._-]{0,254}"
 )
+MEDIA_PROVIDER_DISPLAY_NAME_WHERE_ARGUMENT = re.compile(
+    r'"_display_name=\'[A-Za-z0-9][A-Za-z0-9._-]{0,254}\'"'
+)
 CANONICAL_COLLECTION_ITEM_RESOURCE_ID = re.compile(
     r"^collection-item-(?P<kind>[a-z0-9-]+)-"
     r"(?P<item_id>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$"
@@ -213,6 +216,15 @@ ADB_FILE_HIERARCHY_VISIBILITY_DELAY_SECONDS = 0.25
 ADB_FILE_HIERARCHY_VISIBILITY_READ_ATTEMPT_MAX_SECONDS = 1.0
 ADB_FILE_HIERARCHY_VISIBILITY_MAX_SECONDS = 6.0
 DOCUMENTS_UI_PACKAGE = "com.google.android.documentsui"
+
+
+def _media_provider_display_name_where_argument(display_name: str) -> str:
+    """Quote one validated SQL literal through adb's remote shell."""
+    if GOVERNED_DOWNLOAD_BASENAME.fullmatch(display_name) is None:
+        raise RuntimeError("MediaStore Downloads query has an unsafe display name")
+    return f'"_display_name=\'{display_name}\'"'
+
+
 DOCUMENTS_UI_DRAWER_MARKER = "Open from"
 DOCUMENTS_UI_DOWNLOADS_ROOT = "Downloads"
 DOCUMENTS_UI_DOWNLOADS_DESTINATION = "Files in Downloads"
@@ -663,10 +675,7 @@ def adb_command_retry_policy(arguments: tuple[str, ...]) -> tuple[str, str]:
             MEDIA_PROVIDER_METADATA_PROJECTION,
             "--where",
         )
-        and re.fullmatch(
-            r"_display_name='[A-Za-z0-9][A-Za-z0-9._-]{0,254}'",
-            shell_arguments[9],
-        )
+        and MEDIA_PROVIDER_DISPLAY_NAME_WHERE_ARGUMENT.fullmatch(shell_arguments[9])
         is not None
     ):
         return (
@@ -2005,9 +2014,7 @@ class Device:
         step: str,
     ) -> tuple[dict[str, str], dict[str, object]]:
         """Return one exact Downloads row and its bounded query receipt."""
-        if GOVERNED_DOWNLOAD_BASENAME.fullmatch(display_name) is None:
-            raise RuntimeError("MediaStore Downloads query has an unsafe display name")
-        where = f"_display_name='{display_name}'"
+        where = _media_provider_display_name_where_argument(display_name)
         query_arguments = (
             "shell",
             "content",
