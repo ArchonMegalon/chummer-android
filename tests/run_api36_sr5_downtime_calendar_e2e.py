@@ -544,6 +544,30 @@ def assert_calendar(root: ET.Element, fixture: dict[str, object], *, edited: boo
         )
 
 
+def require_initial_saved_fixture_authority(
+    imported: physical.shared.WorkspaceAuthority,
+    saved: physical.shared.WorkspaceAuthority,
+    fixture_sha256: str,
+) -> None:
+    """Prove one explicit Save established the unchanged imported runner at 1/1."""
+    physical.shared.require_import_authority(imported, fixture_sha256)
+    if imported.content_revision != 1 or imported.saved_revision != 0:
+        raise RuntimeError(
+            "Downtime import did not expose the exact unsaved revision 1/0 authority"
+        )
+    physical.shared.require_import_authority(saved, fixture_sha256)
+    physical.shared.require_saved_authority(saved)
+    if (
+        saved.workspace_id != imported.workspace_id
+        or saved.content_revision != imported.content_revision
+        or saved.saved_revision != imported.content_revision
+        or saved.payload_sha256 != imported.payload_sha256
+    ):
+        raise RuntimeError(
+            "Initial Downtime save changed the imported workspace, revision, or fixture bytes"
+        )
+
+
 def prove_downtime(
     device: physical.shared.Device,
     runner: Path,
@@ -558,7 +582,11 @@ def prove_downtime(
         runner_sha256,
         proof_expectation,
     )
-    assert_calendar(calendar_leaf.root_for_authority(device, imported), fixture, edited=False)
+    initial_saved = physical.shared.save_and_read_workspace_authority(device, "phone")
+    require_initial_saved_fixture_authority(imported, initial_saved, runner_sha256)
+    assert_calendar(
+        calendar_leaf.root_for_authority(device, initial_saved), fixture, edited=False
+    )
     physical.shared.record_phone_ui_locale_evidence(device, evidence_prefix="sr5-downtime")
     open_downtime(device)
     _tap_exact(device, "sr5-downtime-calendar-operation")
@@ -588,10 +616,10 @@ def prove_downtime(
     if reviewed is None:
         raise RuntimeError("Reviewed Downtime journal disappeared")
     review_projection = validate_journal(
-        reviewed.payload, fixture, workspace_id=imported.workspace_id,
-        workspace_revision=imported.content_revision,
-        payload_sha256=imported.payload_sha256,
-        document_sha256=imported.document_sha256, version=1, phase=0,
+        reviewed.payload, fixture, workspace_id=initial_saved.workspace_id,
+        workspace_revision=initial_saved.content_revision,
+        payload_sha256=initial_saved.payload_sha256,
+        document_sha256=initial_saved.document_sha256, version=1, phase=0,
     )
     device.capture("sr5-downtime-durable-review")
 
@@ -600,7 +628,7 @@ def prove_downtime(
     physical.shared.tap_phone_destination(device, "phone-destination-runners")
     physical.shared.wait_for_phone_runners(device, timeout=120)
     restored_before = physical.shared.read_phone_workspace_authority(device)
-    physical.shared.require_restored_authority(imported, restored_before)
+    physical.shared.require_restored_authority(initial_saved, restored_before)
     if read_journal(device) != reviewed:
         raise RuntimeError("Downtime reviewed journal bytes changed across restart")
     open_downtime(device)
@@ -622,16 +650,19 @@ def prove_downtime(
     device.capture("sr5-downtime-applied-receipt")
     saved = physical.shared.read_phone_workspace_authority(device)
     physical.shared.require_saved_authority(saved)
-    if saved.workspace_id != imported.workspace_id or saved.content_revision != imported.content_revision + 1:
+    if (
+        saved.workspace_id != initial_saved.workspace_id
+        or saved.content_revision != initial_saved.content_revision + 1
+    ):
         raise RuntimeError("Downtime apply did not save one exact successor revision")
-    if saved.payload_sha256 == imported.payload_sha256:
+    if saved.payload_sha256 == initial_saved.payload_sha256:
         raise RuntimeError("Downtime successor payload digest did not change")
     assert_calendar(calendar_leaf.root_for_authority(device, saved), fixture, edited=True)
     applied_projection = validate_journal(
-        applied.payload, fixture, workspace_id=imported.workspace_id,
-        workspace_revision=imported.content_revision,
-        payload_sha256=imported.payload_sha256,
-        document_sha256=imported.document_sha256, version=3, phase=2,
+        applied.payload, fixture, workspace_id=initial_saved.workspace_id,
+        workspace_revision=initial_saved.content_revision,
+        payload_sha256=initial_saved.payload_sha256,
+        document_sha256=initial_saved.document_sha256, version=3, phase=2,
         successor_payload_sha256=saved.payload_sha256,
         successor_document_sha256=saved.document_sha256,
     )
@@ -688,6 +719,7 @@ def prove_downtime(
         raise RuntimeError("Downtime acknowledgement did not survive final restart")
     result = {
         "import": physical.shared.workspace_authority_json(imported),
+        "initialSaved": physical.shared.workspace_authority_json(initial_saved),
         "restoredBeforeApply": physical.shared.workspace_authority_json(restored_before),
         "savedSuccessor": physical.shared.workspace_authority_json(saved),
         "finalRestartSuccessor": physical.shared.workspace_authority_json(final_saved),

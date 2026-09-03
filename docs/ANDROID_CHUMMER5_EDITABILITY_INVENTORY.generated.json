@@ -707,7 +707,7 @@
       {
         "path": "src/Chummer.Android/Native/Sr5TableWizardPage.cs",
         "exists": true,
-        "sha256": "704d8274276d779d61f39d658983b505324f65f662d6ffbfed9fa9663cf0c6cc"
+        "sha256": "3896c65b6f65705b54c70d6fbfd8b96b98c87cb72fe96be66da9358f88eb8ff2"
       },
       {
         "path": "src/Chummer.Android/Native/Sr5TableWizardPhoneModel.cs",
@@ -962,7 +962,7 @@
       {
         "path": "tests/run_api36_career_active_skill_advance_e2e.py",
         "exists": true,
-        "sha256": "65bbfc546d53be3b2659b8405834f6d6a7f82f44d59033d5bb0b3c04d0887b9c"
+        "sha256": "ed7262982eaa500027ee12b7759e8d91d15793a94e852bd536f09f59a9f3079d"
       },
       {
         "path": "tests/fixtures/career-active-skill-advance-e2e.chum5",
@@ -972,7 +972,7 @@
       {
         "path": "tests/run_api36_career_weapon_fire_e2e.py",
         "exists": true,
-        "sha256": "75b1abd088816f3749f520edf795c769e8decd402fb67926b870d2cf7ac1c25e"
+        "sha256": "5f4b75653d2ffa94e5ef6165ad238f0f4f5e70105420348de635a146b7cece7e"
       },
       {
         "path": "tests/fixtures/career-weapon-fire-e2e.chum5",

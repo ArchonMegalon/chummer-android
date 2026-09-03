@@ -11,10 +11,10 @@ import json
 from pathlib import Path
 import subprocess
 import sys
-import time
 import xml.etree.ElementTree as ET
 
 import run_api36_editing_e2e as shared
+import run_api36_sr5_career_attribute_wizard_e2e as physical
 
 
 CONTROL = "CharacterCareer.cmsAmmoShortBurst"
@@ -27,6 +27,11 @@ MODE = "short-burst"
 ROUNDS_CONSUMED = 3
 INITIAL_AMMO = 11
 EXPECTED_AMMO = INITIAL_AMMO - ROUNDS_CONSUMED
+WEAPON_DISPLAY_NAME = "Career Fire Alpha"
+WEAPON_DEFAULT_MODE = "SingleShot"
+WEAPON_MODE_AUTHORITY = (
+    "SingleShot:1|ShortBurst:3|LongBurst:6|FullBurst:10|SuppressiveFire:20"
+)
 CANONICAL_IMPORT_FIELDS = {
     "name": "CareerWeaponFireE2E",
     "alias": "CareerWeaponFireE2E",
@@ -210,60 +215,6 @@ def root_for_authority(
     return root
 
 
-def open_build_root(device: shared.Device, *, max_back_steps: int = 6) -> None:
-    """Open Build and unwind its preserved phone stack to one exact root toolbar."""
-    shared.open_build(device, "phone")
-    back_steps = 0
-    for _ in range(48):
-        nodes = device.hierarchy()
-        roots = [
-            node
-            for node in nodes
-            if "build-save-runner"
-            in {
-                node.attributes.get("resource-id", "").rsplit("/", 1)[-1],
-                node.attributes.get("content-desc", ""),
-            }
-        ]
-        if len(roots) == 1:
-            return
-        if len(roots) > 1:
-            device.capture("career-weapon-fire-build-root-cardinality-invalid")
-            raise RuntimeError(
-                f"Build root toolbar cardinality was {len(roots)}; expected exactly one"
-            )
-
-        navigate_up = [
-            node
-            for node in nodes
-            if node.attributes.get("content-desc", "") == "Navigate up"
-        ]
-        if len(navigate_up) > 1:
-            device.capture("career-weapon-fire-build-up-cardinality-invalid")
-            raise RuntimeError(
-                f"Build Navigate up cardinality was {len(navigate_up)}; expected at most one"
-            )
-        if len(navigate_up) == 1:
-            if back_steps >= max_back_steps:
-                device.capture("career-weapon-fire-build-root-depth-invalid")
-                raise RuntimeError(
-                    f"Build root remained unavailable after {max_back_steps} exact back steps"
-                )
-            node = navigate_up[0]
-            if not device.node_has_tappable_bounds(node):
-                device.capture("career-weapon-fire-build-up-untappable")
-                raise RuntimeError("The exact Build Navigate up node is not tappable")
-            x, y = node.center
-            device.shell("input", "tap", str(x), str(y))
-            back_steps += 1
-            time.sleep(1.25)
-            continue
-        time.sleep(0.5)
-
-    device.capture("career-weapon-fire-build-root-unavailable")
-    raise RuntimeError("Timed out waiting for the exact Build root toolbar")
-
-
 def prepare_runner(
     device: shared.Device,
     fixture_name: str,
@@ -281,75 +232,128 @@ def prepare_runner(
     return launch, authority
 
 
-def tap_exact_build_route(
-    device: shared.Device,
-    selector: str,
-    *,
-    evidence_prefix: str,
-    surface_name: str,
-) -> None:
-    """Recover a preserved Build viewport and tap one unambiguous exact route."""
-    shared.reset_scroll_to_top(device, swipes=48)
-    device.tap_exact_resource_id_bidirectional(
-        selector,
-        timeout=120,
-        backward_scrolls=0,
-        forward_scrolls=24,
-        scroll_distance_ratio=0.22,
-        evidence_prefix=evidence_prefix,
-        surface_name=surface_name,
+def length_prefixed_hash(*values: object) -> str:
+    canonical = "".join(f"{len(str(value))}:{value};" for value in values)
+    return "sha256:" + hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def short_burst_action_automation_id(ammo: int) -> str:
+    if type(ammo) is not int or ammo < ROUNDS_CONSUMED:
+        raise RuntimeError("Career Weapon Short Burst ammo authority is invalid")
+    target_revision = hashlib.sha256(
+        "\0".join(
+            (
+                "career-weapon-fire/v1",
+                WEAPON_ID,
+                str(AMMO_SLOT),
+                AMMO_GEAR_ID,
+                str(ammo),
+                str(ammo),
+                WEAPON_DEFAULT_MODE,
+                WEAPON_MODE_AUTHORITY,
+            )
+        ).encode("utf-8")
+    ).hexdigest()
+    action_digest = length_prefixed_hash(
+        "chummer.sr5_table_wizard.weapon_action.v1",
+        "Playtime",
+        "playtime.weapon.fire",
+        WEAPON_ID,
+        AMMO_SLOT,
+        AMMO_GEAR_ID,
+        target_revision,
+        WEAPON_DISPLAY_NAME,
+        "ShortBurst",
+        ROUNDS_CONSUMED,
+        ammo - ROUNDS_CONSUMED,
+        ammo - ROUNDS_CONSUMED,
+        0,
+        0,
     )
+    return "sr5-table-action-" + action_digest[7:19]
 
 
 def open_page(device: shared.Device) -> None:
-    open_build_root(device)
-    tap_exact_build_route(
-        device,
-        "build-section-tab-gear",
-        evidence_prefix="career-weapon-fire-gear-section-route",
-        surface_name="Build Gear section route accessibility node",
+    physical.open_career_hub(device)
+    device.tap_exact_resource_id_bidirectional(
+        "sr5-career/table",
+        timeout=90,
+        backward_scrolls=0,
+        forward_scrolls=24,
+        scroll_distance_ratio=0.18,
+        evidence_prefix="career-weapon-fire-table-family",
+        surface_name="SR5 Career table family route",
     )
-    device.wait_for_single_exact_resource_id(
-        f"collection-item-gear-{AMMO_GEAR_ID}",
-        timeout=120,
-        evidence_prefix="career-weapon-fire-gear-section-entered",
-        surface_name="Exact fixture-linked Gear collection transition surface",
+    physical.wait_exact_route(device, "sr5-career/table", timeout=90)
+    device.tap_exact_resource_id_bidirectional(
+        "sr5-career-action-playtime",
+        timeout=90,
+        backward_scrolls=0,
+        forward_scrolls=24,
+        scroll_distance_ratio=0.18,
+        evidence_prefix="career-weapon-fire-playtime-route",
+        surface_name="SR5 Career Playtime route",
     )
-    tap_exact_build_route(
-        device,
-        "build-action-tab-gear-weapons",
-        evidence_prefix="career-weapon-fire-weapons-route",
-        surface_name="Gear Weapons route accessibility node",
-    )
-    tap_exact_build_route(
-        device,
-        f"collection-item-weapon-{WEAPON_ID}",
-        evidence_prefix="career-weapon-fire-target-weapon-route",
-        surface_name="Target Weapon collection route accessibility node",
-    )
-    device.wait(f"collection-editor-weapon-{WEAPON_ID}", timeout=120)
-    token = WEAPON_ID.replace("-", "")
-    device.tap(
-        f"career-weapon-fire-open-{token}",
-        scroll=True,
-        timeout=120,
-        max_scrolls=36,
-    )
-    device.wait(f"career-weapon-fire-page-{token}", timeout=60)
+    physical.wait_exact_route(device, "sr5-career/playtime", timeout=120)
 
 
 def assert_ui_readback(device: shared.Device, expected_ammo: int) -> None:
-    token = WEAPON_ID.replace("-", "")
-    ammo = device.wait(f"career-weapon-fire-ammo-{token}", timeout=45, scroll=True)
-    mode = device.wait(
-        f"career-weapon-fire-{MODE}-{token}", timeout=45, scroll=True, max_scrolls=20
+    selector = short_burst_action_automation_id(expected_ammo)
+    node = device.wait_exact_resource_id_bidirectional(
+        selector,
+        timeout=120,
+        backward_scrolls=0,
+        forward_scrolls=36,
+        scroll_distance_ratio=0.18,
+        evidence_prefix="career-weapon-fire-short-burst-action",
+        surface_name="Exact SR5 Playtime Short Burst action",
+        require_tappable=True,
     )
-    if f"{expected_ammo} rounds in active clip {AMMO_SLOT}" not in (
-        ammo.attributes.get("text") or ""
-    ):
-        raise RuntimeError("Career Weapon active-clip ammo was not read back exactly")
-    if "Short Burst · 3 rounds" not in (mode.attributes.get("text") or ""):
-        raise RuntimeError("Career Weapon exact Short Burst round cost was not read back")
+    description = node.attributes.get("content-desc") or node.attributes.get("text") or ""
+    expected = (
+        f"Fire · Short Burst. {ROUNDS_CONSUMED} rounds · "
+        f"ammo {expected_ammo} → {expected_ammo - ROUNDS_CONSUMED}"
+    )
+    if expected not in description:
+        raise RuntimeError("Career Weapon Playtime quote was not read back exactly")
+
+
+def apply_short_burst(device: shared.Device, expected_ammo: int) -> None:
+    selector = short_burst_action_automation_id(expected_ammo)
+    device.tap_single_exact_resource_id(
+        selector,
+        timeout=90,
+        evidence_prefix="career-weapon-fire-select-short-burst",
+        surface_name="Exact SR5 Playtime Short Burst action",
+    )
+    physical.wait_exact_route(device, "sr5-table-wizard-quote", timeout=90)
+    device.tap_single_exact_resource_id(
+        "sr5-table-wizard-open-review",
+        timeout=90,
+        evidence_prefix="career-weapon-fire-review-open",
+        surface_name="Exact SR5 Playtime review control",
+    )
+    physical.wait_exact_route(device, "sr5-career/playtime/review", timeout=90)
+    device.tap_single_exact_resource_id(
+        "sr5-table-wizard-confirm",
+        timeout=90,
+        evidence_prefix="career-weapon-fire-confirm",
+        surface_name="Exact SR5 Playtime confirm control",
+    )
+    device.tap("OK", timeout=180)
+    physical.wait_exact_route(device, "sr5-career/playtime", timeout=180)
+    device.wait_for_single_exact_resource_id(
+        "sr5-table-wizard-receipt",
+        timeout=90,
+        evidence_prefix="career-weapon-fire-receipt",
+        surface_name="Verified SR5 Playtime receipt",
+    )
+    device.tap_single_exact_resource_id(
+        "sr5-table-wizard-receipt-acknowledge",
+        timeout=90,
+        evidence_prefix="career-weapon-fire-acknowledge",
+        surface_name="Verified SR5 Playtime receipt acknowledgement",
+    )
 
 
 def read_saved_authority(device: shared.Device) -> shared.WorkspaceAuthority:
@@ -371,9 +375,7 @@ def prove_short_burst(
 
     open_page(device)
     assert_ui_readback(device, INITIAL_AMMO)
-    token = WEAPON_ID.replace("-", "")
-    device.tap(f"career-weapon-fire-{MODE}-{token}", timeout=180, scroll=True)
-    device.wait(f"career-weapon-fire-open-{token}", timeout=180, scroll=True, max_scrolls=36)
+    apply_short_burst(device, INITIAL_AMMO)
     saved = read_saved_authority(device)
     if saved.workspace_id != imported.workspace_id:
         raise RuntimeError("Weapon-Fire save changed workspace identity")
@@ -437,10 +439,17 @@ def main() -> int:
     workspace_root = args.workspace_root.resolve()
     source_paths = {
         "sharedDriverSha256": Path(shared.__file__).resolve(),
-        "careerWeaponFirePageSha256": android_root
-        / "src/Chummer.Android/Native/CareerWeaponFirePage.cs",
-        "collectionRouteSha256": android_root
-        / "src/Chummer.Android/Native/CollectionEditorPages.cs",
+        "careerWizardRouteHelperSha256": Path(physical.__file__).resolve(),
+        "careerWizardPageSha256": android_root
+        / "src/Chummer.Android/Native/Sr5CareerWizardPage.cs",
+        "tableWizardPageSha256": android_root
+        / "src/Chummer.Android/Native/Sr5TableWizardPage.cs",
+        "tableWizardTransactionSha256": android_root
+        / "src/Chummer.Android/Native/Sr5TableWizardTypedTransaction.cs",
+        "tableWizardAuthoritySha256": android_root
+        / "src/Chummer.Android/Native/RunnerSessionSr5TableWizardPhoneAuthority.cs",
+        "tableWizardSessionSha256": workspace_root
+        / "chummer-presentation/Chummer.Presentation/Overview/Sr5TableWizardSession.cs",
         "coordinatorSha256": android_root
         / "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "careerWeaponFireRequestSha256": workspace_root

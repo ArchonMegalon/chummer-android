@@ -1,5 +1,6 @@
 import copy
 from contextlib import redirect_stderr
+from dataclasses import replace
 import io
 import json
 from pathlib import Path
@@ -38,6 +39,51 @@ def validate(
 
 
 class Api36Sr5DowntimeCalendarDriverTests(unittest.TestCase):
+    def test_initial_save_authority_requires_exact_1_1_unchanged_fixture(self) -> None:
+        fixture_sha256 = "a" * 64
+        imported = driver.physical.shared.WorkspaceAuthority(
+            "workspace-downtime", 1, 0, fixture_sha256, "b" * 64
+        )
+        exact = driver.physical.shared.WorkspaceAuthority(
+            "workspace-downtime", 1, 1, fixture_sha256, "c" * 64
+        )
+
+        driver.require_initial_saved_fixture_authority(imported, exact, fixture_sha256)
+
+        hostile_saved = (
+            imported,
+            replace(exact, workspace_id="foreign-workspace"),
+            replace(exact, content_revision=2, saved_revision=2),
+            replace(exact, saved_revision=0),
+            replace(exact, payload_sha256="d" * 64),
+        )
+        with self.assertRaises(RuntimeError):
+            driver.require_initial_saved_fixture_authority(
+                replace(imported, saved_revision=1), exact, fixture_sha256
+            )
+        for candidate in hostile_saved:
+            with self.subTest(candidate=candidate), self.assertRaises(RuntimeError):
+                driver.require_initial_saved_fixture_authority(
+                    imported, candidate, fixture_sha256
+                )
+
+    def test_initial_save_is_established_before_downtime_entry_without_replay(self) -> None:
+        source = DRIVER.read_text(encoding="utf-8")
+        proof = source.split("def prove_downtime(", maxsplit=1)[1].split(
+            "\ndef parse_args", maxsplit=1
+        )[0]
+
+        self.assertEqual(1, proof.count("save_and_read_workspace_authority"))
+        self.assertLess(
+            proof.index("save_and_read_workspace_authority"),
+            proof.index("open_downtime(device)"),
+        )
+        self.assertIn(
+            "require_initial_saved_fixture_authority(imported, initial_saved, runner_sha256)",
+            proof,
+        )
+        self.assertIn('"initialSaved":', proof)
+
     def test_fixture_pins_exact_runner_target_and_preserved_state(self) -> None:
         fixture = driver.load_fixture()
         runner = driver.DEFAULT_FIXTURE.parent / fixture["runnerFixture"]

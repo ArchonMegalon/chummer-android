@@ -708,7 +708,7 @@ public sealed class Sr5TableWizardReviewPage : NativePageBase
             : Sr5CareerWizardRoutes.PlaytimeReview;
         _confirm = NativeTheme.PrimaryButton(Text("Confirm and save exact action"));
         _confirm.AutomationId = "sr5-table-wizard-confirm";
-        _confirm.Clicked += async (_, _) => await RunAsync(ConfirmAsync);
+        _confirm.Clicked += async (_, _) => await RunWithConditionalRefreshAsync(ConfirmAsync);
         Content = new ScrollView { Content = _body };
     }
 
@@ -753,7 +753,7 @@ public sealed class Sr5TableWizardReviewPage : NativePageBase
 #endif
     }
 
-    private async Task ConfirmAsync()
+    private async Task<bool> ConfirmAsync()
     {
         Sr5TableWizardState state = _session.State;
         Sr5TableWizardActionState selected = state.SelectedAction
@@ -764,7 +764,7 @@ public sealed class Sr5TableWizardReviewPage : NativePageBase
                 Text("Runner changed"),
                 Text("Reopen the table wizard and review the current runner revision."),
                 Text("OK"));
-            return;
+            return true;
         }
 
         if (!_transactionStore.TryBeginApplying(
@@ -775,7 +775,7 @@ public sealed class Sr5TableWizardReviewPage : NativePageBase
                 Text("Confirmation already claimed"),
                 Text("This exact review is stale, already applying, or already has a receipt. Reopen Playtime to recover it."),
                 Text("OK"));
-            return;
+            return true;
         }
         _transaction = applying!;
 #if CHUMMER_API36_PROOF_INSTRUMENTATION
@@ -809,7 +809,7 @@ public sealed class Sr5TableWizardReviewPage : NativePageBase
                 Text("Save not verified"),
                 Text("The exact next-revision postcondition was not observed. The Applying journal remains locked for restart recovery."),
                 Text("OK"));
-            return;
+            return true;
         }
 
         _transaction = applied!;
@@ -825,6 +825,9 @@ public sealed class Sr5TableWizardReviewPage : NativePageBase
             Text("OK"));
         await Navigation.PopAsync();
         await Navigation.PopAsync();
+        // The Playtime lane owns the final receipt and proof state. Refreshing
+        // this disappeared review page would publish a stale review over it.
+        return false;
     }
 
     private bool MatchesCurrent(Sr5TableWizardSnapshot snapshot)

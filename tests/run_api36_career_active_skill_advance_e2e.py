@@ -19,7 +19,11 @@ CONTROLS = ("SkillControl.btnCareerIncrease",)
 SKILL_ID = "11111111-1111-1111-1111-111111111111"
 SOURCE_SKILL_ID = "ae91a8a6-80e7-4f52-b9eb-21725a5528a4"
 ORIGINAL_EXPENSE_ID = "22222222-2222-2222-2222-222222222222"
-ADVANCE_SUCCESS_NOTICE = "Active skill advanced and Karma expense saved."
+CAREER_HUB_ROUTE = "sr5-career"
+ADVANCEMENT_ROUTE = "sr5-career/advancement"
+CHOOSE_ROUTE = "sr5-career/advancement/active-skill/choose"
+REVIEW_ROUTE = "sr5-career/advancement/active-skill/review"
+RECEIPT_ROUTE = "sr5-career/advancement/active-skill/receipt"
 CANONICAL_IMPORT_FIELDS = {
     "name": "CareerActiveSkillAdvanceE2E",
     "alias": "CareerActiveSkillAdvanceE2E",
@@ -79,17 +83,50 @@ def prepare_runner(
     return launch, authority
 
 
+def wait_exact_route(
+    device: shared.Device,
+    route: str,
+    *,
+    timeout: int = 90,
+) -> shared.UiNode:
+    return device.wait_for_single_exact_accessibility_value(
+        route,
+        timeout=timeout,
+        evidence_prefix="career-active-skill-route",
+        surface_name="SR5 Career Active-Skill route",
+    )
+
+
+def tap_exact_route(device: shared.Device, route: str, *, timeout: int = 90) -> None:
+    node = wait_exact_route(device, route, timeout=timeout)
+    if not device.node_has_tappable_bounds(node):
+        device.capture("career-active-skill-route-not-tappable")
+        raise RuntimeError(f"Exact SR5 Career route is not tappable: {route}")
+    x, y = node.center
+    device.shell("input", "tap", str(x), str(y))
+
+
 def open_page(device: shared.Device) -> None:
     shared.open_build(device, "phone")
-    shared.reset_scroll_to_top(device, swipes=12)
-    device.tap(
-        "build-career-active-skill",
-        scroll=True,
+    shared.reset_scroll_to_top(device, swipes=16)
+    device.tap_bidirectional(
+        "build-sr5-career-wizard",
         timeout=120,
-        max_scrolls=40,
+        backward_scrolls=16,
+        forward_scrolls=48,
         scroll_distance_ratio=0.18,
+        exact_resource_id=True,
     )
-    device.wait("career-active-skill-page", timeout=60)
+    wait_exact_route(device, CAREER_HUB_ROUTE, timeout=60)
+    tap_exact_route(device, ADVANCEMENT_ROUTE, timeout=60)
+    wait_exact_route(device, ADVANCEMENT_ROUTE, timeout=60)
+    device.tap_single_exact_resource_id(
+        "sr5-career-action-active-skill",
+        timeout=90,
+        evidence_prefix="career-active-skill-action",
+        surface_name="SR5 Career Active-Skill action",
+    )
+    wait_exact_route(device, CHOOSE_ROUTE, timeout=120)
 
 
 def workspace_payloads(device: shared.Device) -> list[str]:
@@ -219,17 +256,25 @@ def read_saved_authority(device: shared.Device) -> shared.WorkspaceAuthority:
 
 
 def assert_ui_readback(device: shared.Device) -> None:
-    rating = device.wait("career-active-skill-rating", timeout=45, scroll=True)
-    cost = device.wait("career-active-skill-cost", timeout=45, scroll=True)
-    if "Current rating 4" not in (rating.attributes.get("text") or ""):
+    rating = device.wait_for_single_exact_resource_id(
+        "sr5-career-active-skill-rating",
+        timeout=45,
+        evidence_prefix="career-active-skill-rating",
+        surface_name="SR5 Career Active-Skill rating quote",
+    )
+    cost = device.wait_for_single_exact_resource_id(
+        "sr5-career-active-skill-cost",
+        timeout=45,
+        evidence_prefix="career-active-skill-cost",
+        surface_name="SR5 Career Active-Skill Karma quote",
+    )
+    if (rating.attributes.get("text") or "") != "Current 4 · after 5 · maximum 12":
         raise RuntimeError("Advanced rating was not read back after reopen")
-    if "Cost 10 Karma" not in (cost.attributes.get("text") or ""):
+    if (cost.attributes.get("text") or "") != "Cost 10 Karma · available 12 · after 2":
         raise RuntimeError("Next exact advancement cost was not read back after reopen")
 
 
 def return_home_from_page(device: shared.Device) -> None:
-    device.back()
-    device.wait("build-career-active-skill", timeout=90, scroll=True, max_scrolls=40)
     shared.tap_phone_destination(device, "phone-destination-runners")
     shared.wait_for_phone_runners(device, timeout=120)
 
@@ -243,20 +288,44 @@ def prove_advancement(
     initial_launch, imported = prepare_runner(device, fixture.name, fixture_sha256)
     assert_before(root_for_authority(device, imported))
     open_page(device)
-    device.wait("career-active-skill-rating", timeout=30)
-    device.wait("career-active-skill-cost", timeout=30)
-    device.tap("career-active-skill-advance", timeout=60)
-    device.tap("Cancel", timeout=60)
-    device.wait("career-active-skill-page", timeout=30)
-    device.tap("career-active-skill-advance", timeout=60)
-    device.tap("Advance", timeout=60)
-    device.wait_for_single_exact_text(
-        ADVANCE_SUCCESS_NOTICE,
-        timeout=180,
-        scroll=True,
-        max_scrolls=40,
-        evidence_prefix="career-active-skill-advance-success",
-        surface_name="Active-skill advancement success notice",
+    device.wait_for_single_exact_resource_id(
+        "sr5-career-active-skill-rating",
+        timeout=30,
+        evidence_prefix="career-active-skill-rating",
+        surface_name="SR5 Career Active-Skill rating quote",
+    )
+    device.wait_for_single_exact_resource_id(
+        "sr5-career-active-skill-cost",
+        timeout=30,
+        evidence_prefix="career-active-skill-cost",
+        surface_name="SR5 Career Active-Skill Karma quote",
+    )
+    device.tap_single_exact_resource_id(
+        "sr5-career-active-skill-review",
+        timeout=60,
+        evidence_prefix="career-active-skill-review",
+        surface_name="SR5 Career Active-Skill review control",
+    )
+    wait_exact_route(device, REVIEW_ROUTE, timeout=90)
+    assert_before(root_for_authority(device, imported))
+    device.tap_single_exact_resource_id(
+        "sr5-career-active-skill-apply",
+        timeout=120,
+        evidence_prefix="career-active-skill-apply",
+        surface_name="SR5 Career Active-Skill apply control",
+    )
+    wait_exact_route(device, RECEIPT_ROUTE, timeout=180)
+    device.tap_single_exact_resource_id(
+        "sr5-career-active-skill-receipt-acknowledge",
+        timeout=120,
+        evidence_prefix="career-active-skill-receipt-acknowledge",
+        surface_name="SR5 Career Active-Skill receipt acknowledgement",
+    )
+    device.wait_for_single_exact_accessibility_value(
+        "phone-runner-page",
+        timeout=90,
+        evidence_prefix="career-active-skill-runner-return",
+        surface_name="Runner page after typed receipt acknowledgement",
     )
     saved = read_saved_authority(device)
     if saved.workspace_id != imported.workspace_id:
@@ -328,8 +397,16 @@ def main() -> int:
     workspace_root = args.workspace_root.resolve()
     source_paths = {
         "sharedDriverSha256": Path(shared.__file__).resolve(),
+        "careerWizardPhoneModelSha256": android_root
+        / "src/Chummer.Android/Native/Sr5CareerWizardPhoneModel.cs",
+        "careerWizardPageSha256": android_root
+        / "src/Chummer.Android/Native/Sr5CareerWizardPage.cs",
         "careerActiveSkillPageSha256": android_root
-        / "src/Chummer.Android/Native/CareerActiveSkillAdvancePage.cs",
+        / "src/Chummer.Android/Native/Sr5CareerActiveSkillWizardPage.cs",
+        "careerActiveSkillCoordinatorSha256": android_root
+        / "src/Chummer.Android/Native/Sr5CareerActiveSkillCoordinator.cs",
+        "careerCheckpointStoreSha256": android_root
+        / "src/Chummer.Android/Native/Sr5CareerDraftCheckpointStore.cs",
         "buildPageSha256": android_root / "src/Chummer.Android/Native/BuildPage.cs",
         "coordinatorSha256": android_root
         / "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
