@@ -6972,11 +6972,19 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         size: str | None = None,
         is_pending: str = "0",
         owner_package_name: str = "com.android.shell",
+        data_path: str | None = None,
     ) -> str:
         provider_size = str(len(payload)) if size is None else size
+        if data_path is None:
+            data_path = (
+                f"{DRIVER.MEDIA_PROVIDER_PENDING_DOWNLOAD_PREFIX}1789030285-"
+                f"{display_name}"
+                if is_pending == "1"
+                else f"{DRIVER.MEDIA_PROVIDER_CANONICAL_DOWNLOAD_ROOT}{display_name}"
+            )
         return (
             f"Row: 0 _id={provider_id}, _display_name={display_name}, "
-            f"_data=/storage/emulated/0/Download/{display_name}, "
+            f"_data={data_path}, "
             f"_size={provider_size}, mime_type=application/octet-stream, "
             f"relative_path=Download/, is_pending={is_pending}, "
             f"owner_package_name={owner_package_name}"
@@ -7320,6 +7328,93 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                     is_pending="1",
                 ),
                 "invalid provider identity",
+            ),
+            (
+                "",
+                self._provider_row(
+                    payload,
+                    size="0",
+                    is_pending="1",
+                    data_path=(
+                        f"{DRIVER.MEDIA_PROVIDER_CANONICAL_DOWNLOAD_ROOT}runner.chum5"
+                    ),
+                ),
+                "pending Downloads identity differs",
+            ),
+            (
+                "",
+                self._provider_row(
+                    payload,
+                    size="0",
+                    is_pending="1",
+                    data_path=(
+                        f"{DRIVER.MEDIA_PROVIDER_PENDING_DOWNLOAD_PREFIX}-runner.chum5"
+                    ),
+                ),
+                "pending Downloads identity differs",
+            ),
+            (
+                "",
+                self._provider_row(
+                    payload,
+                    size="0",
+                    is_pending="1",
+                    data_path=(
+                        f"{DRIVER.MEDIA_PROVIDER_PENDING_DOWNLOAD_PREFIX}not-digits-runner.chum5"
+                    ),
+                ),
+                "pending Downloads identity differs",
+            ),
+            (
+                "",
+                self._provider_row(
+                    payload,
+                    size="0",
+                    is_pending="1",
+                    data_path=(
+                        f"{DRIVER.MEDIA_PROVIDER_PENDING_DOWNLOAD_PREFIX}"
+                        "１２３-runner.chum5"
+                    ),
+                ),
+                "pending Downloads identity differs",
+            ),
+            (
+                "",
+                self._provider_row(
+                    payload,
+                    size="0",
+                    is_pending="1",
+                    data_path=(
+                        f"{DRIVER.MEDIA_PROVIDER_PENDING_DOWNLOAD_PREFIX}1789030285-other.chum5"
+                    ),
+                ),
+                "pending Downloads identity differs",
+            ),
+            (
+                "",
+                self._provider_row(
+                    payload,
+                    size="0",
+                    is_pending="1",
+                    data_path=(
+                        "/storage/emulated/0/Documents/"
+                        ".pending-1789030285-runner.chum5"
+                    ),
+                ),
+                "pending Downloads identity differs",
+            ),
+            (
+                "",
+                self._provider_row(
+                    payload,
+                    size="0",
+                    is_pending="1",
+                    data_path=(
+                        f"{DRIVER.MEDIA_PROVIDER_PENDING_DOWNLOAD_PREFIX}"
+                        "1789030285-../runner.chum5"
+                    ),
+                ),
+                "pending Downloads identity differs",
             ),
         )
         for insert_output, row, expected_error in hostile:

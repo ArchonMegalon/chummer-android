@@ -202,6 +202,9 @@ MEDIA_PROVIDER_PENDING_DOWNLOADS_URI = (
     f"{MEDIA_PROVIDER_DOWNLOADS_URI}?includePending=1"
 )
 MEDIA_PROVIDER_CANONICAL_DOWNLOAD_ROOT = "/storage/emulated/0/Download/"
+MEDIA_PROVIDER_PENDING_DOWNLOAD_PREFIX = (
+    f"{MEDIA_PROVIDER_CANONICAL_DOWNLOAD_ROOT}.pending-"
+)
 MEDIA_PROVIDER_RELATIVE_DOWNLOAD_ROOT = "Download/"
 MEDIA_PROVIDER_DOCUMENT_MIME_TYPE = "application/octet-stream"
 MEDIA_PROVIDER_SHELL_OWNER_PACKAGE_NAME = "com.android.shell"
@@ -228,6 +231,22 @@ def _media_provider_display_name_where_argument(display_name: str) -> str:
     if GOVERNED_DOWNLOAD_BASENAME.fullmatch(display_name) is None:
         raise RuntimeError("MediaStore Downloads query has an unsafe display name")
     return f'"_display_name=\'{display_name}\'"'
+
+
+def _is_exact_media_provider_pending_path(path: str, display_name: str) -> bool:
+    """Accept only MediaProvider's exact pending rename for this fixture."""
+    if GOVERNED_DOWNLOAD_BASENAME.fullmatch(display_name) is None:
+        return False
+    suffix = f"-{display_name}"
+    if not path.startswith(MEDIA_PROVIDER_PENDING_DOWNLOAD_PREFIX):
+        return False
+    pending_identity = path[len(MEDIA_PROVIDER_PENDING_DOWNLOAD_PREFIX) :]
+    if not pending_identity.endswith(suffix):
+        return False
+    numeric_identity = pending_identity[: -len(suffix)]
+    return bool(numeric_identity) and all(
+        "0" <= character <= "9" for character in numeric_identity
+    )
 
 
 DOCUMENTS_UI_DRAWER_MARKER = "Open from"
@@ -2205,7 +2224,9 @@ class Device:
         canonical_path = MEDIA_PROVIDER_CANONICAL_DOWNLOAD_ROOT + display_name
         if (
             pending_fields["_display_name"] != display_name
-            or pending_fields["_data"] != canonical_path
+            or not _is_exact_media_provider_pending_path(
+                pending_fields["_data"], display_name
+            )
             or pending_fields["_size"] not in {"0", "NULL"}
             or pending_fields["mime_type"] != MEDIA_PROVIDER_DOCUMENT_MIME_TYPE
             or pending_fields["relative_path"]
