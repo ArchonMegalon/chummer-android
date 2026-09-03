@@ -636,14 +636,12 @@ Preview: {3}…</value></data>
   <data name="Arbitrary expenses" xml:space="preserve"><value>Arbitrary expenses</value></data>
   <data name="Contact selection" xml:space="preserve"><value>Contact selection</value></data>
   <data name="Edge preparation" xml:space="preserve"><value>Edge preparation</value></data>
-  <data name="Gear, Bioware, and installed-implant mutations remain unavailable here until Core exposes their exact typed quote, review, confirmation, receipt, and recovery authorities. Android never opens the generic collection editor from this wizard." xml:space="preserve"><value>Gear, Bioware, and installed-implant mutations remain unavailable here until Core exposes their exact typed quote, review, confirmation, receipt, and recovery authorities. Android never opens the generic collection editor from this wizard.</value></data>
   <data name="Injuries" xml:space="preserve"><value>Injuries</value></data>
   <data name="Karma reward" xml:space="preserve"><value>Karma reward</value></data>
   <data name="Loadout selection" xml:space="preserve"><value>Loadout selection</value></data>
   <data name="Loot acquisition" xml:space="preserve"><value>Loot acquisition</value></data>
   <data name="New contacts and contact Karma expense" xml:space="preserve"><value>New contacts and contact Karma expense</value></data>
   <data name="Nuyen reward" xml:space="preserve"><value>Nuyen reward</value></data>
-  <data name="Only the top-level Cyberware purchase lane is typed end to end in this build." xml:space="preserve"><value>Only the top-level Cyberware purchase lane is typed end to end in this build.</value></data>
   <data name="Preparation purchases and healing" xml:space="preserve"><value>Preparation purchases and healing</value></data>
   <data name="Run commitments" xml:space="preserve"><value>Run commitments</value></data>
   <data name="Run log mutation" xml:space="preserve"><value>Run log mutation</value></data>
@@ -730,10 +728,6 @@ Preview: {3}…</value></data>
   <data name="{0} condition track" xml:space="preserve"><value>{0} condition track</value></data>
   <data name="{0}: {1} → {2} boxes · revision {3} → {4}" xml:space="preserve"><value>{0}: {1} → {2} boxes · revision {3} → {4}</value></data>
 
-  <data name="Selection saves a digest-bound review draft. Apply still rechecks workspace revision and uses only the existing typed Edge or Weapon request." xml:space="preserve"><value>Selection saves a digest-bound review draft. Apply still rechecks workspace revision and uses only the existing typed Edge or Weapon request.</value></data>
-  <data name="Use exact Edge and direct Weapon-fire actions without opening unrestricted runner editing." xml:space="preserve"><value>Use exact Edge and direct Weapon-fire actions without opening unrestricted runner editing.</value></data>
-  <data name="Quote, review and confirm exact Edge or direct-weapon ammunition changes with a restart-safe receipt" xml:space="preserve"><value>Quote, review and confirm exact Edge or direct-weapon ammunition changes with a restart-safe receipt</value></data>
-  <data name="Before Run exposes only typed Edge, and Playtime exposes only typed Edge and direct-weapon ammunition. Downtime healing, training, acquisition/install/repair/crafting, lifestyle/contact/project planning, and Playtime damage/conditions, temporary modifiers, initiative and run-state remain blocked until composed typed quote/time/receipt authorities exist. No generic mutation fallback is used." xml:space="preserve"><value>Before Run exposes only typed Edge, and Playtime exposes only typed Edge and direct-weapon ammunition. Downtime healing, training, acquisition/install/repair/crafting, lifestyle/contact/project planning, and Playtime damage/conditions, temporary modifiers, initiative and run-state remain blocked until composed typed quote/time/receipt authorities exist. No generic mutation fallback is used.</value></data>
   <data name="Custom drug recipe" xml:space="preserve">
     <value>Custom drug recipe</value>
   </data>

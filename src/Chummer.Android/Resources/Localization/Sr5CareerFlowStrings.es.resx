@@ -636,14 +636,12 @@ Vista previa: {3}…</value></data>
   <data name="Arbitrary expenses" xml:space="preserve"><value>Gastos arbitrarios</value></data>
   <data name="Contact selection" xml:space="preserve"><value>Selección de contactos</value></data>
   <data name="Edge preparation" xml:space="preserve"><value>Preparación de Edge</value></data>
-  <data name="Gear, Bioware, and installed-implant mutations remain unavailable here until Core exposes their exact typed quote, review, confirmation, receipt, and recovery authorities. Android never opens the generic collection editor from this wizard." xml:space="preserve"><value>Los cambios de equipo, bioware e implantes instalados siguen no disponibles aquí hasta que Core exponga sus autoridades tipadas exactas de cotización, revisión, confirmación, recibo y recuperación. Android nunca abre el editor genérico de colecciones desde este asistente.</value></data>
   <data name="Injuries" xml:space="preserve"><value>Lesiones</value></data>
   <data name="Karma reward" xml:space="preserve"><value>Recompensa de Karma</value></data>
   <data name="Loadout selection" xml:space="preserve"><value>Selección de equipamiento</value></data>
   <data name="Loot acquisition" xml:space="preserve"><value>Adquisición de botín</value></data>
   <data name="New contacts and contact Karma expense" xml:space="preserve"><value>Nuevos contactos y gasto de Karma de contactos</value></data>
   <data name="Nuyen reward" xml:space="preserve"><value>Recompensa de nuyen</value></data>
-  <data name="Only the top-level Cyberware purchase lane is typed end to end in this build." xml:space="preserve"><value>En esta compilación solo la compra de Cyberware de nivel superior está tipada de extremo a extremo.</value></data>
   <data name="Preparation purchases and healing" xml:space="preserve"><value>Compras de preparación y curación</value></data>
   <data name="Run commitments" xml:space="preserve"><value>Compromisos de la misión</value></data>
   <data name="Run log mutation" xml:space="preserve"><value>Cambio del registro de la misión</value></data>
@@ -730,10 +728,6 @@ Vista previa: {3}…</value></data>
   <data name="{0} condition track" xml:space="preserve"><value>Pista de condición {0}</value></data>
   <data name="{0}: {1} → {2} boxes · revision {3} → {4}" xml:space="preserve"><value>{0}: {1} → {2} casillas · revisión {3} → {4}</value></data>
 
-  <data name="Selection saves a digest-bound review draft. Apply still rechecks workspace revision and uses only the existing typed Edge or Weapon request." xml:space="preserve"><value>La selección guarda un borrador de revisión vinculado al resumen. Aplicar vuelve a comprobar la revisión y solo usa la solicitud tipada existente de Edge o Arma.</value></data>
-  <data name="Use exact Edge and direct Weapon-fire actions without opening unrestricted runner editing." xml:space="preserve"><value>Usa acciones exactas de Edge y disparo directo sin abrir la edición irrestricta del runner.</value></data>
-  <data name="Quote, review and confirm exact Edge or direct-weapon ammunition changes with a restart-safe receipt" xml:space="preserve"><value>Cotizar, revisar y confirmar cambios exactos de Edge o munición de arma directa con un recibo seguro tras reiniciar</value></data>
-  <data name="Before Run exposes only typed Edge, and Playtime exposes only typed Edge and direct-weapon ammunition. Downtime healing, training, acquisition/install/repair/crafting, lifestyle/contact/project planning, and Playtime damage/conditions, temporary modifiers, initiative and run-state remain blocked until composed typed quote/time/receipt authorities exist. No generic mutation fallback is used." xml:space="preserve"><value>Antes del run solo está disponible el Edge tipado, y durante la partida solo están disponibles el Edge tipado y la munición de armas directas. La curación y el entrenamiento de descanso, la adquisición/instalación/reparación/fabricación, la planificación de estilos de vida/contactos/proyectos y el daño/condiciones, los modificadores temporales, la iniciativa y el estado del run durante la partida siguen bloqueados hasta que existan autoridades tipadas compuestas de oferta/tiempo/recibo. No se usa ninguna mutación genérica alternativa.</value></data>
   <data name="Custom drug recipe" xml:space="preserve">
     <value>Receta de droga personalizada</value>
   </data>

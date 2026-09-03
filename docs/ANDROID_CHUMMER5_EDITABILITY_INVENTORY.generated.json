@@ -731,17 +731,17 @@
       {
         "path": "src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.resx",
         "exists": true,
-        "sha256": "a88397738e1872a829a9209a3f9f1f00183cc92a00f1efdb1102c752b34d1d9f"
+        "sha256": "9b53126ed3022af2a0bd2ef24b72209d80e4cd1cbc4ca33e81221c841aa7b581"
       },
       {
         "path": "src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.de.resx",
         "exists": true,
-        "sha256": "9f27ea2c1aeb50315bf4886de0f156acc86a21c79eef05eef8d18d2f57095b55"
+        "sha256": "c7600d290702c00133f23871e32c3dc0ba5f0f3e8f04187260d26210fb53d1de"
       },
       {
         "path": "src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.es.resx",
         "exists": true,
-        "sha256": "4982b35f898ffc3aaba53592cc442b9752aa67832195e1156bcbc7bbdfe730af"
+        "sha256": "278b101505d70f339f8b964c2a88455cbf30deb11d3c7492c8325d9e07e3045c"
       },
       {
         "path": "src/Chummer.Android/Resources/Localization/WizardStrings.resx",
