@@ -40,6 +40,60 @@ def validate(
 
 
 class Api36Sr5DowntimeCalendarDriverTests(unittest.TestCase):
+    def test_recovered_status_uses_one_read_only_bidirectional_exact_acquisition(self) -> None:
+        device = Mock(spec=driver.physical.shared.Device)
+        expected = "Reviewed preview restored. Confirm it again before saving."
+        device.wait_exact_resource_id_bidirectional.return_value = (
+            driver.physical.shared.UiNode({"text": expected})
+        )
+        with patch.object(driver.time, "monotonic", return_value=100.0):
+            actual = driver._acquire_exact_resource_text_bidirectional(
+                device,
+                "sr5-downtime-calendar-status",
+                expected,
+                timeout=90,
+            )
+
+        self.assertEqual(expected, actual)
+        device.wait_exact_resource_id_bidirectional.assert_called_once_with(
+            "sr5-downtime-calendar-status",
+            timeout=90,
+            backward_scrolls=36,
+            forward_scrolls=36,
+            scroll_distance_ratio=0.18,
+            evidence_prefix="sr5-downtime-calendar-status-recovery",
+            surface_name="Recovered Downtime status",
+            require_tappable=False,
+            deadline=190.0,
+        )
+        device.capture.assert_not_called()
+        device.tap.assert_not_called()
+        device.tap_single_exact_resource_id.assert_not_called()
+
+    def test_recovered_status_fails_closed_on_foreign_text_without_action_replay(self) -> None:
+        device = Mock(spec=driver.physical.shared.Device)
+        device.wait_exact_resource_id_bidirectional.return_value = (
+            driver.physical.shared.UiNode({"text": "Foreign recovery state"})
+        )
+        with (
+            patch.object(driver.time, "monotonic", return_value=100.0),
+            self.assertRaisesRegex(RuntimeError, "exact expected text"),
+        ):
+            driver._acquire_exact_resource_text_bidirectional(
+                device,
+                "sr5-downtime-calendar-status",
+                "Reviewed preview restored. Confirm it again before saving.",
+                timeout=90,
+            )
+
+        device.wait_exact_resource_id_bidirectional.assert_called_once()
+        device.capture.assert_called_once_with(
+            "sr5-downtime-calendar-status-recovery-text-mismatch",
+            deadline=190.0,
+        )
+        device.tap.assert_not_called()
+        device.tap_single_exact_resource_id.assert_not_called()
+
     def test_review_journal_poll_is_read_only_and_deadline_bound(self) -> None:
         device = Mock(spec=driver.physical.shared.Device)
         expected = Mock(spec=driver.physical.CheckpointSnapshot)
@@ -271,6 +325,23 @@ class Api36Sr5DowntimeCalendarDriverTests(unittest.TestCase):
         ):
             self.assertIn(marker, source)
         self.assertGreaterEqual(source.count("force_stop_and_launch_new_process"), 3)
+        recovery = source.split(
+            'expected_recovery = "Reviewed preview restored. Confirm it again before saving."',
+            maxsplit=1,
+        )[1].split(
+            '_tap_exact(device, "sr5-downtime-calendar-apply")', maxsplit=1
+        )[0]
+        self.assertEqual(1, recovery.count("_acquire_exact_resource_text_bidirectional("))
+        self.assertLess(
+            recovery.index("_acquire_exact_resource_text_bidirectional("),
+            recovery.index('_tap_exact(device, "sr5-downtime-calendar-confirm")'),
+        )
+        self.assertEqual(
+            1,
+            recovery.count('_tap_exact(device, "sr5-downtime-calendar-confirm")'),
+        )
+        self.assertNotIn("_wait_resource_text(", recovery)
+        self.assertNotIn('sr5-downtime-calendar-review', recovery)
         self.assertIn('"status": "device-pass-source-bound"', source)
         self.assertNotIn('"releaseAttested": True', source)
 

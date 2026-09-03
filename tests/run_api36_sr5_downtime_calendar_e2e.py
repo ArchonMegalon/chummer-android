@@ -511,6 +511,35 @@ def _wait_resource_text(
     raise RuntimeError(f"Timed out waiting for exact text on {selector}")
 
 
+def _acquire_exact_resource_text_bidirectional(
+    device: physical.shared.Device,
+    selector: str,
+    expected_text: str,
+    *,
+    timeout: int,
+) -> str:
+    """Scroll one exact read-only status observation into view and validate it."""
+    deadline = time.monotonic() + timeout
+    node = device.wait_exact_resource_id_bidirectional(
+        selector,
+        timeout=timeout,
+        backward_scrolls=36,
+        forward_scrolls=36,
+        scroll_distance_ratio=0.18,
+        evidence_prefix=f"{selector}-recovery",
+        surface_name="Recovered Downtime status",
+        require_tappable=False,
+        deadline=deadline,
+    )
+    text = node.attributes.get("text") or ""
+    if text != expected_text:
+        device.capture(f"{selector}-recovery-text-mismatch", deadline=deadline)
+        raise RuntimeError(
+            f"Recovered Downtime status {selector!r} did not expose the exact expected text"
+        )
+    return text
+
+
 def open_downtime(device: physical.shared.Device) -> None:
     physical.shared.open_build(device, "phone")
     physical.shared.reset_scroll_to_top(device, swipes=18)
@@ -661,8 +690,8 @@ def prove_downtime(
         raise RuntimeError("Downtime reviewed journal bytes changed across restart")
     open_downtime(device)
     expected_recovery = "Reviewed preview restored. Confirm it again before saving."
-    _wait_resource_text(
-        device, "sr5-downtime-calendar-status", lambda text: text == expected_recovery,
+    _acquire_exact_resource_text_bidirectional(
+        device, "sr5-downtime-calendar-status", expected_recovery,
         timeout=90,
     )
     _tap_exact(device, "sr5-downtime-calendar-confirm")

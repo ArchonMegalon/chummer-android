@@ -70,6 +70,7 @@ def require_canonical_import_fixture(root: ET.Element) -> None:
                 "Career Weapon-Fire fixture is not accepted by the canonical SR5 loader: "
                 f"<{field}> expected {expected!r}, got {actual!r}"
             )
+    _canonical_zero_action_edge(root)
 
 
 def _unique_by_guid(root: ET.Element, path: str, identity: str, label: str) -> ET.Element:
@@ -80,6 +81,29 @@ def _unique_by_guid(root: ET.Element, path: str, identity: str, label: str) -> E
     if len(matches) != 1:
         raise RuntimeError(f"Expected one exact {label} identity {identity}, got {len(matches)}")
     return matches[0]
+
+
+def _canonical_zero_action_edge(root: ET.Element) -> tuple[ET.Element, ET.Element]:
+    edge_used = root.findall("./edgeused")
+    if len(edge_used) != 1 or edge_used[0].text != "0":
+        raise RuntimeError(
+            "Career Weapon-Fire fixture must bind one exact <edgeused>0</edgeused> state"
+        )
+    edge_attributes = [
+        attribute
+        for attribute in root.findall("./attributes/attribute")
+        if attribute.findtext("name") == "EDG"
+    ]
+    if len(edge_attributes) != 1:
+        raise RuntimeError(
+            "Career Weapon-Fire fixture must bind one unique EDG attribute"
+        )
+    total_values = edge_attributes[0].findall("totalvalue")
+    if len(total_values) != 1 or total_values[0].text != "0":
+        raise RuntimeError(
+            "Career Weapon-Fire fixture EDG attribute must bind exact totalvalue 0"
+        )
+    return edge_used[0], edge_attributes[0]
 
 
 def target_weapon(root: ET.Element) -> ET.Element:
@@ -135,12 +159,15 @@ def unrelated_xml_authority(root: ET.Element) -> dict[str, str]:
     sentinel = root.find("customstate")
     if sentinel is None:
         raise RuntimeError("Unrelated root XML sentinel is missing")
+    edge_used, edge_attribute = _canonical_zero_action_edge(root)
     return {
         "targetWeaponExceptClipsSha256": element_sha256(weapon, ("clips",)),
         "linkedAmmoExceptQuantitySha256": element_sha256(ammo, ("qty",)),
         "unrelatedWeaponSha256": element_sha256(unrelated_weapon),
         "unrelatedGearSha256": element_sha256(unrelated_gear),
         "customStateSha256": element_sha256(sentinel),
+        "edgeUsedSha256": element_sha256(edge_used),
+        "edgeAttributeSha256": element_sha256(edge_attribute),
         "karma": root.findtext("karma") or "",
         "nuyen": root.findtext("nuyen") or "",
     }

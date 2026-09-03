@@ -972,12 +972,12 @@
       {
         "path": "tests/run_api36_career_weapon_fire_e2e.py",
         "exists": true,
-        "sha256": "f2f58272dd0507da25aeee39cf1fcabe61618c6348fa0c1bcb1fdb951e420ef0"
+        "sha256": "c459059ac9f321b40645afd2b21da28372eff908b74f160c7aa20068fd92ee2d"
       },
       {
         "path": "tests/fixtures/career-weapon-fire-e2e.chum5",
         "exists": true,
-        "sha256": "eb1dee9e9c69c9303b0d772f8696e4531c12cfe360c761af85c6f0c79a6da7df"
+        "sha256": "c7f1b3b7f5ead488094b41ec47addfff2849a3bdbf3ad582c8aca4329bac3710"
       },
       {
         "path": "tests/run_api36_career_notoriety_e2e.py",

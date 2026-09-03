@@ -193,6 +193,16 @@ class Api36CareerWeaponFireDriverTests(unittest.TestCase):
         self.assertEqual("11", driver.linked_ammo(root).findtext("qty"))
         self.assertEqual("19", preserved["karma"])
         self.assertEqual("8765", preserved["nuyen"])
+        self.assertRegex(preserved["edgeUsedSha256"], r"^[0-9a-f]{64}$")
+        self.assertRegex(preserved["edgeAttributeSha256"], r"^[0-9a-f]{64}$")
+        self.assertEqual("0", root.findtext("edgeused"))
+        edge = [
+            attribute
+            for attribute in root.findall("./attributes/attribute")
+            if attribute.findtext("name") == "EDG"
+        ]
+        self.assertEqual(1, len(edge))
+        self.assertEqual("0", edge[0].findtext("totalvalue"))
         for identity in (
             driver.WEAPON_ID,
             driver.AMMO_GEAR_ID,
@@ -213,6 +223,21 @@ class Api36CareerWeaponFireDriverTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "outside the exact clip/ammo quantities"):
             driver.assert_after(hostile, preserved)
 
+        hostile = copy.deepcopy(root)
+        hostile.find("edgeused").text = "1"
+        with self.assertRaisesRegex(RuntimeError, "one exact <edgeused>0</edgeused>"):
+            driver.assert_after(hostile, preserved)
+
+        hostile = copy.deepcopy(root)
+        edge = next(
+            attribute
+            for attribute in hostile.findall("./attributes/attribute")
+            if attribute.findtext("name") == "EDG"
+        )
+        edge.find("totalvalue").text = "1"
+        with self.assertRaisesRegex(RuntimeError, "exact totalvalue 0"):
+            driver.assert_after(hostile, preserved)
+
     def test_fixture_preflight_rejects_every_missing_canonical_loader_field(self) -> None:
         root = ET.parse(FIXTURE).getroot()
         for field in driver.CANONICAL_IMPORT_FIELDS:
@@ -221,6 +246,59 @@ class Api36CareerWeaponFireDriverTests(unittest.TestCase):
                 hostile.remove(hostile.find(field))
                 with self.assertRaisesRegex(RuntimeError, rf"canonical SR5 loader: <{field}>"):
                     driver.require_canonical_import_fixture(hostile)
+
+    def test_fixture_preflight_rejects_missing_duplicate_or_nonzero_edge_authority(self) -> None:
+        root = ET.parse(FIXTURE).getroot()
+        hostile_cases: list[tuple[str, ET.Element, str]] = []
+
+        missing_edge_used = copy.deepcopy(root)
+        missing_edge_used.remove(missing_edge_used.find("edgeused"))
+        hostile_cases.append(("missing-edge-used", missing_edge_used, "one exact"))
+
+        nonzero_edge_used = copy.deepcopy(root)
+        nonzero_edge_used.find("edgeused").text = "1"
+        hostile_cases.append(("nonzero-edge-used", nonzero_edge_used, "one exact"))
+
+        duplicate_edge_used = copy.deepcopy(root)
+        duplicate_edge_used.append(ET.Element("edgeused"))
+        duplicate_edge_used.findall("edgeused")[-1].text = "0"
+        hostile_cases.append(("duplicate-edge-used", duplicate_edge_used, "one exact"))
+
+        missing_edge = copy.deepcopy(root)
+        missing_edge.find("attributes").clear()
+        hostile_cases.append(("missing-edg", missing_edge, "one unique EDG"))
+
+        duplicate_edge = copy.deepcopy(root)
+        duplicate_edge.find("attributes").append(
+            copy.deepcopy(duplicate_edge.find("./attributes/attribute"))
+        )
+        hostile_cases.append(("duplicate-edg", duplicate_edge, "one unique EDG"))
+
+        nonzero_total = copy.deepcopy(root)
+        nonzero_total.find("./attributes/attribute/totalvalue").text = "1"
+        hostile_cases.append(("nonzero-total", nonzero_total, "exact totalvalue 0"))
+
+        duplicate_total = copy.deepcopy(root)
+        edge = duplicate_total.find("./attributes/attribute")
+        extra_total = ET.SubElement(edge, "totalvalue")
+        extra_total.text = "0"
+        hostile_cases.append(("duplicate-total", duplicate_total, "exact totalvalue 0"))
+
+        for name, hostile, message in hostile_cases:
+            with self.subTest(name=name), self.assertRaisesRegex(RuntimeError, message):
+                driver.require_canonical_import_fixture(hostile)
+
+    def test_prepare_runner_has_one_pre_save_import_authority_check(self) -> None:
+        source = DRIVER.read_text(encoding="utf-8")
+        prepare = source.split("def prepare_runner(", 1)[1].split(
+            "\ndef require_initial_saved_fixture_authority(", 1
+        )[0]
+        self.assertEqual(
+            1,
+            prepare.count(
+                "shared.require_import_authority(authority, fixture_sha256)"
+            ),
+        )
 
 
 if __name__ == "__main__":
