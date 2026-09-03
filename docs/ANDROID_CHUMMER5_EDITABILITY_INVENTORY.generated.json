@@ -866,7 +866,7 @@
       {
         "path": "tests/run_api36_sr5_before_run_edge_e2e.py",
         "exists": true,
-        "sha256": "fba6e03915442eb4512d25f92462303bc577c9cc6e68667cc511c967eeacb12e"
+        "sha256": "7cc707285e92e43a28a8ce32bb4a4eadf81b615a7e9e433c01b4dd66402fc692"
       },
       {
         "path": "tests/run_api36_sr5_before_run_edge_physical_e2e.py",
@@ -886,7 +886,7 @@
       {
         "path": "tests/test_run_api36_sr5_before_run_edge_e2e_driver.py",
         "exists": true,
-        "sha256": "0f26ae6f567270947d67d721c946acbfeb6cda8c85f5a1fdd43f78312a373871"
+        "sha256": "dfdcae33d30e8f2f048ea215996c76d85cab7184c9c380e09290aec4e2c2ac68"
       },
       {
         "path": "tests/run_api36_sr5_playtime_short_burst_e2e.py",
@@ -896,17 +896,17 @@
       {
         "path": "tests/test_api36_sr5_playtime_short_burst_e2e_driver.py",
         "exists": true,
-        "sha256": "7f5b8614f2cc208e51becda9f928071331b3ce818756b6880dd5fb90d014e365"
+        "sha256": "d12fb2a8242572891cdf6731ad6589e1c694250e481216688a30889b7b58f36d"
       },
       {
         "path": "tests/run_api36_sr5_downtime_calendar_hosted_e2e.py",
         "exists": true,
-        "sha256": "7985f0ee83c7275f131b8ee3c3ea85abb7d7fca403be527a9d9f805b072767b3"
+        "sha256": "7cda979fd0fc4a09748cc1833a49fec5121cfc8e575c43812eee23e4e5cb0957"
       },
       {
         "path": "tests/test_api36_sr5_downtime_calendar_hosted_e2e_driver.py",
         "exists": true,
-        "sha256": "7575ac9a371ed9ff212b8448080e0ee06c2a251165e797fe71b4f5f9ae0c7a7f"
+        "sha256": "c39816212f594f3b6c5f88581219a4061659008d5782b5fc20578dbe4bb54198"
       },
       {
         "path": "tests/fixtures/sr5-after-run-settlement-e2e.json",
@@ -916,7 +916,7 @@
       {
         "path": "tests/run_api36_sr5_after_run_settlement_e2e.py",
         "exists": true,
-        "sha256": "a3b9e07a2f1aad87466fb6bfce3d808214a1ef59c1a2bef9ab0a95faac3f5a05"
+        "sha256": "7a630cb5e48d5177a5aa6826e86057fd80707577e1b1a75b8d5f1aec1edbecc3"
       },
       {
         "path": "tests/run_api36_sr5_after_run_settlement_hosted_e2e.py",
@@ -956,12 +956,12 @@
       {
         "path": "tests/run_api36_editing_e2e.py",
         "exists": true,
-        "sha256": "a85d24cdb4d5506ccbcbc696f1e5b5c443ce360f1945a5892923be2969d6367b"
+        "sha256": "6a406188cedc3f0783819f124ab7491ec5db4f12b2ef12b8762193b5d8fc448b"
       },
       {
         "path": "tests/run_api36_career_active_skill_advance_e2e.py",
         "exists": true,
-        "sha256": "31bbeb0e2d72fd1e6bd43ad10f4ffab8a739704b86be743266fcef2541f139e4"
+        "sha256": "65bbfc546d53be3b2659b8405834f6d6a7f82f44d59033d5bb0b3c04d0887b9c"
       },
       {
         "path": "tests/fixtures/career-active-skill-advance-e2e.chum5",
