@@ -6,6 +6,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = REPO_ROOT / ".github" / "workflows" / "api36-editing-e2e.yml"
 PREVIEW_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "preview9-arm64-aab.yml"
+ANDROID_CONTRACT_TEST = REPO_ROOT / "tests" / "test_android_contract.py"
 BUILD_SCRIPT = REPO_ROOT / "scripts" / "build-debug.sh"
 GITIGNORE = REPO_ROOT / ".gitignore"
 PLAY_RELEASE = REPO_ROOT / "docs" / "PLAY_RELEASE.md"
@@ -36,6 +37,7 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.text = WORKFLOW.read_text(encoding="utf-8")
         cls.preview_text = PREVIEW_WORKFLOW.read_text(encoding="utf-8")
+        cls.android_contract_test_text = ANDROID_CONTRACT_TEST.read_text(encoding="utf-8")
         cls.build_script_text = BUILD_SCRIPT.read_text(encoding="utf-8")
         cls.gitignore_text = GITIGNORE.read_text(encoding="utf-8")
         cls.play_release_text = PLAY_RELEASE.read_text(encoding="utf-8")
@@ -187,6 +189,8 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
             "Chummer.Campaign.Contracts",
             "Chummer.Play.Contracts",
             "Chummer.Run.Contracts",
+            "Chummer.Run.Api/Controllers/PublicLandingController.cs",
+            "Chummer.Run.Api/Controllers/AndroidLinkedCampaignController.cs",
             "Chummer.Hub.Registry.Contracts",
             "src/Chummer.Ui.Kit",
             "src/Chummer.Media.Contracts",
@@ -207,8 +211,35 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
             self.text.index("Check out the pinned registry contract dependency")
         ]
         self.assertIn("sparse-checkout:", hub_checkout)
-        self.assertNotIn("Chummer.Run.Api", hub_checkout)
+        self.assertIn("sparse-checkout-cone-mode: false", hub_checkout)
+        self.assertNotIn("\n            Chummer.Run.Api\n", hub_checkout)
         self.assertIn("fetch-depth: 1", hub_checkout)
+
+    def test_hub_sparse_checkout_includes_only_exact_contract_test_api_sources(self) -> None:
+        hub_checkout = self.text[
+            self.text.index("Check out the pinned Hub contract dependencies") :
+            self.text.index("Check out the pinned registry contract dependency")
+        ]
+        exact_sparse_paths = [
+            "/Chummer.Run.Api/Controllers/PublicLandingController.cs",
+            "/Chummer.Run.Api/Controllers/AndroidLinkedCampaignController.cs",
+        ]
+        api_sparse_paths = [
+            line.strip()
+            for line in hub_checkout.splitlines()
+            if line.strip().startswith("/Chummer.Run.Api")
+        ]
+        self.assertEqual(exact_sparse_paths, api_sparse_paths)
+        self.assertNotIn("/Chummer.Run.Api/Controllers/", api_sparse_paths)
+        self.assertNotIn("/Chummer.Run.Api/", api_sparse_paths)
+        self.assertNotIn("/Chummer.Run.Api", api_sparse_paths)
+
+        for controller in (
+            "PublicLandingController.cs",
+            "AndroidLinkedCampaignController.cs",
+        ):
+            with self.subTest(controller=controller):
+                self.assertIn(controller, self.android_contract_test_text)
 
         presentation_checkout = self.text[
             self.text.index("Check out the pinned presentation dependency") :

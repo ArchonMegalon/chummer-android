@@ -94,13 +94,17 @@ jobs:
           path: chummer.run-services
           persist-credentials: false
           fetch-depth: 1
+          sparse-checkout-cone-mode: false
           # The Hub repository contains large runtime media that is not part of
-          # the Android compile graph. Keep the exact commit pin, but hydrate
-          # only the three contract projects consumed by Presentation.
+          # the Android compile graph. Keep the exact commit pin, and hydrate
+          # only the three contract projects consumed by Presentation plus the
+          # two controller sources read by the fail-closed Android contract suite.
           sparse-checkout: |
-            Chummer.Campaign.Contracts
-            Chummer.Play.Contracts
-            Chummer.Run.Contracts
+            /Chummer.Campaign.Contracts/
+            /Chummer.Play.Contracts/
+            /Chummer.Run.Contracts/
+            /Chummer.Run.Api/Controllers/PublicLandingController.cs
+            /Chummer.Run.Api/Controllers/AndroidLinkedCampaignController.cs
 
       - name: Check out the pinned registry contract dependency
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
