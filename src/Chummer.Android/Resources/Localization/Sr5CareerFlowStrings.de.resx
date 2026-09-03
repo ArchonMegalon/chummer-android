@@ -729,4 +729,227 @@ Vorschau: {3}…</value></data>
   <data name="{0} boxes {1} → {2} · maximum {3}" xml:space="preserve"><value>{0}-Kästchen {1} → {2} · Maximum {3}</value></data>
   <data name="{0} condition track" xml:space="preserve"><value>{0}-Schadensleiste</value></data>
   <data name="{0}: {1} → {2} boxes · revision {3} → {4}" xml:space="preserve"><value>{0}: {1} → {2} Kästchen · Revision {3} → {4}</value></data>
+
+  <data name="Selection saves a digest-bound review draft. Apply still rechecks workspace revision and uses only the existing typed Edge or Weapon request." xml:space="preserve"><value>Die Auswahl speichert einen Digest-gebundenen Prüfentwurf. Anwenden prüft die Workspace-Revision erneut und verwendet nur die vorhandene typisierte Edge- oder Waffenanfrage.</value></data>
+  <data name="Use exact Edge and direct Weapon-fire actions without opening unrestricted runner editing." xml:space="preserve"><value>Exakte Edge- und direkte Waffenfeuer-Aktionen verwenden, ohne die uneingeschränkte Runner-Bearbeitung zu öffnen.</value></data>
+  <data name="Quote, review and confirm exact Edge or direct-weapon ammunition changes with a restart-safe receipt" xml:space="preserve"><value>Exakte Edge- oder direkte Waffenmunitionsänderungen mit einem neustartsicheren Beleg anbieten, prüfen und bestätigen</value></data>
+  <data name="Before Run exposes only typed Edge, and Playtime exposes only typed Edge and direct-weapon ammunition. Downtime healing, training, acquisition/install/repair/crafting, lifestyle/contact/project planning, and Playtime damage/conditions, temporary modifiers, initiative and run-state remain blocked until composed typed quote/time/receipt authorities exist. No generic mutation fallback is used." xml:space="preserve"><value>Vor dem Run ist nur typisiertes Edge verfügbar, und während der Spielzeit sind nur typisiertes Edge und Munition für direkte Waffen verfügbar. Auszeit-Heilung, Training, Beschaffung/Installation/Reparatur/Herstellung, Lebensstil-/Kontakt-/Projektplanung sowie Spielzeit-Schaden/Zustände, temporäre Modifikatoren, Initiative und Run-Status bleiben gesperrt, bis zusammengesetzte typisierte Angebots-/Zeit-/Beleginstanzen vorhanden sind. Es wird kein generischer Mutationsersatz verwendet.</value></data>
+  <data name="Custom drug recipe" xml:space="preserve">
+    <value>Benutzerdefiniertes Drogenrezept</value>
+  </data>
+  <data name="SR5 Career · Free initial dose" xml:space="preserve">
+    <value>SR5-Karriere · Kostenlose Erstdosis</value>
+  </data>
+  <data name="Define custom drug" xml:space="preserve">
+    <value>Benutzerdefinierte Droge entwerfen</value>
+  </data>
+  <data name="Name the recipe, choose one exact grade and exactly one Foundation, then add bounded Blocks or Enhancers. Core calculates every effect and saves one unstolen free initial dose." xml:space="preserve">
+    <value>Benenne das Rezept, wähle eine exakte Qualität und genau eine Grundlage und füge dann begrenzte Blöcke oder Verstärker hinzu. Core berechnet alle Effekte und speichert eine nicht gestohlene kostenlose Erstdosis.</value>
+  </data>
+  <data name="Rules" xml:space="preserve">
+    <value>Regeln</value>
+  </data>
+  <data name="Maximum components" xml:space="preserve">
+    <value>Maximale Komponenten</value>
+  </data>
+  <data name="Enter a bounded recipe name" xml:space="preserve">
+    <value>Begrenzten Rezeptnamen eingeben</value>
+  </data>
+  <data name="Recipe name" xml:space="preserve">
+    <value>Rezeptname</value>
+  </data>
+  <data name="Components" xml:space="preserve">
+    <value>Komponenten</value>
+  </data>
+  <data name="Choose exactly one Foundation" xml:space="preserve">
+    <value>Genau eine Grundlage wählen</value>
+  </data>
+  <data name="{0} selected · choose Foundation, Blocks, or Enhancers" xml:space="preserve">
+    <value>{0} ausgewählt · Grundlage, Blöcke oder Verstärker wählen</value>
+  </data>
+  <data name="No components selected" xml:space="preserve">
+    <value>Keine Komponenten ausgewählt</value>
+  </data>
+  <data name="Selected components" xml:space="preserve">
+    <value>Ausgewählte Komponenten</value>
+  </data>
+  <data name="Update recipe quote" xml:space="preserve">
+    <value>Rezeptangebot aktualisieren</value>
+  </data>
+  <data name="{0} · level {1} · {2} {3}" xml:space="preserve">
+    <value>{0} · Stufe {1} · {2} {3}</value>
+  </data>
+  <data name="Remove component" xml:space="preserve">
+    <value>Komponente entfernen</value>
+  </data>
+  <data name="Recipe" xml:space="preserve">
+    <value>Rezept</value>
+  </data>
+  <data name="Component cost" xml:space="preserve">
+    <value>Komponentenkosten</value>
+  </data>
+  <data name="Unit cost" xml:space="preserve">
+    <value>Stückkosten</value>
+  </data>
+  <data name="Availability" xml:space="preserve">
+    <value>Verfügbarkeit</value>
+  </data>
+  <data name="Addiction" xml:space="preserve">
+    <value>Abhängigkeit</value>
+  </data>
+  <data name="rating {0} / threshold {1}" xml:space="preserve">
+    <value>Wert {0} / Schwelle {1}</value>
+  </data>
+  <data name="Timing effects" xml:space="preserve">
+    <value>Zeiteffekte</value>
+  </data>
+  <data name="Lock exact recipe review" xml:space="preserve">
+    <value>Exakte Rezeptprüfung sperren</value>
+  </data>
+  <data name="Confirm and save recipe" xml:space="preserve">
+    <value>Rezept bestätigen und speichern</value>
+  </data>
+  <data name="Confirm exact custom-drug recipe" xml:space="preserve">
+    <value>Exaktes benutzerdefiniertes Drogenrezept bestätigen</value>
+  </data>
+  <data name="Save this digest-bound recipe and its one unstolen free initial dose to the current clean Career revision?" xml:space="preserve">
+    <value>Dieses digest-gebundene Rezept und seine eine nicht gestohlene kostenlose Erstdosis in der aktuellen sauberen Karriere-Revision speichern?</value>
+  </data>
+  <data name="New recipe" xml:space="preserve">
+    <value>Neues Rezept</value>
+  </data>
+  <data name="Initial quantity" xml:space="preserve">
+    <value>Anfangsmenge</value>
+  </data>
+  <data name="New drug instance" xml:space="preserve">
+    <value>Neue Drogeninstanz</value>
+  </data>
+  <data name="New component instances" xml:space="preserve">
+    <value>Neue Komponenteninstanzen</value>
+  </data>
+  <data name="Confirm creates exactly one recipe with one unstolen free initial dose in one atomic saved revision. It creates no expense and performs no later quantity purchase." xml:space="preserve">
+    <value>Die Bestätigung erstellt genau ein Rezept mit einer nicht gestohlenen kostenlosen Erstdosis in einer atomar gespeicherten Revision. Sie erstellt keine Ausgabe und führt keinen späteren Mengenkauf durch.</value>
+  </data>
+  <data name="Verified custom-drug receipt" xml:space="preserve">
+    <value>Verifizierter Beleg für die benutzerdefinierte Droge</value>
+  </data>
+  <data name="Drug instance" xml:space="preserve">
+    <value>Drogeninstanz</value>
+  </data>
+  <data name="Component instances" xml:space="preserve">
+    <value>Komponenteninstanzen</value>
+  </data>
+  <data name="Undo this recipe" xml:space="preserve">
+    <value>Dieses Rezept rückgängig machen</value>
+  </data>
+  <data name="Undo exact custom-drug recipe" xml:space="preserve">
+    <value>Exaktes benutzerdefiniertes Drogenrezept rückgängig machen</value>
+  </data>
+  <data name="Remove only the recipe and initial dose proven by this receipt in one new atomic saved revision?" xml:space="preserve">
+    <value>Nur das durch diesen Beleg nachgewiesene Rezept und die Erstdosis in einer neuen atomar gespeicherten Revision entfernen?</value>
+  </data>
+  <data name="Keep recipe" xml:space="preserve">
+    <value>Rezept behalten</value>
+  </data>
+  <data name="Finish receipt and start another recipe" xml:space="preserve">
+    <value>Beleg abschließen und ein weiteres Rezept beginnen</value>
+  </data>
+  <data name="Start another recipe" xml:space="preserve">
+    <value>Weiteres Rezept beginnen</value>
+  </data>
+  <data name="Close this phone undo receipt and prepare a new recipe from the current saved revision?" xml:space="preserve">
+    <value>Diesen Rückgängig-Beleg des Telefons schließen und ein neues Rezept aus der aktuell gespeicherten Revision vorbereiten?</value>
+  </data>
+  <data name="Recovery is locked because neither the exact saved receipt nor an unchanged pre-commit revision can be proven. This phone will not replay the recipe mutation." xml:space="preserve">
+    <value>Die Wiederherstellung ist gesperrt, weil weder der exakt gespeicherte Beleg noch eine unveränderte Revision vor dem Commit nachgewiesen werden kann. Dieses Telefon wiederholt die Rezeptänderung nicht.</value>
+  </data>
+  <data name="The phone recipe draft was restored for this exact runner and catalog revision." xml:space="preserve">
+    <value>Der Rezeptentwurf des Telefons wurde für genau diesen Runner und diese Katalogrevision wiederhergestellt.</value>
+  </data>
+  <data name="The runner, catalog, or rules changed. Invalid choices were removed and the old review was discarded." xml:space="preserve">
+    <value>Runner, Katalog oder Regeln haben sich geändert. Ungültige Auswahl wurde entfernt und die alte Prüfung verworfen.</value>
+  </data>
+  <data name="The exact Core quote and new stable identities are durably reviewed. Confirm separately." xml:space="preserve">
+    <value>Das exakte Core-Angebot und die neuen stabilen Identitäten wurden dauerhaft geprüft. Separat bestätigen.</value>
+  </data>
+  <data name="Core saved the recipe, its free initial dose, and the receipt atomically." xml:space="preserve">
+    <value>Core hat das Rezept, seine kostenlose Erstdosis und den Beleg atomar gespeichert.</value>
+  </data>
+  <data name="Receipt lookup proved the interrupted recipe was already saved." xml:space="preserve">
+    <value>Die Belegsuche hat nachgewiesen, dass das unterbrochene Rezept bereits gespeichert wurde.</value>
+  </data>
+  <data name="Core proved the recipe was not saved. Review the current quote before confirming again." xml:space="preserve">
+    <value>Core hat nachgewiesen, dass das Rezept nicht gespeichert wurde. Prüfe das aktuelle Angebot vor der erneuten Bestätigung.</value>
+  </data>
+  <data name="The receipt-bound custom-drug recipe was undone in one saved revision." xml:space="preserve">
+    <value>Das beleggebundene benutzerdefinierte Drogenrezept wurde in einer gespeicherten Revision rückgängig gemacht.</value>
+  </data>
+  <data name="A new recipe draft is bound to the current saved runner revision." xml:space="preserve">
+    <value>Ein neuer Rezeptentwurf ist an die aktuell gespeicherte Runner-Revision gebunden.</value>
+  </data>
+  <data name="The recipe outcome is not provable from the current receipt and runner revision." xml:space="preserve">
+    <value>Das Rezeptergebnis kann mit dem aktuellen Beleg und der Runner-Revision nicht nachgewiesen werden.</value>
+  </data>
+  <data name="Custom-drug recipe authority unavailable" xml:space="preserve">
+    <value>Autorität für benutzerdefinierte Drogenrezepte nicht verfügbar</value>
+  </data>
+  <data name="Foundation" xml:space="preserve">
+    <value>Grundlage</value>
+  </data>
+  <data name="Block" xml:space="preserve">
+    <value>Block</value>
+  </data>
+  <data name="Enhancer" xml:space="preserve">
+    <value>Verstärker</value>
+  </data>
+  <data name="Component" xml:space="preserve">
+    <value>Komponente</value>
+  </data>
+  <data name="Legal" xml:space="preserve">
+    <value>Legal</value>
+  </data>
+  <data name="Restricted" xml:space="preserve">
+    <value>Eingeschränkt</value>
+  </data>
+  <data name="Forbidden" xml:space="preserve">
+    <value>Verboten</value>
+  </data>
+  <data name="Unknown" xml:space="preserve">
+    <value>Unbekannt</value>
+  </data>
+  <data name="Choose custom-drug grade" xml:space="preserve">
+    <value>Qualität der benutzerdefinierten Droge wählen</value>
+  </data>
+  <data name="Source-authorized custom-drug grades" xml:space="preserve">
+    <value>Quellenautorisierte Qualitäten für benutzerdefinierte Drogen</value>
+  </data>
+  <data name="cost × {0} · addiction threshold {1} · {2}" xml:space="preserve">
+    <value>Kosten × {0} · Abhängigkeitsschwelle {1} · {2}</value>
+  </data>
+  <data name="The exact custom-drug catalog changed or became unavailable. Return to the recipe page." xml:space="preserve">
+    <value>Der exakte Katalog für benutzerdefinierte Drogen wurde geändert oder ist nicht verfügbar. Kehre zur Rezeptseite zurück.</value>
+  </data>
+  <data name="Choose custom-drug components" xml:space="preserve">
+    <value>Komponenten der benutzerdefinierten Droge wählen</value>
+  </data>
+  <data name="Exact component identities and levels" xml:space="preserve">
+    <value>Exakte Komponentenidentitäten und Stufen</value>
+  </data>
+  <data name="Choosing a Foundation replaces the previous Foundation. Blocks and Enhancers may repeat only within their source limit and the Core maximum." xml:space="preserve">
+    <value>Die Wahl einer Grundlage ersetzt die vorherige Grundlage. Blöcke und Verstärker dürfen sich nur innerhalb ihrer Quellengrenze und des Core-Maximums wiederholen.</value>
+  </data>
+  <data name="level {0} · cost {1} · availability {2} · {3} {4}" xml:space="preserve">
+    <value>Stufe {0} · Kosten {1} · Verfügbarkeit {2} · {3} {4}</value>
+  </data>
+  <data name="Only the top-level Cyberware purchase and Career custom-drug recipe lanes are typed end to end in this build." xml:space="preserve">
+    <value>Nur die übergeordneten Pfade für Cyberware-Kauf und benutzerdefinierte Drogenrezepte in der Karriere sind in diesem Build durchgehend typisiert.</value>
+  </data>
+  <data name="Exact components and levels → Core quote → free initial dose → durable receipt" xml:space="preserve">
+    <value>Exakte Komponenten und Stufen → Core-Angebot → kostenlose Erstdosis → dauerhafter Beleg</value>
+  </data>
+  <data name="Gear, Bioware, installed-implant mutations, later custom-drug quantity purchases, and Creation custom-drug finalization remain unavailable here. Android never opens the generic collection editor from this wizard." xml:space="preserve">
+    <value>Ausrüstungs-, Bioware- und installierte Implantatänderungen, spätere Mengenkäufe benutzerdefinierter Drogen und deren Abschluss in der Erstellung bleiben hier nicht verfügbar. Android öffnet den generischen Sammlungseditor nie aus diesem Wizard.</value>
+  </data>
+  <data name="attributes {0} · limits {1} · qualities {2} · information {3}" xml:space="preserve"><value>Attribute {0} · Limits {1} · Qualitäten {2} · Informationen {3}</value></data>
+  <data name="initiative {0} · dice {1} · crash {2} · speed {3} · duration {4}" xml:space="preserve"><value>Initiative {0} · Würfel {1} · Crash {2} · Geschwindigkeit {3} · Dauer {4}</value></data>
 </root>

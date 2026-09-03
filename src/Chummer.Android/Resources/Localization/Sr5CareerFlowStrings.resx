@@ -729,4 +729,227 @@ Preview: {3}…</value></data>
   <data name="{0} boxes {1} → {2} · maximum {3}" xml:space="preserve"><value>{0} boxes {1} → {2} · maximum {3}</value></data>
   <data name="{0} condition track" xml:space="preserve"><value>{0} condition track</value></data>
   <data name="{0}: {1} → {2} boxes · revision {3} → {4}" xml:space="preserve"><value>{0}: {1} → {2} boxes · revision {3} → {4}</value></data>
+
+  <data name="Selection saves a digest-bound review draft. Apply still rechecks workspace revision and uses only the existing typed Edge or Weapon request." xml:space="preserve"><value>Selection saves a digest-bound review draft. Apply still rechecks workspace revision and uses only the existing typed Edge or Weapon request.</value></data>
+  <data name="Use exact Edge and direct Weapon-fire actions without opening unrestricted runner editing." xml:space="preserve"><value>Use exact Edge and direct Weapon-fire actions without opening unrestricted runner editing.</value></data>
+  <data name="Quote, review and confirm exact Edge or direct-weapon ammunition changes with a restart-safe receipt" xml:space="preserve"><value>Quote, review and confirm exact Edge or direct-weapon ammunition changes with a restart-safe receipt</value></data>
+  <data name="Before Run exposes only typed Edge, and Playtime exposes only typed Edge and direct-weapon ammunition. Downtime healing, training, acquisition/install/repair/crafting, lifestyle/contact/project planning, and Playtime damage/conditions, temporary modifiers, initiative and run-state remain blocked until composed typed quote/time/receipt authorities exist. No generic mutation fallback is used." xml:space="preserve"><value>Before Run exposes only typed Edge, and Playtime exposes only typed Edge and direct-weapon ammunition. Downtime healing, training, acquisition/install/repair/crafting, lifestyle/contact/project planning, and Playtime damage/conditions, temporary modifiers, initiative and run-state remain blocked until composed typed quote/time/receipt authorities exist. No generic mutation fallback is used.</value></data>
+  <data name="Custom drug recipe" xml:space="preserve">
+    <value>Custom drug recipe</value>
+  </data>
+  <data name="SR5 Career · Free initial dose" xml:space="preserve">
+    <value>SR5 Career · Free initial dose</value>
+  </data>
+  <data name="Define custom drug" xml:space="preserve">
+    <value>Define custom drug</value>
+  </data>
+  <data name="Name the recipe, choose one exact grade and exactly one Foundation, then add bounded Blocks or Enhancers. Core calculates every effect and saves one unstolen free initial dose." xml:space="preserve">
+    <value>Name the recipe, choose one exact grade and exactly one Foundation, then add bounded Blocks or Enhancers. Core calculates every effect and saves one unstolen free initial dose.</value>
+  </data>
+  <data name="Rules" xml:space="preserve">
+    <value>Rules</value>
+  </data>
+  <data name="Maximum components" xml:space="preserve">
+    <value>Maximum components</value>
+  </data>
+  <data name="Enter a bounded recipe name" xml:space="preserve">
+    <value>Enter a bounded recipe name</value>
+  </data>
+  <data name="Recipe name" xml:space="preserve">
+    <value>Recipe name</value>
+  </data>
+  <data name="Components" xml:space="preserve">
+    <value>Components</value>
+  </data>
+  <data name="Choose exactly one Foundation" xml:space="preserve">
+    <value>Choose exactly one Foundation</value>
+  </data>
+  <data name="{0} selected · choose Foundation, Blocks, or Enhancers" xml:space="preserve">
+    <value>{0} selected · choose Foundation, Blocks, or Enhancers</value>
+  </data>
+  <data name="No components selected" xml:space="preserve">
+    <value>No components selected</value>
+  </data>
+  <data name="Selected components" xml:space="preserve">
+    <value>Selected components</value>
+  </data>
+  <data name="Update recipe quote" xml:space="preserve">
+    <value>Update recipe quote</value>
+  </data>
+  <data name="{0} · level {1} · {2} {3}" xml:space="preserve">
+    <value>{0} · level {1} · {2} {3}</value>
+  </data>
+  <data name="Remove component" xml:space="preserve">
+    <value>Remove component</value>
+  </data>
+  <data name="Recipe" xml:space="preserve">
+    <value>Recipe</value>
+  </data>
+  <data name="Component cost" xml:space="preserve">
+    <value>Component cost</value>
+  </data>
+  <data name="Unit cost" xml:space="preserve">
+    <value>Unit cost</value>
+  </data>
+  <data name="Availability" xml:space="preserve">
+    <value>Availability</value>
+  </data>
+  <data name="Addiction" xml:space="preserve">
+    <value>Addiction</value>
+  </data>
+  <data name="rating {0} / threshold {1}" xml:space="preserve">
+    <value>rating {0} / threshold {1}</value>
+  </data>
+  <data name="Timing effects" xml:space="preserve">
+    <value>Timing effects</value>
+  </data>
+  <data name="Lock exact recipe review" xml:space="preserve">
+    <value>Lock exact recipe review</value>
+  </data>
+  <data name="Confirm and save recipe" xml:space="preserve">
+    <value>Confirm and save recipe</value>
+  </data>
+  <data name="Confirm exact custom-drug recipe" xml:space="preserve">
+    <value>Confirm exact custom-drug recipe</value>
+  </data>
+  <data name="Save this digest-bound recipe and its one unstolen free initial dose to the current clean Career revision?" xml:space="preserve">
+    <value>Save this digest-bound recipe and its one unstolen free initial dose to the current clean Career revision?</value>
+  </data>
+  <data name="New recipe" xml:space="preserve">
+    <value>New recipe</value>
+  </data>
+  <data name="Initial quantity" xml:space="preserve">
+    <value>Initial quantity</value>
+  </data>
+  <data name="New drug instance" xml:space="preserve">
+    <value>New drug instance</value>
+  </data>
+  <data name="New component instances" xml:space="preserve">
+    <value>New component instances</value>
+  </data>
+  <data name="Confirm creates exactly one recipe with one unstolen free initial dose in one atomic saved revision. It creates no expense and performs no later quantity purchase." xml:space="preserve">
+    <value>Confirm creates exactly one recipe with one unstolen free initial dose in one atomic saved revision. It creates no expense and performs no later quantity purchase.</value>
+  </data>
+  <data name="Verified custom-drug receipt" xml:space="preserve">
+    <value>Verified custom-drug receipt</value>
+  </data>
+  <data name="Drug instance" xml:space="preserve">
+    <value>Drug instance</value>
+  </data>
+  <data name="Component instances" xml:space="preserve">
+    <value>Component instances</value>
+  </data>
+  <data name="Undo this recipe" xml:space="preserve">
+    <value>Undo this recipe</value>
+  </data>
+  <data name="Undo exact custom-drug recipe" xml:space="preserve">
+    <value>Undo exact custom-drug recipe</value>
+  </data>
+  <data name="Remove only the recipe and initial dose proven by this receipt in one new atomic saved revision?" xml:space="preserve">
+    <value>Remove only the recipe and initial dose proven by this receipt in one new atomic saved revision?</value>
+  </data>
+  <data name="Keep recipe" xml:space="preserve">
+    <value>Keep recipe</value>
+  </data>
+  <data name="Finish receipt and start another recipe" xml:space="preserve">
+    <value>Finish receipt and start another recipe</value>
+  </data>
+  <data name="Start another recipe" xml:space="preserve">
+    <value>Start another recipe</value>
+  </data>
+  <data name="Close this phone undo receipt and prepare a new recipe from the current saved revision?" xml:space="preserve">
+    <value>Close this phone undo receipt and prepare a new recipe from the current saved revision?</value>
+  </data>
+  <data name="Recovery is locked because neither the exact saved receipt nor an unchanged pre-commit revision can be proven. This phone will not replay the recipe mutation." xml:space="preserve">
+    <value>Recovery is locked because neither the exact saved receipt nor an unchanged pre-commit revision can be proven. This phone will not replay the recipe mutation.</value>
+  </data>
+  <data name="The phone recipe draft was restored for this exact runner and catalog revision." xml:space="preserve">
+    <value>The phone recipe draft was restored for this exact runner and catalog revision.</value>
+  </data>
+  <data name="The runner, catalog, or rules changed. Invalid choices were removed and the old review was discarded." xml:space="preserve">
+    <value>The runner, catalog, or rules changed. Invalid choices were removed and the old review was discarded.</value>
+  </data>
+  <data name="The exact Core quote and new stable identities are durably reviewed. Confirm separately." xml:space="preserve">
+    <value>The exact Core quote and new stable identities are durably reviewed. Confirm separately.</value>
+  </data>
+  <data name="Core saved the recipe, its free initial dose, and the receipt atomically." xml:space="preserve">
+    <value>Core saved the recipe, its free initial dose, and the receipt atomically.</value>
+  </data>
+  <data name="Receipt lookup proved the interrupted recipe was already saved." xml:space="preserve">
+    <value>Receipt lookup proved the interrupted recipe was already saved.</value>
+  </data>
+  <data name="Core proved the recipe was not saved. Review the current quote before confirming again." xml:space="preserve">
+    <value>Core proved the recipe was not saved. Review the current quote before confirming again.</value>
+  </data>
+  <data name="The receipt-bound custom-drug recipe was undone in one saved revision." xml:space="preserve">
+    <value>The receipt-bound custom-drug recipe was undone in one saved revision.</value>
+  </data>
+  <data name="A new recipe draft is bound to the current saved runner revision." xml:space="preserve">
+    <value>A new recipe draft is bound to the current saved runner revision.</value>
+  </data>
+  <data name="The recipe outcome is not provable from the current receipt and runner revision." xml:space="preserve">
+    <value>The recipe outcome is not provable from the current receipt and runner revision.</value>
+  </data>
+  <data name="Custom-drug recipe authority unavailable" xml:space="preserve">
+    <value>Custom-drug recipe authority unavailable</value>
+  </data>
+  <data name="Foundation" xml:space="preserve">
+    <value>Foundation</value>
+  </data>
+  <data name="Block" xml:space="preserve">
+    <value>Block</value>
+  </data>
+  <data name="Enhancer" xml:space="preserve">
+    <value>Enhancer</value>
+  </data>
+  <data name="Component" xml:space="preserve">
+    <value>Component</value>
+  </data>
+  <data name="Legal" xml:space="preserve">
+    <value>Legal</value>
+  </data>
+  <data name="Restricted" xml:space="preserve">
+    <value>Restricted</value>
+  </data>
+  <data name="Forbidden" xml:space="preserve">
+    <value>Forbidden</value>
+  </data>
+  <data name="Unknown" xml:space="preserve">
+    <value>Unknown</value>
+  </data>
+  <data name="Choose custom-drug grade" xml:space="preserve">
+    <value>Choose custom-drug grade</value>
+  </data>
+  <data name="Source-authorized custom-drug grades" xml:space="preserve">
+    <value>Source-authorized custom-drug grades</value>
+  </data>
+  <data name="cost × {0} · addiction threshold {1} · {2}" xml:space="preserve">
+    <value>cost × {0} · addiction threshold {1} · {2}</value>
+  </data>
+  <data name="The exact custom-drug catalog changed or became unavailable. Return to the recipe page." xml:space="preserve">
+    <value>The exact custom-drug catalog changed or became unavailable. Return to the recipe page.</value>
+  </data>
+  <data name="Choose custom-drug components" xml:space="preserve">
+    <value>Choose custom-drug components</value>
+  </data>
+  <data name="Exact component identities and levels" xml:space="preserve">
+    <value>Exact component identities and levels</value>
+  </data>
+  <data name="Choosing a Foundation replaces the previous Foundation. Blocks and Enhancers may repeat only within their source limit and the Core maximum." xml:space="preserve">
+    <value>Choosing a Foundation replaces the previous Foundation. Blocks and Enhancers may repeat only within their source limit and the Core maximum.</value>
+  </data>
+  <data name="level {0} · cost {1} · availability {2} · {3} {4}" xml:space="preserve">
+    <value>level {0} · cost {1} · availability {2} · {3} {4}</value>
+  </data>
+  <data name="Only the top-level Cyberware purchase and Career custom-drug recipe lanes are typed end to end in this build." xml:space="preserve">
+    <value>Only the top-level Cyberware purchase and Career custom-drug recipe lanes are typed end to end in this build.</value>
+  </data>
+  <data name="Exact components and levels → Core quote → free initial dose → durable receipt" xml:space="preserve">
+    <value>Exact components and levels → Core quote → free initial dose → durable receipt</value>
+  </data>
+  <data name="Gear, Bioware, installed-implant mutations, later custom-drug quantity purchases, and Creation custom-drug finalization remain unavailable here. Android never opens the generic collection editor from this wizard." xml:space="preserve">
+    <value>Gear, Bioware, installed-implant mutations, later custom-drug quantity purchases, and Creation custom-drug finalization remain unavailable here. Android never opens the generic collection editor from this wizard.</value>
+  </data>
+  <data name="attributes {0} · limits {1} · qualities {2} · information {3}" xml:space="preserve"><value>attributes {0} · limits {1} · qualities {2} · information {3}</value></data>
+  <data name="initiative {0} · dice {1} · crash {2} · speed {3} · duration {4}" xml:space="preserve"><value>initiative {0} · dice {1} · crash {2} · speed {3} · duration {4}</value></data>
 </root>

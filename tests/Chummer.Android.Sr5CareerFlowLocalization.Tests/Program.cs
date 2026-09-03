@@ -201,6 +201,7 @@ static string[] TargetPages()
         "Sr5PlaytimeDamageWizardPage.cs",
         "Sr5TableWizardPage.cs",
         "Sr5CareerCommercePages.cs",
+        "Sr5CareerCustomDrugRecipePages.cs",
         "PhoneShellPages.cs"
     ];
 

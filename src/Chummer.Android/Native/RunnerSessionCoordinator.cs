@@ -275,6 +275,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
     private readonly ICharacterCreationMagicResonanceService? _creationMagicResonanceService;
     private readonly ICharacterCreationFinalizationService? _creationFinalizationService;
     private readonly Sr5CareerCyberwarePurchaseService? _careerCyberwarePurchaseService;
+    private readonly Sr5CareerCustomDrugRecipeService? _careerCustomDrugRecipeService;
     private readonly ICharacterCareerSkillGroupAdvanceService? _careerSkillGroupService;
     private readonly ICharacterAfterRunSettlementService? _afterRunSettlementService;
     private readonly IAndroidAfterRunProposalCatalog? _afterRunProposalCatalog;
@@ -346,7 +347,8 @@ public sealed class RunnerSessionCoordinator : IDisposable
         ICharacterCreationMagicResonanceService? creationMagicResonanceService = null,
         OriginDossierLifeModulePhoneRuntime? originLifeModuleRuntime = null,
         ICharacterCreationFinalizationService? creationFinalizationService = null,
-        Sr5CareerCyberwarePurchaseService? careerCyberwarePurchaseService = null)
+        Sr5CareerCyberwarePurchaseService? careerCyberwarePurchaseService = null,
+        Sr5CareerCustomDrugRecipeService? careerCustomDrugRecipeService = null)
     {
         _presenter = presenter;
         _client = client;
@@ -362,6 +364,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
         _creationMagicResonanceService = creationMagicResonanceService;
         _creationFinalizationService = creationFinalizationService;
         _careerCyberwarePurchaseService = careerCyberwarePurchaseService;
+        _careerCustomDrugRecipeService = careerCustomDrugRecipeService;
         _careerSkillGroupService = careerSkillGroupService;
         _afterRunSettlementService = afterRunSettlementService;
         _afterRunProposalCatalog = afterRunProposalCatalog;
@@ -571,6 +574,104 @@ public sealed class RunnerSessionCoordinator : IDisposable
             throw new InvalidOperationException(
                 live.Blockers.FirstOrDefault()
                 ?? CharacterCyberwarePurchaseBlockers.SourceAuthorityUnavailable);
+        }
+        return workspaceId;
+    }
+
+    public Sr5CareerCustomDrugRecipeSnapshot LoadCareerCustomDrugRecipe()
+    {
+        if (_careerCustomDrugRecipeService is null
+            || State.WorkspaceId is not { } workspaceId
+            || State.Profile?.Created != true
+            || !string.Equals(State.Rules?.GameEdition, "SR5", StringComparison.OrdinalIgnoreCase)
+            || State.IsDirty
+            || State.ContentRevision != State.SavedRevision
+            || !string.IsNullOrWhiteSpace(State.Error))
+        {
+            return Sr5CareerCustomDrugRecipeSnapshot.Blocked(
+                State.WorkspaceId ?? default,
+                CharacterCustomDrugBlockers.AuthorityUnavailable);
+        }
+        Sr5CareerCustomDrugRecipeSnapshot snapshot =
+            _careerCustomDrugRecipeService.Load(workspaceId);
+        return snapshot.Preparation is { } preparation
+               && preparation.Context == CharacterCustomDrugContext.Career
+               && preparation.Purpose == CharacterCustomDrugQuotePurpose.RecipeDefinition
+               && preparation.ContentRevision == State.ContentRevision
+            ? snapshot
+            : Sr5CareerCustomDrugRecipeSnapshot.Blocked(
+                workspaceId,
+                CharacterCustomDrugBlockers.StaleRevision);
+    }
+
+    public Sr5CareerCustomDrugRecipeSnapshot UpdateCareerCustomDrugRecipeSelection(
+        CharacterCustomDrugSelection selection)
+    {
+        CharacterWorkspaceId workspaceId = RequireCareerCustomDrugRecipeWorkspace();
+        return _careerCustomDrugRecipeService!.UpdateSelection(workspaceId, selection);
+    }
+
+    public Sr5CareerCustomDrugRecipeSnapshot ReviewCareerCustomDrugRecipe()
+    {
+        CharacterWorkspaceId workspaceId = RequireCareerCustomDrugRecipeWorkspace();
+        return _careerCustomDrugRecipeService!.Review(workspaceId);
+    }
+
+    public async Task<Sr5CareerCustomDrugRecipeSnapshot> ConfirmCareerCustomDrugRecipeAsync(
+        CancellationToken cancellationToken = default)
+    {
+        CharacterWorkspaceId workspaceId = RequireCareerCustomDrugRecipeWorkspace();
+        Sr5CareerCustomDrugRecipeSnapshot result =
+            _careerCustomDrugRecipeService!.Confirm(workspaceId);
+        if (result.HasAppliedReceipt || result.IsRecoveryUnknown)
+        {
+            await _presenter.LoadAsync(workspaceId, cancellationToken).ConfigureAwait(false);
+            await SyncShellAsync(cancellationToken).ConfigureAwait(false);
+            NotifyChanged();
+        }
+        return result;
+    }
+
+    public async Task<Sr5CareerCustomDrugRecipeSnapshot> UndoCareerCustomDrugRecipeAsync(
+        CancellationToken cancellationToken = default)
+    {
+        CharacterWorkspaceId workspaceId = RequireCareerCustomDrugRecipeWorkspace();
+        Sr5CareerCustomDrugRecipeSnapshot result =
+            _careerCustomDrugRecipeService!.Undo(workspaceId);
+        if (string.Equals(
+                result.Notice,
+                Sr5CareerCustomDrugRecipeNotices.UndoApplied,
+                StringComparison.Ordinal)
+            || result.IsRecoveryUnknown)
+        {
+            await _presenter.LoadAsync(workspaceId, cancellationToken).ConfigureAwait(false);
+            await SyncShellAsync(cancellationToken).ConfigureAwait(false);
+            NotifyChanged();
+        }
+        return result;
+    }
+
+    public Sr5CareerCustomDrugRecipeSnapshot ReopenCareerCustomDrugRecipe()
+    {
+        if (State.WorkspaceId is not { } workspaceId
+            || _careerCustomDrugRecipeService is null)
+        {
+            throw new InvalidOperationException(CharacterCustomDrugBlockers.AuthorityUnavailable);
+        }
+        Sr5CareerCustomDrugRecipeSnapshot current = LoadCareerCustomDrugRecipe();
+        if (!current.HasAppliedReceipt)
+            throw new InvalidOperationException("Only a verified custom-drug receipt can be closed.");
+        return _careerCustomDrugRecipeService.Reopen(workspaceId);
+    }
+
+    private CharacterWorkspaceId RequireCareerCustomDrugRecipeWorkspace()
+    {
+        Sr5CareerCustomDrugRecipeSnapshot live = LoadCareerCustomDrugRecipe();
+        if (!live.IsReady || State.WorkspaceId is not { } workspaceId)
+        {
+            throw new InvalidOperationException(
+                live.Blockers.FirstOrDefault()
+                ?? CharacterCustomDrugBlockers.AuthorityUnavailable);
         }
         return workspaceId;
     }

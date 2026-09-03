@@ -11,11 +11,17 @@
     <Compile Include="NativeCompileStubs.cs" />
     <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CharacterCyberwarePurchaseRules.cs"
              Link="Core/CharacterCyberwarePurchaseRules.cs" />
+    <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CharacterCustomDrugRules.cs"
+             Link="Core/CharacterCustomDrugRules.cs" />
     <Compile Include="../../src/Chummer.Android/Native/NativeTheme.cs" Link="Native/NativeTheme.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5CareerFlowStrings.cs" Link="Native/Sr5CareerFlowStrings.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5CareerCyberwarePurchaseModel.cs"
              Link="Native/Sr5CareerCyberwarePurchaseModel.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5CareerCustomDrugRecipeModel.cs"
+             Link="Native/Sr5CareerCustomDrugRecipeModel.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5CareerCommercePages.cs"
              Link="Native/Sr5CareerCommercePages.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5CareerCustomDrugRecipePages.cs"
+             Link="Native/Sr5CareerCustomDrugRecipePages.cs" />
   </ItemGroup>
 </Project>

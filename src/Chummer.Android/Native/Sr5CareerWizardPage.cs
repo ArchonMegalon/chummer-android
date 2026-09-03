@@ -130,7 +130,9 @@ public sealed class Sr5CareerWizardPage : NativePageBase
 
         Sr5CareerCyberwarePurchaseSnapshot commerce =
             Coordinator.LoadCareerCyberwarePurchase();
-        bool canOpenCommerce = commerce.IsReady;
+        Sr5CareerCustomDrugRecipeSnapshot customDrug =
+            Coordinator.LoadCareerCustomDrugRecipe();
+        bool canOpenCommerce = commerce.IsReady || customDrug.IsReady;
         if (!state.Snapshot.CanOpenAnyAction && !canOpenCommerce)
         {
             AddStatus(
@@ -185,9 +187,9 @@ public sealed class Sr5CareerWizardPage : NativePageBase
         _body.Add(NativeTheme.Eyebrow(
             WizardStrings.Get("Career.Commerce", "Commerce")));
         View commerceRoute = NativeTheme.NavigationRow(
-            Sr5CareerFlowStrings.Text("Cyberware purchase"),
+            Sr5CareerFlowStrings.Text("Gear and implants"),
             Sr5CareerFlowStrings.Text(
-                "Source-bound catalog → configuration → Core quote → durable receipt"),
+                "Source-bound Cyberware and custom-drug recipes → Core quote → durable receipt"),
             () => Navigation.PushAsync(new Sr5CareerCommerceHubPage(Coordinator)),
             enabled: canOpenCommerce,
             automationId: Sr5CareerRunCapabilityCatalog.CyberwareCommerceRoute);
@@ -196,8 +198,9 @@ public sealed class Sr5CareerWizardPage : NativePageBase
         {
             Label commerceBlocker = NativeTheme.Body(
                 commerce.Blockers.FirstOrDefault()
+                ?? customDrug.Blockers.FirstOrDefault()
                 ?? Sr5CareerFlowStrings.Text(
-                    "The typed Cyberware purchase authority is unavailable for this exact runner revision."),
+                    "No typed Career commerce authority is available for this exact runner revision."),
                 NativeTheme.Danger);
             commerceBlocker.AutomationId = "sr5-career-commerce-blocker";
             _body.Add(NativeTheme.Card(commerceBlocker));

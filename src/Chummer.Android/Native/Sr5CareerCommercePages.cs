@@ -7,7 +7,8 @@ namespace Chummer.Android.Native;
 /// <summary>
 /// Phone-first entry point for the bounded typed Career commerce lane. It
 /// does not provide a generic mutation fallback: only Core's complete
-/// Cyberware purchase authority is actionable in this build.
+/// Cyberware purchase and custom-drug recipe authorities are actionable in
+/// this build.
 /// </summary>
 public sealed class Sr5CareerCommerceHubPage : NativePageBase
 {
@@ -28,9 +29,9 @@ public sealed class Sr5CareerCommerceHubPage : NativePageBase
     {
         _body.Clear();
         _body.Add(NativeTheme.Eyebrow(Text("SR5 Career · Typed commerce")));
-        _body.Add(NativeTheme.Title(Text("Cyberware purchase")));
+        _body.Add(NativeTheme.Title(Text("Gear and implants")));
         _body.Add(NativeTheme.Body(
-            Text("Only the top-level Cyberware purchase lane is typed end to end in this build."),
+            Text("Only the top-level Cyberware purchase and Career custom-drug recipe lanes are typed end to end in this build."),
             NativeTheme.Muted));
         _body.Add(NativeTheme.Body(
             Text("Choose a bounded commerce lane. Each destination reloads its own exact authority before review or persistence."),
@@ -44,11 +45,20 @@ public sealed class Sr5CareerCommerceHubPage : NativePageBase
             return;
         }
 
+        Sr5CareerCyberwarePurchaseSnapshot cyberware = Coordinator.LoadCareerCyberwarePurchase();
         _body.Add(NativeTheme.NavigationRow(
             Text("Purchase cyberware"),
             Text("Source-bound catalog → configuration → Core quote → durable receipt"),
             () => Navigation.PushAsync(new Sr5CareerCyberwarePurchasePage(Coordinator)),
+            enabled: cyberware.IsReady,
             automationId: "sr5-career-purchase-cyberware"));
+        Sr5CareerCustomDrugRecipeSnapshot customDrug = Coordinator.LoadCareerCustomDrugRecipe();
+        _body.Add(NativeTheme.NavigationRow(
+            Text("Define custom drug"),
+            Text("Exact components and levels → Core quote → free initial dose → durable receipt"),
+            () => Navigation.PushAsync(new Sr5CareerCustomDrugRecipePage(Coordinator)),
+            enabled: customDrug.IsReady,
+            automationId: "sr5-career-custom-drug-recipe"));
         AddUnavailableLane(
             Text("Installed gear"),
             "sr5-career-installed-gear-unavailable");
@@ -57,7 +67,7 @@ public sealed class Sr5CareerCommerceHubPage : NativePageBase
             "sr5-career-installed-implants-unavailable");
 
         Label boundary = NativeTheme.Body(
-            Text("Gear, Bioware, and installed-implant mutations remain unavailable here until Core exposes their exact typed quote, review, confirmation, receipt, and recovery authorities. Android never opens the generic collection editor from this wizard."),
+            Text("Gear, Bioware, installed-implant mutations, later custom-drug quantity purchases, and Creation custom-drug finalization remain unavailable here. Android never opens the generic collection editor from this wizard."),
             NativeTheme.Muted);
         boundary.AutomationId = "sr5-career-commerce-authority-boundary";
         _body.Add(NativeTheme.Card(boundary));
