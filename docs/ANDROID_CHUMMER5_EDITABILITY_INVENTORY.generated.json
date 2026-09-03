@@ -602,7 +602,7 @@
       {
         "path": "src/Chummer.Android/Native/CreationPrerequisitePage.cs",
         "exists": true,
-        "sha256": "934dd360281a5bc35045fb5dfcbfc48a656b433ee125391ba2fd9bce3f540c9d"
+        "sha256": "8c8ffa86f11003a4a9a94647af9a3063f6b85f4d012646e8d88c2e4202440b0e"
       },
       {
         "path": "src/Chummer.Android/Native/CreationPriorityCategoryPage.cs",
@@ -847,7 +847,7 @@
       {
         "path": "src/Chummer.Android/Proof/Api36ProofStatePublisher.cs",
         "exists": true,
-        "sha256": "778a95af9854828855ace117e8a35d57dff33ac125a9de92756f17409fc3f4c9"
+        "sha256": "c8cce8a1f78b85d641f3548eae2d96e228ec2bbc74b4ef90fa79da1541fda7fd"
       },
       {
         "path": "tests/Chummer.Android.Native.CompileCheck/NativeCompileInputs.props",
@@ -882,7 +882,7 @@
       {
         "path": "tests/test_api36_proof_state_contract.py",
         "exists": true,
-        "sha256": "b844168116555b808bae5419980b829fb8175ea1c56271c4c5a076c6316ea6c4"
+        "sha256": "321d384631788648134e899419b2f9e55cb291ed276d59afec8df91cf085d4d0"
       },
       {
         "path": "tests/test_run_api36_sr5_before_run_edge_e2e_driver.py",
