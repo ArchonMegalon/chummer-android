@@ -430,6 +430,31 @@ public sealed class CreationResourcesPreviewPage : NativePageBase
             return;
         }
 
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+        if (AndroidE2EAuthority.Enabled)
+        {
+            if (!CreationResourcesPhoneAuthority.TryNormalizeRawCharacterXmlSha256(
+                    receipt.RawCharacterXmlDigest,
+                    out string expectedPayloadSha256))
+            {
+                _failure = CharacterCreationResourcesInteractionBlockers.RefreshAuthorityRequired;
+                return;
+            }
+            NativeWorkspaceAuthoritySnapshot? proofAuthority =
+                await Coordinator.RefreshApi36ProofWorkspaceAuthorityAsync(
+                    receipt.WorkspaceId,
+                    receipt.WorkspaceRevision,
+                    receipt.SavedRevision,
+                    expectedPayloadSha256,
+                    CancellationToken.None);
+            if (proofAuthority is null)
+            {
+                _failure = CharacterCreationResourcesInteractionBlockers.RefreshAuthorityRequired;
+                return;
+            }
+        }
+#endif
+
         _receipt = receipt;
     }
 
@@ -485,6 +510,19 @@ public sealed class CreationResourcesPreviewPage : NativePageBase
 
 internal static class CreationResourcesPhoneAuthority
 {
+    public static bool TryNormalizeRawCharacterXmlSha256(
+        string? digest,
+        out string sha256)
+    {
+        sha256 = string.Empty;
+        if (!CharacterCreationResourcesRules.IsCanonicalDigest(digest))
+        {
+            return false;
+        }
+        sha256 = digest!.Substring("sha256:".Length, 64);
+        return true;
+    }
+
     public static bool IsBound(
         CharacterCreationResourcesInteractionState state,
         CharacterOverviewState overview)

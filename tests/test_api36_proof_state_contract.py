@@ -689,10 +689,48 @@ class Api36ProofStateContractTests(unittest.TestCase):
         page = (ROOT / "src/Chummer.Android/Native/CreationResourcesPage.cs").read_text(
             encoding="utf-8"
         )
+        coordinator = (
+            ROOT / "src/Chummer.Android/Native/RunnerSessionCoordinator.cs"
+        ).read_text(encoding="utf-8")
         driver = (ROOT / "tests/run_api36_creation_prerequisite_e2e.py").read_text(
             encoding="utf-8"
         )
+        confirm = page[page.index("private async Task ConfirmAsync()") :]
+        confirm = confirm[: confirm.index("private void AddBudgetComparison()")]
+        presenter_reload = confirm.index("await _overview.LoadAsync(")
+        proof_refresh = confirm.index("RefreshApi36ProofWorkspaceAuthorityAsync(")
+        receipt_publish = confirm.index("_receipt = receipt;")
         self.assertIn("Api36ProofStatePublisher.TryPublishCreationResources(", page)
+        self.assertLess(presenter_reload, proof_refresh)
+        self.assertLess(proof_refresh, receipt_publish)
+        self.assertIn("if (AndroidE2EAuthority.Enabled)", confirm)
+        self.assertIn("proofAuthority is null", confirm)
+        self.assertIn(
+            "TryNormalizeRawCharacterXmlSha256(\n"
+            "                    receipt.RawCharacterXmlDigest,",
+            confirm,
+        )
+        self.assertIn("out string expectedPayloadSha256", confirm)
+        self.assertNotIn('RawCharacterXmlDigest["sha256:".Length..]', confirm)
+        self.assertIn("receipt.WorkspaceRevision", confirm)
+        self.assertIn("receipt.SavedRevision", confirm)
+        refresh_method = "RefreshApi36ProofWorkspaceAuthorityAsync("
+        refresh = coordinator[coordinator.index(refresh_method) :]
+        refresh = refresh[: refresh.index("public ShellSurfaceState Surface")]
+        self.assertIn(
+            "#if CHUMMER_API36_PROOF_INSTRUMENTATION",
+            coordinator[: coordinator.index(refresh_method)],
+        )
+        self.assertIn("TryRefreshWorkspaceAuthorityAsync(", refresh)
+        self.assertIn("expectedWorkspaceId,", refresh)
+        self.assertIn("expectedPayloadSha256,", refresh)
+        self.assertIn("ExactWorkspaceAuthoritySnapshotMatches(", refresh)
+        self.assertIn("authority.Matches(state)", refresh)
+        self.assertIn("authority.WorkspaceId", refresh)
+        self.assertIn("authority.ContentRevision == expectedContentRevision", refresh)
+        self.assertIn("authority.SavedRevision == expectedSavedRevision", refresh)
+        self.assertIn("authority.PayloadSha256", refresh)
+        self.assertNotIn("allowReadOnlyProductCapture: true", refresh)
         self.assertIn("shared.force_stop_and_launch_new_process(", driver)
         self.assertIn('open_resources(\n        device,', driver)
         self.assertIn('device.capture(\n        "creation-prerequisite-process-restart"', driver)

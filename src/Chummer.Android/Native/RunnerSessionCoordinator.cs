@@ -410,6 +410,54 @@ public sealed class RunnerSessionCoordinator : IDisposable
             cancellationToken,
             allowReadOnlyProductCapture: true);
 
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+    internal async Task<NativeWorkspaceAuthoritySnapshot?> RefreshApi36ProofWorkspaceAuthorityAsync(
+        CharacterWorkspaceId expectedWorkspaceId,
+        long expectedContentRevision,
+        long expectedSavedRevision,
+        string expectedPayloadSha256,
+        CancellationToken cancellationToken = default)
+    {
+        NativeWorkspaceAuthoritySnapshot? authority =
+            await TryRefreshWorkspaceAuthorityAsync(
+                expectedWorkspaceId,
+                expectedPayloadSha256,
+                cancellationToken);
+        if (!ExactWorkspaceAuthoritySnapshotMatches(
+                authority,
+                State,
+                expectedWorkspaceId,
+                expectedContentRevision,
+                expectedSavedRevision,
+                expectedPayloadSha256))
+        {
+            ClearWorkspaceAuthority();
+            return null;
+        }
+        return authority;
+    }
+#endif
+
+    internal static bool ExactWorkspaceAuthoritySnapshotMatches(
+        NativeWorkspaceAuthoritySnapshot? authority,
+        CharacterOverviewState state,
+        CharacterWorkspaceId expectedWorkspaceId,
+        long expectedContentRevision,
+        long expectedSavedRevision,
+        string expectedPayloadSha256)
+        => authority is not null
+           && authority.Matches(state)
+           && string.Equals(
+               authority.WorkspaceId,
+               expectedWorkspaceId.Value,
+               StringComparison.Ordinal)
+           && authority.ContentRevision == expectedContentRevision
+           && authority.SavedRevision == expectedSavedRevision
+           && string.Equals(
+               authority.PayloadSha256,
+               expectedPayloadSha256,
+               StringComparison.Ordinal);
+
     public ShellSurfaceState Surface => _surface;
 
     public AndroidAccountLinkSnapshot Account => _account.Snapshot;
