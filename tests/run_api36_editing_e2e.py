@@ -1997,6 +1997,62 @@ class Device:
             result=result,
         )
 
+    def _query_exact_provider_download(
+        self,
+        *,
+        display_name: str,
+        receipt_name: str,
+        step: str,
+    ) -> tuple[dict[str, str], dict[str, object]]:
+        """Return one exact Downloads row and its bounded query receipt."""
+        if GOVERNED_DOWNLOAD_BASENAME.fullmatch(display_name) is None:
+            raise RuntimeError("MediaStore Downloads query has an unsafe display name")
+        where = f"_display_name='{display_name}'"
+        query_arguments = (
+            "shell",
+            "content",
+            "query",
+            "--user",
+            "0",
+            "--uri",
+            MEDIA_PROVIDER_DOWNLOADS_URI,
+            "--projection",
+            MEDIA_PROVIDER_METADATA_PROJECTION,
+            "--where",
+            where,
+        )
+        query_result = self.run(*query_arguments, timeout=120)
+        query_attempt = self._write_provider_command_attempt(
+            receipt_name=receipt_name,
+            step=step,
+            arguments=query_arguments,
+            result=query_result,
+        )
+        metadata_output = query_result.stdout.strip()
+        lines = [line.strip() for line in metadata_output.splitlines() if line.strip()]
+        if len(lines) != 1 or not lines[0].startswith("Row: 0 "):
+            raise RuntimeError(
+                "MediaStore Downloads query did not return exactly one fixture row"
+            )
+        fields: dict[str, str] = {}
+        for item in lines[0][len("Row: 0 ") :].split(", "):
+            key, separator, value = item.partition("=")
+            if not separator or not key or key in fields:
+                raise RuntimeError("MediaStore Downloads row is ambiguous")
+            fields[key] = value
+        expected_fields = {
+            "_id",
+            "_display_name",
+            "_data",
+            "_size",
+            "mime_type",
+            "relative_path",
+            "is_pending",
+        }
+        if set(fields) != expected_fields:
+            raise RuntimeError("MediaStore Downloads row has an unexpected projection")
+        return fields, query_attempt
+
     def publish_document_for_documents_ui(
         self,
         local_path: Path,
@@ -2055,13 +2111,50 @@ class Device:
             result=insert_result,
         )
         insert_output = insert_result.stdout.strip()
-        provider_uris = CONTENT_URI.findall(insert_output)
-        if len(provider_uris) != 1 or insert_output != f"Inserted {provider_uris[0]}":
+        announced_provider_uri: str | None = None
+        if insert_output:
+            provider_uris = CONTENT_URI.findall(insert_output)
+            if len(provider_uris) != 1 or insert_output != f"Inserted {provider_uris[0]}":
+                raise RuntimeError(
+                    "MediaStore insert returned an ambiguous Downloads URI"
+                )
+            announced_provider_uri = provider_uris[0]
+
+        pending_fields, pending_query_attempt = self._query_exact_provider_download(
+            display_name=display_name,
+            receipt_name=(
+                f"documentsui-provider-registration-{receipt_stem}-query-pending.json"
+            ),
+            step="query-inserted-pending-download",
+        )
+        canonical_path = MEDIA_PROVIDER_CANONICAL_DOWNLOAD_ROOT + display_name
+        if (
+            pending_fields["_display_name"] != display_name
+            or pending_fields["_data"] != canonical_path
+            or pending_fields["_size"] not in {"0", "NULL"}
+            or pending_fields["mime_type"] != MEDIA_PROVIDER_DOCUMENT_MIME_TYPE
+            or pending_fields["relative_path"]
+            != MEDIA_PROVIDER_RELATIVE_DOWNLOAD_ROOT
+            or pending_fields["is_pending"] != "1"
+        ):
             raise RuntimeError(
-                "MediaStore insert did not return exactly one governed Downloads URI"
+                "MediaStore pending Downloads identity differs from the governed fixture"
             )
-        provider_uri = provider_uris[0]
-        provider_id = provider_uri.rsplit("/", 1)[-1]
+        provider_uri = (
+            f"{MEDIA_PROVIDER_DOWNLOADS_URI}/{pending_fields['_id']}"
+        )
+        if CONTENT_URI.fullmatch(provider_uri) is None:
+            raise RuntimeError(
+                "MediaStore pending Downloads row has an invalid provider identity"
+            )
+        if (
+            announced_provider_uri is not None
+            and announced_provider_uri != provider_uri
+        ):
+            raise RuntimeError(
+                "MediaStore insert URI differs from the exact post-insert query"
+            )
+        provider_id = pending_fields["_id"]
 
         write_attempt = self._write_provider_content_once(
             provider_uri,
@@ -2092,53 +2185,13 @@ class Device:
         if update_result.stdout.strip() != "Updated 1 row.":
             raise RuntimeError("MediaStore publish did not update exactly one row")
 
-        where = f"_display_name='{display_name}'"
-        query_arguments = (
-            "shell",
-            "content",
-            "query",
-            "--user",
-            "0",
-            "--uri",
-            MEDIA_PROVIDER_DOWNLOADS_URI,
-            "--projection",
-            MEDIA_PROVIDER_METADATA_PROJECTION,
-            "--where",
-            where,
-        )
-        query_result = self.run(*query_arguments, timeout=120)
-        query_attempt = self._write_provider_command_attempt(
+        fields, query_attempt = self._query_exact_provider_download(
+            display_name=display_name,
             receipt_name=(
-                f"documentsui-provider-registration-{receipt_stem}-query.json"
+                f"documentsui-provider-registration-{receipt_stem}-query-published.json"
             ),
             step="query-published-download",
-            arguments=query_arguments,
-            result=query_result,
         )
-        metadata_output = query_result.stdout.strip()
-        lines = [line.strip() for line in metadata_output.splitlines() if line.strip()]
-        if len(lines) != 1 or not lines[0].startswith("Row: 0 "):
-            raise RuntimeError(
-                "MediaStore Downloads query did not return exactly one fixture row"
-            )
-        fields: dict[str, str] = {}
-        for item in lines[0][len("Row: 0 ") :].split(", "):
-            key, separator, value = item.partition("=")
-            if not separator or not key or key in fields:
-                raise RuntimeError("MediaStore Downloads row is ambiguous")
-            fields[key] = value
-        expected_fields = {
-            "_id",
-            "_display_name",
-            "_data",
-            "_size",
-            "mime_type",
-            "relative_path",
-            "is_pending",
-        }
-        if set(fields) != expected_fields:
-            raise RuntimeError("MediaStore Downloads row has an unexpected projection")
-        canonical_path = MEDIA_PROVIDER_CANONICAL_DOWNLOAD_ROOT + display_name
         if (
             fields["_id"] != provider_id
             or fields["_display_name"] != display_name
@@ -2182,11 +2235,12 @@ class Device:
             "size": expected_size,
             "sha256": provider_sha256,
             "insertOutputSha256": insert_attempt["stdout"]["sha256"],
+            "pendingMetadataOutputSha256": pending_query_attempt["stdout"]["sha256"],
             "writeOutputSha256": write_attempt["stdout"]["sha256"],
             "publishOutputSha256": update_attempt["stdout"]["sha256"],
             "metadataOutputSha256": query_attempt["stdout"]["sha256"],
             "registrationInvocations": "three-one-shot-mutations-no-replay",
-            "metadataQuery": "exact-display-name-one-row",
+            "metadataQuery": "post-insert-and-published-exact-display-name-one-row",
             "pickerBypass": False,
         }
         _write_new_json_receipt(

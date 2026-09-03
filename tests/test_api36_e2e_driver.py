@@ -6963,12 +6963,20 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         self.assertIn("scroll_distance_ratio=0.22", helper)
 
     @staticmethod
-    def _provider_row(payload: bytes, *, display_name: str = "runner.chum5") -> str:
+    def _provider_row(
+        payload: bytes,
+        *,
+        display_name: str = "runner.chum5",
+        provider_id: str = "12345",
+        size: str | None = None,
+        is_pending: str = "0",
+    ) -> str:
+        provider_size = str(len(payload)) if size is None else size
         return (
-            f"Row: 0 _id=12345, _display_name={display_name}, "
+            f"Row: 0 _id={provider_id}, _display_name={display_name}, "
             f"_data=/storage/emulated/0/Download/{display_name}, "
-            f"_size={len(payload)}, mime_type=application/octet-stream, "
-            "relative_path=Download/, is_pending=0"
+            f"_size={provider_size}, mime_type=application/octet-stream, "
+            f"relative_path=Download/, is_pending={is_pending}"
         )
 
     def _provider_device(self, temporary: str) -> DRIVER.Device:
@@ -6990,7 +6998,16 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                     device,
                     "run",
                     side_effect=(
-                        subprocess.CompletedProcess([], 0, f"Inserted {provider_uri}\n", ""),
+                        subprocess.CompletedProcess([], 0, "", ""),
+                        subprocess.CompletedProcess(
+                            [],
+                            0,
+                            self._provider_row(
+                                payload, size="NULL", is_pending="1"
+                            )
+                            + "\n",
+                            "",
+                        ),
                         subprocess.CompletedProcess([], 0, "Updated 1 row.\n", ""),
                         subprocess.CompletedProcess(
                             [], 0, self._provider_row(payload) + "\n", ""
@@ -7031,7 +7048,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 check=True,
                 input_bytes=payload,
             )
-            self.assertEqual(4, run.call_count)
+            self.assertEqual(5, run.call_count)
             self.assertEqual(
                 (
                     "shell",
@@ -7046,17 +7063,24 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                     "--where",
                     "_display_name='runner.chum5'",
                 ),
-                run.call_args_list[2].args,
+                run.call_args_list[1].args,
             )
+            self.assertEqual(run.call_args_list[1].args, run.call_args_list[3].args)
             attempt_receipts = list(
                 evidence.glob("documentsui-provider-registration-*.json")
             )
-            self.assertEqual(5, len(attempt_receipts))
+            self.assertEqual(6, len(attempt_receipts))
             insert = next(path for path in attempt_receipts if path.name.endswith("-insert.json"))
             insert_receipt = json.loads(insert.read_text(encoding="utf-8"))
-            self.assertEqual(f"Inserted {provider_uri}\n", insert_receipt["stdout"]["exact"])
+            self.assertEqual("", insert_receipt["stdout"]["exact"])
+            insert_calls = [
+                call
+                for call in run.call_args_list
+                if call.args[:3] == ("shell", "content", "insert")
+            ]
+            self.assertEqual(1, len(insert_calls))
 
-    def test_documents_ui_provider_registration_rejects_absent_or_ambiguous_insert_uri(
+    def test_documents_ui_provider_registration_rejects_malformed_or_ambiguous_insert_uri(
         self,
     ) -> None:
         for insert_output in (
@@ -7074,7 +7098,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                     device,
                     "run",
                     return_value=subprocess.CompletedProcess([], 0, insert_output, ""),
-                ) as run, self.assertRaisesRegex(RuntimeError, "exactly one governed"):
+                ) as run, self.assertRaisesRegex(RuntimeError, "ambiguous Downloads URI"):
                     device.publish_document_for_documents_ui(
                         fixture, DRIVER.hashlib.sha256(payload).hexdigest()
                     )
@@ -7083,6 +7107,108 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 self.assertEqual(1, len(insert_receipts))
                 observed = json.loads(insert_receipts[0].read_text(encoding="utf-8"))
                 self.assertEqual(insert_output, observed["stdout"]["exact"])
+
+    def test_documents_ui_provider_registration_rejects_post_insert_cardinality(
+        self,
+    ) -> None:
+        payload = b"expected"
+        rows = (
+            "No result found.\n",
+            self._provider_row(payload, size="0", is_pending="1")
+            + "\n"
+            + self._provider_row(
+                payload,
+                provider_id="12346",
+                size="0",
+                is_pending="1",
+            )
+            + "\n",
+        )
+        for row in rows:
+            with self.subTest(row=row), tempfile.TemporaryDirectory() as temporary:
+                fixture = Path(temporary) / "runner.chum5"
+                fixture.write_bytes(payload)
+                device = self._provider_device(str(Path(temporary) / "evidence"))
+                with (
+                    patch.object(
+                        device,
+                        "run",
+                        side_effect=(
+                            subprocess.CompletedProcess([], 0, "", ""),
+                            subprocess.CompletedProcess([], 0, row, ""),
+                        ),
+                    ) as run,
+                    patch.object(device, "_invoke_once") as invoke_once,
+                    self.assertRaisesRegex(RuntimeError, "exactly one fixture row"),
+                ):
+                    device.publish_document_for_documents_ui(
+                        fixture, DRIVER.hashlib.sha256(payload).hexdigest()
+                    )
+                self.assertEqual(2, run.call_count)
+                invoke_once.assert_not_called()
+
+    def test_documents_ui_provider_registration_rejects_post_insert_identity_drift(
+        self,
+    ) -> None:
+        payload = b"expected"
+        provider_uri = "content://media/external_primary/downloads/12345"
+        hostile = (
+            (
+                "",
+                self._provider_row(payload, size=str(len(payload)), is_pending="1"),
+                "pending Downloads identity differs",
+            ),
+            (
+                "",
+                self._provider_row(payload, size="0", is_pending="0"),
+                "pending Downloads identity differs",
+            ),
+            (
+                "",
+                self._provider_row(
+                    payload,
+                    provider_id="0",
+                    size="0",
+                    is_pending="1",
+                ),
+                "invalid provider identity",
+            ),
+            (
+                f"Inserted {provider_uri}\n",
+                self._provider_row(
+                    payload,
+                    provider_id="12346",
+                    size="0",
+                    is_pending="1",
+                ),
+                "differs from the exact post-insert query",
+            ),
+        )
+        for insert_output, row, expected_error in hostile:
+            with (
+                self.subTest(expected_error=expected_error),
+                tempfile.TemporaryDirectory() as temporary,
+            ):
+                fixture = Path(temporary) / "runner.chum5"
+                fixture.write_bytes(payload)
+                device = self._provider_device(str(Path(temporary) / "evidence"))
+                with (
+                    patch.object(
+                        device,
+                        "run",
+                        side_effect=(
+                            subprocess.CompletedProcess([], 0, insert_output, ""),
+                            subprocess.CompletedProcess([], 0, row, ""),
+                        ),
+                    ) as run,
+                    patch.object(device, "_invoke_once") as invoke_once,
+                    self.assertRaisesRegex(RuntimeError, expected_error),
+                ):
+                    device.publish_document_for_documents_ui(
+                        fixture, DRIVER.hashlib.sha256(payload).hexdigest()
+                    )
+                self.assertEqual(2, run.call_count)
+                invoke_once.assert_not_called()
 
     def test_documents_ui_provider_registration_never_replays_unknown_write(self) -> None:
         payload = b"expected"
@@ -7096,8 +7222,18 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 patch.object(
                     device,
                     "run",
-                    return_value=subprocess.CompletedProcess(
-                        [], 0, f"Inserted {provider_uri}\n", ""
+                    side_effect=(
+                        subprocess.CompletedProcess(
+                            [], 0, f"Inserted {provider_uri}\n", ""
+                        ),
+                        subprocess.CompletedProcess(
+                            [],
+                            0,
+                            self._provider_row(
+                                payload, size="0", is_pending="1"
+                            ),
+                            "",
+                        ),
                     ),
                 ) as run,
                 patch.object(device, "_invoke_once", side_effect=write_error) as invoke_once,
@@ -7106,7 +7242,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 device.publish_document_for_documents_ui(
                     fixture, DRIVER.hashlib.sha256(payload).hexdigest()
                 )
-            self.assertEqual(1, run.call_count)
+            self.assertEqual(2, run.call_count)
             self.assertEqual(1, invoke_once.call_count)
             self.assertIsNotNone(device._mutation_blocker)
             self.assertEqual("timeout-unknown-outcome", device._mutation_blocker["classification"])
@@ -7133,6 +7269,13 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 self._provider_row(payload).replace("is_pending=0", "is_pending=1"),
                 "identity differs",
             ),
+            (
+                "Updated 1 row.\n",
+                self._provider_row(payload).replace(
+                    f"_size={len(payload)}", f"_size={len(payload) + 1}"
+                ),
+                "identity differs",
+            ),
         )
         for publish_output, row, expected_error in hostile_rows:
             with self.subTest(expected_error=expected_error), tempfile.TemporaryDirectory() as temporary:
@@ -7141,6 +7284,12 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 device = self._provider_device(str(Path(temporary) / "evidence"))
                 responses = [
                     subprocess.CompletedProcess([], 0, f"Inserted {provider_uri}\n", ""),
+                    subprocess.CompletedProcess(
+                        [],
+                        0,
+                        self._provider_row(payload, size="0", is_pending="1"),
+                        "",
+                    ),
                     subprocess.CompletedProcess([], 0, publish_output, ""),
                 ]
                 if publish_output == "Updated 1 row.\n":
@@ -7171,9 +7320,17 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                     "run",
                     side_effect=(
                         subprocess.CompletedProcess([], 0, f"Inserted {provider_uri}\n", ""),
+                        subprocess.CompletedProcess(
+                            [],
+                            0,
+                            self._provider_row(
+                                payload, size="0", is_pending="1"
+                            ),
+                            "",
+                        ),
                         subprocess.CompletedProcess([], 0, "Updated 1 row.\n", ""),
                         subprocess.CompletedProcess([], 0, self._provider_row(payload), ""),
-                        subprocess.CompletedProcess([], 0, b"different", b""),
+                        subprocess.CompletedProcess([], 0, b"expectef", b""),
                     ),
                 ),
                 patch.object(
