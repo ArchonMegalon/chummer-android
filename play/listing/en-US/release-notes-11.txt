@@ -1,0 +1,1 @@
+Preview.11 stabilizes SR5 Priority creation and the required Career phone wizards with digest-bound save, reopen, and process-restart proof. Full Editing and tablet parity remain deferred.

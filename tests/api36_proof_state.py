@@ -303,8 +303,8 @@ def _validate_build(build_value: object, expected: ProofBuildExpectation) -> dic
         "gateContractSha256": expected.gate_contract_sha256,
         "proofBuildId": expected.proof_build_id,
         "packageName": PACKAGE,
-        "versionName": "0.1.0-preview.10",
-        "versionCode": "10",
+        "versionName": "0.1.0-preview.11",
+        "versionCode": "11",
         "runtimeIdentifier": "android-x64",
     }:
         raise RuntimeError("API-36 proof-state build identity is not exact")
@@ -470,8 +470,8 @@ def validate_state(
         "gateContractSha256": expected.gate_contract_sha256,
         "proofBuildId": expected.proof_build_id,
         "packageName": PACKAGE,
-        "versionName": "0.1.0-preview.10",
-        "versionCode": "10",
+        "versionName": "0.1.0-preview.11",
+        "versionCode": "11",
         "runtimeIdentifier": "android-x64",
     }:
         raise RuntimeError("API-36 proof-state build identity is not exact")

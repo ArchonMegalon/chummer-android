@@ -39,8 +39,8 @@ def state_payload() -> dict[str, object]:
             "gateContractSha256": "3" * 64,
             "proofBuildId": "hosted-123-1",
             "packageName": proof.PACKAGE,
-            "versionName": "0.1.0-preview.10",
-            "versionCode": "10",
+            "versionName": "0.1.0-preview.11",
+            "versionCode": "11",
             "runtimeIdentifier": "android-x64",
         },
         "surface": {
@@ -225,7 +225,7 @@ class Api36ProofStateContractTests(unittest.TestCase):
 
     def test_exact_state_is_digest_process_and_build_bound(self) -> None:
         self.assertEqual(
-            "sha256:5d5ec21d03f3054d3f265b5f307357d42646ba229870d595c6f9e3b8b643456f",
+            "sha256:91636cc4c9b516d42ac99be1b19e5d5888897a8611fa676e2aefe99888332c1d",
             state_payload()["stateDigest"],
         )
         snapshot = proof.validate_state(
