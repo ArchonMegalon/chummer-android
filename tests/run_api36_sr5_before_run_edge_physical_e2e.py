@@ -917,7 +917,12 @@ def prepare_runner(
     fixture_sha256: str,
     proof_expectation: proof_state.ProofBuildExpectation | None = None,
     proof_trace: list[dict[str, object]] | None = None,
-) -> tuple[shared.LaunchState, shared.WorkspaceAuthority, object | None]:
+) -> tuple[
+    shared.LaunchState,
+    shared.WorkspaceAuthority,
+    object | None,
+    ET.Element,
+]:
     launch = shared.launch_app(device)
     shared.wait_for_phone_runners(device, timeout=120)
     shared.record_phone_ui_locale_evidence(device, evidence_prefix=spec.lane)
@@ -934,7 +939,10 @@ def prepare_runner(
         )
     else:
         import_proof = None
-    device.wait(spec.fixture_alias, timeout=120)
+    # The alias is ordinary runner content and may be outside the current
+    # accessibility viewport.  It is therefore not route authority.  Prove the
+    # imported Career lifecycle through the exact immutable Build root first;
+    # the exact workspace payload below binds the alias to the imported bytes.
     shared.wait_for_phone_runner_route(device, created=True, timeout=120)
     shared.tap_phone_destination(device, "phone-destination-runners")
     shared.wait_for_phone_runners(device, timeout=120)
@@ -952,7 +960,8 @@ def prepare_runner(
         else shared.read_phone_workspace_authority(device)
     )
     shared.require_import_authority(authority, fixture_sha256)
-    return launch, authority, import_proof
+    imported_root = root_for_authority(device, authority, spec.fixture_alias)
+    return launch, authority, import_proof, imported_root
 
 
 def open_lane(device: shared.Device, spec: LaneSpec) -> None:
@@ -1148,7 +1157,7 @@ def prove_lane(
 ) -> dict[str, object]:
     device.shell("pm", "clear", shared.PACKAGE)
     proof_trace: list[dict[str, object]] = []
-    initial_launch, imported, import_proof = prepare_runner(
+    initial_launch, imported, import_proof, imported_root = prepare_runner(
         device,
         spec,
         fixture.name,
@@ -1156,9 +1165,7 @@ def prove_lane(
         proof_expectation,
         proof_trace if proof_expectation is not None else None,
     )
-    before_authority = assert_before(
-        root_for_authority(device, imported, spec.fixture_alias)
-    )
+    before_authority = assert_before(imported_root)
 
     open_lane(device, spec)
     if proof_expectation is not None:

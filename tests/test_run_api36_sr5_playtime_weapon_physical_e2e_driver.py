@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ast
 import copy
+import hashlib
 import importlib.util
 from pathlib import Path
 import sys
@@ -9,11 +10,12 @@ import unittest
 from unittest import mock
 import xml.etree.ElementTree as ET
 
-
 ROOT = Path(__file__).resolve().parents[1]
 DRIVER = ROOT / "tests/run_api36_sr5_playtime_weapon_physical_e2e.py"
 FIXTURE = ROOT / "tests/fixtures/sr5-playtime-weapon-physical-e2e.chum5"
 sys.path.insert(0, str(DRIVER.parent))
+import api36_proof_state
+
 SPEC = importlib.util.spec_from_file_location("playtime_physical_driver", DRIVER)
 assert SPEC is not None and SPEC.loader is not None
 driver = importlib.util.module_from_spec(SPEC)
@@ -72,6 +74,152 @@ def successor_state() -> dict[str, object]:
 
 
 class PlaytimePhysicalDriverContractTests(unittest.TestCase):
+    def test_import_uses_exact_career_route_workspace_and_payload_not_visible_alias(self) -> None:
+        fixture_payload = FIXTURE.read_text(encoding="utf-8")
+        fixture_sha256 = hashlib.sha256(fixture_payload.encode("utf-8")).hexdigest()
+        authority = driver.lane.shared.WorkspaceAuthority(
+            "workspace-playtime",
+            41,
+            41,
+            fixture_sha256,
+            "d" * 64,
+        )
+        expectation = object()
+        trace: list[dict[str, object]] = []
+        launch = object()
+        import_proof = object()
+        device = mock.Mock(spec=driver.lane.shared.Device)
+
+        with (
+            mock.patch.object(driver.lane.shared, "launch_app", return_value=launch),
+            mock.patch.object(driver.lane.shared, "wait_for_phone_runners") as runners,
+            mock.patch.object(driver.lane.shared, "record_phone_ui_locale_evidence"),
+            mock.patch.object(driver.lane.shared, "select_android_document") as select,
+            mock.patch.object(
+                api36_proof_state,
+                "wait_for_import_activation",
+                return_value=import_proof,
+            ) as import_activation,
+            mock.patch.object(
+                driver.lane.shared,
+                "wait_for_phone_runner_route",
+            ) as career_runner,
+            mock.patch.object(driver.lane.shared, "tap_phone_destination") as destination,
+            mock.patch.object(
+                driver.lane,
+                "read_proof_workspace_authority",
+                return_value=authority,
+            ) as workspace,
+            mock.patch.object(
+                driver.lane,
+                "workspace_payloads",
+                return_value=[fixture_payload],
+            ),
+        ):
+            observed = driver.lane.prepare_runner(
+                device,
+                driver.SPEC,
+                FIXTURE.name,
+                fixture_sha256,
+                expectation,
+                trace,
+            )
+
+        self.assertIs(launch, observed[0])
+        self.assertEqual(authority, observed[1])
+        self.assertIs(import_proof, observed[2])
+        self.assertEqual(driver.FIXTURE_ALIAS, observed[3].findtext("alias"))
+        device.wait.assert_not_called()
+        device.tap.assert_called_once_with("home-open-file")
+        select.assert_called_once_with(device, FIXTURE.name)
+        import_activation.assert_called_once_with(
+            device,
+            expected=expectation,
+            content_sha256=fixture_sha256,
+            timeout=120,
+        )
+        career_runner.assert_called_once_with(device, created=True, timeout=120)
+        destination.assert_called_once_with(device, "phone-destination-runners")
+        self.assertEqual(2, runners.call_count)
+        workspace.assert_called_once_with(
+            device,
+            expectation,
+            trace,
+            label="imported-runner",
+            page_automation_id="phone-runners",
+            stage="runners-ready",
+            wizard_lane=None,
+        )
+
+    def test_payload_bound_import_rejects_a_different_fixture_alias(self) -> None:
+        hostile_root = ET.parse(FIXTURE).getroot()
+        hostile_root.find("alias").text = "VisibleButForeignRunner"  # type: ignore[union-attr]
+        hostile_payload = ET.tostring(hostile_root, encoding="unicode")
+        hostile_sha256 = hashlib.sha256(hostile_payload.encode("utf-8")).hexdigest()
+        authority = driver.lane.shared.WorkspaceAuthority(
+            "workspace-playtime",
+            41,
+            41,
+            hostile_sha256,
+            "d" * 64,
+        )
+        device = mock.Mock(spec=driver.lane.shared.Device)
+
+        with (
+            mock.patch.object(
+                driver.lane,
+                "workspace_payloads",
+                return_value=[hostile_payload],
+            ),
+            self.assertRaisesRegex(RuntimeError, "different Career fixture"),
+        ):
+            driver.lane.root_for_authority(
+                device,
+                authority,
+                driver.FIXTURE_ALIAS,
+            )
+
+    def test_career_table_navigation_preserves_exact_slash_resource_ids(self) -> None:
+        device = mock.Mock(spec=driver.lane.shared.Device)
+        with (
+            mock.patch.object(driver.lane.physical, "open_career_hub") as career_hub,
+            mock.patch.object(driver.lane.physical, "wait_exact_route") as route,
+        ):
+            driver.lane.open_lane(device, driver.SPEC)
+
+        career_hub.assert_called_once_with(device)
+        self.assertEqual(
+            [
+                mock.call(
+                    "sr5-career/table",
+                    timeout=90,
+                    backward_scrolls=0,
+                    forward_scrolls=24,
+                    scroll_distance_ratio=0.18,
+                    evidence_prefix="sr5-career-table-family",
+                    surface_name="SR5 Career table family route",
+                ),
+                mock.call(
+                    "sr5-career-action-playtime",
+                    timeout=90,
+                    backward_scrolls=0,
+                    forward_scrolls=24,
+                    scroll_distance_ratio=0.18,
+                    evidence_prefix="sr5-playtime-route",
+                    surface_name="SR5 playtime typed route",
+                ),
+            ],
+            device.tap_exact_resource_id_bidirectional.call_args_list,
+        )
+        self.assertEqual(
+            [
+                mock.call(device, "sr5-career/table", timeout=90),
+                mock.call(device, "sr5-career/playtime", timeout=120),
+            ],
+            route.call_args_list,
+        )
+        device.wait.assert_not_called()
+
     def test_driver_is_a_separate_nonrelease_physical_journey(self) -> None:
         source = DRIVER.read_text(encoding="utf-8")
         ast.parse(source)
