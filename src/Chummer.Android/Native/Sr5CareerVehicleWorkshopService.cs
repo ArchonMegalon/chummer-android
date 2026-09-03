@@ -446,6 +446,9 @@ public sealed class Sr5CareerVehicleWorkshopService(
                 ? selected with { InstanceId = new CharacterVehicleModificationInstanceId(Guid.NewGuid()) }
                 : selected)
             .ToArray();
+        CharacterVehicleWeaponMountSelection[] weaponMounts = (selection.WeaponMounts ?? [])
+            .Select(mount => RebindWeaponMount(preparation, chassis, mount))
+            .ToArray();
         return selection with
         {
             ChassisSourceId = chassis.SourceId,
@@ -457,9 +460,34 @@ public sealed class Sr5CareerVehicleWorkshopService(
                 ? chassis.GmAuthorityDigest
                 : string.Empty,
             Modifications = modifications,
-            // Weapon-mount composition remains outside this first phone slice. Core
-            // authority is present, but Android never fabricates its required four IDs.
-            WeaponMounts = []
+            WeaponMounts = weaponMounts
+        };
+    }
+
+    private static CharacterVehicleWeaponMountSelection RebindWeaponMount(
+        CharacterVehicleWorkshopPreparation preparation,
+        CharacterVehicleWorkshopChassisEntry chassis,
+        CharacterVehicleWeaponMountSelection mount)
+    {
+        CharacterVehicleWeaponMountComponentSelection[] components = (mount.Components ?? [])
+            .Where(selected => preparation.WeaponMountComponents.Any(candidate =>
+                candidate.SourceId == selected.SourceId
+                && candidate.ProjectionStatus == CharacterVehicleWorkshopProjectionStatus.Exact
+                && (candidate.AllowedChassis.Count == 0
+                    || candidate.AllowedChassis.Contains(chassis.SourceId))))
+            .Select(selected => selected.InstanceId.Value == Guid.Empty
+                ? selected with
+                {
+                    InstanceId = new CharacterVehicleWeaponMountComponentInstanceId(Guid.NewGuid())
+                }
+                : selected)
+            .ToArray();
+        return mount with
+        {
+            InstanceId = mount.InstanceId.Value == Guid.Empty
+                ? new CharacterVehicleWeaponMountInstanceId(Guid.NewGuid())
+                : mount.InstanceId,
+            Components = components
         };
     }
 

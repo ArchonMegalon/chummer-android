@@ -950,7 +950,6 @@ Vorschau: {3}…</value></data>
   <data name="Chassis" xml:space="preserve"><value>Chassis</value></data>
   <data name="Choose chassis" xml:space="preserve"><value>Chassis auswählen</value></data>
   <data name="Choose compatible modifications" xml:space="preserve"><value>Kompatible Modifikationen auswählen</value></data>
-  <data name="Choose one exact source chassis, add compatible modifications, review Core's cost and legality, then confirm one atomic saved purchase." xml:space="preserve"><value>Wähle ein exaktes Quellen-Chassis und kompatible Modifikationen, prüfe Kosten und Legalität aus dem Core und bestätige dann einen atomar gespeicherten Kauf.</value></data>
   <data name="Choose one exact vehicle or drone" xml:space="preserve"><value>Ein exaktes Fahrzeug oder eine exakte Drohne auswählen</value></data>
   <data name="Choose vehicle or drone chassis" xml:space="preserve"><value>Fahrzeug- oder Drohnen-Chassis auswählen</value></data>
   <data name="Confirm exact vehicle purchase" xml:space="preserve"><value>Exakten Fahrzeugkauf bestätigen</value></data>
@@ -958,7 +957,6 @@ Vorschau: {3}…</value></data>
   <data name="Custom vehicle name" xml:space="preserve"><value>Eigener Fahrzeugname</value></data>
   <data name="Cyberware purchase, custom-drug recipe, and vehicle or drone workshop are typed end to end in this build." xml:space="preserve"><value>Cyberware-Kauf, Eigendesignerdrogen-Rezept und Fahrzeug- oder Drohnenwerkstatt sind in diesem Build durchgängig typisiert.</value></data>
   <data name="Drone" xml:space="preserve"><value>Drohne</value></data>
-  <data name="Exact chassis → modifications → Core quote → durable purchase receipt" xml:space="preserve"><value>Exaktes Chassis → Modifikationen → Core-Angebot → dauerhafter Kaufbeleg</value></data>
   <data name="Expense receipt" xml:space="preserve"><value>Ausgabenbeleg</value></data>
   <data name="Forbidden price multiplier" xml:space="preserve"><value>Preisfaktor für Verboten</value></data>
   <data name="Lock exact workshop review" xml:space="preserve"><value>Exakte Werkstattprüfung sperren</value></data>
@@ -973,7 +971,6 @@ Vorschau: {3}…</value></data>
   <data name="Remove" xml:space="preserve"><value>Entfernen</value></data>
   <data name="Restricted price multiplier" xml:space="preserve"><value>Preisfaktor für Eingeschränkt</value></data>
   <data name="SR5 Career · Vehicle workshop" xml:space="preserve"><value>SR5-Karriere · Fahrzeugwerkstatt</value></data>
-  <data name="Save this digest-bound vehicle or drone, modifications, nuyen change, and expense receipt to the current clean Career revision?" xml:space="preserve"><value>Dieses Digest-gebundene Fahrzeug oder diese Drohne, die Modifikationen, Nuyen-Änderung und den Ausgabenbeleg in der aktuellen sauberen Karriere-Revision speichern?</value></data>
   <data name="Saved purchase receipt" xml:space="preserve"><value>Gespeicherter Kaufbeleg</value></data>
   <data name="Selected rating" xml:space="preserve"><value>Gewählte Stufe</value></data>
   <data name="Start another vehicle or drone" xml:space="preserve"><value>Weiteres Fahrzeug oder weitere Drohne beginnen</value></data>
@@ -983,7 +980,6 @@ Vorschau: {3}…</value></data>
   <data name="Vehicle and drone workshop" xml:space="preserve"><value>Fahrzeug- und Drohnenwerkstatt</value></data>
   <data name="Vehicle modifications" xml:space="preserve"><value>Fahrzeugmodifikationen</value></data>
   <data name="Vehicle or drone" xml:space="preserve"><value>Fahrzeug oder Drohne</value></data>
-  <data name="Weapon-mount composition is not part of this first phone slice; Android never guesses its required four component identities." xml:space="preserve"><value>Die Zusammenstellung von Waffenhalterungen ist nicht Teil dieses ersten Phone-Abschnitts; Android errät niemals die vier erforderlichen Komponentenidentitäten.</value></data>
   <data name="{0} modifications selected" xml:space="preserve"><value>{0} Modifikationen ausgewählt</value></data>
   <data name="{0} used · {1} remaining" xml:space="preserve"><value>{0} verwendet · {1} verbleibend</value></data>
   <data name="{0} · rating {1}–{2} · {3} {4}" xml:space="preserve"><value>{0} · Stufe {1}–{2} · {3} {4}</value></data>
@@ -993,10 +989,43 @@ Vorschau: {3}…</value></data>
   <data name="The phone workshop draft was restored for this exact runner and catalog revision." xml:space="preserve"><value>Der Phone-Werkstattentwurf wurde für diesen exakten Runner und diese Katalogrevision wiederhergestellt.</value></data>
   <data name="The runner or vehicle catalog changed. Invalid choices were removed and the old review was discarded." xml:space="preserve"><value>Der Runner oder Fahrzeugkatalog wurde geändert. Ungültige Auswahlen wurden entfernt und die alte Prüfung verworfen.</value></data>
   <data name="The exact Core workshop quote and stable identities are durably reviewed. Confirm separately." xml:space="preserve"><value>Das exakte Core-Werkstattangebot und die stabilen Identitäten sind dauerhaft geprüft. Bestätige separat.</value></data>
-  <data name="Core saved the vehicle or drone, modifications, nuyen change, and expense receipt atomically." xml:space="preserve"><value>Der Core hat Fahrzeug oder Drohne, Modifikationen, Nuyen-Änderung und Ausgabenbeleg atomar gespeichert.</value></data>
   <data name="Core recovery proved the interrupted vehicle purchase was already saved." xml:space="preserve"><value>Die Core-Wiederherstellung hat bewiesen, dass der unterbrochene Fahrzeugkauf bereits gespeichert war.</value></data>
   <data name="Core proved the vehicle purchase was not saved. Review the current quote before confirming again." xml:space="preserve"><value>Der Core hat bewiesen, dass der Fahrzeugkauf nicht gespeichert wurde. Prüfe das aktuelle Angebot vor der erneuten Bestätigung.</value></data>
   <data name="The receipt-bound vehicle purchase was undone in one saved revision." xml:space="preserve"><value>Der beleggebundene Fahrzeugkauf wurde in einer gespeicherten Revision rückgängig gemacht.</value></data>
   <data name="A new vehicle workshop draft is bound to the current saved runner revision." xml:space="preserve"><value>Ein neuer Fahrzeugwerkstattentwurf ist an die aktuelle gespeicherte Runner-Revision gebunden.</value></data>
   <data name="The vehicle purchase outcome is not provable from the current receipt and runner revision." xml:space="preserve"><value>Das Ergebnis des Fahrzeugkaufs ist mit dem aktuellen Beleg und der Runner-Revision nicht beweisbar.</value></data>
+  <data name="Choose one exact source chassis, compose modifications and weapon mounts, review Core's cost and legality, then confirm one atomic saved purchase." xml:space="preserve"><value>Wähle ein exaktes Quellenchassis, stelle Modifikationen und Waffenhalterungen zusammen, prüfe Kosten und Legalität aus Core und bestätige dann einen atomar gespeicherten Kauf.</value></data>
+  <data name="Weapon mounts" xml:space="preserve"><value>Waffenhalterungen</value></data>
+  <data name="Compose exact weapon mounts" xml:space="preserve"><value>Exakte Waffenhalterungen zusammenstellen</value></data>
+  <data name="{0} weapon mounts · {1} complete" xml:space="preserve"><value>{0} Waffenhalterungen · {1} vollständig</value></data>
+  <data name="Weapon-mount component" xml:space="preserve"><value>Waffenhalterungskomponente</value></data>
+  <data name="Weapon-mount instance" xml:space="preserve"><value>Waffenhalterungsinstanz</value></data>
+  <data name="Component instance" xml:space="preserve"><value>Komponenteninstanz</value></data>
+  <data name="Save this digest-bound vehicle or drone, modifications, weapon mounts, nuyen change, and expense receipt to the current clean Career revision?" xml:space="preserve"><value>Dieses digestgebundene Fahrzeug oder diese Drohne samt Modifikationen, Waffenhalterungen, Nuyen-Änderung und Ausgabenbeleg in der aktuellen sauberen Karriere-Revision speichern?</value></data>
+  <data name="Core saved the vehicle or drone, modifications, weapon mounts, nuyen change, and expense receipt atomically." xml:space="preserve"><value>Core hat Fahrzeug oder Drohne, Modifikationen, Waffenhalterungen, Nuyen-Änderung und Ausgabenbeleg atomar gespeichert.</value></data>
+  <data name="Compose weapon mounts" xml:space="preserve"><value>Waffenhalterungen zusammenstellen</value></data>
+  <data name="Each mount needs one exact Size, Visibility, Flexibility, and Control component. Core validates every dependency, conflict, slot, capacity, availability, legality, and price." xml:space="preserve"><value>Jede Halterung benötigt genau je eine Größen-, Sichtbarkeits-, Beweglichkeits- und Steuerungskomponente. Core prüft alle Abhängigkeiten, Konflikte, Plätze, Kapazitäten, Verfügbarkeiten, Legalitäten und Preise.</value></data>
+  <data name="Weapon mount {0}" xml:space="preserve"><value>Waffenhalterung {0}</value></data>
+  <data name="Choose four exact components" xml:space="preserve"><value>Vier exakte Komponenten wählen</value></data>
+  <data name="Remove weapon mount" xml:space="preserve"><value>Waffenhalterung entfernen</value></data>
+  <data name="Add weapon mount" xml:space="preserve"><value>Waffenhalterung hinzufügen</value></data>
+  <data name="Configure weapon mount" xml:space="preserve"><value>Waffenhalterung konfigurieren</value></data>
+  <data name="Configure exact mount components" xml:space="preserve"><value>Exakte Halterungskomponenten konfigurieren</value></data>
+  <data name="The weapon mount draft is no longer available." xml:space="preserve"><value>Der Entwurf der Waffenhalterung ist nicht mehr verfügbar.</value></data>
+  <data name="Choose {0} component" xml:space="preserve"><value>{0}-Komponente wählen</value></data>
+  <data name="Clear component" xml:space="preserve"><value>Komponente leeren</value></data>
+  <data name="Core composition check" xml:space="preserve"><value>Core-Zusammenstellungsprüfung</value></data>
+  <data name="Core accepted this complete mount inside the current vehicle quote." xml:space="preserve"><value>Core hat diese vollständige Halterung im aktuellen Fahrzeugangebot akzeptiert.</value></data>
+  <data name="Size" xml:space="preserve"><value>Größe</value></data>
+  <data name="Visibility" xml:space="preserve"><value>Sichtbarkeit</value></data>
+  <data name="Flexibility" xml:space="preserve"><value>Beweglichkeit</value></data>
+  <data name="Control" xml:space="preserve"><value>Steuerung</value></data>
+  <data name="Choose {0}" xml:space="preserve"><value>{0} wählen</value></data>
+  <data name="Choose exact {0} component" xml:space="preserve"><value>Exakte {0}-Komponente wählen</value></data>
+  <data name="{0} · slots {1} · capacity {2} · availability {3} · {4} · {5} {6}" xml:space="preserve"><value>{0} · Plätze {1} · Kapazität {2} · Verfügbarkeit {3} · {4} · {5} {6}</value></data>
+  <data name="Conflicts with another selected mount component" xml:space="preserve"><value>Steht im Konflikt mit einer anderen ausgewählten Halterungskomponente</value></data>
+  <data name="Requires: {0}" xml:space="preserve"><value>Benötigt: {0}</value></data>
+  <data name="Selected" xml:space="preserve"><value>Ausgewählt</value></data>
+  <data name="Choose component" xml:space="preserve"><value>Komponente wählen</value></data>
+  <data name="Exact chassis → modifications and weapon mounts → Core quote → durable purchase receipt" xml:space="preserve"><value>Exaktes Chassis → Modifikationen und Waffenhalterungen → Core-Angebot → dauerhafter Kaufbeleg</value></data>
 </root>

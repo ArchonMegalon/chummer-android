@@ -586,7 +586,7 @@ public sealed class BuildPage : NativePageBase
             automationId: "build-career-commerce"));
         card.Add(NativeTheme.NavigationRow(
             Sr5CareerFlowStrings.Text("Vehicle and drone workshop"),
-            Sr5CareerFlowStrings.Text("Exact chassis → modifications → Core quote → durable purchase receipt"),
+            Sr5CareerFlowStrings.Text("Exact chassis → modifications and weapon mounts → Core quote → durable purchase receipt"),
             () => Navigation.PushAsync(new Sr5CareerVehicleWorkshopPage(Coordinator)),
             automationId: "build-career-vehicle-workshop"));
         Border route = NativeTheme.Card(card);

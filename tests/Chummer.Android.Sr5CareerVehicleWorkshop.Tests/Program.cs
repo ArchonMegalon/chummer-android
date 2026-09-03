@@ -12,6 +12,16 @@ internal static class Program
         Guid.Parse("22222222-2222-4222-8222-222222222222"));
     private static readonly CharacterVehicleModificationSourceId ModId = new(
         Guid.Parse("33333333-3333-4333-8333-333333333333"));
+    private static readonly CharacterVehicleWeaponMountComponentSourceId SizeId = new(
+        Guid.Parse("44444444-4444-4444-8444-444444444444"));
+    private static readonly CharacterVehicleWeaponMountComponentSourceId VisibilityId = new(
+        Guid.Parse("55555555-5555-4555-8555-555555555555"));
+    private static readonly CharacterVehicleWeaponMountComponentSourceId FlexibilityId = new(
+        Guid.Parse("66666666-6666-4666-8666-666666666666"));
+    private static readonly CharacterVehicleWeaponMountComponentSourceId ControlId = new(
+        Guid.Parse("77777777-7777-4777-8777-777777777777"));
+    private static readonly CharacterVehicleWeaponMountComponentSourceId ConflictControlId = new(
+        Guid.Parse("88888888-8888-4888-8888-888888888888"));
 
     private static int Main()
     {
@@ -20,8 +30,10 @@ internal static class Program
             ReviewCommitRestartAndUndo();
             StableTypedIdentitiesSurviveDraftAndCatalogRebind();
             CoreOwnedLegalitySlotsAndProfilePriceRemainAuthoritative();
+            CoreOwnedWeaponMountCompositionRejectsHostileDrafts();
+            AppliedMountReceiptCanCloseAndReopenFreshWorkshop();
             UncertainOutcomeNeverReplays();
-            Console.WriteLine("SR5 Career vehicle workshop Android tests passed (4 hostile scenarios).");
+            Console.WriteLine("SR5 Career vehicle workshop Android tests passed (6 hostile scenarios).");
             return 0;
         }
         catch (Exception exception)
@@ -42,17 +54,33 @@ internal static class Program
         Sr5CareerVehicleWorkshopSnapshot initial = service.Load(WorkspaceId);
         CharacterVehicleWorkshopModificationSelection modification = new(
             ModId, new CharacterVehicleModificationInstanceId(Guid.NewGuid()), 2);
+        CharacterVehicleWeaponMountSelection mount = CompleteMount();
         Sr5CareerVehicleWorkshopSnapshot editing = service.UpdateSelection(
             WorkspaceId,
-            initial.Selection with { CustomName = "Road Ghost", Modifications = [modification] });
-        Assert(editing.Quote is { Exact: true, TotalCost: 15000m, SlotsUsed: 2 },
-            "Core quote is preserved by Android");
+            initial.Selection with
+            {
+                CustomName = "Road Ghost",
+                Modifications = [modification],
+                WeaponMounts = [mount]
+            });
+        Assert(editing.Quote is { Exact: true, TotalCost: 17000m, SlotsUsed: 4 }
+            && editing.Quote.Lines.Count(line => line.Kind == "weapon-mount-component") == 4,
+            "Core vehicle and four-component weapon-mount quote is preserved by Android");
         Sr5CareerVehicleWorkshopSnapshot reviewed = service.Review(WorkspaceId);
         Assert(reviewed.CanConfirm, "review is separate from mutation");
         Guid stableVehicle = reviewed.Selection.NewVehicleInstanceId.Value;
         Guid stableModification = reviewed.Selection.Modifications.Single().InstanceId.Value;
+        Guid stableMount = reviewed.Selection.WeaponMounts.Single().InstanceId.Value;
+        Guid[] stableComponents = reviewed.Selection.WeaponMounts.Single().Components
+            .Select(component => component.InstanceId.Value).ToArray();
         Assert(stableVehicle != Guid.Empty && stableModification != Guid.Empty
-            && stableVehicle != stableModification, "typed stable identities are distinct");
+            && stableMount != Guid.Empty && stableComponents.Length == 4
+            && stableComponents.Distinct().Count() == 4
+            && new[] { stableVehicle, stableModification, stableMount }
+                .Concat(stableComponents).Distinct().Count() == 7,
+            "vehicle, modification, mount, and component typed stable identities are distinct");
+        Assert(reviewed.Checkpoint!.Command!.Selection.WeaponMounts.Single().InstanceId.Value
+            == stableMount, "review command binds the exact mount identity");
 
         Sr5CareerVehicleWorkshopSnapshot applied = service.Confirm(WorkspaceId);
         Assert(applied.HasAppliedReceipt && workspaces.Revision == 8 && authority.CommitCalls == 1,
@@ -77,23 +105,36 @@ internal static class Program
         Sr5CareerVehicleWorkshopService service = new(authority, source, workspaces, checkpoints);
         CharacterVehicleWorkshopSelection baseSelection = service.Load(WorkspaceId).Selection;
         CharacterVehicleModificationInstanceId instance = new(Guid.NewGuid());
+        CharacterVehicleWeaponMountSelection mount = CompleteMount();
         Sr5CareerVehicleWorkshopSnapshot saved = service.UpdateSelection(WorkspaceId,
             baseSelection with
             {
                 ChassisSourceId = DroneId,
-                Modifications = [new(ModId, instance, 1)]
+                Modifications = [new(ModId, instance, 1)],
+                WeaponMounts = [mount]
             });
         Assert(saved.Selection.NewVehicleInstanceId == baseSelection.NewVehicleInstanceId
-            && saved.Selection.Modifications.Single().InstanceId == instance,
-            "draft preserves typed instance identities");
+            && saved.Selection.Modifications.Single().InstanceId == instance
+            && saved.Selection.WeaponMounts.Single().InstanceId == mount.InstanceId
+            && saved.Selection.WeaponMounts.Single().Components
+                .Select(component => component.InstanceId)
+                .SequenceEqual(mount.Components.Select(component => component.InstanceId)),
+            "draft preserves vehicle, modification, mount, and component typed identities");
 
-        source.Catalog = Rehashed(catalog with { Modifications = [] });
+        source.Catalog = Rehashed(catalog with
+        {
+            Modifications = [],
+            WeaponMountComponents = catalog.WeaponMountComponents
+                .Where(component => component.SourceId != ControlId).ToArray()
+        });
         workspaces.ExternalReplace(CharacterXml().Replace("100000", "99999", StringComparison.Ordinal));
         Sr5CareerVehicleWorkshopSnapshot rebound = service.Load(WorkspaceId);
         Assert(rebound.Selection.NewVehicleInstanceId == baseSelection.NewVehicleInstanceId
             && rebound.Selection.Modifications.Count == 0
+            && rebound.Selection.WeaponMounts.Single().InstanceId == mount.InstanceId
+            && rebound.Selection.WeaponMounts.Single().Components.Count == 3
             && !rebound.CanConfirm,
-            "catalog drift removes unavailable sources and invalidates review without changing vehicle identity");
+            "catalog drift removes unavailable modification/component sources and invalidates review without changing stable parent identities");
     }
 
     private static void CoreOwnedLegalitySlotsAndProfilePriceRemainAuthoritative()
@@ -145,6 +186,112 @@ internal static class Program
             "unchanged pre-CAS bytes recover as reviewed without replay");
     }
 
+    private static void CoreOwnedWeaponMountCompositionRejectsHostileDrafts()
+    {
+        CharacterVehicleWorkshopCatalog catalog = Catalog();
+        FakeAuthority authority = new();
+        Sr5CareerVehicleWorkshopService service = new(
+            authority, new FakeSourceData(catalog),
+            new FakeWorkspaceStore(CharacterXml(), 30), new FakeCheckpointStore());
+        CharacterVehicleWorkshopSelection initial = service.Load(WorkspaceId).Selection;
+        CharacterVehicleWeaponMountSelection complete = CompleteMount();
+
+        Sr5CareerVehicleWorkshopSnapshot incomplete = service.UpdateSelection(
+            WorkspaceId,
+            initial with
+            {
+                WeaponMounts =
+                [
+                    complete with
+                    {
+                        Components = complete.Components
+                            .Where(component => component.SourceId != ControlId).ToArray()
+                    }
+                ]
+            });
+        Assert(incomplete.Quote is { Exact: false }
+            && incomplete.Quote.Blockers.Contains(
+                "A weapon mount requires one exact Size, Visibility, Flexibility, and Control component."),
+            "Core blocks an incomplete four-kind mount");
+        ExpectInvalid(() => service.Review(WorkspaceId),
+            "an incomplete weapon mount cannot cross review");
+
+        CharacterVehicleWeaponMountComponentSelection visibility = complete.Components.Single(
+            component => component.SourceId == VisibilityId);
+        CharacterVehicleWeaponMountComponentSelection control = complete.Components.Single(
+            component => component.SourceId == ControlId);
+        Sr5CareerVehicleWorkshopSnapshot forbidden = service.UpdateSelection(
+            WorkspaceId,
+            initial with
+            {
+                WeaponMounts =
+                [
+                    complete with
+                    {
+                        Components = complete.Components
+                            .Where(component => component.SourceId != ControlId)
+                            .Append(new CharacterVehicleWeaponMountComponentSelection(
+                                ConflictControlId, control.InstanceId))
+                            .ToArray()
+                    }
+                ]
+            });
+        Assert(forbidden.Quote is { Exact: false }
+            && forbidden.Quote.Blockers.Contains(
+                "The weapon-mount composition contains a forbidden component."),
+            "Core blocks a source-declared component conflict");
+
+        Sr5CareerVehicleWorkshopSnapshot duplicateIdentity = service.UpdateSelection(
+            WorkspaceId,
+            initial with
+            {
+                WeaponMounts =
+                [
+                    complete with
+                    {
+                        Components = complete.Components.Select(component =>
+                            component.SourceId == ControlId
+                                ? component with { InstanceId = visibility.InstanceId }
+                                : component).ToArray()
+                    }
+                ]
+            });
+        Assert(duplicateIdentity.Quote is { Exact: false }
+            && duplicateIdentity.Quote.Blockers.Contains(CharacterVehicleWorkshopBlockers.IdentityInvalid),
+            "Core blocks repeated component instance identity");
+        Assert(authority.CommitCalls == 0,
+            "no hostile mount draft reaches mutation");
+    }
+
+    private static void AppliedMountReceiptCanCloseAndReopenFreshWorkshop()
+    {
+        CharacterVehicleWorkshopCatalog catalog = Catalog();
+        FakeAuthority authority = new();
+        FakeWorkspaceStore workspaces = new(CharacterXml(), 40);
+        FakeCheckpointStore checkpoints = new();
+        Sr5CareerVehicleWorkshopService service = new(
+            authority, new FakeSourceData(catalog), workspaces, checkpoints);
+        CharacterVehicleWorkshopSelection initial = service.Load(WorkspaceId).Selection;
+        CharacterVehicleWeaponMountSelection mount = CompleteMount();
+        Sr5CareerVehicleWorkshopSnapshot editing = service.UpdateSelection(
+            WorkspaceId, initial with { WeaponMounts = [mount] });
+        CharacterVehicleInstanceId purchasedVehicle = editing.Selection.NewVehicleInstanceId;
+        _ = service.Review(WorkspaceId);
+        Sr5CareerVehicleWorkshopSnapshot applied = service.Confirm(WorkspaceId);
+        Assert(applied.HasAppliedReceipt && applied.Checkpoint!.Receipt!.UndoReady,
+            "mount purchase produces one verified undo-ready receipt");
+
+        Sr5CareerVehicleWorkshopService restarted = new(
+            authority, new FakeSourceData(catalog), workspaces, checkpoints);
+        Sr5CareerVehicleWorkshopSnapshot reopened = restarted.Reopen(WorkspaceId);
+        Assert(reopened.Notice == Sr5CareerVehicleWorkshopNotices.Reopened
+            && reopened.Checkpoint is { Phase: Sr5CareerVehicleWorkshopPhase.Editing }
+            && reopened.Selection.NewVehicleInstanceId != purchasedVehicle
+            && reopened.Selection.WeaponMounts.Count == 0
+            && workspaces.Revision == 41,
+            "closing the recovered receipt starts a fresh workshop without another character mutation");
+    }
+
     private static CharacterVehicleWorkshopCatalog Catalog()
     {
         CharacterVehicleWorkshopSourceBinding binding = new(
@@ -162,7 +309,18 @@ internal static class Program
             [new CharacterVehicleWorkshopModificationEntry(
                 ModId, "Armor", "Protection", 1, 3, 1000m, 2000m, 0, 1, 0, 1,
                 legal, "R5", "123", [], CharacterVehicleWorkshopProjectionStatus.Exact, string.Empty)],
-            [],
+            [
+                MountComponent(SizeId, CharacterVehicleWeaponMountComponentKind.Size,
+                    "Standard mount", 1000m, 2, 1, legal),
+                MountComponent(VisibilityId, CharacterVehicleWeaponMountComponentKind.Visibility,
+                    "Internal", 200m, 0, 0, legal),
+                MountComponent(FlexibilityId, CharacterVehicleWeaponMountComponentKind.Flexibility,
+                    "Fixed", 500m, 0, 0, legal, required: [ControlId]),
+                MountComponent(ControlId, CharacterVehicleWeaponMountComponentKind.Control,
+                    "Manual", 300m, 0, 0, legal),
+                MountComponent(ConflictControlId, CharacterVehicleWeaponMountComponentKind.Control,
+                    "Remote only", 600m, 0, 0, legal, forbidden: [VisibilityId])
+            ],
             string.Empty);
         return Rehashed(unsigned);
     }
@@ -181,6 +339,30 @@ internal static class Program
             4, 3, 2, 2, 100, 80, 3, 10, 4, 8, 3, slots, slots,
             cost, availability, "R5", "100", string.Empty,
             CharacterVehicleWorkshopProjectionStatus.Exact, string.Empty, [], []);
+
+    private static CharacterVehicleWeaponMountComponentEntry MountComponent(
+        CharacterVehicleWeaponMountComponentSourceId id,
+        CharacterVehicleWeaponMountComponentKind kind,
+        string name,
+        decimal cost,
+        int slots,
+        int capacity,
+        CharacterVehicleWorkshopAvailability availability,
+        IReadOnlyList<CharacterVehicleWeaponMountComponentSourceId>? required = null,
+        IReadOnlyList<CharacterVehicleWeaponMountComponentSourceId>? forbidden = null)
+        => new(id, kind, name, cost, slots, capacity, availability, "R5", "162", [],
+            required ?? [], forbidden ?? [], CharacterVehicleWorkshopProjectionStatus.Exact,
+            string.Empty);
+
+    private static CharacterVehicleWeaponMountSelection CompleteMount()
+        => new(
+            new CharacterVehicleWeaponMountInstanceId(Guid.NewGuid()),
+            [
+                new(SizeId, new CharacterVehicleWeaponMountComponentInstanceId(Guid.NewGuid())),
+                new(VisibilityId, new CharacterVehicleWeaponMountComponentInstanceId(Guid.NewGuid())),
+                new(FlexibilityId, new CharacterVehicleWeaponMountComponentInstanceId(Guid.NewGuid())),
+                new(ControlId, new CharacterVehicleWeaponMountComponentInstanceId(Guid.NewGuid()))
+            ]);
 
     private static string CharacterXml()
         => "<character><created>True</created><nuyen>100000</nuyen><vehicles></vehicles><expenses></expenses></character>";

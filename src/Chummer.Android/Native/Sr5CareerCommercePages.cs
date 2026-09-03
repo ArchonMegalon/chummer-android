@@ -62,7 +62,7 @@ public sealed class Sr5CareerCommerceHubPage : NativePageBase
         Sr5CareerVehicleWorkshopSnapshot workshop = Coordinator.LoadCareerVehicleWorkshop();
         _body.Add(NativeTheme.NavigationRow(
             Text("Vehicle and drone workshop"),
-            Text("Exact chassis → modifications → Core quote → durable purchase receipt"),
+            Text("Exact chassis → modifications and weapon mounts → Core quote → durable purchase receipt"),
             () => Navigation.PushAsync(new Sr5CareerVehicleWorkshopPage(Coordinator)),
             enabled: workshop.IsReady,
             automationId: "sr5-career-vehicle-workshop"));

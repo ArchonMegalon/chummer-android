@@ -26,7 +26,7 @@ public sealed class Sr5CareerVehicleWorkshopPage : NativePageBase
         _body.Add(NativeTheme.Eyebrow(Text("SR5 Career · Vehicle workshop")));
         _body.Add(NativeTheme.Title(Text("Build a vehicle or drone")));
         _body.Add(NativeTheme.Body(
-            Text("Choose one exact source chassis, add compatible modifications, review Core's cost and legality, then confirm one atomic saved purchase."),
+            Text("Choose one exact source chassis, compose modifications and weapon mounts, review Core's cost and legality, then confirm one atomic saved purchase."),
             NativeTheme.Muted));
 
         Sr5CareerVehicleWorkshopSnapshot snapshot = Coordinator.LoadCareerVehicleWorkshop();
@@ -115,9 +115,19 @@ public sealed class Sr5CareerVehicleWorkshopPage : NativePageBase
             () => Navigation.PushAsync(new Sr5CareerVehicleModificationPage(Coordinator)),
             canEdit && chassis is not null,
             "career-vehicle-workshop-modifications-route"));
-        _body.Add(NativeTheme.Body(
-            Text("Weapon-mount composition is not part of this first phone slice; Android never guesses its required four component identities."),
-            NativeTheme.Muted));
+        int completeMounts = snapshot.Selection.WeaponMounts.Count(mount =>
+            HasExactFourKinds(snapshot.Preparation!, mount));
+        _body.Add(NativeTheme.NavigationRow(
+            Text("Weapon mounts"),
+            snapshot.Selection.WeaponMounts.Count == 0
+                ? Text("Compose exact weapon mounts")
+                : Format("{0} weapon mounts · {1} complete",
+                    snapshot.Selection.WeaponMounts.Count, completeMounts),
+            () => Navigation.PushAsync(new Sr5CareerVehicleWeaponMountsPage(Coordinator)),
+            canEdit && chassis is not null
+                && snapshot.Preparation!.WeaponMountComponents.Any(candidate =>
+                    candidate.ProjectionStatus == CharacterVehicleWorkshopProjectionStatus.Exact),
+            "career-vehicle-workshop-weapon-mounts-route"));
 
         if (!canEdit)
             return;
@@ -159,6 +169,14 @@ public sealed class Sr5CareerVehicleWorkshopPage : NativePageBase
         card.Add(NativeTheme.Metric(Text("Modification capacity"),
             Format("{0} used · {1} remaining", quote.CapacityUsed, quote.CapacityRemaining)));
         card.Add(NativeTheme.Metric(Text("Quote"), ShortDigest(quote.QuoteDigest)));
+        foreach (CharacterVehicleWorkshopQuoteLine line in quote.Lines
+                     .Where(candidate => candidate.Kind == "weapon-mount-component"))
+        {
+            card.Add(NativeTheme.Metric(
+                Text("Weapon-mount component"),
+                Format("{0} · {1} · {2}", line.Name, Nuyen(line.Cost),
+                    Legality(line.Availability.Legality))));
+        }
         Border border = NativeTheme.Card(card);
         border.AutomationId = "career-vehicle-workshop-quote";
         _body.Add(border);
@@ -187,6 +205,18 @@ public sealed class Sr5CareerVehicleWorkshopPage : NativePageBase
         diff.Add(NativeTheme.Metric(Text("Expense receipt"), command.NewExpenseId.ToString("D")));
         diff.Add(NativeTheme.Metric(Text("Nuyen change"), Nuyen(snapshot.Quote!.NuyenDelta)));
         diff.Add(NativeTheme.Metric(Text("Quote"), ShortDigest(command.ExpectedQuoteDigest)));
+        diff.Add(NativeTheme.Metric(Text("Weapon mounts"),
+            command.Selection.WeaponMounts.Count.ToString(CultureInfo.InvariantCulture)));
+        foreach (CharacterVehicleWeaponMountSelection mount in command.Selection.WeaponMounts)
+        {
+            diff.Add(NativeTheme.Metric(Text("Weapon-mount instance"),
+                mount.InstanceId.Value.ToString("D")));
+            foreach (CharacterVehicleWeaponMountComponentSelection component in mount.Components)
+            {
+                diff.Add(NativeTheme.Metric(Text("Component instance"),
+                    component.InstanceId.Value.ToString("D")));
+            }
+        }
         _body.Add(NativeTheme.Card(diff));
 
         Button confirm = NativeTheme.PrimaryButton(Text("Confirm and save purchase"));
@@ -195,7 +225,7 @@ public sealed class Sr5CareerVehicleWorkshopPage : NativePageBase
         {
             bool accepted = await DisplayAlertAsync(
                 Text("Confirm exact vehicle purchase"),
-                Text("Save this digest-bound vehicle or drone, modifications, nuyen change, and expense receipt to the current clean Career revision?"),
+                Text("Save this digest-bound vehicle or drone, modifications, weapon mounts, nuyen change, and expense receipt to the current clean Career revision?"),
                 Text("Confirm"), Text("Keep reviewing"));
             if (!accepted)
                 return;
@@ -248,7 +278,7 @@ public sealed class Sr5CareerVehicleWorkshopPage : NativePageBase
             Sr5CareerVehicleWorkshopNotices.ReviewReady =>
                 Text("The exact Core workshop quote and stable identities are durably reviewed. Confirm separately."),
             Sr5CareerVehicleWorkshopNotices.CommitApplied =>
-                Text("Core saved the vehicle or drone, modifications, nuyen change, and expense receipt atomically."),
+                Text("Core saved the vehicle or drone, modifications, weapon mounts, nuyen change, and expense receipt atomically."),
             Sr5CareerVehicleWorkshopNotices.CommitRecovered =>
                 Text("Core recovery proved the interrupted vehicle purchase was already saved."),
             Sr5CareerVehicleWorkshopNotices.CommitNotApplied =>
@@ -283,6 +313,17 @@ public sealed class Sr5CareerVehicleWorkshopPage : NativePageBase
             CharacterVehicleWorkshopLegality.Forbidden => Text("Forbidden"),
             _ => Text("Legal")
         };
+
+    private static bool HasExactFourKinds(
+        CharacterVehicleWorkshopPreparation preparation,
+        CharacterVehicleWeaponMountSelection mount)
+        => mount.Components.Count == 4
+           && mount.Components
+               .Select(component => preparation.WeaponMountComponents.SingleOrDefault(candidate =>
+                   candidate.SourceId == component.SourceId)?.Kind)
+               .Where(kind => kind is not null)
+               .Distinct()
+               .Count() == 4;
 }
 
 public sealed class Sr5CareerVehicleChassisPage : NativePageBase
@@ -445,4 +486,331 @@ public sealed class Sr5CareerVehicleModificationPage : NativePageBase
         });
         return Task.CompletedTask;
     }
+}
+
+public sealed class Sr5CareerVehicleWeaponMountsPage : NativePageBase
+{
+    private readonly VerticalStackLayout _body = new()
+    {
+        Padding = new Thickness(20, 18, 20, 40),
+        Spacing = 12
+    };
+
+    public Sr5CareerVehicleWeaponMountsPage(RunnerSessionCoordinator coordinator) : base(coordinator)
+    {
+        Title = Text("Weapon mounts");
+        AutomationId = "sr5-career-vehicle-weapon-mounts-page";
+        Content = new ScrollView { Content = _body };
+    }
+
+    protected override void Refresh()
+    {
+        _body.Clear();
+        _body.Add(NativeTheme.Title(Text("Compose weapon mounts")));
+        _body.Add(NativeTheme.Body(
+            Text("Each mount needs one exact Size, Visibility, Flexibility, and Control component. Core validates every dependency, conflict, slot, capacity, availability, legality, and price."),
+            NativeTheme.Muted));
+        Sr5CareerVehicleWorkshopSnapshot snapshot = Coordinator.LoadCareerVehicleWorkshop();
+        if (!snapshot.IsReady || snapshot.Preparation is null)
+            return;
+
+        int ordinal = 0;
+        foreach (CharacterVehicleWeaponMountSelection mount in snapshot.Selection.WeaponMounts)
+        {
+            ordinal++;
+            string[] names = mount.Components.Select(component =>
+                    snapshot.Preparation.WeaponMountComponents.SingleOrDefault(candidate =>
+                        candidate.SourceId == component.SourceId)?.Name ?? Text("Unknown"))
+                .ToArray();
+            VerticalStackLayout card = new() { Spacing = 8 };
+            card.Add(NativeTheme.NavigationRow(
+                Format("Weapon mount {0}", ordinal),
+                names.Length == 0 ? Text("Choose four exact components") : string.Join(" · ", names),
+                () => Navigation.PushAsync(new Sr5CareerVehicleWeaponMountPage(
+                    Coordinator, mount.InstanceId)),
+                true,
+                $"career-vehicle-weapon-mount-{mount.InstanceId.Value:N}"));
+            Button remove = NativeTheme.SecondaryButton(Text("Remove weapon mount"));
+            remove.AutomationId = $"career-vehicle-weapon-mount-remove-{mount.InstanceId.Value:N}";
+            remove.Clicked += async (_, _) => await RunAsync(() =>
+            {
+                Coordinator.UpdateCareerVehicleWorkshopSelection(snapshot.Selection with
+                {
+                    WeaponMounts = snapshot.Selection.WeaponMounts
+                        .Where(candidate => candidate.InstanceId != mount.InstanceId)
+                        .ToArray()
+                });
+                return Task.CompletedTask;
+            });
+            card.Add(remove);
+            _body.Add(NativeTheme.Card(card));
+        }
+
+        Button add = NativeTheme.PrimaryButton(Text("Add weapon mount"));
+        add.AutomationId = "career-vehicle-weapon-mount-add";
+        add.IsEnabled = snapshot.Preparation.WeaponMountComponents.Any(candidate =>
+            candidate.ProjectionStatus == CharacterVehicleWorkshopProjectionStatus.Exact);
+        add.Clicked += async (_, _) => await RunAsync(async () =>
+        {
+            CharacterVehicleWeaponMountSelection mount = new(
+                new CharacterVehicleWeaponMountInstanceId(Guid.NewGuid()), []);
+            Coordinator.UpdateCareerVehicleWorkshopSelection(snapshot.Selection with
+            {
+                WeaponMounts = snapshot.Selection.WeaponMounts.Append(mount).ToArray()
+            });
+            await Navigation.PushAsync(new Sr5CareerVehicleWeaponMountPage(
+                Coordinator, mount.InstanceId));
+        });
+        _body.Add(add);
+    }
+}
+
+public sealed class Sr5CareerVehicleWeaponMountPage : NativePageBase
+{
+    private static readonly CharacterVehicleWeaponMountComponentKind[] Kinds =
+    [
+        CharacterVehicleWeaponMountComponentKind.Size,
+        CharacterVehicleWeaponMountComponentKind.Visibility,
+        CharacterVehicleWeaponMountComponentKind.Flexibility,
+        CharacterVehicleWeaponMountComponentKind.Control
+    ];
+
+    private readonly CharacterVehicleWeaponMountInstanceId _mountId;
+    private readonly VerticalStackLayout _body = new()
+    {
+        Padding = new Thickness(20, 18, 20, 40),
+        Spacing = 12
+    };
+
+    public Sr5CareerVehicleWeaponMountPage(
+        RunnerSessionCoordinator coordinator,
+        CharacterVehicleWeaponMountInstanceId mountId) : base(coordinator)
+    {
+        _mountId = mountId;
+        Title = Text("Configure weapon mount");
+        AutomationId = "sr5-career-vehicle-weapon-mount-page";
+        Content = new ScrollView { Content = _body };
+    }
+
+    protected override void Refresh()
+    {
+        _body.Clear();
+        _body.Add(NativeTheme.Title(Text("Configure exact mount components")));
+        Sr5CareerVehicleWorkshopSnapshot snapshot = Coordinator.LoadCareerVehicleWorkshop();
+        CharacterVehicleWeaponMountSelection? mount = snapshot.Selection.WeaponMounts
+            .FirstOrDefault(candidate => candidate.InstanceId == _mountId);
+        if (!snapshot.IsReady || snapshot.Preparation is null || mount is null)
+        {
+            _body.Add(NativeTheme.Body(
+                Text("The weapon mount draft is no longer available."), NativeTheme.Danger));
+            return;
+        }
+
+        _body.Add(NativeTheme.Metric(Text("Weapon-mount instance"),
+            mount.InstanceId.Value.ToString("D")));
+        foreach (CharacterVehicleWeaponMountComponentKind kind in Kinds)
+        {
+            CharacterVehicleWeaponMountComponentSelection? selected = mount.Components
+                .SingleOrDefault(component => snapshot.Preparation.WeaponMountComponents
+                    .SingleOrDefault(candidate => candidate.SourceId == component.SourceId)?.Kind == kind);
+            CharacterVehicleWeaponMountComponentEntry? entry = selected is null ? null
+                : snapshot.Preparation.WeaponMountComponents.SingleOrDefault(candidate =>
+                    candidate.SourceId == selected.SourceId);
+            VerticalStackLayout card = new() { Spacing = 7 };
+            card.Add(NativeTheme.NavigationRow(
+                Kind(kind),
+                entry is null
+                    ? Format("Choose {0} component", Kind(kind))
+                    : Format("{0} · {1} · {2}", entry.Name, Nuyen(entry.Cost),
+                        Legality(entry.Availability.Legality)),
+                () => Navigation.PushAsync(new Sr5CareerVehicleWeaponMountComponentPage(
+                    Coordinator, _mountId, kind)),
+                true,
+                $"career-vehicle-weapon-mount-kind-{kind.ToString().ToLowerInvariant()}"));
+            if (selected is not null)
+            {
+                Button clear = NativeTheme.SecondaryButton(Text("Clear component"));
+                clear.AutomationId =
+                    $"career-vehicle-weapon-mount-clear-{kind.ToString().ToLowerInvariant()}";
+                clear.Clicked += async (_, _) => await RunAsync(() =>
+                {
+                    UpdateMount(snapshot, mount with
+                    {
+                        Components = mount.Components
+                            .Where(component => component.InstanceId != selected.InstanceId)
+                            .ToArray()
+                    });
+                    return Task.CompletedTask;
+                });
+                card.Add(clear);
+            }
+            _body.Add(NativeTheme.Card(card));
+        }
+
+        CharacterVehicleWorkshopQuote quote = snapshot.Quote!;
+        VerticalStackLayout validation = new() { Spacing = 5 };
+        validation.Add(NativeTheme.Eyebrow(Text("Core composition check")));
+        if (quote.Exact)
+        {
+            validation.Add(NativeTheme.Body(
+                Text("Core accepted this complete mount inside the current vehicle quote."),
+                NativeTheme.Muted));
+        }
+        else
+        {
+            foreach (string blocker in quote.Blockers)
+                validation.Add(NativeTheme.Body(blocker, NativeTheme.Danger));
+        }
+        _body.Add(NativeTheme.Card(validation));
+    }
+
+    private void UpdateMount(
+        Sr5CareerVehicleWorkshopSnapshot snapshot,
+        CharacterVehicleWeaponMountSelection updated)
+    {
+        Coordinator.UpdateCareerVehicleWorkshopSelection(snapshot.Selection with
+        {
+            WeaponMounts = snapshot.Selection.WeaponMounts.Select(candidate =>
+                candidate.InstanceId == _mountId ? updated : candidate).ToArray()
+        });
+    }
+
+    internal static string Kind(CharacterVehicleWeaponMountComponentKind kind)
+        => kind switch
+        {
+            CharacterVehicleWeaponMountComponentKind.Size => Text("Size"),
+            CharacterVehicleWeaponMountComponentKind.Visibility => Text("Visibility"),
+            CharacterVehicleWeaponMountComponentKind.Flexibility => Text("Flexibility"),
+            _ => Text("Control")
+        };
+
+    private static string Nuyen(decimal value)
+        => string.Format(CultureInfo.CurrentCulture, "{0:N0} ¥", value);
+
+    private static string Legality(CharacterVehicleWorkshopLegality legality)
+        => legality switch
+        {
+            CharacterVehicleWorkshopLegality.Restricted => Text("Restricted"),
+            CharacterVehicleWorkshopLegality.Forbidden => Text("Forbidden"),
+            _ => Text("Legal")
+        };
+}
+
+public sealed class Sr5CareerVehicleWeaponMountComponentPage : NativePageBase
+{
+    private readonly CharacterVehicleWeaponMountInstanceId _mountId;
+    private readonly CharacterVehicleWeaponMountComponentKind _kind;
+    private readonly VerticalStackLayout _body = new()
+    {
+        Padding = new Thickness(20, 18, 20, 40),
+        Spacing = 12
+    };
+
+    public Sr5CareerVehicleWeaponMountComponentPage(
+        RunnerSessionCoordinator coordinator,
+        CharacterVehicleWeaponMountInstanceId mountId,
+        CharacterVehicleWeaponMountComponentKind kind) : base(coordinator)
+    {
+        _mountId = mountId;
+        _kind = kind;
+        Title = Format("Choose {0}", Sr5CareerVehicleWeaponMountPage.Kind(kind));
+        AutomationId = "sr5-career-vehicle-weapon-mount-component-page";
+        Content = new ScrollView { Content = _body };
+    }
+
+    protected override void Refresh()
+    {
+        _body.Clear();
+        string localizedKind = Sr5CareerVehicleWeaponMountPage.Kind(_kind);
+        _body.Add(NativeTheme.Title(Format("Choose exact {0} component", localizedKind)));
+        Sr5CareerVehicleWorkshopSnapshot snapshot = Coordinator.LoadCareerVehicleWorkshop();
+        CharacterVehicleWeaponMountSelection? mount = snapshot.Selection.WeaponMounts
+            .FirstOrDefault(candidate => candidate.InstanceId == _mountId);
+        CharacterVehicleWorkshopChassisEntry? chassis = snapshot.Preparation?.Chassis
+            .SingleOrDefault(candidate => candidate.SourceId == snapshot.Selection.ChassisSourceId);
+        if (!snapshot.IsReady || snapshot.Preparation is null || mount is null || chassis is null)
+            return;
+
+        CharacterVehicleWeaponMountComponentSelection? current = mount.Components
+            .FirstOrDefault(component => snapshot.Preparation.WeaponMountComponents
+                .SingleOrDefault(candidate => candidate.SourceId == component.SourceId)?.Kind == _kind);
+        CharacterVehicleWeaponMountComponentSourceId[] otherIds = mount.Components
+            .Where(component => current is null || component.InstanceId != current.InstanceId)
+            .Select(component => component.SourceId)
+            .ToArray();
+        foreach (CharacterVehicleWeaponMountComponentEntry entry in snapshot.Preparation
+                     .WeaponMountComponents
+                     .Where(candidate => candidate.Kind == _kind)
+                     .OrderBy(candidate => candidate.Name, StringComparer.CurrentCultureIgnoreCase))
+        {
+            bool exact = entry.ProjectionStatus == CharacterVehicleWorkshopProjectionStatus.Exact;
+            bool chassisCompatible = entry.AllowedChassis.Count == 0
+                || entry.AllowedChassis.Contains(chassis.SourceId);
+            bool directConflict = entry.ForbiddenComponents.Any(otherIds.Contains)
+                || snapshot.Preparation.WeaponMountComponents
+                    .Where(candidate => otherIds.Contains(candidate.SourceId))
+                    .Any(candidate => candidate.ForbiddenComponents.Contains(entry.SourceId));
+            string[] unmetRequired = entry.RequiredComponents
+                .Where(required => !otherIds.Contains(required))
+                .Select(required => snapshot.Preparation.WeaponMountComponents
+                    .SingleOrDefault(candidate => candidate.SourceId == required)?.Name
+                    ?? required.Value.ToString("D"))
+                .ToArray();
+            bool enabled = exact && chassisCompatible && !directConflict;
+            VerticalStackLayout card = new() { Spacing = 6 };
+            card.Add(NativeTheme.Title(entry.Name, 18));
+            card.Add(NativeTheme.Body(
+                Format("{0} · slots {1} · capacity {2} · availability {3} · {4} · {5} {6}",
+                    Nuyen(entry.Cost), entry.Slots, entry.Capacity, entry.Availability.Value,
+                    Legality(entry.Availability.Legality), entry.SourceBook, entry.Page),
+                NativeTheme.Muted));
+            if (!exact)
+                card.Add(NativeTheme.Body(entry.UnsupportedReason, NativeTheme.Danger));
+            else if (!chassisCompatible)
+                card.Add(NativeTheme.Body(Text("Not compatible with the selected chassis"), NativeTheme.Danger));
+            else if (directConflict)
+                card.Add(NativeTheme.Body(Text("Conflicts with another selected mount component"), NativeTheme.Danger));
+            if (unmetRequired.Length != 0)
+                card.Add(NativeTheme.Body(
+                    Format("Requires: {0}", string.Join(", ", unmetRequired)), NativeTheme.Muted));
+            Button choose = NativeTheme.SecondaryButton(
+                current?.SourceId == entry.SourceId ? Text("Selected") : Text("Choose component"));
+            choose.AutomationId = $"career-vehicle-weapon-mount-component-{entry.SourceId.Value:N}";
+            choose.IsEnabled = enabled && current?.SourceId != entry.SourceId;
+            choose.Clicked += async (_, _) => await RunAsync(async () =>
+            {
+                CharacterVehicleWeaponMountComponentSelection selected = new(
+                    entry.SourceId,
+                    current?.InstanceId
+                        ?? new CharacterVehicleWeaponMountComponentInstanceId(Guid.NewGuid()));
+                CharacterVehicleWeaponMountSelection updated = mount with
+                {
+                    Components = mount.Components
+                        .Where(component => current is null
+                            || component.InstanceId != current.InstanceId)
+                        .Append(selected)
+                        .ToArray()
+                };
+                Coordinator.UpdateCareerVehicleWorkshopSelection(snapshot.Selection with
+                {
+                    WeaponMounts = snapshot.Selection.WeaponMounts.Select(candidate =>
+                        candidate.InstanceId == _mountId ? updated : candidate).ToArray()
+                });
+                await Navigation.PopAsync();
+            });
+            card.Add(choose);
+            _body.Add(NativeTheme.Card(card));
+        }
+    }
+
+    private static string Nuyen(decimal value)
+        => string.Format(CultureInfo.CurrentCulture, "{0:N0} ¥", value);
+
+    private static string Legality(CharacterVehicleWorkshopLegality legality)
+        => legality switch
+        {
+            CharacterVehicleWorkshopLegality.Restricted => Text("Restricted"),
+            CharacterVehicleWorkshopLegality.Forbidden => Text("Forbidden"),
+            _ => Text("Legal")
+        };
 }
