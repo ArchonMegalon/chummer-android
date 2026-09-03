@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import argparse
 from datetime import datetime, timezone
-import hashlib
 import json
 import os
 from pathlib import Path
@@ -69,14 +68,9 @@ def execute(args: argparse.Namespace) -> dict[str, object]:
     apk_sha256 = shared.sha256(apk)
     runner_sha256 = shared.sha256(runner)
     device.install_verified(apk, apk_sha256, "--no-streaming", "-r")
-    remote_runner_path = f"/sdcard/Download/{runner.name}"
-    verified_remote = device.push_verified(
-        runner, remote_runner_path, runner_sha256
-    )
-    provider_index = device.index_download_for_documents_ui(
-        remote_runner_path,
+    provider_registration = device.publish_document_for_documents_ui(
+        runner,
         runner_sha256,
-        runner.stat().st_size,
     )
     android_root = Path(__file__).resolve().parents[1]
     proof_build_id = (
@@ -111,8 +105,8 @@ def execute(args: argparse.Namespace) -> dict[str, object]:
         "downtimeDriverSha256": shared.sha256(Path(downtime.__file__).resolve()),
         "downtimeFixtureSha256": shared.sha256(DEFAULT_FIXTURE),
         "runnerFixtureSha256": runner_sha256,
-        "verifiedRemoteRunnerSha256": verified_remote,
-        "documentsUiProviderIndex": provider_index,
+        "verifiedRemoteRunnerSha256": provider_registration["sha256"],
+        "documentsUiProviderRegistration": provider_registration,
         "authorityProofStages": journey,
         "journeys": {
             "exactCalendarEdit": "pass",

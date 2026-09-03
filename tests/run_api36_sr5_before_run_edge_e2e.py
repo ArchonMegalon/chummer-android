@@ -127,16 +127,9 @@ def main(argv: list[str] | None = None) -> int:
     device.require_transport_stability(expected_api_level="36")
     observation = require_hosted_device(device)
     device.install_verified(apk, apk_sha256, "--no-streaming", "-r")
-    remote_fixture_path = f"/sdcard/Download/{fixture.name}"
-    verified_remote_fixture_sha256 = device.push_verified(
+    provider_registration = device.publish_document_for_documents_ui(
         fixture,
-        remote_fixture_path,
         fixture_sha256,
-    )
-    provider_index = device.index_download_for_documents_ui(
-        remote_fixture_path,
-        fixture_sha256,
-        fixture.stat().st_size,
     )
     proof_build_id = (
         f"hosted-{os.environ['GITHUB_RUN_ID']}-"
@@ -170,8 +163,8 @@ def main(argv: list[str] | None = None) -> int:
         "apkSha256": apk_sha256,
         **{key: shared.sha256(path) for key, path in bound_sources.items()},
         "careerFixtureSha256": fixture_sha256,
-        "verifiedRemoteCareerFixtureSha256": verified_remote_fixture_sha256,
-        "documentsUiProviderIndex": provider_index,
+        "verifiedRemoteCareerFixtureSha256": provider_registration["sha256"],
+        "documentsUiProviderRegistration": provider_registration,
         "authorityProofStages": authority,
         "scope": authority["scope"],
         "publicationAuthorized": False,

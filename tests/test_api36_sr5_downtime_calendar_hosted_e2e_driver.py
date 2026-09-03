@@ -34,9 +34,12 @@ class Api36Sr5DowntimeCalendarHostedDriverTests(unittest.TestCase):
             'parser.add_argument("--workspace-root", type=Path)',
             'parser.add_argument("--runner", type=Path, default=DEFAULT_RUNNER)',
             'runner != DEFAULT_FIXTURE.parent / str(fixture["runnerFixture"])',
-            '"verifiedRemoteRunnerSha256": verified_remote',
+            'device.publish_document_for_documents_ui(',
+            '"verifiedRemoteRunnerSha256": provider_registration["sha256"]',
+            '"documentsUiProviderRegistration": provider_registration',
         ):
             self.assertIn(marker, source)
+        self.assertNotIn("device.push_verified(", source)
 
 
 if __name__ == "__main__":
