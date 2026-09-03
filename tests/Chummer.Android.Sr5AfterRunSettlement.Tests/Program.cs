@@ -36,6 +36,8 @@ internal static class AfterRunAuthorityHarness
                 SharedMutationOwnerBlocksCrossLaneWhileOutcomeUnknownAsync),
             (nameof(ExactAtomicResultPersistsCoreReceiptAsync),
                 ExactAtomicResultPersistsCoreReceiptAsync),
+            (nameof(OwnedAppliedRecoverySurvivesSettledCatalogRevisionAsync),
+                OwnedAppliedRecoverySurvivesSettledCatalogRevisionAsync),
             (nameof(RestartReplaysOnlyExactCommandAndRecoversReceiptAsync),
                 RestartReplaysOnlyExactCommandAndRecoversReceiptAsync),
             (nameof(ManualProposalPublishesToBothSeamsAndSurvivesRestart),
@@ -376,6 +378,73 @@ internal static class AfterRunAuthorityHarness
             "Wrong Core receipt was stored.");
         Require(string.IsNullOrWhiteSpace(ownerBackend.Payload),
             "Resolved mutation owner was not retired.");
+    }
+
+    private static async Task OwnedAppliedRecoverySurvivesSettledCatalogRevisionAsync()
+    {
+        Sr5AfterRunSettlementEditorState editor = Editor(Input());
+        Sr5AfterRunSettlementDraft draft = Draft(editor);
+        CharacterAfterRunSettlementReceipt receipt = Receipt(draft);
+        var presenter = new FakePresenter(Binding(41));
+        presenter.SettleHandler = command =>
+        {
+            presenter.Binding = Binding(42);
+            return SuccessResult(draft, receipt, command, replayed: false);
+        };
+        var owner = new TestOwner(OwnerId);
+        var checkpointBackend = new MemoryBackend();
+        var authority = new Sr5AfterRunSettlementLiveCheckpointAuthority(
+            owner,
+            editor,
+            () => presenter.Binding);
+        var store = new Sr5AfterRunSettlementCheckpointStore(
+            checkpointBackend,
+            authority,
+            new Sr5CareerMutationOwnerStore(new MemoryBackend()));
+        Require(store.TryCreate(
+            Sr5AfterRunSettlementCheckpoint.FromDraft(draft),
+            out Sr5AfterRunSettlementCheckpoint reviewed,
+            out string blocker), blocker);
+        Require(store.TryBeginApply(
+            Sr5AfterRunSettlementCheckpointCas.From(reviewed),
+            out Sr5AfterRunSettlementCheckpoint applying,
+            out blocker), blocker);
+        var coordinator = new Sr5AfterRunSettlementCoordinator(presenter, owner);
+        Sr5AfterRunSettlementApplyResult result = await coordinator.ApplyAsync(
+            draft,
+            applying,
+            store);
+        Require(store.TryRecordAuthoritativeResolution(
+            Sr5AfterRunSettlementCheckpointCas.From(applying),
+            result.Resolution,
+            out Sr5AfterRunSettlementCheckpoint applied,
+            out blocker), blocker);
+        Require(applied.Phase == Sr5CareerCheckpointPhase.Applied,
+            "Applied checkpoint was not durable before recovery routing.");
+        Require(store.TryReadOwnedRecovery(
+            out Sr5AfterRunSettlementCheckpoint recovered,
+            out blocker), blocker);
+        Require(recovered.Phase == Sr5CareerCheckpointPhase.Applied
+            && recovered.Version == applied.Version
+            && recovered.Draft.SemanticallyEquals(applied.Draft),
+            "The exact Applied checkpoint was not recoverable at successor revision.");
+
+        var foreignAuthority = new Sr5AfterRunSettlementLiveCheckpointAuthority(
+            new TestOwner(Guid.Parse("66666666-6666-6666-6666-666666666666")),
+            editor,
+            () => presenter.Binding);
+        var foreignStore = new Sr5AfterRunSettlementCheckpointStore(
+            checkpointBackend,
+            foreignAuthority,
+            new Sr5CareerMutationOwnerStore(new MemoryBackend()));
+        Require(!foreignStore.TryReadOwnedRecovery(out _, out blocker)
+            && blocker.Contains("replay-blocking", StringComparison.Ordinal),
+            "A foreign owner opened the durable Applied recovery checkpoint.");
+
+        presenter.Binding = Binding(43);
+        Require(!store.TryReadOwnedRecovery(out _, out blocker)
+            && blocker.Contains("replay-blocking", StringComparison.Ordinal),
+            "A later unrelated runner revision opened the stale Applied checkpoint.");
     }
 
     private static async Task RestartReplaysOnlyExactCommandAndRecoversReceiptAsync()

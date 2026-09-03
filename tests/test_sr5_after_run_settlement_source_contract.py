@@ -35,6 +35,10 @@ def test_phone_surface_has_every_governed_stage_and_two_entry_points() -> None:
     assert "Sr5AfterRunSettlementEntryGuard.TryValidate" in career
     assert 'automationId: "phone-table-after-run"' in table
     assert "Sr5AfterRunSettlementWizardPage" in table
+    for surface in (career, table, read("BuildPage.cs")):
+        assert "CreateEntryDestination(Coordinator, editor)" in surface
+        assert "editor.Status == Sr5AfterRunCatalogStatus.Missing" not in surface
+    assert "TryReadOwnedRecovery" in page
     assert "GenericQuickEdit" not in career + table
 
 
@@ -186,6 +190,27 @@ def test_shared_owner_cas_receipt_and_unknown_recovery_fail_closed() -> None:
     assert "CharacterAfterRunSettlementServiceIntegrity.TryComputeResultDigest" in coordinator
     assert "ReceiptMatchesDraft" in coordinator
     assert "Do not replay, clear, or claim success" in coordinator
+
+
+def test_entry_routing_prefers_only_exact_owned_recovery_over_manual_intake() -> None:
+    page = read("Sr5AfterRunSettlementWizardPage.cs")
+    store = read("Sr5AfterRunSettlementCheckpointStore.cs")
+    route = page.split("internal static Page CreateEntryDestination", 1)[1]
+    route = route.split("protected override void Refresh", 1)[0]
+    owned = store.split("internal bool TryReadOwnedRecovery", 1)[1]
+    owned = owned.split("public bool TryCreate", 1)[0]
+
+    assert route.index("TryReadOwnedRecovery") < route.index(
+        "Sr5AfterRunCatalogStatus.Missing"
+    )
+    assert "string.IsNullOrWhiteSpace(recoveryBlocker)" in route
+    assert "SupportsManualAfterRunProposalEntry" in route
+    assert "Sr5AfterRunManualProposalPage" in route
+    assert "Sr5AfterRunSettlementWizardPage" in route
+    assert "checkpoint.Phase == Sr5CareerCheckpointPhase.Reviewed" in owned
+    assert "_authority.OwnsReviewed(checkpoint)" in owned
+    assert "_authority.OwnsCurrentRunner(checkpoint)" in owned
+    assert "replay-blocking" in owned
 
 
 def test_default_runtime_composition_is_explicitly_unavailable() -> None:

@@ -106,13 +106,8 @@ public sealed class PhoneTablePage : NativePageBase
                     new RunnerSessionSr5AfterRunSettlementPresenter(Coordinator),
                     new PreferencesSr5CareerCheckpointOwnerAuthority());
                 Sr5AfterRunSettlementEditorState editor = await authority.PrepareAsync();
-                Page destination = editor.Status == Sr5AfterRunCatalogStatus.Missing
-                    && Coordinator.SupportsManualAfterRunProposalEntry
-                        ? new Sr5AfterRunManualProposalPage(
-                            Coordinator,
-                            editor.WorkspaceId,
-                            editor.WorkspaceRevision)
-                        : new Sr5AfterRunSettlementWizardPage(Coordinator, editor);
+                Page destination = Sr5AfterRunSettlementWizardPage
+                    .CreateEntryDestination(Coordinator, editor);
                 await Navigation.PushAsync(destination);
             },
             automationId: "phone-table-after-run");

@@ -264,13 +264,8 @@ public sealed class Sr5CareerWizardPage : NativePageBase
         }
 
         _afterRunEntryBlocker = null;
-        Page destination = editor.Status == Sr5AfterRunCatalogStatus.Missing
-            && Coordinator.SupportsManualAfterRunProposalEntry
-                ? new Sr5AfterRunManualProposalPage(
-                    Coordinator,
-                    editor.WorkspaceId,
-                    editor.WorkspaceRevision)
-                : new Sr5AfterRunSettlementWizardPage(Coordinator, editor);
+        Page destination = Sr5AfterRunSettlementWizardPage
+            .CreateEntryDestination(Coordinator, editor);
         await Navigation.PushAsync(destination);
     }
 
