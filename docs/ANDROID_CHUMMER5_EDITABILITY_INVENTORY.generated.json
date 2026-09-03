@@ -802,7 +802,7 @@
       {
         "path": ".github/workflows/api36-editing-e2e.yml",
         "exists": true,
-        "sha256": "0095dd22d544b030cd45f20f2a7dbc815be0bdde7bb3131066fe1e034205db54"
+        "sha256": "ee777958e0c14e5af11ee942ddd886648d77a25c83b10124b0e790490fa1bed2"
       },
       {
         "path": ".github/workflows/api36-two-consecutive-green.yml",
@@ -902,7 +902,7 @@
       {
         "path": "tests/test_api36_proof_environment_receipt.py",
         "exists": true,
-        "sha256": "f485dff764d2b310f81587b4294cdccaaa5def26dc0c4cc92b919fe57e2b72ff"
+        "sha256": "dc892877a81247d04e6dfe8e0b91958357a73669c4b2f25fab7cfabbdadd0eb0"
       },
       {
         "path": "tests/test_api36_two_green_eligibility.py",

@@ -35,6 +35,8 @@ jobs:
     name: Build x64 emulator and ARM64 hosted debug candidates
     runs-on: ubuntu-24.04
     timeout-minutes: 60
+    env:
+      DOTNET_MULTILEVEL_LOOKUP: "0"
     outputs:
       apk-artifact-id: ${{ steps.upload-apk.outputs.artifact-id }}
       apk-artifact-digest: ${{ steps.upload-apk.outputs.artifact-digest }}
@@ -207,8 +209,24 @@ jobs:
 
       - name: Install the governed .NET SDK
         uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        env:
+          DOTNET_INSTALL_DIR: ${{ runner.temp }}/chummer-api36-dotnet-10.0.110
         with:
           dotnet-version: 10.0.110
+
+      - name: Verify the isolated governed .NET SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -x "$DOTNET_ROOT/dotnet"
+          test "$(command -v dotnet)" = "$DOTNET_ROOT/dotnet"
+          mapfile -t installed_sdks < <(
+            find "$DOTNET_ROOT/sdk" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' \
+              | LC_ALL=C sort
+          )
+          test "${#installed_sdks[@]}" -eq 1
+          test "${installed_sdks[0]}" = "10.0.110"
+          test "$("$DOTNET_ROOT/dotnet" --version)" = "10.0.110"
 
       - name: Install the governed Java runtime
         uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
@@ -217,7 +235,7 @@ jobs:
           java-version: "17"
 
       - name: Restore the pinned MAUI Android workload
-        run: dotnet workload restore chummer-android/Chummer.Android.slnx
+        run: '"$DOTNET_ROOT/dotnet" workload restore chummer-android/Chummer.Android.slnx'
 
       - name: Verify clean Android source before local-compatibility restores
         shell: bash
@@ -390,6 +408,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     env:
+      DOTNET_MULTILEVEL_LOOKUP: "0"
       CHUMMER_E2E_PROFILE: phone
       CHUMMER_E2E_JOURNEY: ${{ matrix.journey }}
       CHUMMER_E2E_APK_ARTIFACT_ID: ${{ needs.build.outputs.apk-artifact-id }}
@@ -407,8 +426,24 @@ jobs:
 
       - name: Install the governed journey .NET SDK
         uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        env:
+          DOTNET_INSTALL_DIR: ${{ runner.temp }}/chummer-api36-dotnet-10.0.110
         with:
           dotnet-version: 10.0.110
+
+      - name: Verify the isolated governed journey .NET SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -x "$DOTNET_ROOT/dotnet"
+          test "$(command -v dotnet)" = "$DOTNET_ROOT/dotnet"
+          mapfile -t installed_sdks < <(
+            find "$DOTNET_ROOT/sdk" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' \
+              | LC_ALL=C sort
+          )
+          test "${#installed_sdks[@]}" -eq 1
+          test "${installed_sdks[0]}" = "10.0.110"
+          test "$("$DOTNET_ROOT/dotnet" --version)" = "10.0.110"
 
       - name: Install the governed journey Java runtime
         uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4

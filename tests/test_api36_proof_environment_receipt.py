@@ -693,6 +693,32 @@ class Api36ProofEnvironmentSourceContractTests(unittest.TestCase):
         )
         self.assertEqual(2, workflow.count('java-version: "17"'))
         self.assertEqual(2, workflow.count("dotnet-version: 10.0.110"))
+        self.assertEqual(
+            2,
+            workflow.count(
+                "DOTNET_INSTALL_DIR: ${{ runner.temp }}/chummer-api36-dotnet-10.0.110"
+            ),
+        )
+        self.assertEqual(2, workflow.count('DOTNET_MULTILEVEL_LOOKUP: "0"'))
+        self.assertEqual(
+            2,
+            workflow.count('test "$(command -v dotnet)" = "$DOTNET_ROOT/dotnet"'),
+        )
+        self.assertEqual(
+            2,
+            workflow.count('test "${installed_sdks[0]}" = "10.0.110"'),
+        )
+        self.assertEqual(
+            2,
+            workflow.count(
+                'test "$("$DOTNET_ROOT/dotnet" --version)" = "10.0.110"'
+            ),
+        )
+        self.assertIn(
+            'run: \'"$DOTNET_ROOT/dotnet" workload restore '
+            "chummer-android/Chummer.Android.slnx\'",
+            workflow,
+        )
         self.assertIn("build-environment-receipt.json", workflow)
         self.assertIn("--build-environment-receipt", workflow)
 
