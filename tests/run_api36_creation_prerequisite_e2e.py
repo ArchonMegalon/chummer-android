@@ -308,7 +308,11 @@ RESOURCES_SURFACE_MAX_CONSECUTIVE_EMPTY_READS = 3
 PROCESS_RESTART_RESOURCES_SCAN_ID = (
     "creation-resources-process-restart-persisted-authority"
 )
-PROCESS_RESTART_RESOURCES_MAX_CONSECUTIVE_EMPTY_READS = 5
+# Runs 33692970619 and 33695613418 both reached the exact restored Resources
+# surface before UIAutomator emitted six transient empty hierarchies. Permit
+# only that observed burst; a seventh empty read and the phase deadline remain
+# hard failures.
+PROCESS_RESTART_RESOURCES_MAX_CONSECUTIVE_EMPTY_READS = 6
 PROCESS_RESTART_PERSISTED_PREREQUISITE_SCAN_ID = (
     "process-restart-persisted-prerequisite-authority"
 )
