@@ -186,9 +186,11 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         expected_sparse_paths = (
             "Chummer.Desktop.Runtime",
             "Chummer.Presentation",
-            "Chummer.Campaign.Contracts",
-            "Chummer.Play.Contracts",
-            "Chummer.Run.Contracts",
+            "/Directory.Build.props",
+            "/Directory.Build.targets",
+            "/Chummer.Campaign.Contracts/**",
+            "/Chummer.Play.Contracts/**",
+            "/Chummer.Run.Contracts/**",
             "Chummer.Run.Api/Controllers/PublicLandingController.cs",
             "Chummer.Run.Api/Controllers/AndroidLinkedCampaignController.cs",
             "Chummer.Hub.Registry.Contracts",
@@ -213,6 +215,9 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         self.assertIn("sparse-checkout:", hub_checkout)
         self.assertIn("sparse-checkout-cone-mode: false", hub_checkout)
         self.assertNotIn("\n            Chummer.Run.Api\n", hub_checkout)
+        self.assertNotIn("/global.json", hub_checkout)
+        self.assertNotIn("/Directory.Packages.props", hub_checkout)
+        self.assertNotIn("/NuGet.config", hub_checkout)
         self.assertIn("fetch-depth: 1", hub_checkout)
 
     def test_hub_sparse_checkout_includes_only_exact_contract_test_api_sources(self) -> None:
@@ -233,6 +238,28 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         self.assertNotIn("/Chummer.Run.Api/Controllers/", api_sparse_paths)
         self.assertNotIn("/Chummer.Run.Api/", api_sparse_paths)
         self.assertNotIn("/Chummer.Run.Api", api_sparse_paths)
+
+        contract_sparse_paths = [
+            line.strip()
+            for line in hub_checkout.splitlines()
+            if line.strip().startswith(
+                (
+                    "/Chummer.Campaign.Contracts",
+                    "/Chummer.Play.Contracts",
+                    "/Chummer.Run.Contracts",
+                )
+            )
+        ]
+        self.assertEqual(
+            [
+                "/Chummer.Campaign.Contracts/**",
+                "/Chummer.Play.Contracts/**",
+                "/Chummer.Run.Contracts/**",
+            ],
+            contract_sparse_paths,
+        )
+        self.assertEqual(1, hub_checkout.count("/Directory.Build.props"))
+        self.assertEqual(1, hub_checkout.count("/Directory.Build.targets"))
 
         for controller in (
             "PublicLandingController.cs",

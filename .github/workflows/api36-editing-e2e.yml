@@ -99,10 +99,14 @@ jobs:
           # the Android compile graph. Keep the exact commit pin, and hydrate
           # only the three contract projects consumed by Presentation plus the
           # two controller sources read by the fail-closed Android contract suite.
+          # Retain the Hub MSBuild props/targets that govern those projects, but
+          # not its SDK pin or unrelated runtime tree.
           sparse-checkout: |
-            /Chummer.Campaign.Contracts/
-            /Chummer.Play.Contracts/
-            /Chummer.Run.Contracts/
+            /Directory.Build.props
+            /Directory.Build.targets
+            /Chummer.Campaign.Contracts/**
+            /Chummer.Play.Contracts/**
+            /Chummer.Run.Contracts/**
             /Chummer.Run.Api/Controllers/PublicLandingController.cs
             /Chummer.Run.Api/Controllers/AndroidLinkedCampaignController.cs
 
