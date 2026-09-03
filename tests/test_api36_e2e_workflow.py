@@ -652,7 +652,11 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         self.assertIn("path: chummer-core-engine", self.text)
         self.assertIn('--workspace-root "${GITHUB_WORKSPACE:?GITHUB_WORKSPACE is required}"', runner)
         self.assertLess(
-            runner.index('install -d -m 0755 "$evidence_root"'),
+            runner.index('install -d -m 0700 "$evidence_root"'),
+            runner.index('case "$journey" in', runner.index('case "$journey" in') + 1),
+        )
+        self.assertLess(
+            runner.index("materialize-api36-emulator-live-observation.py"),
             runner.index('case "$journey" in', runner.index('case "$journey" in') + 1),
         )
 

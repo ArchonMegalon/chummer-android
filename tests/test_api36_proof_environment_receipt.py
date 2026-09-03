@@ -7,7 +7,10 @@ import copy
 import hashlib
 import importlib.util
 import json
+import os
 from pathlib import Path
+import stat
+import sys
 import tempfile
 from types import SimpleNamespace
 import unittest
@@ -43,12 +46,10 @@ class Api36ProofEnvironmentAuthorityTests(unittest.TestCase):
         self.temporary.cleanup()
 
     @staticmethod
-    def environment() -> dict[str, object]:
+    def environment(
+        matrix_journey: str = "career-active-skill-advance",
+    ) -> dict[str, object]:
         digest = "a" * 64
-        emulator_raw = (
-            b"INFO         | Android emulator version 36.2.11.0 "
-            b"(build_id 15917651) (CL:N/A)\n"
-        )
         observation = {
             "runnerImage": {
                 "runnerOs": "Linux",
@@ -89,8 +90,26 @@ class Api36ProofEnvironmentAuthorityTests(unittest.TestCase):
                     "version": "36.2.11.0",
                     "buildId": 15917651,
                     "versionOutputSha256": digest,
-                    "rawObservationSha256": hashlib.sha256(emulator_raw).hexdigest(),
-                    "rawObservationSizeBytes": len(emulator_raw),
+                    "liveObservation": {
+                        "schema": MODULE.EMULATOR_LIVE_OBSERVATION_SCHEMA,
+                        "sha256": digest,
+                        "sizeBytes": 512,
+                        "authoritySha256": digest,
+                        "officialLineSha256": digest,
+                        "prefixSha256": digest,
+                        "prefixSizeBytes": 128,
+                        "execution": {
+                            "runId": 12345,
+                            "runAttempt": 1,
+                            "matrixJourney": matrix_journey,
+                        },
+                        "launch": {
+                            "launcherRelativePath": MODULE.EMULATOR_LAUNCHER_RELATIVE_PATH,
+                            "avdName": MODULE.EMULATOR_AVD_NAME,
+                            "emulatorSerial": MODULE.EMULATOR_SERIAL,
+                            "emulatorPort": MODULE.EMULATOR_PORT,
+                        },
+                    },
                 },
             },
             "kernel": {
@@ -171,8 +190,7 @@ class Api36ProofEnvironmentAuthorityTests(unittest.TestCase):
                 "versionOutputSha256": MODULE.canonical_sha256(
                     {"available": False}
                 ),
-                "rawObservationSha256": MODULE.EMPTY_SHA256,
-                "rawObservationSizeBytes": 0,
+                "liveObservation": None,
             }
         return MODULE.base_receipt(
             role=role,
@@ -257,8 +275,7 @@ class Api36ProofEnvironmentAuthorityTests(unittest.TestCase):
             "version": None,
             "buildId": None,
             "versionOutputSha256": MODULE.canonical_sha256({"available": False}),
-            "rawObservationSha256": MODULE.EMPTY_SHA256,
-            "rawObservationSizeBytes": 0,
+            "liveObservation": None,
         }
         MODULE.validate_environment(environment, self.policy, "build")
         with self.assertRaisesRegex(ValueError, "required Android packages"):
@@ -271,8 +288,7 @@ class Api36ProofEnvironmentAuthorityTests(unittest.TestCase):
             "version": None,
             "buildId": None,
             "versionOutputSha256": MODULE.canonical_sha256({"available": False}),
-            "rawObservationSha256": MODULE.EMPTY_SHA256,
-            "rawObservationSizeBytes": 0,
+            "liveObservation": None,
         }
         MODULE.validate_environment(build_environment, self.policy, "build")
         with self.assertRaisesRegex(ValueError, "usable KVM"):
@@ -288,8 +304,7 @@ class Api36ProofEnvironmentAuthorityTests(unittest.TestCase):
             "version": None,
             "buildId": None,
             "versionOutputSha256": MODULE.canonical_sha256({"available": False}),
-            "rawObservationSha256": MODULE.EMPTY_SHA256,
-            "rawObservationSizeBytes": 0,
+            "liveObservation": None,
         }
         absent = copy.deepcopy(present)
         absent["androidSdk"]["installedPackages"] = [
@@ -305,8 +320,7 @@ class Api36ProofEnvironmentAuthorityTests(unittest.TestCase):
             "version": None,
             "buildId": None,
             "versionOutputSha256": MODULE.canonical_sha256({"available": False}),
-            "rawObservationSha256": MODULE.EMPTY_SHA256,
-            "rawObservationSizeBytes": 0,
+            "liveObservation": None,
         }
         absent["kvm"] = {field: False for field in absent["kvm"]}
         present_build = MODULE.compatibility_observation(
@@ -396,11 +410,11 @@ class Api36ProofEnvironmentAuthorityTests(unittest.TestCase):
         invalid_build = self.environment()
         invalid_build["androidSdk"]["emulator"]["buildId"] = 0
         cases.append((invalid_build, "emulator observation authority"))
-        oversized_raw_observation = self.environment()
-        oversized_raw_observation["androidSdk"]["emulator"][
-            "rawObservationSizeBytes"
+        oversized_sidecar = self.environment()
+        oversized_sidecar["androidSdk"]["emulator"]["liveObservation"][
+            "sizeBytes"
         ] = 64 * 1024 + 1
-        cases.append((oversized_raw_observation, "emulator observation authority"))
+        cases.append((oversized_sidecar, "emulator live-observation binding"))
         for observation, message in cases:
             with self.subTest(message=message):
                 with self.assertRaisesRegex(ValueError, message):
@@ -489,15 +503,13 @@ Path | Version | Description
             b"INFO         | Android emulator version 36.2.11.0 "
             b"(build_id 15917651) (CL:N/A)\n"
         )
-        path = self.root / "emulator-version.txt"
-        path.write_bytes(valid)
-        parsed = MODULE.parse_emulator_version_observation(
-            MODULE.StableFile(path, "emulator version")
-        )
+        parsed = MODULE.parse_emulator_version_prefix(valid)
         self.assertEqual("36.2.11.0", parsed["version"])
         self.assertEqual(15917651, parsed["buildId"])
-        self.assertEqual(hashlib.sha256(valid).hexdigest(), parsed["rawObservationSha256"])
-        self.assertEqual(len(valid), parsed["rawObservationSizeBytes"])
+        self.assertEqual(
+            hashlib.sha256(valid.rstrip(b"\n")).hexdigest(),
+            parsed["officialLineSha256"],
+        )
 
         hostile = (
             b"Android emulator version 36.2.11.0 (build_id nope) (CL:N/A)\n",
@@ -510,11 +522,8 @@ Path | Version | Description
         )
         for index, payload in enumerate(hostile):
             with self.subTest(index=index):
-                path.write_bytes(payload)
                 with self.assertRaises(ValueError):
-                    MODULE.parse_emulator_version_observation(
-                        MODULE.StableFile(path, "emulator version")
-                    )
+                    MODULE.parse_emulator_version_prefix(payload)
 
     def test_emulator_version_normalization_only_allows_one_trailing_zero(self) -> None:
         accepted = (
@@ -535,7 +544,7 @@ Path | Version | Description
         for package, observed in rejected:
             self.assertFalse(MODULE.emulator_versions_match(package, observed))
 
-    def test_raw_emulator_bytes_and_build_id_are_independent_authority(self) -> None:
+    def test_live_prefix_bytes_and_build_id_are_independent_authority(self) -> None:
         first_path = self.root / "emulator-first.txt"
         second_path = self.root / "emulator-second.txt"
         third_path = self.root / "emulator-third.txt"
@@ -546,19 +555,192 @@ Path | Version | Description
             "Android emulator version 36.2.11.0 (build_id 15917652) (CL:N/A)\n",
             encoding="utf-8",
         )
-        first = MODULE.parse_emulator_version_observation(
-            MODULE.StableFile(first_path, "first emulator version")
+        for path in (first_path, second_path, third_path):
+            path.chmod(0o600)
+        first = MODULE.build_emulator_live_observation(
+            live_log_path=first_path,
+            run_id=12345,
+            run_attempt=1,
+            matrix_journey="career-active-skill-advance",
         )
-        second = MODULE.parse_emulator_version_observation(
-            MODULE.StableFile(second_path, "second emulator version")
+        second = MODULE.build_emulator_live_observation(
+            live_log_path=second_path,
+            run_id=12345,
+            run_attempt=1,
+            matrix_journey="career-active-skill-advance",
         )
-        third = MODULE.parse_emulator_version_observation(
-            MODULE.StableFile(third_path, "third emulator version")
+        third = MODULE.build_emulator_live_observation(
+            live_log_path=third_path,
+            run_id=12345,
+            run_attempt=1,
+            matrix_journey="career-active-skill-advance",
         )
-        self.assertEqual(first["versionOutputSha256"], second["versionOutputSha256"])
-        self.assertNotEqual(first["rawObservationSha256"], second["rawObservationSha256"])
-        self.assertNotEqual(first["buildId"], third["buildId"])
-        self.assertNotEqual(first["versionOutputSha256"], third["versionOutputSha256"])
+        self.assertEqual(
+            first["emulator"]["officialLineSha256"],
+            second["emulator"]["officialLineSha256"],
+        )
+        self.assertNotEqual(first["prefix"]["sha256"], second["prefix"]["sha256"])
+        self.assertNotEqual(first["emulator"]["buildId"], third["emulator"]["buildId"])
+        self.assertNotEqual(first["authoritySha256"], third["authoritySha256"])
+
+    def test_prelaunch_helper_creates_one_private_no_clobber_live_log(self) -> None:
+        helper = REPO / "scripts/prepare-api36-emulator-live-log.py"
+        environment = {"RUNNER_TEMP": str(self.root)}
+        first = subprocess.run(
+            (sys.executable, str(helper)),
+            env=environment,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(0, first.returncode, first.stderr)
+        target = self.root / "chummer-api36-emulator-live.log"
+        metadata = os.lstat(target)
+        self.assertTrue(stat.S_ISREG(metadata.st_mode))
+        self.assertEqual(0o600, stat.S_IMODE(metadata.st_mode))
+        self.assertEqual(os.geteuid(), metadata.st_uid)
+        self.assertEqual(1, metadata.st_nlink)
+        self.assertEqual(0, metadata.st_size)
+        second = subprocess.run(
+            (sys.executable, str(helper)),
+            env=environment,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertNotEqual(0, second.returncode)
+        self.assertEqual(metadata.st_ino, os.lstat(target).st_ino)
+
+    def test_prelaunch_helper_rejects_a_symlink_target(self) -> None:
+        victim = self.root / "victim"
+        victim.write_text("untouched", encoding="utf-8")
+        target = self.root / "chummer-api36-emulator-live.log"
+        target.symlink_to(victim)
+        completed = subprocess.run(
+            (sys.executable, str(REPO / "scripts/prepare-api36-emulator-live-log.py")),
+            env={"RUNNER_TEMP": str(self.root)},
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertNotEqual(0, completed.returncode)
+        self.assertEqual("untouched", victim.read_text(encoding="utf-8"))
+        self.assertTrue(target.is_symlink())
+
+    def test_live_log_capture_allows_append_but_rejects_prefix_change_and_links(self) -> None:
+        log = self.root / MODULE.EMULATOR_LIVE_LOG_NAME
+        original = (
+            b"INFO         | Android emulator version 36.2.11.0 "
+            b"(build_id 15917651) (CL:N/A)\n"
+        )
+        log.write_bytes(original)
+        log.chmod(0o600)
+        real_pread = os.pread
+        calls = 0
+
+        def append_after_first_read(descriptor: int, count: int, offset: int) -> bytes:
+            nonlocal calls
+            value = real_pread(descriptor, count, offset)
+            calls += 1
+            if calls == 1:
+                with log.open("ab") as stream:
+                    stream.write(b"later append\n")
+            return value
+
+        with mock.patch.object(MODULE.os, "pread", side_effect=append_after_first_read):
+            prefix, _ = MODULE.capture_stable_growing_log_prefix(log)
+        self.assertEqual(original, prefix)
+
+        log.write_bytes(original)
+        log.chmod(0o600)
+        calls = 0
+
+        def mutate_after_first_read(descriptor: int, count: int, offset: int) -> bytes:
+            nonlocal calls
+            value = real_pread(descriptor, count, offset)
+            calls += 1
+            if calls == 1:
+                with log.open("r+b") as stream:
+                    stream.write(b"X")
+            return value
+
+        with mock.patch.object(MODULE.os, "pread", side_effect=mutate_after_first_read):
+            with self.assertRaisesRegex(ValueError, "prefix or identity changed"):
+                MODULE.capture_stable_growing_log_prefix(log)
+
+        log.write_bytes(original)
+        log.chmod(0o600)
+        hard_link = self.root / "emulator-live-hard-link.log"
+        os.link(log, hard_link)
+        with self.assertRaisesRegex(ValueError, "identity differs"):
+            MODULE.capture_stable_growing_log_prefix(log)
+
+    def test_sidecar_materializer_binds_live_log_and_never_overwrites(self) -> None:
+        log = self.root / MODULE.EMULATOR_LIVE_LOG_NAME
+        log.write_bytes(
+            b"INFO         | Android emulator version 36.2.11.0 "
+            b"(build_id 15917651) (CL:N/A)\n"
+        )
+        log.chmod(0o600)
+        evidence = self.root / "evidence"
+        evidence.mkdir(mode=0o700)
+        output = evidence / "emulator-live-observation.json"
+        command = (
+            sys.executable,
+            str(REPO / "scripts/materialize-api36-emulator-live-observation.py"),
+            "--live-log",
+            str(log),
+            "--output",
+            str(output),
+            "--run-id",
+            "12345",
+            "--run-attempt",
+            "2",
+            "--matrix-journey",
+            "career-active-skill-advance",
+        )
+        environment = {"RUNNER_TEMP": str(self.root)}
+        first = subprocess.run(
+            command,
+            env=environment,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(0, first.returncode, first.stderr)
+        snapshot = MODULE.StableFile(output, "emulator live observation")
+        parsed = MODULE.parse_emulator_live_observation(snapshot)
+        self.assertEqual(snapshot.sha256, parsed["liveObservation"]["sha256"])
+        self.assertEqual(snapshot.size, parsed["liveObservation"]["sizeBytes"])
+        self.assertEqual(15917651, parsed["buildId"])
+        original = output.read_bytes()
+        second = subprocess.run(
+            command,
+            env=environment,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertNotEqual(0, second.returncode)
+        self.assertEqual(original, output.read_bytes())
+
+        wrong_log = self.root / "other-emulator.log"
+        wrong_log.write_bytes(log.read_bytes())
+        wrong_log.chmod(0o600)
+        wrong_output = evidence / "other-observation.json"
+        wrong_command = list(command)
+        wrong_command[wrong_command.index(str(log))] = str(wrong_log)
+        wrong_command[wrong_command.index(str(output))] = str(wrong_output)
+        wrong = subprocess.run(
+            wrong_command,
+            env=environment,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertNotEqual(0, wrong.returncode)
+        self.assertIn("exact RUNNER_TEMP target", wrong.stderr)
+        self.assertFalse(wrong_output.exists())
 
     def test_collector_records_versions_and_digests_without_sdk_path(self) -> None:
         sdk = self.root / "private-sdk"
@@ -607,14 +789,30 @@ Available Packages:
         proc_version.write_text("Linux version hosted\n", encoding="utf-8")
         kvm_module = self.root / "kvm-module"
         kvm_module.mkdir()
-        emulator_version_path = self.root / "emulator-version.txt"
-        emulator_version_path.write_bytes(
+        emulator_live_log = self.root / "emulator-live.log"
+        emulator_live_log.write_bytes(
             b"INFO         | Android emulator version 36.2.11.0 "
             b"(build_id 15917651) (CL:N/A)\n"
         )
-        emulator_version_snapshot = MODULE.StableFile(
-            emulator_version_path,
-            "emulator version observation",
+        emulator_live_log.chmod(0o600)
+        emulator_sidecar_path = self.root / "emulator-live-observation.json"
+        emulator_sidecar_path.write_text(
+            json.dumps(
+                MODULE.build_emulator_live_observation(
+                    live_log_path=emulator_live_log,
+                    run_id=12345,
+                    run_attempt=1,
+                    matrix_journey="career-active-skill-advance",
+                ),
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        emulator_sidecar_path.chmod(0o600)
+        emulator_sidecar_snapshot = MODULE.StableFile(
+            emulator_sidecar_path,
+            "emulator live observation",
         )
         observation = MODULE.collect_environment(
             sdk,
@@ -624,7 +822,7 @@ Available Packages:
                 "ImageOS": "ubuntu24",
                 "ImageVersion": "20260901.1.0",
             },
-            emulator_version_observation=emulator_version_snapshot,
+            emulator_live_observation=emulator_sidecar_snapshot,
             command_runner=run,
             kvm_path=Path("/dev/null"),
             kvm_module_path=kvm_module,
@@ -645,8 +843,8 @@ Available Packages:
         )
         self.assertEqual(15917651, observation["androidSdk"]["emulator"]["buildId"])
         self.assertEqual(
-            emulator_version_snapshot.sha256,
-            observation["androidSdk"]["emulator"]["rawObservationSha256"],
+            emulator_sidecar_snapshot.sha256,
+            observation["androidSdk"]["emulator"]["liveObservation"]["sha256"],
         )
         self.assertFalse(
             any(
@@ -674,7 +872,7 @@ Available Packages:
                 "ImageOS": "ubuntu24",
                 "ImageVersion": "20260901.1.0",
             },
-            emulator_version_observation=emulator_version_snapshot,
+            emulator_live_observation=emulator_sidecar_snapshot,
             command_runner=run,
             kvm_path=Path("/dev/null"),
             kvm_module_path=kvm_module,
@@ -881,8 +1079,7 @@ Available Packages:
                 "versionOutputSha256": MODULE.canonical_sha256(
                     {"available": False}
                 ),
-                "rawObservationSha256": MODULE.EMPTY_SHA256,
-                "rawObservationSizeBytes": 0,
+                "liveObservation": None,
             },
             observation["androidSdk"]["emulator"],
         )
@@ -893,10 +1090,11 @@ Available Packages:
                 for command in commands
             )
         )
-        unexpected_observation = self.root / "unexpected-build-emulator.txt"
-        unexpected_observation.write_text(
-            "Android emulator version 36.2.11.0 (build_id 15917651) (CL:N/A)\n",
-            encoding="utf-8",
+        unexpected_observation_path = self.root / "unexpected-build-observation.json"
+        unexpected_observation_path.write_text("{}\n", encoding="utf-8")
+        unexpected_observation = MODULE.StableFile(
+            unexpected_observation_path,
+            "unexpected build emulator observation",
         )
         with self.assertRaisesRegex(ValueError, "must not accept"):
             MODULE.collect_environment(
@@ -908,10 +1106,7 @@ Available Packages:
                     "ImageVersion": "20260901.1.0",
                 },
                 emulator_required=False,
-                emulator_version_observation=MODULE.StableFile(
-                    unexpected_observation,
-                    "unexpected build emulator observation",
-                ),
+                emulator_live_observation=unexpected_observation,
                 command_runner=run,
                 kvm_path=Path("/dev/null"),
                 kvm_module_path=kvm_module,
@@ -953,7 +1148,17 @@ class Api36ProofEnvironmentSourceContractTests(unittest.TestCase):
         )
         self.assertIn("journey \\", runner)
         self.assertIn(
-            '--emulator-version-observation "$RUNNER_TEMP/chummer-api36-emulator-version.txt"',
+            '--emulator-live-observation "$emulator_live_observation"',
+            runner,
+        )
+        self.assertLess(
+            runner.index("materialize-api36-emulator-live-observation.py"),
+            runner.index(
+                "python3 chummer-android/tests/run_api36_creation_prerequisite_e2e.py"
+            ),
+        )
+        self.assertIn(
+            '--live-log "$RUNNER_TEMP/chummer-api36-emulator-live.log"',
             runner,
         )
         self.assertIn("environment-receipt.json.sha256", runner)
@@ -1000,18 +1205,18 @@ class Api36ProofEnvironmentSourceContractTests(unittest.TestCase):
         self.assertEqual(
             1,
             workflow.count(
-                '"$ANDROID_HOME/emulator/emulator" -version'
+                "pre-emulator-launch-script: python3 "
+                "chummer-android/scripts/prepare-api36-emulator-live-log.py"
             ),
         )
         self.assertEqual(
-            3,
-            workflow.count("chummer-api36-emulator-version.txt"),
+            1,
+            workflow.count(
+                "-stdouterr-file $RUNNER_TEMP/chummer-api36-emulator-live.log"
+            ),
         )
-        self.assertNotIn("emulator_version_observation=", workflow)
-        self.assertIn(
-            '"$ANDROID_HOME/emulator/emulator" -version >"$RUNNER_TEMP/chummer-api36-emulator-version.txt" 2>&1',
-            workflow,
-        )
+        self.assertNotIn('emulator/emulator" -version', workflow)
+        self.assertNotIn("pre-emulator-launch-script: |", workflow)
 
     def test_aggregate_is_v2_and_environment_is_not_an_eighth_journey(self) -> None:
         gate = json.loads(

@@ -33,6 +33,7 @@ from api36_proof_environment_authority import (  # noqa: E402
     StableFile as EnvironmentStableFile,
     canonical_sha256 as environment_canonical_sha256,
     load_policy as load_environment_policy,
+    parse_emulator_live_observation,
     policy_binding as environment_policy_binding,
     validate_receipt as validate_environment_receipt,
 )
@@ -1323,6 +1324,7 @@ def validate_aggregate(
     receipt_paths: list[Path] = []
     environment_receipt_paths: list[Path] = []
     environment_seal_paths: list[Path] = []
+    emulator_observation_paths: list[Path] = []
     for directory in actual_entries:
         for root, directories, files in os.walk(directory, followlinks=False):
             root_path = Path(root)
@@ -1341,6 +1343,11 @@ def validate_aggregate(
                 for child in files
                 if child == "environment-receipt.json.sha256"
             )
+            emulator_observation_paths.extend(
+                root_path / child
+                for child in files
+                if child == "emulator-live-observation.json"
+            )
     expected_receipt_paths = {
         evidence_root / directory / "receipt.json" for directory in expected_directories
     }
@@ -1357,14 +1364,21 @@ def validate_aggregate(
         evidence_root / directory / "environment-receipt.json.sha256"
         for directory in expected_directories
     }
+    expected_emulator_observation_paths = {
+        evidence_root / directory / "emulator-live-observation.json"
+        for directory in expected_directories
+    }
     if (
         len(environment_receipt_paths) != len(JOURNEYS)
         or set(environment_receipt_paths) != expected_environment_receipt_paths
         or len(environment_seal_paths) != len(JOURNEYS)
         or set(environment_seal_paths) != expected_environment_seal_paths
+        or len(emulator_observation_paths) != len(JOURNEYS)
+        or set(emulator_observation_paths) != expected_emulator_observation_paths
     ):
         raise ValueError(
-            "exactly one top-level environment receipt and seal are required "
+            "exactly one top-level environment receipt, seal, and emulator "
+            "live observation are required "
             f"for each of the {len(JOURNEYS)} journeys"
         )
 
@@ -1442,6 +1456,21 @@ def validate_aggregate(
             expected_name="environment-receipt.json",
         )
         validate_environment_receipt(environment, environment_policy)
+        emulator_observation_snapshot = EnvironmentStableFile(
+            directory / "emulator-live-observation.json",
+            f"{journey} emulator live observation",
+        )
+        expected_emulator = parse_emulator_live_observation(
+            emulator_observation_snapshot
+        )
+        emulator_execution = expected_emulator["liveObservation"]["execution"]
+        if (
+            environment["environment"]["androidSdk"]["emulator"]
+            != expected_emulator
+            or emulator_execution["runId"] != int(run_id)
+            or emulator_execution["matrixJourney"] != journey
+        ):
+            raise ValueError(f"emulator live observation differs: {journey}")
         expected_environment_subject = {
             "matrixJourney": journey,
             "driverJourney": driver_journey,
@@ -1475,6 +1504,7 @@ def validate_aggregate(
             "receiptSha256": environment_receipt_sha256,
             "environmentSha256": environment["environmentSha256"],
             "compatibilitySha256": compatibility_sha256,
+            "emulatorLiveObservationSha256": emulator_observation_snapshot.sha256,
         }
         journey_snapshots.extend(
             (
@@ -1482,6 +1512,7 @@ def validate_aggregate(
                 receipt_seal_snapshot,
                 environment_snapshot,
                 environment_seal_snapshot,
+                emulator_observation_snapshot,
             )
         )
 
@@ -1586,11 +1617,22 @@ def validate_aggregate_receipt(
         or SHA256.fullmatch(environment["journeyCompatibilitySha256"]) is None
     ):
         raise ValueError("wizard aggregate environment binding differs")
-    for binding in [environment["build"], *environment["journeys"].values()]:
+    if any(
+        not isinstance(environment["build"][field], str)
+        or SHA256.fullmatch(environment["build"][field]) is None
+        for field in environment["build"]
+    ):
+        raise ValueError("wizard aggregate build environment member differs")
+    for binding in environment["journeys"].values():
         if (
             not isinstance(binding, dict)
             or set(binding)
-            != {"receiptSha256", "environmentSha256", "compatibilitySha256"}
+            != {
+                "receiptSha256",
+                "environmentSha256",
+                "compatibilitySha256",
+                "emulatorLiveObservationSha256",
+            }
             or any(
                 not isinstance(binding[field], str)
                 or SHA256.fullmatch(binding[field]) is None

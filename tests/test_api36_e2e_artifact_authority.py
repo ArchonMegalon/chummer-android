@@ -331,12 +331,57 @@ def creation_receipt_with_timing(
 
 class Api36ArtifactAuthorityTests(unittest.TestCase):
     @staticmethod
-    def environment(role: str = "journey") -> dict[str, object]:
-        digest = "a" * 64
-        emulator_raw = (
+    def emulator_live_sidecar(
+        matrix_journey: str,
+        *,
+        run_attempt: int = 1,
+    ) -> dict[str, object]:
+        official_line = (
             b"INFO         | Android emulator version 36.2.11.0 "
-            b"(build_id 15917651) (CL:N/A)\n"
+            b"(build_id 15917651) (CL:N/A)"
         )
+        value = {
+            "schema": ENVIRONMENT.EMULATOR_LIVE_OBSERVATION_SCHEMA,
+            "status": "observed",
+            "publicationAuthorized": False,
+            "execution": {
+                "runId": int(RUN_ID),
+                "runAttempt": run_attempt,
+                "matrixJourney": matrix_journey,
+            },
+            "launch": {
+                "launcherRelativePath": ENVIRONMENT.EMULATOR_LAUNCHER_RELATIVE_PATH,
+                "avdName": ENVIRONMENT.EMULATOR_AVD_NAME,
+                "emulatorSerial": ENVIRONMENT.EMULATOR_SERIAL,
+                "emulatorPort": ENVIRONMENT.EMULATOR_PORT,
+            },
+            "emulator": {
+                "version": "36.2.11.0",
+                "buildId": 15917651,
+                "officialLineSha256": hashlib.sha256(official_line).hexdigest(),
+            },
+            "prefix": {
+                "sha256": hashlib.sha256(official_line + b"\n").hexdigest(),
+                "sizeBytes": len(official_line) + 1,
+            },
+            "liveLogIdentity": {
+                "device": 1,
+                "inode": 2,
+                "ownerUid": 1001,
+                "mode": "0600",
+                "linkCount": 1,
+            },
+            "authoritySha256": None,
+        }
+        value["authoritySha256"] = ENVIRONMENT.canonical_sha256(value)
+        return value
+
+    @staticmethod
+    def environment(
+        role: str = "journey",
+        matrix_journey: str = "career-active-skill-advance",
+    ) -> dict[str, object]:
+        digest = "a" * 64
         observation = {
             "runnerImage": {
                 "runnerOs": "Linux",
@@ -377,8 +422,26 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                     "version": "36.2.11.0",
                     "buildId": 15917651,
                     "versionOutputSha256": digest,
-                    "rawObservationSha256": hashlib.sha256(emulator_raw).hexdigest(),
-                    "rawObservationSizeBytes": len(emulator_raw),
+                    "liveObservation": {
+                        "schema": ENVIRONMENT.EMULATOR_LIVE_OBSERVATION_SCHEMA,
+                        "sha256": digest,
+                        "sizeBytes": 512,
+                        "authoritySha256": digest,
+                        "officialLineSha256": digest,
+                        "prefixSha256": digest,
+                        "prefixSizeBytes": 128,
+                        "execution": {
+                            "runId": int(RUN_ID),
+                            "runAttempt": 1,
+                            "matrixJourney": matrix_journey,
+                        },
+                        "launch": {
+                            "launcherRelativePath": ENVIRONMENT.EMULATOR_LAUNCHER_RELATIVE_PATH,
+                            "avdName": ENVIRONMENT.EMULATOR_AVD_NAME,
+                            "emulatorSerial": ENVIRONMENT.EMULATOR_SERIAL,
+                            "emulatorPort": ENVIRONMENT.EMULATOR_PORT,
+                        },
+                    },
                 },
             },
             "kernel": {
@@ -433,8 +496,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                 "versionOutputSha256": ENVIRONMENT.canonical_sha256(
                     {"available": False}
                 ),
-                "rawObservationSha256": ENVIRONMENT.EMPTY_SHA256,
-                "rawObservationSizeBytes": 0,
+                "liveObservation": None,
             }
         return observation
 
@@ -665,6 +727,26 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             encoding="utf-8",
         )
         policy_snapshot, policy = self.environment_policy()
+        sidecar_path = directory / "emulator-live-observation.json"
+        sidecar_path.write_text(
+            json.dumps(
+                self.emulator_live_sidecar(
+                    journey,
+                    run_attempt=int(attempt),
+                ),
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        sidecar_snapshot = ENVIRONMENT.StableFile(
+            sidecar_path,
+            f"{journey} emulator live observation",
+        )
+        observation = self.environment(matrix_journey=journey)
+        observation["androidSdk"]["emulator"] = (
+            ENVIRONMENT.parse_emulator_live_observation(sidecar_snapshot)
+        )
         subject = {
             "matrixJourney": journey,
             "driverJourney": driver_journey,
@@ -683,7 +765,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             policy_snapshot=policy_snapshot,
             gate_authority=GATE.contract_binding(),
             subject_authority=subject,
-            observation=self.environment(),
+            observation=observation,
         )
         environment_path = directory / "environment-receipt.json"
         environment_path.write_text(
@@ -811,8 +893,38 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "journey environment authority differs"):
                 self.validate(root)
 
+    def test_emulator_live_sidecar_cardinality_and_binding_fail_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self.materialize_all(root)
+            directory = root / AGGREGATE.expected_artifact_directory(
+                "career-active-skill-advance",
+                RUN_ID,
+            )
+            sidecar_path = directory / "emulator-live-observation.json"
+            sidecar_path.unlink()
+            with self.assertRaisesRegex(ValueError, "emulator live observation"):
+                self.validate(root)
+
+            self.materialize_journey(root, "career-active-skill-advance")
+            sidecar = json.loads(sidecar_path.read_text())
+            sidecar["execution"]["matrixJourney"] = "career-weapon-fire"
+            sidecar["authoritySha256"] = ENVIRONMENT.canonical_sha256(
+                {**sidecar, "authoritySha256": None}
+            )
+            sidecar_path.write_text(
+                json.dumps(sidecar, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ValueError, "emulator live observation differs"):
+                self.validate(root)
+
     def test_journey_and_environment_receipt_toctou_fail_closed(self) -> None:
-        for target_name in ("receipt.json", "environment-receipt.json"):
+        for target_name in (
+            "receipt.json",
+            "environment-receipt.json",
+            "emulator-live-observation.json",
+        ):
             with self.subTest(target=target_name), tempfile.TemporaryDirectory() as temporary:
                 root = Path(temporary)
                 self.materialize_all(root)
@@ -837,7 +949,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                         "read_execution_started",
                         side_effect=mutate_after_snapshot,
                     )
-                else:
+                elif target_name == "environment-receipt.json":
                     original_validation = AGGREGATE.validate_environment_receipt
 
                     def mutate_after_environment_parse(value, policy):
@@ -858,6 +970,22 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                         "validate_environment_receipt",
                         side_effect=mutate_after_environment_parse,
                     )
+                else:
+                    original_sidecar_parser = AGGREGATE.parse_emulator_live_observation
+
+                    def mutate_after_sidecar_parse(snapshot):
+                        nonlocal mutated
+                        result = original_sidecar_parser(snapshot)
+                        if snapshot.path == target and not mutated:
+                            target.write_bytes(target.read_bytes() + b" ")
+                            mutated = True
+                        return result
+
+                    patcher = mock.patch.object(
+                        AGGREGATE,
+                        "parse_emulator_live_observation",
+                        side_effect=mutate_after_sidecar_parse,
+                    )
                 with patcher, self.assertRaisesRegex(
                     ValueError,
                     "changed before receipt seal",
@@ -875,6 +1003,27 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             )
             environment_path = directory / "environment-receipt.json"
             environment = json.loads(environment_path.read_text())
+            sidecar_path = directory / "emulator-live-observation.json"
+            sidecar = json.loads(sidecar_path.read_text())
+            changed_official_line = (
+                b"INFO         | Android emulator version 36.2.12.0 "
+                b"(build_id 15917651) (CL:N/A)"
+            )
+            sidecar["emulator"]["version"] = "36.2.12.0"
+            sidecar["emulator"]["officialLineSha256"] = hashlib.sha256(
+                changed_official_line
+            ).hexdigest()
+            sidecar["prefix"] = {
+                "sha256": hashlib.sha256(changed_official_line + b"\n").hexdigest(),
+                "sizeBytes": len(changed_official_line) + 1,
+            }
+            sidecar["authoritySha256"] = ENVIRONMENT.canonical_sha256(
+                {**sidecar, "authoritySha256": None}
+            )
+            sidecar_path.write_text(
+                json.dumps(sidecar, indent=2) + "\n",
+                encoding="utf-8",
+            )
             for row in environment["environment"]["androidSdk"]["installedPackages"]:
                 if row["package"] == "emulator":
                     row["version"] = "36.2.12"
@@ -883,16 +1032,13 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             ] = ENVIRONMENT.canonical_sha256(
                 environment["environment"]["androidSdk"]["installedPackages"]
             )
-            environment["environment"]["androidSdk"]["emulator"]["version"] = "36.2.12.0"
-            environment["environment"]["androidSdk"]["emulator"][
-                "versionOutputSha256"
-            ] = ENVIRONMENT.canonical_sha256(
-                {
-                    "version": "36.2.12.0",
-                    "buildId": environment["environment"]["androidSdk"][
-                        "emulator"
-                    ]["buildId"],
-                }
+            environment["environment"]["androidSdk"]["emulator"] = (
+                ENVIRONMENT.parse_emulator_live_observation(
+                    ENVIRONMENT.StableFile(
+                        sidecar_path,
+                        "changed emulator live observation",
+                    )
+                )
             )
             environment["environmentSha256"] = ENVIRONMENT.canonical_sha256(
                 environment["environment"]

@@ -511,11 +511,9 @@ jobs:
           emulator-options: >-
             -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
             -camera-back none -camera-front none -no-snapshot-save
+            -stdouterr-file $RUNNER_TEMP/chummer-api36-emulator-live.log
           disable-animations: true
-          pre-emulator-launch-script: |
-            test ! -e "$RUNNER_TEMP/chummer-api36-emulator-version.txt"
-            "$ANDROID_HOME/emulator/emulator" -version >"$RUNNER_TEMP/chummer-api36-emulator-version.txt" 2>&1
-            test -s "$RUNNER_TEMP/chummer-api36-emulator-version.txt"
+          pre-emulator-launch-script: python3 chummer-android/scripts/prepare-api36-emulator-live-log.py
           script: bash chummer-android/scripts/run-api36-editing-e2e-ci.sh
 
       - name: Upload phone receipts and screenshots

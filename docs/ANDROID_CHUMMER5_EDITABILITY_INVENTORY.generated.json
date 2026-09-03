@@ -802,7 +802,7 @@
       {
         "path": ".github/workflows/api36-editing-e2e.yml",
         "exists": true,
-        "sha256": "c451693667e41f024b9a706c61360cf218b8b1658c0b74a9f845e177d3063d66"
+        "sha256": "c1d01af49f8e7d77ca235f30e03896b476f6c2dd17f9dcc8b7bfcf54186d08a4"
       },
       {
         "path": ".github/workflows/api36-two-consecutive-green.yml",
@@ -832,7 +832,7 @@
       {
         "path": "scripts/api36_proof_environment_authority.py",
         "exists": true,
-        "sha256": "a8aebb72eb2720646cc48eb82e839174b3178f7a0fc0aa897bcd94c408d4aed7"
+        "sha256": "57af158675641e764424f5f18924cc0121bb18efaf03654846eb12c344f7960c"
       },
       {
         "path": "scripts/api36_wizard_gate_contract.py",
@@ -845,9 +845,14 @@
         "sha256": "627587ba066c98b18b1ffb8bbf20f1fc95746952f0162707af0ca08beb2b73a0"
       },
       {
+        "path": "scripts/materialize-api36-emulator-live-observation.py",
+        "exists": true,
+        "sha256": "45fe60f7e3b1c3d96faac67982b6290909a6eb82323f7341eb103bc72207cab4"
+      },
+      {
         "path": "scripts/materialize-api36-proof-environment-receipt.py",
         "exists": true,
-        "sha256": "44e0328445509f3e0fec9e5f445b7d8af3ec9e9c5e0ebd85e9f0ca27af96ed5c"
+        "sha256": "9d025210484f9a9f806fbfe85c4f64011b8a980eec728d364fc0389b428a312d"
       },
       {
         "path": "scripts/materialize-api36-two-green-eligibility.py",
@@ -860,14 +865,19 @@
         "sha256": "96358d6f8e94e709c3a2fd4625f6510f3828d0811e2f16e34719a3a3cdef0862"
       },
       {
+        "path": "scripts/prepare-api36-emulator-live-log.py",
+        "exists": true,
+        "sha256": "067438e848d143e2c40e1baccb93c243f2e400adac82cdcf6fb306050eaca659"
+      },
+      {
         "path": "scripts/run-api36-editing-e2e-ci.sh",
         "exists": true,
-        "sha256": "b14a6b49b8e6bc0146a9808e503df01d60d9b91961f58bcf7b5d33067b22e26c"
+        "sha256": "52a984e0438d3786f3e15a145bca1fb071ba6ba641b198625094358e0f9f3391"
       },
       {
         "path": "scripts/verify-api36-editing-e2e-aggregate.py",
         "exists": true,
-        "sha256": "ada20c4794f2e06a6fa7c5435af0cf7318492b2c72206f65133e176f196dc6a5"
+        "sha256": "df86f37d969884d8fc8e05b8afded1c2d93d2517a93b5bcfcd9a4706727b9bc1"
       },
       {
         "path": "src/Chummer.Android/Chummer.Android.csproj",
@@ -892,17 +902,17 @@
       {
         "path": "tests/test_api36_e2e_workflow.py",
         "exists": true,
-        "sha256": "8debbaf7ef3ecadc97bb68baa67da48036e0ce0414fa750bbd8ac7e30d7633de"
+        "sha256": "28ff6fe7c4597f5cd8cc162e76e7dbcbe7eaceb5aae674ced4e0b4ad18e5e9ce"
       },
       {
         "path": "tests/test_api36_e2e_artifact_authority.py",
         "exists": true,
-        "sha256": "4a7507acfa52e74f66d967b7cfb78265b9c1f490b139923bb0910bd72d0cd5dc"
+        "sha256": "7dcb4a26b25336c4c51736fa91563989812c350b451fdf3f002753bbc399e4da"
       },
       {
         "path": "tests/test_api36_proof_environment_receipt.py",
         "exists": true,
-        "sha256": "3c3081d618699c5be517db346abb673940095c210068492b694906ec38f77f20"
+        "sha256": "b20d35f8fc33b3fcffe677fccec3d3c5551912ec19570a26e826411063460a83"
       },
       {
         "path": "tests/test_api36_two_green_eligibility.py",
@@ -2853,9 +2863,11 @@
         "scripts/api36_proof_environment_authority.py",
         "scripts/api36_wizard_gate_contract.py",
         "scripts/finalize-api36-e2e-journey-receipt.py",
+        "scripts/materialize-api36-emulator-live-observation.py",
         "scripts/materialize-api36-proof-environment-receipt.py",
         "scripts/materialize-api36-two-green-eligibility.py",
         "scripts/materialize-android-p0-pr-authority.py",
+        "scripts/prepare-api36-emulator-live-log.py",
         "scripts/run-api36-editing-e2e-ci.sh",
         "scripts/verify-api36-editing-e2e-aggregate.py",
         "src/Chummer.Android/Chummer.Android.csproj",
@@ -2971,7 +2983,7 @@
     },
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "3e0966f31233c7b480f4967e584150a826c505c1205db91abbfd5603be46bda4"
+      "sha256": "d350a2737fde9c90500d3b3ed2aa2e6c9fff5e7ea73c70845eda707899d19882"
     }
   },
   "coverageByFamily": {

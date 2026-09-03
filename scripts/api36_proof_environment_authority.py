@@ -50,7 +50,15 @@ EMULATOR_VERSION_HEADER = re.compile(
     r"\(CL:(?:N/A|[0-9]+)\)$",
 )
 EMULATOR_NUMERIC_VERSION = re.compile(r"^[0-9]+(?:\.[0-9]+){2,3}$")
-EMPTY_SHA256 = hashlib.sha256(b"").hexdigest()
+EMULATOR_LIVE_OBSERVATION_SCHEMA = (
+    "chummer.android.api36-emulator-live-observation/v1"
+)
+EMULATOR_LIVE_LOG_MAX_PREFIX_BYTES = 64 * 1024
+EMULATOR_LIVE_LOG_NAME = "chummer-api36-emulator-live.log"
+EMULATOR_LAUNCHER_RELATIVE_PATH = "emulator/emulator"
+EMULATOR_AVD_NAME = "test"
+EMULATOR_SERIAL = "emulator-5554"
+EMULATOR_PORT = 5554
 DOES_NOT_ASSERT = (
     "journey_pass_without_the_bound_journey_receipt",
     "physical_device_execution",
@@ -300,36 +308,245 @@ def parse_sdkmanager_inventory(output: str) -> list[dict[str, str]]:
     return [installed[key] for key in sorted(installed)]
 
 
-def parse_emulator_version_observation(snapshot: StableFile) -> dict[str, Any]:
-    """Parse one exact official emulator header and bind its original bytes."""
-    if snapshot.size <= 0 or snapshot.size > 64 * 1024:
-        raise ValueError("emulator version observation is empty or oversized")
+def parse_emulator_version_prefix(prefix: bytes) -> dict[str, Any]:
+    """Parse one exact official emulator header from a bounded stable prefix."""
+    if not prefix or len(prefix) > EMULATOR_LIVE_LOG_MAX_PREFIX_BYTES:
+        raise ValueError("emulator live-log prefix is empty or oversized")
     try:
-        text = snapshot.data.decode("utf-8")
+        text = prefix.decode("utf-8")
     except UnicodeDecodeError as error:
-        raise ValueError("emulator version observation is not UTF-8") from error
-    matches: list[re.Match[str]] = []
+        raise ValueError("emulator live-log prefix is not UTF-8") from error
+    matches: list[tuple[re.Match[str], bytes]] = []
     for line in text.splitlines():
         match = EMULATOR_VERSION_HEADER.fullmatch(line)
         if match is not None:
-            matches.append(match)
+            matches.append((match, line.encode("utf-8")))
         elif "android emulator version" in line.lower():
-            raise ValueError("emulator version observation contains a malformed header")
+            raise ValueError("emulator live-log prefix contains a malformed header")
     if len(matches) != 1:
-        raise ValueError("emulator version observation must contain exactly one official header")
-    match = matches[0]
+        raise ValueError("emulator live-log prefix must contain exactly one official header")
+    match, official_line = matches[0]
     return {
-        "available": True,
         "version": match.group("version"),
         "buildId": int(match.group("build_id")),
+        "officialLineSha256": hashlib.sha256(official_line).hexdigest(),
+    }
+
+
+def capture_stable_growing_log_prefix(path: Path) -> tuple[bytes, dict[str, Any]]:
+    """Capture a stable prefix while allowing append-only growth after emulator boot."""
+    candidate = path.absolute()
+    try:
+        resolved = candidate.resolve(strict=True)
+    except (OSError, RuntimeError) as error:
+        raise ValueError("emulator live log is missing or has an unsafe path") from error
+    if resolved != candidate or candidate.is_symlink():
+        raise ValueError("emulator live-log path must contain no symlink component")
+    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        descriptor = os.open(candidate, flags)
+    except OSError as error:
+        raise ValueError("emulator live log cannot be opened safely") from error
+
+    def stable_identity(metadata: os.stat_result) -> tuple[int, ...]:
+        return (
+            metadata.st_dev,
+            metadata.st_ino,
+            metadata.st_uid,
+            stat.S_IMODE(metadata.st_mode),
+            metadata.st_nlink,
+        )
+
+    try:
+        before = os.fstat(descriptor)
+        if (
+            not stat.S_ISREG(before.st_mode)
+            or before.st_uid != os.geteuid()
+            or stat.S_IMODE(before.st_mode) != 0o600
+            or before.st_nlink != 1
+            or before.st_size <= 0
+        ):
+            raise ValueError("emulator live-log identity differs")
+        prefix_size = min(before.st_size, EMULATOR_LIVE_LOG_MAX_PREFIX_BYTES)
+        first = os.pread(descriptor, prefix_size, 0)
+        middle = os.fstat(descriptor)
+        second = os.pread(descriptor, prefix_size, 0)
+        after = os.fstat(descriptor)
+    finally:
+        os.close(descriptor)
+    if (
+        len(first) != prefix_size
+        or first != second
+        or stable_identity(before) != stable_identity(middle)
+        or stable_identity(before) != stable_identity(after)
+        or middle.st_size < before.st_size
+        or after.st_size < middle.st_size
+    ):
+        raise ValueError("emulator live-log prefix or identity changed during capture")
+    try:
+        final = os.lstat(candidate)
+    except OSError as error:
+        raise ValueError("emulator live log disappeared after capture") from error
+    if not stat.S_ISREG(final.st_mode) or stable_identity(final) != stable_identity(before):
+        raise ValueError("emulator live-log path identity changed during capture")
+    return first, {
+        "device": before.st_dev,
+        "inode": before.st_ino,
+        "ownerUid": before.st_uid,
+        "mode": "0600",
+        "linkCount": before.st_nlink,
+    }
+
+
+def build_emulator_live_observation(
+    *,
+    live_log_path: Path,
+    run_id: int,
+    run_attempt: int,
+    matrix_journey: str,
+) -> dict[str, Any]:
+    if (
+        type(run_id) is not int
+        or run_id <= 0
+        or type(run_attempt) is not int
+        or run_attempt <= 0
+        or matrix_journey not in journey_map()
+    ):
+        raise ValueError("emulator live observation execution binding differs")
+    prefix, identity = capture_stable_growing_log_prefix(live_log_path)
+    parsed = parse_emulator_version_prefix(prefix)
+    value = {
+        "schema": EMULATOR_LIVE_OBSERVATION_SCHEMA,
+        "status": "observed",
+        "publicationAuthorized": False,
+        "execution": {
+            "runId": run_id,
+            "runAttempt": run_attempt,
+            "matrixJourney": matrix_journey,
+        },
+        "launch": {
+            "launcherRelativePath": EMULATOR_LAUNCHER_RELATIVE_PATH,
+            "avdName": EMULATOR_AVD_NAME,
+            "emulatorSerial": EMULATOR_SERIAL,
+            "emulatorPort": EMULATOR_PORT,
+        },
+        "emulator": parsed,
+        "prefix": {
+            "sha256": hashlib.sha256(prefix).hexdigest(),
+            "sizeBytes": len(prefix),
+        },
+        "liveLogIdentity": identity,
+        "authoritySha256": None,
+    }
+    value["authoritySha256"] = canonical_sha256(value)
+    validate_emulator_live_observation(value)
+    return value
+
+
+def validate_emulator_live_observation(value: dict[str, Any]) -> dict[str, Any]:
+    require_exact_fields(
+        value,
+        {
+            "schema",
+            "status",
+            "publicationAuthorized",
+            "execution",
+            "launch",
+            "emulator",
+            "prefix",
+            "liveLogIdentity",
+            "authoritySha256",
+        },
+        "emulator live observation",
+    )
+    if (
+        value["schema"] != EMULATOR_LIVE_OBSERVATION_SCHEMA
+        or value["status"] != "observed"
+        or value["publicationAuthorized"] is not False
+    ):
+        raise ValueError("emulator live-observation authority differs")
+    execution = value["execution"]
+    require_exact_fields(execution, {"runId", "runAttempt", "matrixJourney"}, "emulator execution")
+    if (
+        type(execution["runId"]) is not int
+        or execution["runId"] <= 0
+        or type(execution["runAttempt"]) is not int
+        or execution["runAttempt"] <= 0
+        or execution["matrixJourney"] not in journey_map()
+    ):
+        raise ValueError("emulator live observation execution binding differs")
+    launch = value["launch"]
+    require_exact_fields(
+        launch,
+        {"launcherRelativePath", "avdName", "emulatorSerial", "emulatorPort"},
+        "emulator launch",
+    )
+    if launch != {
+        "launcherRelativePath": EMULATOR_LAUNCHER_RELATIVE_PATH,
+        "avdName": EMULATOR_AVD_NAME,
+        "emulatorSerial": EMULATOR_SERIAL,
+        "emulatorPort": EMULATOR_PORT,
+    }:
+        raise ValueError("emulator launch authority differs")
+    emulator = value["emulator"]
+    require_exact_fields(emulator, {"version", "buildId", "officialLineSha256"}, "emulator version")
+    if (
+        EMULATOR_NUMERIC_VERSION.fullmatch(str(emulator["version"])) is None
+        or type(emulator["buildId"]) is not int
+        or emulator["buildId"] <= 0
+        or SHA256.fullmatch(str(emulator["officialLineSha256"])) is None
+    ):
+        raise ValueError("emulator version authority differs")
+    prefix = value["prefix"]
+    require_exact_fields(prefix, {"sha256", "sizeBytes"}, "emulator prefix")
+    if (
+        SHA256.fullmatch(str(prefix["sha256"])) is None
+        or type(prefix["sizeBytes"]) is not int
+        or not 1 <= prefix["sizeBytes"] <= EMULATOR_LIVE_LOG_MAX_PREFIX_BYTES
+    ):
+        raise ValueError("emulator live-log prefix authority differs")
+    identity = value["liveLogIdentity"]
+    require_exact_fields(identity, {"device", "inode", "ownerUid", "mode", "linkCount"}, "emulator live-log identity")
+    if (
+        any(type(identity[field]) is not int or identity[field] < 0 for field in ("device", "inode", "ownerUid"))
+        or identity["mode"] != "0600"
+        or identity["linkCount"] != 1
+    ):
+        raise ValueError("emulator live-log identity authority differs")
+    if (
+        SHA256.fullmatch(str(value["authoritySha256"])) is None
+        or value["authoritySha256"]
+        != canonical_sha256({**value, "authoritySha256": None})
+    ):
+        raise ValueError("emulator live observation digest differs")
+    return value
+
+
+def parse_emulator_live_observation(snapshot: StableFile) -> dict[str, Any]:
+    if snapshot.size <= 0 or snapshot.size > EMULATOR_LIVE_LOG_MAX_PREFIX_BYTES:
+        raise ValueError("emulator live-observation sidecar is empty or oversized")
+    value = validate_emulator_live_observation(snapshot.json())
+    return {
+        "available": True,
+        "version": value["emulator"]["version"],
+        "buildId": value["emulator"]["buildId"],
         "versionOutputSha256": canonical_sha256(
             {
-                "version": match.group("version"),
-                "buildId": int(match.group("build_id")),
+                "version": value["emulator"]["version"],
+                "buildId": value["emulator"]["buildId"],
             }
         ),
-        "rawObservationSha256": snapshot.sha256,
-        "rawObservationSizeBytes": snapshot.size,
+        "liveObservation": {
+            "schema": value["schema"],
+            "sha256": snapshot.sha256,
+            "sizeBytes": snapshot.size,
+            "authoritySha256": value["authoritySha256"],
+            "officialLineSha256": value["emulator"]["officialLineSha256"],
+            "prefixSha256": value["prefix"]["sha256"],
+            "prefixSizeBytes": value["prefix"]["sizeBytes"],
+            "execution": value["execution"],
+            "launch": value["launch"],
+        },
     }
 
 
@@ -479,7 +696,7 @@ def collect_environment(
     environment: Mapping[str, str],
     *,
     emulator_required: bool = True,
-    emulator_version_observation: StableFile | None = None,
+    emulator_live_observation: StableFile | None = None,
     command_runner: Callable[[Sequence[str]], str] = _run,
     kvm_path: Path = Path("/dev/kvm"),
     kvm_module_path: Path = Path("/sys/module/kvm"),
@@ -488,7 +705,7 @@ def collect_environment(
 ) -> dict[str, Any]:
     if type(emulator_required) is not bool:
         raise ValueError("emulator-required posture must be boolean")
-    if not emulator_required and emulator_version_observation is not None:
+    if not emulator_required and emulator_live_observation is not None:
         raise ValueError("build environment must not accept an emulator observation")
     android_sdk_root = _canonical_sdk_root(android_sdk_root)
     runner = {
@@ -535,14 +752,13 @@ def collect_environment(
             "version": None,
             "buildId": None,
             "versionOutputSha256": canonical_sha256({"available": False}),
-            "rawObservationSha256": EMPTY_SHA256,
-            "rawObservationSizeBytes": 0,
+            "liveObservation": None,
         }
     else:
-        if emulator_version_observation is None:
-            raise ValueError("journey emulator version observation is required")
-        emulator_observation = parse_emulator_version_observation(
-            emulator_version_observation
+        if emulator_live_observation is None:
+            raise ValueError("journey emulator live-observation sidecar is required")
+        emulator_observation = parse_emulator_live_observation(
+            emulator_live_observation
         )
         emulator_package = next(
             (row for row in installed_packages if row["package"] == "emulator"),
@@ -713,8 +929,7 @@ def validate_environment(
             "version",
             "buildId",
             "versionOutputSha256",
-            "rawObservationSha256",
-            "rawObservationSizeBytes",
+            "liveObservation",
         },
         "emulator observation",
     )
@@ -731,9 +946,7 @@ def validate_environment(
         if (
             type(emulator_observation["buildId"]) is not int
             or emulator_observation["buildId"] <= 0
-            or type(emulator_observation["rawObservationSizeBytes"]) is not int
-            or emulator_observation["rawObservationSizeBytes"] <= 0
-            or emulator_observation["rawObservationSizeBytes"] > 64 * 1024
+            or not isinstance(emulator_observation["liveObservation"], dict)
             or "emulator" not in by_name
             or not emulator_versions_match(
                 by_name["emulator"]["version"], emulator_observation["version"]
@@ -747,14 +960,66 @@ def validate_environment(
             }
         ):
             raise ValueError("emulator canonical output digest differs")
+        live_observation = emulator_observation["liveObservation"]
+        require_exact_fields(
+            live_observation,
+            {
+                "schema",
+                "sha256",
+                "sizeBytes",
+                "authoritySha256",
+                "officialLineSha256",
+                "prefixSha256",
+                "prefixSizeBytes",
+                "execution",
+                "launch",
+            },
+            "emulator live-observation binding",
+        )
+        if (
+            live_observation["schema"] != EMULATOR_LIVE_OBSERVATION_SCHEMA
+            or type(live_observation["sizeBytes"]) is not int
+            or not 1 <= live_observation["sizeBytes"] <= EMULATOR_LIVE_LOG_MAX_PREFIX_BYTES
+            or type(live_observation["prefixSizeBytes"]) is not int
+            or not 1
+            <= live_observation["prefixSizeBytes"]
+            <= EMULATOR_LIVE_LOG_MAX_PREFIX_BYTES
+            or not isinstance(live_observation["execution"], dict)
+            or not isinstance(live_observation["launch"], dict)
+        ):
+            raise ValueError("emulator live-observation binding differs")
+        require_exact_fields(
+            live_observation["execution"],
+            {"runId", "runAttempt", "matrixJourney"},
+            "emulator live execution binding",
+        )
+        if (
+            type(live_observation["execution"]["runId"]) is not int
+            or live_observation["execution"]["runId"] <= 0
+            or type(live_observation["execution"]["runAttempt"]) is not int
+            or live_observation["execution"]["runAttempt"] <= 0
+            or live_observation["execution"]["matrixJourney"] not in journey_map()
+        ):
+            raise ValueError("emulator live execution binding differs")
+        require_exact_fields(
+            live_observation["launch"],
+            {"launcherRelativePath", "avdName", "emulatorSerial", "emulatorPort"},
+            "emulator live launch binding",
+        )
+        if live_observation["launch"] != {
+            "launcherRelativePath": EMULATOR_LAUNCHER_RELATIVE_PATH,
+            "avdName": EMULATOR_AVD_NAME,
+            "emulatorSerial": EMULATOR_SERIAL,
+            "emulatorPort": EMULATOR_PORT,
+        }:
+            raise ValueError("emulator live launch binding differs")
     elif (
         emulator_required
         or emulator_observation["version"] is not None
         or emulator_observation["buildId"] is not None
         or emulator_observation["versionOutputSha256"]
         != canonical_sha256({"available": False})
-        or emulator_observation["rawObservationSha256"] != EMPTY_SHA256
-        or emulator_observation["rawObservationSizeBytes"] != 0
+        or emulator_observation["liveObservation"] is not None
     ):
         raise ValueError("required emulator observation is unavailable or inconsistent")
     if android["adb"]["versionOutputSha256"] != canonical_sha256(
@@ -847,6 +1112,12 @@ def compatibility_observation(
         compatibility["emulator"] = {
             field: observation["androidSdk"]["emulator"][field]
             for field in ("available", "version", "buildId")
+        }
+        live_observation = observation["androidSdk"]["emulator"]["liveObservation"]
+        compatibility["emulatorLiveAuthority"] = {
+            "schema": live_observation["schema"],
+            "officialLineSha256": live_observation["officialLineSha256"],
+            "launch": live_observation["launch"],
         }
         compatibility["kvm"] = dict(observation["kvm"])
     return compatibility
@@ -943,6 +1214,10 @@ def base_receipt(
 ) -> dict[str, Any]:
     validated = validate_environment(observation, policy, role)
     validated_subject = validate_subject(role, subject_authority)
+    if role == "journey" and validated["androidSdk"]["emulator"][
+        "liveObservation"
+    ]["execution"]["matrixJourney"] != validated_subject["matrixJourney"]:
+        raise ValueError("emulator live observation journey differs")
     compatibility = compatibility_observation(validated, policy, role)
     receipt = {
         "schema": BUILD_SCHEMA if role == "build" else JOURNEY_SCHEMA,
@@ -1032,6 +1307,10 @@ def validate_receipt(receipt: dict[str, Any], policy: dict[str, Any]) -> None:
     if not isinstance(receipt["subjectAuthority"], dict):
         raise ValueError("environment subject authority is missing")
     validate_subject(role, receipt["subjectAuthority"])
+    if role == "journey" and receipt["environment"]["androidSdk"]["emulator"][
+        "liveObservation"
+    ]["execution"]["matrixJourney"] != receipt["subjectAuthority"]["matrixJourney"]:
+        raise ValueError("emulator live observation journey differs")
     if SHA256.fullmatch(str(receipt["receiptSha256"])) is None:
         raise ValueError("environment receipt digest is not canonical")
     if receipt["receiptSha256"] != canonical_sha256({**receipt, "receiptSha256": None}):

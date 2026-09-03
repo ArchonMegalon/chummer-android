@@ -41,7 +41,7 @@ def main(argv: list[str] | None = None) -> int:
     journey.add_argument("--journey-receipt", type=Path, required=True)
     journey.add_argument("--matrix-journey", required=True)
     journey.add_argument(
-        "--emulator-version-observation",
+        "--emulator-live-observation",
         type=Path,
         required=True,
     )
@@ -57,8 +57,8 @@ def main(argv: list[str] | None = None) -> int:
     gate_snapshot = StableFile(args.gate_contract, "wizard gate contract")
     policy = load_policy(policy_snapshot)
     gate_authority = contract_binding(gate_snapshot.path)
-    emulator_version_snapshot = (
-        StableFile(args.emulator_version_observation, "emulator version observation")
+    emulator_live_snapshot = (
+        StableFile(args.emulator_live_observation, "emulator live observation")
         if args.role == "journey"
         else None
     )
@@ -68,12 +68,12 @@ def main(argv: list[str] | None = None) -> int:
         emulator_required=(
             "emulator" in policy["roles"][args.role]["requiredAndroidPackages"]
         ),
-        emulator_version_observation=emulator_version_snapshot,
+        emulator_live_observation=emulator_live_snapshot,
     )
 
     snapshots: list[StableFile] = [policy_snapshot, gate_snapshot]
-    if emulator_version_snapshot is not None:
-        snapshots.append(emulator_version_snapshot)
+    if emulator_live_snapshot is not None:
+        snapshots.append(emulator_live_snapshot)
     if args.role == "journey":
         journey_snapshot = StableFile(args.journey_receipt, "finalized journey receipt")
         apk_snapshot = StableFile(args.apk, "x64 journey APK")
@@ -85,6 +85,17 @@ def main(argv: list[str] | None = None) -> int:
             expected_apk_sha256=args.expected_apk_sha256,
             gate_authority=gate_authority,
         )
+        journey = journey_snapshot.json()
+        artifact = journey.get("artifactAuthority")
+        live_execution = observation["androidSdk"]["emulator"][
+            "liveObservation"
+        ]["execution"]
+        if (
+            not isinstance(artifact, dict)
+            or live_execution["matrixJourney"] != args.matrix_journey
+            or live_execution["runId"] != artifact.get("runId")
+        ):
+            raise ValueError("emulator live observation execution authority differs")
     else:
         x64_apk = StableFile(args.x64_apk, "x64 APK")
         arm64_apk = StableFile(args.arm64_apk, "ARM64 APK")

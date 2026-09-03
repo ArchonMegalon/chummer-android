@@ -25,6 +25,7 @@ artifact_name="${CHUMMER_E2E_APK_ARTIFACT_NAME:?CHUMMER_E2E_APK_ARTIFACT_NAME is
 artifact_attempt="${CHUMMER_E2E_APK_ARTIFACT_ATTEMPT:?CHUMMER_E2E_APK_ARTIFACT_ATTEMPT is required}"
 expected_apk_sha256="${CHUMMER_E2E_APK_SHA256:?CHUMMER_E2E_APK_SHA256 is required}"
 run_id="${GITHUB_RUN_ID:?GITHUB_RUN_ID is required}"
+run_attempt="${GITHUB_RUN_ATTEMPT:?GITHUB_RUN_ATTEMPT is required}"
 gate_contract_path="chummer-android/eng/api36-sr5-wizard-gate-authority.json"
 
 python3 chummer-android/scripts/api36_wizard_gate_contract.py \
@@ -34,6 +35,7 @@ gate_contract_sha256="$(sha256sum "$gate_contract_path" | cut -d ' ' -f 1)"
 [[ "$artifact_id" =~ ^[1-9][0-9]*$ ]]
 [[ "$artifact_digest" =~ ^(sha256:)?[0-9a-f]{64}$ ]]
 [[ "$artifact_attempt" =~ ^[1-9][0-9]*$ ]]
+[[ "$run_attempt" =~ ^[1-9][0-9]*$ ]]
 [[ "$expected_apk_sha256" =~ ^[0-9a-f]{64}$ ]]
 test "$artifact_name" = "chummer-android-api36-x64-debug-${run_id}-${artifact_attempt}"
 
@@ -41,7 +43,16 @@ test -x "$adb_path"
 test -f "$apk_path"
 actual_apk_sha256="$(sha256sum "$apk_path" | cut -d ' ' -f 1)"
 test "$actual_apk_sha256" = "$expected_apk_sha256"
-install -d -m 0755 "$evidence_root"
+test ! -e "$evidence_root"
+test ! -L "$evidence_root"
+install -d -m 0700 "$evidence_root"
+emulator_live_observation="$evidence_root/emulator-live-observation.json"
+python3 chummer-android/scripts/materialize-api36-emulator-live-observation.py \
+  --live-log "$RUNNER_TEMP/chummer-api36-emulator-live.log" \
+  --output "$emulator_live_observation" \
+  --run-id "$run_id" \
+  --run-attempt "$run_attempt" \
+  --matrix-journey "$journey"
 declare -Ar driver_journeys=(
   [creation-prerequisite]="creation-prerequisite"
   [career-active-skill-advance]="career-active-skill-advance"
@@ -146,7 +157,7 @@ python3 chummer-android/scripts/materialize-api36-proof-environment-receipt.py \
   --expected-apk-sha256 "$expected_apk_sha256" \
   --journey-receipt "$evidence_root/receipt.json" \
   --matrix-journey "$journey" \
-  --emulator-version-observation "$RUNNER_TEMP/chummer-api36-emulator-version.txt" \
+  --emulator-live-observation "$emulator_live_observation" \
   --android-sdk-root "$android_home" \
   --gate-contract "$gate_contract_path" \
   --policy chummer-android/eng/api36-proof-environment-authority.json \
