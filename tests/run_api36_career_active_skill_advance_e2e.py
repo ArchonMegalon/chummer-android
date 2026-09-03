@@ -72,12 +72,10 @@ def prepare_runner(
     shared.wait_for_phone_runners(device, timeout=120)
     device.tap("home-open-file")
     shared.select_android_document(device, fixture_name)
-    device.wait("CareerActiveSkillAdvanceE2E", timeout=120)
-    shared.wait_for_phone_runner_route(device, created=True, timeout=120)
-    shared.tap_phone_destination(device, "phone-destination-runners")
-    shared.wait_for_phone_runners(device, timeout=120)
-    authority = shared.read_phone_workspace_authority(device)
-    shared.require_import_authority(authority, fixture_sha256)
+    authority = shared.read_imported_phone_runner_authority(
+        device,
+        fixture_sha256,
+    )
     return launch, authority
 
 

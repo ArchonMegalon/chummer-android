@@ -4891,6 +4891,24 @@ def tap_phone_destination(
         )
 
 
+def read_imported_phone_runner_authority(
+    device: Device,
+    expected_payload_sha256: str,
+) -> WorkspaceAuthority:
+    """Bind an imported runner without relying on an on-screen alias.
+
+    A valid import can leave the runner alias outside the current Sheet/Build
+    viewport.  The canonical career route, the exact workspace payload digest,
+    and the later fixture-specific XML checks are the authority instead.
+    """
+    wait_for_phone_runner_route(device, created=True, timeout=120)
+    tap_phone_destination(device, "phone-destination-runners")
+    wait_for_phone_runners(device, timeout=120)
+    authority = read_workspace_authority(device)
+    require_import_authority(authority, expected_payload_sha256)
+    return authority
+
+
 def assert_phone_shell_surface(
     device: Device,
     *,

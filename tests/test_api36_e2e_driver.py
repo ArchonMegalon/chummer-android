@@ -5388,6 +5388,54 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 imported.__class__("new", 4, 4, "a" * 64, "c" * 64),
             )
 
+    def test_imported_phone_runner_authority_uses_route_and_exact_payload_not_alias(self) -> None:
+        expected_sha256 = "a" * 64
+        authority = DRIVER.WorkspaceAuthority(
+            "imported", 4, 4, expected_sha256, "b" * 64
+        )
+        device = Mock()
+        with patch.object(DRIVER, "wait_for_phone_runner_route") as wait_route, \
+             patch.object(DRIVER, "tap_phone_destination") as tap_destination, \
+             patch.object(DRIVER, "wait_for_phone_runners") as wait_runners, \
+             patch.object(
+                 DRIVER,
+                 "read_workspace_authority",
+                 return_value=authority,
+             ) as read_authority:
+            observed = DRIVER.read_imported_phone_runner_authority(
+                device,
+                expected_sha256,
+            )
+
+        self.assertEqual(authority, observed)
+        wait_route.assert_called_once_with(device, created=True, timeout=120)
+        tap_destination.assert_called_once_with(device, "phone-destination-runners")
+        wait_runners.assert_called_once_with(device, timeout=120)
+        read_authority.assert_called_once_with(device)
+        device.wait.assert_not_called()
+
+    def test_imported_phone_runner_authority_rejects_wrong_runner_without_recovery(self) -> None:
+        device = Mock()
+        foreign = DRIVER.WorkspaceAuthority(
+            "foreign", 2, 2, "b" * 64, "c" * 64
+        )
+        with patch.object(DRIVER, "wait_for_phone_runner_route") as wait_route, \
+             patch.object(DRIVER, "tap_phone_destination") as tap_destination, \
+             patch.object(DRIVER, "wait_for_phone_runners") as wait_runners, \
+             patch.object(
+                 DRIVER,
+                 "read_workspace_authority",
+                 return_value=foreign,
+             ) as read_authority:
+            with self.assertRaisesRegex(RuntimeError, "exact verified fixture bytes"):
+                DRIVER.read_imported_phone_runner_authority(device, "a" * 64)
+
+        wait_route.assert_called_once_with(device, created=True, timeout=120)
+        tap_destination.assert_called_once_with(device, "phone-destination-runners")
+        wait_runners.assert_called_once_with(device, timeout=120)
+        read_authority.assert_called_once_with(device)
+        device.wait.assert_not_called()
+
     def test_workspace_authority_surface_requires_two_identical_reads(self) -> None:
         authority = DRIVER.WorkspaceAuthority("new", 4, 4, "a" * 64, "b" * 64)
         device = Mock()

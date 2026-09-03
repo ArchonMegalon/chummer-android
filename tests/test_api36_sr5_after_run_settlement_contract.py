@@ -35,6 +35,14 @@ def validate(value: dict[str, object], fixture: dict[str, object], *, applied: b
 
 
 class Api36Sr5AfterRunSettlementContractTests(unittest.TestCase):
+    def test_import_binding_does_not_require_visible_runner_alias(self) -> None:
+        source = DRIVER.read_text(encoding="utf-8")
+        self.assertIn(
+            "physical.shared.read_imported_phone_runner_authority(",
+            source,
+        )
+        self.assertNotIn("device.wait(alias", source)
+
     def test_after_run_tap_captures_immediate_process_exit_and_exception_evidence(self) -> None:
         component = f"{driver.physical.shared.PACKAGE}/.MainActivity"
         before = driver.physical.shared.LaunchState(("731",), component, "before")

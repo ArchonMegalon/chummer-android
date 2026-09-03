@@ -677,18 +677,15 @@ def prepare_runner(
     device: physical.shared.Device,
     fixture: Path,
     fixture_sha256: str,
-    alias: str,
 ) -> tuple[physical.shared.LaunchState, physical.shared.WorkspaceAuthority]:
     launch = physical.shared.launch_app(device)
     physical.shared.wait_for_phone_runners(device, timeout=120)
     device.tap("home-open-file")
     physical.shared.select_android_document(device, fixture.name)
-    device.wait(alias, timeout=120)
-    physical.shared.wait_for_phone_runner_route(device, created=True, timeout=120)
-    physical.shared.tap_phone_destination(device, "phone-destination-runners")
-    physical.shared.wait_for_phone_runners(device, timeout=120)
-    authority = physical.shared.read_phone_workspace_authority(device)
-    physical.shared.require_import_authority(authority, fixture_sha256)
+    authority = physical.shared.read_imported_phone_runner_authority(
+        device,
+        fixture_sha256,
+    )
     return launch, authority
 
 
@@ -1152,7 +1149,7 @@ def prove_after_run(
 ) -> dict[str, object]:
     device.shell("pm", "clear", physical.shared.PACKAGE)
     initial_launch, imported = prepare_runner(
-        device, runner, runner_sha256, str(fixture["runner"]["alias"])
+        device, runner, runner_sha256
     )
     _assert_initial_runner(root_for_authority(device, imported), fixture)
     physical.shared.record_phone_ui_locale_evidence(device, evidence_prefix="sr5-after-run")

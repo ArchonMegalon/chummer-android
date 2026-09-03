@@ -43,6 +43,8 @@ class Api36CareerActiveSkillAdvanceDriverTests(unittest.TestCase):
         self.assertIn("shared.require_restored_authority(saved, second_restored)", source)
         self.assertIn('device.tap("Cancel"', source)
         self.assertIn('device.tap("Advance"', source)
+        self.assertIn("shared.read_imported_phone_runner_authority(", source)
+        self.assertNotIn('device.wait("CareerActiveSkillAdvanceE2E"', source)
         self.assertIn('"Active Skill Pilot Ground Craft 3 -> 4"', source)
         self.assertIn('"ImproveSkill"', source)
 
