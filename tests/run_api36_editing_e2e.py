@@ -226,6 +226,16 @@ ADB_FILE_HIERARCHY_VISIBILITY_DELAY_SECONDS = 0.25
 ADB_FILE_HIERARCHY_VISIBILITY_READ_ATTEMPT_MAX_SECONDS = 1.0
 ADB_FILE_HIERARCHY_VISIBILITY_MAX_SECONDS = 6.0
 DOCUMENTS_UI_PACKAGE = "com.google.android.documentsui"
+DOCUMENTS_UI_FILE_ONE_SHOT_SCHEMA = (
+    "chummer.android.documentsui-file-one-shot/v1"
+)
+DOCUMENTS_UI_FILE_FIRST_IMPORT_SCHEMA = (
+    "chummer.android.documentsui-file-first-import-observation/v1"
+)
+DOCUMENTS_UI_FILE_ONE_SHOT_DIGEST_DOMAIN = (
+    "canonical-accessibility-node-set-json"
+)
+DOCUMENTS_UI_EVIDENCE_PREFIX = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$")
 
 
 def _media_provider_display_name_where_argument(display_name: str) -> str:
@@ -7332,7 +7342,194 @@ def select_documents_ui_downloads_root(device: Device, *, timeout: int = 45) -> 
     )
 
 
-def select_android_document(device: Device, filename: str) -> None:
+def _node_has_tappable_bounds_in_display(
+    node: UiNode,
+    *,
+    display_width: int,
+    display_height: int,
+) -> bool:
+    """Validate already-observed bounds without another device observation."""
+    match = BOUNDS.fullmatch(node.attributes.get("bounds", ""))
+    if match is None:
+        return False
+    left, top, right, bottom = (int(value) for value in match.groups())
+    center_y = (top + bottom) // 2
+    return (
+        right - left > 8
+        and bottom - top > 8
+        and 0 <= left < right <= display_width
+        and 0 <= top < bottom <= display_height
+        and center_y < display_height * 0.96
+    )
+
+
+def _documents_ui_selection_receipt_path(
+    device: Device,
+    filename: str,
+    evidence_prefix: str,
+    suffix: str,
+) -> Path:
+    if DOCUMENTS_UI_EVIDENCE_PREFIX.fullmatch(evidence_prefix) is None:
+        raise ValueError("DocumentsUI evidence prefix is not canonical")
+    receipt_stem = hashlib.sha256(filename.encode("utf-8")).hexdigest()[:16]
+    return device.evidence / (
+        f"documentsui-file-one-shot-{evidence_prefix}-{receipt_stem}-{suffix}.json"
+    )
+
+
+def record_documents_ui_file_first_import_state(
+    device: Device,
+    selection: dict[str, object],
+    *,
+    import_state: dict[str, object],
+    serialized_sha256: str,
+) -> dict[str, object]:
+    """Bind the first validated picker-result state to the exact one-shot tap."""
+    filename = selection.get("filename")
+    evidence_prefix = selection.get("evidencePrefix")
+    selection_evidence_file = selection.get("evidenceFile")
+    picker = import_state.get("picker")
+    stream = import_state.get("stream")
+    if (
+        not isinstance(filename, str)
+        or GOVERNED_DOWNLOAD_BASENAME.fullmatch(filename) is None
+        or not isinstance(evidence_prefix, str)
+        or DOCUMENTS_UI_EVIDENCE_PREFIX.fullmatch(evidence_prefix) is None
+        or not isinstance(selection_evidence_file, str)
+        or not selection_evidence_file.endswith("-tap.json")
+        or SHA256_TEXT.fullmatch(serialized_sha256) is None
+        or not isinstance(picker, dict)
+    ):
+        raise RuntimeError(
+            "DocumentsUI first import observation lacks exact selection authority"
+        )
+    require_documents_ui_file_one_shot_proof(
+        selection,
+        expected_filename=filename,
+        expected_serial=device.serial,
+    )
+    expected_selection_path = _documents_ui_selection_receipt_path(
+        device,
+        filename,
+        evidence_prefix,
+        "tap",
+    )
+    if selection_evidence_file != expected_selection_path.name:
+        raise RuntimeError("DocumentsUI one-shot tap receipt identity differs")
+    selection_path = expected_selection_path
+    if not selection_path.is_file() or selection_path.is_symlink():
+        raise RuntimeError("DocumentsUI one-shot tap receipt is unavailable")
+    selection_bytes = selection_path.read_bytes()
+    expected_selection_bytes = (json.dumps(selection, indent=2) + "\n").encode("utf-8")
+    if selection_bytes != expected_selection_bytes:
+        raise RuntimeError("DocumentsUI one-shot tap receipt bytes changed")
+    observed_display_name = (
+        stream.get("displayName") if isinstance(stream, dict) else None
+    )
+    receipt_path = _documents_ui_selection_receipt_path(
+        device,
+        filename,
+        evidence_prefix,
+        "first-import",
+    )
+    receipt: dict[str, object] = {
+        "schema": DOCUMENTS_UI_FILE_FIRST_IMPORT_SCHEMA,
+        "status": "observed",
+        "serial": device.serial,
+        "filename": filename,
+        "selectionEvidenceFile": selection_evidence_file,
+        "selectionEvidenceSha256": hashlib.sha256(selection_bytes).hexdigest(),
+        "observedAtUtc": datetime.now(timezone.utc).isoformat(),
+        "serializedImportStateSha256": serialized_sha256,
+        "selectedAndObservedDisplayNameMatch": observed_display_name == filename,
+        "observation": import_state,
+        "evidenceFile": receipt_path.name,
+    }
+    _write_new_json_receipt(receipt_path, receipt)
+    return receipt
+
+
+def require_documents_ui_file_one_shot_proof(
+    proof: dict[str, object],
+    *,
+    expected_filename: str,
+    expected_serial: str,
+) -> None:
+    """Reject forged, ambiguous, replayed, or geometrically stale picker taps."""
+    pre_tap = proof.get("preTap")
+    tap = proof.get("tap")
+    if not isinstance(pre_tap, dict) or not isinstance(tap, dict):
+        raise RuntimeError("DocumentsUI one-shot proof is incomplete")
+    bounds_match = BOUNDS.fullmatch(str(pre_tap.get("bounds", "")))
+    center = pre_tap.get("center")
+    display = pre_tap.get("display")
+    expected_center: dict[str, int] | None = None
+    bounds_valid = False
+    if bounds_match is not None and isinstance(display, dict):
+        left, top, right, bottom = (
+            int(value) for value in bounds_match.groups()
+        )
+        width = display.get("width")
+        height = display.get("height")
+        if type(width) is int and type(height) is int:
+            expected_center = {
+                "x": (left + right) // 2,
+                "y": (top + bottom) // 2,
+            }
+            bounds_valid = _node_has_tappable_bounds_in_display(
+                UiNode({"bounds": str(pre_tap["bounds"])}),
+                display_width=width,
+                display_height=height,
+            )
+    if (
+        proof.get("schema") != DOCUMENTS_UI_FILE_ONE_SHOT_SCHEMA
+        or proof.get("status") != "tap-issued"
+        or proof.get("serial") != expected_serial
+        or proof.get("filename") != expected_filename
+        or proof.get("tapReplayPerformed") is not False
+        or proof.get("fallbackTapPerformed") is not False
+        or pre_tap.get("hierarchyDigestDomain")
+        != DOCUMENTS_UI_FILE_ONE_SHOT_DIGEST_DOMAIN
+        or not isinstance(pre_tap.get("hierarchyDigest"), str)
+        or re.fullmatch(r"sha256:[0-9a-f]{64}", str(pre_tap["hierarchyDigest"]))
+        is None
+        or type(pre_tap.get("nodeCount")) is not int
+        or int(pre_tap["nodeCount"]) <= 0
+        or pre_tap.get("exactRowCardinality") != 1
+        or pre_tap.get("package") != DOCUMENTS_UI_PACKAGE
+        or pre_tap.get("text") != expected_filename
+        or pre_tap.get("enabled") is not True
+        or type(pre_tap.get("scrollsBeforeFinalObservation")) is not int
+        or int(pre_tap["scrollsBeforeFinalObservation"]) < 0
+        or expected_center is None
+        or center != expected_center
+        or not bounds_valid
+        or tap.get("command") != "input tap"
+        or tap.get("count") != 1
+        or tap.get("coordinates") != expected_center
+    ):
+        raise RuntimeError("DocumentsUI one-shot proof authority differs")
+
+
+def select_android_document(
+    device: Device,
+    filename: str,
+    *,
+    evidence_prefix: str | None = None,
+) -> dict[str, object]:
+    receipt_path: Path | None = None
+    if evidence_prefix is not None:
+        # Validate the exact target name and stale-path fence before any
+        # non-replayable picker action. The O_EXCL write after a successful tap
+        # remains the durable no-duplicate evidence fence.
+        receipt_path = _documents_ui_selection_receipt_path(
+            device,
+            filename,
+            evidence_prefix,
+            "tap",
+        )
+        if receipt_path.exists() or receipt_path.is_symlink():
+            raise RuntimeError("DocumentsUI one-shot tap receipt already exists")
     roots_drawer_open = (
         device.find("Recent") is not None
         and device.find("Documents") is not None
@@ -7360,13 +7557,14 @@ def select_android_document(device: Device, filename: str) -> None:
     deadline = time.monotonic() + 45
     scrolls = 0
     while time.monotonic() < deadline:
+        # Geometry is a device observation. Acquire it before the final fresh
+        # hierarchy so no device call can make the selected coordinates stale.
+        display_width, display_height = device.display_size(deadline=deadline)
         nodes = device.hierarchy(deadline=deadline)
         matches = [
             node
             for node in _documents_ui_exact_nodes(nodes, filename)
             if node.attributes.get("text") == filename
-            and node.attributes.get("enabled") == "true"
-            and device.node_has_tappable_bounds(node, deadline=deadline)
         ]
         if len(matches) > 1:
             _capture_documents_ui_before_deadline(
@@ -7377,8 +7575,18 @@ def select_android_document(device: Device, filename: str) -> None:
             raise RuntimeError(
                 f"DocumentsUI exposed {len(matches)} exact rows for {filename!r}"
             )
-        if len(matches) == 1:
-            x, y = matches[0].center
+        if (
+            len(matches) == 1
+            and matches[0].attributes.get("enabled") == "true"
+            and _node_has_tappable_bounds_in_display(
+                matches[0],
+                display_width=display_width,
+                display_height=display_height,
+            )
+        ):
+            selected = matches[0]
+            x, y = selected.center
+            observed_at_utc = datetime.now(timezone.utc).isoformat()
             device.shell(
                 "input",
                 "tap",
@@ -7387,7 +7595,47 @@ def select_android_document(device: Device, filename: str) -> None:
                 timeout=_remaining_operation_timeout(deadline=deadline, maximum=120),
                 deadline=deadline,
             )
-            return
+            proof: dict[str, object] = {
+                "schema": DOCUMENTS_UI_FILE_ONE_SHOT_SCHEMA,
+                "status": "tap-issued",
+                "serial": device.serial if evidence_prefix is not None else None,
+                "filename": filename,
+                "evidencePrefix": evidence_prefix,
+                "preTap": {
+                    "observedAtUtc": observed_at_utc,
+                    "hierarchyDigest": (
+                        "sha256:" + Device._hierarchy_sha256(nodes)
+                    ),
+                    "hierarchyDigestDomain": (
+                        DOCUMENTS_UI_FILE_ONE_SHOT_DIGEST_DOMAIN
+                    ),
+                    "nodeCount": len(nodes),
+                    "exactRowCardinality": 1,
+                    "package": selected.attributes.get("package", ""),
+                    "text": selected.attributes.get("text", ""),
+                    "resourceId": selected.attributes.get("resource-id", ""),
+                    "bounds": selected.attributes.get("bounds", ""),
+                    "center": {"x": x, "y": y},
+                    "enabled": True,
+                    "display": {
+                        "width": display_width,
+                        "height": display_height,
+                    },
+                    "scrollsBeforeFinalObservation": scrolls,
+                },
+                "tap": {
+                    "command": "input tap",
+                    "count": 1,
+                    "coordinates": {"x": x, "y": y},
+                    "issuedAtUtc": datetime.now(timezone.utc).isoformat(),
+                },
+                "tapReplayPerformed": False,
+                "fallbackTapPerformed": False,
+                "evidenceFile": None if receipt_path is None else receipt_path.name,
+            }
+            if receipt_path is not None:
+                _write_new_json_receipt(receipt_path, proof)
+            return proof
         if scrolls < 6:
             device.swipe_up(deadline=deadline)
             scrolls += 1

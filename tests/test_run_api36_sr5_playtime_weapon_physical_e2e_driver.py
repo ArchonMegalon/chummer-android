@@ -144,12 +144,17 @@ class PlaytimePhysicalDriverContractTests(unittest.TestCase):
         self.assertEqual(driver.FIXTURE_ALIAS, observed[4].findtext("alias"))
         device.wait.assert_not_called()
         device.tap.assert_called_once_with("home-open-file")
-        select.assert_called_once_with(device, FIXTURE.name)
+        select.assert_called_once_with(
+            device,
+            FIXTURE.name,
+            evidence_prefix="playtime",
+        )
         import_activation.assert_called_once_with(
             device,
             expected=expectation,
             content_sha256=fixture_sha256,
             timeout=120,
+            first_picker_result_observer=mock.ANY,
         )
         career_runner.assert_called_once_with(device, created=True, timeout=120)
         self.assertEqual(

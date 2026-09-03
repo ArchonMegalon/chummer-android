@@ -113,6 +113,9 @@ class BeforeRunPhysicalDriverContractTests(unittest.TestCase):
             '"releaseEvidenceStatus": "source-and-apk-bound-local-build-not-release-attested"',
             '"restartAndRecoverExactReceipt": "pass"',
             '"restartAndReopenSavedSuccessor": "pass"',
+            "evidence_prefix=spec.lane",
+            "first_picker_result_observer=lambda snapshot:",
+            "record_documents_ui_file_first_import_state(",
         ):
             with self.subTest(marker=marker):
                 self.assertIn(marker, source)

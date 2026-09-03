@@ -7868,7 +7868,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         device = Mock(spec=DRIVER.Device)
         device.find.return_value = None
         device.hierarchy.return_value = nodes
-        device.node_has_tappable_bounds.return_value = True
+        device.display_size.return_value = (1080, 1920)
 
         with self.assertRaisesRegex(RuntimeError, "exposed 2 exact rows"):
             DRIVER.select_android_document(device, filename)
@@ -7886,7 +7886,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             [],
             [self._documents_ui_node(text="linked-runner-e2e.chum5")],
         ]
-        device.node_has_tappable_bounds.return_value = True
+        device.display_size.return_value = (1080, 1920)
 
         with (
             patch.object(DRIVER, "select_documents_ui_downloads_root") as select_root,
@@ -8446,7 +8446,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         device.hierarchy.return_value = [
             self._documents_ui_node(text="linked-runner-e2e.chum5")
         ]
-        device.node_has_tappable_bounds.return_value = True
+        device.display_size.return_value = (1080, 1920)
 
         DRIVER.select_android_document(device, "linked-runner-e2e.chum5")
 
@@ -8460,6 +8460,158 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             timeout=ANY,
             deadline=ANY,
         )
+
+    def test_document_picker_reacquires_exact_row_immediately_before_one_tap(
+        self,
+    ) -> None:
+        filename = "runner.chum5"
+        target = self._documents_ui_node(
+            text=filename,
+            resource_id="android:id/title",
+        )
+        events: list[str] = []
+        with tempfile.TemporaryDirectory() as temporary:
+            device = Mock()
+            device.serial = "emulator-5554"
+            device.evidence = Path(temporary)
+            device.find.return_value = None
+
+            def hierarchy(*, deadline=None):
+                events.append("diagnostic-hierarchy" if deadline is None else "final-hierarchy")
+                return [target]
+
+            device.hierarchy.side_effect = hierarchy
+            device.display_size.side_effect = lambda **_kwargs: (
+                events.append("display-size") or (1080, 1920)
+            )
+            device.shell.side_effect = lambda *_args, **_kwargs: events.append("tap")
+
+            proof = DRIVER.select_android_document(
+                device,
+                filename,
+                evidence_prefix="before-run",
+            )
+
+            receipt = Path(temporary) / str(proof["evidenceFile"])
+            self.assertTrue(receipt.is_file())
+            self.assertEqual(
+                proof,
+                json.loads(receipt.read_text(encoding="utf-8")),
+            )
+
+        self.assertEqual(
+            ["diagnostic-hierarchy", "display-size", "final-hierarchy", "tap"],
+            events,
+        )
+        self.assertEqual(1, proof["tap"]["count"])
+        self.assertEqual(filename, proof["preTap"]["text"])
+        self.assertEqual("com.google.android.documentsui", proof["preTap"]["package"])
+        self.assertRegex(
+            proof["preTap"]["hierarchyDigest"],
+            r"^sha256:[0-9a-f]{64}$",
+        )
+        device.node_has_tappable_bounds.assert_not_called()
+        device.swipe_up.assert_not_called()
+
+    def test_document_picker_local_bounds_check_fails_closed_without_observing_device(
+        self,
+    ) -> None:
+        valid = self._documents_ui_node(bounds="[168,617][714,668]")
+        clipped = self._documents_ui_node(bounds="[168,617][1114,668]")
+        system_zone = self._documents_ui_node(bounds="[168,1860][714,1910]")
+        self.assertTrue(
+            DRIVER._node_has_tappable_bounds_in_display(
+                valid,
+                display_width=1080,
+                display_height=1920,
+            )
+        )
+        self.assertFalse(
+            DRIVER._node_has_tappable_bounds_in_display(
+                clipped,
+                display_width=1080,
+                display_height=1920,
+            )
+        )
+        self.assertFalse(
+            DRIVER._node_has_tappable_bounds_in_display(
+                system_zone,
+                display_width=1080,
+                display_height=1920,
+            )
+        )
+
+    def test_document_picker_first_import_receipt_binds_tap_and_mismatch(self) -> None:
+        filename = "runner.chum5"
+        target = self._documents_ui_node(text=filename)
+        with tempfile.TemporaryDirectory() as temporary:
+            device = Mock()
+            device.serial = "emulator-5554"
+            device.evidence = Path(temporary)
+            device.find.return_value = None
+            device.hierarchy.return_value = [target]
+            device.display_size.return_value = (1080, 1920)
+            selection = DRIVER.select_android_document(
+                device,
+                filename,
+                evidence_prefix="before-run",
+            )
+            import_state = {
+                "schema": "chummer.android.api36-import-proof-state/v1",
+                "sequence": 3,
+                "picker": {
+                    "requestCode": 6411,
+                    "result": "ok",
+                    "uriPresent": True,
+                    "uriSha256": "sha256:" + "1" * 64,
+                },
+                "stream": {
+                    "displayName": "foreign.chum5",
+                    "contentSha256": "2" * 64,
+                },
+            }
+            receipt = DRIVER.record_documents_ui_file_first_import_state(
+                device,
+                selection,
+                import_state=import_state,
+                serialized_sha256="3" * 64,
+            )
+
+            self.assertIs(False, receipt["selectedAndObservedDisplayNameMatch"])
+            self.assertEqual(import_state, receipt["observation"])
+            self.assertRegex(receipt["selectionEvidenceSha256"], r"^[0-9a-f]{64}$")
+            self.assertTrue((Path(temporary) / receipt["evidenceFile"]).is_file())
+
+            with self.assertRaises(FileExistsError):
+                DRIVER.record_documents_ui_file_first_import_state(
+                    device,
+                    selection,
+                    import_state=import_state,
+                    serialized_sha256="3" * 64,
+                )
+
+            for field, value in (
+                ("tapReplayPerformed", True),
+                ("fallbackTapPerformed", True),
+                ("tap.count", 2),
+                ("preTap.text", "foreign.chum5"),
+                ("preTap.bounds", "[168,617][1114,668]"),
+            ):
+                hostile = json.loads(json.dumps(selection))
+                if "." in field:
+                    owner, member = field.split(".", 1)
+                    hostile[owner][member] = value
+                else:
+                    hostile[field] = value
+                with self.subTest(field=field), self.assertRaisesRegex(
+                    RuntimeError,
+                    "one-shot proof authority differs",
+                ):
+                    DRIVER.require_documents_ui_file_one_shot_proof(
+                        hostile,
+                        expected_filename=filename,
+                        expected_serial="emulator-5554",
+                    )
 
     def test_document_picker_closes_tablet_roots_drawer_before_fixture_tap(self) -> None:
         device = Mock(spec=DRIVER.Device)

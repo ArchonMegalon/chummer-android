@@ -14,7 +14,7 @@ import re
 from pathlib import Path
 import subprocess
 import time
-from typing import Any
+from typing import Any, Callable
 
 
 SCHEMA = "chummer.android.api36-proof-state/v2"
@@ -945,11 +945,15 @@ def wait_for_import_activation(
     expected: ProofBuildExpectation,
     content_sha256: str,
     timeout: float = 120,
+    first_picker_result_observer: (
+        Callable[[ImportProofStateSnapshot], None] | None
+    ) = None,
 ) -> ImportProofStateSnapshot:
     if SHA64.fullmatch(content_sha256) is None:
         raise RuntimeError("Expected import content digest is not canonical")
     deadline = time.monotonic() + timeout
     last_detail = "import proof file unavailable"
+    first_picker_result_observed = False
     while time.monotonic() < deadline:
         process_output = device.shell("pidof", PACKAGE)
         process_ids = process_output.split()
@@ -977,6 +981,16 @@ def wait_for_import_activation(
         state = snapshot.payload
         stage = state["stage"]
         stream = state["stream"]
+        if (
+            not first_picker_result_observed
+            and state["picker"] is not None
+            and first_picker_result_observer is not None
+        ):
+            # This callback is diagnostic-only and occurs after the picker tap.
+            # It intentionally runs before semantic mismatch rejection so the
+            # exact first picker-result bytes survive a fail-closed import.
+            first_picker_result_observer(snapshot)
+            first_picker_result_observed = True
         if stage in {"cancelled", "failed"}:
             raise RuntimeError(
                 "Document import failed before workspace activation: "

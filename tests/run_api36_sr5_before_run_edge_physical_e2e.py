@@ -960,7 +960,11 @@ def prepare_runner(
     shared.wait_for_phone_runners(device, timeout=120)
     shared.record_phone_ui_locale_evidence(device, evidence_prefix=spec.lane)
     device.tap("home-open-file")
-    shared.select_android_document(device, fixture_name)
+    selection_proof = shared.select_android_document(
+        device,
+        fixture_name,
+        evidence_prefix=spec.lane,
+    )
     if proof_expectation is not None:
         import api36_proof_state as proof_state_runtime
 
@@ -969,6 +973,14 @@ def prepare_runner(
             expected=proof_expectation,
             content_sha256=fixture_sha256,
             timeout=120,
+            first_picker_result_observer=lambda snapshot: (
+                shared.record_documents_ui_file_first_import_state(
+                    device,
+                    selection_proof,
+                    import_state=snapshot.payload,
+                    serialized_sha256=snapshot.serialized_sha256,
+                )
+            ),
         )
     else:
         import_proof = None
@@ -1622,6 +1634,7 @@ def default_source_paths(
     return {
         "sharedPhysicalDriverSha256": Path(shared.__file__).resolve(),
         "sharedProvenanceHelperSha256": Path(load_and_verify_manifest.__code__.co_filename).resolve(),
+        "api36ProofStateReaderSha256": Path(__file__).with_name("api36_proof_state.py"),
         "careerWizardPageSha256": android_root / "src/Chummer.Android/Native/Sr5CareerWizardPage.cs",
         "tableWizardPageSha256": android_root / "src/Chummer.Android/Native/Sr5TableWizardPage.cs",
         "tableWizardModelSha256": android_root / "src/Chummer.Android/Native/Sr5TableWizardPhoneModel.cs",

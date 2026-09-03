@@ -207,6 +207,7 @@ class Api36ProofStateContractTests(unittest.TestCase):
 
     def test_import_reader_rejects_a_different_governed_fixture(self) -> None:
         value = import_state_payload()
+        observed: list[proof.ImportProofStateSnapshot] = []
 
         class Device:
             def shell(self, *_arguments: str) -> str:
@@ -221,7 +222,40 @@ class Api36ProofStateContractTests(unittest.TestCase):
                 expected=expectation(),
                 content_sha256="d" * 64,
                 timeout=1,
+                first_picker_result_observer=observed.append,
             )
+        self.assertEqual(1, len(observed))
+        self.assertEqual(value, observed[0].payload)
+
+    def test_import_reader_observes_only_first_validated_picker_result(self) -> None:
+        before_picker = import_state_payload()
+        before_picker["stage"] = "picker-launched"
+        before_picker["picker"] = None
+        before_picker["stream"] = None
+        before_picker["workspace"] = None
+        before_picker["activationIssued"] = False
+        before_picker["stateDigest"] = proof.expected_import_state_digest(before_picker)
+        activated = import_state_payload()
+        outputs = [encoded(before_picker), encoded(activated)]
+        observed: list[proof.ImportProofStateSnapshot] = []
+
+        class Device:
+            def shell(self, *_arguments: str) -> str:
+                return "4242"
+
+            def run(self, *_arguments: str, **_kwargs: object) -> SimpleNamespace:
+                return SimpleNamespace(returncode=0, stdout=outputs.pop(0))
+
+        result = proof.wait_for_import_activation(
+            Device(),
+            expected=expectation(),
+            content_sha256="b" * 64,
+            timeout=1,
+            first_picker_result_observer=observed.append,
+        )
+
+        self.assertEqual(activated, result.payload)
+        self.assertEqual([activated], [item.payload for item in observed])
 
     def test_exact_state_is_digest_process_and_build_bound(self) -> None:
         self.assertEqual(
