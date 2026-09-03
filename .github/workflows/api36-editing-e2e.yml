@@ -472,6 +472,20 @@ jobs:
           path: ${{ runner.temp }}/chummer-api36-journey-evidence
           merge-multiple: false
 
+      - name: Download the exact x64 APK authority input
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          artifact-ids: ${{ needs.build.outputs.apk-artifact-id }}
+          path: ${{ runner.temp }}/chummer-android-apk
+          merge-multiple: true
+
+      - name: Download the exact ARM64 hosted candidate authority input
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          artifact-ids: ${{ needs.build.outputs.arm64-artifact-id }}
+          path: ${{ runner.temp }}/chummer-android-arm64
+          merge-multiple: true
+
       - name: Require one shared authority and every required wizard journey
         env:
           CHUMMER_BUILD_RESULT: ${{ needs.build.result }}
@@ -495,11 +509,42 @@ jobs:
           --artifact-attempt "$CHUMMER_E2E_APK_ARTIFACT_ATTEMPT"
           --apk-sha256 "$CHUMMER_E2E_APK_SHA256"
 
+      - name: Materialize and replay the machine-only P0 PR authority
+        shell: bash
+        run: |
+          set -euo pipefail
+          authority_root="$RUNNER_TEMP/chummer-android-p0-pr-authority"
+          install -d -m 0700 "$authority_root"
+          authority="$authority_root/ANDROID_P0_PR_AUTHORITY.generated.json"
+          common=(
+            --android-root "$GITHUB_WORKSPACE/chummer-android"
+            --hosted-candidate "$RUNNER_TEMP/chummer-android-arm64/hosted-build-candidate.json"
+            --aggregate "$RUNNER_TEMP/chummer-api36-aggregate/receipt.json"
+            --workflow "$GITHUB_WORKSPACE/chummer-android/.github/workflows/api36-editing-e2e.yml"
+            --x64-apk "$RUNNER_TEMP/chummer-android-apk/chummer-android-x64-debug.apk"
+            --arm64-apk "$RUNNER_TEMP/chummer-android-arm64/chummer-android-arm64-debug.apk"
+          )
+          python3 chummer-android/scripts/materialize-android-p0-pr-authority.py \
+            materialize "${common[@]}" --output "$authority"
+          python3 chummer-android/scripts/materialize-android-p0-pr-authority.py \
+            verify "${common[@]}" --authority "$authority"
+
       - name: Upload the aggregate phone authority receipt
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: chummer-android-api36-phone-sr5-wizard-aggregate-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/chummer-api36-aggregate/receipt.json
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+          overwrite: false
+          include-hidden-files: false
+
+      - name: Upload the machine-only P0 PR authority
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: chummer-android-p0-pr-authority-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/chummer-android-p0-pr-authority/ANDROID_P0_PR_AUTHORITY.generated.json
           if-no-files-found: error
           retention-days: 30
           compression-level: 0
