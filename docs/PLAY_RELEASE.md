@@ -246,6 +246,38 @@ A locally signed AAB is not publication. Publication requires a Chummer-scoped
 Play Console session or service account. Memorial or PropertyQuarry browser
 sessions and app identities must never be reused for Chummer.
 
+For the next release, `scripts/materialize_next_play_internal_publication_receipt.py`
+is the offline receipt boundary. It neither opens Play nor uploads anything. Run
+it only after a human or governed browser operator has saved the explicitly
+observed public Internal-testing fields in an owner-only JSON file using
+`chummer.android.play-internal-browser-readback/v1` and the closed
+`play/next-internal-browser-readback.schema.json`. Unknown fields—including
+cookies, tokens, credentials, session data, notes, or screenshots—fail closed.
+The release AAB and v3 source graph must be the exact canonical local build
+outputs; both are reread, structurally checked, hashed, and bound into the
+receipt.
+
+```sh
+python3 scripts/materialize_next_play_internal_publication_receipt.py materialize \
+  --browser-readback /absolute/private/explicit-browser-readback.json \
+  --aab /absolute/path/chummer-android-VERSION-upload.aab \
+  --source-graph /absolute/private/chummer-android-VERSION-source-graph.json \
+  --output /absolute/private/next-internal-publication.json
+
+python3 scripts/materialize_next_play_internal_publication_receipt.py verify \
+  --receipt /absolute/private/next-internal-publication.json \
+  --aab /absolute/path/chummer-android-VERSION-upload.aab \
+  --source-graph /absolute/private/chummer-android-VERSION-source-graph.json
+```
+
+A passing v3 receipt sets `publicationAuthorized: true` only with scope
+`google_play_internal_testing_evidence_only`: it records an observed Internal
+publication, not permission to perform an upload. It always sets production,
+upload-action, and tester-roster authorization to false and does not claim a
+tester install or Play-side artifact-byte readback. Keep the generated receipt
+outside the repository until a real readback has occurred and its exact evidence
+has been reviewed; this lane deliberately provides no Preview.11 receipt.
+
 The recorded Preview.10 Internal-testing publication truth is
 `play/evidence/preview10-internal-publication.json`. Verify the durable record
 with `scripts/verify_play_internal_publication_receipt.py`. Its Play application,

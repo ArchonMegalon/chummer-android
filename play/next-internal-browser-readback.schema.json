@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://chummer.run/schemas/android-play-internal-browser-readback-v1.schema.json",
+  "title": "Chummer Android explicit Play Internal browser readback v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractName",
+    "observedAtUtc",
+    "surface",
+    "status",
+    "application",
+    "track",
+    "release",
+    "fieldsObserved",
+    "credentialOrSessionDataRecorded"
+  ],
+  "properties": {
+    "contractName": {
+      "const": "chummer.android.play-internal-browser-readback/v1"
+    },
+    "observedAtUtc": { "type": "string", "format": "date-time" },
+    "surface": { "const": "google_play_console_internal_testing" },
+    "status": { "const": "observed" },
+    "application": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "packageId", "playApplicationId"],
+      "properties": {
+        "name": { "const": "Chummer" },
+        "packageId": { "const": "com.myexternalbrain.chummer" },
+        "playApplicationId": { "const": "4975957268242186974" }
+      }
+    },
+    "track": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "consoleName", "trackId", "active", "joinUrl"],
+      "properties": {
+        "name": { "const": "internal" },
+        "consoleName": { "const": "Internal testing" },
+        "trackId": { "const": "4700678198570024687" },
+        "active": { "const": true },
+        "joinUrl": {
+          "type": "string",
+          "const": "https://play.google.com/apps/internaltest/4700678198570024687"
+        }
+      }
+    },
+    "release": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "versionCode",
+        "versionName",
+        "status",
+        "releasedAt",
+        "supportedAndroidDevices"
+      ],
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "maxLength": 180 },
+        "versionCode": { "type": "integer", "minimum": 11 },
+        "versionName": {
+          "type": "string",
+          "pattern": "^[0-9]+(?:\\.[0-9]+){2}(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$",
+          "maxLength": 128
+        },
+        "status": { "const": "Available to internal testers" },
+        "releasedAt": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["consoleDisplay", "normalizedUtc", "precision", "timeZoneAuthority"],
+          "properties": {
+            "consoleDisplay": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9 .,:()+-]{0,127}$"
+            },
+            "normalizedUtc": { "type": "null" },
+            "precision": { "const": "console_minute" },
+            "timeZoneAuthority": { "const": "not_exposed_by_browser_readback" }
+          }
+        },
+        "supportedAndroidDevices": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "fieldsObserved": {
+      "const": ["application", "track", "release", "join_url"]
+    },
+    "credentialOrSessionDataRecorded": { "const": false }
+  }
+}
