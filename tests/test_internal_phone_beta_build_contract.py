@@ -244,7 +244,7 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
                 "compileProject": str(
                     root / "tests/Chummer.Android.Native.CompileCheck/Chummer.Android.Native.CompileCheck.csproj"
                 ),
-                "compiledOwnedSourceCount": 215,
+                "compiledOwnedSourceCount": 217,
                 "generatedProjectReferenceCount": 3,
                 "issues": [],
                 "repoRoot": str(root),

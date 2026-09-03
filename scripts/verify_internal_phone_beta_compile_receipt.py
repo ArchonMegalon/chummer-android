@@ -511,7 +511,7 @@ def validate_graph_evidence(paths: dict[str, Path], facts: JournalFacts) -> None
             pass_facts = (
                 owned.get("schema") == "chummer.android.native-compile-graph/v1"
                 and owned.get("status") == "pass"
-                and owned.get("compiledOwnedSourceCount") == 215
+                and owned.get("compiledOwnedSourceCount") == 217
                 and owned.get("generatedProjectReferenceCount") == 3
                 and owned.get("issues") == []
                 and isinstance(owned.get("compileProject"), str)

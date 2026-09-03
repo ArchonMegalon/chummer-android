@@ -151,7 +151,7 @@
       {
         "path": "src/Chummer.Android/MauiProgram.cs",
         "exists": true,
-        "sha256": "8a6c755c2e74b92432b6ef45bb4e567462910b28b4196b449c3ffc6147a4acfb"
+        "sha256": "f99b6122ff4def4ed82a75a6364d60e7d93678a11f6e30d40fe3a319ebe86879"
       },
       {
         "path": "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
@@ -641,7 +641,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "63808ba5aa328bb8d0a9631031f9df6b29bb191868dd4e372207b121b6b63a7e"
+        "sha256": "b81218ae9016d91d6c55b30cf4688265b0275258267642bda963ca0f61515020"
       },
       {
         "path": "src/Chummer.Android/Native/RunnerSessionSr5CareerWizardPhoneAuthority.cs",
@@ -666,7 +666,7 @@
       {
         "path": "src/Chummer.Android/Native/Sr5CareerWizardPage.cs",
         "exists": true,
-        "sha256": "04c55020cd68e2fa8a0644f03712e1b2cea13b3735e0426c41844212ef48e65c"
+        "sha256": "23c8df88fb6cef83b75fb1a252923774454ec0639ef3485e59ab58845a623e61"
       },
       {
         "path": "src/Chummer.Android/Native/Sr5CareerWizardPhoneModel.cs",
@@ -731,17 +731,17 @@
       {
         "path": "src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.resx",
         "exists": true,
-        "sha256": "62b29299ce1be5a3e05a2e0efbbbf4f4dbb9518cc3b3e68181dc46e58a276a7b"
+        "sha256": "a88397738e1872a829a9209a3f9f1f00183cc92a00f1efdb1102c752b34d1d9f"
       },
       {
         "path": "src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.de.resx",
         "exists": true,
-        "sha256": "ae4aa1c3dc6b14eaef35838ed94b8c37388253ef838e87cf232139486a53946c"
+        "sha256": "9f27ea2c1aeb50315bf4886de0f156acc86a21c79eef05eef8d18d2f57095b55"
       },
       {
         "path": "src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.es.resx",
         "exists": true,
-        "sha256": "53ab969ef85abbc52a0af66d71ae9dcb2799c731502da1c471f90f285af0a1d5"
+        "sha256": "4982b35f898ffc3aaba53592cc442b9752aa67832195e1156bcbc7bbdfe730af"
       },
       {
         "path": "src/Chummer.Android/Resources/Localization/WizardStrings.resx",
@@ -776,7 +776,7 @@
       {
         "path": "tests/Chummer.Android.Sr5CareerFlowLocalization.Tests/Program.cs",
         "exists": true,
-        "sha256": "81fe3d0a12764500bcf8d12e83007e3e63e9d9d14e2490915ebece3c42930fba"
+        "sha256": "a060eaf25c98b519e3d62fb3218db099d8e97ca0fc576fc62bc46973d4d654d5"
       },
       {
         "path": "tests/Chummer.Android.Sr5TableWizard.NativeCompile.Tests/Chummer.Android.Sr5TableWizard.NativeCompile.Tests.csproj",
@@ -1376,7 +1376,7 @@
       {
         "path": "tests/run_api36_creation_prerequisite_e2e.py",
         "exists": true,
-        "sha256": "13e92bb25e7f6f4fb7e5f1b2088002b1f787e029a0c570d89fa9305315f7e914"
+        "sha256": "277b23e2dac5e8e942974afa9cdfe9e00bb459aea599c82247645987f8daf143"
       },
       {
         "path": "tests/fixtures/career-condition-monitor-e2e.chum5",
