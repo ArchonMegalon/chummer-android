@@ -262,19 +262,28 @@ python3 scripts/materialize_next_play_internal_publication_receipt.py materializ
   --browser-readback /absolute/private/explicit-browser-readback.json \
   --aab /absolute/path/chummer-android-VERSION-upload.aab \
   --source-graph /absolute/private/chummer-android-VERSION-source-graph.json \
+  --expected-android-source-commit APPROVED_40_CHARACTER_ANDROID_HEAD \
+  --expected-aab-sha256 APPROVED_64_CHARACTER_AAB_SHA256 \
   --output /absolute/private/next-internal-publication.json
 
 python3 scripts/materialize_next_play_internal_publication_receipt.py verify \
   --receipt /absolute/private/next-internal-publication.json \
   --aab /absolute/path/chummer-android-VERSION-upload.aab \
-  --source-graph /absolute/private/chummer-android-VERSION-source-graph.json
+  --source-graph /absolute/private/chummer-android-VERSION-source-graph.json \
+  --expected-android-source-commit APPROVED_40_CHARACTER_ANDROID_HEAD \
+  --expected-aab-sha256 APPROVED_64_CHARACTER_AAB_SHA256
 ```
 
-A passing v3 receipt sets `publicationAuthorized: true` only with scope
-`google_play_internal_testing_evidence_only`: it records an observed Internal
-publication, not permission to perform an upload. It always sets production,
-upload-action, and tester-roster authorization to false and does not claim a
-tester install or Play-side artifact-byte readback. Keep the generated receipt
+A passing v3 receipt records only an observed Internal-testing Console state
+plus the exact explicitly approved local source head and AAB bytes. It always
+sets `publicationAuthorized`, production, upload-action, and tester-roster
+authorization to false. Play does not expose the uploaded AAB digest here, and
+this lane does not prove that the approved local AAB is the artifact processed
+by Play or that a tester installed it. A successful internal-test install and a
+separate provider/upload-side artifact binding remain required before a broader
+publication claim. Browser readback must be fresh when the receipt is first
+materialized; durable verification may occur later against its exact inputs.
+Keep the generated receipt
 outside the repository until a real readback has occurred and its exact evidence
 has been reviewed; this lane deliberately provides no Preview.11 receipt.
 

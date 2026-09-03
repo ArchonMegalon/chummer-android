@@ -26,7 +26,7 @@
     "evidenceClass": {
       "const": "explicit_internal_browser_readback_plus_exact_local_release_outputs"
     },
-    "publicationAuthorized": { "const": true },
+    "publicationAuthorized": { "const": false },
     "application": {
       "type": "object",
       "additionalProperties": false,
@@ -171,7 +171,7 @@
       ],
       "properties": {
         "scope": { "const": "google_play_internal_testing_evidence_only" },
-        "publicationAuthorized": { "const": true },
+        "publicationAuthorized": { "const": false },
         "productionAuthorized": { "const": false },
         "uploadActionAuthorized": { "const": false },
         "testerRosterMutationAuthorized": { "const": false }
@@ -186,7 +186,9 @@
         "tester_installation",
         "play_artifact_digest_readback",
         "play_artifact_byte_retrievability",
-        "source_graph_retrieval_from_play"
+        "source_graph_retrieval_from_play",
+        "exact_local_aab_published_to_play",
+        "successful_internal_test_install"
       ]
     }
   },

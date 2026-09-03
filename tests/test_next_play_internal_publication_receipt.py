@@ -208,24 +208,43 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
         path.chmod(0o644)
 
     def materialize(self) -> dict[str, object]:
-        return self.module.materialize(self.browser, self.aab, self.graph, self.receipt)
+        return self.module.materialize(
+            self.browser,
+            self.aab,
+            self.graph,
+            self.receipt,
+            expected_android_source_commit=self.graph_payload["repositories"][0]["commit"],
+            expected_aab_sha256=hashlib.sha256(self.aab.read_bytes()).hexdigest(),
+        )
+
+    def verify(self) -> dict[str, object]:
+        return self.module.verify(
+            self.receipt,
+            self.aab,
+            self.graph,
+            expected_android_source_commit=self.graph_payload["repositories"][0]["commit"],
+            expected_aab_sha256=hashlib.sha256(self.aab.read_bytes()).hexdigest(),
+        )
 
     def test_round_trip_binds_explicit_readback_and_exact_local_outputs(self) -> None:
         result = self.materialize()
         self.assertEqual("pass", result["status"], result["failures"])
-        self.assertTrue(result["publicationAuthorized"])
-        self.assertEqual("google_play_internal_testing_evidence_only", result["authorizationScope"])
+        self.assertFalse(result["publicationAuthorized"])
+        self.assertEqual("none", result["authorizationScope"])
+        self.assertEqual(
+            "google_play_internal_testing_observation_only", result["evidenceScope"]
+        )
         self.assertFalse(result["productionAuthorized"])
         self.assertEqual(0o600, self.receipt.stat().st_mode & 0o777)
 
         payload = json.loads(self.receipt.read_text(encoding="utf-8"))
         self.assertEqual(self.module.CONTRACT, payload["contractName"])
-        self.assertTrue(payload["publicationAuthorized"])
+        self.assertFalse(payload["publicationAuthorized"])
         self.assertEqual(
             "explicit_internal_browser_readback_plus_exact_local_release_outputs",
             payload["evidenceClass"],
         )
-        self.assertTrue(payload["authorization"]["publicationAuthorized"])
+        self.assertFalse(payload["authorization"]["publicationAuthorized"])
         self.assertFalse(payload["authorization"]["productionAuthorized"])
         self.assertFalse(payload["authorization"]["uploadActionAuthorized"])
         self.assertFalse(payload["authorization"]["testerRosterMutationAuthorized"])
@@ -239,7 +258,7 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
         )
         self.assertNotIn(str(self.root), self.receipt.read_text(encoding="utf-8"))
 
-        verified = self.module.verify(self.receipt, self.aab, self.graph)
+        verified = self.verify()
         self.assertEqual("pass", verified["status"], verified["failures"])
         self.assertTrue(verified["localArtifactBytesVerified"])
 
@@ -326,6 +345,10 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
                 str(self.graph),
                 "--output",
                 str(self.receipt),
+                "--expected-android-source-commit",
+                self.graph_payload["repositories"][0]["commit"],
+                "--expected-aab-sha256",
+                hashlib.sha256(self.aab.read_bytes()).hexdigest(),
                 "--token",
                 "do-not-record",
             ],
@@ -385,10 +408,55 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
                     self.materialize()
                 self.assertFalse(self.receipt.exists())
 
+    def test_approved_head_digest_and_fresh_readback_are_required(self) -> None:
+        expected_head = self.graph_payload["repositories"][0]["commit"]
+        expected_digest = hashlib.sha256(self.aab.read_bytes()).hexdigest()
+        cases = (
+            (
+                {"expected_android_source_commit": "f" * 40,
+                 "expected_aab_sha256": expected_digest},
+                "does not match approved source head",
+            ),
+            (
+                {"expected_android_source_commit": expected_head,
+                 "expected_aab_sha256": "f" * 64},
+                "AAB bytes do not match approved AAB sha256",
+            ),
+        )
+        for bindings, message in cases:
+            with self.subTest(message=message):
+                with self.assertRaisesRegex(ValueError, message):
+                    self.module.materialize(
+                        self.browser,
+                        self.aab,
+                        self.graph,
+                        self.receipt,
+                        **bindings,
+                    )
+                self.assertFalse(self.receipt.exists())
+
+        stale = copy.deepcopy(self.browser_payload)
+        stale["observedAtUtc"] = (
+            datetime.now(UTC) - timedelta(hours=25)
+        ).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+        self.graph_payload["generatedAtUtc"] = stale["observedAtUtc"]
+        write_private(self.browser, stale)
+        write_private(self.graph, self.graph_payload)
+        with self.assertRaisesRegex(ValueError, "too old"):
+            self.module.materialize(
+                self.browser,
+                self.aab,
+                self.graph,
+                self.receipt,
+                expected_android_source_commit=expected_head,
+                expected_aab_sha256=expected_digest,
+            )
+        self.assertFalse(self.receipt.exists())
+
     def test_noncanonical_or_changed_aab_and_source_graph_bytes_fail_closed(self) -> None:
         self.materialize()
         self.write_aab(self.aab, marker=b"different-exact-bytes")
-        result = self.module.verify(self.receipt, self.aab, self.graph)
+        result = self.verify()
         self.assertEqual("fail", result["status"])
         self.assertFalse(result["publicationAuthorized"])
         self.assertFalse(result["productionAuthorized"])
@@ -399,7 +467,7 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
         graph = copy.deepcopy(self.graph_payload)
         graph["repositories"][0]["tree"] = "f" * 40
         write_private(self.graph, graph)
-        result = self.module.verify(self.receipt, self.aab, self.graph)
+        result = self.verify()
         self.assertEqual("fail", result["status"])
         self.assertFalse(result["publicationAuthorized"])
 
@@ -417,13 +485,13 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
                 candidate = copy.deepcopy(original)
                 mutation(candidate)
                 write_private(self.receipt, candidate)
-                result = self.module.verify(self.receipt, self.aab, self.graph)
+                result = self.verify()
                 self.assertEqual("fail", result["status"])
                 self.assertFalse(result["publicationAuthorized"])
                 self.assertFalse(result["productionAuthorized"])
         self.receipt.write_text(json.dumps(original, indent=2) + "\n", encoding="utf-8")
         self.receipt.chmod(0o600)
-        result = self.module.verify(self.receipt, self.aab, self.graph)
+        result = self.verify()
         self.assertEqual("fail", result["status"])
         self.assertTrue(any("not canonical" in failure for failure in result["failures"]))
 
@@ -451,13 +519,14 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
         browser_schema = json.loads(BROWSER_SCHEMA.read_text(encoding="utf-8"))
         self.assertFalse(schema["additionalProperties"])
         self.assertEqual(self.module.CONTRACT, schema["properties"]["contractName"]["const"])
-        self.assertTrue(schema["properties"]["publicationAuthorized"]["const"])
+        self.assertFalse(schema["properties"]["publicationAuthorized"]["const"])
         authorization = schema["properties"]["authorization"]
         self.assertFalse(authorization["additionalProperties"])
         self.assertEqual(
             "google_play_internal_testing_evidence_only",
             authorization["properties"]["scope"]["const"],
         )
+        self.assertFalse(authorization["properties"]["publicationAuthorized"]["const"])
         self.assertFalse(authorization["properties"]["productionAuthorized"]["const"])
         self.assertFalse(authorization["properties"]["uploadActionAuthorized"]["const"])
         self.assertFalse(
@@ -490,6 +559,7 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
             self.assertNotIn(forbidden, source)
         self.assertIn("never opens Play", source)
         self.assertIn('"uploadActionAuthorized": False', source)
+        self.assertIn('"publicationAuthorized": False', source)
         self.assertIn('"productionAuthorized": False', source)
 
 
