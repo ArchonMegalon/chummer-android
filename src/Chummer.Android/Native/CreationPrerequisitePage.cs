@@ -21,6 +21,9 @@ public sealed class CreationPrerequisitePage : NativePageBase
     private IReadOnlyList<string> _prepareBlockers = [];
 #if CHUMMER_API36_PROOF_INSTRUMENTATION
     private CharacterCreationPrerequisiteState? _latestApi36ProofReadyState;
+    private bool _api36ProofRouteAppeared;
+    private bool _api36ProofPageLoaded;
+    private bool _api36ProofAttachmentPublicationAttempted;
 #endif
 
     public CreationPrerequisitePage(RunnerSessionCoordinator coordinator) : base(coordinator)
@@ -29,13 +32,34 @@ public sealed class CreationPrerequisitePage : NativePageBase
         AutomationId = "creation-prerequisite-page";
         Content = new ScrollView { Content = _body };
 #if CHUMMER_API36_PROOF_INSTRUMENTATION
-        Loaded += PublishApi36AttachmentProofOnceLoaded;
+        Loaded += OnApi36ProofLoaded;
 #endif
     }
+
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+    protected override void OnAppearing()
+    {
+        base.OnAppearing();
+        // NativePageBase may refresh synchronously before its first incomplete await, or later
+        // after initialization. Retain the route, Loaded, and ready-state signals so every
+        // lifecycle order reaches the same exact attachment gate.
+        _api36ProofRouteAppeared = true;
+        TryPublishApi36AttachmentProof();
+    }
+
+    protected override void OnDisappearing()
+    {
+        _api36ProofRouteAppeared = false;
+        _latestApi36ProofReadyState = null;
+        _api36ProofAttachmentPublicationAttempted = false;
+        base.OnDisappearing();
+    }
+#endif
 
     protected override void Refresh()
     {
 #if CHUMMER_API36_PROOF_INSTRUMENTATION
+        _api36ProofAttachmentPublicationAttempted = false;
         _latestApi36ProofReadyState = null;
 #endif
         _body.Clear();
@@ -100,20 +124,31 @@ public sealed class CreationPrerequisitePage : NativePageBase
     }
 
 #if CHUMMER_API36_PROOF_INSTRUMENTATION
-    private void PublishApi36AttachmentProofOnceLoaded(object? sender, EventArgs args)
+    private void OnApi36ProofLoaded(object? sender, EventArgs args)
     {
-        Loaded -= PublishApi36AttachmentProofOnceLoaded;
+        _api36ProofPageLoaded = true;
         TryPublishApi36AttachmentProof();
     }
 
     private void TryPublishApi36AttachmentProof()
     {
-        if (_latestApi36ProofReadyState is not { } state
+        IReadOnlyList<Page> navigationStack = Navigation.NavigationStack;
+        if (_api36ProofAttachmentPublicationAttempted
+            || !_api36ProofRouteAppeared
+            || !_api36ProofPageLoaded
+            || !IsLoaded
+            || Handler is null
+            || Window is null
+            || navigationStack.Count < 2
+            || !ReferenceEquals(navigationStack[^1], this)
+            || navigationStack.Count(candidate => ReferenceEquals(candidate, this)) != 1
+            || _latestApi36ProofReadyState is not { } state
             || !CreationPrerequisitePhoneAuthority.IsReady(state, Coordinator.State))
         {
             return;
         }
 
+        _api36ProofAttachmentPublicationAttempted = true;
         Api36ProofStatePublisher.TryPublishCreationPrerequisiteAttachment(
             this,
             Coordinator,

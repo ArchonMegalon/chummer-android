@@ -782,55 +782,121 @@ class Api36ProofStateContractTests(unittest.TestCase):
             project,
         )
 
-    def test_creation_prerequisite_attachment_publication_is_one_shot_after_loaded(self) -> None:
+    def test_creation_prerequisite_attachment_publication_latches_loaded_route_and_ready_state(self) -> None:
         page = (ROOT / "src/Chummer.Android/Native/CreationPrerequisitePage.cs").read_text(
             encoding="utf-8"
         )
         constructor = page[
             page.index("public CreationPrerequisitePage(") :
+            page.index("protected override void OnAppearing()")
+        ]
+        appearing = page[
+            page.index("protected override void OnAppearing()") :
+            page.index("protected override void OnDisappearing()")
+        ]
+        disappearing = page[
+            page.index("protected override void OnDisappearing()") :
             page.index("protected override void Refresh()")
         ]
         refresh = page[
             page.index("protected override void Refresh()") :
-            page.index("private void PublishApi36AttachmentProofOnceLoaded(")
+            page.index("private void OnApi36ProofLoaded(")
         ]
-        loaded_hook = page[
-            page.index("private void PublishApi36AttachmentProofOnceLoaded(") :
+        loaded = page[
+            page.index("private void OnApi36ProofLoaded(") :
+            page.index("private void TryPublishApi36AttachmentProof()")
+        ]
+        publication_latch = page[
+            page.index("private void TryPublishApi36AttachmentProof()") :
             page.index("private void AddBinding(")
         ]
 
-        self.assertEqual(
-            1,
-            constructor.count("Loaded += PublishApi36AttachmentProofOnceLoaded;"),
-        )
+        self.assertEqual(1, constructor.count("Loaded += OnApi36ProofLoaded;"))
+        self.assertNotIn("Loaded -=", page)
         self.assertNotIn("TryPublishCreationPrerequisiteAttachment", refresh)
         self.assertEqual(
-            1,
-            loaded_hook.count("Loaded -= PublishApi36AttachmentProofOnceLoaded;"),
-        )
-        self.assertEqual(
-            2,
+            3,
             page.count("TryPublishApi36AttachmentProof();"),
         )
+        self.assertLess(
+            appearing.index("base.OnAppearing();"),
+            appearing.index("_api36ProofRouteAppeared = true;"),
+        )
+        self.assertLess(
+            appearing.index("_api36ProofRouteAppeared = true;"),
+            appearing.index("TryPublishApi36AttachmentProof();"),
+        )
+        self.assertLess(
+            disappearing.index("_api36ProofRouteAppeared = false;"),
+            disappearing.index("base.OnDisappearing();"),
+        )
+        self.assertLess(
+            disappearing.index("_latestApi36ProofReadyState = null;"),
+            disappearing.index("base.OnDisappearing();"),
+        )
+        self.assertLess(
+            disappearing.index("_api36ProofAttachmentPublicationAttempted = false;"),
+            disappearing.index("base.OnDisappearing();"),
+        )
+        self.assertNotIn("_api36ProofPageLoaded", disappearing)
+        self.assertLess(
+            loaded.index("_api36ProofPageLoaded = true;"),
+            loaded.index("TryPublishApi36AttachmentProof();"),
+        )
+        self.assertIn("_api36ProofAttachmentPublicationAttempted = false;", refresh)
         self.assertIn("_latestApi36ProofReadyState = null;", refresh)
         self.assertIn("_latestApi36ProofReadyState = state;", refresh)
         self.assertIn("TryPublishApi36AttachmentProof();", refresh)
-        self.assertIn("TryPublishApi36AttachmentProof();", loaded_hook)
-        readiness = loaded_hook.index(
-            "CreationPrerequisitePhoneAuthority.IsReady(state, Coordinator.State)"
+        self.assertLess(
+            refresh.index("_api36ProofAttachmentPublicationAttempted = false;"),
+            refresh.index("Coordinator.LoadCreationPrerequisite()"),
         )
-        publication = loaded_hook.index(
+        self.assertLess(
+            refresh.index("_latestApi36ProofReadyState = state;"),
+            refresh.index("TryPublishApi36AttachmentProof();"),
+        )
+        self.assertIn("_api36ProofAttachmentPublicationAttempted", publication_latch)
+        armed = publication_latch.index(
+            "_api36ProofAttachmentPublicationAttempted = true;"
+        )
+        for prerequisite in (
+            "!_api36ProofRouteAppeared",
+            "!_api36ProofPageLoaded",
+            "!IsLoaded",
+            "Handler is null",
+            "Window is null",
+            "navigationStack.Count < 2",
+            "!ReferenceEquals(navigationStack[^1], this)",
+            "navigationStack.Count(candidate => ReferenceEquals(candidate, this)) != 1",
+            "_latestApi36ProofReadyState is not { } state",
+            "CreationPrerequisitePhoneAuthority.IsReady(state, Coordinator.State)",
+        ):
+            self.assertLess(publication_latch.index(prerequisite), armed)
+        publication = publication_latch.index(
             "Api36ProofStatePublisher.TryPublishCreationPrerequisiteAttachment("
         )
-        self.assertLess(readiness, publication)
+        self.assertLess(armed, publication)
+        self.assertEqual(
+            1,
+            page.count("_api36ProofAttachmentPublicationAttempted = true;"),
+        )
+        self.assertEqual(
+            2,
+            page.count("_api36ProofAttachmentPublicationAttempted = false;"),
+        )
         for forbidden in (
             "Task.Delay",
             "while (",
             "Dispatcher.Dispatch",
             "Navigation.Push",
+            "Navigation.Pop",
             'device.shell("input", "tap"',
+            "PublishApi36AttachmentProofOnceLoaded",
         ):
-            self.assertNotIn(forbidden, loaded_hook)
+            self.assertNotIn(
+                forbidden,
+                appearing + disappearing + loaded + publication_latch,
+            )
 
     def test_gate_scope_is_unchanged(self) -> None:
         gate = json.loads((ROOT / "eng/api36-sr5-wizard-gate-authority.json").read_text(encoding="utf-8"))

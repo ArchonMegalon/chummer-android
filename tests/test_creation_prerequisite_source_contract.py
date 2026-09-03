@@ -14412,7 +14412,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
         refresh = page[
             page.index("protected override void Refresh()") :
-            page.index("private void PublishApi36AttachmentProofOnceLoaded(")
+            page.index("private void TryPublishApi36AttachmentProof()")
         ]
         self.assertEqual(1, refresh.count("Coordinator.LoadCreationPrerequisite()"))
         self.assertEqual(1, page.count("Coordinator.LoadCreationPrerequisite()"))
