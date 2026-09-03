@@ -1987,14 +1987,14 @@ public sealed class BuildPage : NativePageBase
         }
 
         var page = new OriginDossierLifeModuleDecisionPage(
-            opened.State,
+            opened,
             CultureInfo.CurrentUICulture.Name,
             async choiceId =>
             {
                 OriginDossierLifeModulePhoneResult prepared =
                     await Coordinator.PrepareSr5LifeModuleOriginAsync(choiceId);
                 if (prepared.IsSuccess)
-                    return prepared.State;
+                    return prepared;
                 await DisplayAlertAsync(
                     copy["Origin.PreviewUnavailableTitle"],
                     prepared.Blockers.FirstOrDefault() ?? copy["Origin.PreviewUnavailableDetail"],

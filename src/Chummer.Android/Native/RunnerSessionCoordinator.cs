@@ -6,6 +6,7 @@ using Chummer.Application.Characters;
 using Chummer.Application.Tools;
 using Chummer.Contracts.Api;
 using Chummer.Contracts.Characters;
+using Chummer.Contracts.LifeModules;
 using Chummer.Contracts.Presentation;
 using Chummer.Contracts.Workspaces;
 using Chummer.Presentation;
@@ -2223,24 +2224,87 @@ public sealed class RunnerSessionCoordinator : IDisposable
            && foundation.Binding.SavedRevision == State.SavedRevision
            && !foundation.CharacterCreated;
 
-    internal Task<OriginDossierLifeModulePhoneResult> OpenSr5LifeModuleOriginAsync(
+    internal async Task<OriginDossierLifeModulePhoneResult> OpenSr5LifeModuleOriginAsync(
         CancellationToken cancellationToken = default)
-        => CanOpenSr5LifeModuleOrigin() && State.WorkspaceId is { } workspaceId
-            ? _originLifeModuleRuntime!.OpenAsync(workspaceId.Value, cancellationToken)
-            : Task.FromResult(new OriginDossierLifeModulePhoneResult(
-                "blocked",
+    {
+        if (!CanOpenSr5LifeModuleOrigin() || State.WorkspaceId is not { } workspaceId)
+        {
+            return new OriginDossierLifeModulePhoneResult(
+                LifeModuleOriginDossierOutcomes.Blocked,
                 null,
-                ["sr5-life-module-origin-authority-unavailable"]));
+                ["sr5-life-module-origin-authority-unavailable"]);
+        }
 
-    internal Task<OriginDossierLifeModulePhoneResult> PrepareSr5LifeModuleOriginAsync(
+        OriginDossierLifeModulePhoneResult result = await _originLifeModuleRuntime!
+            .OpenAsync(workspaceId.Value, cancellationToken);
+        return BindCurrentLifeModuleBudget(result);
+    }
+
+    internal async Task<OriginDossierLifeModulePhoneResult> PrepareSr5LifeModuleOriginAsync(
         string choiceId,
         CancellationToken cancellationToken = default)
-        => CanOpenSr5LifeModuleOrigin() && State.WorkspaceId is { } workspaceId
-            ? _originLifeModuleRuntime!.PrepareAsync(workspaceId.Value, choiceId, cancellationToken)
-            : Task.FromResult(new OriginDossierLifeModulePhoneResult(
-                "blocked",
+    {
+        if (!CanOpenSr5LifeModuleOrigin() || State.WorkspaceId is not { } workspaceId)
+        {
+            return new OriginDossierLifeModulePhoneResult(
+                LifeModuleOriginDossierOutcomes.Blocked,
                 null,
-                ["sr5-life-module-origin-authority-unavailable"]));
+                ["sr5-life-module-origin-authority-unavailable"]);
+        }
+
+        OriginDossierLifeModulePhoneResult result = await _originLifeModuleRuntime!
+            .PrepareAsync(workspaceId.Value, choiceId, cancellationToken);
+        return BindCurrentLifeModuleBudget(result);
+    }
+
+    private OriginDossierLifeModulePhoneResult BindCurrentLifeModuleBudget(
+        OriginDossierLifeModulePhoneResult result)
+    {
+        if (!result.IsSuccess || result.State is not { } decision)
+            return result;
+
+        CharacterCreationFoundationInteractionLoadResult loaded =
+            _foundationInteractionPresenter.Load(State);
+        if (!string.Equals(
+                loaded.Outcome,
+                CharacterCreationFoundationOutcomes.Success,
+                StringComparison.Ordinal)
+            || loaded.State is not { } foundation
+            || foundation.Binding.WorkspaceId.Value != decision.WorkspaceId
+            || foundation.Binding.ContentRevision != decision.WorkspaceRevision
+            || !string.Equals(
+                foundation.Binding.RawCharacterXmlDigest,
+                result.BoundContentDigest,
+                StringComparison.Ordinal)
+            || !string.Equals(
+                foundation.Binding.SourceDigest,
+                result.BoundSourceDigest,
+                StringComparison.Ordinal)
+            || string.IsNullOrWhiteSpace(result.BoundMechanicsSnapshotDigest)
+            || string.IsNullOrWhiteSpace(foundation.FoundationSnapshotDigest)
+            || !string.Equals(
+                foundation.LifeModuleBudget.BudgetId,
+                CharacterCreationBudgetIds.LifeModules,
+                StringComparison.Ordinal)
+            || !foundation.LifeModuleBudget.IsExact
+            || foundation.LifeModuleBudget.Blockers.Count != 0)
+        {
+            return new OriginDossierLifeModulePhoneResult(
+                LifeModuleOriginDossierOutcomes.Blocked,
+                null,
+                loaded.Blockers
+                    .Append("sr5-life-module-budget-authority-unavailable")
+                    .Distinct(StringComparer.Ordinal)
+                    .OrderBy(static blocker => blocker, StringComparer.Ordinal)
+                    .ToArray());
+        }
+
+        return result with
+        {
+            LifeModuleBudget = foundation.LifeModuleBudget,
+            FoundationSnapshotDigest = foundation.FoundationSnapshotDigest
+        };
+    }
 
     internal async Task<OriginDossierLifeModulePhoneResult> ConfirmSr5LifeModuleOriginAsync(
         string choiceId,

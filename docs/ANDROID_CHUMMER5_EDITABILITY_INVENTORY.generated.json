@@ -106,7 +106,7 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "59b480e636ed69bdcc293a86bcf586f2399295f53278e4ef0239ba47577067fd"
+        "sha256": "254f4c5177e03ea65f09b349d55707f079b24228f5d5cb5eff84d4dc53f245d8"
       },
       {
         "path": "src/Chummer.Android/Native/MorePage.cs",
@@ -641,7 +641,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "a666f20ca925367d949a9ffc5b4904b038354bb7341a92979e6fc22eb2391e85"
+        "sha256": "b7b84c398ca5c48c114f2e5e2da92fab116c787fab0febf667d9cffc657229ea"
       },
       {
         "path": "src/Chummer.Android/Native/RunnerSessionSr5CareerWizardPhoneAuthority.cs",
@@ -871,7 +871,7 @@
       {
         "path": "tests/run_api36_sr5_before_run_edge_physical_e2e.py",
         "exists": true,
-        "sha256": "8923602ea5d51ad380605aa7edd5a95f94d23676c97af86f4654944e3da94c6a"
+        "sha256": "866249238fcc1bdd274280da7592d2bb58327022b25868e8b73081ad91a66386"
       },
       {
         "path": "tests/api36_proof_state.py",
@@ -896,7 +896,7 @@
       {
         "path": "tests/test_api36_sr5_playtime_short_burst_e2e_driver.py",
         "exists": true,
-        "sha256": "68c347a8ed7fbf15dacbe93d1f5533222e8177db535407d3119e0b90603f6ca9"
+        "sha256": "7f5b8614f2cc208e51becda9f928071331b3ce818756b6880dd5fb90d014e365"
       },
       {
         "path": "tests/run_api36_sr5_downtime_calendar_hosted_e2e.py",
@@ -916,7 +916,7 @@
       {
         "path": "tests/run_api36_sr5_after_run_settlement_e2e.py",
         "exists": true,
-        "sha256": "7a99ee3b5ac23f496294bf9565cb324c6db7d45322be6f464e87c8cfe0229d78"
+        "sha256": "a3b9e07a2f1aad87466fb6bfce3d808214a1ef59c1a2bef9ab0a95faac3f5a05"
       },
       {
         "path": "tests/run_api36_sr5_after_run_settlement_hosted_e2e.py",

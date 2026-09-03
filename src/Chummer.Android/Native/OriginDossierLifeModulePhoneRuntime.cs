@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using Chummer.Application.LifeModules;
+using Chummer.Contracts.Characters;
 using Chummer.Contracts.LifeModules;
 using Chummer.Presentation.OriginBooks;
 
@@ -10,7 +11,12 @@ public sealed record OriginDossierLifeModulePhoneResult(
     string Outcome,
     OriginDossierLifeModuleDecisionState? State,
     IReadOnlyList<string> Blockers,
-    bool Completed = false)
+    bool Completed = false,
+    CharacterCreationBudgetState? LifeModuleBudget = null,
+    string? FoundationSnapshotDigest = null,
+    string? BoundContentDigest = null,
+    string? BoundSourceDigest = null,
+    string? BoundMechanicsSnapshotDigest = null)
 {
     public bool IsSuccess => string.Equals(
         Outcome,
@@ -163,7 +169,13 @@ public sealed class OriginDossierLifeModulePhoneRuntime
             return new(
                 outcome,
                 OriginDossierLifeModuleInteractionProjector.Project(checkpoint),
-                blockers);
+                blockers,
+                Completed: false,
+                LifeModuleBudget: null,
+                FoundationSnapshotDigest: null,
+                BoundContentDigest: checkpoint.BoundContentDigest,
+                BoundSourceDigest: checkpoint.BoundSourceDigest,
+                BoundMechanicsSnapshotDigest: checkpoint.BoundMechanicsSnapshotDigest);
         }
         catch (InvalidOperationException)
         {
