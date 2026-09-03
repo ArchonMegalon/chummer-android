@@ -796,7 +796,7 @@
       {
         "path": "tests/Chummer.Android.Sr5TableWizard.Tests/Program.cs",
         "exists": true,
-        "sha256": "b0fd6d3d87699d857d0bd235baaaf0e6b539075c5879e46b28b4dbdd3e8f1c0e"
+        "sha256": "39f17dd07505bd9baba367de95a01270d40aabe2ab6fe54fe8eaa392905f61b5"
       },
       {
         "path": ".github/workflows/api36-editing-e2e.yml",
@@ -841,12 +841,12 @@
       {
         "path": "src/Chummer.Android/Proof/Api36ProofState.cs",
         "exists": true,
-        "sha256": "672da5e113468c83982010c222d8e0918ccb2ec46a26ed896d384c9add238630"
+        "sha256": "8ebb681c8bbb560cae2275c85abe9b335791373bbfbdc0b07f8ec712ad760fe0"
       },
       {
         "path": "src/Chummer.Android/Proof/Api36ProofStatePublisher.cs",
         "exists": true,
-        "sha256": "e8e20680e1daa6d7d2dbe42a8eff62f0792647e9d991070df49d7a182cf48149"
+        "sha256": "c6080434f702ebfd1fa9a171db4d39dafd37f97247a724e27e8d8546c6da92ed"
       },
       {
         "path": "tests/Chummer.Android.Native.CompileCheck/NativeCompileInputs.props",
@@ -876,12 +876,12 @@
       {
         "path": "tests/api36_proof_state.py",
         "exists": true,
-        "sha256": "c34bb6de5d0deee7ee57f3b9ca9451a757e989420c7fb7cc6805ab9ac5195319"
+        "sha256": "bf6fa6bf35f971c98837ed99fa32d3e0348a22f03014d503e363c877362e7950"
       },
       {
         "path": "tests/test_api36_proof_state_contract.py",
         "exists": true,
-        "sha256": "205500d9a2831f886282b7cb463b8734f839f49686aa8d5925091675582b28d3"
+        "sha256": "824a1cb430b18cb55a4128d26a3e2438aeea1ddd1da0c2aab122e61fc7c6429d"
       },
       {
         "path": "tests/test_run_api36_sr5_before_run_edge_e2e_driver.py",
@@ -956,7 +956,7 @@
       {
         "path": "tests/run_api36_editing_e2e.py",
         "exists": true,
-        "sha256": "11ba936169c2b868c9a26a638b4c808ab4de50e90412eda737d6e493e5b7321b"
+        "sha256": "238e8cd12010c8e9e3460bfdfbfdac7eb76937f0fb275e8791a87b7dc12e63df"
       },
       {
         "path": "tests/run_api36_career_active_skill_advance_e2e.py",
@@ -1376,7 +1376,7 @@
       {
         "path": "tests/run_api36_creation_prerequisite_e2e.py",
         "exists": true,
-        "sha256": "277b23e2dac5e8e942974afa9cdfe9e00bb459aea599c82247645987f8daf143"
+        "sha256": "d19cfd46d5e6c98d1e20426aabf93844c088a21d4af3c197c6b2812b50378f6c"
       },
       {
         "path": "tests/fixtures/career-condition-monitor-e2e.chum5",

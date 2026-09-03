@@ -318,7 +318,7 @@ static void AssertApi36ProofStateContract()
         transaction);
     Assert(Api36ProofStateContract.IsExact(state),
         "the debug-only proof state must validate its exact digest-bound fields");
-    Assert(state.StateDigest == "sha256:13f91525ca7e5b116653073afe8da07e38cef387583fc6ed90ceae2ffd895267",
+    Assert(state.StateDigest == "sha256:5d5ec21d03f3054d3f265b5f307357d42646ba229870d595c6f9e3b8b643456f",
         "the C# proof digest must match the strict Python reader's canonical vector");
     Assert(Api36ProofStateContract.Serialize(state).Length > 0,
         "the exact proof state must serialize to bounded JSON");
@@ -334,6 +334,73 @@ static void AssertApi36ProofStateContract()
             Workspace = state.Workspace! with { PayloadSha256 = new string('A', 64) }
         }),
         "the proof state must reject noncanonical workspace digests");
+
+    var resourcesSurface = new Api36ProofSurfaceState(
+        "runner",
+        "creation-resources-page",
+        3,
+        "creation-resources",
+        "authority-ready",
+        Settled: true);
+    var resourcesWorkspace = new Api36ProofWorkspaceState(
+        "workspace-resources",
+        42,
+        42,
+        new string('4', 64),
+        new string('5', 64),
+        "sha256:" + new string('6', 64));
+    var resources = new Api36ProofCreationResourcesState(
+        "creation-resources-page",
+        "workspace-resources",
+        42,
+        42,
+        42,
+        "sha256:" + new string('7', 64),
+        "sha256:" + new string('8', 64),
+        "sha256:" + new string('9', 64),
+        "sha256:" + new string('a', 64),
+        "sha256:" + new string('6', 64),
+        "sha256:" + new string('b', 64),
+        new string('c', 64),
+        5,
+        "sha256:" + new string('d', 64),
+        50000m,
+        50000m,
+        "karma:0",
+        1,
+        "sha256:" + new string('e', 64));
+    Api36ProofState resourceState = Api36ProofStateContract.Create(
+        8,
+        4242,
+        "44444444-4444-4444-4444-444444444444",
+        2,
+        build,
+        resourcesSurface,
+        resourcesWorkspace,
+        transaction: null,
+        creationResources: resources);
+    Assert(Api36ProofStateContract.IsExact(resourceState),
+        "Creation Resources proof state must bind its page, workspace and exact digests");
+    Assert(!Api36ProofStateContract.IsExact(resourceState with
+        {
+            CreationResources = resources with { WorkspaceRevision = 41 }
+        }),
+        "Creation Resources proof state must reject a foreign workspace revision");
+    Assert(!Api36ProofStateContract.IsExact(resourceState with
+        {
+            CreationResources = resources with { PendingDraftDigest = null }
+        }),
+        "Creation Resources proof state must reject a partial pending-draft identity");
+    Assert(!Api36ProofStateContract.IsExact(resourceState with
+        {
+            CreationResources = null
+        }),
+        "Creation Resources proof state must reject missing typed page authority");
+    Assert(!Api36ProofStateContract.IsExact(state with
+        {
+            CreationResources = resources
+        }),
+        "non-Creation proof surfaces must reject injected Creation Resources authority");
 }
 
 static void AssertObservedSnapshotConflict(

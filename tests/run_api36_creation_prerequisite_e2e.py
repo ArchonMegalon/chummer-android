@@ -11,6 +11,7 @@ import argparse
 import hashlib
 import json
 import math
+import os
 import re
 import subprocess
 import sys
@@ -22,6 +23,7 @@ from typing import NamedTuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import run_api36_editing_e2e as shared
+import api36_proof_state as proof_state
 
 
 CATEGORIES = ("heritage", "talent", "attributes", "skills", "resources")
@@ -305,14 +307,6 @@ DASHBOARD_SCAN_GESTURE_RATIO = 0.60
 DASHBOARD_SCAN_MAX_SCROLLS = 18
 PROCESS_RESTART_METHOD_MAX_EMPTY_HIERARCHY_READS = 4
 RESOURCES_SURFACE_MAX_CONSECUTIVE_EMPTY_READS = 3
-PROCESS_RESTART_RESOURCES_SCAN_ID = (
-    "creation-resources-process-restart-persisted-authority"
-)
-# Runs 33692970619 and 33695613418 both reached the exact restored Resources
-# surface before UIAutomator emitted six transient empty hierarchies. Permit
-# only that observed burst; a seventh empty read and the phase deadline remain
-# hard failures.
-PROCESS_RESTART_RESOURCES_MAX_CONSECUTIVE_EMPTY_READS = 6
 PROCESS_RESTART_PERSISTED_PREREQUISITE_SCAN_ID = (
     "process-restart-persisted-prerequisite-authority"
 )
@@ -8762,11 +8756,6 @@ def scan_deadline_bound_resources_surface(
         or type(return_scan_proof) is not bool
     ):
         raise ValueError("Resources surface scan requires distinct exact selectors")
-    max_consecutive_empty_reads = (
-        PROCESS_RESTART_RESOURCES_MAX_CONSECUTIVE_EMPTY_READS
-        if scan_id == PROCESS_RESTART_RESOURCES_SCAN_ID
-        else RESOURCES_SURFACE_MAX_CONSECUTIVE_EMPTY_READS
-    )
     origin = acquire_stable_start_origin(
         device,
         scan_id=f"{scan_id}-start",
@@ -8782,7 +8771,7 @@ def scan_deadline_bound_resources_surface(
         initial_observation=origin,
         initial_observation_max_reverse_swipes=22,
         delay_seconds=0.0,
-        max_consecutive_empty_reads=max_consecutive_empty_reads,
+        max_consecutive_empty_reads=RESOURCES_SURFACE_MAX_CONSECUTIVE_EMPTY_READS,
         observer=scan_observer,
         deadline=deadline,
     )
@@ -9796,12 +9785,116 @@ def read_persisted_resources_authority(
     return {"binding": binding, "savedDraft": saved}
 
 
+def read_creation_resources_proof_state(
+    device: shared.Device,
+    expectation: proof_state.ProofBuildExpectation,
+    *,
+    deadline: float,
+) -> tuple[dict[str, object], dict[str, object]]:
+    """Read one exact typed, app-private Resources authority observation."""
+    timeout = shared._remaining_operation_timeout(deadline=deadline, maximum=30)
+    snapshot = proof_state.wait_for_state(
+        device,
+        expected=expectation,
+        page_automation_id="creation-resources-page",
+        stage="authority-ready",
+        wizard_lane="creation-resources",
+        timeout=timeout,
+    )
+    resources = dict(proof_state.require_creation_resources(snapshot))
+    evidence = {
+        "schema": snapshot.payload["schema"],
+        "serializedSha256": snapshot.serialized_sha256,
+        "stateDigest": snapshot.payload["stateDigest"],
+        "processId": snapshot.payload["processId"],
+        "processInstanceId": snapshot.payload["processInstanceId"],
+        "typedResources": resources,
+    }
+    return resources, evidence
+
+
+def read_process_restart_resources_proof_state(
+    device: shared.Device,
+    expected_receipt: dict[str, object],
+    expected_same_process: dict[str, object],
+    expected_same_process_typed: dict[str, object],
+    expectation: proof_state.ProofBuildExpectation,
+    *,
+    deadline: float,
+) -> tuple[dict[str, object], dict[str, object]]:
+    """Verify typed Resources authority after the real process restart.
+
+    Navigation to this page, the force-stop/new-PID boundary, the screenshot, the
+    same-process save/reopen, and persisted document checks remain black-box. This
+    supplemental read replaces only the unreliable exhaustive accessibility scan
+    of exact semantic values on the already-proven restarted Resources page.
+    """
+    resources, evidence = read_creation_resources_proof_state(
+        device,
+        expectation,
+        deadline=deadline,
+    )
+    binding = {
+        "contentRevision": int(resources["contentRevision"]),
+        "savedRevision": int(resources["savedRevision"]),
+        "snapshotDigest": str(resources["snapshotDigest"]),
+        "rawCharacterXmlDigest": str(resources["rawCharacterXmlDigest"]),
+        "auxiliaryStateDigest": str(resources["auxiliaryStateDigest"]),
+        "prerequisiteDraftDigest": str(resources["prerequisiteDraftDigest"]),
+        "authorityDigest": str(resources["authorityDigest"]),
+        "priorityNuyen": resources["priorityNuyen"],
+        "totalStartingNuyen": resources["totalStartingNuyen"],
+    }
+    saved = {
+        "optionId": str(resources["pendingOptionId"]),
+        "draftRevision": int(resources["pendingDraftRevision"]),
+        "draftDigest": str(resources["pendingDraftDigest"]),
+    }
+    observed = {"binding": binding, "savedDraft": saved}
+    if (
+        int(resources["workspaceRevision"]) != expected_receipt["workspaceRevision"]
+        or binding["contentRevision"] != expected_receipt["workspaceRevision"]
+        or binding["savedRevision"] != expected_receipt["savedRevision"]
+        or binding["priorityNuyen"] != 50_000
+        or binding["totalStartingNuyen"] != 50_000
+        or saved["optionId"] != expected_receipt["optionId"]
+        or saved["draftRevision"] != expected_receipt["draftRevision"]
+        or saved["draftDigest"] != expected_receipt["draftDigest"]
+        or observed != expected_same_process
+        or resources != expected_same_process_typed
+    ):
+        device.capture(
+            "creation-resources-process-restart-proof-state-mismatch",
+            deadline=deadline,
+        )
+        raise RuntimeError(
+            "Typed Resources authority changed across process restart: "
+            f"expectedReceipt={expected_receipt!r}, "
+            f"sameProcess={expected_same_process!r}, restarted={observed!r}, "
+            f"typedSameProcess={expected_same_process_typed!r}, "
+            f"typedRestarted={resources!r}"
+        )
+    return observed, evidence
+
+
 def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     progress.advance("device-preflight-install")
     driver_path = Path(__file__).resolve()
     shared_path = Path(shared.__file__).resolve()
     priority_compatibility_path = driver_path.with_name(
         "run_api36_new_character_priority_e2e.py"
+    )
+    proof_reader_path = driver_path.with_name("api36_proof_state.py")
+    run_id = os.environ.get("GITHUB_RUN_ID", "")
+    artifact_attempt = os.environ.get("CHUMMER_E2E_APK_ARTIFACT_ATTEMPT", "")
+    if re.fullmatch(r"[1-9][0-9]*", run_id) is None or re.fullmatch(
+        r"[1-9][0-9]*", artifact_attempt
+    ) is None:
+        raise RuntimeError("Creation Resources proof build identity is absent or invalid")
+    proof_expectation = proof_state.expected_build(
+        driver_path.parents[1],
+        driver_path.parents[1] / "eng/api36-sr5-wizard-gate-authority.json",
+        f"hosted-{run_id}-{artifact_attempt}",
     )
     device = shared.Device(args.adb.resolve(), args.serial, args.evidence.resolve())
     api = device.shell("getprop", "ro.build.version.sdk")
@@ -10431,6 +10524,13 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         scan_observer=progress.record_scan,
         scan_id="creation-resources-same-process-persisted-authority",
     )
+    resources_same_process_typed, resources_same_process_proof = (
+        read_creation_resources_proof_state(
+            device,
+            proof_expectation,
+            deadline=resources_reopen_deadline,
+        )
+    )
 
     progress.advance("resources-prerequisite-rebind")
     resources_rebind_deadline = progress.active_phase_deadline(
@@ -10611,18 +10711,16 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         observed_dashboard=process_restart_resources_dashboard,
         authority_scan_owns_origin=True,
     )
-    resources_restarted = read_persisted_resources_authority(
-        device,
-        resources_receipt,
-        deadline=process_restart_resources_deadline,
-        scan_observer=progress.record_scan,
-        scan_id=PROCESS_RESTART_RESOURCES_SCAN_ID,
-    )
-    if resources_restarted != resources_same_process:
-        raise RuntimeError(
-            "Resources authority changed across the exact process restart: "
-            f"sameProcess={resources_same_process!r}, restarted={resources_restarted!r}"
+    resources_restarted, resources_restart_proof = (
+        read_process_restart_resources_proof_state(
+            device,
+            resources_receipt,
+            resources_same_process,
+            resources_same_process_typed,
+            proof_expectation,
+            deadline=process_restart_resources_deadline,
         )
+    )
     device.capture(
         "creation-prerequisite-process-restart",
         deadline=process_restart_resources_deadline,
@@ -10637,6 +10735,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         "driverSha256": sha256(driver_path),
         "sharedDriverSha256": sha256(shared_path),
         "priorityCompatibilityDriverSha256": sha256(priority_compatibility_path),
+        "api36ProofReaderSha256": sha256(proof_reader_path),
         "progressSnapshotSha256": sha256(progress.evidence_path),
         "progressEventsJsonlSha256": sha256(progress.events_path),
         "creationBootstrapTimingSha256": sha256(
@@ -10737,10 +10836,12 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
             "resourcesRankDCanonicalGrant": resources_before,
             "resourcesPreviewAndReceipt": resources_confirmation,
             "resourcesSameProcessPersistedAuthority": resources_same_process,
+            "resourcesSameProcessTypedProofState": resources_same_process_proof,
             "prerequisiteAuthorityAfterResources": (
                 post_resources_prerequisite_authority.authority
             ),
             "resourcesRestartedPersistedAuthority": resources_restarted,
+            "resourcesRestartedTypedProofState": resources_restart_proof,
             "resourcesExplicitConfirmationOnly": "pass",
             "resourcesReceiptRevisionAndDigestBound": "pass",
             "resourcesPendingDraftProcessRestartResume": "pass",

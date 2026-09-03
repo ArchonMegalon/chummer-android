@@ -75,6 +75,7 @@ def state_payload() -> dict[str, object]:
             "canConfirm": True,
             "statusCode": None,
         },
+        "creationResources": None,
         "stateDigest": "",
     }
     value["stateDigest"] = proof.expected_state_digest(value)
@@ -88,7 +89,7 @@ def encoded(value: dict[str, object]) -> bytes:
 class Api36ProofStateContractTests(unittest.TestCase):
     def test_exact_state_is_digest_process_and_build_bound(self) -> None:
         self.assertEqual(
-            "sha256:13f91525ca7e5b116653073afe8da07e38cef387583fc6ed90ceae2ffd895267",
+            "sha256:5d5ec21d03f3054d3f265b5f307357d42646ba229870d595c6f9e3b8b643456f",
             state_payload()["stateDigest"],
         )
         snapshot = proof.validate_state(
@@ -129,7 +130,7 @@ class Api36ProofStateContractTests(unittest.TestCase):
     def test_duplicate_partial_and_noncanonical_json_fail_closed(self) -> None:
         value = state_payload()
         raw = encoded(value)
-        duplicate = raw[:-1] + b',"schema":"chummer.android.api36-proof-state/v1"}'
+        duplicate = raw[:-1] + b',"schema":"chummer.android.api36-proof-state/v2"}'
         for hostile in (duplicate, raw + b"\n", raw[: len(raw) // 2]):
             with self.assertRaises(RuntimeError):
                 proof.validate_state(
@@ -185,6 +186,79 @@ class Api36ProofStateContractTests(unittest.TestCase):
         for exported_surface in ("[Activity", "[Service", "[BroadcastReceiver", "ContentProvider", "HttpListener", "Socket"):
             self.assertNotIn(exported_surface, publisher)
 
+    def test_creation_resources_state_is_exactly_page_workspace_and_digest_bound(self) -> None:
+        value = state_payload()
+        value["surface"] = {
+            "shellDestination": "runner",
+            "pageAutomationId": "creation-resources-page",
+            "navigationDepth": 3,
+            "wizardLane": "creation-resources",
+            "stage": "authority-ready",
+            "settled": True,
+        }
+        value["workspace"] = {
+            "workspaceId": "workspace-resources",
+            "contentRevision": 42,
+            "savedRevision": 42,
+            "payloadSha256": "4" * 64,
+            "documentSha256": "5" * 64,
+            "snapshotDigest": "sha256:" + "6" * 64,
+        }
+        value["transaction"] = None
+        value["creationResources"] = {
+            "pageIdentity": "creation-resources-page",
+            "workspaceId": "workspace-resources",
+            "workspaceRevision": 42,
+            "contentRevision": 42,
+            "savedRevision": 42,
+            "authorityDigest": "sha256:" + "7" * 64,
+            "sourceDigest": "sha256:" + "8" * 64,
+            "rulesDigest": "sha256:" + "9" * 64,
+            "runtimeDigest": "sha256:" + "a" * 64,
+            "snapshotDigest": "sha256:" + "6" * 64,
+            "rawCharacterXmlDigest": "sha256:" + "b" * 64,
+            "auxiliaryStateDigest": "c" * 64,
+            "prerequisiteDraftRevision": 5,
+            "prerequisiteDraftDigest": "sha256:" + "d" * 64,
+            "priorityNuyen": 50000,
+            "totalStartingNuyen": 50000,
+            "pendingOptionId": "karma:0",
+            "pendingDraftRevision": 1,
+            "pendingDraftDigest": "sha256:" + "e" * 64,
+        }
+        value["stateDigest"] = proof.expected_state_digest(value)
+        snapshot = proof.validate_state(
+            encoded(value), expected=expectation(), live_process_id=4242
+        )
+        self.assertEqual(
+            "sha256:" + "7" * 64,
+            snapshot.payload["creationResources"]["authorityDigest"],
+        )
+
+        cases = (
+            ("absent", ("creationResources",), None),
+            ("wrong page", ("creationResources", "pageIdentity"), "other-page"),
+            ("foreign workspace", ("creationResources", "workspaceId"), "foreign"),
+            ("wrong workspace revision", ("creationResources", "workspaceRevision"), 41),
+            ("wrong saved revision", ("creationResources", "savedRevision"), 41),
+            ("foreign snapshot", ("creationResources", "snapshotDigest"), "sha256:" + "f" * 64),
+            ("missing pending digest", ("creationResources", "pendingDraftDigest"), None),
+            ("untyped authority", ("creationResources", "authorityDigest"), "7" * 64),
+            ("nonfinite budget", ("creationResources", "priorityNuyen"), float("inf")),
+        )
+        for label, path, replacement in cases:
+            with self.subTest(label=label):
+                hostile = copy.deepcopy(value)
+                target = hostile
+                for member in path[:-1]:
+                    target = target[member]  # type: ignore[index,assignment]
+                target[path[-1]] = replacement  # type: ignore[index]
+                hostile["stateDigest"] = proof.expected_state_digest(hostile)
+                with self.assertRaises(RuntimeError):
+                    proof.validate_state(
+                        encoded(hostile), expected=expectation(), live_process_id=4242
+                    )
+
     def test_transport_is_one_exact_read_only_argument_vector(self) -> None:
         shared_path = ROOT / "tests/run_api36_editing_e2e.py"
         spec = importlib.util.spec_from_file_location("proof_shared_driver", shared_path)
@@ -216,6 +290,22 @@ class Api36ProofStateContractTests(unittest.TestCase):
         self.assertIn('device.wait("sr5-table-wizard-receipt", timeout=180)', driver)
         self.assertIn("read_transaction(device, spec.checkpoint_key)", driver)
         self.assertIn("root_for_authority(device, final_saved, spec.fixture_alias)", driver)
+
+    def test_creation_resources_observer_retains_black_box_lifecycle_and_xml_proof(self) -> None:
+        page = (ROOT / "src/Chummer.Android/Native/CreationResourcesPage.cs").read_text(
+            encoding="utf-8"
+        )
+        driver = (ROOT / "tests/run_api36_creation_prerequisite_e2e.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("Api36ProofStatePublisher.TryPublishCreationResources(", page)
+        self.assertIn("shared.force_stop_and_launch_new_process(", driver)
+        self.assertIn('open_resources(\n        device,', driver)
+        self.assertIn('device.capture(\n        "creation-prerequisite-process-restart"', driver)
+        self.assertIn("resourcesSameProcessPersistedAuthority", driver)
+        self.assertIn("resourcesRestartedPersistedAuthority", driver)
+        self.assertIn("rawCharacterXmlDigest", driver)
+        self.assertNotIn('"process-restart-resources": 180_000', driver)
 
     def test_gate_scope_is_unchanged(self) -> None:
         gate = json.loads((ROOT / "eng/api36-sr5-wizard-gate-authority.json").read_text(encoding="utf-8"))

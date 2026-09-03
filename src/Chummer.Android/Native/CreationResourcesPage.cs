@@ -1,6 +1,9 @@
 using System.Globalization;
 using Chummer.Contracts.Characters;
 using Chummer.Presentation.Overview;
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+using Chummer.Android.Proof;
+#endif
 
 namespace Chummer.Android.Native;
 
@@ -113,6 +116,15 @@ public sealed class CreationResourcesPage : NativePageBase
 
         AddGearRoute(state);
         AddAuthority(state);
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+        Api36ProofStatePublisher.TryPublishCreationResources(
+            this,
+            Coordinator,
+            state.Binding,
+            state.PendingDraft,
+            state.Budget,
+            state.SnapshotDigest);
+#endif
     }
 
     private void AddGearRoute(CharacterCreationResourcesInteractionState state)

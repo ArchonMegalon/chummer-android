@@ -1345,7 +1345,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertEqual(2, device.up)
         self.assertEqual(1, observations[0]["emptyHierarchyReads"])
 
-    def test_stable_end_scan_accepts_exactly_six_cold_restart_empty_reads(
+    def test_stable_end_scan_accepts_explicitly_bounded_empty_reads(
         self,
     ) -> None:
         stable = [
@@ -1362,12 +1362,10 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         with mock.patch.object(driver.time, "sleep"):
             screens = driver.scan_forward_until_stable(
                 device,
-                scan_id=driver.PROCESS_RESTART_RESOURCES_SCAN_ID,
+                scan_id="explicit-six-empty-read-bound",
                 max_scrolls=2,
                 distance_ratio=0.22,
-                max_consecutive_empty_reads=(
-                    driver.PROCESS_RESTART_RESOURCES_MAX_CONSECUTIVE_EMPTY_READS
-                ),
+                max_consecutive_empty_reads=6,
                 observer=observations.append,
             )
 
@@ -1378,7 +1376,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertEqual("stable-end", observations[0]["status"])
         self.assertEqual(6, observations[0]["emptyHierarchyReads"])
         self.assertEqual(
-            driver.PROCESS_RESTART_RESOURCES_MAX_CONSECUTIVE_EMPTY_READS,
+            6,
             observations[0]["maximumConsecutiveEmptyReads"],
         )
 
@@ -2029,7 +2027,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             restart_resources,
         )
         self.assertIn("authority_scan_owns_origin=True", restart_resources)
-        self.assertIn("read_persisted_resources_authority(", restart_resources)
+        self.assertIn("read_process_restart_resources_proof_state(", restart_resources)
+        self.assertNotIn("read_persisted_resources_authority(", restart_resources)
         self.assertIn(
             "deadline=process_restart_resources_deadline",
             restart_resources,
@@ -2232,188 +2231,156 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         )
         device.capture.assert_not_called()
 
-    def test_process_restart_resources_scan_alone_accepts_four_empty_reads(self) -> None:
-        selectors = (
-            "creation-resources-page",
-            "creation-resources-binding-content-revision",
+    def test_process_restart_resources_reads_exact_typed_state_without_ui_tree(self) -> None:
+        digest = lambda character: "sha256:" + character * 64
+        binding = {
+            "contentRevision": 3,
+            "savedRevision": 3,
+            "snapshotDigest": digest("1"),
+            "rawCharacterXmlDigest": digest("2"),
+            "auxiliaryStateDigest": "3" * 64,
+            "prerequisiteDraftDigest": digest("4"),
+            "authorityDigest": digest("5"),
+            "priorityNuyen": 50_000,
+            "totalStartingNuyen": 50_000,
+        }
+        saved = {
+            "optionId": "karma:0",
+            "draftRevision": 1,
+            "draftDigest": digest("6"),
+        }
+        resources = {
+            "pageIdentity": "creation-resources-page",
+            "workspaceId": "workspace-resources",
+            "workspaceRevision": 3,
+            **binding,
+            "sourceDigest": digest("7"),
+            "rulesDigest": digest("8"),
+            "runtimeDigest": digest("9"),
+            "prerequisiteDraftRevision": 1,
+            "pendingOptionId": saved["optionId"],
+            "pendingDraftRevision": saved["draftRevision"],
+            "pendingDraftDigest": saved["draftDigest"],
+        }
+        snapshot = driver.proof_state.ProofStateSnapshot(
+            {
+                "schema": driver.proof_state.SCHEMA,
+                "processId": 4242,
+                "processInstanceId": "44444444-4444-4444-4444-444444444444",
+                "stateDigest": digest("a"),
+                "creationResources": resources,
+            },
+            "b" * 64,
         )
-        nodes = [
-            self.canonical_node(selectors[0]),
-            self.canonical_node(selectors[1], text="3"),
-        ]
-        origin = self.priority_rank_origin(nodes)
+        device = mock.Mock()
         deadline = driver.time.monotonic() + 30
-        device = mock.Mock()
-
         with mock.patch.object(
-            driver,
-            "acquire_stable_start_origin",
-            return_value=origin,
-        ) as acquire, mock.patch.object(
-            driver,
-            "scan_forward_with_receipt",
-            autospec=True,
-            return_value=driver.StableViewportScan([nodes], 10),
-        ) as scan:
-            actual = driver.scan_deadline_bound_resources_surface(
-                device,
-                selectors,
-                scan_id=driver.PROCESS_RESTART_RESOURCES_SCAN_ID,
-                deadline=deadline,
-            )
-
-        self.assertEqual(set(selectors), set(actual))
-        acquire.assert_called_once_with(
-            device,
-            scan_id=f"{driver.PROCESS_RESTART_RESOURCES_SCAN_ID}-start",
-            max_reverse_swipes=22,
-            distance_ratio=0.68,
-            deadline=deadline,
-        )
-        self.assertEqual(
-            driver.PROCESS_RESTART_RESOURCES_MAX_CONSECUTIVE_EMPTY_READS,
-            scan.call_args.kwargs["max_consecutive_empty_reads"],
-        )
-
-    def test_process_restart_resources_real_wrapper_recovers_six_empty_reads(
-        self,
-    ) -> None:
-        selectors = (
-            "creation-resources-page",
-            "creation-resources-binding-content-revision",
-        )
-        nodes = [
-            self.canonical_node(selectors[0]),
-            self.canonical_node(selectors[1], text="3"),
-        ]
-        origin = self.priority_rank_origin(nodes)
-        device = mock.Mock()
-        device.hierarchy.side_effect = [[], [], [], [], [], [], nodes, nodes]
-        deadline = driver.time.monotonic() + 30
-
-        with mock.patch.object(
-            driver,
-            "acquire_stable_start_origin",
-            return_value=origin,
-        ), mock.patch.object(driver.time, "sleep"):
-            actual = driver.scan_deadline_bound_resources_surface(
-                device,
-                selectors,
-                scan_id=driver.PROCESS_RESTART_RESOURCES_SCAN_ID,
-                deadline=deadline,
-            )
-
-        self.assertEqual(set(selectors), set(actual))
-        self.assertEqual(8, device.hierarchy.call_count)
-        self.assertEqual(2, device.swipe_up.call_count)
-        device.capture.assert_not_called()
-        for invocation in device.hierarchy.call_args_list:
-            self.assertEqual(deadline, invocation.kwargs["deadline"])
-
-    def test_process_restart_resources_real_wrapper_fails_on_seven_empty_reads(
-        self,
-    ) -> None:
-        selectors = (
-            "creation-resources-page",
-            "creation-resources-binding-content-revision",
-        )
-        origin_nodes = [
-            self.canonical_node(selectors[0]),
-            self.canonical_node(selectors[1], text="3"),
-        ]
-        device = mock.Mock()
-        device.hierarchy.side_effect = [[], [], [], [], [], [], []]
-        deadline = driver.time.monotonic() + 30
-
-        with mock.patch.object(
-            driver,
-            "acquire_stable_start_origin",
-            return_value=self.priority_rank_origin(origin_nodes),
-        ), mock.patch.object(driver.time, "sleep"), self.assertRaisesRegex(
-            RuntimeError,
-            "exhausted transient empty hierarchy reads",
-        ):
-            driver.scan_deadline_bound_resources_surface(
-                device,
-                selectors,
-                scan_id=driver.PROCESS_RESTART_RESOURCES_SCAN_ID,
-                deadline=deadline,
-            )
-
-        self.assertEqual(7, device.hierarchy.call_count)
-        device.capture.assert_called_once_with(
-            f"{driver.PROCESS_RESTART_RESOURCES_SCAN_ID}-empty-hierarchy-exhausted",
-            deadline=deadline,
-        )
-
-    def test_non_exact_resources_scans_fail_on_four_empty_reads(self) -> None:
-        selectors = (
-            "creation-resources-page",
-            "creation-resources-binding-content-revision",
-        )
-        origin_nodes = [
-            self.canonical_node(selectors[0]),
-            self.canonical_node(selectors[1], text="3"),
-        ]
-        for scan_id in (
-            f"{driver.PROCESS_RESTART_RESOURCES_SCAN_ID}-lookalike",
-            "resources-general",
-        ):
-            with self.subTest(scan_id=scan_id):
-                device = mock.Mock()
-                device.hierarchy.side_effect = [[], [], [], []]
-                deadline = driver.time.monotonic() + 30
-                with mock.patch.object(
-                    driver,
-                    "acquire_stable_start_origin",
-                    return_value=self.priority_rank_origin(origin_nodes),
-                ), mock.patch.object(driver.time, "sleep"), self.assertRaisesRegex(
-                    RuntimeError,
-                    "exhausted transient empty hierarchy reads",
-                ):
-                    driver.scan_deadline_bound_resources_surface(
-                        device,
-                        selectors,
-                        scan_id=scan_id,
-                        deadline=deadline,
-                    )
-                self.assertEqual(4, device.hierarchy.call_count)
-                device.capture.assert_called_once_with(
-                    f"{scan_id}-empty-hierarchy-exhausted",
-                    deadline=deadline,
-                )
-
-    def test_resources_scan_id_lookalike_keeps_default_empty_read_bound(self) -> None:
-        selectors = (
-            "creation-resources-page",
-            "creation-resources-binding-content-revision",
-        )
-        nodes = [
-            self.canonical_node(selectors[0]),
-            self.canonical_node(selectors[1], text="3"),
-        ]
-        device = mock.Mock()
-        with mock.patch.object(
-            driver,
-            "acquire_stable_start_origin",
-            return_value=self.priority_rank_origin(nodes),
+            driver.shared,
+            "_remaining_operation_timeout",
+            return_value=30,
         ), mock.patch.object(
-            driver,
-            "scan_forward_with_receipt",
-            autospec=True,
-            return_value=driver.StableViewportScan([nodes], 10),
-        ) as scan:
-            driver.scan_deadline_bound_resources_surface(
+            driver.proof_state,
+            "wait_for_state",
+            return_value=snapshot,
+        ) as wait:
+            observed, evidence = driver.read_process_restart_resources_proof_state(
                 device,
-                selectors,
-                scan_id=f"{driver.PROCESS_RESTART_RESOURCES_SCAN_ID}-lookalike",
+                {
+                    "workspaceRevision": 3,
+                    "savedRevision": 3,
+                    **saved,
+                },
+                {"binding": binding, "savedDraft": saved},
+                resources,
+                mock.Mock(),
+                deadline=deadline,
+            )
+
+        self.assertEqual({"binding": binding, "savedDraft": saved}, observed)
+        self.assertEqual(digest("7"), evidence["typedResources"]["sourceDigest"])
+        wait.assert_called_once_with(
+            device,
+            expected=mock.ANY,
+            page_automation_id="creation-resources-page",
+            stage="authority-ready",
+            wizard_lane="creation-resources",
+            timeout=30,
+        )
+        device.hierarchy.assert_not_called()
+        device.swipe_up.assert_not_called()
+        device.shell.assert_not_called()
+        device.capture.assert_not_called()
+
+    def test_process_restart_resources_state_absence_and_binding_drift_fail_closed(
+        self,
+    ) -> None:
+        device = mock.Mock()
+        deadline = driver.time.monotonic() + 30
+        absent = driver.proof_state.ProofStateSnapshot(
+            {"creationResources": None},
+            "a" * 64,
+        )
+        with mock.patch.object(
+            driver.shared, "_remaining_operation_timeout", return_value=30
+        ), mock.patch.object(
+            driver.proof_state, "wait_for_state", return_value=absent
+        ), self.assertRaisesRegex(RuntimeError, "no Creation Resources authority"):
+            driver.read_process_restart_resources_proof_state(
+                device, {}, {}, {}, mock.Mock(), deadline=deadline
+            )
+        device.hierarchy.assert_not_called()
+        device.shell.assert_not_called()
+
+    def test_process_restart_resources_rejects_canonical_typed_digest_drift(self) -> None:
+        digest = lambda character: "sha256:" + character * 64
+        binding = {
+            "contentRevision": 3,
+            "savedRevision": 3,
+            "snapshotDigest": digest("1"),
+            "rawCharacterXmlDigest": digest("2"),
+            "auxiliaryStateDigest": "3" * 64,
+            "prerequisiteDraftDigest": digest("4"),
+            "authorityDigest": digest("5"),
+            "priorityNuyen": 50_000,
+            "totalStartingNuyen": 50_000,
+        }
+        saved = {
+            "optionId": "karma:0",
+            "draftRevision": 1,
+            "draftDigest": digest("6"),
+        }
+        same_process = {
+            "pageIdentity": "creation-resources-page",
+            "workspaceId": "workspace-resources",
+            "workspaceRevision": 3,
+            **binding,
+            "sourceDigest": digest("7"),
+            "rulesDigest": digest("8"),
+            "runtimeDigest": digest("9"),
+            "prerequisiteDraftRevision": 1,
+            "pendingOptionId": saved["optionId"],
+            "pendingDraftRevision": saved["draftRevision"],
+            "pendingDraftDigest": saved["draftDigest"],
+        }
+        hostile_restart = dict(same_process)
+        hostile_restart["sourceDigest"] = digest("a")
+        device = mock.Mock()
+        with mock.patch.object(
+            driver,
+            "read_creation_resources_proof_state",
+            return_value=(hostile_restart, {"stateDigest": digest("b")}),
+        ), self.assertRaisesRegex(RuntimeError, "Typed Resources authority changed"):
+            driver.read_process_restart_resources_proof_state(
+                device,
+                {"workspaceRevision": 3, "savedRevision": 3, **saved},
+                {"binding": binding, "savedDraft": saved},
+                same_process,
+                mock.Mock(),
                 deadline=driver.time.monotonic() + 30,
             )
-
-        self.assertEqual(
-            driver.RESOURCES_SURFACE_MAX_CONSECUTIVE_EMPTY_READS,
-            scan.call_args.kwargs["max_consecutive_empty_reads"],
-        )
+        device.capture.assert_called_once()
+        device.hierarchy.assert_not_called()
+        device.shell.assert_not_called()
 
     def test_deadline_resources_surface_rejects_missing_duplicate_drift_and_identity(
         self,

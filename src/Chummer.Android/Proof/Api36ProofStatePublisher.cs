@@ -1,5 +1,6 @@
 using System.Reflection;
 using Chummer.Android.Native;
+using Chummer.Contracts.Characters;
 using Chummer.Presentation.Overview;
 using Microsoft.Maui;
 using Microsoft.Maui.ApplicationModel;
@@ -15,7 +16,7 @@ namespace Chummer.Android.Proof;
 /// </summary>
 public sealed class Api36ProofStatePublisher
 {
-    public const string RelativePath = "api36-proof/state.v1.json";
+    public const string RelativePath = "api36-proof/state.v2.json";
     private readonly object _sync = new();
     private readonly string _directory;
     private readonly string _path;
@@ -132,6 +133,101 @@ public sealed class Api36ProofStatePublisher
                 surface,
                 workspace,
                 transactionState);
+            WriteAtomically(Api36ProofStateContract.Serialize(state));
+        }
+    }
+
+    public static void TryPublishCreationResources(
+        Page page,
+        RunnerSessionCoordinator coordinator,
+        CharacterCreationResourcesBinding binding,
+        CharacterCreationResourcesDraft? pendingDraft,
+        CharacterCreationResourcesBudget budget,
+        string snapshotDigest)
+    {
+        ArgumentNullException.ThrowIfNull(page);
+        Api36ProofStatePublisher? publisher = IPlatformApplication.Current?.Services
+            .GetService(typeof(Api36ProofStatePublisher)) as Api36ProofStatePublisher;
+        publisher?.PublishCreationResources(
+            coordinator,
+            string.IsNullOrWhiteSpace(page.AutomationId) ? "unknown-page" : page.AutomationId,
+            page.Navigation.NavigationStack.Count,
+            binding,
+            pendingDraft,
+            budget,
+            snapshotDigest);
+    }
+
+    public void PublishCreationResources(
+        RunnerSessionCoordinator coordinator,
+        string pageAutomationId,
+        int navigationDepth,
+        CharacterCreationResourcesBinding binding,
+        CharacterCreationResourcesDraft? pendingDraft,
+        CharacterCreationResourcesBudget budget,
+        string snapshotDigest)
+    {
+        ArgumentNullException.ThrowIfNull(coordinator);
+        ArgumentNullException.ThrowIfNull(binding);
+        ArgumentNullException.ThrowIfNull(budget);
+        if (!AndroidE2EAuthority.Enabled
+            || coordinator.DebugWorkspaceAuthority is not { } authority
+            || !string.Equals(binding.WorkspaceId.Value, authority.WorkspaceId,
+                StringComparison.Ordinal)
+            || binding.ContentRevision != authority.ContentRevision
+            || binding.SavedRevision != authority.SavedRevision)
+        {
+            DeleteObservation();
+            return;
+        }
+
+        var surface = new Api36ProofSurfaceState(
+            PhoneShellRoutes.Runner,
+            pageAutomationId,
+            navigationDepth,
+            "creation-resources",
+            "authority-ready",
+            Settled: true);
+        var workspace = new Api36ProofWorkspaceState(
+            authority.WorkspaceId,
+            authority.ContentRevision,
+            authority.SavedRevision,
+            authority.PayloadSha256,
+            authority.DocumentSha256,
+            snapshotDigest);
+        var resources = new Api36ProofCreationResourcesState(
+            pageAutomationId,
+            binding.WorkspaceId.Value,
+            binding.WorkspaceRevision,
+            binding.ContentRevision,
+            binding.SavedRevision,
+            binding.AuthorityDigest,
+            binding.SourceDigest,
+            binding.RulesDigest,
+            binding.RuntimeDigest,
+            snapshotDigest,
+            binding.RawCharacterXmlDigest,
+            binding.AuxiliaryStateDigest,
+            binding.PrerequisiteDraftRevision,
+            binding.PrerequisiteDraftDigest,
+            budget.PriorityNuyen,
+            budget.TotalStartingNuyen,
+            pendingDraft?.SelectedOptionId,
+            pendingDraft?.DraftRevision,
+            pendingDraft?.DraftDigest);
+
+        lock (_sync)
+        {
+            Api36ProofState state = Api36ProofStateContract.Create(
+                checked(++_sequence),
+                Environment.ProcessId,
+                _processInstanceId,
+                AndroidE2EAuthority.Generation,
+                _build,
+                surface,
+                workspace,
+                transaction: null,
+                creationResources: resources);
             WriteAtomically(Api36ProofStateContract.Serialize(state));
         }
     }

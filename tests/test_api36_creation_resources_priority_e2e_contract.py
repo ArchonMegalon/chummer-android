@@ -45,7 +45,11 @@ class Api36CreationResourcesPriorityE2EContractTests(unittest.TestCase):
             restart,
         )
         self.assertIn("authority_scan_owns_origin=True", restart)
-        self.assertIn("read_persisted_resources_authority(\n        device,", restart)
+        self.assertIn(
+            "read_process_restart_resources_proof_state(\n            device,",
+            restart,
+        )
+        self.assertNotIn("read_persisted_resources_authority(\n        device,", restart)
         self.assertIn("deadline=process_restart_resources_deadline", restart)
         for field in (
             'saved["optionId"] != expected_receipt["optionId"]',
@@ -69,7 +73,7 @@ class Api36CreationResourcesPriorityE2EContractTests(unittest.TestCase):
             'int(resources_receipt["workspaceRevision"])',
             'int(resources_receipt["savedRevision"])',
             'post_resources_prerequisite_authority.authority',
-            'resources_restarted != resources_same_process',
+            'observed != expected_same_process',
         ):
             self.assertIn(expression, text)
 

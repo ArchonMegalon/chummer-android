@@ -9,6 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import hashlib
 import json
+import math
 import re
 from pathlib import Path
 import subprocess
@@ -16,10 +17,10 @@ import time
 from typing import Any
 
 
-SCHEMA = "chummer.android.api36-proof-state/v1"
-DIGEST_SCHEMA = "chummer.android.api36-proof-state-digest/v1"
+SCHEMA = "chummer.android.api36-proof-state/v2"
+DIGEST_SCHEMA = "chummer.android.api36-proof-state-digest/v2"
 PACKAGE = "com.myexternalbrain.chummer"
-RELATIVE_PATH = "files/api36-proof/state.v1.json"
+RELATIVE_PATH = "files/api36-proof/state.v2.json"
 READ_ARGUMENTS = ("exec-out", "run-as", PACKAGE, "cat", RELATIVE_PATH)
 SHA40 = re.compile(r"^[0-9a-f]{40}$")
 SHA64 = re.compile(r"^[0-9a-f]{64}$")
@@ -29,7 +30,7 @@ TOKEN = re.compile(r"^[A-Za-z0-9._/:-]+$")
 ROOT_FIELDS = {
     "schema", "sequence", "processId", "processInstanceId",
     "e2eAuthorityGeneration", "build", "surface", "workspace",
-    "transaction", "stateDigest",
+    "transaction", "creationResources", "stateDigest",
 }
 BUILD_FIELDS = {
     "sourceCommit", "sourceTree", "gateContractSha256", "proofBuildId",
@@ -49,6 +50,14 @@ TRANSACTION_FIELDS = {
     "expectedWorkspaceRevision", "appliedWorkspaceRevision",
     "expectedPostconditionDigest", "observedPostconditionDigest", "receiptDigest",
     "resumeRestored", "canConfirm", "statusCode",
+}
+CREATION_RESOURCES_FIELDS = {
+    "pageIdentity", "workspaceId", "workspaceRevision", "contentRevision",
+    "savedRevision", "authorityDigest", "sourceDigest", "rulesDigest",
+    "runtimeDigest", "snapshotDigest", "rawCharacterXmlDigest",
+    "auxiliaryStateDigest", "prerequisiteDraftRevision",
+    "prerequisiteDraftDigest", "priorityNuyen", "totalStartingNuyen",
+    "pendingOptionId", "pendingDraftRevision", "pendingDraftDigest",
 }
 
 
@@ -122,6 +131,13 @@ def _optional_digest(value: object, label: str) -> str | None:
     return value
 
 
+def _require_digest(value: object, label: str) -> str:
+    result = _optional_digest(value, label)
+    if result is None:
+        raise RuntimeError(f"{label} is absent")
+    return result
+
+
 def _optional_int(value: object, label: str) -> int | None:
     if value is None:
         return None
@@ -145,6 +161,7 @@ def expected_state_digest(state: dict[str, Any]) -> str:
     surface = state["surface"]
     workspace = state["workspace"]
     transaction = state["transaction"]
+    resources = state["creationResources"]
     return _length_prefixed_hash([
         DIGEST_SCHEMA,
         state["schema"],
@@ -183,6 +200,26 @@ def expected_state_digest(state: dict[str, Any]) -> str:
         "true" if transaction is not None and transaction["resumeRestored"] else "false",
         "true" if transaction is not None and transaction["canConfirm"] else "false",
         None if transaction is None else transaction["statusCode"],
+        None if resources is None else resources["pageIdentity"],
+        None if resources is None else resources["workspaceId"],
+        None if resources is None else str(resources["workspaceRevision"]),
+        None if resources is None else str(resources["contentRevision"]),
+        None if resources is None else str(resources["savedRevision"]),
+        None if resources is None else resources["authorityDigest"],
+        None if resources is None else resources["sourceDigest"],
+        None if resources is None else resources["rulesDigest"],
+        None if resources is None else resources["runtimeDigest"],
+        None if resources is None else resources["snapshotDigest"],
+        None if resources is None else resources["rawCharacterXmlDigest"],
+        None if resources is None else resources["auxiliaryStateDigest"],
+        None if resources is None else str(resources["prerequisiteDraftRevision"]),
+        None if resources is None else resources["prerequisiteDraftDigest"],
+        None if resources is None else str(resources["priorityNuyen"]),
+        None if resources is None else str(resources["totalStartingNuyen"]),
+        None if resources is None else resources["pendingOptionId"],
+        None if resources is None or resources["pendingDraftRevision"] is None
+            else str(resources["pendingDraftRevision"]),
+        None if resources is None else resources["pendingDraftDigest"],
     ])
 
 
@@ -294,11 +331,83 @@ def validate_state(
         ):
             raise RuntimeError("Transaction is not bound to the observed workspace revision")
 
+    resources = state["creationResources"]
+    creation_resources_surface = (
+        surface["pageAutomationId"] == "creation-resources-page"
+        or surface["wizardLane"] == "creation-resources"
+    )
+    if creation_resources_surface != (resources is not None):
+        raise RuntimeError("Creation Resources surface and typed state disagree")
+    if resources is not None:
+        resources = _require_exact_object(
+            resources, CREATION_RESOURCES_FIELDS, "Creation Resources proof state"
+        )
+        if (
+            workspace is None
+            or resources["pageIdentity"] != surface["pageAutomationId"]
+            or resources["pageIdentity"] != "creation-resources-page"
+            or surface["wizardLane"] != "creation-resources"
+            or surface["stage"] != "authority-ready"
+            or surface["settled"] is not True
+            or resources["workspaceId"] != workspace["workspaceId"]
+        ):
+            raise RuntimeError("Creation Resources state is not bound to its page and workspace")
+        for key in ("workspaceRevision", "contentRevision"):
+            _require_int(resources[key], f"Creation Resources {key}", minimum=1)
+        _require_int(resources["savedRevision"], "Creation Resources savedRevision")
+        if (
+            resources["workspaceRevision"] != resources["contentRevision"]
+            or resources["contentRevision"] != workspace["contentRevision"]
+            or resources["savedRevision"] != workspace["savedRevision"]
+        ):
+            raise RuntimeError("Creation Resources revisions are not bound to the workspace")
+        for key in (
+            "authorityDigest", "sourceDigest", "rulesDigest", "runtimeDigest",
+            "snapshotDigest", "rawCharacterXmlDigest", "prerequisiteDraftDigest",
+        ):
+            _require_digest(resources[key], f"Creation Resources {key}")
+        if resources["snapshotDigest"] != workspace["snapshotDigest"]:
+            raise RuntimeError("Creation Resources snapshot is not bound to the workspace")
+        if (
+            not isinstance(resources["auxiliaryStateDigest"], str)
+            or SHA64.fullmatch(resources["auxiliaryStateDigest"]) is None
+        ):
+            raise RuntimeError("Creation Resources auxiliary digest is not canonical")
+        _require_int(
+            resources["prerequisiteDraftRevision"],
+            "Creation Resources prerequisite draft revision",
+            minimum=1,
+        )
+        for key in ("priorityNuyen", "totalStartingNuyen"):
+            if not isinstance(resources[key], (int, float)) or isinstance(resources[key], bool):
+                raise RuntimeError(f"Creation Resources {key} is not numeric")
+            if (
+                isinstance(resources[key], float)
+                and not math.isfinite(resources[key])
+            ) or resources[key] < 0:
+                raise RuntimeError(f"Creation Resources {key} is not finite and nonnegative")
+        pending = (
+            resources["pendingOptionId"],
+            resources["pendingDraftRevision"],
+            resources["pendingDraftDigest"],
+        )
+        if pending != (None, None, None):
+            _require_token(pending[0], "Creation Resources pending option", 128)
+            _require_int(pending[1], "Creation Resources pending draft revision", minimum=1)
+            _require_digest(pending[2], "Creation Resources pending draft digest")
+
     if not isinstance(state["stateDigest"], str) or DIGEST.fullmatch(state["stateDigest"]) is None:
         raise RuntimeError("Proof-state digest is not canonical")
     if state["stateDigest"] != expected_state_digest(state):
         raise RuntimeError("Proof-state digest does not match the exact fields")
     return ProofStateSnapshot(state, hashlib.sha256(raw).hexdigest())
+
+
+def require_creation_resources(snapshot: ProofStateSnapshot) -> dict[str, Any]:
+    resources = snapshot.payload.get("creationResources")
+    if not isinstance(resources, dict):
+        raise RuntimeError("API-36 proof state has no Creation Resources authority")
+    return resources
 
 
 def wait_for_state(

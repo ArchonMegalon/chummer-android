@@ -27,7 +27,7 @@ API36_PROOF_STATE_READ_ARGUMENTS = (
     "run-as",
     PACKAGE,
     "cat",
-    "files/api36-proof/state.v1.json",
+    "files/api36-proof/state.v2.json",
 )
 WORKSPACE_AUTHORITY_RESOURCE_IDS = (
     "home-e2e-workspace-id",

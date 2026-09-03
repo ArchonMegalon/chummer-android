@@ -33,6 +33,27 @@ public sealed record Api36ProofWorkspaceState(
     string DocumentSha256,
     string? SnapshotDigest);
 
+public sealed record Api36ProofCreationResourcesState(
+    string PageIdentity,
+    string WorkspaceId,
+    long WorkspaceRevision,
+    long ContentRevision,
+    long SavedRevision,
+    string AuthorityDigest,
+    string SourceDigest,
+    string RulesDigest,
+    string RuntimeDigest,
+    string SnapshotDigest,
+    string RawCharacterXmlDigest,
+    string AuxiliaryStateDigest,
+    long PrerequisiteDraftRevision,
+    string PrerequisiteDraftDigest,
+    decimal PriorityNuyen,
+    decimal TotalStartingNuyen,
+    string? PendingOptionId,
+    long? PendingDraftRevision,
+    string? PendingDraftDigest);
+
 public sealed record Api36ProofTransactionState(
     string CheckpointReadStatus,
     string? Phase,
@@ -62,12 +83,13 @@ public sealed record Api36ProofState(
     Api36ProofSurfaceState Surface,
     Api36ProofWorkspaceState? Workspace,
     Api36ProofTransactionState? Transaction,
+    Api36ProofCreationResourcesState? CreationResources,
     string StateDigest);
 
 public static class Api36ProofStateContract
 {
-    public const string CurrentSchema = "chummer.android.api36-proof-state/v1";
-    private const string DigestSchema = "chummer.android.api36-proof-state-digest/v1";
+    public const string CurrentSchema = "chummer.android.api36-proof-state/v2";
+    private const string DigestSchema = "chummer.android.api36-proof-state-digest/v2";
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -82,7 +104,8 @@ public static class Api36ProofStateContract
         Api36ProofBuildIdentity build,
         Api36ProofSurfaceState surface,
         Api36ProofWorkspaceState? workspace,
-        Api36ProofTransactionState? transaction)
+        Api36ProofTransactionState? transaction,
+        Api36ProofCreationResourcesState? creationResources = null)
     {
         var unsigned = new Api36ProofState(
             CurrentSchema,
@@ -94,6 +117,7 @@ public static class Api36ProofStateContract
             surface,
             workspace,
             transaction,
+            creationResources,
             string.Empty);
         Api36ProofState state = unsigned with { StateDigest = ComputeDigest(unsigned) };
         if (!IsExact(state))
@@ -124,6 +148,7 @@ public static class Api36ProofStateContract
             || !IsSurface(state.Surface)
             || !IsWorkspace(state.Workspace)
             || !IsTransaction(state.Transaction)
+            || !IsCreationResources(state.CreationResources)
             || !IsDigest(state.StateDigest))
         {
             return false;
@@ -133,6 +158,33 @@ public static class Api36ProofStateContract
             && transaction.ExpectedWorkspaceRevision is { } expected
             && expected != workspace.ContentRevision
             && transaction.AppliedWorkspaceRevision is null)
+        {
+            return false;
+        }
+        bool creationResourcesSurface =
+            string.Equals(state.Surface.PageAutomationId, "creation-resources-page",
+                StringComparison.Ordinal)
+            || string.Equals(state.Surface.WizardLane, "creation-resources",
+                StringComparison.Ordinal);
+        if (creationResourcesSurface != (state.CreationResources is not null))
+            return false;
+        if (state.CreationResources is { } resources
+            && (state.Workspace is not { } resourceWorkspace
+                || !string.Equals(resources.PageIdentity, state.Surface.PageAutomationId,
+                    StringComparison.Ordinal)
+                || !string.Equals(resources.PageIdentity, "creation-resources-page",
+                    StringComparison.Ordinal)
+                || !string.Equals(state.Surface.WizardLane, "creation-resources",
+                    StringComparison.Ordinal)
+                || !string.Equals(state.Surface.Stage, "authority-ready", StringComparison.Ordinal)
+                || !state.Surface.Settled
+                || !string.Equals(resources.WorkspaceId, resourceWorkspace.WorkspaceId,
+                    StringComparison.Ordinal)
+                || resources.WorkspaceRevision != resources.ContentRevision
+                || resources.ContentRevision != resourceWorkspace.ContentRevision
+                || resources.SavedRevision != resourceWorkspace.SavedRevision
+                || !string.Equals(resources.SnapshotDigest, resourceWorkspace.SnapshotDigest,
+                    StringComparison.Ordinal)))
         {
             return false;
         }
@@ -146,6 +198,7 @@ public static class Api36ProofStateContract
         Api36ProofSurfaceState surface = state.Surface;
         Api36ProofWorkspaceState? workspace = state.Workspace;
         Api36ProofTransactionState? transaction = state.Transaction;
+        Api36ProofCreationResourcesState? resources = state.CreationResources;
         return Hash(
             DigestSchema,
             state.Schema,
@@ -188,7 +241,26 @@ public static class Api36ProofStateContract
             transaction?.ReceiptDigest,
             transaction?.ResumeRestored is true ? "true" : "false",
             transaction?.CanConfirm is true ? "true" : "false",
-            transaction?.StatusCode);
+            transaction?.StatusCode,
+            resources?.PageIdentity,
+            resources?.WorkspaceId,
+            resources?.WorkspaceRevision.ToString(CultureInfo.InvariantCulture),
+            resources?.ContentRevision.ToString(CultureInfo.InvariantCulture),
+            resources?.SavedRevision.ToString(CultureInfo.InvariantCulture),
+            resources?.AuthorityDigest,
+            resources?.SourceDigest,
+            resources?.RulesDigest,
+            resources?.RuntimeDigest,
+            resources?.SnapshotDigest,
+            resources?.RawCharacterXmlDigest,
+            resources?.AuxiliaryStateDigest,
+            resources?.PrerequisiteDraftRevision.ToString(CultureInfo.InvariantCulture),
+            resources?.PrerequisiteDraftDigest,
+            resources?.PriorityNuyen.ToString(CultureInfo.InvariantCulture),
+            resources?.TotalStartingNuyen.ToString(CultureInfo.InvariantCulture),
+            resources?.PendingOptionId,
+            resources?.PendingDraftRevision?.ToString(CultureInfo.InvariantCulture),
+            resources?.PendingDraftDigest);
     }
 
     private static bool IsBuild(Api36ProofBuildIdentity? build)
@@ -239,6 +311,37 @@ public static class Api36ProofStateContract
               && IsOptionalDigest(transaction.ObservedPostconditionDigest)
               && IsOptionalDigest(transaction.ReceiptDigest)
               && (transaction.StatusCode is null || IsToken(transaction.StatusCode, 128));
+
+    private static bool IsCreationResources(Api36ProofCreationResourcesState? resources)
+    {
+        if (resources is null)
+            return true;
+        bool pendingAbsent = resources.PendingOptionId is null
+                             && resources.PendingDraftRevision is null
+                             && resources.PendingDraftDigest is null;
+        bool pendingExact = resources.PendingOptionId is not null
+                            && IsToken(resources.PendingOptionId, 128)
+                            && resources.PendingDraftRevision is > 0
+                            && IsDigest(resources.PendingDraftDigest);
+        return IsToken(resources.PageIdentity, 128)
+               && !string.IsNullOrWhiteSpace(resources.WorkspaceId)
+               && resources.WorkspaceId.Length <= 256
+               && resources.WorkspaceRevision > 0
+               && resources.ContentRevision > 0
+               && resources.SavedRevision >= 0
+               && IsDigest(resources.AuthorityDigest)
+               && IsDigest(resources.SourceDigest)
+               && IsDigest(resources.RulesDigest)
+               && IsDigest(resources.RuntimeDigest)
+               && IsDigest(resources.SnapshotDigest)
+               && IsDigest(resources.RawCharacterXmlDigest)
+               && IsLowerHex(resources.AuxiliaryStateDigest, 64)
+               && resources.PrerequisiteDraftRevision > 0
+               && IsDigest(resources.PrerequisiteDraftDigest)
+               && resources.PriorityNuyen >= 0
+               && resources.TotalStartingNuyen >= 0
+               && (pendingAbsent || pendingExact);
+    }
 
     private static bool IsOptionalDigest(string? value) => value is null || IsDigest(value);
 
