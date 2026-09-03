@@ -28,6 +28,9 @@ internal static class Program
             (nameof(CreationIdentityGapFailsClosedAsync), CreationIdentityGapFailsClosedAsync),
             (nameof(DurableSaveNoticeFailsClosedAcrossStateChangesAsync), DurableSaveNoticeFailsClosedAcrossStateChangesAsync),
             (nameof(ExactWorkspaceAuthoritySnapshotRejectsEveryHostileBindingAsync), ExactWorkspaceAuthoritySnapshotRejectsEveryHostileBindingAsync),
+#if DEBUG
+            (nameof(HomeAppearanceAuthorityRefreshFailsClosedForEveryHostileBindingAsync), HomeAppearanceAuthorityRefreshFailsClosedForEveryHostileBindingAsync),
+#endif
             (nameof(AuthoritativeCreateReusesExactlyOnePresenterShellSyncAsync), AuthoritativeCreateReusesExactlyOnePresenterShellSyncAsync),
             (nameof(AmbiguousOrFailedCreateRetainsFullAndroidShellSyncAsync), AmbiguousOrFailedCreateRetainsFullAndroidShellSyncAsync),
             (nameof(PlayReviewPolicyEnforcesUsageVersionAndCooldownAsync), PlayReviewPolicyEnforcesUsageVersionAndCooldownAsync),
@@ -172,6 +175,64 @@ internal static class Program
         }
         return Task.CompletedTask;
     }
+
+#if DEBUG
+    private static Task HomeAppearanceAuthorityRefreshFailsClosedForEveryHostileBindingAsync()
+    {
+        var workspaceId = new CharacterWorkspaceId("home-appearance-workspace");
+        CharacterOverviewState state = NewCreationOverview(workspaceId, 23, 23);
+        var current = new NativeWorkspaceAuthoritySnapshot(
+            workspaceId.Value,
+            state.ContentRevision,
+            state.SavedRevision,
+            new string('a', 64),
+            new string('b', 64));
+
+        Require(
+            !RunnerSessionCoordinator.ShouldRefreshWorkspaceAuthorityForPageAppearance(
+                debugE2EAuthorityEnabled: false,
+                state,
+                authority: null),
+            "A normal product appearance attempted to activate the debug E2E authority surface.");
+        Require(
+            !RunnerSessionCoordinator.ShouldRefreshWorkspaceAuthorityForPageAppearance(
+                debugE2EAuthorityEnabled: true,
+                state,
+                current),
+            "An exact current authority scheduled a redundant page-appearance read.");
+        Require(
+            RunnerSessionCoordinator.ShouldRefreshWorkspaceAuthorityForPageAppearance(
+                debugE2EAuthorityEnabled: true,
+                state,
+                authority: null),
+            "A missing E2E authority was not reacquired for the appearing Runners page.");
+
+        NativeWorkspaceAuthoritySnapshot[] hostile =
+        [
+            current with { WorkspaceId = "foreign-workspace" },
+            current with { ContentRevision = 24 },
+            current with { SavedRevision = 22 }
+        ];
+        foreach (NativeWorkspaceAuthoritySnapshot authority in hostile)
+        {
+            Require(
+                RunnerSessionCoordinator.ShouldRefreshWorkspaceAuthorityForPageAppearance(
+                    debugE2EAuthorityEnabled: true,
+                    state,
+                    authority),
+                "A stale or foreign cached authority suppressed the exact appearance refresh.");
+        }
+
+        CharacterOverviewState noWorkspace = state with { WorkspaceId = null };
+        Require(
+            !RunnerSessionCoordinator.ShouldRefreshWorkspaceAuthorityForPageAppearance(
+                debugE2EAuthorityEnabled: true,
+                noWorkspace,
+                authority: null),
+            "An appearance without an active workspace attempted an authority read.");
+        return Task.CompletedTask;
+    }
+#endif
 
     private static Task ExactTypedCreationAuthorityRehydratesConservativeStageAsync()
     {

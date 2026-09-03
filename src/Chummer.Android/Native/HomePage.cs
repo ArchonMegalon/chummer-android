@@ -29,6 +29,13 @@ public class HomePage : NativePageBase, IPlayReviewSafeSurface
         Content = new ScrollView { Content = _body };
     }
 
+#if DEBUG
+    protected override Task PrepareForAppearanceRefreshAsync(
+        CancellationToken cancellationToken)
+        => Coordinator.RefreshDebugWorkspaceAuthorityForPageAppearanceAsync(
+            cancellationToken);
+#endif
+
     protected override void Refresh()
     {
         _body.Clear();

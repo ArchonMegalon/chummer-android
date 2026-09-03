@@ -34,6 +34,7 @@ public abstract class NativePageBase : ContentPage
         try
         {
             await Coordinator.InitializeAsync();
+            await PrepareForAppearanceRefreshAsync(appearanceToken);
             Refresh();
             await ShowActiveDialogAsync();
             await Task.Delay(TimeSpan.FromMilliseconds(750), appearanceToken);
@@ -67,6 +68,10 @@ public abstract class NativePageBase : ContentPage
     }
 
     protected abstract void Refresh();
+
+    protected virtual Task PrepareForAppearanceRefreshAsync(
+        CancellationToken cancellationToken)
+        => Task.CompletedTask;
 
     protected async Task RunAsync(Func<Task> action)
     {

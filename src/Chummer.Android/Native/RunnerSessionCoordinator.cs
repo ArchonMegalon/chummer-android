@@ -499,6 +499,32 @@ public sealed class RunnerSessionCoordinator : IDisposable
             }
         }
     }
+
+    internal async Task RefreshDebugWorkspaceAuthorityForPageAppearanceAsync(
+        CancellationToken cancellationToken = default)
+    {
+        CharacterOverviewState state = State;
+        if (!ShouldRefreshWorkspaceAuthorityForPageAppearance(
+                AndroidE2EAuthority.Enabled,
+                state,
+                DebugWorkspaceAuthority))
+        {
+            return;
+        }
+
+        _ = await TryRefreshWorkspaceAuthorityAsync(
+            expectedWorkspaceId: state.WorkspaceId,
+            expectedPayloadSha256: null,
+            cancellationToken);
+    }
+
+    internal static bool ShouldRefreshWorkspaceAuthorityForPageAppearance(
+        bool debugE2EAuthorityEnabled,
+        CharacterOverviewState state,
+        NativeWorkspaceAuthoritySnapshot? authority)
+        => debugE2EAuthorityEnabled
+           && state.WorkspaceId is not null
+           && (authority is null || !authority.Matches(state));
 #endif
 
     public CharacterRosterFavoriteState RosterFavorites => _rosterFavorites;
