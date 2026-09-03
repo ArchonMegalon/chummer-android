@@ -802,7 +802,7 @@
       {
         "path": ".github/workflows/api36-editing-e2e.yml",
         "exists": true,
-        "sha256": "b125180dcb47c703cc8b4f63579a73bf7b3ed2772111800f0df56cbbd322b09a"
+        "sha256": "230d1f6a10f14bc58463a1e09c0bb9a340940b7c663d7814e4c9e39b34b7e61e"
       },
       {
         "path": "eng/api36-sr5-wizard-gate-authority.json",
@@ -857,7 +857,7 @@
       {
         "path": "tests/test_api36_e2e_workflow.py",
         "exists": true,
-        "sha256": "e836575682964fc81441382784aa0b0f5fdda72428aa6bdbc9667e360975baa3"
+        "sha256": "1f8604e0764dc0984252929d4d648f7771d39b5bdb1dff1fd2d970b6198470d6"
       },
       {
         "path": "tests/test_api36_e2e_artifact_authority.py",

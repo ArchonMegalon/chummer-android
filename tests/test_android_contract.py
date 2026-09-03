@@ -2,6 +2,7 @@ import json
 import importlib.util
 import os
 import re
+import shutil
 import struct
 import subprocess
 import sys
@@ -13,22 +14,78 @@ from pathlib import Path
 
 
 REPO = Path(__file__).resolve().parents[1]
-WORKSPACE = Path(os.environ.get("CHUMMER_COMPLETE_ROOT", REPO.parent)).resolve()
-RUN_SERVICES = Path(
-    os.environ.get("CHUMMER_RUN_SERVICES_ROOT", WORKSPACE / "chummer.run-services")
-).resolve()
+_WORKSPACE_INPUT = Path(os.environ.get("CHUMMER_COMPLETE_ROOT", REPO.parent))
+_RUN_SERVICES_INPUT = Path(
+    os.environ.get(
+        "CHUMMER_RUN_SERVICES_ROOT",
+        _WORKSPACE_INPUT / "chummer.run-services",
+    )
+)
 PROJECT = REPO / "src" / "Chummer.Android"
+_REQUIRED_REVIEWED_HUB_SOURCE_PATHS = (
+    Path("Chummer.Run.Contracts/AccountErasureContracts.cs"),
+    Path("Chummer.Run.Api/Controllers/PublicLandingController.cs"),
+    Path("Chummer.Run.Api/Controllers/AndroidLinkedCampaignController.cs"),
+)
+
+
+def _symlink_in_path_chain(path: Path) -> Path | None:
+    current = Path(path.anchor)
+    for part in path.parts[1:]:
+        current /= part
+        if current.is_symlink():
+            return current
+    return None
+
+
+def _validate_reviewed_hub_sources(
+    workspace_input: Path,
+    run_services_input: Path,
+) -> tuple[Path, Path, tuple[Path, ...]]:
+    if not workspace_input.is_absolute() or not run_services_input.is_absolute():
+        raise RuntimeError("reviewed Hub workspace roots must be explicit absolute paths")
+    workspace_symlink = _symlink_in_path_chain(workspace_input)
+    if workspace_symlink is not None:
+        raise RuntimeError(f"reviewed workspace path contains symlink: {workspace_symlink}")
+    if not workspace_input.is_dir():
+        raise RuntimeError(f"reviewed workspace root is missing: {workspace_input}")
+    workspace = workspace_input.resolve(strict=True)
+    expected_run_services = workspace / "chummer.run-services"
+    if run_services_input != expected_run_services:
+        raise RuntimeError(
+            "reviewed Hub root must be the contained chummer.run-services workspace sibling"
+        )
+    run_services_symlink = _symlink_in_path_chain(run_services_input)
+    if run_services_symlink is not None:
+        raise RuntimeError(f"reviewed Hub path contains symlink: {run_services_symlink}")
+    if not run_services_input.is_dir():
+        raise RuntimeError(f"reviewed Hub root is missing: {run_services_input}")
+    run_services = run_services_input.resolve(strict=True)
+    if run_services.parent != workspace:
+        raise RuntimeError("reviewed Hub root escapes the reviewed workspace")
+
+    required_sources = tuple(
+        run_services / relative for relative in _REQUIRED_REVIEWED_HUB_SOURCE_PATHS
+    )
+    for source in required_sources:
+        source_symlink = _symlink_in_path_chain(source)
+        if source_symlink is not None:
+            raise RuntimeError(f"reviewed Hub source path contains symlink: {source_symlink}")
+        if not source.is_file():
+            raise RuntimeError(f"reviewed Hub source is missing: {source}")
+        resolved_source = source.resolve(strict=True)
+        if not resolved_source.is_relative_to(run_services):
+            raise RuntimeError(f"reviewed Hub source escapes the reviewed Hub root: {source}")
+    return workspace, run_services, required_sources
+
+
+WORKSPACE, RUN_SERVICES, _REQUIRED_REVIEWED_HUB_SOURCES = (
+    _validate_reviewed_hub_sources(_WORKSPACE_INPUT, _RUN_SERVICES_INPUT)
+)
+_REVIEWED_HUB_MARKER = _REQUIRED_REVIEWED_HUB_SOURCES[0]
 DESIGN = Path(
     os.environ.get("CHUMMER_DESIGN_ROOT", WORKSPACE / "chummer-design")
 ).resolve()
-_REVIEWED_HUB_MARKER = RUN_SERVICES / "Chummer.Run.Contracts" / "AccountErasureContracts.cs"
-if not _REVIEWED_HUB_MARKER.is_file():
-    raise RuntimeError(
-        "Android contract tests require a reviewed Hub checkout that contains "
-        f"{_REVIEWED_HUB_MARKER}. The sibling chummer.run-services tree is not "
-        "an authority when that file is missing. Set CHUMMER_RUN_SERVICES_ROOT "
-        "to the origin/main Hub worktree."
-    )
 REGISTRY = DESIGN / "products" / "chummer" / "ANDROID_WINDOWS_FEATURE_PARITY.yaml"
 EDITABILITY_INVENTORY = REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json"
 WINDOWS_COMMANDS = WORKSPACE / "chummer-presentation" / "Chummer.Presentation" / "Shell" / "DesktopMenuProjectionCatalog.cs"
@@ -40,6 +97,75 @@ WINDOWS_STARTUP_SURFACES = (
 class AndroidContractTests(unittest.TestCase):
     def setUp(self) -> None:
         self.registry = json.loads(REGISTRY.read_text(encoding="utf-8"))
+
+    @staticmethod
+    def _seed_reviewed_hub(workspace: Path) -> Path:
+        run_services = workspace / "chummer.run-services"
+        for relative in _REQUIRED_REVIEWED_HUB_SOURCE_PATHS:
+            source = run_services / relative
+            source.parent.mkdir(parents=True, exist_ok=True)
+            source.write_text("// reviewed test authority\n", encoding="utf-8")
+        return run_services
+
+    def test_reviewed_hub_checkout_contains_exact_regular_file_authorities(self) -> None:
+        self.assertEqual(3, len(_REQUIRED_REVIEWED_HUB_SOURCES))
+        for source in _REQUIRED_REVIEWED_HUB_SOURCES:
+            with self.subTest(source=source.name):
+                self.assertTrue(source.is_file())
+                self.assertFalse(source.is_symlink())
+                self.assertTrue(source.resolve().is_relative_to(RUN_SERVICES))
+
+    def test_reviewed_hub_guard_rejects_missing_exact_controller_source(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            workspace = Path(temporary) / "workspace"
+            run_services = self._seed_reviewed_hub(workspace)
+            missing = run_services / _REQUIRED_REVIEWED_HUB_SOURCE_PATHS[1]
+            missing.unlink()
+
+            with self.assertRaisesRegex(RuntimeError, "reviewed Hub source is missing"):
+                _validate_reviewed_hub_sources(workspace, run_services)
+
+    def test_reviewed_hub_guard_rejects_parent_controllers_symlink(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            workspace = root / "workspace"
+            run_services = self._seed_reviewed_hub(workspace)
+            controllers = run_services / "Chummer.Run.Api" / "Controllers"
+            outside_controllers = root / "outside-controllers"
+            shutil.copytree(controllers, outside_controllers)
+            shutil.rmtree(controllers)
+            controllers.symlink_to(outside_controllers, target_is_directory=True)
+
+            with self.assertRaisesRegex(
+                RuntimeError,
+                "reviewed Hub source path contains symlink",
+            ):
+                _validate_reviewed_hub_sources(workspace, run_services)
+
+    def test_reviewed_hub_guard_rejects_absolute_root_outside_workspace(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            workspace = root / "workspace"
+            self._seed_reviewed_hub(workspace)
+            ambient_workspace = root / "ambient"
+            ambient_run_services = self._seed_reviewed_hub(ambient_workspace)
+
+            with self.assertRaisesRegex(
+                RuntimeError,
+                "must be the contained chummer.run-services workspace sibling",
+            ):
+                _validate_reviewed_hub_sources(workspace, ambient_run_services)
+
+    def test_reviewed_hub_guard_rejects_relative_ambient_root(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            workspace = Path(temporary) / "workspace"
+            self._seed_reviewed_hub(workspace)
+
+            with self.assertRaisesRegex(RuntimeError, "explicit absolute paths"):
+                _validate_reviewed_hub_sources(
+                    workspace,
+                    Path("ambient/chummer.run-services"),
+                )
 
     def test_every_windows_menu_command_has_android_behavior(self) -> None:
         source = WINDOWS_COMMANDS.read_text(encoding="utf-8")
