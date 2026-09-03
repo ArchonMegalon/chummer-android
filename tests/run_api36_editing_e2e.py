@@ -202,8 +202,9 @@ MEDIA_PROVIDER_CANONICAL_DOWNLOAD_ROOT = "/storage/emulated/0/Download/"
 MEDIA_PROVIDER_RELATIVE_DOWNLOAD_ROOT = "Download/"
 MEDIA_PROVIDER_DOCUMENT_MIME_TYPE = "application/octet-stream"
 MEDIA_PROVIDER_SHELL_OWNER_PACKAGE_NAME = "com.android.shell"
-MEDIA_PROVIDER_QUERY_ARG_MATCH_PENDING = "android:query-arg-match-pending"
-MEDIA_PROVIDER_MATCH_INCLUDE = 1
+MEDIA_PROVIDER_DOWNLOADS_INCLUDE_PENDING_URI = (
+    f"{MEDIA_PROVIDER_DOWNLOADS_URI}?includePending=1"
+)
 MEDIA_PROVIDER_METADATA_PROJECTION = (
     "_id:_display_name:_data:_size:mime_type:relative_path:is_pending:"
     "owner_package_name"
@@ -665,15 +666,18 @@ def adb_command_retry_policy(arguments: tuple[str, ...]) -> tuple[str, str]:
             "exact hierarchy temporary-file identity observation",
         )
     if (
-        len(shell_arguments) in {10, 12}
-        and shell_arguments[:6] == (
+        len(shell_arguments) == 10
+        and shell_arguments[:5] == (
             "content",
             "query",
             "--user",
             "0",
             "--uri",
-            MEDIA_PROVIDER_DOWNLOADS_URI,
         )
+        and shell_arguments[5] in {
+            MEDIA_PROVIDER_DOWNLOADS_URI,
+            MEDIA_PROVIDER_DOWNLOADS_INCLUDE_PENDING_URI,
+        }
         and shell_arguments[6:9] == (
             "--projection",
             MEDIA_PROVIDER_METADATA_PROJECTION,
@@ -681,13 +685,6 @@ def adb_command_retry_policy(arguments: tuple[str, ...]) -> tuple[str, str]:
         )
         and MEDIA_PROVIDER_DISPLAY_NAME_WHERE_ARGUMENT.fullmatch(shell_arguments[9])
         is not None
-        and (
-            len(shell_arguments) == 10
-            or shell_arguments[10:] == (
-                "--extra",
-                f"{MEDIA_PROVIDER_QUERY_ARG_MATCH_PENDING}:i:{MEDIA_PROVIDER_MATCH_INCLUDE}",
-            )
-        )
     ):
         return (
             "read-only-retryable",
@@ -2034,17 +2031,16 @@ class Device:
             "--user",
             "0",
             "--uri",
-            MEDIA_PROVIDER_DOWNLOADS_URI,
+            (
+                MEDIA_PROVIDER_DOWNLOADS_INCLUDE_PENDING_URI
+                if include_pending
+                else MEDIA_PROVIDER_DOWNLOADS_URI
+            ),
             "--projection",
             MEDIA_PROVIDER_METADATA_PROJECTION,
             "--where",
             where,
         )
-        if include_pending:
-            query_arguments += (
-                "--extra",
-                f"{MEDIA_PROVIDER_QUERY_ARG_MATCH_PENDING}:i:{MEDIA_PROVIDER_MATCH_INCLUDE}",
-            )
         query_result = self.run(*query_arguments, timeout=120)
         query_attempt = self._write_provider_command_attempt(
             receipt_name=receipt_name,
@@ -2093,13 +2089,11 @@ class Device:
             "--user",
             "0",
             "--uri",
-            MEDIA_PROVIDER_DOWNLOADS_URI,
+            MEDIA_PROVIDER_DOWNLOADS_INCLUDE_PENDING_URI,
             "--projection",
             MEDIA_PROVIDER_METADATA_PROJECTION,
             "--where",
             where,
-            "--extra",
-            f"{MEDIA_PROVIDER_QUERY_ARG_MATCH_PENDING}:i:{MEDIA_PROVIDER_MATCH_INCLUDE}",
         )
         query_result = self.run(*query_arguments, timeout=120)
         query_attempt = self._write_provider_command_attempt(

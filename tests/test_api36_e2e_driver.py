@@ -7066,14 +7066,11 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                     "--user",
                     "0",
                     "--uri",
-                    DRIVER.MEDIA_PROVIDER_DOWNLOADS_URI,
+                    DRIVER.MEDIA_PROVIDER_DOWNLOADS_INCLUDE_PENDING_URI,
                     "--projection",
                     DRIVER.MEDIA_PROVIDER_METADATA_PROJECTION,
                     "--where",
                     '"_display_name=\'runner.chum5\'"',
-                    "--extra",
-                    f"{DRIVER.MEDIA_PROVIDER_QUERY_ARG_MATCH_PENDING}:i:"
-                    f"{DRIVER.MEDIA_PROVIDER_MATCH_INCLUDE}",
                 ),
                 run.call_args_list[2].args,
             )
@@ -7199,12 +7196,8 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 self.assertEqual(1, run.call_count)
                 invoke_once.assert_not_called()
                 self.assertEqual(
-                    (
-                        "--extra",
-                        f"{DRIVER.MEDIA_PROVIDER_QUERY_ARG_MATCH_PENDING}:i:"
-                        f"{DRIVER.MEDIA_PROVIDER_MATCH_INCLUDE}",
-                    ),
-                    run.call_args.args[-2:],
+                    DRIVER.MEDIA_PROVIDER_DOWNLOADS_INCLUDE_PENDING_URI,
+                    run.call_args.args[6],
                 )
 
     def test_documents_ui_provider_registration_rejects_post_insert_cardinality(
@@ -7536,19 +7529,18 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             "read-only-retryable", DRIVER.adb_command_retry_policy(query)[0]
         )
         pending_query = (
-            *query,
-            "--extra",
-            f"{DRIVER.MEDIA_PROVIDER_QUERY_ARG_MATCH_PENDING}:i:"
-            f"{DRIVER.MEDIA_PROVIDER_MATCH_INCLUDE}",
+            *query[:6],
+            DRIVER.MEDIA_PROVIDER_DOWNLOADS_INCLUDE_PENDING_URI,
+            *query[7:],
         )
         self.assertEqual(
             "read-only-retryable",
             DRIVER.adb_command_retry_policy(pending_query)[0],
         )
         for hostile_pending_query in (
-            (*query, "--extra", f"{DRIVER.MEDIA_PROVIDER_QUERY_ARG_MATCH_PENDING}:i:0"),
-            (*query, "--extra", "android:query-arg-match-trashed:i:1"),
-            (*query, "--extra", f"{DRIVER.MEDIA_PROVIDER_QUERY_ARG_MATCH_PENDING}:s:1"),
+            (*query[:6], f"{DRIVER.MEDIA_PROVIDER_DOWNLOADS_URI}?includePending=0", *query[7:]),
+            (*query[:6], f"{DRIVER.MEDIA_PROVIDER_DOWNLOADS_URI}?includePending=true", *query[7:]),
+            (*query, "--extra", "android:query-arg-match-pending:i:1"),
         ):
             self.assertEqual(
                 "non-replayable",
