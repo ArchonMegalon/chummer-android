@@ -845,6 +845,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             arm64_apk_path=arm64_apk,
             hosted_candidate_path=hosted_candidate,
             workflow_path=workflow,
+            run_attempt=attempt,
             build_result="success",
             matrix_result="success",
             **self.authority(attempt, **overrides),
@@ -918,6 +919,30 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             )
             with self.assertRaisesRegex(ValueError, "emulator live observation differs"):
                 self.validate(root)
+
+            self.materialize_journey(root, "career-active-skill-advance")
+            sidecar = json.loads(sidecar_path.read_text())
+            sidecar["execution"]["runAttempt"] = 2
+            sidecar["authoritySha256"] = ENVIRONMENT.canonical_sha256(
+                {**sidecar, "authoritySha256": None}
+            )
+            sidecar_path.write_text(
+                json.dumps(sidecar, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ValueError, "emulator live observation differs"):
+                self.validate(root, attempt="1")
+
+    def test_aggregate_run_attempt_must_be_positive(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self.materialize_all(root)
+            for invalid in ("0", "-1", "", "01"):
+                with self.subTest(run_attempt=invalid), self.assertRaisesRegex(
+                    ValueError,
+                    "run attempt must be one positive integer",
+                ):
+                    self.validate(root, attempt=invalid)
 
     def test_journey_and_environment_receipt_toctou_fail_closed(self) -> None:
         for target_name in (
@@ -1291,6 +1316,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                     arm64_apk_path=root / "not-needed-arm64.apk",
                     hosted_candidate_path=root / "not-needed-candidate.json",
                     workflow_path=root / "not-needed-workflow.yml",
+                    run_attempt="1",
                     build_result="success",
                     matrix_result="failure",
                     **self.authority(),

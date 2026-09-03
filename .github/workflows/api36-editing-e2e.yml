@@ -588,6 +588,7 @@ jobs:
           --hosted-candidate "${{ runner.temp }}/chummer-android-arm64/hosted-build-candidate.json"
           --workflow chummer-android/.github/workflows/api36-editing-e2e.yml
           --run-id "${{ github.run_id }}"
+          --run-attempt "$GITHUB_RUN_ATTEMPT"
           --build-result "$CHUMMER_BUILD_RESULT"
           --matrix-result "$CHUMMER_MATRIX_RESULT"
           --artifact-id "$CHUMMER_E2E_APK_ARTIFACT_ID"

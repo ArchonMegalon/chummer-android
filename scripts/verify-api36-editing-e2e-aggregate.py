@@ -1216,6 +1216,7 @@ def validate_aggregate(
     workflow_path: Path,
     environment_policy_path: Path = DEFAULT_ENVIRONMENT_POLICY,
     run_id: str,
+    run_attempt: str,
     build_result: str,
     matrix_result: str,
     artifact_id: str,
@@ -1229,6 +1230,8 @@ def validate_aggregate(
         raise ValueError(f"build job did not succeed: {build_result!r}")
     if matrix_result != "success":
         raise ValueError(f"phone journey matrix did not succeed: {matrix_result!r}")
+    if not POSITIVE_INTEGER.fullmatch(run_attempt):
+        raise ValueError("run attempt must be one positive integer")
     if evidence_root.is_symlink() or not evidence_root.is_dir():
         raise ValueError("journey evidence root is not one regular directory")
 
@@ -1464,11 +1467,15 @@ def validate_aggregate(
             emulator_observation_snapshot
         )
         emulator_execution = expected_emulator["liveObservation"]["execution"]
+        expected_execution = {
+            "runId": int(run_id),
+            "runAttempt": int(run_attempt),
+            "matrixJourney": journey,
+        }
         if (
             environment["environment"]["androidSdk"]["emulator"]
             != expected_emulator
-            or emulator_execution["runId"] != int(run_id)
-            or emulator_execution["matrixJourney"] != journey
+            or emulator_execution != expected_execution
         ):
             raise ValueError(f"emulator live observation differs: {journey}")
         expected_environment_subject = {
@@ -1693,6 +1700,7 @@ def main() -> int:
     parser.add_argument("--hosted-candidate", type=Path, required=True)
     parser.add_argument("--workflow", type=Path, required=True)
     parser.add_argument("--run-id", required=True)
+    parser.add_argument("--run-attempt", required=True)
     parser.add_argument("--build-result", required=True)
     parser.add_argument("--matrix-result", required=True)
     parser.add_argument("--artifact-id", required=True)
@@ -1718,6 +1726,7 @@ def main() -> int:
         workflow_path=args.workflow,
         environment_policy_path=args.environment_policy,
         run_id=args.run_id,
+        run_attempt=args.run_attempt,
         build_result=args.build_result,
         matrix_result=args.matrix_result,
         artifact_id=args.artifact_id,

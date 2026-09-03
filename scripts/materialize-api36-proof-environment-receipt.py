@@ -25,6 +25,26 @@ from api36_wizard_gate_contract import (
 )
 
 
+def require_journey_execution_authority(
+    *,
+    live_execution: object,
+    artifact_authority: object,
+    run_attempt: int,
+    matrix_journey: str,
+) -> None:
+    if type(run_attempt) is not int or run_attempt <= 0:
+        raise ValueError("run attempt must be one positive integer")
+    if not isinstance(artifact_authority, dict):
+        raise ValueError("emulator live observation execution authority differs")
+    expected = {
+        "runId": artifact_authority.get("runId"),
+        "runAttempt": run_attempt,
+        "matrixJourney": matrix_journey,
+    }
+    if live_execution != expected:
+        raise ValueError("emulator live observation execution authority differs")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="role", required=True)
@@ -40,6 +60,7 @@ def main(argv: list[str] | None = None) -> int:
     journey.add_argument("--expected-apk-sha256", required=True)
     journey.add_argument("--journey-receipt", type=Path, required=True)
     journey.add_argument("--matrix-journey", required=True)
+    journey.add_argument("--run-attempt", type=int, required=True)
     journey.add_argument(
         "--emulator-live-observation",
         type=Path,
@@ -90,12 +111,12 @@ def main(argv: list[str] | None = None) -> int:
         live_execution = observation["androidSdk"]["emulator"][
             "liveObservation"
         ]["execution"]
-        if (
-            not isinstance(artifact, dict)
-            or live_execution["matrixJourney"] != args.matrix_journey
-            or live_execution["runId"] != artifact.get("runId")
-        ):
-            raise ValueError("emulator live observation execution authority differs")
+        require_journey_execution_authority(
+            live_execution=live_execution,
+            artifact_authority=artifact,
+            run_attempt=args.run_attempt,
+            matrix_journey=args.matrix_journey,
+        )
     else:
         x64_apk = StableFile(args.x64_apk, "x64 APK")
         arm64_apk = StableFile(args.arm64_apk, "ARM64 APK")

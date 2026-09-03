@@ -24,6 +24,14 @@ SPEC = importlib.util.spec_from_file_location("api36_proof_environment_authority
 assert SPEC is not None and SPEC.loader is not None
 MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
+MATERIALIZER_SCRIPT = REPO / "scripts/materialize-api36-proof-environment-receipt.py"
+MATERIALIZER_SPEC = importlib.util.spec_from_file_location(
+    "materialize_api36_proof_environment_receipt",
+    MATERIALIZER_SCRIPT,
+)
+assert MATERIALIZER_SPEC is not None and MATERIALIZER_SPEC.loader is not None
+MATERIALIZER = importlib.util.module_from_spec(MATERIALIZER_SPEC)
+MATERIALIZER_SPEC.loader.exec_module(MATERIALIZER)
 
 
 class Api36ProofEnvironmentAuthorityTests(unittest.TestCase):
@@ -1140,6 +1148,42 @@ Available Packages:
 
 
 class Api36ProofEnvironmentSourceContractTests(unittest.TestCase):
+    def test_journey_materializer_binds_exact_run_attempt(self) -> None:
+        artifact = {"runId": 12345}
+        execution = {
+            "runId": 12345,
+            "runAttempt": 2,
+            "matrixJourney": "career-active-skill-advance",
+        }
+        MATERIALIZER.require_journey_execution_authority(
+            live_execution=execution,
+            artifact_authority=artifact,
+            run_attempt=2,
+            matrix_journey="career-active-skill-advance",
+        )
+        for mismatched_attempt in (1, 3):
+            with self.subTest(run_attempt=mismatched_attempt), self.assertRaisesRegex(
+                ValueError,
+                "execution authority differs",
+            ):
+                MATERIALIZER.require_journey_execution_authority(
+                    live_execution=execution,
+                    artifact_authority=artifact,
+                    run_attempt=mismatched_attempt,
+                    matrix_journey="career-active-skill-advance",
+                )
+        for invalid_attempt in (0, -1):
+            with self.subTest(run_attempt=invalid_attempt), self.assertRaisesRegex(
+                ValueError,
+                "run attempt must be one positive integer",
+            ):
+                MATERIALIZER.require_journey_execution_authority(
+                    live_execution=execution,
+                    artifact_authority=artifact,
+                    run_attempt=invalid_attempt,
+                    matrix_journey="career-active-skill-advance",
+                )
+
     def test_runner_materializes_and_seals_journey_environment_after_finalizer(self) -> None:
         runner = (REPO / "scripts/run-api36-editing-e2e-ci.sh").read_text()
         self.assertLess(
@@ -1151,6 +1195,7 @@ class Api36ProofEnvironmentSourceContractTests(unittest.TestCase):
             '--emulator-live-observation "$emulator_live_observation"',
             runner,
         )
+        self.assertEqual(2, runner.count('--run-attempt "$run_attempt"'))
         self.assertLess(
             runner.index("materialize-api36-emulator-live-observation.py"),
             runner.index(
@@ -1217,6 +1262,7 @@ class Api36ProofEnvironmentSourceContractTests(unittest.TestCase):
         )
         self.assertNotIn('emulator/emulator" -version', workflow)
         self.assertNotIn("pre-emulator-launch-script: |", workflow)
+        self.assertIn('--run-attempt "$GITHUB_RUN_ATTEMPT"', workflow)
 
     def test_aggregate_is_v2_and_environment_is_not_an_eighth_journey(self) -> None:
         gate = json.loads(

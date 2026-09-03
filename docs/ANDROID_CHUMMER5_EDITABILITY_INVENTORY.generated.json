@@ -802,7 +802,7 @@
       {
         "path": ".github/workflows/api36-editing-e2e.yml",
         "exists": true,
-        "sha256": "c1d01af49f8e7d77ca235f30e03896b476f6c2dd17f9dcc8b7bfcf54186d08a4"
+        "sha256": "5eca708510c8215dcdf733ecbadcacc73452c6a4915176496a6b5f41f606318b"
       },
       {
         "path": ".github/workflows/api36-two-consecutive-green.yml",
@@ -852,7 +852,7 @@
       {
         "path": "scripts/materialize-api36-proof-environment-receipt.py",
         "exists": true,
-        "sha256": "9d025210484f9a9f806fbfe85c4f64011b8a980eec728d364fc0389b428a312d"
+        "sha256": "cdb46bece2c289738578263abf44d499ba1236efe3603a062c7db7e3b6251f80"
       },
       {
         "path": "scripts/materialize-api36-two-green-eligibility.py",
@@ -872,12 +872,12 @@
       {
         "path": "scripts/run-api36-editing-e2e-ci.sh",
         "exists": true,
-        "sha256": "52a984e0438d3786f3e15a145bca1fb071ba6ba641b198625094358e0f9f3391"
+        "sha256": "341de036be7ee1fd1d5dfeeaa5001847b7dc34551be03d81f51a98db3a3ffb49"
       },
       {
         "path": "scripts/verify-api36-editing-e2e-aggregate.py",
         "exists": true,
-        "sha256": "df86f37d969884d8fc8e05b8afded1c2d93d2517a93b5bcfcd9a4706727b9bc1"
+        "sha256": "21bd944e589ae26b035f06175fe82e8252b4edd24d05c4fc03719fd26e2b2a38"
       },
       {
         "path": "src/Chummer.Android/Chummer.Android.csproj",
@@ -907,12 +907,12 @@
       {
         "path": "tests/test_api36_e2e_artifact_authority.py",
         "exists": true,
-        "sha256": "7dcb4a26b25336c4c51736fa91563989812c350b451fdf3f002753bbc399e4da"
+        "sha256": "7092c61957637830f48b2379cd9afc5238ca4220c73fc643a932d97e80b1fe3c"
       },
       {
         "path": "tests/test_api36_proof_environment_receipt.py",
         "exists": true,
-        "sha256": "b20d35f8fc33b3fcffe677fccec3d3c5551912ec19570a26e826411063460a83"
+        "sha256": "d408478b96786630f4ddf98ffabf4c24ba0f7a61f86486e131d825797ada1416"
       },
       {
         "path": "tests/test_api36_two_green_eligibility.py",

@@ -157,6 +157,7 @@ python3 chummer-android/scripts/materialize-api36-proof-environment-receipt.py \
   --expected-apk-sha256 "$expected_apk_sha256" \
   --journey-receipt "$evidence_root/receipt.json" \
   --matrix-journey "$journey" \
+  --run-attempt "$run_attempt" \
   --emulator-live-observation "$emulator_live_observation" \
   --android-sdk-root "$android_home" \
   --gate-contract "$gate_contract_path" \
