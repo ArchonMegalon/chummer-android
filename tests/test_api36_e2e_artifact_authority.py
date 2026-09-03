@@ -510,6 +510,17 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
         )
 
     def test_finalizer_rejects_full_editing_as_wizard_authority(self) -> None:
+        self.assertEqual(
+            (
+                {
+                    "matrixJourney": "full-editing",
+                    "status": "deferred",
+                    "evidenceClass": "informational_only",
+                    "maySatisfyRequiredJourney": False,
+                },
+            ),
+            GATE.EXCLUDED_FROM_GATE,
+        )
         receipt = {
             "schema": "chummer.android.editing-e2e/v1",
             "status": "pass",
@@ -737,11 +748,27 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
         stale_count = GATE.expected_contract()
         stale_count["requiredJourneyCount"] = len(GATE.REQUIRED_JOURNEY_SPECS) - 1
         cases["stale-journey-count"] = stale_count
+        promoted_full_editing = GATE.expected_contract()
+        promoted_full_editing["excludedFromGate"][0]["status"] = "required"
+        cases["full-editing-no-longer-deferred"] = promoted_full_editing
+        gating_full_editing_evidence = GATE.expected_contract()
+        gating_full_editing_evidence["excludedFromGate"][0][
+            "maySatisfyRequiredJourney"
+        ] = True
+        cases["full-editing-may-satisfy-required"] = gating_full_editing_evidence
+        authoritative_full_editing_evidence = GATE.expected_contract()
+        authoritative_full_editing_evidence["excludedFromGate"][0][
+            "evidenceClass"
+        ] = "release_authority"
+        cases["full-editing-evidence-authoritative"] = (
+            authoritative_full_editing_evidence
+        )
 
         for name, value in cases.items():
             with self.subTest(name=name), self.assertRaisesRegex(
                 ValueError,
-                f"exact {len(GATE.REQUIRED_JOURNEY_SPECS)}-journey wizard-only authority",
+                rf"(?:exact {len(GATE.REQUIRED_JOURNEY_SPECS)}-journey "
+                r"wizard-only authority|Full Editing must remain)",
             ):
                 GATE.validate_contract(copy.deepcopy(value))
 

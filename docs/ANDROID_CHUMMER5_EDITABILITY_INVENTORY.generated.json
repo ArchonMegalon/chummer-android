@@ -68,7 +68,7 @@
     "phoneBetaWizardGate": {
       "schema": "chummer.android.api36-sr5-wizard-gate-binding/v1",
       "contractPath": "eng/api36-sr5-wizard-gate-authority.json",
-      "contractSha256": "dd12b08b04c293fa47eb33409182b244d95c0ed4a3df4da2617ab54dc6abbc21",
+      "contractSha256": "c867b4fd8c2a771e3ddb4c3e20c0b843ea87510a197b476c7ce75dc013fec7b4",
       "authorityClass": "internal_phone_beta_sr5_wizard_only",
       "proofScope": "sr5_wizards_only",
       "requiredJourneyCount": 7,
@@ -85,7 +85,8 @@
       "excludedFromGate": [
         {
           "matrixJourney": "full-editing",
-          "status": "not_required_not_proven",
+          "status": "deferred",
+          "evidenceClass": "informational_only",
           "maySatisfyRequiredJourney": false
         }
       ],
@@ -806,7 +807,7 @@
       {
         "path": "eng/api36-sr5-wizard-gate-authority.json",
         "exists": true,
-        "sha256": "dd12b08b04c293fa47eb33409182b244d95c0ed4a3df4da2617ab54dc6abbc21"
+        "sha256": "c867b4fd8c2a771e3ddb4c3e20c0b843ea87510a197b476c7ce75dc013fec7b4"
       },
       {
         "path": "scripts/build-debug.sh",
@@ -816,7 +817,7 @@
       {
         "path": "scripts/api36_wizard_gate_contract.py",
         "exists": true,
-        "sha256": "83612a4785088716e8666902e60a7c0012a10861eead6f7d1651cdcf65a9956d"
+        "sha256": "b987c4d3cb605fbf9dfca4a029ec0c6137dff59dc581b032b5d94f077dd324e9"
       },
       {
         "path": "scripts/finalize-api36-e2e-journey-receipt.py",
@@ -856,12 +857,12 @@
       {
         "path": "tests/test_api36_e2e_workflow.py",
         "exists": true,
-        "sha256": "4a84d7c8f9490d99458213091e94ed32cc4bbc61362afb3b5d3dc47bbb719a24"
+        "sha256": "e836575682964fc81441382784aa0b0f5fdda72428aa6bdbc9667e360975baa3"
       },
       {
         "path": "tests/test_api36_e2e_artifact_authority.py",
         "exists": true,
-        "sha256": "434e38703e5e691f5ea38f2e801e4090cf3903e549df1a862c21cbdbdc25166f"
+        "sha256": "fce69459ef7a88ed9b8e9dcb5c62f1fa46ceaaf4fd4b8694ad2c62edfb52601f"
       },
       {
         "path": "tests/run_api36_sr5_before_run_edge_e2e.py",
@@ -881,7 +882,7 @@
       {
         "path": "tests/test_api36_proof_state_contract.py",
         "exists": true,
-        "sha256": "eb7142fab87aaa684f1ec93fbf7a485133bb88625868f587dda5c6468425e8f7"
+        "sha256": "209b43e193c2232617c45e0c28110830bb7bfb04440641a2ed616766c43bde6e"
       },
       {
         "path": "tests/test_run_api36_sr5_before_run_edge_e2e_driver.py",
@@ -936,7 +937,7 @@
       {
         "path": "tests/test_chummer5_editability_inventory.py",
         "exists": true,
-        "sha256": "a868964b6299c26b1d5efe16e8af4eb02b6ad4fc70fb0023fb112c03f97babeb"
+        "sha256": "7fb47d65683bdb58acc843166b040e70eeabc458101954869946037678cbdbef"
       },
       {
         "path": "tests/test_sr5_contextual_wizard_scope.py",

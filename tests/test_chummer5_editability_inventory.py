@@ -6604,7 +6604,8 @@ public sealed class Demo
             [
                 {
                     "matrixJourney": "full-editing",
-                    "status": "not_required_not_proven",
+                    "status": "deferred",
+                    "evidenceClass": "informational_only",
                     "maySatisfyRequiredJourney": False,
                 }
             ],

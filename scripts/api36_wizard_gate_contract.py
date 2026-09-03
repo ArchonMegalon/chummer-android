@@ -60,7 +60,8 @@ REQUIRED_JOURNEY_SPECS = (
 EXCLUDED_FROM_GATE = (
     {
         "matrixJourney": "full-editing",
-        "status": "not_required_not_proven",
+        "status": "deferred",
+        "evidenceClass": "informational_only",
         "maySatisfyRequiredJourney": False,
     },
 )
@@ -99,6 +100,11 @@ def expected_contract() -> dict[str, Any]:
 def validate_contract(value: dict[str, Any]) -> dict[str, Any]:
     expected = expected_contract()
     required_count = len(REQUIRED_JOURNEY_SPECS)
+    if value.get("excludedFromGate") != expected["excludedFromGate"]:
+        raise ValueError(
+            "Full Editing must remain deferred informational evidence and cannot "
+            "satisfy wizard authority"
+        )
     if value != expected:
         raise ValueError(
             f"API-36 wizard gate contract differs from the exact {required_count}-journey "

@@ -745,6 +745,17 @@ class Api36ProofStateContractTests(unittest.TestCase):
         self.assertFalse(gate["publicationAuthorized"])
         self.assertIn("full_editing_pass", gate["doesNotAssert"])
         self.assertIn("tablet_readiness", gate["doesNotAssert"])
+        self.assertEqual(
+            [
+                {
+                    "matrixJourney": "full-editing",
+                    "status": "deferred",
+                    "evidenceClass": "informational_only",
+                    "maySatisfyRequiredJourney": False,
+                }
+            ],
+            gate["excludedFromGate"],
+        )
 
 
 if __name__ == "__main__":

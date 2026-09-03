@@ -8,6 +8,7 @@ WORKFLOW = REPO_ROOT / ".github" / "workflows" / "api36-editing-e2e.yml"
 PREVIEW_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "preview9-arm64-aab.yml"
 BUILD_SCRIPT = REPO_ROOT / "scripts" / "build-debug.sh"
 GITIGNORE = REPO_ROOT / ".gitignore"
+PLAY_RELEASE = REPO_ROOT / "docs" / "PLAY_RELEASE.md"
 COMPATIBILITY_GRAPH = {
     "ArchonMegalon/chummer6-ui":
         "732a33cb8d3c704b8a86e1249eab46508339a105",
@@ -37,6 +38,24 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         cls.preview_text = PREVIEW_WORKFLOW.read_text(encoding="utf-8")
         cls.build_script_text = BUILD_SCRIPT.read_text(encoding="utf-8")
         cls.gitignore_text = GITIGNORE.read_text(encoding="utf-8")
+        cls.play_release_text = PLAY_RELEASE.read_text(encoding="utf-8")
+
+    def test_play_release_documents_exact_wizard_gate_and_deferred_full_editing(self) -> None:
+        self.assertIn("exactly these seven digest-bound API-36 journeys", self.play_release_text)
+        for journey in (
+            "Creation Prerequisite",
+            "Career Active Skill Advance",
+            "Career Weapon Fire",
+            "Before Run Edge",
+            "Playtime Short Burst",
+            "Downtime Calendar",
+            "After Run Settlement",
+        ):
+            with self.subTest(journey=journey):
+                self.assertIn(journey, self.play_release_text)
+        self.assertIn("deferred informational evidence", self.play_release_text)
+        self.assertIn("passing seven-journey aggregate", self.play_release_text)
+        self.assertNotIn("three-journey aggregate", self.play_release_text)
 
     def test_runs_only_the_phone_beta_profile_on_api_36(self) -> None:
         self.assertIn("api-level: 36", self.text)
