@@ -18,6 +18,8 @@ AUTHORITY_PATHS = (
     "authority/package-inventory.json",
     "authority/package-plane.lock.json",
 )
+NEXT_VERSION_NAME = "0.1.0-preview.11"
+NEXT_VERSION_CODE = "11"
 
 
 def load_module():
@@ -135,18 +137,50 @@ def seed_workspace(tmp_path: Path):
     return module, workspace, roots, revisions, authority_root, authority
 
 
+def build_release_graph(
+    module,
+    android_root: Path,
+    workspace_root: Path,
+    authority: dict[str, object],
+    authority_root: Path,
+    environment: dict[str, str],
+    *,
+    version_name: str = NEXT_VERSION_NAME,
+    version_code: str = NEXT_VERSION_CODE,
+):
+    return module.build_graph(
+        android_root,
+        workspace_root,
+        authority,
+        authority_root,
+        environment,
+        expected_version_name=version_name,
+        expected_version_code=version_code,
+    )
+
+
 class ReleaseSourceGraphTests(unittest.TestCase):
-    def test_v2_graph_binds_exact_sources_packages_and_local_review_presentation(self) -> None:
+    def test_v3_graph_binds_release_identity_sources_packages_and_local_review_presentation(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             module, workspace, roots, revisions, authority_root, authority = seed_workspace(Path(temporary))
 
-            graph = module.build_graph(
+            graph = build_release_graph(module,
                 roots["chummer-android"], workspace, authority, authority_root, revisions
             )
 
             self.assertEqual(module.SOURCE_GRAPH_CONTRACT, graph["contractName"])
             self.assertEqual("local_review_required", graph["authorityState"])
             self.assertFalse(graph["publicationAuthorized"])
+            self.assertEqual(
+                {
+                    "packageId": "com.myexternalbrain.chummer",
+                    "versionName": NEXT_VERSION_NAME,
+                    "versionCode": 11,
+                    "intentAuthority": "explicit_build_input",
+                    "minimumExclusiveVersionCode": 10,
+                },
+                graph["releaseIdentity"],
+            )
             self.assertEqual(list(module.RUNTIME_PACKAGE_IDS), [row["package_id"] for row in graph["packagePins"]])
             self.assertEqual(list(module.OWNER_PACKAGE_IDS), [row["package_id"] for row in graph["ownerPackagePins"]])
             self.assertEqual(
@@ -162,12 +196,38 @@ class ReleaseSourceGraphTests(unittest.TestCase):
                 graph["presentationSource"],
             )
 
+    def test_release_identity_rejects_missing_ambiguous_stale_and_noncanonical_values(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            module, workspace, roots, revisions, authority_root, authority = seed_workspace(
+                Path(temporary)
+            )
+            cases = (
+                ("", "11", "version name"),
+                ("0.1.0-preview.11\n0.1.0-preview.12", "11", "version name"),
+                ("0.1.0-preview.11", "", "version code"),
+                ("0.1.0-preview.11", "010", "version code"),
+                ("0.1.0-preview.10", "10", "Preview.10 floor"),
+            )
+            for version_name, version_code, message in cases:
+                with self.subTest(version_name=version_name, version_code=version_code):
+                    with self.assertRaisesRegex(ValueError, message):
+                        build_release_graph(
+                            module,
+                            roots["chummer-android"],
+                            workspace,
+                            authority,
+                            authority_root,
+                            revisions,
+                            version_name=version_name,
+                            version_code=version_code,
+                        )
+
     def test_graph_requires_exact_clean_revision_bound_siblings(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             module, workspace, roots, revisions, authority_root, authority = seed_workspace(Path(temporary))
             revisions["CHUMMER_CORE_ENGINE_REVISION"] = "0" * 40
             with self.assertRaisesRegex(ValueError, "revision drifted: chummer6-core"):
-                module.build_graph(
+                build_release_graph(module,
                     roots["chummer-android"], workspace, authority, authority_root, revisions
                 )
 
@@ -176,7 +236,7 @@ class ReleaseSourceGraphTests(unittest.TestCase):
             )
             (roots2["chummer6-ui"] / "untracked.txt").write_text("dirty\n", encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "checkout is dirty: chummer6-ui"):
-                module2.build_graph(
+                build_release_graph(module2,
                     roots2["chummer-android"], workspace2, authority2, authority_root2, revisions2
                 )
 
@@ -205,7 +265,7 @@ class ReleaseSourceGraphTests(unittest.TestCase):
             for payload, message in mutations:
                 with self.subTest(message=message):
                     with self.assertRaisesRegex(ValueError, message):
-                        module.build_graph(
+                        build_release_graph(module,
                             roots["chummer-android"], workspace, payload, authority_root, revisions
                         )
 
@@ -230,7 +290,7 @@ class ReleaseSourceGraphTests(unittest.TestCase):
             for payload, message in mutations:
                 with self.subTest(message=message):
                     with self.assertRaisesRegex(ValueError, message):
-                        module.build_graph(
+                        build_release_graph(module,
                             roots["chummer-android"], workspace, payload, authority_root, revisions
                         )
 
@@ -259,7 +319,7 @@ class ReleaseSourceGraphTests(unittest.TestCase):
                 text=True,
             ).stdout.strip()
 
-            graph = module.build_graph(
+            graph = build_release_graph(module,
                 roots["chummer-android"], workspace, authority, authority_root, revisions
             )
             hub_pins = [
@@ -314,7 +374,7 @@ class ReleaseSourceGraphTests(unittest.TestCase):
             with self.assertRaisesRegex(
                 ValueError, "not an ancestor of the pinned owner repository head"
             ):
-                module.build_graph(
+                build_release_graph(module,
                     roots["chummer-android"], workspace, authority, authority_root, revisions
                 )
 
@@ -324,14 +384,14 @@ class ReleaseSourceGraphTests(unittest.TestCase):
             fallback = copy.deepcopy(authority)
             fallback["ownerPackagePins"][0]["dependency_mode"] = "source_compatibility"
             with self.assertRaisesRegex(ValueError, "cannot fall back to source"):
-                module.build_graph(
+                build_release_graph(module,
                     roots["chummer-android"], workspace, fallback, authority_root, revisions
                 )
 
             escape = copy.deepcopy(authority)
             escape["ownerPackagePins"][0]["authority_receipt"]["path"] = "../receipt.json"
             with self.assertRaisesRegex(ValueError, "path escapes"):
-                module.build_graph(
+                build_release_graph(module,
                     roots["chummer-android"], workspace, escape, authority_root, revisions
                 )
 
@@ -341,7 +401,7 @@ class ReleaseSourceGraphTests(unittest.TestCase):
             stale = copy.deepcopy(authority)
             stale["contractName"] = "chummer.android.release-package-authority/v1"
             with self.assertRaisesRegex(ValueError, "exact v2 schema"):
-                module.build_graph(
+                build_release_graph(module,
                     roots["chummer-android"], workspace, stale, authority_root, revisions
                 )
 
@@ -352,7 +412,7 @@ class ReleaseSourceGraphTests(unittest.TestCase):
             )
             run["dependencies"].remove("Chummer.Play.Contracts")
             with self.assertRaisesRegex(ValueError, "missing transitive Chummer.Play.Contracts"):
-                module.build_graph(
+                build_release_graph(module,
                     roots["chummer-android"], workspace, missing_play, authority_root, revisions
                 )
 
@@ -360,7 +420,7 @@ class ReleaseSourceGraphTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             module, workspace, roots, revisions, authority_root, authority = seed_workspace(root)
-            graph = module.build_graph(
+            graph = build_release_graph(module,
                 roots["chummer-android"], workspace, authority, authority_root, revisions
             )
             output = root / "release-source-graph.json"
@@ -368,10 +428,24 @@ class ReleaseSourceGraphTests(unittest.TestCase):
             module.write_graph_exclusive(output, graph)
             module.verify_existing_graph(
                 output,
-                module.build_graph(
+                build_release_graph(module,
                     roots["chummer-android"], workspace, authority, authority_root, revisions
                 ),
             )
+            with self.assertRaisesRegex(ValueError, "during packaging: releaseIdentity"):
+                module.verify_existing_graph(
+                    output,
+                    build_release_graph(
+                        module,
+                        roots["chummer-android"],
+                        workspace,
+                        authority,
+                        authority_root,
+                        revisions,
+                        version_name="0.1.0-preview.12",
+                        version_code="12",
+                    ),
+                )
             with self.assertRaises(FileExistsError):
                 module.write_graph_exclusive(output, graph)
             payload = json.loads(output.read_text(encoding="utf-8"))

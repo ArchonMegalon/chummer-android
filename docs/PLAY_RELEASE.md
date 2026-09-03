@@ -62,9 +62,24 @@ prove that the AAB signer is the intended Chummer upload identity:
 set -a
 . /absolute/private/path/android-release.env
 set +a
+CHUMMER_ANDROID_EXPECTED_VERSION_NAME=0.1.0-preview.11 \
+CHUMMER_ANDROID_EXPECTED_VERSION_CODE=11 \
 CHUMMER_BUNDLETOOL_JAR=/secure/tools/bundletool-all-1.18.3.jar \
   scripts/build-release.sh
 ```
+
+The expected version name and code are mandatory release intent, not defaults.
+They must be canonical, must exactly match the single
+`ApplicationDisplayVersion`/`ApplicationVersion` pair in the Android project,
+and the code must be greater than the already published Preview.10 code `10`.
+Supplying only one value, reusing code `10`, using a leading-zero code, or
+disagreeing with the project fails before workspace, signing, or build inputs
+are admitted. The resolved pair is bound into the AAB/checksum/source-graph
+filenames, the v3 source graph, and the MSBuild publish properties.
+
+The Preview.10 AAB, source graph, publication receipt, and dedicated verifier
+remain immutable historical evidence. This next-release lane neither rebuilds
+nor replaces them.
 
 Before the signed build, prepare the package authority and `--no-restore` assets
 from the retained UI package-plane receipt and its exact private package cache.
@@ -75,12 +90,12 @@ does not accept handwritten package pins. It then performs a locked restore into
 an isolated NuGet package root and emits an owner-only environment handoff:
 
 ```sh
-install -d -m 0700 /absolute/private/chummer-preview10-release-inputs
-CHUMMER_ANDROID_RELEASE_INPUT_DIR=/absolute/private/chummer-preview10-release-inputs \
+install -d -m 0700 /absolute/private/chummer-next-release-inputs
+CHUMMER_ANDROID_RELEASE_INPUT_DIR=/absolute/private/chummer-next-release-inputs \
 CHUMMER_CURRENT_UI_PACKAGE_AUTHORITY_RECEIPT=/absolute/private/UI_CURRENT_MAIN_PACKAGE_PLANE.generated.json \
 CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED=/absolute/private/ui-package-cache/packages \
   scripts/prepare-release-inputs.sh
-. /absolute/private/chummer-preview10-release-inputs/release-inputs.env
+. /absolute/private/chummer-next-release-inputs/release-inputs.env
 ```
 
 The preparer does not sign, publish, upload, or authorize publication. The
@@ -106,6 +121,9 @@ staging directory, requires exactly one new package-ID-bound signed AAB there,
 and seals each output with an exclusive no-clobber link. Persistent `bin/`
 outputs are never accepted as release input. A partial failed release is not
 overwritten automatically.
+
+The release packager only seals a local AAB and sidecars. It never uploads to
+Google Play, changes a Play track, edits testers, or authorizes publication.
 
 If SDK API 36 and Java are absent, the guarded
 `scripts/bootstrap-build-environment.sh` uses .NET's official
