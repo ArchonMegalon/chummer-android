@@ -4,6 +4,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <DefineConstants>$(DefineConstants);CHUMMER_API36_PROOF_INSTRUMENTATION</DefineConstants>
     <ChummerPresentationRoot Condition="'$(ChummerPresentationRoot)' == ''">../../../presentation</ChummerPresentationRoot>
     <ChummerCoreEngineRoot Condition="'$(ChummerCoreEngineRoot)' == ''">../../../core</ChummerCoreEngineRoot>
   </PropertyGroup>
@@ -13,6 +14,10 @@
   <ItemGroup>
     <Compile Include="NativeCompileStubs.cs" />
     <Compile Include="TransactionValidationCompileProbe.cs" />
+    <Compile Include="../../src/Chummer.Android/Proof/Api36ProofState.cs"
+             Link="Proof/Api36ProofState.cs" />
+    <Compile Include="../../src/Chummer.Android/Proof/Api36ProofStatePublisher.cs"
+             Link="Proof/Api36ProofStatePublisher.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5CareerFlowStrings.cs"
              Link="Native/Sr5CareerFlowStrings.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5TableWizardPhoneModel.cs"

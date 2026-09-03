@@ -1,5 +1,8 @@
 using Chummer.Android.Platform;
 using Chummer.Presentation.Overview;
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+using Chummer.Android.Proof;
+#endif
 
 namespace Chummer.Android.Native;
 
@@ -141,7 +144,27 @@ public class HomePage : NativePageBase, IPlayReviewSafeSurface
         {
             _body.Add(NativeTheme.Body(Coordinator.Notice, NativeTheme.Muted));
         }
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+        PublishApi36ProofState();
+#endif
     }
+
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+    private void PublishApi36ProofState()
+    {
+        Api36ProofStatePublisher.TryPublishTableWizard(
+            this,
+            Coordinator,
+            PhoneShellRoutes.Runners,
+            lane: null,
+            stage: "runners-ready",
+            settled: Coordinator.DebugWorkspaceAuthority is not null,
+            checkpointReadStatus: Sr5TableWizardCheckpointReadStatus.Empty,
+            session: null,
+            transaction: null,
+            statusCode: null);
+    }
+#endif
 
 #if DEBUG
     private void AddDebugWorkspaceAuthority()

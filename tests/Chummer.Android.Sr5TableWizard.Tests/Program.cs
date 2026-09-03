@@ -1,4 +1,5 @@
 using Chummer.Android.Native;
+using Chummer.Android.Proof;
 using Chummer.Contracts.Characters;
 using Chummer.Contracts.Workspaces;
 using Chummer.Presentation.Overview;
@@ -260,7 +261,80 @@ Assert(weaponStore.TryComplete(weaponApplying!, weaponAppliedSnapshot, out var w
        && weaponReceipt.ActionKind == Sr5TableWizardActionKind.FireWeapon,
     "direct weapon ammunition must produce the same durable typed receipt");
 
+AssertApi36ProofStateContract();
+
 Console.WriteLine("SR5 Before Run / Playtime Android draft-store tests passed.");
+
+static void AssertApi36ProofStateContract()
+{
+    var build = new Api36ProofBuildIdentity(
+        new string('1', 40),
+        new string('2', 40),
+        new string('3', 64),
+        "hosted-123-1",
+        "com.myexternalbrain.chummer",
+        "0.1.0-preview.10",
+        "10",
+        "android-x64");
+    var surface = new Api36ProofSurfaceState(
+        "runner",
+        "sr5-career/before-run/review",
+        4,
+        "before-run",
+        "review-ready",
+        Settled: true);
+    var workspace = new Api36ProofWorkspaceState(
+        "workspace-before-run",
+        31,
+        31,
+        new string('4', 64),
+        new string('5', 64),
+        "sha256:" + new string('6', 64));
+    var transaction = new Api36ProofTransactionState(
+        "ready",
+        "reviewed",
+        1,
+        "33333333-3333-3333-3333-333333333333",
+        "sha256:" + new string('7', 64),
+        "before-run.edge.spend",
+        "spend-edge",
+        "sha256:" + new string('8', 64),
+        31,
+        null,
+        "sha256:" + new string('9', 64),
+        null,
+        null,
+        ResumeRestored: true,
+        CanConfirm: true,
+        StatusCode: null);
+    Api36ProofState state = Api36ProofStateContract.Create(
+        7,
+        4242,
+        "44444444-4444-4444-4444-444444444444",
+        2,
+        build,
+        surface,
+        workspace,
+        transaction);
+    Assert(Api36ProofStateContract.IsExact(state),
+        "the debug-only proof state must validate its exact digest-bound fields");
+    Assert(state.StateDigest == "sha256:13f91525ca7e5b116653073afe8da07e38cef387583fc6ed90ceae2ffd895267",
+        "the C# proof digest must match the strict Python reader's canonical vector");
+    Assert(Api36ProofStateContract.Serialize(state).Length > 0,
+        "the exact proof state must serialize to bounded JSON");
+    Assert(!Api36ProofStateContract.IsExact(state with { Sequence = 8 }),
+        "changing proof state without recomputing its digest must fail closed");
+    Assert(!Api36ProofStateContract.IsExact(state with
+        {
+            Build = state.Build with { RuntimeIdentifier = "android-arm64" }
+        }),
+        "the proof state must reject ARM64 identity");
+    Assert(!Api36ProofStateContract.IsExact(state with
+        {
+            Workspace = state.Workspace! with { PayloadSha256 = new string('A', 64) }
+        }),
+        "the proof state must reject noncanonical workspace digests");
+}
 
 static void AssertObservedSnapshotConflict(
     Sr5TableWizardTransactionJournal applying,

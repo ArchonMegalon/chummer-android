@@ -13,11 +13,13 @@ import argparse
 from dataclasses import replace
 from datetime import datetime, timezone
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
 
+import api36_proof_state as proof_state
 import run_api36_editing_e2e as shared
 import run_api36_sr5_before_run_edge_physical_e2e as lane
 
@@ -80,6 +82,11 @@ def source_paths(
         / "src/Chummer.Android/Native/RunnerSessionSr5TableWizardPhoneAuthority.cs",
         "runnerCoordinatorSha256": android_root
         / "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+        "api36ProofStateSha256": android_root
+        / "src/Chummer.Android/Proof/Api36ProofState.cs",
+        "api36ProofPublisherSha256": android_root
+        / "src/Chummer.Android/Proof/Api36ProofStatePublisher.cs",
+        "api36ProofReaderSha256": android_root / "tests/api36_proof_state.py",
         "workspaceStoreSha256": core_root
         / "Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
         "fixtureSha256": fixture,
@@ -125,6 +132,15 @@ def main(argv: list[str] | None = None) -> int:
         f"/sdcard/Download/{fixture.name}",
         fixture_sha256,
     )
+    proof_build_id = (
+        f"hosted-{os.environ['GITHUB_RUN_ID']}-"
+        f"{os.environ['CHUMMER_E2E_APK_ARTIFACT_ATTEMPT']}"
+    )
+    proof_expectation = proof_state.expected_build(
+        android_root,
+        android_root / "eng/api36-sr5-wizard-gate-authority.json",
+        proof_build_id,
+    )
     authority = lane.prove_lane(
         device,
         HOSTED_SPEC,
@@ -132,6 +148,7 @@ def main(argv: list[str] | None = None) -> int:
         fixture_sha256,
         assert_before=lane.assert_before_state,
         assert_after=lane.assert_after_state,
+        proof_expectation=proof_expectation,
     )
     receipt = {
         "schema": RECEIPT_SCHEMA,

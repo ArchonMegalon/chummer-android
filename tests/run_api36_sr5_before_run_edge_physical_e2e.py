@@ -21,12 +21,16 @@ import re
 import subprocess
 import sys
 import time
+from typing import TYPE_CHECKING
 import uuid
 import xml.etree.ElementTree as ET
 
 from api36_physical_build_provenance import load_and_verify_manifest
 import run_api36_editing_e2e as shared
 import run_api36_sr5_career_attribute_wizard_e2e as physical
+
+if TYPE_CHECKING:
+    import api36_proof_state as proof_state
 
 
 RECEIPT_SCHEMA = "chummer.android.sr5-before-run-edge-physical-e2e/v1"
@@ -911,6 +915,8 @@ def prepare_runner(
     spec: LaneSpec,
     fixture_name: str,
     fixture_sha256: str,
+    proof_expectation: proof_state.ProofBuildExpectation | None = None,
+    proof_trace: list[dict[str, object]] | None = None,
 ) -> tuple[shared.LaunchState, shared.WorkspaceAuthority]:
     launch = shared.launch_app(device)
     shared.wait_for_phone_runners(device, timeout=120)
@@ -921,7 +927,19 @@ def prepare_runner(
     shared.wait_for_phone_runner_route(device, created=True, timeout=120)
     shared.tap_phone_destination(device, "phone-destination-runners")
     shared.wait_for_phone_runners(device, timeout=120)
-    authority = shared.read_phone_workspace_authority(device)
+    authority = (
+        read_proof_workspace_authority(
+            device,
+            proof_expectation,
+            proof_trace,
+            label="imported-runner",
+            page_automation_id="phone-runners",
+            stage="runners-ready",
+            wizard_lane=None,
+        )
+        if proof_expectation is not None and proof_trace is not None
+        else shared.read_phone_workspace_authority(device)
+    )
     shared.require_import_authority(authority, fixture_sha256)
     return launch, authority
 
@@ -1013,6 +1031,89 @@ def acknowledge_alert(device: shared.Device) -> None:
     device.tap("OK", timeout=180)
 
 
+def append_proof_state(
+    trace: list[dict[str, object]],
+    label: str,
+    snapshot: proof_state.ProofStateSnapshot,
+) -> None:
+    payload = snapshot.payload
+    process_instance = str(payload["processInstanceId"])
+    sequence = int(payload["sequence"])
+    previous = trace[-1] if trace else None
+    if (
+        previous is not None
+        and previous["processInstanceId"] == process_instance
+        and int(previous["sequence"]) >= sequence
+    ):
+        raise RuntimeError("API-36 proof-state sequence did not advance in one process")
+    trace.append({
+        "label": label,
+        "schema": payload["schema"],
+        "serializedSha256": snapshot.serialized_sha256,
+        "sequence": sequence,
+        "processId": payload["processId"],
+        "processInstanceId": process_instance,
+        "surface": payload["surface"],
+        "workspace": payload["workspace"],
+        "transaction": payload["transaction"],
+        "stateDigest": payload["stateDigest"],
+    })
+
+
+def read_proof_state(
+    device: shared.Device,
+    expectation: proof_state.ProofBuildExpectation,
+    trace: list[dict[str, object]],
+    *,
+    label: str,
+    page_automation_id: str,
+    stage: str,
+    wizard_lane: str | None,
+) -> proof_state.ProofStateSnapshot:
+    import api36_proof_state as proof_state_runtime
+
+    snapshot = proof_state_runtime.wait_for_state(
+        device,
+        expected=expectation,
+        page_automation_id=page_automation_id,
+        stage=stage,
+        wizard_lane=wizard_lane,
+    )
+    append_proof_state(trace, label, snapshot)
+    return snapshot
+
+
+def read_proof_workspace_authority(
+    device: shared.Device,
+    expectation: proof_state.ProofBuildExpectation,
+    trace: list[dict[str, object]],
+    *,
+    label: str,
+    page_automation_id: str,
+    stage: str,
+    wizard_lane: str | None,
+) -> shared.WorkspaceAuthority:
+    snapshot = read_proof_state(
+        device,
+        expectation,
+        trace,
+        label=label,
+        page_automation_id=page_automation_id,
+        stage=stage,
+        wizard_lane=wizard_lane,
+    )
+    workspace = snapshot.payload["workspace"]
+    if not isinstance(workspace, dict):
+        raise RuntimeError("API-36 proof state has no exact workspace authority")
+    return shared.WorkspaceAuthority(
+        str(workspace["workspaceId"]),
+        int(workspace["contentRevision"]),
+        int(workspace["savedRevision"]),
+        str(workspace["payloadSha256"]),
+        str(workspace["documentSha256"]),
+    )
+
+
 def prove_lane(
     device: shared.Device,
     spec: LaneSpec,
@@ -1021,18 +1122,45 @@ def prove_lane(
     *,
     assert_before,
     assert_after,
+    proof_expectation: proof_state.ProofBuildExpectation | None = None,
 ) -> dict[str, object]:
     device.shell("pm", "clear", shared.PACKAGE)
+    proof_trace: list[dict[str, object]] = []
     initial_launch, imported = prepare_runner(
-        device, spec, fixture.name, fixture_sha256
+        device,
+        spec,
+        fixture.name,
+        fixture_sha256,
+        proof_expectation,
+        proof_trace if proof_expectation is not None else None,
     )
     before_authority = assert_before(
         root_for_authority(device, imported, spec.fixture_alias)
     )
 
     open_lane(device, spec)
+    if proof_expectation is not None:
+        read_proof_state(
+            device,
+            proof_expectation,
+            proof_trace,
+            label="before-run-ready",
+            page_automation_id=spec.lane_route,
+            stage="ready",
+            wizard_lane=spec.lane,
+        )
     action_automation_id = tap_unique_typed_action(device, spec)
     device.wait("sr5-table-wizard-quote", timeout=90)
+    if proof_expectation is not None:
+        read_proof_state(
+            device,
+            proof_expectation,
+            proof_trace,
+            label="quote-ready",
+            page_automation_id="sr5-table-wizard-quote",
+            stage="quote-ready",
+            wizard_lane=spec.lane,
+        )
     device.tap_single_exact_resource_id(
         "sr5-table-wizard-open-review",
         timeout=90,
@@ -1040,6 +1168,19 @@ def prove_lane(
         surface_name=f"SR5 {spec.lane} durable review control",
     )
     physical.wait_exact_route(device, spec.review_route, timeout=90)
+    reviewed_proof = (
+        read_proof_state(
+            device,
+            proof_expectation,
+            proof_trace,
+            label="review-ready",
+            page_automation_id=spec.review_route,
+            stage="review-ready",
+            wizard_lane=spec.lane,
+        )
+        if proof_expectation is not None
+        else None
+    )
     reviewed = read_transaction(device, spec.checkpoint_key)
     if reviewed is None:
         raise RuntimeError("Reviewed table transaction unexpectedly disappeared")
@@ -1052,13 +1193,34 @@ def prove_lane(
         version=1,
         require_receipt=False,
     )
+    if reviewed_proof is not None:
+        proof_transaction = reviewed_proof.payload["transaction"]
+        if not isinstance(proof_transaction, dict) or (
+            proof_transaction["phase"] != "reviewed"
+            or proof_transaction["journalDigest"] != reviewed.payload["JournalDigest"]
+            or proof_transaction["actionDigest"]
+                != reviewed.payload["Quote"]["Identity"]["ActionDigest"]
+        ):
+            raise RuntimeError("Reviewed proof state does not match the durable transaction")
     device.capture(f"sr5-{spec.lane}-durable-review")
 
     review_restart = shared.force_stop_and_launch_new_process(device, initial_launch)
     shared.wait_for_phone_runner_route(device, created=True, timeout=120)
     shared.tap_phone_destination(device, "phone-destination-runners")
     shared.wait_for_phone_runners(device, timeout=120)
-    restored_before_apply = shared.read_phone_workspace_authority(device)
+    restored_before_apply = (
+        read_proof_workspace_authority(
+            device,
+            proof_expectation,
+            proof_trace,
+            label="review-restart-runner",
+            page_automation_id="phone-runners",
+            stage="runners-ready",
+            wizard_lane=None,
+        )
+        if proof_expectation is not None
+        else shared.read_phone_workspace_authority(device)
+    )
     shared.require_restored_authority(imported, restored_before_apply)
     restarted_review = read_transaction(device, spec.checkpoint_key)
     if restarted_review != reviewed:
@@ -1071,6 +1233,22 @@ def prove_lane(
         surface_name=f"SR5 {spec.lane} reviewed transaction resume control",
     )
     physical.wait_exact_route(device, spec.review_route, timeout=90)
+    if proof_expectation is not None:
+        resumed_proof = read_proof_state(
+            device,
+            proof_expectation,
+            proof_trace,
+            label="review-resumed",
+            page_automation_id=spec.review_route,
+            stage="review-ready",
+            wizard_lane=spec.lane,
+        )
+        resumed_transaction = resumed_proof.payload["transaction"]
+        if not isinstance(resumed_transaction, dict) or (
+            resumed_transaction["resumeRestored"] is not True
+            or resumed_transaction["journalDigest"] != reviewed.payload["JournalDigest"]
+        ):
+            raise RuntimeError("Restarted proof state did not restore the reviewed transaction")
     device.capture(f"sr5-{spec.lane}-resumed-review")
     device.tap_single_exact_resource_id(
         "sr5-table-wizard-confirm",
@@ -1080,6 +1258,19 @@ def prove_lane(
     )
     acknowledge_alert(device)
     device.wait("sr5-table-wizard-receipt", timeout=180)
+    applied_proof = (
+        read_proof_state(
+            device,
+            proof_expectation,
+            proof_trace,
+            label="receipt-ready",
+            page_automation_id=spec.lane_route,
+            stage="receipt-ready",
+            wizard_lane=spec.lane,
+        )
+        if proof_expectation is not None
+        else None
+    )
     applied = read_transaction(device, spec.checkpoint_key)
     if applied is None:
         raise RuntimeError("Applied table transaction unexpectedly disappeared")
@@ -1094,11 +1285,31 @@ def prove_lane(
     )
     if receipt is None:
         raise RuntimeError("Applied table receipt is missing")
+    if applied_proof is not None:
+        proof_transaction = applied_proof.payload["transaction"]
+        if not isinstance(proof_transaction, dict) or (
+            proof_transaction["phase"] != "applied"
+            or proof_transaction["journalDigest"] != applied.payload["JournalDigest"]
+            or proof_transaction["receiptDigest"] != receipt["ReceiptDigest"]
+        ):
+            raise RuntimeError("Applied proof state does not match the durable receipt")
     require_same_review(reviewed.payload, applied.payload)
 
     shared.tap_phone_destination(device, "phone-destination-runners")
     shared.wait_for_phone_runners(device, timeout=120)
-    saved = shared.read_phone_workspace_authority(device)
+    saved = (
+        read_proof_workspace_authority(
+            device,
+            proof_expectation,
+            proof_trace,
+            label="saved-runner",
+            page_automation_id="phone-runners",
+            stage="runners-ready",
+            wizard_lane=None,
+        )
+        if proof_expectation is not None
+        else shared.read_phone_workspace_authority(device)
+    )
     shared.require_saved_authority(saved)
     if saved.workspace_id != imported.workspace_id:
         raise RuntimeError("Typed table apply changed workspace identity")
@@ -1117,6 +1328,16 @@ def prove_lane(
     shared.wait_for_phone_runner_route(device, created=True, timeout=120)
     open_lane(device, spec)
     device.wait("sr5-table-wizard-receipt", timeout=180)
+    if proof_expectation is not None:
+        recovered_proof = read_proof_state(
+            device,
+            proof_expectation,
+            proof_trace,
+            label="receipt-recovered",
+            page_automation_id=spec.lane_route,
+            stage="receipt-ready",
+            wizard_lane=spec.lane,
+        )
     recovered = read_transaction(device, spec.checkpoint_key)
     if recovered != applied:
         raise RuntimeError("Recovered receipt bytes differ after process restart")
@@ -1131,6 +1352,12 @@ def prove_lane(
     )
     if recovered_receipt != receipt:
         raise RuntimeError("Recovered receipt identity differs after restart")
+    if proof_expectation is not None:
+        recovered_transaction = recovered_proof.payload["transaction"]
+        if not isinstance(recovered_transaction, dict) or (
+            recovered_transaction["receiptDigest"] != receipt["ReceiptDigest"]
+        ):
+            raise RuntimeError("Restarted proof state did not recover the exact receipt")
     device.capture(f"sr5-{spec.lane}-recovered-receipt")
     device.tap_single_exact_resource_id(
         "sr5-table-wizard-receipt-acknowledge",
@@ -1147,7 +1374,19 @@ def prove_lane(
     shared.wait_for_phone_runner_route(device, created=True, timeout=120)
     shared.tap_phone_destination(device, "phone-destination-runners")
     shared.wait_for_phone_runners(device, timeout=120)
-    final_saved = shared.read_phone_workspace_authority(device)
+    final_saved = (
+        read_proof_workspace_authority(
+            device,
+            proof_expectation,
+            proof_trace,
+            label="final-restored-runner",
+            page_automation_id="phone-runners",
+            stage="runners-ready",
+            wizard_lane=None,
+        )
+        if proof_expectation is not None
+        else shared.read_phone_workspace_authority(device)
+    )
     shared.require_restored_authority(saved, final_saved)
     final_successor_state = assert_after(
         root_for_authority(device, final_saved, spec.fixture_alias),
@@ -1158,9 +1397,19 @@ def prove_lane(
     if read_transaction(device, spec.checkpoint_key, required=False) is not None:
         raise RuntimeError("Acknowledged receipt deletion did not survive restart")
     open_lane(device, spec)
+    if proof_expectation is not None:
+        read_proof_state(
+            device,
+            proof_expectation,
+            proof_trace,
+            label="saved-successor-ready",
+            page_automation_id=spec.lane_route,
+            stage="ready",
+            wizard_lane=spec.lane,
+        )
     successor_actions = observe_successor_actions(device, spec, final_successor_state)
     device.capture(f"sr5-{spec.lane}-saved-successor-reopened")
-    return {
+    result = {
         "scope": {
             "representativeAction": spec.representative_action,
             "excluded": list(spec.excluded_scope),
@@ -1185,6 +1434,41 @@ def prove_lane(
             list(final_restart.restarted.process_ids),
         ],
     }
+    if proof_expectation is not None:
+        require_proof_process_transitions(proof_trace)
+        result["api36ProofInstrumentation"] = {
+            "schema": proof_trace[0]["schema"],
+            "transport": "app-private-run-as-cat-read-only",
+            "supplementalOnly": True,
+            "blackBoxAssertionsRetained": True,
+            "observations": proof_trace,
+        }
+    return result
+
+
+def require_proof_process_transitions(trace: list[dict[str, object]]) -> None:
+    by_label = {str(item["label"]): str(item["processInstanceId"]) for item in trace}
+    expected_labels = {
+        "imported-runner", "before-run-ready", "quote-ready", "review-ready",
+        "review-restart-runner", "review-resumed", "receipt-ready", "saved-runner",
+        "receipt-recovered", "final-restored-runner", "saved-successor-ready",
+    }
+    if set(by_label) != expected_labels:
+        raise RuntimeError("API-36 proof-state process trace is incomplete")
+    process_groups = (
+        ("imported-runner", "before-run-ready", "quote-ready", "review-ready"),
+        ("review-restart-runner", "review-resumed", "receipt-ready", "saved-runner"),
+        ("receipt-recovered",),
+        ("final-restored-runner", "saved-successor-ready"),
+    )
+    instances: list[str] = []
+    for labels in process_groups:
+        values = {by_label[label] for label in labels}
+        if len(values) != 1:
+            raise RuntimeError("API-36 proof state changed process identity without restart")
+        instances.append(next(iter(values)))
+    if len(set(instances)) != len(instances):
+        raise RuntimeError("API-36 proof state did not rotate process identity after force-stop")
 
 
 def default_source_paths(

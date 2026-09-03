@@ -146,12 +146,12 @@
       {
         "path": "src/Chummer.Android/Native/HomePage.cs",
         "exists": true,
-        "sha256": "a3a6acf259ab78a1ecfde78958c15bd2c1d4a56aa47e5126a7e31cd3edc3cc69"
+        "sha256": "d3bc06cb830d53ca913b9faca1b726501a3ec5160269602d45ef0561af2ff310"
       },
       {
         "path": "src/Chummer.Android/MauiProgram.cs",
         "exists": true,
-        "sha256": "e813bc48eb4ff5f15980a864a8c1adb0aa1c1788239a039ad4ecea5ba14ae142"
+        "sha256": "8a6c755c2e74b92432b6ef45bb4e567462910b28b4196b449c3ffc6147a4acfb"
       },
       {
         "path": "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
@@ -706,7 +706,7 @@
       {
         "path": "src/Chummer.Android/Native/Sr5TableWizardPage.cs",
         "exists": true,
-        "sha256": "3606792719da1fa6fac8dd3e81fbb559781ab811ce9c42a7f8ce5c09a6c9174f"
+        "sha256": "fcf73d1689acde9767513bc76d07c1d4c8580f4947d0f092dc054d55d1b51ca4"
       },
       {
         "path": "src/Chummer.Android/Native/Sr5TableWizardPhoneModel.cs",
@@ -781,32 +781,37 @@
       {
         "path": "tests/Chummer.Android.Sr5TableWizard.NativeCompile.Tests/Chummer.Android.Sr5TableWizard.NativeCompile.Tests.csproj",
         "exists": true,
-        "sha256": "5a2acc7c52c0a5b6e9e8b550df526f44b9248d6468b45e565c075c20e12983cb"
+        "sha256": "62995b7cb60adb727677a5d580b206cf38e9d50d4e9f67ccb4440d49a8bf6702"
       },
       {
         "path": "tests/Chummer.Android.Sr5TableWizard.NativeCompile.Tests/NativeCompileStubs.cs",
         "exists": true,
-        "sha256": "2e1b296c48bc3917b932f2ccadcb80e6637151a86d030dc6055155bd61586724"
+        "sha256": "7819d810596c9c3cd1b5b1625c2c44fffb9e1bcbc7ede15030d266c2ff021b95"
       },
       {
         "path": "tests/Chummer.Android.Sr5TableWizard.Tests/Chummer.Android.Sr5TableWizard.Tests.csproj",
         "exists": true,
-        "sha256": "f5a331295eb53564789dc8507faeaf81fe6ae4d5d6181a59c24c441070bfd47f"
+        "sha256": "b121a0dda395baee45f562324379124c2a66ba377dd840c4d7b07b6a4c43e00a"
       },
       {
         "path": "tests/Chummer.Android.Sr5TableWizard.Tests/Program.cs",
         "exists": true,
-        "sha256": "1f27667891bc2d0c59d629b6b0de7c787b5a45dc405d85c1895d57e6fc209c3d"
+        "sha256": "b0fd6d3d87699d857d0bd235baaaf0e6b539075c5879e46b28b4dbdd3e8f1c0e"
       },
       {
         "path": ".github/workflows/api36-editing-e2e.yml",
         "exists": true,
-        "sha256": "5a0952c01c922a444614b3dd1988f6b41086b701fbc803efdf680520f470a581"
+        "sha256": "24530ca173e39e4badd789e39cf0f39c808259cd6cbf06e4500dc2424299d535"
       },
       {
         "path": "eng/api36-sr5-wizard-gate-authority.json",
         "exists": true,
         "sha256": "dd12b08b04c293fa47eb33409182b244d95c0ed4a3df4da2617ab54dc6abbc21"
+      },
+      {
+        "path": "scripts/build-debug.sh",
+        "exists": true,
+        "sha256": "c2defce5f6cbca41c6119699df1717f86a7e9cb34fd2b1a2aa943ec3e4d52344"
       },
       {
         "path": "scripts/api36_wizard_gate_contract.py",
@@ -831,7 +836,17 @@
       {
         "path": "src/Chummer.Android/Chummer.Android.csproj",
         "exists": true,
-        "sha256": "7d3196e3212aad0e7dd9c06308cbd3abb42eaad05d0acf22896d072fb6121a3f"
+        "sha256": "765769479d8cfc8c64a00926a75f0be1bdcb43f02a36b754fb7f1749258cebb1"
+      },
+      {
+        "path": "src/Chummer.Android/Proof/Api36ProofState.cs",
+        "exists": true,
+        "sha256": "672da5e113468c83982010c222d8e0918ccb2ec46a26ed896d384c9add238630"
+      },
+      {
+        "path": "src/Chummer.Android/Proof/Api36ProofStatePublisher.cs",
+        "exists": true,
+        "sha256": "e8e20680e1daa6d7d2dbe42a8eff62f0792647e9d991070df49d7a182cf48149"
       },
       {
         "path": "tests/Chummer.Android.Native.CompileCheck/NativeCompileInputs.props",
@@ -851,7 +866,22 @@
       {
         "path": "tests/run_api36_sr5_before_run_edge_e2e.py",
         "exists": true,
-        "sha256": "3f79d6e8f6a856173b82c64b57cfe4506a0362176905bb2e87db455381974227"
+        "sha256": "ae0c8ca3fd53994d9f916da98de577a4fa985a272e3f58d7090c243b0df6a052"
+      },
+      {
+        "path": "tests/run_api36_sr5_before_run_edge_physical_e2e.py",
+        "exists": true,
+        "sha256": "8923602ea5d51ad380605aa7edd5a95f94d23676c97af86f4654944e3da94c6a"
+      },
+      {
+        "path": "tests/api36_proof_state.py",
+        "exists": true,
+        "sha256": "c34bb6de5d0deee7ee57f3b9ca9451a757e989420c7fb7cc6805ab9ac5195319"
+      },
+      {
+        "path": "tests/test_api36_proof_state_contract.py",
+        "exists": true,
+        "sha256": "205500d9a2831f886282b7cb463b8734f839f49686aa8d5925091675582b28d3"
       },
       {
         "path": "tests/test_run_api36_sr5_before_run_edge_e2e_driver.py",
@@ -926,7 +956,7 @@
       {
         "path": "tests/run_api36_editing_e2e.py",
         "exists": true,
-        "sha256": "1343eca5581b06222001eece29cccda26ce7294be3ebc3d2216d5114f5af7038"
+        "sha256": "11ba936169c2b868c9a26a638b4c808ab4de50e90412eda737d6e493e5b7321b"
       },
       {
         "path": "tests/run_api36_career_active_skill_advance_e2e.py",
@@ -2765,15 +2795,21 @@
       "gatePaths": [
         ".github/workflows/api36-editing-e2e.yml",
         "eng/api36-sr5-wizard-gate-authority.json",
+        "scripts/build-debug.sh",
         "scripts/api36_wizard_gate_contract.py",
         "scripts/finalize-api36-e2e-journey-receipt.py",
         "scripts/run-api36-editing-e2e-ci.sh",
         "scripts/verify-api36-editing-e2e-aggregate.py",
         "src/Chummer.Android/Chummer.Android.csproj",
+        "src/Chummer.Android/Proof/Api36ProofState.cs",
+        "src/Chummer.Android/Proof/Api36ProofStatePublisher.cs",
         "tests/Chummer.Android.Native.CompileCheck/NativeCompileInputs.props",
         "tests/test_api36_e2e_workflow.py",
         "tests/test_api36_e2e_artifact_authority.py",
         "tests/run_api36_sr5_before_run_edge_e2e.py",
+        "tests/run_api36_sr5_before_run_edge_physical_e2e.py",
+        "tests/api36_proof_state.py",
+        "tests/test_api36_proof_state_contract.py",
         "tests/test_run_api36_sr5_before_run_edge_e2e_driver.py",
         "tests/run_api36_sr5_playtime_short_burst_e2e.py",
         "tests/test_api36_sr5_playtime_short_burst_e2e_driver.py",
@@ -2874,7 +2910,7 @@
     },
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "c6b9b43b14362a36f26d22b5710ef67cea6c00dfe3dc10d4d3f55d2818e6cb13"
+      "sha256": "af0880682b8044a789382d6eadc0d47b4db1053bf4569a2c03f1bf8296b2db7c"
     }
   },
   "coverageByFamily": {

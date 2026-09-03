@@ -22,6 +22,13 @@ PACKAGE = "com.myexternalbrain.chummer"
 MAIN_ACTION = "android.intent.action.MAIN"
 LAUNCHER_CATEGORY = "android.intent.category.LAUNCHER"
 E2E_AUTHORITY_EXTRA = "com.myexternalbrain.chummer.extra.E2E_AUTHORITY"
+API36_PROOF_STATE_READ_ARGUMENTS = (
+    "exec-out",
+    "run-as",
+    PACKAGE,
+    "cat",
+    "files/api36-proof/state.v1.json",
+)
 WORKSPACE_AUTHORITY_RESOURCE_IDS = (
     "home-e2e-workspace-id",
     "home-e2e-content-revision",
@@ -523,6 +530,11 @@ def adb_command_retry_policy(arguments: tuple[str, ...]) -> tuple[str, str]:
         return ("read-only-retryable", "exact adb transport-state observation")
     if arguments == ("exec-out", "screencap", "-p"):
         return ("read-only-retryable", "exact framebuffer observation")
+    if arguments == API36_PROOF_STATE_READ_ARGUMENTS:
+        return (
+            "read-only-retryable",
+            "exact app-private API-36 proof-state observation",
+        )
     if arguments == ADB_READ_ONLY_HIERARCHY_ARGUMENTS:
         return (
             "read-only-retryable",

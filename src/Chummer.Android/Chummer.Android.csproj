@@ -30,13 +30,63 @@
     <ChummerCoreEngineRoot Condition="'$(ChummerCoreEngineRoot)' == ''">$(ChummerPresentationRoot)/../chummer-core-engine</ChummerCoreEngineRoot>
     <ChummerPlayReviewEnabled Condition="'$(ChummerPlayReviewEnabled)' == ''">true</ChummerPlayReviewEnabled>
     <DefineConstants Condition="'$(ChummerPlayReviewEnabled)' == 'true'">$(DefineConstants);CHUMMER_PLAY_REVIEW_ENABLED</DefineConstants>
+    <ChummerApi36ProofInstrumentation Condition="'$(ChummerApi36ProofInstrumentation)' == ''">false</ChummerApi36ProofInstrumentation>
+    <DefineConstants Condition="'$(ChummerApi36ProofInstrumentation)' == 'true'">$(DefineConstants);CHUMMER_API36_PROOF_INSTRUMENTATION</DefineConstants>
   </PropertyGroup>
+
+  <Target Name="ValidateApi36ProofInstrumentationBuild"
+          BeforeTargets="PrepareForBuild"
+          Condition="'$(ChummerApi36ProofInstrumentation)' == 'true'">
+    <Error Condition="'$(Configuration)' != 'Debug'"
+           Text="API-36 proof instrumentation is allowed only in the dedicated Debug APK." />
+    <Error Condition="'$(AndroidPackageFormats)' != 'apk'"
+           Text="API-36 proof instrumentation requires exact APK packaging." />
+    <Error Condition="'$(RuntimeIdentifier)' != 'android-x64' Or '$(ChummerAndroidRuntimeIdentifier)' != 'android-x64'"
+           Text="API-36 proof instrumentation is restricted to the hosted x86_64 APK." />
+    <Error Condition="!$([System.Text.RegularExpressions.Regex]::IsMatch('$(ChummerApi36ProofSourceCommit)', '^[0-9a-f]{40}$'))"
+           Text="API-36 proof instrumentation requires one lowercase source commit." />
+    <Error Condition="!$([System.Text.RegularExpressions.Regex]::IsMatch('$(ChummerApi36ProofSourceTree)', '^[0-9a-f]{40}$'))"
+           Text="API-36 proof instrumentation requires one lowercase source tree." />
+    <Error Condition="!$([System.Text.RegularExpressions.Regex]::IsMatch('$(ChummerApi36ProofGateContractSha256)', '^[0-9a-f]{64}$'))"
+           Text="API-36 proof instrumentation requires the exact gate-contract SHA-256." />
+    <Error Condition="!$([System.Text.RegularExpressions.Regex]::IsMatch('$(ChummerApi36ProofBuildId)', '^[A-Za-z0-9._-]{1,128}$'))"
+           Text="API-36 proof instrumentation requires one bounded build identity." />
+  </Target>
 
   <PropertyGroup Condition="'$(AndroidSigningKeyStore)' != ''">
     <AndroidSigningStorePass>$(ChummerAndroidSigningStorePass)</AndroidSigningStorePass>
     <AndroidSigningKeyAlias>$(ChummerAndroidSigningKeyAlias)</AndroidSigningKeyAlias>
     <AndroidSigningKeyPass>$(ChummerAndroidSigningKeyPass)</AndroidSigningKeyPass>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="Proof/Api36ProofState.cs;Proof/Api36ProofStatePublisher.cs" />
+    <Compile Include="Proof/Api36ProofState.cs;Proof/Api36ProofStatePublisher.cs"
+             Condition="'$(ChummerApi36ProofInstrumentation)' == 'true'" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(ChummerApi36ProofInstrumentation)' == 'true'">
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>ChummerApi36ProofSourceCommit</_Parameter1>
+      <_Parameter2>$(ChummerApi36ProofSourceCommit)</_Parameter2>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>ChummerApi36ProofSourceTree</_Parameter1>
+      <_Parameter2>$(ChummerApi36ProofSourceTree)</_Parameter2>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>ChummerApi36ProofGateContractSha256</_Parameter1>
+      <_Parameter2>$(ChummerApi36ProofGateContractSha256)</_Parameter2>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>ChummerApi36ProofBuildId</_Parameter1>
+      <_Parameter2>$(ChummerApi36ProofBuildId)</_Parameter2>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>ChummerApi36ProofRuntimeIdentifier</_Parameter1>
+      <_Parameter2>$(RuntimeIdentifier)</_Parameter2>
+    </AssemblyAttribute>
+  </ItemGroup>
 
   <ItemGroup>
     <MauiIcon Include="Resources/AppIcon/appicon.svg" ForegroundFile="Resources/AppIcon/appiconfg.svg" Color="#102426" />

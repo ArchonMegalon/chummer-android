@@ -1,5 +1,8 @@
 using Chummer.Android.Platform;
 using Chummer.Android.Native;
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+using Chummer.Android.Proof;
+#endif
 using Chummer.Application.Characters;
 using Chummer.Application.LifeModules;
 using Chummer.Application.Tools;
@@ -29,6 +32,9 @@ public static class MauiProgram
             .UseMauiApp<App>();
 
         builder.Services.AddSingleton<IAndroidDocumentService, AndroidDocumentService>();
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+        builder.Services.AddSingleton<Api36ProofStatePublisher>();
+#endif
         builder.Services.AddSingleton<IAndroidImageDocumentService, AndroidImageDocumentService>();
         builder.Services.AddSingleton<IAndroidLinkedCharacterFileService, AndroidLinkedCharacterFileService>();
         builder.Services.AddSingleton<IAndroidSystemService, AndroidSystemService>();

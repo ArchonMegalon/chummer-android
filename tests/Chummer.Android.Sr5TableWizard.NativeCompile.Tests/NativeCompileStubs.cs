@@ -23,6 +23,7 @@ public sealed class RunnerStateStub
 public sealed class RunnerSessionCoordinator
 {
     public RunnerStateStub State { get; } = new();
+    public NativeWorkspaceAuthoritySnapshot? DebugWorkspaceAuthority { get; }
 
     public Task InitializeAsync() => Task.CompletedTask;
 
@@ -50,6 +51,19 @@ public sealed class RunnerSessionCoordinator
         => Task.CompletedTask;
 }
 
+public sealed record NativeWorkspaceAuthoritySnapshot(
+    string WorkspaceId,
+    long ContentRevision,
+    long SavedRevision,
+    string PayloadSha256,
+    string DocumentSha256);
+
+public static class AndroidE2EAuthority
+{
+    public static bool Enabled => false;
+    public static long Generation => 0;
+}
+
 public interface ISr5CareerCheckpointBackend
 {
     string Read();
@@ -70,6 +84,11 @@ public static class Sr5CareerWizardRoutes
     public const string BeforeRunReview = "sr5-career/before-run/review";
     public const string Playtime = "sr5-career/playtime";
     public const string PlaytimeReview = "sr5-career/playtime/review";
+}
+
+public static class PhoneShellRoutes
+{
+    public const string Runner = "runner";
 }
 
 public abstract class NativePageBase : ContentPage

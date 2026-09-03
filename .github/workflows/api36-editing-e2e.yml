@@ -212,6 +212,8 @@ jobs:
         env:
           CHUMMER_ANDROID_RUNTIME_ID: android-x64
           CHUMMER_CORE_ENGINE_ROOT: ${{ github.workspace }}/chummer-core-engine
+          CHUMMER_API36_PROOF_INSTRUMENTATION: "true"
+          CHUMMER_API36_PROOF_BUILD_ID: hosted-${{ github.run_id }}-${{ github.run_attempt }}
         run: scripts/build-debug.sh
 
       - name: Verify clean Android source after x64 local-compatibility restore

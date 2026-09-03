@@ -40,11 +40,46 @@ case "$runtime_identifier" in
     ;;
 esac
 
+proof_build_args=()
+case "${CHUMMER_API36_PROOF_INSTRUMENTATION:-false}" in
+  false) ;;
+  true)
+    if [[ "$runtime_identifier" != "android-x64" ]]; then
+      echo "API-36 proof instrumentation is restricted to android-x64." >&2
+      exit 64
+    fi
+    proof_build_id="${CHUMMER_API36_PROOF_BUILD_ID:?CHUMMER_API36_PROOF_BUILD_ID is required}"
+    [[ "$proof_build_id" =~ ^[A-Za-z0-9._-]{1,128}$ ]] || {
+      echo "CHUMMER_API36_PROOF_BUILD_ID is not a bounded token." >&2
+      exit 64
+    }
+    if [[ -n "$(git -C "$repo_dir" status --porcelain=v1 --untracked-files=all)" ]]; then
+      echo "API-36 proof instrumentation requires a clean Android source tree." >&2
+      exit 1
+    fi
+    proof_source_commit="$(git -C "$repo_dir" rev-parse HEAD)"
+    proof_source_tree="$(git -C "$repo_dir" rev-parse 'HEAD^{tree}')"
+    proof_gate_sha256="$(sha256sum "$repo_dir/eng/api36-sr5-wizard-gate-authority.json" | cut -d ' ' -f 1)"
+    proof_build_args=(
+      "-p:ChummerApi36ProofInstrumentation=true"
+      "-p:ChummerApi36ProofSourceCommit=$proof_source_commit"
+      "-p:ChummerApi36ProofSourceTree=$proof_source_tree"
+      "-p:ChummerApi36ProofGateContractSha256=$proof_gate_sha256"
+      "-p:ChummerApi36ProofBuildId=$proof_build_id"
+    )
+    ;;
+  *)
+    echo "CHUMMER_API36_PROOF_INSTRUMENTATION must be true or false." >&2
+    exit 64
+    ;;
+esac
+
 "$dotnet_command" restore "$solution_path" \
   --disable-parallel \
   -p:ChummerAndroidRuntimeIdentifier="$runtime_identifier" \
   -p:ChummerDesktopRuntimeIdentifiers= \
   -p:ChummerUseLocalCompatibilityTree=true \
+  "${proof_build_args[@]}" \
   "${local_tree_args[@]}"
 
 python3 "$compile_graph_verifier" \
@@ -67,6 +102,7 @@ python3 "$compile_graph_verifier" \
   -p:ChummerAndroidRuntimeIdentifier="$runtime_identifier" \
   -p:ChummerDesktopRuntimeIdentifiers= \
   -p:ChummerUseLocalCompatibilityTree=true \
+  "${proof_build_args[@]}" \
   "${local_tree_args[@]}"
 
 "$dotnet_command" build "$compile_check_path" \

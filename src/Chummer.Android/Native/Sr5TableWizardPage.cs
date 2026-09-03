@@ -1,6 +1,9 @@
 using Chummer.Contracts.Characters;
 using Chummer.Presentation.Overview;
 using static Chummer.Android.Native.Sr5CareerFlowStrings;
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+using Chummer.Android.Proof;
+#endif
 
 namespace Chummer.Android.Native;
 
@@ -18,6 +21,10 @@ public sealed class Sr5TableWizardPage : NativePageBase
     private Sr5TableWizardSession? _session;
     private Sr5TableWizardSnapshot? _snapshot;
     private Sr5TableWizardTransactionJournal? _transaction;
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+    private Sr5TableWizardCheckpointReadStatus _checkpointReadStatus =
+        Sr5TableWizardCheckpointReadStatus.Empty;
+#endif
     private string? _notice;
     private bool _loading;
     private long _loadVersion;
@@ -79,6 +86,9 @@ public sealed class Sr5TableWizardPage : NativePageBase
         if (_loading)
         {
             AddStatus(Text("Loading exact table authority…"), "sr5-table-wizard-loading", NativeTheme.Muted);
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+            PublishApi36ProofState("loading", settled: false);
+#endif
             return;
         }
         if (_snapshot is null || _session is null)
@@ -91,6 +101,9 @@ public sealed class Sr5TableWizardPage : NativePageBase
             retry.AutomationId = "sr5-table-wizard-retry";
             retry.Clicked += async (_, _) => await ReloadAsync();
             _body.Add(retry);
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+            PublishApi36ProofState("unavailable", settled: true);
+#endif
             return;
         }
 
@@ -102,6 +115,9 @@ public sealed class Sr5TableWizardPage : NativePageBase
                 Text("The saved runner changed. Return to Career and reopen this table wizard."),
                 "sr5-table-wizard-stale",
                 NativeTheme.Danger);
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+            PublishApi36ProofState("stale", settled: true);
+#endif
             return;
         }
 
@@ -126,6 +142,9 @@ public sealed class Sr5TableWizardPage : NativePageBase
         if (_transaction is { Phase: Sr5TableWizardTransactionPhase.Applied, Receipt: { } receipt })
         {
             AddReceipt(receipt);
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+            PublishApi36ProofState("receipt-ready", settled: true);
+#endif
             return;
         }
         if (_transaction is { Phase: Sr5TableWizardTransactionPhase.Applying })
@@ -134,6 +153,9 @@ public sealed class Sr5TableWizardPage : NativePageBase
                 Text("The prior confirmation is locked because its exact postcondition could not be classified. Reload the current runner before retrying."),
                 "sr5-table-wizard-applying-conflict",
                 NativeTheme.Danger);
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+            PublishApi36ProofState("conflict", settled: true);
+#endif
             return;
         }
         if (_transaction is { Phase: Sr5TableWizardTransactionPhase.Reviewed } reviewed
@@ -227,7 +249,30 @@ public sealed class Sr5TableWizardPage : NativePageBase
             NativeTheme.Muted);
         boundary.AutomationId = "sr5-table-wizard-boundary";
         _body.Add(NativeTheme.Card(boundary));
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+        PublishApi36ProofState(
+            _transaction is { Phase: Sr5TableWizardTransactionPhase.Reviewed }
+            && state.Resume.Restored
+                ? "resume-ready"
+                : "ready",
+            settled: true);
+#endif
     }
+
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+    private void PublishApi36ProofState(string stage, bool settled)
+        => Api36ProofStatePublisher.TryPublishTableWizard(
+            this,
+            Coordinator,
+            PhoneShellRoutes.Runner,
+            _lane,
+            stage,
+            settled,
+            _checkpointReadStatus,
+            _session,
+            _transaction,
+            statusCode: null);
+#endif
 
     private void AddAction(Sr5TableWizardActionState action)
     {
@@ -276,6 +321,9 @@ public sealed class Sr5TableWizardPage : NativePageBase
     {
         long version = Interlocked.Increment(ref _loadVersion);
         _loading = true;
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+        _checkpointReadStatus = Sr5TableWizardCheckpointReadStatus.Empty;
+#endif
         _notice = null;
         Refresh();
         try
@@ -298,6 +346,9 @@ public sealed class Sr5TableWizardPage : NativePageBase
 
             Sr5TableWizardCheckpointReadStatus transactionStatus =
                 _transactionStore.TryRead(out Sr5TableWizardTransactionJournal? transaction);
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+            _checkpointReadStatus = transactionStatus;
+#endif
             if (transactionStatus == Sr5TableWizardCheckpointReadStatus.Unavailable)
             {
                 _snapshot = null;
@@ -557,6 +608,19 @@ public sealed class Sr5TableWizardQuotePage : NativePageBase
         review.AutomationId = "sr5-table-wizard-open-review";
         review.Clicked += async (_, _) => await RunAsync(OpenReviewAsync);
         _body.Add(review);
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+        Api36ProofStatePublisher.TryPublishTableWizard(
+            this,
+            Coordinator,
+            PhoneShellRoutes.Runner,
+            _session.State.Snapshot.Lane,
+            "quote-ready",
+            settled: true,
+            checkpointReadStatus: Sr5TableWizardCheckpointReadStatus.Empty,
+            session: _session,
+            transaction: null,
+            statusCode: null);
+#endif
     }
 
     private async Task OpenReviewAsync()
@@ -663,6 +727,9 @@ public sealed class Sr5TableWizardReviewPage : NativePageBase
         _body.Add(NativeTheme.Body(
             Text("Confirming does not use a generic editor. It sends the exact typed request through the existing revision-checked save boundary."),
             NativeTheme.Muted));
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+        PublishApi36ProofState(current ? "review-ready" : "stale", settled: true);
+#endif
     }
 
     private async Task ConfirmAsync()
@@ -690,6 +757,9 @@ public sealed class Sr5TableWizardReviewPage : NativePageBase
             return;
         }
         _transaction = applying!;
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+        PublishApi36ProofState("applying", settled: false);
+#endif
 
         long expectedRevision = state.Snapshot.WorkspaceRevision;
         if (selected.Identity.Kind == Sr5TableWizardActionKind.FireWeapon)
@@ -722,6 +792,9 @@ public sealed class Sr5TableWizardReviewPage : NativePageBase
         }
 
         _transaction = applied!;
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+        PublishApi36ProofState("applied", settled: true);
+#endif
         await DisplayAlertAsync(
             Text("Table action saved"),
             Format(
@@ -740,6 +813,21 @@ public sealed class Sr5TableWizardReviewPage : NativePageBase
                Coordinator.State.Rules?.GameEdition)
            && Coordinator.State.WorkspaceId == snapshot.WorkspaceId
            && Coordinator.State.ContentRevision == snapshot.WorkspaceRevision;
+
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+    private void PublishApi36ProofState(string stage, bool settled)
+        => Api36ProofStatePublisher.TryPublishTableWizard(
+            this,
+            Coordinator,
+            PhoneShellRoutes.Runner,
+            _session.State.Snapshot.Lane,
+            stage,
+            settled,
+            Sr5TableWizardCheckpointReadStatus.Ready,
+            _session,
+            _transaction,
+            statusCode: null);
+#endif
 
     internal static string TitleFor(Sr5TableWizardActionState action)
         => action.Identity.Kind switch
