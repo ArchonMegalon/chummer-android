@@ -369,6 +369,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                     "versionOutputSha256": digest,
                 },
                 "emulator": {
+                    "available": True,
                     "version": "36.2.11.0",
                     "versionOutputSha256": digest,
                 },

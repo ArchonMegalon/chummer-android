@@ -14,7 +14,6 @@
   "roles": {
     "build": {
       "requiredAndroidPackages": [
-        "emulator",
         "platform-tools",
         "platforms;android-36"
       ],

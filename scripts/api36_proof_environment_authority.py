@@ -326,16 +326,92 @@ def _run(command: Sequence[str], *, timeout: int = 60) -> str:
     return output
 
 
+def _canonical_sdk_root(android_sdk_root: Path) -> Path:
+    if not android_sdk_root.is_absolute() or android_sdk_root.is_symlink():
+        raise ValueError("Android SDK root must be an absolute canonical directory")
+    try:
+        resolved = android_sdk_root.resolve(strict=True)
+    except (OSError, RuntimeError) as error:
+        raise ValueError("Android SDK root is missing or unsafe") from error
+    if resolved != android_sdk_root or not android_sdk_root.is_dir():
+        raise ValueError("Android SDK root must be an absolute canonical directory")
+    return android_sdk_root
+
+
+def _inside_sdk(path: Path, android_sdk_root: Path, label: str) -> None:
+    try:
+        path.relative_to(android_sdk_root)
+    except ValueError as error:
+        raise ValueError(f"{label} symlink escapes the Android SDK root") from error
+
+
+def sdk_executable(
+    android_sdk_root: Path,
+    relative_path: str,
+    label: str,
+    *,
+    required: bool,
+    allow_internal_file_symlink: bool = False,
+) -> Path | None:
+    """Resolve one exact SDK executable without consulting PATH.
+
+    SDK directories must be canonical. The emulator's exact file may be an
+    SDK-internal symlink chain because hosted Android packages use that layout;
+    every hop and the final regular executable must remain below the SDK root.
+    """
+    root = _canonical_sdk_root(android_sdk_root)
+    expected = root / relative_path
+    _inside_sdk(expected, root, label)
+    if not expected.exists() and not expected.is_symlink():
+        if required:
+            raise ValueError(f"{label} is missing from its exact Android SDK path")
+        return None
+
+    current = expected
+    visited: set[Path] = set()
+    while True:
+        if current in visited or len(visited) >= 16:
+            raise ValueError(f"{label} has an unsafe or cyclic SDK symlink chain")
+        visited.add(current)
+        try:
+            canonical_parent = current.parent.resolve(strict=True)
+        except (OSError, RuntimeError) as error:
+            raise ValueError(f"{label} has an unsafe SDK parent") from error
+        if canonical_parent != current.parent:
+            raise ValueError(f"{label} has a symlinked SDK directory component")
+        try:
+            metadata = os.lstat(current)
+        except OSError as error:
+            raise ValueError(f"{label} is missing from its exact Android SDK path") from error
+        if stat.S_ISLNK(metadata.st_mode):
+            if not allow_internal_file_symlink:
+                raise ValueError(f"{label} must not be a symlink")
+            raw_target = Path(os.readlink(current))
+            target = raw_target if raw_target.is_absolute() else current.parent / raw_target
+            current = Path(os.path.abspath(target))
+            _inside_sdk(current, root, label)
+            continue
+        if not stat.S_ISREG(metadata.st_mode) or not os.access(current, os.X_OK):
+            raise ValueError(
+                f"{label} is not one executable regular file under Android SDK root"
+            )
+        return current
+
+
 def collect_environment(
     android_sdk_root: Path,
     environment: Mapping[str, str],
     *,
+    emulator_required: bool = True,
     command_runner: Callable[[Sequence[str]], str] = _run,
     kvm_path: Path = Path("/dev/kvm"),
     kvm_module_path: Path = Path("/sys/module/kvm"),
     proc_version_path: Path = Path("/proc/version"),
     uname_provider: Callable[[], Any] = platform.uname,
 ) -> dict[str, Any]:
+    if type(emulator_required) is not bool:
+        raise ValueError("emulator-required posture must be boolean")
+    android_sdk_root = _canonical_sdk_root(android_sdk_root)
     runner = {
         "runnerOs": environment.get("RUNNER_OS", ""),
         "runnerArch": environment.get("RUNNER_ARCH", ""),
@@ -347,23 +423,43 @@ def collect_environment(
     dotnet_version_output = command_runner(("dotnet", "--version"))
     dotnet_info_output = command_runner(("dotnet", "--info"))
 
-    sdkmanager = android_sdk_root / "cmdline-tools/latest/bin/sdkmanager"
-    adb = android_sdk_root / "platform-tools/adb"
-    emulator = android_sdk_root / "emulator/emulator"
-    for path, label in ((sdkmanager, "sdkmanager"), (adb, "adb"), (emulator, "emulator")):
-        if path.is_symlink() or not path.is_file() or not os.access(path, os.X_OK):
-            raise ValueError(f"{label} is not one executable regular file under Android SDK root")
+    sdkmanager = sdk_executable(
+        android_sdk_root,
+        "cmdline-tools/latest/bin/sdkmanager",
+        "sdkmanager",
+        required=True,
+    )
+    adb = sdk_executable(
+        android_sdk_root,
+        "platform-tools/adb",
+        "adb",
+        required=True,
+    )
+    emulator = sdk_executable(
+        android_sdk_root,
+        "emulator/emulator",
+        "emulator",
+        required=emulator_required,
+        allow_internal_file_symlink=True,
+    )
+    assert sdkmanager is not None and adb is not None
     sdkmanager_output = command_runner((str(sdkmanager), "--list_installed"))
     adb_output = command_runner((str(adb), "version"))
-    emulator_output = command_runner((str(emulator), "-version"))
+    emulator_output = (
+        command_runner((str(emulator), "-version")) if emulator is not None else None
+    )
 
     java_match = JAVA_VERSION.search(java_output)
     javac_match = JAVAC_VERSION.search(javac_output)
     rid_match = DOTNET_RID.search(dotnet_info_output)
     adb_protocol = ADB_PROTOCOL_VERSION.search(adb_output)
     adb_package = ADB_PACKAGE_VERSION.search(adb_output)
-    emulator_version = EMULATOR_VERSION.search(emulator_output)
-    if None in (java_match, javac_match, rid_match, adb_protocol, adb_package, emulator_version):
+    emulator_version = (
+        EMULATOR_VERSION.search(emulator_output) if emulator_output is not None else None
+    )
+    if None in (java_match, javac_match, rid_match, adb_protocol, adb_package) or (
+        emulator_required and emulator_version is None
+    ):
         raise ValueError("one or more hosted tool versions could not be parsed")
     dotnet_version = dotnet_version_output.strip()
     _safe_token(dotnet_version, "dotnet SDK version")
@@ -410,9 +506,16 @@ def collect_environment(
                 ),
             },
             "emulator": {
-                "version": emulator_version.group("version"),
-                "versionOutputSha256": canonical_sha256(
-                    {"version": emulator_version.group("version")}
+                "available": emulator_version is not None,
+                "version": (
+                    emulator_version.group("version")
+                    if emulator_version is not None
+                    else None
+                ),
+                "versionOutputSha256": (
+                    canonical_sha256({"version": emulator_version.group("version")})
+                    if emulator_version is not None
+                    else canonical_sha256({"available": False})
                 ),
             },
         },
@@ -517,12 +620,28 @@ def validate_environment(
     )
     require_exact_fields(
         android["emulator"],
-        {"version", "versionOutputSha256"},
+        {"available", "version", "versionOutputSha256"},
         "emulator observation",
     )
     for field in ("protocolVersion", "packageVersion"):
         _safe_token(android["adb"][field], f"ADB {field}")
-    _safe_token(android["emulator"]["version"], "emulator version")
+    emulator_required = "emulator" in role_policy["requiredAndroidPackages"]
+    emulator_observation = android["emulator"]
+    if type(emulator_observation["available"]) is not bool:
+        raise ValueError("emulator availability posture must be boolean")
+    if emulator_observation["available"]:
+        _safe_token(emulator_observation["version"], "emulator version")
+        if emulator_observation["versionOutputSha256"] != canonical_sha256(
+            {"version": emulator_observation["version"]}
+        ):
+            raise ValueError("emulator canonical output digest differs")
+    elif (
+        emulator_required
+        or emulator_observation["version"] is not None
+        or emulator_observation["versionOutputSha256"]
+        != canonical_sha256({"available": False})
+    ):
+        raise ValueError("required emulator observation is unavailable or inconsistent")
     if android["adb"]["versionOutputSha256"] != canonical_sha256(
         {
             "protocolVersion": android["adb"]["protocolVersion"],
@@ -530,10 +649,6 @@ def validate_environment(
         }
     ):
         raise ValueError("ADB canonical output digest differs")
-    if android["emulator"]["versionOutputSha256"] != canonical_sha256(
-        {"version": android["emulator"]["version"]}
-    ):
-        raise ValueError("emulator canonical output digest differs")
 
     kernel = observation["kernel"]
     require_exact_fields(kernel, {"system", "release", "machine", "procVersionSha256"}, "kernel observation")
@@ -608,7 +723,10 @@ def compatibility_observation(
             field: observation["androidSdk"]["adb"][field]
             for field in ("protocolVersion", "packageVersion")
         },
-        "emulatorVersion": observation["androidSdk"]["emulator"]["version"],
+        "emulator": {
+            field: observation["androidSdk"]["emulator"][field]
+            for field in ("available", "version")
+        },
         "kernel": {
             field: observation["kernel"][field]
             for field in ("system", "machine")

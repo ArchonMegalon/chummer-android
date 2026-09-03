@@ -52,7 +52,13 @@ def main(argv: list[str] | None = None) -> int:
     gate_snapshot = StableFile(args.gate_contract, "wizard gate contract")
     policy = load_policy(policy_snapshot)
     gate_authority = contract_binding(gate_snapshot.path)
-    observation = collect_environment(args.android_sdk_root.absolute(), os.environ)
+    observation = collect_environment(
+        args.android_sdk_root.absolute(),
+        os.environ,
+        emulator_required=(
+            "emulator" in policy["roles"][args.role]["requiredAndroidPackages"]
+        ),
+    )
 
     snapshots: list[StableFile] = [policy_snapshot, gate_snapshot]
     if args.role == "journey":

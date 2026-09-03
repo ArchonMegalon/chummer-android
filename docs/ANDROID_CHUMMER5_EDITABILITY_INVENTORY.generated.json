@@ -812,7 +812,7 @@
       {
         "path": "eng/api36-proof-environment-authority.json",
         "exists": true,
-        "sha256": "3b27e5aecdf2685a2f57192322ca0c5bbcf0b9875d3f82d8b2f5ddd8011cfdf7"
+        "sha256": "73358001efe1e8fbcc9c15258169586d1c71a2f8b3ca40085de84adf4fad5b8e"
       },
       {
         "path": "eng/api36-sr5-wizard-gate-authority.json",
@@ -832,7 +832,7 @@
       {
         "path": "scripts/api36_proof_environment_authority.py",
         "exists": true,
-        "sha256": "b4a53b61ed28c33f7982fb46cc8f0c06b8c021798bf5de54450f34cc4dec141d"
+        "sha256": "3ef41beaf1c8fae59f0ba21ae176c596d254aee517fb07e454ab01563db76eee"
       },
       {
         "path": "scripts/api36_wizard_gate_contract.py",
@@ -847,7 +847,7 @@
       {
         "path": "scripts/materialize-api36-proof-environment-receipt.py",
         "exists": true,
-        "sha256": "a5c0942a486dfacdc0b96e127198184881a0e6f243e472f7b05698e06e3e39a2"
+        "sha256": "abe563dd75ebe644874b98060d4e7f8491fa1cb712418e55afdda26d8a654ae2"
       },
       {
         "path": "scripts/materialize-api36-two-green-eligibility.py",
@@ -897,12 +897,12 @@
       {
         "path": "tests/test_api36_e2e_artifact_authority.py",
         "exists": true,
-        "sha256": "7f82a14f70c564969aa39214df95852b2941bafc10ce673be00634aeccd91ed1"
+        "sha256": "1ac6aeb987f537eaf2f8a8a8147b2f06c857ce5330e5f1bd406ec1bfc2aa6370"
       },
       {
         "path": "tests/test_api36_proof_environment_receipt.py",
         "exists": true,
-        "sha256": "3ee3dbf3090f8812b08c6839444cdb4849935c713ffb62db6ddd07f23119ce99"
+        "sha256": "4d3065b24ab823f29cd9926439f71211a5e0671d3f1f9110da7ca747f79a1252"
       },
       {
         "path": "tests/test_api36_two_green_eligibility.py",

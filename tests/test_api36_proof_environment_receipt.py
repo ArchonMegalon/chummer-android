@@ -11,6 +11,7 @@ from pathlib import Path
 import tempfile
 from types import SimpleNamespace
 import unittest
+from unittest import mock
 
 
 REPO = Path(__file__).resolve().parents[1]
@@ -79,6 +80,7 @@ class Api36ProofEnvironmentAuthorityTests(unittest.TestCase):
                     "versionOutputSha256": digest,
                 },
                 "emulator": {
+                    "available": True,
                     "version": "36.2.11.0",
                     "versionOutputSha256": digest,
                 },
@@ -162,6 +164,12 @@ class Api36ProofEnvironmentAuthorityTests(unittest.TestCase):
         self.assertEqual(MODULE.POLICY_SCHEMA, self.policy["schema"])
         self.assertEqual(17, self.policy["requiredJavaMajor"])
         self.assertEqual("10.0.110", self.policy["requiredDotnetSdkVersion"])
+        self.assertNotIn(
+            "emulator", self.policy["roles"]["build"]["requiredAndroidPackages"]
+        )
+        self.assertIn(
+            "emulator", self.policy["roles"]["journey"]["requiredAndroidPackages"]
+        )
         for role, schema in (
             ("build", MODULE.BUILD_SCHEMA),
             ("journey", MODULE.JOURNEY_SCHEMA),
@@ -212,6 +220,25 @@ class Api36ProofEnvironmentAuthorityTests(unittest.TestCase):
         environment["kvm"]["writable"] = False
         MODULE.validate_environment(environment, self.policy, "build")
         with self.assertRaisesRegex(ValueError, "usable KVM"):
+            MODULE.validate_environment(environment, self.policy, "journey")
+
+    def test_build_allows_an_explicitly_unavailable_emulator_but_journey_rejects_it(self) -> None:
+        environment = self.environment()
+        environment["androidSdk"]["installedPackages"] = [
+            row
+            for row in environment["androidSdk"]["installedPackages"]
+            if row["package"] != "emulator"
+        ]
+        environment["androidSdk"]["inventoryOutputSha256"] = MODULE.canonical_sha256(
+            environment["androidSdk"]["installedPackages"]
+        )
+        environment["androidSdk"]["emulator"] = {
+            "available": False,
+            "version": None,
+            "versionOutputSha256": MODULE.canonical_sha256({"available": False}),
+        }
+        MODULE.validate_environment(environment, self.policy, "build")
+        with self.assertRaisesRegex(ValueError, "required Android packages"):
             MODULE.validate_environment(environment, self.policy, "journey")
 
     def test_toolchain_and_sdk_drift_fail_closed(self) -> None:
@@ -423,6 +450,184 @@ Available Packages:
             ),
         )
         self.assertEqual(observation, relocated)
+
+    def test_exact_emulator_allows_only_an_sdk_internal_file_symlink_chain(self) -> None:
+        sdk = self.root / "sdk-with-internal-emulator-link"
+        emulator = sdk / "emulator/emulator"
+        target = sdk / "emulator/qemu/linux-x86_64/qemu-system-x86_64"
+        target.parent.mkdir(parents=True)
+        target.write_text("emulator\n", encoding="utf-8")
+        target.chmod(0o755)
+        emulator.parent.mkdir(parents=True, exist_ok=True)
+        emulator.symlink_to(Path("qemu/linux-x86_64/qemu-system-x86_64"))
+        self.assertEqual(
+            target,
+            MODULE.sdk_executable(
+                sdk,
+                "emulator/emulator",
+                "emulator",
+                required=True,
+                allow_internal_file_symlink=True,
+            ),
+        )
+
+        second_target = sdk / "emulator/qemu/emulator-dispatch"
+        second_target.symlink_to(Path("linux-x86_64/qemu-system-x86_64"))
+        emulator.unlink()
+        emulator.symlink_to(Path("qemu/emulator-dispatch"))
+        self.assertEqual(
+            target,
+            MODULE.sdk_executable(
+                sdk,
+                "emulator/emulator",
+                "emulator",
+                required=True,
+                allow_internal_file_symlink=True,
+            ),
+        )
+
+    def test_emulator_symlink_escape_and_symlinked_sdk_directory_fail_closed(self) -> None:
+        sdk = self.root / "sdk-with-hostile-emulator-link"
+        emulator = sdk / "emulator/emulator"
+        emulator.parent.mkdir(parents=True)
+        external = self.root / "external-emulator"
+        external.write_text("external\n", encoding="utf-8")
+        external.chmod(0o755)
+        emulator.symlink_to(external)
+        with self.assertRaisesRegex(ValueError, "escapes the Android SDK root"):
+            MODULE.sdk_executable(
+                sdk,
+                "emulator/emulator",
+                "emulator",
+                required=True,
+                allow_internal_file_symlink=True,
+            )
+
+        emulator.unlink()
+        real_directory = sdk / "real-emulator-directory"
+        real_directory.mkdir()
+        real_binary = real_directory / "emulator"
+        real_binary.write_text("emulator\n", encoding="utf-8")
+        real_binary.chmod(0o755)
+        emulator.parent.rmdir()
+        emulator.parent.symlink_to(real_directory, target_is_directory=True)
+        with self.assertRaisesRegex(ValueError, "symlinked SDK directory component"):
+            MODULE.sdk_executable(
+                sdk,
+                "emulator/emulator",
+                "emulator",
+                required=True,
+                allow_internal_file_symlink=True,
+            )
+
+    def test_missing_build_emulator_is_not_replaced_by_ambiguous_path_binaries(self) -> None:
+        sdk = self.root / "sdk-without-emulator"
+        sdk.mkdir()
+        rogue_directories: list[str] = []
+        for name in ("rogue-a", "rogue-b"):
+            binary = self.root / name / "emulator"
+            binary.parent.mkdir()
+            rogue_directories.append(str(binary.parent))
+            binary.write_text("rogue\n", encoding="utf-8")
+            binary.chmod(0o755)
+        with mock.patch.dict("os.environ", {"PATH": ":".join(rogue_directories)}):
+            self.assertIsNone(
+                MODULE.sdk_executable(
+                    sdk,
+                    "emulator/emulator",
+                    "emulator",
+                    required=False,
+                    allow_internal_file_symlink=True,
+                )
+            )
+            with self.assertRaisesRegex(ValueError, "exact Android SDK path"):
+                MODULE.sdk_executable(
+                    sdk,
+                    "emulator/emulator",
+                    "emulator",
+                    required=True,
+                    allow_internal_file_symlink=True,
+                )
+
+    def test_collector_records_missing_build_emulator_without_invoking_path(self) -> None:
+        sdk = self.root / "build-sdk-without-emulator"
+        for relative in (
+            "cmdline-tools/latest/bin/sdkmanager",
+            "platform-tools/adb",
+        ):
+            path = sdk / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("tool\n", encoding="utf-8")
+            path.chmod(0o755)
+        commands: list[tuple[str, ...]] = []
+        inventory = """Installed packages:
+Path | Version | Description | Location
+build-tools;36.0.0 | 36.0.0 | build tools | private/location
+platform-tools | 36.0.0 | platform tools | private/location
+platforms;android-36 | 2 | platform | private/location
+Available Packages:
+"""
+
+        def run(command: tuple[str, ...]) -> str:
+            commands.append(command)
+            if command == ("java", "-version"):
+                return 'openjdk version "17.0.16" 2026-07-15'
+            if command == ("javac", "-version"):
+                return "javac 17.0.16"
+            if command == ("dotnet", "--version"):
+                return "10.0.110"
+            if command == ("dotnet", "--info"):
+                return ".NET SDK:\n Version: 10.0.110\n RID: linux-x64"
+            if command[-1] == "--list_installed":
+                return inventory
+            if command[-1] == "version":
+                return (
+                    "Android Debug Bridge version 1.0.41\n"
+                    "Version 36.0.0-13206524"
+                )
+            raise AssertionError(command)
+
+        proc_version = self.root / "build-proc-version"
+        proc_version.write_text("Linux version hosted\n", encoding="utf-8")
+        kvm_module = self.root / "build-kvm-module"
+        kvm_module.mkdir()
+        observation = MODULE.collect_environment(
+            sdk,
+            {
+                "RUNNER_OS": "Linux",
+                "RUNNER_ARCH": "X64",
+                "ImageOS": "ubuntu24",
+                "ImageVersion": "20260901.1.0",
+            },
+            emulator_required=False,
+            command_runner=run,
+            kvm_path=Path("/dev/null"),
+            kvm_module_path=kvm_module,
+            proc_version_path=proc_version,
+            uname_provider=lambda: SimpleNamespace(
+                system="Linux",
+                release="6.11.0-hosted",
+                machine="x86_64",
+            ),
+        )
+        MODULE.validate_environment(observation, self.policy, "build")
+        self.assertEqual(
+            {
+                "available": False,
+                "version": None,
+                "versionOutputSha256": MODULE.canonical_sha256(
+                    {"available": False}
+                ),
+            },
+            observation["androidSdk"]["emulator"],
+        )
+        self.assertFalse(
+            any(
+                command[-1] == "-version"
+                and command[0].endswith("/emulator/emulator")
+                for command in commands
+            )
+        )
 
     @unittest.skipUnless(Path("/proc/version").is_file(), "Linux procfs is unavailable")
     def test_real_proc_version_zero_stat_size_is_bounded_and_repeatable(self) -> None:
