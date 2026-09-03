@@ -701,7 +701,7 @@
       {
         "path": "src/Chummer.Android/Native/Sr5AfterRunWizardModel.cs",
         "exists": true,
-        "sha256": "ef5495785819cf9bc500e05d623d3a7366e3abda90051a565abe5e4fb48299e9"
+        "sha256": "4aaf67021d047c34eabf167fc44468cffdf41693fd17c16ca0ecdbe5c32960a0"
       },
       {
         "path": "src/Chummer.Android/Native/Sr5TableWizardPage.cs",

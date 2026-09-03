@@ -2,6 +2,7 @@ using Chummer.Android.Native;
 using Chummer.Application.Characters;
 using Chummer.Contracts.Characters;
 using Chummer.Contracts.Workspaces;
+using System.Text.Json;
 
 return await AfterRunAuthorityHarness.RunAsync();
 
@@ -23,6 +24,8 @@ internal static class AfterRunAuthorityHarness
         {
             (nameof(ExactDraftBindsProposalReviewsDigestsAndPlan),
                 () => Sync(ExactDraftBindsProposalReviewsDigestsAndPlan)),
+            (nameof(AcknowledgementsPersistExactlySixInputsAndIgnoreDerivedInjection),
+                () => Sync(AcknowledgementsPersistExactlySixInputsAndIgnoreDerivedInjection)),
             (nameof(PendingReviewsAndUnavailableCompositionFailClosed),
                 () => Sync(PendingReviewsAndUnavailableCompositionFailClosed)),
             (nameof(EntryGuardRejectsEveryNonCleanSavedBinding),
@@ -78,6 +81,88 @@ internal static class AfterRunAuthorityHarness
         Require(draft.ActionPlan.Kind == Sr5CareerActionKind.AfterRunSettlement, "Wrong action kind.");
         Require(draft.ActionPlan.IdempotencyKey.Length == 64, "Idempotency key is not canonical.");
         Require(draft.Candidate.RewardContext.IsExact(), "Reward context is not digest-bound.");
+    }
+
+    private static void AcknowledgementsPersistExactlySixInputsAndIgnoreDerivedInjection()
+    {
+        string[] expectedFields =
+        [
+            nameof(Sr5AfterRunReviewAcknowledgements.RunContextReviewed),
+            nameof(Sr5AfterRunReviewAcknowledgements.RewardsReviewed),
+            nameof(Sr5AfterRunReviewAcknowledgements.ConsequencesReviewed),
+            nameof(Sr5AfterRunReviewAcknowledgements.ContactsReviewed),
+            nameof(Sr5AfterRunReviewAcknowledgements.GmApprovalReviewed),
+            nameof(Sr5AfterRunReviewAcknowledgements.OwnerApprovalReviewed)
+        ];
+        Sr5AfterRunReviewAcknowledgements reviewed = AllReviewed();
+        string payload = JsonSerializer.Serialize(reviewed);
+        using (JsonDocument document = JsonDocument.Parse(payload))
+        {
+            string[] actualFields = document.RootElement.EnumerateObject()
+                .Select(static property => property.Name)
+                .OrderBy(static name => name, StringComparer.Ordinal)
+                .ToArray();
+            Require(actualFields.SequenceEqual(
+                    expectedFields.OrderBy(static name => name, StringComparer.Ordinal),
+                    StringComparer.Ordinal),
+                $"Review acknowledgements persisted fields outside the closed six-input schema: {payload}");
+            Require(!document.RootElement.TryGetProperty(
+                    nameof(Sr5AfterRunReviewAcknowledgements.AllReviewed),
+                    out _),
+                "Derived AllReviewed leaked into the durable checkpoint schema.");
+        }
+
+        Sr5AfterRunReviewAcknowledgements? roundTrip =
+            JsonSerializer.Deserialize<Sr5AfterRunReviewAcknowledgements>(payload);
+        Require(roundTrip == reviewed && roundTrip.AllReviewed,
+            "Six-input review acknowledgements did not round-trip exactly.");
+
+        Sr5AfterRunSettlementCheckpoint checkpoint =
+            Sr5AfterRunSettlementCheckpoint.FromDraft(Draft(Editor(Input())));
+        string checkpointPayload = JsonSerializer.Serialize(checkpoint);
+        using (JsonDocument checkpointDocument = JsonDocument.Parse(checkpointPayload))
+        {
+            JsonElement persistedAcknowledgements = checkpointDocument.RootElement
+                .GetProperty(nameof(Sr5AfterRunSettlementCheckpoint.Draft))
+                .GetProperty(nameof(Sr5AfterRunSettlementDraft.Acknowledgements));
+            string[] checkpointFields = persistedAcknowledgements.EnumerateObject()
+                .Select(static property => property.Name)
+                .OrderBy(static name => name, StringComparer.Ordinal)
+                .ToArray();
+            Require(checkpointFields.SequenceEqual(
+                    expectedFields.OrderBy(static name => name, StringComparer.Ordinal),
+                    StringComparer.Ordinal),
+                "The actual durable checkpoint did not embed exactly six acknowledgement inputs.");
+        }
+        Sr5AfterRunSettlementCheckpoint? checkpointRoundTrip =
+            JsonSerializer.Deserialize<Sr5AfterRunSettlementCheckpoint>(checkpointPayload);
+        Require(checkpointRoundTrip is not null
+                && checkpointRoundTrip.IsStructurallyValid()
+                && checkpointRoundTrip.Draft.Acknowledgements == reviewed
+                && checkpointRoundTrip.Draft.SemanticallyEquals(checkpoint.Draft),
+            "The actual durable After Run checkpoint did not round-trip exactly.");
+
+        string hostilePayload = payload[..^1]
+            + $",\"{nameof(Sr5AfterRunReviewAcknowledgements.AllReviewed)}\":false}}";
+        Sr5AfterRunReviewAcknowledgements? hostile =
+            JsonSerializer.Deserialize<Sr5AfterRunReviewAcknowledgements>(hostilePayload);
+        Require(hostile == reviewed && hostile.AllReviewed,
+            "Injected derived AllReviewed changed the six authoritative review inputs.");
+        string normalized = JsonSerializer.Serialize(hostile);
+        Require(!normalized.Contains(
+                $"\"{nameof(Sr5AfterRunReviewAcknowledgements.AllReviewed)}\"",
+                StringComparison.Ordinal),
+            "A hostile derived field survived acknowledgement normalization.");
+
+        Sr5AfterRunReviewAcknowledgements pending = reviewed with
+        {
+            OwnerApprovalReviewed = false
+        };
+        Sr5AfterRunReviewAcknowledgements? pendingRoundTrip =
+            JsonSerializer.Deserialize<Sr5AfterRunReviewAcknowledgements>(
+                JsonSerializer.Serialize(pending));
+        Require(pendingRoundTrip == pending && !pendingRoundTrip.AllReviewed,
+            "Round-trip fabricated complete review from one false authoritative input.");
     }
 
     private static void PendingReviewsAndUnavailableCompositionFailClosed()
