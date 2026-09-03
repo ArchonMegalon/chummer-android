@@ -198,13 +198,13 @@ ADB_FILE_HIERARCHY_ABSENT_OUTPUT = (
     f"cat: {ADB_FILE_HIERARCHY_REMOTE_PATH}: No such file or directory"
 )
 MEDIA_PROVIDER_DOWNLOADS_URI = "content://media/external_primary/downloads"
+MEDIA_PROVIDER_PENDING_DOWNLOADS_URI = (
+    f"{MEDIA_PROVIDER_DOWNLOADS_URI}?includePending=1"
+)
 MEDIA_PROVIDER_CANONICAL_DOWNLOAD_ROOT = "/storage/emulated/0/Download/"
 MEDIA_PROVIDER_RELATIVE_DOWNLOAD_ROOT = "Download/"
 MEDIA_PROVIDER_DOCUMENT_MIME_TYPE = "application/octet-stream"
 MEDIA_PROVIDER_SHELL_OWNER_PACKAGE_NAME = "com.android.shell"
-MEDIA_PROVIDER_DOWNLOADS_INCLUDE_PENDING_URI = (
-    f"{MEDIA_PROVIDER_DOWNLOADS_URI}?includePending=1"
-)
 MEDIA_PROVIDER_METADATA_PROJECTION = (
     "_id:_display_name:_data:_size:mime_type:relative_path:is_pending:"
     "owner_package_name"
@@ -674,10 +674,8 @@ def adb_command_retry_policy(arguments: tuple[str, ...]) -> tuple[str, str]:
             "0",
             "--uri",
         )
-        and shell_arguments[5] in {
-            MEDIA_PROVIDER_DOWNLOADS_URI,
-            MEDIA_PROVIDER_DOWNLOADS_INCLUDE_PENDING_URI,
-        }
+        and shell_arguments[5]
+        in {MEDIA_PROVIDER_DOWNLOADS_URI, MEDIA_PROVIDER_PENDING_DOWNLOADS_URI}
         and shell_arguments[6:9] == (
             "--projection",
             MEDIA_PROVIDER_METADATA_PROJECTION,
@@ -2014,16 +2012,21 @@ class Device:
             result=result,
         )
 
-    def _query_exact_provider_download(
+    def _query_provider_download_rows(
         self,
         *,
         display_name: str,
         receipt_name: str,
         step: str,
-        include_pending: bool = False,
-    ) -> tuple[dict[str, str], dict[str, object]]:
-        """Return one exact Downloads row and its bounded query receipt."""
+        include_pending: bool,
+    ) -> tuple[list[dict[str, str]], dict[str, object]]:
+        """Return canonical Downloads rows and their bounded query receipt."""
         where = _media_provider_display_name_where_argument(display_name)
+        query_uri = (
+            MEDIA_PROVIDER_PENDING_DOWNLOADS_URI
+            if include_pending
+            else MEDIA_PROVIDER_DOWNLOADS_URI
+        )
         query_arguments = (
             "shell",
             "content",
@@ -2031,11 +2034,7 @@ class Device:
             "--user",
             "0",
             "--uri",
-            (
-                MEDIA_PROVIDER_DOWNLOADS_INCLUDE_PENDING_URI
-                if include_pending
-                else MEDIA_PROVIDER_DOWNLOADS_URI
-            ),
+            query_uri,
             "--projection",
             MEDIA_PROVIDER_METADATA_PROJECTION,
             "--where",
@@ -2048,18 +2047,12 @@ class Device:
             arguments=query_arguments,
             result=query_result,
         )
+        if query_result.stderr not in {"", b""}:
+            raise RuntimeError("MediaStore Downloads query emitted error output")
         metadata_output = query_result.stdout.strip()
+        if metadata_output == "No result found.":
+            return [], query_attempt
         lines = [line.strip() for line in metadata_output.splitlines() if line.strip()]
-        if len(lines) != 1 or not lines[0].startswith("Row: 0 "):
-            raise RuntimeError(
-                "MediaStore Downloads query did not return exactly one fixture row"
-            )
-        fields: dict[str, str] = {}
-        for item in lines[0][len("Row: 0 ") :].split(", "):
-            key, separator, value = item.partition("=")
-            if not separator or not key or key in fields:
-                raise RuntimeError("MediaStore Downloads row is ambiguous")
-            fields[key] = value
         expected_fields = {
             "_id",
             "_display_name",
@@ -2070,43 +2063,56 @@ class Device:
             "is_pending",
             "owner_package_name",
         }
-        if set(fields) != expected_fields:
-            raise RuntimeError("MediaStore Downloads row has an unexpected projection")
-        return fields, query_attempt
+        rows: list[dict[str, str]] = []
+        for row_index, line in enumerate(lines):
+            prefix = f"Row: {row_index} "
+            if not line.startswith(prefix):
+                raise RuntimeError("MediaStore Downloads row sequence is ambiguous")
+            fields: dict[str, str] = {}
+            for item in line[len(prefix) :].split(", "):
+                key, separator, value = item.partition("=")
+                if not separator or not key or key in fields:
+                    raise RuntimeError("MediaStore Downloads row is ambiguous")
+                fields[key] = value
+            if set(fields) != expected_fields:
+                raise RuntimeError(
+                    "MediaStore Downloads row has an unexpected projection"
+                )
+            rows.append(fields)
+        if not rows:
+            raise RuntimeError("MediaStore Downloads query output is ambiguous")
+        return rows, query_attempt
 
-    def _require_provider_download_absent(
+    def _query_exact_provider_download(
         self,
         *,
         display_name: str,
         receipt_name: str,
-    ) -> dict[str, object]:
-        """Prove no published or pending row already owns the fixture name."""
-        where = _media_provider_display_name_where_argument(display_name)
-        query_arguments = (
-            "shell",
-            "content",
-            "query",
-            "--user",
-            "0",
-            "--uri",
-            MEDIA_PROVIDER_DOWNLOADS_INCLUDE_PENDING_URI,
-            "--projection",
-            MEDIA_PROVIDER_METADATA_PROJECTION,
-            "--where",
-            where,
-        )
-        query_result = self.run(*query_arguments, timeout=120)
-        query_attempt = self._write_provider_command_attempt(
+        step: str,
+        include_pending: bool,
+    ) -> tuple[dict[str, str], dict[str, object]]:
+        """Return one exact Downloads row and its bounded query receipt."""
+        rows, query_attempt = self._query_provider_download_rows(
+            display_name=display_name,
             receipt_name=receipt_name,
-            step="query-fixture-name-before-insert",
-            arguments=query_arguments,
-            result=query_result,
+            step=step,
+            include_pending=include_pending,
         )
-        if query_result.stdout.strip() != "No result found.":
+        if len(rows) != 1:
             raise RuntimeError(
-                "MediaStore Downloads already contains the governed fixture name"
+                "MediaStore Downloads query did not return exactly one fixture row"
             )
-        return query_attempt
+        return rows[0], query_attempt
+
+    @staticmethod
+    def _require_silent_provider_mutation(
+        result: subprocess.CompletedProcess,
+        operation: str,
+    ) -> None:
+        if result.stdout not in {"", b""} or result.stderr not in {"", b""}:
+            raise RuntimeError(
+                f"MediaStore {operation} command was not exactly silent"
+            )
 
     def publish_document_for_documents_ui(
         self,
@@ -2143,12 +2149,18 @@ class Device:
             raise RuntimeError("Provider-registration fixture bytes do not match authority")
 
         receipt_stem = hashlib.sha256(display_name.encode("utf-8")).hexdigest()[:16]
-        pre_insert_query_attempt = self._require_provider_download_absent(
+        existing_rows, preinsert_query_attempt = self._query_provider_download_rows(
             display_name=display_name,
             receipt_name=(
-                f"documentsui-provider-registration-{receipt_stem}-query-before-insert.json"
+                f"documentsui-provider-registration-{receipt_stem}-query-absent.json"
             ),
+            step="query-absent-download-including-pending",
+            include_pending=True,
         )
+        if existing_rows:
+            raise RuntimeError(
+                "MediaStore Downloads already contains the governed fixture name"
+            )
         # A shared Download path cannot imply an application owner. MediaProvider
         # explicitly permits the shell caller to set ownership; binding that same
         # identity keeps the pending row observable to the post-insert shell query.
@@ -2180,10 +2192,7 @@ class Device:
             arguments=insert_arguments,
             result=insert_result,
         )
-        # AOSP's content CLI discards ContentResolver.insert()'s returned URI.
-        # The exact pending-row query below is therefore the URI authority.
-        if insert_result.stdout != "":
-            raise RuntimeError("MediaStore insert returned unexpected output")
+        self._require_silent_provider_mutation(insert_result, "insert")
 
         pending_fields, pending_query_attempt = self._query_exact_provider_download(
             display_name=display_name,
@@ -2243,10 +2252,7 @@ class Device:
             arguments=update_arguments,
             result=update_result,
         )
-        # AOSP's content CLI also discards ContentResolver.update()'s row count.
-        # Exact same-ID published metadata and bytes below prove the mutation.
-        if update_result.stdout != "":
-            raise RuntimeError("MediaStore publish returned unexpected output")
+        self._require_silent_provider_mutation(update_result, "publish")
 
         fields, query_attempt = self._query_exact_provider_download(
             display_name=display_name,
@@ -2254,6 +2260,7 @@ class Device:
                 f"documentsui-provider-registration-{receipt_stem}-query-published.json"
             ),
             step="query-published-download",
+            include_pending=False,
         )
         if (
             fields["_id"] != provider_id
@@ -2270,7 +2277,7 @@ class Device:
                 "MediaStore Downloads identity differs from the governed fixture"
             )
 
-        provider_bytes = self.run(
+        provider_read = self.run(
             "exec-out",
             "content",
             "read",
@@ -2280,7 +2287,10 @@ class Device:
             provider_uri,
             timeout=120,
             text=False,
-        ).stdout
+        )
+        if provider_read.stderr not in {"", b""}:
+            raise RuntimeError("MediaProvider document read emitted error output")
+        provider_bytes = provider_read.stdout
         if not isinstance(provider_bytes, bytes):
             raise RuntimeError("MediaProvider document read did not return bytes")
         provider_sha256 = hashlib.sha256(provider_bytes).hexdigest()
@@ -2300,7 +2310,9 @@ class Device:
             "mediaType": fields["mime_type"],
             "size": expected_size,
             "sha256": provider_sha256,
-            "preInsertMetadataOutputSha256": pre_insert_query_attempt["stdout"]["sha256"],
+            "preinsertMetadataOutputSha256": preinsert_query_attempt["stdout"][
+                "sha256"
+            ],
             "insertOutputSha256": insert_attempt["stdout"]["sha256"],
             "pendingMetadataOutputSha256": pending_query_attempt["stdout"]["sha256"],
             "writeOutputSha256": write_attempt["stdout"]["sha256"],
@@ -2308,7 +2320,8 @@ class Device:
             "metadataOutputSha256": query_attempt["stdout"]["sha256"],
             "registrationInvocations": "three-one-shot-mutations-no-replay",
             "metadataQuery": (
-                "pre-insert-absent-post-insert-and-published-exact-display-name-one-row"
+                "pre-insert-zero-rows-including-pending-then-one-pending-and-"
+                "one-published-exact-display-name-row"
             ),
             "pickerBypass": False,
         }
