@@ -42,6 +42,8 @@ class Api36Sr5PlaytimeShortBurstDriverTests(unittest.TestCase):
         self.assertNotIn('"publicationAuthorized": True', source)
         self.assertIn("device.publish_document_for_documents_ui(", source)
         self.assertIn("proof_expectation=proof_expectation", source)
+        self.assertIn("import subprocess", source)
+        self.assertIsNotNone(driver.subprocess.CalledProcessError)
         self.assertNotIn("device.push_verified(", source)
 
     def test_wrapper_reuses_exact_typed_review_apply_receipt_and_xml_authority(self) -> None:

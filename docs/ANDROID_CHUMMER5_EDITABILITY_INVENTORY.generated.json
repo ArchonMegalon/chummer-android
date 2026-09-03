@@ -897,7 +897,7 @@
       {
         "path": "tests/test_api36_sr5_playtime_short_burst_e2e_driver.py",
         "exists": true,
-        "sha256": "822a1bdf8045c1daefb13fa4f684bff26dfdb1e46d6e4a5fe2ef83802af7753f"
+        "sha256": "4a11566b599fdf69c3f4c1dcee6b4cb0203bbe46ec74c8f2e692e23798cda7ec"
       },
       {
         "path": "tests/run_api36_sr5_downtime_calendar_hosted_e2e.py",
