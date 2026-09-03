@@ -832,7 +832,7 @@
       {
         "path": "scripts/api36_proof_environment_authority.py",
         "exists": true,
-        "sha256": "3ef41beaf1c8fae59f0ba21ae176c596d254aee517fb07e454ab01563db76eee"
+        "sha256": "2c19ecf7f6458c1ae2e7c6c2080e602a620c535583c4e3fa0afd92ac797bfea4"
       },
       {
         "path": "scripts/api36_wizard_gate_contract.py",
@@ -902,7 +902,7 @@
       {
         "path": "tests/test_api36_proof_environment_receipt.py",
         "exists": true,
-        "sha256": "4d3065b24ab823f29cd9926439f71211a5e0671d3f1f9110da7ca747f79a1252"
+        "sha256": "f485dff764d2b310f81587b4294cdccaaa5def26dc0c4cc92b919fe57e2b72ff"
       },
       {
         "path": "tests/test_api36_two_green_eligibility.py",

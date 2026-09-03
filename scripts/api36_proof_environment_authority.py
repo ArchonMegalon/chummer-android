@@ -704,7 +704,7 @@ def compatibility_observation(
             for prefix in role_policy["requiredAndroidPackagePrefixes"]
         )
     }
-    return {
+    compatibility = {
         "role": role,
         "runner": {
             field: observation["runnerImage"][field]
@@ -723,16 +723,18 @@ def compatibility_observation(
             field: observation["androidSdk"]["adb"][field]
             for field in ("protocolVersion", "packageVersion")
         },
-        "emulator": {
-            field: observation["androidSdk"]["emulator"][field]
-            for field in ("available", "version")
-        },
         "kernel": {
             field: observation["kernel"][field]
             for field in ("system", "machine")
         },
-        "kvm": dict(observation["kvm"]),
     }
+    if role == "journey":
+        compatibility["emulator"] = {
+            field: observation["androidSdk"]["emulator"][field]
+            for field in ("available", "version")
+        }
+        compatibility["kvm"] = dict(observation["kvm"])
+    return compatibility
 
 
 def policy_binding(snapshot: StableFile) -> dict[str, Any]:

@@ -223,23 +223,46 @@ class Api36ProofEnvironmentAuthorityTests(unittest.TestCase):
             MODULE.validate_environment(environment, self.policy, "journey")
 
     def test_build_allows_an_explicitly_unavailable_emulator_but_journey_rejects_it(self) -> None:
-        environment = self.environment()
-        environment["androidSdk"]["installedPackages"] = [
+        present = self.environment()
+        absent = copy.deepcopy(present)
+        absent["androidSdk"]["installedPackages"] = [
             row
-            for row in environment["androidSdk"]["installedPackages"]
+            for row in absent["androidSdk"]["installedPackages"]
             if row["package"] != "emulator"
         ]
-        environment["androidSdk"]["inventoryOutputSha256"] = MODULE.canonical_sha256(
-            environment["androidSdk"]["installedPackages"]
+        absent["androidSdk"]["inventoryOutputSha256"] = MODULE.canonical_sha256(
+            absent["androidSdk"]["installedPackages"]
         )
-        environment["androidSdk"]["emulator"] = {
+        absent["androidSdk"]["emulator"] = {
             "available": False,
             "version": None,
             "versionOutputSha256": MODULE.canonical_sha256({"available": False}),
         }
-        MODULE.validate_environment(environment, self.policy, "build")
+        absent["kvm"] = {field: False for field in absent["kvm"]}
+        present_build = MODULE.compatibility_observation(present, self.policy, "build")
+        absent_build = MODULE.compatibility_observation(absent, self.policy, "build")
+        self.assertEqual(present_build, absent_build)
+        self.assertNotIn("emulator", present_build)
+        self.assertNotIn("kvm", present_build)
         with self.assertRaisesRegex(ValueError, "required Android packages"):
-            MODULE.validate_environment(environment, self.policy, "journey")
+            MODULE.compatibility_observation(absent, self.policy, "journey")
+
+    def test_journey_compatibility_retains_emulator_and_kvm(self) -> None:
+        first = self.environment()
+        second = copy.deepcopy(first)
+        second["androidSdk"]["emulator"]["version"] = "36.2.12.0"
+        second["androidSdk"]["emulator"][
+            "versionOutputSha256"
+        ] = MODULE.canonical_sha256({"version": "36.2.12.0"})
+        first_compatibility = MODULE.compatibility_observation(
+            first, self.policy, "journey"
+        )
+        second_compatibility = MODULE.compatibility_observation(
+            second, self.policy, "journey"
+        )
+        self.assertIn("emulator", first_compatibility)
+        self.assertIn("kvm", first_compatibility)
+        self.assertNotEqual(first_compatibility, second_compatibility)
 
     def test_toolchain_and_sdk_drift_fail_closed(self) -> None:
         cases = []
