@@ -641,7 +641,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "b7b84c398ca5c48c114f2e5e2da92fab116c787fab0febf667d9cffc657229ea"
+        "sha256": "cfca111d8e94546900491884926d34adb91addf7071b4f029a5714c1f118ee00"
       },
       {
         "path": "src/Chummer.Android/Native/RunnerSessionSr5CareerWizardPhoneAuthority.cs",
@@ -841,12 +841,12 @@
       {
         "path": "src/Chummer.Android/Proof/Api36ProofState.cs",
         "exists": true,
-        "sha256": "8ebb681c8bbb560cae2275c85abe9b335791373bbfbdc0b07f8ec712ad760fe0"
+        "sha256": "fba1a321ec72a4497ecf4cd5f95f4d875ea47bbbe60c3358198a0065ab49e149"
       },
       {
         "path": "src/Chummer.Android/Proof/Api36ProofStatePublisher.cs",
         "exists": true,
-        "sha256": "c6080434f702ebfd1fa9a171db4d39dafd37f97247a724e27e8d8546c6da92ed"
+        "sha256": "94a6cf935afc61c222a40ae85fda3b979cbd18faa770ac6fe9e64d99e6557356"
       },
       {
         "path": "tests/Chummer.Android.Native.CompileCheck/NativeCompileInputs.props",
@@ -866,22 +866,22 @@
       {
         "path": "tests/run_api36_sr5_before_run_edge_e2e.py",
         "exists": true,
-        "sha256": "ae0c8ca3fd53994d9f916da98de577a4fa985a272e3f58d7090c243b0df6a052"
+        "sha256": "fba6e03915442eb4512d25f92462303bc577c9cc6e68667cc511c967eeacb12e"
       },
       {
         "path": "tests/run_api36_sr5_before_run_edge_physical_e2e.py",
         "exists": true,
-        "sha256": "866249238fcc1bdd274280da7592d2bb58327022b25868e8b73081ad91a66386"
+        "sha256": "8257709f85831dace3890b62431043ca41a51e12c8a8b9b4db750c23d5a90fe7"
       },
       {
         "path": "tests/api36_proof_state.py",
         "exists": true,
-        "sha256": "bf6fa6bf35f971c98837ed99fa32d3e0348a22f03014d503e363c877362e7950"
+        "sha256": "f6644d801f0f387f739954ebc9d4b2aebfef86fb5649d7e65523d204f639a0b5"
       },
       {
         "path": "tests/test_api36_proof_state_contract.py",
         "exists": true,
-        "sha256": "824a1cb430b18cb55a4128d26a3e2438aeea1ddd1da0c2aab122e61fc7c6429d"
+        "sha256": "b63e4ea8bc249532ed3d92ccbd9e51807d5d056645f3e36c83a03fab7acd7a9e"
       },
       {
         "path": "tests/test_run_api36_sr5_before_run_edge_e2e_driver.py",
@@ -901,7 +901,7 @@
       {
         "path": "tests/run_api36_sr5_downtime_calendar_hosted_e2e.py",
         "exists": true,
-        "sha256": "ff1a1ae5b81b8941f8ac0b942455b1dc1bff3ab7f29623e7a439c53b73d3f9fb"
+        "sha256": "7985f0ee83c7275f131b8ee3c3ea85abb7d7fca403be527a9d9f805b072767b3"
       },
       {
         "path": "tests/test_api36_sr5_downtime_calendar_hosted_e2e_driver.py",
@@ -956,7 +956,7 @@
       {
         "path": "tests/run_api36_editing_e2e.py",
         "exists": true,
-        "sha256": "a4b8d975a00c253ea3fa05d8cdec12aca3ef0e343cf2e6ad142ed7be3d0a0a4b"
+        "sha256": "a85d24cdb4d5506ccbcbc696f1e5b5c443ce360f1945a5892923be2969d6367b"
       },
       {
         "path": "tests/run_api36_career_active_skill_advance_e2e.py",
