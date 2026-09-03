@@ -107,7 +107,7 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "3b2ab3361d621cced15491c8156eb00b6506679b975057dcb49e11996fccc9b6"
+        "sha256": "09a56b4c79d1bd113e4abec7203b0725079d3faab9246663a224e02f28f8e3bc"
       },
       {
         "path": "src/Chummer.Android/Native/MorePage.cs",
@@ -707,7 +707,7 @@
       {
         "path": "src/Chummer.Android/Native/Sr5TableWizardPage.cs",
         "exists": true,
-        "sha256": "4f12b90e81ea66ffc7d5c998c09e73607f913a7290a4ca988100e5dc6a073d40"
+        "sha256": "704d8274276d779d61f39d658983b505324f65f662d6ffbfed9fa9663cf0c6cc"
       },
       {
         "path": "src/Chummer.Android/Native/Sr5TableWizardPhoneModel.cs",
@@ -917,7 +917,7 @@
       {
         "path": "tests/run_api36_sr5_after_run_settlement_e2e.py",
         "exists": true,
-        "sha256": "781f8cf082fba13e0efa2b75b8d9261e76cc41051959f99370aea65de72dc2eb"
+        "sha256": "bd77ca46943baf2481906227687f84a5de0f99d126a9e5817296b1fdf4f19ddd"
       },
       {
         "path": "tests/run_api36_sr5_after_run_settlement_hosted_e2e.py",
@@ -942,7 +942,7 @@
       {
         "path": "tests/test_sr5_contextual_wizard_scope.py",
         "exists": true,
-        "sha256": "f5cd23b40e4a1dae5dd0a558a939189b17a4cd0aff9fe1299d69bc97d8fe44f2"
+        "sha256": "e09a24d3a6ba9ccecd5b87b777a48eef723f9f477ecafef11d90e188ca42b267"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",

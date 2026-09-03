@@ -621,7 +621,7 @@ public sealed class Sr5TableWizardQuotePage : NativePageBase
 
         Button review = NativeTheme.PrimaryButton(Text("Review exact diff"));
         review.AutomationId = "sr5-table-wizard-open-review";
-        review.Clicked += async (_, _) => await RunAsync(OpenReviewAsync);
+        review.Clicked += async (_, _) => await RunWithConditionalRefreshAsync(OpenReviewAsync);
         _body.Add(review);
 #if CHUMMER_API36_PROOF_INSTRUMENTATION
         Api36ProofStatePublisher.TryPublishTableWizard(
@@ -638,7 +638,7 @@ public sealed class Sr5TableWizardQuotePage : NativePageBase
 #endif
     }
 
-    private async Task OpenReviewAsync()
+    private async Task<bool> OpenReviewAsync()
     {
         Sr5TableWizardSnapshot snapshot = _session.State.Snapshot;
         if (Coordinator.State.WorkspaceId != snapshot.WorkspaceId
@@ -650,7 +650,7 @@ public sealed class Sr5TableWizardQuotePage : NativePageBase
                 Text("Runner changed"),
                 Text("Reopen Playtime and request a current quote."),
                 Text("OK"));
-            return;
+            return true;
         }
         if (!_transactionStore.TryWriteReview(
                 _session,
@@ -662,13 +662,17 @@ public sealed class Sr5TableWizardQuotePage : NativePageBase
                 Text("Review unavailable"),
                 Text("The exact quote was not opened because its durable review could not be saved and verified."),
                 Text("OK"));
-            return;
+            return true;
         }
         await Navigation.PushAsync(new Sr5TableWizardReviewPage(
             Coordinator,
             _session,
             _transactionStore,
             review!));
+        // The review page owns the next visual and proof state. Rebuilding this
+        // disappeared quote page after PushAsync would publish `quote-ready`
+        // over the review page's `review-ready` authority.
+        return false;
     }
 }
 

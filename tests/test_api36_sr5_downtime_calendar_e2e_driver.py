@@ -152,6 +152,16 @@ class Api36Sr5DowntimeCalendarDriverTests(unittest.TestCase):
     def test_driver_is_apk_source_arm64_restart_reconfirm_ack_and_reopen_bound(self) -> None:
         source = DRIVER.read_text(encoding="utf-8")
         compile(source, str(DRIVER), "exec")
+        self.assertIn('"sr5-career/calendar", timeout=120', source)
+        self.assertIn('"sr5-career-action-calendar", timeout=120', source)
+        self.assertLess(
+            source.index('"sr5-career/calendar", timeout=120'),
+            source.index('physical.wait_exact_route(device, "sr5-career/calendar"'),
+        )
+        self.assertLess(
+            source.index('physical.wait_exact_route(device, "sr5-career/calendar"'),
+            source.index('"sr5-career-action-calendar", timeout=120'),
+        )
         for marker in (
             "load_and_verify_manifest", "source_graph_snapshot",
             "android_device_observation", "expected_apk_sha256",

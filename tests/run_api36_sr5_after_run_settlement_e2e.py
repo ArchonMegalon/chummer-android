@@ -1047,6 +1047,11 @@ def enter_manual_proposal(device: physical.shared.Device, fixture: dict[str, obj
         if enabled:
             _tap_exact(device, selector)
     for contact in fixture["contacts"]:
+        # Adding a contact re-renders the long form while retaining a lower scroll
+        # position on some API-36 frames. Re-establish the top origin before each
+        # distinct proposal so the forward-only exact field scan cannot overshoot
+        # the reusable contact controls. The Add mutation itself is still tapped once.
+        physical.shared.reset_scroll_to_top(device, swipes=24)
         for field in (
             ("sr5-after-run-entry-contact-id", "Contact UUID", contact["contactId"]),
             ("sr5-after-run-entry-contact-name", "Contact name", contact["name"]),

@@ -510,16 +510,29 @@ public sealed class BuildPage : NativePageBase
 
         Title = "Sheet";
         AddWorkspacePicker();
-        if (Sr5CareerWizardCatalog.IsSr5CareerRunner(
-                Coordinator.State.Profile.Created,
-                Coordinator.State.Rules?.GameEdition))
+        bool isSr5CareerRunner = Sr5CareerWizardCatalog.IsSr5CareerRunner(
+            Coordinator.State.Profile.Created,
+            Coordinator.State.Rules?.GameEdition);
+        if (isSr5CareerRunner)
         {
+            // The phone Career landing surface is deliberately wizard-first. Eagerly
+            // materializing the legacy dossier and every generic build tab creates dozens
+            // of native controls while Android is returning focus from the document picker.
+            // Their implementations remain available for later, separately composed parity
+            // work; the current phone beta does not instantiate them on this critical route.
             AddSr5CareerWizardRoute();
+            AddSummary();
+            AddFeedback();
+            return;
         }
-        AddSummary();
-        AddDossier();
-        AddBuildAreas();
 
+        AddSummary();
+        Label unavailable = NativeTheme.Body(
+            "The phone beta exposes created-runner changes only through the SR5 Career wizards. " +
+            "This runner's edition has no authorized Career wizard, so no generic editor is opened.",
+            NativeTheme.Danger);
+        unavailable.AutomationId = "build-career-wizard-unavailable";
+        _body.Add(NativeTheme.Card(unavailable));
         AddFeedback();
     }
 

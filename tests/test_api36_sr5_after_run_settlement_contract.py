@@ -36,6 +36,18 @@ def validate(value: dict[str, object], fixture: dict[str, object], *, applied: b
 
 
 class Api36Sr5AfterRunSettlementContractTests(unittest.TestCase):
+    def test_each_distinct_contact_reestablishes_the_form_origin_before_forward_scan(self) -> None:
+        source = DRIVER.read_text(encoding="utf-8")
+        contact_loop = source.split('for contact in fixture["contacts"]:', maxsplit=1)[1]
+        contact_loop = contact_loop.split('for role, prefix, label in (', maxsplit=1)[0]
+
+        self.assertIn("physical.shared.reset_scroll_to_top(device, swipes=24)", contact_loop)
+        self.assertLess(
+            contact_loop.index("reset_scroll_to_top"),
+            contact_loop.index('("sr5-after-run-entry-contact-id"'),
+        )
+        self.assertEqual(1, contact_loop.count('"sr5-after-run-entry-contact-add"'))
+
     def test_import_binding_does_not_require_visible_runner_alias(self) -> None:
         source = DRIVER.read_text(encoding="utf-8")
         self.assertIn(

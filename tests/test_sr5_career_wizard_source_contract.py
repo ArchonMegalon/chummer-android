@@ -245,6 +245,23 @@ def test_created_sr5_build_route_is_user_visible_and_action_boundary_is_rechecke
     assert "RequireCreatedSr5" not in page
 
 
+def test_created_sr5_initial_phone_sheet_is_wizard_only() -> None:
+    build = BUILD.read_text(encoding="utf-8")
+    career_branch = build.split("if (isSr5CareerRunner)", maxsplit=1)[1]
+    career_branch = career_branch.split("AddSummary();", maxsplit=2)
+
+    assert "AddSr5CareerWizardRoute();" in career_branch[0]
+    assert "AddFeedback();" in career_branch[1]
+    assert "return;" in career_branch[1]
+    assert "AddDossier();" not in career_branch[0] + career_branch[1]
+    assert "AddBuildAreas();" not in career_branch[0] + career_branch[1]
+    fallback = career_branch[2].split("private void AddRouteMarker", maxsplit=1)[0]
+    assert 'unavailable.AutomationId = "build-career-wizard-unavailable";' in fallback
+    assert "no authorized Career wizard" in fallback
+    assert "AddDossier();" not in fallback
+    assert "AddBuildAreas();" not in fallback
+
+
 def test_staged_active_skill_has_a_dedicated_physical_arm64_api36_proof_boundary() -> None:
     driver = PHYSICAL_ACTIVE_SKILL_DRIVER.read_text(encoding="utf-8")
 

@@ -498,6 +498,11 @@ def open_downtime(device: physical.shared.Device) -> None:
     )
     physical.wait_exact_route(device, "sr5-career", timeout=90)
     device.tap_single_exact_resource_id(
+        "sr5-career/calendar", timeout=120,
+        evidence_prefix="sr5-downtime-family", surface_name="SR5 Calendar family",
+    )
+    physical.wait_exact_route(device, "sr5-career/calendar", timeout=90)
+    device.tap_single_exact_resource_id(
         "sr5-career-action-calendar", timeout=120,
         evidence_prefix="sr5-downtime-action", surface_name="SR5 Downtime action",
     )
