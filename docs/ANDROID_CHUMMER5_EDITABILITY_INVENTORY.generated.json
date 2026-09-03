@@ -14,8 +14,8 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 478,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 536,
-      "missing": 929,
+      "implemented_pending_emulator": 532,
+      "missing": 933,
       "not_applicable_non_mutating": 478,
       "partial_create_only": 106,
       "partial_exact_saved_data": 180
@@ -3050,7 +3050,7 @@
     "expenses": {
       "rowCount": 19,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 2,
+      "phoneMissingCount": 6,
       "tabletMissingCount": 15,
       "completionProvenCount": 4
     },
@@ -79356,7 +79356,7 @@
       "mutationFamily": "expenses",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Runner > Create expense > operation",
         "surface": "CareerCreateExpensePage",
         "automationId": "career-create-expense-amount",
@@ -79423,7 +79423,7 @@
       "mutationFamily": "expenses",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Runner > Create expense > operation",
         "surface": "CareerCreateExpensePage",
         "automationId": "career-create-expense-description",
@@ -79552,7 +79552,7 @@
       "mutationFamily": "expenses",
       "operation": "commit",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Runner > Create expense > operation",
         "surface": "CareerCreateExpensePage",
         "automationId": "career-create-expense-ok",
@@ -79619,7 +79619,7 @@
       "mutationFamily": "expenses",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Runner > Create expense > operation",
         "surface": "CareerCreateExpensePage",
         "automationId": "career-create-expense-refund",
