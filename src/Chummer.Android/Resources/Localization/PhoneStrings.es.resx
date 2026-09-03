@@ -35,6 +35,45 @@
   <data name="AccountPrivacy" xml:space="preserve"><value>Cuenta y privacidad</value></data>
   <data name="LinkedDeviceDeletion" xml:space="preserve"><value>Dispositivo vinculado y eliminación</value></data>
   <data name="LinkingDeletion" xml:space="preserve"><value>Vinculación y eliminación</value></data>
+  <data name="AccountStatus" xml:space="preserve"><value>Estado</value></data>
+  <data name="AccountUnlinkDevice" xml:space="preserve"><value>Desvincular este dispositivo</value></data>
+  <data name="AccountUnlinkDeviceQuestion" xml:space="preserve"><value>¿Desvincular este dispositivo?</value></data>
+  <data name="AccountUnlinkImpact" xml:space="preserve"><value>Los runners y grupos en línea dejarán de estar disponibles aquí.</value></data>
+  <data name="AccountUnlink" xml:space="preserve"><value>Desvincular</value></data>
+  <data name="Cancel" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="AccountLinkDeviceDetail" xml:space="preserve"><value>Vincula este dispositivo para abrir runners en línea, grupos y controles de la cuenta.</value></data>
+  <data name="AccountHowDeletionWorks" xml:space="preserve"><value>Cómo funciona la eliminación</value></data>
+  <data name="AccountDeletionReceiptDetail" xml:space="preserve"><value>Qué se elimina y cuánto tiempo se conservan los comprobantes</value></data>
+  <data name="DeleteAccount" xml:space="preserve"><value>Eliminar cuenta</value></data>
+  <data name="AccountStartVerifiedDeletion" xml:space="preserve"><value>Iniciar la eliminación verificada de la cuenta</value></data>
+  <data name="AccountLinkBeforeDeletion" xml:space="preserve"><value>Vincula este dispositivo antes de eliminar la cuenta</value></data>
+  <data name="AccountNotLinked" xml:space="preserve"><value>Sin vincular</value></data>
+  <data name="AccountFinishLinking" xml:space="preserve"><value>Finalizar la vinculación</value></data>
+  <data name="AccountApproveBrowser" xml:space="preserve"><value>Aprueba la vinculación en el navegador y después vuelve.</value></data>
+  <data name="AccountLinkExpired" xml:space="preserve"><value>Vinculación caducada</value></data>
+  <data name="AccountLinkAgainRestore" xml:space="preserve"><value>Vuelve a vincular tu cuenta para recuperar el acceso.</value></data>
+  <data name="AccountLinked" xml:space="preserve"><value>Vinculada</value></data>
+  <data name="AccountAvailableOffline" xml:space="preserve"><value>Disponible sin conexión.</value></data>
+  <data name="AccountLinkUnavailable" xml:space="preserve"><value>Vinculación no disponible</value></data>
+  <data name="AccountSecureStorageUnavailable" xml:space="preserve"><value>No se pudo abrir el almacenamiento seguro de Android.</value></data>
+  <data name="AccountBrowserUnavailable" xml:space="preserve"><value>Navegador no disponible</value></data>
+  <data name="AccountOpenLinkingAgain" xml:space="preserve"><value>Vuelve a iniciar la vinculación de la cuenta.</value></data>
+  <data name="AccountCouldNotLink" xml:space="preserve"><value>No se pudo vincular</value></data>
+  <data name="AccountTryAgainMoment" xml:space="preserve"><value>Inténtalo de nuevo en un momento.</value></data>
+  <data name="AccountReturnRejected" xml:space="preserve"><value>Retorno rechazado</value></data>
+  <data name="AccountStartLinkingAgain" xml:space="preserve"><value>Vuelve a iniciar la vinculación desde esta aplicación.</value></data>
+  <data name="AccountApprovalExpired" xml:space="preserve"><value>Aprobación caducada</value></data>
+  <data name="AccountStartFreshLink" xml:space="preserve"><value>Inicia una nueva vinculación de cuenta.</value></data>
+  <data name="AccountFreshLinkRequired" xml:space="preserve"><value>Se requiere una nueva vinculación</value></data>
+  <data name="AccountChooseLinkTryAgain" xml:space="preserve"><value>Selecciona «Vincular cuenta» e inténtalo de nuevo.</value></data>
+  <data name="AccountCheckConnection" xml:space="preserve"><value>Comprueba tu conexión e inténtalo de nuevo.</value></data>
+  <data name="AccountIncompleteReply" xml:space="preserve"><value>La respuesta estaba incompleta. Inténtalo de nuevo.</value></data>
+  <data name="AccountConnectInternet" xml:space="preserve"><value>Conéctate a internet e inténtalo de nuevo.</value></data>
+  <data name="AccountStartLinkingAgainShort" xml:space="preserve"><value>Vuelve a iniciar la vinculación.</value></data>
+  <data name="AccountStillLinked" xml:space="preserve"><value>Sigue vinculada</value></data>
+  <data name="AccountRevokeUnavailable" xml:space="preserve"><value>No se pudo contactar con Chummer. Intenta desvincular de nuevo.</value></data>
+  <data name="AccountRevokeOffline" xml:space="preserve"><value>Conéctate a internet e intenta desvincular de nuevo.</value></data>
+  <data name="AccountDeleted" xml:space="preserve"><value>Cuenta eliminada</value></data>
   <data name="App" xml:space="preserve"><value>Aplicación</value></data>
   <data name="Version" xml:space="preserve"><value>Versión</value></data>
   <data name="CheckUpdates" xml:space="preserve"><value>Buscar actualizaciones</value></data>

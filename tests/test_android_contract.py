@@ -7,6 +7,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import xml.etree.ElementTree as ET
 import zipfile
 from pathlib import Path
 
@@ -308,6 +309,117 @@ class AndroidContractTests(unittest.TestCase):
         clear_guard = coordinator_unlink.index("AndroidAccountLinkStatus.Unlinked")
         for collection in ("_onlineCharacters = [];", "_groups = [];", "_chronicles = [];"):
             self.assertGreater(coordinator_unlink.index(collection), clear_guard)
+
+    def test_account_link_localization_has_exact_de_en_es_key_parity(self) -> None:
+        localization = PROJECT / "Resources" / "Localization"
+
+        def load(name: str) -> dict[str, str]:
+            entries = ET.parse(localization / name).getroot().findall("data")
+            values = {
+                entry.attrib["name"]: entry.findtext("value") or ""
+                for entry in entries
+            }
+            self.assertEqual(len(entries), len(values), f"duplicate localization key in {name}")
+            return values
+
+        english = load("PhoneStrings.resx")
+        german = load("PhoneStrings.de.resx")
+        spanish = load("PhoneStrings.es.resx")
+
+        self.assertEqual(set(english), set(german))
+        self.assertEqual(set(english), set(spanish))
+        for key in english:
+            self.assertTrue(english[key].strip(), f"empty English value for {key}")
+            self.assertTrue(german[key].strip(), f"empty German value for {key}")
+            self.assertTrue(spanish[key].strip(), f"empty Spanish value for {key}")
+
+        self.assertEqual("Weiterhin verknüpft", german["AccountStillLinked"])
+        self.assertEqual("Sigue vinculada", spanish["AccountStillLinked"])
+        self.assertEqual("Abbrechen", german["Cancel"])
+        self.assertEqual("Cancelar", spanish["Cancel"])
+
+    def test_account_link_localization_fallbacks_match_english_resources(self) -> None:
+        localization = PROJECT / "Resources" / "Localization"
+        english_entries = ET.parse(localization / "PhoneStrings.resx").getroot().findall("data")
+        english = {
+            entry.attrib["name"]: entry.findtext("value") or ""
+            for entry in english_entries
+        }
+        page_source = (PROJECT / "Native" / "AccountPrivacyPage.cs").read_text(encoding="utf-8")
+        page = page_source[:page_source.index("public sealed class AccountDeletionInfoPage")]
+        service = (PROJECT / "Platform" / "AndroidAccountLinkService.cs").read_text(encoding="utf-8")
+        phone_strings = (PROJECT / "Native" / "PhoneStrings.cs").read_text(encoding="utf-8")
+        call_pattern = re.compile(
+            r'(?:PhoneStrings\.Get|AccountText)\(\s*"([^"]+)",\s*"([^"]+)"\s*\)',
+            re.DOTALL,
+        )
+        calls = call_pattern.findall(page + service)
+        called_keys = {key for key, _ in calls}
+        expected_page_keys = {
+            "Account",
+            "AccountDeletionReceiptDetail",
+            "AccountHowDeletionWorks",
+            "AccountLinkBeforeDeletion",
+            "AccountLinkDeviceDetail",
+            "AccountPrivacy",
+            "AccountStartVerifiedDeletion",
+            "AccountStatus",
+            "AccountUnlink",
+            "AccountUnlinkDevice",
+            "AccountUnlinkDeviceQuestion",
+            "AccountUnlinkImpact",
+            "Cancel",
+            "DeleteAccount",
+            "LinkAccount",
+        }
+        expected_service_keys = {
+            "AccountApprovalExpired",
+            "AccountApproveBrowser",
+            "AccountAvailableOffline",
+            "AccountBrowserUnavailable",
+            "AccountCheckConnection",
+            "AccountChooseLinkTryAgain",
+            "AccountConnectInternet",
+            "AccountCouldNotLink",
+            "AccountDeleted",
+            "AccountFinishLinking",
+            "AccountFreshLinkRequired",
+            "AccountIncompleteReply",
+            "AccountLinkAgainRestore",
+            "AccountLinkExpired",
+            "AccountLinkUnavailable",
+            "AccountLinked",
+            "AccountNotLinked",
+            "AccountOpenLinkingAgain",
+            "AccountReturnRejected",
+            "AccountRevokeOffline",
+            "AccountRevokeUnavailable",
+            "AccountSecureStorageUnavailable",
+            "AccountStartFreshLink",
+            "AccountStartLinkingAgain",
+            "AccountStartLinkingAgainShort",
+            "AccountStillLinked",
+            "AccountTryAgainMoment",
+            "Checking",
+        }
+
+        self.assertEqual(expected_page_keys | expected_service_keys, called_keys)
+        for key, fallback in calls:
+            self.assertEqual(english[key], fallback, f"English fallback drift for {key}")
+        for snapshot in re.findall(r"SetSnapshot\(new\((.*?)\)\);", service, re.DOTALL):
+            without_localized_text = call_pattern.sub("", snapshot)
+            self.assertNotRegex(
+                without_localized_text,
+                r'"[^"]+"',
+                "account snapshots must not expose an unlocalized string",
+            )
+        self.assertNotRegex(page, r'Title\s*=\s*"')
+        self.assertNotRegex(
+            page,
+            r'NativeTheme\.(?:Eyebrow|Title|Metric|Body|PrimaryButton|SecondaryButton|NavigationRow)\(\s*"',
+        )
+        self.assertIn("?? englishFallback", phone_strings)
+        self.assertIn("catch (MissingManifestResourceException)", phone_strings)
 
     def test_account_deletion_is_native_confirmed_and_server_first(self) -> None:
         service = (PROJECT / "Platform" / "AndroidAccountLinkService.cs").read_text(encoding="utf-8")

@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Chummer.Android.Native;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Storage;
 
@@ -39,7 +40,9 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
     private readonly HttpClient _httpClient;
     private readonly IAndroidSystemService _systemService;
     private readonly SemaphoreSlim _gate = new(1, 1);
-    private AndroidAccountLinkSnapshot _snapshot = new(AndroidAccountLinkStatus.Loading, "Checking");
+    private AndroidAccountLinkSnapshot _snapshot = new(
+        AndroidAccountLinkStatus.Loading,
+        AccountText("Checking", "Checking"));
 
     public AndroidAccountLinkService(HttpClient httpClient, IAndroidSystemService systemService)
     {
@@ -65,14 +68,16 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
                 if (string.IsNullOrWhiteSpace(pendingState) || !IsPendingLinkCurrent(pendingStarted))
                 {
                     ClearPending();
-                    SetSnapshot(new(AndroidAccountLinkStatus.Unlinked, "Not linked"));
+                    SetSnapshot(new(
+                        AndroidAccountLinkStatus.Unlinked,
+                        AccountText("AccountNotLinked", "Not linked")));
                 }
                 else
                 {
                     SetSnapshot(new(
                         AndroidAccountLinkStatus.Pending,
-                        "Finish linking",
-                        "Approve in your browser, then return."));
+                        AccountText("AccountFinishLinking", "Finish linking"),
+                        AccountText("AccountApproveBrowser", "Approve in your browser, then return.")));
                 }
                 return;
             }
@@ -81,7 +86,10 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             if (expiresAtUtc is null || expiresAtUtc <= DateTimeOffset.UtcNow)
             {
                 ClearGrant();
-                SetSnapshot(new(AndroidAccountLinkStatus.Unlinked, "Link expired", "Link again to restore account access."));
+                SetSnapshot(new(
+                    AndroidAccountLinkStatus.Unlinked,
+                    AccountText("AccountLinkExpired", "Link expired"),
+                    AccountText("AccountLinkAgainRestore", "Link again to restore account access.")));
                 return;
             }
 
@@ -89,13 +97,20 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             if (validation == GrantValidationResult.Invalid)
             {
                 ClearGrant();
-                SetSnapshot(new(AndroidAccountLinkStatus.Unlinked, "Link expired", "Link again to restore account access."));
+                SetSnapshot(new(
+                    AndroidAccountLinkStatus.Unlinked,
+                    AccountText("AccountLinkExpired", "Link expired"),
+                    AccountText("AccountLinkAgainRestore", "Link again to restore account access.")));
                 return;
             }
 
             if (validation == GrantValidationResult.Offline)
             {
-                SetSnapshot(new(AndroidAccountLinkStatus.Linked, "Linked", "Available offline.", expiresAtUtc));
+                SetSnapshot(new(
+                    AndroidAccountLinkStatus.Linked,
+                    AccountText("AccountLinked", "Linked"),
+                    AccountText("AccountAvailableOffline", "Available offline."),
+                    expiresAtUtc));
                 return;
             }
 
@@ -109,7 +124,11 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
                 }
             }
 
-            SetSnapshot(new(AndroidAccountLinkStatus.Linked, "Linked", null, expiresAtUtc));
+            SetSnapshot(new(
+                AndroidAccountLinkStatus.Linked,
+                AccountText("AccountLinked", "Linked"),
+                null,
+                expiresAtUtc));
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -117,7 +136,12 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         }
         catch (Exception)
         {
-            SetSnapshot(new(AndroidAccountLinkStatus.Error, "Link unavailable", "Android secure storage could not be opened."));
+            SetSnapshot(new(
+                AndroidAccountLinkStatus.Error,
+                AccountText("AccountLinkUnavailable", "Link unavailable"),
+                AccountText(
+                    "AccountSecureStorageUnavailable",
+                    "Android secure storage could not be opened.")));
         }
         finally
         {
@@ -158,11 +182,17 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
                 ["publicKey"] = identity.PublicKey
             };
             string href = $"{LinkPath}?{string.Join('&', query.Select(static item => $"{Uri.EscapeDataString(item.Key)}={Uri.EscapeDataString(item.Value)}"))}";
-            SetSnapshot(new(AndroidAccountLinkStatus.Pending, "Finish linking", "Approve in your browser, then return."));
+            SetSnapshot(new(
+                AndroidAccountLinkStatus.Pending,
+                AccountText("AccountFinishLinking", "Finish linking"),
+                AccountText("AccountApproveBrowser", "Approve in your browser, then return.")));
             if (!await _systemService.OpenUriAsync(ChummerWebRoutes.Resolve(href)))
             {
                 ClearPending();
-                SetSnapshot(new(AndroidAccountLinkStatus.Error, "Browser unavailable", "Open account linking again."));
+                SetSnapshot(new(
+                    AndroidAccountLinkStatus.Error,
+                    AccountText("AccountBrowserUnavailable", "Browser unavailable"),
+                    AccountText("AccountOpenLinkingAgain", "Open account linking again.")));
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -171,7 +201,10 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         }
         catch (Exception)
         {
-            SetSnapshot(new(AndroidAccountLinkStatus.Error, "Couldn't link", "Try again in a moment."));
+            SetSnapshot(new(
+                AndroidAccountLinkStatus.Error,
+                AccountText("AccountCouldNotLink", "Could not link"),
+                AccountText("AccountTryAgainMoment", "Try again in a moment.")));
         }
         finally
         {
@@ -192,7 +225,10 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
 
             if (callbackUri is not null && !IsExpectedCallback(callbackUri, pendingState))
             {
-                SetSnapshot(new(AndroidAccountLinkStatus.Error, "Return rejected", "Start linking again from this app."));
+                SetSnapshot(new(
+                    AndroidAccountLinkStatus.Error,
+                    AccountText("AccountReturnRejected", "Return rejected"),
+                    AccountText("AccountStartLinkingAgain", "Start linking again from this app.")));
                 return;
             }
 
@@ -200,7 +236,10 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             if (!IsPendingLinkCurrent(pendingStarted))
             {
                 ClearPending();
-                SetSnapshot(new(AndroidAccountLinkStatus.Error, "Approval expired", "Start a fresh account link."));
+                SetSnapshot(new(
+                    AndroidAccountLinkStatus.Error,
+                    AccountText("AccountApprovalExpired", "Approval expired"),
+                    AccountText("AccountStartFreshLink", "Start a fresh account link.")));
                 return;
             }
 
@@ -267,7 +306,10 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
                 cancellationToken);
             if (response.StatusCode == HttpStatusCode.Accepted)
             {
-                SetSnapshot(new(AndroidAccountLinkStatus.Pending, "Finish linking", "Approve in your browser, then return."));
+                SetSnapshot(new(
+                    AndroidAccountLinkStatus.Pending,
+                    AccountText("AccountFinishLinking", "Finish linking"),
+                    AccountText("AccountApproveBrowser", "Approve in your browser, then return.")));
                 return;
             }
 
@@ -278,31 +320,31 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
                     ClearAllCredentials();
                     SetSnapshot(new(
                         AndroidAccountLinkStatus.Error,
-                        "Fresh link required",
-                        "Choose Link account and try again."));
+                        AccountText("AccountFreshLinkRequired", "Fresh link required"),
+                        AccountText("AccountChooseLinkTryAgain", "Choose Link account and try again.")));
                 }
                 else if (response.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.Unauthorized)
                 {
                     ClearAllCredentials();
                     SetSnapshot(new(
                         AndroidAccountLinkStatus.Error,
-                        "Fresh link required",
-                        "Choose Link account and try again."));
+                        AccountText("AccountFreshLinkRequired", "Fresh link required"),
+                        AccountText("AccountChooseLinkTryAgain", "Choose Link account and try again.")));
                 }
                 else if (response.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.Gone)
                 {
                     ClearPending();
                     SetSnapshot(new(
                         AndroidAccountLinkStatus.Error,
-                        "Approval expired",
-                        "Start a fresh account link."));
+                        AccountText("AccountApprovalExpired", "Approval expired"),
+                        AccountText("AccountStartFreshLink", "Start a fresh account link.")));
                 }
                 else
                 {
                     SetSnapshot(new(
                         AndroidAccountLinkStatus.Error,
-                        "Could not link",
-                        "Check your connection and try again."));
+                        AccountText("AccountCouldNotLink", "Could not link"),
+                        AccountText("AccountCheckConnection", "Check your connection and try again.")));
                 }
                 return;
             }
@@ -310,17 +352,27 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             ExchangeResponse? exchange = await response.Content.ReadFromJsonAsync<ExchangeResponse>(JsonOptions, cancellationToken);
             if (exchange?.Grant is null || string.IsNullOrWhiteSpace(exchange.Grant.AccessToken))
             {
-                SetSnapshot(new(AndroidAccountLinkStatus.Error, "Couldn't link", "The reply was incomplete. Try again."));
+                SetSnapshot(new(
+                    AndroidAccountLinkStatus.Error,
+                    AccountText("AccountCouldNotLink", "Could not link"),
+                    AccountText("AccountIncompleteReply", "The reply was incomplete. Try again.")));
                 return;
             }
 
             await SaveGrantAsync(exchange.Grant);
             ClearPending();
-            SetSnapshot(new(AndroidAccountLinkStatus.Linked, "Linked", null, exchange.Grant.ExpiresAtUtc));
+            SetSnapshot(new(
+                AndroidAccountLinkStatus.Linked,
+                AccountText("AccountLinked", "Linked"),
+                null,
+                exchange.Grant.ExpiresAtUtc));
         }
         catch (HttpRequestException)
         {
-            SetSnapshot(new(AndroidAccountLinkStatus.Pending, "Finish linking", "Connect to the internet and try again."));
+            SetSnapshot(new(
+                AndroidAccountLinkStatus.Pending,
+                AccountText("AccountFinishLinking", "Finish linking"),
+                AccountText("AccountConnectInternet", "Connect to the internet and try again.")));
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -328,7 +380,10 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         }
         catch (Exception)
         {
-            SetSnapshot(new(AndroidAccountLinkStatus.Error, "Couldn't link", "Start linking again."));
+            SetSnapshot(new(
+                AndroidAccountLinkStatus.Error,
+                AccountText("AccountCouldNotLink", "Could not link"),
+                AccountText("AccountStartLinkingAgainShort", "Start linking again.")));
         }
         finally
         {
@@ -356,22 +411,26 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
                 {
                     SetSnapshot(new(
                         AndroidAccountLinkStatus.Linked,
-                        "Still linked",
-                        "Could not reach Chummer. Try unlinking again.",
+                        AccountText("AccountStillLinked", "Still linked"),
+                        AccountText(
+                            "AccountRevokeUnavailable",
+                            "Could not reach Chummer. Try unlinking again."),
                         grantExpiresAtUtc));
                     return;
                 }
             }
 
             ClearAllCredentials();
-            SetSnapshot(new(AndroidAccountLinkStatus.Unlinked, "Not linked"));
+            SetSnapshot(new(
+                AndroidAccountLinkStatus.Unlinked,
+                AccountText("AccountNotLinked", "Not linked")));
         }
         catch (HttpRequestException)
         {
             SetSnapshot(new(
                 AndroidAccountLinkStatus.Linked,
-                "Still linked",
-                "Connect to the internet and try again.",
+                AccountText("AccountStillLinked", "Still linked"),
+                AccountText("AccountRevokeOffline", "Connect to the internet and try again."),
                 grantExpiresAtUtc));
         }
         finally
@@ -417,7 +476,9 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             }
 
             ClearAllCredentials();
-            SetSnapshot(new(AndroidAccountLinkStatus.Unlinked, "Account deleted"));
+            SetSnapshot(new(
+                AndroidAccountLinkStatus.Unlinked,
+                AccountText("AccountDeleted", "Account deleted")));
             return receipt;
         }
         finally
@@ -752,7 +813,10 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Conflict)
         {
             ClearGrant();
-            SetSnapshot(new(AndroidAccountLinkStatus.Unlinked, "Link expired", "Link again to restore account access."));
+            SetSnapshot(new(
+                AndroidAccountLinkStatus.Unlinked,
+                AccountText("AccountLinkExpired", "Link expired"),
+                AccountText("AccountLinkAgainRestore", "Link again to restore account access.")));
             throw new InvalidOperationException("Link your account again.");
         }
 
@@ -987,6 +1051,9 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
 
         return null;
     }
+
+    private static string AccountText(string key, string englishFallback)
+        => PhoneStrings.Get(key, englishFallback);
 
     private void SetSnapshot(AndroidAccountLinkSnapshot snapshot)
     {
