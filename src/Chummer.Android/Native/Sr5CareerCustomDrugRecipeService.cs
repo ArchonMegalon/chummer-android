@@ -263,12 +263,20 @@ public sealed class Sr5CareerCustomDrugRecipeService(
             stored.ContentRevision,
             CharacterCustomDrugContext.Career);
         Sr5CareerCustomDrugRecipeCheckpoint? checkpoint = checkpoints.Read(workspaceId);
+        bool discardedInvalidCheckpoint = false;
         if (checkpoint?.Phase is Sr5CareerCustomDrugRecipePhase.Applying
-                or Sr5CareerCustomDrugRecipePhase.Applied
                 or Sr5CareerCustomDrugRecipePhase.RecoveryUnknown)
         {
             return ResolveLocked(stored, preparation, checkpoint);
         }
+        if (checkpoint is not null && !checkpoint.BelongsTo(workspaceId))
+        {
+            checkpoints.Clear(workspaceId);
+            checkpoint = null;
+            discardedInvalidCheckpoint = true;
+        }
+        if (checkpoint?.Phase == Sr5CareerCustomDrugRecipePhase.Applied)
+            return ResolveLocked(stored, preparation, checkpoint);
         if (!preparation.Exact)
         {
             return new Sr5CareerCustomDrugRecipeSnapshot(
@@ -286,17 +294,9 @@ public sealed class Sr5CareerCustomDrugRecipeService(
                 workspaceId,
                 preparation,
                 checkpoint: null,
-                notice: string.Empty,
-                selection: DefaultSelection(preparation));
-        }
-        if (!checkpoint.BelongsTo(workspaceId))
-        {
-            checkpoints.Clear(workspaceId);
-            return Snapshot(
-                workspaceId,
-                preparation,
-                checkpoint: null,
-                notice: Sr5CareerCustomDrugRecipeNotices.ReviewStale,
+                notice: discardedInvalidCheckpoint
+                    ? Sr5CareerCustomDrugRecipeNotices.ReviewStale
+                    : string.Empty,
                 selection: DefaultSelection(preparation));
         }
         if (!checkpoint.Matches(preparation))
@@ -325,6 +325,7 @@ public sealed class Sr5CareerCustomDrugRecipeService(
         Sr5CareerCustomDrugRecipeCheckpoint checkpoint)
     {
         if (checkpoint.Command is { } command
+            && CommandCanResolve(command)
             && ReceiptProvesApplied(stored, command, checkpoint.Receipt))
         {
             CharacterCustomDrugCommitResult lookup = authority.LookupReceipt(
@@ -342,6 +343,7 @@ public sealed class Sr5CareerCustomDrugRecipeService(
         }
 
         if (checkpoint.Command is { } pending
+            && CommandCanResolve(pending)
             && preparation.Exact
             && stored.ContentRevision == pending.ExpectedContentRevision
             && string.Equals(preparation.CharacterDigest, pending.ExpectedCharacterDigest, StringComparison.Ordinal)
@@ -383,6 +385,17 @@ public sealed class Sr5CareerCustomDrugRecipeService(
             Sr5CareerCustomDrugRecipeNotices.RecoveryUnknown,
             preparation.Exact ? null : preparation.Blockers.FirstOrDefault());
     }
+
+    private static bool CommandCanResolve(CharacterCustomDrugCommitCommand command)
+        => command.ExpectedContentRevision >= 0
+           && command.ExpectedCharacterDigest is not null
+           && command.ExpectedCatalogDigest is not null
+           && command.ExpectedRulesDigest is not null
+           && command.ExpectedQuoteDigest is not null
+           && !string.IsNullOrWhiteSpace(command.IdempotencyKey)
+           && command.Selection is { Components: not null } selection
+           && selection.Components.All(static component => component is not null)
+           && command.NewComponentInstanceIds is not null;
 
     private bool ReceiptProvesApplied(
         Sr5CareerCustomDrugWorkspaceSnapshot stored,

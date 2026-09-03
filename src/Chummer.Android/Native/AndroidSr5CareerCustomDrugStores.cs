@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Chummer.Application.Workspaces;
+using Chummer.Contracts.Characters;
 using Chummer.Contracts.Workspaces;
 
 namespace Chummer.Android.Native;
@@ -68,6 +69,16 @@ public sealed class PreferencesSr5CareerCustomDrugRecipeCheckpointStore
                 JsonSerializer.Deserialize<Sr5CareerCustomDrugRecipeCheckpoint>(payload, Json);
             if (checkpoint?.BelongsTo(workspaceId) == true)
                 return checkpoint;
+            if (checkpoint is not null
+                && checkpoint.WorkspaceId == workspaceId
+                && checkpoint.Phase is Sr5CareerCustomDrugRecipePhase.Applying
+                    or Sr5CareerCustomDrugRecipePhase.RecoveryUnknown)
+            {
+                // Preserve uncertain outcomes even when local payload bytes are
+                // incomplete. The service may use a still-valid command for
+                // read-only receipt lookup, but can never reopen or replay it.
+                return ProtectedUnknown(workspaceId, checkpoint);
+            }
         }
         catch (JsonException)
         {
@@ -89,6 +100,33 @@ public sealed class PreferencesSr5CareerCustomDrugRecipeCheckpointStore
 
     public void Clear(CharacterWorkspaceId workspaceId)
         => Preferences.Default.Remove(Key(workspaceId));
+
+    private static Sr5CareerCustomDrugRecipeCheckpoint ProtectedUnknown(
+        CharacterWorkspaceId workspaceId,
+        Sr5CareerCustomDrugRecipeCheckpoint checkpoint)
+        => new(
+            Sr5CareerCustomDrugRecipeSchemas.CheckpointV1,
+            workspaceId,
+            Math.Max(0, checkpoint.BoundContentRevision),
+            checkpoint.BoundCharacterDigest ?? string.Empty,
+            checkpoint.BoundCatalogDigest ?? string.Empty,
+            checkpoint.BoundRulesDigest ?? string.Empty,
+            SafeSelection(checkpoint.Selection),
+            Sr5CareerCustomDrugRecipePhase.RecoveryUnknown,
+            checkpoint.Command,
+            checkpoint.Receipt);
+
+    private static CharacterCustomDrugSelection SafeSelection(
+        CharacterCustomDrugSelection? selection)
+        => selection is not null && selection.Components is not null
+            ? selection with
+            {
+                Components = selection.Components
+                    .Where(static component => component is not null)
+                    .Take(256)
+                    .ToArray()
+            }
+            : Sr5CareerCustomDrugRecipeService.EmptySelection;
 
     private static string Key(CharacterWorkspaceId workspaceId)
     {

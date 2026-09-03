@@ -18,11 +18,13 @@ internal static class Program
         try
         {
             ReviewCommitRestartAndUndo();
+            PostCasCrashRecoversReceiptWithoutReplay();
             UnknownOutcomeNeverReplays();
             StaleReviewIsDiscarded();
             FixedRecipeDefinitionOptionsAndFoundationAreEnforced();
             SourceDriftRemovesUnavailableIdentity();
-            Console.WriteLine("SR5 Career custom-drug Android orchestration tests passed (5 hostile scenarios).");
+            InvalidCheckpointPhasesRecoverWithoutReplayingUncertainOutcomes();
+            Console.WriteLine("SR5 Career custom-drug Android orchestration tests passed (7 hostile scenarios).");
             return 0;
         }
         catch (Exception exception)
@@ -30,6 +32,41 @@ internal static class Program
             Console.Error.WriteLine(exception);
             return 1;
         }
+    }
+
+    private static void PostCasCrashRecoversReceiptWithoutReplay()
+    {
+        FakeAuthority authority = new();
+        FakeWorkspaceStore workspaces = new(CharacterXml(), revision: 17);
+        FakeCheckpointStore checkpoints = new();
+        Sr5CareerCustomDrugRecipeService first = new(authority, workspaces, checkpoints);
+        _ = first.UpdateSelection(WorkspaceId, ValidSelection("Crash Window"));
+        _ = first.Review(WorkspaceId);
+        workspaces.CrashAfterNextWrite = true;
+
+        try
+        {
+            _ = first.Confirm(WorkspaceId);
+            throw new InvalidOperationException("Assertion failed: post-CAS crash must interrupt confirmation");
+        }
+        catch (SimulatedProcessDeathException)
+        {
+        }
+        Assert(workspaces.Revision == 18 && workspaces.SavedRevision == 18,
+            "workspace CAS completed before simulated process death");
+        Assert(checkpoints.Current is
+        {
+            Phase: Sr5CareerCustomDrugRecipePhase.Applying,
+            Receipt: not null
+        }, "authoritative Core receipt remains in the Applying checkpoint");
+
+        Sr5CareerCustomDrugRecipeService restarted = new(authority, workspaces, checkpoints);
+        Sr5CareerCustomDrugRecipeSnapshot recovered = restarted.Load(WorkspaceId);
+        Assert(recovered.HasAppliedReceipt
+               && recovered.Notice == Sr5CareerCustomDrugRecipeNotices.CommitRecovered,
+            "LookupReceipt resolves the exact post-CAS crash window");
+        Assert(authority.CommitCalls == 1 && authority.LookupCalls > 0,
+            "restart performs read-only receipt lookup without replaying commit");
     }
 
     private static void ReviewCommitRestartAndUndo()
@@ -213,6 +250,83 @@ internal static class Program
         Assert(!rebound.CanConfirm, "source drift invalidates confirmation");
     }
 
+    private static void InvalidCheckpointPhasesRecoverWithoutReplayingUncertainOutcomes()
+    {
+        FakeAuthority authority = new();
+        FakeWorkspaceStore workspaces = new(CharacterXml(), revision: 23);
+        FakeCheckpointStore checkpoints = new();
+        Sr5CareerCustomDrugRecipeService service = new(authority, workspaces, checkpoints);
+        _ = service.UpdateSelection(WorkspaceId, ValidSelection("Checkpoint Structure"));
+        Sr5CareerCustomDrugRecipeCheckpoint reviewed = service.Review(WorkspaceId).Checkpoint!;
+
+        checkpoints.Seed(reviewed with
+        {
+            Phase = Sr5CareerCustomDrugRecipePhase.Editing
+        });
+        Sr5CareerCustomDrugRecipeSnapshot recoveredEditing = service.Load(WorkspaceId);
+        Assert(recoveredEditing.Checkpoint is null
+               && recoveredEditing.Notice == Sr5CareerCustomDrugRecipeNotices.ReviewStale
+               && checkpoints.ClearCount == 1,
+            "malformed Editing payload is explicitly discarded without mutation");
+
+        checkpoints.Seed(reviewed with { Command = null });
+        Sr5CareerCustomDrugRecipeSnapshot recoveredReviewed = service.Load(WorkspaceId);
+        Assert(recoveredReviewed.Checkpoint is null
+               && recoveredReviewed.Notice == Sr5CareerCustomDrugRecipeNotices.ReviewStale
+               && checkpoints.ClearCount == 2,
+            "malformed Reviewed payload is explicitly discarded to a fresh non-authoritative draft");
+
+        checkpoints.Seed(reviewed with
+        {
+            Phase = Sr5CareerCustomDrugRecipePhase.Applied,
+            Receipt = null
+        });
+        Sr5CareerCustomDrugRecipeSnapshot recoveredApplied = service.Load(WorkspaceId);
+        Assert(recoveredApplied.Checkpoint is null
+               && checkpoints.ClearCount == 3,
+            "malformed known Applied payload is discarded without mutation");
+
+        checkpoints.Seed(reviewed with
+        {
+            Phase = Sr5CareerCustomDrugRecipePhase.Applying,
+            Command = null,
+            Receipt = null
+        });
+        int clearsBeforeUncertain = checkpoints.ClearCount;
+        Sr5CareerCustomDrugRecipeSnapshot protectedApplying = service.Load(WorkspaceId);
+        Assert(protectedApplying.IsRecoveryUnknown
+               && checkpoints.ClearCount == clearsBeforeUncertain,
+            "malformed Applying payload becomes a hard recovery lock and is never cleared");
+        ExpectInvalid(() => service.Reopen(WorkspaceId),
+            "Applying recovery lock cannot reopen a fresh recipe");
+
+        checkpoints.Seed(reviewed with
+        {
+            Phase = Sr5CareerCustomDrugRecipePhase.RecoveryUnknown,
+            Command = null,
+            Receipt = null
+        });
+        Sr5CareerCustomDrugRecipeSnapshot protectedUnknown = service.Load(WorkspaceId);
+        Assert(protectedUnknown.IsRecoveryUnknown
+               && checkpoints.ClearCount == clearsBeforeUncertain
+               && authority.CommitCalls == 0,
+            "unknown outcome stays locked without clear, retry, or commit");
+
+        checkpoints.Seed(reviewed with
+        {
+            Phase = Sr5CareerCustomDrugRecipePhase.Applying,
+            Command = reviewed.Command! with { Selection = null! },
+            Receipt = null
+        });
+        int lookupsBeforeMalformedCommand = authority.LookupCalls;
+        Sr5CareerCustomDrugRecipeSnapshot malformedCommand = service.Load(WorkspaceId);
+        Assert(malformedCommand.IsRecoveryUnknown
+               && checkpoints.ClearCount == clearsBeforeUncertain
+               && authority.LookupCalls == lookupsBeforeMalformedCommand
+               && authority.CommitCalls == 0,
+            "malformed uncertain command stays locked without Core lookup, clear, or mutation");
+    }
+
     private static CharacterCustomDrugSelection ValidSelection(string name)
         => new(
             name,
@@ -249,6 +363,7 @@ internal static class Program
         private Sr5CareerCustomDrugRecipeCheckpoint? _checkpoint;
         public List<Sr5CareerCustomDrugRecipeCheckpoint> History { get; } = [];
         public Sr5CareerCustomDrugRecipeCheckpoint? Current => _checkpoint;
+        public int ClearCount { get; private set; }
         public Sr5CareerCustomDrugRecipeCheckpoint? Read(CharacterWorkspaceId workspaceId)
             => _checkpoint?.WorkspaceId == workspaceId ? _checkpoint : null;
         public void Write(Sr5CareerCustomDrugRecipeCheckpoint checkpoint)
@@ -256,7 +371,12 @@ internal static class Program
             _checkpoint = checkpoint;
             History.Add(checkpoint);
         }
-        public void Clear(CharacterWorkspaceId workspaceId) => _checkpoint = null;
+        public void Clear(CharacterWorkspaceId workspaceId)
+        {
+            _checkpoint = null;
+            ClearCount++;
+        }
+        public void Seed(Sr5CareerCustomDrugRecipeCheckpoint checkpoint) => _checkpoint = checkpoint;
     }
 
     private sealed class FakeWorkspaceStore(string xml, long revision) : ISr5CareerCustomDrugWorkspaceStore
@@ -265,12 +385,23 @@ internal static class Program
         public long Revision { get; private set; } = revision;
         public long SavedRevision { get; private set; } = revision;
         public bool AmbiguousWrite { get; init; }
+        public bool CrashAfterNextWrite { get; set; }
         public Func<bool>? BeforeReplace { get; init; }
         public bool ObservedPreCasAuthority { get; private set; }
         private int ReplaceCalls { get; set; }
+        private bool _crashOnNextRead;
 
         public Sr5CareerCustomDrugWorkspaceSnapshot? Read(CharacterWorkspaceId workspaceId)
-            => workspaceId == WorkspaceId ? new(workspaceId, Revision, SavedRevision, new WorkspaceDocument(Xml)) : null;
+        {
+            if (_crashOnNextRead)
+            {
+                _crashOnNextRead = false;
+                throw new SimulatedProcessDeathException();
+            }
+            return workspaceId == WorkspaceId
+                ? new(workspaceId, Revision, SavedRevision, new WorkspaceDocument(Xml))
+                : null;
+        }
 
         public Sr5CareerCustomDrugWorkspaceWriteResult ReplaceAndCheckpoint(
             Sr5CareerCustomDrugWorkspaceSnapshot expected,
@@ -287,6 +418,11 @@ internal static class Program
             Xml = characterXml;
             Revision++;
             SavedRevision = Revision;
+            if (CrashAfterNextWrite)
+            {
+                CrashAfterNextWrite = false;
+                _crashOnNextRead = true;
+            }
             return new(true, false, Revision, SavedRevision, string.Empty);
         }
 
@@ -302,6 +438,7 @@ internal static class Program
     {
         private readonly Dictionary<string, CharacterCustomDrugCommitReceipt> _receipts = new(StringComparer.Ordinal);
         public int CommitCalls { get; private set; }
+        public int LookupCalls { get; private set; }
         public bool IncludeBlock { get; set; } = true;
 
         public CharacterCustomDrugPreparation Prepare(
@@ -383,6 +520,7 @@ internal static class Program
             CharacterCustomDrugContext context,
             CharacterCustomDrugCommitCommand command)
         {
+            LookupCalls++;
             bool hasReceipt = _receipts.TryGetValue(
                 command.IdempotencyKey,
                 out CharacterCustomDrugCommitReceipt? receipt);
@@ -450,4 +588,6 @@ internal static class Program
             return new(false, false, reason, revision, revision, digest, digest, xml, null);
         }
     }
+
+    private sealed class SimulatedProcessDeathException : Exception;
 }

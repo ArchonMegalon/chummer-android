@@ -48,7 +48,8 @@ public sealed record Sr5CareerCustomDrugRecipeCheckpoint(
            && Enum.IsDefined(Phase)
            && Selection is not null
            && Selection.Components is not null
-           && Selection.Components.All(static component => component is not null);
+           && Selection.Components.All(static component => component is not null)
+           && PhaseStructureIsValid();
 
     public bool Matches(CharacterCustomDrugPreparation preparation)
         => BoundContentRevision == preparation.ContentRevision
@@ -65,6 +66,54 @@ public sealed record Sr5CareerCustomDrugRecipeCheckpoint(
            && string.Equals(Command.ExpectedRulesDigest, BoundRulesDigest, StringComparison.Ordinal)
            && string.Equals(Command.ExpectedQuoteDigest, quote.QuoteDigest, StringComparison.Ordinal)
            && Sr5CareerCustomDrugRecipeSelections.Equal(Command.Selection, Selection);
+
+    private bool PhaseStructureIsValid()
+        => Phase switch
+        {
+            Sr5CareerCustomDrugRecipePhase.Editing => Command is null && Receipt is null,
+            Sr5CareerCustomDrugRecipePhase.Reviewed => Command is { } command
+                && Receipt is null
+                && command.ExpectedContentRevision == BoundContentRevision
+                && string.Equals(command.ExpectedCharacterDigest, BoundCharacterDigest, StringComparison.Ordinal)
+                && string.Equals(command.ExpectedCatalogDigest, BoundCatalogDigest, StringComparison.Ordinal)
+                && string.Equals(command.ExpectedRulesDigest, BoundRulesDigest, StringComparison.Ordinal)
+                && Sr5CareerCustomDrugRecipeSelections.Equal(command.Selection, Selection),
+            // Applying and unknown outcomes are deliberately admitted even when
+            // their payload is incomplete. The service must classify them through
+            // Core LookupReceipt or retain a hard recovery lock; local corruption
+            // may never turn an uncertain write into a fresh editable draft.
+            Sr5CareerCustomDrugRecipePhase.Applying => true,
+            Sr5CareerCustomDrugRecipePhase.RecoveryUnknown => true,
+            Sr5CareerCustomDrugRecipePhase.Applied => AppliedReceiptIsValid(),
+            _ => false
+        };
+
+    private bool AppliedReceiptIsValid()
+    {
+        if (Command is not { } command || Receipt is not { } receipt)
+            return false;
+        if (command.Selection is null
+            || command.Selection.Components is null
+            || command.NewComponentInstanceIds is null
+            || receipt.ComponentInstanceIds is null)
+            return false;
+        return Sr5CareerCustomDrugRecipeSelections.Equal(command.Selection, Selection)
+               && receipt.PreviousContentRevision == command.ExpectedContentRevision
+               && receipt.ContentRevision == BoundContentRevision
+               && string.Equals(receipt.PreviousCharacterDigest, command.ExpectedCharacterDigest, StringComparison.Ordinal)
+               && string.Equals(receipt.CharacterDigest, BoundCharacterDigest, StringComparison.Ordinal)
+               && string.Equals(receipt.CatalogDigest, BoundCatalogDigest, StringComparison.Ordinal)
+               && string.Equals(receipt.RulesDigest, BoundRulesDigest, StringComparison.Ordinal)
+               && string.Equals(receipt.QuoteDigest, command.ExpectedQuoteDigest, StringComparison.Ordinal)
+               && string.Equals(
+                   receipt.CommandDigest,
+                   CharacterCustomDrugRules.ComputeCommandDigest(command),
+                   StringComparison.Ordinal)
+               && string.Equals(
+                   receipt.ReceiptDigest,
+                   CharacterCustomDrugRules.ComputeReceiptDigest(receipt),
+                   StringComparison.Ordinal);
+    }
 }
 
 public sealed record Sr5CareerCustomDrugRecipeSnapshot(
