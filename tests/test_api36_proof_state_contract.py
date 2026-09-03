@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import importlib.util
 import json
 from pathlib import Path
 import sys
+import tempfile
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
@@ -282,12 +284,24 @@ class Api36ProofStateContractTests(unittest.TestCase):
         class Device:
             def __init__(self) -> None:
                 self.reads = [encoded(stale), encoded(current)]
+                self.responses = []
+                for inode, raw in enumerate(self.reads, start=101):
+                    metadata = f"1:{inode}:{len(raw)}:1788336000:81a4\n"
+                    self.responses.extend(
+                        (
+                            SimpleNamespace(returncode=0, stdout=metadata),
+                            SimpleNamespace(returncode=0, stdout=raw),
+                            SimpleNamespace(returncode=0, stdout=metadata),
+                        )
+                    )
+                self.arguments: list[tuple[str, ...]] = []
 
-            def shell(self, *_arguments: str) -> str:
+            def shell(self, *_arguments: str, **_kwargs: object) -> str:
                 return "4242"
 
-            def run(self, *_arguments: str, **_kwargs: object) -> SimpleNamespace:
-                return SimpleNamespace(returncode=0, stdout=self.reads.pop(0))
+            def run(self, *arguments: str, **_kwargs: object) -> SimpleNamespace:
+                self.arguments.append(arguments)
+                return self.responses.pop(0)
 
         device = Device()
         with patch.object(proof.time, "sleep", return_value=None):
@@ -300,7 +314,206 @@ class Api36ProofStateContractTests(unittest.TestCase):
                 timeout=1,
             )
         self.assertEqual(4242, snapshot.payload["processId"])
-        self.assertEqual([], device.reads)
+        self.assertEqual([], device.responses)
+        self.assertEqual(
+            [proof.STAT_ARGUMENTS, proof.READ_ARGUMENTS, proof.STAT_ARGUMENTS] * 2,
+            device.arguments,
+        )
+
+    def test_reader_accepts_only_metadata_content_metadata_identity(self) -> None:
+        raw = encoded(state_payload())
+        metadata = f"1:101:{len(raw)}:1788336000:81a4\n"
+
+        class Device:
+            def __init__(self, evidence: Path) -> None:
+                self.evidence = evidence
+                self.responses = [
+                    SimpleNamespace(returncode=0, stdout=metadata),
+                    SimpleNamespace(returncode=0, stdout=raw),
+                    SimpleNamespace(returncode=0, stdout=metadata),
+                ]
+                self.shell_calls: list[tuple[tuple[str, ...], dict[str, object]]] = []
+                self.run_calls: list[tuple[tuple[str, ...], dict[str, object]]] = []
+
+            def shell(self, *arguments: str, **options: object) -> str:
+                self.shell_calls.append((arguments, options))
+                return "4242"
+
+            def run(self, *arguments: str, **options: object) -> SimpleNamespace:
+                self.run_calls.append((arguments, options))
+                return self.responses.pop(0)
+
+        with tempfile.TemporaryDirectory() as temporary:
+            evidence = Path(temporary)
+            device = Device(evidence)
+            snapshot = proof.wait_for_state(
+                device,
+                expected=expectation(),
+                page_automation_id="sr5-career/before-run/review",
+                stage="review-ready",
+                wizard_lane="before-run",
+                timeout=30,
+            )
+            receipt = json.loads(
+                (evidence / proof.READ_RECEIPT_NAME).read_text(encoding="utf-8")
+            )
+
+        self.assertEqual(hashlib.sha256(raw).hexdigest(), snapshot.serialized_sha256)
+        self.assertEqual(
+            "metadata-content-metadata-identity",
+            snapshot.read_observation["reconciliation"],
+        )
+        self.assertEqual("pass", receipt["status"])
+        self.assertEqual(1, receipt["acceptedAttempt"])
+        self.assertEqual(0, receipt["mutationCommandsRetried"])
+        self.assertEqual("7d", receipt["attempts"][0]["lastByteHex"])
+        self.assertEqual(2, len(device.shell_calls))
+        self.assertEqual(
+            [proof.STAT_ARGUMENTS, proof.READ_ARGUMENTS, proof.STAT_ARGUMENTS],
+            [call[0] for call in device.run_calls],
+        )
+        self.assertTrue(all("deadline" in options for _, options in device.shell_calls))
+        self.assertTrue(all("deadline" in options for _, options in device.run_calls))
+
+    def test_reader_retries_only_a_content_size_mismatch_then_accepts_exact_bytes(
+        self,
+    ) -> None:
+        raw = encoded(state_payload())
+        polluted = raw + b"\n"
+        metadata = f"1:101:{len(raw)}:1788336000:81a4\n"
+
+        class Device:
+            def __init__(self, evidence: Path) -> None:
+                self.evidence = evidence
+                self.responses = [
+                    SimpleNamespace(returncode=0, stdout=metadata),
+                    SimpleNamespace(returncode=0, stdout=polluted),
+                    SimpleNamespace(returncode=0, stdout=metadata),
+                    SimpleNamespace(returncode=0, stdout=metadata),
+                    SimpleNamespace(returncode=0, stdout=raw),
+                    SimpleNamespace(returncode=0, stdout=metadata),
+                ]
+                self.arguments: list[tuple[str, ...]] = []
+
+            def shell(self, *_arguments: str, **_options: object) -> str:
+                return "4242"
+
+            def run(self, *arguments: str, **_options: object) -> SimpleNamespace:
+                self.arguments.append(arguments)
+                return self.responses.pop(0)
+
+        with tempfile.TemporaryDirectory() as temporary, patch.object(
+            proof.time, "sleep", return_value=None
+        ):
+            evidence = Path(temporary)
+            device = Device(evidence)
+            snapshot = proof.wait_for_state(
+                device,
+                expected=expectation(),
+                page_automation_id="sr5-career/before-run/review",
+                stage="review-ready",
+                wizard_lane="before-run",
+                timeout=30,
+            )
+            receipt = json.loads(
+                (evidence / proof.READ_RECEIPT_NAME).read_text(encoding="utf-8")
+            )
+
+        self.assertEqual(raw, encoded(snapshot.payload))
+        self.assertEqual(2, receipt["acceptedAttempt"])
+        self.assertEqual("content-size-mismatch", receipt["attempts"][0]["reconciliation"])
+        self.assertEqual("0a", receipt["attempts"][0]["lastByteHex"])
+        self.assertEqual("metadata-content-metadata-identity", receipt["attempts"][1]["reconciliation"])
+        self.assertEqual(0, receipt["mutationCommandsRetried"])
+        self.assertEqual(
+            [proof.STAT_ARGUMENTS, proof.READ_ARGUMENTS, proof.STAT_ARGUMENTS] * 2,
+            device.arguments,
+        )
+
+    def test_reader_retries_metadata_identity_drift_without_accepting_valid_json(
+        self,
+    ) -> None:
+        raw = encoded(state_payload())
+        before = f"1:101:{len(raw)}:1788336000:81a4\n"
+        after = f"1:102:{len(raw)}:1788336001:81a4\n"
+
+        class Device:
+            def __init__(self) -> None:
+                self.responses = [
+                    SimpleNamespace(returncode=0, stdout=before),
+                    SimpleNamespace(returncode=0, stdout=raw),
+                    SimpleNamespace(returncode=0, stdout=after),
+                    SimpleNamespace(returncode=0, stdout=after),
+                    SimpleNamespace(returncode=0, stdout=raw),
+                    SimpleNamespace(returncode=0, stdout=after),
+                ]
+
+            def shell(self, *_arguments: str, **_options: object) -> str:
+                return "4242"
+
+            def run(self, *_arguments: str, **_options: object) -> SimpleNamespace:
+                return self.responses.pop(0)
+
+        with patch.object(proof.time, "sleep", return_value=None):
+            snapshot = proof.wait_for_state(
+                Device(),
+                expected=expectation(),
+                page_automation_id="sr5-career/before-run/review",
+                stage="review-ready",
+                wizard_lane="before-run",
+                timeout=30,
+            )
+
+        self.assertEqual(2, snapshot.read_observation["attempt"])
+        self.assertEqual(
+            "metadata-content-metadata-identity",
+            snapshot.read_observation["reconciliation"],
+        )
+
+    def test_reader_fails_immediately_for_stable_noncanonical_publisher_bytes(self) -> None:
+        raw = encoded(state_payload()) + b"\n"
+        metadata = f"1:101:{len(raw)}:1788336000:81a4\n"
+
+        class Device:
+            def __init__(self, evidence: Path) -> None:
+                self.evidence = evidence
+                self.responses = [
+                    SimpleNamespace(returncode=0, stdout=metadata),
+                    SimpleNamespace(returncode=0, stdout=raw),
+                    SimpleNamespace(returncode=0, stdout=metadata),
+                ]
+
+            def shell(self, *_arguments: str, **_options: object) -> str:
+                return "4242"
+
+            def run(self, *_arguments: str, **_options: object) -> SimpleNamespace:
+                return self.responses.pop(0)
+
+        with tempfile.TemporaryDirectory() as temporary:
+            evidence = Path(temporary)
+            device = Device(evidence)
+            with self.assertRaisesRegex(RuntimeError, "bytes are empty, oversized"):
+                proof.wait_for_state(
+                    device,
+                    expected=expectation(),
+                    page_automation_id="sr5-career/before-run/review",
+                    stage="review-ready",
+                    wizard_lane="before-run",
+                    timeout=30,
+                )
+            receipt = json.loads(
+                (evidence / proof.READ_RECEIPT_NAME).read_text(encoding="utf-8")
+            )
+
+        self.assertEqual([], device.responses)
+        self.assertEqual("fail", receipt["status"])
+        self.assertEqual("0a", receipt["attempts"][0]["lastByteHex"])
+        self.assertEqual(len(raw), receipt["attempts"][0]["contentBytes"])
+        self.assertEqual(
+            "API-36 proof-state bytes are empty, oversized, or noncanonical",
+            receipt["attempts"][0]["validationFailure"],
+        )
+        self.assertEqual(0, receipt["mutationCommandsRetried"])
 
     def test_build_and_source_contract_excludes_normal_debug_release_play_and_arm64(self) -> None:
         project = (ROOT / "src/Chummer.Android/Chummer.Android.csproj").read_text(encoding="utf-8")
@@ -402,12 +615,20 @@ class Api36ProofStateContractTests(unittest.TestCase):
         spec.loader.exec_module(shared)
         self.assertEqual(tuple(shared.API36_PROOF_STATE_READ_ARGUMENTS), proof.READ_ARGUMENTS)
         self.assertEqual(
+            tuple(shared.API36_PROOF_STATE_STAT_ARGUMENTS),
+            proof.STAT_ARGUMENTS,
+        )
+        self.assertEqual(
             tuple(shared.API36_IMPORT_PROOF_STATE_READ_ARGUMENTS),
             proof.IMPORT_READ_ARGUMENTS,
         )
         self.assertEqual(
             ("read-only-retryable", "exact app-private API-36 proof-state observation"),
             shared.adb_command_retry_policy(proof.READ_ARGUMENTS),
+        )
+        self.assertEqual(
+            ("read-only-retryable", "exact app-private API-36 proof-state observation"),
+            shared.adb_command_retry_policy(proof.STAT_ARGUMENTS),
         )
         self.assertEqual(
             "non-replayable",

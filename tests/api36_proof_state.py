@@ -22,6 +22,15 @@ DIGEST_SCHEMA = "chummer.android.api36-proof-state-digest/v2"
 PACKAGE = "com.myexternalbrain.chummer"
 RELATIVE_PATH = "files/api36-proof/state.v2.json"
 READ_ARGUMENTS = ("exec-out", "run-as", PACKAGE, "cat", RELATIVE_PATH)
+STAT_ARGUMENTS = (
+    "exec-out", "run-as", PACKAGE, "stat", "-c", "%d:%i:%s:%Y:%f",
+    RELATIVE_PATH,
+)
+READ_RECEIPT_SCHEMA = "chummer.android.api36-proof-state-read/v1"
+READ_RECEIPT_NAME = "api36-proof-state-read.json"
+READ_ATTEMPT_MAX_SECONDS = 3.0
+READ_RETRY_DELAY_SECONDS = 0.2
+MAX_STATE_BYTES = 32 * 1024
 IMPORT_SCHEMA = "chummer.android.api36-import-proof-state/v1"
 IMPORT_DIGEST_SCHEMA = "chummer.android.api36-import-proof-state-digest/v1"
 IMPORT_RELATIVE_PATH = "files/api36-proof/import.v1.json"
@@ -32,6 +41,10 @@ SHA40 = re.compile(r"^[0-9a-f]{40}$")
 SHA64 = re.compile(r"^[0-9a-f]{64}$")
 DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
 TOKEN = re.compile(r"^[A-Za-z0-9._/:-]+$")
+STAT_METADATA = re.compile(
+    r"(?P<device>[0-9]+):(?P<inode>[1-9][0-9]*):(?P<size>[0-9]+):"
+    r"(?P<modified>[0-9]+):(?P<mode>[0-9a-f]+)"
+)
 
 ROOT_FIELDS = {
     "schema", "sequence", "processId", "processInstanceId",
@@ -87,6 +100,7 @@ class ProofBuildExpectation:
 class ProofStateSnapshot:
     payload: dict[str, Any]
     serialized_sha256: str
+    read_observation: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -427,7 +441,7 @@ def validate_state(
     expected: ProofBuildExpectation,
     live_process_id: int,
 ) -> ProofStateSnapshot:
-    if not 0 < len(raw) <= 32 * 1024 or raw.endswith(b"\n"):
+    if not 0 < len(raw) <= MAX_STATE_BYTES or raw.endswith(b"\n"):
         raise RuntimeError("API-36 proof-state bytes are empty, oversized, or noncanonical")
     try:
         state = json.loads(raw.decode("utf-8", errors="strict"), object_pairs_hook=object_without_duplicates)
@@ -608,6 +622,163 @@ def require_creation_resources(snapshot: ProofStateSnapshot) -> dict[str, Any]:
     return resources
 
 
+def _parse_state_metadata(output: object) -> dict[str, int] | None:
+    if not isinstance(output, str):
+        return None
+    match = STAT_METADATA.fullmatch(output.strip())
+    if match is None:
+        return None
+    mode = int(match.group("mode"), 16)
+    return {
+        "deviceId": int(match.group("device")),
+        "inode": int(match.group("inode")),
+        "sizeBytes": int(match.group("size")),
+        "modifiedSeconds": int(match.group("modified")),
+        "mode": mode,
+        "regularFile": (mode & 0o170000) == 0o100000,
+    }
+
+
+def _stream_summary(value: object) -> dict[str, object]:
+    if isinstance(value, str):
+        raw = value.encode("utf-8", errors="strict")
+        return {"type": "text", "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()}
+    if isinstance(value, bytes):
+        return {"type": "bytes", "bytes": len(value), "sha256": hashlib.sha256(value).hexdigest()}
+    return {"type": type(value).__name__, "bytes": None, "sha256": None}
+
+
+def _write_state_read_receipt(device: object, receipt: dict[str, Any]) -> None:
+    evidence_value = getattr(device, "evidence", None)
+    if not isinstance(evidence_value, (str, Path)):
+        return
+    evidence = Path(evidence_value)
+    evidence.mkdir(parents=True, exist_ok=True)
+    destination = evidence / READ_RECEIPT_NAME
+    temporary = evidence / f"{READ_RECEIPT_NAME}.tmp"
+    temporary.write_text(
+        json.dumps(receipt, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    temporary.replace(destination)
+
+
+def _state_file_observation(
+    device: object,
+    *,
+    deadline: float,
+    attempt: int,
+) -> tuple[bytes | None, int | None, dict[str, Any]]:
+    process_before_output = device.shell(
+        "pidof", PACKAGE, timeout=READ_ATTEMPT_MAX_SECONDS, deadline=deadline
+    )
+    process_before_tokens = process_before_output.split()
+    process_before = (
+        int(process_before_tokens[0])
+        if len(process_before_tokens) == 1 and process_before_tokens[0].isdigit()
+        else None
+    )
+    if process_before is None or process_before <= 0:
+        return None, None, {
+            "attempt": attempt,
+            "status": "retry",
+            "reconciliation": "live-process-unavailable",
+            "processBefore": process_before_tokens,
+            "processAfter": None,
+            "metadataBefore": None,
+            "metadataAfter": None,
+            "contentBytes": None,
+            "contentSha256": None,
+            "lastByteHex": None,
+        }
+
+    before = device.run(
+        *STAT_ARGUMENTS,
+        timeout=READ_ATTEMPT_MAX_SECONDS,
+        deadline=deadline,
+        check=False,
+    )
+    content = device.run(
+        *READ_ARGUMENTS,
+        timeout=READ_ATTEMPT_MAX_SECONDS,
+        deadline=deadline,
+        text=False,
+        check=False,
+    )
+    after = device.run(
+        *STAT_ARGUMENTS,
+        timeout=READ_ATTEMPT_MAX_SECONDS,
+        deadline=deadline,
+        check=False,
+    )
+    process_after_output = device.shell(
+        "pidof", PACKAGE, timeout=READ_ATTEMPT_MAX_SECONDS, deadline=deadline
+    )
+    process_after_tokens = process_after_output.split()
+    process_after = (
+        int(process_after_tokens[0])
+        if len(process_after_tokens) == 1 and process_after_tokens[0].isdigit()
+        else None
+    )
+    before_metadata = _parse_state_metadata(before.stdout)
+    after_metadata = _parse_state_metadata(after.stdout)
+    raw = content.stdout
+    content_bytes = len(raw) if isinstance(raw, bytes) else None
+    metadata_identical = (
+        before_metadata is not None
+        and before_metadata == after_metadata
+        and before_metadata["regularFile"] is True
+    )
+    exact = (
+        process_before == process_after
+        and before.returncode == 0
+        and content.returncode == 0
+        and after.returncode == 0
+        and metadata_identical
+        and isinstance(raw, bytes)
+        and content_bytes == before_metadata["sizeBytes"]
+    )
+    if process_before != process_after or process_after is None:
+        reconciliation = "process-identity-drift"
+    elif before.returncode != 0 or content.returncode != 0 or after.returncode != 0:
+        reconciliation = "file-observation-unavailable"
+    elif before_metadata is None or after_metadata is None:
+        reconciliation = "metadata-noncanonical"
+    elif not metadata_identical:
+        reconciliation = "metadata-identity-drift"
+    elif not isinstance(raw, bytes):
+        reconciliation = "content-type-noncanonical"
+    elif content_bytes != before_metadata["sizeBytes"]:
+        reconciliation = "content-size-mismatch"
+    else:
+        reconciliation = "metadata-content-metadata-identity"
+    observation: dict[str, Any] = {
+        "attempt": attempt,
+        "status": "pass" if exact else "retry",
+        "reconciliation": reconciliation,
+        "processBefore": process_before,
+        "processAfter": process_after,
+        "metadataArguments": list(STAT_ARGUMENTS),
+        "contentArguments": list(READ_ARGUMENTS),
+        "metadataBeforeReturnCode": before.returncode,
+        "contentReturnCode": content.returncode,
+        "metadataAfterReturnCode": after.returncode,
+        "metadataBefore": before_metadata,
+        "metadataAfter": after_metadata,
+        "metadataBeforeOutput": _stream_summary(before.stdout),
+        "contentOutput": _stream_summary(raw),
+        "metadataAfterOutput": _stream_summary(after.stdout),
+        "contentBytes": content_bytes,
+        "contentSha256": hashlib.sha256(raw).hexdigest() if isinstance(raw, bytes) else None,
+        "lastByteHex": raw[-1:].hex() if isinstance(raw, bytes) and raw else None,
+        "withinPayloadBound": (
+            isinstance(raw, bytes) and 0 < len(raw) <= MAX_STATE_BYTES
+        ),
+        "canonicalTerminalByte": isinstance(raw, bytes) and bool(raw) and not raw.endswith(b"\n"),
+    }
+    return (raw if exact else None), process_before, observation
+
+
 def wait_for_state(
     device: object,
     *,
@@ -617,31 +788,99 @@ def wait_for_state(
     wizard_lane: str | None,
     timeout: float = 30,
 ) -> ProofStateSnapshot:
+    if not math.isfinite(timeout) or timeout <= 0:
+        raise ValueError("Proof-state wait timeout must be finite and positive")
     deadline = time.monotonic() + timeout
     last_detail = "state file unavailable"
+    attempts: list[dict[str, Any]] = []
+    started = time.monotonic()
     while time.monotonic() < deadline:
-        process_output = device.shell("pidof", PACKAGE)
-        process_ids = process_output.split()
-        if len(process_ids) != 1 or not process_ids[0].isdigit():
-            last_detail = f"expected one live process, got {process_ids!r}"
-            time.sleep(0.2)
-            continue
-        result = device.run(*READ_ARGUMENTS, text=False, check=False)
-        if result.returncode != 0 or not result.stdout:
-            last_detail = "state file unavailable"
-            time.sleep(0.2)
+        try:
+            raw, live_process_id, observation = _state_file_observation(
+                device,
+                deadline=deadline,
+                attempt=len(attempts) + 1,
+            )
+        except Exception as error:
+            receipt = {
+                "schema": READ_RECEIPT_SCHEMA,
+                "status": "fail",
+                "requestedSurface": {
+                    "pageAutomationId": page_automation_id,
+                    "stage": stage,
+                    "wizardLane": wizard_lane,
+                },
+                "maximumPayloadBytes": MAX_STATE_BYTES,
+                "attempts": attempts,
+                "acceptedAttempt": None,
+                "failure": {"type": type(error).__name__, "message": str(error)},
+                "mutationCommandsRetried": 0,
+                "elapsedMs": round((time.monotonic() - started) * 1000),
+            }
+            _write_state_read_receipt(device, receipt)
+            raise
+        attempts.append(observation)
+        if raw is None or live_process_id is None:
+            last_detail = observation["reconciliation"]
+            _write_state_read_receipt(
+                device,
+                {
+                    "schema": READ_RECEIPT_SCHEMA,
+                    "status": "retrying-read-only",
+                    "requestedSurface": {
+                        "pageAutomationId": page_automation_id,
+                        "stage": stage,
+                        "wizardLane": wizard_lane,
+                    },
+                    "maximumPayloadBytes": MAX_STATE_BYTES,
+                    "attempts": attempts,
+                    "acceptedAttempt": None,
+                    "failure": None,
+                    "mutationCommandsRetried": 0,
+                    "elapsedMs": round((time.monotonic() - started) * 1000),
+                },
+            )
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
+            time.sleep(min(READ_RETRY_DELAY_SECONDS, remaining))
             continue
         try:
             snapshot = validate_state(
-                result.stdout,
+                raw,
                 expected=expected,
-                live_process_id=int(process_ids[0]),
+                live_process_id=live_process_id,
             )
         except RuntimeError as error:
             if str(error) != "API-36 proof state belongs to a stale process":
+                observation["status"] = "fail"
+                observation["validationFailure"] = str(error)
+                _write_state_read_receipt(
+                    device,
+                    {
+                        "schema": READ_RECEIPT_SCHEMA,
+                        "status": "fail",
+                        "requestedSurface": {
+                            "pageAutomationId": page_automation_id,
+                            "stage": stage,
+                            "wizardLane": wizard_lane,
+                        },
+                        "maximumPayloadBytes": MAX_STATE_BYTES,
+                        "attempts": attempts,
+                        "acceptedAttempt": None,
+                        "failure": {"type": type(error).__name__, "message": str(error)},
+                        "mutationCommandsRetried": 0,
+                        "elapsedMs": round((time.monotonic() - started) * 1000),
+                    },
+                )
                 raise
             last_detail = "state file belongs to the preceding process"
-            time.sleep(0.2)
+            observation["status"] = "retry"
+            observation["validationFailure"] = str(error)
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
+            time.sleep(min(READ_RETRY_DELAY_SECONDS, remaining))
             continue
         surface = snapshot.payload["surface"]
         if (
@@ -650,12 +889,53 @@ def wait_for_state(
             and surface["wizardLane"] == wizard_lane
             and surface["settled"] is True
         ):
-            return snapshot
+            receipt = {
+                "schema": READ_RECEIPT_SCHEMA,
+                "status": "pass",
+                "requestedSurface": {
+                    "pageAutomationId": page_automation_id,
+                    "stage": stage,
+                    "wizardLane": wizard_lane,
+                },
+                "maximumPayloadBytes": MAX_STATE_BYTES,
+                "attempts": attempts,
+                "acceptedAttempt": observation["attempt"],
+                "failure": None,
+                "mutationCommandsRetried": 0,
+                "elapsedMs": round((time.monotonic() - started) * 1000),
+            }
+            _write_state_read_receipt(device, receipt)
+            return ProofStateSnapshot(
+                snapshot.payload,
+                snapshot.serialized_sha256,
+                dict(observation),
+            )
         last_detail = (
             f"page={surface['pageAutomationId']!r} stage={surface['stage']!r} "
             f"lane={surface['wizardLane']!r} settled={surface['settled']!r}"
         )
-        time.sleep(0.2)
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        time.sleep(min(READ_RETRY_DELAY_SECONDS, remaining))
+    _write_state_read_receipt(
+        device,
+        {
+            "schema": READ_RECEIPT_SCHEMA,
+            "status": "fail",
+            "requestedSurface": {
+                "pageAutomationId": page_automation_id,
+                "stage": stage,
+                "wizardLane": wizard_lane,
+            },
+            "maximumPayloadBytes": MAX_STATE_BYTES,
+            "attempts": attempts,
+            "acceptedAttempt": None,
+            "failure": {"type": "RuntimeError", "message": last_detail},
+            "mutationCommandsRetried": 0,
+            "elapsedMs": round((time.monotonic() - started) * 1000),
+        },
+    )
     raise RuntimeError(f"Timed out waiting for exact API-36 proof state: {last_detail}")
 
 

@@ -9994,6 +9994,7 @@ def read_creation_resources_proof_state(
         "stateDigest": snapshot.payload["stateDigest"],
         "processId": snapshot.payload["processId"],
         "processInstanceId": snapshot.payload["processInstanceId"],
+        "readObservation": snapshot.read_observation,
         "typedResources": resources,
     }
     return resources, evidence

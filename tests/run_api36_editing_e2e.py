@@ -30,6 +30,15 @@ API36_PROOF_STATE_READ_ARGUMENTS = (
     "cat",
     "files/api36-proof/state.v2.json",
 )
+API36_PROOF_STATE_STAT_ARGUMENTS = (
+    "exec-out",
+    "run-as",
+    PACKAGE,
+    "stat",
+    "-c",
+    "%d:%i:%s:%Y:%f",
+    "files/api36-proof/state.v2.json",
+)
 API36_IMPORT_PROOF_STATE_READ_ARGUMENTS = (
     "exec-out",
     "run-as",
@@ -560,6 +569,7 @@ def adb_command_retry_policy(arguments: tuple[str, ...]) -> tuple[str, str]:
         return ("read-only-retryable", "exact framebuffer observation")
     if arguments in (
         API36_PROOF_STATE_READ_ARGUMENTS,
+        API36_PROOF_STATE_STAT_ARGUMENTS,
         API36_IMPORT_PROOF_STATE_READ_ARGUMENTS,
     ):
         return (
