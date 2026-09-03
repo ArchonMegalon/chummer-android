@@ -194,7 +194,7 @@ def test_default_runtime_composition_is_explicitly_unavailable() -> None:
     assert "service.Settle(command)" in runner
 
 
-def test_physical_contract_and_driver_cannot_claim_a_pass_without_fixture() -> None:
+def test_physical_contract_and_driver_require_the_exact_governed_fixture_and_remain_non_release() -> None:
     model = read("Sr5AfterRunWizardModel.cs")
     driver = (ROOT / "tests" / "run_api36_sr5_after_run_settlement_e2e.py").read_text(
         encoding="utf-8"
@@ -210,9 +210,13 @@ def test_physical_contract_and_driver_cannot_claim_a_pass_without_fixture() -> N
         "RequiredRoutes",
     ):
         assert marker in model
-    assert '"status": "unavailable"' in driver
-    assert '"physicalDeviceProof": False' in driver
-    assert '"releaseEvidenceEligible": False' in driver
+    assert "fixture_path != DEFAULT_FIXTURE.resolve()" in driver
+    assert "load_fixture(fixture_path)" in driver
+    assert '"fixtureSha256": fixture_path' in driver
+    assert "load_and_verify_manifest" in driver
+    assert '"releaseEvidenceStatus": "source-and-apk-bound-local-build-not-release-attested"' in driver
+    assert '"status": "device-pass-source-bound"' in driver
     assert "sr5-after-run-settlement-e2e.json" in driver
-    assert "return 3" in driver
-    assert "device-pass" not in driver
+    assert '"executionStatus": "pass"' in driver
+    assert '"releaseEvidenceEligible": True' not in driver
+    assert '"status": "release-pass"' not in driver

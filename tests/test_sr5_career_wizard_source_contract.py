@@ -10,6 +10,7 @@ COORDINATOR = ROOT / "src/Chummer.Android/Native/RunnerSessionCoordinator.cs"
 ACTIVE_SKILL = ROOT / "src/Chummer.Android/Native/Sr5CareerActiveSkillWizardPage.cs"
 ACTIVE_SKILL_COORDINATOR = ROOT / "src/Chummer.Android/Native/Sr5CareerActiveSkillCoordinator.cs"
 CHECKPOINT_STORE = ROOT / "src/Chummer.Android/Native/Sr5CareerDraftCheckpointStore.cs"
+MUTATION_OWNER_STORE = ROOT / "src/Chummer.Android/Native/Sr5CareerMutationOwnerStore.cs"
 BUILD = ROOT / "src/Chummer.Android/Native/BuildPage.cs"
 PHYSICAL_ACTIVE_SKILL_DRIVER = (
     ROOT / "tests/run_api36_sr5_career_active_skill_wizard_e2e.py"
@@ -98,6 +99,7 @@ def test_shared_action_boundary_has_route_idempotency_and_fail_closed_crash_reco
     page = ACTIVE_SKILL.read_text(encoding="utf-8")
     coordinator = ACTIVE_SKILL_COORDINATOR.read_text(encoding="utf-8")
     store = CHECKPOINT_STORE.read_text(encoding="utf-8")
+    owner_store = MUTATION_OWNER_STORE.read_text(encoding="utf-8")
 
     for contract in (
         "Sr5CareerCostQuote",
@@ -119,7 +121,10 @@ def test_shared_action_boundary_has_route_idempotency_and_fail_closed_crash_reco
     assert "TryWriteAndReadBackLocked" in store
     assert "AcquireDurableApplyingLeaseAsync" in store
     assert "_mutationOwners.AcquireExecutionLeaseAsync" in store
-    assert "Sr5CareerMutationGate.TryAcquire" in store
+    assert "_mutationOwners.TryBegin" in store
+    assert "_mutationOwners.TryComplete" in store
+    assert "ProcessGate.Wait(0)" in owner_store
+    assert "ProcessGate.WaitAsync(cancellationToken)" in owner_store
     assert "OwnerId" in store
     assert "ExpenseMatches" in coordinator
     assert "loadedSkill.Identity.SourceSkillId" in coordinator
@@ -260,13 +265,15 @@ def test_staged_active_skill_has_a_dedicated_physical_arm64_api36_proof_boundary
     assert "appliedCheckpointSha256" in driver
     assert "expected_idempotency_key" in driver
     assert "require_same_action(reviewed.payload, applied.payload)" in driver
-    assert "expected-android-head" in driver
-    assert "expected-apk-sha256" in driver
+    assert "--build-provenance-manifest" in driver
+    assert "load_and_verify_manifest" in driver
+    assert 'repositories["android"]["commit"]' in driver
+    assert 'artifact["sha256"]' in driver
     assert "allow-destructive-disposable-device" in driver
-    assert "acknowledge-unverified-build-provenance" in driver
-    assert '"status": "device-pass-non-release"' in driver
-    assert '"releaseEvidenceEligible": False' in driver
-    assert '"externalBuildAuthorityManifest": None' in driver
+    assert '"status": "device-pass-source-bound"' in driver
+    assert '"releaseEvidenceStatus": "source-and-apk-bound-local-build-not-release-attested"' in driver
+    assert 'context["buildProvenance"] = build_provenance' in driver
+    assert '"buildProvenance": context["buildProvenance"]' in driver
     assert "locate_explicit_receipt" in driver
     assert "reject_symlink_components" in driver
     assert "safe_fixture_basename" in driver
