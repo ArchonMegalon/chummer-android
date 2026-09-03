@@ -25,6 +25,8 @@ internal static class AfterRunAuthorityHarness
                 () => Sync(ExactDraftBindsProposalReviewsDigestsAndPlan)),
             (nameof(PendingReviewsAndUnavailableCompositionFailClosed),
                 () => Sync(PendingReviewsAndUnavailableCompositionFailClosed)),
+            (nameof(EntryGuardRejectsEveryNonCleanSavedBinding),
+                () => Sync(EntryGuardRejectsEveryNonCleanSavedBinding)),
             (nameof(CheckpointCasRejectsTamperingAndMalformedPayloadLocks),
                 () => Sync(CheckpointCasRejectsTamperingAndMalformedPayloadLocks)),
             (nameof(SharedMutationOwnerBlocksCrossLaneWhileOutcomeUnknownAsync),
@@ -111,6 +113,49 @@ internal static class AfterRunAuthorityHarness
                 out _,
                 out _),
             "Unavailable default composition fabricated a draft.");
+    }
+
+    private static void EntryGuardRejectsEveryNonCleanSavedBinding()
+    {
+        Sr5CareerRunnerBinding exact = Binding(41);
+        Require(Sr5AfterRunSettlementEntryGuard.TryValidate(exact, out string blocker),
+            blocker);
+
+        Sr5CareerRunnerBinding[] hostile =
+        [
+            exact with { SavedRevision = 40 },
+            exact with { IsDirty = true },
+            exact with { Error = "workspace read failed" },
+            exact with { Created = false },
+            exact with { GameEdition = "SR6" },
+            exact with { WorkspaceId = null }
+        ];
+        foreach (Sr5CareerRunnerBinding binding in hostile)
+        {
+            Require(!Sr5AfterRunSettlementEntryGuard.TryValidate(
+                    binding,
+                    out blocker),
+                "A non-clean/saved runner binding opened After Run settlement.");
+            Require(!string.IsNullOrWhiteSpace(blocker),
+                "A rejected After Run binding did not expose a blocker.");
+        }
+
+        foreach (Sr5CareerRunnerBinding binding in hostile)
+        {
+            bool rejected = false;
+            try
+            {
+                Sr5AfterRunSettlementEntryGuard.Require(binding);
+            }
+            catch (InvalidOperationException exception)
+            {
+                rejected = true;
+                Require(!string.IsNullOrWhiteSpace(exception.Message),
+                    "The throwing guard lost its explicit blocker.");
+            }
+            Require(rejected,
+                "A hostile After Run binding bypassed the throwing guard.");
+        }
     }
 
     private static void CheckpointCasRejectsTamperingAndMalformedPayloadLocks()

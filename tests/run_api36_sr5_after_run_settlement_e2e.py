@@ -677,16 +677,52 @@ def prepare_runner(
     device: physical.shared.Device,
     fixture: Path,
     fixture_sha256: str,
-) -> tuple[physical.shared.LaunchState, physical.shared.WorkspaceAuthority]:
+) -> tuple[
+    physical.shared.LaunchState,
+    physical.shared.WorkspaceAuthority,
+    physical.shared.WorkspaceAuthority,
+]:
     launch = physical.shared.launch_app(device)
     physical.shared.wait_for_phone_runners(device, timeout=120)
     device.tap("home-open-file")
     physical.shared.select_android_document(device, fixture.name)
-    authority = physical.shared.read_imported_phone_runner_authority(
+    imported = physical.shared.read_imported_phone_runner_authority(
         device,
         fixture_sha256,
     )
-    return launch, authority
+    saved = physical.shared.save_and_read_workspace_authority(device, "phone")
+    require_initial_saved_fixture_authority(imported, saved, fixture_sha256)
+    return launch, imported, saved
+
+
+def require_initial_saved_fixture_authority(
+    imported: physical.shared.WorkspaceAuthority,
+    saved: physical.shared.WorkspaceAuthority,
+    fixture_sha256: str,
+) -> None:
+    """Prove that one explicit product save durably owns the imported bytes.
+
+    Import intentionally activates a new in-memory workspace at revision 1/0;
+    the fixture XML cannot encode workspace persistence metadata. After Run is
+    allowed to open only after the existing one-shot Save control establishes
+    the same bytes as a clean 1/1 revision.
+    """
+    physical.shared.require_import_authority(imported, fixture_sha256)
+    if imported.content_revision != 1 or imported.saved_revision != 0:
+        raise RuntimeError(
+            "After Run import did not expose the exact unsaved revision 1/0 authority"
+        )
+    physical.shared.require_import_authority(saved, fixture_sha256)
+    physical.shared.require_saved_authority(saved)
+    if (
+        saved.workspace_id != imported.workspace_id
+        or saved.content_revision != imported.content_revision
+        or saved.saved_revision != imported.content_revision
+        or saved.payload_sha256 != imported.payload_sha256
+    ):
+        raise RuntimeError(
+            "Initial After Run save changed the imported workspace, revision, or fixture bytes"
+        )
 
 
 def read_checkpoint(
@@ -1148,10 +1184,10 @@ def prove_after_run(
     fixture: dict[str, object],
 ) -> dict[str, object]:
     device.shell("pm", "clear", physical.shared.PACKAGE)
-    initial_launch, imported = prepare_runner(
+    initial_launch, imported, initial_saved = prepare_runner(
         device, runner, runner_sha256
     )
-    _assert_initial_runner(root_for_authority(device, imported), fixture)
+    _assert_initial_runner(root_for_authority(device, initial_saved), fixture)
     physical.shared.record_phone_ui_locale_evidence(device, evidence_prefix="sr5-after-run")
     open_after_run(device, ENTER_ROUTE, evidence_stage="initial-entry")
     enter_manual_proposal(device, fixture)
@@ -1178,9 +1214,9 @@ def prove_after_run(
     if reviewed is None:
         raise RuntimeError("Reviewed After Run checkpoint disappeared")
     review_projection = validate_checkpoint(
-        reviewed.payload, fixture, workspace_id=imported.workspace_id,
-        workspace_revision=imported.content_revision,
-        character_projection_digest=imported.payload_sha256, version=1, phase=0,
+        reviewed.payload, fixture, workspace_id=initial_saved.workspace_id,
+        workspace_revision=initial_saved.content_revision,
+        character_projection_digest=initial_saved.payload_sha256, version=1, phase=0,
     )
     device.capture("sr5-after-run-durable-review")
     reviewed_restart = physical.shared.force_stop_and_launch_new_process(device, initial_launch)
@@ -1188,7 +1224,7 @@ def prove_after_run(
     physical.shared.tap_phone_destination(device, "phone-destination-runners")
     physical.shared.wait_for_phone_runners(device, timeout=120)
     restored_before = physical.shared.read_phone_workspace_authority(device)
-    physical.shared.require_restored_authority(imported, restored_before)
+    physical.shared.require_restored_authority(initial_saved, restored_before)
     if read_checkpoint(device) != reviewed:
         raise RuntimeError("Reviewed After Run checkpoint bytes changed across restart")
     open_after_run(device, CHOOSE_ROUTE, evidence_stage="reviewed-resume")
@@ -1200,9 +1236,9 @@ def prove_after_run(
     if applied is None:
         raise RuntimeError("Applied After Run checkpoint disappeared")
     receipt_projection = validate_checkpoint(
-        applied.payload, fixture, workspace_id=imported.workspace_id,
-        workspace_revision=imported.content_revision,
-        character_projection_digest=imported.payload_sha256, version=3, phase=2,
+        applied.payload, fixture, workspace_id=initial_saved.workspace_id,
+        workspace_revision=initial_saved.content_revision,
+        character_projection_digest=initial_saved.payload_sha256, version=3, phase=2,
     )
     require_same_draft(reviewed.payload, applied.payload)
     if any(
@@ -1230,9 +1266,10 @@ def prove_after_run(
     physical.shared.wait_for_phone_runners(device, timeout=120)
     saved = physical.shared.read_phone_workspace_authority(device)
     physical.shared.require_saved_authority(saved)
-    if saved.workspace_id != imported.workspace_id or saved.content_revision != imported.content_revision + 1:
+    if (saved.workspace_id != initial_saved.workspace_id
+            or saved.content_revision != initial_saved.content_revision + 1):
         raise RuntimeError("After Run settlement did not save one exact successor revision")
-    if saved.payload_sha256 == imported.payload_sha256:
+    if saved.payload_sha256 == initial_saved.payload_sha256:
         raise RuntimeError("After Run successor did not change the workspace payload digest")
     _assert_successor_runner(
         root_for_authority(device, saved), fixture, review_projection["transactionId"]
@@ -1253,6 +1290,7 @@ def prove_after_run(
         raise RuntimeError("After Run acknowledgement did not survive final restart")
     return {
         "import": physical.shared.workspace_authority_json(imported),
+        "initialSaved": physical.shared.workspace_authority_json(initial_saved),
         "restoredBeforeApply": physical.shared.workspace_authority_json(restored_before),
         "savedSuccessor": physical.shared.workspace_authority_json(saved),
         "finalRestartSuccessor": physical.shared.workspace_authority_json(final_saved),

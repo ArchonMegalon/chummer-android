@@ -41,6 +41,44 @@ public interface ISr5AfterRunSettlementPresenter
         CancellationToken cancellationToken);
 }
 
+public static class Sr5AfterRunSettlementEntryGuard
+{
+    public const string CleanSavedRunnerRequired =
+        "After Run settlement requires an exact clean saved SR5 runner revision.";
+
+    public static bool TryValidate(
+        Sr5CareerRunnerBinding binding,
+        out string blocker)
+    {
+        try
+        {
+            Sr5CareerRunnerGuard.RequireCreated(binding);
+        }
+        catch (InvalidOperationException exception)
+        {
+            blocker = exception.Message;
+            return false;
+        }
+
+        if (binding.SavedRevision != binding.ContentRevision
+            || binding.IsDirty
+            || !string.IsNullOrWhiteSpace(binding.Error))
+        {
+            blocker = CleanSavedRunnerRequired;
+            return false;
+        }
+
+        blocker = string.Empty;
+        return true;
+    }
+
+    public static void Require(Sr5CareerRunnerBinding binding)
+    {
+        if (!TryValidate(binding, out string blocker))
+            throw new InvalidOperationException(blocker);
+    }
+}
+
 internal sealed class RunnerSessionSr5AfterRunSettlementPresenter(
     RunnerSessionCoordinator coordinator) : ISr5AfterRunSettlementPresenter
 {
@@ -75,7 +113,7 @@ public sealed class Sr5AfterRunSettlementCoordinator(
     public async Task<Sr5AfterRunSettlementEditorState> PrepareAsync(
         CancellationToken cancellationToken = default)
     {
-        Sr5CareerRunnerGuard.RequireCreated(presenter.Binding);
+        Sr5AfterRunSettlementEntryGuard.Require(presenter.Binding);
         Sr5AfterRunSettlementEditorState editor =
             await presenter.LoadAsync(cancellationToken).ConfigureAwait(false);
         Sr5CareerRunnerBinding after = presenter.Binding;

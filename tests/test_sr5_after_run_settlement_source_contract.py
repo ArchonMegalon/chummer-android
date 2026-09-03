@@ -29,6 +29,10 @@ def test_phone_surface_has_every_governed_stage_and_two_entry_points() -> None:
     assert "OpenAfterRunSettlementAsync" in career
     assert "RunnerSessionSr5AfterRunSettlementPresenter" in career
     assert 'automationId: "sr5-career-action-after-run"' in career
+    assert "() => RunAsync(OpenAfterRunSettlementAsync)" in career
+    assert "enabled: canOpenAfterRun" in career
+    assert 'blocker.AutomationId = "sr5-career-after-run-unavailable"' in career
+    assert "Sr5AfterRunSettlementEntryGuard.TryValidate" in career
     assert 'automationId: "phone-table-after-run"' in table
     assert "Sr5AfterRunSettlementWizardPage" in table
     assert "GenericQuickEdit" not in career + table

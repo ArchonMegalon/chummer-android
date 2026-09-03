@@ -20,6 +20,7 @@ public sealed class Sr5CareerWizardPage : NativePageBase
     private Sr5CareerWizardSnapshot? _snapshot;
     private string? _loadBlocker;
     private string? _checkpointNotice;
+    private string? _afterRunEntryBlocker;
     private long _loadVersion;
     private bool _loading;
 
@@ -177,12 +178,26 @@ public sealed class Sr5CareerWizardPage : NativePageBase
 
         _body.Add(NativeTheme.Eyebrow(
             Sr5CareerFlowStrings.Text("After the run")));
+        RunnerSessionSr5AfterRunSettlementPresenter afterRunPresenter = new(Coordinator);
+        bool canOpenAfterRun = Sr5AfterRunSettlementEntryGuard.TryValidate(
+            afterRunPresenter.Binding,
+            out string afterRunBlocker);
+        _afterRunEntryBlocker = canOpenAfterRun ? null : afterRunBlocker;
         _body.Add(NativeTheme.NavigationRow(
             Sr5CareerFlowStrings.Text("After the run"),
             Sr5CareerFlowStrings.Text(
                 "Only governed proposal, run, and character IDs are selectable. This page never invents a run from the current character file."),
-            OpenAfterRunSettlementAsync,
+            () => RunAsync(OpenAfterRunSettlementAsync),
+            enabled: canOpenAfterRun,
             automationId: "sr5-career-action-after-run"));
+        if (!string.IsNullOrWhiteSpace(_afterRunEntryBlocker))
+        {
+            Label blocker = NativeTheme.Body(
+                _afterRunEntryBlocker,
+                NativeTheme.Danger);
+            blocker.AutomationId = "sr5-career-after-run-unavailable";
+            _body.Add(NativeTheme.Card(blocker));
+        }
 
         _body.Add(NativeTheme.Eyebrow(
             WizardStrings.Get("Career.Commerce", "Commerce")));
@@ -218,10 +233,37 @@ public sealed class Sr5CareerWizardPage : NativePageBase
 
     private async Task OpenAfterRunSettlementAsync()
     {
+        RunnerSessionSr5AfterRunSettlementPresenter presenter = new(Coordinator);
+        if (!Sr5AfterRunSettlementEntryGuard.TryValidate(
+                presenter.Binding,
+                out string blocker))
+        {
+            _afterRunEntryBlocker = blocker;
+            return;
+        }
+
         Sr5AfterRunSettlementCoordinator authority = new(
-            new RunnerSessionSr5AfterRunSettlementPresenter(Coordinator),
+            presenter,
             new PreferencesSr5CareerCheckpointOwnerAuthority());
-        Sr5AfterRunSettlementEditorState editor = await authority.PrepareAsync();
+        Sr5AfterRunSettlementEditorState editor;
+        try
+        {
+            editor = await authority.PrepareAsync();
+        }
+        catch (InvalidOperationException)
+        {
+            if (Sr5AfterRunSettlementEntryGuard.TryValidate(
+                    presenter.Binding,
+                    out blocker))
+            {
+                throw;
+            }
+
+            _afterRunEntryBlocker = blocker;
+            return;
+        }
+
+        _afterRunEntryBlocker = null;
         Page destination = editor.Status == Sr5AfterRunCatalogStatus.Missing
             && Coordinator.SupportsManualAfterRunProposalEntry
                 ? new Sr5AfterRunManualProposalPage(

@@ -4569,15 +4569,8 @@ public sealed class RunnerSessionCoordinator : IDisposable
             State.SavedRevision,
             State.IsDirty,
             State.Error);
-        Sr5CareerRunnerGuard.RequireCreated(before);
-        if (before.WorkspaceId is not { } workspaceId
-            || before.SavedRevision != before.ContentRevision
-            || before.IsDirty
-            || !string.IsNullOrWhiteSpace(before.Error))
-        {
-            throw new InvalidOperationException(
-                "After Run settlement requires an exact clean saved SR5 runner revision.");
-        }
+        Sr5AfterRunSettlementEntryGuard.Require(before);
+        CharacterWorkspaceId workspaceId = before.WorkspaceId!.Value;
 
         ICharacterAfterRunSettlementService? service = _afterRunSettlementService;
         IAndroidAfterRunProposalCatalog? catalog = _afterRunProposalCatalog;

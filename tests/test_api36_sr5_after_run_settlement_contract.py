@@ -1,5 +1,6 @@
 import copy
 from contextlib import redirect_stderr
+from dataclasses import replace
 import hashlib
 import io
 import json
@@ -42,6 +43,80 @@ class Api36Sr5AfterRunSettlementContractTests(unittest.TestCase):
             source,
         )
         self.assertNotIn("device.wait(alias", source)
+
+    def test_import_is_durably_saved_once_before_after_run_navigation(self) -> None:
+        fixture_sha256 = "a" * 64
+        imported = driver.physical.shared.WorkspaceAuthority(
+            "workspace-after-run", 1, 0, fixture_sha256, "b" * 64
+        )
+        saved = driver.physical.shared.WorkspaceAuthority(
+            "workspace-after-run", 1, 1, fixture_sha256, "c" * 64
+        )
+        device = unittest.mock.Mock(spec=driver.physical.shared.Device)
+        launch = driver.physical.shared.LaunchState(
+            ("731",),
+            f"{driver.physical.shared.PACKAGE}/.MainActivity",
+            "launch",
+        )
+
+        with (
+            patch.object(driver.physical.shared, "launch_app", return_value=launch),
+            patch.object(driver.physical.shared, "wait_for_phone_runners"),
+            patch.object(driver.physical.shared, "select_android_document"),
+            patch.object(
+                driver.physical.shared,
+                "read_imported_phone_runner_authority",
+                return_value=imported,
+            ) as read_import,
+            patch.object(
+                driver.physical.shared,
+                "save_and_read_workspace_authority",
+                return_value=saved,
+            ) as save_once,
+        ):
+            observed = driver.prepare_runner(
+                device,
+                Path("sr5-after-run-settlement-e2e.chum5"),
+                fixture_sha256,
+            )
+
+        self.assertEqual((launch, imported, saved), observed)
+        read_import.assert_called_once_with(device, fixture_sha256)
+        save_once.assert_called_once_with(device, "phone")
+
+    def test_initial_save_authority_rejects_mutation_or_nonexact_revisions(self) -> None:
+        fixture_sha256 = "a" * 64
+        imported = driver.physical.shared.WorkspaceAuthority(
+            "workspace-after-run", 1, 0, fixture_sha256, "b" * 64
+        )
+        exact = driver.physical.shared.WorkspaceAuthority(
+            "workspace-after-run", 1, 1, fixture_sha256, "c" * 64
+        )
+        driver.require_initial_saved_fixture_authority(
+            imported,
+            exact,
+            fixture_sha256,
+        )
+        hostile = (
+            imported,
+            replace(exact, workspace_id="foreign-workspace"),
+            replace(exact, content_revision=2, saved_revision=2),
+            replace(exact, saved_revision=0),
+            replace(exact, payload_sha256="d" * 64),
+        )
+        with self.assertRaises(RuntimeError):
+            driver.require_initial_saved_fixture_authority(
+                replace(imported, saved_revision=1),
+                exact,
+                fixture_sha256,
+            )
+        for candidate in hostile:
+            with self.subTest(candidate=candidate), self.assertRaises(RuntimeError):
+                driver.require_initial_saved_fixture_authority(
+                    imported,
+                    candidate,
+                    fixture_sha256,
+                )
 
     def test_after_run_tap_captures_immediate_process_exit_and_exception_evidence(self) -> None:
         component = f"{driver.physical.shared.PACKAGE}/.MainActivity"
