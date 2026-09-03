@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import Mock
 import xml.etree.ElementTree as ET
 
 import run_api36_sr5_downtime_calendar_e2e as driver
@@ -39,6 +40,37 @@ def validate(
 
 
 class Api36Sr5DowntimeCalendarDriverTests(unittest.TestCase):
+    def test_set_text_accepts_only_exact_value_or_explicit_semantic_composition(self) -> None:
+        def exercise(rendered: str, prefix: str | None = None) -> None:
+            device = Mock(spec=driver.physical.shared.Device)
+            node = driver.physical.shared.UiNode(
+                {"focused": "true", "bounds": "[10,20][210,80]"}
+            )
+            updated = driver.physical.shared.UiNode({"text": rendered})
+            device.find.side_effect = [node, node, updated]
+            device.input_node_is_tappable.return_value = True
+            device.keyboard_visible.return_value = False
+            driver.physical.shared.Device.set_text(
+                device,
+                "field",
+                "Label",
+                "After-run recovery complete",
+                exact_accessibility_prefix=prefix,
+            )
+
+        exercise("After-run recovery complete")
+        exercise(
+            "Downtime notes, After-run recovery complete",
+            "Downtime notes",
+        )
+        for hostile in (
+            "Wrong, After-run recovery complete",
+            "Downtime notes, After-run recovery complete extra",
+            "Downtime notes, Downtime notes, After-run recovery complete",
+        ):
+            with self.subTest(hostile=hostile), self.assertRaises(RuntimeError):
+                exercise(hostile, "Downtime notes")
+
     def test_initial_save_authority_requires_exact_1_1_unchanged_fixture(self) -> None:
         fixture_sha256 = "a" * 64
         imported = driver.physical.shared.WorkspaceAuthority(

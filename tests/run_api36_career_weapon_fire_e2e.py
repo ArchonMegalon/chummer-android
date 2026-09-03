@@ -278,7 +278,7 @@ def open_page(device: shared.Device) -> None:
     device.tap_exact_resource_id_bidirectional(
         "sr5-career/table",
         timeout=90,
-        backward_scrolls=0,
+        backward_scrolls=24,
         forward_scrolls=24,
         scroll_distance_ratio=0.18,
         evidence_prefix="career-weapon-fire-table-family",

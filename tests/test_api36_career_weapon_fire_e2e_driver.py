@@ -88,6 +88,11 @@ class Api36CareerWeaponFireDriverTests(unittest.TestCase):
             ["sr5-career/table", "sr5-career-action-playtime"],
         )
         self.assertEqual(
+            device.tap_exact_resource_id_bidirectional.call_args_list[0]
+            .kwargs["backward_scrolls"],
+            24,
+        )
+        self.assertEqual(
             [call.args[1] for call in wait_route.call_args_list],
             ["sr5-career/table", "sr5-career/playtime"],
         )

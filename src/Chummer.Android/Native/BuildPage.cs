@@ -917,7 +917,7 @@ public sealed class BuildPage : NativePageBase
         bool canOpenLifeModule = lifeModuleMethod && Coordinator.CanOpenSr5LifeModuleOrigin();
         bool canOpen = canOpenPrerequisite || canOpenLifeModule;
         Func<Task> selected = canOpenPrerequisite
-            ? OpenCreationPrerequisiteAsync
+            ? () => OpenCreationPrerequisiteAsync(prerequisite!.Value!)
             : canOpenLifeModule
                 ? OpenSr5LifeModuleOriginAsync
                 : static () => Task.CompletedTask;
@@ -1565,7 +1565,7 @@ public sealed class BuildPage : NativePageBase
                 : canOpenResources
                 ? OpenCreationResourcesAsync
                 : canOpenPrerequisite
-                ? OpenCreationPrerequisiteAsync
+                ? () => OpenCreationPrerequisiteAsync(prerequisite!.Value!)
                 : canOpenAttributes
                     ? OpenCreationAttributesAsync
                 : canOpenSkills
@@ -2029,8 +2029,9 @@ public sealed class BuildPage : NativePageBase
         await Navigation.PushAsync(page);
     }
 
-    private Task OpenCreationPrerequisiteAsync()
-        => Navigation.PushAsync(new CreationPrerequisitePage(Coordinator));
+    private Task OpenCreationPrerequisiteAsync(
+        CharacterCreationPrerequisiteState authority)
+        => Navigation.PushAsync(new CreationPrerequisitePage(Coordinator, authority));
 
     private Task OpenCreationAttributesAsync()
         => Navigation.PushAsync(new CreationAttributesPage(Coordinator));

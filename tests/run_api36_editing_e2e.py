@@ -4127,6 +4127,7 @@ class Device:
         scroll: bool = False,
         max_scrolls: int = 7,
         scroll_distance_ratio: float = 0.52,
+        exact_accessibility_prefix: str | None = None,
     ) -> None:
         node = None
         attempts = 0
@@ -4168,9 +4169,14 @@ class Device:
             self.shell("input", "keyevent", "67")
         time.sleep(0.25)
         updated = self.find(selector)
-        if updated is None or updated.attributes.get("text") != value:
+        actual = None if updated is None else updated.attributes.get("text")
+        accepted = {value}
+        if exact_accessibility_prefix is not None:
+            if not exact_accessibility_prefix.strip():
+                raise RuntimeError("Exact accessibility prefix must not be blank")
+            accepted.add(f"{exact_accessibility_prefix}, {value}")
+        if actual not in accepted:
             self.capture("field-value-failed")
-            actual = None if updated is None else updated.attributes.get("text")
             raise RuntimeError(
                 f"Field {selector!r} did not receive {value!r}; rendered {actual!r}"
             )

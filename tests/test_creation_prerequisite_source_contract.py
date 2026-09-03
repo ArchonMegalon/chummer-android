@@ -14256,7 +14256,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
         for marker in (
             'AutomationId = "creation-prerequisite-page"',
-            "Coordinator.LoadCreationPrerequisite()",
+            "ResolveCurrentAuthority()",
             "budget.Total",
             "budget.Used",
             "budget.Remaining",
@@ -14374,7 +14374,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "Coordinator.LoadCreationPrerequisite",
             "IsPrerequisiteStage(stage.StepId, snapshot.BuildMethod)",
             "CreationPrerequisitePhoneAuthority.IsReady(state, Coordinator.State)",
-            "new CreationPrerequisitePage(Coordinator)",
+            "new CreationPrerequisitePage(Coordinator, authority)",
             "CharacterCreationWizardStepIds.Method",
             "CharacterCreationBuildMethods.Priority",
             "CharacterCreationBuildMethods.SumToTen",
@@ -14404,6 +14404,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         options = (NATIVE / "CreationPriorityCategoryPage.cs").read_text(
             encoding="utf-8"
         )
+        dashboard = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
         category_refresh = options[
             options.index("protected override void Refresh()") : options.index(
                 "private async Task SelectAsync("
@@ -14414,8 +14415,22 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             page.index("protected override void Refresh()") :
             page.index("private void TryPublishApi36AttachmentProof()")
         ]
-        self.assertEqual(1, refresh.count("Coordinator.LoadCreationPrerequisite()"))
+        self.assertEqual(1, refresh.count("            ResolveCurrentAuthority();"))
         self.assertEqual(1, page.count("Coordinator.LoadCreationPrerequisite()"))
+        self.assertIn("CharacterCreationPrerequisiteState dashboardAuthority", page)
+        self.assertIn("_dashboardAuthority = dashboardAuthority", page)
+        self.assertIn(
+            "CreationPrerequisitePhoneAuthority.IsReady(authority, Coordinator.State)",
+            page,
+        )
+        self.assertLess(
+            page.index("_dashboardAuthority = null;"),
+            page.index("return Coordinator.LoadCreationPrerequisite();"),
+        )
+        self.assertIn(
+            "OpenCreationPrerequisiteAsync(prerequisite!.Value!)",
+            dashboard,
+        )
         self.assertIn("_latestApi36ProofReadyState = null;", refresh)
         self.assertIn("_latestApi36ProofReadyState = state;", refresh)
         self.assertIn("_draft.Bind(state, Coordinator.State);", page)

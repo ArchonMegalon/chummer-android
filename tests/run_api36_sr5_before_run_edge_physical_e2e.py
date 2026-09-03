@@ -634,6 +634,7 @@ def read_transaction(
     checkpoint_key: str,
     *,
     required: bool = True,
+    deadline: float | None = None,
 ) -> TransactionSnapshot | None:
     listing = device.shell(
         "run-as",
@@ -644,11 +645,17 @@ def read_transaction(
         "f",
         "-name",
         "*.xml",
+        deadline=deadline,
     )
     matches: list[str] = []
     for path in (line.strip() for line in listing.splitlines() if line.strip()):
         raw = device.run(
-            "exec-out", "run-as", shared.PACKAGE, "cat", path
+            "exec-out",
+            "run-as",
+            shared.PACKAGE,
+            "cat",
+            path,
+            deadline=deadline,
         ).stdout
         try:
             root = ET.fromstring(raw)
@@ -683,6 +690,29 @@ def read_transaction(
         payload,
         hashlib.sha256(raw_payload).hexdigest(),
     )
+
+
+def wait_for_transaction_absence(
+    device: shared.Device,
+    checkpoint_key: str,
+    *,
+    deadline: float,
+) -> None:
+    """Observe acknowledgement completion without replaying its one-shot tap."""
+    while True:
+        if read_transaction(
+            device,
+            checkpoint_key,
+            required=False,
+            deadline=deadline,
+        ) is None:
+            return
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise RuntimeError(
+                "Acknowledged table receipt was not removed within the existing deadline"
+            )
+        time.sleep(min(0.25, remaining))
 
 
 def validate_transaction(
@@ -1446,14 +1476,18 @@ def prove_lane(
         ):
             raise RuntimeError("Restarted proof state did not recover the exact receipt")
     device.capture(f"sr5-{spec.lane}-recovered-receipt")
+    acknowledge_deadline = time.monotonic() + 90
     device.tap_single_exact_resource_id(
         "sr5-table-wizard-receipt-acknowledge",
         timeout=90,
         evidence_prefix=f"sr5-{spec.lane}-acknowledge",
         surface_name=f"SR5 {spec.lane} receipt acknowledgement",
     )
-    if read_transaction(device, spec.checkpoint_key, required=False) is not None:
-        raise RuntimeError("Acknowledged table receipt was not removed")
+    wait_for_transaction_absence(
+        device,
+        spec.checkpoint_key,
+        deadline=acknowledge_deadline,
+    )
 
     final_restart = shared.force_stop_and_launch_new_process(
         device, receipt_restart.restarted

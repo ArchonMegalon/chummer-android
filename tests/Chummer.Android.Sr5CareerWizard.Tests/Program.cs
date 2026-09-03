@@ -75,6 +75,11 @@ internal static class Program
         Sr5CareerActiveSkillDraft draft = Draft();
         Sr5CareerDraftCheckpoint reviewed = Sr5CareerDraftCheckpoint.FromDraft(draft);
         FakePresenter presenter = FakePresenter.BeforeApply();
+        presenter.BindingValue = presenter.BindingValue with
+        {
+            SavedRevision = 0,
+            IsDirty = true
+        };
         Sr5CareerLiveReviewedCheckpointAuthority checkpointAuthority = new(
             new FixedOwnerAuthority(OwnerId),
             new CareerActiveSkillAdvanceEditorState(
@@ -84,11 +89,32 @@ internal static class Program
                 OmittedSkillCount: 0),
             () => presenter.Binding);
         MemoryBackend backend = new();
-        Sr5CareerDraftCheckpointStore store = new(backend, checkpointAuthority);
+        MemoryBackend mutationOwnerBackend = new();
+        Sr5CareerDraftCheckpointStore store = new(
+            backend,
+            checkpointAuthority,
+            new Sr5CareerMutationOwnerStore(mutationOwnerBackend));
         Require(store.TryCreate(reviewed, out reviewed, out string blocker), blocker);
+
+        Sr5CareerLiveReviewedCheckpointAuthority restartedCheckpointAuthority = new(
+            new FixedOwnerAuthority(OwnerId),
+            new CareerActiveSkillAdvanceEditorState(
+                draft.WorkspaceId,
+                draft.ExpectedContentRevision,
+                [draft.Quote],
+                OmittedSkillCount: 0),
+            () => presenter.Binding);
+        store = new Sr5CareerDraftCheckpointStore(
+            backend,
+            restartedCheckpointAuthority,
+            new Sr5CareerMutationOwnerStore(mutationOwnerBackend));
+        Require(
+            store.TryRead(out Sr5CareerDraftCheckpoint recoveredReviewed, out blocker)
+            && recoveredReviewed == reviewed,
+            "A new process must recover the exact reviewed action before Applying.");
         Require(
             store.TryBeginApply(
-                Sr5CareerCheckpointCas.From(reviewed),
+                Sr5CareerCheckpointCas.From(recoveredReviewed),
                 out Sr5CareerDraftCheckpoint applying,
                 out blocker),
             blocker);
@@ -102,6 +128,9 @@ internal static class Program
         Sr5CareerApplyResult result = await authority.ApplyAsync(draft, applying, store);
 
         Require(result.Status == Sr5CareerApplyStatus.Applied, result.Message);
+        Require(
+            presenter.ApplyCalls == 1,
+            "An exact unsaved imported revision must execute the typed mutation exactly once.");
         Sr5CareerActiveSkillReceipt receipt = result.Receipt!;
         Require(receipt.SkillId == SkillId && receipt.SourceSkillId == SourceSkillId, "Receipt must use reloaded skill identity.");
         Require(receipt.SavedRating == draft.Quote.TotalBaseRating + 1, "Receipt must use the reloaded target rating.");
@@ -558,6 +587,75 @@ internal static class Program
             blocker);
         Require(!store.TryRead(out _, out blocker) && string.IsNullOrWhiteSpace(blocker),
             "The exact authenticated current owner must be able to abandon its Reviewed checkpoint.");
+
+        FakePresenter imported = FakePresenter.BeforeApply();
+        imported.BindingValue = imported.BindingValue with
+        {
+            SavedRevision = 0,
+            IsDirty = true
+        };
+        Sr5CareerLiveReviewedCheckpointAuthority live = new(
+            new FixedOwnerAuthority(OwnerId),
+            new CareerActiveSkillAdvanceEditorState(
+                draft.WorkspaceId,
+                draft.ExpectedContentRevision,
+                [draft.Quote],
+                OmittedSkillCount: 0),
+            () => imported.Binding);
+        Sr5CareerDraftCheckpoint applying = reviewed with
+        {
+            Version = 2,
+            Phase = Sr5CareerCheckpointPhase.Applying
+        };
+        Require(
+            live.OwnsCurrentRunner(reviewed)
+            && live.OwnsCurrentRunner(applying),
+            "The exact dirty imported revision must own Reviewed and Applying before the typed atomic save.");
+
+        Sr5CareerRunnerBinding exactImportedBinding = imported.Binding;
+        Sr5CareerRunnerBinding[] incoherentOrStaleBindings =
+        [
+            exactImportedBinding with { SavedRevision = exactImportedBinding.ContentRevision },
+            exactImportedBinding with { IsDirty = false },
+            exactImportedBinding with { SavedRevision = exactImportedBinding.ContentRevision + 1 },
+            exactImportedBinding with { ContentRevision = exactImportedBinding.ContentRevision - 1 },
+            exactImportedBinding with { Error = "workspace failure" },
+            exactImportedBinding with { WorkspaceId = new CharacterWorkspaceId("foreign-workspace") }
+        ];
+        foreach (Sr5CareerRunnerBinding hostile in incoherentOrStaleBindings)
+        {
+            imported.BindingValue = hostile;
+            Require(
+                !live.OwnsCurrentRunner(reviewed)
+                && !live.OwnsCurrentRunner(applying),
+                "Incoherent, stale, failed, or foreign runner state must not own the typed checkpoint.");
+        }
+
+        imported.BindingValue = exactImportedBinding with
+        {
+            SavedRevision = exactImportedBinding.ContentRevision,
+            IsDirty = false
+        };
+        Require(
+            live.OwnsCurrentRunner(reviewed)
+            && live.OwnsCurrentRunner(applying),
+            "An exact clean reviewed revision must retain checkpoint ownership.");
+
+        imported.PublishApplied(draft, includeExpense: true);
+        Sr5CareerDraftCheckpoint applied = applying with
+        {
+            Version = 3,
+            Phase = Sr5CareerCheckpointPhase.Applied
+        };
+        Require(
+            live.OwnsCurrentRunner(applying)
+            && live.OwnsCurrentRunner(applied),
+            "Only the exact clean saved successor may own Applying recovery and Applied receipt state.");
+        imported.BindingValue = imported.BindingValue with { IsDirty = true };
+        Require(
+            !live.OwnsCurrentRunner(applying)
+            && !live.OwnsCurrentRunner(applied),
+            "A dirty successor must remain unresolved and must not own an Applying or Applied receipt transition.");
     }
 
     private static void PriorSchemaCheckpointRemainsAReplayBlockingLock()

@@ -605,11 +605,13 @@ def prove_downtime(
     device.set_text(
         "sr5-downtime-calendar-notes", "Notes (edit only)", fixture["edit"]["notes"],
         scroll=True, max_scrolls=24, scroll_distance_ratio=0.18,
+        exact_accessibility_prefix="Downtime notes",
     )
     device.set_text(
         "sr5-downtime-calendar-notes-color", "Notes color (edit only)",
         fixture["edit"]["notesColor"], scroll=True, max_scrolls=24,
         scroll_distance_ratio=0.18,
+        exact_accessibility_prefix="Notes color (edit only)",
     )
     _tap_exact(device, "sr5-downtime-calendar-review")
     reviewed = read_journal(device)

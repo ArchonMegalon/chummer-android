@@ -57,29 +57,38 @@ internal sealed class Sr5CareerLiveReviewedCheckpointAuthority(
         return checkpoint.Phase switch
         {
             Sr5CareerCheckpointPhase.Reviewed =>
-                binding.ContentRevision == checkpoint.ExpectedContentRevision
-                && binding.SavedRevision == checkpoint.ExpectedContentRevision
-                && !binding.IsDirty
-                && string.IsNullOrWhiteSpace(binding.Error),
+                OwnsExactPreApplyRevision(binding, checkpoint),
             Sr5CareerCheckpointPhase.Applying =>
-                (binding.ContentRevision == checkpoint.ExpectedContentRevision
-                    && binding.SavedRevision == checkpoint.ExpectedContentRevision
-                    && !binding.IsDirty
-                    && string.IsNullOrWhiteSpace(binding.Error))
-                || (checkpoint.ExpectedContentRevision < long.MaxValue
-                    && binding.ContentRevision == checkpoint.ExpectedContentRevision + 1
-                    && binding.SavedRevision == binding.ContentRevision
-                    && !binding.IsDirty
-                    && string.IsNullOrWhiteSpace(binding.Error)),
+                OwnsExactPreApplyRevision(binding, checkpoint)
+                || OwnsExactSavedSuccessor(binding, checkpoint),
             Sr5CareerCheckpointPhase.Applied =>
-                checkpoint.ExpectedContentRevision < long.MaxValue
-                && binding.ContentRevision == checkpoint.ExpectedContentRevision + 1
-                && binding.SavedRevision == binding.ContentRevision
-                && !binding.IsDirty
-                && string.IsNullOrWhiteSpace(binding.Error),
+                OwnsExactSavedSuccessor(binding, checkpoint),
             _ => false
         };
     }
+
+    private static bool OwnsExactPreApplyRevision(
+        Sr5CareerRunnerBinding binding,
+        Sr5CareerDraftCheckpoint checkpoint)
+    {
+        bool persistenceStateIsCoherent = binding.SavedRevision >= 0
+            && binding.SavedRevision <= binding.ContentRevision
+            && (binding.IsDirty
+                ? binding.SavedRevision < binding.ContentRevision
+                : binding.SavedRevision == binding.ContentRevision);
+        return binding.ContentRevision == checkpoint.ExpectedContentRevision
+            && persistenceStateIsCoherent
+            && string.IsNullOrWhiteSpace(binding.Error);
+    }
+
+    private static bool OwnsExactSavedSuccessor(
+        Sr5CareerRunnerBinding binding,
+        Sr5CareerDraftCheckpoint checkpoint)
+        => checkpoint.ExpectedContentRevision < long.MaxValue
+            && binding.ContentRevision == checkpoint.ExpectedContentRevision + 1
+            && binding.SavedRevision == binding.ContentRevision
+            && !binding.IsDirty
+            && string.IsNullOrWhiteSpace(binding.Error);
 }
 
 internal sealed record Sr5CareerActiveSkillWizardDependencies(

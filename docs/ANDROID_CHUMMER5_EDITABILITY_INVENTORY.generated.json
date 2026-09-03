@@ -107,7 +107,7 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "09a56b4c79d1bd113e4abec7203b0725079d3faab9246663a224e02f28f8e3bc"
+        "sha256": "feb1d5e42fbb68aed5abd6fd0b9ef2df026eccb05ef11a0f7b40e80870846041"
       },
       {
         "path": "src/Chummer.Android/Native/MorePage.cs",
@@ -602,7 +602,7 @@
       {
         "path": "src/Chummer.Android/Native/CreationPrerequisitePage.cs",
         "exists": true,
-        "sha256": "8c8ffa86f11003a4a9a94647af9a3063f6b85f4d012646e8d88c2e4202440b0e"
+        "sha256": "2ddf26559f338b8edfbfccf6e1a132e224b6603b7c0f20891ab6c291a614bc78"
       },
       {
         "path": "src/Chummer.Android/Native/CreationPriorityCategoryPage.cs",
@@ -872,7 +872,7 @@
       {
         "path": "tests/run_api36_sr5_before_run_edge_physical_e2e.py",
         "exists": true,
-        "sha256": "3314cfde94777c17174172f1928fb455893e24274c770e368437e47230af4130"
+        "sha256": "d1eb8d618aa3b6a2d5e3427bc8ffdf31f74abce6845d2d6457efb2ed463bca81"
       },
       {
         "path": "tests/api36_proof_state.py",
@@ -957,7 +957,7 @@
       {
         "path": "tests/run_api36_editing_e2e.py",
         "exists": true,
-        "sha256": "e2bd844d1522e8601311113088aeed0b34dd09b7dc0c03b5a73849f266d8b216"
+        "sha256": "bf9e348f7ec9b9bcb068d38529e16cd462187b67ab58ceab89f762ad4af7b0fc"
       },
       {
         "path": "tests/run_api36_career_active_skill_advance_e2e.py",
@@ -972,7 +972,7 @@
       {
         "path": "tests/run_api36_career_weapon_fire_e2e.py",
         "exists": true,
-        "sha256": "5f4b75653d2ffa94e5ef6165ad238f0f4f5e70105420348de635a146b7cece7e"
+        "sha256": "323195e895eb7af414dcdae7342719f8df7d5419bc007d444e7cc1e2eb0aa2ef"
       },
       {
         "path": "tests/fixtures/career-weapon-fire-e2e.chum5",

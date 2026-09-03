@@ -18,6 +18,7 @@ public sealed class CreationPrerequisitePage : NativePageBase
         Spacing = 14
     };
     private readonly CreationPrerequisitePhoneDraft _draft = new();
+    private CharacterCreationPrerequisiteState? _dashboardAuthority;
     private IReadOnlyList<string> _prepareBlockers = [];
 #if CHUMMER_API36_PROOF_INSTRUMENTATION
     private CharacterCreationPrerequisiteState? _latestApi36ProofReadyState;
@@ -26,8 +27,12 @@ public sealed class CreationPrerequisitePage : NativePageBase
     private bool _api36ProofAttachmentPublished;
 #endif
 
-    public CreationPrerequisitePage(RunnerSessionCoordinator coordinator) : base(coordinator)
+    public CreationPrerequisitePage(
+        RunnerSessionCoordinator coordinator,
+        CharacterCreationPrerequisiteState dashboardAuthority) : base(coordinator)
     {
+        _dashboardAuthority = dashboardAuthority
+            ?? throw new ArgumentNullException(nameof(dashboardAuthority));
         Title = WizardStrings.Get("Priority.PageTitle", "Priorities");
         AutomationId = "creation-prerequisite-page";
         Content = new ScrollView { Content = _body };
@@ -66,7 +71,7 @@ public sealed class CreationPrerequisitePage : NativePageBase
         _body.Add(NativeTheme.Eyebrow(WizardStrings.Get("Priority.Eyebrow", "Character creation")));
         _body.Add(NativeTheme.Title(WizardStrings.Get("Priority.Heading", "Priority / Sum-to-Ten")));
         CharacterCreationFoundationResult<CharacterCreationPrerequisiteState> load =
-            Coordinator.LoadCreationPrerequisite();
+            ResolveCurrentAuthority();
         if (!string.Equals(
                 load.Outcome,
                 CharacterCreationFoundationOutcomes.Success,
@@ -121,6 +126,25 @@ public sealed class CreationPrerequisitePage : NativePageBase
         _latestApi36ProofReadyState = state;
         TryPublishApi36AttachmentProof();
 #endif
+    }
+
+    private CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>
+        ResolveCurrentAuthority()
+    {
+        if (_dashboardAuthority is { } authority
+            && CreationPrerequisitePhoneAuthority.IsReady(authority, Coordinator.State))
+        {
+            return new CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>(
+                CharacterCreationFoundationOutcomes.Success,
+                authority,
+                []);
+        }
+
+        // The dashboard projection is immutable and revision-bound. Once it no longer
+        // matches the live overview, discard it before asking Core for a fresh authority;
+        // an older projection must never become a navigation or mutation fallback.
+        _dashboardAuthority = null;
+        return Coordinator.LoadCreationPrerequisite();
     }
 
 #if CHUMMER_API36_PROOF_INSTRUMENTATION
