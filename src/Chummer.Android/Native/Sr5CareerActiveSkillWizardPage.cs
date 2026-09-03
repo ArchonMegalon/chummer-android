@@ -36,7 +36,8 @@ internal sealed class Sr5CareerLiveReviewedCheckpointAuthority(
                 CurrentOwnerId,
                 draft,
                 _currentBinding());
-        return currentAccess.Owns(checkpoint);
+        return currentAccess.Owns(checkpoint)
+            && OwnsCurrentRunner(checkpoint);
     }
 
     public bool OwnsCurrentRunner(Sr5CareerDraftCheckpoint checkpoint)
@@ -57,9 +58,9 @@ internal sealed class Sr5CareerLiveReviewedCheckpointAuthority(
         return checkpoint.Phase switch
         {
             Sr5CareerCheckpointPhase.Reviewed =>
-                OwnsExactPreApplyRevision(binding, checkpoint),
+                OwnsExactCleanReviewedRevision(binding, checkpoint),
             Sr5CareerCheckpointPhase.Applying =>
-                OwnsExactPreApplyRevision(binding, checkpoint)
+                OwnsExactCleanReviewedRevision(binding, checkpoint)
                 || OwnsExactSavedSuccessor(binding, checkpoint),
             Sr5CareerCheckpointPhase.Applied =>
                 OwnsExactSavedSuccessor(binding, checkpoint),
@@ -67,19 +68,13 @@ internal sealed class Sr5CareerLiveReviewedCheckpointAuthority(
         };
     }
 
-    private static bool OwnsExactPreApplyRevision(
+    private static bool OwnsExactCleanReviewedRevision(
         Sr5CareerRunnerBinding binding,
         Sr5CareerDraftCheckpoint checkpoint)
-    {
-        bool persistenceStateIsCoherent = binding.SavedRevision >= 0
-            && binding.SavedRevision <= binding.ContentRevision
-            && (binding.IsDirty
-                ? binding.SavedRevision < binding.ContentRevision
-                : binding.SavedRevision == binding.ContentRevision);
-        return binding.ContentRevision == checkpoint.ExpectedContentRevision
-            && persistenceStateIsCoherent
+        => binding.ContentRevision == checkpoint.ExpectedContentRevision
+            && binding.SavedRevision == checkpoint.ExpectedContentRevision
+            && !binding.IsDirty
             && string.IsNullOrWhiteSpace(binding.Error);
-    }
 
     private static bool OwnsExactSavedSuccessor(
         Sr5CareerRunnerBinding binding,

@@ -394,14 +394,23 @@ def read_journal(
     device: physical.shared.Device,
     *,
     required: bool = True,
+    deadline: float | None = None,
 ) -> physical.CheckpointSnapshot | None:
     listing = device.shell(
         "run-as", physical.shared.PACKAGE, "find", "shared_prefs", "-type", "f",
         "-name", "*.xml",
+        deadline=deadline,
     )
     matches: list[str] = []
     for path in (line.strip() for line in listing.splitlines() if line.strip()):
-        raw = device.run("exec-out", "run-as", physical.shared.PACKAGE, "cat", path).stdout
+        raw = device.run(
+            "exec-out",
+            "run-as",
+            physical.shared.PACKAGE,
+            "cat",
+            path,
+            deadline=deadline,
+        ).stdout
         try:
             root = ET.fromstring(raw)
         except ET.ParseError as error:
@@ -425,6 +434,24 @@ def read_journal(
         _mapping(payload, "Downtime journal"),
         hashlib.sha256(serialized.encode("utf-8")).hexdigest(),
     )
+
+
+def wait_for_journal(
+    device: physical.shared.Device,
+    *,
+    deadline: float,
+) -> physical.CheckpointSnapshot:
+    """Observe the one review tap's durable result without replaying the tap."""
+    while True:
+        snapshot = read_journal(device, required=False, deadline=deadline)
+        if snapshot is not None:
+            return snapshot
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise RuntimeError(
+                "Durable Downtime Calendar journal was not observed within the existing deadline"
+            )
+        time.sleep(min(0.25, remaining))
 
 
 def validate_journal(
@@ -613,10 +640,9 @@ def prove_downtime(
         scroll_distance_ratio=0.18,
         exact_accessibility_prefix="Notes color (edit only)",
     )
+    review_deadline = time.monotonic() + 120
     _tap_exact(device, "sr5-downtime-calendar-review")
-    reviewed = read_journal(device)
-    if reviewed is None:
-        raise RuntimeError("Reviewed Downtime journal disappeared")
+    reviewed = wait_for_journal(device, deadline=review_deadline)
     review_projection = validate_journal(
         reviewed.payload, fixture, workspace_id=initial_saved.workspace_id,
         workspace_revision=initial_saved.content_revision,

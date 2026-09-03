@@ -1,5 +1,6 @@
 import ast
 import copy
+from dataclasses import replace
 import importlib.util
 from pathlib import Path
 import sys
@@ -22,6 +23,39 @@ SPEC.loader.exec_module(driver)
 
 
 class Api36CareerWeaponFireDriverTests(unittest.TestCase):
+    def test_initial_save_requires_exact_unchanged_fixture_authority(self) -> None:
+        fixture_sha256 = "a" * 64
+        imported = driver.shared.WorkspaceAuthority(
+            "weapon-workspace", 1, 0, fixture_sha256, "b" * 64
+        )
+        exact = driver.shared.WorkspaceAuthority(
+            "weapon-workspace", 1, 1, fixture_sha256, "c" * 64
+        )
+        driver.require_initial_saved_fixture_authority(imported, exact, fixture_sha256)
+
+        hostile = (
+            imported,
+            replace(exact, workspace_id="foreign-workspace"),
+            replace(exact, content_revision=2, saved_revision=2),
+            replace(exact, saved_revision=0),
+            replace(exact, payload_sha256="d" * 64),
+        )
+        for candidate in hostile:
+            with self.subTest(candidate=candidate), self.assertRaises(RuntimeError):
+                driver.require_initial_saved_fixture_authority(
+                    imported, candidate, fixture_sha256
+                )
+
+    def test_exact_initial_save_precedes_first_table_wizard_entry(self) -> None:
+        source = DRIVER.read_text(encoding="utf-8")
+        proof = source.split("def prove_short_burst(", 1)[1].split("\ndef main", 1)[0]
+        self.assertEqual(1, proof.count("save_and_read_workspace_authority"))
+        self.assertLess(
+            proof.index("save_and_read_workspace_authority"),
+            proof.index("open_page(device)"),
+        )
+        self.assertIn('"initialSaved":', proof)
+
     def test_driver_is_phone_only_source_digest_revision_and_new_pid_bound(self) -> None:
         source = DRIVER.read_text(encoding="utf-8")
         ast.parse(source)
@@ -44,9 +78,9 @@ class Api36CareerWeaponFireDriverTests(unittest.TestCase):
             '"tableWizardSessionSha256"',
         ):
             self.assertIn(digest, source)
-        self.assertIn("saved.content_revision != imported.content_revision + 1", source)
-        self.assertIn("saved.payload_sha256 == imported.payload_sha256", source)
-        self.assertIn("saved.document_sha256 == imported.document_sha256", source)
+        self.assertIn("saved.content_revision != initial_saved.content_revision + 1", source)
+        self.assertIn("saved.payload_sha256 == initial_saved.payload_sha256", source)
+        self.assertIn("saved.document_sha256 == initial_saved.document_sha256", source)
         self.assertEqual(1, source.count("shared.force_stop_and_launch_new_process"))
         self.assertIn("shared.require_restored_authority(saved, restored)", source)
         self.assertIn('"afterForceStop": list(restart.after_force_stop.process_ids)', source)

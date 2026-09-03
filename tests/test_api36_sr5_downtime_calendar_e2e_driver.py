@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, call, patch
 import xml.etree.ElementTree as ET
 
 import run_api36_sr5_downtime_calendar_e2e as driver
@@ -40,6 +40,26 @@ def validate(
 
 
 class Api36Sr5DowntimeCalendarDriverTests(unittest.TestCase):
+    def test_review_journal_poll_is_read_only_and_deadline_bound(self) -> None:
+        device = Mock(spec=driver.physical.shared.Device)
+        expected = Mock(spec=driver.physical.CheckpointSnapshot)
+        with (
+            patch.object(driver, "read_journal", side_effect=(None, expected)) as read,
+            patch.object(driver.time, "monotonic", return_value=2.0),
+            patch.object(driver.time, "sleep") as sleep,
+        ):
+            actual = driver.wait_for_journal(device, deadline=10.0)
+        self.assertIs(actual, expected)
+        self.assertEqual(
+            [
+                call(device, required=False, deadline=10.0),
+                call(device, required=False, deadline=10.0),
+            ],
+            read.call_args_list,
+        )
+        sleep.assert_called_once_with(0.25)
+        device.assert_not_called()
+
     def test_set_text_accepts_only_exact_value_or_explicit_semantic_composition(self) -> None:
         def exercise(rendered: str, prefix: str | None = None) -> None:
             device = Mock(spec=driver.physical.shared.Device)

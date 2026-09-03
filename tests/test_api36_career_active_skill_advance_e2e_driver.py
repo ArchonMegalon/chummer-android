@@ -37,8 +37,8 @@ class Api36CareerActiveSkillAdvanceDriverTests(unittest.TestCase):
         self.assertIn('"activeSkillSourceResolverSha256"', source)
         self.assertIn('"presenterPersistenceSha256"', source)
         self.assertIn('"workspaceStoreSha256"', source)
-        self.assertIn("saved.content_revision != imported.content_revision + 1", source)
-        self.assertIn("saved.payload_sha256 == imported.payload_sha256", source)
+        self.assertIn("saved.content_revision != initial_saved.content_revision + 1", source)
+        self.assertIn("saved.payload_sha256 == initial_saved.payload_sha256", source)
         self.assertEqual(2, source.count("shared.force_stop_and_launch_new_process"))
         self.assertIn("shared.require_restored_authority(saved, first_restored)", source)
         self.assertIn("shared.require_restored_authority(saved, second_restored)", source)
@@ -56,12 +56,31 @@ class Api36CareerActiveSkillAdvanceDriverTests(unittest.TestCase):
         self.assertNotIn('device.tap("Advance"', source)
         self.assertNotIn('device.tap("Cancel"', source)
         self.assertIn("shared.read_imported_phone_runner_authority(", source)
+        self.assertEqual(
+            1,
+            source.count('shared.save_and_read_workspace_authority(device, "phone")'),
+        )
+        self.assertIn("imported.content_revision != 1", source)
+        self.assertIn("imported.saved_revision != 0", source)
+        self.assertIn("saved.content_revision != 1", source)
+        self.assertIn("saved.saved_revision != 1", source)
+        self.assertIn("saved.payload_sha256 != imported.payload_sha256", source)
+        self.assertIn(
+            'device.tap_exact_resource_id_bidirectional(\n'
+            '        "sr5-career-active-skill-receipt-acknowledge"',
+            source,
+        )
+        self.assertIn("forward_scrolls=16", source)
         self.assertNotIn('device.wait("CareerActiveSkillAdvanceE2E"', source)
         self.assertIn('"Active Skill Pilot Ground Craft 3 -> 4"', source)
         self.assertIn('"ImproveSkill"', source)
 
     def test_typed_review_and_receipt_precede_saved_authority_proof(self) -> None:
         source = DRIVER.read_text(encoding="utf-8")
+        initial_save = source.index(
+            "initial_saved = save_initial_import_without_content_mutation"
+        )
+        open_page = source.index("open_page(device)", initial_save)
         review = source.index(
             'device.tap_single_exact_resource_id(\n'
             '        "sr5-career-active-skill-review"'
@@ -70,7 +89,7 @@ class Api36CareerActiveSkillAdvanceDriverTests(unittest.TestCase):
             "wait_exact_route(device, REVIEW_ROUTE, timeout=90)", review
         )
         unchanged_before_apply = source.index(
-            "assert_before(root_for_authority(device, imported))", review_route
+            "assert_before(root_for_authority(device, initial_saved))", review_route
         )
         apply = source.index(
             'device.tap_single_exact_resource_id(\n'
@@ -81,7 +100,7 @@ class Api36CareerActiveSkillAdvanceDriverTests(unittest.TestCase):
             "wait_exact_route(device, RECEIPT_ROUTE, timeout=180)", apply
         )
         acknowledge = source.index(
-            'device.tap_single_exact_resource_id(\n'
+            'device.tap_exact_resource_id_bidirectional(\n'
             '        "sr5-career-active-skill-receipt-acknowledge"',
             receipt,
         )
@@ -99,6 +118,8 @@ class Api36CareerActiveSkillAdvanceDriverTests(unittest.TestCase):
         self.assertEqual(
             sorted(
                 (
+                    initial_save,
+                    open_page,
                     review,
                     review_route,
                     unchanged_before_apply,
@@ -118,6 +139,8 @@ class Api36CareerActiveSkillAdvanceDriverTests(unittest.TestCase):
                 )
             ),
             [
+                initial_save,
+                open_page,
                 review,
                 review_route,
                 unchanged_before_apply,
@@ -137,6 +160,57 @@ class Api36CareerActiveSkillAdvanceDriverTests(unittest.TestCase):
             ],
         )
         self.assertNotIn('device.wait("build-career-active-skill"', source)
+
+    def test_initial_save_authority_requires_exact_1_0_to_1_1_transition(self) -> None:
+        imported = driver.shared.WorkspaceAuthority(
+            "workspace-1",
+            1,
+            0,
+            "a" * 64,
+            "b" * 64,
+        )
+        saved = driver.shared.WorkspaceAuthority(
+            "workspace-1",
+            1,
+            1,
+            "a" * 64,
+            "c" * 64,
+        )
+        device = Mock(spec=driver.shared.Device)
+
+        original = driver.shared.save_and_read_workspace_authority
+        try:
+            driver.shared.save_and_read_workspace_authority = Mock(return_value=saved)
+            self.assertEqual(
+                saved,
+                driver.save_initial_import_without_content_mutation(device, imported),
+            )
+            driver.shared.save_and_read_workspace_authority.assert_called_once_with(
+                device,
+                "phone",
+            )
+
+            hostile_pairs = (
+                (imported.__class__("workspace-1", 2, 0, "a" * 64, "b" * 64), saved),
+                (imported, saved.__class__("workspace-2", 1, 1, "a" * 64, "c" * 64)),
+                (imported, saved.__class__("workspace-1", 1, 0, "a" * 64, "c" * 64)),
+                (imported, saved.__class__("workspace-1", 1, 1, "d" * 64, "c" * 64)),
+            )
+            for hostile_imported, hostile_saved in hostile_pairs:
+                with self.subTest(
+                    imported=hostile_imported,
+                    saved=hostile_saved,
+                ):
+                    driver.shared.save_and_read_workspace_authority = Mock(
+                        return_value=hostile_saved
+                    )
+                    with self.assertRaises(RuntimeError):
+                        driver.save_initial_import_without_content_mutation(
+                            device,
+                            hostile_imported,
+                        )
+        finally:
+            driver.shared.save_and_read_workspace_authority = original
 
     def test_family_route_tap_requires_one_exact_tappable_authority(self) -> None:
         exact = driver.shared.UiNode(

@@ -75,11 +75,6 @@ internal static class Program
         Sr5CareerActiveSkillDraft draft = Draft();
         Sr5CareerDraftCheckpoint reviewed = Sr5CareerDraftCheckpoint.FromDraft(draft);
         FakePresenter presenter = FakePresenter.BeforeApply();
-        presenter.BindingValue = presenter.BindingValue with
-        {
-            SavedRevision = 0,
-            IsDirty = true
-        };
         Sr5CareerLiveReviewedCheckpointAuthority checkpointAuthority = new(
             new FixedOwnerAuthority(OwnerId),
             new CareerActiveSkillAdvanceEditorState(
@@ -130,7 +125,7 @@ internal static class Program
         Require(result.Status == Sr5CareerApplyStatus.Applied, result.Message);
         Require(
             presenter.ApplyCalls == 1,
-            "An exact unsaved imported revision must execute the typed mutation exactly once.");
+            "An exact clean reviewed revision must execute the typed mutation exactly once.");
         Sr5CareerActiveSkillReceipt receipt = result.Receipt!;
         Require(receipt.SkillId == SkillId && receipt.SourceSkillId == SourceSkillId, "Receipt must use reloaded skill identity.");
         Require(receipt.SavedRating == draft.Quote.TotalBaseRating + 1, "Receipt must use the reloaded target rating.");
@@ -589,11 +584,6 @@ internal static class Program
             "The exact authenticated current owner must be able to abandon its Reviewed checkpoint.");
 
         FakePresenter imported = FakePresenter.BeforeApply();
-        imported.BindingValue = imported.BindingValue with
-        {
-            SavedRevision = 0,
-            IsDirty = true
-        };
         Sr5CareerLiveReviewedCheckpointAuthority live = new(
             new FixedOwnerAuthority(OwnerId),
             new CareerActiveSkillAdvanceEditorState(
@@ -610,13 +600,17 @@ internal static class Program
         Require(
             live.OwnsCurrentRunner(reviewed)
             && live.OwnsCurrentRunner(applying),
-            "The exact dirty imported revision must own Reviewed and Applying before the typed atomic save.");
+            "The exact clean saved revision must own Reviewed and Applying before the typed atomic save.");
 
         Sr5CareerRunnerBinding exactImportedBinding = imported.Binding;
         Sr5CareerRunnerBinding[] incoherentOrStaleBindings =
         [
-            exactImportedBinding with { SavedRevision = exactImportedBinding.ContentRevision },
-            exactImportedBinding with { IsDirty = false },
+            exactImportedBinding with
+            {
+                SavedRevision = exactImportedBinding.ContentRevision - 1,
+                IsDirty = true
+            },
+            exactImportedBinding with { IsDirty = true },
             exactImportedBinding with { SavedRevision = exactImportedBinding.ContentRevision + 1 },
             exactImportedBinding with { ContentRevision = exactImportedBinding.ContentRevision - 1 },
             exactImportedBinding with { Error = "workspace failure" },
@@ -631,15 +625,43 @@ internal static class Program
                 "Incoherent, stale, failed, or foreign runner state must not own the typed checkpoint.");
         }
 
-        imported.BindingValue = exactImportedBinding with
+        foreach ((long contentRevision, long savedRevision) in new[]
         {
-            SavedRevision = exactImportedBinding.ContentRevision,
-            IsDirty = false
-        };
-        Require(
-            live.OwnsCurrentRunner(reviewed)
-            && live.OwnsCurrentRunner(applying),
-            "An exact clean reviewed revision must retain checkpoint ownership.");
+            (ContentRevision: 2L, SavedRevision: 0L),
+            (ContentRevision: 5L, SavedRevision: 3L)
+        })
+        {
+            Sr5CareerActiveSkillDraft dirtyDraft = Draft(contentRevision);
+            Sr5CareerDraftCheckpoint dirtyReviewed =
+                Sr5CareerDraftCheckpoint.FromDraft(dirtyDraft);
+            Sr5CareerDraftCheckpoint dirtyApplying = dirtyReviewed with
+            {
+                Version = 2,
+                Phase = Sr5CareerCheckpointPhase.Applying
+            };
+            FakePresenter dirty = FakePresenter.BeforeApply();
+            dirty.BindingValue = dirty.BindingValue with
+            {
+                ContentRevision = contentRevision,
+                SavedRevision = savedRevision,
+                IsDirty = true
+            };
+            Sr5CareerLiveReviewedCheckpointAuthority dirtyAuthority = new(
+                new FixedOwnerAuthority(OwnerId),
+                new CareerActiveSkillAdvanceEditorState(
+                    dirtyDraft.WorkspaceId,
+                    dirtyDraft.ExpectedContentRevision,
+                    [dirtyDraft.Quote],
+                    OmittedSkillCount: 0),
+                () => dirty.Binding);
+            Require(
+                !dirtyAuthority.Owns(dirtyReviewed)
+                && !dirtyAuthority.OwnsCurrentRunner(dirtyReviewed)
+                && !dirtyAuthority.OwnsCurrentRunner(dirtyApplying),
+                $"Dirty {contentRevision}/{savedRevision} must not create or own Reviewed or Applying.");
+        }
+
+        imported.BindingValue = exactImportedBinding;
 
         imported.PublishApplied(draft, includeExpense: true);
         Sr5CareerDraftCheckpoint applied = applying with
@@ -984,13 +1006,17 @@ internal static class Program
     }
 #endif
 
-    private static Sr5CareerActiveSkillDraft Draft()
+    private static Sr5CareerActiveSkillDraft Draft(long contentRevision = 41)
     {
         CharacterCareerActiveSkillAdvanceQuote quote = Quote(
             karmaPoints: 1,
             totalRating: 3,
             availableKarma: 20);
-        CareerActiveSkillAdvanceEditorState editor = new(WorkspaceId, 41, [quote], 0);
+        CareerActiveSkillAdvanceEditorState editor = new(
+            WorkspaceId,
+            contentRevision,
+            [quote],
+            0);
         Require(
             Sr5CareerActiveSkillDraft.TryCreate(
                 editor,

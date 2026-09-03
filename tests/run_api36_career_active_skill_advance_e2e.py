@@ -255,6 +255,26 @@ def read_saved_authority(device: shared.Device) -> shared.WorkspaceAuthority:
     return authority
 
 
+def save_initial_import_without_content_mutation(
+    device: shared.Device,
+    imported: shared.WorkspaceAuthority,
+) -> shared.WorkspaceAuthority:
+    if imported.content_revision != 1 or imported.saved_revision != 0:
+        raise RuntimeError(
+            "Career Active-Skill import did not expose exact initial 1/0 authority"
+        )
+    saved = shared.save_and_read_workspace_authority(device, "phone")
+    if saved.workspace_id != imported.workspace_id:
+        raise RuntimeError("Initial explicit save changed workspace identity")
+    if saved.content_revision != 1 or saved.saved_revision != 1:
+        raise RuntimeError(
+            "Initial explicit save did not produce exact unchanged 1/1 authority"
+        )
+    if saved.payload_sha256 != imported.payload_sha256:
+        raise RuntimeError("Initial explicit save changed the runner payload")
+    return saved
+
+
 def assert_ui_readback(device: shared.Device) -> None:
     rating = device.wait_for_single_exact_resource_id(
         "sr5-career-active-skill-rating",
@@ -287,6 +307,8 @@ def prove_advancement(
     device.shell("pm", "clear", shared.PACKAGE)
     initial_launch, imported = prepare_runner(device, fixture.name, fixture_sha256)
     assert_before(root_for_authority(device, imported))
+    initial_saved = save_initial_import_without_content_mutation(device, imported)
+    assert_before(root_for_authority(device, initial_saved))
     open_page(device)
     device.wait_for_single_exact_resource_id(
         "sr5-career-active-skill-rating",
@@ -307,7 +329,7 @@ def prove_advancement(
         surface_name="SR5 Career Active-Skill review control",
     )
     wait_exact_route(device, REVIEW_ROUTE, timeout=90)
-    assert_before(root_for_authority(device, imported))
+    assert_before(root_for_authority(device, initial_saved))
     device.tap_single_exact_resource_id(
         "sr5-career-active-skill-apply",
         timeout=120,
@@ -315,9 +337,12 @@ def prove_advancement(
         surface_name="SR5 Career Active-Skill apply control",
     )
     wait_exact_route(device, RECEIPT_ROUTE, timeout=180)
-    device.tap_single_exact_resource_id(
+    device.tap_exact_resource_id_bidirectional(
         "sr5-career-active-skill-receipt-acknowledge",
         timeout=120,
+        backward_scrolls=0,
+        forward_scrolls=16,
+        scroll_distance_ratio=0.18,
         evidence_prefix="career-active-skill-receipt-acknowledge",
         surface_name="SR5 Career Active-Skill receipt acknowledgement",
     )
@@ -328,11 +353,11 @@ def prove_advancement(
         surface_name="Runner page after typed receipt acknowledgement",
     )
     saved = read_saved_authority(device)
-    if saved.workspace_id != imported.workspace_id:
+    if saved.workspace_id != initial_saved.workspace_id:
         raise RuntimeError("Active-skill save changed workspace identity")
-    if saved.content_revision != imported.content_revision + 1:
+    if saved.content_revision != initial_saved.content_revision + 1:
         raise RuntimeError("Active-skill save did not apply exactly one content revision")
-    if saved.payload_sha256 == imported.payload_sha256:
+    if saved.payload_sha256 == initial_saved.payload_sha256:
         raise RuntimeError("Active-skill save did not change the authority payload digest")
     expense_id = assert_after(root_for_authority(device, saved))
 
@@ -365,6 +390,7 @@ def prove_advancement(
     device.capture("career-active-skill-second-process-restart")
     return {
         "import": shared.workspace_authority_json(imported),
+        "initialSaved": shared.workspace_authority_json(initial_saved),
         "saved": shared.workspace_authority_json(saved),
         "firstRestored": shared.workspace_authority_json(first_restored),
         "secondRestored": shared.workspace_authority_json(second_restored),

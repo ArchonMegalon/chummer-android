@@ -232,6 +232,27 @@ def prepare_runner(
     return launch, authority
 
 
+def require_initial_saved_fixture_authority(
+    imported: shared.WorkspaceAuthority,
+    saved: shared.WorkspaceAuthority,
+    fixture_sha256: str,
+) -> None:
+    shared.require_import_authority(imported, fixture_sha256)
+    if imported.content_revision != 1 or imported.saved_revision != 0:
+        raise RuntimeError("Career Weapon import was not the exact unsaved 1/0 authority")
+    shared.require_import_authority(saved, fixture_sha256)
+    shared.require_saved_authority(saved)
+    if (
+        saved.workspace_id != imported.workspace_id
+        or saved.content_revision != imported.content_revision
+        or saved.saved_revision != imported.content_revision
+        or saved.payload_sha256 != imported.payload_sha256
+    ):
+        raise RuntimeError(
+            "Initial Career Weapon save changed workspace, revision, or fixture bytes"
+        )
+
+
 def length_prefixed_hash(*values: object) -> str:
     canonical = "".join(f"{len(str(value))}:{value};" for value in values)
     return "sha256:" + hashlib.sha256(canonical.encode("utf-8")).hexdigest()
@@ -371,19 +392,21 @@ def prove_short_burst(
 ) -> dict[str, object]:
     device.shell("pm", "clear", shared.PACKAGE)
     initial_launch, imported = prepare_runner(device, fixture.name, fixture_sha256)
-    preserved = assert_before(root_for_authority(device, imported))
+    initial_saved = shared.save_and_read_workspace_authority(device, "phone")
+    require_initial_saved_fixture_authority(imported, initial_saved, fixture_sha256)
+    preserved = assert_before(root_for_authority(device, initial_saved))
 
     open_page(device)
     assert_ui_readback(device, INITIAL_AMMO)
     apply_short_burst(device, INITIAL_AMMO)
     saved = read_saved_authority(device)
-    if saved.workspace_id != imported.workspace_id:
+    if saved.workspace_id != initial_saved.workspace_id:
         raise RuntimeError("Weapon-Fire save changed workspace identity")
-    if saved.content_revision != imported.content_revision + 1:
+    if saved.content_revision != initial_saved.content_revision + 1:
         raise RuntimeError("Weapon-Fire save did not apply exactly one content revision")
-    if saved.payload_sha256 == imported.payload_sha256:
+    if saved.payload_sha256 == initial_saved.payload_sha256:
         raise RuntimeError("Weapon-Fire save did not change the authority payload digest")
-    if saved.document_sha256 == imported.document_sha256:
+    if saved.document_sha256 == initial_saved.document_sha256:
         raise RuntimeError("Weapon-Fire save did not change the durable document digest")
     assert_after(root_for_authority(device, saved), preserved)
 
@@ -409,6 +432,7 @@ def prove_short_burst(
         "ammoGearId": AMMO_GEAR_ID,
         "unrelatedXmlAuthority": preserved,
         "import": shared.workspace_authority_json(imported),
+        "initialSaved": shared.workspace_authority_json(initial_saved),
         "saved": shared.workspace_authority_json(saved),
         "restored": shared.workspace_authority_json(restored),
         "restartProcessIds": {
