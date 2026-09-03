@@ -333,6 +333,12 @@ CREATION_METHOD_REACQUISITION_SCAN_ID = (
     "creation-stage-method-ready-reacquisition"
 )
 CREATION_METHOD_REACQUISITION_DIRECTION = "down"
+CREATION_METHOD_ONE_SHOT_SCHEMA = (
+    "chummer.android.creation-method-one-shot/v1"
+)
+CREATION_METHOD_ONE_SHOT_DIGEST_DOMAIN = (
+    "canonical-accessibility-signature-json"
+)
 TALENT_GRANT_SCAN_GESTURE_RATIO = 0.60
 TALENT_GRANT_OPTION_RECOVERY_GESTURE_RATIO = 0.22
 TALENT_GRANT_REACQUISITION_MAX_SCROLLS = 40
@@ -366,6 +372,16 @@ def accessibility_signature(
         "bounds",
     )
     return tuple(sorted(tuple(node.attributes.get(key, "") for key in keys) for node in nodes))
+
+
+def accessibility_signature_sha256(nodes: list[shared.UiNode]) -> str:
+    """Hash the exact canonical viewport signature used by scan stability."""
+    payload = json.dumps(
+        accessibility_signature(nodes),
+        ensure_ascii=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return "sha256:" + hashlib.sha256(payload).hexdigest()
 
 
 def read_only_hierarchy_timed(
@@ -3639,6 +3655,225 @@ def reacquire_exact_ready_creation_method(
     )
 
 
+def reacquire_creation_method_one_shot_target(
+    device: shared.Device,
+    *,
+    expected_detail: str,
+    diagnostic_capture: str,
+    deadline: float,
+) -> tuple[shared.UiNode, dict[str, object]]:
+    """Select one fresh exact method node after diagnostics and without moving.
+
+    The broader dashboard scan positions the method card. Diagnostics can take
+    long enough for the native toolbar or ScrollView geometry to settle, so its
+    earlier node bounds are never action authority. This final observation is
+    deliberately one fresh viewport with no gesture or action fallback.
+    """
+    if not expected_detail or not diagnostic_capture:
+        raise ValueError(
+            "Creation method one-shot targeting requires prior detail and diagnostics"
+        )
+    display_width, display_height = device.display_size(deadline=deadline)
+    hierarchy_durations_ms: list[int] = []
+    nodes = fresh_hierarchy_timed(
+        device,
+        hierarchy_durations_ms,
+        deadline=deadline,
+    )
+    observed_at_utc = datetime.now(timezone.utc).isoformat()
+    matches = [
+        node
+        for node in nodes
+        if _exact_resource_id(node) == "creation-stage-method"
+    ]
+    if len(matches) != 1:
+        device.capture(
+            "creation-stage-method-one-shot-cardinality-invalid",
+            deadline=deadline,
+        )
+        raise RuntimeError(
+            "Creation method one-shot target has cardinality "
+            f"{len(matches)}; expected one"
+        )
+    node = matches[0]
+    _require_canonical_chummer_resource_id(
+        device,
+        node,
+        "creation-stage-method",
+        evidence_prefix="creation-stage-method-one-shot",
+        surface_name="Creation method one-shot target",
+        deadline=deadline,
+    )
+    bounds_match = shared.BOUNDS.fullmatch(node.attributes.get("bounds", ""))
+    tappable = False
+    if bounds_match is not None:
+        left, top, right, bottom = (
+            int(value) for value in bounds_match.groups()
+        )
+        center_y = (top + bottom) // 2
+        tappable = (
+            right - left > 8
+            and bottom - top > 8
+            and 0 <= left < right <= display_width
+            and 0 <= top < bottom <= display_height
+            and center_y < display_height * 0.96
+        )
+    if (
+        node.attributes.get("enabled") != "true"
+        or node.attributes.get("clickable") != "true"
+        or not tappable
+    ):
+        device.capture(
+            "creation-stage-method-one-shot-not-tappable",
+            deadline=deadline,
+        )
+        raise RuntimeError(
+            "Creation method one-shot target was not visible, enabled, and clickable"
+        )
+    detail = require_creation_method_navigation(node, ready=True)
+    if detail != expected_detail:
+        device.capture(
+            "creation-stage-method-one-shot-detail-drift",
+            deadline=deadline,
+        )
+        raise RuntimeError(
+            "Creation method authority changed after diagnostics and before the "
+            f"one-shot tap: expected={expected_detail!r}, actual={detail!r}"
+        )
+    x, y = node.center
+    proof: dict[str, object] = {
+        "schema": CREATION_METHOD_ONE_SHOT_SCHEMA,
+        "status": "target-acquired",
+        "selector": "creation-stage-method",
+        "fullResourceId": (
+            f"{shared.PACKAGE}:id/creation-stage-method"
+        ),
+        "diagnosticCapture": diagnostic_capture,
+        "preTap": {
+            "observedAtUtc": observed_at_utc,
+            "hierarchyDigest": accessibility_signature_sha256(nodes),
+            "hierarchyDigestDomain": CREATION_METHOD_ONE_SHOT_DIGEST_DOMAIN,
+            "nodeCount": len(nodes),
+            "hierarchyReadCount": len(hierarchy_durations_ms),
+            "hierarchyElapsedMs": sum(hierarchy_durations_ms),
+            "bounds": node.attributes.get("bounds", ""),
+            "center": {"x": x, "y": y},
+            "enabled": True,
+            "clickable": True,
+            "detail": detail,
+        },
+        "tapReplayPerformed": False,
+        "fallbackTapPerformed": False,
+    }
+    return node, proof
+
+
+def require_creation_method_one_shot_proof(
+    proof: dict[str, object],
+    *,
+    require_first_post_tap: bool,
+) -> None:
+    """Fail closed on forged, replayed, or geometrically stale tap evidence."""
+    pre_tap = proof.get("preTap")
+    tap = proof.get("tap")
+    first_post_tap = proof.get("firstPostTap")
+    if not isinstance(pre_tap, dict) or not isinstance(tap, dict):
+        raise RuntimeError("Creation method one-shot proof is incomplete")
+    center = pre_tap.get("center")
+    coordinates = tap.get("coordinates")
+    bounds_match = re.fullmatch(
+        r"\[([0-9]+),([0-9]+)\]\[([0-9]+),([0-9]+)\]",
+        str(pre_tap.get("bounds", "")),
+    )
+    expected_center: dict[str, int] | None = None
+    if bounds_match is not None:
+        left, top, right, bottom = (
+            int(value) for value in bounds_match.groups()
+        )
+        if left < right and top < bottom:
+            expected_center = {
+                "x": (left + right) // 2,
+                "y": (top + bottom) // 2,
+            }
+    required_literals = {
+        "schema": CREATION_METHOD_ONE_SHOT_SCHEMA,
+        "selector": "creation-stage-method",
+        "fullResourceId": f"{shared.PACKAGE}:id/creation-stage-method",
+        "diagnosticCapture": "creation-priority-core-bootstrap-ready",
+        "tapReplayPerformed": False,
+        "fallbackTapPerformed": False,
+    }
+    differing = {
+        field: (expected, proof.get(field))
+        for field, expected in required_literals.items()
+        if proof.get(field) != expected
+    }
+    if differing:
+        raise RuntimeError(
+            f"Creation method one-shot proof authority differs: {differing!r}"
+        )
+    if (
+        proof.get("status")
+        not in {"tap-issued", "first-post-tap-observed"}
+        or pre_tap.get("hierarchyDigestDomain")
+        != CREATION_METHOD_ONE_SHOT_DIGEST_DOMAIN
+        or not isinstance(pre_tap.get("hierarchyDigest"), str)
+        or CANONICAL_AUTHORITY_DIGEST.fullmatch(
+            str(pre_tap["hierarchyDigest"])
+        )
+        is None
+        or type(pre_tap.get("nodeCount")) is not int
+        or int(pre_tap["nodeCount"]) <= 0
+        or pre_tap.get("hierarchyReadCount") != 1
+        or type(pre_tap.get("hierarchyElapsedMs")) is not int
+        or int(pre_tap["hierarchyElapsedMs"]) < 0
+        or pre_tap.get("enabled") is not True
+        or pre_tap.get("clickable") is not True
+        or expected_center is None
+        or not isinstance(pre_tap.get("detail"), str)
+        or not str(pre_tap["detail"]).strip()
+        or not isinstance(center, dict)
+        or center != expected_center
+        or tap.get("command") != "input tap"
+        or type(tap.get("count")) is not int
+        or tap.get("count") != 1
+        or not isinstance(coordinates, dict)
+        or coordinates != expected_center
+    ):
+        raise RuntimeError(
+            "Creation method one-shot proof target, digest, or tap differs"
+        )
+    if not require_first_post_tap:
+        if first_post_tap is not None:
+            raise RuntimeError(
+                "Creation method one-shot proof observed a post-tap hierarchy too early"
+            )
+        return
+    if (
+        proof.get("status") != "first-post-tap-observed"
+        or not isinstance(first_post_tap, dict)
+        or first_post_tap.get("hierarchyDigestDomain")
+        != CREATION_METHOD_ONE_SHOT_DIGEST_DOMAIN
+        or not isinstance(first_post_tap.get("hierarchyDigest"), str)
+        or CANONICAL_AUTHORITY_DIGEST.fullmatch(
+            str(first_post_tap["hierarchyDigest"])
+        )
+        is None
+        or type(first_post_tap.get("nodeCount")) is not int
+        or int(first_post_tap["nodeCount"]) < 0
+        or type(first_post_tap.get("routeCardinality")) is not int
+        or int(first_post_tap["routeCardinality"]) not in {0, 1}
+        or type(first_post_tap.get("methodCardinality")) is not int
+        or int(first_post_tap["methodCardinality"]) not in {0, 1}
+        or type(first_post_tap.get("bindingCardinality")) is not int
+        or int(first_post_tap["bindingCardinality"]) not in {0, 1}
+        or type(first_post_tap.get("routeResolved")) is not bool
+    ):
+        raise RuntimeError(
+            "Creation method one-shot first post-tap authority differs"
+        )
+
+
 def _pending_timeout_text(value: object) -> str:
     if value is None:
         return ""
@@ -4451,6 +4686,7 @@ def wait_for_prerequisite_scan_origin(
     deadline: float | None = None,
     immediately_after_opening_tap: bool = False,
     scan_observer: Callable[[dict[str, object]], None] | None = None,
+    opening_action: dict[str, object] | None = None,
 ) -> PriorityRankOrigin:
     """Acquire and retain the exact top viewport of the pushed prerequisite page.
 
@@ -4472,6 +4708,15 @@ def wait_for_prerequisite_scan_origin(
         or type(immediately_after_opening_tap) is not bool
     ):
         raise ValueError("A positive timeout and nonnegative reverse bound are required")
+    if opening_action is not None:
+        if not immediately_after_opening_tap:
+            raise ValueError(
+                "Creation method one-shot evidence requires the immediate post-tap observer"
+            )
+        require_creation_method_one_shot_proof(
+            opening_action,
+            require_first_post_tap=False,
+        )
     route_selector = "creation-prerequisite-page"
     top_selectors = (
         "creation-prerequisite-method",
@@ -4495,8 +4740,7 @@ def wait_for_prerequisite_scan_origin(
     ) -> None:
         if scan_observer is None:
             return
-        scan_observer(
-            {
+        payload: dict[str, object] = {
                 "scanId": "creation-prerequisite-scan-origin",
                 "status": status,
                 "observationMode": (
@@ -4514,7 +4758,9 @@ def wait_for_prerequisite_scan_origin(
                 "elapsedMs": round((time.monotonic() - started) * 1000),
                 "deadlineEnforced": deadline is not None,
             }
-        )
+        if opening_action is not None:
+            payload["openingAction"] = json.loads(json.dumps(opening_action))
+        scan_observer(payload)
 
     def exact_matches(nodes: list[shared.UiNode]) -> dict[str, list[shared.UiNode]]:
         return {
@@ -4523,6 +4769,29 @@ def wait_for_prerequisite_scan_origin(
             ]
             for selector in (route_selector, *top_selectors)
         }
+
+    def observe_first_post_tap(nodes: list[shared.UiNode]) -> None:
+        if opening_action is None or "firstPostTap" in opening_action:
+            return
+        matches = exact_matches(nodes)
+        route_cardinality = len(matches[route_selector])
+        method_cardinality = len(matches[top_selectors[0]])
+        binding_cardinality = len(matches[top_selectors[1]])
+        opening_action["firstPostTap"] = {
+            "observedAtUtc": datetime.now(timezone.utc).isoformat(),
+            "hierarchyDigest": accessibility_signature_sha256(nodes),
+            "hierarchyDigestDomain": CREATION_METHOD_ONE_SHOT_DIGEST_DOMAIN,
+            "nodeCount": len(nodes),
+            "routeCardinality": route_cardinality,
+            "methodCardinality": method_cardinality,
+            "bindingCardinality": binding_cardinality,
+            "routeResolved": (
+                route_cardinality == 1
+                and method_cardinality == 1
+                and binding_cardinality == 1
+            ),
+        }
+        opening_action["status"] = "first-post-tap-observed"
 
     while time.monotonic() < operation_deadline:
         file_backed_attempts += 1
@@ -4596,6 +4865,7 @@ def wait_for_prerequisite_scan_origin(
             hierarchy_durations_ms.append(
                 round((time.perf_counter() - direct_started) * 1000)
             )
+            observe_first_post_tap(nodes)
             matches = exact_matches(nodes)
             ambiguous = {
                 selector: len(candidates)
@@ -4658,6 +4928,7 @@ def wait_for_prerequisite_scan_origin(
                 hierarchy_durations_ms=tuple(hierarchy_durations_ms),
                 empty_hierarchy_reads=empty_hierarchy_reads,
             )
+        observe_first_post_tap(nodes)
         if not nodes:
             empty_hierarchy_reads += 1
             sleep_before_phase_deadline(
@@ -4673,6 +4944,11 @@ def wait_for_prerequisite_scan_origin(
             if len(candidates) > 1
         }
         if ambiguous:
+            record_origin(
+                "cardinality-invalid",
+                lease_reserve_exhausted=False,
+                direct_fallback_result="not-needed",
+            )
             device.capture(
                 "creation-prerequisite-scan-origin-cardinality-invalid",
                 deadline=operation_deadline,
@@ -4724,6 +5000,11 @@ def wait_for_prerequisite_scan_origin(
             deadline=operation_deadline,
             operation="prerequisite scan-origin retry wait",
         )
+    record_origin(
+        "timeout",
+        lease_reserve_exhausted=False,
+        direct_fallback_result="not-needed",
+    )
     device.capture(
         "creation-prerequisite-scan-origin-unavailable",
         deadline=operation_deadline,
@@ -10303,19 +10584,13 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         deadline=advanced_editor_deadline,
     )
     dashboard_binding = dashboard_scan.binding
-    method_node, method_detail, _ = reacquire_exact_ready_creation_method(
+    _positioned_method_node, method_detail, _ = reacquire_exact_ready_creation_method(
         device,
         expected_detail=dashboard_scan.method_detail,
         max_swipes=DASHBOARD_SCAN_MAX_SCROLLS,
         scan_observer=progress.record_scan,
         deadline=advanced_editor_deadline,
     )
-    ready_navigation = {
-        "detail": method_detail,
-        "clickable": True,
-        "enabled": True,
-        "authorityProjectionWaited": authority_projection_waited,
-    }
     device.capture(
         "creation-priority-core-bootstrap-ready",
         deadline=advanced_editor_deadline,
@@ -10325,10 +10600,27 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     prerequisite_deadline = progress.active_phase_deadline(
         "prerequisite-authority-inventory"
     )
+    method_node, method_opening_action = (
+        reacquire_creation_method_one_shot_target(
+            device,
+            expected_detail=method_detail,
+            diagnostic_capture="creation-priority-core-bootstrap-ready",
+            deadline=prerequisite_deadline,
+        )
+    )
+    tap_x, tap_y = method_node.center
+    method_opening_action["status"] = "tap-issued"
+    method_opening_action["tap"] = {
+        "command": "input tap",
+        "count": 1,
+        "coordinates": {"x": tap_x, "y": tap_y},
+        "issuedAtUtc": datetime.now(timezone.utc).isoformat(),
+    }
     device.shell(
         "input",
         "tap",
-        *(str(value) for value in method_node.center),
+        str(tap_x),
+        str(tap_y),
         timeout=shared._remaining_operation_timeout(
             deadline=prerequisite_deadline,
             maximum=15,
@@ -10340,7 +10632,19 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         deadline=prerequisite_deadline,
         immediately_after_opening_tap=True,
         scan_observer=progress.record_scan,
+        opening_action=method_opening_action,
     )
+    require_creation_method_one_shot_proof(
+        method_opening_action,
+        require_first_post_tap=True,
+    )
+    ready_navigation = {
+        "detail": method_detail,
+        "clickable": True,
+        "enabled": True,
+        "authorityProjectionWaited": authority_projection_waited,
+        "methodOpeningOneShot": method_opening_action,
+    }
     prerequisite_scan = scan_prerequisite_authority(
         device,
         initial_observation=prerequisite_origin,

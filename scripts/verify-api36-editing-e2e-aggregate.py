@@ -51,6 +51,12 @@ CREATION_METHOD_REACQUISITION_SCAN_ID = (
     "creation-stage-method-ready-reacquisition"
 )
 CREATION_METHOD_REACQUISITION_MAX_SCROLLS = 18
+CREATION_METHOD_ONE_SHOT_SCHEMA = (
+    "chummer.android.creation-method-one-shot/v1"
+)
+CREATION_METHOD_ONE_SHOT_DIGEST_DOMAIN = (
+    "canonical-accessibility-signature-json"
+)
 CONFIRMED_RECEIPT_SCAN_ID = "creation-prerequisite-confirmed-receipt"
 CONFIRMED_RECEIPT_BACK_REACQUISITION_SCAN_ID = (
     "creation-prerequisite-confirmed-receipt-back-reacquisition"
@@ -266,6 +272,145 @@ def require_creation_method_reacquisition_scan(
             "creation method reacquisition scan did not reconcile gestures, screens, "
             "hierarchy reads, or phase timing"
         )
+
+
+def require_creation_method_one_shot_opening(timing: dict[str, Any]) -> None:
+    """Require fresh geometry and one non-replayed tap before route observation."""
+    scans = timing.get("scans")
+    if not isinstance(scans, list):
+        raise ValueError("creation prerequisite scan timing evidence is missing")
+    matches = [
+        scan
+        for scan in scans
+        if isinstance(scan, dict)
+        and scan.get("scanId") == "creation-prerequisite-scan-origin"
+        and scan.get("phaseId") == "prerequisite-authority-inventory"
+        and isinstance(scan.get("openingAction"), dict)
+    ]
+    if len(matches) != 1:
+        raise ValueError(
+            "creation method one-shot opening cardinality differs: "
+            f"expected=1, actual={len(matches)}"
+        )
+    scan = matches[0]
+    action = scan["openingAction"]
+    pre_tap = action.get("preTap")
+    tap = action.get("tap")
+    first_post_tap = action.get("firstPostTap")
+    if (
+        scan.get("status") != "resolved"
+        or not isinstance(pre_tap, dict)
+        or not isinstance(tap, dict)
+        or not isinstance(first_post_tap, dict)
+    ):
+        raise ValueError("creation method one-shot opening evidence is incomplete")
+    required_literals = {
+        "schema": CREATION_METHOD_ONE_SHOT_SCHEMA,
+        "status": "first-post-tap-observed",
+        "selector": "creation-stage-method",
+        "fullResourceId": (
+            "com.myexternalbrain.chummer:id/creation-stage-method"
+        ),
+        "diagnosticCapture": "creation-priority-core-bootstrap-ready",
+        "tapReplayPerformed": False,
+        "fallbackTapPerformed": False,
+    }
+    differing = {
+        field: (expected, action.get(field))
+        for field, expected in required_literals.items()
+        if action.get(field) != expected
+    }
+    if differing:
+        raise ValueError(
+            f"creation method one-shot opening authority differs: {differing!r}"
+        )
+    bounds_match = re.fullmatch(
+        r"\[([0-9]+),([0-9]+)\]\[([0-9]+),([0-9]+)\]",
+        str(pre_tap.get("bounds", "")),
+    )
+    center = pre_tap.get("center")
+    coordinates = tap.get("coordinates")
+    if bounds_match is None:
+        raise ValueError("creation method one-shot bounds are invalid")
+    left, top, right, bottom = (
+        int(value) for value in bounds_match.groups()
+    )
+    expected_center = {"x": (left + right) // 2, "y": (top + bottom) // 2}
+    if (
+        left >= right
+        or top >= bottom
+        or not isinstance(center, dict)
+        or center != expected_center
+        or not isinstance(coordinates, dict)
+        or coordinates != expected_center
+        or tap.get("command") != "input tap"
+        or type(tap.get("count")) is not int
+        or tap.get("count") != 1
+        or pre_tap.get("enabled") is not True
+        or pre_tap.get("clickable") is not True
+        or type(pre_tap.get("nodeCount")) is not int
+        or int(pre_tap["nodeCount"]) <= 0
+        or pre_tap.get("hierarchyReadCount") != 1
+        or type(pre_tap.get("hierarchyElapsedMs")) is not int
+        or int(pre_tap["hierarchyElapsedMs"]) < 0
+        or pre_tap.get("hierarchyDigestDomain")
+        != CREATION_METHOD_ONE_SHOT_DIGEST_DOMAIN
+        or not isinstance(pre_tap.get("hierarchyDigest"), str)
+        or re.fullmatch(
+            r"sha256:[0-9a-f]{64}",
+            str(pre_tap["hierarchyDigest"]),
+        )
+        is None
+        or not isinstance(pre_tap.get("detail"), str)
+        or not str(pre_tap["detail"]).strip()
+    ):
+        raise ValueError(
+            "creation method one-shot target geometry or tap authority differs"
+        )
+    cardinalities = (
+        first_post_tap.get("routeCardinality"),
+        first_post_tap.get("methodCardinality"),
+        first_post_tap.get("bindingCardinality"),
+    )
+    if (
+        first_post_tap.get("hierarchyDigestDomain")
+        != CREATION_METHOD_ONE_SHOT_DIGEST_DOMAIN
+        or not isinstance(first_post_tap.get("hierarchyDigest"), str)
+        or re.fullmatch(
+            r"sha256:[0-9a-f]{64}",
+            str(first_post_tap["hierarchyDigest"]),
+        )
+        is None
+        or type(first_post_tap.get("nodeCount")) is not int
+        or int(first_post_tap["nodeCount"]) < 0
+        or any(type(value) is not int or value not in {0, 1} for value in cardinalities)
+        or type(first_post_tap.get("routeResolved")) is not bool
+        or first_post_tap["routeResolved"]
+        is not all(value == 1 for value in cardinalities)
+    ):
+        raise ValueError(
+            "creation method one-shot first post-tap route authority differs"
+        )
+    timestamps: list[datetime] = []
+    for field, container in (
+        ("observedAtUtc", pre_tap),
+        ("issuedAtUtc", tap),
+        ("observedAtUtc", first_post_tap),
+    ):
+        value = container.get(field)
+        if not isinstance(value, str):
+            raise ValueError("creation method one-shot timestamps are missing")
+        try:
+            parsed = datetime.fromisoformat(value)
+        except ValueError as error:
+            raise ValueError(
+                "creation method one-shot timestamp is invalid"
+            ) from error
+        if parsed.utcoffset() != timezone.utc.utcoffset(parsed):
+            raise ValueError("creation method one-shot timestamp is not UTC")
+        timestamps.append(parsed)
+    if timestamps != sorted(timestamps):
+        raise ValueError("creation method one-shot timestamps are not monotonic")
 
 
 def require_confirmed_receipt_back_reacquisition_scan(
@@ -1041,6 +1186,7 @@ def require_creation_timing_within_budget(receipt: dict[str, Any]) -> None:
             "advanced-editor-gate-inventory"
         ],
     )
+    require_creation_method_one_shot_opening(timing)
     require_confirmed_receipt_back_reacquisition_scan(
         timing,
         preview_phase_elapsed_ms=phase_elapsed_by_id["preview-confirm"],

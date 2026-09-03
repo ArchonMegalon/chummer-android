@@ -1808,16 +1808,20 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         advanced_editor_scan = source.index(
             "dashboard_scan = assert_uncreated_advanced_editor_gated("
         )
-        method_reacquisition = source.index(
-            "method_node, method_detail, _ = reacquire_exact_ready_creation_method("
+        method_positioning = source.index(
+            "_positioned_method_node, method_detail, _ = reacquire_exact_ready_creation_method("
         )
-        ready_navigation = source.index("ready_navigation = {")
         ready_capture = source.index('"creation-priority-core-bootstrap-ready"')
         prerequisite_authority_start = source.index(
             'progress.advance("prerequisite-authority-inventory")'
         )
+        final_method_selection = source.index(
+            "reacquire_creation_method_one_shot_target(",
+            prerequisite_authority_start,
+        )
         prerequisite_tap = source.index("device.shell(", prerequisite_authority_start)
         prerequisite_scan = source.index("prerequisite_scan = scan_prerequisite_authority(")
+        ready_navigation = source.index("ready_navigation = {", prerequisite_tap)
         prerequisite_binding = source.index(
             "prerequisite_binding_authority = require_prerequisite_binding("
         )
@@ -1864,16 +1868,27 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertLess(dashboard_authority_wait, dashboard_authority_record)
         self.assertLess(dashboard_authority_record, advanced_editor_start)
         self.assertLess(advanced_editor_start, advanced_editor_scan)
-        self.assertLess(advanced_editor_scan, method_reacquisition)
-        self.assertLess(method_reacquisition, ready_navigation)
-        self.assertLess(ready_navigation, ready_capture)
+        self.assertLess(advanced_editor_scan, method_positioning)
+        self.assertLess(method_positioning, ready_capture)
         self.assertLess(ready_capture, prerequisite_authority_start)
         self.assertIn(
             "deadline=advanced_editor_deadline",
             source[ready_capture:prerequisite_authority_start],
         )
-        self.assertLess(prerequisite_authority_start, prerequisite_tap)
-        self.assertLess(prerequisite_tap, prerequisite_scan)
+        self.assertLess(prerequisite_authority_start, final_method_selection)
+        self.assertLess(final_method_selection, prerequisite_tap)
+        self.assertLess(prerequisite_tap, ready_navigation)
+        self.assertLess(ready_navigation, prerequisite_scan)
+        self.assertNotIn(
+            "device.capture(",
+            source[final_method_selection:prerequisite_tap],
+        )
+        self.assertEqual(
+            1,
+            source[final_method_selection:prerequisite_scan].count(
+                '"input",\n        "tap",'
+            ),
+        )
         self.assertLess(prerequisite_scan, prerequisite_binding)
         self.assertLess(prerequisite_binding, prerequisite_digest_validation)
         self.assertLess(prerequisite_digest_validation, prerequisite_karma_validation)
@@ -6216,6 +6231,222 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             scan_observer=None,
         )
         device.wait.assert_not_called()
+
+    def test_initial_method_opening_reacquires_one_fresh_exact_target_after_diagnostics(
+        self,
+    ) -> None:
+        node = self.canonical_node(
+            "creation-stage-method",
+            text="",
+            **{
+                "content-desc": "Build method · Priority",
+                "bounds": "[98,275][984,355]",
+            },
+        )
+        unrelated = self.canonical_node("creation-wizard-binding")
+        device = mock.Mock(spec=driver.shared.Device)
+        device_events: list[str] = []
+        device.display_size.side_effect = lambda **_kwargs: (
+            device_events.append("display-size") or (1080, 1920)
+        )
+        hierarchy_durations: list[int] = []
+
+        def fresh(_device, durations, **_kwargs):
+            device_events.append("fresh-hierarchy")
+            hierarchy_durations.append(len(durations))
+            durations.append(7)
+            return [unrelated, node]
+
+        with mock.patch.object(driver, "fresh_hierarchy_timed", side_effect=fresh) as read:
+            selected, proof = driver.reacquire_creation_method_one_shot_target(
+                device,
+                expected_detail="Build method · Priority",
+                diagnostic_capture="creation-priority-core-bootstrap-ready",
+                deadline=driver.time.monotonic() + 30,
+            )
+
+        self.assertIs(node, selected)
+        read.assert_called_once()
+        self.assertEqual(["display-size", "fresh-hierarchy"], device_events)
+        self.assertEqual([0], hierarchy_durations)
+        self.assertEqual("target-acquired", proof["status"])
+        self.assertEqual("[98,275][984,355]", proof["preTap"]["bounds"])
+        self.assertEqual({"x": 541, "y": 315}, proof["preTap"]["center"])
+        self.assertEqual(1, proof["preTap"]["hierarchyReadCount"])
+        self.assertRegex(proof["preTap"]["hierarchyDigest"], r"^sha256:[0-9a-f]{64}$")
+        device.shell.assert_not_called()
+        device.swipe_up.assert_not_called()
+        device.swipe_down.assert_not_called()
+        device.capture.assert_not_called()
+
+    def test_initial_method_opening_fails_closed_before_tap_on_stale_or_ambiguous_target(
+        self,
+    ) -> None:
+        exact = self.canonical_node(
+            "creation-stage-method",
+            text="",
+            **{"content-desc": "Build method · Priority"},
+        )
+        cases = (
+            ("missing", [], "cardinality 0"),
+            ("duplicate", [exact, exact], "cardinality 2"),
+            (
+                "disabled",
+                [self.canonical_node(
+                    "creation-stage-method",
+                    text="",
+                    enabled="false",
+                    **{"content-desc": "Build method · Priority"},
+                )],
+                "not visible, enabled, and clickable",
+            ),
+            (
+                "forged-package",
+                [self.canonical_node(
+                    "creation-stage-method",
+                    package="com.example.forged",
+                    text="",
+                    **{"content-desc": "Build method · Priority"},
+                )],
+                "canonical Chummer",
+            ),
+            (
+                "detail-drift",
+                [self.canonical_node(
+                    "creation-stage-method",
+                    text="",
+                    **{"content-desc": "Build method · Sum to Ten"},
+                )],
+                "changed after diagnostics",
+            ),
+        )
+        for label, nodes, error in cases:
+            device = mock.Mock(spec=driver.shared.Device)
+            device.display_size.return_value = (1080, 1920)
+            with self.subTest(label=label), mock.patch.object(
+                driver,
+                "fresh_hierarchy_timed",
+                return_value=nodes,
+            ), self.assertRaisesRegex(RuntimeError, error):
+                driver.reacquire_creation_method_one_shot_target(
+                    device,
+                    expected_detail="Build method · Priority",
+                    diagnostic_capture="creation-priority-core-bootstrap-ready",
+                    deadline=driver.time.monotonic() + 30,
+                )
+            device.shell.assert_not_called()
+            device.swipe_up.assert_not_called()
+            device.swipe_down.assert_not_called()
+
+    def test_initial_method_opening_binds_the_first_post_tap_route_without_replay(
+        self,
+    ) -> None:
+        method = self.canonical_node(
+            "creation-stage-method",
+            text="",
+            **{"content-desc": "Build method · Priority"},
+        )
+        device = mock.Mock(spec=driver.shared.Device)
+        device.display_size.return_value = (1080, 1920)
+        with mock.patch.object(
+            driver,
+            "fresh_hierarchy_timed",
+            side_effect=lambda _device, durations, **_kwargs: (
+                durations.append(3) or [method]
+            ),
+        ):
+            _, action = driver.reacquire_creation_method_one_shot_target(
+                device,
+                expected_detail="Build method · Priority",
+                diagnostic_capture="creation-priority-core-bootstrap-ready",
+                deadline=driver.time.monotonic() + 30,
+            )
+        action["status"] = "tap-issued"
+        action["tap"] = {
+            "command": "input tap",
+            "count": 1,
+            "coordinates": dict(action["preTap"]["center"]),
+            "issuedAtUtc": "2026-09-03T17:48:30+00:00",
+        }
+        old_dashboard = [self.canonical_node("creation-wizard-dashboard")]
+        route = self.canonical_node("creation-prerequisite-page")
+        top_method = self.canonical_node("creation-prerequisite-method")
+        binding = self.canonical_node("creation-prerequisite-binding")
+        device.hierarchy.side_effect = [old_dashboard, [route, top_method, binding]]
+        device.dismiss_system_ui_anr.return_value = False
+        observed: list[dict[str, object]] = []
+
+        with mock.patch.object(driver.time, "sleep"):
+            origin = driver.wait_for_prerequisite_scan_origin(
+                device,
+                immediately_after_opening_tap=True,
+                scan_observer=observed.append,
+                opening_action=action,
+            )
+
+        self.assertEqual([route, top_method, binding], origin.nodes)
+        self.assertEqual("first-post-tap-observed", action["status"])
+        first = action["firstPostTap"]
+        self.assertEqual(
+            driver.accessibility_signature_sha256(old_dashboard),
+            first["hierarchyDigest"],
+        )
+        self.assertEqual(0, first["routeCardinality"])
+        self.assertIs(False, first["routeResolved"])
+        self.assertEqual(action, observed[0]["openingAction"])
+        driver.require_creation_method_one_shot_proof(
+            action,
+            require_first_post_tap=True,
+        )
+        device.shell.assert_not_called()
+
+    def test_initial_method_opening_proof_rejects_replay_fallback_or_second_tap(self) -> None:
+        base = {
+            "schema": driver.CREATION_METHOD_ONE_SHOT_SCHEMA,
+            "status": "tap-issued",
+            "selector": "creation-stage-method",
+            "fullResourceId": f"{driver.shared.PACKAGE}:id/creation-stage-method",
+            "diagnosticCapture": "creation-priority-core-bootstrap-ready",
+            "preTap": {
+                "observedAtUtc": "2026-09-03T17:48:29+00:00",
+                "hierarchyDigest": "sha256:" + "1" * 64,
+                "hierarchyDigestDomain": driver.CREATION_METHOD_ONE_SHOT_DIGEST_DOMAIN,
+                "nodeCount": 39,
+                "hierarchyReadCount": 1,
+                "hierarchyElapsedMs": 3,
+                "bounds": "[98,275][984,355]",
+                "center": {"x": 541, "y": 315},
+                "enabled": True,
+                "clickable": True,
+                "detail": "Build method · Priority",
+            },
+            "tap": {
+                "command": "input tap",
+                "count": 1,
+                "coordinates": {"x": 541, "y": 315},
+                "issuedAtUtc": "2026-09-03T17:48:30+00:00",
+            },
+            "tapReplayPerformed": False,
+            "fallbackTapPerformed": False,
+        }
+        for field, value in (
+            ("tapReplayPerformed", True),
+            ("fallbackTapPerformed", True),
+            ("tap.count", 2),
+        ):
+            proof = json.loads(json.dumps(base))
+            if field == "tap.count":
+                proof["tap"]["count"] = value
+            else:
+                proof[field] = value
+            with self.subTest(field=field), self.assertRaisesRegex(
+                RuntimeError,
+                "authority differs|target, digest, or tap differs",
+            ):
+                driver.require_creation_method_one_shot_proof(
+                    proof,
+                    require_first_post_tap=False,
+                )
 
     def test_prerequisite_resume_rejects_a_stale_or_non_tappable_method_node(self) -> None:
         for attributes in (

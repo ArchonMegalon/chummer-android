@@ -97,6 +97,59 @@ CREATION_PROSPECTIVE_PHASE_ELAPSED_MS = {
 }
 
 
+def creation_method_one_shot_origin_scan() -> dict[str, object]:
+    return {
+        "scanId": "creation-prerequisite-scan-origin",
+        "status": "resolved",
+        "phaseId": "prerequisite-authority-inventory",
+        "elapsedMs": 2_500,
+        "openingAction": {
+            "schema": AGGREGATE.CREATION_METHOD_ONE_SHOT_SCHEMA,
+            "status": "first-post-tap-observed",
+            "selector": "creation-stage-method",
+            "fullResourceId": (
+                "com.myexternalbrain.chummer:id/creation-stage-method"
+            ),
+            "diagnosticCapture": "creation-priority-core-bootstrap-ready",
+            "preTap": {
+                "observedAtUtc": "2026-09-03T17:48:29+00:00",
+                "hierarchyDigest": "sha256:" + "1" * 64,
+                "hierarchyDigestDomain": (
+                    AGGREGATE.CREATION_METHOD_ONE_SHOT_DIGEST_DOMAIN
+                ),
+                "nodeCount": 39,
+                "hierarchyReadCount": 1,
+                "hierarchyElapsedMs": 2_000,
+                "bounds": "[98,275][984,355]",
+                "center": {"x": 541, "y": 315},
+                "enabled": True,
+                "clickable": True,
+                "detail": "Build method · Priority",
+            },
+            "tap": {
+                "command": "input tap",
+                "count": 1,
+                "coordinates": {"x": 541, "y": 315},
+                "issuedAtUtc": "2026-09-03T17:48:30+00:00",
+            },
+            "firstPostTap": {
+                "observedAtUtc": "2026-09-03T17:48:32+00:00",
+                "hierarchyDigest": "sha256:" + "2" * 64,
+                "hierarchyDigestDomain": (
+                    AGGREGATE.CREATION_METHOD_ONE_SHOT_DIGEST_DOMAIN
+                ),
+                "nodeCount": 44,
+                "routeCardinality": 1,
+                "methodCardinality": 1,
+                "bindingCardinality": 1,
+                "routeResolved": True,
+            },
+            "tapReplayPerformed": False,
+            "fallbackTapPerformed": False,
+        },
+    }
+
+
 def talent_reacquisition_scan(phase_id: str) -> dict[str, object]:
     return {
         "scanId": f"{phase_id}-fixture-reacquisition",
@@ -467,6 +520,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                         "maximumHierarchyReadMs": 500,
                         "elapsedMs": 5_400,
                     },
+                    creation_method_one_shot_origin_scan(),
                     {
                         "scanId": "prerequisite-authority",
                         "phaseId": "prerequisite-authority-inventory",
@@ -1259,6 +1313,68 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                 else:
                     timing["scans"].append(dict(method))
                 with self.assertRaisesRegex(ValueError, "scan cardinality differs"):
+                    AGGREGATE.require_creation_timing_within_budget(
+                        creation_receipt_with_timing(timing)
+                    )
+
+    def test_creation_timing_requires_one_fresh_nonreplayed_method_opening(self) -> None:
+        for case in ("omitted", "duplicated"):
+            with self.subTest(case=case):
+                timing = json.loads(json.dumps(
+                    self.raw_receipt("creation-prerequisite")["timing"]
+                ))
+                opening = next(
+                    scan
+                    for scan in timing["scans"]
+                    if scan.get("scanId") == "creation-prerequisite-scan-origin"
+                    and scan.get("phaseId") == "prerequisite-authority-inventory"
+                )
+                if case == "omitted":
+                    opening.pop("openingAction")
+                else:
+                    timing["scans"].append(dict(opening))
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "one-shot opening cardinality differs",
+                ):
+                    AGGREGATE.require_creation_timing_within_budget(
+                        creation_receipt_with_timing(timing)
+                    )
+
+    def test_creation_timing_rejects_replayed_or_stale_method_opening(self) -> None:
+        cases = (
+            ("tapReplayPerformed", True, "authority differs"),
+            ("fallbackTapPerformed", True, "authority differs"),
+            ("tap-count", 2, "geometry or tap authority differs"),
+            ("tap-coordinate", 540, "geometry or tap authority differs"),
+            ("pre-tap-digest", "not-a-digest", "geometry or tap authority differs"),
+            ("post-route", False, "first post-tap route authority differs"),
+            ("timestamp-order", "2026-09-03T17:48:28+00:00", "not monotonic"),
+        )
+        for field, forged, error in cases:
+            with self.subTest(field=field):
+                timing = json.loads(json.dumps(
+                    self.raw_receipt("creation-prerequisite")["timing"]
+                ))
+                action = next(
+                    scan["openingAction"]
+                    for scan in timing["scans"]
+                    if scan.get("scanId") == "creation-prerequisite-scan-origin"
+                    and scan.get("phaseId") == "prerequisite-authority-inventory"
+                )
+                if field in {"tapReplayPerformed", "fallbackTapPerformed"}:
+                    action[field] = forged
+                elif field == "tap-count":
+                    action["tap"]["count"] = forged
+                elif field == "tap-coordinate":
+                    action["tap"]["coordinates"]["x"] = forged
+                elif field == "pre-tap-digest":
+                    action["preTap"]["hierarchyDigest"] = forged
+                elif field == "post-route":
+                    action["firstPostTap"]["routeResolved"] = forged
+                else:
+                    action["firstPostTap"]["observedAtUtc"] = forged
+                with self.assertRaisesRegex(ValueError, error):
                     AGGREGATE.require_creation_timing_within_budget(
                         creation_receipt_with_timing(timing)
                     )

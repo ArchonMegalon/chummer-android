@@ -852,7 +852,7 @@
       {
         "path": "scripts/verify-api36-editing-e2e-aggregate.py",
         "exists": true,
-        "sha256": "ba9dfec9128469eb8c20afb245f591b7d730115f8a6f9901e5c726b293549643"
+        "sha256": "7004b1cf9ba1326c8ded2760e93a94303d96948880843c20f2e8f7c04b444aa8"
       },
       {
         "path": "src/Chummer.Android/Chummer.Android.csproj",
@@ -882,7 +882,7 @@
       {
         "path": "tests/test_api36_e2e_artifact_authority.py",
         "exists": true,
-        "sha256": "b68f7e5b33ec5c33e6d0242f7100b22f884fb313614d62216057a4d7ad48544c"
+        "sha256": "2f310118f75cbdd2a0856d6ba88fe743b9d47c89494cef8b9a251bfac9c1e624"
       },
       {
         "path": "tests/test_api36_proof_environment_receipt.py",
@@ -1407,7 +1407,7 @@
       {
         "path": "tests/run_api36_creation_prerequisite_e2e.py",
         "exists": true,
-        "sha256": "e7724e34d1c82d351f1d493bb7321a8550f8ed583d1ef3f4cfff609a846c6a62"
+        "sha256": "d6d6bd3feedb8a4cdd32408ce5a9b5f6a69a64020a0de6d899f157a52a2190cf"
       },
       {
         "path": "tests/fixtures/career-condition-monitor-e2e.chum5",
