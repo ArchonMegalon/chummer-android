@@ -6971,13 +6971,15 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         provider_id: str = "12345",
         size: str | None = None,
         is_pending: str = "0",
+        owner_package_name: str = "com.android.shell",
     ) -> str:
         provider_size = str(len(payload)) if size is None else size
         return (
             f"Row: 0 _id={provider_id}, _display_name={display_name}, "
             f"_data=/storage/emulated/0/Download/{display_name}, "
             f"_size={provider_size}, mime_type=application/octet-stream, "
-            f"relative_path=Download/, is_pending={is_pending}"
+            f"relative_path=Download/, is_pending={is_pending}, "
+            f"owner_package_name={owner_package_name}"
         )
 
     def _provider_device(self, temporary: str) -> DRIVER.Device:
@@ -7027,8 +7029,13 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 )
 
             self.assertEqual("pass", receipt["status"])
+            self.assertEqual(
+                "chummer.android.documentsui-provider-registration/v3",
+                receipt["schema"],
+            )
             self.assertEqual(provider_uri, receipt["providerUri"])
             self.assertEqual(expected_sha256, receipt["sha256"])
+            self.assertEqual("com.android.shell", receipt["ownerPackageName"])
             self.assertFalse(receipt["pickerBypass"])
             self.assertEqual(
                 "three-one-shot-mutations-no-replay",
@@ -7080,6 +7087,28 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 if call.args[:3] == ("shell", "content", "insert")
             ]
             self.assertEqual(1, len(insert_calls))
+            self.assertEqual(
+                (
+                    "shell",
+                    "content",
+                    "insert",
+                    "--user",
+                    "0",
+                    "--uri",
+                    DRIVER.MEDIA_PROVIDER_DOWNLOADS_URI,
+                    "--bind",
+                    "_display_name:s:runner.chum5",
+                    "--bind",
+                    f"mime_type:s:{DRIVER.MEDIA_PROVIDER_DOCUMENT_MIME_TYPE}",
+                    "--bind",
+                    f"relative_path:s:{DRIVER.MEDIA_PROVIDER_RELATIVE_DOWNLOAD_ROOT}",
+                    "--bind",
+                    f"owner_package_name:s:{DRIVER.MEDIA_PROVIDER_SHELL_OWNER_PACKAGE_NAME}",
+                    "--bind",
+                    "is_pending:i:1",
+                ),
+                insert_calls[0].args,
+            )
 
     def test_documents_ui_provider_registration_rejects_malformed_or_ambiguous_insert_uri(
         self,
@@ -7162,6 +7191,26 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             (
                 "",
                 self._provider_row(payload, size="0", is_pending="0"),
+                "pending Downloads identity differs",
+            ),
+            (
+                "",
+                self._provider_row(
+                    payload,
+                    size="0",
+                    is_pending="1",
+                    owner_package_name="NULL",
+                ),
+                "pending Downloads identity differs",
+            ),
+            (
+                "",
+                self._provider_row(
+                    payload,
+                    size="0",
+                    is_pending="1",
+                    owner_package_name="com.example.foreign",
+                ),
                 "pending Downloads identity differs",
             ),
             (
@@ -7268,6 +7317,11 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             (
                 "Updated 1 row.\n",
                 self._provider_row(payload).replace("is_pending=0", "is_pending=1"),
+                "identity differs",
+            ),
+            (
+                "Updated 1 row.\n",
+                self._provider_row(payload, owner_package_name="NULL"),
                 "identity differs",
             ),
             (

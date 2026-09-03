@@ -797,7 +797,7 @@
       {
         "path": "tests/Chummer.Android.Sr5TableWizard.Tests/Program.cs",
         "exists": true,
-        "sha256": "30c89c6fd2067185ba9362aa88097ffbc0eb07665e2a75b74d7aaa5e1dee39dd"
+        "sha256": "e1c2e6cbb78a3a23c3e19eb5fb02055e535664be822ec4cc9318c2c751702a89"
       },
       {
         "path": ".github/workflows/api36-editing-e2e.yml",
@@ -837,7 +837,7 @@
       {
         "path": "src/Chummer.Android/Chummer.Android.csproj",
         "exists": true,
-        "sha256": "765769479d8cfc8c64a00926a75f0be1bdcb43f02a36b754fb7f1749258cebb1"
+        "sha256": "35d9511b900c427cd41a17a4f6c08462aa64a35a842331eff7518e6ed509f62a"
       },
       {
         "path": "src/Chummer.Android/Proof/Api36ProofState.cs",
@@ -877,12 +877,12 @@
       {
         "path": "tests/api36_proof_state.py",
         "exists": true,
-        "sha256": "6b5a31de81b4d04b882bd77d554ad9af09ce908949ea5f3afc7ba628f9483f42"
+        "sha256": "38d33f1b55d045b36c3db787c86f197ad7477f34df0de08fe059540d7cac2b9b"
       },
       {
         "path": "tests/test_api36_proof_state_contract.py",
         "exists": true,
-        "sha256": "209b43e193c2232617c45e0c28110830bb7bfb04440641a2ed616766c43bde6e"
+        "sha256": "a1de34716d7bbe694a2ff8e994f09e8f6614ebe9f8974447e056ee426999e1d6"
       },
       {
         "path": "tests/test_run_api36_sr5_before_run_edge_e2e_driver.py",
@@ -957,7 +957,7 @@
       {
         "path": "tests/run_api36_editing_e2e.py",
         "exists": true,
-        "sha256": "1aa18326d096b0efc9db7b39673989c15b58a7ac277a677bec140e7f3ec3c386"
+        "sha256": "73652a1cd0d291a607b647d01da84060441def2063fcc93d0ff55e0c91aed75a"
       },
       {
         "path": "tests/run_api36_career_active_skill_advance_e2e.py",

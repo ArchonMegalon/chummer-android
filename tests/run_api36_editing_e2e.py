@@ -201,11 +201,13 @@ MEDIA_PROVIDER_DOWNLOADS_URI = "content://media/external_primary/downloads"
 MEDIA_PROVIDER_CANONICAL_DOWNLOAD_ROOT = "/storage/emulated/0/Download/"
 MEDIA_PROVIDER_RELATIVE_DOWNLOAD_ROOT = "Download/"
 MEDIA_PROVIDER_DOCUMENT_MIME_TYPE = "application/octet-stream"
+MEDIA_PROVIDER_SHELL_OWNER_PACKAGE_NAME = "com.android.shell"
 MEDIA_PROVIDER_METADATA_PROJECTION = (
-    "_id:_display_name:_data:_size:mime_type:relative_path:is_pending"
+    "_id:_display_name:_data:_size:mime_type:relative_path:is_pending:"
+    "owner_package_name"
 )
 MEDIA_PROVIDER_INDEX_RECEIPT_SCHEMA = (
-    "chummer.android.documentsui-provider-registration/v2"
+    "chummer.android.documentsui-provider-registration/v3"
 )
 MEDIA_PROVIDER_REGISTRATION_ATTEMPT_SCHEMA = (
     "chummer.android.documentsui-provider-registration-attempt/v1"
@@ -2055,6 +2057,7 @@ class Device:
             "mime_type",
             "relative_path",
             "is_pending",
+            "owner_package_name",
         }
         if set(fields) != expected_fields:
             raise RuntimeError("MediaStore Downloads row has an unexpected projection")
@@ -2070,8 +2073,12 @@ class Device:
         API-36 DocumentsUI obtains Downloads rows from MediaStore.  The fixture
         is therefore inserted through the supported Downloads collection rather
         than pushed to a filesystem path and passed to an undocumented provider
-        call.  Insert, byte write, and publish are each one-shot mutations.  The
-        real DocumentsUI picker remains the only path into Chummer.
+        call.  Shell is assigned as the explicit row owner: MediaProvider lets
+        shell choose ownership, while its path-based fallback cannot infer an
+        owner from the generic Download root and may hide that ownerless row
+        from the exact shell query.  Insert, byte write, and publish are each
+        one-shot mutations.  The real DocumentsUI picker remains the only path
+        into Chummer.
         """
         if local_path.is_symlink():
             raise RuntimeError("DocumentsUI fixture must not be a symlink")
@@ -2091,6 +2098,9 @@ class Device:
             raise RuntimeError("Provider-registration fixture bytes do not match authority")
 
         receipt_stem = hashlib.sha256(display_name.encode("utf-8")).hexdigest()[:16]
+        # A shared Download path cannot imply an application owner. MediaProvider
+        # explicitly permits the shell caller to set ownership; binding that same
+        # identity keeps the pending row observable to the post-insert shell query.
         insert_arguments = (
             "shell",
             "content",
@@ -2105,6 +2115,8 @@ class Device:
             f"mime_type:s:{MEDIA_PROVIDER_DOCUMENT_MIME_TYPE}",
             "--bind",
             f"relative_path:s:{MEDIA_PROVIDER_RELATIVE_DOWNLOAD_ROOT}",
+            "--bind",
+            f"owner_package_name:s:{MEDIA_PROVIDER_SHELL_OWNER_PACKAGE_NAME}",
             "--bind",
             "is_pending:i:1",
         )
@@ -2143,6 +2155,8 @@ class Device:
             or pending_fields["relative_path"]
             != MEDIA_PROVIDER_RELATIVE_DOWNLOAD_ROOT
             or pending_fields["is_pending"] != "1"
+            or pending_fields["owner_package_name"]
+            != MEDIA_PROVIDER_SHELL_OWNER_PACKAGE_NAME
         ):
             raise RuntimeError(
                 "MediaStore pending Downloads identity differs from the governed fixture"
@@ -2207,6 +2221,8 @@ class Device:
             or fields["mime_type"] != MEDIA_PROVIDER_DOCUMENT_MIME_TYPE
             or fields["relative_path"] != MEDIA_PROVIDER_RELATIVE_DOWNLOAD_ROOT
             or fields["is_pending"] != "0"
+            or fields["owner_package_name"]
+            != MEDIA_PROVIDER_SHELL_OWNER_PACKAGE_NAME
         ):
             raise RuntimeError(
                 "MediaStore Downloads identity differs from the governed fixture"
@@ -2237,6 +2253,7 @@ class Device:
             "displayName": display_name,
             "canonicalPath": canonical_path,
             "relativePath": MEDIA_PROVIDER_RELATIVE_DOWNLOAD_ROOT,
+            "ownerPackageName": fields["owner_package_name"],
             "providerUri": provider_uri,
             "mediaType": fields["mime_type"],
             "size": expected_size,
