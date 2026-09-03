@@ -892,7 +892,7 @@
       {
         "path": "tests/run_api36_sr5_playtime_short_burst_e2e.py",
         "exists": true,
-        "sha256": "808a8da9f3c80920dc025c34c8ba1659ea3378bbf6294f2a1507954997f95beb"
+        "sha256": "a6214f854bc733cb80071f5aa3e61418d50b66809c8f6d9eb573368ac7535513"
       },
       {
         "path": "tests/test_api36_sr5_playtime_short_burst_e2e_driver.py",
@@ -957,7 +957,7 @@
       {
         "path": "tests/run_api36_editing_e2e.py",
         "exists": true,
-        "sha256": "73652a1cd0d291a607b647d01da84060441def2063fcc93d0ff55e0c91aed75a"
+        "sha256": "877b1707b78f8974282f3726086af3486e6facc4f69678e32fb18e23916989ba"
       },
       {
         "path": "tests/run_api36_career_active_skill_advance_e2e.py",
