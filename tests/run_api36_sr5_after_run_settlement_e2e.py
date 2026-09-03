@@ -838,9 +838,14 @@ def _set(device: physical.shared.Device, selector: str, label: str, value: objec
 
 
 def _tap_exact(device: physical.shared.Device, selector: str) -> None:
-    device.tap_bidirectional(
-        selector, timeout=120, backward_scrolls=48, forward_scrolls=48,
-        scroll_distance_ratio=0.18, exact_resource_id=True,
+    device.tap_exact_resource_id_bidirectional(
+        selector,
+        timeout=120,
+        backward_scrolls=48,
+        forward_scrolls=48,
+        scroll_distance_ratio=0.18,
+        evidence_prefix="sr5-after-run-exact-tap",
+        surface_name="Exact SR5 After Run control",
     )
 
 

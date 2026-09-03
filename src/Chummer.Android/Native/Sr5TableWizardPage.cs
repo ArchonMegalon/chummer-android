@@ -29,6 +29,8 @@ public sealed class Sr5TableWizardPage : NativePageBase
     private bool _loading;
     private long _loadVersion;
 
+    internal Sr5TableWizardLane Lane => _lane;
+
     public Sr5TableWizardPage(
         RunnerSessionCoordinator coordinator,
         Sr5TableWizardLane lane) : base(coordinator)
@@ -823,11 +825,66 @@ public sealed class Sr5TableWizardReviewPage : NativePageBase
                 applied!.Receipt!.AppliedWorkspaceRevision,
                 Sr5TableWizardPage.ShortDigest(applied.Receipt.ReceiptDigest)),
             Text("OK"));
-        await Navigation.PopAsync();
-        await Navigation.PopAsync();
+        await ReturnToOwningLaneAsync();
         // The Playtime lane owns the final receipt and proof state. Refreshing
         // this disappeared review page would publish a stale review over it.
         return false;
+    }
+
+    private async Task ReturnToOwningLaneAsync()
+    {
+        INavigation navigation = Navigation;
+        Page[] navigationStack = navigation.NavigationStack.ToArray();
+        string expectedLaneRoute = _session.State.Snapshot.Lane == Sr5TableWizardLane.BeforeRun
+            ? Sr5CareerWizardRoutes.BeforeRun
+            : Sr5CareerWizardRoutes.Playtime;
+        bool IsOwningLane(Page page)
+            => page is Sr5TableWizardPage lanePage
+               && lanePage.Lane == _session.State.Snapshot.Lane
+               && string.Equals(
+                   lanePage.AutomationId,
+                   expectedLaneRoute,
+                   StringComparison.Ordinal);
+
+        int quoteCount = navigationStack.Count(static page =>
+            page is Sr5TableWizardQuotePage);
+        if (navigationStack.Length < 2
+            || !ReferenceEquals(navigationStack[^1], this)
+            || navigationStack.Count(IsOwningLane) != 1
+            || quoteCount > 1)
+        {
+            throw new InvalidOperationException(
+                "The saved table action could not return through an exact unique lane stack.");
+        }
+
+        if (navigationStack[^2] is Sr5TableWizardQuotePage quotePage)
+        {
+            if (quoteCount != 1
+                || navigationStack.Length < 3
+                || !IsOwningLane(navigationStack[^3]))
+            {
+                throw new InvalidOperationException(
+                    "The saved table action could not return through its exact quote and lane.");
+            }
+            navigation.RemovePage(quotePage);
+        }
+        else if (quoteCount != 0 || !IsOwningLane(navigationStack[^2]))
+        {
+            throw new InvalidOperationException(
+                "The saved table action could not return to its exact resumed lane.");
+        }
+
+        Page[] preparedStack = navigation.NavigationStack.ToArray();
+        if (preparedStack.Length < 2
+            || !ReferenceEquals(preparedStack[^1], this)
+            || !IsOwningLane(preparedStack[^2])
+            || preparedStack.Any(static page => page is Sr5TableWizardQuotePage))
+        {
+            throw new InvalidOperationException(
+                "The saved table action return stack changed before navigation completed.");
+        }
+
+        await navigation.PopAsync();
     }
 
     private bool MatchesCurrent(Sr5TableWizardSnapshot snapshot)

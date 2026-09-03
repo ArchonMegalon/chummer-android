@@ -707,7 +707,7 @@
       {
         "path": "src/Chummer.Android/Native/Sr5TableWizardPage.cs",
         "exists": true,
-        "sha256": "3896c65b6f65705b54c70d6fbfd8b96b98c87cb72fe96be66da9358f88eb8ff2"
+        "sha256": "6a66e398fe8505bda87ee454da4c8f087cd8ea65f7ec6418e57c59cfa4bdaca1"
       },
       {
         "path": "src/Chummer.Android/Native/Sr5TableWizardPhoneModel.cs",
@@ -917,7 +917,7 @@
       {
         "path": "tests/run_api36_sr5_after_run_settlement_e2e.py",
         "exists": true,
-        "sha256": "bd77ca46943baf2481906227687f84a5de0f99d126a9e5817296b1fdf4f19ddd"
+        "sha256": "05c901341f0242cb35f841223c5ae42502badd053869ac2e9a9cc6d05ab299fd"
       },
       {
         "path": "tests/run_api36_sr5_after_run_settlement_hosted_e2e.py",

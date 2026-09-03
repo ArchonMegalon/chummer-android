@@ -52,6 +52,7 @@ class Api36Sr5DowntimeCalendarDriverTests(unittest.TestCase):
                 "sr5-downtime-calendar-status",
                 expected,
                 timeout=90,
+                surface_name="Recovered Downtime status",
             )
 
         self.assertEqual(expected, actual)
@@ -84,11 +85,51 @@ class Api36Sr5DowntimeCalendarDriverTests(unittest.TestCase):
                 "sr5-downtime-calendar-status",
                 "Reviewed preview restored. Confirm it again before saving.",
                 timeout=90,
+                surface_name="Recovered Downtime status",
             )
 
         device.wait_exact_resource_id_bidirectional.assert_called_once()
         device.capture.assert_called_once_with(
             "sr5-downtime-calendar-status-recovery-text-mismatch",
+            deadline=190.0,
+        )
+        device.tap.assert_not_called()
+        device.tap_single_exact_resource_id.assert_not_called()
+
+    def test_recovered_receipt_rejects_prefix_only_text_without_ack_replay(self) -> None:
+        device = Mock(spec=driver.physical.shared.Device)
+        digest_prefix = "sha256:" + "a" * 12
+        expected = f"Applied receipt {digest_prefix}… at revision 2."
+        device.wait_exact_resource_id_bidirectional.return_value = (
+            driver.physical.shared.UiNode(
+                {"text": f"Saved with verified receipt {digest_prefix}…"}
+            )
+        )
+        with (
+            patch.object(driver.time, "monotonic", return_value=100.0),
+            self.assertRaisesRegex(RuntimeError, "exact expected text"),
+        ):
+            driver._acquire_exact_resource_text_bidirectional(
+                device,
+                "sr5-downtime-calendar-receipt",
+                expected,
+                timeout=90,
+                surface_name="Recovered Downtime receipt",
+            )
+
+        device.wait_exact_resource_id_bidirectional.assert_called_once_with(
+            "sr5-downtime-calendar-receipt",
+            timeout=90,
+            backward_scrolls=36,
+            forward_scrolls=36,
+            scroll_distance_ratio=0.18,
+            evidence_prefix="sr5-downtime-calendar-receipt-recovery",
+            surface_name="Recovered Downtime receipt",
+            require_tappable=False,
+            deadline=190.0,
+        )
+        device.capture.assert_called_once_with(
+            "sr5-downtime-calendar-receipt-recovery-text-mismatch",
             deadline=190.0,
         )
         device.tap.assert_not_called()
@@ -342,6 +383,32 @@ class Api36Sr5DowntimeCalendarDriverTests(unittest.TestCase):
         )
         self.assertNotIn("_wait_resource_text(", recovery)
         self.assertNotIn('sr5-downtime-calendar-review', recovery)
+        receipt_recovery = source.split("    expected_receipt = (", maxsplit=1)[1].split(
+            "    time.sleep(1)", maxsplit=1
+        )[0]
+        self.assertEqual(
+            1,
+            receipt_recovery.count("_acquire_exact_resource_text_bidirectional("),
+        )
+        self.assertLess(
+            receipt_recovery.index("_acquire_exact_resource_text_bidirectional("),
+            receipt_recovery.index(
+                '_tap_exact(device, "sr5-downtime-calendar-clear-applied")'
+            ),
+        )
+        self.assertEqual(
+            1,
+            receipt_recovery.count(
+                '_tap_exact(device, "sr5-downtime-calendar-clear-applied")'
+            ),
+        )
+        self.assertNotIn("_wait_resource_text(", receipt_recovery)
+        for forbidden in (
+            'sr5-downtime-calendar-review")',
+            'sr5-downtime-calendar-confirm")',
+            'sr5-downtime-calendar-apply")',
+        ):
+            self.assertNotIn(forbidden, receipt_recovery)
         self.assertIn('"status": "device-pass-source-bound"', source)
         self.assertNotIn('"releaseAttested": True', source)
 

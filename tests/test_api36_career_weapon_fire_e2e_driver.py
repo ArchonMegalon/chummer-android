@@ -181,6 +181,54 @@ class Api36CareerWeaponFireDriverTests(unittest.TestCase):
             source,
         )
 
+    def test_successful_confirm_atomically_returns_through_the_exact_existing_lane(self) -> None:
+        source = TABLE_WIZARD_PAGE.read_text(encoding="utf-8")
+        confirm = source.split("private async Task<bool> ConfirmAsync()", 1)[1]
+        confirm = confirm.split("private async Task ReturnToOwningLaneAsync()", 1)[0]
+        return_to_lane = source.split(
+            "private async Task ReturnToOwningLaneAsync()", 1
+        )[1]
+        return_to_lane = return_to_lane.split("private bool MatchesCurrent", 1)[0]
+
+        self.assertEqual(1, confirm.count("await ReturnToOwningLaneAsync();"))
+        self.assertNotIn("Navigation.PopAsync", confirm)
+        self.assertIn("!ReferenceEquals(navigationStack[^1], this)", return_to_lane)
+        self.assertIn("navigationStack.Count(IsOwningLane) != 1", return_to_lane)
+        self.assertIn("lanePage.Lane == _session.State.Snapshot.Lane", return_to_lane)
+        self.assertIn("quoteCount > 1", return_to_lane)
+        self.assertIn(
+            "navigationStack[^2] is Sr5TableWizardQuotePage quotePage",
+            return_to_lane,
+        )
+        self.assertIn("!IsOwningLane(navigationStack[^3])", return_to_lane)
+        self.assertIn("quoteCount != 0 || !IsOwningLane(navigationStack[^2])", return_to_lane)
+        self.assertLess(
+            return_to_lane.index("navigation.RemovePage(quotePage);"),
+            return_to_lane.index("await navigation.PopAsync();"),
+        )
+        self.assertEqual(1, return_to_lane.count("PopAsync"))
+
+    def test_successful_confirm_return_has_no_replay_poll_or_route_fallback(self) -> None:
+        source = TABLE_WIZARD_PAGE.read_text(encoding="utf-8")
+        return_to_lane = source.split(
+            "private async Task ReturnToOwningLaneAsync()", 1
+        )[1]
+        return_to_lane = return_to_lane.split("private bool MatchesCurrent", 1)[0]
+
+        for forbidden in (
+            "PushAsync",
+            "PopToRootAsync",
+            "Task.Delay",
+            "while (",
+            "ConfirmAsync",
+            "ApplyCareerWeaponFireAsync",
+            "ApplyCareerEdgeUseEditAsync",
+        ):
+            with self.subTest(forbidden=forbidden):
+                self.assertNotIn(forbidden, return_to_lane)
+        self.assertIn("preparedStack.Any", return_to_lane)
+        self.assertIn("page is Sr5TableWizardQuotePage", return_to_lane)
+
     def test_fixture_binds_exact_root_weapon_active_clip_linked_ammo_and_burst(self) -> None:
         root = ET.parse(FIXTURE).getroot()
         driver.require_canonical_import_fixture(root)

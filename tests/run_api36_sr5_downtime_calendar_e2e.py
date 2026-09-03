@@ -517,8 +517,9 @@ def _acquire_exact_resource_text_bidirectional(
     expected_text: str,
     *,
     timeout: int,
+    surface_name: str,
 ) -> str:
-    """Scroll one exact read-only status observation into view and validate it."""
+    """Scroll one exact read-only text observation into view and validate it."""
     deadline = time.monotonic() + timeout
     node = device.wait_exact_resource_id_bidirectional(
         selector,
@@ -527,7 +528,7 @@ def _acquire_exact_resource_text_bidirectional(
         forward_scrolls=36,
         scroll_distance_ratio=0.18,
         evidence_prefix=f"{selector}-recovery",
-        surface_name="Recovered Downtime status",
+        surface_name=surface_name,
         require_tappable=False,
         deadline=deadline,
     )
@@ -535,7 +536,7 @@ def _acquire_exact_resource_text_bidirectional(
     if text != expected_text:
         device.capture(f"{selector}-recovery-text-mismatch", deadline=deadline)
         raise RuntimeError(
-            f"Recovered Downtime status {selector!r} did not expose the exact expected text"
+            f"{surface_name} {selector!r} did not expose the exact expected text"
         )
     return text
 
@@ -693,6 +694,7 @@ def prove_downtime(
     _acquire_exact_resource_text_bidirectional(
         device, "sr5-downtime-calendar-status", expected_recovery,
         timeout=90,
+        surface_name="Recovered Downtime status",
     )
     _tap_exact(device, "sr5-downtime-calendar-confirm")
     device.tap("Confirm", timeout=60)
@@ -741,10 +743,14 @@ def prove_downtime(
     open_downtime(device)
     if read_journal(device) != applied:
         raise RuntimeError("Downtime receipt journal bytes changed during restart recovery")
-    _wait_resource_text(
-        device, "sr5-downtime-calendar-receipt",
-        lambda text: applied_projection["receiptDigest"][:19] in text,
+    expected_receipt = (
+        f"Applied receipt {applied_projection['receiptDigest'][:19]}… "
+        f"at revision {saved.content_revision}."
+    )
+    _acquire_exact_resource_text_bidirectional(
+        device, "sr5-downtime-calendar-receipt", expected_receipt,
         timeout=90,
+        surface_name="Recovered Downtime receipt",
     )
     device.capture("sr5-downtime-recovered-receipt")
     _tap_exact(device, "sr5-downtime-calendar-clear-applied")

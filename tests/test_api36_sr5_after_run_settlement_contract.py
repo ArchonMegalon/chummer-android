@@ -36,6 +36,44 @@ def validate(value: dict[str, object], fixture: dict[str, object], *, applied: b
 
 
 class Api36Sr5AfterRunSettlementContractTests(unittest.TestCase):
+    def test_after_run_exact_tap_uses_stationary_empty_root_cardinality_path_once(self) -> None:
+        device = unittest.mock.Mock(spec=driver.physical.shared.Device)
+
+        driver._tap_exact(device, "sr5-after-run-entry-owner-approved")
+
+        device.tap_exact_resource_id_bidirectional.assert_called_once_with(
+            "sr5-after-run-entry-owner-approved",
+            timeout=120,
+            backward_scrolls=48,
+            forward_scrolls=48,
+            scroll_distance_ratio=0.18,
+            evidence_prefix="sr5-after-run-exact-tap",
+            surface_name="Exact SR5 After Run control",
+        )
+        device.tap_bidirectional.assert_not_called()
+
+    def test_after_run_exact_tap_propagates_cardinality_failure_without_fallback_or_replay(self) -> None:
+        device = unittest.mock.Mock(spec=driver.physical.shared.Device)
+        device.tap_exact_resource_id_bidirectional.side_effect = RuntimeError(
+            "cardinality 2; expected exactly one"
+        )
+
+        with self.assertRaisesRegex(RuntimeError, "cardinality 2"):
+            driver._tap_exact(device, "sr5-after-run-entry-owner-approved")
+
+        device.tap_exact_resource_id_bidirectional.assert_called_once()
+        device.tap_bidirectional.assert_not_called()
+
+    def test_after_run_helper_does_not_restore_legacy_blind_scroll_tap(self) -> None:
+        source = DRIVER.read_text(encoding="utf-8")
+        helper = source.split("def _tap_exact(", 1)[1].split(
+            "\ndef _bounded_post_tap_evidence(", 1
+        )[0]
+        self.assertIn("device.tap_exact_resource_id_bidirectional(", helper)
+        self.assertNotIn("device.tap_bidirectional(", helper)
+        self.assertNotIn("exact_resource_id=True", helper)
+        self.assertEqual(1, helper.count("device.tap_exact_resource_id_bidirectional("))
+
     def test_each_distinct_contact_reestablishes_the_form_origin_before_forward_scan(self) -> None:
         source = DRIVER.read_text(encoding="utf-8")
         contact_loop = source.split('for contact in fixture["contacts"]:', maxsplit=1)[1]
