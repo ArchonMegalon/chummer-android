@@ -12,11 +12,12 @@ import argparse
 from dataclasses import replace
 from datetime import datetime, timezone
 import json
+import os
 from pathlib import Path
-import subprocess
 import sys
 import xml.etree.ElementTree as ET
 
+import api36_proof_state as proof_state
 import run_api36_editing_e2e as shared
 import run_api36_sr5_before_run_edge_physical_e2e as lane
 import run_api36_sr5_playtime_weapon_physical_e2e as playtime
@@ -78,6 +79,11 @@ def source_paths(workspace_root: Path) -> dict[str, Path]:
         / "src/Chummer.Android/Native/RunnerSessionSr5TableWizardPhoneAuthority.cs",
         "runnerCoordinatorSha256": android_root
         / "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+        "api36ProofStateSha256": android_root
+        / "src/Chummer.Android/Proof/Api36ProofState.cs",
+        "api36ProofPublisherSha256": android_root
+        / "src/Chummer.Android/Proof/Api36ProofStatePublisher.cs",
+        "api36ProofReaderSha256": android_root / "tests/api36_proof_state.py",
         "careerWeaponRequestSha256": presentation_root
         / "Chummer.Presentation/Overview/CareerWeaponFireRequest.cs",
         "tableWizardSessionSha256": presentation_root
@@ -121,23 +127,20 @@ def execute(args: argparse.Namespace) -> dict[str, object]:
             f"got {abi!r}"
         )
 
-    subprocess.run(
-        [
-            str(args.adb.resolve()),
-            "-s",
-            args.serial,
-            "install",
-            "--no-streaming",
-            "-r",
-            str(apk),
-        ],
-        check=True,
-        timeout=300,
-    )
-    verified_remote_fixture_sha256 = device.push_verified(
+    device.install_verified(apk, apk_sha256, "--no-streaming", "-r")
+    provider_registration = device.publish_document_for_documents_ui(
         fixture,
-        f"/sdcard/Download/{fixture.name}",
         fixture_sha256,
+    )
+    proof_build_id = (
+        f"hosted-{os.environ['GITHUB_RUN_ID']}-"
+        f"{os.environ['CHUMMER_E2E_APK_ARTIFACT_ATTEMPT']}"
+    )
+    proof_expectation = proof_state.expected_build(
+        Path(__file__).resolve().parents[1],
+        Path(__file__).resolve().parents[1]
+        / "eng/api36-sr5-wizard-gate-authority.json",
+        proof_build_id,
     )
     proof = lane.prove_lane(
         device,
@@ -146,6 +149,7 @@ def execute(args: argparse.Namespace) -> dict[str, object]:
         fixture_sha256,
         assert_before=playtime.assert_before_state,
         assert_after=playtime.assert_after_state,
+        proof_expectation=proof_expectation,
     )
     if {key: shared.sha256(path) for key, path in paths.items()} != source_hashes:
         raise RuntimeError("Playtime Short Burst source authority changed during execution")
@@ -168,7 +172,8 @@ def execute(args: argparse.Namespace) -> dict[str, object]:
         "sourceFileSha256": source_hashes,
         "sourceGraphRecheckedAfterRun": True,
         "careerFixtureSha256": fixture_sha256,
-        "verifiedRemoteCareerFixtureSha256": verified_remote_fixture_sha256,
+        "verifiedRemoteCareerFixtureSha256": provider_registration["sha256"],
+        "documentsUiProviderRegistration": provider_registration,
         "publicationAuthorized": False,
         "controlCount": 1,
         "controls": {CONTROL: "pass"},

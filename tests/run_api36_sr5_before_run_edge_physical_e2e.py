@@ -1229,7 +1229,7 @@ def prove_lane(
             device,
             proof_expectation,
             proof_trace,
-            label="before-run-ready",
+            label=f"{spec.lane}-ready",
             page_automation_id=spec.lane_route,
             stage="ready",
             wizard_lane=spec.lane,
@@ -1527,7 +1527,7 @@ def prove_lane(
     if proof_expectation is not None:
         if import_proof is None:
             raise RuntimeError("API-36 import proof activation is missing")
-        require_proof_process_transitions(proof_trace)
+        require_proof_process_transitions(proof_trace, spec.lane)
         result["api36ProofInstrumentation"] = {
             "schema": proof_trace[0]["schema"],
             "transport": "app-private-run-as-cat-read-only",
@@ -1543,11 +1543,15 @@ def prove_lane(
     return result
 
 
-def require_proof_process_transitions(trace: list[dict[str, object]]) -> None:
+def require_proof_process_transitions(
+    trace: list[dict[str, object]],
+    lane_name: str,
+) -> None:
     by_label = {str(item["label"]): str(item["processInstanceId"]) for item in trace}
+    lane_ready_label = f"{lane_name}-ready"
     expected_labels = {
         "imported-runner-pending-save", "imported-runner-checkpointed",
-        "before-run-ready", "quote-ready", "review-ready",
+        lane_ready_label, "quote-ready", "review-ready",
         "review-restart-runner", "review-resumed", "receipt-ready", "saved-runner",
         "receipt-recovered", "final-restored-runner", "saved-successor-ready",
     }
@@ -1555,7 +1559,7 @@ def require_proof_process_transitions(trace: list[dict[str, object]]) -> None:
         raise RuntimeError("API-36 proof-state process trace is incomplete")
     process_groups = (
         ("imported-runner-pending-save", "imported-runner-checkpointed",
-         "before-run-ready", "quote-ready", "review-ready"),
+         lane_ready_label, "quote-ready", "review-ready"),
         ("review-restart-runner", "review-resumed", "receipt-ready", "saved-runner"),
         ("receipt-recovered",),
         ("final-restored-runner", "saved-successor-ready"),

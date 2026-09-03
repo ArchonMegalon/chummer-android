@@ -40,6 +40,9 @@ class Api36Sr5PlaytimeShortBurstDriverTests(unittest.TestCase):
         self.assertIn('abi != "x86_64"', source)
         self.assertNotIn('"profile": "tablet"', source)
         self.assertNotIn('"publicationAuthorized": True', source)
+        self.assertIn("device.publish_document_for_documents_ui(", source)
+        self.assertIn("proof_expectation=proof_expectation", source)
+        self.assertNotIn("device.push_verified(", source)
 
     def test_wrapper_reuses_exact_typed_review_apply_receipt_and_xml_authority(self) -> None:
         root = ET.parse(FIXTURE).getroot()
@@ -100,6 +103,39 @@ class Api36Sr5PlaytimeShortBurstDriverTests(unittest.TestCase):
             ],
             wait_route.call_args_list,
         )
+
+    def test_playtime_proof_trace_uses_lane_exact_process_groups(self) -> None:
+        process_by_label = {
+            "imported-runner-pending-save": "process-1",
+            "imported-runner-checkpointed": "process-1",
+            "playtime-ready": "process-1",
+            "quote-ready": "process-1",
+            "review-ready": "process-1",
+            "review-restart-runner": "process-2",
+            "review-resumed": "process-2",
+            "receipt-ready": "process-2",
+            "saved-runner": "process-2",
+            "receipt-recovered": "process-3",
+            "final-restored-runner": "process-4",
+            "saved-successor-ready": "process-4",
+        }
+        trace = [
+            {"label": label, "processInstanceId": process_id}
+            for label, process_id in process_by_label.items()
+        ]
+        driver.lane.require_proof_process_transitions(trace, "playtime")
+
+        near_lane = copy.deepcopy(trace)
+        near_lane[2]["label"] = "before-run-ready"
+        with self.assertRaisesRegex(RuntimeError, "trace is incomplete"):
+            driver.lane.require_proof_process_transitions(near_lane, "playtime")
+
+        reused_process = copy.deepcopy(trace)
+        for item in reused_process:
+            if item["label"] == "receipt-recovered":
+                item["processInstanceId"] = "process-4"
+        with self.assertRaisesRegex(RuntimeError, "rotate process identity"):
+            driver.lane.require_proof_process_transitions(reused_process, "playtime")
 
     def test_exact_resource_route_preserves_embedded_slashes(self) -> None:
         route = driver.shared.UiNode(
@@ -165,6 +201,18 @@ class Api36Sr5PlaytimeShortBurstDriverTests(unittest.TestCase):
             paths["tableWizardPageSha256"],
         )
         self.assertEqual(
+            ROOT / "src/Chummer.Android/Proof/Api36ProofState.cs",
+            paths["api36ProofStateSha256"],
+        )
+        self.assertEqual(
+            ROOT / "src/Chummer.Android/Proof/Api36ProofStatePublisher.cs",
+            paths["api36ProofPublisherSha256"],
+        )
+        self.assertEqual(
+            ROOT / "tests/api36_proof_state.py",
+            paths["api36ProofReaderSha256"],
+        )
+        self.assertEqual(
             Path(
                 "/workspace/chummer-presentation/Chummer.Presentation/Overview/"
                 "Sr5TableWizardSession.cs"
@@ -200,7 +248,12 @@ class Api36Sr5PlaytimeShortBurstDriverTests(unittest.TestCase):
             authority.write_text("authority", encoding="utf-8")
             device = mock.Mock(spec=driver.shared.Device)
             device.shell.side_effect = ["36", "x86_64"]
-            device.push_verified.return_value = driver.shared.sha256(FIXTURE)
+            provider_registration = {
+                "sha256": driver.shared.sha256(FIXTURE),
+                "schema": "chummer.android.documentsui-provider-registration/v3",
+                "status": "pass",
+            }
+            device.publish_document_for_documents_ui.return_value = provider_registration
             proof = {
                 "scope": {
                     "representativeAction": driver.SPEC.representative_action,
@@ -212,12 +265,20 @@ class Api36Sr5PlaytimeShortBurstDriverTests(unittest.TestCase):
             with (
                 mock.patch.object(driver, "source_paths", return_value={"sourceSha256": authority}),
                 mock.patch.object(driver.shared, "Device", return_value=device),
-                mock.patch.object(driver.subprocess, "run") as install,
+                mock.patch.dict(
+                    driver.os.environ,
+                    {"GITHUB_RUN_ID": "42", "CHUMMER_E2E_APK_ARTIFACT_ATTEMPT": "3"},
+                ),
                 mock.patch.object(driver.lane, "prove_lane", return_value=proof) as prove,
             ):
                 receipt = driver.execute(args)
 
-            install.assert_called_once()
+            device.install_verified.assert_called_once_with(
+                args.apk.resolve(), driver.shared.sha256(args.apk), "--no-streaming", "-r"
+            )
+            device.publish_document_for_documents_ui.assert_called_once_with(
+                FIXTURE, driver.shared.sha256(FIXTURE)
+            )
             prove.assert_called_once_with(
                 device,
                 driver.SPEC,
@@ -225,6 +286,7 @@ class Api36Sr5PlaytimeShortBurstDriverTests(unittest.TestCase):
                 driver.shared.sha256(FIXTURE),
                 assert_before=driver.playtime.assert_before_state,
                 assert_after=driver.playtime.assert_after_state,
+                proof_expectation=mock.ANY,
             )
             self.assertEqual("pass", receipt["status"])
             self.assertEqual("phone", receipt["profile"])
@@ -232,6 +294,10 @@ class Api36Sr5PlaytimeShortBurstDriverTests(unittest.TestCase):
             self.assertEqual(36, receipt["apiLevel"])
             self.assertEqual("x86_64", receipt["abi"])
             self.assertFalse(receipt["publicationAuthorized"])
+            self.assertEqual(
+                provider_registration,
+                receipt["documentsUiProviderRegistration"],
+            )
             self.assertEqual({driver.CONTROL: "pass"}, receipt["controls"])
             self.assertEqual(set(driver.PROOF_STAGES), set(receipt["journeys"]))
             self.assertEqual(
@@ -260,11 +326,10 @@ class Api36Sr5PlaytimeShortBurstDriverTests(unittest.TestCase):
                             return_value={"sourceSha256": authority},
                         ),
                         mock.patch.object(driver.shared, "Device", return_value=device),
-                        mock.patch.object(driver.subprocess, "run") as install,
                         self.assertRaisesRegex(RuntimeError, message),
                     ):
                         driver.execute(self._args(root, serial=serial))
-                    install.assert_not_called()
+                    device.install_verified.assert_not_called()
 
     def test_source_graph_change_after_proof_fails_closed(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -273,7 +338,9 @@ class Api36Sr5PlaytimeShortBurstDriverTests(unittest.TestCase):
             authority.write_text("before", encoding="utf-8")
             device = mock.Mock(spec=driver.shared.Device)
             device.shell.side_effect = ["36", "x86_64"]
-            device.push_verified.return_value = driver.shared.sha256(FIXTURE)
+            device.publish_document_for_documents_ui.return_value = {
+                "sha256": driver.shared.sha256(FIXTURE),
+            }
 
             def mutate_authority(*_args: object, **_kwargs: object) -> dict[str, object]:
                 authority.write_text("after", encoding="utf-8")
@@ -282,7 +349,10 @@ class Api36Sr5PlaytimeShortBurstDriverTests(unittest.TestCase):
             with (
                 mock.patch.object(driver, "source_paths", return_value={"sourceSha256": authority}),
                 mock.patch.object(driver.shared, "Device", return_value=device),
-                mock.patch.object(driver.subprocess, "run"),
+                mock.patch.dict(
+                    driver.os.environ,
+                    {"GITHUB_RUN_ID": "42", "CHUMMER_E2E_APK_ARTIFACT_ATTEMPT": "3"},
+                ),
                 mock.patch.object(driver.lane, "prove_lane", side_effect=mutate_authority),
                 self.assertRaisesRegex(RuntimeError, "source authority changed"),
             ):
