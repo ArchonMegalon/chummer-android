@@ -646,6 +646,10 @@ class AdbOperationDeadlineExceeded(RuntimeError):
     """Raised before an ADB invocation when its caller-owned deadline expired."""
 
 
+class AdbHierarchyLeaseReserveExceeded(AdbOperationDeadlineExceeded):
+    """Raised when a fresh file hierarchy cannot retain its retry reserve."""
+
+
 def _remaining_operation_timeout(
     *,
     deadline: float | None,
@@ -725,7 +729,7 @@ def _hierarchy_dump_attempt_timeout(
             - ADB_READ_ONLY_DEADLINE_HEADROOM_SECONDS
         )
     if available_for_each_dump < ADB_FILE_HIERARCHY_MINIMUM_DUMP_ATTEMPT_SECONDS:
-        raise AdbOperationDeadlineExceeded(
+        raise AdbHierarchyLeaseReserveExceeded(
             "ADB hierarchy-dump lease cannot preserve its owned-file "
             "retry and reconciliation reserve"
         )
@@ -1896,6 +1900,7 @@ class Device:
         deadline: float | None = None,
         dump_attempt_max_seconds: float = ADB_FILE_HIERARCHY_DUMP_ATTEMPT_MAX_SECONDS,
         allow_direct_reconciliation: bool = True,
+        raise_on_lease_reserve_exhaustion: bool = False,
     ) -> list[UiNode]:
         """Read one hierarchy while sharing an optional caller-owned deadline."""
         if (
@@ -1910,6 +1915,8 @@ class Device:
             )
         if type(allow_direct_reconciliation) is not bool:
             raise TypeError("Hierarchy direct-reconciliation policy must be boolean")
+        if type(raise_on_lease_reserve_exhaustion) is not bool:
+            raise TypeError("Hierarchy lease-reserve propagation policy must be boolean")
         retry_attempts: list[dict[str, object]] = []
         try:
             for dump_attempt in range(1, ADB_FILE_HIERARCHY_MAX_ATTEMPTS + 1):
@@ -2048,6 +2055,14 @@ class Device:
                     deadline=deadline,
                 ).stdout
                 _remaining_operation_timeout(deadline=deadline, maximum=120)
+        except AdbHierarchyLeaseReserveExceeded as error:
+            (self.evidence / "last-invalid-hierarchy.txt").write_text(
+                f"Hierarchy observation exceeded its caller-owned deadline: {error}",
+                encoding="utf-8",
+            )
+            if raise_on_lease_reserve_exhaustion:
+                raise
+            return []
         except AdbOperationDeadlineExceeded as error:
             (self.evidence / "last-invalid-hierarchy.txt").write_text(
                 f"Hierarchy observation exceeded its caller-owned deadline: {error}",

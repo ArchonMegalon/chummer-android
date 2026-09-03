@@ -106,7 +106,7 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "77fe09cdd637077bb8c09893233ebcbe56c5f92ca1485645a5bf6d9d094463d6"
+        "sha256": "59b480e636ed69bdcc293a86bcf586f2399295f53278e4ef0239ba47577067fd"
       },
       {
         "path": "src/Chummer.Android/Native/MorePage.cs",
@@ -731,17 +731,17 @@
       {
         "path": "src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.resx",
         "exists": true,
-        "sha256": "1ef5af79697642533bf74fdd891d7f7d6454ce9c45f303fdf971835b51aff4d2"
+        "sha256": "8ac47d1e9fea948454c01efa98374e61c292b5c57805c7c9188c01bce1dc3645"
       },
       {
         "path": "src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.de.resx",
         "exists": true,
-        "sha256": "d926e3fee36b2a17a2ea5bb390e081206dd7c9c707dbe75b51923ac593bff358"
+        "sha256": "3b07303b4b887e2f9a5f1aeaa7400c9ebc4b6e796b91d193cf2656d63ddff891"
       },
       {
         "path": "src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.es.resx",
         "exists": true,
-        "sha256": "a9dd452bf87d44f30384c4c01a66b4bdc5c892f83f7d9e6448ad0936dec69fb0"
+        "sha256": "424c03a617f1d01d9deeb28fe9230ec070a481939828e1c7c62d5dd783c1163c"
       },
       {
         "path": "src/Chummer.Android/Resources/Localization/WizardStrings.resx",
@@ -956,7 +956,7 @@
       {
         "path": "tests/run_api36_editing_e2e.py",
         "exists": true,
-        "sha256": "238e8cd12010c8e9e3460bfdfbfdac7eb76937f0fb275e8791a87b7dc12e63df"
+        "sha256": "a4b8d975a00c253ea3fa05d8cdec12aca3ef0e343cf2e6ad142ed7be3d0a0a4b"
       },
       {
         "path": "tests/run_api36_career_active_skill_advance_e2e.py",
@@ -1376,7 +1376,7 @@
       {
         "path": "tests/run_api36_creation_prerequisite_e2e.py",
         "exists": true,
-        "sha256": "d19cfd46d5e6c98d1e20426aabf93844c088a21d4af3c197c6b2812b50378f6c"
+        "sha256": "db8f072b714bf8d895690c43cac33ab7587650771dda3d55c79eba568727cbf4"
       },
       {
         "path": "tests/fixtures/career-condition-monitor-e2e.chum5",

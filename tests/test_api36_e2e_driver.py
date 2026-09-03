@@ -3200,6 +3200,35 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         device.shell.assert_not_called()
         device.run.assert_not_called()
 
+    def test_hierarchy_can_expose_only_the_exact_owned_file_lease_reserve_exhaustion(
+        self,
+    ) -> None:
+        device = Mock(spec=DRIVER.Device)
+        with tempfile.TemporaryDirectory() as temporary, patch.object(
+            DRIVER.time,
+            "monotonic",
+            return_value=90.0,
+        ):
+            evidence = Path(temporary)
+            device.evidence = evidence
+            with self.assertRaises(DRIVER.AdbHierarchyLeaseReserveExceeded):
+                DRIVER.Device.hierarchy(
+                    device,
+                    deadline=100.0,
+                    raise_on_lease_reserve_exhaustion=True,
+                )
+            diagnostic = (evidence / "last-invalid-hierarchy.txt").read_text(
+                encoding="utf-8"
+            )
+
+        self.assertIn("caller-owned deadline", diagnostic)
+        self.assertIn(
+            "cannot preserve its owned-file retry and reconciliation reserve",
+            diagnostic,
+        )
+        device.shell.assert_not_called()
+        device.run.assert_not_called()
+
     def test_empty_dump_status_does_not_read_file_after_dump_deadline(self) -> None:
         device = Mock(spec=DRIVER.Device)
         device.shell.return_value = ""

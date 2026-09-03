@@ -5930,6 +5930,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             }
         )
         origin = driver.PriorityRankOrigin([], 0, 0, (), 0)
+        scan_observer = mock.Mock()
         with mock.patch.object(
             driver,
             "wait_for_prerequisite_scan_origin",
@@ -5939,7 +5940,11 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "_remaining_operation_timeout",
             return_value=15,
         ), mock.patch.object(driver.shared, "reset_scroll_to_top") as reset:
-            actual = driver.open_prerequisite(device, deadline=deadline)
+            actual = driver.open_prerequisite(
+                device,
+                deadline=deadline,
+                scan_observer=scan_observer,
+            )
 
         self.assertIs(origin, actual)
         device.wait_exact_resource_id_bidirectional.assert_called_once_with(
@@ -5957,7 +5962,12 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         device.shell.assert_called_once_with(
             "input", "tap", "540", "410", timeout=15, deadline=deadline
         )
-        acquire.assert_called_once_with(device, deadline=deadline)
+        acquire.assert_called_once_with(
+            device,
+            deadline=deadline,
+            immediately_after_opening_tap=True,
+            scan_observer=scan_observer,
+        )
         device.wait.assert_not_called()
         device.tap_until_visible.assert_not_called()
         device.tap_bidirectional.assert_not_called()
@@ -5990,7 +6000,12 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         reset.assert_not_called()
         device.tap_bidirectional.assert_not_called()
         device.shell.assert_called_once_with("input", "tap", "540", "410")
-        acquire.assert_called_once_with(device, deadline=None)
+        acquire.assert_called_once_with(
+            device,
+            deadline=None,
+            immediately_after_opening_tap=True,
+            scan_observer=None,
+        )
         device.wait.assert_not_called()
 
     def test_prerequisite_resume_rejects_a_stale_or_non_tappable_method_node(self) -> None:
@@ -6147,7 +6162,12 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
         self.assertEqual(1, device.wait_exact_resource_id_bidirectional.call_count)
         device.shell.assert_called_once_with("input", "tap", "540", "410")
-        acquire.assert_called_once_with(device, deadline=None)
+        acquire.assert_called_once_with(
+            device,
+            deadline=None,
+            immediately_after_opening_tap=True,
+            scan_observer=None,
+        )
         reset.assert_not_called()
         device.wait.assert_not_called()
 
@@ -10315,6 +10335,198 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             ["creation-prerequisite-scan-origin-cardinality-invalid"],
             device.captures,
         )
+
+    def test_prerequisite_scan_origin_uses_one_direct_read_for_exact_post_tap_lease_exhaustion(
+        self,
+    ) -> None:
+        route = self.canonical_node("creation-prerequisite-page")
+        method = self.canonical_node("creation-prerequisite-method")
+        binding = self.canonical_node("creation-prerequisite-binding")
+        lease_error = driver.shared.AdbHierarchyLeaseReserveExceeded(
+            "owned-file retry and reconciliation reserve"
+        )
+        device = mock.Mock(spec=driver.shared.Device)
+        device.hierarchy.side_effect = lease_error
+        device.read_only_hierarchy_once.return_value = [route, method, binding]
+        observed_scans: list[dict[str, object]] = []
+
+        origin = driver.wait_for_prerequisite_scan_origin(
+            device,
+            deadline=driver.time.monotonic() + 30,
+            immediately_after_opening_tap=True,
+            scan_observer=observed_scans.append,
+        )
+
+        self.assertEqual([route, method, binding], origin.nodes)
+        self.assertEqual(0, origin.reverse_swipes)
+        self.assertEqual(2, len(origin.hierarchy_durations_ms))
+        self.assertEqual(0, origin.empty_hierarchy_reads)
+        self.assertEqual(1, device.hierarchy.call_count)
+        self.assertTrue(
+            device.hierarchy.call_args.kwargs[
+                "raise_on_lease_reserve_exhaustion"
+            ]
+        )
+        device.read_only_hierarchy_once.assert_called_once()
+        direct = device.read_only_hierarchy_once.call_args.kwargs
+        self.assertGreater(direct["attempt_max_seconds"], 0)
+        self.assertLessEqual(
+            direct["attempt_max_seconds"],
+            driver.shared.ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_READ_ATTEMPT_MAX_SECONDS,
+        )
+        self.assertEqual(
+            "creation-prerequisite-scan-origin-direct-invalid.xml",
+            direct["diagnostic_name"],
+        )
+        self.assertEqual(1, len(observed_scans))
+        self.assertEqual("resolved", observed_scans[0]["status"])
+        self.assertEqual(
+            "resolved-exact-top-origin",
+            observed_scans[0]["directFallbackResult"],
+        )
+        self.assertEqual(1, observed_scans[0]["directFallbackReadCount"])
+        self.assertEqual(1, observed_scans[0]["fileBackedObservationAttempts"])
+        self.assertIs(True, observed_scans[0]["fileBackedLeaseReserveExhausted"])
+        device.swipe_down.assert_not_called()
+        device.shell.assert_not_called()
+
+    def test_prerequisite_scan_origin_direct_fallback_rejects_lower_or_ambiguous_snapshot(
+        self,
+    ) -> None:
+        route = self.canonical_node("creation-prerequisite-page")
+        method = self.canonical_node("creation-prerequisite-method")
+        binding = self.canonical_node("creation-prerequisite-binding")
+        cases = (
+            ("lower", [route, method], "did not expose the route and both"),
+            ("ambiguous", [route, method, binding, binding], "was ambiguous"),
+        )
+        for name, direct_nodes, message in cases:
+            with self.subTest(name=name):
+                device = mock.Mock(spec=driver.shared.Device)
+                device.hierarchy.side_effect = (
+                    driver.shared.AdbHierarchyLeaseReserveExceeded("lease reserve")
+                )
+                device.read_only_hierarchy_once.return_value = direct_nodes
+                observed_scans: list[dict[str, object]] = []
+
+                with self.assertRaisesRegex(RuntimeError, message):
+                    driver.wait_for_prerequisite_scan_origin(
+                        device,
+                        deadline=driver.time.monotonic() + 30,
+                        immediately_after_opening_tap=True,
+                        scan_observer=observed_scans.append,
+                    )
+
+                device.read_only_hierarchy_once.assert_called_once()
+                device.swipe_down.assert_not_called()
+                device.shell.assert_not_called()
+                self.assertEqual(1, observed_scans[0]["directFallbackReadCount"])
+                self.assertIn(
+                    observed_scans[0]["status"],
+                    {
+                        "direct-fallback-origin-incomplete",
+                        "direct-fallback-cardinality-invalid",
+                    },
+                )
+
+    def test_prerequisite_scan_origin_direct_fallback_rejects_noncanonical_identity_or_read_failure(
+        self,
+    ) -> None:
+        route = self.canonical_node("creation-prerequisite-page")
+        method = self.canonical_node("creation-prerequisite-method")
+        forged_binding = driver.shared.UiNode(
+            {
+                "package": "com.example.forged",
+                "resource-id": (
+                    f"{driver.shared.PACKAGE}:id/creation-prerequisite-binding"
+                ),
+            }
+        )
+        cases = (
+            (
+                "noncanonical",
+                [route, method, forged_binding],
+                "canonical Chummer resource identities",
+            ),
+            (
+                "read-failure",
+                subprocess.TimeoutExpired("adb", 1),
+                "direct hierarchy observation failed",
+            ),
+        )
+        for name, direct_result, message in cases:
+            with self.subTest(name=name):
+                device = mock.Mock(spec=driver.shared.Device)
+                device.hierarchy.side_effect = (
+                    driver.shared.AdbHierarchyLeaseReserveExceeded("lease reserve")
+                )
+                if isinstance(direct_result, BaseException):
+                    device.read_only_hierarchy_once.side_effect = direct_result
+                else:
+                    device.read_only_hierarchy_once.return_value = direct_result
+
+                with self.assertRaisesRegex(RuntimeError, message):
+                    driver.wait_for_prerequisite_scan_origin(
+                        device,
+                        deadline=driver.time.monotonic() + 30,
+                        immediately_after_opening_tap=True,
+                        scan_observer=lambda _scan: None,
+                    )
+
+                device.read_only_hierarchy_once.assert_called_once()
+                device.swipe_down.assert_not_called()
+                device.shell.assert_not_called()
+
+    def test_prerequisite_scan_origin_never_direct_falls_back_after_reverse_swipe(
+        self,
+    ) -> None:
+        route = self.canonical_node("creation-prerequisite-page")
+        device = mock.Mock(spec=driver.shared.Device)
+        device.hierarchy.side_effect = (
+            [route],
+            driver.shared.AdbHierarchyLeaseReserveExceeded("lease reserve"),
+        )
+        device.dismiss_system_ui_anr.return_value = False
+        observed_scans: list[dict[str, object]] = []
+
+        with self.assertRaisesRegex(RuntimeError, "untouched post-opening viewport"):
+            driver.wait_for_prerequisite_scan_origin(
+                device,
+                deadline=driver.time.monotonic() + 30,
+                immediately_after_opening_tap=True,
+                scan_observer=observed_scans.append,
+            )
+
+        device.swipe_down.assert_called_once()
+        device.read_only_hierarchy_once.assert_not_called()
+        device.shell.assert_not_called()
+        self.assertEqual(
+            "lease-reserve-exhausted-ineligible",
+            observed_scans[0]["status"],
+        )
+        self.assertEqual(1, observed_scans[0]["reverseSwipes"])
+
+    def test_prerequisite_scan_origin_does_not_direct_fallback_for_an_unclassified_empty_read(
+        self,
+    ) -> None:
+        device = mock.Mock(spec=driver.shared.Device)
+        device.hierarchy.return_value = []
+
+        with mock.patch.object(
+            driver,
+            "sleep_before_phase_deadline",
+            side_effect=RuntimeError("empty hierarchy wait cannot fit"),
+        ), self.assertRaisesRegex(RuntimeError, "empty hierarchy wait cannot fit"):
+            driver.wait_for_prerequisite_scan_origin(
+                device,
+                deadline=driver.time.monotonic() + 30,
+                immediately_after_opening_tap=True,
+                scan_observer=lambda _scan: None,
+            )
+
+        device.read_only_hierarchy_once.assert_not_called()
+        device.swipe_down.assert_not_called()
+        device.shell.assert_not_called()
 
     def test_prerequisite_authority_scan_collects_once_and_rejects_drift(self) -> None:
         digest_values = {

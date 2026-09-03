@@ -458,6 +458,7 @@ def fresh_hierarchy_timed(
     deadline: float | None = None,
     dump_attempt_max_seconds: float | None = None,
     allow_direct_reconciliation: bool = True,
+    raise_on_lease_reserve_exhaustion: bool = False,
 ) -> list[shared.UiNode]:
     """Acquire a post-gesture hierarchy through UIAutomator's dump file.
 
@@ -469,6 +470,8 @@ def fresh_hierarchy_timed(
     """
     if type(allow_direct_reconciliation) is not bool:
         raise ValueError("Direct hierarchy reconciliation policy must be boolean")
+    if type(raise_on_lease_reserve_exhaustion) is not bool:
+        raise ValueError("Hierarchy lease-reserve propagation policy must be boolean")
     if dump_attempt_max_seconds is not None and (
         isinstance(dump_attempt_max_seconds, bool)
         or not isinstance(dump_attempt_max_seconds, (int, float))
@@ -488,6 +491,8 @@ def fresh_hierarchy_timed(
             )
         if not allow_direct_reconciliation:
             hierarchy_options["allow_direct_reconciliation"] = False
+        if raise_on_lease_reserve_exhaustion:
+            hierarchy_options["raise_on_lease_reserve_exhaustion"] = True
         nodes = device.hierarchy(**hierarchy_options)
     finally:
         durations_ms.append(round((time.perf_counter() - started) * 1000))
@@ -4444,6 +4449,8 @@ def wait_for_prerequisite_scan_origin(
     max_reverse_swipes: int = 8,
     distance_ratio: float = 0.68,
     deadline: float | None = None,
+    immediately_after_opening_tap: bool = False,
+    scan_observer: Callable[[dict[str, object]], None] | None = None,
 ) -> PriorityRankOrigin:
     """Acquire and retain the exact top viewport of the pushed prerequisite page.
 
@@ -4453,9 +4460,17 @@ def wait_for_prerequisite_scan_origin(
     acquisition instead reverses only while the exact prerequisite route is
     present but its two top authority anchors are absent.  The hierarchy that
     proves those anchors is returned for direct reuse as the scan's first
-    viewport; duplicate route or anchor nodes still fail closed.
+    viewport; duplicate route or anchor nodes still fail closed.  Only the
+    untouched viewport immediately following its one opening tap may exchange
+    an unfundable owned-file retry reserve for one direct read-only frame.  The
+    complete stable/cardinality traversal still consumes that frame as its
+    initial observation.
     """
-    if timeout <= 0 or max_reverse_swipes < 0:
+    if (
+        timeout <= 0
+        or max_reverse_swipes < 0
+        or type(immediately_after_opening_tap) is not bool
+    ):
         raise ValueError("A positive timeout and nonnegative reverse bound are required")
     route_selector = "creation-prerequisite-page"
     top_selectors = (
@@ -4468,13 +4483,181 @@ def wait_for_prerequisite_scan_origin(
         operation_deadline = min(operation_deadline, deadline)
     reverse_swipes = 0
     empty_hierarchy_reads = 0
+    file_backed_attempts = 0
+    direct_fallback_reads = 0
     hierarchy_durations_ms: list[int] = []
-    while time.monotonic() < operation_deadline:
-        nodes = fresh_hierarchy_timed(
-            device,
-            hierarchy_durations_ms,
-            deadline=operation_deadline,
+
+    def record_origin(
+        status: str,
+        *,
+        lease_reserve_exhausted: bool,
+        direct_fallback_result: str,
+    ) -> None:
+        if scan_observer is None:
+            return
+        scan_observer(
+            {
+                "scanId": "creation-prerequisite-scan-origin",
+                "status": status,
+                "observationMode": (
+                    "fresh-file-backed-with-single-direct-read-only-lease-fallback"
+                ),
+                "immediatelyAfterOpeningTap": immediately_after_opening_tap,
+                "fileBackedObservationAttempts": file_backed_attempts,
+                "fileBackedLeaseReserveExhausted": lease_reserve_exhausted,
+                "directFallbackObservationLimit": 1,
+                "directFallbackReadCount": direct_fallback_reads,
+                "directFallbackResult": direct_fallback_result,
+                "reverseSwipes": reverse_swipes,
+                "emptyHierarchyReads": empty_hierarchy_reads,
+                **hierarchy_timing_fields(hierarchy_durations_ms),
+                "elapsedMs": round((time.monotonic() - started) * 1000),
+                "deadlineEnforced": deadline is not None,
+            }
         )
+
+    def exact_matches(nodes: list[shared.UiNode]) -> dict[str, list[shared.UiNode]]:
+        return {
+            selector: [
+                node for node in nodes if _exact_resource_id(node) == selector
+            ]
+            for selector in (route_selector, *top_selectors)
+        }
+
+    while time.monotonic() < operation_deadline:
+        file_backed_attempts += 1
+        try:
+            nodes = fresh_hierarchy_timed(
+                device,
+                hierarchy_durations_ms,
+                deadline=operation_deadline,
+                raise_on_lease_reserve_exhaustion=(
+                    immediately_after_opening_tap
+                ),
+            )
+        except shared.AdbHierarchyLeaseReserveExceeded as error:
+            if not immediately_after_opening_tap or reverse_swipes != 0:
+                record_origin(
+                    "lease-reserve-exhausted-ineligible",
+                    lease_reserve_exhausted=True,
+                    direct_fallback_result="rejected-after-navigation",
+                )
+                raise RuntimeError(
+                    "Creation prerequisite scan origin exhausted its fresh-file "
+                    "hierarchy lease outside the untouched post-opening viewport"
+                ) from error
+            direct_remaining = (
+                operation_deadline
+                - time.monotonic()
+                - shared.ADB_READ_ONLY_DEADLINE_HEADROOM_SECONDS
+            )
+            if direct_remaining <= 0:
+                record_origin(
+                    "direct-fallback-lease-unavailable",
+                    lease_reserve_exhausted=True,
+                    direct_fallback_result="not-started",
+                )
+                raise RuntimeError(
+                    "Creation prerequisite scan origin had no caller lease for "
+                    "its one allowed direct hierarchy observation"
+                ) from error
+            direct_fallback_reads = 1
+            direct_started = time.perf_counter()
+            try:
+                # This primitive invokes /dev/tty once and bypasses the generic
+                # read-only retry policy. It observes only; it cannot replay
+                # the opening tap or any other mutation command.
+                nodes = device.read_only_hierarchy_once(
+                    deadline=operation_deadline,
+                    attempt_max_seconds=min(
+                        shared.ADB_HIERARCHY_DUMP_DIRECT_RECONCILIATION_READ_ATTEMPT_MAX_SECONDS,
+                        direct_remaining,
+                    ),
+                    diagnostic_name=(
+                        "creation-prerequisite-scan-origin-direct-invalid.xml"
+                    ),
+                )
+                require_phase_deadline(
+                    operation_deadline,
+                    operation="prerequisite scan-origin direct observation",
+                )
+            except Exception as direct_error:
+                hierarchy_durations_ms.append(
+                    round((time.perf_counter() - direct_started) * 1000)
+                )
+                record_origin(
+                    "direct-fallback-read-failed",
+                    lease_reserve_exhausted=True,
+                    direct_fallback_result="read-failed",
+                )
+                raise RuntimeError(
+                    "Creation prerequisite scan origin direct hierarchy observation failed"
+                ) from direct_error
+            hierarchy_durations_ms.append(
+                round((time.perf_counter() - direct_started) * 1000)
+            )
+            matches = exact_matches(nodes)
+            ambiguous = {
+                selector: len(candidates)
+                for selector, candidates in matches.items()
+                if len(candidates) > 1
+            }
+            if ambiguous:
+                record_origin(
+                    "direct-fallback-cardinality-invalid",
+                    lease_reserve_exhausted=True,
+                    direct_fallback_result="ambiguous",
+                )
+                raise RuntimeError(
+                    "Creation prerequisite direct scan origin was ambiguous: "
+                    f"{ambiguous!r}"
+                )
+            missing = [
+                selector
+                for selector in (route_selector, *top_selectors)
+                if len(matches[selector]) != 1
+            ]
+            if missing:
+                record_origin(
+                    "direct-fallback-origin-incomplete",
+                    lease_reserve_exhausted=True,
+                    direct_fallback_result="missing-route-or-top-anchor",
+                )
+                raise RuntimeError(
+                    "Creation prerequisite direct scan origin did not expose the "
+                    f"route and both top authority anchors: missing={missing!r}"
+                )
+            noncanonical = [
+                selector
+                for selector in (route_selector, *top_selectors)
+                if (
+                    matches[selector][0].attributes.get("package") != shared.PACKAGE
+                    or matches[selector][0].attributes.get("resource-id")
+                    != f"{shared.PACKAGE}:id/{selector}"
+                )
+            ]
+            if noncanonical:
+                record_origin(
+                    "direct-fallback-identity-invalid",
+                    lease_reserve_exhausted=True,
+                    direct_fallback_result="noncanonical",
+                )
+                raise RuntimeError(
+                    "Creation prerequisite direct scan origin did not expose "
+                    f"canonical Chummer resource identities: {noncanonical!r}"
+                )
+            record_origin(
+                "resolved",
+                lease_reserve_exhausted=True,
+                direct_fallback_result="resolved-exact-top-origin",
+            )
+            return PriorityRankOrigin(
+                nodes=nodes,
+                reverse_swipes=reverse_swipes,
+                elapsed_ms=round((time.monotonic() - started) * 1000),
+                hierarchy_durations_ms=tuple(hierarchy_durations_ms),
+                empty_hierarchy_reads=empty_hierarchy_reads,
+            )
         if not nodes:
             empty_hierarchy_reads += 1
             sleep_before_phase_deadline(
@@ -4483,12 +4666,7 @@ def wait_for_prerequisite_scan_origin(
                 operation="prerequisite scan-origin empty-hierarchy wait",
             )
             continue
-        matches = {
-            selector: [
-                node for node in nodes if _exact_resource_id(node) == selector
-            ]
-            for selector in (route_selector, *top_selectors)
-        }
+        matches = exact_matches(nodes)
         ambiguous = {
             selector: len(candidates)
             for selector, candidates in matches.items()
@@ -4515,6 +4693,11 @@ def wait_for_prerequisite_scan_origin(
                     surface_name="Creation prerequisite scan origin",
                     deadline=operation_deadline,
                 )
+            record_origin(
+                "resolved",
+                lease_reserve_exhausted=False,
+                direct_fallback_result="not-needed",
+            )
             return PriorityRankOrigin(
                 nodes=nodes,
                 reverse_swipes=reverse_swipes,
@@ -5329,6 +5512,7 @@ def open_prerequisite(
     *,
     ready_method_node: shared.UiNode | None = None,
     deadline: float | None = None,
+    scan_observer: Callable[[dict[str, object]], None] | None = None,
 ) -> PriorityRankOrigin:
     if ready_method_node is None:
         ready_method_node = device.wait_exact_resource_id_bidirectional(
@@ -5392,6 +5576,8 @@ def open_prerequisite(
     return wait_for_prerequisite_scan_origin(
         device,
         deadline=deadline,
+        immediately_after_opening_tap=True,
+        scan_observer=scan_observer,
     )
 
 
@@ -10039,6 +10225,8 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     prerequisite_origin = wait_for_prerequisite_scan_origin(
         device,
         deadline=prerequisite_deadline,
+        immediately_after_opening_tap=True,
+        scan_observer=progress.record_scan,
     )
     prerequisite_scan = scan_prerequisite_authority(
         device,
@@ -10401,6 +10589,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         device,
         ready_method_node=resumed_method_node,
         deadline=same_process_deadline,
+        scan_observer=progress.record_scan,
     )
     resumed_authority = read_persisted_prerequisite_authority(
         device,
@@ -10555,6 +10744,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         device,
         ready_method_node=post_resources_method_node,
         deadline=resources_rebind_deadline,
+        scan_observer=progress.record_scan,
     )
     post_resources_prerequisite_authority = read_persisted_prerequisite_authority(
         device,
@@ -10620,6 +10810,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         device,
         ready_method_node=restarted_method_node,
         deadline=process_restart_deadline,
+        scan_observer=progress.record_scan,
     )
     restarted_authority = read_persisted_prerequisite_authority(
         device,
