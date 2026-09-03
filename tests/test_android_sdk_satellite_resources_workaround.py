@@ -110,6 +110,8 @@ class AndroidSdkSatelliteResourcesWorkaroundTests(unittest.TestCase):
                         "-target:PrepareForBuild",
                         f"-property:Configuration={configuration}",
                         f"-property:AndroidNETSdkVersion={version}",
+                        f"-property:ChummerPresentationRoot={Path(temporary) / 'presentation'}",
+                        f"-property:ChummerCoreEngineRoot={Path(temporary) / 'core'}",
                     ],
                     check=False,
                     capture_output=True,

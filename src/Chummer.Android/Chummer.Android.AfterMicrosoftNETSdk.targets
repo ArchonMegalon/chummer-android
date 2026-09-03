@@ -6,6 +6,15 @@
            Text="Chummer Android Release requires Microsoft.Android.Sdk.Linux 36.1.69; resolved '$(AndroidNETSdkVersion)'." />
   </Target>
 
+  <Target Name="_ChummerRequireExplicitGovernedSourceRoots"
+          BeforeTargets="PrepareForBuild"
+          Condition="'$(Configuration)' == 'Release' Or '$(ChummerUseLocalCompatibilityTree)' == 'false'">
+    <Error Condition="'$([System.IO.Path]::IsPathFullyQualified($(ChummerPresentationRoot)))' != 'True'"
+           Text="Governed Chummer Android builds require an explicit absolute ChummerPresentationRoot; ambient legacy sibling discovery is disabled." />
+    <Error Condition="'$([System.IO.Path]::IsPathFullyQualified($(ChummerCoreEngineRoot)))' != 'True'"
+           Text="Governed Chummer Android builds require an explicit absolute ChummerCoreEngineRoot; ambient legacy sibling discovery is disabled." />
+  </Target>
+
   <Import Project="Microsoft.Android.Sdk.Linux.36.1.69.Workaround.targets"
           Condition="'$(AndroidNETSdkVersion)' == '36.1.69'" />
 </Project>

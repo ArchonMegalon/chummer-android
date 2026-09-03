@@ -11,6 +11,22 @@ dotnet_command="${CHUMMER_DOTNET:-dotnet}"
 framework="net10.0-android36.0"
 runtime_identifier="android-arm64"
 
+require_governed_source_root() {
+  local variable="$1" value="${!1:-}" resolved
+  [[ -n "$value" && "$value" == /* && ! -L "$value" && -d "$value" ]] || {
+    printf '%s must be an explicit absolute non-symlink directory for the governed Release compile.\n' "$variable" >&2
+    exit 64
+  }
+  resolved="$(realpath -e -- "$value")"
+  [[ "$resolved" == "$value" ]] || {
+    printf '%s must be canonical for the governed Release compile.\n' "$variable" >&2
+    exit 64
+  }
+}
+
+require_governed_source_root CHUMMER_PRESENTATION_ROOT
+require_governed_source_root CHUMMER_CORE_ENGINE_ROOT
+
 python3 "$repo_dir/scripts/preflight_native_android_toolchain.py" \
   --repo-root "$repo_dir" \
   --dotnet "$dotnet_command"
@@ -63,6 +79,8 @@ set +e
   -p:BuildInParallel=false \
   -p:ChummerAndroidRuntimeIdentifier="$runtime_identifier" \
   -p:ChummerDesktopRuntimeIdentifiers= \
+  -p:ChummerPresentationRoot="$CHUMMER_PRESENTATION_ROOT" \
+  -p:ChummerCoreEngineRoot="$CHUMMER_CORE_ENGINE_ROOT" \
   -p:ChummerUseLocalCompatibilityTree=true \
   -p:AndroidSdkDirectory="${AndroidSdkDirectory:-${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}}" \
   -p:JavaSdkDirectory="${JavaSdkDirectory:-${JAVA_HOME:-}}"
