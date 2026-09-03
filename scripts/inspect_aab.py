@@ -65,18 +65,21 @@ def inspect(aab_path: Path, manifest_path: Path) -> None:
         "predictive-back callback integration must be enabled",
     )
 
-    verified_link = False
+    auto_verify_declared_link = False
     for intent_filter in launcher.findall("intent-filter"):
         if attr(intent_filter, "autoVerify") != "true":
             continue
         data = intent_filter.findall("data")
-        values = {(attr(item, "scheme"), attr(item, "host"), attr(item, "pathPrefix")) for item in data}
+        values = {(attr(item, "scheme"), attr(item, "host"), attr(item, "path")) for item in data}
         schemes = {item[0] for item in values}
         hosts = {item[1] for item in values}
-        prefixes = {item[2] for item in values}
-        if "https" in schemes and "chummer.run" in hosts and "/app" in prefixes:
-            verified_link = True
-    require(verified_link, "verified https://chummer.run/app intent filter is missing")
+        paths = {item[2] for item in values}
+        if "https" in schemes and "chummer.run" in hosts and "/app/install-link" in paths:
+            auto_verify_declared_link = True
+    require(
+        auto_verify_declared_link,
+        "autoVerify-declared https://chummer.run/app/install-link intent filter is missing",
+    )
 
     with zipfile.ZipFile(aab_path) as bundle:
         names = bundle.namelist()
@@ -89,7 +92,7 @@ def inspect(aab_path: Path, manifest_path: Path) -> None:
 
     print(
         "AAB inspection passed: package, version, SDK bounds, permissions, privacy flags, "
-        "back navigation, app link, and arm64 payload are valid."
+        "back navigation, autoVerify-declared app link, and arm64 payload are valid."
     )
 
 

@@ -174,10 +174,11 @@ class AndroidContractTests(unittest.TestCase):
         self.assertEqual(2, workflow.count("--core-root chummer-core-content"))
         self.assertNotIn("--core-root chummer-core-engine", workflow)
 
-    def test_android_uses_play_updates_and_verified_links(self) -> None:
+    def test_android_uses_play_updates_and_declares_exact_auto_verify_link(self) -> None:
         project = (PROJECT / "Chummer.Android.csproj").read_text(encoding="utf-8")
         system_service = (PROJECT / "Platforms" / "Android" / "AndroidSystemService.cs").read_text(encoding="utf-8")
         activity = (PROJECT / "Platforms" / "Android" / "MainActivity.cs").read_text(encoding="utf-8")
+        inspector = (REPO / "scripts" / "inspect_aab.py").read_text(encoding="utf-8")
         policy = (PROJECT / "Platforms" / "Android" / "AndroidInAppUpdatePolicy.cs").read_text(encoding="utf-8")
         review_policy = (PROJECT / "Native" / "PlayReviewPolicy.cs").read_text(encoding="utf-8")
         more = (PROJECT / "Native" / "MorePage.cs").read_text(encoding="utf-8")
@@ -212,8 +213,16 @@ class AndroidContractTests(unittest.TestCase):
         self.assertNotIn("await RunAsync(async () =>", more[more.index("private async Task CheckUpdatesAsync"):])
         self.assertNotIn("DesktopUpdateRuntime", "".join(p.read_text(encoding="utf-8") for p in PROJECT.rglob("*.cs")))
         self.assertIn('DataHost = "chummer.run"', activity)
-        self.assertIn('DataPathPrefix = "/app"', activity)
+        self.assertIn('DataPath = "/app/install-link"', activity)
+        self.assertNotIn('DataPathPrefix = "/app"', activity)
         self.assertIn("AutoVerify = true", activity)
+        self.assertIn('attr(item, "path")', inspector)
+        self.assertNotIn('attr(item, "pathPrefix")', inspector)
+        self.assertIn(
+            "autoVerify-declared https://chummer.run/app/install-link intent filter is missing",
+            inspector,
+        )
+        self.assertNotIn("verified https://chummer.run", inspector)
 
     def test_android_account_link_uses_device_proof_and_encrypted_storage(self) -> None:
         service = (PROJECT / "Platform" / "AndroidAccountLinkService.cs").read_text(encoding="utf-8")

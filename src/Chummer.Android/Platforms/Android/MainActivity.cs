@@ -30,7 +30,7 @@ namespace Chummer.Android;
     Categories = [Intent.CategoryDefault, Intent.CategoryBrowsable],
     DataScheme = "https",
     DataHost = "chummer.run",
-    DataPathPrefix = "/app",
+    DataPath = "/app/install-link",
     AutoVerify = true)]
 [IntentFilter(
     [Intent.ActionView],
