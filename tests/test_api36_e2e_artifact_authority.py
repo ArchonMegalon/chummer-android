@@ -32,11 +32,17 @@ AGGREGATE = load_script(
     "api36_verify_evidence_aggregate",
     "scripts/verify-api36-editing-e2e-aggregate.py",
 )
+ENVIRONMENT = load_script(
+    "api36_proof_environment_authority",
+    "scripts/api36_proof_environment_authority.py",
+)
 
 RUN_ID = "424242"
 ARTIFACT_ID = "987654"
 ARTIFACT_DIGEST = "a" * 64
-APK_SHA256 = "b" * 64
+APK_BYTES = b"exact aggregate x64 APK"
+APK_SHA256 = hashlib.sha256(APK_BYTES).hexdigest()
+APK_SIZE = len(APK_BYTES)
 JOURNEYS = {
     "creation-prerequisite": "creation-prerequisite",
     "career-active-skill-advance": "career-active-skill-advance",
@@ -270,6 +276,72 @@ def creation_receipt_with_timing(
 
 
 class Api36ArtifactAuthorityTests(unittest.TestCase):
+    @staticmethod
+    def environment() -> dict[str, object]:
+        digest = "a" * 64
+        return {
+            "runnerImage": {
+                "runnerOs": "Linux",
+                "runnerArch": "X64",
+                "imageOs": "ubuntu24",
+                "imageVersion": "20260901.1.0",
+            },
+            "java": {
+                "runtimeVersion": "17.0.16",
+                "compilerVersion": "17.0.16",
+                "versionOutputSha256": digest,
+                "compilerOutputSha256": digest,
+            },
+            "dotnet": {
+                "sdkVersion": "10.0.110",
+                "runtimeIdentifier": "linux-x64",
+                "infoOutputSha256": digest,
+            },
+            "androidSdk": {
+                "installedPackages": [
+                    {"package": "build-tools;36.0.0", "version": "36.0.0"},
+                    {"package": "emulator", "version": "36.2.11"},
+                    {"package": "platform-tools", "version": "36.0.0"},
+                    {"package": "platforms;android-36", "version": "2"},
+                    {
+                        "package": "system-images;android-36;google_apis;x86_64",
+                        "version": "10",
+                    },
+                ],
+                "inventoryOutputSha256": digest,
+                "adb": {
+                    "protocolVersion": "1.0.41",
+                    "packageVersion": "36.0.0-13206524",
+                    "versionOutputSha256": digest,
+                },
+                "emulator": {
+                    "version": "36.2.11.0",
+                    "versionOutputSha256": digest,
+                },
+            },
+            "kernel": {
+                "system": "Linux",
+                "release": "6.11.0-hosted",
+                "machine": "x86_64",
+                "procVersionSha256": digest,
+            },
+            "kvm": {
+                "devicePresent": True,
+                "characterDevice": True,
+                "readable": True,
+                "writable": True,
+                "kernelModulePresent": True,
+            },
+        }
+
+    @staticmethod
+    def environment_policy() -> tuple[ENVIRONMENT.StableFile, dict[str, object]]:
+        snapshot = ENVIRONMENT.StableFile(
+            REPO / "eng/api36-proof-environment-authority.json",
+            "environment policy",
+        )
+        return snapshot, ENVIRONMENT.load_policy(snapshot)
+
     def authority(self, attempt: str = "1", **overrides: str) -> dict[str, str]:
         values = {
             "run_id": RUN_ID,
@@ -487,6 +559,37 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             + "\n",
             encoding="utf-8",
         )
+        policy_snapshot, policy = self.environment_policy()
+        subject = {
+            "matrixJourney": journey,
+            "driverJourney": driver_journey,
+            "receiptSchema": receipt["schema"],
+            "journeyReceiptSha256": digest,
+            "journeyReceiptSizeBytes": receipt_path.stat().st_size,
+            "apkSha256": APK_SHA256,
+            "apkSizeBytes": APK_SIZE,
+            "artifactAuthoritySha256": ENVIRONMENT.canonical_sha256(
+                receipt["artifactAuthority"]
+            ),
+        }
+        environment = ENVIRONMENT.base_receipt(
+            role="journey",
+            policy=policy,
+            policy_snapshot=policy_snapshot,
+            gate_authority=GATE.contract_binding(),
+            subject_authority=subject,
+            observation=self.environment(),
+        )
+        environment_path = directory / "environment-receipt.json"
+        environment_path.write_text(
+            json.dumps(environment, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        environment_digest = hashlib.sha256(environment_path.read_bytes()).hexdigest()
+        (directory / "environment-receipt.json.sha256").write_text(
+            f"{environment_digest}  environment-receipt.json\n",
+            encoding="utf-8",
+        )
         return directory
 
     def materialize_all(self, root: Path, *, attempt: str = "1") -> None:
@@ -494,8 +597,67 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             self.materialize_journey(root, journey, attempt=attempt)
 
     def validate(self, root: Path, *, attempt: str = "1", **overrides: str):
+        policy_snapshot, policy = self.environment_policy()
+        input_prefix = root.parent / root.name
+        x64_apk = Path(f"{input_prefix}-x64.apk")
+        arm64_apk = Path(f"{input_prefix}-arm64.apk")
+        hosted_candidate = Path(f"{input_prefix}-hosted-candidate.json")
+        workflow = Path(f"{input_prefix}-workflow.yml")
+        x64_apk.write_bytes(APK_BYTES)
+        arm64_apk.write_bytes(b"exact aggregate ARM64 APK")
+        hosted_candidate.write_text('{"candidate":"bound"}\n', encoding="utf-8")
+        workflow.write_text("name: exact aggregate workflow\n", encoding="utf-8")
+        build_environment = ENVIRONMENT.base_receipt(
+            role="build",
+            policy=policy,
+            policy_snapshot=policy_snapshot,
+            gate_authority=GATE.contract_binding(),
+            subject_authority={
+                "x64Apk": {
+                    "sha256": hashlib.sha256(x64_apk.read_bytes()).hexdigest(),
+                    "sizeBytes": x64_apk.stat().st_size,
+                },
+                "arm64Apk": {
+                    "sha256": hashlib.sha256(arm64_apk.read_bytes()).hexdigest(),
+                    "sizeBytes": arm64_apk.stat().st_size,
+                },
+                "hostedCandidate": {
+                    "schema": "chummer.android.api36-arm64-hosted-debug-candidate/v1",
+                    "sha256": hashlib.sha256(
+                        hosted_candidate.read_bytes()
+                    ).hexdigest(),
+                    "sizeBytes": hosted_candidate.stat().st_size,
+                },
+                "workflow": {
+                    "sha256": hashlib.sha256(workflow.read_bytes()).hexdigest(),
+                    "sizeBytes": workflow.stat().st_size,
+                },
+            },
+            observation=self.environment(),
+        )
+        build_environment_path = (
+            root.parent / f"{root.name}-build-environment-receipt.json"
+        )
+        build_environment_path.write_text(
+            json.dumps(build_environment, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        build_environment_digest = hashlib.sha256(
+            build_environment_path.read_bytes()
+        ).hexdigest()
+        build_environment_path.with_name(
+            f"{build_environment_path.name}.sha256"
+        ).write_text(
+            f"{build_environment_digest}  {build_environment_path.name}\n",
+            encoding="utf-8",
+        )
         return AGGREGATE.validate_aggregate(
             root,
+            build_environment_receipt_path=build_environment_path,
+            x64_apk_path=x64_apk,
+            arm64_apk_path=arm64_apk,
+            hosted_candidate_path=hosted_candidate,
+            workflow_path=workflow,
             build_result="success",
             matrix_result="success",
             **self.authority(attempt, **overrides),
@@ -508,6 +670,88 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             f"{digest}  receipt.json\n",
             encoding="utf-8",
         )
+
+    def reseal_environment(self, directory: Path) -> None:
+        receipt = directory / "environment-receipt.json"
+        digest = hashlib.sha256(receipt.read_bytes()).hexdigest()
+        (directory / "environment-receipt.json.sha256").write_text(
+            f"{digest}  environment-receipt.json\n",
+            encoding="utf-8",
+        )
+
+    def test_environment_receipt_cardinality_and_subject_drift_fail_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self.materialize_all(root)
+            directory = root / AGGREGATE.expected_artifact_directory(
+                "career-active-skill-advance",
+                RUN_ID,
+            )
+            (directory / "environment-receipt.json.sha256").unlink()
+            with self.assertRaisesRegex(ValueError, "exactly one top-level environment"):
+                self.validate(root)
+
+            self.materialize_journey(root, "career-active-skill-advance")
+            environment_path = directory / "environment-receipt.json"
+            environment = json.loads(environment_path.read_text())
+            environment["subjectAuthority"]["journeyReceiptSha256"] = "f" * 64
+            environment["receiptSha256"] = ENVIRONMENT.canonical_sha256(
+                {**environment, "receiptSha256": None}
+            )
+            environment_path.write_text(
+                json.dumps(environment, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            self.reseal_environment(directory)
+            with self.assertRaisesRegex(ValueError, "journey environment authority differs"):
+                self.validate(root)
+
+    def test_incompatible_or_publishing_environment_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self.materialize_all(root)
+            directory = root / AGGREGATE.expected_artifact_directory(
+                "career-weapon-fire",
+                RUN_ID,
+            )
+            environment_path = directory / "environment-receipt.json"
+            environment = json.loads(environment_path.read_text())
+            environment["environment"]["androidSdk"]["emulator"]["version"] = "36.2.12.0"
+            environment["environmentSha256"] = ENVIRONMENT.canonical_sha256(
+                environment["environment"]
+            )
+            environment["compatibility"] = ENVIRONMENT.compatibility_observation(
+                environment["environment"],
+                self.environment_policy()[1],
+                "journey",
+            )
+            environment["compatibilitySha256"] = ENVIRONMENT.canonical_sha256(
+                environment["compatibility"]
+            )
+            environment["receiptSha256"] = ENVIRONMENT.canonical_sha256(
+                {**environment, "receiptSha256": None}
+            )
+            environment_path.write_text(
+                json.dumps(environment, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            self.reseal_environment(directory)
+            with self.assertRaisesRegex(ValueError, "compatibility differs"):
+                self.validate(root)
+
+            self.materialize_journey(root, "career-weapon-fire")
+            environment = json.loads(environment_path.read_text())
+            environment["publicationAuthorized"] = True
+            environment["receiptSha256"] = ENVIRONMENT.canonical_sha256(
+                {**environment, "receiptSha256": None}
+            )
+            environment_path.write_text(
+                json.dumps(environment, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            self.reseal_environment(directory)
+            with self.assertRaisesRegex(ValueError, "boundary"):
+                self.validate(root)
 
     def test_finalizer_rejects_full_editing_as_wizard_authority(self) -> None:
         self.assertEqual(
@@ -630,7 +874,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                 self.validate(root)
 
             self.materialize_journey(root, "career-active-skill-advance")
-            with self.assertRaisesRegex(ValueError, "execution-started authority differs"):
+            with self.assertRaisesRegex(ValueError, "exact build inputs"):
                 self.validate(root, apk_sha256="c" * 64)
 
     def test_missing_or_expired_artifact_receipt_fails_closed(self) -> None:
@@ -719,6 +963,11 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "matrix did not succeed"):
                 AGGREGATE.validate_aggregate(
                     root,
+                    build_environment_receipt_path=root / "not-needed-for-red-matrix.json",
+                    x64_apk_path=root / "not-needed-x64.apk",
+                    arm64_apk_path=root / "not-needed-arm64.apk",
+                    hosted_candidate_path=root / "not-needed-candidate.json",
+                    workflow_path=root / "not-needed-workflow.yml",
                     build_result="success",
                     matrix_result="failure",
                     **self.authority(),

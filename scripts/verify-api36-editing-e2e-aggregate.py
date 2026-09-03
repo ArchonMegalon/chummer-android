@@ -26,6 +26,16 @@ from api36_wizard_gate_contract import (  # noqa: E402
     contract_binding,
     journey_map,
 )
+from api36_proof_environment_authority import (  # noqa: E402
+    BUILD_SCHEMA as BUILD_ENVIRONMENT_SCHEMA,
+    DEFAULT_POLICY as DEFAULT_ENVIRONMENT_POLICY,
+    JOURNEY_SCHEMA as JOURNEY_ENVIRONMENT_SCHEMA,
+    StableFile as EnvironmentStableFile,
+    canonical_sha256 as environment_canonical_sha256,
+    load_policy as load_environment_policy,
+    policy_binding as environment_policy_binding,
+    validate_receipt as validate_environment_receipt,
+)
 
 
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
@@ -856,11 +866,16 @@ def read_execution_started(path: Path) -> dict[str, str]:
     return result
 
 
-def require_portable_receipt_seal(receipt: Path, seal: Path) -> str:
+def require_portable_receipt_seal(
+    receipt: Path,
+    seal: Path,
+    *,
+    expected_name: str = "receipt.json",
+) -> str:
     if seal.is_symlink() or not seal.is_file():
         raise ValueError(f"journey receipt seal is missing: {seal}")
     fields = seal.read_text(encoding="utf-8").strip().split()
-    if len(fields) != 2 or fields[1] != "receipt.json" or not SHA256.fullmatch(fields[0]):
+    if len(fields) != 2 or fields[1] != expected_name or not SHA256.fullmatch(fields[0]):
         raise ValueError(f"journey receipt seal is not canonical: {seal}")
     actual = sha256(receipt)
     if actual != fields[0]:
@@ -1045,6 +1060,12 @@ def require_creation_timing_within_budget(receipt: dict[str, Any]) -> None:
 def validate_aggregate(
     evidence_root: Path,
     *,
+    build_environment_receipt_path: Path,
+    x64_apk_path: Path,
+    arm64_apk_path: Path,
+    hosted_candidate_path: Path,
+    workflow_path: Path,
+    environment_policy_path: Path = DEFAULT_ENVIRONMENT_POLICY,
     run_id: str,
     build_result: str,
     matrix_result: str,
@@ -1063,6 +1084,44 @@ def validate_aggregate(
         raise ValueError("journey evidence root is not one regular directory")
 
     gate_authority = contract_binding(gate_contract_path)
+    environment_policy_snapshot = EnvironmentStableFile(
+        environment_policy_path,
+        "API-36 proof environment policy",
+    )
+    environment_policy = load_environment_policy(environment_policy_snapshot)
+    expected_environment_policy = environment_policy_binding(
+        environment_policy_snapshot
+    )
+    build_environment_snapshot = EnvironmentStableFile(
+        build_environment_receipt_path,
+        "API-36 build environment receipt",
+    )
+    build_environment_receipt_sha256 = require_portable_receipt_seal(
+        build_environment_receipt_path,
+        build_environment_receipt_path.with_name(
+            f"{build_environment_receipt_path.name}.sha256"
+        ),
+        expected_name=build_environment_receipt_path.name,
+    )
+    if build_environment_receipt_sha256 != build_environment_snapshot.sha256:
+        raise ValueError("build environment receipt seal differs")
+    build_environment = build_environment_snapshot.json()
+    x64_apk_snapshot = EnvironmentStableFile(x64_apk_path, "x64 APK")
+    arm64_apk_snapshot = EnvironmentStableFile(arm64_apk_path, "ARM64 APK")
+    hosted_candidate_snapshot = EnvironmentStableFile(
+        hosted_candidate_path,
+        "hosted ARM64 candidate",
+    )
+    workflow_snapshot = EnvironmentStableFile(workflow_path, "API-36 workflow")
+    validate_environment_receipt(build_environment, environment_policy)
+    if (
+        build_environment.get("schema") != BUILD_ENVIRONMENT_SCHEMA
+        or build_environment.get("receiptRole") != "build"
+        or build_environment.get("policyAuthority") != expected_environment_policy
+        or build_environment.get("gateAuthority") != gate_authority
+        or build_environment.get("publicationAuthorized") is not False
+    ):
+        raise ValueError("build environment authority differs")
     authority = canonical_authority(
         run_id=run_id,
         artifact_id=artifact_id,
@@ -1071,6 +1130,31 @@ def validate_aggregate(
         artifact_attempt=artifact_attempt,
         apk_sha256=apk_sha256,
     )
+    expected_build_subject = {
+        "x64Apk": {
+            "sha256": x64_apk_snapshot.sha256,
+            "sizeBytes": x64_apk_snapshot.size,
+        },
+        "arm64Apk": {
+            "sha256": arm64_apk_snapshot.sha256,
+            "sizeBytes": arm64_apk_snapshot.size,
+        },
+        "hostedCandidate": {
+            "schema": "chummer.android.api36-arm64-hosted-debug-candidate/v1",
+            "sha256": hosted_candidate_snapshot.sha256,
+            "sizeBytes": hosted_candidate_snapshot.size,
+        },
+        "workflow": {
+            "sha256": workflow_snapshot.sha256,
+            "sizeBytes": workflow_snapshot.size,
+        },
+    }
+    build_subject = build_environment.get("subjectAuthority")
+    if (
+        build_subject != expected_build_subject
+        or x64_apk_snapshot.sha256 != apk_sha256
+    ):
+        raise ValueError("build environment does not bind the exact build inputs")
     expected_directories = {
         expected_artifact_directory(journey, run_id): journey for journey in JOURNEYS
     }
@@ -1085,6 +1169,8 @@ def validate_aggregate(
         )
 
     receipt_paths: list[Path] = []
+    environment_receipt_paths: list[Path] = []
+    environment_seal_paths: list[Path] = []
     for directory in actual_entries:
         for root, directories, files in os.walk(directory, followlinks=False):
             root_path = Path(root)
@@ -1093,6 +1179,16 @@ def validate_aggregate(
             if any((root_path / child).is_symlink() for child in files):
                 raise ValueError("journey evidence contains a file symlink")
             receipt_paths.extend(root_path / child for child in files if child == "receipt.json")
+            environment_receipt_paths.extend(
+                root_path / child
+                for child in files
+                if child == "environment-receipt.json"
+            )
+            environment_seal_paths.extend(
+                root_path / child
+                for child in files
+                if child == "environment-receipt.json.sha256"
+            )
     expected_receipt_paths = {
         evidence_root / directory / "receipt.json" for directory in expected_directories
     }
@@ -1101,8 +1197,31 @@ def validate_aggregate(
             f"exactly {len(JOURNEYS)} top-level named journey receipts are required; "
             f"found={sorted(str(path) for path in receipt_paths)!r}"
         )
+    expected_environment_receipt_paths = {
+        evidence_root / directory / "environment-receipt.json"
+        for directory in expected_directories
+    }
+    expected_environment_seal_paths = {
+        evidence_root / directory / "environment-receipt.json.sha256"
+        for directory in expected_directories
+    }
+    if (
+        len(environment_receipt_paths) != len(JOURNEYS)
+        or set(environment_receipt_paths) != expected_environment_receipt_paths
+        or len(environment_seal_paths) != len(JOURNEYS)
+        or set(environment_seal_paths) != expected_environment_seal_paths
+    ):
+        raise ValueError(
+            "exactly one top-level environment receipt and seal are required "
+            f"for each of the {len(JOURNEYS)} journeys"
+        )
 
     aggregate_journeys: dict[str, Any] = {}
+    aggregate_environments: dict[str, Any] = {}
+    journey_compatibility_sha256: str | None = None
+    x64_apk_size = x64_apk_snapshot.size
+    if type(x64_apk_size) is not int or x64_apk_size <= 0:
+        raise ValueError("build environment x64 APK size differs")
     for directory_name, journey in expected_directories.items():
         driver_journey = JOURNEYS[journey]
         directory = evidence_root / directory_name
@@ -1146,10 +1265,47 @@ def validate_aggregate(
             raise ValueError(f"artifact authority differs: {journey}")
         if journey == "creation-prerequisite":
             require_creation_timing_within_budget(receipt)
+        environment_path = directory / "environment-receipt.json"
+        environment = read_json_object(environment_path)
+        environment_receipt_sha256 = require_portable_receipt_seal(
+            environment_path,
+            directory / "environment-receipt.json.sha256",
+            expected_name="environment-receipt.json",
+        )
+        validate_environment_receipt(environment, environment_policy)
+        expected_environment_subject = {
+            "matrixJourney": journey,
+            "driverJourney": driver_journey,
+            "receiptSchema": receipt["schema"],
+            "journeyReceiptSha256": receipt_sha256,
+            "journeyReceiptSizeBytes": receipt_path.stat().st_size,
+            "apkSha256": apk_sha256,
+            "apkSizeBytes": x64_apk_size,
+            "artifactAuthoritySha256": environment_canonical_sha256(authority),
+        }
+        if (
+            environment.get("schema") != JOURNEY_ENVIRONMENT_SCHEMA
+            or environment.get("receiptRole") != "journey"
+            or environment.get("policyAuthority") != expected_environment_policy
+            or environment.get("gateAuthority") != gate_authority
+            or environment.get("subjectAuthority") != expected_environment_subject
+            or environment.get("publicationAuthorized") is not False
+        ):
+            raise ValueError(f"journey environment authority differs: {journey}")
+        compatibility_sha256 = environment["compatibilitySha256"]
+        if journey_compatibility_sha256 is None:
+            journey_compatibility_sha256 = compatibility_sha256
+        elif compatibility_sha256 != journey_compatibility_sha256:
+            raise ValueError("journey environment compatibility differs")
         aggregate_journeys[journey] = {
             "status": "pass",
             "driverJourney": driver_journey,
             "receiptSha256": receipt_sha256,
+        }
+        aggregate_environments[journey] = {
+            "receiptSha256": environment_receipt_sha256,
+            "environmentSha256": environment["environmentSha256"],
+            "compatibilitySha256": compatibility_sha256,
         }
 
     aggregate = {
@@ -1161,11 +1317,27 @@ def validate_aggregate(
         "publicationAuthorized": False,
         "gateAuthority": gate_authority,
         "artifactAuthority": authority,
+        "environmentAuthority": {
+            "policyAuthority": expected_environment_policy,
+            "build": {
+                "receiptSha256": build_environment_receipt_sha256,
+                "environmentSha256": build_environment["environmentSha256"],
+                "compatibilitySha256": build_environment["compatibilitySha256"],
+            },
+            "journeyCompatibilitySha256": journey_compatibility_sha256,
+            "journeys": aggregate_environments,
+        },
         "requiredJourneyCount": len(JOURNEYS),
         "requiredJourneys": list(JOURNEYS),
         "journeyCount": len(JOURNEYS),
         "journeys": aggregate_journeys,
     }
+    environment_policy_snapshot.recheck()
+    build_environment_snapshot.recheck()
+    x64_apk_snapshot.recheck()
+    arm64_apk_snapshot.recheck()
+    hosted_candidate_snapshot.recheck()
+    workflow_snapshot.recheck()
     validate_aggregate_receipt(aggregate, gate_authority)
     return aggregate
 
@@ -1183,6 +1355,7 @@ def validate_aggregate_receipt(
         "publicationAuthorized",
         "gateAuthority",
         "artifactAuthority",
+        "environmentAuthority",
         "requiredJourneyCount",
         "requiredJourneys",
         "journeyCount",
@@ -1214,6 +1387,43 @@ def validate_aggregate_receipt(
         raise ValueError("wizard aggregate journey set differs")
     if "full-editing" in required or "full-editing" in journeys:
         raise ValueError("Full Editing cannot satisfy wizard aggregate authority")
+    environment = value.get("environmentAuthority")
+    if not isinstance(environment, dict) or set(environment) != {
+        "policyAuthority",
+        "build",
+        "journeyCompatibilitySha256",
+        "journeys",
+    }:
+        raise ValueError("wizard aggregate environment authority differs")
+    if (
+        not isinstance(environment["policyAuthority"], dict)
+        or not isinstance(environment["build"], dict)
+        or set(environment["build"])
+        != {"receiptSha256", "environmentSha256", "compatibilitySha256"}
+        or not isinstance(environment["journeys"], dict)
+        or set(environment["journeys"]) != set(required)
+        or not isinstance(environment["journeyCompatibilitySha256"], str)
+        or SHA256.fullmatch(environment["journeyCompatibilitySha256"]) is None
+    ):
+        raise ValueError("wizard aggregate environment binding differs")
+    for binding in [environment["build"], *environment["journeys"].values()]:
+        if (
+            not isinstance(binding, dict)
+            or set(binding)
+            != {"receiptSha256", "environmentSha256", "compatibilitySha256"}
+            or any(
+                not isinstance(binding[field], str)
+                or SHA256.fullmatch(binding[field]) is None
+                for field in binding
+            )
+        ):
+            raise ValueError("wizard aggregate environment member differs")
+    if any(
+        binding["compatibilitySha256"]
+        != environment["journeyCompatibilitySha256"]
+        for binding in environment["journeys"].values()
+    ):
+        raise ValueError("wizard aggregate journey environments are not compatible")
 
 
 def write_atomically(path: Path, value: dict[str, Any]) -> None:
@@ -1246,6 +1456,20 @@ def main() -> int:
     parser.add_argument("--evidence-root", type=Path, required=True)
     parser.add_argument("--receipt", type=Path, required=True)
     parser.add_argument("--gate-contract", type=Path, default=DEFAULT_CONTRACT)
+    parser.add_argument(
+        "--environment-policy",
+        type=Path,
+        default=DEFAULT_ENVIRONMENT_POLICY,
+    )
+    parser.add_argument(
+        "--build-environment-receipt",
+        type=Path,
+        required=True,
+    )
+    parser.add_argument("--x64-apk", type=Path, required=True)
+    parser.add_argument("--arm64-apk", type=Path, required=True)
+    parser.add_argument("--hosted-candidate", type=Path, required=True)
+    parser.add_argument("--workflow", type=Path, required=True)
     parser.add_argument("--run-id", required=True)
     parser.add_argument("--build-result", required=True)
     parser.add_argument("--matrix-result", required=True)
@@ -1265,6 +1489,12 @@ def main() -> int:
 
     aggregate = validate_aggregate(
         evidence_root,
+        build_environment_receipt_path=args.build_environment_receipt,
+        x64_apk_path=args.x64_apk,
+        arm64_apk_path=args.arm64_apk,
+        hosted_candidate_path=args.hosted_candidate,
+        workflow_path=args.workflow,
+        environment_policy_path=args.environment_policy,
         run_id=args.run_id,
         build_result=args.build_result,
         matrix_result=args.matrix_result,

@@ -139,8 +139,21 @@ python3 chummer-android/scripts/finalize-api36-e2e-journey-receipt.py \
   --artifact-name "$artifact_name" \
   --artifact-attempt "$artifact_attempt" \
   --apk-sha256 "$expected_apk_sha256"
+
+python3 chummer-android/scripts/materialize-api36-proof-environment-receipt.py \
+  journey \
+  --apk "$apk_path" \
+  --expected-apk-sha256 "$expected_apk_sha256" \
+  --journey-receipt "$evidence_root/receipt.json" \
+  --matrix-journey "$journey" \
+  --android-sdk-root "$android_home" \
+  --gate-contract "$gate_contract_path" \
+  --policy chummer-android/eng/api36-proof-environment-authority.json \
+  --output "$evidence_root/environment-receipt.json"
 (
   cd "$evidence_root"
   sha256sum receipt.json >receipt.json.sha256
   sha256sum --check receipt.json.sha256
+  sha256sum environment-receipt.json >environment-receipt.json.sha256
+  sha256sum --check environment-receipt.json.sha256
 )

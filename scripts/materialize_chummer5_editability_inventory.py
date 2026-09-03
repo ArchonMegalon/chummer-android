@@ -116,10 +116,14 @@ SR5_TABLE_WIZARD_TEST_INPUTS = (
 )
 SR5_TABLE_WIZARD_GATE_INPUTS = (
     ".github/workflows/api36-editing-e2e.yml",
+    "eng/api36-proof-environment-authority.json",
     "eng/api36-sr5-wizard-gate-authority.json",
     "scripts/build-debug.sh",
+    "scripts/api36_proof_environment_authority.py",
     "scripts/api36_wizard_gate_contract.py",
     "scripts/finalize-api36-e2e-journey-receipt.py",
+    "scripts/materialize-api36-proof-environment-receipt.py",
+    "scripts/materialize-android-p0-pr-authority.py",
     "scripts/run-api36-editing-e2e-ci.sh",
     "scripts/verify-api36-editing-e2e-aggregate.py",
     "src/Chummer.Android/Chummer.Android.csproj",
@@ -128,6 +132,8 @@ SR5_TABLE_WIZARD_GATE_INPUTS = (
     "tests/Chummer.Android.Native.CompileCheck/NativeCompileInputs.props",
     "tests/test_api36_e2e_workflow.py",
     "tests/test_api36_e2e_artifact_authority.py",
+    "tests/test_api36_proof_environment_receipt.py",
+    "tests/test_android_p0_pr_authority.py",
     "tests/run_api36_sr5_before_run_edge_e2e.py",
     "tests/run_api36_sr5_before_run_edge_physical_e2e.py",
     "tests/api36_proof_state.py",

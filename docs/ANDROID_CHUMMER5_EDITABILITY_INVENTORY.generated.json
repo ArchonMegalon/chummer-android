@@ -802,7 +802,12 @@
       {
         "path": ".github/workflows/api36-editing-e2e.yml",
         "exists": true,
-        "sha256": "230d1f6a10f14bc58463a1e09c0bb9a340940b7c663d7814e4c9e39b34b7e61e"
+        "sha256": "8393c29217a9ec47ec77ade9a5b2d1406b4c7a0968ade70c0b055370770900d4"
+      },
+      {
+        "path": "eng/api36-proof-environment-authority.json",
+        "exists": true,
+        "sha256": "3b27e5aecdf2685a2f57192322ca0c5bbcf0b9875d3f82d8b2f5ddd8011cfdf7"
       },
       {
         "path": "eng/api36-sr5-wizard-gate-authority.json",
@@ -815,9 +820,14 @@
         "sha256": "c2defce5f6cbca41c6119699df1717f86a7e9cb34fd2b1a2aa943ec3e4d52344"
       },
       {
+        "path": "scripts/api36_proof_environment_authority.py",
+        "exists": true,
+        "sha256": "1cd6ad38de0843fe61e73aef783b1a7e7c92af3b1be87115c9c3715d83b97517"
+      },
+      {
         "path": "scripts/api36_wizard_gate_contract.py",
         "exists": true,
-        "sha256": "b987c4d3cb605fbf9dfca4a029ec0c6137dff59dc581b032b5d94f077dd324e9"
+        "sha256": "b79c68c060c05a20d2953fd96af91531cce44624c33677b97a5f129482ecc271"
       },
       {
         "path": "scripts/finalize-api36-e2e-journey-receipt.py",
@@ -825,14 +835,24 @@
         "sha256": "627587ba066c98b18b1ffb8bbf20f1fc95746952f0162707af0ca08beb2b73a0"
       },
       {
+        "path": "scripts/materialize-api36-proof-environment-receipt.py",
+        "exists": true,
+        "sha256": "1b89fb45ff0721036ffe096acbbd1e677a9ff71f47372e9eb0877aefff7c24c8"
+      },
+      {
+        "path": "scripts/materialize-android-p0-pr-authority.py",
+        "exists": true,
+        "sha256": "96358d6f8e94e709c3a2fd4625f6510f3828d0811e2f16e34719a3a3cdef0862"
+      },
+      {
         "path": "scripts/run-api36-editing-e2e-ci.sh",
         "exists": true,
-        "sha256": "83245beda77e00279a0ba5c8ed3a2fbc5e6da522a4f982b30855fdf5dde8b181"
+        "sha256": "59dd45af9902b8406c08416af284837488419dba113cb2496afc1b9d1ddc7764"
       },
       {
         "path": "scripts/verify-api36-editing-e2e-aggregate.py",
         "exists": true,
-        "sha256": "3ed3ed1ea3e384e2165ee67de685793b99b675d57eb31476cd6e1500bc46b5a8"
+        "sha256": "ba9dfec9128469eb8c20afb245f591b7d730115f8a6f9901e5c726b293549643"
       },
       {
         "path": "src/Chummer.Android/Chummer.Android.csproj",
@@ -862,7 +882,17 @@
       {
         "path": "tests/test_api36_e2e_artifact_authority.py",
         "exists": true,
-        "sha256": "fce69459ef7a88ed9b8e9dcb5c62f1fa46ceaaf4fd4b8694ad2c62edfb52601f"
+        "sha256": "b68f7e5b33ec5c33e6d0242f7100b22f884fb313614d62216057a4d7ad48544c"
+      },
+      {
+        "path": "tests/test_api36_proof_environment_receipt.py",
+        "exists": true,
+        "sha256": "2dcb7ed5beb041a4e3a51ba84e55fa073de8629af0dcaa7a12f7e09e42f9c60a"
+      },
+      {
+        "path": "tests/test_android_p0_pr_authority.py",
+        "exists": true,
+        "sha256": "1ee6c2bebc2b39ab4997f4914c004b67009d16749c110114ba1830e56ee914fa"
       },
       {
         "path": "tests/run_api36_sr5_before_run_edge_e2e.py",
@@ -2795,10 +2825,14 @@
       ],
       "gatePaths": [
         ".github/workflows/api36-editing-e2e.yml",
+        "eng/api36-proof-environment-authority.json",
         "eng/api36-sr5-wizard-gate-authority.json",
         "scripts/build-debug.sh",
+        "scripts/api36_proof_environment_authority.py",
         "scripts/api36_wizard_gate_contract.py",
         "scripts/finalize-api36-e2e-journey-receipt.py",
+        "scripts/materialize-api36-proof-environment-receipt.py",
+        "scripts/materialize-android-p0-pr-authority.py",
         "scripts/run-api36-editing-e2e-ci.sh",
         "scripts/verify-api36-editing-e2e-aggregate.py",
         "src/Chummer.Android/Chummer.Android.csproj",
@@ -2807,6 +2841,8 @@
         "tests/Chummer.Android.Native.CompileCheck/NativeCompileInputs.props",
         "tests/test_api36_e2e_workflow.py",
         "tests/test_api36_e2e_artifact_authority.py",
+        "tests/test_api36_proof_environment_receipt.py",
+        "tests/test_android_p0_pr_authority.py",
         "tests/run_api36_sr5_before_run_edge_e2e.py",
         "tests/run_api36_sr5_before_run_edge_physical_e2e.py",
         "tests/api36_proof_state.py",
@@ -2911,7 +2947,7 @@
     },
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "af0880682b8044a789382d6eadc0d47b4db1053bf4569a2c03f1bf8296b2db7c"
+      "sha256": "5e426c6c088fe2e7f453bb80bd010d39ae5ce336ab942a7642ffc6ec302be520"
     }
   },
   "coverageByFamily": {
