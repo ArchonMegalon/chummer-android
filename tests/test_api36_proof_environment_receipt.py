@@ -45,6 +45,10 @@ class Api36ProofEnvironmentAuthorityTests(unittest.TestCase):
     @staticmethod
     def environment() -> dict[str, object]:
         digest = "a" * 64
+        emulator_raw = (
+            b"INFO         | Android emulator version 36.2.11.0 "
+            b"(build_id 15917651) (CL:N/A)\n"
+        )
         observation = {
             "runnerImage": {
                 "runnerOs": "Linux",
@@ -83,7 +87,10 @@ class Api36ProofEnvironmentAuthorityTests(unittest.TestCase):
                 "emulator": {
                     "available": True,
                     "version": "36.2.11.0",
+                    "buildId": 15917651,
                     "versionOutputSha256": digest,
+                    "rawObservationSha256": hashlib.sha256(emulator_raw).hexdigest(),
+                    "rawObservationSizeBytes": len(emulator_raw),
                 },
             },
             "kernel": {
@@ -125,7 +132,10 @@ class Api36ProofEnvironmentAuthorityTests(unittest.TestCase):
             }
         )
         android["emulator"]["versionOutputSha256"] = MODULE.canonical_sha256(
-            {"version": android["emulator"]["version"]}
+            {
+                "version": android["emulator"]["version"],
+                "buildId": android["emulator"]["buildId"],
+            }
         )
         return observation
 
@@ -152,16 +162,36 @@ class Api36ProofEnvironmentAuthorityTests(unittest.TestCase):
                 },
                 "workflow": {"sha256": "4" * 64, "sizeBytes": 400},
             }
+        observation = self.environment()
+        if role == "build":
+            observation["androidSdk"]["emulator"] = {
+                "available": False,
+                "version": None,
+                "buildId": None,
+                "versionOutputSha256": MODULE.canonical_sha256(
+                    {"available": False}
+                ),
+                "rawObservationSha256": MODULE.EMPTY_SHA256,
+                "rawObservationSizeBytes": 0,
+            }
         return MODULE.base_receipt(
             role=role,
             policy=self.policy,
             policy_snapshot=self.policy_snapshot,
             gate_authority=self.gate,
             subject_authority=subject,
-            observation=self.environment(),
+            observation=observation,
         )
 
     def test_policy_and_receipt_are_exact_non_publishing_v2_authority(self) -> None:
+        self.assertEqual(
+            "chummer.android.api36-build-environment-receipt/v2",
+            MODULE.BUILD_SCHEMA,
+        )
+        self.assertEqual(
+            "chummer.android.api36-journey-environment-receipt/v2",
+            MODULE.JOURNEY_SCHEMA,
+        )
         self.assertEqual(MODULE.POLICY_SCHEMA, self.policy["schema"])
         self.assertEqual(17, self.policy["requiredJavaMajor"])
         self.assertEqual("10.0.110", self.policy["requiredDotnetSdkVersion"])
@@ -189,6 +219,14 @@ class Api36ProofEnvironmentAuthorityTests(unittest.TestCase):
                 )
                 MODULE.validate_receipt(receipt, self.policy)
 
+        legacy = self.receipt("journey")
+        legacy["schema"] = "chummer.android.api36-journey-environment-receipt/v1"
+        legacy["receiptSha256"] = MODULE.canonical_sha256(
+            {**legacy, "receiptSha256": None}
+        )
+        with self.assertRaisesRegex(ValueError, "receipt schema, role, or status differs"):
+            MODULE.validate_receipt(legacy, self.policy)
+
     def test_compatibility_excludes_volatile_image_and_kernel_patch_but_records_them(self) -> None:
         first = self.environment()
         second = copy.deepcopy(first)
@@ -214,17 +252,45 @@ class Api36ProofEnvironmentAuthorityTests(unittest.TestCase):
         environment["androidSdk"]["inventoryOutputSha256"] = MODULE.canonical_sha256(
             environment["androidSdk"]["installedPackages"]
         )
+        environment["androidSdk"]["emulator"] = {
+            "available": False,
+            "version": None,
+            "buildId": None,
+            "versionOutputSha256": MODULE.canonical_sha256({"available": False}),
+            "rawObservationSha256": MODULE.EMPTY_SHA256,
+            "rawObservationSizeBytes": 0,
+        }
         MODULE.validate_environment(environment, self.policy, "build")
         with self.assertRaisesRegex(ValueError, "required Android packages"):
             MODULE.validate_environment(environment, self.policy, "journey")
         environment = self.environment()
         environment["kvm"]["writable"] = False
-        MODULE.validate_environment(environment, self.policy, "build")
+        build_environment = copy.deepcopy(environment)
+        build_environment["androidSdk"]["emulator"] = {
+            "available": False,
+            "version": None,
+            "buildId": None,
+            "versionOutputSha256": MODULE.canonical_sha256({"available": False}),
+            "rawObservationSha256": MODULE.EMPTY_SHA256,
+            "rawObservationSizeBytes": 0,
+        }
+        MODULE.validate_environment(build_environment, self.policy, "build")
         with self.assertRaisesRegex(ValueError, "usable KVM"):
             MODULE.validate_environment(environment, self.policy, "journey")
 
     def test_build_allows_an_explicitly_unavailable_emulator_but_journey_rejects_it(self) -> None:
         present = self.environment()
+        with self.assertRaisesRegex(ValueError, "record emulator as unavailable"):
+            MODULE.validate_environment(present, self.policy, "build")
+        recorded_only = copy.deepcopy(present)
+        recorded_only["androidSdk"]["emulator"] = {
+            "available": False,
+            "version": None,
+            "buildId": None,
+            "versionOutputSha256": MODULE.canonical_sha256({"available": False}),
+            "rawObservationSha256": MODULE.EMPTY_SHA256,
+            "rawObservationSizeBytes": 0,
+        }
         absent = copy.deepcopy(present)
         absent["androidSdk"]["installedPackages"] = [
             row
@@ -237,10 +303,15 @@ class Api36ProofEnvironmentAuthorityTests(unittest.TestCase):
         absent["androidSdk"]["emulator"] = {
             "available": False,
             "version": None,
+            "buildId": None,
             "versionOutputSha256": MODULE.canonical_sha256({"available": False}),
+            "rawObservationSha256": MODULE.EMPTY_SHA256,
+            "rawObservationSizeBytes": 0,
         }
         absent["kvm"] = {field: False for field in absent["kvm"]}
-        present_build = MODULE.compatibility_observation(present, self.policy, "build")
+        present_build = MODULE.compatibility_observation(
+            recorded_only, self.policy, "build"
+        )
         absent_build = MODULE.compatibility_observation(absent, self.policy, "build")
         self.assertEqual(present_build, absent_build)
         self.assertNotIn("emulator", present_build)
@@ -251,19 +322,44 @@ class Api36ProofEnvironmentAuthorityTests(unittest.TestCase):
     def test_journey_compatibility_retains_emulator_and_kvm(self) -> None:
         first = self.environment()
         second = copy.deepcopy(first)
+        for row in second["androidSdk"]["installedPackages"]:
+            if row["package"] == "emulator":
+                row["version"] = "36.2.12"
+        second["androidSdk"]["inventoryOutputSha256"] = MODULE.canonical_sha256(
+            second["androidSdk"]["installedPackages"]
+        )
         second["androidSdk"]["emulator"]["version"] = "36.2.12.0"
         second["androidSdk"]["emulator"][
             "versionOutputSha256"
-        ] = MODULE.canonical_sha256({"version": "36.2.12.0"})
+        ] = MODULE.canonical_sha256(
+            {
+                "version": "36.2.12.0",
+                "buildId": second["androidSdk"]["emulator"]["buildId"],
+            }
+        )
         first_compatibility = MODULE.compatibility_observation(
             first, self.policy, "journey"
         )
         second_compatibility = MODULE.compatibility_observation(
             second, self.policy, "journey"
         )
+        third = copy.deepcopy(first)
+        third["androidSdk"]["emulator"]["buildId"] += 1
+        third["androidSdk"]["emulator"][
+            "versionOutputSha256"
+        ] = MODULE.canonical_sha256(
+            {
+                "version": third["androidSdk"]["emulator"]["version"],
+                "buildId": third["androidSdk"]["emulator"]["buildId"],
+            }
+        )
+        third_compatibility = MODULE.compatibility_observation(
+            third, self.policy, "journey"
+        )
         self.assertIn("emulator", first_compatibility)
         self.assertIn("kvm", first_compatibility)
         self.assertNotEqual(first_compatibility, second_compatibility)
+        self.assertNotEqual(first_compatibility, third_compatibility)
 
     def test_toolchain_and_sdk_drift_fail_closed(self) -> None:
         cases = []
@@ -287,6 +383,24 @@ class Api36ProofEnvironmentAuthorityTests(unittest.TestCase):
             copy.deepcopy(duplicate["androidSdk"]["installedPackages"][0])
         )
         cases.append((duplicate, "ambiguous"))
+        emulator_mismatch = self.environment()
+        for row in emulator_mismatch["androidSdk"]["installedPackages"]:
+            if row["package"] == "emulator":
+                row["version"] = "36.2.12"
+        emulator_mismatch["androidSdk"][
+            "inventoryOutputSha256"
+        ] = MODULE.canonical_sha256(
+            emulator_mismatch["androidSdk"]["installedPackages"]
+        )
+        cases.append((emulator_mismatch, "emulator observation authority"))
+        invalid_build = self.environment()
+        invalid_build["androidSdk"]["emulator"]["buildId"] = 0
+        cases.append((invalid_build, "emulator observation authority"))
+        oversized_raw_observation = self.environment()
+        oversized_raw_observation["androidSdk"]["emulator"][
+            "rawObservationSizeBytes"
+        ] = 64 * 1024 + 1
+        cases.append((oversized_raw_observation, "emulator observation authority"))
         for observation, message in cases:
             with self.subTest(message=message):
                 with self.assertRaisesRegex(ValueError, message):
@@ -370,6 +484,82 @@ Path | Version | Description
         with self.assertRaisesRegex(ValueError, "duplicate installed package"):
             MODULE.parse_sdkmanager_inventory(duplicate)
 
+    def test_emulator_parser_requires_one_exact_official_header_and_numeric_build(self) -> None:
+        valid = (
+            b"INFO         | Android emulator version 36.2.11.0 "
+            b"(build_id 15917651) (CL:N/A)\n"
+        )
+        path = self.root / "emulator-version.txt"
+        path.write_bytes(valid)
+        parsed = MODULE.parse_emulator_version_observation(
+            MODULE.StableFile(path, "emulator version")
+        )
+        self.assertEqual("36.2.11.0", parsed["version"])
+        self.assertEqual(15917651, parsed["buildId"])
+        self.assertEqual(hashlib.sha256(valid).hexdigest(), parsed["rawObservationSha256"])
+        self.assertEqual(len(valid), parsed["rawObservationSizeBytes"])
+
+        hostile = (
+            b"Android emulator version 36.2.11.0 (build_id nope) (CL:N/A)\n",
+            b"prefix Android emulator version 36.2.11.0 (build_id 1) (CL:N/A)\n",
+            valid.rstrip(b"\n") + b" trailing\n",
+            valid + valid,
+            valid
+            + b"Android emulator version 99.0.0.0 (build_id missing) (CL:N/A)\n",
+            b"\xffAndroid emulator version 36.2.11.0 (build_id 1) (CL:N/A)\n",
+        )
+        for index, payload in enumerate(hostile):
+            with self.subTest(index=index):
+                path.write_bytes(payload)
+                with self.assertRaises(ValueError):
+                    MODULE.parse_emulator_version_observation(
+                        MODULE.StableFile(path, "emulator version")
+                    )
+
+    def test_emulator_version_normalization_only_allows_one_trailing_zero(self) -> None:
+        accepted = (
+            ("36.2.11", "36.2.11"),
+            ("36.2.11", "36.2.11.0"),
+            ("36.2.11.0", "36.2.11"),
+            ("36.2.0", "36.2.0.0"),
+            ("36.2.0.0", "36.2.0"),
+        )
+        rejected = (
+            ("36.2.11", "36.2.12.0"),
+            ("36.2.11", "36.2.11.1"),
+            ("36.2.11", "36.2.11.0.0"),
+            ("preview", "preview.0"),
+        )
+        for package, observed in accepted:
+            self.assertTrue(MODULE.emulator_versions_match(package, observed))
+        for package, observed in rejected:
+            self.assertFalse(MODULE.emulator_versions_match(package, observed))
+
+    def test_raw_emulator_bytes_and_build_id_are_independent_authority(self) -> None:
+        first_path = self.root / "emulator-first.txt"
+        second_path = self.root / "emulator-second.txt"
+        third_path = self.root / "emulator-third.txt"
+        header = "Android emulator version 36.2.11.0 (build_id 15917651) (CL:N/A)"
+        first_path.write_text(header + "\n", encoding="utf-8")
+        second_path.write_text(header + "\nCopyright notice\n", encoding="utf-8")
+        third_path.write_text(
+            "Android emulator version 36.2.11.0 (build_id 15917652) (CL:N/A)\n",
+            encoding="utf-8",
+        )
+        first = MODULE.parse_emulator_version_observation(
+            MODULE.StableFile(first_path, "first emulator version")
+        )
+        second = MODULE.parse_emulator_version_observation(
+            MODULE.StableFile(second_path, "second emulator version")
+        )
+        third = MODULE.parse_emulator_version_observation(
+            MODULE.StableFile(third_path, "third emulator version")
+        )
+        self.assertEqual(first["versionOutputSha256"], second["versionOutputSha256"])
+        self.assertNotEqual(first["rawObservationSha256"], second["rawObservationSha256"])
+        self.assertNotEqual(first["buildId"], third["buildId"])
+        self.assertNotEqual(first["versionOutputSha256"], third["versionOutputSha256"])
+
     def test_collector_records_versions_and_digests_without_sdk_path(self) -> None:
         sdk = self.root / "private-sdk"
         for relative in (
@@ -411,17 +601,21 @@ Available Packages:
                     "Version 36.0.0-13206524\n"
                     f"Installed as {command[0]}"
                 )
-            if command[-1] == "-version":
-                return (
-                    "Android emulator version 36.2.11.0\n"
-                    f"Found emulator at {command[0]}"
-                )
             raise AssertionError(command)
 
         proc_version = self.root / "proc-version"
         proc_version.write_text("Linux version hosted\n", encoding="utf-8")
         kvm_module = self.root / "kvm-module"
         kvm_module.mkdir()
+        emulator_version_path = self.root / "emulator-version.txt"
+        emulator_version_path.write_bytes(
+            b"INFO         | Android emulator version 36.2.11.0 "
+            b"(build_id 15917651) (CL:N/A)\n"
+        )
+        emulator_version_snapshot = MODULE.StableFile(
+            emulator_version_path,
+            "emulator version observation",
+        )
         observation = MODULE.collect_environment(
             sdk,
             {
@@ -430,6 +624,7 @@ Available Packages:
                 "ImageOS": "ubuntu24",
                 "ImageVersion": "20260901.1.0",
             },
+            emulator_version_observation=emulator_version_snapshot,
             command_runner=run,
             kvm_path=Path("/dev/null"),
             kvm_module_path=kvm_module,
@@ -448,7 +643,18 @@ Available Packages:
             "36.0.0-13206524",
             observation["androidSdk"]["adb"]["packageVersion"],
         )
-        self.assertIn((str(sdk / "emulator/emulator"), "-version"), commands)
+        self.assertEqual(15917651, observation["androidSdk"]["emulator"]["buildId"])
+        self.assertEqual(
+            emulator_version_snapshot.sha256,
+            observation["androidSdk"]["emulator"]["rawObservationSha256"],
+        )
+        self.assertFalse(
+            any(
+                command[-1] == "-version"
+                and command[0].endswith("/emulator/emulator")
+                for command in commands
+            )
+        )
         relocated_sdk = self.root / "relocated-private-sdk"
         for relative in (
             "cmdline-tools/latest/bin/sdkmanager",
@@ -468,7 +674,7 @@ Available Packages:
                 "ImageOS": "ubuntu24",
                 "ImageVersion": "20260901.1.0",
             },
-            emulator_version_output="Android emulator version 36.2.11.0",
+            emulator_version_observation=emulator_version_snapshot,
             command_runner=run,
             kvm_path=Path("/dev/null"),
             kvm_module_path=kvm_module,
@@ -671,9 +877,12 @@ Available Packages:
             {
                 "available": False,
                 "version": None,
+                "buildId": None,
                 "versionOutputSha256": MODULE.canonical_sha256(
                     {"available": False}
                 ),
+                "rawObservationSha256": MODULE.EMPTY_SHA256,
+                "rawObservationSizeBytes": 0,
             },
             observation["androidSdk"]["emulator"],
         )
@@ -684,6 +893,35 @@ Available Packages:
                 for command in commands
             )
         )
+        unexpected_observation = self.root / "unexpected-build-emulator.txt"
+        unexpected_observation.write_text(
+            "Android emulator version 36.2.11.0 (build_id 15917651) (CL:N/A)\n",
+            encoding="utf-8",
+        )
+        with self.assertRaisesRegex(ValueError, "must not accept"):
+            MODULE.collect_environment(
+                sdk,
+                {
+                    "RUNNER_OS": "Linux",
+                    "RUNNER_ARCH": "X64",
+                    "ImageOS": "ubuntu24",
+                    "ImageVersion": "20260901.1.0",
+                },
+                emulator_required=False,
+                emulator_version_observation=MODULE.StableFile(
+                    unexpected_observation,
+                    "unexpected build emulator observation",
+                ),
+                command_runner=run,
+                kvm_path=Path("/dev/null"),
+                kvm_module_path=kvm_module,
+                proc_version_path=proc_version,
+                uname_provider=lambda: SimpleNamespace(
+                    system="Linux",
+                    release="6.11.0-hosted",
+                    machine="x86_64",
+                ),
+            )
 
     @unittest.skipUnless(Path("/proc/version").is_file(), "Linux procfs is unavailable")
     def test_real_proc_version_zero_stat_size_is_bounded_and_repeatable(self) -> None:

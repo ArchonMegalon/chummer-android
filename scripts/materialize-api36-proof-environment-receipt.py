@@ -62,22 +62,13 @@ def main(argv: list[str] | None = None) -> int:
         if args.role == "journey"
         else None
     )
-    if emulator_version_snapshot is not None:
-        if emulator_version_snapshot.size > 64 * 1024:
-            raise ValueError("emulator version observation is oversized")
-        try:
-            emulator_version_output = emulator_version_snapshot.data.decode("utf-8")
-        except UnicodeDecodeError as error:
-            raise ValueError("emulator version observation is not UTF-8") from error
-    else:
-        emulator_version_output = None
     observation = collect_environment(
         args.android_sdk_root.absolute(),
         os.environ,
         emulator_required=(
             "emulator" in policy["roles"][args.role]["requiredAndroidPackages"]
         ),
-        emulator_version_output=emulator_version_output,
+        emulator_version_observation=emulator_version_snapshot,
     )
 
     snapshots: list[StableFile] = [policy_snapshot, gate_snapshot]

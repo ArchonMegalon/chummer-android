@@ -331,8 +331,12 @@ def creation_receipt_with_timing(
 
 class Api36ArtifactAuthorityTests(unittest.TestCase):
     @staticmethod
-    def environment() -> dict[str, object]:
+    def environment(role: str = "journey") -> dict[str, object]:
         digest = "a" * 64
+        emulator_raw = (
+            b"INFO         | Android emulator version 36.2.11.0 "
+            b"(build_id 15917651) (CL:N/A)\n"
+        )
         observation = {
             "runnerImage": {
                 "runnerOs": "Linux",
@@ -371,7 +375,10 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                 "emulator": {
                     "available": True,
                     "version": "36.2.11.0",
+                    "buildId": 15917651,
                     "versionOutputSha256": digest,
+                    "rawObservationSha256": hashlib.sha256(emulator_raw).hexdigest(),
+                    "rawObservationSizeBytes": len(emulator_raw),
                 },
             },
             "kernel": {
@@ -413,8 +420,22 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             }
         )
         android["emulator"]["versionOutputSha256"] = ENVIRONMENT.canonical_sha256(
-            {"version": android["emulator"]["version"]}
+            {
+                "version": android["emulator"]["version"],
+                "buildId": android["emulator"]["buildId"],
+            }
         )
+        if role == "build":
+            android["emulator"] = {
+                "available": False,
+                "version": None,
+                "buildId": None,
+                "versionOutputSha256": ENVIRONMENT.canonical_sha256(
+                    {"available": False}
+                ),
+                "rawObservationSha256": ENVIRONMENT.EMPTY_SHA256,
+                "rawObservationSizeBytes": 0,
+            }
         return observation
 
     @staticmethod
@@ -717,7 +738,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                     "sizeBytes": workflow.stat().st_size,
                 },
             },
-            observation=self.environment(),
+            observation=self.environment("build"),
         )
         build_environment_path = (
             root.parent / f"{root.name}-build-environment-receipt.json"
@@ -854,10 +875,25 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             )
             environment_path = directory / "environment-receipt.json"
             environment = json.loads(environment_path.read_text())
+            for row in environment["environment"]["androidSdk"]["installedPackages"]:
+                if row["package"] == "emulator":
+                    row["version"] = "36.2.12"
+            environment["environment"]["androidSdk"][
+                "inventoryOutputSha256"
+            ] = ENVIRONMENT.canonical_sha256(
+                environment["environment"]["androidSdk"]["installedPackages"]
+            )
             environment["environment"]["androidSdk"]["emulator"]["version"] = "36.2.12.0"
             environment["environment"]["androidSdk"]["emulator"][
                 "versionOutputSha256"
-            ] = ENVIRONMENT.canonical_sha256({"version": "36.2.12.0"})
+            ] = ENVIRONMENT.canonical_sha256(
+                {
+                    "version": "36.2.12.0",
+                    "buildId": environment["environment"]["androidSdk"][
+                        "emulator"
+                    ]["buildId"],
+                }
+            )
             environment["environmentSha256"] = ENVIRONMENT.canonical_sha256(
                 environment["environment"]
             )

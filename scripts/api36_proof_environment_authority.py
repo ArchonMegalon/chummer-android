@@ -24,8 +24,8 @@ from api36_wizard_gate_contract import contract_binding, journey_map
 
 
 POLICY_SCHEMA = "chummer.android.api36-proof-environment-authority/v2"
-BUILD_SCHEMA = "chummer.android.api36-build-environment-receipt/v1"
-JOURNEY_SCHEMA = "chummer.android.api36-journey-environment-receipt/v1"
+BUILD_SCHEMA = "chummer.android.api36-build-environment-receipt/v2"
+JOURNEY_SCHEMA = "chummer.android.api36-journey-environment-receipt/v2"
 DEFAULT_POLICY = Path(__file__).resolve().parents[1] / "eng/api36-proof-environment-authority.json"
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
 SAFE_TOKEN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._+;:\-]{0,255}$")
@@ -43,10 +43,14 @@ ADB_PROTOCOL_VERSION = re.compile(
     re.MULTILINE,
 )
 ADB_PACKAGE_VERSION = re.compile(r"^Version (?P<version>[^\s]+)$", re.MULTILINE)
-EMULATOR_VERSION = re.compile(
-    r"Android emulator version (?P<version>[0-9.]+)",
-    re.IGNORECASE,
+EMULATOR_VERSION_HEADER = re.compile(
+    r"^(?:INFO\s+\|\s+)?Android emulator version "
+    r"(?P<version>[0-9]+(?:\.[0-9]+){2,3}) "
+    r"\(build_id (?P<build_id>[1-9][0-9]*)\) "
+    r"\(CL:(?:N/A|[0-9]+)\)$",
 )
+EMULATOR_NUMERIC_VERSION = re.compile(r"^[0-9]+(?:\.[0-9]+){2,3}$")
+EMPTY_SHA256 = hashlib.sha256(b"").hexdigest()
 DOES_NOT_ASSERT = (
     "journey_pass_without_the_bound_journey_receipt",
     "physical_device_execution",
@@ -296,6 +300,54 @@ def parse_sdkmanager_inventory(output: str) -> list[dict[str, str]]:
     return [installed[key] for key in sorted(installed)]
 
 
+def parse_emulator_version_observation(snapshot: StableFile) -> dict[str, Any]:
+    """Parse one exact official emulator header and bind its original bytes."""
+    if snapshot.size <= 0 or snapshot.size > 64 * 1024:
+        raise ValueError("emulator version observation is empty or oversized")
+    try:
+        text = snapshot.data.decode("utf-8")
+    except UnicodeDecodeError as error:
+        raise ValueError("emulator version observation is not UTF-8") from error
+    matches: list[re.Match[str]] = []
+    for line in text.splitlines():
+        match = EMULATOR_VERSION_HEADER.fullmatch(line)
+        if match is not None:
+            matches.append(match)
+        elif "android emulator version" in line.lower():
+            raise ValueError("emulator version observation contains a malformed header")
+    if len(matches) != 1:
+        raise ValueError("emulator version observation must contain exactly one official header")
+    match = matches[0]
+    return {
+        "available": True,
+        "version": match.group("version"),
+        "buildId": int(match.group("build_id")),
+        "versionOutputSha256": canonical_sha256(
+            {
+                "version": match.group("version"),
+                "buildId": int(match.group("build_id")),
+            }
+        ),
+        "rawObservationSha256": snapshot.sha256,
+        "rawObservationSizeBytes": snapshot.size,
+    }
+
+
+def emulator_versions_match(package_version: str, observed_version: str) -> bool:
+    """Allow equality or one side having exactly one additional trailing .0."""
+    if (
+        EMULATOR_NUMERIC_VERSION.fullmatch(package_version) is None
+        or EMULATOR_NUMERIC_VERSION.fullmatch(observed_version) is None
+    ):
+        return False
+
+    return (
+        package_version == observed_version
+        or f"{package_version}.0" == observed_version
+        or f"{observed_version}.0" == package_version
+    )
+
+
 def _run(command: Sequence[str], *, timeout: int = 60) -> str:
     allowed_environment = {
         key: value
@@ -427,7 +479,7 @@ def collect_environment(
     environment: Mapping[str, str],
     *,
     emulator_required: bool = True,
-    emulator_version_output: str | None = None,
+    emulator_version_observation: StableFile | None = None,
     command_runner: Callable[[Sequence[str]], str] = _run,
     kvm_path: Path = Path("/dev/kvm"),
     kvm_module_path: Path = Path("/sys/module/kvm"),
@@ -436,6 +488,8 @@ def collect_environment(
 ) -> dict[str, Any]:
     if type(emulator_required) is not bool:
         raise ValueError("emulator-required posture must be boolean")
+    if not emulator_required and emulator_version_observation is not None:
+        raise ValueError("build environment must not accept an emulator observation")
     android_sdk_root = _canonical_sdk_root(android_sdk_root)
     runner = {
         "runnerOs": environment.get("RUNNER_OS", ""),
@@ -460,40 +514,56 @@ def collect_environment(
         "adb",
         required=True,
     )
-    emulator = sdk_executable(
-        android_sdk_root,
-        "emulator/emulator",
-        "emulator",
-        required=emulator_required,
-        allow_internal_file_symlink=True,
+    emulator = (
+        sdk_executable(
+            android_sdk_root,
+            "emulator/emulator",
+            "emulator",
+            required=True,
+            allow_internal_file_symlink=True,
+        )
+        if emulator_required
+        else None
     )
     assert sdkmanager is not None and adb is not None
     sdkmanager_output = command_runner((str(sdkmanager), "--list_installed"))
     adb_output = command_runner((str(adb), "version"))
+    installed_packages = parse_sdkmanager_inventory(sdkmanager_output)
     if emulator is None:
-        emulator_output = None
-    elif emulator_version_output is not None:
-        emulator_output = emulator_version_output.strip()
-        if not emulator_output or len(emulator_output.encode("utf-8")) > 64 * 1024:
-            raise ValueError("emulator version observation is empty or oversized")
+        emulator_observation = {
+            "available": False,
+            "version": None,
+            "buildId": None,
+            "versionOutputSha256": canonical_sha256({"available": False}),
+            "rawObservationSha256": EMPTY_SHA256,
+            "rawObservationSizeBytes": 0,
+        }
     else:
-        emulator_output = command_runner((str(emulator), "-version"))
+        if emulator_version_observation is None:
+            raise ValueError("journey emulator version observation is required")
+        emulator_observation = parse_emulator_version_observation(
+            emulator_version_observation
+        )
+        emulator_package = next(
+            (row for row in installed_packages if row["package"] == "emulator"),
+            None,
+        )
+        if emulator_package is None or not emulator_versions_match(
+            emulator_package["version"], emulator_observation["version"]
+        ):
+            raise ValueError(
+                "observed emulator version differs from sdkmanager package authority"
+            )
 
     java_match = JAVA_VERSION.search(java_output)
     javac_match = JAVAC_VERSION.search(javac_output)
     rid_match = DOTNET_RID.search(dotnet_info_output)
     adb_protocol = ADB_PROTOCOL_VERSION.search(adb_output)
     adb_package = ADB_PACKAGE_VERSION.search(adb_output)
-    emulator_version = (
-        EMULATOR_VERSION.search(emulator_output) if emulator_output is not None else None
-    )
-    if None in (java_match, javac_match, rid_match, adb_protocol, adb_package) or (
-        emulator_required and emulator_version is None
-    ):
+    if None in (java_match, javac_match, rid_match, adb_protocol, adb_package):
         raise ValueError("one or more hosted tool versions could not be parsed")
     dotnet_version = dotnet_version_output.strip()
     _safe_token(dotnet_version, "dotnet SDK version")
-    installed_packages = parse_sdkmanager_inventory(sdkmanager_output)
     uname = uname_provider()
     proc_version = stable_virtual_file_bytes(proc_version_path, "kernel version")
     try:
@@ -535,19 +605,7 @@ def collect_environment(
                     }
                 ),
             },
-            "emulator": {
-                "available": emulator_version is not None,
-                "version": (
-                    emulator_version.group("version")
-                    if emulator_version is not None
-                    else None
-                ),
-                "versionOutputSha256": (
-                    canonical_sha256({"version": emulator_version.group("version")})
-                    if emulator_version is not None
-                    else canonical_sha256({"available": False})
-                ),
-            },
+            "emulator": emulator_observation,
         },
         "kernel": {
             "system": uname.system,
@@ -650,7 +708,14 @@ def validate_environment(
     )
     require_exact_fields(
         android["emulator"],
-        {"available", "version", "versionOutputSha256"},
+        {
+            "available",
+            "version",
+            "buildId",
+            "versionOutputSha256",
+            "rawObservationSha256",
+            "rawObservationSizeBytes",
+        },
         "emulator observation",
     )
     for field in ("protocolVersion", "packageVersion"):
@@ -659,17 +724,37 @@ def validate_environment(
     emulator_observation = android["emulator"]
     if type(emulator_observation["available"]) is not bool:
         raise ValueError("emulator availability posture must be boolean")
+    if not emulator_required and emulator_observation["available"]:
+        raise ValueError("build environment must record emulator as unavailable")
     if emulator_observation["available"]:
         _safe_token(emulator_observation["version"], "emulator version")
+        if (
+            type(emulator_observation["buildId"]) is not int
+            or emulator_observation["buildId"] <= 0
+            or type(emulator_observation["rawObservationSizeBytes"]) is not int
+            or emulator_observation["rawObservationSizeBytes"] <= 0
+            or emulator_observation["rawObservationSizeBytes"] > 64 * 1024
+            or "emulator" not in by_name
+            or not emulator_versions_match(
+                by_name["emulator"]["version"], emulator_observation["version"]
+            )
+        ):
+            raise ValueError("emulator observation authority differs")
         if emulator_observation["versionOutputSha256"] != canonical_sha256(
-            {"version": emulator_observation["version"]}
+            {
+                "version": emulator_observation["version"],
+                "buildId": emulator_observation["buildId"],
+            }
         ):
             raise ValueError("emulator canonical output digest differs")
     elif (
         emulator_required
         or emulator_observation["version"] is not None
+        or emulator_observation["buildId"] is not None
         or emulator_observation["versionOutputSha256"]
         != canonical_sha256({"available": False})
+        or emulator_observation["rawObservationSha256"] != EMPTY_SHA256
+        or emulator_observation["rawObservationSizeBytes"] != 0
     ):
         raise ValueError("required emulator observation is unavailable or inconsistent")
     if android["adb"]["versionOutputSha256"] != canonical_sha256(
@@ -761,7 +846,7 @@ def compatibility_observation(
     if role == "journey":
         compatibility["emulator"] = {
             field: observation["androidSdk"]["emulator"][field]
-            for field in ("available", "version")
+            for field in ("available", "version", "buildId")
         }
         compatibility["kvm"] = dict(observation["kvm"])
     return compatibility
