@@ -641,7 +641,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "cfca111d8e94546900491884926d34adb91addf7071b4f029a5714c1f118ee00"
+        "sha256": "def37a920ec8a676214de825f20eba2e5d2af2e4b2e1192e7c23a7a1dc011bed"
       },
       {
         "path": "src/Chummer.Android/Native/RunnerSessionSr5CareerWizardPhoneAuthority.cs",
@@ -666,7 +666,7 @@
       {
         "path": "src/Chummer.Android/Native/Sr5CareerWizardPage.cs",
         "exists": true,
-        "sha256": "23c8df88fb6cef83b75fb1a252923774454ec0639ef3485e59ab58845a623e61"
+        "sha256": "ff437cd9ed411dce7fcf5310a6f356b0c81d11a40c2f6e823a2c6262b7a25025"
       },
       {
         "path": "src/Chummer.Android/Native/Sr5CareerWizardPhoneModel.cs",
@@ -691,7 +691,7 @@
       {
         "path": "src/Chummer.Android/Native/Sr5AfterRunSettlementCoordinator.cs",
         "exists": true,
-        "sha256": "4b3e88abf7d16cc52b157d1e2ba1315198a402491fc3f6130476953da6902159"
+        "sha256": "003142ddd8611338258d9d8c410010a95e2add545d128f1fc420964868627f02"
       },
       {
         "path": "src/Chummer.Android/Native/Sr5AfterRunSettlementWizardPage.cs",
@@ -871,7 +871,7 @@
       {
         "path": "tests/run_api36_sr5_before_run_edge_physical_e2e.py",
         "exists": true,
-        "sha256": "8257709f85831dace3890b62431043ca41a51e12c8a8b9b4db750c23d5a90fe7"
+        "sha256": "b130ce27e31231d6e51026171a892eed6bca736d92c0bfb8529f50353ceff526"
       },
       {
         "path": "tests/api36_proof_state.py",
@@ -916,7 +916,7 @@
       {
         "path": "tests/run_api36_sr5_after_run_settlement_e2e.py",
         "exists": true,
-        "sha256": "7a630cb5e48d5177a5aa6826e86057fd80707577e1b1a75b8d5f1aec1edbecc3"
+        "sha256": "781f8cf082fba13e0efa2b75b8d9261e76cc41051959f99370aea65de72dc2eb"
       },
       {
         "path": "tests/run_api36_sr5_after_run_settlement_hosted_e2e.py",
@@ -956,7 +956,7 @@
       {
         "path": "tests/run_api36_editing_e2e.py",
         "exists": true,
-        "sha256": "a4b9433be1a429688039ff88ee2dfb5d914836f28618efb40e859d7811fd9a25"
+        "sha256": "31433a8a9c21eccc418c847eca34254a5e3a952978376d07ab1f34254552f00c"
       },
       {
         "path": "tests/run_api36_career_active_skill_advance_e2e.py",
