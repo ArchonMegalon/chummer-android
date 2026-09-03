@@ -1345,7 +1345,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertEqual(2, device.up)
         self.assertEqual(1, observations[0]["emptyHierarchyReads"])
 
-    def test_stable_end_scan_accepts_exactly_five_cold_restart_empty_reads(
+    def test_stable_end_scan_accepts_exactly_six_cold_restart_empty_reads(
         self,
     ) -> None:
         stable = [
@@ -1354,7 +1354,9 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             )
         ]
         device = mock.Mock()
-        device.hierarchy.side_effect = [[], [], [], [], [], stable, stable, stable]
+        device.hierarchy.side_effect = [
+            [], [], [], [], [], [], stable, stable, stable,
+        ]
         observations: list[dict[str, object]] = []
 
         with mock.patch.object(driver.time, "sleep"):
@@ -1370,11 +1372,11 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             )
 
         self.assertEqual(3, len(screens))
-        self.assertEqual(8, device.hierarchy.call_count)
+        self.assertEqual(9, device.hierarchy.call_count)
         self.assertEqual(2, device.swipe_up.call_count)
         device.capture.assert_not_called()
         self.assertEqual("stable-end", observations[0]["status"])
-        self.assertEqual(5, observations[0]["emptyHierarchyReads"])
+        self.assertEqual(6, observations[0]["emptyHierarchyReads"])
         self.assertEqual(
             driver.PROCESS_RESTART_RESOURCES_MAX_CONSECUTIVE_EMPTY_READS,
             observations[0]["maximumConsecutiveEmptyReads"],
@@ -2273,7 +2275,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             scan.call_args.kwargs["max_consecutive_empty_reads"],
         )
 
-    def test_process_restart_resources_real_wrapper_recovers_five_empty_reads(
+    def test_process_restart_resources_real_wrapper_recovers_six_empty_reads(
         self,
     ) -> None:
         selectors = (
@@ -2286,7 +2288,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         ]
         origin = self.priority_rank_origin(nodes)
         device = mock.Mock()
-        device.hierarchy.side_effect = [[], [], [], [], [], nodes, nodes]
+        device.hierarchy.side_effect = [[], [], [], [], [], [], nodes, nodes]
         deadline = driver.time.monotonic() + 30
 
         with mock.patch.object(
@@ -2302,13 +2304,13 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             )
 
         self.assertEqual(set(selectors), set(actual))
-        self.assertEqual(7, device.hierarchy.call_count)
+        self.assertEqual(8, device.hierarchy.call_count)
         self.assertEqual(2, device.swipe_up.call_count)
         device.capture.assert_not_called()
         for invocation in device.hierarchy.call_args_list:
             self.assertEqual(deadline, invocation.kwargs["deadline"])
 
-    def test_process_restart_resources_real_wrapper_fails_on_six_empty_reads(
+    def test_process_restart_resources_real_wrapper_fails_on_seven_empty_reads(
         self,
     ) -> None:
         selectors = (
@@ -2320,7 +2322,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             self.canonical_node(selectors[1], text="3"),
         ]
         device = mock.Mock()
-        device.hierarchy.side_effect = [[], [], [], [], [], []]
+        device.hierarchy.side_effect = [[], [], [], [], [], [], []]
         deadline = driver.time.monotonic() + 30
 
         with mock.patch.object(
@@ -2338,7 +2340,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 deadline=deadline,
             )
 
-        self.assertEqual(6, device.hierarchy.call_count)
+        self.assertEqual(7, device.hierarchy.call_count)
         device.capture.assert_called_once_with(
             f"{driver.PROCESS_RESTART_RESOURCES_SCAN_ID}-empty-hierarchy-exhausted",
             deadline=deadline,
