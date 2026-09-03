@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 import xml.etree.ElementTree as ET
 
 import run_api36_sr5_after_run_settlement_e2e as driver
@@ -34,6 +35,124 @@ def validate(value: dict[str, object], fixture: dict[str, object], *, applied: b
 
 
 class Api36Sr5AfterRunSettlementContractTests(unittest.TestCase):
+    def test_after_run_tap_captures_immediate_process_exit_and_exception_evidence(self) -> None:
+        component = f"{driver.physical.shared.PACKAGE}/.MainActivity"
+        before = driver.physical.shared.LaunchState(("731",), component, "before")
+        immediate = driver.physical.shared.LaunchState(("731",), component, "immediate")
+        final = driver.physical.shared.LaunchState(("731",), component, "final")
+
+        class Device:
+            def __init__(self, evidence: Path) -> None:
+                self.evidence = evidence
+                self.tap_count = 0
+                self.commands: list[tuple[str, ...]] = []
+
+            def tap_single_exact_resource_id(self, selector: str, **options: object) -> None:
+                self.tap_count += 1
+                self.selector = selector
+                self.options = options
+
+            def run(self, *arguments: str, **_options: object):
+                self.commands.append(arguments)
+                return driver.subprocess.CompletedProcess(
+                    args=list(arguments), returncode=0,
+                    stdout=f"captured {' '.join(arguments)}", stderr="",
+                )
+
+        with tempfile.TemporaryDirectory() as temporary:
+            device = Device(Path(temporary))
+            with patch.object(
+                driver.physical.shared,
+                "current_launch_state",
+                side_effect=(before, immediate, final),
+            ):
+                driver.tap_after_run_action_with_immediate_diagnostics(
+                    device,
+                    "initial-entry",
+                )
+
+            self.assertEqual(1, device.tap_count)
+            self.assertEqual("sr5-career-action-after-run", device.selector)
+            self.assertEqual(4, len(device.commands))
+            self.assertIn(
+                ("shell", "dumpsys", "activity", "exit-info", driver.physical.shared.PACKAGE),
+                device.commands,
+            )
+            for buffer_name in ("all", "events", "crash"):
+                self.assertTrue(any(
+                    command[:4] == ("logcat", "-d", "-b", buffer_name)
+                    for command in device.commands
+                ))
+            state_path = (
+                Path(temporary)
+                / "sr5-after-run-post-tap-initial-entry-state.json"
+            )
+            evidence = json.loads(state_path.read_text(encoding="utf-8"))
+            self.assertEqual(
+                driver.AFTER_RUN_POST_TAP_DIAGNOSTIC_SCHEMA,
+                evidence["schema"],
+            )
+            self.assertEqual(["731"], evidence["before"]["processIds"])
+            self.assertEqual(component, evidence["final"]["resumedComponent"])
+            self.assertEqual(1, evidence["tapCount"])
+            self.assertFalse(evidence["tapReplayAttempted"])
+            self.assertFalse(evidence["foregroundRecoveryAttempted"])
+
+    def test_after_run_tap_fails_immediately_on_launcher_without_replay(self) -> None:
+        component = f"{driver.physical.shared.PACKAGE}/.MainActivity"
+        before = driver.physical.shared.LaunchState(("731",), component, "before")
+        launcher = driver.physical.shared.LaunchState(
+            (),
+            "com.google.android.apps.nexuslauncher/.NexusLauncherActivity",
+            "launcher",
+        )
+
+        class Device:
+            def __init__(self, evidence: Path) -> None:
+                self.evidence = evidence
+                self.tap_count = 0
+
+            def tap_single_exact_resource_id(self, *_args: object, **_options: object) -> None:
+                self.tap_count += 1
+
+            def run(self, *arguments: str, **_options: object):
+                return driver.subprocess.CompletedProcess(
+                    args=list(arguments), returncode=0,
+                    stdout=(
+                        "FATAL EXCEPTION main\n"
+                        f"Process: {driver.physical.shared.PACKAGE}\n"
+                    ),
+                    stderr="",
+                )
+
+        with tempfile.TemporaryDirectory() as temporary:
+            device = Device(Path(temporary))
+            with patch.object(
+                driver.physical.shared,
+                "current_launch_state",
+                side_effect=(before, launcher, launcher),
+            ):
+                with self.assertRaisesRegex(RuntimeError, "without retry"):
+                    driver.tap_after_run_action_with_immediate_diagnostics(
+                        device,
+                        "initial-entry",
+                    )
+            self.assertEqual(1, device.tap_count)
+            evidence = json.loads((
+                Path(temporary)
+                / "sr5-after-run-post-tap-initial-entry-state.json"
+            ).read_text(encoding="utf-8"))
+            self.assertEqual([], evidence["immediate"]["processIds"])
+            self.assertIn("nexuslauncher", evidence["final"]["resumedComponent"])
+            self.assertFalse(evidence["tapReplayAttempted"])
+            self.assertIn(
+                "FATAL EXCEPTION",
+                (
+                    Path(temporary)
+                    / "sr5-after-run-post-tap-initial-entry-logcat-crash.txt"
+                ).read_text(encoding="utf-8"),
+            )
+
     def test_governed_fixture_materializes_exact_runner_bytes(self) -> None:
         fixture = driver.load_fixture()
         payload = driver.render_runner_xml(fixture)
