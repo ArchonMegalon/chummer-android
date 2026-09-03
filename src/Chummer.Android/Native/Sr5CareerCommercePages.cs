@@ -7,7 +7,7 @@ namespace Chummer.Android.Native;
 /// <summary>
 /// Phone-first entry point for the bounded typed Career commerce lane. It
 /// does not provide a generic mutation fallback: only Core's complete
-/// Cyberware purchase and custom-drug recipe authorities are actionable in
+/// Cyberware purchase, custom-drug recipe, and vehicle-workshop authorities are actionable in
 /// this build.
 /// </summary>
 public sealed class Sr5CareerCommerceHubPage : NativePageBase
@@ -31,7 +31,7 @@ public sealed class Sr5CareerCommerceHubPage : NativePageBase
         _body.Add(NativeTheme.Eyebrow(Text("SR5 Career · Typed commerce")));
         _body.Add(NativeTheme.Title(Text("Gear and implants")));
         _body.Add(NativeTheme.Body(
-            Text("Only the top-level Cyberware purchase and Career custom-drug recipe lanes are typed end to end in this build."),
+            Text("Cyberware purchase, custom-drug recipe, and vehicle or drone workshop are typed end to end in this build."),
             NativeTheme.Muted));
         _body.Add(NativeTheme.Body(
             Text("Choose a bounded commerce lane. Each destination reloads its own exact authority before review or persistence."),
@@ -59,6 +59,13 @@ public sealed class Sr5CareerCommerceHubPage : NativePageBase
             () => Navigation.PushAsync(new Sr5CareerCustomDrugRecipePage(Coordinator)),
             enabled: customDrug.IsReady,
             automationId: "sr5-career-custom-drug-recipe"));
+        Sr5CareerVehicleWorkshopSnapshot workshop = Coordinator.LoadCareerVehicleWorkshop();
+        _body.Add(NativeTheme.NavigationRow(
+            Text("Vehicle and drone workshop"),
+            Text("Exact chassis → modifications → Core quote → durable purchase receipt"),
+            () => Navigation.PushAsync(new Sr5CareerVehicleWorkshopPage(Coordinator)),
+            enabled: workshop.IsReady,
+            automationId: "sr5-career-vehicle-workshop"));
         AddUnavailableLane(
             Text("Installed gear"),
             "sr5-career-installed-gear-unavailable");

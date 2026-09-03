@@ -13,15 +13,23 @@
              Link="Core/CharacterCyberwarePurchaseRules.cs" />
     <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CharacterCustomDrugRules.cs"
              Link="Core/CharacterCustomDrugRules.cs" />
+    <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CharacterVehicleWorkshopModels.cs"
+             Link="Core/CharacterVehicleWorkshopModels.cs" />
+    <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CharacterVehicleWorkshopRules.cs"
+             Link="Core/CharacterVehicleWorkshopRules.cs" />
     <Compile Include="../../src/Chummer.Android/Native/NativeTheme.cs" Link="Native/NativeTheme.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5CareerFlowStrings.cs" Link="Native/Sr5CareerFlowStrings.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5CareerCyberwarePurchaseModel.cs"
              Link="Native/Sr5CareerCyberwarePurchaseModel.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5CareerCustomDrugRecipeModel.cs"
              Link="Native/Sr5CareerCustomDrugRecipeModel.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5CareerVehicleWorkshopModel.cs"
+             Link="Native/Sr5CareerVehicleWorkshopModel.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5CareerCommercePages.cs"
              Link="Native/Sr5CareerCommercePages.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5CareerCustomDrugRecipePages.cs"
              Link="Native/Sr5CareerCustomDrugRecipePages.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5CareerVehicleWorkshopPages.cs"
+             Link="Native/Sr5CareerVehicleWorkshopPages.cs" />
   </ItemGroup>
 </Project>

@@ -276,6 +276,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
     private readonly ICharacterCreationFinalizationService? _creationFinalizationService;
     private readonly Sr5CareerCyberwarePurchaseService? _careerCyberwarePurchaseService;
     private readonly Sr5CareerCustomDrugRecipeService? _careerCustomDrugRecipeService;
+    private readonly Sr5CareerVehicleWorkshopService? _careerVehicleWorkshopService;
     private readonly ICharacterCareerSkillGroupAdvanceService? _careerSkillGroupService;
     private readonly ICharacterAfterRunSettlementService? _afterRunSettlementService;
     private readonly IAndroidAfterRunProposalCatalog? _afterRunProposalCatalog;
@@ -348,7 +349,8 @@ public sealed class RunnerSessionCoordinator : IDisposable
         OriginDossierLifeModulePhoneRuntime? originLifeModuleRuntime = null,
         ICharacterCreationFinalizationService? creationFinalizationService = null,
         Sr5CareerCyberwarePurchaseService? careerCyberwarePurchaseService = null,
-        Sr5CareerCustomDrugRecipeService? careerCustomDrugRecipeService = null)
+        Sr5CareerCustomDrugRecipeService? careerCustomDrugRecipeService = null,
+        Sr5CareerVehicleWorkshopService? careerVehicleWorkshopService = null)
     {
         _presenter = presenter;
         _client = client;
@@ -365,6 +367,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
         _creationFinalizationService = creationFinalizationService;
         _careerCyberwarePurchaseService = careerCyberwarePurchaseService;
         _careerCustomDrugRecipeService = careerCustomDrugRecipeService;
+        _careerVehicleWorkshopService = careerVehicleWorkshopService;
         _careerSkillGroupService = careerSkillGroupService;
         _afterRunSettlementService = afterRunSettlementService;
         _afterRunProposalCatalog = afterRunProposalCatalog;
@@ -673,6 +676,91 @@ public sealed class RunnerSessionCoordinator : IDisposable
                 live.Blockers.FirstOrDefault()
                 ?? CharacterCustomDrugBlockers.AuthorityUnavailable);
         }
+        return workspaceId;
+    }
+
+    public Sr5CareerVehicleWorkshopSnapshot LoadCareerVehicleWorkshop()
+    {
+        if (_careerVehicleWorkshopService is null
+            || State.WorkspaceId is not { } workspaceId
+            || State.Profile?.Created != true
+            || !string.Equals(State.Rules?.GameEdition, "SR5", StringComparison.OrdinalIgnoreCase)
+            || State.IsDirty
+            || State.ContentRevision != State.SavedRevision
+            || !string.IsNullOrWhiteSpace(State.Error))
+        {
+            return Sr5CareerVehicleWorkshopSnapshot.Blocked(
+                State.WorkspaceId ?? default,
+                CharacterVehicleWorkshopBlockers.SourceAuthorityUnavailable);
+        }
+        Sr5CareerVehicleWorkshopSnapshot snapshot = _careerVehicleWorkshopService.Load(workspaceId);
+        return snapshot.Preparation is { } preparation
+               && preparation.ContentRevision == State.ContentRevision
+            ? snapshot
+            : Sr5CareerVehicleWorkshopSnapshot.Blocked(
+                workspaceId, CharacterVehicleWorkshopBlockers.StaleRevision);
+    }
+
+    public Sr5CareerVehicleWorkshopSnapshot UpdateCareerVehicleWorkshopSelection(
+        CharacterVehicleWorkshopSelection selection)
+    {
+        CharacterWorkspaceId workspaceId = RequireCareerVehicleWorkshopWorkspace();
+        return _careerVehicleWorkshopService!.UpdateSelection(workspaceId, selection);
+    }
+
+    public Sr5CareerVehicleWorkshopSnapshot ReviewCareerVehicleWorkshop()
+    {
+        CharacterWorkspaceId workspaceId = RequireCareerVehicleWorkshopWorkspace();
+        return _careerVehicleWorkshopService!.Review(workspaceId);
+    }
+
+    public async Task<Sr5CareerVehicleWorkshopSnapshot> ConfirmCareerVehicleWorkshopAsync(
+        CancellationToken cancellationToken = default)
+    {
+        CharacterWorkspaceId workspaceId = RequireCareerVehicleWorkshopWorkspace();
+        Sr5CareerVehicleWorkshopSnapshot result =
+            _careerVehicleWorkshopService!.Confirm(workspaceId);
+        if (result.HasAppliedReceipt || result.IsRecoveryUnknown)
+        {
+            await _presenter.LoadAsync(workspaceId, cancellationToken).ConfigureAwait(false);
+            await SyncShellAsync(cancellationToken).ConfigureAwait(false);
+            NotifyChanged();
+        }
+        return result;
+    }
+
+    public async Task<Sr5CareerVehicleWorkshopSnapshot> UndoCareerVehicleWorkshopAsync(
+        CancellationToken cancellationToken = default)
+    {
+        CharacterWorkspaceId workspaceId = RequireCareerVehicleWorkshopWorkspace();
+        Sr5CareerVehicleWorkshopSnapshot result = _careerVehicleWorkshopService!.Undo(workspaceId);
+        if (string.Equals(result.Notice, Sr5CareerVehicleWorkshopNotices.UndoApplied,
+                StringComparison.Ordinal)
+            || result.IsRecoveryUnknown)
+        {
+            await _presenter.LoadAsync(workspaceId, cancellationToken).ConfigureAwait(false);
+            await SyncShellAsync(cancellationToken).ConfigureAwait(false);
+            NotifyChanged();
+        }
+        return result;
+    }
+
+    public Sr5CareerVehicleWorkshopSnapshot ReopenCareerVehicleWorkshop()
+    {
+        if (_careerVehicleWorkshopService is null || State.WorkspaceId is not { } workspaceId)
+            throw new InvalidOperationException(CharacterVehicleWorkshopBlockers.SourceAuthorityUnavailable);
+        Sr5CareerVehicleWorkshopSnapshot current = LoadCareerVehicleWorkshop();
+        if (!current.HasAppliedReceipt)
+            throw new InvalidOperationException("Only a verified vehicle workshop receipt can be closed.");
+        return _careerVehicleWorkshopService.Reopen(workspaceId);
+    }
+
+    private CharacterWorkspaceId RequireCareerVehicleWorkshopWorkspace()
+    {
+        Sr5CareerVehicleWorkshopSnapshot live = LoadCareerVehicleWorkshop();
+        if (!live.IsReady || State.WorkspaceId is not { } workspaceId)
+            throw new InvalidOperationException(live.Blockers.FirstOrDefault()
+                ?? CharacterVehicleWorkshopBlockers.SourceAuthorityUnavailable);
         return workspaceId;
     }
 

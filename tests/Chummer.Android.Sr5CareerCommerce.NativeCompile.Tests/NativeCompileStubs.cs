@@ -69,6 +69,20 @@ namespace Chummer.Android.Native
             => Task.FromResult(LoadCareerCustomDrugRecipe());
         public Sr5CareerCustomDrugRecipeSnapshot ReopenCareerCustomDrugRecipe()
             => LoadCareerCustomDrugRecipe();
+        public Sr5CareerVehicleWorkshopSnapshot LoadCareerVehicleWorkshop()
+            => Sr5CareerVehicleWorkshopSnapshot.Blocked(
+                default,
+                CharacterVehicleWorkshopBlockers.SourceAuthorityUnavailable);
+        public Sr5CareerVehicleWorkshopSnapshot UpdateCareerVehicleWorkshopSelection(
+            CharacterVehicleWorkshopSelection selection) => LoadCareerVehicleWorkshop();
+        public Sr5CareerVehicleWorkshopSnapshot ReviewCareerVehicleWorkshop()
+            => LoadCareerVehicleWorkshop();
+        public Task<Sr5CareerVehicleWorkshopSnapshot> ConfirmCareerVehicleWorkshopAsync()
+            => Task.FromResult(LoadCareerVehicleWorkshop());
+        public Task<Sr5CareerVehicleWorkshopSnapshot> UndoCareerVehicleWorkshopAsync()
+            => Task.FromResult(LoadCareerVehicleWorkshop());
+        public Sr5CareerVehicleWorkshopSnapshot ReopenCareerVehicleWorkshop()
+            => LoadCareerVehicleWorkshop();
     }
 
     public static class Sr5CareerCyberwarePurchaseService
@@ -92,6 +106,17 @@ namespace Chummer.Android.Native
             false,
             false,
             0m,
+            []);
+    }
+
+    public static class Sr5CareerVehicleWorkshopService
+    {
+        public static CharacterVehicleWorkshopSelection EmptySelection { get; } = new(
+            new CharacterVehicleChassisSourceId(Guid.Empty),
+            new CharacterVehicleInstanceId(Guid.Empty),
+            string.Empty,
+            string.Empty,
+            [],
             []);
     }
 

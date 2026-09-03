@@ -584,6 +584,11 @@ public sealed class BuildPage : NativePageBase
             Sr5CareerFlowStrings.Text("Source-bound catalog → configuration → Core quote → durable receipt"),
             () => Navigation.PushAsync(new Sr5CareerCommerceHubPage(Coordinator)),
             automationId: "build-career-commerce"));
+        card.Add(NativeTheme.NavigationRow(
+            Sr5CareerFlowStrings.Text("Vehicle and drone workshop"),
+            Sr5CareerFlowStrings.Text("Exact chassis → modifications → Core quote → durable purchase receipt"),
+            () => Navigation.PushAsync(new Sr5CareerVehicleWorkshopPage(Coordinator)),
+            automationId: "build-career-vehicle-workshop"));
         Border route = NativeTheme.Card(card);
         route.AutomationId = Sr5CareerWizardRoutes.Hub;
         _body.Add(route);
