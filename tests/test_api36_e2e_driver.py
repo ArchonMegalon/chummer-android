@@ -7483,6 +7483,35 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 self.assertEqual(3, run.call_count)
                 invoke_once.assert_not_called()
 
+    def test_media_provider_pending_path_accepts_positive_int64_boundaries_only(
+        self,
+    ) -> None:
+        display_name = "runner.chum5"
+        prefix = DRIVER.MEDIA_PROVIDER_PENDING_DOWNLOAD_PREFIX
+        self.assertTrue(
+            DRIVER._is_exact_media_provider_pending_path(
+                f"{prefix}1-{display_name}", display_name
+            )
+        )
+        self.assertTrue(
+            DRIVER._is_exact_media_provider_pending_path(
+                f"{prefix}{DRIVER.MEDIA_PROVIDER_PENDING_EXPIRY_MAX}-{display_name}",
+                display_name,
+            )
+        )
+        for expiry in (
+            "0",
+            "01",
+            str(DRIVER.MEDIA_PROVIDER_PENDING_EXPIRY_MAX + 1),
+            "10000000000000000000",
+        ):
+            with self.subTest(expiry=expiry):
+                self.assertFalse(
+                    DRIVER._is_exact_media_provider_pending_path(
+                        f"{prefix}{expiry}-{display_name}", display_name
+                    )
+                )
+
     def test_documents_ui_provider_registration_rejects_names_that_media_provider_would_trim(
         self,
     ) -> None:
