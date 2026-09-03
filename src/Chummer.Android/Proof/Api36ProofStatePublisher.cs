@@ -307,7 +307,7 @@ public sealed class Api36ProofStatePublisher
         }
     }
 
-    public static void TryPublishCreationPrerequisiteAttachment(
+    public static bool TryPublishCreationPrerequisiteAttachment(
         Page page,
         RunnerSessionCoordinator coordinator,
         string workspaceId,
@@ -319,7 +319,7 @@ public sealed class Api36ProofStatePublisher
     {
         ArgumentNullException.ThrowIfNull(page);
         Api36ProofStatePublisher? publisher = Current();
-        publisher?.PublishCreationPrerequisiteAttachment(
+        return publisher?.PublishCreationPrerequisiteAttachment(
             page,
             coordinator,
             workspaceId,
@@ -327,10 +327,10 @@ public sealed class Api36ProofStatePublisher
             savedRevision,
             rawCharacterXmlDigest,
             snapshotDigest,
-            prerequisiteAuthorityReady);
+            prerequisiteAuthorityReady) == true;
     }
 
-    public void PublishCreationPrerequisiteAttachment(
+    public bool PublishCreationPrerequisiteAttachment(
         Page page,
         RunnerSessionCoordinator coordinator,
         string workspaceId,
@@ -370,7 +370,7 @@ public sealed class Api36ProofStatePublisher
         if (!AndroidE2EAuthority.Enabled || !exactAttachment || !exactAuthority)
         {
             DeleteObservation();
-            return;
+            return false;
         }
 
         var surface = new Api36ProofSurfaceState(
@@ -401,6 +401,7 @@ public sealed class Api36ProofStatePublisher
                 transaction: null);
             WriteAtomically(_path, _temporaryPath, Api36ProofStateContract.Serialize(proof));
         }
+        return true;
     }
 
     public static void TryPublishCreationResources(

@@ -23,7 +23,7 @@ public sealed class CreationPrerequisitePage : NativePageBase
     private CharacterCreationPrerequisiteState? _latestApi36ProofReadyState;
     private bool _api36ProofRouteAppeared;
     private bool _api36ProofPageLoaded;
-    private bool _api36ProofAttachmentPublicationAttempted;
+    private bool _api36ProofAttachmentPublished;
 #endif
 
     public CreationPrerequisitePage(RunnerSessionCoordinator coordinator) : base(coordinator)
@@ -51,7 +51,7 @@ public sealed class CreationPrerequisitePage : NativePageBase
     {
         _api36ProofRouteAppeared = false;
         _latestApi36ProofReadyState = null;
-        _api36ProofAttachmentPublicationAttempted = false;
+        _api36ProofAttachmentPublished = false;
         base.OnDisappearing();
     }
 #endif
@@ -59,7 +59,7 @@ public sealed class CreationPrerequisitePage : NativePageBase
     protected override void Refresh()
     {
 #if CHUMMER_API36_PROOF_INSTRUMENTATION
-        _api36ProofAttachmentPublicationAttempted = false;
+        _api36ProofAttachmentPublished = false;
         _latestApi36ProofReadyState = null;
 #endif
         _body.Clear();
@@ -133,7 +133,7 @@ public sealed class CreationPrerequisitePage : NativePageBase
     private void TryPublishApi36AttachmentProof()
     {
         IReadOnlyList<Page> navigationStack = Navigation.NavigationStack;
-        if (_api36ProofAttachmentPublicationAttempted
+        if (_api36ProofAttachmentPublished
             || !_api36ProofRouteAppeared
             || !_api36ProofPageLoaded
             || !IsLoaded
@@ -148,16 +148,18 @@ public sealed class CreationPrerequisitePage : NativePageBase
             return;
         }
 
-        _api36ProofAttachmentPublicationAttempted = true;
-        Api36ProofStatePublisher.TryPublishCreationPrerequisiteAttachment(
-            this,
-            Coordinator,
-            state.Binding.WorkspaceId.Value,
-            state.Binding.ContentRevision,
-            state.Binding.SavedRevision,
-            state.Binding.RawCharacterXmlDigest,
-            state.SnapshotDigest,
-            prerequisiteAuthorityReady: true);
+        if (Api36ProofStatePublisher.TryPublishCreationPrerequisiteAttachment(
+                this,
+                Coordinator,
+                state.Binding.WorkspaceId.Value,
+                state.Binding.ContentRevision,
+                state.Binding.SavedRevision,
+                state.Binding.RawCharacterXmlDigest,
+                state.SnapshotDigest,
+                prerequisiteAuthorityReady: true))
+        {
+            _api36ProofAttachmentPublished = true;
+        }
     }
 #endif
 

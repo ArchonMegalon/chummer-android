@@ -782,6 +782,47 @@ class Api36ProofStateContractTests(unittest.TestCase):
             project,
         )
 
+    def test_creation_prerequisite_attachment_publisher_reports_only_exact_write_success(self) -> None:
+        publisher = (
+            ROOT / "src/Chummer.Android/Proof/Api36ProofStatePublisher.cs"
+        ).read_text(encoding="utf-8")
+        static_publish = publisher[
+            publisher.index("public static bool TryPublishCreationPrerequisiteAttachment(") :
+            publisher.index("public bool PublishCreationPrerequisiteAttachment(")
+        ]
+        exact_publish = publisher[
+            publisher.index("public bool PublishCreationPrerequisiteAttachment(") :
+            publisher.index("public static void TryPublishCreationResources(")
+        ]
+
+        self.assertIn("Api36ProofStatePublisher? publisher = Current();", static_publish)
+        self.assertIn(
+            "return publisher?.PublishCreationPrerequisiteAttachment(",
+            static_publish,
+        )
+        self.assertIn("prerequisiteAuthorityReady) == true;", static_publish)
+        rejection = exact_publish.index(
+            "if (!AndroidE2EAuthority.Enabled || !exactAttachment || !exactAuthority)"
+        )
+        deleted = exact_publish.index("DeleteObservation();", rejection)
+        rejected = exact_publish.index("return false;", deleted)
+        written = exact_publish.index(
+            "WriteAtomically(_path, _temporaryPath, Api36ProofStateContract.Serialize(proof));"
+        )
+        accepted = exact_publish.index("return true;", written)
+        self.assertLess(rejection, deleted)
+        self.assertLess(deleted, rejected)
+        self.assertLess(rejected, written)
+        self.assertLess(written, accepted)
+        self.assertEqual(1, exact_publish.count("return false;"))
+        self.assertEqual(1, exact_publish.count("return true;"))
+        for mismatch in (
+            "!AndroidE2EAuthority.Enabled",
+            "!exactAttachment",
+            "!exactAuthority",
+        ):
+            self.assertLess(exact_publish.index(mismatch), rejected)
+
     def test_creation_prerequisite_attachment_publication_latches_loaded_route_and_ready_state(self) -> None:
         page = (ROOT / "src/Chummer.Android/Native/CreationPrerequisitePage.cs").read_text(
             encoding="utf-8"
@@ -835,7 +876,7 @@ class Api36ProofStateContractTests(unittest.TestCase):
             disappearing.index("base.OnDisappearing();"),
         )
         self.assertLess(
-            disappearing.index("_api36ProofAttachmentPublicationAttempted = false;"),
+            disappearing.index("_api36ProofAttachmentPublished = false;"),
             disappearing.index("base.OnDisappearing();"),
         )
         self.assertNotIn("_api36ProofPageLoaded", disappearing)
@@ -843,23 +884,25 @@ class Api36ProofStateContractTests(unittest.TestCase):
             loaded.index("_api36ProofPageLoaded = true;"),
             loaded.index("TryPublishApi36AttachmentProof();"),
         )
-        self.assertIn("_api36ProofAttachmentPublicationAttempted = false;", refresh)
+        self.assertIn("_api36ProofAttachmentPublished = false;", refresh)
         self.assertIn("_latestApi36ProofReadyState = null;", refresh)
         self.assertIn("_latestApi36ProofReadyState = state;", refresh)
         self.assertIn("TryPublishApi36AttachmentProof();", refresh)
         self.assertLess(
-            refresh.index("_api36ProofAttachmentPublicationAttempted = false;"),
+            refresh.index("_api36ProofAttachmentPublished = false;"),
             refresh.index("Coordinator.LoadCreationPrerequisite()"),
         )
         self.assertLess(
             refresh.index("_latestApi36ProofReadyState = state;"),
             refresh.index("TryPublishApi36AttachmentProof();"),
         )
-        self.assertIn("_api36ProofAttachmentPublicationAttempted", publication_latch)
-        armed = publication_latch.index(
-            "_api36ProofAttachmentPublicationAttempted = true;"
+        self.assertIn("_api36ProofAttachmentPublished", publication_latch)
+        publication = publication_latch.index(
+            "if (Api36ProofStatePublisher.TryPublishCreationPrerequisiteAttachment("
         )
+        latched = publication_latch.index("_api36ProofAttachmentPublished = true;")
         for prerequisite in (
+            "if (_api36ProofAttachmentPublished",
             "!_api36ProofRouteAppeared",
             "!_api36ProofPageLoaded",
             "!IsLoaded",
@@ -871,19 +914,17 @@ class Api36ProofStateContractTests(unittest.TestCase):
             "_latestApi36ProofReadyState is not { } state",
             "CreationPrerequisitePhoneAuthority.IsReady(state, Coordinator.State)",
         ):
-            self.assertLess(publication_latch.index(prerequisite), armed)
-        publication = publication_latch.index(
-            "Api36ProofStatePublisher.TryPublishCreationPrerequisiteAttachment("
-        )
-        self.assertLess(armed, publication)
+            self.assertLess(publication_latch.index(prerequisite), publication)
+        self.assertLess(publication, latched)
         self.assertEqual(
             1,
-            page.count("_api36ProofAttachmentPublicationAttempted = true;"),
+            page.count("_api36ProofAttachmentPublished = true;"),
         )
         self.assertEqual(
             2,
-            page.count("_api36ProofAttachmentPublicationAttempted = false;"),
+            page.count("_api36ProofAttachmentPublished = false;"),
         )
+        self.assertNotIn("_api36ProofAttachmentPublicationAttempted", page)
         for forbidden in (
             "Task.Delay",
             "while (",
