@@ -7,11 +7,11 @@ public abstract class NativePageBase : ContentPage
 {
     private bool _subscribed;
     private bool _dialogVisible;
-    private int _runningActionDepth;
     private int _appearanceRefreshActive;
     private long _appearanceGeneration;
     private CancellationTokenSource? _appearanceLifetime;
     private readonly NativeRefreshCoalescer _coordinatorRefresh = new();
+    private readonly NativePageActionGate _actionGate = new();
 
     protected NativePageBase(RunnerSessionCoordinator coordinator)
     {
@@ -140,12 +140,17 @@ public abstract class NativePageBase : ContentPage
 
     protected async Task RunAsync(Func<Task> action)
     {
-        PlayReviewMeaningfulState before = CapturePlayReviewMeaningfulState();
-        Interlocked.Increment(ref _runningActionDepth);
+        if (!_actionGate.TryClaim())
+        {
+            return;
+        }
+
+        PlayReviewMeaningfulState before = default;
         PlayReviewInteractionGuard.EnterAction();
         bool succeeded = false;
         try
         {
+            before = CapturePlayReviewMeaningfulState();
             await action();
             _coordinatorRefresh.DiscardPending();
             Refresh();
@@ -162,8 +167,8 @@ public abstract class NativePageBase : ContentPage
         }
         finally
         {
-            Interlocked.Decrement(ref _runningActionDepth);
             PlayReviewInteractionGuard.ExitAction();
+            _actionGate.Release();
         }
 
         if (succeeded)
@@ -175,12 +180,17 @@ public abstract class NativePageBase : ContentPage
 
     protected async Task RunWithConditionalRefreshAsync(Func<Task<bool>> action)
     {
-        PlayReviewMeaningfulState before = CapturePlayReviewMeaningfulState();
-        Interlocked.Increment(ref _runningActionDepth);
+        if (!_actionGate.TryClaim())
+        {
+            return;
+        }
+
+        PlayReviewMeaningfulState before = default;
         PlayReviewInteractionGuard.EnterAction();
         bool succeeded = false;
         try
         {
+            before = CapturePlayReviewMeaningfulState();
             if (await action())
             {
                 _coordinatorRefresh.DiscardPending();
@@ -199,8 +209,8 @@ public abstract class NativePageBase : ContentPage
         }
         finally
         {
-            Interlocked.Decrement(ref _runningActionDepth);
             PlayReviewInteractionGuard.ExitAction();
+            _actionGate.Release();
         }
 
         if (succeeded)
@@ -226,7 +236,7 @@ public abstract class NativePageBase : ContentPage
 
     private void OnCoordinatorChanged(object? sender, EventArgs args)
     {
-        if (Volatile.Read(ref _runningActionDepth) > 0)
+        if (_actionGate.IsClaimed)
         {
             return;
         }
@@ -270,7 +280,7 @@ public abstract class NativePageBase : ContentPage
         try
         {
             if (!_subscribed
-                || Volatile.Read(ref _runningActionDepth) > 0
+                || _actionGate.IsClaimed
                 || Volatile.Read(ref _appearanceRefreshActive) > 0
                 || !_coordinatorRefresh.TryTakePending())
             {
@@ -290,7 +300,7 @@ public abstract class NativePageBase : ContentPage
         finally
         {
             bool mayRender = _subscribed
-                && Volatile.Read(ref _runningActionDepth) == 0
+                && !_actionGate.IsClaimed
                 && Volatile.Read(ref _appearanceRefreshActive) == 0;
             if (_coordinatorRefresh.Complete(mayRender))
             {
