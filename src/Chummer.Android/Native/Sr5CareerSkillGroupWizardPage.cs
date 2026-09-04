@@ -166,24 +166,18 @@ public sealed class Sr5CareerSkillGroupWizardPage : NativePageBase
         RefreshEnabledState();
     }
 
-    protected override async void OnAppearing()
+    protected override async Task PrepareForAppearanceRefreshAsync(
+        CancellationToken cancellationToken)
     {
-        base.OnAppearing();
-        try
+        cancellationToken.ThrowIfCancellationRequested();
+        if (_checkpoint?.Phase is (Sr5CareerCheckpointPhase.Applying
+            or Sr5CareerCheckpointPhase.Applied)
+            && _checkpointAuthority.OwnsCurrentRunner(_checkpoint)
+            && Interlocked.CompareExchange(ref _automaticResolutionStarted, 1, 0) == 0)
         {
-            await Coordinator.InitializeAsync();
-            if (_checkpoint?.Phase is (Sr5CareerCheckpointPhase.Applying
-                or Sr5CareerCheckpointPhase.Applied)
-                && _checkpointAuthority.OwnsCurrentRunner(_checkpoint)
-                && Interlocked.CompareExchange(ref _automaticResolutionStarted, 1, 0) == 0)
-            {
-                await RunAsync(ResolveCheckpointAsync);
-            }
+            await RunAsync(ResolveCheckpointAsync);
         }
-        catch (Exception exception)
-        {
-            await DisplayAlertAsync(Text("SkillGroup recovery unavailable"), exception.Message, Text("OK"));
-        }
+        cancellationToken.ThrowIfCancellationRequested();
     }
 
     protected override void Refresh() => RefreshEnabledState();

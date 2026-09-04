@@ -167,32 +167,23 @@ public sealed class Sr5CareerAttributeWizardPage : NativePageBase
         RefreshEnabledState();
     }
 
-    protected override async void OnAppearing()
+    protected override async Task PrepareForAppearanceRefreshAsync(
+        CancellationToken cancellationToken)
     {
-        base.OnAppearing();
-        try
+        cancellationToken.ThrowIfCancellationRequested();
+        // A child review page may have durably moved Applying back to
+        // Reviewed, or forward to Applied, while this chooser was hidden.
+        // Re-read the journal before deciding whether recovery may run.
+        LoadRecoveryCheckpoint();
+        RefreshEnabledState();
+        if (_checkpoint?.Phase is (Sr5CareerCheckpointPhase.Applying
+            or Sr5CareerCheckpointPhase.Applied)
+            && _checkpointAuthority.OwnsCurrentRunner(_checkpoint)
+            && Interlocked.CompareExchange(ref _automaticResolutionStarted, 1, 0) == 0)
         {
-            await Coordinator.InitializeAsync();
-            // A child review page may have durably moved Applying back to
-            // Reviewed, or forward to Applied, while this chooser was hidden.
-            // Re-read the journal before deciding whether recovery may run.
-            LoadRecoveryCheckpoint();
-            RefreshEnabledState();
-            if (_checkpoint?.Phase is (Sr5CareerCheckpointPhase.Applying
-                or Sr5CareerCheckpointPhase.Applied)
-                && _checkpointAuthority.OwnsCurrentRunner(_checkpoint)
-                && Interlocked.CompareExchange(ref _automaticResolutionStarted, 1, 0) == 0)
-            {
-                await RunAsync(ResolveCheckpointAsync);
-            }
+            await RunAsync(ResolveCheckpointAsync);
         }
-        catch (Exception exception)
-        {
-            await DisplayAlertAsync(
-                Text("Attribute recovery unavailable"),
-                exception.Message,
-                Text("OK"));
-        }
+        cancellationToken.ThrowIfCancellationRequested();
     }
 
     protected override void Refresh() => RefreshEnabledState();

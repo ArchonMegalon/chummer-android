@@ -12,7 +12,7 @@ class Sr5CareerRunContextualContractTests(unittest.TestCase):
             encoding="utf-8"
         )
         load_method = table.split(
-            "private async Task LoadLatestAsync(CancellationToken cancellationToken)", 1
+            "private async Task LoadLatestAsync(", 1
         )[1].split("private static bool MatchesCurrent", 1)[0]
 
         self.assertIn("await _authority\n                .LoadAsync(_lane, cancellationToken);", load_method)

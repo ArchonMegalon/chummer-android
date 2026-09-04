@@ -51,10 +51,11 @@ public sealed class Sr5PlaytimeDamageWizardPage : NativePageBase
         Content = new ScrollView { Content = _body };
     }
 
-    protected override async void OnAppearing()
+    protected override Task PrepareForAppearanceRefreshAsync(
+        CancellationToken cancellationToken)
     {
-        base.OnAppearing();
-        await LoadLatestAsync();
+        LoadLatest(cancellationToken);
+        return Task.CompletedTask;
     }
 
     protected override void Refresh()
@@ -129,14 +130,14 @@ public sealed class Sr5PlaytimeDamageWizardPage : NativePageBase
         _body.Add(NativeTheme.Card(boundary));
     }
 
-    private async Task LoadLatestAsync()
+    private void LoadLatest(CancellationToken cancellationToken)
     {
         _loading = true;
         _notice = null;
         Refresh();
         try
         {
-            await Coordinator.InitializeAsync();
+            cancellationToken.ThrowIfCancellationRequested();
             _snapshot = ProjectCurrent();
             if (_snapshot is null)
             {
@@ -198,6 +199,10 @@ public sealed class Sr5PlaytimeDamageWizardPage : NativePageBase
             }
             _journal = journal;
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception exception) when (exception is not OutOfMemoryException)
         {
             _snapshot = null;
@@ -206,7 +211,10 @@ public sealed class Sr5PlaytimeDamageWizardPage : NativePageBase
         finally
         {
             _loading = false;
-            Refresh();
+            if (!cancellationToken.IsCancellationRequested)
+            {
+                Refresh();
+            }
         }
     }
 
