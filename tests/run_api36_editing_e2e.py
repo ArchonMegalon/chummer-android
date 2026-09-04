@@ -307,8 +307,18 @@ ADB_PREFLIGHT_OBSERVATION_DELAY_SECONDS = 1.0
 ADB_SHARED_STORAGE_REQUIRED_CONSECUTIVE = 3
 ADB_SHARED_STORAGE_MAX_OBSERVATIONS = 7
 ADB_SHARED_STORAGE_OBSERVATION_DELAY_SECONDS = 1.0
+ADB_SHARED_STORAGE_PREFLIGHT_MAX_SECONDS = 30.0
+ADB_SHARED_STORAGE_STAT_ATTEMPT_MAX_SECONDS = 5.0
 ADB_SHARED_STORAGE_ROOTS = ("/sdcard", "/sdcard/Download")
-ADB_SHARED_STORAGE_STAT_FORMAT = "%d:%i:%f"
+ADB_SHARED_STORAGE_STAT_FORMAT = "%n:%d:%i:%f"
+ADB_SHARED_STORAGE_STAT_ARGUMENTS = (
+    "shell",
+    "stat",
+    "-L",
+    "-c",
+    ADB_SHARED_STORAGE_STAT_FORMAT,
+    *ADB_SHARED_STORAGE_ROOTS,
+)
 MAX_ADB_TRANSPORT_EVENTS = 64
 MAX_ADB_FAILURE_DETAIL_CHARACTERS = 4000
 SAFE_READ_ONLY_REMOTE_PATH = re.compile(r"^/[A-Za-z0-9._/:-]{1,511}$")
@@ -317,8 +327,9 @@ ADB_FILE_HIERARCHY_STAT = re.compile(
     r"^(?P<device>[0-9]+):(?P<inode>[0-9]+):(?P<size>[0-9]+):"
     r"(?P<modified>-?[0-9]+):(?P<mode>[0-9a-fA-F]+)$"
 )
-ADB_SHARED_STORAGE_STAT = re.compile(
-    r"^(?P<device>[0-9]+):(?P<inode>[0-9]+):(?P<mode>[0-9a-fA-F]+)$"
+ADB_SHARED_STORAGE_STAT_LINE = re.compile(
+    r"^(?P<path>/[A-Za-z0-9._/-]+):(?P<device>[0-9]+):"
+    r"(?P<inode>[0-9]+):(?P<mode>[0-9a-fA-F]+)$"
 )
 
 
@@ -340,6 +351,36 @@ def _write_new_json_receipt(path: Path, receipt: dict[str, object]) -> None:
         stream.write(encoded)
         stream.flush()
         os.fsync(stream.fileno())
+
+
+def _parse_shared_storage_stat_output(output: str) -> list[dict[str, str]]:
+    """Parse one exact follow-mode stat observation of both governed roots."""
+    lines = output.splitlines()
+    if len(lines) != len(ADB_SHARED_STORAGE_ROOTS):
+        raise RuntimeError(
+            "Shared-storage stat did not return exactly both governed roots"
+        )
+    roots: list[dict[str, str]] = []
+    for expected_path, line in zip(ADB_SHARED_STORAGE_ROOTS, lines, strict=True):
+        match = ADB_SHARED_STORAGE_STAT_LINE.fullmatch(line)
+        if match is None or match.group("path") != expected_path:
+            raise RuntimeError(
+                "Shared-storage stat roots were malformed, reordered, or substituted"
+            )
+        mode = int(match.group("mode"), 16)
+        if mode & 0o170000 != 0o040000:
+            raise RuntimeError(
+                f"Shared-storage root {expected_path!r} is not a followed directory"
+            )
+        roots.append(
+            {
+                "path": expected_path,
+                "device": match.group("device"),
+                "inode": match.group("inode"),
+                "mode": match.group("mode").lower(),
+            }
+        )
+    return roots
 
 
 def _complete_timed_out_hierarchy_output(
@@ -600,11 +641,6 @@ def classify_adb_failure(error: BaseException) -> tuple[str, bool]:
             ),
         ),
         (
-            "shared-storage-unavailable",
-            True,
-            ("transport endpoint is not connected",),
-        ),
-        (
             "device-unauthorized",
             False,
             ("device unauthorized", "device is unauthorized"),
@@ -614,6 +650,57 @@ def classify_adb_failure(error: BaseException) -> tuple[str, bool]:
         if any(marker in detail for marker in markers):
             return (classification, retryable_read_only)
     return ("unclassified-adb-failure", False)
+
+
+def classify_shared_storage_readiness_failure(
+    error: BaseException,
+) -> tuple[str, bool]:
+    """Recognize only exact Toybox stat failures for the requested roots.
+
+    Ordinary ADB transport, daemon, offline, and timeout failures remain
+    non-retryable here.  The retry authority is limited to an anchored stderr
+    consisting solely of Toybox's shared-storage-not-connected marker for one
+    or both roots present in the exact command.
+    """
+    generic_classification, _generic_retryable = classify_adb_failure(error)
+    if not isinstance(error, subprocess.CalledProcessError):
+        return (generic_classification, False)
+    if error.returncode != 1:
+        return (generic_classification, False)
+    command = getattr(error, "cmd", ())
+    command_arguments = tuple(command) if isinstance(command, (list, tuple)) else ()
+    if (
+        len(command_arguments) < len(ADB_SHARED_STORAGE_STAT_ARGUMENTS)
+        or command_arguments[-len(ADB_SHARED_STORAGE_STAT_ARGUMENTS) :]
+        != ADB_SHARED_STORAGE_STAT_ARGUMENTS
+    ):
+        return (generic_classification, False)
+    raw_stderr = getattr(error, "stderr", "")
+    if isinstance(raw_stderr, bytes):
+        try:
+            stderr = raw_stderr.decode("utf-8", errors="strict")
+        except UnicodeDecodeError:
+            return (generic_classification, False)
+    elif isinstance(raw_stderr, str):
+        stderr = raw_stderr
+    else:
+        return (generic_classification, False)
+    lines = stderr.splitlines()
+    if not lines:
+        return (generic_classification, False)
+    marker = re.compile(
+        r"^stat: (?P<quote>['\"]?)(?P<path>/sdcard(?:/Download)?)"
+        r"(?P=quote): Transport endpoint is not connected$"
+    )
+    paths: list[str] = []
+    for line in lines:
+        match = marker.fullmatch(line)
+        if match is None or match.group("path") not in ADB_SHARED_STORAGE_ROOTS:
+            return (generic_classification, False)
+        paths.append(match.group("path"))
+    if len(paths) != len(set(paths)):
+        return (generic_classification, False)
+    return ("shared-storage-unavailable", True)
 
 
 def adb_classification_authority(classification: str) -> str:
@@ -708,15 +795,10 @@ def adb_command_retry_policy(arguments: tuple[str, ...]) -> tuple[str, str]:
         return ("read-only-retryable", "exact Android property observation")
     if shell_arguments == ("wm", "size"):
         return ("read-only-retryable", "exact display-size observation")
-    if (
-        len(shell_arguments) == 4
-        and shell_arguments[:3]
-        == ("stat", "-c", ADB_SHARED_STORAGE_STAT_FORMAT)
-        and shell_arguments[3] in ADB_SHARED_STORAGE_ROOTS
-    ):
+    if arguments == ADB_SHARED_STORAGE_STAT_ARGUMENTS:
         return (
             "read-only-retryable",
-            "exact shared-storage directory identity observation",
+            "exact follow-mode shared-storage directory identity observation",
         )
     if shell_arguments == ("pidof", PACKAGE):
         return ("read-only-retryable", "exact package process-id observation")
@@ -1817,24 +1899,26 @@ class Device:
     def require_shared_storage_readiness(
         self,
         *,
-        required_consecutive: int = ADB_SHARED_STORAGE_REQUIRED_CONSECUTIVE,
-        max_observations: int = ADB_SHARED_STORAGE_MAX_OBSERVATIONS,
-        delay_seconds: float = ADB_SHARED_STORAGE_OBSERVATION_DELAY_SECONDS,
+        deadline: float,
     ) -> dict[str, object]:
         """Observe both governed shared-storage roots before device mutation.
 
-        Only exact read-only ``stat`` commands are issued.  A transient FUSE
-        readiness failure may cause another fresh observation, but no failed
-        mutation is replayed and no ADB reconnect or app relaunch is attempted.
+        Policy is closed to three consecutive observations in at most seven
+        attempts.  Only one exact Toybox ``stat -L`` command is issued per
+        observation.  A fully anchored FUSE readiness marker may cause another
+        fresh observation; all generic ADB failures stop immediately.
         """
-        if required_consecutive < 2:
-            raise ValueError(
-                "Shared-storage preflight requires at least two consecutive observations"
+        if type(deadline) is not float or not math.isfinite(deadline):
+            raise TypeError("Shared-storage preflight requires one finite float deadline")
+        started = time.monotonic()
+        if deadline <= started:
+            raise AdbOperationDeadlineExceeded(
+                "Shared-storage preflight caller deadline already expired"
             )
-        if max_observations < required_consecutive:
-            raise ValueError("Shared-storage preflight observation bound is too small")
-        if delay_seconds < 0:
-            raise ValueError("Shared-storage preflight delay must not be negative")
+        operation_deadline = min(
+            deadline,
+            started + ADB_SHARED_STORAGE_PREFLIGHT_MAX_SECONDS,
+        )
         receipt_path = self.evidence / "adb-shared-storage-readiness.json"
         if self._shared_storage_preflight is not None:
             if self._shared_storage_preflight.get("status") == "pass":
@@ -1849,47 +1933,67 @@ class Device:
         consecutive = 0
         stable_identity: tuple[tuple[str, str, str, str], ...] | None = None
         terminal_error: BaseException | None = None
-        for index in range(1, max_observations + 1):
+        terminal_failure: dict[str, object] | None = None
+
+        def build_receipt(status: str) -> dict[str, object]:
+            return {
+                "schema": ADB_SHARED_STORAGE_PREFLIGHT_SCHEMA,
+                "status": status,
+                "serial": self.serial,
+                "roots": list(ADB_SHARED_STORAGE_ROOTS),
+                "statArguments": list(ADB_SHARED_STORAGE_STAT_ARGUMENTS),
+                "followSymlinks": True,
+                "requiredConsecutiveObservations": (
+                    ADB_SHARED_STORAGE_REQUIRED_CONSECUTIVE
+                ),
+                "maximumObservations": ADB_SHARED_STORAGE_MAX_OBSERVATIONS,
+                "observationDelaySeconds": (
+                    ADB_SHARED_STORAGE_OBSERVATION_DELAY_SECONDS
+                ),
+                "statAttemptMaximumSeconds": (
+                    ADB_SHARED_STORAGE_STAT_ATTEMPT_MAX_SECONDS
+                ),
+                "maximumDurationSeconds": ADB_SHARED_STORAGE_PREFLIGHT_MAX_SECONDS,
+                "callerDeadlineEnforced": True,
+                "callerDeadlineClampedToMaximumDuration": (
+                    operation_deadline < deadline
+                ),
+                "observationsPerformed": len(observations),
+                "consecutiveStableObservations": consecutive,
+                "readOnlyCommandsIssued": read_only_commands_issued,
+                "mutationCommandsIssued": 0,
+                "observationRetryOnly": (
+                    read_only_commands_issued
+                    > ADB_SHARED_STORAGE_REQUIRED_CONSECUTIVE
+                ),
+                "adbReconnectAttempted": False,
+                "applicationRelaunchAttempted": False,
+                "terminalFailure": terminal_failure,
+                "observations": observations,
+            }
+
+        for index in range(1, ADB_SHARED_STORAGE_MAX_OBSERVATIONS + 1):
             observation: dict[str, object] = {"index": index}
-            roots: list[dict[str, str]] = []
             try:
-                for root in ADB_SHARED_STORAGE_ROOTS:
-                    arguments = (
-                        "shell",
-                        "stat",
-                        "-c",
-                        ADB_SHARED_STORAGE_STAT_FORMAT,
-                        root,
+                if (
+                    adb_command_retry_policy(ADB_SHARED_STORAGE_STAT_ARGUMENTS)[0]
+                    != "read-only-retryable"
+                ):
+                    raise RuntimeError(
+                        "Shared-storage preflight command lost read-only authority"
                     )
-                    if adb_command_retry_policy(arguments)[0] != "read-only-retryable":
-                        raise RuntimeError(
-                            "Shared-storage preflight command lost read-only authority"
-                        )
-                    read_only_commands_issued += 1
-                    output = self._invoke_once(
-                        arguments,
-                        timeout=15,
-                        text=True,
-                        check=True,
-                    ).stdout.strip()
-                    match = ADB_SHARED_STORAGE_STAT.fullmatch(output)
-                    if match is None:
-                        raise RuntimeError(
-                            f"Shared-storage root {root!r} returned malformed stat identity"
-                        )
-                    mode = int(match.group("mode"), 16)
-                    if mode & 0o170000 != 0o040000:
-                        raise RuntimeError(
-                            f"Shared-storage root {root!r} is not a directory"
-                        )
-                    roots.append(
-                        {
-                            "path": root,
-                            "device": match.group("device"),
-                            "inode": match.group("inode"),
-                            "mode": match.group("mode").lower(),
-                        }
-                    )
+                attempt_timeout = _remaining_operation_timeout(
+                    deadline=operation_deadline,
+                    maximum=ADB_SHARED_STORAGE_STAT_ATTEMPT_MAX_SECONDS,
+                )
+                read_only_commands_issued += 1
+                output = self._invoke_once(
+                    ADB_SHARED_STORAGE_STAT_ARGUMENTS,
+                    timeout=attempt_timeout,
+                    text=True,
+                    check=True,
+                ).stdout.strip()
+                roots = _parse_shared_storage_stat_output(output)
                 identity = tuple(
                     (root["path"], root["device"], root["inode"], root["mode"])
                     for root in roots
@@ -1910,30 +2014,26 @@ class Device:
                     consecutive = 1
                 if stable_identity is None:
                     stable_identity = identity
-                if consecutive >= required_consecutive:
-                    receipt: dict[str, object] = {
-                        "schema": ADB_SHARED_STORAGE_PREFLIGHT_SCHEMA,
-                        "status": "pass",
-                        "serial": self.serial,
-                        "roots": list(ADB_SHARED_STORAGE_ROOTS),
-                        "requiredConsecutiveObservations": required_consecutive,
-                        "maximumObservations": max_observations,
-                        "observationDelaySeconds": delay_seconds,
-                        "observationsPerformed": index,
-                        "consecutiveStableObservations": consecutive,
-                        "readOnlyCommandsIssued": read_only_commands_issued,
-                        "mutationCommandsIssued": 0,
-                        "observationRetryOnly": index > required_consecutive,
-                        "adbReconnectAttempted": False,
-                        "applicationRelaunchAttempted": False,
-                        "observations": observations,
-                    }
+                if consecutive >= ADB_SHARED_STORAGE_REQUIRED_CONSECUTIVE:
+                    receipt = build_receipt("pass")
                     _write_new_json_receipt(receipt_path, receipt)
                     self._shared_storage_preflight = receipt
                     return receipt
+            except AdbOperationDeadlineExceeded as error:
+                terminal_error = error
+                terminal_failure = {
+                    "classification": "caller-deadline-exhausted",
+                    "classificationAuthority": "caller-owned-monotonic-deadline",
+                    "retryableReadOnlyObservation": False,
+                    "type": type(error).__name__,
+                    "message": str(error),
+                }
+                break
             except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
                 terminal_error = error
-                classification, retryable = classify_adb_failure(error)
+                classification, retryable = (
+                    classify_shared_storage_readiness_failure(error)
+                )
                 observation.update(
                     {
                         "status": "storage-unavailable",
@@ -1942,7 +2042,6 @@ class Device:
                             classification
                         ),
                         "retryableReadOnlyObservation": retryable,
-                        "rootsObservedBeforeFailure": roots,
                         "failure": {
                             "type": type(error).__name__,
                             "returnCode": getattr(error, "returncode", None),
@@ -1959,6 +2058,7 @@ class Device:
                 consecutive = 0
                 stable_identity = None
                 if not retryable:
+                    terminal_failure = dict(observation)
                     break
             except RuntimeError as error:
                 terminal_error = error
@@ -1968,7 +2068,6 @@ class Device:
                         "classification": "shared-storage-authority-mismatch",
                         "classificationAuthority": "invalid-read-only-stat-authority",
                         "retryableReadOnlyObservation": False,
-                        "rootsObservedBeforeFailure": roots,
                         "failure": {
                             "type": type(error).__name__,
                             "message": str(error),
@@ -1978,27 +2077,32 @@ class Device:
                 observations.append(observation)
                 consecutive = 0
                 stable_identity = None
+                terminal_failure = dict(observation)
                 break
-            if index < max_observations:
-                time.sleep(delay_seconds)
+            if index < ADB_SHARED_STORAGE_MAX_OBSERVATIONS:
+                remaining = operation_deadline - time.monotonic()
+                if remaining <= ADB_SHARED_STORAGE_OBSERVATION_DELAY_SECONDS:
+                    terminal_error = AdbOperationDeadlineExceeded(
+                        "Shared-storage preflight deadline cannot accommodate "
+                        "the next bounded observation"
+                    )
+                    terminal_failure = {
+                        "classification": "caller-deadline-exhausted",
+                        "classificationAuthority": "caller-owned-monotonic-deadline",
+                        "retryableReadOnlyObservation": False,
+                        "type": type(terminal_error).__name__,
+                        "message": str(terminal_error),
+                    }
+                    break
+                time.sleep(ADB_SHARED_STORAGE_OBSERVATION_DELAY_SECONDS)
 
-        receipt = {
-            "schema": ADB_SHARED_STORAGE_PREFLIGHT_SCHEMA,
-            "status": "fail",
-            "serial": self.serial,
-            "roots": list(ADB_SHARED_STORAGE_ROOTS),
-            "requiredConsecutiveObservations": required_consecutive,
-            "maximumObservations": max_observations,
-            "observationDelaySeconds": delay_seconds,
-            "observationsPerformed": len(observations),
-            "consecutiveStableObservations": consecutive,
-            "readOnlyCommandsIssued": read_only_commands_issued,
-            "mutationCommandsIssued": 0,
-            "observationRetryOnly": len(observations) > 1,
-            "adbReconnectAttempted": False,
-            "applicationRelaunchAttempted": False,
-            "observations": observations,
-        }
+        if terminal_failure is None:
+            terminal_failure = {
+                "classification": "shared-storage-readiness-not-stable",
+                "classificationAuthority": "exact-observation-bound-exhausted",
+                "retryableReadOnlyObservation": False,
+            }
+        receipt = build_receipt("fail")
         _write_new_json_receipt(receipt_path, receipt)
         self._shared_storage_preflight = receipt
         failure = AdbSharedStoragePreflightError(receipt, receipt_path)

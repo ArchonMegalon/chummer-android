@@ -9,6 +9,7 @@ import json
 from pathlib import Path
 import subprocess
 import sys
+import time
 
 import run_api36_editing_e2e as shared
 import run_api36_sr5_after_run_settlement_e2e as settlement
@@ -132,7 +133,10 @@ def execute(args: argparse.Namespace) -> dict[str, object]:
         raise RuntimeError(
             f"After Run hosted E2E requires the x86_64 phone lane, got {abi!r}"
         )
-    device.require_shared_storage_readiness()
+    device.require_shared_storage_readiness(
+        deadline=time.monotonic()
+        + shared.ADB_SHARED_STORAGE_PREFLIGHT_MAX_SECONDS
+    )
 
     remote_runner = f"/sdcard/Download/{runner.name}"
     remote_temporary_files = [

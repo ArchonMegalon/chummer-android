@@ -10981,7 +10981,12 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     api = device.shell("getprop", "ro.build.version.sdk")
     if api != "36":
         raise RuntimeError(f"Creation prerequisite E2E requires API 36, got {api!r}")
-    device.require_shared_storage_readiness()
+    device.require_shared_storage_readiness(
+        deadline=min(
+            progress.active_phase_deadline("device-preflight-install"),
+            time.monotonic() + shared.ADB_SHARED_STORAGE_PREFLIGHT_MAX_SECONDS,
+        )
+    )
 
     subprocess.run(
         [

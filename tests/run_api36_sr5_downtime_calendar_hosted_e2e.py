@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import time
 
 import run_api36_editing_e2e as shared
 import run_api36_sr5_downtime_calendar_e2e as downtime
@@ -65,7 +66,10 @@ def execute(args: argparse.Namespace) -> dict[str, object]:
     abi = device.shell("getprop", "ro.product.cpu.abi")
     if abi != "x86_64":
         raise RuntimeError(f"Hosted Downtime E2E requires x86_64, got {abi!r}")
-    device.require_shared_storage_readiness()
+    device.require_shared_storage_readiness(
+        deadline=time.monotonic()
+        + shared.ADB_SHARED_STORAGE_PREFLIGHT_MAX_SECONDS
+    )
     apk_sha256 = shared.sha256(apk)
     runner_sha256 = shared.sha256(runner)
     device.install_verified(apk, apk_sha256, "--no-streaming", "-r")

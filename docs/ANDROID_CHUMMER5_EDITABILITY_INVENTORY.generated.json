@@ -927,7 +927,7 @@
       {
         "path": "tests/run_api36_sr5_before_run_edge_e2e.py",
         "exists": true,
-        "sha256": "7cc707285e92e43a28a8ce32bb4a4eadf81b615a7e9e433c01b4dd66402fc692"
+        "sha256": "75eaf9b6b93cfee27607c6746d0b117fb73e483686f83e64795cf8eee8b43feb"
       },
       {
         "path": "tests/run_api36_sr5_before_run_edge_physical_e2e.py",
@@ -952,7 +952,7 @@
       {
         "path": "tests/run_api36_sr5_playtime_short_burst_e2e.py",
         "exists": true,
-        "sha256": "a6214f854bc733cb80071f5aa3e61418d50b66809c8f6d9eb573368ac7535513"
+        "sha256": "e44dd6533edcc32c0347b87442e6a372d24faf6b29f88bb8d09129eaf4960b89"
       },
       {
         "path": "tests/test_api36_sr5_playtime_short_burst_e2e_driver.py",
@@ -962,7 +962,7 @@
       {
         "path": "tests/run_api36_sr5_downtime_calendar_hosted_e2e.py",
         "exists": true,
-        "sha256": "7cda979fd0fc4a09748cc1833a49fec5121cfc8e575c43812eee23e4e5cb0957"
+        "sha256": "9f80ad2f017b55a7eb46e7ed89bcc031fc867b4eb6d30ef0998006286ab0ec8d"
       },
       {
         "path": "tests/test_api36_sr5_downtime_calendar_hosted_e2e_driver.py",
@@ -982,12 +982,12 @@
       {
         "path": "tests/run_api36_sr5_after_run_settlement_hosted_e2e.py",
         "exists": true,
-        "sha256": "ba6a5502261d4876ec696d2f4399abcf586331186079de6550f9cf64ebf15d08"
+        "sha256": "b4517de16f696f588b50fc9c9cda42795abfbed6683bfe103a1dde47fd4a46e9"
       },
       {
         "path": "tests/test_api36_sr5_after_run_settlement_hosted_contract.py",
         "exists": true,
-        "sha256": "d7ab1b3879837079da59bf7784af8d7f3bcd2de5649980c90013047857b8e7c3"
+        "sha256": "b807eaed23c481798564e9e9093d9748bd3bee51e7eb63f20ff7937418c1af94"
       },
       {
         "path": "tests/test_api36_sr5_career_run_contextual_contract.py",
@@ -1017,12 +1017,12 @@
       {
         "path": "tests/run_api36_editing_e2e.py",
         "exists": true,
-        "sha256": "1058eafa65d8fb7bb170820b875bd1b3fd8d2a1fc0c1f10e0a7350d3509c2ee9"
+        "sha256": "aad5220e81a5ff3c0d7285a80af2ac1297a79e595aa38ddd472d4e2fd37b9888"
       },
       {
         "path": "tests/run_api36_career_active_skill_advance_e2e.py",
         "exists": true,
-        "sha256": "93501f4470bfc57d775d02b9405adc31033db1a5b0d7949f6ae373282718a0f6"
+        "sha256": "80d172351be4cdb04da36fabc9493f5c31a6206e345a5350c110101b39e4d219"
       },
       {
         "path": "tests/fixtures/career-active-skill-advance-e2e.chum5",
@@ -1032,7 +1032,7 @@
       {
         "path": "tests/run_api36_career_weapon_fire_e2e.py",
         "exists": true,
-        "sha256": "c459059ac9f321b40645afd2b21da28372eff908b74f160c7aa20068fd92ee2d"
+        "sha256": "ddbdb3a462760a341cddd764180721c8a7047671aa8bf74f913b11b6ff4ec35c"
       },
       {
         "path": "tests/fixtures/career-weapon-fire-e2e.chum5",
@@ -1437,7 +1437,7 @@
       {
         "path": "tests/run_api36_creation_prerequisite_e2e.py",
         "exists": true,
-        "sha256": "8e92417a32f57a5f28de8417713ffb5dde7b6db457e93cd4d2d2a724b1eca8c2"
+        "sha256": "c871a08558b661116d70786a834066ebbc27168378add0c7e5f6748765d9769c"
       },
       {
         "path": "tests/fixtures/career-condition-monitor-e2e.chum5",

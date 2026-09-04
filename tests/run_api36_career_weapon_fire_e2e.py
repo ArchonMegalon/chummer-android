@@ -534,7 +534,10 @@ def main() -> int:
         raise RuntimeError(
             f"Career Weapon-Fire E2E requires the hosted x86_64 phone lane, got {abi!r}"
         )
-    device.require_shared_storage_readiness()
+    device.require_shared_storage_readiness(
+        deadline=time.monotonic()
+        + shared.ADB_SHARED_STORAGE_PREFLIGHT_MAX_SECONDS
+    )
     subprocess.run(
         [
             str(args.adb),
