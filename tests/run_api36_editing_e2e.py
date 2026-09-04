@@ -314,6 +314,14 @@ ADB_SHARED_STORAGE_PREINTENT_STAT_TIMEOUT_RETRY_MINIMUM_LEASE_SECONDS = (
     ADB_SHARED_STORAGE_OBSERVATION_DELAY_SECONDS
     + ADB_SHARED_STORAGE_STAT_ATTEMPT_MAX_SECONDS
 )
+ADB_SHARED_STORAGE_PREINTENT_ROOT_ENOENT_MAX_RETRIES = 1
+ADB_SHARED_STORAGE_PREINTENT_ROOT_ENOENT_RETRY_MINIMUM_LEASE_SECONDS = (
+    ADB_SHARED_STORAGE_OBSERVATION_DELAY_SECONDS
+    + ADB_SHARED_STORAGE_STAT_ATTEMPT_MAX_SECONDS
+)
+ADB_SHARED_STORAGE_PREINTENT_ROOT_ENOENT_RETRY_MINIMUM_REMAINING_OBSERVATIONS = (
+    ADB_SHARED_STORAGE_REQUIRED_CONSECUTIVE
+)
 ADB_SHARED_STORAGE_BOOTSTRAP_ATTEMPT_MINIMUM_SECONDS = 2.5
 ADB_SHARED_STORAGE_BOOTSTRAP_RECEIPT_HEADROOM_SECONDS = 2.0
 ADB_SHARED_STORAGE_BOOTSTRAP_DEVICE_CALLS = (
@@ -535,6 +543,44 @@ def _download_not_initialized_root_identity(
         )
     except RuntimeError:
         return None
+
+
+def _shared_storage_roots_not_mounted(error: BaseException) -> bool:
+    """Recognize only the exact ordered Toybox ENOENT for both governed roots."""
+    if not isinstance(error, subprocess.CalledProcessError) or error.returncode != 1:
+        return False
+    command = getattr(error, "cmd", ())
+    command_arguments = tuple(command) if isinstance(command, (list, tuple)) else ()
+    if (
+        len(command_arguments) < len(ADB_SHARED_STORAGE_STAT_ARGUMENTS)
+        or command_arguments[-len(ADB_SHARED_STORAGE_STAT_ARGUMENTS) :]
+        != ADB_SHARED_STORAGE_STAT_ARGUMENTS
+    ):
+        return False
+    raw_stdout = getattr(error, "stdout", "")
+    raw_stderr = getattr(error, "stderr", "")
+    if isinstance(raw_stdout, bytes):
+        try:
+            stdout = raw_stdout.decode("utf-8", errors="strict")
+        except UnicodeDecodeError:
+            return False
+    elif isinstance(raw_stdout, str):
+        stdout = raw_stdout
+    else:
+        return False
+    if isinstance(raw_stderr, bytes):
+        try:
+            stderr = raw_stderr.decode("utf-8", errors="strict")
+        except UnicodeDecodeError:
+            return False
+    elif isinstance(raw_stderr, str):
+        stderr = raw_stderr
+    else:
+        return False
+    return stdout == "" and stderr == (
+        "stat: '/sdcard': No such file or directory\n"
+        "stat: '/sdcard/Download': No such file or directory\n"
+    )
 
 
 def _complete_timed_out_hierarchy_output(
@@ -815,11 +861,15 @@ def classify_shared_storage_readiness_failure(
     non-retryable here.  Retry authority is limited to either an anchored
     shared-storage-not-connected marker for the governed roots, or the exact
     Toybox partial observation where ``/sdcard`` is a followed directory and
-    only ``/sdcard/Download`` is not initialized yet.
+    only ``/sdcard/Download`` is not initialized yet.  The exact ordered
+    two-root ENOENT is recognized but remains non-retryable here; only the
+    preflight state machine can grant its one contextual fresh observation.
     """
     generic_classification, _generic_retryable = classify_adb_failure(error)
     if _download_not_initialized_root_identity(error) is not None:
         return ("shared-storage-download-not-initialized", True)
+    if _shared_storage_roots_not_mounted(error):
+        return ("shared-storage-roots-not-mounted", False)
     if not isinstance(error, subprocess.CalledProcessError):
         return (generic_classification, False)
     if error.returncode != 1:
@@ -882,6 +932,8 @@ def adb_classification_authority(classification: str) -> str:
         return "recognized-nonretryable-transport-marker"
     if classification == "shared-storage-download-disappeared-after-initialization":
         return "post-bootstrap-download-enoent-fail-closed"
+    if classification == "shared-storage-roots-not-mounted":
+        return "exact-ordered-two-root-enoent-without-retry-authority"
     if classification == "timeout-unknown-outcome":
         return "timeout-with-unknown-command-outcome"
     if classification == "observer-process-killed":
@@ -2109,11 +2161,13 @@ class Device:
 
         Policy is closed to three consecutive observations in at most seven
         attempts.  Only one exact Toybox ``stat -L`` command is issued per
-        observation.  A fully anchored FUSE readiness marker, or one exact
-        pre-intent read-only stat timeout, may cause another fresh observation.
-        The timeout never contributes identity evidence and is never retried a
-        second time.  Only a hosted API-36 x86_64 proof attempt may issue the
-        separately receipted one-shot Download bootstrap mutation.
+        observation.  A fully anchored FUSE readiness marker, one exact
+        pre-intent read-only stat timeout, or one exact pre-intent ordered
+        two-root ENOENT may cause another fresh observation.  Neither exceptional
+        observation contributes identity evidence or widens the seven-observation
+        or caller-deadline bounds.  Only a hosted API-36 x86_64 proof attempt may
+        use the ENOENT recovery or issue the separately receipted one-shot
+        Download bootstrap mutation.
         """
         if type(deadline) is not float or not math.isfinite(deadline):
             raise TypeError("Shared-storage preflight requires one finite float deadline")
@@ -2145,6 +2199,7 @@ class Device:
         observations: list[dict[str, object]] = []
         read_only_commands_issued = 0
         preintent_stat_timeout_retries_performed = 0
+        preintent_root_enoent_retries_performed = 0
         consecutive = 0
         stable_identity: tuple[tuple[str, str, str, str], ...] | None = None
         missing_download_consecutive = 0
@@ -2360,6 +2415,29 @@ class Device:
                     "observationBoundWidened": False,
                     "deadlineWidened": False,
                 },
+                "preIntentSharedStorageRootEnoentRecovery": {
+                    "policy": (
+                        "one-fresh-observation-after-exact-ordered-two-root-enoent"
+                    ),
+                    "maximumRetries": (
+                        ADB_SHARED_STORAGE_PREINTENT_ROOT_ENOENT_MAX_RETRIES
+                    ),
+                    "maximumCommandInvocations": (
+                        1 + ADB_SHARED_STORAGE_PREINTENT_ROOT_ENOENT_MAX_RETRIES
+                    ),
+                    "retriesPerformed": preintent_root_enoent_retries_performed,
+                    "minimumRemainingLeaseSeconds": (
+                        ADB_SHARED_STORAGE_PREINTENT_ROOT_ENOENT_RETRY_MINIMUM_LEASE_SECONDS
+                    ),
+                    "minimumRemainingObservationSlots": (
+                        ADB_SHARED_STORAGE_PREINTENT_ROOT_ENOENT_RETRY_MINIMUM_REMAINING_OBSERVATIONS
+                    ),
+                    "hostedApi36X64EmulatorProofRequired": True,
+                    "freshReadOnlyInvocationRequired": True,
+                    "mutationCommandReplayAuthorized": False,
+                    "observationBoundWidened": False,
+                    "deadlineWidened": False,
+                },
                 "mutationCommandsIssued": initialization_mutations_issued,
                 "environmentInitializationMutationCommandsIssued": (
                     initialization_mutations_issued
@@ -2527,6 +2605,33 @@ class Device:
                         ADB_SHARED_STORAGE_PREINTENT_STAT_TIMEOUT_RETRY_MINIMUM_LEASE_SECONDS
                     )
                 )
+                exact_preintent_root_enoent = (
+                    classification == "shared-storage-roots-not-mounted"
+                    and initialization_mutations_issued == 0
+                    and initialization.get("intentEvidenceFile") is None
+                    and initialized_download is None
+                    and timeout_arguments
+                    == (
+                        str(self.adb),
+                        "-s",
+                        self.serial,
+                        *ADB_SHARED_STORAGE_STAT_ARGUMENTS,
+                    )
+                    and hosted_api_level == "36"
+                    and hosted_abi == "x86_64"
+                    and hosted_emulator == "1"
+                    and hosted_proof_attempt is True
+                    and preintent_root_enoent_retries_performed
+                    < ADB_SHARED_STORAGE_PREINTENT_ROOT_ENOENT_MAX_RETRIES
+                    and ADB_SHARED_STORAGE_MAX_OBSERVATIONS - index
+                    >= (
+                        ADB_SHARED_STORAGE_PREINTENT_ROOT_ENOENT_RETRY_MINIMUM_REMAINING_OBSERVATIONS
+                    )
+                    and operation_deadline - time.monotonic()
+                    >= (
+                        ADB_SHARED_STORAGE_PREINTENT_ROOT_ENOENT_RETRY_MINIMUM_LEASE_SECONDS
+                    )
+                )
                 if exact_preintent_stat_timeout:
                     # Reissue the exact read-only command as one fresh
                     # observation; never reuse its process or treat timeout
@@ -2534,6 +2639,12 @@ class Device:
                     # the device and keeps both the seven-observation bound
                     # and caller-owned deadline unchanged.
                     preintent_stat_timeout_retries_performed += 1
+                    retryable = True
+                if exact_preintent_root_enoent:
+                    # The startup race authorizes one fresh read-only stat only.
+                    # It never proves identity, authorizes mutation, or expands
+                    # either closed observation or deadline bound.
+                    preintent_root_enoent_retries_performed += 1
                     retryable = True
                 if initialized_download is not None:
                     observation.update(
@@ -2933,17 +3044,26 @@ class Device:
                             "status": (
                                 "pre-intent-read-only-stat-timeout"
                                 if exact_preintent_stat_timeout
-                                else "storage-unavailable"
+                                else (
+                                    "pre-intent-shared-storage-roots-not-mounted"
+                                    if exact_preintent_root_enoent
+                                    else "storage-unavailable"
+                                )
                             ),
                             "classification": classification,
                             "classificationAuthority": (
                                 "exact-pre-intent-read-only-stat-timeout"
                                 if exact_preintent_stat_timeout
-                                else adb_classification_authority(classification)
+                                else (
+                                    "exact-pre-intent-one-fresh-root-observation"
+                                    if exact_preintent_root_enoent
+                                    else adb_classification_authority(classification)
+                                )
                             ),
                             "retryableReadOnlyObservation": retryable,
                             "freshObservationScheduled": (
                                 exact_preintent_stat_timeout
+                                or exact_preintent_root_enoent
                             ),
                             "timedOutProcessReused": False,
                             "mutationCommandReplayAuthorized": False,

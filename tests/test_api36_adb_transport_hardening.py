@@ -62,6 +62,29 @@ def shared_storage_unavailable() -> subprocess.CalledProcessError:
     )
 
 
+def shared_storage_roots_not_mounted(
+    *,
+    command: tuple[str, ...] | None = None,
+    stdout: str = "",
+    stderr: str = (
+        "stat: '/sdcard': No such file or directory\n"
+        "stat: '/sdcard/Download': No such file or directory\n"
+    ),
+) -> subprocess.CalledProcessError:
+    return subprocess.CalledProcessError(
+        1,
+        command
+        or (
+            "/trusted/adb",
+            "-s",
+            "SERIAL-API36",
+            *driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS,
+        ),
+        output=stdout,
+        stderr=stderr,
+    )
+
+
 def hosted_storage_authority() -> dict[str, object]:
     return {
         "hosted_api_level": "36",
@@ -390,6 +413,351 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
         )
         self.assertFalse(
             driver.classify_shared_storage_readiness_failure(wrong_command)[1]
+        )
+
+    def test_exact_preintent_two_root_enoent_gets_one_fresh_observation(
+        self,
+    ) -> None:
+        root = "/sdcard:43:106499:45f8\n"
+        raw_download = "/sdcard/Download:43:106500:41ed\n"
+        stable = root + raw_download
+        responses = [
+            shared_storage_roots_not_mounted(),
+            download_missing(root),
+            download_missing(root),
+            download_missing(root),
+            completed(driver.ADB_SHARED_STORAGE_INITIALIZE_ARGUMENTS, ""),
+            completed(
+                driver.ADB_SHARED_STORAGE_DOWNLOAD_RAW_STAT_ARGUMENTS,
+                raw_download,
+            ),
+            completed(driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS, stable),
+            completed(driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS, stable),
+            completed(driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS, stable),
+            completed(
+                driver.ADB_SHARED_STORAGE_DOWNLOAD_RAW_STAT_ARGUMENTS,
+                raw_download,
+            ),
+        ]
+        with tempfile.TemporaryDirectory() as temporary:
+            evidence = Path(temporary)
+            device = self.make_device(evidence)
+            with (
+                mock.patch.object(
+                    driver.subprocess,
+                    "run",
+                    side_effect=responses,
+                ) as run,
+                mock.patch.object(driver.time, "sleep") as sleep,
+            ):
+                receipt = device.require_shared_storage_readiness(
+                    deadline=driver.time.monotonic()
+                    + driver.ADB_SHARED_STORAGE_PREFLIGHT_MAX_SECONDS,
+                    **hosted_storage_authority(),
+                )
+
+        self.assertEqual("pass", receipt["status"])
+        self.assertEqual(10, run.call_count)
+        self.assertEqual(6, sleep.call_count)
+        sleep.assert_any_call(driver.ADB_SHARED_STORAGE_OBSERVATION_DELAY_SECONDS)
+        self.assertEqual(7, receipt["observationsPerformed"])
+        self.assertEqual(3, receipt["consecutiveStableObservations"])
+        self.assertEqual(1, receipt["mutationCommandsIssued"])
+        self.assertEqual(
+            [
+                "pre-intent-shared-storage-roots-not-mounted",
+                "storage-not-initialized",
+                "storage-not-initialized",
+                "storage-not-initialized",
+                "stable",
+                "stable",
+                "stable",
+            ],
+            [entry["status"] for entry in receipt["observations"]],
+        )
+        first = receipt["observations"][0]
+        self.assertEqual("shared-storage-roots-not-mounted", first["classification"])
+        self.assertEqual(
+            "exact-pre-intent-one-fresh-root-observation",
+            first["classificationAuthority"],
+        )
+        self.assertTrue(first["retryableReadOnlyObservation"])
+        self.assertTrue(first["freshObservationScheduled"])
+        self.assertNotIn("roots", first)
+        recovery = receipt["preIntentSharedStorageRootEnoentRecovery"]
+        self.assertEqual(1, recovery["maximumRetries"])
+        self.assertEqual(1, recovery["retriesPerformed"])
+        self.assertTrue(recovery["freshReadOnlyInvocationRequired"])
+        self.assertFalse(recovery["mutationCommandReplayAuthorized"])
+        self.assertFalse(recovery["observationBoundWidened"])
+        self.assertFalse(recovery["deadlineWidened"])
+        self.assertEqual(7, driver.ADB_SHARED_STORAGE_MAX_OBSERVATIONS)
+        self.assertEqual(30.0, driver.ADB_SHARED_STORAGE_PREFLIGHT_MAX_SECONDS)
+
+    def test_preintent_two_root_enoent_recovery_allows_only_one_retry(self) -> None:
+        stable = "/sdcard:42:100:41ed\n/sdcard/Download:42:101:41ed\n"
+        with tempfile.TemporaryDirectory() as temporary:
+            device = self.make_device(Path(temporary))
+            with (
+                mock.patch.object(
+                    driver.subprocess,
+                    "run",
+                    side_effect=[
+                        shared_storage_roots_not_mounted(),
+                        shared_storage_roots_not_mounted(),
+                        completed(driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS, stable),
+                    ],
+                ) as run,
+                mock.patch.object(driver.time, "sleep") as sleep,
+            ):
+                with self.assertRaises(driver.AdbSharedStoragePreflightError) as raised:
+                    device.require_shared_storage_readiness(
+                        deadline=driver.time.monotonic()
+                        + driver.ADB_SHARED_STORAGE_PREFLIGHT_MAX_SECONDS,
+                        **hosted_storage_authority(),
+                    )
+
+        self.assertEqual(2, run.call_count)
+        self.assertEqual(1, sleep.call_count)
+        first, second = raised.exception.receipt["observations"]
+        self.assertTrue(first["retryableReadOnlyObservation"])
+        self.assertTrue(first["freshObservationScheduled"])
+        self.assertFalse(second["retryableReadOnlyObservation"])
+        self.assertFalse(second["freshObservationScheduled"])
+        self.assertEqual(0, raised.exception.receipt["mutationCommandsIssued"])
+        self.assertEqual(
+            1,
+            raised.exception.receipt[
+                "preIntentSharedStorageRootEnoentRecovery"
+            ]["retriesPerformed"],
+        )
+
+    def test_two_root_enoent_recovery_rejects_nonexact_output_and_argv(self) -> None:
+        exact_stderr = (
+            "stat: '/sdcard': No such file or directory\n"
+            "stat: '/sdcard/Download': No such file or directory\n"
+        )
+        cases = (
+            shared_storage_roots_not_mounted(
+                stderr=(
+                    "stat: '/sdcard/Download': No such file or directory\n"
+                    "stat: '/sdcard': No such file or directory\n"
+                )
+            ),
+            shared_storage_roots_not_mounted(stderr=exact_stderr + "extra\n"),
+            shared_storage_roots_not_mounted(stdout="unexpected\n"),
+            shared_storage_roots_not_mounted(
+                command=(
+                    "/trusted/adb",
+                    "-s",
+                    "WRONG-SERIAL",
+                    *driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS,
+                )
+            ),
+            shared_storage_roots_not_mounted(
+                command=(
+                    "/trusted/adb",
+                    "-s",
+                    "SERIAL-API36",
+                    "shell",
+                    "stat",
+                    "-c",
+                    driver.ADB_SHARED_STORAGE_STAT_FORMAT,
+                    *driver.ADB_SHARED_STORAGE_ROOTS,
+                )
+            ),
+        )
+        for failure in cases:
+            with (
+                self.subTest(command=failure.cmd, output=failure.output),
+                tempfile.TemporaryDirectory() as temporary,
+            ):
+                device = self.make_device(Path(temporary))
+                with (
+                    mock.patch.object(
+                        driver.subprocess,
+                        "run",
+                        side_effect=failure,
+                    ) as run,
+                    mock.patch.object(driver.time, "sleep") as sleep,
+                ):
+                    with self.assertRaises(
+                        driver.AdbSharedStoragePreflightError
+                    ) as raised:
+                        device.require_shared_storage_readiness(
+                            deadline=driver.time.monotonic()
+                            + driver.ADB_SHARED_STORAGE_PREFLIGHT_MAX_SECONDS,
+                            **hosted_storage_authority(),
+                        )
+                self.assertEqual(1, run.call_count)
+                sleep.assert_not_called()
+                self.assertFalse(
+                    raised.exception.receipt["observations"][0][
+                        "retryableReadOnlyObservation"
+                    ]
+                )
+                self.assertEqual(
+                    0,
+                    raised.exception.receipt[
+                        "preIntentSharedStorageRootEnoentRecovery"
+                    ]["retriesPerformed"],
+                )
+
+    def test_two_root_enoent_recovery_requires_lease_and_observation_slots(
+        self,
+    ) -> None:
+        cases = (
+            (
+                [shared_storage_roots_not_mounted()],
+                driver.ADB_SHARED_STORAGE_PREINTENT_ROOT_ENOENT_RETRY_MINIMUM_LEASE_SECONDS
+                - 0.5,
+                1,
+                0,
+            ),
+            (
+                [
+                    shared_storage_unavailable(),
+                    shared_storage_unavailable(),
+                    shared_storage_unavailable(),
+                    shared_storage_unavailable(),
+                    shared_storage_roots_not_mounted(),
+                ],
+                driver.ADB_SHARED_STORAGE_PREFLIGHT_MAX_SECONDS,
+                5,
+                4,
+            ),
+        )
+        for responses, lease, expected_calls, expected_sleeps in cases:
+            with (
+                self.subTest(responses=len(responses), lease=lease),
+                tempfile.TemporaryDirectory() as temporary,
+            ):
+                device = self.make_device(Path(temporary))
+                with (
+                    mock.patch.object(
+                        driver.subprocess,
+                        "run",
+                        side_effect=responses,
+                    ) as run,
+                    mock.patch.object(driver.time, "sleep") as sleep,
+                ):
+                    with self.assertRaises(
+                        driver.AdbSharedStoragePreflightError
+                    ) as raised:
+                        device.require_shared_storage_readiness(
+                            deadline=driver.time.monotonic() + lease,
+                            **hosted_storage_authority(),
+                        )
+                self.assertEqual(expected_calls, run.call_count)
+                self.assertEqual(expected_sleeps, sleep.call_count)
+                self.assertEqual(0, raised.exception.receipt["mutationCommandsIssued"])
+                self.assertFalse(
+                    raised.exception.receipt["observations"][-1][
+                        "retryableReadOnlyObservation"
+                    ]
+                )
+                self.assertEqual(
+                    0,
+                    raised.exception.receipt[
+                        "preIntentSharedStorageRootEnoentRecovery"
+                    ]["retriesPerformed"],
+                )
+
+    def test_two_root_enoent_recovery_requires_exact_hosted_authority(self) -> None:
+        authorities = (
+            {},
+            {**hosted_storage_authority(), "hosted_api_level": "35"},
+            {**hosted_storage_authority(), "hosted_abi": "arm64-v8a"},
+            {**hosted_storage_authority(), "hosted_emulator": "0"},
+            {**hosted_storage_authority(), "hosted_proof_attempt": False},
+        )
+        for authority in authorities:
+            with (
+                self.subTest(authority=authority),
+                tempfile.TemporaryDirectory() as temporary,
+            ):
+                device = self.make_device(Path(temporary))
+                with (
+                    mock.patch.object(
+                        driver.subprocess,
+                        "run",
+                        side_effect=shared_storage_roots_not_mounted(),
+                    ) as run,
+                    mock.patch.object(driver.time, "sleep") as sleep,
+                ):
+                    with self.assertRaises(
+                        driver.AdbSharedStoragePreflightError
+                    ) as raised:
+                        device.require_shared_storage_readiness(
+                            deadline=driver.time.monotonic()
+                            + driver.ADB_SHARED_STORAGE_PREFLIGHT_MAX_SECONDS,
+                            **authority,
+                        )
+                self.assertEqual(1, run.call_count)
+                sleep.assert_not_called()
+                observation = raised.exception.receipt["observations"][0]
+                self.assertFalse(observation["retryableReadOnlyObservation"])
+                self.assertFalse(observation["freshObservationScheduled"])
+                self.assertEqual(0, raised.exception.receipt["mutationCommandsIssued"])
+
+    def test_two_root_enoent_after_initialization_intent_is_terminal(self) -> None:
+        root = "/sdcard:43:106499:45f8\n"
+        raw_download = "/sdcard/Download:43:106500:41ed\n"
+        responses = [
+            download_missing(root),
+            download_missing(root),
+            download_missing(root),
+            completed(driver.ADB_SHARED_STORAGE_INITIALIZE_ARGUMENTS, ""),
+            completed(
+                driver.ADB_SHARED_STORAGE_DOWNLOAD_RAW_STAT_ARGUMENTS,
+                raw_download,
+            ),
+            shared_storage_roots_not_mounted(),
+        ]
+        with tempfile.TemporaryDirectory() as temporary:
+            evidence = Path(temporary)
+            device = self.make_device(evidence)
+            with (
+                mock.patch.object(
+                    driver.subprocess,
+                    "run",
+                    side_effect=responses,
+                ) as run,
+                mock.patch.object(driver.time, "sleep") as sleep,
+            ):
+                with self.assertRaises(driver.AdbSharedStoragePreflightError) as raised:
+                    device.require_shared_storage_readiness(
+                        deadline=driver.time.monotonic()
+                        + driver.ADB_SHARED_STORAGE_PREFLIGHT_MAX_SECONDS,
+                        **hosted_storage_authority(),
+                    )
+
+            self.assertTrue(
+                (
+                    evidence
+                    / driver.ADB_SHARED_STORAGE_INITIALIZATION_INTENT_FILENAME
+                ).is_file()
+            )
+
+        self.assertEqual(6, run.call_count)
+        self.assertEqual(3, sleep.call_count)
+        receipt = raised.exception.receipt
+        self.assertEqual(1, receipt["mutationCommandsIssued"])
+        terminal = receipt["terminalFailure"]
+        self.assertEqual(
+            "shared-storage-post-initialization-observation-failed",
+            terminal["classification"],
+        )
+        self.assertEqual(
+            "shared-storage-roots-not-mounted",
+            terminal["underlyingClassification"],
+        )
+        self.assertFalse(terminal["retryableReadOnlyObservation"])
+        self.assertEqual(
+            0,
+            receipt["preIntentSharedStorageRootEnoentRecovery"][
+                "retriesPerformed"
+            ],
         )
 
     def test_missing_download_directory_retries_only_from_exact_partial_stat_observation(
