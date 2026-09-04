@@ -556,11 +556,30 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
             )
             self.assertEqual("pass-exact-rc0-silent", outcome["status"])
             self.assertEqual("pass", bootstrap["status"])
+            outcome_path = (
+                evidence / driver.ADB_SHARED_STORAGE_INITIALIZATION_OUTCOME_FILENAME
+            )
+            self.assertEqual(
+                driver._canonical_json_receipt_bytes(outcome),
+                outcome_path.read_bytes(),
+            )
             self.assertEqual(
                 driver.hashlib.sha256(intent_path.read_bytes()).hexdigest(),
                 outcome["intentSha256"],
             )
             self.assertEqual(outcome["intentSha256"], bootstrap["intentSha256"])
+            outcome_sha256 = driver.hashlib.sha256(
+                outcome_path.read_bytes()
+            ).hexdigest()
+            self.assertEqual(outcome_sha256, bootstrap["outcomeSha256"])
+            self.assertEqual(
+                outcome_sha256,
+                receipt["environmentInitializationOutcomeSha256"],
+            )
+            self.assertEqual(
+                outcome_sha256,
+                receipt["environmentInitialization"]["outcomeSha256"],
+            )
             self.assertFalse(intent["applicationMutation"])
             self.assertFalse(outcome["applicationMutation"])
             self.assertFalse(bootstrap["publicationAuthorized"])
@@ -680,7 +699,11 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
         missing = [download_missing()] * 3
         cases = (
             ({}, driver.ADB_SHARED_STORAGE_PREFLIGHT_MAX_SECONDS),
-            (hosted_storage_authority(), 9.0),
+            (
+                hosted_storage_authority(),
+                driver.ADB_SHARED_STORAGE_INITIALIZATION_MINIMUM_LEASE_SECONDS
+                - 1.0,
+            ),
         )
         for authority, lease in cases:
             with self.subTest(authority=authority, lease=lease), tempfile.TemporaryDirectory() as temporary:
@@ -703,6 +726,172 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
                     driver.ADB_SHARED_STORAGE_INITIALIZE_ARGUMENTS,
                     issued,
                 )
+        self.assertEqual(
+            27.0,
+            driver.ADB_SHARED_STORAGE_INITIALIZATION_MINIMUM_LEASE_SECONDS,
+        )
+
+    def test_post_initialization_fuse_failure_is_terminal_without_further_io(self) -> None:
+        root = "/sdcard:43:106499:45f8\n"
+        raw = "/sdcard/Download:43:106500:41ed\n"
+        unconsumed = completed(
+            driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS,
+            root + raw,
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            device = self.make_device(Path(temporary))
+            responses = [
+                download_missing(root),
+                download_missing(root),
+                download_missing(root),
+                completed(driver.ADB_SHARED_STORAGE_INITIALIZE_ARGUMENTS, ""),
+                completed(driver.ADB_SHARED_STORAGE_DOWNLOAD_RAW_STAT_ARGUMENTS, raw),
+                shared_storage_unavailable(),
+                unconsumed,
+            ]
+            with (
+                mock.patch.object(
+                    driver.subprocess,
+                    "run",
+                    side_effect=responses,
+                ) as run,
+                mock.patch.object(driver.time, "sleep"),
+            ):
+                with self.assertRaises(driver.AdbSharedStoragePreflightError) as raised:
+                    device.require_shared_storage_readiness(
+                        deadline=driver.time.monotonic()
+                        + driver.ADB_SHARED_STORAGE_PREFLIGHT_MAX_SECONDS,
+                        **hosted_storage_authority(),
+                    )
+            self.assertEqual(6, run.call_count)
+            terminal = raised.exception.receipt["terminalFailure"]
+            self.assertEqual(
+                "shared-storage-post-initialization-observation-failed",
+                terminal["classification"],
+            )
+            self.assertEqual(
+                "shared-storage-unavailable",
+                terminal["underlyingClassification"],
+            )
+            self.assertFalse(terminal["retryableReadOnlyObservation"])
+
+    def test_bootstrap_rejects_tampered_or_deleted_outcome_before_final_receipt(self) -> None:
+        root = "/sdcard:43:106499:45f8\n"
+        raw = "/sdcard/Download:43:106500:41ed\n"
+        stable = root + raw
+        for alteration in ("tamper", "delete"):
+            with self.subTest(alteration=alteration), tempfile.TemporaryDirectory() as temporary:
+                evidence = Path(temporary)
+                outcome_path = (
+                    evidence
+                    / driver.ADB_SHARED_STORAGE_INITIALIZATION_OUTCOME_FILENAME
+                )
+                raw_observations = 0
+                responses = iter(
+                    [
+                        download_missing(root),
+                        download_missing(root),
+                        download_missing(root),
+                        completed(driver.ADB_SHARED_STORAGE_INITIALIZE_ARGUMENTS, ""),
+                        completed(driver.ADB_SHARED_STORAGE_DOWNLOAD_RAW_STAT_ARGUMENTS, raw),
+                        completed(driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS, stable),
+                        completed(driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS, stable),
+                        completed(driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS, stable),
+                        completed(driver.ADB_SHARED_STORAGE_DOWNLOAD_RAW_STAT_ARGUMENTS, raw),
+                    ]
+                )
+
+                def invoke(command: list[str], **_kwargs: object) -> object:
+                    nonlocal raw_observations
+                    arguments = tuple(command[3:])
+                    response = next(responses)
+                    if isinstance(response, BaseException):
+                        raise response
+                    if arguments == driver.ADB_SHARED_STORAGE_DOWNLOAD_RAW_STAT_ARGUMENTS:
+                        raw_observations += 1
+                        if raw_observations == 2:
+                            if alteration == "tamper":
+                                outcome_path.write_bytes(b"tampered\n")
+                            else:
+                                outcome_path.unlink()
+                    return response
+
+                device = self.make_device(evidence)
+                with (
+                    mock.patch.object(driver.subprocess, "run", side_effect=invoke) as run,
+                    mock.patch.object(driver.time, "sleep"),
+                ):
+                    with self.assertRaisesRegex(
+                        RuntimeError,
+                        "bootstrap outcome receipt",
+                    ):
+                        device.require_shared_storage_readiness(
+                            deadline=driver.time.monotonic()
+                            + driver.ADB_SHARED_STORAGE_PREFLIGHT_MAX_SECONDS,
+                            **hosted_storage_authority(),
+                        )
+                self.assertEqual(9, run.call_count)
+                self.assertFalse(
+                    (evidence / "adb-shared-storage-readiness.json").exists()
+                )
+
+    def test_intent_digest_uses_immutable_serialized_bytes_not_replaced_path(self) -> None:
+        root = "/sdcard:43:106499:45f8\n"
+        raw = "/sdcard/Download:43:106500:41ed\n"
+        stable = root + raw
+        with tempfile.TemporaryDirectory() as temporary:
+            evidence = Path(temporary)
+            intent_path = (
+                evidence / driver.ADB_SHARED_STORAGE_INITIALIZATION_INTENT_FILENAME
+            )
+            original_intent_sha256 = ""
+            responses = iter(
+                [
+                    download_missing(root),
+                    download_missing(root),
+                    download_missing(root),
+                    completed(driver.ADB_SHARED_STORAGE_INITIALIZE_ARGUMENTS, ""),
+                    completed(driver.ADB_SHARED_STORAGE_DOWNLOAD_RAW_STAT_ARGUMENTS, raw),
+                    completed(driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS, stable),
+                    completed(driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS, stable),
+                    completed(driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS, stable),
+                    completed(driver.ADB_SHARED_STORAGE_DOWNLOAD_RAW_STAT_ARGUMENTS, raw),
+                ]
+            )
+
+            def invoke(command: list[str], **_kwargs: object) -> object:
+                nonlocal original_intent_sha256
+                arguments = tuple(command[3:])
+                if arguments == driver.ADB_SHARED_STORAGE_INITIALIZE_ARGUMENTS:
+                    original = intent_path.read_bytes()
+                    original_intent_sha256 = driver.hashlib.sha256(original).hexdigest()
+                    intent_path.write_bytes(b"replacement\n")
+                response = next(responses)
+                if isinstance(response, BaseException):
+                    raise response
+                return response
+
+            device = self.make_device(evidence)
+            with (
+                mock.patch.object(driver.subprocess, "run", side_effect=invoke),
+                mock.patch.object(driver.time, "sleep"),
+            ):
+                with self.assertRaisesRegex(
+                    RuntimeError,
+                    "bootstrap intent receipt bytes changed",
+                ):
+                    device.require_shared_storage_readiness(
+                        deadline=driver.time.monotonic()
+                        + driver.ADB_SHARED_STORAGE_PREFLIGHT_MAX_SECONDS,
+                        **hosted_storage_authority(),
+                    )
+            outcome = json.loads(
+                (
+                    evidence
+                    / driver.ADB_SHARED_STORAGE_INITIALIZATION_OUTCOME_FILENAME
+                ).read_text(encoding="utf-8")
+            )
+            self.assertEqual(original_intent_sha256, outcome["intentSha256"])
 
     def test_download_initialization_command_failure_is_one_shot_and_blocks_app_mutation(
         self,
@@ -889,12 +1078,16 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
                 "fsync",
                 wraps=driver.os.fsync,
             ) as fsync:
-                driver._write_durable_new_json_receipt(
+                digest = driver._write_durable_new_json_receipt(
                     target,
                     {"schema": driver.ADB_SHARED_STORAGE_INITIALIZATION_INTENT_SCHEMA},
                 )
             self.assertEqual(2, fsync.call_count)
             self.assertTrue(target.is_file())
+            self.assertEqual(
+                driver.hashlib.sha256(target.read_bytes()).hexdigest(),
+                digest,
+            )
 
     def test_shared_storage_preflight_never_retries_generic_adb_failures(self) -> None:
         failures = (

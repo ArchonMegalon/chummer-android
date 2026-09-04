@@ -309,7 +309,12 @@ ADB_SHARED_STORAGE_MAX_OBSERVATIONS = 7
 ADB_SHARED_STORAGE_OBSERVATION_DELAY_SECONDS = 1.0
 ADB_SHARED_STORAGE_PREFLIGHT_MAX_SECONDS = 30.0
 ADB_SHARED_STORAGE_STAT_ATTEMPT_MAX_SECONDS = 5.0
-ADB_SHARED_STORAGE_INITIALIZATION_MINIMUM_LEASE_SECONDS = 10.0
+ADB_SHARED_STORAGE_INITIALIZATION_MINIMUM_LEASE_SECONDS = (
+    ADB_SHARED_STORAGE_STAT_ATTEMPT_MAX_SECONDS
+    * (ADB_SHARED_STORAGE_REQUIRED_CONSECUTIVE + 2)
+    + ADB_SHARED_STORAGE_OBSERVATION_DELAY_SECONDS
+    * (ADB_SHARED_STORAGE_REQUIRED_CONSECUTIVE - 1)
+)
 ADB_SHARED_STORAGE_ROOTS = ("/sdcard", "/sdcard/Download")
 ADB_SHARED_STORAGE_STAT_FORMAT = "%n:%d:%i:%f"
 ADB_SHARED_STORAGE_STAT_ARGUMENTS = (
@@ -382,14 +387,51 @@ def _write_new_json_receipt(path: Path, receipt: dict[str, object]) -> None:
         os.fsync(stream.fileno())
 
 
-def _write_durable_new_json_receipt(path: Path, receipt: dict[str, object]) -> None:
-    """Create and fsync a receipt plus its directory entry before device I/O."""
-    _write_new_json_receipt(path, receipt)
+def _canonical_json_receipt_bytes(receipt: dict[str, object]) -> bytes:
+    return (
+        json.dumps(
+            receipt,
+            allow_nan=False,
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+        + "\n"
+    ).encode("utf-8")
+
+
+def _write_durable_new_json_receipt(
+    path: Path,
+    receipt: dict[str, object],
+) -> str:
+    """Write exact canonical bytes with O_EXCL and fsync their directory entry."""
+    encoded = _canonical_json_receipt_bytes(receipt)
+    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(descriptor, "wb") as stream:
+        stream.write(encoded)
+        stream.flush()
+        os.fsync(stream.fileno())
     directory = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
     try:
         os.fsync(directory)
     finally:
         os.close(directory)
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _require_exact_receipt_digest(
+    path: Path,
+    *,
+    expected_sha256: str,
+    label: str,
+) -> None:
+    if path.is_symlink() or not path.is_file():
+        raise RuntimeError(f"{label} receipt is missing or not a regular file")
+    actual = hashlib.sha256(path.read_bytes()).hexdigest()
+    if actual != expected_sha256:
+        raise RuntimeError(
+            f"{label} receipt bytes changed: expected {expected_sha256}, got {actual}"
+        )
 
 
 def _parse_shared_storage_directory_identity(
@@ -2096,6 +2138,7 @@ class Device:
             "intentEvidenceFile": None,
             "intentSha256": None,
             "outcomeEvidenceFile": None,
+            "outcomeSha256": None,
             "bootstrapEvidenceFile": None,
         }
 
@@ -2111,6 +2154,25 @@ class Device:
             nonlocal bootstrap_written
             if initialization_mutations_issued == 0 or bootstrap_written:
                 return
+            intent_sha256 = initialization.get("intentSha256")
+            outcome_sha256 = initialization.get("outcomeSha256")
+            if not isinstance(intent_sha256, str) or not isinstance(
+                outcome_sha256,
+                str,
+            ):
+                raise RuntimeError(
+                    "Shared-storage bootstrap receipts lack exact digest authority"
+                )
+            _require_exact_receipt_digest(
+                intent_path,
+                expected_sha256=intent_sha256,
+                label="Shared-storage bootstrap intent",
+            )
+            _require_exact_receipt_digest(
+                outcome_path,
+                expected_sha256=outcome_sha256,
+                label="Shared-storage bootstrap outcome",
+            )
             bootstrap = {
                 "schema": ADB_SHARED_STORAGE_BOOTSTRAP_SCHEMA,
                 "status": status,
@@ -2118,8 +2180,9 @@ class Device:
                 "hostedAuthority": hosted_authority,
                 "precondition": initialization.get("precondition"),
                 "intentEvidenceFile": initialization["intentEvidenceFile"],
-                "intentSha256": initialization["intentSha256"],
+                "intentSha256": intent_sha256,
                 "outcomeEvidenceFile": initialization["outcomeEvidenceFile"],
+                "outcomeSha256": outcome_sha256,
                 "command": list(ADB_SHARED_STORAGE_INITIALIZE_ARGUMENTS),
                 "commandPolicy": "non-replayable",
                 "attempts": 1,
@@ -2180,6 +2243,9 @@ class Device:
                 "applicationRelaunchAttempted": False,
                 "terminalFailure": terminal_failure,
                 "environmentInitialization": dict(initialization),
+                "environmentInitializationOutcomeSha256": initialization.get(
+                    "outcomeSha256"
+                ),
                 "observations": observations,
             }
 
@@ -2290,6 +2356,34 @@ class Device:
                 classification, retryable = (
                     classify_shared_storage_readiness_failure(error)
                 )
+                if initialized_download is not None:
+                    observation.update(
+                        {
+                            "status": "post-initialization-observation-failed",
+                            "classification": (
+                                "shared-storage-post-initialization-observation-failed"
+                            ),
+                            "underlyingClassification": classification,
+                            "classificationAuthority": (
+                                "all-post-initialization-device-errors-terminal"
+                            ),
+                            "retryableReadOnlyObservation": False,
+                            "failure": {
+                                "type": type(error).__name__,
+                                "returnCode": getattr(error, "returncode", None),
+                                "stdout": _bounded_adb_detail(
+                                    getattr(error, "stdout", "")
+                                ),
+                                "stderr": _bounded_adb_detail(
+                                    getattr(error, "stderr", "")
+                                ),
+                            },
+                        }
+                    )
+                    observations.append(observation)
+                    terminal_failure = dict(observation)
+                    terminal_error = error
+                    break
                 partial_root = _download_not_initialized_root_identity(error)
                 if (
                     classification == "shared-storage-download-not-initialized"
@@ -2423,7 +2517,10 @@ class Device:
                             "publicationAuthorized": False,
                         }
                         try:
-                            _write_durable_new_json_receipt(intent_path, intent)
+                            intent_sha256 = _write_durable_new_json_receipt(
+                                intent_path,
+                                intent,
+                            )
                         except OSError as intent_error:
                             terminal_error = intent_error
                             terminal_failure = {
@@ -2439,9 +2536,6 @@ class Device:
                             }
                             initialization["status"] = "intent-write-failed"
                             break
-                        intent_sha256 = hashlib.sha256(
-                            intent_path.read_bytes()
-                        ).hexdigest()
                         initialization.update(
                             {
                                 "status": "intent-written",
@@ -2537,8 +2631,16 @@ class Device:
                             "applicationMutation": False,
                             "publicationAuthorized": False,
                         }
-                        _write_durable_new_json_receipt(outcome_path, outcome)
-                        initialization["outcomeEvidenceFile"] = outcome_path.name
+                        outcome_sha256 = _write_durable_new_json_receipt(
+                            outcome_path,
+                            outcome,
+                        )
+                        initialization.update(
+                            {
+                                "outcomeEvidenceFile": outcome_path.name,
+                                "outcomeSha256": outcome_sha256,
+                            }
+                        )
                         if mkdir_error is not None:
                             terminal_error = mkdir_error
                             terminal_failure = {
@@ -2604,15 +2706,6 @@ class Device:
                         consecutive = 0
                     # The exact partial observation owns the retry decision above.
                     retryable = terminal_failure is None
-                elif (
-                    classification == "shared-storage-download-not-initialized"
-                    and initialized_download is not None
-                ):
-                    classification = (
-                        "shared-storage-download-disappeared-after-initialization"
-                    )
-                    retryable = False
-                    partial_root = None
                 if partial_root is not None and observations[-1] is observation:
                     if terminal_failure is not None:
                         break
