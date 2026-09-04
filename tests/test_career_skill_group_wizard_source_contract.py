@@ -57,7 +57,7 @@ class CareerSkillGroupWizardSourceContractTests(unittest.TestCase):
         runtime = constant("CurrentRuntimeDigest")
         self.assertEqual(content, manifest["bundleDigest"])
         self.assertEqual(core, "c06f22c185c7b733637fdb76b3cf333f31716781")
-        self.assertEqual(presentation, "732a33cb8d3c704b8a86e1249eab46508339a105")
+        self.assertEqual(presentation, "8aedcd44bd16e6c2d00847f6012275c1f50cb672")
         payload = f"{contract}\n{core}\n{presentation}\n{content}\n".encode()
         self.assertEqual(runtime, hashlib.sha256(payload).hexdigest())
         self.assertIn("contentDigest", shared := self.read("Sr5CareerWizardModel.cs"))
