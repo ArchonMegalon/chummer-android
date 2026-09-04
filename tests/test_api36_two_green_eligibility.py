@@ -62,10 +62,16 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
         self.git("checkout", "--quiet", "--detach", self.main_merge_commit)
         self.policy = self.root / "policy.json"
         self.policy.write_bytes(gate.canonical_json_bytes(gate.expected_policy()))
+        self.environment_policy = self.root / "environment-policy.json"
+        self.environment_policy.write_bytes(gate.ENVIRONMENT_POLICY_PATH.read_bytes())
+        self.environment_policy_authority = gate.ENVIRONMENT.policy_binding(
+            gate.StableFile(self.environment_policy, "test proof environment policy")
+        )
         self.output = self.root / gate.OUTPUT_NAME
         self.inputs: dict[str, object] = {
             "android_root": self.android,
             "policy": self.policy,
+            "environment_policy": self.environment_policy,
             "source_workflow": self.source_workflow,
             "review_run_id": 100,
             "main_run_id": 200,
@@ -139,9 +145,7 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
             },
             "environmentAuthority": {
                 "policyAuthority": {
-                    "schema": "chummer.android.api36-proof-environment-authority/v2",
-                    "sha256": "6" * 64,
-                    "sizeBytes": 1000,
+                    **self.environment_policy_authority,
                 },
                 "build": {
                     "receiptSha256": sha256(f"build-{run_id}".encode()),
@@ -427,6 +431,8 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
         self.assertEqual(self.tree, result["sourceTree"])
         self.assertEqual("pull_request", result["reviewRun"]["run"]["event"])
         self.assertEqual("push", result["mainRun"]["run"]["event"])
+        self.assertEqual(self.review_merge_commit, result["reviewRun"]["p0EventSha"])
+        self.assertEqual(self.main_merge_commit, result["mainRun"]["p0EventSha"])
         self.assertEqual(
             self.review_merge_commit,
             self.read_p0("review")["androidSource"]["checkedOutHead"],
@@ -445,6 +451,20 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
             common_android,
         )
         self.assertNotIn("commit", common_android)
+        review_graph = self.read_p0("review")["dependencyGraph"]
+        for name, source in review_graph["sources"].items():
+            if name != "android":
+                self.assertEqual(
+                    source,
+                    result["commonAuthority"]["dependencyGraph"]["sources"][name],
+                )
+        common_graph = result["commonAuthority"]["dependencyGraph"]
+        self.assertEqual(
+            gate.canonical_sha256(
+                {"mode": common_graph["mode"], "sources": common_graph["sources"]}
+            ),
+            common_graph["sha256"],
+        )
         self.assertEqual(gate.REQUIRED_JOB_NAMES, tuple(result["mainRun"]["jobs"]))
         self.assertEqual(
             result["reviewRun"]["artifacts"]["aggregate"]["memberSha256"],
@@ -571,6 +591,93 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
         finally:
             archive_path.write_bytes(original)
 
+    def test_widened_or_noncanonical_p0_wizard_gate_fails_closed(self) -> None:
+        def widen_gate(p0: dict[str, object]) -> None:
+            p0["inputs"]["wizardGate"] = {
+                "schema": "hostile/widened-gate",
+                "publicationAuthorized": True,
+                "googlePlayUploadAuthorized": True,
+            }
+
+        for role in ("review", "main"):
+            with zipfile.ZipFile(self.inputs[f"{role}_aggregate_archive"]) as archive:
+                aggregate = json.loads(archive.read("receipt.json"))
+            self.rewrite_proof(role, aggregate, mutate_p0=widen_gate)
+
+        with self.assertRaisesRegex(
+            ValueError, "P0/run/tree/aggregate authority differs"
+        ):
+            self.create()
+
+    def test_environment_policy_input_and_aggregate_authority_are_exact(self) -> None:
+        widened = json.loads(self.environment_policy.read_text(encoding="utf-8"))
+        widened["publicationAuthorized"] = True
+        self.write_json(self.environment_policy, widened)
+        with self.assertRaisesRegex(ValueError, "cannot authorize publication"):
+            self.create()
+
+        self.environment_policy.write_bytes(gate.ENVIRONMENT_POLICY_PATH.read_bytes())
+        for role in ("review", "main"):
+            with zipfile.ZipFile(self.inputs[f"{role}_aggregate_archive"]) as archive:
+                aggregate = json.loads(archive.read("receipt.json"))
+            aggregate["environmentAuthority"]["policyAuthority"]["sha256"] = "0" * 64
+            self.rewrite_proof(role, aggregate)
+        with self.assertRaisesRegex(ValueError, "environment policy authority differs"):
+            self.create()
+
+    def test_main_event_sha_must_equal_the_actions_push_head(self) -> None:
+        with zipfile.ZipFile(self.inputs["main_aggregate_archive"]) as archive:
+            aggregate = json.loads(archive.read("receipt.json"))
+
+        def substitute_event_sha(p0: dict[str, object]) -> None:
+            replacement = "a" * 40
+            p0["githubRun"]["eventSha"] = replacement
+            p0["androidSource"]["checkedOutHead"] = replacement
+            p0["dependencyGraph"]["sources"]["android"]["commit"] = replacement
+            self.rehash_dependency_graph(p0)
+
+        self.rewrite_proof("main", aggregate, mutate_p0=substitute_event_sha)
+        with self.assertRaisesRegex(
+            ValueError, "P0/run/tree/aggregate authority differs"
+        ):
+            self.create()
+
+    def test_workflow_must_be_the_clean_tracked_head_blob(self) -> None:
+        (self.android / "untracked-hostile-input").write_text(
+            "hostile\n", encoding="utf-8"
+        )
+        with self.assertRaisesRegex(ValueError, "checkout is not clean"):
+            self.create()
+        (self.android / "untracked-hostile-input").unlink()
+
+        external = self.root / "external-workflow.yml"
+        external.write_bytes(self.source_workflow.read_bytes())
+        self.inputs["source_workflow"] = external
+        with self.assertRaisesRegex(ValueError, "governed checkout path"):
+            self.create()
+        self.inputs["source_workflow"] = self.source_workflow
+
+        self.git("update-index", "--assume-unchanged", gate.WORKFLOW_PATH)
+        hostile = b"name: uncommitted hostile workflow\npublicationAuthorized: true\n"
+        self.source_workflow.write_bytes(hostile)
+        self.assertEqual(
+            "", self.git("status", "--porcelain=v1", "--untracked-files=all")
+        )
+
+        def rebind_workflow(p0: dict[str, object]) -> None:
+            p0["workflow"] = {
+                "path": gate.WORKFLOW_PATH,
+                "sha256": sha256(hostile),
+                "sizeBytes": len(hostile),
+            }
+
+        for role in ("review", "main"):
+            with zipfile.ZipFile(self.inputs[f"{role}_aggregate_archive"]) as archive:
+                aggregate = json.loads(archive.read("receipt.json"))
+            self.rewrite_proof(role, aggregate, mutate_p0=rebind_workflow)
+        with self.assertRaisesRegex(ValueError, "workflow bytes differ from tracked HEAD"):
+            self.create()
+
     def test_duplicate_json_and_claim_escalation_fail_closed(self) -> None:
         path = self.inputs["review_run"]
         original = path.read_bytes()
@@ -600,6 +707,14 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
             policy["sequenceSemantics"],
         )
         self.assertIn("zero_intervening_workflow_runs", policy["doesNotAssert"])
+        self.assertIn(
+            "pull_request_merge_commit_lineage_reconstruction",
+            policy["doesNotAssert"],
+        )
+        self.assertIn(
+            "non_android_dependency_commit_tree_reconstruction",
+            policy["doesNotAssert"],
+        )
 
     def test_cli_rejects_symlinked_output_and_authority_before_resolution(self) -> None:
         output_target = self.root / "output-target.json"
@@ -643,6 +758,9 @@ class Api36TwoGreenWorkflowSourceTests(unittest.TestCase):
         self.assertNotIn("gradle-play-publisher", self.text)
         self.assertIn("publicationAuthorized == false", self.text)
         self.assertIn("googlePlayUploadAuthorized == false", self.text)
+        self.assertIn("--environment-policy", self.text)
+        self.assertIn("api36-proof-environment-authority.json", self.text)
+        self.assertIn('PYTHONDONTWRITEBYTECODE: "1"', self.text)
 
     def test_workflow_dispatch_inputs_never_interpolate_inside_run_scripts(self) -> None:
         run_blocks: list[str] = []

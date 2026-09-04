@@ -48,6 +48,8 @@
     "release_signing",
     "public_release_readiness",
     "publication_authority",
-    "zero_intervening_workflow_runs"
+    "zero_intervening_workflow_runs",
+    "pull_request_merge_commit_lineage_reconstruction",
+    "non_android_dependency_commit_tree_reconstruction"
   ]
 }

@@ -53,9 +53,23 @@ def _load_p0_module() -> Any:
     return module
 
 
+def _load_environment_module() -> Any:
+    path = SCRIPT_DIRECTORY / "api36_proof_environment_authority.py"
+    specification = importlib.util.spec_from_file_location(
+        "android_two_green_environment_authority", path
+    )
+    if specification is None or specification.loader is None:
+        raise ValueError("cannot load API-36 proof environment authority contract")
+    module = importlib.util.module_from_spec(specification)
+    specification.loader.exec_module(module)
+    return module
+
+
 P0 = _load_p0_module()
+ENVIRONMENT = _load_environment_module()
 REPO_ROOT = SCRIPT_DIRECTORY.parent
 POLICY_PATH = REPO_ROOT / "eng/api36-two-consecutive-green-authority.json"
+ENVIRONMENT_POLICY_PATH = REPO_ROOT / "eng/api36-proof-environment-authority.json"
 SOURCE_WORKFLOW = REPO_ROOT / ".github/workflows/api36-editing-e2e.yml"
 POLICY_SCHEMA = "chummer.android.api36-ordered-review-main-green-policy/v1"
 CONTRACT = "chummer.android.api36-ordered-review-main-green-eligibility/v1"
@@ -92,6 +106,8 @@ DOES_NOT_ASSERT = (
     "public_release_readiness",
     "publication_authority",
     "zero_intervening_workflow_runs",
+    "pull_request_merge_commit_lineage_reconstruction",
+    "non_android_dependency_commit_tree_reconstruction",
 )
 
 
@@ -242,16 +258,83 @@ def _utc(value: object, label: str) -> datetime:
     return parsed
 
 
-def git_tree(android_root: Path) -> str:
-    if not android_root.is_absolute() or android_root.is_symlink():
-        raise ValueError("Android root must be an absolute non-symlink directory")
-    completed = subprocess.run(
-        ["git", "-C", str(android_root), "rev-parse", "HEAD^{tree}"],
-        check=True,
-        capture_output=True,
-        text=True,
+def git_source_tree(android_root: Path, workflow: StableFile) -> str:
+    """Bind the governed workflow to one clean tracked HEAD tree.
+
+    The two-green inputs do not include the review merge object or the
+    non-Android repositories.  Their commit-to-tree relationships therefore
+    remain transitively bound by the immutable P0 artifact rather than being
+    reconstructed here.  The current Android checkout is available, so its
+    cleanliness and workflow blob are verified directly instead of inferred.
+    """
+    if (
+        not android_root.is_absolute()
+        or android_root.is_symlink()
+        or android_root.resolve(strict=True) != android_root
+        or not android_root.is_dir()
+    ):
+        raise ValueError(
+            "Android root must be an absolute canonical non-symlink directory"
+        )
+    expected_workflow = android_root / WORKFLOW_PATH
+    if workflow.path != expected_workflow:
+        raise ValueError("source API-36 workflow must be the governed checkout path")
+    environment = {
+        "PATH": "/usr/bin:/bin",
+        "LANG": "C",
+        "LC_ALL": "C",
+        "GIT_NO_REPLACE_OBJECTS": "1",
+    }
+
+    def git_bytes(*arguments: str) -> bytes:
+        try:
+            completed = subprocess.run(
+                ["/usr/bin/git", "-C", os.fspath(android_root), *arguments],
+                check=False,
+                capture_output=True,
+                timeout=20,
+                env=environment,
+            )
+        except (OSError, subprocess.TimeoutExpired) as error:
+            raise ValueError(
+                "cannot authenticate the governed Android checkout"
+            ) from error
+        if completed.returncode != 0:
+            raise ValueError("cannot authenticate the governed Android checkout")
+        return completed.stdout
+
+    if git_bytes("status", "--porcelain=v1", "--untracked-files=all"):
+        raise ValueError("governed Android checkout is not clean")
+    head = _sha40(
+        git_bytes("rev-parse", "HEAD").decode("ascii").strip(),
+        "checked-out Android head",
     )
-    return _sha40(completed.stdout.strip(), "checked-out Android tree")
+    tree = _sha40(
+        git_bytes("rev-parse", f"{head}^{{tree}}").decode("ascii").strip(),
+        "checked-out Android tree",
+    )
+    entry = git_bytes("ls-tree", "-z", head, "--", WORKFLOW_PATH)
+    expected_prefix = f"100644 blob ".encode("ascii")
+    suffix = b"\t" + WORKFLOW_PATH.encode("utf-8") + b"\x00"
+    if (
+        len(entry) != len(expected_prefix) + 40 + len(suffix)
+        or not entry.startswith(expected_prefix)
+        or entry[-len(suffix):] != suffix
+        or SHA40.fullmatch(
+            entry[len(expected_prefix):len(expected_prefix) + 40].decode("ascii")
+        )
+        is None
+    ):
+        raise ValueError("source API-36 workflow is not one exact tracked regular file")
+    tracked_bytes = git_bytes("show", f"{head}:{WORKFLOW_PATH}")
+    if tracked_bytes != workflow.data:
+        raise ValueError("source API-36 workflow bytes differ from tracked HEAD")
+    if (
+        git_bytes("rev-parse", "HEAD").decode("ascii").strip() != head
+        or git_bytes("status", "--porcelain=v1", "--untracked-files=all")
+    ):
+        raise ValueError("governed Android checkout changed during authentication")
+    return tree
 
 
 def validate_run_metadata(
@@ -543,6 +626,7 @@ def validate_proof_artifacts(
     aggregate_bytes: bytes,
     run: dict[str, object],
     workflow_binding: dict[str, object],
+    environment_policy_authority: dict[str, object],
     local_tree: str,
     role: str,
 ) -> dict[str, object]:
@@ -552,16 +636,28 @@ def validate_proof_artifacts(
     github_run = p0.get("githubRun")
     android_source = p0.get("androidSource")
     aggregate_binding = p0.get("aggregate")
+    p0_inputs = p0.get("inputs")
     if (
         not isinstance(github_run, dict)
+        or set(github_run)
+        != {"attempt", "baseSha", "eventName", "eventSha", "headSha", "id"}
+        or any(
+            not isinstance(github_run.get(field), str)
+            or SHA40.fullmatch(github_run[field]) is None
+            for field in ("baseSha", "eventSha", "headSha")
+        )
         or github_run.get("id") != run["id"]
         or github_run.get("attempt") != run["attempt"]
         or github_run.get("eventName") != run["event"]
         or github_run.get("headSha") != run["headSha"]
+        or (role == "main" and github_run.get("eventSha") != run["headSha"])
         or not isinstance(android_source, dict)
         or android_source.get("checkedOutTree") != local_tree
         or android_source.get("checkedOutHead") != github_run.get("eventSha")
         or p0.get("workflow") != workflow_binding
+        or not isinstance(p0_inputs, dict)
+        or set(p0_inputs) != {"hostedCandidate", "wizardGate"}
+        or p0_inputs.get("wizardGate") != gate
         or not isinstance(aggregate_binding, dict)
         or aggregate_binding.get("schema") != AGGREGATE_SCHEMA
         or aggregate_binding.get("status") != "pass"
@@ -578,6 +674,8 @@ def validate_proof_artifacts(
     )
     environment = aggregate["environmentAuthority"]
     assert isinstance(environment, dict)
+    if environment["policyAuthority"] != environment_policy_authority:
+        raise ValueError(f"{role} aggregate environment policy authority differs")
     build = environment["build"]
     assert isinstance(build, dict)
     return {
@@ -586,7 +684,7 @@ def validate_proof_artifacts(
         "proofScope": p0["proofScope"],
         "dependencyGraph": dependency_authority,
         "workflow": p0["workflow"],
-        "wizardGate": p0["inputs"]["wizardGate"],
+        "wizardGate": gate,
         "aggregateSchema": aggregate["schema"],
         "requiredJourneys": aggregate["requiredJourneys"],
         "environmentPolicy": environment["policyAuthority"],
@@ -610,6 +708,7 @@ def run_evidence(
     aggregate_archive_snapshot: StableFile,
     p0_archive_snapshot: StableFile,
     workflow_binding: dict[str, object],
+    environment_policy_authority: dict[str, object],
     local_tree: str,
 ) -> tuple[dict[str, object], dict[str, object]]:
     run = validate_run_metadata(
@@ -635,6 +734,7 @@ def run_evidence(
         aggregate_bytes=aggregate_bytes,
         run=run,
         workflow_binding=workflow_binding,
+        environment_policy_authority=environment_policy_authority,
         local_tree=local_tree,
         role=role,
     )
@@ -651,6 +751,7 @@ def run_evidence(
             "p0Authority": p0_artifact,
         },
         "p0AuthoritySha256": p0["authoritySha256"],
+        "p0EventSha": p0["githubRun"]["eventSha"],
         "aggregateStatus": aggregate["status"],
     }
     return evidence, common
@@ -660,6 +761,7 @@ def create_authority(
     *,
     android_root: Path,
     policy: Path,
+    environment_policy: Path,
     source_workflow: Path,
     review_run_id: int,
     main_run_id: int,
@@ -678,6 +780,9 @@ def create_authority(
         raise ValueError("review and main run IDs must be distinct")
     snapshots = {
         "policy": StableFile(policy, "two-green policy"),
+        "environmentPolicy": StableFile(
+            environment_policy, "API-36 proof environment policy"
+        ),
         "workflow": StableFile(source_workflow, "source API-36 workflow"),
         "reviewRun": StableFile(review_run, "review run metadata"),
         "reviewJobs": StableFile(review_jobs, "review jobs metadata"),
@@ -691,12 +796,15 @@ def create_authority(
         "mainP0": StableFile(main_p0_archive, "main P0 archive"),
     }
     policy_authority = policy_binding(snapshots["policy"])
+    environment_policy_authority = ENVIRONMENT.policy_binding(
+        snapshots["environmentPolicy"]
+    )
     workflow_binding = {
         "path": WORKFLOW_PATH,
         "sha256": snapshots["workflow"].sha256,
         "sizeBytes": snapshots["workflow"].size,
     }
-    local_tree = git_tree(android_root)
+    local_tree = git_source_tree(android_root, snapshots["workflow"])
     review, review_common = run_evidence(
         role="review",
         expected_run_id=review_run_id,
@@ -706,6 +814,7 @@ def create_authority(
         aggregate_archive_snapshot=snapshots["reviewAggregate"],
         p0_archive_snapshot=snapshots["reviewP0"],
         workflow_binding=workflow_binding,
+        environment_policy_authority=environment_policy_authority,
         local_tree=local_tree,
     )
     main, main_common = run_evidence(
@@ -717,6 +826,7 @@ def create_authority(
         aggregate_archive_snapshot=snapshots["mainAggregate"],
         p0_archive_snapshot=snapshots["mainP0"],
         workflow_binding=workflow_binding,
+        environment_policy_authority=environment_policy_authority,
         local_tree=local_tree,
     )
     if review_common != main_common:
@@ -805,6 +915,7 @@ def write_atomically(path: Path, value: dict[str, object]) -> None:
 def _input_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--android-root", type=Path, required=True)
     parser.add_argument("--policy", type=Path, required=True)
+    parser.add_argument("--environment-policy", type=Path, required=True)
     parser.add_argument("--source-workflow", type=Path, required=True)
     parser.add_argument("--review-run-id", type=int, required=True)
     parser.add_argument("--main-run-id", type=int, required=True)

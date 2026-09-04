@@ -103,6 +103,7 @@ jobs:
         env:
           REVIEW_RUN_ID: ${{ inputs.review_run_id }}
           MAIN_RUN_ID: ${{ inputs.main_run_id }}
+          PYTHONDONTWRITEBYTECODE: "1"
         run: |
           set -euo pipefail
           evidence="$RUNNER_TEMP/chummer-api36-two-green-inputs"
@@ -112,6 +113,7 @@ jobs:
           common=(
             --android-root "$GITHUB_WORKSPACE/chummer-android"
             --policy "$GITHUB_WORKSPACE/chummer-android/eng/api36-two-consecutive-green-authority.json"
+            --environment-policy "$GITHUB_WORKSPACE/chummer-android/eng/api36-proof-environment-authority.json"
             --source-workflow "$GITHUB_WORKSPACE/chummer-android/.github/workflows/api36-editing-e2e.yml"
             --review-run-id "$REVIEW_RUN_ID"
             --main-run-id "$MAIN_RUN_ID"
