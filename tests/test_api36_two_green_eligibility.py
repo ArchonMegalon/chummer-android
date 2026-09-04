@@ -39,9 +39,27 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
         self.git("config", "user.name", "Two Green Test")
         self.git("config", "user.email", "test@example.invalid")
         self.git("add", gate.WORKFLOW_PATH)
-        self.git("commit", "--quiet", "-m", "exact common tree")
+        self.git("commit", "--quiet", "-m", "base for realistic merge identities")
         self.tree = self.git("rev-parse", "HEAD^{tree}")
-        self.commit = self.git("rev-parse", "HEAD")
+        self.base_commit = self.git("rev-parse", "HEAD")
+        self.pr_head = self.git(
+            "commit-tree", self.tree, "-p", self.base_commit,
+            "-m", "PR head with the exact candidate tree",
+        )
+        self.review_merge_commit = self.git(
+            "commit-tree", self.tree,
+            "-p", self.base_commit,
+            "-p", self.pr_head,
+            "-m", f"Merge {self.pr_head} into {self.base_commit}",
+        )
+        self.main_merge_commit = self.git(
+            "commit-tree", self.tree,
+            "-p", self.base_commit,
+            "-p", self.pr_head,
+            "-m", "Merge pull request #32 from feature/two-green",
+        )
+        self.assertNotEqual(self.review_merge_commit, self.main_merge_commit)
+        self.git("checkout", "--quiet", "--detach", self.main_merge_commit)
         self.policy = self.root / "policy.json"
         self.policy.write_bytes(gate.canonical_json_bytes(gate.expected_policy()))
         self.output = self.root / gate.OUTPUT_NAME
@@ -57,7 +75,8 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
             run_id=100,
             event="pull_request",
             branch="feature/two-green",
-            head_sha="a" * 40,
+            head_sha=self.pr_head,
+            event_sha=self.review_merge_commit,
             created="2026-09-03T10:00:00Z",
             started="2026-09-03T10:01:00Z",
             completed="2026-09-03T10:30:00Z",
@@ -67,7 +86,8 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
             run_id=200,
             event="push",
             branch="main",
-            head_sha=self.commit,
+            head_sha=self.main_merge_commit,
+            event_sha=self.main_merge_commit,
             created="2026-09-03T11:00:00Z",
             started="2026-09-03T11:01:00Z",
             completed="2026-09-03T11:30:00Z",
@@ -150,6 +170,7 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
         run_id: int,
         event: str,
         head_sha: str,
+        event_sha: str,
         aggregate_bytes: bytes,
         attempt: int = 1,
     ) -> dict[str, object]:
@@ -171,21 +192,20 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
             "humanPullRequestBodyAuthoritative": False,
             "githubRun": {
                 "attempt": attempt,
-                "baseSha": "b" * 40,
+                "baseSha": (
+                    self.base_commit if event == "pull_request" else event_sha
+                ),
                 "eventName": event,
-                "eventSha": self.commit,
+                "eventSha": event_sha,
                 "headSha": head_sha,
                 "id": run_id,
             },
             "androidSource": {
-                "checkedOutHead": self.commit,
+                "checkedOutHead": event_sha,
                 "checkedOutTree": self.tree,
                 "repository": "https://github.com/ArchonMegalon/chummer-android.git",
             },
-            "dependencyGraph": {
-                name: {"commit": commit, "repository": f"https://example.invalid/{name}.git", "tree": "c" * 40}
-                for name, commit in sorted(gate.P0.EXPECTED_DEPENDENCY_COMMITS.items())
-            },
+            "dependencyGraph": self.dependency_graph(event_sha),
             "workflow": {
                 "path": gate.WORKFLOW_PATH,
                 "sha256": sha256(self.source_workflow.read_bytes()),
@@ -212,6 +232,25 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
         }
         return {**unsigned, "authoritySha256": gate.P0.canonical_sha256(unsigned)}
 
+    def dependency_graph(self, android_commit: str) -> dict[str, object]:
+        sources = {
+            name: {
+                "commit": (
+                    android_commit
+                    if name == "android"
+                    else gate.P0.EXPECTED_DEPENDENCY_COMMITS[name]
+                ),
+                "repository": repository,
+                "tree": self.tree if name == "android" else "c" * 40,
+            }
+            for name, repository in sorted(gate.P0.HOSTED.EXPECTED_SOURCES.items())
+        }
+        unsigned = {
+            "mode": {"localCompatibilityTree": True, "packageOnly": False},
+            "sources": sources,
+        }
+        return {**unsigned, "sha256": gate.canonical_sha256(unsigned)}
+
     @staticmethod
     def archive(path: Path, member: str, data: bytes) -> None:
         with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED) as bundle:
@@ -225,6 +264,7 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
         event: str,
         branch: str,
         head_sha: str,
+        event_sha: str,
         created: str,
         started: str,
         completed: str,
@@ -272,6 +312,7 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
                 run_id=run_id,
                 event=event,
                 head_sha=head_sha,
+                event_sha=event_sha,
                 aggregate_bytes=aggregate_bytes,
                 attempt=attempt,
             )
@@ -324,6 +365,16 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
     def create(self) -> dict[str, object]:
         return gate.create_authority(**self.inputs)
 
+    def read_p0(self, role: str) -> dict[str, object]:
+        with zipfile.ZipFile(self.inputs[f"{role}_p0_archive"]) as archive:
+            return json.loads(archive.read(gate.P0.OUTPUT_NAME))
+
+    @staticmethod
+    def rehash_dependency_graph(p0: dict[str, object]) -> None:
+        graph = p0["dependencyGraph"]
+        unsigned = {"mode": graph["mode"], "sources": graph["sources"]}
+        graph["sha256"] = gate.canonical_sha256(unsigned)
+
     def rewrite_proof(
         self,
         role: str,
@@ -337,6 +388,11 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
             run_id=run["id"],
             event=run["event"],
             head_sha=run["head_sha"],
+            event_sha=(
+                self.review_merge_commit
+                if role == "review"
+                else self.main_merge_commit
+            ),
             aggregate_bytes=aggregate_bytes,
             attempt=run["run_attempt"],
         )
@@ -371,12 +427,36 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
         self.assertEqual(self.tree, result["sourceTree"])
         self.assertEqual("pull_request", result["reviewRun"]["run"]["event"])
         self.assertEqual("push", result["mainRun"]["run"]["event"])
+        self.assertEqual(
+            self.review_merge_commit,
+            self.read_p0("review")["androidSource"]["checkedOutHead"],
+        )
+        self.assertEqual(
+            self.main_merge_commit,
+            self.read_p0("main")["androidSource"]["checkedOutHead"],
+        )
+        self.assertNotEqual(self.review_merge_commit, self.main_merge_commit)
+        common_android = result["commonAuthority"]["dependencyGraph"]["sources"]["android"]
+        self.assertEqual(
+            {
+                "repository": gate.P0.HOSTED.EXPECTED_SOURCES["android"],
+                "tree": self.tree,
+            },
+            common_android,
+        )
+        self.assertNotIn("commit", common_android)
         self.assertEqual(gate.REQUIRED_JOB_NAMES, tuple(result["mainRun"]["jobs"]))
         self.assertEqual(
             result["reviewRun"]["artifacts"]["aggregate"]["memberSha256"],
             self.p0_aggregate_sha("review"),
         )
-        gate.write_atomically(self.output, result)
+        self.assertEqual(
+            0,
+            gate.main(
+                ["materialize", *self.cli_inputs(), "--output", str(self.output)]
+            ),
+        )
+        self.assertEqual(result, json.loads(self.output.read_text(encoding="utf-8")))
         self.assertEqual(0, gate.main(["verify", *self.cli_inputs(), "--authority", str(self.output)]))
 
     def p0_aggregate_sha(self, role: str) -> str:
@@ -429,15 +509,35 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
 
         with zipfile.ZipFile(self.inputs["main_aggregate_archive"], "r") as archive:
             aggregate = json.loads(archive.read("receipt.json"))
+
+        def drift_android_tree(value: dict[str, object]) -> None:
+            value["androidSource"]["checkedOutTree"] = "0" * 40
+            value["dependencyGraph"]["sources"]["android"]["tree"] = "0" * 40
+            self.rehash_dependency_graph(value)
+
+        self.rewrite_proof("main", aggregate, mutate_p0=drift_android_tree)
+        try:
+            with self.assertRaisesRegex(ValueError, "tree/aggregate authority differs"):
+                self.create()
+        finally:
+            self.inputs["main_aggregate_archive"].write_bytes(original_aggregate)
+            self.inputs["main_p0_archive"].write_bytes(original_p0)
+            self.inputs["main_artifacts"].write_bytes(original_artifacts)
+
+        def drift_non_android_dependency(value: dict[str, object]) -> None:
+            value["dependencyGraph"]["sources"]["presentation"]["commit"] = "0" * 40
+            self.rehash_dependency_graph(value)
+
         self.rewrite_proof(
             "main",
             aggregate,
-            mutate_p0=lambda value: value["androidSource"].update(
-                {"checkedOutTree": "0" * 40}
-            ),
+            mutate_p0=drift_non_android_dependency,
         )
         try:
-            with self.assertRaisesRegex(ValueError, "tree/aggregate authority differs"):
+            with self.assertRaisesRegex(
+                ValueError,
+                "dependency commit differs: presentation",
+            ):
                 self.create()
         finally:
             self.inputs["main_aggregate_archive"].write_bytes(original_aggregate)

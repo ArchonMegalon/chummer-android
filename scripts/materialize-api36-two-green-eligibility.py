@@ -460,6 +460,82 @@ def extract_exact_json_archive(
     return value, binding, data
 
 
+def normalized_dependency_authority(
+    *,
+    p0: dict[str, object],
+    local_tree: str,
+    role: str,
+) -> dict[str, object]:
+    """Bind the common dependency graph while excluding only Android commit identity.
+
+    A pull-request run checks out GitHub's tested merge commit, while the later
+    main push normally has a distinct merge commit with the same tree.  Those
+    commit identities are already bound by each run's P0 authority.  The
+    two-green common authority therefore compares the exact Android tree and
+    every non-Android source identity, but not those two expected run-local
+    Android commit IDs.
+    """
+    graph = p0.get("dependencyGraph")
+    if not isinstance(graph, dict) or set(graph) != {"mode", "sources", "sha256"}:
+        raise ValueError(f"{role} P0 dependency graph fields differ")
+    mode = graph.get("mode")
+    if mode != {"localCompatibilityTree": True, "packageOnly": False}:
+        raise ValueError(f"{role} P0 dependency mode differs")
+    sources = graph.get("sources")
+    expected_repositories = P0.HOSTED.EXPECTED_SOURCES
+    if not isinstance(sources, dict) or set(sources) != set(expected_repositories):
+        raise ValueError(f"{role} P0 dependency source set differs")
+
+    validated_sources: dict[str, dict[str, object]] = {}
+    for name in sorted(expected_repositories):
+        source = sources.get(name)
+        if (
+            not isinstance(source, dict)
+            or set(source) != {"commit", "repository", "tree"}
+            or source.get("repository") != expected_repositories[name]
+        ):
+            raise ValueError(f"{role} P0 dependency source authority differs: {name}")
+        commit = _sha40(source.get("commit"), f"{role} {name} dependency commit")
+        tree = _sha40(source.get("tree"), f"{role} {name} dependency tree")
+        if name != "android" and commit != P0.EXPECTED_DEPENDENCY_COMMITS[name]:
+            raise ValueError(f"{role} P0 dependency commit differs: {name}")
+        validated_sources[name] = {
+            "commit": commit,
+            "repository": source["repository"],
+            "tree": tree,
+        }
+
+    raw_graph = {"mode": mode, "sources": validated_sources}
+    if graph.get("sha256") != canonical_sha256(raw_graph):
+        raise ValueError(f"{role} P0 dependency graph digest differs")
+
+    github_run = p0.get("githubRun")
+    android_source = p0.get("androidSource")
+    android = validated_sources["android"]
+    if (
+        not isinstance(github_run, dict)
+        or android["commit"] != github_run.get("eventSha")
+        or android["tree"] != local_tree
+        or android_source != {
+            "checkedOutHead": android["commit"],
+            "checkedOutTree": android["tree"],
+            "repository": android["repository"],
+        }
+    ):
+        raise ValueError(f"{role} P0 Android commit/tree authority differs")
+
+    common_sources = {
+        name: (
+            {"repository": source["repository"], "tree": source["tree"]}
+            if name == "android"
+            else source
+        )
+        for name, source in validated_sources.items()
+    }
+    common_graph = {"mode": mode, "sources": common_sources}
+    return {**common_graph, "sha256": canonical_sha256(common_graph)}
+
+
 def validate_proof_artifacts(
     *,
     p0: dict[str, object],
@@ -495,6 +571,11 @@ def validate_proof_artifacts(
         raise ValueError(f"{role} P0/run/tree/aggregate authority differs")
     if aggregate.get("artifactAuthority", {}).get("runId") != run["id"]:
         raise ValueError(f"{role} aggregate run authority differs")
+    dependency_authority = normalized_dependency_authority(
+        p0=p0,
+        local_tree=local_tree,
+        role=role,
+    )
     environment = aggregate["environmentAuthority"]
     assert isinstance(environment, dict)
     build = environment["build"]
@@ -503,7 +584,7 @@ def validate_proof_artifacts(
         "androidTree": local_tree,
         "authorityClass": p0["authorityClass"],
         "proofScope": p0["proofScope"],
-        "dependencyGraph": p0["dependencyGraph"],
+        "dependencyGraph": dependency_authority,
         "workflow": p0["workflow"],
         "wizardGate": p0["inputs"]["wizardGate"],
         "aggregateSchema": aggregate["schema"],

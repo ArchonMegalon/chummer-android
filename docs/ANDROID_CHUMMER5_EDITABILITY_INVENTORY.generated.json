@@ -862,7 +862,7 @@
       {
         "path": "scripts/materialize-api36-two-green-eligibility.py",
         "exists": true,
-        "sha256": "10aeabd0e4a4a1247f75bfa0ebbfb60da57ca8952f2b793543690f4dcab564cc"
+        "sha256": "8dbeadb8fb416d3f804a637e595d32e80dd5e7d89654c017261f6936650f96bc"
       },
       {
         "path": "scripts/materialize-android-p0-pr-authority.py",
@@ -922,7 +922,7 @@
       {
         "path": "tests/test_api36_two_green_eligibility.py",
         "exists": true,
-        "sha256": "f6053dad654047c36ae5752c188ca790d86f85646b3cf999087214564fe8ba69"
+        "sha256": "105e00cb5854d491d0399ffeae698017086855c3db5bacd904670f2978f14c93"
       },
       {
         "path": "tests/test_android_p0_pr_authority.py",
