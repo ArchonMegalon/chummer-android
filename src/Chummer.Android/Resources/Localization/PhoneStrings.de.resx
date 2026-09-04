@@ -94,4 +94,7 @@
   <data name="PlayUpdates" xml:space="preserve"><value>Updates werden über Google Play bereitgestellt</value></data>
   <data name="UpdateUnavailable" xml:space="preserve"><value>Update-Prüfung nicht verfügbar</value></data>
   <data name="Ok" xml:space="preserve"><value>OK</value></data>
+  <data name="Close" xml:space="preserve"><value>Schließen</value></data>
+  <data name="RunnerSetup" xml:space="preserve"><value>Runner-Erstellung</value></data>
+  <data name="DialogApplyingChoice" xml:space="preserve"><value>Deine Auswahl wird übernommen… Das kann einen Moment dauern.</value></data>
 </root>

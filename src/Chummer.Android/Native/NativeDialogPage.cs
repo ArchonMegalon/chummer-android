@@ -12,23 +12,33 @@ public sealed class NativeDialogPage : ContentPage
     private readonly RunnerSessionCoordinator _coordinator;
     private readonly NativeDialogInteractionGate _interactionGate = new();
     private readonly List<PendingTextField> _pendingTextFields = [];
+    private readonly List<InteractiveElement> _interactiveElements = [];
+    private readonly ToolbarItem _closeToolbarItem;
     private DesktopDialogState? _renderedDialog;
+    private ActivityIndicator? _busyIndicator;
+    private Label? _busyLabel;
+    private bool _interactionBusy;
     private long _renderGeneration;
 
     private sealed record PendingTextField(
         NativeDialogFieldBinding Binding,
         Func<string?> ReadValue);
 
+    private sealed record InteractiveElement(
+        VisualElement Element,
+        bool EnabledWhenIdle);
+
     public NativeDialogPage(RunnerSessionCoordinator coordinator, DesktopDialogState dialog)
     {
         _coordinator = coordinator;
         BackgroundColor = NativeTheme.Paper;
         Title = dialog.Title;
-        ToolbarItems.Add(new ToolbarItem
+        _closeToolbarItem = new ToolbarItem
         {
-            Text = "Close",
+            Text = PhoneStrings.Get("Close", "Close"),
             Command = new Command(async () => await CloseAsync(updatePresenter: true))
-        });
+        };
+        ToolbarItems.Add(_closeToolbarItem);
         Render(dialog);
     }
 
@@ -45,13 +55,14 @@ public sealed class NativeDialogPage : ContentPage
         _renderGeneration = _interactionGate.BeginRender();
         _renderedDialog = dialog;
         _pendingTextFields.Clear();
+        _interactiveElements.Clear();
         VerticalStackLayout body = new()
         {
             AutomationId = "dialog-surface",
             Padding = new Thickness(20, 18, 20, 32),
             Spacing = 16
         };
-        body.Add(NativeTheme.Eyebrow("Runner setup"));
+        body.Add(NativeTheme.Eyebrow(PhoneStrings.Get("RunnerSetup", "Runner setup")));
         body.Add(NativeTheme.Title(dialog.Title, 24));
         if (!string.IsNullOrWhiteSpace(_coordinator.State.Error))
         {
@@ -97,16 +108,44 @@ public sealed class NativeDialogPage : ContentPage
                 ? NativeTheme.PrimaryButton(action.Label)
                 : NativeTheme.SecondaryButton(action.Label);
             button.AutomationId = $"dialog-action-{Token(action.Id)}";
+            TrackInteractive(button, enabledWhenIdle: true);
             button.Clicked += async (_, _) => await ExecuteAsync(binding);
             actions.Add(button, index % 2, index / 2);
             index++;
         }
+        int actionsInsertIndex = body.Count;
         if (dialog.Actions.Count > 0)
         {
             body.Add(actions);
         }
 
+        HorizontalStackLayout busy = new()
+        {
+            AutomationId = "dialog-busy",
+            Spacing = 10,
+            IsVisible = _interactionBusy,
+            VerticalOptions = LayoutOptions.Center
+        };
+        _busyIndicator = new ActivityIndicator
+        {
+            AutomationId = "dialog-busy-indicator",
+            Color = NativeTheme.Signal,
+            IsRunning = _interactionBusy,
+            IsVisible = _interactionBusy,
+            VerticalOptions = LayoutOptions.Center
+        };
+        _busyLabel = NativeTheme.Body(
+            PhoneStrings.Get("DialogApplyingChoice", "Applying your choice… This may take a moment."),
+            NativeTheme.Muted);
+        _busyLabel.AutomationId = "dialog-busy-label";
+        _busyLabel.IsVisible = _interactionBusy;
+        SemanticProperties.SetDescription(_busyLabel, _busyLabel.Text);
+        busy.Add(_busyIndicator);
+        busy.Add(_busyLabel);
+        body.Insert(actionsInsertIndex, busy);
+
         Content = new ScrollView { Content = body };
+        _closeToolbarItem.IsEnabled = !_interactionBusy;
     }
 
     private View CreateField(string dialogId, long renderGeneration, DesktopDialogField field)
@@ -128,11 +167,12 @@ public sealed class NativeDialogPage : ContentPage
                 Title = string.IsNullOrWhiteSpace(field.Placeholder) ? $"Choose {field.Label}" : field.Placeholder,
                 ItemsSource = options.Select(static option => option.Label).ToArray(),
                 SelectedIndex = selectedIndex,
-                IsEnabled = !field.IsReadOnly,
+                IsEnabled = !field.IsReadOnly && !_interactionBusy,
                 BackgroundColor = NativeTheme.Surface,
                 TextColor = NativeTheme.Text,
                 HeightRequest = 52
             };
+            TrackInteractive(picker, enabledWhenIdle: !field.IsReadOnly);
             if (!field.IsReadOnly)
             {
                 picker.SelectedIndexChanged += async (_, _) =>
@@ -153,9 +193,10 @@ public sealed class NativeDialogPage : ContentPage
             {
                 AutomationId = $"dialog-field-{Token(field.Id)}",
                 IsToggled = bool.TryParse(field.Value, out bool enabled) && enabled,
-                IsEnabled = !field.IsReadOnly,
+                IsEnabled = !field.IsReadOnly && !_interactionBusy,
                 OnColor = NativeTheme.Signal
             };
+            TrackInteractive(toggle, enabledWhenIdle: !field.IsReadOnly);
             if (!field.IsReadOnly)
             {
                 toggle.Toggled += async (_, args) =>
@@ -178,6 +219,7 @@ public sealed class NativeDialogPage : ContentPage
                 BackgroundColor = NativeTheme.Surface,
                 TextColor = NativeTheme.Text
             };
+            TrackInteractive(editor, enabledWhenIdle: !field.IsReadOnly);
             if (!field.IsReadOnly)
             {
                 PendingTextField pending = new(binding, () => editor.Text);
@@ -200,6 +242,7 @@ public sealed class NativeDialogPage : ContentPage
                     ? Keyboard.Numeric
                     : Keyboard.Default
             };
+            TrackInteractive(entry, enabledWhenIdle: !field.IsReadOnly);
             if (!field.IsReadOnly)
             {
                 PendingTextField pending = new(binding, () => entry.Text);
@@ -210,6 +253,37 @@ public sealed class NativeDialogPage : ContentPage
         }
 
         return NativeTheme.Card(fieldLayout, new Thickness(14));
+    }
+
+    private void TrackInteractive(VisualElement element, bool enabledWhenIdle)
+    {
+        element.IsEnabled = enabledWhenIdle && !_interactionBusy;
+        _interactiveElements.Add(new InteractiveElement(element, enabledWhenIdle));
+    }
+
+    private void SetInteractionBusy(bool busy)
+    {
+        _interactionBusy = busy;
+        _closeToolbarItem.IsEnabled = !busy;
+        foreach (InteractiveElement interactive in _interactiveElements)
+        {
+            interactive.Element.IsEnabled = interactive.EnabledWhenIdle && !busy;
+        }
+
+        if (_busyIndicator is not null)
+        {
+            _busyIndicator.IsVisible = busy;
+            _busyIndicator.IsRunning = busy;
+        }
+        if (_busyLabel is not null)
+        {
+            _busyLabel.IsVisible = busy;
+        }
+    }
+
+    private static async Task YieldBusyFrameAsync()
+    {
+        await Task.Yield();
     }
 
     private static string Token(string value)
@@ -449,44 +523,53 @@ public sealed class NativeDialogPage : ContentPage
             return;
         }
 
-        await _interactionGate.RunClaimedActionAsync(
-            async () =>
-            {
-                await CommitPendingTextFieldsCoreAsync();
-                if (!TryResolveActiveAction(binding, out DesktopDialogAction action))
+        SetInteractionBusy(true);
+        await YieldBusyFrameAsync();
+        try
+        {
+            await _interactionGate.RunClaimedActionAsync(
+                async () =>
                 {
-                    throw new InvalidOperationException(
-                        $"Dialog action '{binding.ActionId}' changed before it could be executed.");
-                }
-
-                await _coordinator.ExecuteDialogActionAsync(action.Id);
-                DesktopDialogState? next = _coordinator.State.ActiveDialog;
-                if (next is null)
-                {
-                    bool routeToCreationWizard = (string.Equals(
-                                                       action.Id,
-                                                       CreateCharacterActionId,
-                                                       StringComparison.Ordinal)
-                                                   || string.Equals(
-                                                       action.Id,
-                                                       CompleteNewCharacterWorkflowActionId,
-                                                       StringComparison.Ordinal))
-                        && _coordinator.State.WorkspaceId is not null
-                        && _coordinator.State.Profile?.Created == false;
-                    await CloseCoreAsync(updatePresenter: false);
-                    if (routeToCreationWizard
-                        && Shell.Current is Chummer.Android.MainShell { UsesTabletComposition: false } shell)
+                    await CommitPendingTextFieldsCoreAsync();
+                    if (!TryResolveActiveAction(binding, out DesktopDialogAction action))
                     {
-                        await shell.GoToAsync(PhoneShellRoutes.RunnerAbsolute);
+                        throw new InvalidOperationException(
+                            $"Dialog action '{binding.ActionId}' changed before it could be executed.");
                     }
-                }
-                else
-                {
-                    Title = next.Title;
-                    Render(next);
-                }
-            },
-            HandleInteractionFailureAsync);
+
+                    await _coordinator.ExecuteDialogActionAsync(action.Id);
+                    DesktopDialogState? next = _coordinator.State.ActiveDialog;
+                    if (next is null)
+                    {
+                        bool routeToCreationWizard = (string.Equals(
+                                                           action.Id,
+                                                           CreateCharacterActionId,
+                                                           StringComparison.Ordinal)
+                                                       || string.Equals(
+                                                           action.Id,
+                                                           CompleteNewCharacterWorkflowActionId,
+                                                           StringComparison.Ordinal))
+                            && _coordinator.State.WorkspaceId is not null
+                            && _coordinator.State.Profile?.Created == false;
+                        await CloseCoreAsync(updatePresenter: false);
+                        if (routeToCreationWizard
+                            && Shell.Current is Chummer.Android.MainShell { UsesTabletComposition: false } shell)
+                        {
+                            await shell.GoToAsync(PhoneShellRoutes.RunnerAbsolute);
+                        }
+                    }
+                    else
+                    {
+                        Title = next.Title;
+                        Render(next);
+                    }
+                },
+                HandleInteractionFailureAsync);
+        }
+        finally
+        {
+            SetInteractionBusy(false);
+        }
     }
 
     private async Task HandleInteractionFailureAsync(Exception ex)
