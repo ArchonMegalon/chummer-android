@@ -1919,7 +1919,7 @@ class AndroidContractTests(unittest.TestCase):
             'NativeTheme.SecondaryButton(PhoneStrings.Get("Print", "Print"))',
             more,
         )
-        self.assertIn('Text = "Close"', dialog)
+        self.assertIn('Text = PhoneStrings.Get("Close", "Close")', dialog)
         self.assertNotIn("Print current view", more + dialog)
 
     def test_android_uses_native_maui_pages_over_shared_presenters(self) -> None:

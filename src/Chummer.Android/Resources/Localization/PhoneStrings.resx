@@ -94,4 +94,7 @@
   <data name="PlayUpdates" xml:space="preserve"><value>Updates come through Google Play</value></data>
   <data name="UpdateUnavailable" xml:space="preserve"><value>Update check unavailable</value></data>
   <data name="Ok" xml:space="preserve"><value>OK</value></data>
+  <data name="Close" xml:space="preserve"><value>Close</value></data>
+  <data name="RunnerSetup" xml:space="preserve"><value>Runner setup</value></data>
+  <data name="DialogApplyingChoice" xml:space="preserve"><value>Applying your choice… This may take a moment.</value></data>
 </root>

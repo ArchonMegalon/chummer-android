@@ -94,4 +94,7 @@
   <data name="PlayUpdates" xml:space="preserve"><value>Las actualizaciones se reciben mediante Google Play</value></data>
   <data name="UpdateUnavailable" xml:space="preserve"><value>La comprobación de actualizaciones no está disponible</value></data>
   <data name="Ok" xml:space="preserve"><value>Aceptar</value></data>
+  <data name="Close" xml:space="preserve"><value>Cerrar</value></data>
+  <data name="RunnerSetup" xml:space="preserve"><value>Configuración del runner</value></data>
+  <data name="DialogApplyingChoice" xml:space="preserve"><value>Aplicando tu elección… Puede tardar un momento.</value></data>
 </root>

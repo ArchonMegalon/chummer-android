@@ -14308,6 +14308,64 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             dialog_shape,
         )
 
+    def test_dialog_action_exposes_one_localized_busy_state_while_claimed(self) -> None:
+        source = (NATIVE / "NativeDialogPage.cs").read_text(encoding="utf-8")
+        gate = source[source.index("internal sealed class NativeDialogInteractionGate") :]
+        render = source[
+            source.index("private void Render(") : source.index(
+                "private View CreateField("
+            )
+        ]
+        busy = source[
+            source.index("private void TrackInteractive(") : source.index(
+                "private static string Token("
+            )
+        ]
+        execute = source[
+            source.index("private async Task ExecuteAsync(") : source.index(
+                "private async Task HandleInteractionFailureAsync("
+            )
+        ]
+
+        for marker in (
+            'AutomationId = "dialog-busy"',
+            'AutomationId = "dialog-busy-indicator"',
+            'PhoneStrings.Get("DialogApplyingChoice"',
+            "IsRunning = _interactionBusy",
+            "IsVisible = _interactionBusy",
+        ):
+            self.assertIn(marker, render)
+        for marker in (
+            "interactive.Element.IsEnabled = interactive.EnabledWhenIdle && !busy;",
+            "_closeToolbarItem.IsEnabled = !busy;",
+            "_busyIndicator.IsRunning = busy;",
+            "await Task.Yield();",
+        ):
+            self.assertIn(marker, busy)
+
+        self.assertIn("SetInteractionBusy(true);", execute)
+        self.assertIn("await YieldBusyFrameAsync();", execute)
+        self.assertIn("finally", execute)
+        self.assertIn("SetInteractionBusy(false);", execute)
+        self.assertEqual(1, execute.count("await _coordinator.ExecuteDialogActionAsync(action.Id);"))
+        self.assertLess(execute.index("SetInteractionBusy(true);"), execute.index("await YieldBusyFrameAsync();"))
+        self.assertLess(
+            execute.index("await YieldBusyFrameAsync();"),
+            execute.index("await _interactionGate.RunClaimedActionAsync("),
+        )
+        self.assertNotIn("Task.Delay", execute)
+
+        localized = {
+            "PhoneStrings.resx": "Applying your choice… This may take a moment.",
+            "PhoneStrings.de.resx": "Deine Auswahl wird übernommen… Das kann einen Moment dauern.",
+            "PhoneStrings.es.resx": "Aplicando tu elección… Puede tardar un momento.",
+        }
+        localization_root = REPO / "src/Chummer.Android/Resources/Localization"
+        for filename, expected in localized.items():
+            payload = (localization_root / filename).read_text(encoding="utf-8")
+            self.assertIn('name="DialogApplyingChoice"', payload)
+            self.assertIn(expected, payload)
+
         for marker in (
             "Task _tail = Task.CompletedTask;",
             "TaskCompletionSource completion = new(TaskCreationOptions.RunContinuationsAsynchronously);",
