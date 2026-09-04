@@ -535,9 +535,16 @@ def main() -> int:
         raise RuntimeError(
             f"Career Weapon-Fire E2E requires the hosted x86_64 phone lane, got {abi!r}"
         )
+    emulator = device.shell("getprop", "ro.kernel.qemu")
+    if emulator != "1":
+        raise RuntimeError("Career Weapon-Fire E2E requires a hosted emulator")
     device.require_shared_storage_readiness(
         deadline=time.monotonic()
-        + shared.ADB_SHARED_STORAGE_PREFLIGHT_MAX_SECONDS
+        + shared.ADB_SHARED_STORAGE_PREFLIGHT_MAX_SECONDS,
+        hosted_api_level=api,
+        hosted_abi=abi,
+        hosted_emulator=emulator,
+        hosted_proof_attempt=True,
     )
     subprocess.run(
         [

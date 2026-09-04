@@ -66,9 +66,16 @@ def execute(args: argparse.Namespace) -> dict[str, object]:
     abi = device.shell("getprop", "ro.product.cpu.abi")
     if abi != "x86_64":
         raise RuntimeError(f"Hosted Downtime E2E requires x86_64, got {abi!r}")
+    emulator = device.shell("getprop", "ro.kernel.qemu")
+    if emulator != "1":
+        raise RuntimeError("Hosted Downtime E2E requires a hosted emulator")
     device.require_shared_storage_readiness(
         deadline=time.monotonic()
-        + shared.ADB_SHARED_STORAGE_PREFLIGHT_MAX_SECONDS
+        + shared.ADB_SHARED_STORAGE_PREFLIGHT_MAX_SECONDS,
+        hosted_api_level=api,
+        hosted_abi=abi,
+        hosted_emulator=emulator,
+        hosted_proof_attempt=True,
     )
     apk_sha256 = shared.sha256(apk)
     runner_sha256 = shared.sha256(runner)

@@ -249,7 +249,7 @@ class Api36Sr5PlaytimeShortBurstDriverTests(unittest.TestCase):
             authority = root / "source"
             authority.write_text("authority", encoding="utf-8")
             device = mock.Mock(spec=driver.shared.Device)
-            device.shell.side_effect = ["36", "x86_64"]
+            device.shell.side_effect = ["36", "x86_64", "1"]
             provider_registration = {
                 "sha256": driver.shared.sha256(FIXTURE),
                 "schema": "chummer.android.documentsui-provider-registration/v3",
@@ -280,6 +280,13 @@ class Api36Sr5PlaytimeShortBurstDriverTests(unittest.TestCase):
             )
             device.publish_document_for_documents_ui.assert_called_once_with(
                 FIXTURE, driver.shared.sha256(FIXTURE)
+            )
+            device.require_shared_storage_readiness.assert_called_once_with(
+                deadline=mock.ANY,
+                hosted_api_level="36",
+                hosted_abi="x86_64",
+                hosted_emulator="1",
+                hosted_proof_attempt=True,
             )
             prove.assert_called_once_with(
                 device,
@@ -339,7 +346,7 @@ class Api36Sr5PlaytimeShortBurstDriverTests(unittest.TestCase):
             authority = root / "source"
             authority.write_text("before", encoding="utf-8")
             device = mock.Mock(spec=driver.shared.Device)
-            device.shell.side_effect = ["36", "x86_64"]
+            device.shell.side_effect = ["36", "x86_64", "1"]
             device.publish_document_for_documents_ui.return_value = {
                 "sha256": driver.shared.sha256(FIXTURE),
             }

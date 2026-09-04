@@ -27,15 +27,32 @@ class FakeDevice:
     def require_transport_stability(self, *, expected_api_level: str) -> None:
         self.preflight_api = expected_api_level
 
-    def require_shared_storage_readiness(self, *, deadline: float) -> None:
+    def require_shared_storage_readiness(
+        self,
+        *,
+        deadline: float,
+        hosted_api_level: str,
+        hosted_abi: str,
+        hosted_emulator: str,
+        hosted_proof_attempt: bool,
+    ) -> None:
         self.shared_storage_ready = True
         self.shared_storage_deadline = deadline
+        if (
+            hosted_api_level != "36"
+            or hosted_abi != "x86_64"
+            or hosted_emulator != "1"
+            or hosted_proof_attempt is not True
+        ):
+            raise AssertionError("Hosted shared-storage authority was not exact")
 
     def shell(self, *arguments: str) -> str:
         if arguments == ("getprop", "ro.build.version.sdk"):
             return "36"
         if arguments == ("getprop", "ro.product.cpu.abi"):
             return "x86_64"
+        if arguments == ("getprop", "ro.kernel.qemu"):
+            return "1"
         raise AssertionError(f"unexpected shell call: {arguments!r}")
 
     def push_verified(self, source: Path, remote: str, digest: str) -> str:

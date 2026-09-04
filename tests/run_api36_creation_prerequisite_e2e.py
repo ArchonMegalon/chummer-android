@@ -10981,11 +10981,22 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     api = device.shell("getprop", "ro.build.version.sdk")
     if api != "36":
         raise RuntimeError(f"Creation prerequisite E2E requires API 36, got {api!r}")
+    abi = device.shell("getprop", "ro.product.cpu.abi")
+    emulator = device.shell("getprop", "ro.kernel.qemu")
+    if abi != "x86_64" or emulator != "1":
+        raise RuntimeError(
+            "Creation prerequisite E2E storage authority requires the hosted "
+            f"x86_64 emulator, got ABI {abi!r}, qemu {emulator!r}"
+        )
     device.require_shared_storage_readiness(
         deadline=min(
             progress.active_phase_deadline("device-preflight-install"),
             time.monotonic() + shared.ADB_SHARED_STORAGE_PREFLIGHT_MAX_SECONDS,
-        )
+        ),
+        hosted_api_level=api,
+        hosted_abi=abi,
+        hosted_emulator=emulator,
+        hosted_proof_attempt=True,
     )
 
     subprocess.run(

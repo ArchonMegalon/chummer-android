@@ -128,10 +128,17 @@ def execute(args: argparse.Namespace) -> dict[str, object]:
             "Playtime Short Burst E2E requires the hosted x86_64 phone lane, "
             f"got {abi!r}"
         )
+    emulator = device.shell("getprop", "ro.kernel.qemu")
+    if emulator != "1":
+        raise RuntimeError("Playtime Short Burst E2E requires a hosted emulator")
 
     device.require_shared_storage_readiness(
         deadline=time.monotonic()
-        + shared.ADB_SHARED_STORAGE_PREFLIGHT_MAX_SECONDS
+        + shared.ADB_SHARED_STORAGE_PREFLIGHT_MAX_SECONDS,
+        hosted_api_level=api,
+        hosted_abi=abi,
+        hosted_emulator=emulator,
+        hosted_proof_attempt=True,
     )
     device.install_verified(apk, apk_sha256, "--no-streaming", "-r")
     provider_registration = device.publish_document_for_documents_ui(
