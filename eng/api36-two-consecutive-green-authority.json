@@ -6,8 +6,7 @@
     "path": ".github/workflows/api36-editing-e2e.yml"
   },
   "reviewEvents": [
-    "pull_request",
-    "merge_group"
+    "pull_request"
   ],
   "mainRun": {
     "event": "push",
@@ -34,6 +33,12 @@
   "eligibilityScope": "preview11_internal_testing_candidate",
   "requiresDistinctRuns": true,
   "requiresReviewCompletionBeforeMainStart": true,
+  "requiresExactPullRequestAuthority": true,
+  "requiresEmptyActionsPullRequestSummaries": true,
+  "requiresCommitAssociatedPullRequest": true,
+  "requiresExactMergeCommitGraphs": true,
+  "requiresExactAggregateCheckRun": true,
+  "requiresCanonicalActionsDetailsUrls": true,
   "sequenceSemantics": "reviewed_green_followed_later_by_main_green_not_run_adjacency",
   "requiresExactSameAndroidTree": true,
   "requiresExactSameAuthorityIdentities": true,
@@ -49,7 +54,6 @@
     "public_release_readiness",
     "publication_authority",
     "zero_intervening_workflow_runs",
-    "pull_request_merge_commit_lineage_reconstruction",
     "non_android_dependency_commit_tree_reconstruction"
   ]
 }
