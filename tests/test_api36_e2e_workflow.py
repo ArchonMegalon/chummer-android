@@ -57,6 +57,22 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
                 self.assertIn(journey, self.play_release_text)
         self.assertIn("deferred informational evidence", self.play_release_text)
         self.assertIn("passing seven-journey aggregate", self.play_release_text)
+        self.assertIn(
+            "chummer.android.api36-sr5-wizard-e2e-aggregate/v2",
+            self.play_release_text,
+        )
+        self.assertNotIn(
+            "chummer.android.api36-sr5-wizard-e2e-aggregate/v1",
+            self.play_release_text,
+        )
+        self.assertIn(
+            "General and public release gates — outside Preview.11 Internal",
+            self.play_release_text,
+        )
+        self.assertIn(
+            "tablet items do not add a tablet gate to Preview.11",
+            " ".join(self.play_release_text.split()),
+        )
         self.assertNotIn("three-journey aggregate", self.play_release_text)
 
     def test_runs_only_the_phone_beta_profile_on_api_36(self) -> None:
@@ -453,10 +469,11 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         self.assertLess(self.text.index(check), self.text.index("actions/setup-dotnet@"))
         self.assertLess(self.text.index(check), self.text.index("run: scripts/build-debug.sh"))
 
-    def test_every_pull_request_runs_the_phone_gate_while_push_stays_bounded(self) -> None:
+    def test_every_review_event_runs_the_phone_gate_while_push_stays_bounded(self) -> None:
         trigger_block = self.text[self.text.index("on:\n") : self.text.index("permissions:\n")]
-        self.assertIn("  pull_request:\n  push:\n", trigger_block)
+        self.assertIn("  pull_request:\n  merge_group:\n  push:\n", trigger_block)
         self.assertNotIn("  pull_request:\n    paths:", trigger_block)
+        self.assertNotIn("  merge_group:\n    paths:", trigger_block)
         self.assertIn("  push:\n    branches:\n      - main\n    paths:\n", trigger_block)
         self.assertEqual(
             1,
@@ -651,7 +668,11 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         self.assertIn("path: chummer-core-engine", self.text)
         self.assertIn('--workspace-root "${GITHUB_WORKSPACE:?GITHUB_WORKSPACE is required}"', runner)
         self.assertLess(
-            runner.index('install -d -m 0755 "$evidence_root"'),
+            runner.index('install -d -m 0700 "$evidence_root"'),
+            runner.index('case "$journey" in', runner.index('case "$journey" in') + 1),
+        )
+        self.assertLess(
+            runner.index("materialize-api36-emulator-live-observation.py"),
             runner.index('case "$journey" in', runner.index('case "$journey" in') + 1),
         )
 

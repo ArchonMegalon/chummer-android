@@ -26,6 +26,17 @@ from api36_wizard_gate_contract import (  # noqa: E402
     contract_binding,
     journey_map,
 )
+from api36_proof_environment_authority import (  # noqa: E402
+    BUILD_SCHEMA as BUILD_ENVIRONMENT_SCHEMA,
+    DEFAULT_POLICY as DEFAULT_ENVIRONMENT_POLICY,
+    JOURNEY_SCHEMA as JOURNEY_ENVIRONMENT_SCHEMA,
+    StableFile as EnvironmentStableFile,
+    canonical_sha256 as environment_canonical_sha256,
+    load_policy as load_environment_policy,
+    parse_emulator_live_observation,
+    policy_binding as environment_policy_binding,
+    validate_receipt as validate_environment_receipt,
+)
 
 
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
@@ -40,7 +51,17 @@ CREATION_TOTAL_TARGET_MS = 45 * 60 * 1000
 CREATION_METHOD_REACQUISITION_SCAN_ID = (
     "creation-stage-method-ready-reacquisition"
 )
+CREATION_METHOD_REACQUISITION_PHASES = (
+    "advanced-editor-gate-inventory",
+    "resources-prerequisite-rebind",
+)
 CREATION_METHOD_REACQUISITION_MAX_SCROLLS = 18
+CREATION_METHOD_ONE_SHOT_SCHEMA = (
+    "chummer.android.creation-method-one-shot/v1"
+)
+CREATION_METHOD_ONE_SHOT_DIGEST_DOMAIN = (
+    "canonical-accessibility-signature-json"
+)
 CONFIRMED_RECEIPT_SCAN_ID = "creation-prerequisite-confirmed-receipt"
 CONFIRMED_RECEIPT_BACK_REACQUISITION_SCAN_ID = (
     "creation-prerequisite-confirmed-receipt-back-reacquisition"
@@ -145,11 +166,12 @@ STARTED_FIELDS = {
 }
 
 
-def require_creation_method_reacquisition_scan(
+def require_creation_method_reacquisition_scans(
     timing: dict[str, Any],
     *,
-    advanced_phase_elapsed_ms: int,
+    phase_elapsed_by_id: dict[str, int],
 ) -> None:
+    """Require one fully validated method scan in each authorized phase."""
     scans = timing.get("scans")
     if not isinstance(scans, list):
         raise ValueError("creation prerequisite scan timing evidence is missing")
@@ -159,103 +181,276 @@ def require_creation_method_reacquisition_scan(
         if isinstance(scan, dict)
         and scan.get("scanId") == CREATION_METHOD_REACQUISITION_SCAN_ID
     ]
-    if len(matches) != 1:
+    if len(matches) != len(CREATION_METHOD_REACQUISITION_PHASES):
         raise ValueError(
             "creation method reacquisition scan cardinality differs: "
+            f"expected={len(CREATION_METHOD_REACQUISITION_PHASES)}, "
+            f"actual={len(matches)}"
+        )
+    observed_phases = tuple(scan.get("phaseId") for scan in matches)
+    unknown_phases = [
+        phase_id
+        for phase_id in observed_phases
+        if phase_id not in CREATION_METHOD_REACQUISITION_PHASES
+    ]
+    if unknown_phases:
+        raise ValueError(
+            "creation method reacquisition scan phase whitelist differs: "
+            f"unknown={unknown_phases!r}"
+        )
+    phase_matches = {
+        phase_id: [
+            scan for scan in matches if scan.get("phaseId") == phase_id
+        ]
+        for phase_id in CREATION_METHOD_REACQUISITION_PHASES
+    }
+    incorrect_cardinality = {
+        phase_id: len(phase_scans)
+        for phase_id, phase_scans in phase_matches.items()
+        if len(phase_scans) != 1
+    }
+    if incorrect_cardinality:
+        raise ValueError(
+            "creation method reacquisition per-phase cardinality differs: "
+            f"expected=1, actual={incorrect_cardinality!r}"
+        )
+    if observed_phases != CREATION_METHOD_REACQUISITION_PHASES:
+        raise ValueError(
+            "creation method reacquisition scan phase order differs: "
+            f"expected={CREATION_METHOD_REACQUISITION_PHASES!r}, "
+            f"actual={observed_phases!r}"
+        )
+
+    for phase_id in CREATION_METHOD_REACQUISITION_PHASES:
+        scan = phase_matches[phase_id][0]
+        required_literals: dict[str, Any] = {
+            "status": "resolved",
+            "phaseId": phase_id,
+            "direction": CREATION_METHOD_REACQUISITION_DIRECTION,
+            "distanceRatio": CREATION_METHOD_REACQUISITION_DISTANCE_RATIO,
+            "configuredMaxScrolls": CREATION_METHOD_REACQUISITION_MAX_SCROLLS,
+            "stableRepeats": 2,
+            "maximumEmptyHierarchyReads": 3,
+            "maximumSystemUiDismissals": 3,
+            "phaseBudgetMs": CREATION_PHASE_BUDGETS_MS[phase_id],
+        }
+        differing = {
+            field: (expected, scan.get(field))
+            for field, expected in required_literals.items()
+            if scan.get(field) != expected
+        }
+        if differing:
+            raise ValueError(
+                "creation method reacquisition scan authority differs: "
+                f"phase={phase_id!r}, differing={differing!r}"
+            )
+        if type(scan.get("deadlineEnforced")) is not bool or scan.get(
+            "deadlineEnforced"
+        ) is not True:
+            raise ValueError(
+                "creation method reacquisition scan authority differs: "
+                f"phase={phase_id!r}, deadlineEnforced must be the JSON boolean true"
+            )
+        integer_fields = (
+            "screens",
+            "swipes",
+            "emptyHierarchyReads",
+            "systemUiDismissals",
+            "hierarchyReadCount",
+            "hierarchyElapsedMs",
+            "maximumHierarchyReadMs",
+            "elapsedMs",
+        )
+        invalid = [
+            field
+            for field in integer_fields
+            if type(scan.get(field)) is not int or int(scan[field]) < 0
+        ]
+        if invalid:
+            raise ValueError(
+                "creation method reacquisition scan timing/count data differs: "
+                f"phase={phase_id!r}, fields={invalid!r}"
+            )
+        value = {field: int(scan[field]) for field in integer_fields}
+        read_rounding_ms = (value["hierarchyReadCount"] + 1) // 2
+        mandatory_wait_ms = (
+            value["swipes"] * 200
+            + value["emptyHierarchyReads"] * 750
+            + value["systemUiDismissals"] * 2_000
+        )
+        maximum_lower_bound = (
+            (
+                value["hierarchyElapsedMs"]
+                + value["hierarchyReadCount"]
+                - 1
+            )
+            // value["hierarchyReadCount"]
+            if value["hierarchyReadCount"] > 0
+            else 0
+        )
+        if not (
+            1 <= value["screens"]
+            and 0 <= value["swipes"] <= CREATION_METHOD_REACQUISITION_MAX_SCROLLS
+            and value["emptyHierarchyReads"] <= 3
+            and value["systemUiDismissals"] <= 3
+            and value["hierarchyReadCount"]
+            == value["screens"] + value["emptyHierarchyReads"]
+            and value["screens"]
+            == value["swipes"] + value["systemUiDismissals"] + 1
+            and value["hierarchyReadCount"] > 0
+            and value["maximumHierarchyReadMs"] >= maximum_lower_bound
+            and value["maximumHierarchyReadMs"] <= value["hierarchyElapsedMs"]
+            and value["hierarchyElapsedMs"]
+            <= value["elapsedMs"] + read_rounding_ms
+            and value["hierarchyElapsedMs"] + mandatory_wait_ms
+            <= value["elapsedMs"] + read_rounding_ms + 1
+            and value["elapsedMs"] <= phase_elapsed_by_id[phase_id]
+            and value["elapsedMs"] <= CREATION_PHASE_BUDGETS_MS[phase_id]
+        ):
+            raise ValueError(
+                "creation method reacquisition scan did not reconcile gestures, "
+                "screens, hierarchy reads, or phase timing: "
+                f"phase={phase_id!r}"
+            )
+
+
+def require_creation_method_one_shot_opening(timing: dict[str, Any]) -> None:
+    """Require fresh geometry and one non-replayed tap before route observation."""
+    scans = timing.get("scans")
+    if not isinstance(scans, list):
+        raise ValueError("creation prerequisite scan timing evidence is missing")
+    matches = [
+        scan
+        for scan in scans
+        if isinstance(scan, dict)
+        and scan.get("scanId") == "creation-prerequisite-scan-origin"
+        and scan.get("phaseId") == "prerequisite-authority-inventory"
+        and isinstance(scan.get("openingAction"), dict)
+    ]
+    if len(matches) != 1:
+        raise ValueError(
+            "creation method one-shot opening cardinality differs: "
             f"expected=1, actual={len(matches)}"
         )
     scan = matches[0]
-    required_literals: dict[str, Any] = {
-        "status": "resolved",
-        "phaseId": "advanced-editor-gate-inventory",
-        "direction": CREATION_METHOD_REACQUISITION_DIRECTION,
-        "distanceRatio": CREATION_METHOD_REACQUISITION_DISTANCE_RATIO,
-        "configuredMaxScrolls": CREATION_METHOD_REACQUISITION_MAX_SCROLLS,
-        "stableRepeats": 2,
-        "maximumEmptyHierarchyReads": 3,
-        "maximumSystemUiDismissals": 3,
-        "phaseBudgetMs": CREATION_PHASE_BUDGETS_MS[
-            "advanced-editor-gate-inventory"
-        ],
+    action = scan["openingAction"]
+    pre_tap = action.get("preTap")
+    tap = action.get("tap")
+    first_post_tap = action.get("firstPostTap")
+    if (
+        scan.get("status") != "resolved"
+        or not isinstance(pre_tap, dict)
+        or not isinstance(tap, dict)
+        or not isinstance(first_post_tap, dict)
+    ):
+        raise ValueError("creation method one-shot opening evidence is incomplete")
+    required_literals = {
+        "schema": CREATION_METHOD_ONE_SHOT_SCHEMA,
+        "status": "first-post-tap-observed",
+        "selector": "creation-stage-method",
+        "fullResourceId": (
+            "com.myexternalbrain.chummer:id/creation-stage-method"
+        ),
+        "diagnosticCapture": "creation-priority-core-bootstrap-ready",
+        "tapReplayPerformed": False,
+        "fallbackTapPerformed": False,
     }
     differing = {
-        field: (expected, scan.get(field))
+        field: (expected, action.get(field))
         for field, expected in required_literals.items()
-        if scan.get(field) != expected
+        if action.get(field) != expected
     }
     if differing:
         raise ValueError(
-            "creation method reacquisition scan authority differs: "
-            f"{differing!r}"
+            f"creation method one-shot opening authority differs: {differing!r}"
         )
-    if type(scan.get("deadlineEnforced")) is not bool or scan.get(
-        "deadlineEnforced"
-    ) is not True:
-        raise ValueError(
-            "creation method reacquisition scan authority differs: "
-            "deadlineEnforced must be the JSON boolean true"
-        )
-    integer_fields = (
-        "screens",
-        "swipes",
-        "emptyHierarchyReads",
-        "systemUiDismissals",
-        "hierarchyReadCount",
-        "hierarchyElapsedMs",
-        "maximumHierarchyReadMs",
-        "elapsedMs",
+    bounds_match = re.fullmatch(
+        r"\[([0-9]+),([0-9]+)\]\[([0-9]+),([0-9]+)\]",
+        str(pre_tap.get("bounds", "")),
     )
-    invalid = [
-        field
-        for field in integer_fields
-        if type(scan.get(field)) is not int or int(scan[field]) < 0
-    ]
-    if invalid:
-        raise ValueError(
-            "creation method reacquisition scan timing/count data differs: "
-            f"{invalid!r}"
-        )
-    value = {field: int(scan[field]) for field in integer_fields}
-    read_rounding_ms = (value["hierarchyReadCount"] + 1) // 2
-    mandatory_wait_ms = (
-        value["swipes"] * 200
-        + value["emptyHierarchyReads"] * 750
-        + value["systemUiDismissals"] * 2_000
+    center = pre_tap.get("center")
+    coordinates = tap.get("coordinates")
+    if bounds_match is None:
+        raise ValueError("creation method one-shot bounds are invalid")
+    left, top, right, bottom = (
+        int(value) for value in bounds_match.groups()
     )
-    maximum_lower_bound = (
-        (
-            value["hierarchyElapsedMs"]
-            + value["hierarchyReadCount"]
-            - 1
+    expected_center = {"x": (left + right) // 2, "y": (top + bottom) // 2}
+    if (
+        left >= right
+        or top >= bottom
+        or not isinstance(center, dict)
+        or center != expected_center
+        or not isinstance(coordinates, dict)
+        or coordinates != expected_center
+        or tap.get("command") != "input tap"
+        or type(tap.get("count")) is not int
+        or tap.get("count") != 1
+        or pre_tap.get("enabled") is not True
+        or pre_tap.get("clickable") is not True
+        or type(pre_tap.get("nodeCount")) is not int
+        or int(pre_tap["nodeCount"]) <= 0
+        or pre_tap.get("hierarchyReadCount") != 1
+        or type(pre_tap.get("hierarchyElapsedMs")) is not int
+        or int(pre_tap["hierarchyElapsedMs"]) < 0
+        or pre_tap.get("hierarchyDigestDomain")
+        != CREATION_METHOD_ONE_SHOT_DIGEST_DOMAIN
+        or not isinstance(pre_tap.get("hierarchyDigest"), str)
+        or re.fullmatch(
+            r"sha256:[0-9a-f]{64}",
+            str(pre_tap["hierarchyDigest"]),
         )
-        // value["hierarchyReadCount"]
-        if value["hierarchyReadCount"] > 0
-        else 0
-    )
-    if not (
-        1 <= value["screens"]
-        and 0 <= value["swipes"] <= CREATION_METHOD_REACQUISITION_MAX_SCROLLS
-        and value["emptyHierarchyReads"] <= 3
-        and value["systemUiDismissals"] <= 3
-        and value["hierarchyReadCount"]
-        == value["screens"] + value["emptyHierarchyReads"]
-        and value["screens"]
-        == value["swipes"] + value["systemUiDismissals"] + 1
-        and value["hierarchyReadCount"] > 0
-        and value["maximumHierarchyReadMs"] >= maximum_lower_bound
-        and value["maximumHierarchyReadMs"] <= value["hierarchyElapsedMs"]
-        and value["hierarchyElapsedMs"]
-        <= value["elapsedMs"] + read_rounding_ms
-        and value["hierarchyElapsedMs"] + mandatory_wait_ms
-        <= value["elapsedMs"] + read_rounding_ms + 1
-        and value["elapsedMs"] <= advanced_phase_elapsed_ms
-        and value["elapsedMs"]
-        <= CREATION_PHASE_BUDGETS_MS["advanced-editor-gate-inventory"]
+        is None
+        or not isinstance(pre_tap.get("detail"), str)
+        or not str(pre_tap["detail"]).strip()
     ):
         raise ValueError(
-            "creation method reacquisition scan did not reconcile gestures, screens, "
-            "hierarchy reads, or phase timing"
+            "creation method one-shot target geometry or tap authority differs"
         )
+    cardinalities = (
+        first_post_tap.get("routeCardinality"),
+        first_post_tap.get("methodCardinality"),
+        first_post_tap.get("bindingCardinality"),
+    )
+    if (
+        first_post_tap.get("hierarchyDigestDomain")
+        != CREATION_METHOD_ONE_SHOT_DIGEST_DOMAIN
+        or not isinstance(first_post_tap.get("hierarchyDigest"), str)
+        or re.fullmatch(
+            r"sha256:[0-9a-f]{64}",
+            str(first_post_tap["hierarchyDigest"]),
+        )
+        is None
+        or type(first_post_tap.get("nodeCount")) is not int
+        or int(first_post_tap["nodeCount"]) < 0
+        or any(type(value) is not int or value not in {0, 1} for value in cardinalities)
+        or type(first_post_tap.get("routeResolved")) is not bool
+        or first_post_tap["routeResolved"]
+        is not all(value == 1 for value in cardinalities)
+    ):
+        raise ValueError(
+            "creation method one-shot first post-tap route authority differs"
+        )
+    timestamps: list[datetime] = []
+    for field, container in (
+        ("observedAtUtc", pre_tap),
+        ("issuedAtUtc", tap),
+        ("observedAtUtc", first_post_tap),
+    ):
+        value = container.get(field)
+        if not isinstance(value, str):
+            raise ValueError("creation method one-shot timestamps are missing")
+        try:
+            parsed = datetime.fromisoformat(value)
+        except ValueError as error:
+            raise ValueError(
+                "creation method one-shot timestamp is invalid"
+            ) from error
+        if parsed.utcoffset() != timezone.utc.utcoffset(parsed):
+            raise ValueError("creation method one-shot timestamp is not UTC")
+        timestamps.append(parsed)
+    if timestamps != sorted(timestamps):
+        raise ValueError("creation method one-shot timestamps are not monotonic")
 
 
 def require_confirmed_receipt_back_reacquisition_scan(
@@ -856,15 +1051,22 @@ def read_execution_started(path: Path) -> dict[str, str]:
     return result
 
 
-def require_portable_receipt_seal(receipt: Path, seal: Path) -> str:
-    if seal.is_symlink() or not seal.is_file():
-        raise ValueError(f"journey receipt seal is missing: {seal}")
-    fields = seal.read_text(encoding="utf-8").strip().split()
-    if len(fields) != 2 or fields[1] != "receipt.json" or not SHA256.fullmatch(fields[0]):
-        raise ValueError(f"journey receipt seal is not canonical: {seal}")
-    actual = sha256(receipt)
+def require_portable_receipt_seal(
+    receipt: EnvironmentStableFile,
+    seal: EnvironmentStableFile,
+    *,
+    expected_name: str = "receipt.json",
+) -> str:
+    try:
+        seal_text = seal.data.decode("utf-8", errors="strict")
+    except UnicodeDecodeError as error:
+        raise ValueError(f"journey receipt seal is not UTF-8: {seal.path}") from error
+    fields = seal_text.strip().split()
+    if len(fields) != 2 or fields[1] != expected_name or not SHA256.fullmatch(fields[0]):
+        raise ValueError(f"journey receipt seal is not canonical: {seal.path}")
+    actual = receipt.sha256
     if actual != fields[0]:
-        raise ValueError(f"journey receipt seal mismatch: {receipt}")
+        raise ValueError(f"journey receipt seal mismatch: {receipt.path}")
     return actual
 
 
@@ -1020,12 +1222,11 @@ def require_creation_timing_within_budget(receipt: dict[str, Any]) -> None:
             )
         previous_phase_elapsed[phase_id] = phase_elapsed_ms
         previous_total_elapsed = milestone_total_elapsed_ms
-    require_creation_method_reacquisition_scan(
+    require_creation_method_reacquisition_scans(
         timing,
-        advanced_phase_elapsed_ms=phase_elapsed_by_id[
-            "advanced-editor-gate-inventory"
-        ],
+        phase_elapsed_by_id=phase_elapsed_by_id,
     )
+    require_creation_method_one_shot_opening(timing)
     require_confirmed_receipt_back_reacquisition_scan(
         timing,
         preview_phase_elapsed_ms=phase_elapsed_by_id["preview-confirm"],
@@ -1045,7 +1246,14 @@ def require_creation_timing_within_budget(receipt: dict[str, Any]) -> None:
 def validate_aggregate(
     evidence_root: Path,
     *,
+    build_environment_receipt_path: Path,
+    x64_apk_path: Path,
+    arm64_apk_path: Path,
+    hosted_candidate_path: Path,
+    workflow_path: Path,
+    environment_policy_path: Path = DEFAULT_ENVIRONMENT_POLICY,
     run_id: str,
+    run_attempt: str,
     build_result: str,
     matrix_result: str,
     artifact_id: str,
@@ -1059,10 +1267,54 @@ def validate_aggregate(
         raise ValueError(f"build job did not succeed: {build_result!r}")
     if matrix_result != "success":
         raise ValueError(f"phone journey matrix did not succeed: {matrix_result!r}")
+    if not POSITIVE_INTEGER.fullmatch(run_attempt):
+        raise ValueError("run attempt must be one positive integer")
     if evidence_root.is_symlink() or not evidence_root.is_dir():
         raise ValueError("journey evidence root is not one regular directory")
 
     gate_authority = contract_binding(gate_contract_path)
+    environment_policy_snapshot = EnvironmentStableFile(
+        environment_policy_path,
+        "API-36 proof environment policy",
+    )
+    environment_policy = load_environment_policy(environment_policy_snapshot)
+    expected_environment_policy = environment_policy_binding(
+        environment_policy_snapshot
+    )
+    build_environment_snapshot = EnvironmentStableFile(
+        build_environment_receipt_path,
+        "API-36 build environment receipt",
+    )
+    build_environment_seal_snapshot = EnvironmentStableFile(
+        build_environment_receipt_path.with_name(
+            f"{build_environment_receipt_path.name}.sha256"
+        ),
+        "API-36 build environment receipt seal",
+    )
+    build_environment_receipt_sha256 = require_portable_receipt_seal(
+        build_environment_snapshot,
+        build_environment_seal_snapshot,
+        expected_name=build_environment_receipt_path.name,
+    )
+    if build_environment_receipt_sha256 != build_environment_snapshot.sha256:
+        raise ValueError("build environment receipt seal differs")
+    build_environment = build_environment_snapshot.json()
+    x64_apk_snapshot = EnvironmentStableFile(x64_apk_path, "x64 APK")
+    arm64_apk_snapshot = EnvironmentStableFile(arm64_apk_path, "ARM64 APK")
+    hosted_candidate_snapshot = EnvironmentStableFile(
+        hosted_candidate_path,
+        "hosted ARM64 candidate",
+    )
+    workflow_snapshot = EnvironmentStableFile(workflow_path, "API-36 workflow")
+    validate_environment_receipt(build_environment, environment_policy)
+    if (
+        build_environment.get("schema") != BUILD_ENVIRONMENT_SCHEMA
+        or build_environment.get("receiptRole") != "build"
+        or build_environment.get("policyAuthority") != expected_environment_policy
+        or build_environment.get("gateAuthority") != gate_authority
+        or build_environment.get("publicationAuthorized") is not False
+    ):
+        raise ValueError("build environment authority differs")
     authority = canonical_authority(
         run_id=run_id,
         artifact_id=artifact_id,
@@ -1071,6 +1323,31 @@ def validate_aggregate(
         artifact_attempt=artifact_attempt,
         apk_sha256=apk_sha256,
     )
+    expected_build_subject = {
+        "x64Apk": {
+            "sha256": x64_apk_snapshot.sha256,
+            "sizeBytes": x64_apk_snapshot.size,
+        },
+        "arm64Apk": {
+            "sha256": arm64_apk_snapshot.sha256,
+            "sizeBytes": arm64_apk_snapshot.size,
+        },
+        "hostedCandidate": {
+            "schema": "chummer.android.api36-arm64-hosted-debug-candidate/v1",
+            "sha256": hosted_candidate_snapshot.sha256,
+            "sizeBytes": hosted_candidate_snapshot.size,
+        },
+        "workflow": {
+            "sha256": workflow_snapshot.sha256,
+            "sizeBytes": workflow_snapshot.size,
+        },
+    }
+    build_subject = build_environment.get("subjectAuthority")
+    if (
+        build_subject != expected_build_subject
+        or x64_apk_snapshot.sha256 != apk_sha256
+    ):
+        raise ValueError("build environment does not bind the exact build inputs")
     expected_directories = {
         expected_artifact_directory(journey, run_id): journey for journey in JOURNEYS
     }
@@ -1085,6 +1362,9 @@ def validate_aggregate(
         )
 
     receipt_paths: list[Path] = []
+    environment_receipt_paths: list[Path] = []
+    environment_seal_paths: list[Path] = []
+    emulator_observation_paths: list[Path] = []
     for directory in actual_entries:
         for root, directories, files in os.walk(directory, followlinks=False):
             root_path = Path(root)
@@ -1093,6 +1373,21 @@ def validate_aggregate(
             if any((root_path / child).is_symlink() for child in files):
                 raise ValueError("journey evidence contains a file symlink")
             receipt_paths.extend(root_path / child for child in files if child == "receipt.json")
+            environment_receipt_paths.extend(
+                root_path / child
+                for child in files
+                if child == "environment-receipt.json"
+            )
+            environment_seal_paths.extend(
+                root_path / child
+                for child in files
+                if child == "environment-receipt.json.sha256"
+            )
+            emulator_observation_paths.extend(
+                root_path / child
+                for child in files
+                if child == "emulator-live-observation.json"
+            )
     expected_receipt_paths = {
         evidence_root / directory / "receipt.json" for directory in expected_directories
     }
@@ -1101,16 +1396,55 @@ def validate_aggregate(
             f"exactly {len(JOURNEYS)} top-level named journey receipts are required; "
             f"found={sorted(str(path) for path in receipt_paths)!r}"
         )
+    expected_environment_receipt_paths = {
+        evidence_root / directory / "environment-receipt.json"
+        for directory in expected_directories
+    }
+    expected_environment_seal_paths = {
+        evidence_root / directory / "environment-receipt.json.sha256"
+        for directory in expected_directories
+    }
+    expected_emulator_observation_paths = {
+        evidence_root / directory / "emulator-live-observation.json"
+        for directory in expected_directories
+    }
+    if (
+        len(environment_receipt_paths) != len(JOURNEYS)
+        or set(environment_receipt_paths) != expected_environment_receipt_paths
+        or len(environment_seal_paths) != len(JOURNEYS)
+        or set(environment_seal_paths) != expected_environment_seal_paths
+        or len(emulator_observation_paths) != len(JOURNEYS)
+        or set(emulator_observation_paths) != expected_emulator_observation_paths
+    ):
+        raise ValueError(
+            "exactly one top-level environment receipt, seal, and emulator "
+            "live observation are required "
+            f"for each of the {len(JOURNEYS)} journeys"
+        )
 
     aggregate_journeys: dict[str, Any] = {}
+    aggregate_environments: dict[str, Any] = {}
+    journey_snapshots: list[EnvironmentStableFile] = []
+    journey_compatibility_sha256: str | None = None
+    x64_apk_size = x64_apk_snapshot.size
+    if type(x64_apk_size) is not int or x64_apk_size <= 0:
+        raise ValueError("build environment x64 APK size differs")
     for directory_name, journey in expected_directories.items():
         driver_journey = JOURNEYS[journey]
         directory = evidence_root / directory_name
         receipt_path = directory / "receipt.json"
-        receipt = read_json_object(receipt_path)
-        receipt_sha256 = require_portable_receipt_seal(
+        receipt_snapshot = EnvironmentStableFile(
             receipt_path,
+            f"{journey} finalized journey receipt",
+        )
+        receipt_seal_snapshot = EnvironmentStableFile(
             directory / "receipt.json.sha256",
+            f"{journey} finalized journey receipt seal",
+        )
+        receipt = receipt_snapshot.json()
+        receipt_sha256 = require_portable_receipt_seal(
+            receipt_snapshot,
+            receipt_seal_snapshot,
         )
         started = read_execution_started(directory / "execution-started.txt")
         expected_started = {
@@ -1146,11 +1480,85 @@ def validate_aggregate(
             raise ValueError(f"artifact authority differs: {journey}")
         if journey == "creation-prerequisite":
             require_creation_timing_within_budget(receipt)
+        environment_path = directory / "environment-receipt.json"
+        environment_snapshot = EnvironmentStableFile(
+            environment_path,
+            f"{journey} environment receipt",
+        )
+        environment_seal_snapshot = EnvironmentStableFile(
+            directory / "environment-receipt.json.sha256",
+            f"{journey} environment receipt seal",
+        )
+        environment = environment_snapshot.json()
+        environment_receipt_sha256 = require_portable_receipt_seal(
+            environment_snapshot,
+            environment_seal_snapshot,
+            expected_name="environment-receipt.json",
+        )
+        validate_environment_receipt(environment, environment_policy)
+        emulator_observation_snapshot = EnvironmentStableFile(
+            directory / "emulator-live-observation.json",
+            f"{journey} emulator live observation",
+        )
+        expected_emulator = parse_emulator_live_observation(
+            emulator_observation_snapshot
+        )
+        emulator_execution = expected_emulator["liveObservation"]["execution"]
+        expected_execution = {
+            "runId": int(run_id),
+            "runAttempt": int(run_attempt),
+            "matrixJourney": journey,
+        }
+        if (
+            environment["environment"]["androidSdk"]["emulator"]
+            != expected_emulator
+            or emulator_execution != expected_execution
+        ):
+            raise ValueError(f"emulator live observation differs: {journey}")
+        expected_environment_subject = {
+            "matrixJourney": journey,
+            "driverJourney": driver_journey,
+            "receiptSchema": receipt["schema"],
+            "journeyReceiptSha256": receipt_sha256,
+            "journeyReceiptSizeBytes": receipt_snapshot.size,
+            "apkSha256": apk_sha256,
+            "apkSizeBytes": x64_apk_size,
+            "artifactAuthoritySha256": environment_canonical_sha256(authority),
+        }
+        if (
+            environment.get("schema") != JOURNEY_ENVIRONMENT_SCHEMA
+            or environment.get("receiptRole") != "journey"
+            or environment.get("policyAuthority") != expected_environment_policy
+            or environment.get("gateAuthority") != gate_authority
+            or environment.get("subjectAuthority") != expected_environment_subject
+            or environment.get("publicationAuthorized") is not False
+        ):
+            raise ValueError(f"journey environment authority differs: {journey}")
+        compatibility_sha256 = environment["compatibilitySha256"]
+        if journey_compatibility_sha256 is None:
+            journey_compatibility_sha256 = compatibility_sha256
+        elif compatibility_sha256 != journey_compatibility_sha256:
+            raise ValueError("journey environment compatibility differs")
         aggregate_journeys[journey] = {
             "status": "pass",
             "driverJourney": driver_journey,
             "receiptSha256": receipt_sha256,
         }
+        aggregate_environments[journey] = {
+            "receiptSha256": environment_receipt_sha256,
+            "environmentSha256": environment["environmentSha256"],
+            "compatibilitySha256": compatibility_sha256,
+            "emulatorLiveObservationSha256": emulator_observation_snapshot.sha256,
+        }
+        journey_snapshots.extend(
+            (
+                receipt_snapshot,
+                receipt_seal_snapshot,
+                environment_snapshot,
+                environment_seal_snapshot,
+                emulator_observation_snapshot,
+            )
+        )
 
     aggregate = {
         "schema": AGGREGATE_SCHEMA,
@@ -1161,11 +1569,30 @@ def validate_aggregate(
         "publicationAuthorized": False,
         "gateAuthority": gate_authority,
         "artifactAuthority": authority,
+        "environmentAuthority": {
+            "policyAuthority": expected_environment_policy,
+            "build": {
+                "receiptSha256": build_environment_receipt_sha256,
+                "environmentSha256": build_environment["environmentSha256"],
+                "compatibilitySha256": build_environment["compatibilitySha256"],
+            },
+            "journeyCompatibilitySha256": journey_compatibility_sha256,
+            "journeys": aggregate_environments,
+        },
         "requiredJourneyCount": len(JOURNEYS),
         "requiredJourneys": list(JOURNEYS),
         "journeyCount": len(JOURNEYS),
         "journeys": aggregate_journeys,
     }
+    environment_policy_snapshot.recheck()
+    build_environment_snapshot.recheck()
+    build_environment_seal_snapshot.recheck()
+    x64_apk_snapshot.recheck()
+    arm64_apk_snapshot.recheck()
+    hosted_candidate_snapshot.recheck()
+    workflow_snapshot.recheck()
+    for snapshot in journey_snapshots:
+        snapshot.recheck()
     validate_aggregate_receipt(aggregate, gate_authority)
     return aggregate
 
@@ -1183,6 +1610,7 @@ def validate_aggregate_receipt(
         "publicationAuthorized",
         "gateAuthority",
         "artifactAuthority",
+        "environmentAuthority",
         "requiredJourneyCount",
         "requiredJourneys",
         "journeyCount",
@@ -1214,6 +1642,54 @@ def validate_aggregate_receipt(
         raise ValueError("wizard aggregate journey set differs")
     if "full-editing" in required or "full-editing" in journeys:
         raise ValueError("Full Editing cannot satisfy wizard aggregate authority")
+    environment = value.get("environmentAuthority")
+    if not isinstance(environment, dict) or set(environment) != {
+        "policyAuthority",
+        "build",
+        "journeyCompatibilitySha256",
+        "journeys",
+    }:
+        raise ValueError("wizard aggregate environment authority differs")
+    if (
+        not isinstance(environment["policyAuthority"], dict)
+        or not isinstance(environment["build"], dict)
+        or set(environment["build"])
+        != {"receiptSha256", "environmentSha256", "compatibilitySha256"}
+        or not isinstance(environment["journeys"], dict)
+        or set(environment["journeys"]) != set(required)
+        or not isinstance(environment["journeyCompatibilitySha256"], str)
+        or SHA256.fullmatch(environment["journeyCompatibilitySha256"]) is None
+    ):
+        raise ValueError("wizard aggregate environment binding differs")
+    if any(
+        not isinstance(environment["build"][field], str)
+        or SHA256.fullmatch(environment["build"][field]) is None
+        for field in environment["build"]
+    ):
+        raise ValueError("wizard aggregate build environment member differs")
+    for binding in environment["journeys"].values():
+        if (
+            not isinstance(binding, dict)
+            or set(binding)
+            != {
+                "receiptSha256",
+                "environmentSha256",
+                "compatibilitySha256",
+                "emulatorLiveObservationSha256",
+            }
+            or any(
+                not isinstance(binding[field], str)
+                or SHA256.fullmatch(binding[field]) is None
+                for field in binding
+            )
+        ):
+            raise ValueError("wizard aggregate environment member differs")
+    if any(
+        binding["compatibilitySha256"]
+        != environment["journeyCompatibilitySha256"]
+        for binding in environment["journeys"].values()
+    ):
+        raise ValueError("wizard aggregate journey environments are not compatible")
 
 
 def write_atomically(path: Path, value: dict[str, Any]) -> None:
@@ -1246,7 +1722,22 @@ def main() -> int:
     parser.add_argument("--evidence-root", type=Path, required=True)
     parser.add_argument("--receipt", type=Path, required=True)
     parser.add_argument("--gate-contract", type=Path, default=DEFAULT_CONTRACT)
+    parser.add_argument(
+        "--environment-policy",
+        type=Path,
+        default=DEFAULT_ENVIRONMENT_POLICY,
+    )
+    parser.add_argument(
+        "--build-environment-receipt",
+        type=Path,
+        required=True,
+    )
+    parser.add_argument("--x64-apk", type=Path, required=True)
+    parser.add_argument("--arm64-apk", type=Path, required=True)
+    parser.add_argument("--hosted-candidate", type=Path, required=True)
+    parser.add_argument("--workflow", type=Path, required=True)
     parser.add_argument("--run-id", required=True)
+    parser.add_argument("--run-attempt", required=True)
     parser.add_argument("--build-result", required=True)
     parser.add_argument("--matrix-result", required=True)
     parser.add_argument("--artifact-id", required=True)
@@ -1265,7 +1756,14 @@ def main() -> int:
 
     aggregate = validate_aggregate(
         evidence_root,
+        build_environment_receipt_path=args.build_environment_receipt,
+        x64_apk_path=args.x64_apk,
+        arm64_apk_path=args.arm64_apk,
+        hosted_candidate_path=args.hosted_candidate,
+        workflow_path=args.workflow,
+        environment_policy_path=args.environment_policy,
         run_id=args.run_id,
+        run_attempt=args.run_attempt,
         build_result=args.build_result,
         matrix_result=args.matrix_result,
         artifact_id=args.artifact_id,

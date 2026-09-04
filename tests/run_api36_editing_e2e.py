@@ -132,6 +132,9 @@ BODY_TOTAL_DESCRIPTION = re.compile(
 MAX_LAUNCH_EVIDENCE_CHARACTERS = 1_000_000
 ADB_TRANSPORT_EVENT_SCHEMA = "chummer.android.adb-transport-event/v1"
 ADB_TRANSPORT_PREFLIGHT_SCHEMA = "chummer.android.adb-transport-preflight/v1"
+ADB_SHARED_STORAGE_PREFLIGHT_SCHEMA = (
+    "chummer.android.shared-storage-readiness/v2"
+)
 ADB_TRANSPORT_SUMMARY_SCHEMA = "chummer.android.adb-transport-summary/v1"
 ADB_FILE_HIERARCHY_RETRY_SCHEMA = (
     "chummer.android.file-hierarchy-retry-evidence/v1"
@@ -226,6 +229,16 @@ ADB_FILE_HIERARCHY_VISIBILITY_DELAY_SECONDS = 0.25
 ADB_FILE_HIERARCHY_VISIBILITY_READ_ATTEMPT_MAX_SECONDS = 1.0
 ADB_FILE_HIERARCHY_VISIBILITY_MAX_SECONDS = 6.0
 DOCUMENTS_UI_PACKAGE = "com.google.android.documentsui"
+DOCUMENTS_UI_FILE_ONE_SHOT_SCHEMA = (
+    "chummer.android.documentsui-file-one-shot/v1"
+)
+DOCUMENTS_UI_FILE_FIRST_IMPORT_SCHEMA = (
+    "chummer.android.documentsui-file-first-import-observation/v1"
+)
+DOCUMENTS_UI_FILE_ONE_SHOT_DIGEST_DOMAIN = (
+    "canonical-accessibility-node-set-json"
+)
+DOCUMENTS_UI_EVIDENCE_PREFIX = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$")
 
 
 def _media_provider_display_name_where_argument(display_name: str) -> str:
@@ -291,6 +304,77 @@ ADB_CREATION_DASHBOARD_READY_LOGCAT_ARGUMENTS = (
 ADB_PREFLIGHT_REQUIRED_CONSECUTIVE = 3
 ADB_PREFLIGHT_MAX_OBSERVATIONS = 7
 ADB_PREFLIGHT_OBSERVATION_DELAY_SECONDS = 1.0
+ADB_SHARED_STORAGE_REQUIRED_CONSECUTIVE = 3
+ADB_SHARED_STORAGE_MAX_OBSERVATIONS = 7
+ADB_SHARED_STORAGE_OBSERVATION_DELAY_SECONDS = 1.0
+ADB_SHARED_STORAGE_PREFLIGHT_MAX_SECONDS = 30.0
+ADB_SHARED_STORAGE_STAT_ATTEMPT_MAX_SECONDS = 5.0
+ADB_SHARED_STORAGE_PREINTENT_STAT_TIMEOUT_MAX_RETRIES = 1
+ADB_SHARED_STORAGE_PREINTENT_STAT_TIMEOUT_RETRY_MINIMUM_LEASE_SECONDS = (
+    ADB_SHARED_STORAGE_OBSERVATION_DELAY_SECONDS
+    + ADB_SHARED_STORAGE_STAT_ATTEMPT_MAX_SECONDS
+)
+ADB_SHARED_STORAGE_PREINTENT_ROOT_ENOENT_MAX_RETRIES = 1
+ADB_SHARED_STORAGE_PREINTENT_ROOT_ENOENT_RETRY_MINIMUM_LEASE_SECONDS = (
+    ADB_SHARED_STORAGE_OBSERVATION_DELAY_SECONDS
+    + ADB_SHARED_STORAGE_STAT_ATTEMPT_MAX_SECONDS
+)
+ADB_SHARED_STORAGE_PREINTENT_ROOT_ENOENT_RETRY_MINIMUM_REMAINING_OBSERVATIONS = (
+    ADB_SHARED_STORAGE_REQUIRED_CONSECUTIVE
+)
+ADB_SHARED_STORAGE_BOOTSTRAP_ATTEMPT_MINIMUM_SECONDS = 2.5
+ADB_SHARED_STORAGE_BOOTSTRAP_RECEIPT_HEADROOM_SECONDS = 2.0
+ADB_SHARED_STORAGE_BOOTSTRAP_DEVICE_CALLS = (
+    ADB_SHARED_STORAGE_REQUIRED_CONSECUTIVE + 3
+)
+ADB_SHARED_STORAGE_BOOTSTRAP_OBSERVATION_DELAYS = (
+    ADB_SHARED_STORAGE_REQUIRED_CONSECUTIVE
+)
+ADB_SHARED_STORAGE_INITIALIZATION_MINIMUM_LEASE_SECONDS = (
+    ADB_SHARED_STORAGE_BOOTSTRAP_ATTEMPT_MINIMUM_SECONDS
+    * ADB_SHARED_STORAGE_BOOTSTRAP_DEVICE_CALLS
+    + ADB_SHARED_STORAGE_OBSERVATION_DELAY_SECONDS
+    * ADB_SHARED_STORAGE_BOOTSTRAP_OBSERVATION_DELAYS
+    + ADB_SHARED_STORAGE_BOOTSTRAP_RECEIPT_HEADROOM_SECONDS
+)
+ADB_SHARED_STORAGE_ROOTS = ("/sdcard", "/sdcard/Download")
+ADB_SHARED_STORAGE_STAT_FORMAT = "%n:%d:%i:%f"
+ADB_SHARED_STORAGE_STAT_ARGUMENTS = (
+    "shell",
+    "stat",
+    "-L",
+    "-c",
+    ADB_SHARED_STORAGE_STAT_FORMAT,
+    *ADB_SHARED_STORAGE_ROOTS,
+)
+ADB_SHARED_STORAGE_DOWNLOAD_RAW_STAT_ARGUMENTS = (
+    "shell",
+    "stat",
+    "-c",
+    ADB_SHARED_STORAGE_STAT_FORMAT,
+    "/sdcard/Download",
+)
+ADB_SHARED_STORAGE_INITIALIZE_ARGUMENTS = (
+    "shell",
+    "mkdir",
+    "/sdcard/Download",
+)
+ADB_SHARED_STORAGE_INITIALIZATION_INTENT_SCHEMA = (
+    "chummer.android.shared-storage-initialization-intent/v1"
+)
+ADB_SHARED_STORAGE_INITIALIZATION_OUTCOME_SCHEMA = (
+    "chummer.android.shared-storage-initialization-outcome/v1"
+)
+ADB_SHARED_STORAGE_BOOTSTRAP_SCHEMA = (
+    "chummer.android.shared-storage-bootstrap/v1"
+)
+ADB_SHARED_STORAGE_INITIALIZATION_INTENT_FILENAME = (
+    "adb-shared-storage-initialization-intent.json"
+)
+ADB_SHARED_STORAGE_INITIALIZATION_OUTCOME_FILENAME = (
+    "adb-shared-storage-initialization-outcome.json"
+)
+ADB_SHARED_STORAGE_BOOTSTRAP_FILENAME = "adb-shared-storage-bootstrap.json"
 MAX_ADB_TRANSPORT_EVENTS = 64
 MAX_ADB_FAILURE_DETAIL_CHARACTERS = 4000
 SAFE_READ_ONLY_REMOTE_PATH = re.compile(r"^/[A-Za-z0-9._/:-]{1,511}$")
@@ -298,6 +382,10 @@ SAFE_ANDROID_PROPERTY = re.compile(r"^[A-Za-z0-9._-]{1,255}$")
 ADB_FILE_HIERARCHY_STAT = re.compile(
     r"^(?P<device>[0-9]+):(?P<inode>[0-9]+):(?P<size>[0-9]+):"
     r"(?P<modified>-?[0-9]+):(?P<mode>[0-9a-fA-F]+)$"
+)
+ADB_SHARED_STORAGE_STAT_LINE = re.compile(
+    r"^(?P<path>/[A-Za-z0-9._/-]+):(?P<device>[0-9]+):"
+    r"(?P<inode>[0-9]+):(?P<mode>[0-9a-fA-F]+)$"
 )
 
 
@@ -319,6 +407,180 @@ def _write_new_json_receipt(path: Path, receipt: dict[str, object]) -> None:
         stream.write(encoded)
         stream.flush()
         os.fsync(stream.fileno())
+
+
+def _canonical_json_receipt_bytes(receipt: dict[str, object]) -> bytes:
+    return (
+        json.dumps(
+            receipt,
+            allow_nan=False,
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+        + "\n"
+    ).encode("utf-8")
+
+
+def _write_durable_new_json_receipt(
+    path: Path,
+    receipt: dict[str, object],
+) -> str:
+    """Write exact canonical bytes with O_EXCL and fsync their directory entry."""
+    encoded = _canonical_json_receipt_bytes(receipt)
+    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(descriptor, "wb") as stream:
+        stream.write(encoded)
+        stream.flush()
+        os.fsync(stream.fileno())
+    directory = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        os.fsync(directory)
+    finally:
+        os.close(directory)
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _require_exact_receipt_digest(
+    path: Path,
+    *,
+    expected_sha256: str,
+    label: str,
+) -> None:
+    if path.is_symlink() or not path.is_file():
+        raise RuntimeError(f"{label} receipt is missing or not a regular file")
+    actual = hashlib.sha256(path.read_bytes()).hexdigest()
+    if actual != expected_sha256:
+        raise RuntimeError(
+            f"{label} receipt bytes changed: expected {expected_sha256}, got {actual}"
+        )
+
+
+def _parse_shared_storage_directory_identity(
+    line: str,
+    *,
+    expected_path: str,
+) -> dict[str, str]:
+    match = ADB_SHARED_STORAGE_STAT_LINE.fullmatch(line)
+    if match is None or match.group("path") != expected_path:
+        raise RuntimeError(
+            "Shared-storage stat identity was malformed or substituted"
+        )
+    mode = int(match.group("mode"), 16)
+    if mode & 0o170000 != 0o040000:
+        raise RuntimeError(
+            f"Shared-storage root {expected_path!r} is not a real directory"
+        )
+    return {
+        "path": expected_path,
+        "device": match.group("device"),
+        "inode": match.group("inode"),
+        "mode": match.group("mode").lower(),
+    }
+
+
+def _parse_shared_storage_stat_output(output: str) -> list[dict[str, str]]:
+    """Parse one exact follow-mode stat observation of both governed roots."""
+    lines = output.splitlines()
+    if len(lines) != len(ADB_SHARED_STORAGE_ROOTS):
+        raise RuntimeError(
+            "Shared-storage stat did not return exactly both governed roots"
+        )
+    return [
+        _parse_shared_storage_directory_identity(
+            line,
+            expected_path=expected_path,
+        )
+        for expected_path, line in zip(ADB_SHARED_STORAGE_ROOTS, lines, strict=True)
+    ]
+
+
+def _download_not_initialized_root_identity(
+    error: BaseException,
+) -> dict[str, str] | None:
+    """Return the exact partial root identity from Toybox Download ENOENT."""
+    if not isinstance(error, subprocess.CalledProcessError) or error.returncode != 1:
+        return None
+    command = getattr(error, "cmd", ())
+    command_arguments = tuple(command) if isinstance(command, (list, tuple)) else ()
+    if (
+        len(command_arguments) < len(ADB_SHARED_STORAGE_STAT_ARGUMENTS)
+        or command_arguments[-len(ADB_SHARED_STORAGE_STAT_ARGUMENTS) :]
+        != ADB_SHARED_STORAGE_STAT_ARGUMENTS
+    ):
+        return None
+    raw_stdout = getattr(error, "stdout", "")
+    raw_stderr = getattr(error, "stderr", "")
+    if isinstance(raw_stdout, bytes):
+        try:
+            stdout = raw_stdout.decode("utf-8", errors="strict")
+        except UnicodeDecodeError:
+            return None
+    elif isinstance(raw_stdout, str):
+        stdout = raw_stdout
+    else:
+        return None
+    if isinstance(raw_stderr, bytes):
+        try:
+            stderr = raw_stderr.decode("utf-8", errors="strict")
+        except UnicodeDecodeError:
+            return None
+    elif isinstance(raw_stderr, str):
+        stderr = raw_stderr
+    else:
+        return None
+    if stderr.splitlines() != [
+        "stat: '/sdcard/Download': No such file or directory"
+    ]:
+        return None
+    stdout_lines = stdout.splitlines()
+    if len(stdout_lines) != 1:
+        return None
+    try:
+        return _parse_shared_storage_directory_identity(
+            stdout_lines[0],
+            expected_path="/sdcard",
+        )
+    except RuntimeError:
+        return None
+
+
+def _shared_storage_roots_not_mounted(error: BaseException) -> bool:
+    """Recognize only the exact ordered Toybox ENOENT for both governed roots."""
+    if not isinstance(error, subprocess.CalledProcessError) or error.returncode != 1:
+        return False
+    command = getattr(error, "cmd", ())
+    command_arguments = tuple(command) if isinstance(command, (list, tuple)) else ()
+    if (
+        len(command_arguments) < len(ADB_SHARED_STORAGE_STAT_ARGUMENTS)
+        or command_arguments[-len(ADB_SHARED_STORAGE_STAT_ARGUMENTS) :]
+        != ADB_SHARED_STORAGE_STAT_ARGUMENTS
+    ):
+        return False
+    raw_stdout = getattr(error, "stdout", "")
+    raw_stderr = getattr(error, "stderr", "")
+    if isinstance(raw_stdout, bytes):
+        try:
+            stdout = raw_stdout.decode("utf-8", errors="strict")
+        except UnicodeDecodeError:
+            return False
+    elif isinstance(raw_stdout, str):
+        stdout = raw_stdout
+    else:
+        return False
+    if isinstance(raw_stderr, bytes):
+        try:
+            stderr = raw_stderr.decode("utf-8", errors="strict")
+        except UnicodeDecodeError:
+            return False
+    elif isinstance(raw_stderr, str):
+        stderr = raw_stderr
+    else:
+        return False
+    return stdout == "" and stderr == (
+        "stat: '/sdcard': No such file or directory\n"
+        "stat: '/sdcard/Download': No such file or directory\n"
+    )
 
 
 def _complete_timed_out_hierarchy_output(
@@ -590,16 +852,88 @@ def classify_adb_failure(error: BaseException) -> tuple[str, bool]:
     return ("unclassified-adb-failure", False)
 
 
+def classify_shared_storage_readiness_failure(
+    error: BaseException,
+) -> tuple[str, bool]:
+    """Recognize only exact Toybox stat failures for the requested roots.
+
+    Ordinary ADB transport, daemon, offline, and timeout failures remain
+    non-retryable here.  Retry authority is limited to either an anchored
+    shared-storage-not-connected marker for the governed roots, or the exact
+    Toybox partial observation where ``/sdcard`` is a followed directory and
+    only ``/sdcard/Download`` is not initialized yet.  The exact ordered
+    two-root ENOENT is recognized but remains non-retryable here; only the
+    preflight state machine can grant its one contextual fresh observation.
+    """
+    generic_classification, _generic_retryable = classify_adb_failure(error)
+    if _download_not_initialized_root_identity(error) is not None:
+        return ("shared-storage-download-not-initialized", True)
+    if _shared_storage_roots_not_mounted(error):
+        return ("shared-storage-roots-not-mounted", False)
+    if not isinstance(error, subprocess.CalledProcessError):
+        return (generic_classification, False)
+    if error.returncode != 1:
+        return (generic_classification, False)
+    command = getattr(error, "cmd", ())
+    command_arguments = tuple(command) if isinstance(command, (list, tuple)) else ()
+    if (
+        len(command_arguments) < len(ADB_SHARED_STORAGE_STAT_ARGUMENTS)
+        or command_arguments[-len(ADB_SHARED_STORAGE_STAT_ARGUMENTS) :]
+        != ADB_SHARED_STORAGE_STAT_ARGUMENTS
+    ):
+        return (generic_classification, False)
+    raw_stderr = getattr(error, "stderr", "")
+    if isinstance(raw_stderr, bytes):
+        try:
+            stderr = raw_stderr.decode("utf-8", errors="strict")
+        except UnicodeDecodeError:
+            return (generic_classification, False)
+    elif isinstance(raw_stderr, str):
+        stderr = raw_stderr
+    else:
+        return (generic_classification, False)
+    stderr_lines = stderr.splitlines()
+    if not stderr_lines:
+        return (generic_classification, False)
+    marker = re.compile(
+        r"^stat: (?P<quote>['\"]?)(?P<path>/sdcard(?:/Download)?)"
+        r"(?P=quote): Transport endpoint is not connected$"
+    )
+    paths: list[str] = []
+    for line in stderr_lines:
+        match = marker.fullmatch(line)
+        if match is None or match.group("path") not in ADB_SHARED_STORAGE_ROOTS:
+            return (generic_classification, False)
+        paths.append(match.group("path"))
+    if len(paths) != len(set(paths)):
+        return (generic_classification, False)
+    return ("shared-storage-unavailable", True)
+
+
 def adb_classification_authority(classification: str) -> str:
     if classification in {
         "device-offline",
         "device-missing",
         "transport-closed",
         "daemon-unavailable",
+        "shared-storage-unavailable",
+        "shared-storage-download-not-initialized",
     }:
-        return "recognized-transient-transport-marker"
+        return (
+            "recognized-transient-shared-storage-marker"
+            if classification
+            in {
+                "shared-storage-unavailable",
+                "shared-storage-download-not-initialized",
+            }
+            else "recognized-transient-transport-marker"
+        )
     if classification == "device-unauthorized":
         return "recognized-nonretryable-transport-marker"
+    if classification == "shared-storage-download-disappeared-after-initialization":
+        return "post-bootstrap-download-enoent-fail-closed"
+    if classification == "shared-storage-roots-not-mounted":
+        return "exact-ordered-two-root-enoent-without-retry-authority"
     if classification == "timeout-unknown-outcome":
         return "timeout-with-unknown-command-outcome"
     if classification == "observer-process-killed":
@@ -677,6 +1011,16 @@ def adb_command_retry_policy(arguments: tuple[str, ...]) -> tuple[str, str]:
         return ("read-only-retryable", "exact Android property observation")
     if shell_arguments == ("wm", "size"):
         return ("read-only-retryable", "exact display-size observation")
+    if arguments == ADB_SHARED_STORAGE_STAT_ARGUMENTS:
+        return (
+            "read-only-retryable",
+            "exact follow-mode shared-storage directory identity observation",
+        )
+    if arguments == ADB_SHARED_STORAGE_DOWNLOAD_RAW_STAT_ARGUMENTS:
+        return (
+            "read-only-retryable",
+            "exact raw shared-storage Download directory identity observation",
+        )
     if shell_arguments == ("pidof", PACKAGE):
         return ("read-only-retryable", "exact package process-id observation")
     if (
@@ -785,6 +1129,34 @@ def _remaining_operation_timeout(
             "ADB operation deadline expired before command invocation"
         )
     return min(maximum, remaining)
+
+
+def _shared_storage_bootstrap_attempt_timeout(
+    *,
+    deadline: float,
+    remaining_device_calls: int,
+    remaining_observation_delays: int,
+) -> float:
+    """Allocate one bootstrap call without consuming later proof authority."""
+    if type(remaining_device_calls) is not int or remaining_device_calls <= 0:
+        raise ValueError("Shared-storage bootstrap requires remaining device calls")
+    if (
+        type(remaining_observation_delays) is not int
+        or remaining_observation_delays < 0
+    ):
+        raise ValueError("Shared-storage bootstrap delay count is invalid")
+    remaining = deadline - time.monotonic()
+    reserved = (
+        remaining_observation_delays
+        * ADB_SHARED_STORAGE_OBSERVATION_DELAY_SECONDS
+        + ADB_SHARED_STORAGE_BOOTSTRAP_RECEIPT_HEADROOM_SECONDS
+    )
+    available_per_call = (remaining - reserved) / remaining_device_calls
+    if available_per_call < ADB_SHARED_STORAGE_BOOTSTRAP_ATTEMPT_MINIMUM_SECONDS:
+        raise AdbOperationDeadlineExceeded(
+            "Shared-storage bootstrap cannot preserve its remaining proof lease"
+        )
+    return min(ADB_SHARED_STORAGE_STAT_ATTEMPT_MAX_SECONDS, available_per_call)
 
 
 def _read_only_retry_attempt_timeout(
@@ -928,6 +1300,18 @@ class AdbTransportPreflightError(RuntimeError):
         )
 
 
+class AdbSharedStoragePreflightError(RuntimeError):
+    """Raised before mutation when Android shared storage is not ready."""
+
+    def __init__(self, receipt: dict[str, object], evidence_path: Path) -> None:
+        self.receipt = receipt
+        self.evidence_path = evidence_path
+        super().__init__(
+            "Android shared-storage preflight did not reach the required "
+            f"consecutive directory observations; evidence={evidence_path}"
+        )
+
+
 @dataclass(frozen=True)
 class UiNode:
     attributes: dict[str, str]
@@ -1061,6 +1445,7 @@ class Device:
         self._file_hierarchy_context: tuple[int, int] | None = None
         self._transport_events: list[dict[str, object]] = []
         self._transport_preflight: dict[str, object] | None = None
+        self._shared_storage_preflight: dict[str, object] | None = None
         self._mutation_blocker: dict[str, object] | None = None
         self._phone_ui_locale_binding: PhoneUiLocaleBinding | None = None
         self.evidence.mkdir(parents=True, exist_ok=True)
@@ -1068,6 +1453,10 @@ class Device:
             path
             for path in (
                 self.evidence / "adb-transport-preflight.json",
+                self.evidence / "adb-shared-storage-readiness.json",
+                self.evidence / ADB_SHARED_STORAGE_INITIALIZATION_INTENT_FILENAME,
+                self.evidence / ADB_SHARED_STORAGE_INITIALIZATION_OUTCOME_FILENAME,
+                self.evidence / ADB_SHARED_STORAGE_BOOTSTRAP_FILENAME,
                 *(
                     self.evidence / f"adb-transport-event-{index:04d}.json"
                     for index in range(1, MAX_ADB_TRANSPORT_EVENTS + 1)
@@ -1759,6 +2148,1026 @@ class Device:
             raise failure
         raise failure from terminal_error
 
+    def require_shared_storage_readiness(
+        self,
+        *,
+        deadline: float,
+        hosted_api_level: str | None = None,
+        hosted_abi: str | None = None,
+        hosted_emulator: str | None = None,
+        hosted_proof_attempt: bool = False,
+    ) -> dict[str, object]:
+        """Observe both governed shared-storage roots before device mutation.
+
+        Policy is closed to three consecutive observations in at most seven
+        attempts.  Only one exact Toybox ``stat -L`` command is issued per
+        observation.  A fully anchored FUSE readiness marker, one exact
+        pre-intent read-only stat timeout, or one exact pre-intent ordered
+        two-root ENOENT may cause another fresh observation.  Neither exceptional
+        observation contributes identity evidence or widens the seven-observation
+        or caller-deadline bounds.  Only a hosted API-36 x86_64 proof attempt may
+        use the ENOENT recovery or issue the separately receipted one-shot
+        Download bootstrap mutation.
+        """
+        if type(deadline) is not float or not math.isfinite(deadline):
+            raise TypeError("Shared-storage preflight requires one finite float deadline")
+        started = time.monotonic()
+        if deadline <= started:
+            raise AdbOperationDeadlineExceeded(
+                "Shared-storage preflight caller deadline already expired"
+            )
+        operation_deadline = min(
+            deadline,
+            started + ADB_SHARED_STORAGE_PREFLIGHT_MAX_SECONDS,
+        )
+        receipt_path = self.evidence / "adb-shared-storage-readiness.json"
+        bootstrap_path = self.evidence / ADB_SHARED_STORAGE_BOOTSTRAP_FILENAME
+        intent_path = (
+            self.evidence / ADB_SHARED_STORAGE_INITIALIZATION_INTENT_FILENAME
+        )
+        outcome_path = (
+            self.evidence / ADB_SHARED_STORAGE_INITIALIZATION_OUTCOME_FILENAME
+        )
+        if self._shared_storage_preflight is not None:
+            if self._shared_storage_preflight.get("status") == "pass":
+                return self._shared_storage_preflight
+            raise AdbSharedStoragePreflightError(
+                self._shared_storage_preflight,
+                receipt_path,
+            )
+
+        observations: list[dict[str, object]] = []
+        read_only_commands_issued = 0
+        preintent_stat_timeout_retries_performed = 0
+        preintent_root_enoent_retries_performed = 0
+        consecutive = 0
+        stable_identity: tuple[tuple[str, str, str, str], ...] | None = None
+        missing_download_consecutive = 0
+        missing_download_root_identity: tuple[str, str, str, str] | None = None
+        initialized_root: dict[str, str] | None = None
+        initialized_download: dict[str, str] | None = None
+        initialization_mutations_issued = 0
+        bootstrap_device_calls_remaining = 0
+        bootstrap_observation_delays_remaining = 0
+        bootstrap_written = False
+        terminal_error: BaseException | None = None
+        terminal_failure: dict[str, object] | None = None
+        hosted_authority = {
+            "apiLevel": hosted_api_level,
+            "abi": hosted_abi,
+            "emulator": hosted_emulator,
+            "proofAttempt": hosted_proof_attempt,
+        }
+        initialization: dict[str, object] = {
+            "status": "not-required",
+            "hostedAuthority": hosted_authority,
+            "preconditionRequiredConsecutive": (
+                ADB_SHARED_STORAGE_REQUIRED_CONSECUTIVE
+            ),
+            "minimumDeadlineLeaseSeconds": (
+                ADB_SHARED_STORAGE_INITIALIZATION_MINIMUM_LEASE_SECONDS
+            ),
+            "attemptMinimumSeconds": (
+                ADB_SHARED_STORAGE_BOOTSTRAP_ATTEMPT_MINIMUM_SECONDS
+            ),
+            "attemptMaximumSeconds": ADB_SHARED_STORAGE_STAT_ATTEMPT_MAX_SECONDS,
+            "deviceCalls": ADB_SHARED_STORAGE_BOOTSTRAP_DEVICE_CALLS,
+            "observationDelays": ADB_SHARED_STORAGE_BOOTSTRAP_OBSERVATION_DELAYS,
+            "receiptHeadroomSeconds": (
+                ADB_SHARED_STORAGE_BOOTSTRAP_RECEIPT_HEADROOM_SECONDS
+            ),
+            "attemptTimeoutAllocations": [],
+            "command": list(ADB_SHARED_STORAGE_INITIALIZE_ARGUMENTS),
+            "commandPolicy": "non-replayable",
+            "maximumAttempts": 1,
+            "attempts": 0,
+            "replayAttempted": False,
+            "adbReconnectAttempted": False,
+            "applicationRelaunchAttempted": False,
+            "environmentInitializationMutation": False,
+            "applicationMutation": False,
+            "publicationAuthorized": False,
+            "intentEvidenceFile": None,
+            "intentSha256": None,
+            "outcomeEvidenceFile": None,
+            "outcomeSha256": None,
+            "bootstrapEvidenceFile": None,
+            "bootstrapSha256": None,
+        }
+
+        def identity(root: dict[str, str]) -> tuple[str, str, str, str]:
+            return (
+                root["path"],
+                root["device"],
+                root["inode"],
+                root["mode"],
+            )
+
+        def next_bootstrap_attempt_timeout(command_kind: str) -> float:
+            nonlocal bootstrap_device_calls_remaining
+            timeout = _shared_storage_bootstrap_attempt_timeout(
+                deadline=operation_deadline,
+                remaining_device_calls=bootstrap_device_calls_remaining,
+                remaining_observation_delays=(
+                    bootstrap_observation_delays_remaining
+                ),
+            )
+            allocations = initialization["attemptTimeoutAllocations"]
+            if not isinstance(allocations, list):
+                raise RuntimeError("Shared-storage bootstrap allocation state is invalid")
+            allocations.append(
+                {
+                    "commandKind": command_kind,
+                    "remainingDeviceCallsBefore": bootstrap_device_calls_remaining,
+                    "remainingObservationDelaysBefore": (
+                        bootstrap_observation_delays_remaining
+                    ),
+                    "attemptTimeoutSeconds": timeout,
+                }
+            )
+            bootstrap_device_calls_remaining -= 1
+            return timeout
+
+        def write_bootstrap(status: str) -> None:
+            nonlocal bootstrap_written
+            if initialization_mutations_issued == 0 or bootstrap_written:
+                return
+            intent_sha256 = initialization.get("intentSha256")
+            outcome_sha256 = initialization.get("outcomeSha256")
+            if not isinstance(intent_sha256, str) or not isinstance(
+                outcome_sha256,
+                str,
+            ):
+                raise RuntimeError(
+                    "Shared-storage bootstrap receipts lack exact digest authority"
+                )
+            _require_exact_receipt_digest(
+                intent_path,
+                expected_sha256=intent_sha256,
+                label="Shared-storage bootstrap intent",
+            )
+            _require_exact_receipt_digest(
+                outcome_path,
+                expected_sha256=outcome_sha256,
+                label="Shared-storage bootstrap outcome",
+            )
+            bootstrap = {
+                "schema": ADB_SHARED_STORAGE_BOOTSTRAP_SCHEMA,
+                "status": status,
+                "serial": self.serial,
+                "hostedAuthority": hosted_authority,
+                "precondition": initialization.get("precondition"),
+                "intentEvidenceFile": initialization["intentEvidenceFile"],
+                "intentSha256": intent_sha256,
+                "outcomeEvidenceFile": initialization["outcomeEvidenceFile"],
+                "outcomeSha256": outcome_sha256,
+                "command": list(ADB_SHARED_STORAGE_INITIALIZE_ARGUMENTS),
+                "commandPolicy": "non-replayable",
+                "attempts": 1,
+                "maximumAttempts": 1,
+                "replayAttempted": False,
+                "reconciliationAttempted": False,
+                "environmentInitializationMutationCommandsIssued": 1,
+                "applicationMutationCommandsIssued": 0,
+                "publicationAuthorized": False,
+                "rawDownloadIdentity": initialized_download,
+                "finalRawDownloadIdentity": initialization.get(
+                    "finalRawDownloadIdentity"
+                ),
+                "rootIdentity": initialized_root,
+                "terminalFailure": terminal_failure,
+            }
+            bootstrap_sha256 = _write_durable_new_json_receipt(
+                bootstrap_path,
+                bootstrap,
+            )
+            initialization["bootstrapEvidenceFile"] = bootstrap_path.name
+            initialization["bootstrapSha256"] = bootstrap_sha256
+            bootstrap_written = True
+
+        def build_receipt(status: str) -> dict[str, object]:
+            if initialization_mutations_issued != 0:
+                bootstrap_sha256 = initialization.get("bootstrapSha256")
+                if not isinstance(bootstrap_sha256, str):
+                    raise RuntimeError(
+                        "Shared-storage readiness lacks bootstrap digest authority"
+                    )
+                _require_exact_receipt_digest(
+                    bootstrap_path,
+                    expected_sha256=bootstrap_sha256,
+                    label="Shared-storage bootstrap authority",
+                )
+            return {
+                "schema": ADB_SHARED_STORAGE_PREFLIGHT_SCHEMA,
+                "status": status,
+                "serial": self.serial,
+                "roots": list(ADB_SHARED_STORAGE_ROOTS),
+                "statArguments": list(ADB_SHARED_STORAGE_STAT_ARGUMENTS),
+                "followSymlinks": True,
+                "requiredConsecutiveObservations": (
+                    ADB_SHARED_STORAGE_REQUIRED_CONSECUTIVE
+                ),
+                "maximumObservations": ADB_SHARED_STORAGE_MAX_OBSERVATIONS,
+                "observationDelaySeconds": (
+                    ADB_SHARED_STORAGE_OBSERVATION_DELAY_SECONDS
+                ),
+                "statAttemptMaximumSeconds": (
+                    ADB_SHARED_STORAGE_STAT_ATTEMPT_MAX_SECONDS
+                ),
+                "bootstrapAttemptMinimumSeconds": (
+                    ADB_SHARED_STORAGE_BOOTSTRAP_ATTEMPT_MINIMUM_SECONDS
+                ),
+                "bootstrapAttemptMaximumSeconds": (
+                    ADB_SHARED_STORAGE_STAT_ATTEMPT_MAX_SECONDS
+                ),
+                "bootstrapDeviceCalls": ADB_SHARED_STORAGE_BOOTSTRAP_DEVICE_CALLS,
+                "bootstrapObservationDelays": (
+                    ADB_SHARED_STORAGE_BOOTSTRAP_OBSERVATION_DELAYS
+                ),
+                "bootstrapReceiptHeadroomSeconds": (
+                    ADB_SHARED_STORAGE_BOOTSTRAP_RECEIPT_HEADROOM_SECONDS
+                ),
+                "maximumDurationSeconds": ADB_SHARED_STORAGE_PREFLIGHT_MAX_SECONDS,
+                "callerDeadlineEnforced": True,
+                "callerDeadlineClampedToMaximumDuration": (
+                    operation_deadline < deadline
+                ),
+                "observationsPerformed": len(observations),
+                "consecutiveStableObservations": consecutive,
+                "readOnlyCommandsIssued": read_only_commands_issued,
+                "preIntentReadOnlyStatTimeoutRecovery": {
+                    "policy": (
+                        "one-fresh-observation-after-exact-pre-intent-"
+                        "read-only-timeout"
+                    ),
+                    "maximumRetries": (
+                        ADB_SHARED_STORAGE_PREINTENT_STAT_TIMEOUT_MAX_RETRIES
+                    ),
+                    "maximumCommandInvocations": (
+                        1 + ADB_SHARED_STORAGE_PREINTENT_STAT_TIMEOUT_MAX_RETRIES
+                    ),
+                    "retriesPerformed": preintent_stat_timeout_retries_performed,
+                    "minimumRemainingLeaseSeconds": (
+                        ADB_SHARED_STORAGE_PREINTENT_STAT_TIMEOUT_RETRY_MINIMUM_LEASE_SECONDS
+                    ),
+                    "freshReadOnlyInvocationRequired": True,
+                    "mutationCommandReplayAuthorized": False,
+                    "observationBoundWidened": False,
+                    "deadlineWidened": False,
+                },
+                "preIntentSharedStorageRootEnoentRecovery": {
+                    "policy": (
+                        "one-fresh-observation-after-exact-ordered-two-root-enoent"
+                    ),
+                    "maximumRetries": (
+                        ADB_SHARED_STORAGE_PREINTENT_ROOT_ENOENT_MAX_RETRIES
+                    ),
+                    "maximumCommandInvocations": (
+                        1 + ADB_SHARED_STORAGE_PREINTENT_ROOT_ENOENT_MAX_RETRIES
+                    ),
+                    "retriesPerformed": preintent_root_enoent_retries_performed,
+                    "minimumRemainingLeaseSeconds": (
+                        ADB_SHARED_STORAGE_PREINTENT_ROOT_ENOENT_RETRY_MINIMUM_LEASE_SECONDS
+                    ),
+                    "minimumRemainingObservationSlots": (
+                        ADB_SHARED_STORAGE_PREINTENT_ROOT_ENOENT_RETRY_MINIMUM_REMAINING_OBSERVATIONS
+                    ),
+                    "hostedApi36X64EmulatorProofRequired": True,
+                    "freshReadOnlyInvocationRequired": True,
+                    "mutationCommandReplayAuthorized": False,
+                    "observationBoundWidened": False,
+                    "deadlineWidened": False,
+                },
+                "mutationCommandsIssued": initialization_mutations_issued,
+                "environmentInitializationMutationCommandsIssued": (
+                    initialization_mutations_issued
+                ),
+                "applicationMutationCommandsIssued": 0,
+                "publicationAuthorized": False,
+                "observationRetryOnly": (
+                    read_only_commands_issued
+                    > ADB_SHARED_STORAGE_REQUIRED_CONSECUTIVE
+                ),
+                "adbReconnectAttempted": False,
+                "applicationRelaunchAttempted": False,
+                "terminalFailure": terminal_failure,
+                "environmentInitialization": dict(initialization),
+                "environmentInitializationOutcomeSha256": initialization.get(
+                    "outcomeSha256"
+                ),
+                "environmentInitializationBootstrapSha256": initialization.get(
+                    "bootstrapSha256"
+                ),
+                "observations": observations,
+            }
+
+        for index in range(1, ADB_SHARED_STORAGE_MAX_OBSERVATIONS + 1):
+            observation: dict[str, object] = {"index": index}
+            try:
+                if (
+                    adb_command_retry_policy(ADB_SHARED_STORAGE_STAT_ARGUMENTS)[0]
+                    != "read-only-retryable"
+                ):
+                    raise RuntimeError(
+                        "Shared-storage preflight command lost read-only authority"
+                    )
+                attempt_timeout = _remaining_operation_timeout(
+                    deadline=operation_deadline,
+                    maximum=(
+                        next_bootstrap_attempt_timeout("followed-root-observation")
+                        if initialized_download is not None
+                        else ADB_SHARED_STORAGE_STAT_ATTEMPT_MAX_SECONDS
+                    ),
+                )
+                read_only_commands_issued += 1
+                output = self._invoke_once(
+                    ADB_SHARED_STORAGE_STAT_ARGUMENTS,
+                    timeout=attempt_timeout,
+                    text=True,
+                    check=True,
+                ).stdout
+                roots = _parse_shared_storage_stat_output(output)
+                observed_identity = tuple(identity(root) for root in roots)
+                if initialized_root is not None and identity(roots[0]) != identity(
+                    initialized_root
+                ):
+                    raise RuntimeError(
+                        "Shared-storage root identity changed across Download bootstrap"
+                    )
+                if initialized_download is not None and identity(
+                    roots[1]
+                ) != identity(initialized_download):
+                    raise RuntimeError(
+                        "Download identity changed or became a symlink after raw proof"
+                    )
+                missing_download_consecutive = 0
+                missing_download_root_identity = None
+                identity_matches = stable_identity in {None, observed_identity}
+                observation.update(
+                    {
+                        "status": "stable" if identity_matches else "identity-drift",
+                        "roots": roots,
+                        "matchesPreviousStableIdentity": identity_matches,
+                    }
+                )
+                if identity_matches:
+                    consecutive += 1
+                else:
+                    stable_identity = observed_identity
+                    consecutive = 1
+                if stable_identity is None:
+                    stable_identity = observed_identity
+                if consecutive >= ADB_SHARED_STORAGE_REQUIRED_CONSECUTIVE:
+                    if initialized_download is not None:
+                        final_raw_timeout = next_bootstrap_attempt_timeout(
+                            "final-raw-download-observation"
+                        )
+                        read_only_commands_issued += 1
+                        final_raw = self._invoke_once(
+                            ADB_SHARED_STORAGE_DOWNLOAD_RAW_STAT_ARGUMENTS,
+                            timeout=final_raw_timeout,
+                            text=True,
+                            check=True,
+                        )
+                        if final_raw.returncode != 0 or final_raw.stderr != "":
+                            raise RuntimeError(
+                                "Final raw Download stat was not exactly successful and silent"
+                            )
+                        final_lines = final_raw.stdout.splitlines()
+                        if len(final_lines) != 1:
+                            raise RuntimeError(
+                                "Final raw Download stat returned malformed output"
+                            )
+                        final_download = _parse_shared_storage_directory_identity(
+                            final_lines[0],
+                            expected_path="/sdcard/Download",
+                        )
+                        if identity(final_download) != identity(initialized_download):
+                            raise RuntimeError(
+                                "Download raw identity changed after stable follow proof"
+                            )
+                        if (
+                            bootstrap_device_calls_remaining != 0
+                            or bootstrap_observation_delays_remaining != 0
+                        ):
+                            raise RuntimeError(
+                                "Shared-storage bootstrap proof allocation did not converge"
+                            )
+                        initialization["status"] = "verified"
+                        initialization["finalRawDownloadIdentity"] = final_download
+                        write_bootstrap("pass")
+                    observations.append(observation)
+                    receipt = build_receipt("pass")
+                    _write_new_json_receipt(receipt_path, receipt)
+                    self._shared_storage_preflight = receipt
+                    self._mutation_blocker = None
+                    return receipt
+                observations.append(observation)
+            except AdbOperationDeadlineExceeded as error:
+                terminal_error = error
+                terminal_failure = {
+                    "classification": "caller-deadline-exhausted",
+                    "classificationAuthority": "caller-owned-monotonic-deadline",
+                    "retryableReadOnlyObservation": False,
+                    "type": type(error).__name__,
+                    "message": str(error),
+                }
+                break
+            except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
+                terminal_error = error
+                classification, retryable = (
+                    classify_shared_storage_readiness_failure(error)
+                )
+                timeout_command = getattr(error, "cmd", ())
+                timeout_arguments = (
+                    tuple(timeout_command)
+                    if isinstance(timeout_command, (list, tuple))
+                    else ()
+                )
+                exact_preintent_stat_timeout = (
+                    isinstance(error, subprocess.TimeoutExpired)
+                    and initialization_mutations_issued == 0
+                    and initialization.get("intentEvidenceFile") is None
+                    and initialized_download is None
+                    and timeout_arguments
+                    == (
+                        str(self.adb),
+                        "-s",
+                        self.serial,
+                        *ADB_SHARED_STORAGE_STAT_ARGUMENTS,
+                    )
+                    and preintent_stat_timeout_retries_performed
+                    < ADB_SHARED_STORAGE_PREINTENT_STAT_TIMEOUT_MAX_RETRIES
+                    and ADB_SHARED_STORAGE_MAX_OBSERVATIONS - index
+                    >= ADB_SHARED_STORAGE_REQUIRED_CONSECUTIVE
+                    and operation_deadline - time.monotonic()
+                    >= (
+                        ADB_SHARED_STORAGE_PREINTENT_STAT_TIMEOUT_RETRY_MINIMUM_LEASE_SECONDS
+                    )
+                )
+                exact_preintent_root_enoent = (
+                    classification == "shared-storage-roots-not-mounted"
+                    and initialization_mutations_issued == 0
+                    and initialization.get("intentEvidenceFile") is None
+                    and initialized_download is None
+                    and timeout_arguments
+                    == (
+                        str(self.adb),
+                        "-s",
+                        self.serial,
+                        *ADB_SHARED_STORAGE_STAT_ARGUMENTS,
+                    )
+                    and hosted_api_level == "36"
+                    and hosted_abi == "x86_64"
+                    and hosted_emulator == "1"
+                    and hosted_proof_attempt is True
+                    and preintent_root_enoent_retries_performed
+                    < ADB_SHARED_STORAGE_PREINTENT_ROOT_ENOENT_MAX_RETRIES
+                    and ADB_SHARED_STORAGE_MAX_OBSERVATIONS - index
+                    >= (
+                        ADB_SHARED_STORAGE_PREINTENT_ROOT_ENOENT_RETRY_MINIMUM_REMAINING_OBSERVATIONS
+                    )
+                    and operation_deadline - time.monotonic()
+                    >= (
+                        ADB_SHARED_STORAGE_PREINTENT_ROOT_ENOENT_RETRY_MINIMUM_LEASE_SECONDS
+                    )
+                )
+                if exact_preintent_stat_timeout:
+                    # Reissue the exact read-only command as one fresh
+                    # observation; never reuse its process or treat timeout
+                    # output as identity authority.  This path cannot mutate
+                    # the device and keeps both the seven-observation bound
+                    # and caller-owned deadline unchanged.
+                    preintent_stat_timeout_retries_performed += 1
+                    retryable = True
+                if exact_preintent_root_enoent:
+                    # The startup race authorizes one fresh read-only stat only.
+                    # It never proves identity, authorizes mutation, or expands
+                    # either closed observation or deadline bound.
+                    preintent_root_enoent_retries_performed += 1
+                    retryable = True
+                if initialized_download is not None:
+                    observation.update(
+                        {
+                            "status": "post-initialization-observation-failed",
+                            "classification": (
+                                "shared-storage-post-initialization-observation-failed"
+                            ),
+                            "underlyingClassification": classification,
+                            "classificationAuthority": (
+                                "all-post-initialization-device-errors-terminal"
+                            ),
+                            "retryableReadOnlyObservation": False,
+                            "failure": {
+                                "type": type(error).__name__,
+                                "returnCode": getattr(error, "returncode", None),
+                                "stdout": _bounded_adb_detail(
+                                    getattr(error, "stdout", "")
+                                ),
+                                "stderr": _bounded_adb_detail(
+                                    getattr(error, "stderr", "")
+                                ),
+                            },
+                        }
+                    )
+                    observations.append(observation)
+                    terminal_failure = dict(observation)
+                    terminal_error = error
+                    break
+                partial_root = _download_not_initialized_root_identity(error)
+                if (
+                    classification == "shared-storage-download-not-initialized"
+                    and partial_root is not None
+                    and initialized_download is None
+                ):
+                    observed_root_identity = identity(partial_root)
+                    matches_missing_root = missing_download_root_identity in {
+                        None,
+                        observed_root_identity,
+                    }
+                    if matches_missing_root:
+                        missing_download_consecutive += 1
+                    else:
+                        missing_download_consecutive = 1
+                    missing_download_root_identity = observed_root_identity
+                    observation.update(
+                        {
+                            "status": "storage-not-initialized",
+                            "classification": classification,
+                            "classificationAuthority": (
+                                adb_classification_authority(classification)
+                            ),
+                            "retryableReadOnlyObservation": True,
+                            "rootIdentity": partial_root,
+                            "matchesPreviousMissingRootIdentity": (
+                                matches_missing_root
+                            ),
+                            "initializationPreconditionConsecutive": (
+                                missing_download_consecutive
+                            ),
+                            "failure": {
+                                "type": type(error).__name__,
+                                "returnCode": error.returncode,
+                                "stdout": _bounded_adb_detail(error.stdout),
+                                "stderr": _bounded_adb_detail(error.stderr),
+                            },
+                        }
+                    )
+                    observations.append(observation)
+                    consecutive = 0
+                    stable_identity = None
+                    if (
+                        missing_download_consecutive
+                        >= ADB_SHARED_STORAGE_REQUIRED_CONSECUTIVE
+                    ):
+                        post_observation_slots = (
+                            ADB_SHARED_STORAGE_MAX_OBSERVATIONS - index
+                        )
+                        remaining_lease = operation_deadline - time.monotonic()
+                        authority_is_exact = (
+                            hosted_api_level == "36"
+                            and hosted_abi == "x86_64"
+                            and hosted_emulator == "1"
+                            and hosted_proof_attempt is True
+                        )
+                        if post_observation_slots < (
+                            ADB_SHARED_STORAGE_REQUIRED_CONSECUTIVE
+                        ):
+                            terminal_error = RuntimeError(
+                                "Download bootstrap lacks three post-observation slots"
+                            )
+                            terminal_failure = {
+                                "classification": (
+                                    "shared-storage-bootstrap-slot-authority-missing"
+                                ),
+                                "classificationAuthority": (
+                                    "closed-seven-observation-policy"
+                                ),
+                                "retryableReadOnlyObservation": False,
+                            }
+                            break
+                        if remaining_lease <= (
+                            ADB_SHARED_STORAGE_INITIALIZATION_MINIMUM_LEASE_SECONDS
+                        ):
+                            terminal_error = AdbOperationDeadlineExceeded(
+                                "Download bootstrap lacks its minimum deadline lease"
+                            )
+                            terminal_failure = {
+                                "classification": (
+                                    "shared-storage-bootstrap-deadline-lease-missing"
+                                ),
+                                "classificationAuthority": (
+                                    "caller-owned-monotonic-deadline"
+                                ),
+                                "retryableReadOnlyObservation": False,
+                            }
+                            break
+                        if not authority_is_exact:
+                            terminal_error = RuntimeError(
+                                "Download bootstrap is restricted to hosted API-36 "
+                                "x86_64 proof attempts"
+                            )
+                            terminal_failure = {
+                                "classification": (
+                                    "shared-storage-bootstrap-host-authority-missing"
+                                ),
+                                "classificationAuthority": (
+                                    "exact-hosted-api36-x86_64-emulator-proof"
+                                ),
+                                "retryableReadOnlyObservation": False,
+                            }
+                            break
+
+                        initialized_root = dict(partial_root)
+                        bootstrap_device_calls_remaining = (
+                            ADB_SHARED_STORAGE_BOOTSTRAP_DEVICE_CALLS
+                        )
+                        bootstrap_observation_delays_remaining = (
+                            ADB_SHARED_STORAGE_BOOTSTRAP_OBSERVATION_DELAYS
+                        )
+                        initialization["status"] = "intent-pending"
+                        initialization["precondition"] = {
+                            "consecutiveIdenticalObservations": (
+                                missing_download_consecutive
+                            ),
+                            "postObservationSlots": post_observation_slots,
+                            "remainingDeadlineLeaseSeconds": remaining_lease,
+                            "rootIdentity": initialized_root,
+                            "downloadFailure": (
+                                "exact-toybox-enoent-/sdcard/Download"
+                            ),
+                        }
+                        intent = {
+                            "schema": (
+                                ADB_SHARED_STORAGE_INITIALIZATION_INTENT_SCHEMA
+                            ),
+                            "status": "pending-non-replayable-device-call",
+                            "serial": self.serial,
+                            "hostedAuthority": hosted_authority,
+                            "command": list(ADB_SHARED_STORAGE_INITIALIZE_ARGUMENTS),
+                            "commandPolicy": "non-replayable",
+                            "maximumAttempts": 1,
+                            "precondition": initialization["precondition"],
+                            "environmentInitializationMutation": True,
+                            "applicationMutation": False,
+                            "publicationAuthorized": False,
+                        }
+                        try:
+                            intent_sha256 = _write_durable_new_json_receipt(
+                                intent_path,
+                                intent,
+                            )
+                        except OSError as intent_error:
+                            terminal_error = intent_error
+                            terminal_failure = {
+                                "classification": (
+                                    "shared-storage-bootstrap-intent-write-failed"
+                                ),
+                                "classificationAuthority": (
+                                    "fresh-o_excl-durable-intent-required"
+                                ),
+                                "retryableReadOnlyObservation": False,
+                                "type": type(intent_error).__name__,
+                                "message": str(intent_error),
+                            }
+                            initialization["status"] = "intent-write-failed"
+                            break
+                        initialization.update(
+                            {
+                                "status": "intent-written",
+                                "intentEvidenceFile": intent_path.name,
+                                "intentSha256": intent_sha256,
+                            }
+                        )
+
+                        self._mutation_blocker = {
+                            "classification": (
+                                "shared-storage-bootstrap-verification-pending"
+                            ),
+                            "adbArgumentsSha256": _adb_arguments_sha256(
+                                ADB_SHARED_STORAGE_INITIALIZE_ARGUMENTS
+                            ),
+                            "evidenceFile": intent_path.name,
+                        }
+                        mkdir_result: subprocess.CompletedProcess | None = None
+                        mkdir_error: BaseException | None = None
+                        mkdir_invocation_performed = False
+                        try:
+                            mkdir_timeout = next_bootstrap_attempt_timeout("mkdir")
+                            initialization_mutations_issued = 1
+                            initialization["attempts"] = 1
+                            initialization["environmentInitializationMutation"] = True
+                            mkdir_invocation_performed = True
+                            mkdir_result = self._invoke_once(
+                                ADB_SHARED_STORAGE_INITIALIZE_ARGUMENTS,
+                                timeout=mkdir_timeout,
+                                text=True,
+                                check=True,
+                            )
+                            if (
+                                mkdir_result.returncode != 0
+                                or mkdir_result.stdout != ""
+                                or mkdir_result.stderr != ""
+                            ):
+                                raise RuntimeError(
+                                    "Download mkdir did not return exact rc0 silent output"
+                                )
+                        except Exception as command_error:
+                            mkdir_error = command_error
+                        outcome_status = (
+                            "pass-exact-rc0-silent"
+                            if mkdir_error is None
+                            else (
+                                "fail-closed-no-retry"
+                                if mkdir_invocation_performed
+                                else "fail-closed-before-invocation"
+                            )
+                        )
+                        transport_failure = (
+                            mkdir_error.receipt.get("failure", {})
+                            if isinstance(mkdir_error, AdbTransportError)
+                            else {}
+                        )
+                        outcome = {
+                            "schema": (
+                                ADB_SHARED_STORAGE_INITIALIZATION_OUTCOME_SCHEMA
+                            ),
+                            "status": outcome_status,
+                            "serial": self.serial,
+                            "intentEvidenceFile": intent_path.name,
+                            "intentSha256": intent_sha256,
+                            "command": list(ADB_SHARED_STORAGE_INITIALIZE_ARGUMENTS),
+                            "commandPolicy": "non-replayable",
+                            "attempts": initialization_mutations_issued,
+                            "maximumAttempts": 1,
+                            "commandInvocationPerformed": mkdir_invocation_performed,
+                            "returnCode": (
+                                mkdir_result.returncode
+                                if mkdir_result is not None
+                                else getattr(
+                                    mkdir_error,
+                                    "returncode",
+                                    transport_failure.get("returnCode"),
+                                )
+                            ),
+                            "stdout": (
+                                _bounded_adb_detail(mkdir_result.stdout)
+                                if mkdir_result is not None
+                                else _bounded_adb_detail(
+                                    getattr(
+                                        mkdir_error,
+                                        "stdout",
+                                        transport_failure.get("stdout", ""),
+                                    )
+                                )
+                            ),
+                            "stderr": (
+                                _bounded_adb_detail(mkdir_result.stderr)
+                                if mkdir_result is not None
+                                else _bounded_adb_detail(
+                                    getattr(
+                                        mkdir_error,
+                                        "stderr",
+                                        transport_failure.get("stderr", ""),
+                                    )
+                                )
+                            ),
+                            "failure": (
+                                None
+                                if mkdir_error is None
+                                else {
+                                    "type": type(mkdir_error).__name__,
+                                    "message": str(mkdir_error),
+                                }
+                            ),
+                            "replayAttempted": False,
+                            "reconciliationAttempted": False,
+                            "adbReconnectAttempted": False,
+                            "applicationRelaunchAttempted": False,
+                            "environmentInitializationMutation": True,
+                            "applicationMutation": False,
+                            "publicationAuthorized": False,
+                        }
+                        outcome_sha256 = _write_durable_new_json_receipt(
+                            outcome_path,
+                            outcome,
+                        )
+                        initialization.update(
+                            {
+                                "outcomeEvidenceFile": outcome_path.name,
+                                "outcomeSha256": outcome_sha256,
+                            }
+                        )
+                        if mkdir_error is not None:
+                            terminal_error = mkdir_error
+                            terminal_failure = {
+                                "classification": (
+                                    "shared-storage-bootstrap-mkdir-failed"
+                                    if mkdir_invocation_performed
+                                    else (
+                                        "shared-storage-bootstrap-deadline-lease-"
+                                        "missing-after-intent"
+                                    )
+                                ),
+                                "classificationAuthority": (
+                                    "one-shot-non-replayable-device-call"
+                                    if mkdir_invocation_performed
+                                    else "dynamic-proof-lease-allocation"
+                                ),
+                                "retryableReadOnlyObservation": False,
+                                "type": type(mkdir_error).__name__,
+                                "message": str(mkdir_error),
+                            }
+                            initialization["status"] = (
+                                "mkdir-failed"
+                                if mkdir_invocation_performed
+                                else "mkdir-not-invoked"
+                            )
+                            break
+
+                        initialization["status"] = "mkdir-succeeded-awaiting-proof"
+                        try:
+                            raw_timeout = next_bootstrap_attempt_timeout(
+                                "initial-raw-download-observation"
+                            )
+                            read_only_commands_issued += 1
+                            raw = self._invoke_once(
+                                ADB_SHARED_STORAGE_DOWNLOAD_RAW_STAT_ARGUMENTS,
+                                timeout=raw_timeout,
+                                text=True,
+                                check=True,
+                            )
+                            if raw.returncode != 0 or raw.stderr != "":
+                                raise RuntimeError(
+                                    "Raw Download stat was not exactly successful and silent"
+                                )
+                            raw_lines = raw.stdout.splitlines()
+                            if len(raw_lines) != 1:
+                                raise RuntimeError(
+                                    "Raw Download stat returned malformed output"
+                                )
+                            initialized_download = (
+                                _parse_shared_storage_directory_identity(
+                                    raw_lines[0],
+                                    expected_path="/sdcard/Download",
+                                )
+                            )
+                        except Exception as proof_error:
+                            terminal_error = proof_error
+                            terminal_failure = {
+                                "classification": (
+                                    "shared-storage-bootstrap-raw-proof-failed"
+                                ),
+                                "classificationAuthority": (
+                                    "exact-no-follow-directory-identity"
+                                ),
+                                "retryableReadOnlyObservation": False,
+                                "type": type(proof_error).__name__,
+                                "message": str(proof_error),
+                            }
+                            initialization["status"] = "raw-proof-failed"
+                            break
+                        initialization["status"] = "post-observation-pending"
+                        initialization["rawDownloadIdentity"] = initialized_download
+                        stable_identity = None
+                        consecutive = 0
+                    # The exact partial observation owns the retry decision above.
+                    retryable = terminal_failure is None
+                if partial_root is not None and observations[-1] is observation:
+                    if terminal_failure is not None:
+                        break
+                    # Do not append the same partial observation twice below.
+                    pass
+                else:
+                    observation.update(
+                        {
+                            "status": (
+                                "pre-intent-read-only-stat-timeout"
+                                if exact_preintent_stat_timeout
+                                else (
+                                    "pre-intent-shared-storage-roots-not-mounted"
+                                    if exact_preintent_root_enoent
+                                    else "storage-unavailable"
+                                )
+                            ),
+                            "classification": classification,
+                            "classificationAuthority": (
+                                "exact-pre-intent-read-only-stat-timeout"
+                                if exact_preintent_stat_timeout
+                                else (
+                                    "exact-pre-intent-one-fresh-root-observation"
+                                    if exact_preintent_root_enoent
+                                    else adb_classification_authority(classification)
+                                )
+                            ),
+                            "retryableReadOnlyObservation": retryable,
+                            "freshObservationScheduled": (
+                                exact_preintent_stat_timeout
+                                or exact_preintent_root_enoent
+                            ),
+                            "timedOutProcessReused": False,
+                            "mutationCommandReplayAuthorized": False,
+                            "timeoutOutputAcceptedAsAuthority": False,
+                            "failure": {
+                                "type": type(error).__name__,
+                                "returnCode": getattr(error, "returncode", None),
+                                "stdout": _bounded_adb_detail(
+                                    getattr(error, "stdout", "")
+                                ),
+                                "stderr": _bounded_adb_detail(
+                                    getattr(error, "stderr", "")
+                                ),
+                            },
+                        }
+                    )
+                    observations.append(observation)
+                    consecutive = 0
+                    stable_identity = None
+                    missing_download_consecutive = 0
+                    missing_download_root_identity = None
+                if not retryable:
+                    terminal_failure = dict(observation)
+                    break
+            except RuntimeError as error:
+                terminal_error = error
+                observation.update(
+                    {
+                        "status": "invalid-observation",
+                        "classification": "shared-storage-authority-mismatch",
+                        "classificationAuthority": "invalid-read-only-stat-authority",
+                        "retryableReadOnlyObservation": False,
+                        "failure": {
+                            "type": type(error).__name__,
+                            "message": str(error),
+                        },
+                    }
+                )
+                observations.append(observation)
+                consecutive = 0
+                stable_identity = None
+                missing_download_consecutive = 0
+                missing_download_root_identity = None
+                terminal_failure = dict(observation)
+                break
+            if index < ADB_SHARED_STORAGE_MAX_OBSERVATIONS:
+                remaining = operation_deadline - time.monotonic()
+                if remaining <= ADB_SHARED_STORAGE_OBSERVATION_DELAY_SECONDS:
+                    terminal_error = AdbOperationDeadlineExceeded(
+                        "Shared-storage preflight deadline cannot accommodate "
+                        "the next bounded observation"
+                    )
+                    terminal_failure = {
+                        "classification": "caller-deadline-exhausted",
+                        "classificationAuthority": "caller-owned-monotonic-deadline",
+                        "retryableReadOnlyObservation": False,
+                        "type": type(terminal_error).__name__,
+                        "message": str(terminal_error),
+                    }
+                    break
+                if initialized_download is not None:
+                    if bootstrap_observation_delays_remaining <= 0:
+                        terminal_error = RuntimeError(
+                            "Shared-storage bootstrap exceeded its observation-delay authority"
+                        )
+                        terminal_failure = {
+                            "classification": (
+                                "shared-storage-bootstrap-delay-authority-exhausted"
+                            ),
+                            "classificationAuthority": (
+                                "exact-three-post-bootstrap-observation-delays"
+                            ),
+                            "retryableReadOnlyObservation": False,
+                        }
+                        break
+                    bootstrap_observation_delays_remaining -= 1
+                time.sleep(ADB_SHARED_STORAGE_OBSERVATION_DELAY_SECONDS)
+
+        if terminal_failure is None:
+            terminal_failure = {
+                "classification": "shared-storage-readiness-not-stable",
+                "classificationAuthority": "exact-observation-bound-exhausted",
+                "retryableReadOnlyObservation": False,
+            }
+        if initialization_mutations_issued != 0:
+            self._mutation_blocker = {
+                "classification": "shared-storage-bootstrap-not-verified",
+                "adbArgumentsSha256": _adb_arguments_sha256(
+                    ADB_SHARED_STORAGE_INITIALIZE_ARGUMENTS
+                ),
+                "evidenceFile": str(
+                    initialization.get("outcomeEvidenceFile")
+                    or initialization.get("intentEvidenceFile")
+                ),
+            }
+            write_bootstrap("fail")
+        receipt = build_receipt("fail")
+        _write_new_json_receipt(receipt_path, receipt)
+        self._shared_storage_preflight = receipt
+        failure = AdbSharedStoragePreflightError(receipt, receipt_path)
+        if terminal_error is None:
+            raise failure
+        raise failure from terminal_error
+
     def transport_summary(self) -> dict[str, object]:
         reconciled: set[object] = set()
         reconciliation_statuses = {
@@ -1792,11 +3201,17 @@ class Device:
         if terminal_failures or (
             self._transport_preflight is not None
             and self._transport_preflight["status"] == "fail"
+        ) or (
+            self._shared_storage_preflight is not None
+            and self._shared_storage_preflight["status"] == "fail"
         ):
             status = "fail"
         elif (
             self._transport_preflight is not None
             and self._transport_preflight["status"] == "pass"
+        ) or (
+            self._shared_storage_preflight is not None
+            and self._shared_storage_preflight["status"] == "pass"
         ):
             status = "pass"
         else:
@@ -1805,6 +3220,7 @@ class Device:
             "schema": ADB_TRANSPORT_SUMMARY_SCHEMA,
             "status": status,
             "preflight": self._transport_preflight,
+            "sharedStorageReadiness": self._shared_storage_preflight,
             "eventCount": len(self._transport_events),
             "terminalFailureCount": len(terminal_failures),
             "events": list(self._transport_events),
@@ -7332,7 +8748,194 @@ def select_documents_ui_downloads_root(device: Device, *, timeout: int = 45) -> 
     )
 
 
-def select_android_document(device: Device, filename: str) -> None:
+def _node_has_tappable_bounds_in_display(
+    node: UiNode,
+    *,
+    display_width: int,
+    display_height: int,
+) -> bool:
+    """Validate already-observed bounds without another device observation."""
+    match = BOUNDS.fullmatch(node.attributes.get("bounds", ""))
+    if match is None:
+        return False
+    left, top, right, bottom = (int(value) for value in match.groups())
+    center_y = (top + bottom) // 2
+    return (
+        right - left > 8
+        and bottom - top > 8
+        and 0 <= left < right <= display_width
+        and 0 <= top < bottom <= display_height
+        and center_y < display_height * 0.96
+    )
+
+
+def _documents_ui_selection_receipt_path(
+    device: Device,
+    filename: str,
+    evidence_prefix: str,
+    suffix: str,
+) -> Path:
+    if DOCUMENTS_UI_EVIDENCE_PREFIX.fullmatch(evidence_prefix) is None:
+        raise ValueError("DocumentsUI evidence prefix is not canonical")
+    receipt_stem = hashlib.sha256(filename.encode("utf-8")).hexdigest()[:16]
+    return device.evidence / (
+        f"documentsui-file-one-shot-{evidence_prefix}-{receipt_stem}-{suffix}.json"
+    )
+
+
+def record_documents_ui_file_first_import_state(
+    device: Device,
+    selection: dict[str, object],
+    *,
+    import_state: dict[str, object],
+    serialized_sha256: str,
+) -> dict[str, object]:
+    """Bind the first validated picker-result state to the exact one-shot tap."""
+    filename = selection.get("filename")
+    evidence_prefix = selection.get("evidencePrefix")
+    selection_evidence_file = selection.get("evidenceFile")
+    picker = import_state.get("picker")
+    stream = import_state.get("stream")
+    if (
+        not isinstance(filename, str)
+        or GOVERNED_DOWNLOAD_BASENAME.fullmatch(filename) is None
+        or not isinstance(evidence_prefix, str)
+        or DOCUMENTS_UI_EVIDENCE_PREFIX.fullmatch(evidence_prefix) is None
+        or not isinstance(selection_evidence_file, str)
+        or not selection_evidence_file.endswith("-tap.json")
+        or SHA256_TEXT.fullmatch(serialized_sha256) is None
+        or not isinstance(picker, dict)
+    ):
+        raise RuntimeError(
+            "DocumentsUI first import observation lacks exact selection authority"
+        )
+    require_documents_ui_file_one_shot_proof(
+        selection,
+        expected_filename=filename,
+        expected_serial=device.serial,
+    )
+    expected_selection_path = _documents_ui_selection_receipt_path(
+        device,
+        filename,
+        evidence_prefix,
+        "tap",
+    )
+    if selection_evidence_file != expected_selection_path.name:
+        raise RuntimeError("DocumentsUI one-shot tap receipt identity differs")
+    selection_path = expected_selection_path
+    if not selection_path.is_file() or selection_path.is_symlink():
+        raise RuntimeError("DocumentsUI one-shot tap receipt is unavailable")
+    selection_bytes = selection_path.read_bytes()
+    expected_selection_bytes = (json.dumps(selection, indent=2) + "\n").encode("utf-8")
+    if selection_bytes != expected_selection_bytes:
+        raise RuntimeError("DocumentsUI one-shot tap receipt bytes changed")
+    observed_display_name = (
+        stream.get("displayName") if isinstance(stream, dict) else None
+    )
+    receipt_path = _documents_ui_selection_receipt_path(
+        device,
+        filename,
+        evidence_prefix,
+        "first-import",
+    )
+    receipt: dict[str, object] = {
+        "schema": DOCUMENTS_UI_FILE_FIRST_IMPORT_SCHEMA,
+        "status": "observed",
+        "serial": device.serial,
+        "filename": filename,
+        "selectionEvidenceFile": selection_evidence_file,
+        "selectionEvidenceSha256": hashlib.sha256(selection_bytes).hexdigest(),
+        "observedAtUtc": datetime.now(timezone.utc).isoformat(),
+        "serializedImportStateSha256": serialized_sha256,
+        "selectedAndObservedDisplayNameMatch": observed_display_name == filename,
+        "observation": import_state,
+        "evidenceFile": receipt_path.name,
+    }
+    _write_new_json_receipt(receipt_path, receipt)
+    return receipt
+
+
+def require_documents_ui_file_one_shot_proof(
+    proof: dict[str, object],
+    *,
+    expected_filename: str,
+    expected_serial: str,
+) -> None:
+    """Reject forged, ambiguous, replayed, or geometrically stale picker taps."""
+    pre_tap = proof.get("preTap")
+    tap = proof.get("tap")
+    if not isinstance(pre_tap, dict) or not isinstance(tap, dict):
+        raise RuntimeError("DocumentsUI one-shot proof is incomplete")
+    bounds_match = BOUNDS.fullmatch(str(pre_tap.get("bounds", "")))
+    center = pre_tap.get("center")
+    display = pre_tap.get("display")
+    expected_center: dict[str, int] | None = None
+    bounds_valid = False
+    if bounds_match is not None and isinstance(display, dict):
+        left, top, right, bottom = (
+            int(value) for value in bounds_match.groups()
+        )
+        width = display.get("width")
+        height = display.get("height")
+        if type(width) is int and type(height) is int:
+            expected_center = {
+                "x": (left + right) // 2,
+                "y": (top + bottom) // 2,
+            }
+            bounds_valid = _node_has_tappable_bounds_in_display(
+                UiNode({"bounds": str(pre_tap["bounds"])}),
+                display_width=width,
+                display_height=height,
+            )
+    if (
+        proof.get("schema") != DOCUMENTS_UI_FILE_ONE_SHOT_SCHEMA
+        or proof.get("status") != "tap-issued"
+        or proof.get("serial") != expected_serial
+        or proof.get("filename") != expected_filename
+        or proof.get("tapReplayPerformed") is not False
+        or proof.get("fallbackTapPerformed") is not False
+        or pre_tap.get("hierarchyDigestDomain")
+        != DOCUMENTS_UI_FILE_ONE_SHOT_DIGEST_DOMAIN
+        or not isinstance(pre_tap.get("hierarchyDigest"), str)
+        or re.fullmatch(r"sha256:[0-9a-f]{64}", str(pre_tap["hierarchyDigest"]))
+        is None
+        or type(pre_tap.get("nodeCount")) is not int
+        or int(pre_tap["nodeCount"]) <= 0
+        or pre_tap.get("exactRowCardinality") != 1
+        or pre_tap.get("package") != DOCUMENTS_UI_PACKAGE
+        or pre_tap.get("text") != expected_filename
+        or pre_tap.get("enabled") is not True
+        or type(pre_tap.get("scrollsBeforeFinalObservation")) is not int
+        or int(pre_tap["scrollsBeforeFinalObservation"]) < 0
+        or expected_center is None
+        or center != expected_center
+        or not bounds_valid
+        or tap.get("command") != "input tap"
+        or tap.get("count") != 1
+        or tap.get("coordinates") != expected_center
+    ):
+        raise RuntimeError("DocumentsUI one-shot proof authority differs")
+
+
+def select_android_document(
+    device: Device,
+    filename: str,
+    *,
+    evidence_prefix: str | None = None,
+) -> dict[str, object]:
+    receipt_path: Path | None = None
+    if evidence_prefix is not None:
+        # Validate the exact target name and stale-path fence before any
+        # non-replayable picker action. The O_EXCL write after a successful tap
+        # remains the durable no-duplicate evidence fence.
+        receipt_path = _documents_ui_selection_receipt_path(
+            device,
+            filename,
+            evidence_prefix,
+            "tap",
+        )
+        if receipt_path.exists() or receipt_path.is_symlink():
+            raise RuntimeError("DocumentsUI one-shot tap receipt already exists")
     roots_drawer_open = (
         device.find("Recent") is not None
         and device.find("Documents") is not None
@@ -7360,13 +8963,14 @@ def select_android_document(device: Device, filename: str) -> None:
     deadline = time.monotonic() + 45
     scrolls = 0
     while time.monotonic() < deadline:
+        # Geometry is a device observation. Acquire it before the final fresh
+        # hierarchy so no device call can make the selected coordinates stale.
+        display_width, display_height = device.display_size(deadline=deadline)
         nodes = device.hierarchy(deadline=deadline)
         matches = [
             node
             for node in _documents_ui_exact_nodes(nodes, filename)
             if node.attributes.get("text") == filename
-            and node.attributes.get("enabled") == "true"
-            and device.node_has_tappable_bounds(node, deadline=deadline)
         ]
         if len(matches) > 1:
             _capture_documents_ui_before_deadline(
@@ -7377,8 +8981,18 @@ def select_android_document(device: Device, filename: str) -> None:
             raise RuntimeError(
                 f"DocumentsUI exposed {len(matches)} exact rows for {filename!r}"
             )
-        if len(matches) == 1:
-            x, y = matches[0].center
+        if (
+            len(matches) == 1
+            and matches[0].attributes.get("enabled") == "true"
+            and _node_has_tappable_bounds_in_display(
+                matches[0],
+                display_width=display_width,
+                display_height=display_height,
+            )
+        ):
+            selected = matches[0]
+            x, y = selected.center
+            observed_at_utc = datetime.now(timezone.utc).isoformat()
             device.shell(
                 "input",
                 "tap",
@@ -7387,7 +9001,47 @@ def select_android_document(device: Device, filename: str) -> None:
                 timeout=_remaining_operation_timeout(deadline=deadline, maximum=120),
                 deadline=deadline,
             )
-            return
+            proof: dict[str, object] = {
+                "schema": DOCUMENTS_UI_FILE_ONE_SHOT_SCHEMA,
+                "status": "tap-issued",
+                "serial": device.serial if evidence_prefix is not None else None,
+                "filename": filename,
+                "evidencePrefix": evidence_prefix,
+                "preTap": {
+                    "observedAtUtc": observed_at_utc,
+                    "hierarchyDigest": (
+                        "sha256:" + Device._hierarchy_sha256(nodes)
+                    ),
+                    "hierarchyDigestDomain": (
+                        DOCUMENTS_UI_FILE_ONE_SHOT_DIGEST_DOMAIN
+                    ),
+                    "nodeCount": len(nodes),
+                    "exactRowCardinality": 1,
+                    "package": selected.attributes.get("package", ""),
+                    "text": selected.attributes.get("text", ""),
+                    "resourceId": selected.attributes.get("resource-id", ""),
+                    "bounds": selected.attributes.get("bounds", ""),
+                    "center": {"x": x, "y": y},
+                    "enabled": True,
+                    "display": {
+                        "width": display_width,
+                        "height": display_height,
+                    },
+                    "scrollsBeforeFinalObservation": scrolls,
+                },
+                "tap": {
+                    "command": "input tap",
+                    "count": 1,
+                    "coordinates": {"x": x, "y": y},
+                    "issuedAtUtc": datetime.now(timezone.utc).isoformat(),
+                },
+                "tapReplayPerformed": False,
+                "fallbackTapPerformed": False,
+                "evidenceFile": None if receipt_path is None else receipt_path.name,
+            }
+            if receipt_path is not None:
+                _write_new_json_receipt(receipt_path, proof)
+            return proof
         if scrolls < 6:
             device.swipe_up(deadline=deadline)
             scrolls += 1

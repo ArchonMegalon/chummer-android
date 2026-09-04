@@ -129,7 +129,12 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
     @staticmethod
     def record_required_method_reacquisition(
         progress: driver.ProgressRecorder,
+        *,
+        phase_id: str = "advanced-editor-gate-inventory",
     ) -> None:
+        phase_budget_ms, maximum_empty_hierarchy_reads = (
+            driver.CREATION_METHOD_REACQUISITION_PHASE_AUTHORITY[phase_id]
+        )
         progress.record_scan({
             "scanId": driver.CREATION_METHOD_REACQUISITION_SCAN_ID,
             "status": "resolved",
@@ -140,13 +145,12 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "configuredMaxScrolls": driver.DASHBOARD_SCAN_MAX_SCROLLS,
             "stableRepeats": 2,
             "emptyHierarchyReads": 0,
-            "maximumEmptyHierarchyReads": 3,
+            "maximumEmptyHierarchyReads": maximum_empty_hierarchy_reads,
             "systemUiDismissals": 0,
             "maximumSystemUiDismissals": 3,
             "deadlineEnforced": True,
-            "phaseBudgetMs": driver.PHASE_BUDGET_MS[
-                "advanced-editor-gate-inventory"
-            ],
+            "phaseId": phase_id,
+            "phaseBudgetMs": phase_budget_ms,
             "hierarchyReadCount": 1,
             "hierarchyElapsedMs": 0,
             "maximumHierarchyReadMs": 0,
@@ -1570,6 +1574,47 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                         progress.advance("prerequisite-authority-inventory")
                     break
 
+    def test_progress_recorder_accepts_method_receipt_from_its_active_rebind_phase(
+        self,
+    ) -> None:
+        phase_id = "resources-prerequisite-rebind"
+        with tempfile.TemporaryDirectory() as temporary, mock.patch("builtins.print"):
+            progress = driver.ProgressRecorder(Path(temporary))
+            progress._active_id = phase_id
+            progress._active_started = driver.time.monotonic()
+
+            self.record_required_method_reacquisition(
+                progress,
+                phase_id=phase_id,
+            )
+
+            self.assertEqual(1, len(progress.scans))
+            self.assertEqual(phase_id, progress.scans[0]["phaseId"])
+            self.assertEqual(
+                driver.PHASE_BUDGET_MS[phase_id],
+                progress.scans[0]["phaseBudgetMs"],
+            )
+
+    def test_progress_recorder_rejects_method_receipt_from_a_different_phase(
+        self,
+    ) -> None:
+        active_phase_id = "resources-prerequisite-rebind"
+        with tempfile.TemporaryDirectory() as temporary, mock.patch("builtins.print"):
+            progress = driver.ProgressRecorder(Path(temporary))
+            progress._active_id = active_phase_id
+            progress._active_started = driver.time.monotonic()
+
+            with self.assertRaisesRegex(
+                RuntimeError,
+                "phase authority differs from active progress phase",
+            ):
+                self.record_required_method_reacquisition(
+                    progress,
+                    phase_id="advanced-editor-gate-inventory",
+                )
+
+            self.assertEqual([], progress.scans)
+
     def test_progress_recorder_rejects_a_pass_phase_outside_its_budget(self) -> None:
         with tempfile.TemporaryDirectory() as temporary, mock.patch("builtins.print"):
             progress = driver.ProgressRecorder(Path(temporary))
@@ -1808,16 +1853,20 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         advanced_editor_scan = source.index(
             "dashboard_scan = assert_uncreated_advanced_editor_gated("
         )
-        method_reacquisition = source.index(
-            "method_node, method_detail, _ = reacquire_exact_ready_creation_method("
+        method_positioning = source.index(
+            "_positioned_method_node, method_detail, _ = reacquire_exact_ready_creation_method("
         )
-        ready_navigation = source.index("ready_navigation = {")
         ready_capture = source.index('"creation-priority-core-bootstrap-ready"')
         prerequisite_authority_start = source.index(
             'progress.advance("prerequisite-authority-inventory")'
         )
+        final_method_selection = source.index(
+            "reacquire_creation_method_one_shot_target(",
+            prerequisite_authority_start,
+        )
         prerequisite_tap = source.index("device.shell(", prerequisite_authority_start)
         prerequisite_scan = source.index("prerequisite_scan = scan_prerequisite_authority(")
+        ready_navigation = source.index("ready_navigation = {", prerequisite_tap)
         prerequisite_binding = source.index(
             "prerequisite_binding_authority = require_prerequisite_binding("
         )
@@ -1864,16 +1913,27 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertLess(dashboard_authority_wait, dashboard_authority_record)
         self.assertLess(dashboard_authority_record, advanced_editor_start)
         self.assertLess(advanced_editor_start, advanced_editor_scan)
-        self.assertLess(advanced_editor_scan, method_reacquisition)
-        self.assertLess(method_reacquisition, ready_navigation)
-        self.assertLess(ready_navigation, ready_capture)
+        self.assertLess(advanced_editor_scan, method_positioning)
+        self.assertLess(method_positioning, ready_capture)
         self.assertLess(ready_capture, prerequisite_authority_start)
         self.assertIn(
             "deadline=advanced_editor_deadline",
             source[ready_capture:prerequisite_authority_start],
         )
-        self.assertLess(prerequisite_authority_start, prerequisite_tap)
-        self.assertLess(prerequisite_tap, prerequisite_scan)
+        self.assertLess(prerequisite_authority_start, final_method_selection)
+        self.assertLess(final_method_selection, prerequisite_tap)
+        self.assertLess(prerequisite_tap, ready_navigation)
+        self.assertLess(ready_navigation, prerequisite_scan)
+        self.assertNotIn(
+            "device.capture(",
+            source[final_method_selection:prerequisite_tap],
+        )
+        self.assertEqual(
+            1,
+            source[final_method_selection:prerequisite_scan].count(
+                '"input",\n        "tap",'
+            ),
+        )
         self.assertLess(prerequisite_scan, prerequisite_binding)
         self.assertLess(prerequisite_binding, prerequisite_digest_validation)
         self.assertLess(prerequisite_digest_validation, prerequisite_karma_validation)
@@ -6217,6 +6277,365 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         )
         device.wait.assert_not_called()
 
+    def test_initial_method_opening_reacquires_one_fresh_exact_target_after_diagnostics(
+        self,
+    ) -> None:
+        node = self.canonical_node(
+            "creation-stage-method",
+            text="",
+            **{
+                "content-desc": "Build method · Priority",
+                "bounds": "[98,275][984,355]",
+            },
+        )
+        unrelated = self.canonical_node("creation-wizard-binding")
+        device = mock.Mock(spec=driver.shared.Device)
+        device_events: list[str] = []
+        device.display_size.side_effect = lambda **_kwargs: (
+            device_events.append("display-size") or (1080, 1920)
+        )
+        hierarchy_durations: list[int] = []
+
+        def fresh(_device, durations, **_kwargs):
+            device_events.append("fresh-hierarchy")
+            hierarchy_durations.append(len(durations))
+            durations.append(7)
+            return [unrelated, node]
+
+        with mock.patch.object(driver, "fresh_hierarchy_timed", side_effect=fresh) as read:
+            selected, proof = driver.reacquire_creation_method_one_shot_target(
+                device,
+                expected_detail="Build method · Priority",
+                diagnostic_capture="creation-priority-core-bootstrap-ready",
+                deadline=driver.time.monotonic() + 30,
+            )
+
+        self.assertIs(node, selected)
+        read.assert_called_once()
+        self.assertEqual(["display-size", "fresh-hierarchy"], device_events)
+        self.assertEqual([0], hierarchy_durations)
+        self.assertEqual("target-acquired", proof["status"])
+        self.assertEqual("[98,275][984,355]", proof["preTap"]["bounds"])
+        self.assertEqual({"x": 541, "y": 315}, proof["preTap"]["center"])
+        self.assertEqual(1, proof["preTap"]["hierarchyReadCount"])
+        self.assertRegex(proof["preTap"]["hierarchyDigest"], r"^sha256:[0-9a-f]{64}$")
+        device.shell.assert_not_called()
+        device.swipe_up.assert_not_called()
+        device.swipe_down.assert_not_called()
+        device.capture.assert_not_called()
+
+    def test_initial_method_opening_fails_closed_before_tap_on_stale_or_ambiguous_target(
+        self,
+    ) -> None:
+        exact = self.canonical_node(
+            "creation-stage-method",
+            text="",
+            **{"content-desc": "Build method · Priority"},
+        )
+        cases = (
+            ("missing", [], "cardinality 0"),
+            ("duplicate", [exact, exact], "cardinality 2"),
+            (
+                "disabled",
+                [self.canonical_node(
+                    "creation-stage-method",
+                    text="",
+                    enabled="false",
+                    **{"content-desc": "Build method · Priority"},
+                )],
+                "not visible, enabled, and clickable",
+            ),
+            (
+                "forged-package",
+                [self.canonical_node(
+                    "creation-stage-method",
+                    package="com.example.forged",
+                    text="",
+                    **{"content-desc": "Build method · Priority"},
+                )],
+                "canonical Chummer",
+            ),
+            (
+                "detail-drift",
+                [self.canonical_node(
+                    "creation-stage-method",
+                    text="",
+                    **{"content-desc": "Build method · Sum to Ten"},
+                )],
+                "changed after diagnostics",
+            ),
+        )
+        for label, nodes, error in cases:
+            device = mock.Mock(spec=driver.shared.Device)
+            device.display_size.return_value = (1080, 1920)
+            with self.subTest(label=label), mock.patch.object(
+                driver,
+                "fresh_hierarchy_timed",
+                return_value=nodes,
+            ), self.assertRaisesRegex(RuntimeError, error):
+                driver.reacquire_creation_method_one_shot_target(
+                    device,
+                    expected_detail="Build method · Priority",
+                    diagnostic_capture="creation-priority-core-bootstrap-ready",
+                    deadline=driver.time.monotonic() + 30,
+                )
+            device.shell.assert_not_called()
+            device.swipe_up.assert_not_called()
+            device.swipe_down.assert_not_called()
+
+    def test_initial_method_opening_binds_the_first_post_tap_route_without_replay(
+        self,
+    ) -> None:
+        method = self.canonical_node(
+            "creation-stage-method",
+            text="",
+            **{"content-desc": "Build method · Priority"},
+        )
+        device = mock.Mock(spec=driver.shared.Device)
+        device.display_size.return_value = (1080, 1920)
+        with mock.patch.object(
+            driver,
+            "fresh_hierarchy_timed",
+            side_effect=lambda _device, durations, **_kwargs: (
+                durations.append(3) or [method]
+            ),
+        ):
+            _, action = driver.reacquire_creation_method_one_shot_target(
+                device,
+                expected_detail="Build method · Priority",
+                diagnostic_capture="creation-priority-core-bootstrap-ready",
+                deadline=driver.time.monotonic() + 30,
+            )
+        action["status"] = "tap-issued"
+        action["tap"] = {
+            "command": "input tap",
+            "count": 1,
+            "coordinates": dict(action["preTap"]["center"]),
+            "issuedAtUtc": "2026-09-03T17:48:30+00:00",
+        }
+        old_dashboard = [self.canonical_node("creation-wizard-dashboard")]
+        route = self.canonical_node("creation-prerequisite-page")
+        top_method = self.canonical_node("creation-prerequisite-method")
+        binding = self.canonical_node("creation-prerequisite-binding")
+        device.hierarchy.side_effect = [old_dashboard, [route, top_method, binding]]
+        device.dismiss_system_ui_anr.return_value = False
+        observed: list[dict[str, object]] = []
+
+        with mock.patch.object(driver.time, "sleep"):
+            origin = driver.wait_for_prerequisite_scan_origin(
+                device,
+                immediately_after_opening_tap=True,
+                scan_observer=observed.append,
+                opening_action=action,
+            )
+
+        self.assertEqual([route, top_method, binding], origin.nodes)
+        self.assertEqual("first-post-tap-observed", action["status"])
+        first = action["firstPostTap"]
+        self.assertEqual(
+            driver.accessibility_signature_sha256(old_dashboard),
+            first["hierarchyDigest"],
+        )
+        self.assertEqual(0, first["routeCardinality"])
+        self.assertIs(False, first["routeResolved"])
+        self.assertEqual(action, observed[0]["openingAction"])
+        driver.require_creation_method_one_shot_proof(
+            action,
+            require_first_post_tap=True,
+        )
+        device.shell.assert_not_called()
+
+    def test_initial_method_opening_proof_rejects_replay_fallback_or_second_tap(self) -> None:
+        base = {
+            "schema": driver.CREATION_METHOD_ONE_SHOT_SCHEMA,
+            "status": "tap-issued",
+            "selector": "creation-stage-method",
+            "fullResourceId": f"{driver.shared.PACKAGE}:id/creation-stage-method",
+            "diagnosticCapture": "creation-priority-core-bootstrap-ready",
+            "preTap": {
+                "observedAtUtc": "2026-09-03T17:48:29+00:00",
+                "hierarchyDigest": "sha256:" + "1" * 64,
+                "hierarchyDigestDomain": driver.CREATION_METHOD_ONE_SHOT_DIGEST_DOMAIN,
+                "nodeCount": 39,
+                "hierarchyReadCount": 1,
+                "hierarchyElapsedMs": 3,
+                "bounds": "[98,275][984,355]",
+                "center": {"x": 541, "y": 315},
+                "enabled": True,
+                "clickable": True,
+                "detail": "Build method · Priority",
+            },
+            "tap": {
+                "command": "input tap",
+                "count": 1,
+                "coordinates": {"x": 541, "y": 315},
+                "issuedAtUtc": "2026-09-03T17:48:30+00:00",
+            },
+            "tapReplayPerformed": False,
+            "fallbackTapPerformed": False,
+        }
+        for field, value in (
+            ("tapReplayPerformed", True),
+            ("fallbackTapPerformed", True),
+            ("tap.count", 2),
+        ):
+            proof = json.loads(json.dumps(base))
+            if field == "tap.count":
+                proof["tap"]["count"] = value
+            else:
+                proof[field] = value
+            with self.subTest(field=field), self.assertRaisesRegex(
+                RuntimeError,
+                "authority differs|target, digest, or tap differs",
+            ):
+                driver.require_creation_method_one_shot_proof(
+                    proof,
+                    require_first_post_tap=False,
+                )
+
+    def test_resources_rebind_one_shot_binds_its_exact_diagnostic_and_first_observation(
+        self,
+    ) -> None:
+        diagnostic = "creation-resources-prerequisite-rebind-ready"
+        method = self.canonical_node(
+            "creation-stage-method",
+            text="",
+            **{"content-desc": "Build method · Priority"},
+        )
+        device = mock.Mock(spec=driver.shared.Device)
+        device.display_size.return_value = (1080, 1920)
+        with mock.patch.object(
+            driver,
+            "fresh_hierarchy_timed",
+            side_effect=lambda _device, durations, **_kwargs: (
+                durations.append(3) or [method]
+            ),
+        ):
+            _, action = driver.reacquire_creation_method_one_shot_target(
+                device,
+                expected_detail="Build method · Priority",
+                diagnostic_capture=diagnostic,
+                deadline=driver.time.monotonic() + 30,
+            )
+        action["status"] = "tap-issued"
+        action["tap"] = {
+            "command": "input tap",
+            "count": 1,
+            "coordinates": dict(action["preTap"]["center"]),
+            "issuedAtUtc": "2026-09-04T00:00:00+00:00",
+        }
+        route = self.canonical_node("creation-prerequisite-page")
+        top_method = self.canonical_node("creation-prerequisite-method")
+        binding = self.canonical_node("creation-prerequisite-binding")
+        device.hierarchy.return_value = [route, top_method, binding]
+        device.dismiss_system_ui_anr.return_value = False
+
+        with mock.patch.object(driver.time, "sleep"):
+            origin = driver.wait_for_prerequisite_scan_origin(
+                device,
+                immediately_after_opening_tap=True,
+                opening_action=action,
+                opening_action_diagnostic_capture=diagnostic,
+            )
+
+        self.assertEqual([route, top_method, binding], origin.nodes)
+        self.assertEqual("first-post-tap-observed", action["status"])
+        self.assertIs(True, action["firstPostTap"]["routeResolved"])
+        driver.require_creation_method_one_shot_proof(
+            action,
+            require_first_post_tap=True,
+            expected_diagnostic_capture=diagnostic,
+        )
+        with self.assertRaisesRegex(RuntimeError, "authority differs"):
+            driver.require_creation_method_one_shot_proof(
+                action,
+                require_first_post_tap=True,
+                expected_diagnostic_capture="creation-priority-core-bootstrap-ready",
+            )
+        device.shell.assert_not_called()
+
+    def test_resources_rebind_uses_one_fresh_target_and_one_tap_without_replay(self) -> None:
+        source = inspect.getsource(driver.execute)
+        start = source.index('progress.advance("resources-prerequisite-rebind")')
+        end = source.index('progress.advance("process-restart-reopen")', start)
+        rebind = source[start:end]
+
+        broad = rebind.index("reacquire_exact_ready_creation_method(")
+        diagnostic = rebind.index(
+            'rebind_diagnostic_capture = "creation-resources-prerequisite-rebind-ready"'
+        )
+        fresh = rebind.index("reacquire_creation_method_one_shot_target(")
+        tap = rebind.index('"command": "input tap"')
+        issued = rebind.index("device.shell(", tap)
+        first_observation = rebind.index("wait_for_prerequisite_scan_origin(", issued)
+        validated = rebind.index("require_creation_method_one_shot_proof(", first_observation)
+        attached_capture = rebind.index(
+            '"creation-resources-prerequisite-rebind-attached"',
+            validated,
+        )
+        attachment = rebind.index(
+            "read_creation_prerequisite_attachment_proof_state(",
+            attached_capture,
+        )
+        visible_authority = rebind.index(
+            "read_persisted_prerequisite_authority(",
+            attachment,
+        )
+        self.assertEqual(
+            [
+                broad,
+                diagnostic,
+                fresh,
+                tap,
+                issued,
+                first_observation,
+                validated,
+                attached_capture,
+                attachment,
+                visible_authority,
+            ],
+            sorted(
+                (
+                    broad,
+                    diagnostic,
+                    fresh,
+                    tap,
+                    issued,
+                    first_observation,
+                    validated,
+                    attached_capture,
+                    attachment,
+                    visible_authority,
+                )
+            ),
+        )
+        self.assertIn("scan_observer=progress.record_scan", rebind)
+        self.assertIn(
+            "opening_action=post_resources_opening_action",
+            rebind,
+        )
+        self.assertIn(
+            "opening_action_diagnostic_capture=rebind_diagnostic_capture",
+            rebind,
+        )
+        self.assertIn(
+            "expected_diagnostic_capture=rebind_diagnostic_capture",
+            rebind,
+        )
+        self.assertIn(
+            "expected_prior_proof=resources_same_process_proof",
+            rebind,
+        )
+        self.assertEqual(1, rebind.count('"command": "input tap"'))
+        self.assertEqual(1, rebind.count('"count": 1'))
+        self.assertNotIn("open_prerequisite(", rebind)
+        self.assertNotIn("tapReplayPerformed = True", rebind)
+        self.assertNotIn("fallbackTapPerformed = True", rebind)
+        self.assertEqual(
+            180_000,
+            driver.PHASE_BUDGET_MS["resources-prerequisite-rebind"],
+        )
+
     def test_prerequisite_resume_rejects_a_stale_or_non_tappable_method_node(self) -> None:
         for attributes in (
             {
@@ -8000,6 +8419,593 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             return_value=driver.StableViewportScan([[binding], [method, method]], 4),
         ), self.assertRaisesRegex(RuntimeError, "cardinality 2"):
             driver.assert_uncreated_advanced_editor_gated(device)
+
+    @classmethod
+    def continuity_route_nodes(cls) -> list[driver.shared.UiNode]:
+        return [
+            cls.canonical_node(
+                driver.CREATION_DASHBOARD_CONTINUITY_ROUTE_ID,
+                **{"class": "android.view.ViewGroup"},
+            ),
+            cls.canonical_node("creation-wizard-binding"),
+        ]
+
+    @staticmethod
+    def continuity_launch_state(
+        process_ids: tuple[str, ...] = ("41",),
+        component: str | None = (
+            "com.myexternalbrain.chummer/crc6499476c6d6bb62086.MainActivity"
+        ),
+    ) -> driver.shared.LaunchState:
+        return driver.shared.LaunchState(process_ids, component, "activity dump")
+
+    def test_dashboard_continuity_accepts_exact_pid_component_package_and_route(self) -> None:
+        expected = self.continuity_launch_state()
+        continuity = driver.CreationDashboardContinuityGuard(
+            mock.Mock(),
+            expected,
+            deadline=driver.time.monotonic() + 30,
+            phase_id="advanced-editor-gate-inventory",
+        )
+        with mock.patch.object(
+            driver,
+            "_strict_creation_dashboard_launch_state",
+            return_value=expected,
+        ), mock.patch.object(
+            driver,
+            "capture_creation_dashboard_continuity_failure",
+        ) as capture:
+            continuity.require(
+                self.continuity_route_nodes(),
+                "advanced-editor-gate-initial-pre-scan",
+                "pre-scan",
+                0,
+            )
+
+        capture.assert_not_called()
+        self.assertEqual(1, len(continuity.scroll_journal))
+        self.assertEqual("pass", continuity.scroll_journal[0]["status"])
+        self.assertTrue(continuity.scroll_journal[0]["exactRouteRequired"])
+
+        scrolled_viewport = self.continuity_route_nodes() + [
+            self.canonical_node("creation-stage-method"),
+            self.canonical_node("creation-budget-karma"),
+        ]
+        with mock.patch.object(
+            driver,
+            "_strict_creation_dashboard_launch_state",
+            return_value=expected,
+        ):
+            continuity.require(
+                scrolled_viewport,
+                "advanced-editor-gate-initial",
+                "forward",
+                1,
+            )
+        self.assertEqual("pass", continuity.scroll_journal[-1]["status"])
+        self.assertTrue(continuity.scroll_journal[-1]["exactRouteRequired"])
+        self.assertTrue(continuity.scroll_journal[-1]["exactRoute"])
+
+    def test_dashboard_continuity_rejects_every_inexact_dashboard_root_before_gesture(self) -> None:
+        expected = self.continuity_launch_state()
+        exact_root = self.continuity_route_nodes()[0]
+        hostile_nodes = {
+            "missing": [self.canonical_node("creation-wizard-binding")],
+            "duplicate": [exact_root, exact_root],
+            "wrong-class": [
+                self.canonical_node(
+                    driver.CREATION_DASHBOARD_CONTINUITY_ROUTE_ID,
+                    **{"class": "android.widget.ScrollView"},
+                )
+            ],
+            "wrong-full-resource-id": [
+                driver.shared.UiNode({
+                    "package": driver.shared.PACKAGE,
+                    "resource-id": (
+                        "com.hostile.same.package:id/"
+                        + driver.CREATION_DASHBOARD_CONTINUITY_ROUTE_ID
+                    ),
+                    "class": "android.view.ViewGroup",
+                    "bounds": "[0,0][1080,2400]",
+                })
+            ],
+        }
+        for traversal in ("pre-scan", "reverse", "forward"):
+            for name, nodes in hostile_nodes.items():
+                with self.subTest(traversal=traversal, name=name):
+                    continuity = driver.CreationDashboardContinuityGuard(
+                        mock.Mock(),
+                        expected,
+                        deadline=driver.time.monotonic() + 30,
+                        phase_id="advanced-editor-gate-inventory",
+                    )
+                    with mock.patch.object(
+                        driver,
+                        "_strict_creation_dashboard_launch_state",
+                        return_value=expected,
+                    ), mock.patch.object(
+                        driver,
+                        "capture_creation_dashboard_continuity_failure",
+                    ) as capture, self.assertRaisesRegex(
+                        RuntimeError,
+                        "no recovery or further gesture was attempted",
+                    ):
+                        continuity.require(
+                            nodes,
+                            "advanced-editor-gate-initial",
+                            traversal,
+                            0,
+                        )
+                    capture.assert_called_once()
+                    self.assertIn(
+                        "dashboard-route-changed",
+                        capture.call_args.kwargs["reason"],
+                    )
+                    self.assertEqual(
+                        0,
+                        continuity.scroll_journal[-1]["gesturesIssued"],
+                    )
+                    self.assertTrue(
+                        continuity.scroll_journal[-1]["exactRouteRequired"]
+                    )
+
+    def test_dashboard_continuity_foreign_launcher_stops_before_next_gesture(self) -> None:
+        expected = self.continuity_launch_state()
+        app_nodes = self.continuity_route_nodes()
+        launcher_nodes = [
+            driver.shared.UiNode({
+                "package": "com.google.android.apps.nexuslauncher",
+                "resource-id": "com.google.android.apps.nexuslauncher:id/apps_list_view",
+                "class": "androidx.recyclerview.widget.RecyclerView",
+                "bounds": "[0,0][1080,2400]",
+            })
+        ]
+        events: list[str] = []
+
+        class ForeignAfterOneGestureDevice:
+            def hierarchy(self, **_options: object) -> list[driver.shared.UiNode]:
+                events.append("hierarchy")
+                return launcher_nodes
+
+            def swipe_up(self, **_options: object) -> None:
+                events.append("swipe")
+
+            @staticmethod
+            def capture(*_args: object, **_options: object) -> None:
+                raise AssertionError("continuity failure used the generic capture path")
+
+        device = ForeignAfterOneGestureDevice()
+        continuity = driver.CreationDashboardContinuityGuard(
+            device,
+            expected,
+            deadline=driver.time.monotonic() + 30,
+            phase_id="advanced-editor-gate-inventory",
+        )
+        origin = self.priority_rank_origin(app_nodes)
+        with mock.patch.object(
+            driver,
+            "_strict_creation_dashboard_launch_state",
+            return_value=expected,
+        ), mock.patch.object(
+            driver,
+            "capture_creation_dashboard_continuity_failure",
+        ) as capture, self.assertRaisesRegex(
+            RuntimeError,
+            "no recovery or further gesture was attempted",
+        ):
+            driver.scan_forward_until_stable(
+                device,
+                scan_id="advanced-editor-gate-initial",
+                max_scrolls=18,
+                distance_ratio=driver.DASHBOARD_SCAN_GESTURE_RATIO,
+                initial_observation=origin,
+                delay_seconds=0.0,
+                continuity_check=continuity.require,
+            )
+
+        self.assertEqual(["swipe", "hierarchy"], events)
+        self.assertEqual(1, events.count("swipe"))
+        capture.assert_called_once()
+        self.assertIn(
+            "hierarchy-package-changed",
+            capture.call_args.kwargs["reason"],
+        )
+        self.assertEqual(
+            ["com.google.android.apps.nexuslauncher"],
+            list(capture.call_args.kwargs["hierarchy_packages"]),
+        )
+
+    def test_dashboard_continuity_foreign_launcher_stops_reverse_scan_before_next_gesture(self) -> None:
+        expected = self.continuity_launch_state()
+        app_nodes = self.continuity_route_nodes()
+        launcher_nodes = [
+            driver.shared.UiNode({
+                "package": "com.google.android.apps.nexuslauncher",
+                "resource-id": "com.google.android.apps.nexuslauncher:id/apps_list_view",
+                "class": "androidx.recyclerview.widget.RecyclerView",
+                "bounds": "[0,0][1080,2400]",
+            })
+        ]
+        events: list[str] = []
+
+        class ForeignAfterReverseGestureDevice:
+            def hierarchy(self, **_options: object) -> list[driver.shared.UiNode]:
+                events.append("hierarchy")
+                return app_nodes if events.count("hierarchy") == 1 else launcher_nodes
+
+            def swipe_down(self, **_options: object) -> None:
+                events.append("swipe-down")
+
+            @staticmethod
+            def capture(*_args: object, **_options: object) -> None:
+                raise AssertionError("continuity failure used the generic capture path")
+
+        device = ForeignAfterReverseGestureDevice()
+        continuity = driver.CreationDashboardContinuityGuard(
+            device,
+            expected,
+            deadline=driver.time.monotonic() + 30,
+            phase_id="advanced-editor-gate-inventory",
+        )
+        with mock.patch.object(
+            driver,
+            "_strict_creation_dashboard_launch_state",
+            return_value=expected,
+        ), mock.patch.object(
+            driver,
+            "capture_creation_dashboard_continuity_failure",
+        ) as capture, self.assertRaisesRegex(
+            RuntimeError,
+            "no recovery or further gesture was attempted",
+        ):
+            driver.acquire_stable_start_origin(
+                device,
+                scan_id="advanced-editor-gate-initial-origin",
+                max_reverse_swipes=5,
+                distance_ratio=driver.DASHBOARD_SCAN_GESTURE_RATIO,
+                stable_repeats=1,
+                delay_seconds=0.0,
+                deadline=driver.time.monotonic() + 30,
+                continuity_check=continuity.require,
+            )
+
+        self.assertEqual(
+            ["hierarchy", "swipe-down", "hierarchy"],
+            events,
+        )
+        self.assertEqual(1, events.count("swipe-down"))
+        capture.assert_called_once()
+        self.assertIn(
+            "hierarchy-package-changed",
+            capture.call_args.kwargs["reason"],
+        )
+
+    def test_dashboard_continuity_fails_closed_for_missing_or_changed_identity(self) -> None:
+        expected = self.continuity_launch_state()
+        hostile = (
+            self.continuity_launch_state((), None),
+            self.continuity_launch_state(("42",)),
+            self.continuity_launch_state(
+                ("41",),
+                "com.google.android.apps.nexuslauncher/.NexusLauncherActivity",
+            ),
+        )
+        for observed in hostile:
+            with self.subTest(observed=observed):
+                continuity = driver.CreationDashboardContinuityGuard(
+                    mock.Mock(),
+                    expected,
+                    deadline=driver.time.monotonic() + 30,
+                    phase_id="advanced-editor-gate-inventory",
+                )
+                with mock.patch.object(
+                    driver,
+                    "_strict_creation_dashboard_launch_state",
+                    return_value=observed,
+                ), mock.patch.object(
+                    driver,
+                    "capture_creation_dashboard_continuity_failure",
+                ) as capture, self.assertRaisesRegex(
+                    RuntimeError,
+                    "no recovery or further gesture was attempted",
+                ):
+                    continuity.require(
+                        self.continuity_route_nodes(),
+                        "advanced-editor-gate-initial-pre-scan",
+                        "pre-scan",
+                        0,
+                    )
+                capture.assert_called_once()
+                self.assertEqual(
+                    "fail",
+                    continuity.scroll_journal[-1]["status"],
+                )
+
+    def test_strict_dashboard_launch_state_rejects_ambiguous_pid_and_activity(self) -> None:
+        component = self.continuity_launch_state().resumed_component
+        assert component is not None
+        activity_header = (
+            "ACTIVITY MANAGER ACTIVITIES (dumpsys activity activities)"
+        )
+
+        class StrictStateDevice:
+            def __init__(
+                self,
+                pid_outputs: tuple[str, str],
+                activity_output: str,
+            ) -> None:
+                self.pid_outputs = iter(pid_outputs)
+                self.activity_output = activity_output
+                self.calls: list[tuple[str, ...]] = []
+
+            def run(self, *arguments: str, **_options: object) -> subprocess.CompletedProcess:
+                self.calls.append(arguments)
+                stdout = (
+                    next(self.pid_outputs)
+                    if arguments[1:3] == ("pidof", driver.shared.PACKAGE)
+                    else self.activity_output
+                )
+                return subprocess.CompletedProcess(arguments, 0, stdout, "")
+
+        exact_marker = f"mResumedActivity: ActivityRecord{{abc {component} t12}}"
+        exact_activity = f"{activity_header}\n{exact_marker}"
+        exact = StrictStateDevice(("41\n", "41\n"), exact_activity)
+        deadline = driver.time.monotonic() + 30
+        pid_observations: list[tuple[str, ...]] = []
+        observed = driver._strict_creation_dashboard_launch_state(
+            exact,
+            deadline=deadline,
+            pid_observations_out=pid_observations,
+        )
+        self.assertEqual(("41",), observed.process_ids)
+        self.assertEqual(component, observed.resumed_component)
+        self.assertEqual([("41",), ("41",)], pid_observations)
+        self.assertEqual(
+            [
+                ("shell", "pidof", driver.shared.PACKAGE),
+                ("shell", "dumpsys", "activity", "activities"),
+                ("shell", "pidof", driver.shared.PACKAGE),
+            ],
+            exact.calls,
+        )
+
+        ambiguous_pid = StrictStateDevice(
+            ("41 42\n", "41 42\n"),
+            exact_activity,
+        )
+        observed = driver._strict_creation_dashboard_launch_state(
+            ambiguous_pid,
+            deadline=driver.time.monotonic() + 30,
+        )
+        self.assertEqual((), observed.process_ids)
+
+        swapped_pid = StrictStateDevice(("41\n", "42\n"), exact_activity)
+        pid_observations = []
+        observed = driver._strict_creation_dashboard_launch_state(
+            swapped_pid,
+            deadline=driver.time.monotonic() + 30,
+            pid_observations_out=pid_observations,
+        )
+        self.assertEqual((), observed.process_ids)
+        self.assertEqual([("41",), ("42",)], pid_observations)
+
+        second_component = "com.google.android.apps.nexuslauncher/.NexusLauncherActivity"
+        ambiguous_activity = StrictStateDevice(
+            ("41\n", "41\n"),
+            f"{exact_activity}\ntopResumedActivity=ActivityRecord{{def {second_component} t1}}",
+        )
+        observed = driver._strict_creation_dashboard_launch_state(
+            ambiguous_activity,
+            deadline=driver.time.monotonic() + 30,
+        )
+        self.assertIsNone(observed.resumed_component)
+
+        duplicated_activity = StrictStateDevice(
+            ("41\n", "41\n"),
+            f"{exact_activity}\nResumedActivity: ActivityRecord{{def {component} t12}}",
+        )
+        observed = driver._strict_creation_dashboard_launch_state(
+            duplicated_activity,
+            deadline=driver.time.monotonic() + 30,
+        )
+        self.assertEqual(component, observed.resumed_component)
+        self.assertEqual(3, len(duplicated_activity.calls))
+
+    def test_dashboard_resumed_authority_accepts_all_agreeing_real_android_forms(self) -> None:
+        component = self.continuity_launch_state().resumed_component
+        assert component is not None
+        header = "ACTIVITY MANAGER ACTIVITIES (dumpsys activity activities)"
+        markers = (
+            f"topResumedActivity=ActivityRecord{{a u0 {component} t8}}",
+            f"mResumedActivity: ActivityRecord{{b u0 {component} t8}}",
+            f"Resumed: ActivityRecord{{c u0 {component} t8}}",
+            f"ResumedActivity: ActivityRecord{{d u0 {component} t8}}",
+        )
+        for marker in markers:
+            with self.subTest(marker=marker.split("ActivityRecord", 1)[0]):
+                observed, status, marker_count = (
+                    driver._creation_dashboard_resumed_activity_authority(
+                        f"{header}\n{marker}"
+                    )
+                )
+                self.assertEqual(component, observed)
+                self.assertEqual("authoritative", status)
+                self.assertEqual(1, marker_count)
+
+        observed, status, marker_count = (
+            driver._creation_dashboard_resumed_activity_authority(
+                f"{header}\n" + "\n".join(markers)
+            )
+        )
+        self.assertEqual(component, observed)
+        self.assertEqual("authoritative", status)
+        self.assertEqual(4, marker_count)
+
+    def test_dashboard_resumed_authority_rejects_missing_malformed_and_conflicting_forms(self) -> None:
+        component = self.continuity_launch_state().resumed_component
+        assert component is not None
+        header = "ACTIVITY MANAGER ACTIVITIES (dumpsys activity activities)"
+        launcher = "com.google.android.apps.nexuslauncher/.NexusLauncherActivity"
+        hostile = {
+            "empty": "",
+            "truncated-valid-marker": (
+                f"ResumedActivity: ActivityRecord{{a u0 {component} t8}}"
+            ),
+            "missing": f"{header}\nDisplay #0",
+            "null": f"{header}\ntopResumedActivity=null",
+            "malformed": f"{header}\nResumedActivity: ActivityRecord{{no-component}}",
+            "multiple-components-one-marker": (
+                f"{header}\nResumedActivity: ActivityRecord{{a {component} "
+                f"{launcher} t8}}"
+            ),
+            "conflicting-markers": (
+                f"{header}\nResumedActivity: ActivityRecord{{a {component} t8}}\n"
+                f"Resumed: ActivityRecord{{b {launcher} t1}}"
+            ),
+        }
+        for name, activity_dump in hostile.items():
+            with self.subTest(name=name):
+                observed, status, _marker_count = (
+                    driver._creation_dashboard_resumed_activity_authority(
+                        activity_dump
+                    )
+                )
+                self.assertIsNone(observed)
+                self.assertNotEqual("authoritative", status)
+
+    def test_strict_dashboard_launch_state_rejects_nonzero_activity_command_without_retry(self) -> None:
+        component = self.continuity_launch_state().resumed_component
+        assert component is not None
+        calls: list[tuple[str, ...]] = []
+
+        class NonzeroActivityDevice:
+            def run(self, *arguments: str, **_options: object) -> subprocess.CompletedProcess:
+                calls.append(arguments)
+                if arguments[1:3] == ("pidof", driver.shared.PACKAGE):
+                    return subprocess.CompletedProcess(arguments, 0, "41\n", "")
+                return subprocess.CompletedProcess(
+                    arguments,
+                    1,
+                    (
+                        "ACTIVITY MANAGER ACTIVITIES "
+                        "(dumpsys activity activities)\n"
+                        f"ResumedActivity: ActivityRecord{{a {component} t8}}"
+                    ),
+                    "failed",
+                )
+
+        launch_observations: list[dict[str, object]] = []
+        observed = driver._strict_creation_dashboard_launch_state(
+            NonzeroActivityDevice(),
+            deadline=driver.time.monotonic() + 30,
+            launch_observations_out=launch_observations,
+        )
+        self.assertIsNone(observed.resumed_component)
+        self.assertEqual(3, len(calls))
+        self.assertEqual(
+            "activity-command-failed",
+            launch_observations[0]["activityAuthorityStatus"],
+        )
+
+    def test_dashboard_continuity_diagnostics_are_log_first_and_navigation_free(self) -> None:
+        expected = self.continuity_launch_state()
+        calls: list[tuple[str, ...]] = []
+        with tempfile.TemporaryDirectory() as directory:
+            device = mock.Mock()
+            device.evidence = Path(directory)
+
+            def run(*arguments: str, **options: object) -> subprocess.CompletedProcess:
+                receipt_path = (
+                    Path(directory)
+                    / f"{driver.CREATION_DASHBOARD_CONTINUITY_PREFIX}.json"
+                )
+                self.assertTrue(
+                    receipt_path.is_file(),
+                    "fail-closed receipt must precede every device diagnostic",
+                )
+                calls.append(arguments)
+                stdout: str | bytes = b"png" if options.get("text") is False else "evidence"
+                return subprocess.CompletedProcess(arguments, 0, stdout, "")
+
+            device.run.side_effect = run
+            journal = [{
+                "phaseId": "advanced-editor-gate-inventory",
+                "scanId": "advanced-editor-gate-initial",
+                "hierarchySignatureSha256": "sha256:" + "a" * 64,
+            }]
+            driver.capture_creation_dashboard_continuity_failure(
+                device,
+                reason="hierarchy-package-changed",
+                expected=expected,
+                observed=self.continuity_launch_state((), None),
+                hierarchy_packages=("com.google.android.apps.nexuslauncher",),
+                route_cardinality=0,
+                exact_route=False,
+                scroll_journal=journal,
+            )
+
+            self.assertEqual(
+                [
+                    ("logcat", "-d", "-b", "all", "-v", "threadtime", "-t", "4000"),
+                    ("logcat", "-d", "-b", "events", "-v", "threadtime"),
+                    ("logcat", "-d", "-b", "crash", "-v", "threadtime"),
+                ],
+                calls[:3],
+            )
+            self.assertEqual(
+                [
+                    (
+                        "shell",
+                        "dumpsys",
+                        "activity",
+                        "exit-info",
+                        driver.shared.PACKAGE,
+                    ),
+                    ("shell", "dumpsys", "activity", "activities"),
+                    ("shell", "dumpsys", "window", "windows"),
+                    ("shell", "dumpsys", "activity", "processes"),
+                ],
+                calls[3:7],
+            )
+            self.assertFalse(any("am" in call and "start" in call for call in calls))
+            self.assertFalse(any("input" in call for call in calls))
+            receipt = json.loads(
+                (Path(directory) / f"{driver.CREATION_DASHBOARD_CONTINUITY_PREFIX}.json")
+                .read_text(encoding="utf-8")
+            )
+            self.assertEqual(journal[0], receipt["trigger"])
+            self.assertEqual(
+                "advanced-editor-gate-inventory",
+                receipt["phaseId"],
+            )
+            self.assertEqual(
+                "advanced-editor-gate-initial",
+                receipt["scanId"],
+            )
+            self.assertTrue(receipt["noRelaunch"])
+            self.assertTrue(receipt["noReplay"])
+            self.assertTrue(receipt["noNavigation"])
+            self.assertTrue(receipt["receiptWrittenBeforeDeviceDiagnostics"])
+            self.assertFalse(receipt["recoveryAttempted"])
+            self.assertFalse(receipt["furtherGesturesAttempted"])
+
+    def test_execute_binds_initial_dashboard_scan_to_initial_launch_identity(self) -> None:
+        execute_source = inspect.getsource(driver.execute)
+        continuity = execute_source.index(
+            "dashboard_continuity = CreationDashboardContinuityGuard("
+        )
+        scan = execute_source.index("dashboard_scan = assert_uncreated_advanced_editor_gated(")
+        self.assertLess(continuity, scan)
+        bound = execute_source[continuity:scan]
+        self.assertIn("initial_launch", bound)
+        self.assertIn("resolved_dashboard_viewport[0].nodes", bound)
+        self.assertIn('"pre-scan"', bound)
+        self.assertIn("continuity_guard=dashboard_continuity", execute_source[scan:])
+        capture_source = inspect.getsource(
+            driver.capture_creation_dashboard_continuity_failure
+        )
+        self.assertNotIn("launch_app", capture_source)
+        self.assertNotIn('"am", "start"', capture_source)
 
     def test_dashboard_scan_selects_the_last_tappable_method_viewport(self) -> None:
         binding = driver.shared.UiNode(

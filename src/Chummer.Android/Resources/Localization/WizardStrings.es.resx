@@ -10,6 +10,9 @@
   <data name="Common.NotSelected" xml:space="preserve"><value>sin seleccionar</value></data>
   <data name="Common.OK" xml:space="preserve"><value>Aceptar</value></data>
   <data name="Common.PreviewBlockers" xml:space="preserve"><value>Bloqueos de vista previa</value></data>
+  <data name="Preview11.CareerHubDetail" xml:space="preserve"><value>Hay siete flujos con autoridad de vista previa; las rutas adicionales están marcadas como experimentales.</value></data>
+  <data name="Preview11.ContainsExperimentalRoutes" xml:space="preserve"><value>{0} · Contiene rutas experimentales no cubiertas por la autoridad de la vista previa actual.</value></data>
+  <data name="Preview11.ExperimentalRoute" xml:space="preserve"><value>{0} · Experimental — no cubierto por la autoridad de la vista previa actual.</value></data>
   <data name="Common.Rank" xml:space="preserve"><value>Rango {0}</value></data>
   <data name="Common.RankLabel" xml:space="preserve"><value>Rango</value></data>
   <data name="Common.Remaining" xml:space="preserve"><value>Restante</value></data>
@@ -157,6 +160,7 @@
   <data name="Career.Checkpoint.RevisionChanged" xml:space="preserve"><value>La revisión del runner cambió, así que se descartó la selección de carrera guardada.</value></data>
   <data name="Career.Checkpoint.SnapshotChanged" xml:space="preserve"><value>Cambió la ejecución, las fuentes, el contenido o la disponibilidad; se descartó la selección guardada.</value></data>
   <data name="Career.Checkpoint.WorkspaceChanged" xml:space="preserve"><value>La selección de carrera guardada pertenecía a otro espacio de trabajo y se descartó.</value></data>
+  <data name="Career.Commerce" xml:space="preserve"><value>Comercio</value></data>
   <data name="Career.ChooseFamily" xml:space="preserve"><value>Elige una familia de acciones. Solo se muestran rutas respaldadas por una autoridad tipada actual.</value></data>
   <data name="Career.Eyebrow" xml:space="preserve"><value>Shadowrun Quinta Edición</value></data>
   <data name="Career.FamilyBoundary" xml:space="preserve"><value>Seleccionar una fila solo escribe un punto de control de navegación vinculado al resumen. El destino debe volver a cargar y validar su propia autoridad tipada.</value></data>

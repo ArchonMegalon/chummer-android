@@ -2,15 +2,19 @@ name: API 36 phone beta SR5 wizard E2E
 
 on:
   pull_request:
+  merge_group:
   push:
     branches:
       - main
     paths:
       - ".github/workflows/api36-editing-e2e.yml"
+      - ".github/workflows/api36-two-consecutive-green.yml"
       - "docs/ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json"
       - "docs/CHUMMER5_CHARACTER_SETTINGS_CONTRACT.generated.json"
       - "docs/editability-evidence/**"
+      - "eng/api36-proof-environment-authority.json"
       - "eng/api36-sr5-wizard-gate-authority.json"
+      - "eng/api36-two-consecutive-green-authority.json"
       - "global.json"
       - "play/**"
       - "scripts/**"
@@ -31,6 +35,8 @@ jobs:
     name: Build x64 emulator and ARM64 hosted debug candidates
     runs-on: ubuntu-24.04
     timeout-minutes: 60
+    env:
+      DOTNET_MULTILEVEL_LOOKUP: "0"
     outputs:
       apk-artifact-id: ${{ steps.upload-apk.outputs.artifact-id }}
       apk-artifact-digest: ${{ steps.upload-apk.outputs.artifact-digest }}
@@ -203,11 +209,33 @@ jobs:
 
       - name: Install the governed .NET SDK
         uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        env:
+          DOTNET_INSTALL_DIR: ${{ runner.temp }}/chummer-api36-dotnet-10.0.110
         with:
           dotnet-version: 10.0.110
 
+      - name: Verify the isolated governed .NET SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -x "$DOTNET_ROOT/dotnet"
+          test "$(command -v dotnet)" = "$DOTNET_ROOT/dotnet"
+          mapfile -t installed_sdks < <(
+            find "$DOTNET_ROOT/sdk" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' \
+              | LC_ALL=C sort
+          )
+          test "${#installed_sdks[@]}" -eq 1
+          test "${installed_sdks[0]}" = "10.0.110"
+          test "$("$DOTNET_ROOT/dotnet" --version)" = "10.0.110"
+
+      - name: Install the governed Java runtime
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
       - name: Restore the pinned MAUI Android workload
-        run: dotnet workload restore chummer-android/Chummer.Android.slnx
+        run: '"$DOTNET_ROOT/dotnet" workload restore chummer-android/Chummer.Android.slnx'
 
       - name: Verify clean Android source before local-compatibility restores
         shell: bash
@@ -326,9 +354,24 @@ jobs:
             --run-id "$GITHUB_RUN_ID" \
             --run-attempt "$GITHUB_RUN_ATTEMPT" \
             --output "$RUNNER_TEMP/chummer-android-arm64/hosted-build-candidate.json"
+          python3 chummer-android/scripts/materialize-api36-proof-environment-receipt.py \
+            build \
+            --x64-apk "$RUNNER_TEMP/chummer-android-apk/chummer-android-x64-debug.apk" \
+            --arm64-apk "$RUNNER_TEMP/chummer-android-arm64/chummer-android-arm64-debug.apk" \
+            --hosted-candidate "$RUNNER_TEMP/chummer-android-arm64/hosted-build-candidate.json" \
+            --workflow "$GITHUB_WORKSPACE/chummer-android/.github/workflows/api36-editing-e2e.yml" \
+            --android-sdk-root "$ANDROID_HOME" \
+            --gate-contract "$GITHUB_WORKSPACE/chummer-android/eng/api36-sr5-wizard-gate-authority.json" \
+            --policy "$GITHUB_WORKSPACE/chummer-android/eng/api36-proof-environment-authority.json" \
+            --output "$RUNNER_TEMP/chummer-android-arm64/build-environment-receipt.json"
           apk_sha256="$(sha256sum "$RUNNER_TEMP/chummer-android-arm64/chummer-android-arm64-debug.apk" | cut -d ' ' -f 1)"
           printf '%s  %s\n' "$apk_sha256" chummer-android-arm64-debug.apk \
             >"$RUNNER_TEMP/chummer-android-arm64/chummer-android-arm64-debug.apk.sha256"
+          (
+            cd "$RUNNER_TEMP/chummer-android-arm64"
+            sha256sum build-environment-receipt.json >build-environment-receipt.json.sha256
+            sha256sum --check build-environment-receipt.json.sha256
+          )
           {
             echo "apk-sha256=$apk_sha256"
             echo "artifact-name=chummer-android-api36-arm64-hosted-debug-candidate-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
@@ -365,6 +408,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     env:
+      DOTNET_MULTILEVEL_LOOKUP: "0"
       CHUMMER_E2E_PROFILE: phone
       CHUMMER_E2E_JOURNEY: ${{ matrix.journey }}
       CHUMMER_E2E_APK_ARTIFACT_ID: ${{ needs.build.outputs.apk-artifact-id }}
@@ -379,6 +423,33 @@ jobs:
           path: chummer-android
           persist-credentials: false
           fetch-depth: 1
+
+      - name: Install the governed journey .NET SDK
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        env:
+          DOTNET_INSTALL_DIR: ${{ runner.temp }}/chummer-api36-dotnet-10.0.110
+        with:
+          dotnet-version: 10.0.110
+
+      - name: Verify the isolated governed journey .NET SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -x "$DOTNET_ROOT/dotnet"
+          test "$(command -v dotnet)" = "$DOTNET_ROOT/dotnet"
+          mapfile -t installed_sdks < <(
+            find "$DOTNET_ROOT/sdk" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' \
+              | LC_ALL=C sort
+          )
+          test "${#installed_sdks[@]}" -eq 1
+          test "${installed_sdks[0]}" = "10.0.110"
+          test "$("$DOTNET_ROOT/dotnet" --version)" = "10.0.110"
+
+      - name: Install the governed journey Java runtime
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: "17"
 
       - name: Check out the typed-mutation presentation evidence graph
         if: ${{ matrix.journey == 'career-active-skill-advance' || matrix.journey == 'career-weapon-fire' || matrix.journey == 'before-run-edge' || matrix.journey == 'playtime-short-burst' }}
@@ -440,7 +511,9 @@ jobs:
           emulator-options: >-
             -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
             -camera-back none -camera-front none -no-snapshot-save
+            -stdouterr-file $RUNNER_TEMP/chummer-api36-emulator-live.log
           disable-animations: true
+          pre-emulator-launch-script: python3 chummer-android/scripts/prepare-api36-emulator-live-log.py
           script: bash chummer-android/scripts/run-api36-editing-e2e-ci.sh
 
       - name: Upload phone receipts and screenshots
@@ -508,7 +581,14 @@ jobs:
           --evidence-root "${{ runner.temp }}/chummer-api36-journey-evidence"
           --receipt "${{ runner.temp }}/chummer-api36-aggregate/receipt.json"
           --gate-contract chummer-android/eng/api36-sr5-wizard-gate-authority.json
+          --environment-policy chummer-android/eng/api36-proof-environment-authority.json
+          --build-environment-receipt "${{ runner.temp }}/chummer-android-arm64/build-environment-receipt.json"
+          --x64-apk "${{ runner.temp }}/chummer-android-apk/chummer-android-x64-debug.apk"
+          --arm64-apk "${{ runner.temp }}/chummer-android-arm64/chummer-android-arm64-debug.apk"
+          --hosted-candidate "${{ runner.temp }}/chummer-android-arm64/hosted-build-candidate.json"
+          --workflow chummer-android/.github/workflows/api36-editing-e2e.yml
           --run-id "${{ github.run_id }}"
+          --run-attempt "$GITHUB_RUN_ATTEMPT"
           --build-result "$CHUMMER_BUILD_RESULT"
           --matrix-result "$CHUMMER_MATRIX_RESULT"
           --artifact-id "$CHUMMER_E2E_APK_ARTIFACT_ID"

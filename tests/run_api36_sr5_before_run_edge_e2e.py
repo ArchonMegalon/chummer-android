@@ -17,6 +17,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import time
 import xml.etree.ElementTree as ET
 
 import api36_proof_state as proof_state
@@ -126,6 +127,14 @@ def main(argv: list[str] | None = None) -> int:
     device = shared.Device(args.adb.resolve(), args.serial, args.evidence.resolve())
     device.require_transport_stability(expected_api_level="36")
     observation = require_hosted_device(device)
+    device.require_shared_storage_readiness(
+        deadline=time.monotonic()
+        + shared.ADB_SHARED_STORAGE_PREFLIGHT_MAX_SECONDS,
+        hosted_api_level=str(observation["apiLevel"]),
+        hosted_abi=str(observation["abi"]),
+        hosted_emulator="1" if observation["emulator"] is True else "0",
+        hosted_proof_attempt=True,
+    )
     device.install_verified(apk, apk_sha256, "--no-streaming", "-r")
     provider_registration = device.publish_document_for_documents_ui(
         fixture,

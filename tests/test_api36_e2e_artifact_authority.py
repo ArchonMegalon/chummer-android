@@ -5,6 +5,7 @@ import json
 import shutil
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 
@@ -32,11 +33,17 @@ AGGREGATE = load_script(
     "api36_verify_evidence_aggregate",
     "scripts/verify-api36-editing-e2e-aggregate.py",
 )
+ENVIRONMENT = load_script(
+    "api36_proof_environment_authority",
+    "scripts/api36_proof_environment_authority.py",
+)
 
 RUN_ID = "424242"
 ARTIFACT_ID = "987654"
 ARTIFACT_DIGEST = "a" * 64
-APK_SHA256 = "b" * 64
+APK_BYTES = b"exact aggregate x64 APK"
+APK_SHA256 = hashlib.sha256(APK_BYTES).hexdigest()
+APK_SIZE = len(APK_BYTES)
 JOURNEYS = {
     "creation-prerequisite": "creation-prerequisite",
     "career-active-skill-advance": "career-active-skill-advance",
@@ -89,6 +96,85 @@ CREATION_PROSPECTIVE_PHASE_ELAPSED_MS = {
     "process-restart-restored-talent-grant": 5_000,
     "process-restart-resources": 5_000,
 }
+
+
+def creation_method_one_shot_origin_scan() -> dict[str, object]:
+    return {
+        "scanId": "creation-prerequisite-scan-origin",
+        "status": "resolved",
+        "phaseId": "prerequisite-authority-inventory",
+        "elapsedMs": 2_500,
+        "openingAction": {
+            "schema": AGGREGATE.CREATION_METHOD_ONE_SHOT_SCHEMA,
+            "status": "first-post-tap-observed",
+            "selector": "creation-stage-method",
+            "fullResourceId": (
+                "com.myexternalbrain.chummer:id/creation-stage-method"
+            ),
+            "diagnosticCapture": "creation-priority-core-bootstrap-ready",
+            "preTap": {
+                "observedAtUtc": "2026-09-03T17:48:29+00:00",
+                "hierarchyDigest": "sha256:" + "1" * 64,
+                "hierarchyDigestDomain": (
+                    AGGREGATE.CREATION_METHOD_ONE_SHOT_DIGEST_DOMAIN
+                ),
+                "nodeCount": 39,
+                "hierarchyReadCount": 1,
+                "hierarchyElapsedMs": 2_000,
+                "bounds": "[98,275][984,355]",
+                "center": {"x": 541, "y": 315},
+                "enabled": True,
+                "clickable": True,
+                "detail": "Build method · Priority",
+            },
+            "tap": {
+                "command": "input tap",
+                "count": 1,
+                "coordinates": {"x": 541, "y": 315},
+                "issuedAtUtc": "2026-09-03T17:48:30+00:00",
+            },
+            "firstPostTap": {
+                "observedAtUtc": "2026-09-03T17:48:32+00:00",
+                "hierarchyDigest": "sha256:" + "2" * 64,
+                "hierarchyDigestDomain": (
+                    AGGREGATE.CREATION_METHOD_ONE_SHOT_DIGEST_DOMAIN
+                ),
+                "nodeCount": 44,
+                "routeCardinality": 1,
+                "methodCardinality": 1,
+                "bindingCardinality": 1,
+                "routeResolved": True,
+            },
+            "tapReplayPerformed": False,
+            "fallbackTapPerformed": False,
+        },
+    }
+
+
+def creation_method_reacquisition_scan(phase_id: str) -> dict[str, object]:
+    if phase_id not in AGGREGATE.CREATION_METHOD_REACQUISITION_PHASES:
+        raise ValueError(f"unsupported creation method reacquisition phase: {phase_id}")
+    return {
+        "scanId": AGGREGATE.CREATION_METHOD_REACQUISITION_SCAN_ID,
+        "status": "resolved",
+        "phaseId": phase_id,
+        "direction": "down",
+        "distanceRatio": 0.60,
+        "screens": 8 if phase_id == "advanced-editor-gate-inventory" else 1,
+        "swipes": 7 if phase_id == "advanced-editor-gate-inventory" else 0,
+        "configuredMaxScrolls": 18,
+        "stableRepeats": 2,
+        "emptyHierarchyReads": 0,
+        "maximumEmptyHierarchyReads": 3,
+        "systemUiDismissals": 0,
+        "maximumSystemUiDismissals": 3,
+        "deadlineEnforced": True,
+        "phaseBudgetMs": AGGREGATE.CREATION_PHASE_BUDGETS_MS[phase_id],
+        "hierarchyReadCount": 8 if phase_id == "advanced-editor-gate-inventory" else 1,
+        "hierarchyElapsedMs": 4_000 if phase_id == "advanced-editor-gate-inventory" else 1_000,
+        "maximumHierarchyReadMs": 500 if phase_id == "advanced-editor-gate-inventory" else 1_000,
+        "elapsedMs": 5_400 if phase_id == "advanced-editor-gate-inventory" else 1_000,
+    }
 
 
 def talent_reacquisition_scan(phase_id: str) -> dict[str, object]:
@@ -270,6 +356,184 @@ def creation_receipt_with_timing(
 
 
 class Api36ArtifactAuthorityTests(unittest.TestCase):
+    @staticmethod
+    def emulator_live_sidecar(
+        matrix_journey: str,
+        *,
+        run_attempt: int = 1,
+    ) -> dict[str, object]:
+        official_line = (
+            b"INFO         | Android emulator version 36.2.11.0 "
+            b"(build_id 15917651) (CL:N/A)"
+        )
+        value = {
+            "schema": ENVIRONMENT.EMULATOR_LIVE_OBSERVATION_SCHEMA,
+            "status": "observed",
+            "publicationAuthorized": False,
+            "execution": {
+                "runId": int(RUN_ID),
+                "runAttempt": run_attempt,
+                "matrixJourney": matrix_journey,
+            },
+            "launch": {
+                "launcherRelativePath": ENVIRONMENT.EMULATOR_LAUNCHER_RELATIVE_PATH,
+                "avdName": ENVIRONMENT.EMULATOR_AVD_NAME,
+                "emulatorSerial": ENVIRONMENT.EMULATOR_SERIAL,
+                "emulatorPort": ENVIRONMENT.EMULATOR_PORT,
+            },
+            "emulator": {
+                "version": "36.2.11.0",
+                "buildId": 15917651,
+                "officialLineSha256": hashlib.sha256(official_line).hexdigest(),
+            },
+            "prefix": {
+                "sha256": hashlib.sha256(official_line + b"\n").hexdigest(),
+                "sizeBytes": len(official_line) + 1,
+            },
+            "liveLogIdentity": {
+                "device": 1,
+                "inode": 2,
+                "ownerUid": 1001,
+                "mode": "0600",
+                "linkCount": 1,
+            },
+            "authoritySha256": None,
+        }
+        value["authoritySha256"] = ENVIRONMENT.canonical_sha256(value)
+        return value
+
+    @staticmethod
+    def environment(
+        role: str = "journey",
+        matrix_journey: str = "career-active-skill-advance",
+    ) -> dict[str, object]:
+        digest = "a" * 64
+        observation = {
+            "runnerImage": {
+                "runnerOs": "Linux",
+                "runnerArch": "X64",
+                "imageOs": "ubuntu24",
+                "imageVersion": "20260901.1.0",
+            },
+            "java": {
+                "runtimeVersion": "17.0.16",
+                "compilerVersion": "17.0.16",
+                "versionOutputSha256": digest,
+                "compilerOutputSha256": digest,
+            },
+            "dotnet": {
+                "sdkVersion": "10.0.110",
+                "runtimeIdentifier": "linux-x64",
+                "infoOutputSha256": digest,
+            },
+            "androidSdk": {
+                "installedPackages": [
+                    {"package": "build-tools;36.0.0", "version": "36.0.0"},
+                    {"package": "emulator", "version": "36.2.11"},
+                    {"package": "platform-tools", "version": "36.0.0"},
+                    {"package": "platforms;android-36", "version": "2"},
+                    {
+                        "package": "system-images;android-36;google_apis;x86_64",
+                        "version": "10",
+                    },
+                ],
+                "inventoryOutputSha256": digest,
+                "adb": {
+                    "protocolVersion": "1.0.41",
+                    "packageVersion": "36.0.0-13206524",
+                    "versionOutputSha256": digest,
+                },
+                "emulator": {
+                    "available": True,
+                    "version": "36.2.11.0",
+                    "buildId": 15917651,
+                    "versionOutputSha256": digest,
+                    "liveObservation": {
+                        "schema": ENVIRONMENT.EMULATOR_LIVE_OBSERVATION_SCHEMA,
+                        "sha256": digest,
+                        "sizeBytes": 512,
+                        "authoritySha256": digest,
+                        "officialLineSha256": digest,
+                        "prefixSha256": digest,
+                        "prefixSizeBytes": 128,
+                        "execution": {
+                            "runId": int(RUN_ID),
+                            "runAttempt": 1,
+                            "matrixJourney": matrix_journey,
+                        },
+                        "launch": {
+                            "launcherRelativePath": ENVIRONMENT.EMULATOR_LAUNCHER_RELATIVE_PATH,
+                            "avdName": ENVIRONMENT.EMULATOR_AVD_NAME,
+                            "emulatorSerial": ENVIRONMENT.EMULATOR_SERIAL,
+                            "emulatorPort": ENVIRONMENT.EMULATOR_PORT,
+                        },
+                    },
+                },
+            },
+            "kernel": {
+                "system": "Linux",
+                "release": "6.11.0-hosted",
+                "machine": "x86_64",
+                "procVersionSha256": digest,
+            },
+            "kvm": {
+                "devicePresent": True,
+                "characterDevice": True,
+                "readable": True,
+                "writable": True,
+                "kernelModulePresent": True,
+            },
+        }
+        java = observation["java"]
+        dotnet = observation["dotnet"]
+        android = observation["androidSdk"]
+        java["versionOutputSha256"] = ENVIRONMENT.canonical_sha256(
+            {"runtimeVersion": java["runtimeVersion"]}
+        )
+        java["compilerOutputSha256"] = ENVIRONMENT.canonical_sha256(
+            {"compilerVersion": java["compilerVersion"]}
+        )
+        dotnet["infoOutputSha256"] = ENVIRONMENT.canonical_sha256(
+            {
+                "sdkVersion": dotnet["sdkVersion"],
+                "runtimeIdentifier": dotnet["runtimeIdentifier"],
+            }
+        )
+        android["inventoryOutputSha256"] = ENVIRONMENT.canonical_sha256(
+            android["installedPackages"]
+        )
+        android["adb"]["versionOutputSha256"] = ENVIRONMENT.canonical_sha256(
+            {
+                "protocolVersion": android["adb"]["protocolVersion"],
+                "packageVersion": android["adb"]["packageVersion"],
+            }
+        )
+        android["emulator"]["versionOutputSha256"] = ENVIRONMENT.canonical_sha256(
+            {
+                "version": android["emulator"]["version"],
+                "buildId": android["emulator"]["buildId"],
+            }
+        )
+        if role == "build":
+            android["emulator"] = {
+                "available": False,
+                "version": None,
+                "buildId": None,
+                "versionOutputSha256": ENVIRONMENT.canonical_sha256(
+                    {"available": False}
+                ),
+                "liveObservation": None,
+            }
+        return observation
+
+    @staticmethod
+    def environment_policy() -> tuple[ENVIRONMENT.StableFile, dict[str, object]]:
+        snapshot = ENVIRONMENT.StableFile(
+            REPO / "eng/api36-proof-environment-authority.json",
+            "environment policy",
+        )
+        return snapshot, ENVIRONMENT.load_policy(snapshot)
+
     def authority(self, attempt: str = "1", **overrides: str) -> dict[str, str]:
         values = {
             "run_id": RUN_ID,
@@ -372,29 +636,10 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                         "phaseId": "advanced-editor-gate-inventory",
                         "elapsedMs": 33_278,
                     },
-                    {
-                        "scanId": (
-                            AGGREGATE.CREATION_METHOD_REACQUISITION_SCAN_ID
-                        ),
-                        "status": "resolved",
-                        "phaseId": "advanced-editor-gate-inventory",
-                        "direction": "down",
-                        "distanceRatio": 0.60,
-                        "screens": 8,
-                        "swipes": 7,
-                        "configuredMaxScrolls": 18,
-                        "stableRepeats": 2,
-                        "emptyHierarchyReads": 0,
-                        "maximumEmptyHierarchyReads": 3,
-                        "systemUiDismissals": 0,
-                        "maximumSystemUiDismissals": 3,
-                        "deadlineEnforced": True,
-                        "phaseBudgetMs": 90_000,
-                        "hierarchyReadCount": 8,
-                        "hierarchyElapsedMs": 4_000,
-                        "maximumHierarchyReadMs": 500,
-                        "elapsedMs": 5_400,
-                    },
+                    creation_method_reacquisition_scan(
+                        "advanced-editor-gate-inventory"
+                    ),
+                    creation_method_one_shot_origin_scan(),
                     {
                         "scanId": "prerequisite-authority",
                         "phaseId": "prerequisite-authority-inventory",
@@ -407,6 +652,9 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                     confirmed_receipt_scan(),
                     confirmed_receipt_back_reacquisition_scan(),
                     post_confirm_dashboard_route_ready_scan(),
+                    creation_method_reacquisition_scan(
+                        "resources-prerequisite-rebind"
+                    ),
                 ],
             }
         else:
@@ -487,6 +735,57 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             + "\n",
             encoding="utf-8",
         )
+        policy_snapshot, policy = self.environment_policy()
+        sidecar_path = directory / "emulator-live-observation.json"
+        sidecar_path.write_text(
+            json.dumps(
+                self.emulator_live_sidecar(
+                    journey,
+                    run_attempt=int(attempt),
+                ),
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        sidecar_snapshot = ENVIRONMENT.StableFile(
+            sidecar_path,
+            f"{journey} emulator live observation",
+        )
+        observation = self.environment(matrix_journey=journey)
+        observation["androidSdk"]["emulator"] = (
+            ENVIRONMENT.parse_emulator_live_observation(sidecar_snapshot)
+        )
+        subject = {
+            "matrixJourney": journey,
+            "driverJourney": driver_journey,
+            "receiptSchema": receipt["schema"],
+            "journeyReceiptSha256": digest,
+            "journeyReceiptSizeBytes": receipt_path.stat().st_size,
+            "apkSha256": APK_SHA256,
+            "apkSizeBytes": APK_SIZE,
+            "artifactAuthoritySha256": ENVIRONMENT.canonical_sha256(
+                receipt["artifactAuthority"]
+            ),
+        }
+        environment = ENVIRONMENT.base_receipt(
+            role="journey",
+            policy=policy,
+            policy_snapshot=policy_snapshot,
+            gate_authority=GATE.contract_binding(),
+            subject_authority=subject,
+            observation=observation,
+        )
+        environment_path = directory / "environment-receipt.json"
+        environment_path.write_text(
+            json.dumps(environment, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        environment_digest = hashlib.sha256(environment_path.read_bytes()).hexdigest()
+        (directory / "environment-receipt.json.sha256").write_text(
+            f"{environment_digest}  environment-receipt.json\n",
+            encoding="utf-8",
+        )
         return directory
 
     def materialize_all(self, root: Path, *, attempt: str = "1") -> None:
@@ -494,8 +793,68 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             self.materialize_journey(root, journey, attempt=attempt)
 
     def validate(self, root: Path, *, attempt: str = "1", **overrides: str):
+        policy_snapshot, policy = self.environment_policy()
+        input_prefix = root.parent / root.name
+        x64_apk = Path(f"{input_prefix}-x64.apk")
+        arm64_apk = Path(f"{input_prefix}-arm64.apk")
+        hosted_candidate = Path(f"{input_prefix}-hosted-candidate.json")
+        workflow = Path(f"{input_prefix}-workflow.yml")
+        x64_apk.write_bytes(APK_BYTES)
+        arm64_apk.write_bytes(b"exact aggregate ARM64 APK")
+        hosted_candidate.write_text('{"candidate":"bound"}\n', encoding="utf-8")
+        workflow.write_text("name: exact aggregate workflow\n", encoding="utf-8")
+        build_environment = ENVIRONMENT.base_receipt(
+            role="build",
+            policy=policy,
+            policy_snapshot=policy_snapshot,
+            gate_authority=GATE.contract_binding(),
+            subject_authority={
+                "x64Apk": {
+                    "sha256": hashlib.sha256(x64_apk.read_bytes()).hexdigest(),
+                    "sizeBytes": x64_apk.stat().st_size,
+                },
+                "arm64Apk": {
+                    "sha256": hashlib.sha256(arm64_apk.read_bytes()).hexdigest(),
+                    "sizeBytes": arm64_apk.stat().st_size,
+                },
+                "hostedCandidate": {
+                    "schema": "chummer.android.api36-arm64-hosted-debug-candidate/v1",
+                    "sha256": hashlib.sha256(
+                        hosted_candidate.read_bytes()
+                    ).hexdigest(),
+                    "sizeBytes": hosted_candidate.stat().st_size,
+                },
+                "workflow": {
+                    "sha256": hashlib.sha256(workflow.read_bytes()).hexdigest(),
+                    "sizeBytes": workflow.stat().st_size,
+                },
+            },
+            observation=self.environment("build"),
+        )
+        build_environment_path = (
+            root.parent / f"{root.name}-build-environment-receipt.json"
+        )
+        build_environment_path.write_text(
+            json.dumps(build_environment, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        build_environment_digest = hashlib.sha256(
+            build_environment_path.read_bytes()
+        ).hexdigest()
+        build_environment_path.with_name(
+            f"{build_environment_path.name}.sha256"
+        ).write_text(
+            f"{build_environment_digest}  {build_environment_path.name}\n",
+            encoding="utf-8",
+        )
         return AGGREGATE.validate_aggregate(
             root,
+            build_environment_receipt_path=build_environment_path,
+            x64_apk_path=x64_apk,
+            arm64_apk_path=arm64_apk,
+            hosted_candidate_path=hosted_candidate,
+            workflow_path=workflow,
+            run_attempt=attempt,
             build_result="success",
             matrix_result="success",
             **self.authority(attempt, **overrides),
@@ -508,6 +867,248 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             f"{digest}  receipt.json\n",
             encoding="utf-8",
         )
+
+    def reseal_environment(self, directory: Path) -> None:
+        receipt = directory / "environment-receipt.json"
+        digest = hashlib.sha256(receipt.read_bytes()).hexdigest()
+        (directory / "environment-receipt.json.sha256").write_text(
+            f"{digest}  environment-receipt.json\n",
+            encoding="utf-8",
+        )
+
+    def test_environment_receipt_cardinality_and_subject_drift_fail_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self.materialize_all(root)
+            directory = root / AGGREGATE.expected_artifact_directory(
+                "career-active-skill-advance",
+                RUN_ID,
+            )
+            (directory / "environment-receipt.json.sha256").unlink()
+            with self.assertRaisesRegex(ValueError, "exactly one top-level environment"):
+                self.validate(root)
+
+            self.materialize_journey(root, "career-active-skill-advance")
+            environment_path = directory / "environment-receipt.json"
+            environment = json.loads(environment_path.read_text())
+            environment["subjectAuthority"]["journeyReceiptSha256"] = "f" * 64
+            environment["receiptSha256"] = ENVIRONMENT.canonical_sha256(
+                {**environment, "receiptSha256": None}
+            )
+            environment_path.write_text(
+                json.dumps(environment, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            self.reseal_environment(directory)
+            with self.assertRaisesRegex(ValueError, "journey environment authority differs"):
+                self.validate(root)
+
+    def test_emulator_live_sidecar_cardinality_and_binding_fail_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self.materialize_all(root)
+            directory = root / AGGREGATE.expected_artifact_directory(
+                "career-active-skill-advance",
+                RUN_ID,
+            )
+            sidecar_path = directory / "emulator-live-observation.json"
+            sidecar_path.unlink()
+            with self.assertRaisesRegex(ValueError, "emulator live observation"):
+                self.validate(root)
+
+            self.materialize_journey(root, "career-active-skill-advance")
+            sidecar = json.loads(sidecar_path.read_text())
+            sidecar["execution"]["matrixJourney"] = "career-weapon-fire"
+            sidecar["authoritySha256"] = ENVIRONMENT.canonical_sha256(
+                {**sidecar, "authoritySha256": None}
+            )
+            sidecar_path.write_text(
+                json.dumps(sidecar, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ValueError, "emulator live observation differs"):
+                self.validate(root)
+
+            self.materialize_journey(root, "career-active-skill-advance")
+            sidecar = json.loads(sidecar_path.read_text())
+            sidecar["execution"]["runAttempt"] = 2
+            sidecar["authoritySha256"] = ENVIRONMENT.canonical_sha256(
+                {**sidecar, "authoritySha256": None}
+            )
+            sidecar_path.write_text(
+                json.dumps(sidecar, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ValueError, "emulator live observation differs"):
+                self.validate(root, attempt="1")
+
+    def test_aggregate_run_attempt_must_be_positive(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self.materialize_all(root)
+            for invalid in ("0", "-1", "", "01"):
+                with self.subTest(run_attempt=invalid), self.assertRaisesRegex(
+                    ValueError,
+                    "run attempt must be one positive integer",
+                ):
+                    self.validate(root, attempt=invalid)
+
+    def test_journey_and_environment_receipt_toctou_fail_closed(self) -> None:
+        for target_name in (
+            "receipt.json",
+            "environment-receipt.json",
+            "emulator-live-observation.json",
+        ):
+            with self.subTest(target=target_name), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                self.materialize_all(root)
+                directory = root / AGGREGATE.expected_artifact_directory(
+                    "career-active-skill-advance",
+                    RUN_ID,
+                )
+                target = directory / target_name
+                mutated = False
+                if target_name == "receipt.json":
+                    original = AGGREGATE.read_execution_started
+
+                    def mutate_after_snapshot(path: Path):
+                        nonlocal mutated
+                        if path.parent == directory and not mutated:
+                            target.write_bytes(target.read_bytes() + b" ")
+                            mutated = True
+                        return original(path)
+
+                    patcher = mock.patch.object(
+                        AGGREGATE,
+                        "read_execution_started",
+                        side_effect=mutate_after_snapshot,
+                    )
+                elif target_name == "environment-receipt.json":
+                    original_validation = AGGREGATE.validate_environment_receipt
+
+                    def mutate_after_environment_parse(value, policy):
+                        nonlocal mutated
+                        result = original_validation(value, policy)
+                        subject = value.get("subjectAuthority", {})
+                        if (
+                            subject.get("matrixJourney")
+                            == "career-active-skill-advance"
+                            and not mutated
+                        ):
+                            target.write_bytes(target.read_bytes() + b" ")
+                            mutated = True
+                        return result
+
+                    patcher = mock.patch.object(
+                        AGGREGATE,
+                        "validate_environment_receipt",
+                        side_effect=mutate_after_environment_parse,
+                    )
+                else:
+                    original_sidecar_parser = AGGREGATE.parse_emulator_live_observation
+
+                    def mutate_after_sidecar_parse(snapshot):
+                        nonlocal mutated
+                        result = original_sidecar_parser(snapshot)
+                        if snapshot.path == target and not mutated:
+                            target.write_bytes(target.read_bytes() + b" ")
+                            mutated = True
+                        return result
+
+                    patcher = mock.patch.object(
+                        AGGREGATE,
+                        "parse_emulator_live_observation",
+                        side_effect=mutate_after_sidecar_parse,
+                    )
+                with patcher, self.assertRaisesRegex(
+                    ValueError,
+                    "changed before receipt seal",
+                ):
+                    self.validate(root)
+                self.assertTrue(mutated)
+
+    def test_incompatible_or_publishing_environment_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self.materialize_all(root)
+            directory = root / AGGREGATE.expected_artifact_directory(
+                "career-weapon-fire",
+                RUN_ID,
+            )
+            environment_path = directory / "environment-receipt.json"
+            environment = json.loads(environment_path.read_text())
+            sidecar_path = directory / "emulator-live-observation.json"
+            sidecar = json.loads(sidecar_path.read_text())
+            changed_official_line = (
+                b"INFO         | Android emulator version 36.2.12.0 "
+                b"(build_id 15917651) (CL:N/A)"
+            )
+            sidecar["emulator"]["version"] = "36.2.12.0"
+            sidecar["emulator"]["officialLineSha256"] = hashlib.sha256(
+                changed_official_line
+            ).hexdigest()
+            sidecar["prefix"] = {
+                "sha256": hashlib.sha256(changed_official_line + b"\n").hexdigest(),
+                "sizeBytes": len(changed_official_line) + 1,
+            }
+            sidecar["authoritySha256"] = ENVIRONMENT.canonical_sha256(
+                {**sidecar, "authoritySha256": None}
+            )
+            sidecar_path.write_text(
+                json.dumps(sidecar, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            for row in environment["environment"]["androidSdk"]["installedPackages"]:
+                if row["package"] == "emulator":
+                    row["version"] = "36.2.12"
+            environment["environment"]["androidSdk"][
+                "inventoryOutputSha256"
+            ] = ENVIRONMENT.canonical_sha256(
+                environment["environment"]["androidSdk"]["installedPackages"]
+            )
+            environment["environment"]["androidSdk"]["emulator"] = (
+                ENVIRONMENT.parse_emulator_live_observation(
+                    ENVIRONMENT.StableFile(
+                        sidecar_path,
+                        "changed emulator live observation",
+                    )
+                )
+            )
+            environment["environmentSha256"] = ENVIRONMENT.canonical_sha256(
+                environment["environment"]
+            )
+            environment["compatibility"] = ENVIRONMENT.compatibility_observation(
+                environment["environment"],
+                self.environment_policy()[1],
+                "journey",
+            )
+            environment["compatibilitySha256"] = ENVIRONMENT.canonical_sha256(
+                environment["compatibility"]
+            )
+            environment["receiptSha256"] = ENVIRONMENT.canonical_sha256(
+                {**environment, "receiptSha256": None}
+            )
+            environment_path.write_text(
+                json.dumps(environment, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            self.reseal_environment(directory)
+            with self.assertRaisesRegex(ValueError, "compatibility differs"):
+                self.validate(root)
+
+            self.materialize_journey(root, "career-weapon-fire")
+            environment = json.loads(environment_path.read_text())
+            environment["publicationAuthorized"] = True
+            environment["receiptSha256"] = ENVIRONMENT.canonical_sha256(
+                {**environment, "receiptSha256": None}
+            )
+            environment_path.write_text(
+                json.dumps(environment, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            self.reseal_environment(directory)
+            with self.assertRaisesRegex(ValueError, "boundary"):
+                self.validate(root)
 
     def test_finalizer_rejects_full_editing_as_wizard_authority(self) -> None:
         self.assertEqual(
@@ -630,7 +1231,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                 self.validate(root)
 
             self.materialize_journey(root, "career-active-skill-advance")
-            with self.assertRaisesRegex(ValueError, "execution-started authority differs"):
+            with self.assertRaisesRegex(ValueError, "exact build inputs"):
                 self.validate(root, apk_sha256="c" * 64)
 
     def test_missing_or_expired_artifact_receipt_fails_closed(self) -> None:
@@ -719,6 +1320,12 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "matrix did not succeed"):
                 AGGREGATE.validate_aggregate(
                     root,
+                    build_environment_receipt_path=root / "not-needed-for-red-matrix.json",
+                    x64_apk_path=root / "not-needed-x64.apk",
+                    arm64_apk_path=root / "not-needed-arm64.apk",
+                    hosted_candidate_path=root / "not-needed-candidate.json",
+                    workflow_path=root / "not-needed-workflow.yml",
+                    run_attempt="1",
                     build_result="success",
                     matrix_result="failure",
                     **self.authority(),
@@ -991,11 +1598,120 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                         creation_receipt_with_timing(timing)
                     )
 
-    def test_creation_timing_requires_exactly_one_method_reacquisition_scan(
+    def test_creation_timing_requires_one_method_reacquisition_scan_per_phase(
         self,
     ) -> None:
-        for case in ("omitted", "duplicated"):
-            with self.subTest(case=case):
+        for phase_id in AGGREGATE.CREATION_METHOD_REACQUISITION_PHASES:
+            for case in ("omitted", "duplicated"):
+                with self.subTest(phase_id=phase_id, case=case):
+                    timing = json.loads(json.dumps(
+                        self.raw_receipt("creation-prerequisite")["timing"]
+                    ))
+                    method = next(
+                        scan
+                        for scan in timing["scans"]
+                        if scan.get("scanId")
+                        == AGGREGATE.CREATION_METHOD_REACQUISITION_SCAN_ID
+                        and scan.get("phaseId") == phase_id
+                    )
+                    if case == "omitted":
+                        timing["scans"].remove(method)
+                    else:
+                        timing["scans"].append(dict(method))
+                    with self.assertRaisesRegex(ValueError, "scan cardinality differs"):
+                        AGGREGATE.require_creation_timing_within_budget(
+                            creation_receipt_with_timing(timing)
+                        )
+
+    def test_creation_timing_rejects_balanced_method_scan_omission_and_duplicate(
+        self,
+    ) -> None:
+        """Two total receipts cannot hide a duplicate phase and omitted phase."""
+        timing = json.loads(json.dumps(
+            self.raw_receipt("creation-prerequisite")["timing"]
+        ))
+        methods = [
+            scan
+            for scan in timing["scans"]
+            if scan.get("scanId")
+            == AGGREGATE.CREATION_METHOD_REACQUISITION_SCAN_ID
+        ]
+        timing["scans"].remove(methods[1])
+        duplicate = dict(methods[0])
+        insert_at = timing["scans"].index(methods[0]) + 1
+        timing["scans"].insert(insert_at, duplicate)
+        with self.assertRaisesRegex(ValueError, "per-phase cardinality differs"):
+            AGGREGATE.require_creation_timing_within_budget(
+                creation_receipt_with_timing(timing)
+            )
+
+    def test_creation_timing_rejects_unknown_method_reacquisition_phase(
+        self,
+    ) -> None:
+        timing = json.loads(json.dumps(
+            self.raw_receipt("creation-prerequisite")["timing"]
+        ))
+        method = next(
+            scan
+            for scan in timing["scans"]
+            if scan.get("scanId")
+            == AGGREGATE.CREATION_METHOD_REACQUISITION_SCAN_ID
+            and scan.get("phaseId") == "resources-prerequisite-rebind"
+        )
+        method["phaseId"] = "same-process-reopen"
+        method["phaseBudgetMs"] = AGGREGATE.CREATION_PHASE_BUDGETS_MS[
+            "same-process-reopen"
+        ]
+        with self.assertRaisesRegex(ValueError, "phase whitelist differs"):
+            AGGREGATE.require_creation_timing_within_budget(
+                creation_receipt_with_timing(timing)
+            )
+
+    def test_creation_timing_rejects_cross_phase_method_scan_order(self) -> None:
+        timing = json.loads(json.dumps(
+            self.raw_receipt("creation-prerequisite")["timing"]
+        ))
+        methods = [
+            scan
+            for scan in timing["scans"]
+            if scan.get("scanId")
+            == AGGREGATE.CREATION_METHOD_REACQUISITION_SCAN_ID
+        ]
+        first_index = timing["scans"].index(methods[0])
+        second_index = timing["scans"].index(methods[1])
+        timing["scans"][first_index], timing["scans"][second_index] = (
+            timing["scans"][second_index],
+            timing["scans"][first_index],
+        )
+        with self.assertRaisesRegex(ValueError, "phase order differs"):
+            AGGREGATE.require_creation_timing_within_budget(
+                creation_receipt_with_timing(timing)
+            )
+
+    def test_creation_timing_accepts_exact_method_reacquisition_phase_set(
+        self,
+    ) -> None:
+        timing = json.loads(json.dumps(
+            self.raw_receipt("creation-prerequisite")["timing"]
+        ))
+        self.assertEqual(
+            list(AGGREGATE.CREATION_METHOD_REACQUISITION_PHASES),
+            [
+                scan["phaseId"]
+                for scan in timing["scans"]
+                if scan.get("scanId")
+                == AGGREGATE.CREATION_METHOD_REACQUISITION_SCAN_ID
+            ],
+        )
+        AGGREGATE.require_creation_timing_within_budget(
+            creation_receipt_with_timing(timing)
+        )
+
+    def test_creation_timing_rejects_forged_method_phase_budget(
+        self,
+    ) -> None:
+        for phase_id in AGGREGATE.CREATION_METHOD_REACQUISITION_PHASES:
+            with self.subTest(phase_id=phase_id):
                 timing = json.loads(json.dumps(
                     self.raw_receipt("creation-prerequisite")["timing"]
                 ))
@@ -1004,12 +1720,72 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                     for scan in timing["scans"]
                     if scan.get("scanId")
                     == AGGREGATE.CREATION_METHOD_REACQUISITION_SCAN_ID
+                    and scan.get("phaseId") == phase_id
+                )
+                method["phaseBudgetMs"] += 1
+                with self.assertRaisesRegex(ValueError, "scan authority differs"):
+                    AGGREGATE.require_creation_timing_within_budget(
+                        creation_receipt_with_timing(timing)
+                    )
+
+    def test_creation_timing_requires_one_fresh_nonreplayed_method_opening(self) -> None:
+        for case in ("omitted", "duplicated"):
+            with self.subTest(case=case):
+                timing = json.loads(json.dumps(
+                    self.raw_receipt("creation-prerequisite")["timing"]
+                ))
+                opening = next(
+                    scan
+                    for scan in timing["scans"]
+                    if scan.get("scanId") == "creation-prerequisite-scan-origin"
+                    and scan.get("phaseId") == "prerequisite-authority-inventory"
                 )
                 if case == "omitted":
-                    timing["scans"].remove(method)
+                    opening.pop("openingAction")
                 else:
-                    timing["scans"].append(dict(method))
-                with self.assertRaisesRegex(ValueError, "scan cardinality differs"):
+                    timing["scans"].append(dict(opening))
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "one-shot opening cardinality differs",
+                ):
+                    AGGREGATE.require_creation_timing_within_budget(
+                        creation_receipt_with_timing(timing)
+                    )
+
+    def test_creation_timing_rejects_replayed_or_stale_method_opening(self) -> None:
+        cases = (
+            ("tapReplayPerformed", True, "authority differs"),
+            ("fallbackTapPerformed", True, "authority differs"),
+            ("tap-count", 2, "geometry or tap authority differs"),
+            ("tap-coordinate", 540, "geometry or tap authority differs"),
+            ("pre-tap-digest", "not-a-digest", "geometry or tap authority differs"),
+            ("post-route", False, "first post-tap route authority differs"),
+            ("timestamp-order", "2026-09-03T17:48:28+00:00", "not monotonic"),
+        )
+        for field, forged, error in cases:
+            with self.subTest(field=field):
+                timing = json.loads(json.dumps(
+                    self.raw_receipt("creation-prerequisite")["timing"]
+                ))
+                action = next(
+                    scan["openingAction"]
+                    for scan in timing["scans"]
+                    if scan.get("scanId") == "creation-prerequisite-scan-origin"
+                    and scan.get("phaseId") == "prerequisite-authority-inventory"
+                )
+                if field in {"tapReplayPerformed", "fallbackTapPerformed"}:
+                    action[field] = forged
+                elif field == "tap-count":
+                    action["tap"]["count"] = forged
+                elif field == "tap-coordinate":
+                    action["tap"]["coordinates"]["x"] = forged
+                elif field == "pre-tap-digest":
+                    action["preTap"]["hierarchyDigest"] = forged
+                elif field == "post-route":
+                    action["firstPostTap"]["routeResolved"] = forged
+                else:
+                    action["firstPostTap"]["observedAtUtc"] = forged
+                with self.assertRaisesRegex(ValueError, error):
                     AGGREGATE.require_creation_timing_within_budget(
                         creation_receipt_with_timing(timing)
                     )
@@ -1019,7 +1795,6 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
     ) -> None:
         cases = {
             "status": "failed",
-            "phaseId": "dashboard-authority-inventory",
             "direction": "up",
             "distanceRatio": 0.61,
             "configuredMaxScrolls": 19,
@@ -1027,10 +1802,28 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             "maximumEmptyHierarchyReads": 4,
             "maximumSystemUiDismissals": 4,
             "deadlineEnforced": False,
-            "phaseBudgetMs": 90_001,
         }
-        for field, forged in cases.items():
-            with self.subTest(field=field):
+        for phase_id in AGGREGATE.CREATION_METHOD_REACQUISITION_PHASES:
+            for field, forged in cases.items():
+                with self.subTest(phase_id=phase_id, field=field):
+                    timing = json.loads(json.dumps(
+                        self.raw_receipt("creation-prerequisite")["timing"]
+                    ))
+                    method = next(
+                        scan
+                        for scan in timing["scans"]
+                        if scan.get("scanId")
+                        == AGGREGATE.CREATION_METHOD_REACQUISITION_SCAN_ID
+                        and scan.get("phaseId") == phase_id
+                    )
+                    method[field] = forged
+                    with self.assertRaisesRegex(ValueError, "scan authority differs"):
+                        AGGREGATE.require_creation_timing_within_budget(
+                            creation_receipt_with_timing(timing)
+                        )
+
+        for phase_id in AGGREGATE.CREATION_METHOD_REACQUISITION_PHASES:
+            with self.subTest(phase_id=phase_id, field="deadlineEnforced-int"):
                 timing = json.loads(json.dumps(
                     self.raw_receipt("creation-prerequisite")["timing"]
                 ))
@@ -1039,48 +1832,38 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                     for scan in timing["scans"]
                     if scan.get("scanId")
                     == AGGREGATE.CREATION_METHOD_REACQUISITION_SCAN_ID
+                    and scan.get("phaseId") == phase_id
                 )
-                method[field] = forged
-                with self.assertRaisesRegex(ValueError, "scan authority differs"):
+                method["deadlineEnforced"] = 1
+                with self.assertRaisesRegex(ValueError, "JSON boolean true"):
                     AGGREGATE.require_creation_timing_within_budget(
                         creation_receipt_with_timing(timing)
                     )
-
-        timing = json.loads(json.dumps(
-            self.raw_receipt("creation-prerequisite")["timing"]
-        ))
-        method = next(
-            scan
-            for scan in timing["scans"]
-            if scan.get("scanId")
-            == AGGREGATE.CREATION_METHOD_REACQUISITION_SCAN_ID
-        )
-        method["deadlineEnforced"] = 1
-        with self.assertRaisesRegex(ValueError, "JSON boolean true"):
-            AGGREGATE.require_creation_timing_within_budget(creation_receipt_with_timing(timing))
 
     def test_creation_timing_rejects_omitted_method_reacquisition_fields(
         self,
     ) -> None:
-        for field in ("direction", "deadlineEnforced", "hierarchyReadCount"):
-            with self.subTest(field=field):
-                timing = json.loads(json.dumps(
-                    self.raw_receipt("creation-prerequisite")["timing"]
-                ))
-                method = next(
-                    scan
-                    for scan in timing["scans"]
-                    if scan.get("scanId")
-                    == AGGREGATE.CREATION_METHOD_REACQUISITION_SCAN_ID
-                )
-                method.pop(field)
-                with self.assertRaisesRegex(
-                    ValueError,
-                    "authority differs|timing/count data differs",
-                ):
-                    AGGREGATE.require_creation_timing_within_budget(
-                        creation_receipt_with_timing(timing)
+        for phase_id in AGGREGATE.CREATION_METHOD_REACQUISITION_PHASES:
+            for field in ("direction", "deadlineEnforced", "hierarchyReadCount"):
+                with self.subTest(phase_id=phase_id, field=field):
+                    timing = json.loads(json.dumps(
+                        self.raw_receipt("creation-prerequisite")["timing"]
+                    ))
+                    method = next(
+                        scan
+                        for scan in timing["scans"]
+                        if scan.get("scanId")
+                        == AGGREGATE.CREATION_METHOD_REACQUISITION_SCAN_ID
+                        and scan.get("phaseId") == phase_id
                     )
+                    method.pop(field)
+                    with self.assertRaisesRegex(
+                        ValueError,
+                        "authority differs|timing/count data differs",
+                    ):
+                        AGGREGATE.require_creation_timing_within_budget(
+                            creation_receipt_with_timing(timing)
+                        )
 
     def test_creation_timing_rejects_forged_method_reacquisition_relationships(
         self,
@@ -1099,32 +1882,36 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                 ]
                 + 1
             ),
-            "mandatory-wait-elapsedMs": 4_000,
+            "mandatory-wait-elapsedMs": 0,
         }
-        for field, forged in cases.items():
-            with self.subTest(field=field):
-                timing = json.loads(json.dumps(
-                    self.raw_receipt("creation-prerequisite")["timing"]
-                ))
-                method = next(
-                    scan
-                    for scan in timing["scans"]
-                    if scan.get("scanId")
-                    == AGGREGATE.CREATION_METHOD_REACQUISITION_SCAN_ID
-                )
-                target_field = (
-                    "elapsedMs"
-                    if field == "mandatory-wait-elapsedMs"
-                    else field
-                )
-                method[target_field] = forged
-                with self.assertRaisesRegex(
-                    ValueError,
-                    "did not reconcile|timing/count data differs",
-                ):
-                    AGGREGATE.require_creation_timing_within_budget(
-                        creation_receipt_with_timing(timing)
+        for phase_id in AGGREGATE.CREATION_METHOD_REACQUISITION_PHASES:
+            for field, forged in cases.items():
+                with self.subTest(phase_id=phase_id, field=field):
+                    timing = json.loads(json.dumps(
+                        self.raw_receipt("creation-prerequisite")["timing"]
+                    ))
+                    method = next(
+                        scan
+                        for scan in timing["scans"]
+                        if scan.get("scanId")
+                        == AGGREGATE.CREATION_METHOD_REACQUISITION_SCAN_ID
+                        and scan.get("phaseId") == phase_id
                     )
+                    target_field = (
+                        "elapsedMs"
+                        if field == "mandatory-wait-elapsedMs"
+                        else field
+                    )
+                    if field == "elapsedMs":
+                        forged = CREATION_PROSPECTIVE_PHASE_ELAPSED_MS[phase_id] + 1
+                    method[target_field] = forged
+                    with self.assertRaisesRegex(
+                        ValueError,
+                        "did not reconcile|timing/count data differs",
+                    ):
+                        AGGREGATE.require_creation_timing_within_budget(
+                            creation_receipt_with_timing(timing)
+                        )
 
     def test_creation_timing_requires_exactly_one_confirmed_receipt_back_reacquisition_scan(
         self,

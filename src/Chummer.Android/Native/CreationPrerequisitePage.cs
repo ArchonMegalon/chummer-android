@@ -23,7 +23,6 @@ public sealed class CreationPrerequisitePage : NativePageBase
 #if CHUMMER_API36_PROOF_INSTRUMENTATION
     private CharacterCreationPrerequisiteState? _latestApi36ProofReadyState;
     private bool _api36ProofRouteAppeared;
-    private bool _api36ProofPageLoaded;
     private bool _api36ProofAttachmentPublished;
 #endif
 
@@ -49,6 +48,16 @@ public sealed class CreationPrerequisitePage : NativePageBase
         // after initialization. Retain the route, Loaded, and ready-state signals so every
         // lifecycle order reaches the same exact attachment gate.
         _api36ProofRouteAppeared = true;
+        TryPublishApi36AttachmentProof();
+    }
+
+    protected override void OnNavigatedTo(NavigatedToEventArgs args)
+    {
+        base.OnNavigatedTo(args);
+        // Loaded, OnAppearing, and Refresh can all complete before PushAsync has
+        // made this page the exact top navigation entry. NavigatedTo supplies the
+        // deterministic post-attachment edge; the exact guard below still owns
+        // every authority and cardinality decision.
         TryPublishApi36AttachmentProof();
     }
 
@@ -150,7 +159,6 @@ public sealed class CreationPrerequisitePage : NativePageBase
 #if CHUMMER_API36_PROOF_INSTRUMENTATION
     private void OnApi36ProofLoaded(object? sender, EventArgs args)
     {
-        _api36ProofPageLoaded = true;
         TryPublishApi36AttachmentProof();
     }
 
@@ -159,7 +167,6 @@ public sealed class CreationPrerequisitePage : NativePageBase
         IReadOnlyList<Page> navigationStack = Navigation.NavigationStack;
         if (_api36ProofAttachmentPublished
             || !_api36ProofRouteAppeared
-            || !_api36ProofPageLoaded
             || !IsLoaded
             || Handler is null
             || Window is null

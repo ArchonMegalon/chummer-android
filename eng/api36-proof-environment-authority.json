@@ -1,0 +1,49 @@
+{
+  "schema": "chummer.android.api36-proof-environment-authority/v2",
+  "authorityClass": "internal_phone_beta_sr5_wizard_environment_only",
+  "proofScope": "api36_hosted_toolchain_and_virtualization_observation",
+  "apiLevel": 36,
+  "requiredRunner": {
+    "runnerOs": "Linux",
+    "runnerArch": "X64",
+    "imageOs": "ubuntu24",
+    "requireImageVersion": true
+  },
+  "requiredJavaMajor": 17,
+  "requiredDotnetSdkVersion": "10.0.110",
+  "roles": {
+    "build": {
+      "requiredAndroidPackages": [
+        "platform-tools",
+        "platforms;android-36"
+      ],
+      "requiredAndroidPackagePrefixes": [
+        "build-tools;"
+      ],
+      "requireKvmDevice": false
+    },
+    "journey": {
+      "requiredAndroidPackages": [
+        "emulator",
+        "platform-tools",
+        "platforms;android-36",
+        "system-images;android-36;google_apis;x86_64"
+      ],
+      "requiredAndroidPackagePrefixes": [
+        "build-tools;"
+      ],
+      "requireKvmDevice": true
+    }
+  },
+  "requireLinuxKernel": true,
+  "publicationAuthorized": false,
+  "doesNotAssert": [
+    "journey_pass_without_the_bound_journey_receipt",
+    "physical_device_execution",
+    "full_editing_pass",
+    "tablet_readiness",
+    "google_play_upload",
+    "public_release_readiness",
+    "publication_authority"
+  ]
+}

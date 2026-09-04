@@ -114,7 +114,11 @@ class PlayListingLocalizationTests(unittest.TestCase):
 
     def test_scope_internal_posture_and_nonclaims_fail_closed(self) -> None:
         replacements = (
-            ("en-US", "limited to SR5 phone wizards", "available for every device"),
+            (
+                "en-US",
+                "limited to the seven named SR5 phone flows",
+                "available for every device",
+            ),
             (
                 "de-DE",
                 "sind nicht Teil dieses Tests",
@@ -154,7 +158,7 @@ class PlayListingLocalizationTests(unittest.TestCase):
             root = Path(temporary)
             for index, (locale, claim) in enumerate(cases):
                 listing = self.copy_listing(root / str(index))
-                path = listing / locale / "release-notes-11.txt"
+                path = listing / locale / "full-description.txt"
                 path.write_text(
                     path.read_text(encoding="utf-8").rstrip("\n") + claim + "\n",
                     encoding="utf-8",
@@ -162,6 +166,80 @@ class PlayListingLocalizationTests(unittest.TestCase):
                 with self.subTest(locale=locale, claim=claim), self.assertRaisesRegex(
                     ValueError,
                     "prohibited positive product claim|runtime proof before a green aggregate",
+                ):
+                    self.validate(listing)
+
+    def test_each_locale_must_name_all_seven_flows_and_disclose_experimental_routes(self) -> None:
+        cases = (
+            ("en-US", "Career Weapon Fire", "another Career action"),
+            ("de-DE", "Karriere-Waffenfeuer", "eine andere Karriere-Aktion"),
+            ("es-ES", "Disparo de arma en Carrera", "otra acción de Carrera"),
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for index, (locale, required_flow, replacement) in enumerate(cases):
+                listing = self.copy_listing(root / f"flow-{index}")
+                path = listing / locale / "full-description.txt"
+                path.write_text(
+                    path.read_text(encoding="utf-8").replace(required_flow, replacement),
+                    encoding="utf-8",
+                )
+                with self.subTest(locale=locale), self.assertRaisesRegex(
+                    ValueError,
+                    "must name every exact required flow",
+                ):
+                    self.validate(listing)
+
+        disclosures = (
+            (
+                "en-US",
+                "Experimental — not covered by the current Preview authority",
+                "included in the current Preview authority",
+            ),
+            (
+                "de-DE",
+                "Experimentell — nicht durch die aktuelle Preview-Autorität abgedeckt",
+                "in der aktuellen Preview-Autorität enthalten",
+            ),
+            (
+                "es-ES",
+                "Experimental — no cubierta por la autoridad de la vista previa actual",
+                "incluida en la autoridad de la vista previa actual",
+            ),
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for index, (locale, disclosure, replacement) in enumerate(disclosures):
+                listing = self.copy_listing(root / f"disclosure-{index}")
+                path = listing / locale / "full-description.txt"
+                path.write_text(
+                    path.read_text(encoding="utf-8").replace(disclosure, replacement),
+                    encoding="utf-8",
+                )
+                with self.subTest(locale=locale), self.assertRaisesRegex(
+                    ValueError,
+                    "missing exact wizard-scope or non-claim copy",
+                ):
+                    self.validate(listing)
+
+    def test_broad_wizard_inclusion_claims_fail_closed_in_every_locale(self) -> None:
+        cases = (
+            ("en-US", " All SR5 Career wizards are included."),
+            ("de-DE", " Alle SR5-Karriere-Wizards sind enthalten."),
+            ("es-ES", " Todos los asistentes de Carrera están incluidos."),
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for index, (locale, claim) in enumerate(cases):
+                listing = self.copy_listing(root / str(index))
+                path = listing / locale / "release-notes-11.txt"
+                path.write_text(
+                    path.read_text(encoding="utf-8").rstrip("\n") + claim + "\n",
+                    encoding="utf-8",
+                )
+                with self.subTest(locale=locale), self.assertRaisesRegex(
+                    ValueError,
+                    "broadens the exact seven-flow wizard scope",
                 ):
                     self.validate(listing)
 

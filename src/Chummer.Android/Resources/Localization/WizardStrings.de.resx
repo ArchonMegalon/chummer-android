@@ -10,6 +10,9 @@
   <data name="Common.NotSelected" xml:space="preserve"><value>nicht ausgewählt</value></data>
   <data name="Common.OK" xml:space="preserve"><value>OK</value></data>
   <data name="Common.PreviewBlockers" xml:space="preserve"><value>Vorschau-Blockaden</value></data>
+  <data name="Preview11.CareerHubDetail" xml:space="preserve"><value>Sieben Flows gehören zur Preview-Autorität; zusätzliche Routen sind als experimentell markiert.</value></data>
+  <data name="Preview11.ContainsExperimentalRoutes" xml:space="preserve"><value>{0} · Enthält experimentelle Routen, die nicht durch die aktuelle Preview-Autorität abgedeckt sind.</value></data>
+  <data name="Preview11.ExperimentalRoute" xml:space="preserve"><value>{0} · Experimentell — nicht durch die aktuelle Preview-Autorität abgedeckt.</value></data>
   <data name="Common.Rank" xml:space="preserve"><value>Rang {0}</value></data>
   <data name="Common.RankLabel" xml:space="preserve"><value>Rang</value></data>
   <data name="Common.Remaining" xml:space="preserve"><value>Verbleibend</value></data>
@@ -157,6 +160,7 @@
   <data name="Career.Checkpoint.RevisionChanged" xml:space="preserve"><value>Die Runner-Revision wurde geändert; die gespeicherte Karriereauswahl wurde deshalb verworfen.</value></data>
   <data name="Career.Checkpoint.SnapshotChanged" xml:space="preserve"><value>Laufzeit, Quellen, Inhalt oder Aktionsverfügbarkeit wurden geändert; die gespeicherte Auswahl wurde verworfen.</value></data>
   <data name="Career.Checkpoint.WorkspaceChanged" xml:space="preserve"><value>Die gespeicherte Karriereauswahl gehörte zu einem anderen Workspace und wurde verworfen.</value></data>
+  <data name="Career.Commerce" xml:space="preserve"><value>Handel</value></data>
   <data name="Career.ChooseFamily" xml:space="preserve"><value>Eine Aktionsgruppe auswählen. Angezeigt werden nur Routen mit einer aktuellen typisierten Instanz.</value></data>
   <data name="Career.Eyebrow" xml:space="preserve"><value>Shadowrun Fünfte Edition</value></data>
   <data name="Career.FamilyBoundary" xml:space="preserve"><value>Die Auswahl einer Zeile schreibt nur einen Digest-gebundenen Navigations-Checkpoint. Das Ziel muss seine eigene typisierte Instanz erneut laden und prüfen.</value></data>

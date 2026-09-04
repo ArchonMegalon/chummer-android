@@ -139,6 +139,7 @@ class AndroidP0PrAuthorityTests(unittest.TestCase):
 
     def aggregate_payload(self) -> dict[str, object]:
         gate = authority.contract_binding()
+        compatibility = "9" * 64
         journeys = {
             matrix_journey: {
                 "status": "pass",
@@ -163,6 +164,34 @@ class AndroidP0PrAuthorityTests(unittest.TestCase):
                 "artifactName": "chummer-android-api36-x64-debug-424242-2",
                 "artifactAttempt": 2,
                 "apkSha256": sha256(self.x64_apk.read_bytes()),
+            },
+            "environmentAuthority": {
+                "policyAuthority": {
+                    "schema": "chummer.android.api36-proof-environment-authority/v2",
+                    "sha256": "6" * 64,
+                    "sizeBytes": 1000,
+                },
+                "build": {
+                    "receiptSha256": "7" * 64,
+                    "environmentSha256": "8" * 64,
+                    "compatibilitySha256": "a" * 64,
+                },
+                "journeyCompatibilitySha256": compatibility,
+                "journeys": {
+                    matrix_journey: {
+                        "receiptSha256": sha256(
+                            f"{matrix_journey}-environment".encode()
+                        ),
+                        "environmentSha256": sha256(
+                            f"{matrix_journey}-observation".encode()
+                        ),
+                        "compatibilitySha256": compatibility,
+                        "emulatorLiveObservationSha256": sha256(
+                            f"{matrix_journey}-emulator-observation".encode()
+                        ),
+                    }
+                    for matrix_journey in journeys
+                },
             },
             "requiredJourneyCount": len(journeys),
             "requiredJourneys": list(journeys),
@@ -241,6 +270,35 @@ class AndroidP0PrAuthorityTests(unittest.TestCase):
         failed_journey = self.aggregate_payload()
         failed_journey["journeys"]["before-run-edge"]["status"] = "failed"
         hostile_cases.append(("journey", self.aggregate, failed_journey))
+        incompatible_environment = self.aggregate_payload()
+        incompatible_environment["environmentAuthority"]["journeys"][
+            "before-run-edge"
+        ]["compatibilitySha256"] = "f" * 64
+        hostile_cases.append(
+            ("environment compatibility", self.aggregate, incompatible_environment)
+        )
+        missing_emulator_observation = self.aggregate_payload()
+        del missing_emulator_observation["environmentAuthority"]["journeys"][
+            "after-run-settlement"
+        ]["emulatorLiveObservationSha256"]
+        hostile_cases.append(
+            (
+                "missing emulator live observation",
+                self.aggregate,
+                missing_emulator_observation,
+            )
+        )
+        invalid_emulator_observation = self.aggregate_payload()
+        invalid_emulator_observation["environmentAuthority"]["journeys"][
+            "before-run-edge"
+        ]["emulatorLiveObservationSha256"] = "not-a-sha256"
+        hostile_cases.append(
+            (
+                "invalid emulator live observation",
+                self.aggregate,
+                invalid_emulator_observation,
+            )
+        )
         for label, path, value in hostile_cases:
             with self.subTest(label=label):
                 original = path.read_bytes()

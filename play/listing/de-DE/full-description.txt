@@ -1,18 +1,18 @@
-Chummer Preview.11 ist eine interne Testversion für Telefone. Ihr genauer Umfang umfasst den SR5-Prioritäts-Wizard, die enthaltenen SR5-Karriere-Wizards sowie die Tisch-Wizards Vor dem Run, Spielzeit, Auszeit und Nach dem Run.
+Chummer Preview.11 ist eine interne Testversion für Telefone. Die aktuelle Preview-Autorität deckt genau sieben SR5-Flows ab: Erstellungs-Voraussetzungen, Steigerung einer aktiven Fertigkeit, Karriere-Waffenfeuer, Edge vor dem Run, kurzer Spielzeit-Einsatz, Auszeit-Kalender und Abrechnung nach dem Run.
 
-EINEN SR5-RUNNER ERSTELLEN
-Durchlaufe die geführte Prioritätserstellung mit Voraussetzungen und unterstützten Entscheidungen für Attribute, Fertigkeiten, Qualitäten, Magie oder Resonanz, Ressourcen, Ausrüstung und Lebensstil. Prüfe jede Entscheidung vor der Bestätigung.
+START IM AKTUELLEN UMFANG
+Nutze den Flow Erstellungs-Voraussetzungen für die Prioritätsentscheidungen und die Ressourcenwahl des aktuellen Telefontests. Für andere sichtbare Erstellungsstufen erhebt diese Preview-Autorität keinen Anspruch.
 
-EINE KARRIERE ENTWICKELN
-Nutze die in dieser Vorschau enthaltenen SR5-Karriere-Wizards für geführte Änderungen. Prüfe Kosten und Änderungen vor der Bestätigung. Unterstützte Speicher-, Wiederherstellungs- und Rücknahmevorgänge bleiben an den aktuellen gespeicherten Runner gebunden.
+STEIGERN UND SPIELEN
+Steigere eine aktive Fertigkeit, führe eine kontrollierte Waffenfeuer-Aktion aus, bereite Edge vor einem Run vor, erfasse eine kurze Edge-Änderung in der Spielzeit, verwalte den Auszeit-Kalender oder rechne ein Ergebnis nach dem Run ab. Das sind die sechs Karriere- und Tisch-Flows der aktuellen Preview-Autorität.
 
-TISCH-WIZARDS NUTZEN
-Bereite Edge vor einem Run vor, erfasse unterstützte Änderungen während der Spielzeit, plane Auszeit im Kalender und rechne unterstützte Belohnungen und Folgen nach dem Run ab. Jeder Wizard zeigt nur die Aktionen, die für den aktuell gespeicherten Runner verfügbar sind.
+EXPERIMENTELLE ROUTEN TESTEN
+Zusätzliche sichtbare Wizard-Routen bleiben für Feedback verfügbar. Jede ist als Experimentell — nicht durch die aktuelle Preview-Autorität abgedeckt markiert.
 
 LOKAL ZUERST ARBEITEN
 Öffne und speichere ausgewählte Runner-Dateien über die Android-Dateiauswahl. Die App fordert keinen umfassenden Speicherzugriff an. Optionale verknüpfte Kontofunktionen verwenden verschlüsselte Verbindungen zu Chummer-Diensten.
 
 GRENZEN DER AKTUELLEN VORSCHAU
-Diese interne Testversion ist auf SR5-Wizards für Telefone begrenzt. Vollständige Bearbeitung, Tablet- oder Foldable-Unterstützung, SR4- oder SR6-Erstellung, Rook- oder Live-Avatar-Unterstützung, öffentliche Verfügbarkeit und eine Produktivveröffentlichung sind nicht Teil dieses Tests.
+Diese interne Testversion ist auf die sieben genannten SR5-Flows für Telefone begrenzt. Vollständige Bearbeitung, Tablet- oder Foldable-Unterstützung, SR4- oder SR6-Erstellung, Rook- oder Live-Avatar-Unterstützung, öffentliche Verfügbarkeit und eine Produktivveröffentlichung sind nicht Teil dieses Tests.
 
 Chummer ist ein Community-Projekt zur Charakterverwaltung. Es ist keine offizielle App eines Rollenspielverlags, enthält keine Regelbuchtexte und ersetzt nicht die zum Spielen benötigten Bücher.

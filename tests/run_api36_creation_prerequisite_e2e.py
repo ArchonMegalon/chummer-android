@@ -83,6 +83,20 @@ CREATION_AUTHORITY_PENDING_TIMEOUT_HIERARCHY = (
     "/sdcard/chummer-creation-authority-pending-timeout.xml"
 )
 CREATION_AUTHORITY_PENDING_TIMEOUT_TEXT_LIMIT = 1_000_000
+CREATION_DASHBOARD_CONTINUITY_FAILURE_SCHEMA = (
+    "chummer.android.creation-dashboard-continuity-failure/v1"
+)
+CREATION_DASHBOARD_CONTINUITY_JOURNAL_SCHEMA = (
+    "chummer.android.creation-dashboard-continuity-journal/v1"
+)
+CREATION_DASHBOARD_CONTINUITY_PREFIX = (
+    "creation-dashboard-continuity-failure"
+)
+CREATION_DASHBOARD_CONTINUITY_ROUTE_ID = "phone-runner-page"
+CREATION_DASHBOARD_RESUMED_AUTHORITY = re.compile(
+    r"^\s*(?:topResumedActivity\s*=|mResumedActivity\s*:|"
+    r"ResumedActivity\s*:|Resumed\s*:)\s*(?P<value>.*)$"
+)
 PROGRESS_SCHEMA = "chummer.android.creation-prerequisite-progress/v5"
 PROGRESS_FILE_NAME = "creation-prerequisite-progress.json"
 PROGRESS_EVENTS_FILE_NAME = "creation-prerequisite-progress.jsonl"
@@ -333,6 +347,12 @@ CREATION_METHOD_REACQUISITION_SCAN_ID = (
     "creation-stage-method-ready-reacquisition"
 )
 CREATION_METHOD_REACQUISITION_DIRECTION = "down"
+CREATION_METHOD_ONE_SHOT_SCHEMA = (
+    "chummer.android.creation-method-one-shot/v1"
+)
+CREATION_METHOD_ONE_SHOT_DIGEST_DOMAIN = (
+    "canonical-accessibility-signature-json"
+)
 TALENT_GRANT_SCAN_GESTURE_RATIO = 0.60
 TALENT_GRANT_OPTION_RECOVERY_GESTURE_RATIO = 0.22
 TALENT_GRANT_REACQUISITION_MAX_SCROLLS = 40
@@ -366,6 +386,16 @@ def accessibility_signature(
         "bounds",
     )
     return tuple(sorted(tuple(node.attributes.get(key, "") for key in keys) for node in nodes))
+
+
+def accessibility_signature_sha256(nodes: list[shared.UiNode]) -> str:
+    """Hash the exact canonical viewport signature used by scan stability."""
+    payload = json.dumps(
+        accessibility_signature(nodes),
+        ensure_ascii=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return "sha256:" + hashlib.sha256(payload).hexdigest()
 
 
 def read_only_hierarchy_timed(
@@ -1181,6 +1211,465 @@ class PriorityRankOrigin(NamedTuple):
     empty_hierarchy_reads: int
 
 
+def _creation_dashboard_hierarchy_authority(
+    nodes: list[shared.UiNode],
+) -> tuple[tuple[str, ...], int, bool]:
+    packages = tuple(sorted({
+        package
+        for node in nodes
+        if (package := node.attributes.get("package", ""))
+    }))
+    route_matches = [
+        node
+        for node in nodes
+        if _exact_resource_id(node) == CREATION_DASHBOARD_CONTINUITY_ROUTE_ID
+    ]
+    exact_route = (
+        len(route_matches) == 1
+        and route_matches[0].attributes.get("package") == shared.PACKAGE
+        and route_matches[0].attributes.get("resource-id")
+        == f"{shared.PACKAGE}:id/{CREATION_DASHBOARD_CONTINUITY_ROUTE_ID}"
+        and route_matches[0].attributes.get("class") == "android.view.ViewGroup"
+    )
+    return packages, len(route_matches), exact_route
+
+
+def _creation_dashboard_resumed_activity_authority(
+    activity_dump: str,
+) -> tuple[str | None, str, int]:
+    """Resolve agreeing Android resumed-activity forms without guessing.
+
+    Android emits several equivalent authority labels depending on the exact
+    point at which ``dumpsys activity activities`` is observed. Repeated forms
+    are accepted only when every one names the same normalized component.
+    Explicit absence, malformed forms, and conflicting components remain
+    fail-closed.
+    """
+    if not isinstance(activity_dump, str) or not activity_dump.strip():
+        return None, "invalid-empty-output", 0
+    nonempty_lines = [line for line in activity_dump.splitlines() if line.strip()]
+    if (
+        not nonempty_lines
+        or nonempty_lines[0].strip()
+        != "ACTIVITY MANAGER ACTIVITIES (dumpsys activity activities)"
+    ):
+        return None, "invalid-output-shape", 0
+
+    marker_count = 0
+    malformed = False
+    explicit_absence = False
+    components: list[str] = []
+    for line in activity_dump.splitlines():
+        marker = CREATION_DASHBOARD_RESUMED_AUTHORITY.fullmatch(line)
+        if marker is None:
+            continue
+        marker_count += 1
+        value = marker.group("value").strip()
+        if value.lower() in {"null", "none"}:
+            explicit_absence = True
+            continue
+        matches = [
+            normalized
+            for match in shared.COMPONENT.finditer(value)
+            if (normalized := shared.normalize_component(match.group(0)))
+            is not None
+        ]
+        if len(matches) != 1:
+            malformed = True
+            continue
+        components.append(matches[0])
+
+    unique_components = tuple(sorted(set(components)))
+    if explicit_absence and components:
+        return None, "conflicting-present-and-absent", marker_count
+    if explicit_absence:
+        return None, "authoritative-not-resumed", marker_count
+    if malformed:
+        return None, "malformed-resumed-authority", marker_count
+    if len(unique_components) > 1:
+        return None, "conflicting-resumed-components", marker_count
+    if len(unique_components) == 1:
+        return unique_components[0], "authoritative", marker_count
+    return None, "missing-resumed-authority", marker_count
+
+
+def _strict_creation_dashboard_launch_state(
+    device: shared.Device,
+    *,
+    deadline: float,
+    pid_observations_out: list[tuple[str, ...]] | None = None,
+    launch_observations_out: list[dict[str, object]] | None = None,
+) -> shared.LaunchState:
+    """Bracket one activity read with two identical exact PID reads."""
+
+    def read_exact_process_ids() -> tuple[str, ...]:
+        result = device.run(
+            "shell",
+            "pidof",
+            shared.PACKAGE,
+            timeout=shared._remaining_operation_timeout(
+                deadline=deadline,
+                maximum=15,
+            ),
+            check=False,
+            deadline=deadline,
+        )
+        tokens = result.stdout.split() if isinstance(result.stdout, str) else []
+        return (
+            tuple(tokens)
+            if result.returncode == 0
+            and len(tokens) == 1
+            and shared.PROCESS_ID.fullmatch(tokens[0]) is not None
+            else ()
+        )
+
+    process_ids_before = read_exact_process_ids()
+    activity_result = device.run(
+        "shell",
+        "dumpsys",
+        "activity",
+        "activities",
+        timeout=shared._remaining_operation_timeout(
+            deadline=deadline,
+            maximum=30,
+        ),
+        check=False,
+        deadline=deadline,
+    )
+    activity_dump = (
+        activity_result.stdout if isinstance(activity_result.stdout, str) else ""
+    )
+    resumed_component, activity_authority_status, marker_count = (
+        _creation_dashboard_resumed_activity_authority(activity_dump)
+        if activity_result.returncode == 0
+        else (None, "activity-command-failed", 0)
+    )
+    process_ids_after = read_exact_process_ids()
+    if pid_observations_out is not None:
+        pid_observations_out.extend((process_ids_before, process_ids_after))
+    process_ids = (
+        process_ids_before
+        if process_ids_before and process_ids_before == process_ids_after
+        else ()
+    )
+    if launch_observations_out is not None:
+        launch_observations_out.append({
+            "ordinal": len(launch_observations_out) + 1,
+            "processIdsBeforeActivityRead": list(process_ids_before),
+            "processIdsAfterActivityRead": list(process_ids_after),
+            "pidBracketStable": bool(process_ids),
+            "activityCommandReturnCode": activity_result.returncode,
+            "activityOutputLength": len(activity_dump),
+            "activityOutputSha256": hashlib.sha256(
+                activity_dump.encode("utf-8")
+            ).hexdigest(),
+            "resumedAuthorityMarkerCount": marker_count,
+            "resumedComponent": resumed_component,
+            "activityAuthorityStatus": activity_authority_status,
+        })
+    return shared.LaunchState(process_ids, resumed_component, activity_dump)
+
+
+def _continuity_diagnostic_text(
+    device: shared.Device,
+    name: str,
+    arguments: tuple[str, ...],
+) -> None:
+    try:
+        result = device.run(*arguments, timeout=60, check=False)
+        value = shared._bounded_evidence(result.stdout)
+        if result.stderr:
+            value = (
+                f"{value}\n[diagnostic stderr]\n"
+                f"{shared._bounded_evidence(result.stderr)}"
+            )
+    except Exception as error:
+        value = (
+            f"diagnostic command failed: {type(error).__name__}: "
+            f"{shared._bounded_evidence(error)}\n"
+            f"{shared._bounded_evidence(getattr(error, 'stdout', ''))}\n"
+            f"{shared._bounded_evidence(getattr(error, 'stderr', ''))}"
+        )
+    try:
+        shared._write_launch_evidence(device, name, value)
+    except Exception:
+        pass
+
+
+def capture_creation_dashboard_continuity_failure(
+    device: shared.Device,
+    *,
+    reason: str,
+    expected: shared.LaunchState,
+    observed: shared.LaunchState,
+    hierarchy_packages: tuple[str, ...],
+    route_cardinality: int,
+    exact_route: bool,
+    scroll_journal: list[dict[str, object]],
+) -> None:
+    """Capture one foreground loss without attempting to repair or relaunch it.
+
+    The immutable failure receipts are written before device diagnostics. Of
+    the device calls, crash-bearing log buffers are read first. Later
+    UIAutomator or dumpsys work must not evict the short-lived event that
+    explains the foreground loss. Every command after the detected mismatch
+    is read-only.
+    """
+    prefix = CREATION_DASHBOARD_CONTINUITY_PREFIX
+    journal_receipt = {
+        "schema": CREATION_DASHBOARD_CONTINUITY_JOURNAL_SCHEMA,
+        "status": "fail-closed",
+        "observations": scroll_journal,
+        "recoveryAttempted": False,
+        "furtherGesturesAttempted": False,
+    }
+    failure_receipt = {
+        "schema": CREATION_DASHBOARD_CONTINUITY_FAILURE_SCHEMA,
+        "status": "fail-closed",
+        "reason": reason,
+        "phaseId": (
+            scroll_journal[-1].get("phaseId") if scroll_journal else None
+        ),
+        "scanId": (
+            scroll_journal[-1].get("scanId") if scroll_journal else None
+        ),
+        "expected": shared._launch_state_json(expected),
+        "observed": shared._launch_state_json(observed),
+        "hierarchy": {
+            "packages": list(hierarchy_packages),
+            "routeResourceId": CREATION_DASHBOARD_CONTINUITY_ROUTE_ID,
+            "routeCardinality": route_cardinality,
+            "exactRoute": exact_route,
+        },
+        "trigger": scroll_journal[-1] if scroll_journal else None,
+        "recoveryAttempted": False,
+        "furtherGesturesAttempted": False,
+        "noRelaunch": True,
+        "noReplay": True,
+        "noNavigation": True,
+        "receiptWrittenBeforeDeviceDiagnostics": True,
+    }
+    for name, value in (
+        (f"{prefix}-scroll-journal.json", journal_receipt),
+        (f"{prefix}.json", failure_receipt),
+    ):
+        try:
+            shared._write_new_json_receipt(device.evidence / name, value)
+        except Exception:
+            pass
+
+    for buffer_name, arguments in (
+        (
+            "all",
+            ("logcat", "-d", "-b", "all", "-v", "threadtime", "-t", "4000"),
+        ),
+        ("events", ("logcat", "-d", "-b", "events", "-v", "threadtime")),
+        ("crash", ("logcat", "-d", "-b", "crash", "-v", "threadtime")),
+    ):
+        _continuity_diagnostic_text(
+            device,
+            f"{prefix}-logcat-{buffer_name}.txt",
+            arguments,
+        )
+
+    for name, arguments in (
+        (
+            "exit-info",
+            ("shell", "dumpsys", "activity", "exit-info", shared.PACKAGE),
+        ),
+        ("activities", ("shell", "dumpsys", "activity", "activities")),
+        ("window", ("shell", "dumpsys", "window", "windows")),
+        ("processes", ("shell", "dumpsys", "activity", "processes")),
+    ):
+        _continuity_diagnostic_text(
+            device,
+            f"{prefix}-{name}.txt",
+            arguments,
+        )
+
+    try:
+        screenshot = device.run(
+            "exec-out",
+            "screencap",
+            "-p",
+            timeout=60,
+            text=False,
+            check=False,
+        )
+        if screenshot.returncode == 0 and isinstance(screenshot.stdout, bytes):
+            (device.evidence / f"{prefix}.png").write_bytes(screenshot.stdout)
+    except Exception as error:
+        try:
+            shared._write_launch_evidence(
+                device,
+                f"{prefix}-screenshot-error.txt",
+                error,
+            )
+        except Exception:
+            pass
+    try:
+        hierarchy = device.run(
+            "exec-out",
+            "cat",
+            shared.ADB_FILE_HIERARCHY_REMOTE_PATH,
+            timeout=60,
+            check=False,
+        )
+        if hierarchy.returncode == 0:
+            shared._write_launch_evidence(
+                device,
+                f"{prefix}.xml",
+                hierarchy.stdout,
+            )
+    except Exception as error:
+        try:
+            shared._write_launch_evidence(
+                device,
+                f"{prefix}-hierarchy-error.txt",
+                error,
+            )
+        except Exception:
+            pass
+
+class CreationDashboardContinuityGuard:
+    """Bind the initial dashboard scan to one uninterrupted app foreground."""
+
+    def __init__(
+        self,
+        device: shared.Device,
+        expected: shared.LaunchState,
+        *,
+        deadline: float,
+        phase_id: str,
+    ) -> None:
+        component = (
+            shared.COMPONENT.fullmatch(expected.resumed_component)
+            if expected.resumed_component is not None
+            else None
+        )
+        if (
+            len(expected.process_ids) != 1
+            or component is None
+            or component.group("package") != shared.PACKAGE
+            or not component.group("activity").endswith("MainActivity")
+            or not math.isfinite(deadline)
+            or not phase_id
+        ):
+            raise ValueError(
+                "Creation dashboard continuity requires one exact Chummer PID "
+                "and resumed MainActivity"
+            )
+        self._device = device
+        self._expected = expected
+        self._deadline = deadline
+        self._phase_id = phase_id
+        self._scroll_journal: list[dict[str, object]] = []
+        self._failed = False
+
+    @property
+    def scroll_journal(self) -> tuple[dict[str, object], ...]:
+        return tuple(self._scroll_journal)
+
+    def require(
+        self,
+        nodes: list[shared.UiNode],
+        scan_id: str,
+        traversal: str,
+        gestures_issued: int,
+    ) -> None:
+        if self._failed:
+            raise RuntimeError(
+                "Creation dashboard continuity already failed; no recovery or "
+                "further gesture is authorized"
+            )
+        packages, route_cardinality, exact_route = (
+            _creation_dashboard_hierarchy_authority(nodes)
+        )
+        hierarchy_matches = packages == (shared.PACKAGE,) and exact_route
+        launch_observations: list[dict[str, object]] = []
+        try:
+            observed = _strict_creation_dashboard_launch_state(
+                self._device,
+                deadline=self._deadline,
+                launch_observations_out=launch_observations,
+            )
+        except Exception as error:
+            observed = shared.LaunchState(
+                (),
+                None,
+                "continuity observation failed: "
+                f"{type(error).__name__}: {shared._bounded_evidence(error)}",
+            )
+        pid_matches = observed.process_ids == self._expected.process_ids
+        component_matches = (
+            observed.resumed_component == self._expected.resumed_component
+        )
+        final_pid_before = (
+            launch_observations[-1].get("processIdsBeforeActivityRead", [])
+            if launch_observations
+            else []
+        )
+        final_pid_after = (
+            launch_observations[-1].get("processIdsAfterActivityRead", [])
+            if launch_observations
+            else []
+        )
+        observation = {
+            "ordinal": len(self._scroll_journal) + 1,
+            "phaseId": self._phase_id,
+            "scanId": scan_id,
+            "traversal": traversal,
+            "gesturesIssued": gestures_issued,
+            "expectedProcessIds": list(self._expected.process_ids),
+            "expectedResumedComponent": self._expected.resumed_component,
+            "processIds": list(observed.process_ids),
+            "processIdsBeforeActivityRead": final_pid_before,
+            "processIdsAfterActivityRead": final_pid_after,
+            "launchStateObservations": launch_observations,
+            "resumedComponent": observed.resumed_component,
+            "packages": list(packages),
+            "hierarchySignatureSha256": accessibility_signature_sha256(nodes),
+            "routeCardinality": route_cardinality,
+            "exactRoute": exact_route,
+            "exactRouteRequired": True,
+            "status": (
+                "pass"
+                if pid_matches and component_matches and hierarchy_matches
+                else "fail"
+            ),
+        }
+        self._scroll_journal.append(observation)
+        if pid_matches and component_matches and hierarchy_matches:
+            return
+
+        reasons = []
+        if not pid_matches:
+            reasons.append("package-pid-changed")
+        if not component_matches:
+            reasons.append("resumed-component-changed")
+        if packages != (shared.PACKAGE,):
+            reasons.append("hierarchy-package-changed")
+        if not exact_route:
+            reasons.append("dashboard-route-changed")
+        reason = "+".join(reasons)
+        self._failed = True
+        capture_creation_dashboard_continuity_failure(
+            self._device,
+            reason=reason,
+            expected=self._expected,
+            observed=observed,
+            hierarchy_packages=packages,
+            route_cardinality=route_cardinality,
+            exact_route=exact_route,
+            scroll_journal=list(self._scroll_journal),
+        )
+        raise RuntimeError(
+            "Creation dashboard lost its exact process, foreground, package, or "
+            f"route continuity before another scan gesture: reason={reason!r}; "
+            "no recovery or further gesture was attempted"
+        )
+
+
 def require_reusable_scan_origin(
     origin: PriorityRankOrigin,
     *,
@@ -1220,6 +1709,9 @@ def acquire_stable_start_origin(
     max_consecutive_empty_reads: int = 3,
     delay_seconds: float = 0.0,
     deadline: float | None = None,
+    continuity_check: (
+        Callable[[list[shared.UiNode], str, str, int], None] | None
+    ) = None,
 ) -> PriorityRankOrigin:
     """Prove a measured page start and retain its fresh final hierarchy.
 
@@ -1274,6 +1766,8 @@ def acquire_stable_start_origin(
             )
             continue
         consecutive_empty_reads = 0
+        if continuity_check is not None:
+            continuity_check(nodes, scan_id, "reverse", reverse_swipes)
         signature = accessibility_signature(nodes)
         unchanged = unchanged + 1 if previous is not None and signature == previous else 0
         previous = signature
@@ -1334,6 +1828,9 @@ def scan_forward_until_stable(
     hierarchy_dump_attempt_max_seconds: float | None = None,
     allow_direct_hierarchy_reconciliation: bool = True,
     allow_direct_swipe_reconciliation: bool = True,
+    continuity_check: (
+        Callable[[list[shared.UiNode], str, str, int], None] | None
+    ) = None,
 ) -> list[list[shared.UiNode]]:
     """Scan through the exact stable page end instead of spending the full bound.
 
@@ -1467,6 +1964,8 @@ def scan_forward_until_stable(
             )
             continue
         consecutive_empty_reads = 0
+        if continuity_check is not None:
+            continuity_check(nodes, scan_id, "forward", swipes)
         screens.append(nodes)
         signature = accessibility_signature(nodes)
         unchanged = unchanged + 1 if previous is not None and signature == previous else 0
@@ -1552,6 +2051,9 @@ def scan_forward_with_receipt(
     hierarchy_dump_attempt_max_seconds: float | None = None,
     allow_direct_hierarchy_reconciliation: bool = True,
     allow_direct_swipe_reconciliation: bool = True,
+    continuity_check: (
+        Callable[[list[shared.UiNode], str, str, int], None] | None
+    ) = None,
 ) -> StableViewportScan:
     """Return the stable scan's actual viewport delta without another dump."""
     receipt: dict[str, object] = {}
@@ -1581,6 +2083,7 @@ def scan_forward_with_receipt(
             allow_direct_hierarchy_reconciliation
         ),
         allow_direct_swipe_reconciliation=allow_direct_swipe_reconciliation,
+        continuity_check=continuity_check,
     )
     swipes = receipt.get("swipes")
     stable_repeats = receipt.get("stableRepeats")
@@ -2145,14 +2648,23 @@ class ProgressRecorder:
         if self._active_id is None or self._finished:
             raise RuntimeError("Scan timing was recorded outside an active progress phase")
         require_composed_scan_timing(scan)
-        bound_scan = {**scan, "phaseId": self._active_id}
+        resolved_method_reacquisition = (
+            scan.get("scanId") == CREATION_METHOD_REACQUISITION_SCAN_ID
+            and scan.get("status") == "resolved"
+        )
         if (
-            bound_scan.get("scanId") == CREATION_METHOD_REACQUISITION_SCAN_ID
-            and bound_scan.get("status") == "resolved"
+            resolved_method_reacquisition
+            and scan.get("phaseId") != self._active_id
         ):
+            raise RuntimeError(
+                "Creation method reacquisition receipt phase authority differs "
+                "from active progress phase"
+            )
+        bound_scan = {**scan, "phaseId": self._active_id}
+        if resolved_method_reacquisition:
             require_creation_method_reacquisition_receipt(
                 bound_scan,
-                expected_phase_id="advanced-editor-gate-inventory",
+                expected_phase_id=self._active_id,
                 require_deadline=True,
             )
         self.scans.append(bound_scan)
@@ -2971,6 +3483,7 @@ def assert_uncreated_advanced_editor_gated(
     scan_id: str = "advanced-editor-gate",
     deadline: float | None = None,
     compact_current: bool = False,
+    continuity_guard: CreationDashboardContinuityGuard | None = None,
 ) -> CreationDashboardScanProof:
     """Scan the dashboard once for forbidden controls and reusable authority."""
     def capture(name: str) -> None:
@@ -3011,6 +3524,9 @@ def assert_uncreated_advanced_editor_gated(
         )
         max_scrolls = POST_CONFIRM_DASHBOARD_SCAN_MAX_SCROLLS
     else:
+        origin_options: dict[str, object] = {}
+        if continuity_guard is not None:
+            origin_options["continuity_check"] = continuity_guard.require
         scan_origin = acquire_stable_start_origin(
             device,
             scan_id=f"{scan_id}-origin",
@@ -3020,6 +3536,7 @@ def assert_uncreated_advanced_editor_gated(
             max_consecutive_empty_reads=3,
             delay_seconds=0.0,
             deadline=deadline,
+            **origin_options,
         )
         max_scrolls = DASHBOARD_SCAN_MAX_SCROLLS
     scan_options: dict[str, object] = {}
@@ -3031,6 +3548,8 @@ def assert_uncreated_advanced_editor_gated(
             allow_direct_hierarchy_reconciliation=False,
             allow_direct_swipe_reconciliation=False,
         )
+    if continuity_guard is not None:
+        scan_options["continuity_check"] = continuity_guard.require
     scan = scan_forward_with_receipt(
         device,
         scan_id=scan_id,
@@ -3637,6 +4156,230 @@ def reacquire_exact_ready_creation_method(
         "Timed out reversing to exact measured ready creation method navigation "
         f"'creation-stage-method' within the dashboard scan bound of {max_swipes} swipes"
     )
+
+
+def reacquire_creation_method_one_shot_target(
+    device: shared.Device,
+    *,
+    expected_detail: str,
+    diagnostic_capture: str,
+    deadline: float,
+) -> tuple[shared.UiNode, dict[str, object]]:
+    """Select one fresh exact method node after diagnostics and without moving.
+
+    The broader dashboard scan positions the method card. Diagnostics can take
+    long enough for the native toolbar or ScrollView geometry to settle, so its
+    earlier node bounds are never action authority. This final observation is
+    deliberately one fresh viewport with no gesture or action fallback.
+    """
+    if not expected_detail or not diagnostic_capture:
+        raise ValueError(
+            "Creation method one-shot targeting requires prior detail and diagnostics"
+        )
+    display_width, display_height = device.display_size(deadline=deadline)
+    hierarchy_durations_ms: list[int] = []
+    nodes = fresh_hierarchy_timed(
+        device,
+        hierarchy_durations_ms,
+        deadline=deadline,
+    )
+    observed_at_utc = datetime.now(timezone.utc).isoformat()
+    matches = [
+        node
+        for node in nodes
+        if _exact_resource_id(node) == "creation-stage-method"
+    ]
+    if len(matches) != 1:
+        device.capture(
+            "creation-stage-method-one-shot-cardinality-invalid",
+            deadline=deadline,
+        )
+        raise RuntimeError(
+            "Creation method one-shot target has cardinality "
+            f"{len(matches)}; expected one"
+        )
+    node = matches[0]
+    _require_canonical_chummer_resource_id(
+        device,
+        node,
+        "creation-stage-method",
+        evidence_prefix="creation-stage-method-one-shot",
+        surface_name="Creation method one-shot target",
+        deadline=deadline,
+    )
+    bounds_match = shared.BOUNDS.fullmatch(node.attributes.get("bounds", ""))
+    tappable = False
+    if bounds_match is not None:
+        left, top, right, bottom = (
+            int(value) for value in bounds_match.groups()
+        )
+        center_y = (top + bottom) // 2
+        tappable = (
+            right - left > 8
+            and bottom - top > 8
+            and 0 <= left < right <= display_width
+            and 0 <= top < bottom <= display_height
+            and center_y < display_height * 0.96
+        )
+    if (
+        node.attributes.get("enabled") != "true"
+        or node.attributes.get("clickable") != "true"
+        or not tappable
+    ):
+        device.capture(
+            "creation-stage-method-one-shot-not-tappable",
+            deadline=deadline,
+        )
+        raise RuntimeError(
+            "Creation method one-shot target was not visible, enabled, and clickable"
+        )
+    detail = require_creation_method_navigation(node, ready=True)
+    if detail != expected_detail:
+        device.capture(
+            "creation-stage-method-one-shot-detail-drift",
+            deadline=deadline,
+        )
+        raise RuntimeError(
+            "Creation method authority changed after diagnostics and before the "
+            f"one-shot tap: expected={expected_detail!r}, actual={detail!r}"
+        )
+    x, y = node.center
+    proof: dict[str, object] = {
+        "schema": CREATION_METHOD_ONE_SHOT_SCHEMA,
+        "status": "target-acquired",
+        "selector": "creation-stage-method",
+        "fullResourceId": (
+            f"{shared.PACKAGE}:id/creation-stage-method"
+        ),
+        "diagnosticCapture": diagnostic_capture,
+        "preTap": {
+            "observedAtUtc": observed_at_utc,
+            "hierarchyDigest": accessibility_signature_sha256(nodes),
+            "hierarchyDigestDomain": CREATION_METHOD_ONE_SHOT_DIGEST_DOMAIN,
+            "nodeCount": len(nodes),
+            "hierarchyReadCount": len(hierarchy_durations_ms),
+            "hierarchyElapsedMs": sum(hierarchy_durations_ms),
+            "bounds": node.attributes.get("bounds", ""),
+            "center": {"x": x, "y": y},
+            "enabled": True,
+            "clickable": True,
+            "detail": detail,
+        },
+        "tapReplayPerformed": False,
+        "fallbackTapPerformed": False,
+    }
+    return node, proof
+
+
+def require_creation_method_one_shot_proof(
+    proof: dict[str, object],
+    *,
+    require_first_post_tap: bool,
+    expected_diagnostic_capture: str = "creation-priority-core-bootstrap-ready",
+) -> None:
+    """Fail closed on forged, replayed, or geometrically stale tap evidence."""
+    if not expected_diagnostic_capture:
+        raise ValueError(
+            "Creation method one-shot proof requires its exact diagnostic capture"
+        )
+    pre_tap = proof.get("preTap")
+    tap = proof.get("tap")
+    first_post_tap = proof.get("firstPostTap")
+    if not isinstance(pre_tap, dict) or not isinstance(tap, dict):
+        raise RuntimeError("Creation method one-shot proof is incomplete")
+    center = pre_tap.get("center")
+    coordinates = tap.get("coordinates")
+    bounds_match = re.fullmatch(
+        r"\[([0-9]+),([0-9]+)\]\[([0-9]+),([0-9]+)\]",
+        str(pre_tap.get("bounds", "")),
+    )
+    expected_center: dict[str, int] | None = None
+    if bounds_match is not None:
+        left, top, right, bottom = (
+            int(value) for value in bounds_match.groups()
+        )
+        if left < right and top < bottom:
+            expected_center = {
+                "x": (left + right) // 2,
+                "y": (top + bottom) // 2,
+            }
+    required_literals = {
+        "schema": CREATION_METHOD_ONE_SHOT_SCHEMA,
+        "selector": "creation-stage-method",
+        "fullResourceId": f"{shared.PACKAGE}:id/creation-stage-method",
+        "diagnosticCapture": expected_diagnostic_capture,
+        "tapReplayPerformed": False,
+        "fallbackTapPerformed": False,
+    }
+    differing = {
+        field: (expected, proof.get(field))
+        for field, expected in required_literals.items()
+        if proof.get(field) != expected
+    }
+    if differing:
+        raise RuntimeError(
+            f"Creation method one-shot proof authority differs: {differing!r}"
+        )
+    if (
+        proof.get("status")
+        not in {"tap-issued", "first-post-tap-observed"}
+        or pre_tap.get("hierarchyDigestDomain")
+        != CREATION_METHOD_ONE_SHOT_DIGEST_DOMAIN
+        or not isinstance(pre_tap.get("hierarchyDigest"), str)
+        or CANONICAL_AUTHORITY_DIGEST.fullmatch(
+            str(pre_tap["hierarchyDigest"])
+        )
+        is None
+        or type(pre_tap.get("nodeCount")) is not int
+        or int(pre_tap["nodeCount"]) <= 0
+        or pre_tap.get("hierarchyReadCount") != 1
+        or type(pre_tap.get("hierarchyElapsedMs")) is not int
+        or int(pre_tap["hierarchyElapsedMs"]) < 0
+        or pre_tap.get("enabled") is not True
+        or pre_tap.get("clickable") is not True
+        or expected_center is None
+        or not isinstance(pre_tap.get("detail"), str)
+        or not str(pre_tap["detail"]).strip()
+        or not isinstance(center, dict)
+        or center != expected_center
+        or tap.get("command") != "input tap"
+        or type(tap.get("count")) is not int
+        or tap.get("count") != 1
+        or not isinstance(coordinates, dict)
+        or coordinates != expected_center
+    ):
+        raise RuntimeError(
+            "Creation method one-shot proof target, digest, or tap differs"
+        )
+    if not require_first_post_tap:
+        if first_post_tap is not None:
+            raise RuntimeError(
+                "Creation method one-shot proof observed a post-tap hierarchy too early"
+            )
+        return
+    if (
+        proof.get("status") != "first-post-tap-observed"
+        or not isinstance(first_post_tap, dict)
+        or first_post_tap.get("hierarchyDigestDomain")
+        != CREATION_METHOD_ONE_SHOT_DIGEST_DOMAIN
+        or not isinstance(first_post_tap.get("hierarchyDigest"), str)
+        or CANONICAL_AUTHORITY_DIGEST.fullmatch(
+            str(first_post_tap["hierarchyDigest"])
+        )
+        is None
+        or type(first_post_tap.get("nodeCount")) is not int
+        or int(first_post_tap["nodeCount"]) < 0
+        or type(first_post_tap.get("routeCardinality")) is not int
+        or int(first_post_tap["routeCardinality"]) not in {0, 1}
+        or type(first_post_tap.get("methodCardinality")) is not int
+        or int(first_post_tap["methodCardinality"]) not in {0, 1}
+        or type(first_post_tap.get("bindingCardinality")) is not int
+        or int(first_post_tap["bindingCardinality"]) not in {0, 1}
+        or type(first_post_tap.get("routeResolved")) is not bool
+    ):
+        raise RuntimeError(
+            "Creation method one-shot first post-tap authority differs"
+        )
 
 
 def _pending_timeout_text(value: object) -> str:
@@ -4451,6 +5194,8 @@ def wait_for_prerequisite_scan_origin(
     deadline: float | None = None,
     immediately_after_opening_tap: bool = False,
     scan_observer: Callable[[dict[str, object]], None] | None = None,
+    opening_action: dict[str, object] | None = None,
+    opening_action_diagnostic_capture: str = "creation-priority-core-bootstrap-ready",
 ) -> PriorityRankOrigin:
     """Acquire and retain the exact top viewport of the pushed prerequisite page.
 
@@ -4472,6 +5217,16 @@ def wait_for_prerequisite_scan_origin(
         or type(immediately_after_opening_tap) is not bool
     ):
         raise ValueError("A positive timeout and nonnegative reverse bound are required")
+    if opening_action is not None:
+        if not immediately_after_opening_tap:
+            raise ValueError(
+                "Creation method one-shot evidence requires the immediate post-tap observer"
+            )
+        require_creation_method_one_shot_proof(
+            opening_action,
+            require_first_post_tap=False,
+            expected_diagnostic_capture=opening_action_diagnostic_capture,
+        )
     route_selector = "creation-prerequisite-page"
     top_selectors = (
         "creation-prerequisite-method",
@@ -4495,8 +5250,7 @@ def wait_for_prerequisite_scan_origin(
     ) -> None:
         if scan_observer is None:
             return
-        scan_observer(
-            {
+        payload: dict[str, object] = {
                 "scanId": "creation-prerequisite-scan-origin",
                 "status": status,
                 "observationMode": (
@@ -4514,7 +5268,9 @@ def wait_for_prerequisite_scan_origin(
                 "elapsedMs": round((time.monotonic() - started) * 1000),
                 "deadlineEnforced": deadline is not None,
             }
-        )
+        if opening_action is not None:
+            payload["openingAction"] = json.loads(json.dumps(opening_action))
+        scan_observer(payload)
 
     def exact_matches(nodes: list[shared.UiNode]) -> dict[str, list[shared.UiNode]]:
         return {
@@ -4523,6 +5279,29 @@ def wait_for_prerequisite_scan_origin(
             ]
             for selector in (route_selector, *top_selectors)
         }
+
+    def observe_first_post_tap(nodes: list[shared.UiNode]) -> None:
+        if opening_action is None or "firstPostTap" in opening_action:
+            return
+        matches = exact_matches(nodes)
+        route_cardinality = len(matches[route_selector])
+        method_cardinality = len(matches[top_selectors[0]])
+        binding_cardinality = len(matches[top_selectors[1]])
+        opening_action["firstPostTap"] = {
+            "observedAtUtc": datetime.now(timezone.utc).isoformat(),
+            "hierarchyDigest": accessibility_signature_sha256(nodes),
+            "hierarchyDigestDomain": CREATION_METHOD_ONE_SHOT_DIGEST_DOMAIN,
+            "nodeCount": len(nodes),
+            "routeCardinality": route_cardinality,
+            "methodCardinality": method_cardinality,
+            "bindingCardinality": binding_cardinality,
+            "routeResolved": (
+                route_cardinality == 1
+                and method_cardinality == 1
+                and binding_cardinality == 1
+            ),
+        }
+        opening_action["status"] = "first-post-tap-observed"
 
     while time.monotonic() < operation_deadline:
         file_backed_attempts += 1
@@ -4596,6 +5375,7 @@ def wait_for_prerequisite_scan_origin(
             hierarchy_durations_ms.append(
                 round((time.perf_counter() - direct_started) * 1000)
             )
+            observe_first_post_tap(nodes)
             matches = exact_matches(nodes)
             ambiguous = {
                 selector: len(candidates)
@@ -4658,6 +5438,7 @@ def wait_for_prerequisite_scan_origin(
                 hierarchy_durations_ms=tuple(hierarchy_durations_ms),
                 empty_hierarchy_reads=empty_hierarchy_reads,
             )
+        observe_first_post_tap(nodes)
         if not nodes:
             empty_hierarchy_reads += 1
             sleep_before_phase_deadline(
@@ -4673,6 +5454,11 @@ def wait_for_prerequisite_scan_origin(
             if len(candidates) > 1
         }
         if ambiguous:
+            record_origin(
+                "cardinality-invalid",
+                lease_reserve_exhausted=False,
+                direct_fallback_result="not-needed",
+            )
             device.capture(
                 "creation-prerequisite-scan-origin-cardinality-invalid",
                 deadline=operation_deadline,
@@ -4724,6 +5510,11 @@ def wait_for_prerequisite_scan_origin(
             deadline=operation_deadline,
             operation="prerequisite scan-origin retry wait",
         )
+    record_origin(
+        "timeout",
+        lease_reserve_exhausted=False,
+        direct_fallback_result="not-needed",
+    )
     device.capture(
         "creation-prerequisite-scan-origin-unavailable",
         deadline=operation_deadline,
@@ -10199,6 +10990,23 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     api = device.shell("getprop", "ro.build.version.sdk")
     if api != "36":
         raise RuntimeError(f"Creation prerequisite E2E requires API 36, got {api!r}")
+    abi = device.shell("getprop", "ro.product.cpu.abi")
+    emulator = device.shell("getprop", "ro.kernel.qemu")
+    if abi != "x86_64" or emulator != "1":
+        raise RuntimeError(
+            "Creation prerequisite E2E storage authority requires the hosted "
+            f"x86_64 emulator, got ABI {abi!r}, qemu {emulator!r}"
+        )
+    device.require_shared_storage_readiness(
+        deadline=min(
+            progress.active_phase_deadline("device-preflight-install"),
+            time.monotonic() + shared.ADB_SHARED_STORAGE_PREFLIGHT_MAX_SECONDS,
+        ),
+        hosted_api_level=api,
+        hosted_abi=abi,
+        hosted_emulator=emulator,
+        hosted_proof_attempt=True,
+    )
 
     subprocess.run(
         [
@@ -10296,26 +11104,33 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     advanced_editor_deadline = progress.active_phase_deadline(
         "advanced-editor-gate-inventory"
     )
+    dashboard_continuity = CreationDashboardContinuityGuard(
+        device,
+        initial_launch,
+        deadline=advanced_editor_deadline,
+        phase_id="advanced-editor-gate-inventory",
+    )
+    dashboard_continuity.require(
+        resolved_dashboard_viewport[0].nodes,
+        "advanced-editor-gate-initial-pre-scan",
+        "pre-scan",
+        0,
+    )
     dashboard_scan = assert_uncreated_advanced_editor_gated(
         device,
         scan_observer=progress.record_scan,
         scan_id="advanced-editor-gate-initial",
         deadline=advanced_editor_deadline,
+        continuity_guard=dashboard_continuity,
     )
     dashboard_binding = dashboard_scan.binding
-    method_node, method_detail, _ = reacquire_exact_ready_creation_method(
+    _positioned_method_node, method_detail, _ = reacquire_exact_ready_creation_method(
         device,
         expected_detail=dashboard_scan.method_detail,
         max_swipes=DASHBOARD_SCAN_MAX_SCROLLS,
         scan_observer=progress.record_scan,
         deadline=advanced_editor_deadline,
     )
-    ready_navigation = {
-        "detail": method_detail,
-        "clickable": True,
-        "enabled": True,
-        "authorityProjectionWaited": authority_projection_waited,
-    }
     device.capture(
         "creation-priority-core-bootstrap-ready",
         deadline=advanced_editor_deadline,
@@ -10325,10 +11140,27 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     prerequisite_deadline = progress.active_phase_deadline(
         "prerequisite-authority-inventory"
     )
+    method_node, method_opening_action = (
+        reacquire_creation_method_one_shot_target(
+            device,
+            expected_detail=method_detail,
+            diagnostic_capture="creation-priority-core-bootstrap-ready",
+            deadline=prerequisite_deadline,
+        )
+    )
+    tap_x, tap_y = method_node.center
+    method_opening_action["status"] = "tap-issued"
+    method_opening_action["tap"] = {
+        "command": "input tap",
+        "count": 1,
+        "coordinates": {"x": tap_x, "y": tap_y},
+        "issuedAtUtc": datetime.now(timezone.utc).isoformat(),
+    }
     device.shell(
         "input",
         "tap",
-        *(str(value) for value in method_node.center),
+        str(tap_x),
+        str(tap_y),
         timeout=shared._remaining_operation_timeout(
             deadline=prerequisite_deadline,
             maximum=15,
@@ -10340,7 +11172,19 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         deadline=prerequisite_deadline,
         immediately_after_opening_tap=True,
         scan_observer=progress.record_scan,
+        opening_action=method_opening_action,
     )
+    require_creation_method_one_shot_proof(
+        method_opening_action,
+        require_first_post_tap=True,
+    )
+    ready_navigation = {
+        "detail": method_detail,
+        "clickable": True,
+        "enabled": True,
+        "authorityProjectionWaited": authority_projection_waited,
+        "methodOpeningOneShot": method_opening_action,
+    }
     prerequisite_scan = scan_prerequisite_authority(
         device,
         initial_observation=prerequisite_origin,
@@ -10846,23 +11690,74 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         reset_swipes=22,
         deadline=resources_rebind_deadline,
     )
-    post_resources_method_node, _, _ = reacquire_exact_ready_creation_method(
-        device,
-        expected_detail=post_confirm_dashboard.method_detail,
-        max_swipes=DASHBOARD_SCAN_MAX_SCROLLS,
-        phase_id="resources-prerequisite-rebind",
+    _post_resources_positioned_method, post_resources_method_detail, _ = (
+        reacquire_exact_ready_creation_method(
+            device,
+            expected_detail=post_confirm_dashboard.method_detail,
+            max_swipes=DASHBOARD_SCAN_MAX_SCROLLS,
+            phase_id="resources-prerequisite-rebind",
+            scan_observer=progress.record_scan,
+            deadline=resources_rebind_deadline,
+        )
+    )
+    rebind_diagnostic_capture = "creation-resources-prerequisite-rebind-ready"
+    device.capture(
+        rebind_diagnostic_capture,
         deadline=resources_rebind_deadline,
     )
-    post_resources_attachment_proofs: list[dict[str, object]] = []
-    post_resources_origin = open_prerequisite(
-        device,
-        ready_method_node=post_resources_method_node,
+    post_resources_method_node, post_resources_opening_action = (
+        reacquire_creation_method_one_shot_target(
+            device,
+            expected_detail=post_resources_method_detail,
+            diagnostic_capture=rebind_diagnostic_capture,
+            deadline=resources_rebind_deadline,
+        )
+    )
+    rebind_tap_x, rebind_tap_y = post_resources_method_node.center
+    post_resources_opening_action["status"] = "tap-issued"
+    post_resources_opening_action["tap"] = {
+        "command": "input tap",
+        "count": 1,
+        "coordinates": {"x": rebind_tap_x, "y": rebind_tap_y},
+        "issuedAtUtc": datetime.now(timezone.utc).isoformat(),
+    }
+    device.shell(
+        "input",
+        "tap",
+        str(rebind_tap_x),
+        str(rebind_tap_y),
+        timeout=shared._remaining_operation_timeout(
+            deadline=resources_rebind_deadline,
+            maximum=15,
+        ),
         deadline=resources_rebind_deadline,
+    )
+    post_resources_origin = wait_for_prerequisite_scan_origin(
+        device,
+        deadline=resources_rebind_deadline,
+        immediately_after_opening_tap=True,
         scan_observer=progress.record_scan,
-        proof_expectation=proof_expectation,
-        expected_prior_proof=resources_same_process_proof,
-        attachment_proof_out=post_resources_attachment_proofs,
+        opening_action=post_resources_opening_action,
+        opening_action_diagnostic_capture=rebind_diagnostic_capture,
     )
+    require_creation_method_one_shot_proof(
+        post_resources_opening_action,
+        require_first_post_tap=True,
+        expected_diagnostic_capture=rebind_diagnostic_capture,
+    )
+    device.capture(
+        "creation-resources-prerequisite-rebind-attached",
+        deadline=resources_rebind_deadline,
+    )
+    post_resources_attachment_proof = (
+        read_creation_prerequisite_attachment_proof_state(
+            device,
+            proof_expectation,
+            expected_prior_proof=resources_same_process_proof,
+            deadline=resources_rebind_deadline,
+        )
+    )
+    post_resources_attachment_proofs = [post_resources_attachment_proof]
     post_resources_prerequisite_authority = read_persisted_prerequisite_authority(
         device,
         initial_observation=post_resources_origin,

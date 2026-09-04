@@ -20,16 +20,39 @@ class FakeDevice:
         self.serial = serial
         self.evidence = evidence
         self.preflight_api = ""
+        self.shared_storage_ready = False
+        self.shared_storage_deadline = 0.0
         self.pushed: tuple[Path, str, str] | None = None
 
     def require_transport_stability(self, *, expected_api_level: str) -> None:
         self.preflight_api = expected_api_level
+
+    def require_shared_storage_readiness(
+        self,
+        *,
+        deadline: float,
+        hosted_api_level: str,
+        hosted_abi: str,
+        hosted_emulator: str,
+        hosted_proof_attempt: bool,
+    ) -> None:
+        self.shared_storage_ready = True
+        self.shared_storage_deadline = deadline
+        if (
+            hosted_api_level != "36"
+            or hosted_abi != "x86_64"
+            or hosted_emulator != "1"
+            or hosted_proof_attempt is not True
+        ):
+            raise AssertionError("Hosted shared-storage authority was not exact")
 
     def shell(self, *arguments: str) -> str:
         if arguments == ("getprop", "ro.build.version.sdk"):
             return "36"
         if arguments == ("getprop", "ro.product.cpu.abi"):
             return "x86_64"
+        if arguments == ("getprop", "ro.kernel.qemu"):
+            return "1"
         raise AssertionError(f"unexpected shell call: {arguments!r}")
 
     def push_verified(self, source: Path, remote: str, digest: str) -> str:
@@ -99,6 +122,9 @@ class Api36Sr5AfterRunSettlementHostedContractTests(unittest.TestCase):
                 mock.patch.object(
                     hosted.settlement.physical,
                     "remove_remote_temporary_file",
+                    side_effect=lambda *_args: self.assertTrue(
+                        devices[0].shared_storage_ready
+                    ),
                 ) as remove_remote,
                 mock.patch.object(
                     hosted.settlement,
@@ -110,6 +136,8 @@ class Api36Sr5AfterRunSettlementHostedContractTests(unittest.TestCase):
 
             self.assertEqual(1, len(devices))
             self.assertEqual("36", devices[0].preflight_api)
+            self.assertTrue(devices[0].shared_storage_ready)
+            self.assertGreater(devices[0].shared_storage_deadline, 0.0)
             self.assertIsNotNone(devices[0].pushed)
             self.assertEqual(4, remove_remote.call_count)
             install.assert_called_once()

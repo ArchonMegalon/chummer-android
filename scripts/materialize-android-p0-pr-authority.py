@@ -33,6 +33,9 @@ from api36_wizard_gate_contract import (  # noqa: E402
     contract_binding,
     journey_map,
 )
+from api36_proof_environment_authority import (  # noqa: E402
+    POLICY_SCHEMA as ENVIRONMENT_POLICY_SCHEMA,
+)
 
 
 CONTRACT = "chummer.android.p0-pr-authority/v1"
@@ -170,6 +173,7 @@ def validate_aggregate(
     fields = {
         "schema", "status", "generatedAtUtc", "authorityClass", "proofScope",
         "publicationAuthorized", "gateAuthority", "artifactAuthority",
+        "environmentAuthority",
         "requiredJourneyCount", "requiredJourneys", "journeyCount", "journeys",
     }
     required_map = {
@@ -226,6 +230,58 @@ def validate_aggregate(
     ):
         raise ValueError("wizard aggregate APK authority is invalid")
     _require_sha256(artifact["apkSha256"], "x64 APK SHA-256")
+    environment = value["environmentAuthority"]
+    if (
+        not isinstance(environment, dict)
+        or set(environment)
+        != {
+            "policyAuthority",
+            "build",
+            "journeyCompatibilitySha256",
+            "journeys",
+        }
+    ):
+        raise ValueError("wizard aggregate environment authority is not exact")
+    policy = environment["policyAuthority"]
+    if (
+        not isinstance(policy, dict)
+        or set(policy) != {"schema", "sha256", "sizeBytes"}
+        or policy["schema"] != ENVIRONMENT_POLICY_SCHEMA
+        or type(policy["sizeBytes"]) is not int
+        or policy["sizeBytes"] <= 0
+    ):
+        raise ValueError("wizard aggregate environment policy differs")
+    _require_sha256(policy["sha256"], "environment policy SHA-256")
+    environment_journeys = environment["journeys"]
+    if (
+        not isinstance(environment_journeys, dict)
+        or set(environment_journeys) != set(required)
+    ):
+        raise ValueError("wizard aggregate environment journey set differs")
+    common_compatibility = _require_sha256(
+        environment["journeyCompatibilitySha256"],
+        "journey environment compatibility SHA-256",
+    )
+    for label, binding in {
+        "build": environment["build"],
+        **environment_journeys,
+    }.items():
+        expected_binding_fields = {
+            "receiptSha256",
+            "environmentSha256",
+            "compatibilitySha256",
+        }
+        if label != "build":
+            expected_binding_fields.add("emulatorLiveObservationSha256")
+        if (
+            not isinstance(binding, dict)
+            or set(binding) != expected_binding_fields
+        ):
+            raise ValueError(f"wizard aggregate environment binding differs: {label}")
+        for field in binding:
+            _require_sha256(binding[field], f"{label} {field}")
+        if label != "build" and binding["compatibilitySha256"] != common_compatibility:
+            raise ValueError(f"wizard aggregate environment is incompatible: {label}")
     return value
 
 
