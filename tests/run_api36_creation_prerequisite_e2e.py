@@ -300,12 +300,12 @@ POST_CONFIRM_DASHBOARD_READY_POLL_DELAY_SECONDS = 0.25
 POST_CONFIRM_DASHBOARD_DUMP_ATTEMPT_MAX_SECONDS = 30.0
 POST_CONFIRM_DASHBOARD_PROOF_TIMEOUT_SECONDS = 75.0
 # The post-confirm dashboard is observed from its current viewport, not rewound.
-# Exact-head run 33534835752 required eight genuine forward movements to reach
-# the bottom after Core opened the Attributes prerequisite. Stable-end proof
-# then needs two additional clamped gestures. Keep this route-specific bound
-# exact so the observer can prove the end without widening the normal dashboard
-# inventory or replaying the already-consumed Back action.
-POST_CONFIRM_DASHBOARD_SCAN_MAX_SCROLLS = 10
+# Exact-head run 33923577191 started this scan at the deterministically restored
+# top and required ten genuine forward movements to reach the visible page end.
+# Stable-end proof then needs two additional clamped gestures. Keep this
+# route-specific bound exact so the observer can prove the end without widening
+# the normal dashboard inventory or replaying the already-consumed Back action.
+POST_CONFIRM_DASHBOARD_SCAN_MAX_SCROLLS = 12
 CONFIRMED_RECEIPT_BACK_DOWNSTREAM_RESERVE_SECONDS = (
     PRE_BACK_ROUTE_LOG_CLEAR_TIMEOUT_SECONDS
     + PERSISTENT_PREVIEW_ACTION_TIMEOUT_SECONDS
