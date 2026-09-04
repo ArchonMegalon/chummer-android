@@ -129,7 +129,12 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
     @staticmethod
     def record_required_method_reacquisition(
         progress: driver.ProgressRecorder,
+        *,
+        phase_id: str = "advanced-editor-gate-inventory",
     ) -> None:
+        phase_budget_ms, maximum_empty_hierarchy_reads = (
+            driver.CREATION_METHOD_REACQUISITION_PHASE_AUTHORITY[phase_id]
+        )
         progress.record_scan({
             "scanId": driver.CREATION_METHOD_REACQUISITION_SCAN_ID,
             "status": "resolved",
@@ -140,13 +145,12 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "configuredMaxScrolls": driver.DASHBOARD_SCAN_MAX_SCROLLS,
             "stableRepeats": 2,
             "emptyHierarchyReads": 0,
-            "maximumEmptyHierarchyReads": 3,
+            "maximumEmptyHierarchyReads": maximum_empty_hierarchy_reads,
             "systemUiDismissals": 0,
             "maximumSystemUiDismissals": 3,
             "deadlineEnforced": True,
-            "phaseBudgetMs": driver.PHASE_BUDGET_MS[
-                "advanced-editor-gate-inventory"
-            ],
+            "phaseId": phase_id,
+            "phaseBudgetMs": phase_budget_ms,
             "hierarchyReadCount": 1,
             "hierarchyElapsedMs": 0,
             "maximumHierarchyReadMs": 0,
@@ -1569,6 +1573,47 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                     ):
                         progress.advance("prerequisite-authority-inventory")
                     break
+
+    def test_progress_recorder_accepts_method_receipt_from_its_active_rebind_phase(
+        self,
+    ) -> None:
+        phase_id = "resources-prerequisite-rebind"
+        with tempfile.TemporaryDirectory() as temporary, mock.patch("builtins.print"):
+            progress = driver.ProgressRecorder(Path(temporary))
+            progress._active_id = phase_id
+            progress._active_started = driver.time.monotonic()
+
+            self.record_required_method_reacquisition(
+                progress,
+                phase_id=phase_id,
+            )
+
+            self.assertEqual(1, len(progress.scans))
+            self.assertEqual(phase_id, progress.scans[0]["phaseId"])
+            self.assertEqual(
+                driver.PHASE_BUDGET_MS[phase_id],
+                progress.scans[0]["phaseBudgetMs"],
+            )
+
+    def test_progress_recorder_rejects_method_receipt_from_a_different_phase(
+        self,
+    ) -> None:
+        active_phase_id = "resources-prerequisite-rebind"
+        with tempfile.TemporaryDirectory() as temporary, mock.patch("builtins.print"):
+            progress = driver.ProgressRecorder(Path(temporary))
+            progress._active_id = active_phase_id
+            progress._active_started = driver.time.monotonic()
+
+            with self.assertRaisesRegex(
+                RuntimeError,
+                "phase authority differs from active progress phase",
+            ):
+                self.record_required_method_reacquisition(
+                    progress,
+                    phase_id="advanced-editor-gate-inventory",
+                )
+
+            self.assertEqual([], progress.scans)
 
     def test_progress_recorder_rejects_a_pass_phase_outside_its_budget(self) -> None:
         with tempfile.TemporaryDirectory() as temporary, mock.patch("builtins.print"):

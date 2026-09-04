@@ -2648,14 +2648,23 @@ class ProgressRecorder:
         if self._active_id is None or self._finished:
             raise RuntimeError("Scan timing was recorded outside an active progress phase")
         require_composed_scan_timing(scan)
-        bound_scan = {**scan, "phaseId": self._active_id}
+        resolved_method_reacquisition = (
+            scan.get("scanId") == CREATION_METHOD_REACQUISITION_SCAN_ID
+            and scan.get("status") == "resolved"
+        )
         if (
-            bound_scan.get("scanId") == CREATION_METHOD_REACQUISITION_SCAN_ID
-            and bound_scan.get("status") == "resolved"
+            resolved_method_reacquisition
+            and scan.get("phaseId") != self._active_id
         ):
+            raise RuntimeError(
+                "Creation method reacquisition receipt phase authority differs "
+                "from active progress phase"
+            )
+        bound_scan = {**scan, "phaseId": self._active_id}
+        if resolved_method_reacquisition:
             require_creation_method_reacquisition_receipt(
                 bound_scan,
-                expected_phase_id="advanced-editor-gate-inventory",
+                expected_phase_id=self._active_id,
                 require_deadline=True,
             )
         self.scans.append(bound_scan)
