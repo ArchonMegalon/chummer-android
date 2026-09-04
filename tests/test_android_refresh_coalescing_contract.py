@@ -22,6 +22,11 @@ def test_coalesced_refresh_has_no_deferred_control_replacement_window() -> None:
     assert drain.index("Volatile.Read(ref _appearanceRefreshActive) > 0") < drain.index(
         "_coordinatorRefresh.TryTakePending()"
     )
+    dispatch = page.split("private void DispatchCoordinatorRefresh()", 1)[1].split(
+        "private async Task DrainCoordinatorRefreshAsync()", 1
+    )[0]
+    assert "if (!Dispatcher.Dispatch(" in dispatch
+    assert dispatch.count("_coordinatorRefresh.Complete(allowReschedule: false);") == 2
     assert "Task.Delay(CoordinatorRefreshSettleDelay)" not in page
     assert "CoordinatorRefreshSettleDelay" not in page
 
