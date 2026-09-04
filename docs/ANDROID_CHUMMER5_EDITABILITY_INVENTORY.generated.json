@@ -867,7 +867,7 @@
       {
         "path": "scripts/materialize-android-p0-pr-authority.py",
         "exists": true,
-        "sha256": "96358d6f8e94e709c3a2fd4625f6510f3828d0811e2f16e34719a3a3cdef0862"
+        "sha256": "c5ca90393825b300fb89b792f6ad45c3f3c42ed13d9012455f6fa16b92a827de"
       },
       {
         "path": "scripts/prepare-api36-emulator-live-log.py",
@@ -922,12 +922,12 @@
       {
         "path": "tests/test_api36_two_green_eligibility.py",
         "exists": true,
-        "sha256": "5753f4bc12e552ff7f8b583e0c1398dbf7982f1abfcaa43ac6038298a072c92f"
+        "sha256": "25507c5a2311857b91c08b8a17c658edd0270535fb6d766ae89487a5479716fb"
       },
       {
         "path": "tests/test_android_p0_pr_authority.py",
         "exists": true,
-        "sha256": "1ee6c2bebc2b39ab4997f4914c004b67009d16749c110114ba1830e56ee914fa"
+        "sha256": "88ddec495f44d7804c70511f868c7c240b02e5391a8ba2936b6f8a1d452ab7c5"
       },
       {
         "path": "tests/test_preview11_visible_wizard_scope.py",
