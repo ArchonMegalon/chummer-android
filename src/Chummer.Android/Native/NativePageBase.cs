@@ -194,7 +194,23 @@ public abstract class NativePageBase : ContentPage
     }
 
     private void DispatchCoordinatorRefresh()
-        => Dispatcher.Dispatch(() => _ = DrainCoordinatorRefreshAsync());
+    {
+        try
+        {
+            if (!Dispatcher.Dispatch(() => _ = DrainCoordinatorRefreshAsync()))
+            {
+                // The page may have left its dispatcher between the Changed event and this
+                // post. Release scheduling ownership so a later appearance cannot inherit a
+                // permanently scheduled refresh that will never execute.
+                _coordinatorRefresh.Complete(allowReschedule: false);
+            }
+        }
+        catch
+        {
+            _coordinatorRefresh.Complete(allowReschedule: false);
+            throw;
+        }
+    }
 
     private async Task DrainCoordinatorRefreshAsync()
     {
