@@ -7,6 +7,19 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class Sr5CareerRunContextualContractTests(unittest.TestCase):
+    def test_table_load_preserves_ui_context_for_visual_refresh(self) -> None:
+        table = (ROOT / "src/Chummer.Android/Native/Sr5TableWizardPage.cs").read_text(
+            encoding="utf-8"
+        )
+        load_method = table.split(
+            "private async Task LoadLatestAsync(CancellationToken cancellationToken)", 1
+        )[1].split("private static bool MatchesCurrent", 1)[0]
+
+        self.assertIn("await _authority\n                .LoadAsync(_lane, cancellationToken);", load_method)
+        self.assertNotIn("ConfigureAwait(false)", load_method)
+        self.assertIn("finally", load_method)
+        self.assertIn("_loading = false;\n                Refresh();", load_method)
+
     def test_before_run_driver_semantics_are_typed_but_not_release_claimed(self) -> None:
         shell = (ROOT / "src/Chummer.Android/Native/PhoneShellPages.cs").read_text(
             encoding="utf-8"

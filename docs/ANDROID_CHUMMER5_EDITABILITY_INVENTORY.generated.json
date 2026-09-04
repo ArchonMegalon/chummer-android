@@ -712,7 +712,7 @@
       {
         "path": "src/Chummer.Android/Native/Sr5TableWizardPage.cs",
         "exists": true,
-        "sha256": "6a66e398fe8505bda87ee454da4c8f087cd8ea65f7ec6418e57c59cfa4bdaca1"
+        "sha256": "25b7da0bb5593c1f1d8eeb2d4d411b2810986eca43458db76f04a278bd3a10fd"
       },
       {
         "path": "src/Chummer.Android/Native/Sr5TableWizardPhoneModel.cs",
@@ -1002,7 +1002,7 @@
       {
         "path": "tests/test_api36_sr5_career_run_contextual_contract.py",
         "exists": true,
-        "sha256": "f9e69cb95ac6b33138af78b17ad00d2bc9d2cb0113995b4d3426a53417cde679"
+        "sha256": "73b45a5d4c53b26b5451661b2af607a24e28aa703a3f6db53ae2d2cb593b5853"
       },
       {
         "path": "tests/test_chummer5_editability_inventory.py",
