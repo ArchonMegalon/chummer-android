@@ -1234,27 +1234,32 @@ def _strict_creation_dashboard_launch_state(
     device: shared.Device,
     *,
     deadline: float,
+    pid_observations_out: list[tuple[str, ...]] | None = None,
 ) -> shared.LaunchState:
-    """Read one exact PID set and one exact resumed-component projection."""
-    process_result = device.run(
-        "shell",
-        "pidof",
-        shared.PACKAGE,
-        timeout=shared._remaining_operation_timeout(
+    """Bracket one activity read with two identical exact PID reads."""
+
+    def read_exact_process_ids() -> tuple[str, ...]:
+        result = device.run(
+            "shell",
+            "pidof",
+            shared.PACKAGE,
+            timeout=shared._remaining_operation_timeout(
+                deadline=deadline,
+                maximum=15,
+            ),
+            check=False,
             deadline=deadline,
-            maximum=15,
-        ),
-        check=False,
-        deadline=deadline,
-    )
-    process_tokens = process_result.stdout.split()
-    process_ids = (
-        tuple(process_tokens)
-        if process_result.returncode == 0
-        and len(process_tokens) == 1
-        and shared.PROCESS_ID.fullmatch(process_tokens[0]) is not None
-        else ()
-    )
+        )
+        tokens = result.stdout.split() if isinstance(result.stdout, str) else []
+        return (
+            tuple(tokens)
+            if result.returncode == 0
+            and len(tokens) == 1
+            and shared.PROCESS_ID.fullmatch(tokens[0]) is not None
+            else ()
+        )
+
+    process_ids_before = read_exact_process_ids()
     activity_result = device.run(
         "shell",
         "dumpsys",
@@ -1268,17 +1273,25 @@ def _strict_creation_dashboard_launch_state(
         deadline=deadline,
     )
     activity_dump = activity_result.stdout
-    resumed_components = {
+    resumed_components = [
         normalized
         for line in activity_dump.splitlines()
         if "ResumedActivity" in line or "topResumedActivity" in line
         for match in shared.COMPONENT.finditer(line)
         if (normalized := shared.normalize_component(match.group(0))) is not None
-    }
+    ]
     resumed_component = (
         next(iter(resumed_components))
         if activity_result.returncode == 0 and len(resumed_components) == 1
         else None
+    )
+    process_ids_after = read_exact_process_ids()
+    if pid_observations_out is not None:
+        pid_observations_out.extend((process_ids_before, process_ids_after))
+    process_ids = (
+        process_ids_before
+        if process_ids_before and process_ids_before == process_ids_after
+        else ()
     )
     return shared.LaunchState(process_ids, resumed_component, activity_dump)
 
@@ -1322,11 +1335,55 @@ def capture_creation_dashboard_continuity_failure(
 ) -> None:
     """Capture one foreground loss without attempting to repair or relaunch it.
 
-    Crash-bearing log buffers are read first. Later UIAutomator or dumpsys work
-    must not evict the short-lived event that explains the foreground loss.
-    Every command after the detected mismatch is read-only.
+    The immutable failure receipts are written before device diagnostics. Of
+    the device calls, crash-bearing log buffers are read first. Later
+    UIAutomator or dumpsys work must not evict the short-lived event that
+    explains the foreground loss. Every command after the detected mismatch
+    is read-only.
     """
     prefix = CREATION_DASHBOARD_CONTINUITY_PREFIX
+    journal_receipt = {
+        "schema": CREATION_DASHBOARD_CONTINUITY_JOURNAL_SCHEMA,
+        "status": "fail-closed",
+        "observations": scroll_journal,
+        "recoveryAttempted": False,
+        "furtherGesturesAttempted": False,
+    }
+    failure_receipt = {
+        "schema": CREATION_DASHBOARD_CONTINUITY_FAILURE_SCHEMA,
+        "status": "fail-closed",
+        "reason": reason,
+        "phaseId": (
+            scroll_journal[-1].get("phaseId") if scroll_journal else None
+        ),
+        "scanId": (
+            scroll_journal[-1].get("scanId") if scroll_journal else None
+        ),
+        "expected": shared._launch_state_json(expected),
+        "observed": shared._launch_state_json(observed),
+        "hierarchy": {
+            "packages": list(hierarchy_packages),
+            "routeResourceId": CREATION_DASHBOARD_CONTINUITY_ROUTE_ID,
+            "routeCardinality": route_cardinality,
+            "exactRoute": exact_route,
+        },
+        "trigger": scroll_journal[-1] if scroll_journal else None,
+        "recoveryAttempted": False,
+        "furtherGesturesAttempted": False,
+        "noRelaunch": True,
+        "noReplay": True,
+        "noNavigation": True,
+        "receiptWrittenBeforeDeviceDiagnostics": True,
+    }
+    for name, value in (
+        (f"{prefix}-scroll-journal.json", journal_receipt),
+        (f"{prefix}.json", failure_receipt),
+    ):
+        try:
+            shared._write_new_json_receipt(device.evidence / name, value)
+        except Exception:
+            pass
+
     for buffer_name, arguments in (
         (
             "all",
@@ -1344,11 +1401,11 @@ def capture_creation_dashboard_continuity_failure(
     for name, arguments in (
         (
             "exit-info",
-            ("dumpsys", "activity", "exit-info", shared.PACKAGE),
+            ("shell", "dumpsys", "activity", "exit-info", shared.PACKAGE),
         ),
-        ("activities", ("dumpsys", "activity", "activities")),
-        ("window", ("dumpsys", "window", "windows")),
-        ("processes", ("dumpsys", "activity", "processes")),
+        ("activities", ("shell", "dumpsys", "activity", "activities")),
+        ("window", ("shell", "dumpsys", "window", "windows")),
+        ("processes", ("shell", "dumpsys", "activity", "processes")),
     ):
         _continuity_diagnostic_text(
             device,
@@ -1399,48 +1456,6 @@ def capture_creation_dashboard_continuity_failure(
             )
         except Exception:
             pass
-
-    journal_receipt = {
-        "schema": CREATION_DASHBOARD_CONTINUITY_JOURNAL_SCHEMA,
-        "status": "fail-closed",
-        "observations": scroll_journal,
-        "recoveryAttempted": False,
-        "furtherGesturesAttempted": False,
-    }
-    failure_receipt = {
-        "schema": CREATION_DASHBOARD_CONTINUITY_FAILURE_SCHEMA,
-        "status": "fail-closed",
-        "reason": reason,
-        "phaseId": (
-            scroll_journal[-1].get("phaseId") if scroll_journal else None
-        ),
-        "scanId": (
-            scroll_journal[-1].get("scanId") if scroll_journal else None
-        ),
-        "expected": shared._launch_state_json(expected),
-        "observed": shared._launch_state_json(observed),
-        "hierarchy": {
-            "packages": list(hierarchy_packages),
-            "routeResourceId": CREATION_DASHBOARD_CONTINUITY_ROUTE_ID,
-            "routeCardinality": route_cardinality,
-            "exactRoute": exact_route,
-        },
-        "trigger": scroll_journal[-1] if scroll_journal else None,
-        "recoveryAttempted": False,
-        "furtherGesturesAttempted": False,
-        "noRelaunch": True,
-        "noReplay": True,
-        "noNavigation": True,
-    }
-    for name, value in (
-        (f"{prefix}-scroll-journal.json", journal_receipt),
-        (f"{prefix}.json", failure_receipt),
-    ):
-        try:
-            shared._write_new_json_receipt(device.evidence / name, value)
-        except Exception:
-            pass
-
 
 class CreationDashboardContinuityGuard:
     """Bind the initial dashboard scan to one uninterrupted app foreground."""
@@ -1493,10 +1508,12 @@ class CreationDashboardContinuityGuard:
                 "Creation dashboard continuity already failed; no recovery or "
                 "further gesture is authorized"
             )
+        pid_observations: list[tuple[str, ...]] = []
         try:
             observed = _strict_creation_dashboard_launch_state(
                 self._device,
                 deadline=self._deadline,
+                pid_observations_out=pid_observations,
             )
         except Exception as error:
             observed = shared.LaunchState(
@@ -1512,10 +1529,7 @@ class CreationDashboardContinuityGuard:
         component_matches = (
             observed.resumed_component == self._expected.resumed_component
         )
-        require_exact_route = traversal == "pre-scan"
-        hierarchy_matches = packages == (shared.PACKAGE,) and (
-            exact_route or not require_exact_route
-        )
+        hierarchy_matches = packages == (shared.PACKAGE,) and exact_route
         observation = {
             "ordinal": len(self._scroll_journal) + 1,
             "phaseId": self._phase_id,
@@ -1525,12 +1539,18 @@ class CreationDashboardContinuityGuard:
             "expectedProcessIds": list(self._expected.process_ids),
             "expectedResumedComponent": self._expected.resumed_component,
             "processIds": list(observed.process_ids),
+            "processIdsBeforeActivityRead": (
+                list(pid_observations[0]) if len(pid_observations) > 0 else []
+            ),
+            "processIdsAfterActivityRead": (
+                list(pid_observations[1]) if len(pid_observations) > 1 else []
+            ),
             "resumedComponent": observed.resumed_component,
             "packages": list(packages),
             "hierarchySignatureSha256": accessibility_signature_sha256(nodes),
             "routeCardinality": route_cardinality,
             "exactRoute": exact_route,
-            "exactRouteRequired": require_exact_route,
+            "exactRouteRequired": True,
             "status": (
                 "pass"
                 if pid_matches and component_matches and hierarchy_matches
@@ -1548,7 +1568,7 @@ class CreationDashboardContinuityGuard:
             reasons.append("resumed-component-changed")
         if packages != (shared.PACKAGE,):
             reasons.append("hierarchy-package-changed")
-        if require_exact_route and not exact_route:
+        if not exact_route:
             reasons.append("dashboard-route-changed")
         reason = "+".join(reasons)
         self._failed = True
