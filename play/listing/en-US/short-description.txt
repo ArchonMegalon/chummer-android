@@ -1,1 +1,1 @@
-SR5 creation, career, and table wizards for internal phone testing.
+Seven SR5 phone flows; other wizard routes are experimental. Internal test.

@@ -574,32 +574,39 @@ public sealed class BuildPage : NativePageBase
             NativeTheme.Muted));
         card.Add(NativeTheme.NavigationRow(
             "Open Career wizard",
-            "Advance · Before Run · Live · After Run · Downtime · Corrections",
+            WizardStrings.Get(
+                "Preview11.CareerHubDetail",
+                "Seven Preview-authority flows are available; additional routes are marked Experimental."),
             () => Navigation.PushAsync(new Sr5CareerWizardPage(Coordinator)),
             automationId: "build-sr5-career-wizard"));
         card.Add(NativeTheme.NavigationRow(
             "Change a quality",
-            "Direct deep link · exact InternalId/SourceId → atomic review → receipt/correction",
+            Preview11WizardScope.MarkExperimental(
+                "Direct deep link · exact InternalId/SourceId → atomic review → receipt/correction"),
             OpenSr5CareerQualityWizardAsync,
             automationId: "build-career-quality"));
         card.Add(NativeTheme.NavigationRow(
             "Advance a skill group",
-            "Direct deep link · exact InternalId → Core-bound review → atomic receipt/recovery",
+            Preview11WizardScope.MarkExperimental(
+                "Direct deep link · exact InternalId → Core-bound review → atomic receipt/recovery"),
             OpenSr5CareerSkillGroupWizardAsync,
             automationId: "build-career-skill-group"));
         card.Add(NativeTheme.NavigationRow(
             "Add a specialization",
-            "Direct deep link · typed skill identity → governed/custom choice → four-revision review",
+            Preview11WizardScope.MarkExperimental(
+                "Direct deep link · typed skill identity → governed/custom choice → four-revision review"),
             OpenSr5CareerSpecializationWizardAsync,
             automationId: "build-career-specialization"));
         card.Add(NativeTheme.NavigationRow(
             Sr5CareerFlowStrings.Text("Cyberware purchase"),
-            Sr5CareerFlowStrings.Text("Source-bound catalog → configuration → Core quote → durable receipt"),
+            Preview11WizardScope.MarkExperimental(
+                Sr5CareerFlowStrings.Text("Source-bound catalog → configuration → Core quote → durable receipt")),
             () => Navigation.PushAsync(new Sr5CareerCommerceHubPage(Coordinator)),
             automationId: "build-career-commerce"));
         card.Add(NativeTheme.NavigationRow(
             Sr5CareerFlowStrings.Text("Vehicle and drone workshop"),
-            Sr5CareerFlowStrings.Text("Exact chassis → modifications and weapon mounts → Core quote → durable purchase receipt"),
+            Preview11WizardScope.MarkExperimental(
+                Sr5CareerFlowStrings.Text("Exact chassis → modifications and weapon mounts → Core quote → durable purchase receipt")),
             () => Navigation.PushAsync(new Sr5CareerVehicleWorkshopPage(Coordinator)),
             automationId: "build-career-vehicle-workshop"));
         Border route = NativeTheme.Card(card);
@@ -948,9 +955,12 @@ public sealed class BuildPage : NativePageBase
                         : "creation-build-method-editor-unavailable";
         string method = RunnerSessionCoordinator.HumanizeId(snapshot.BuildMethod);
         string activeStage = StageLabel(snapshot, snapshot.ActiveStepId);
+        string detail = $"Active stage: {activeStage} · {authorityDetail}";
+        if (canOpen && !Preview11WizardScope.CoversCreationMethod(snapshot.BuildMethod))
+            detail = Preview11WizardScope.MarkExperimental(detail);
         _body.Add(NativeTheme.NavigationRow(
             $"Build method · {method}",
-            $"Active stage: {activeStage} · {authorityDetail}",
+            detail,
             selected,
             enabled: canOpen,
             automationId: "creation-stage-method"));
@@ -1011,7 +1021,8 @@ public sealed class BuildPage : NativePageBase
             return;
         }
 
-        Button review = NativeTheme.PrimaryButton("Review and finish creation");
+        Button review = NativeTheme.PrimaryButton(
+            Preview11WizardScope.MarkExperimental("Review and finish creation"));
         review.AutomationId = "creation-finalization-open-review";
         review.Clicked += async (_, _) => await RunAsync(async () =>
         {
@@ -1619,6 +1630,8 @@ public sealed class BuildPage : NativePageBase
             {
                 detail += $" · {stage.Blockers[0]}";
             }
+            if (canOpen && !Preview11WizardScope.CoversCreationStage(stage.StepId))
+                detail = Preview11WizardScope.MarkExperimental(detail);
             Border row = NativeTheme.NavigationRow(
                 stage.Label,
                 detail,
@@ -1835,6 +1848,8 @@ public sealed class BuildPage : NativePageBase
                 : stage.IsAvailable
                     ? "Legal in the projection · dedicated phone step is not wired yet"
                     : stage.Blockers.FirstOrDefault() ?? "Blocked by the current projection";
+            if (canOpen && !Preview11WizardScope.CoversCreationStage(stepId))
+                detail = Preview11WizardScope.MarkExperimental(detail);
             _body.Add(NativeTheme.NavigationRow(
                 stage.Label,
                 detail,

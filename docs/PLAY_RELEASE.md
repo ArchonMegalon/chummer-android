@@ -162,10 +162,17 @@ Character Settings inventories remain fail-closed parity backlogs and do not
 become the phone-beta denominator.
 
 The wizard aggregate uses schema
-`chummer.android.api36-sr5-wizard-e2e-aggregate/v1` and always records
+`chummer.android.api36-sr5-wizard-e2e-aggregate/v2` and always records
 `publicationAuthorized: false`. Even a passing seven-journey aggregate proves
 only the stated phone wizard scope; it does not itself authorize a Play upload,
 tablet support, broad Android parity, or public release.
+
+### General and public release gates — outside Preview.11 Internal
+
+The following broader checklist is not part of the seven-journey Preview.11
+Internal denominator. In particular, its tablet items do not add a tablet gate
+to Preview.11, and satisfying the internal phone aggregate does not satisfy or
+authorize any item below.
 
 1. parity and privacy contract tests pass;
 2. Release AAB builds from a clean, pinned source graph;

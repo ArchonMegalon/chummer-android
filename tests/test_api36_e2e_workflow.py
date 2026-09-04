@@ -57,6 +57,22 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
                 self.assertIn(journey, self.play_release_text)
         self.assertIn("deferred informational evidence", self.play_release_text)
         self.assertIn("passing seven-journey aggregate", self.play_release_text)
+        self.assertIn(
+            "chummer.android.api36-sr5-wizard-e2e-aggregate/v2",
+            self.play_release_text,
+        )
+        self.assertNotIn(
+            "chummer.android.api36-sr5-wizard-e2e-aggregate/v1",
+            self.play_release_text,
+        )
+        self.assertIn(
+            "General and public release gates — outside Preview.11 Internal",
+            self.play_release_text,
+        )
+        self.assertIn(
+            "tablet items do not add a tablet gate to Preview.11",
+            " ".join(self.play_release_text.split()),
+        )
         self.assertNotIn("three-journey aggregate", self.play_release_text)
 
     def test_runs_only_the_phone_beta_profile_on_api_36(self) -> None:

@@ -45,15 +45,16 @@ REQUIRED_GATE_JOURNEYS = (
 REQUIRED_FRAGMENTS = {
     "en-US": {
         "short-description.txt": (
-            "SR5 creation, career, and table wizards",
-            "internal phone testing",
+            "Seven SR5 phone flows",
+            "wizard routes are experimental",
+            "Internal test",
         ),
         "full-description.txt": (
             "Internal testing build for phones",
-            "SR5 Priority creation wizard",
-            "SR5 Career wizards",
-            "Before Run, Playtime, Downtime, and After Run table wizards",
-            "limited to SR5 phone wizards",
+            "covers exactly seven SR5 flows",
+            "Additional visible wizard routes remain available for feedback",
+            "Experimental — not covered by the current Preview authority",
+            "limited to the seven named SR5 phone flows",
             "Full Editing",
             "tablet or foldable support",
             "SR4 or SR6 creation",
@@ -63,23 +64,24 @@ REQUIRED_FRAGMENTS = {
         ),
         "release-notes-11.txt": (
             "Internal testing build for phones",
-            "SR5 Priority creation",
-            "Career, Before Run, Playtime, Downtime, and After Run wizards",
-            "checks for saving, reopening, and restarting the app",
+            "seven named flows",
+            "Additional wizard routes are marked Experimental",
+            "not covered by the current Preview authority",
             "remain outside this test",
         ),
     },
     "de-DE": {
         "short-description.txt": (
-            "SR5-Erstellungs-, Karriere- und Tisch-Wizards",
-            "interne Telefontests",
+            "Sieben SR5-Flows",
+            "Wizard-Routen sind experimentell",
+            "Interner Telefontest",
         ),
         "full-description.txt": (
             "interne Testversion für Telefone",
-            "SR5-Prioritäts-Wizard",
-            "SR5-Karriere-Wizards",
-            "Tisch-Wizards Vor dem Run, Spielzeit, Auszeit und Nach dem Run",
-            "auf SR5-Wizards für Telefone begrenzt",
+            "deckt genau sieben SR5-Flows ab",
+            "Zusätzliche sichtbare Wizard-Routen bleiben für Feedback verfügbar",
+            "Experimentell — nicht durch die aktuelle Preview-Autorität abgedeckt",
+            "auf die sieben genannten SR5-Flows für Telefone begrenzt",
             "Vollständige Bearbeitung",
             "Tablet- oder Foldable-Unterstützung",
             "SR4- oder SR6-Erstellung",
@@ -88,25 +90,25 @@ REQUIRED_FRAGMENTS = {
             "Produktivveröffentlichung",
         ),
         "release-notes-11.txt": (
-            "interne Testversion für Telefone",
-            "SR5-Prioritätserstellung",
-            "Karriere-, Vor-dem-Run-, Spielzeit-, Auszeit- und Nach-dem-Run-Wizards",
-            "Prüfungen für Speichern, erneutes Öffnen und Neustarts der App",
+            "interner Telefontest",
+            "Sieben Flows",
+            "Weitere Wizard-Routen: Experimentell",
+            "nicht durch die aktuelle Preview-Autorität abgedeckt",
             "nicht Teil dieses Tests",
         ),
     },
     "es-ES": {
         "short-description.txt": (
-            "Asistentes de creación, carrera y mesa de SR5",
-            "pruebas internas",
+            "Siete flujos SR5",
+            "rutas son experimentales",
+            "Prueba interna en móvil",
         ),
         "full-description.txt": (
             "versión de prueba interna para teléfonos",
-            "asistente de creación por Prioridades de SR5",
-            "asistentes de Carrera de SR5",
-            "asistentes de mesa Antes de la misión, Durante la partida, "
-            "Tiempo libre y Después de la misión",
-            "limitada a los asistentes de SR5 para teléfonos",
+            "cubre exactamente siete flujos de SR5",
+            "rutas adicionales visibles de los asistentes siguen disponibles",
+            "Experimental — no cubierta por la autoridad de la vista previa actual",
+            "limitada a los siete flujos de SR5 para teléfonos indicados",
             "edición completa",
             "tabletas o los plegables",
             "creación para SR4 o SR6",
@@ -115,13 +117,94 @@ REQUIRED_FRAGMENTS = {
             "publicación en producción",
         ),
         "release-notes-11.txt": (
-            "versión de prueba interna para teléfonos",
-            "creación por Prioridades de SR5",
-            "Carrera, Antes de la misión, Durante la partida, Tiempo libre y Después de la misión",
-            "comprobaciones para guardar, volver a abrir y reiniciar la aplicación",
+            "prueba interna para teléfonos",
+            "Siete flujos",
+            "Otras rutas: Experimental",
+            "no cubiertas por la autoridad de la vista previa actual",
             "no forman parte de esta prueba",
         ),
     },
+}
+
+EXACT_FLOW_LABELS = {
+    "en-US": {
+        "full-description.txt": (
+            "Creation Prerequisite",
+            "Career Active Skill Advance",
+            "Career Weapon Fire",
+            "Before Run Edge",
+            "Playtime Short Burst",
+            "Downtime Calendar",
+            "After Run Settlement",
+        ),
+        "release-notes-11.txt": (
+            "Creation Prerequisite",
+            "Career Active Skill Advance",
+            "Career Weapon Fire",
+            "Before Run Edge",
+            "Playtime Short Burst",
+            "Downtime Calendar",
+            "After Run Settlement",
+        ),
+    },
+    "de-DE": {
+        "full-description.txt": (
+            "Erstellungs-Voraussetzungen",
+            "Steigerung einer aktiven Fertigkeit",
+            "Karriere-Waffenfeuer",
+            "Edge vor dem Run",
+            "kurzer Spielzeit-Einsatz",
+            "Auszeit-Kalender",
+            "Abrechnung nach dem Run",
+        ),
+        "release-notes-11.txt": (
+            "Erstellungs-Voraussetzungen",
+            "aktive Fertigkeit steigern",
+            "Karriere-Waffenfeuer",
+            "Edge vor dem Run",
+            "kurzer Spielzeit-Einsatz",
+            "Auszeit-Kalender",
+            "Abrechnung nach dem Run",
+        ),
+    },
+    "es-ES": {
+        "full-description.txt": (
+            "Requisitos de creación",
+            "Avance de habilidad activa en Carrera",
+            "Disparo de arma en Carrera",
+            "Edge antes de la misión",
+            "Cambio breve durante la partida",
+            "Calendario de tiempo libre",
+            "Liquidación después de la misión",
+        ),
+        "release-notes-11.txt": (
+            "Requisitos de creación",
+            "Avance de habilidad activa",
+            "Disparo de arma",
+            "Edge antes de la misión",
+            "Cambio breve durante la partida",
+            "Calendario de tiempo libre",
+            "Liquidación después de la misión",
+        ),
+    },
+}
+
+FORBIDDEN_BROAD_WIZARD_CLAIMS = {
+    "en-US": (
+        r"\ball (?:sr5 )?(?:creation |career |table )?wizards?\b",
+        r"\bincluded (?:sr5 )?career wizards?\b",
+        r"\bpriority creation through (?:attributes|skills|qualities)\b",
+    ),
+    "de-DE": (
+        r"\balle (?:sr5-)?(?:erstellungs-|karriere-|tisch-)?wizards?\b",
+        r"\benthaltenen (?:sr5-)?karriere-wizards?\b",
+        r"\bprioritätserstellung (?:durch|mit) (?:attribute|fertigkeiten|qualitäten)\b",
+    ),
+    "es-ES": (
+        r"\btodos los asistentes? (?:de )?(?:creación|carrera|mesa)\b",
+        r"\basistentes? (?:de )?carrera (?:de sr5 )?incluidos?\b",
+        r"\bcreación por prioridades (?:con|mediante) (?:atributos|habilidades|cualidades)\b",
+    ),
 }
 
 NONCLAIM_SENTENCES = {
@@ -143,9 +226,8 @@ NONCLAIM_SENTENCES = {
             "Verfügbarkeit und eine Produktivveröffentlichung sind nicht Teil dieses Tests."
         ),
         "release-notes-11.txt": (
-            "Vollständige Bearbeitung, Tablet- oder Foldable-Unterstützung, SR4- "
-            "oder SR6-Erstellung und Rook- oder Live-Avatar-Unterstützung sind nicht "
-            "Teil dieses Tests."
+            "Vollständige Bearbeitung, Tablets/Foldables, SR4/SR6 und "
+            "Rook/Live-Avatar sind nicht Teil dieses Tests."
         ),
     },
     "es-ES": {
@@ -155,8 +237,8 @@ NONCLAIM_SENTENCES = {
             "publicación en producción no forman parte de esta prueba."
         ),
         "release-notes-11.txt": (
-            "La edición completa, las tabletas o los plegables, la creación para SR4 "
-            "o SR6 y Rook o los avatares en directo no forman parte de esta prueba."
+            "La edición completa, tabletas/plegables, SR4/SR6 y "
+            "Rook/avatares en directo no forman parte de esta prueba."
         ),
     },
 }
@@ -273,6 +355,9 @@ def _reject_positive_or_unproven_claims(
     for pattern in FORBIDDEN_UNPROVEN_CLAIMS[locale]:
         if re.search(pattern, candidate, flags=re.IGNORECASE | re.DOTALL):
             raise ValueError(f"{locale} claims runtime proof before a green aggregate")
+    for pattern in FORBIDDEN_BROAD_WIZARD_CLAIMS[locale]:
+        if re.search(pattern, candidate, flags=re.IGNORECASE | re.DOTALL):
+            raise ValueError(f"{locale} broadens the exact seven-flow wizard scope")
 
 
 def _project_identity(project: Path) -> tuple[str, str, str]:
@@ -362,6 +447,12 @@ def validate_listing(
                 if fragment not in fields[name]:
                     raise ValueError(
                         f"{locale}/{name} is missing exact wizard-scope or non-claim copy"
+                    )
+        for name, labels in EXACT_FLOW_LABELS[locale].items():
+            for label in labels:
+                if label not in fields[name]:
+                    raise ValueError(
+                        f"{locale}/{name} must name every exact required flow"
                     )
         _reject_positive_or_unproven_claims(locale, fields)
         localized_fields[locale] = fields

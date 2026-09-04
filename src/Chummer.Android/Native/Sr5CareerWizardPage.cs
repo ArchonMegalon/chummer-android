@@ -160,14 +160,20 @@ public sealed class Sr5CareerWizardPage : NativePageBase
                 string.Equals(action.ActionId, state.SelectedActionId, StringComparison.Ordinal))
                 ? WizardStrings.Get("Career.LastSelection", " · last selection")
                 : string.Empty;
+            string familyDetail = WizardStrings.Format(
+                "Career.AvailableFamily",
+                "{0} available{1} · {2}",
+                available,
+                selected,
+                WizardStrings.CareerFamilyDetail(definition.FamilyId, definition.Detail));
+            if (family.Actions.Any(action =>
+                    action.CanOpen && !Preview11WizardScope.CoversCareerAction(action.ActionId)))
+            {
+                familyDetail = Preview11WizardScope.ContainsExperimentalRoutes(familyDetail);
+            }
             _body.Add(NativeTheme.NavigationRow(
                 WizardStrings.CareerFamilyTitle(definition.FamilyId, definition.Title),
-                WizardStrings.Format(
-                    "Career.AvailableFamily",
-                    "{0} available{1} · {2}",
-                    available,
-                    selected,
-                    WizardStrings.CareerFamilyDetail(definition.FamilyId, definition.Detail)),
+                familyDetail,
                 () => Navigation.PushAsync(new Sr5CareerActionFamilyPage(
                     Coordinator,
                     session,
@@ -203,8 +209,9 @@ public sealed class Sr5CareerWizardPage : NativePageBase
             WizardStrings.Get("Career.Commerce", "Commerce")));
         View commerceRoute = NativeTheme.NavigationRow(
             Sr5CareerFlowStrings.Text("Gear and implants"),
-            Sr5CareerFlowStrings.Text(
-                "Source-bound Cyberware and custom-drug recipes → Core quote → durable receipt"),
+            Preview11WizardScope.MarkExperimental(
+                Sr5CareerFlowStrings.Text(
+                    "Source-bound Cyberware and custom-drug recipes → Core quote → durable receipt")),
             () => Navigation.PushAsync(new Sr5CareerCommerceHubPage(Coordinator)),
             enabled: canOpenCommerce,
             automationId: Sr5CareerRunCapabilityCatalog.CyberwareCommerceRoute);
@@ -507,9 +514,12 @@ public sealed class Sr5CareerActionFamilyPage : NativePageBase
                 StringComparison.Ordinal)
                 ? WizardStrings.Get("Career.Selected", "Selected · ")
                 : string.Empty;
+            string detail = selected + WizardStrings.CareerActionDetail(route.ActionId, route.Detail);
+            if (!Preview11WizardScope.CoversCareerAction(action.ActionId))
+                detail = Preview11WizardScope.MarkExperimental(detail);
             _body.Add(NativeTheme.NavigationRow(
                 WizardStrings.CareerActionTitle(route.ActionId, route.Title),
-                selected + WizardStrings.CareerActionDetail(route.ActionId, route.Detail),
+                detail,
                 () => RunAsync(() => OpenActionAsync(action.ActionId)),
                 automationId: route.AutomationId));
         }

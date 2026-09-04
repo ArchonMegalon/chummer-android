@@ -1,18 +1,18 @@
-Chummer Preview.11 is an Internal testing build for phones. Its exact scope is the SR5 Priority creation wizard, the included SR5 Career wizards, and the Before Run, Playtime, Downtime, and After Run table wizards.
+Chummer Preview.11 is an Internal testing build for phones. Current Preview authority covers exactly seven SR5 flows: Creation Prerequisite, Career Active Skill Advance, Career Weapon Fire, Before Run Edge, Playtime Short Burst, Downtime Calendar, and After Run Settlement.
 
-BUILD AN SR5 RUNNER
-Follow guided Priority creation through prerequisites and supported choices for attributes, skills, qualities, magic or resonance, resources, gear, and lifestyle. Review each choice before confirming it.
+CREATE THE COVERED START
+Use the Creation Prerequisite flow to make the Priority selections and Resources choice exercised by the current phone test. Other visible creation stages are not claimed by this Preview authority.
 
-ADVANCE A CAREER
-Use the SR5 Career wizards included in this preview for guided changes. Review costs and changes before confirmation. Supported save, recovery, and undo operations stay tied to the current saved runner.
+ADVANCE AND PLAY
+Advance one active skill, resolve one governed weapon-fire action, prepare Edge before a run, record a short Playtime Edge change, manage the Downtime calendar, or settle an After Run result. These are the six Career and table flows in the current Preview authority.
 
-USE TABLE WIZARDS
-Prepare Edge before a run, record supported Playtime changes, plan downtime on the calendar, and settle supported After Run rewards and consequences. Each wizard shows only the actions available for the current saved runner.
+TRY EXPERIMENTAL ROUTES
+Additional visible wizard routes remain available for feedback. Each is marked Experimental — not covered by the current Preview authority.
 
 WORK LOCAL-FIRST
 Open and save runner files you choose through Android's document picker. The app does not request broad storage access. Optional linked-account features use encrypted connections to Chummer services.
 
 CURRENT PREVIEW LIMITS
-This Internal testing preview is limited to SR5 phone wizards. Full Editing, tablet or foldable support, SR4 or SR6 creation, Rook or live-avatar support, public availability, and production release are not included.
+This Internal testing preview is limited to the seven named SR5 phone flows. Full Editing, tablet or foldable support, SR4 or SR6 creation, Rook or live-avatar support, public availability, and production release are not included.
 
 Chummer is a community character-management project. It is not an official tabletop game publisher app, does not include rulebook text, and does not replace the books required for play.

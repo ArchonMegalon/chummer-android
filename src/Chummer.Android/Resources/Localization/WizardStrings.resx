@@ -10,6 +10,9 @@
   <data name="Common.NotSelected" xml:space="preserve"><value>not selected</value></data>
   <data name="Common.OK" xml:space="preserve"><value>OK</value></data>
   <data name="Common.PreviewBlockers" xml:space="preserve"><value>Preview blockers</value></data>
+  <data name="Preview11.CareerHubDetail" xml:space="preserve"><value>Seven Preview-authority flows are available; additional routes are marked Experimental.</value></data>
+  <data name="Preview11.ContainsExperimentalRoutes" xml:space="preserve"><value>{0} · Contains Experimental routes that are not covered by the current Preview authority.</value></data>
+  <data name="Preview11.ExperimentalRoute" xml:space="preserve"><value>{0} · Experimental — not covered by the current Preview authority.</value></data>
   <data name="Common.Rank" xml:space="preserve"><value>Rank {0}</value></data>
   <data name="Common.RankLabel" xml:space="preserve"><value>Rank</value></data>
   <data name="Common.Remaining" xml:space="preserve"><value>Remaining</value></data>
@@ -157,6 +160,7 @@
   <data name="Career.Checkpoint.RevisionChanged" xml:space="preserve"><value>The runner revision changed, so the saved Career selection was discarded.</value></data>
   <data name="Career.Checkpoint.SnapshotChanged" xml:space="preserve"><value>Runtime, sources, content, or action availability changed; the saved selection was discarded.</value></data>
   <data name="Career.Checkpoint.WorkspaceChanged" xml:space="preserve"><value>The saved Career selection belonged to another workspace and was discarded.</value></data>
+  <data name="Career.Commerce" xml:space="preserve"><value>Commerce</value></data>
   <data name="Career.ChooseFamily" xml:space="preserve"><value>Choose an action family. Only routes backed by a current typed authority are shown.</value></data>
   <data name="Career.Eyebrow" xml:space="preserve"><value>Shadowrun Fifth Edition</value></data>
   <data name="Career.FamilyBoundary" xml:space="preserve"><value>Selecting a row writes only a digest-bound navigation checkpoint. The destination must load and validate its own typed authority again.</value></data>
