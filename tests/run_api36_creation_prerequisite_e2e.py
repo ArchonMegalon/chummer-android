@@ -3772,8 +3772,13 @@ def require_creation_method_one_shot_proof(
     proof: dict[str, object],
     *,
     require_first_post_tap: bool,
+    expected_diagnostic_capture: str = "creation-priority-core-bootstrap-ready",
 ) -> None:
     """Fail closed on forged, replayed, or geometrically stale tap evidence."""
+    if not expected_diagnostic_capture:
+        raise ValueError(
+            "Creation method one-shot proof requires its exact diagnostic capture"
+        )
     pre_tap = proof.get("preTap")
     tap = proof.get("tap")
     first_post_tap = proof.get("firstPostTap")
@@ -3799,7 +3804,7 @@ def require_creation_method_one_shot_proof(
         "schema": CREATION_METHOD_ONE_SHOT_SCHEMA,
         "selector": "creation-stage-method",
         "fullResourceId": f"{shared.PACKAGE}:id/creation-stage-method",
-        "diagnosticCapture": "creation-priority-core-bootstrap-ready",
+        "diagnosticCapture": expected_diagnostic_capture,
         "tapReplayPerformed": False,
         "fallbackTapPerformed": False,
     }
@@ -4687,6 +4692,7 @@ def wait_for_prerequisite_scan_origin(
     immediately_after_opening_tap: bool = False,
     scan_observer: Callable[[dict[str, object]], None] | None = None,
     opening_action: dict[str, object] | None = None,
+    opening_action_diagnostic_capture: str = "creation-priority-core-bootstrap-ready",
 ) -> PriorityRankOrigin:
     """Acquire and retain the exact top viewport of the pushed prerequisite page.
 
@@ -4716,6 +4722,7 @@ def wait_for_prerequisite_scan_origin(
         require_creation_method_one_shot_proof(
             opening_action,
             require_first_post_tap=False,
+            expected_diagnostic_capture=opening_action_diagnostic_capture,
         )
     route_selector = "creation-prerequisite-page"
     top_selectors = (
@@ -11150,23 +11157,74 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         reset_swipes=22,
         deadline=resources_rebind_deadline,
     )
-    post_resources_method_node, _, _ = reacquire_exact_ready_creation_method(
-        device,
-        expected_detail=post_confirm_dashboard.method_detail,
-        max_swipes=DASHBOARD_SCAN_MAX_SCROLLS,
-        phase_id="resources-prerequisite-rebind",
+    _post_resources_positioned_method, post_resources_method_detail, _ = (
+        reacquire_exact_ready_creation_method(
+            device,
+            expected_detail=post_confirm_dashboard.method_detail,
+            max_swipes=DASHBOARD_SCAN_MAX_SCROLLS,
+            phase_id="resources-prerequisite-rebind",
+            scan_observer=progress.record_scan,
+            deadline=resources_rebind_deadline,
+        )
+    )
+    rebind_diagnostic_capture = "creation-resources-prerequisite-rebind-ready"
+    device.capture(
+        rebind_diagnostic_capture,
         deadline=resources_rebind_deadline,
     )
-    post_resources_attachment_proofs: list[dict[str, object]] = []
-    post_resources_origin = open_prerequisite(
-        device,
-        ready_method_node=post_resources_method_node,
+    post_resources_method_node, post_resources_opening_action = (
+        reacquire_creation_method_one_shot_target(
+            device,
+            expected_detail=post_resources_method_detail,
+            diagnostic_capture=rebind_diagnostic_capture,
+            deadline=resources_rebind_deadline,
+        )
+    )
+    rebind_tap_x, rebind_tap_y = post_resources_method_node.center
+    post_resources_opening_action["status"] = "tap-issued"
+    post_resources_opening_action["tap"] = {
+        "command": "input tap",
+        "count": 1,
+        "coordinates": {"x": rebind_tap_x, "y": rebind_tap_y},
+        "issuedAtUtc": datetime.now(timezone.utc).isoformat(),
+    }
+    device.shell(
+        "input",
+        "tap",
+        str(rebind_tap_x),
+        str(rebind_tap_y),
+        timeout=shared._remaining_operation_timeout(
+            deadline=resources_rebind_deadline,
+            maximum=15,
+        ),
         deadline=resources_rebind_deadline,
+    )
+    post_resources_origin = wait_for_prerequisite_scan_origin(
+        device,
+        deadline=resources_rebind_deadline,
+        immediately_after_opening_tap=True,
         scan_observer=progress.record_scan,
-        proof_expectation=proof_expectation,
-        expected_prior_proof=resources_same_process_proof,
-        attachment_proof_out=post_resources_attachment_proofs,
+        opening_action=post_resources_opening_action,
+        opening_action_diagnostic_capture=rebind_diagnostic_capture,
     )
+    require_creation_method_one_shot_proof(
+        post_resources_opening_action,
+        require_first_post_tap=True,
+        expected_diagnostic_capture=rebind_diagnostic_capture,
+    )
+    device.capture(
+        "creation-resources-prerequisite-rebind-attached",
+        deadline=resources_rebind_deadline,
+    )
+    post_resources_attachment_proof = (
+        read_creation_prerequisite_attachment_proof_state(
+            device,
+            proof_expectation,
+            expected_prior_proof=resources_same_process_proof,
+            deadline=resources_rebind_deadline,
+        )
+    )
+    post_resources_attachment_proofs = [post_resources_attachment_proof]
     post_resources_prerequisite_authority = read_persisted_prerequisite_authority(
         device,
         initial_observation=post_resources_origin,

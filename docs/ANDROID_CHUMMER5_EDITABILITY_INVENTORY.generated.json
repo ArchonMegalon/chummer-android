@@ -602,7 +602,7 @@
       {
         "path": "src/Chummer.Android/Native/CreationPrerequisitePage.cs",
         "exists": true,
-        "sha256": "2ddf26559f338b8edfbfccf6e1a132e224b6603b7c0f20891ab6c291a614bc78"
+        "sha256": "83277740c5c354f7e067da17d2e04827860d32c101b530aecb55531b94117e43"
       },
       {
         "path": "src/Chummer.Android/Native/CreationPriorityCategoryPage.cs",
@@ -942,7 +942,7 @@
       {
         "path": "tests/test_api36_proof_state_contract.py",
         "exists": true,
-        "sha256": "8c1ea13b8dedf6fc8f4d5a8e88e9a68a43e5d4784c06c1bcd6d84a4253e07213"
+        "sha256": "d74c80e4367b00288b7abf96af9b13af8444bd9c3f29fad90ac108eac91d7714"
       },
       {
         "path": "tests/test_run_api36_sr5_before_run_edge_e2e_driver.py",
@@ -1437,7 +1437,7 @@
       {
         "path": "tests/run_api36_creation_prerequisite_e2e.py",
         "exists": true,
-        "sha256": "d6d6bd3feedb8a4cdd32408ce5a9b5f6a69a64020a0de6d899f157a52a2190cf"
+        "sha256": "b16ac4e707300d42e433a32c0293604ba0844b2efea6e326d0e29a434695b40f"
       },
       {
         "path": "tests/fixtures/career-condition-monitor-e2e.chum5",

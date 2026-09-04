@@ -6448,6 +6448,149 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                     require_first_post_tap=False,
                 )
 
+    def test_resources_rebind_one_shot_binds_its_exact_diagnostic_and_first_observation(
+        self,
+    ) -> None:
+        diagnostic = "creation-resources-prerequisite-rebind-ready"
+        method = self.canonical_node(
+            "creation-stage-method",
+            text="",
+            **{"content-desc": "Build method · Priority"},
+        )
+        device = mock.Mock(spec=driver.shared.Device)
+        device.display_size.return_value = (1080, 1920)
+        with mock.patch.object(
+            driver,
+            "fresh_hierarchy_timed",
+            side_effect=lambda _device, durations, **_kwargs: (
+                durations.append(3) or [method]
+            ),
+        ):
+            _, action = driver.reacquire_creation_method_one_shot_target(
+                device,
+                expected_detail="Build method · Priority",
+                diagnostic_capture=diagnostic,
+                deadline=driver.time.monotonic() + 30,
+            )
+        action["status"] = "tap-issued"
+        action["tap"] = {
+            "command": "input tap",
+            "count": 1,
+            "coordinates": dict(action["preTap"]["center"]),
+            "issuedAtUtc": "2026-09-04T00:00:00+00:00",
+        }
+        route = self.canonical_node("creation-prerequisite-page")
+        top_method = self.canonical_node("creation-prerequisite-method")
+        binding = self.canonical_node("creation-prerequisite-binding")
+        device.hierarchy.return_value = [route, top_method, binding]
+        device.dismiss_system_ui_anr.return_value = False
+
+        with mock.patch.object(driver.time, "sleep"):
+            origin = driver.wait_for_prerequisite_scan_origin(
+                device,
+                immediately_after_opening_tap=True,
+                opening_action=action,
+                opening_action_diagnostic_capture=diagnostic,
+            )
+
+        self.assertEqual([route, top_method, binding], origin.nodes)
+        self.assertEqual("first-post-tap-observed", action["status"])
+        self.assertIs(True, action["firstPostTap"]["routeResolved"])
+        driver.require_creation_method_one_shot_proof(
+            action,
+            require_first_post_tap=True,
+            expected_diagnostic_capture=diagnostic,
+        )
+        with self.assertRaisesRegex(RuntimeError, "authority differs"):
+            driver.require_creation_method_one_shot_proof(
+                action,
+                require_first_post_tap=True,
+                expected_diagnostic_capture="creation-priority-core-bootstrap-ready",
+            )
+        device.shell.assert_not_called()
+
+    def test_resources_rebind_uses_one_fresh_target_and_one_tap_without_replay(self) -> None:
+        source = inspect.getsource(driver.execute)
+        start = source.index('progress.advance("resources-prerequisite-rebind")')
+        end = source.index('progress.advance("process-restart-reopen")', start)
+        rebind = source[start:end]
+
+        broad = rebind.index("reacquire_exact_ready_creation_method(")
+        diagnostic = rebind.index(
+            'rebind_diagnostic_capture = "creation-resources-prerequisite-rebind-ready"'
+        )
+        fresh = rebind.index("reacquire_creation_method_one_shot_target(")
+        tap = rebind.index('"command": "input tap"')
+        issued = rebind.index("device.shell(", tap)
+        first_observation = rebind.index("wait_for_prerequisite_scan_origin(", issued)
+        validated = rebind.index("require_creation_method_one_shot_proof(", first_observation)
+        attached_capture = rebind.index(
+            '"creation-resources-prerequisite-rebind-attached"',
+            validated,
+        )
+        attachment = rebind.index(
+            "read_creation_prerequisite_attachment_proof_state(",
+            attached_capture,
+        )
+        visible_authority = rebind.index(
+            "read_persisted_prerequisite_authority(",
+            attachment,
+        )
+        self.assertEqual(
+            [
+                broad,
+                diagnostic,
+                fresh,
+                tap,
+                issued,
+                first_observation,
+                validated,
+                attached_capture,
+                attachment,
+                visible_authority,
+            ],
+            sorted(
+                (
+                    broad,
+                    diagnostic,
+                    fresh,
+                    tap,
+                    issued,
+                    first_observation,
+                    validated,
+                    attached_capture,
+                    attachment,
+                    visible_authority,
+                )
+            ),
+        )
+        self.assertIn("scan_observer=progress.record_scan", rebind)
+        self.assertIn(
+            "opening_action=post_resources_opening_action",
+            rebind,
+        )
+        self.assertIn(
+            "opening_action_diagnostic_capture=rebind_diagnostic_capture",
+            rebind,
+        )
+        self.assertIn(
+            "expected_diagnostic_capture=rebind_diagnostic_capture",
+            rebind,
+        )
+        self.assertIn(
+            "expected_prior_proof=resources_same_process_proof",
+            rebind,
+        )
+        self.assertEqual(1, rebind.count('"command": "input tap"'))
+        self.assertEqual(1, rebind.count('"count": 1'))
+        self.assertNotIn("open_prerequisite(", rebind)
+        self.assertNotIn("tapReplayPerformed = True", rebind)
+        self.assertNotIn("fallbackTapPerformed = True", rebind)
+        self.assertEqual(
+            180_000,
+            driver.PHASE_BUDGET_MS["resources-prerequisite-rebind"],
+        )
+
     def test_prerequisite_resume_rejects_a_stale_or_non_tappable_method_node(self) -> None:
         for attributes in (
             {

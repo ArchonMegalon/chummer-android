@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import importlib.util
+import itertools
 import json
 from pathlib import Path
 import sys
@@ -857,7 +858,7 @@ class Api36ProofStateContractTests(unittest.TestCase):
         ):
             self.assertLess(exact_publish.index(mismatch), rejected)
 
-    def test_creation_prerequisite_attachment_publication_latches_loaded_route_and_ready_state(self) -> None:
+    def test_creation_prerequisite_attachment_publication_latches_every_lifecycle_order(self) -> None:
         page = (ROOT / "src/Chummer.Android/Native/CreationPrerequisitePage.cs").read_text(
             encoding="utf-8"
         )
@@ -867,6 +868,10 @@ class Api36ProofStateContractTests(unittest.TestCase):
         ]
         appearing = page[
             page.index("protected override void OnAppearing()") :
+            page.index("protected override void OnNavigatedTo(")
+        ]
+        navigated = page[
+            page.index("protected override void OnNavigatedTo(") :
             page.index("protected override void OnDisappearing()")
         ]
         disappearing = page[
@@ -890,7 +895,7 @@ class Api36ProofStateContractTests(unittest.TestCase):
         self.assertNotIn("Loaded -=", page)
         self.assertNotIn("TryPublishCreationPrerequisiteAttachment", refresh)
         self.assertEqual(
-            3,
+            4,
             page.count("TryPublishApi36AttachmentProof();"),
         )
         self.assertLess(
@@ -900,6 +905,10 @@ class Api36ProofStateContractTests(unittest.TestCase):
         self.assertLess(
             appearing.index("_api36ProofRouteAppeared = true;"),
             appearing.index("TryPublishApi36AttachmentProof();"),
+        )
+        self.assertLess(
+            navigated.index("base.OnNavigatedTo(args);"),
+            navigated.index("TryPublishApi36AttachmentProof();"),
         )
         self.assertLess(
             disappearing.index("_api36ProofRouteAppeared = false;"),
@@ -913,11 +922,8 @@ class Api36ProofStateContractTests(unittest.TestCase):
             disappearing.index("_api36ProofAttachmentPublished = false;"),
             disappearing.index("base.OnDisappearing();"),
         )
-        self.assertNotIn("_api36ProofPageLoaded", disappearing)
-        self.assertLess(
-            loaded.index("_api36ProofPageLoaded = true;"),
-            loaded.index("TryPublishApi36AttachmentProof();"),
-        )
+        self.assertNotIn("_api36ProofPageLoaded", page)
+        self.assertEqual(1, loaded.count("TryPublishApi36AttachmentProof();"))
         self.assertIn("_api36ProofAttachmentPublished = false;", refresh)
         self.assertIn("_latestApi36ProofReadyState = null;", refresh)
         self.assertIn("_latestApi36ProofReadyState = state;", refresh)
@@ -938,7 +944,6 @@ class Api36ProofStateContractTests(unittest.TestCase):
         for prerequisite in (
             "if (_api36ProofAttachmentPublished",
             "!_api36ProofRouteAppeared",
-            "!_api36ProofPageLoaded",
             "!IsLoaded",
             "Handler is null",
             "Window is null",
@@ -970,8 +975,50 @@ class Api36ProofStateContractTests(unittest.TestCase):
         ):
             self.assertNotIn(
                 forbidden,
-                appearing + disappearing + loaded + publication_latch,
+                appearing + navigated + disappearing + loaded + publication_latch,
             )
+
+    def test_creation_prerequisite_attachment_edges_cover_all_signal_permutations(self) -> None:
+        page = (ROOT / "src/Chummer.Android/Native/CreationPrerequisitePage.cs").read_text(
+            encoding="utf-8"
+        )
+        edges = {
+            "appearing": page[
+                page.index("protected override void OnAppearing()") :
+                page.index("protected override void OnNavigatedTo(")
+            ],
+            "navigated": page[
+                page.index("protected override void OnNavigatedTo(") :
+                page.index("protected override void OnDisappearing()")
+            ],
+            "loaded": page[
+                page.index("private void OnApi36ProofLoaded(") :
+                page.index("private void TryPublishApi36AttachmentProof()")
+            ],
+            "ready": page[
+                page.index("protected override void Refresh()") :
+                page.index("private CharacterCreationFoundationResult<")
+            ],
+        }
+        for name, edge in edges.items():
+            with self.subTest(edge=name):
+                self.assertEqual(1, edge.count("TryPublishApi36AttachmentProof();"))
+
+        # Each edge updates one prerequisite before invoking the same exact,
+        # idempotent gate. Whichever signal arrives last must therefore be able
+        # to publish once; no ordering depends on a timer or repeated action.
+        for ordering in itertools.permutations(edges):
+            observed = {name: False for name in edges}
+            published = False
+            publication_count = 0
+            for edge in ordering:
+                observed[edge] = True
+                if not published and all(observed.values()):
+                    published = True
+                    publication_count += 1
+            with self.subTest(ordering=ordering):
+                self.assertTrue(published)
+                self.assertEqual(1, publication_count)
 
     def test_gate_scope_is_unchanged(self) -> None:
         gate = json.loads((ROOT / "eng/api36-sr5-wizard-gate-authority.json").read_text(encoding="utf-8"))
