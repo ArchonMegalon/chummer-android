@@ -309,6 +309,11 @@ ADB_SHARED_STORAGE_MAX_OBSERVATIONS = 7
 ADB_SHARED_STORAGE_OBSERVATION_DELAY_SECONDS = 1.0
 ADB_SHARED_STORAGE_PREFLIGHT_MAX_SECONDS = 30.0
 ADB_SHARED_STORAGE_STAT_ATTEMPT_MAX_SECONDS = 5.0
+ADB_SHARED_STORAGE_PREINTENT_STAT_TIMEOUT_MAX_RETRIES = 1
+ADB_SHARED_STORAGE_PREINTENT_STAT_TIMEOUT_RETRY_MINIMUM_LEASE_SECONDS = (
+    ADB_SHARED_STORAGE_OBSERVATION_DELAY_SECONDS
+    + ADB_SHARED_STORAGE_STAT_ATTEMPT_MAX_SECONDS
+)
 ADB_SHARED_STORAGE_BOOTSTRAP_ATTEMPT_MINIMUM_SECONDS = 2.5
 ADB_SHARED_STORAGE_BOOTSTRAP_RECEIPT_HEADROOM_SECONDS = 2.0
 ADB_SHARED_STORAGE_BOOTSTRAP_DEVICE_CALLS = (
@@ -2104,9 +2109,11 @@ class Device:
 
         Policy is closed to three consecutive observations in at most seven
         attempts.  Only one exact Toybox ``stat -L`` command is issued per
-        observation.  A fully anchored FUSE readiness marker may cause another
-        fresh observation.  Only a hosted API-36 x86_64 proof attempt may issue
-        the separately receipted one-shot Download bootstrap mutation.
+        observation.  A fully anchored FUSE readiness marker, or one exact
+        pre-intent read-only stat timeout, may cause another fresh observation.
+        The timeout never contributes identity evidence and is never retried a
+        second time.  Only a hosted API-36 x86_64 proof attempt may issue the
+        separately receipted one-shot Download bootstrap mutation.
         """
         if type(deadline) is not float or not math.isfinite(deadline):
             raise TypeError("Shared-storage preflight requires one finite float deadline")
@@ -2137,6 +2144,7 @@ class Device:
 
         observations: list[dict[str, object]] = []
         read_only_commands_issued = 0
+        preintent_stat_timeout_retries_performed = 0
         consecutive = 0
         stable_identity: tuple[tuple[str, str, str, str], ...] | None = None
         missing_download_consecutive = 0
@@ -2332,6 +2340,26 @@ class Device:
                 "observationsPerformed": len(observations),
                 "consecutiveStableObservations": consecutive,
                 "readOnlyCommandsIssued": read_only_commands_issued,
+                "preIntentReadOnlyStatTimeoutRecovery": {
+                    "policy": (
+                        "one-fresh-observation-after-exact-pre-intent-"
+                        "read-only-timeout"
+                    ),
+                    "maximumRetries": (
+                        ADB_SHARED_STORAGE_PREINTENT_STAT_TIMEOUT_MAX_RETRIES
+                    ),
+                    "maximumCommandInvocations": (
+                        1 + ADB_SHARED_STORAGE_PREINTENT_STAT_TIMEOUT_MAX_RETRIES
+                    ),
+                    "retriesPerformed": preintent_stat_timeout_retries_performed,
+                    "minimumRemainingLeaseSeconds": (
+                        ADB_SHARED_STORAGE_PREINTENT_STAT_TIMEOUT_RETRY_MINIMUM_LEASE_SECONDS
+                    ),
+                    "freshReadOnlyInvocationRequired": True,
+                    "mutationCommandReplayAuthorized": False,
+                    "observationBoundWidened": False,
+                    "deadlineWidened": False,
+                },
                 "mutationCommandsIssued": initialization_mutations_issued,
                 "environmentInitializationMutationCommandsIssued": (
                     initialization_mutations_issued
@@ -2472,6 +2500,41 @@ class Device:
                 classification, retryable = (
                     classify_shared_storage_readiness_failure(error)
                 )
+                timeout_command = getattr(error, "cmd", ())
+                timeout_arguments = (
+                    tuple(timeout_command)
+                    if isinstance(timeout_command, (list, tuple))
+                    else ()
+                )
+                exact_preintent_stat_timeout = (
+                    isinstance(error, subprocess.TimeoutExpired)
+                    and initialization_mutations_issued == 0
+                    and initialization.get("intentEvidenceFile") is None
+                    and initialized_download is None
+                    and timeout_arguments
+                    == (
+                        str(self.adb),
+                        "-s",
+                        self.serial,
+                        *ADB_SHARED_STORAGE_STAT_ARGUMENTS,
+                    )
+                    and preintent_stat_timeout_retries_performed
+                    < ADB_SHARED_STORAGE_PREINTENT_STAT_TIMEOUT_MAX_RETRIES
+                    and ADB_SHARED_STORAGE_MAX_OBSERVATIONS - index
+                    >= ADB_SHARED_STORAGE_REQUIRED_CONSECUTIVE
+                    and operation_deadline - time.monotonic()
+                    >= (
+                        ADB_SHARED_STORAGE_PREINTENT_STAT_TIMEOUT_RETRY_MINIMUM_LEASE_SECONDS
+                    )
+                )
+                if exact_preintent_stat_timeout:
+                    # Reissue the exact read-only command as one fresh
+                    # observation; never reuse its process or treat timeout
+                    # output as identity authority.  This path cannot mutate
+                    # the device and keeps both the seven-observation bound
+                    # and caller-owned deadline unchanged.
+                    preintent_stat_timeout_retries_performed += 1
+                    retryable = True
                 if initialized_download is not None:
                     observation.update(
                         {
@@ -2867,12 +2930,24 @@ class Device:
                 else:
                     observation.update(
                         {
-                            "status": "storage-unavailable",
+                            "status": (
+                                "pre-intent-read-only-stat-timeout"
+                                if exact_preintent_stat_timeout
+                                else "storage-unavailable"
+                            ),
                             "classification": classification,
                             "classificationAuthority": (
-                                adb_classification_authority(classification)
+                                "exact-pre-intent-read-only-stat-timeout"
+                                if exact_preintent_stat_timeout
+                                else adb_classification_authority(classification)
                             ),
                             "retryableReadOnlyObservation": retryable,
+                            "freshObservationScheduled": (
+                                exact_preintent_stat_timeout
+                            ),
+                            "timedOutProcessReused": False,
+                            "mutationCommandReplayAuthorized": False,
+                            "timeoutOutputAcceptedAsAuthority": False,
                             "failure": {
                                 "type": type(error).__name__,
                                 "returnCode": getattr(error, "returncode", None),

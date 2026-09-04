@@ -1437,7 +1437,6 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
     def test_shared_storage_preflight_never_retries_generic_adb_failures(self) -> None:
         failures = (
             offline(driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS),
-            subprocess.TimeoutExpired(driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS, 5),
             subprocess.CalledProcessError(
                 1,
                 ("adb", "-s", "SERIAL-API36", *driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS),
@@ -1488,6 +1487,477 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
                         "retryableReadOnlyObservation"
                     ]
                 )
+
+    def test_exact_preintent_storage_stat_timeout_gets_one_fresh_observation(
+        self,
+    ) -> None:
+        identity = "/sdcard:42:100:41ed\n/sdcard/Download:42:101:41ed\n"
+        with tempfile.TemporaryDirectory() as temporary:
+            evidence = Path(temporary)
+            device = self.make_device(evidence)
+            exact_command = (
+                str(device.adb),
+                "-s",
+                device.serial,
+                *driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS,
+            )
+            responses = [
+                subprocess.TimeoutExpired(
+                    exact_command,
+                    driver.ADB_SHARED_STORAGE_STAT_ATTEMPT_MAX_SECONDS,
+                    output="",
+                    stderr="",
+                ),
+                completed(driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS, identity),
+                completed(driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS, identity),
+                completed(driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS, identity),
+            ]
+            with (
+                mock.patch.object(
+                    driver.subprocess,
+                    "run",
+                    side_effect=responses,
+                ) as run,
+                mock.patch.object(driver.time, "sleep") as sleep,
+            ):
+                receipt = device.require_shared_storage_readiness(
+                    deadline=driver.time.monotonic()
+                    + driver.ADB_SHARED_STORAGE_PREFLIGHT_MAX_SECONDS
+                )
+
+            self.assertEqual("pass", receipt["status"])
+            self.assertEqual(4, run.call_count)
+            self.assertEqual(3, sleep.call_count)
+            self.assertEqual(4, receipt["observationsPerformed"])
+            self.assertEqual(3, receipt["consecutiveStableObservations"])
+            self.assertEqual(4, receipt["readOnlyCommandsIssued"])
+            self.assertEqual(0, receipt["mutationCommandsIssued"])
+            self.assertEqual(
+                [
+                    "pre-intent-read-only-stat-timeout",
+                    "stable",
+                    "stable",
+                    "stable",
+                ],
+                [entry["status"] for entry in receipt["observations"]],
+            )
+            first = receipt["observations"][0]
+            self.assertEqual("timeout-unknown-outcome", first["classification"])
+            self.assertTrue(first["retryableReadOnlyObservation"])
+            self.assertTrue(first["freshObservationScheduled"])
+            self.assertFalse(first["timedOutProcessReused"])
+            self.assertFalse(first["mutationCommandReplayAuthorized"])
+            recovery = receipt["preIntentReadOnlyStatTimeoutRecovery"]
+            self.assertEqual(
+                1,
+                driver.ADB_SHARED_STORAGE_PREINTENT_STAT_TIMEOUT_MAX_RETRIES,
+            )
+            self.assertEqual(7, driver.ADB_SHARED_STORAGE_MAX_OBSERVATIONS)
+            self.assertEqual(30.0, driver.ADB_SHARED_STORAGE_PREFLIGHT_MAX_SECONDS)
+            self.assertEqual(1, recovery["maximumRetries"])
+            self.assertEqual(2, recovery["maximumCommandInvocations"])
+            self.assertEqual(1, recovery["retriesPerformed"])
+            self.assertTrue(recovery["freshReadOnlyInvocationRequired"])
+            self.assertFalse(recovery["mutationCommandReplayAuthorized"])
+            self.assertFalse(recovery["observationBoundWidened"])
+            self.assertFalse(recovery["deadlineWidened"])
+            self.assertFalse(receipt["adbReconnectAttempted"])
+            self.assertFalse(receipt["applicationRelaunchAttempted"])
+            issued = [tuple(call.args[0][3:]) for call in run.call_args_list]
+            self.assertEqual(
+                [driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS] * 4,
+                issued,
+            )
+
+    def test_storage_stat_timeout_recovery_allows_only_one_timeout(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            device = self.make_device(Path(temporary))
+            exact_command = (
+                str(device.adb),
+                "-s",
+                device.serial,
+                *driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS,
+            )
+            timeout = subprocess.TimeoutExpired(
+                exact_command,
+                driver.ADB_SHARED_STORAGE_STAT_ATTEMPT_MAX_SECONDS,
+                output="",
+                stderr="",
+            )
+            unconsumed = completed(
+                driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS,
+                "/sdcard:42:100:41ed\n/sdcard/Download:42:101:41ed\n",
+            )
+            with (
+                mock.patch.object(
+                    driver.subprocess,
+                    "run",
+                    side_effect=[timeout, timeout, unconsumed],
+                ) as run,
+                mock.patch.object(driver.time, "sleep") as sleep,
+            ):
+                with self.assertRaises(driver.AdbSharedStoragePreflightError) as raised:
+                    device.require_shared_storage_readiness(
+                        deadline=driver.time.monotonic()
+                        + driver.ADB_SHARED_STORAGE_PREFLIGHT_MAX_SECONDS
+                    )
+
+            self.assertEqual(2, run.call_count)
+            self.assertEqual(1, sleep.call_count)
+            self.assertEqual(0, raised.exception.receipt["mutationCommandsIssued"])
+            first, second = raised.exception.receipt["observations"]
+            self.assertTrue(first["retryableReadOnlyObservation"])
+            self.assertFalse(second["retryableReadOnlyObservation"])
+            self.assertFalse(second["freshObservationScheduled"])
+            self.assertEqual(
+                1,
+                raised.exception.receipt["preIntentReadOnlyStatTimeoutRecovery"][
+                    "retriesPerformed"
+                ],
+            )
+
+    def test_preintent_stat_timeout_resets_missing_download_quorum(self) -> None:
+        root = "/sdcard:43:106499:45f8\n"
+        with tempfile.TemporaryDirectory() as temporary:
+            device = self.make_device(Path(temporary))
+            exact_command = (
+                str(device.adb),
+                "-s",
+                device.serial,
+                *driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS,
+            )
+            timeout = subprocess.TimeoutExpired(
+                exact_command,
+                driver.ADB_SHARED_STORAGE_STAT_ATTEMPT_MAX_SECONDS,
+                output="",
+                stderr="",
+            )
+            with (
+                mock.patch.object(
+                    driver.subprocess,
+                    "run",
+                    side_effect=[
+                        download_missing(root),
+                        timeout,
+                        download_missing(root),
+                        download_missing(root),
+                        download_missing(root),
+                    ],
+                ) as run,
+                mock.patch.object(driver.time, "sleep") as sleep,
+            ):
+                with self.assertRaises(driver.AdbSharedStoragePreflightError) as raised:
+                    device.require_shared_storage_readiness(
+                        deadline=driver.time.monotonic()
+                        + driver.ADB_SHARED_STORAGE_PREFLIGHT_MAX_SECONDS,
+                        **hosted_storage_authority(),
+                    )
+
+            self.assertEqual(5, run.call_count)
+            self.assertEqual(4, sleep.call_count)
+            self.assertEqual(0, raised.exception.receipt["mutationCommandsIssued"])
+            observations = raised.exception.receipt["observations"]
+            self.assertEqual(
+                [
+                    "storage-not-initialized",
+                    "pre-intent-read-only-stat-timeout",
+                    "storage-not-initialized",
+                    "storage-not-initialized",
+                    "storage-not-initialized",
+                ],
+                [entry["status"] for entry in observations],
+            )
+            self.assertEqual(
+                [1, 1, 2, 3],
+                [
+                    entry["initializationPreconditionConsecutive"]
+                    for entry in observations
+                    if entry["status"] == "storage-not-initialized"
+                ],
+            )
+            self.assertEqual(
+                "shared-storage-bootstrap-slot-authority-missing",
+                raised.exception.receipt["terminalFailure"]["classification"],
+            )
+            issued = [tuple(call.args[0][3:]) for call in run.call_args_list]
+            self.assertNotIn(
+                driver.ADB_SHARED_STORAGE_INITIALIZE_ARGUMENTS,
+                issued,
+            )
+
+    def test_preintent_stat_timeout_resets_stable_identity_quorum(self) -> None:
+        identity = "/sdcard:42:100:41ed\n/sdcard/Download:42:101:41ed\n"
+        with tempfile.TemporaryDirectory() as temporary:
+            device = self.make_device(Path(temporary))
+            exact_command = (
+                str(device.adb),
+                "-s",
+                device.serial,
+                *driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS,
+            )
+            timeout = subprocess.TimeoutExpired(
+                exact_command,
+                driver.ADB_SHARED_STORAGE_STAT_ATTEMPT_MAX_SECONDS,
+                output="",
+                stderr="",
+            )
+            with (
+                mock.patch.object(
+                    driver.subprocess,
+                    "run",
+                    side_effect=[
+                        completed(driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS, identity),
+                        timeout,
+                        completed(driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS, identity),
+                        completed(driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS, identity),
+                        completed(driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS, identity),
+                    ],
+                ) as run,
+                mock.patch.object(driver.time, "sleep") as sleep,
+            ):
+                receipt = device.require_shared_storage_readiness(
+                    deadline=driver.time.monotonic()
+                    + driver.ADB_SHARED_STORAGE_PREFLIGHT_MAX_SECONDS
+                )
+
+            self.assertEqual("pass", receipt["status"])
+            self.assertEqual(5, run.call_count)
+            self.assertEqual(4, sleep.call_count)
+            self.assertEqual(5, receipt["observationsPerformed"])
+            self.assertEqual(3, receipt["consecutiveStableObservations"])
+            self.assertEqual(
+                [
+                    "stable",
+                    "pre-intent-read-only-stat-timeout",
+                    "stable",
+                    "stable",
+                    "stable",
+                ],
+                [entry["status"] for entry in receipt["observations"]],
+            )
+            self.assertEqual(0, receipt["mutationCommandsIssued"])
+
+    def test_storage_stat_timeout_recovery_rejects_nonexact_command(
+        self,
+    ) -> None:
+        cases = (
+            subprocess.TimeoutExpired(
+                driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS,
+                driver.ADB_SHARED_STORAGE_STAT_ATTEMPT_MAX_SECONDS,
+                output="",
+                stderr="",
+            ),
+            subprocess.TimeoutExpired(
+                (
+                    "/trusted/adb",
+                    "-s",
+                    "WRONG-SERIAL",
+                    *driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS,
+                ),
+                driver.ADB_SHARED_STORAGE_STAT_ATTEMPT_MAX_SECONDS,
+                output="",
+                stderr="",
+            ),
+            subprocess.TimeoutExpired(
+                (
+                    "/trusted/adb",
+                    "-s",
+                    "SERIAL-API36",
+                    "shell",
+                    "stat",
+                    "-c",
+                    driver.ADB_SHARED_STORAGE_STAT_FORMAT,
+                    *driver.ADB_SHARED_STORAGE_ROOTS,
+                ),
+                driver.ADB_SHARED_STORAGE_STAT_ATTEMPT_MAX_SECONDS,
+                output="",
+                stderr="",
+            ),
+            subprocess.TimeoutExpired(
+                (
+                    "wrapper",
+                    "/trusted/adb",
+                    "-s",
+                    "SERIAL-API36",
+                    *driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS,
+                ),
+                driver.ADB_SHARED_STORAGE_STAT_ATTEMPT_MAX_SECONDS,
+                output="",
+                stderr="",
+            ),
+        )
+        for timeout in cases:
+            with (
+                self.subTest(command=timeout.cmd, output=timeout.output),
+                tempfile.TemporaryDirectory() as temporary,
+            ):
+                device = self.make_device(Path(temporary))
+                with (
+                    mock.patch.object(
+                        driver.subprocess,
+                        "run",
+                        side_effect=timeout,
+                    ) as run,
+                    mock.patch.object(driver.time, "sleep") as sleep,
+                ):
+                    with self.assertRaises(
+                        driver.AdbSharedStoragePreflightError
+                    ) as raised:
+                        device.require_shared_storage_readiness(
+                            deadline=driver.time.monotonic()
+                            + driver.ADB_SHARED_STORAGE_PREFLIGHT_MAX_SECONDS
+                        )
+                self.assertEqual(1, run.call_count)
+                sleep.assert_not_called()
+                self.assertFalse(
+                    raised.exception.receipt["observations"][0][
+                        "retryableReadOnlyObservation"
+                    ]
+                )
+                self.assertEqual(
+                    0,
+                    raised.exception.receipt["preIntentReadOnlyStatTimeoutRecovery"][
+                        "retriesPerformed"
+                    ],
+                )
+
+    def test_fuse_marker_after_timeout_keeps_only_its_own_retry_authority(self) -> None:
+        identity = "/sdcard:42:100:41ed\n/sdcard/Download:42:101:41ed\n"
+        with tempfile.TemporaryDirectory() as temporary:
+            device = self.make_device(Path(temporary))
+            exact_command = (
+                str(device.adb),
+                "-s",
+                device.serial,
+                *driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS,
+            )
+            timeout = subprocess.TimeoutExpired(
+                exact_command,
+                driver.ADB_SHARED_STORAGE_STAT_ATTEMPT_MAX_SECONDS,
+                output="",
+                stderr="",
+            )
+            with (
+                mock.patch.object(
+                    driver.subprocess,
+                    "run",
+                    side_effect=[
+                        timeout,
+                        shared_storage_unavailable(),
+                        completed(driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS, identity),
+                        completed(driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS, identity),
+                        completed(driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS, identity),
+                    ],
+                ) as run,
+                mock.patch.object(driver.time, "sleep") as sleep,
+            ):
+                receipt = device.require_shared_storage_readiness(
+                    deadline=driver.time.monotonic()
+                    + driver.ADB_SHARED_STORAGE_PREFLIGHT_MAX_SECONDS
+                )
+
+            self.assertEqual("pass", receipt["status"])
+            self.assertEqual(5, run.call_count)
+            self.assertEqual(4, sleep.call_count)
+            fuse = receipt["observations"][1]
+            self.assertEqual("shared-storage-unavailable", fuse["classification"])
+            self.assertEqual(
+                "recognized-transient-shared-storage-marker",
+                fuse["classificationAuthority"],
+            )
+            self.assertFalse(fuse["freshObservationScheduled"])
+            self.assertEqual(
+                1,
+                receipt["preIntentReadOnlyStatTimeoutRecovery"]["retriesPerformed"],
+            )
+
+    def test_initial_stat_timeout_partial_output_is_discarded_before_retry(self) -> None:
+        identity = "/sdcard:42:100:41ed\n/sdcard/Download:42:101:41ed\n"
+        with tempfile.TemporaryDirectory() as temporary:
+            device = self.make_device(Path(temporary))
+            exact_command = (
+                str(device.adb),
+                "-s",
+                device.serial,
+                *driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS,
+            )
+            timeout = subprocess.TimeoutExpired(
+                exact_command,
+                driver.ADB_SHARED_STORAGE_STAT_ATTEMPT_MAX_SECONDS,
+                output="/sdcard:999:999:41ed\n",
+                stderr="partial diagnostic",
+            )
+            with (
+                mock.patch.object(
+                    driver.subprocess,
+                    "run",
+                    side_effect=[
+                        timeout,
+                        completed(driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS, identity),
+                        completed(driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS, identity),
+                        completed(driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS, identity),
+                    ],
+                ) as run,
+                mock.patch.object(driver.time, "sleep") as sleep,
+            ):
+                receipt = device.require_shared_storage_readiness(
+                    deadline=driver.time.monotonic()
+                    + driver.ADB_SHARED_STORAGE_PREFLIGHT_MAX_SECONDS
+                )
+
+            self.assertEqual("pass", receipt["status"])
+            self.assertEqual(4, run.call_count)
+            self.assertEqual(3, sleep.call_count)
+            first = receipt["observations"][0]
+            self.assertTrue(first["retryableReadOnlyObservation"])
+            self.assertFalse(first["timeoutOutputAcceptedAsAuthority"])
+            self.assertNotIn("roots", first)
+            self.assertEqual(
+                "/sdcard:999:999:41ed\n",
+                first["failure"]["stdout"],
+            )
+            self.assertEqual(3, receipt["consecutiveStableObservations"])
+
+    def test_storage_stat_timeout_recovery_preserves_full_retry_lease(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            device = self.make_device(Path(temporary))
+            exact_command = (
+                str(device.adb),
+                "-s",
+                device.serial,
+                *driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS,
+            )
+            timeout = subprocess.TimeoutExpired(
+                exact_command,
+                driver.ADB_SHARED_STORAGE_STAT_ATTEMPT_MAX_SECONDS,
+                output="",
+                stderr="",
+            )
+            with (
+                mock.patch.object(
+                    driver.subprocess,
+                    "run",
+                    side_effect=timeout,
+                ) as run,
+                mock.patch.object(driver.time, "sleep") as sleep,
+            ):
+                with self.assertRaises(driver.AdbSharedStoragePreflightError) as raised:
+                    device.require_shared_storage_readiness(
+                        deadline=(
+                            driver.time.monotonic()
+                            + driver.ADB_SHARED_STORAGE_PREINTENT_STAT_TIMEOUT_RETRY_MINIMUM_LEASE_SECONDS
+                            - 0.5
+                        )
+                    )
+
+            self.assertEqual(1, run.call_count)
+            sleep.assert_not_called()
+            self.assertFalse(
+                raised.exception.receipt["observations"][0][
+                    "retryableReadOnlyObservation"
+                ]
+            )
+            self.assertEqual(0, raised.exception.receipt["mutationCommandsIssued"])
 
     def test_shared_storage_identity_drift_resets_consecutive_authority(self) -> None:
         first = "/sdcard:42:100:41ed\n/sdcard/Download:42:101:41ed\n"
