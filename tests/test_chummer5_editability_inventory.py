@@ -3066,8 +3066,8 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 536,
-                "missing": 929,
+                "implemented_pending_emulator": 525,
+                "missing": 940,
                 "not_applicable_non_mutating": 478,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 180,
@@ -6646,8 +6646,8 @@ public sealed class Demo
         self.assertEqual(0, recognition["completionCountContribution"])
         self.assertEqual(
             {
-                "implemented_pending_emulator": 536,
-                "missing": 929,
+                "implemented_pending_emulator": 525,
+                "missing": 940,
                 "not_applicable_non_mutating": 478,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 180,

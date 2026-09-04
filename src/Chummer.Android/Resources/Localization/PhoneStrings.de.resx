@@ -15,7 +15,17 @@
   <data name="HomeContinue" xml:space="preserve"><value>Weiterbauen</value></data>
   <data name="OpenFile" xml:space="preserve"><value>Datei öffnen</value></data>
   <data name="NewRunner" xml:space="preserve"><value>Neuer Runner</value></data>
-  <data name="ApplicationSettings" xml:space="preserve"><value>App-Einstellungen</value></data>
+  <data name="ApplicationSettings" xml:space="preserve"><value>Einstellungen</value></data>
+  <data name="SettingsPhone" xml:space="preserve"><value>Android-Telefon</value></data>
+  <data name="SettingsPhoneOnlyDetail" xml:space="preserve"><value>Hier erscheinen nur Optionen, die Chummer auf diesem Telefon tatsächlich verändern.</value></data>
+  <data name="SettingsSafety" xml:space="preserve"><value>Sicherheit</value></data>
+  <data name="SettingsConfirmDelete" xml:space="preserve"><value>Vor dem Löschen nachfragen</value></data>
+  <data name="SettingsConfirmDeleteDetail" xml:space="preserve"><value>Wird vor dem endgültigen Entfernen eines Eintrags angezeigt. Die Prüfschritte der Wizards bleiben immer aktiv.</value></data>
+  <data name="SettingsLanguageRegion" xml:space="preserve"><value>Sprache und Region</value></data>
+  <data name="SettingsLanguageDeviceManaged" xml:space="preserve"><value>Chummer verwendet die Sprache sowie die Datums- und Zeitformate deines Telefons.</value></data>
+  <data name="SettingsSupportedLanguages" xml:space="preserve"><value>Unterstützt: Deutsch, English, Español</value></data>
+  <data name="SettingsGooglePlay" xml:space="preserve"><value>Google Play</value></data>
+  <data name="SettingsUpdatesPlayManaged" xml:space="preserve"><value>Updates und Preview-Zugang werden über Google Play verwaltet, nicht in Chummer.</value></data>
   <data name="RosterMetadata" xml:space="preserve"><value>Listenmetadaten</value></data>
   <data name="OpenNow" xml:space="preserve"><value>Jetzt geöffnet</value></data>
   <data name="RunnerFallback" xml:space="preserve"><value>Runner</value></data>

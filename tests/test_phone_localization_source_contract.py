@@ -58,6 +58,34 @@ class PhoneLocalizationSourceContractTests(unittest.TestCase):
         for source in (shell, home, more, runners):
             self.assertIn("PhoneStrings.Get", source)
 
+    def test_settings_exposes_only_phone_meaningful_controls(self) -> None:
+        settings = (PROJECT / "Native" / "ApplicationSettingsPage.cs").read_text(
+            encoding="utf-8"
+        )
+        coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn('AutomationId = "settings-confirm-delete"', settings)
+        self.assertIn('AutomationId = "settings-language-device-managed"', settings)
+        self.assertIn('AutomationId = "settings-updates-play-managed"', settings)
+        self.assertIn("SaveDeleteConfirmationSettingAsync", settings)
+        self.assertIn("ApplicationDeleteConfirmationMutation", coordinator)
+        for desktop_only_id in (
+            "settings-confirm-karma-expense",
+            "settings-hide-master-index",
+            "settings-hide-character-roster",
+            "settings-search-in-category-only",
+            "settings-allow-easter-eggs",
+            "settings-prefer-nightly-builds",
+            "settings-live-update-clean-character-files",
+            "settings-custom-date-time-formats",
+            "settings-date-format",
+            "settings-time-format",
+            "settings-dates-include-time",
+        ):
+            self.assertNotIn(f'AutomationId = "{desktop_only_id}"', settings)
+        self.assertNotIn("SaveApplicationSettingsAsync", coordinator)
+
 
 if __name__ == "__main__":
     unittest.main()

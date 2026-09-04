@@ -218,7 +218,7 @@ silent, and completion is not evidence that the card appeared or that a review
 was submitted. Support and product-feedback channels are separate and do not
 influence eligibility.
 
-The localized **Application settings → Google Play → Rate Chummer on Google
+The localized **Settings → Google Play → Rate Chummer on Google
 Play** action always remains manual. It opens
 `market://details?id=com.myexternalbrain.chummer` with the HTTPS listing as a
 fallback; using it neither reads nor changes automatic eligibility.

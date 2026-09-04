@@ -15,7 +15,17 @@
   <data name="HomeContinue" xml:space="preserve"><value>Continue building</value></data>
   <data name="OpenFile" xml:space="preserve"><value>Open file</value></data>
   <data name="NewRunner" xml:space="preserve"><value>New runner</value></data>
-  <data name="ApplicationSettings" xml:space="preserve"><value>Application settings</value></data>
+  <data name="ApplicationSettings" xml:space="preserve"><value>Settings</value></data>
+  <data name="SettingsPhone" xml:space="preserve"><value>Android phone</value></data>
+  <data name="SettingsPhoneOnlyDetail" xml:space="preserve"><value>Only options that change how Chummer behaves on this phone appear here.</value></data>
+  <data name="SettingsSafety" xml:space="preserve"><value>Safety</value></data>
+  <data name="SettingsConfirmDelete" xml:space="preserve"><value>Ask before deleting items</value></data>
+  <data name="SettingsConfirmDeleteDetail" xml:space="preserve"><value>Shown before destructive item removal. Wizard review steps always remain enabled.</value></data>
+  <data name="SettingsLanguageRegion" xml:space="preserve"><value>Language &amp; region</value></data>
+  <data name="SettingsLanguageDeviceManaged" xml:space="preserve"><value>Chummer uses your phone language and regional date and time formats.</value></data>
+  <data name="SettingsSupportedLanguages" xml:space="preserve"><value>Supported: Deutsch, English, Español</value></data>
+  <data name="SettingsGooglePlay" xml:space="preserve"><value>Google Play</value></data>
+  <data name="SettingsUpdatesPlayManaged" xml:space="preserve"><value>Updates and preview access are managed by Google Play, not inside Chummer.</value></data>
   <data name="RosterMetadata" xml:space="preserve"><value>Roster metadata</value></data>
   <data name="OpenNow" xml:space="preserve"><value>Open now</value></data>
   <data name="RunnerFallback" xml:space="preserve"><value>Runner</value></data>

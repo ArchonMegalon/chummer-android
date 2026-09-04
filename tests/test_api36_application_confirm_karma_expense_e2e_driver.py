@@ -33,7 +33,7 @@ class Api36ApplicationConfirmKarmaExpenseDriverTests(unittest.TestCase):
         self.assertGreaterEqual(source.count('device.shell("am", "force-stop"'), 3)
         self.assertNotIn('"profile": "tablet"', source)
 
-    def test_typed_whole_snapshot_seam_and_backward_compatible_default_are_present(self) -> None:
+    def test_legacy_value_remains_readable_but_is_not_exposed_on_phone(self) -> None:
         contract = (CORE / "Chummer.Contracts/Api/ApplicationDeleteConfirmationContracts.cs").read_text(encoding="utf-8")
         rules = (CORE / "Chummer.Application/Tools/ApplicationDeleteConfirmationRules.cs").read_text(encoding="utf-8")
         store = (CORE / "Chummer.Infrastructure/Files/FileApplicationDeleteConfirmationStore.cs").read_text(encoding="utf-8")
@@ -49,9 +49,10 @@ class Api36ApplicationConfirmKarmaExpenseDriverTests(unittest.TestCase):
         self.assertIn('TryGetProperty("ConfirmKarmaExpense"', store)
         self.assertIn("ApplicationDeleteConfirmationRules.ApplySnapshot", presenter)
         self.assertIn("_store.Save(mutation.ExpectedRevision, updated)", presenter)
-        self.assertIn('AutomationId = "settings-confirm-karma-expense"', page)
-        self.assertNotIn("_confirmKarmaExpense.Toggled", page)
-        self.assertIn("SaveApplicationConfirmationSettingsAsync", coordinator)
+        self.assertNotIn('AutomationId = "settings-confirm-karma-expense"', page)
+        self.assertNotIn("_confirmKarmaExpense", page)
+        self.assertNotIn("SaveApplicationConfirmationSettingsAsync", coordinator)
+        self.assertIn("SaveDeleteConfirmationSettingAsync", page)
         self.assertIn("Flush(flushToDisk: true)", store)
         self.assertIn("File.Replace", store)
         self.assertIn('path + ".bak"', store)
@@ -87,11 +88,12 @@ class Api36ApplicationConfirmKarmaExpenseDriverTests(unittest.TestCase):
         ]
         self.assertEqual(1, len(rows))
         row = rows[0]
-        self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
-        self.assertEqual("ApplicationSettingsPage", row["phone"]["surface"])
-        self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
+        self.assertEqual("missing", row["phone"]["status"])
+        self.assertIsNone(row["phone"]["surface"])
+        self.assertIsNone(row["phone"]["automationId"])
+        self.assertEqual("missing", row["e2e"]["phone"]["status"])
         self.assertEqual("missing", row["tablet"]["status"])
-        self.assertIn("confirmkarmaexpense only", row["phone"]["coverageLimit"])
+        self.assertIn("Deliberately not exposed on Android phone", row["phone"]["coverageLimit"])
         self.assertFalse(row["completionProven"])
 
 

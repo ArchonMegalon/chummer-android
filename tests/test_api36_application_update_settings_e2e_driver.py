@@ -45,7 +45,7 @@ class Api36ApplicationUpdateSettingsDriverTests(unittest.TestCase):
         self.assertGreaterEqual(source.count('device.shell("am", "force-stop"'), 3)
         self.assertNotIn('"profile": "tablet"', source)
 
-    def test_typed_whole_page_build_default_and_atomic_store_are_present(self) -> None:
+    def test_desktop_update_values_remain_readable_but_are_not_exposed_on_phone(self) -> None:
         contract = (
             CORE / "Chummer.Contracts/Api/ApplicationDeleteConfirmationContracts.cs"
         ).read_text(encoding="utf-8")
@@ -68,7 +68,7 @@ class Api36ApplicationUpdateSettingsDriverTests(unittest.TestCase):
 
         for identity in ("PreferNightlyBuilds", "LiveUpdateCleanCharacterFiles"):
             self.assertIn(identity, contract)
-            self.assertIn(f"ApplicationSettingIdentity.{identity}", coordinator)
+            self.assertNotIn(f"ApplicationSettingIdentity.{identity}", coordinator)
             self.assertIn(f'TryGetProperty("{identity}"', store)
         self.assertIn("PreferNightlyBuildsByDefault", contract)
         self.assertIn("applicationVersion.Build != 0", contract)
@@ -81,9 +81,10 @@ class Api36ApplicationUpdateSettingsDriverTests(unittest.TestCase):
         self.assertIn("ApplicationDeleteConfirmationRules.ApplySettingsSnapshot", presenter)
         self.assertIn("_store.Save(mutation.ExpectedRevision, updated)", presenter)
         self.assertIn("typeof(MauiProgram).Assembly.GetName().Version", maui)
-        self.assertIn('AutomationId = "settings-update-default-authority"', page)
+        self.assertIn('AutomationId = "settings-updates-play-managed"', page)
+        self.assertNotIn('AutomationId = "settings-update-default-authority"', page)
         for automation_id in CONTROLS.values():
-            self.assertIn(f'AutomationId = "{automation_id}"', page)
+            self.assertNotIn(f'AutomationId = "{automation_id}"', page)
         self.assertIn("Flush(flushToDisk: true)", store)
         self.assertIn("File.Replace", store)
         self.assertIn('path + ".bak"', store)
@@ -143,13 +144,12 @@ class Api36ApplicationUpdateSettingsDriverTests(unittest.TestCase):
         self.assertEqual(2, len(rows))
         self.assertEqual(set(CONTROLS), {row["legacy"]["controlName"] for row in rows})
         for row in rows:
-            control = row["legacy"]["controlName"]
-            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
-            self.assertEqual("ApplicationSettingsPage", row["phone"]["surface"])
-            self.assertEqual(CONTROLS[control], row["phone"]["automationId"])
-            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
+            self.assertEqual("missing", row["phone"]["status"])
+            self.assertIsNone(row["phone"]["surface"])
+            self.assertIsNone(row["phone"]["automationId"])
+            self.assertEqual("missing", row["e2e"]["phone"]["status"])
             self.assertEqual("missing", row["tablet"]["status"])
-            self.assertIn("exact canonical Chummer5", row["phone"]["coverageLimit"])
+            self.assertIn("Deliberately not exposed on Android phone", row["phone"]["coverageLimit"])
             self.assertFalse(row["completionProven"])
 
         source_digests = {

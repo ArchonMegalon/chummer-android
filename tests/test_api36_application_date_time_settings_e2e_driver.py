@@ -40,7 +40,7 @@ class Api36ApplicationDateTimeSettingsDriverTests(unittest.TestCase):
         self.assertGreaterEqual(source.count('device.shell("am", "force-stop"'), 2)
         self.assertNotIn('"profile": "tablet"', source)
 
-    def test_typed_whole_page_seam_and_exact_legacy_phase_rules_are_present(self) -> None:
+    def test_legacy_format_values_remain_readable_but_are_not_exposed_on_phone(self) -> None:
         contract = (CORE / "Chummer.Contracts/Api/ApplicationDeleteConfirmationContracts.cs").read_text(encoding="utf-8")
         rules = (CORE / "Chummer.Application/Tools/ApplicationDeleteConfirmationRules.cs").read_text(encoding="utf-8")
         store = (CORE / "Chummer.Infrastructure/Files/FileApplicationDeleteConfirmationStore.cs").read_text(encoding="utf-8")
@@ -50,7 +50,7 @@ class Api36ApplicationDateTimeSettingsDriverTests(unittest.TestCase):
 
         for identity in ("CustomDateTimeFormats", "CustomDateFormat", "CustomTimeFormat", "DatesIncludeTime"):
             self.assertIn(identity, contract)
-            self.assertIn(f"ApplicationSettingIdentity.{identity}", coordinator)
+            self.assertNotIn(f"ApplicationSettingIdentity.{identity}", coordinator)
         self.assertIn("record ApplicationSettingValue<T>", contract)
         self.assertIn("record ApplicationSettingsSnapshotMutation", contract)
         self.assertIn("ApplicationDateTimeFormatPhase", contract)
@@ -63,14 +63,10 @@ class Api36ApplicationDateTimeSettingsDriverTests(unittest.TestCase):
         self.assertIn('format, "Error", IsValid: false', rules)
         self.assertIn("ApplicationDeleteConfirmationRules.ApplySettingsSnapshot", presenter)
         self.assertIn("_store.Save(mutation.ExpectedRevision, updated)", presenter)
-        self.assertIn("SaveApplicationSettingsAsync", page)
-        self.assertIn("UpdateDateTimeDraft(resetCultureDefaults: !args.Value)", page)
-        self.assertIn("_culture.DateTimeFormat.ShortDatePattern", page)
-        self.assertIn("_culture.DateTimeFormat.ShortTimePattern", page)
-        self.assertIn("DateTime.Now", page)
+        self.assertNotIn("SaveApplicationSettingsAsync", page)
+        self.assertIn('AutomationId = "settings-language-device-managed"', page)
         for automation_id in CONTROLS.values():
-            self.assertIn(f'AutomationId = "{automation_id}"', page)
-        self.assertNotIn("_customDateTimeFormats.Toggled += async", page)
+            self.assertNotIn(f'AutomationId = "{automation_id}"', page)
         self.assertIn('TryGetProperty("CustomDateTimeFormats"', store)
         self.assertIn('TryGetProperty("CustomDateFormat"', store)
         self.assertIn('TryGetProperty("CustomTimeFormat"', store)
@@ -111,13 +107,12 @@ class Api36ApplicationDateTimeSettingsDriverTests(unittest.TestCase):
         self.assertEqual(4, len(rows))
         self.assertEqual(set(CONTROLS), {row["legacy"]["controlName"] for row in rows})
         for row in rows:
-            control = row["legacy"]["controlName"]
-            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
-            self.assertEqual("ApplicationSettingsPage", row["phone"]["surface"])
-            self.assertEqual(CONTROLS[control], row["phone"]["automationId"])
-            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
+            self.assertEqual("missing", row["phone"]["status"])
+            self.assertIsNone(row["phone"]["surface"])
+            self.assertIsNone(row["phone"]["automationId"])
+            self.assertEqual("missing", row["e2e"]["phone"]["status"])
             self.assertEqual("missing", row["tablet"]["status"])
-            self.assertIn("Phone application settings only for", row["phone"]["coverageLimit"])
+            self.assertIn("Deliberately not exposed on Android phone", row["phone"]["coverageLimit"])
             self.assertFalse(row["completionProven"])
 
         source_digests = {

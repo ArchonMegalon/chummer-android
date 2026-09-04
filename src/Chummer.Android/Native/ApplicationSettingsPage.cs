@@ -1,35 +1,17 @@
-using System.Globalization;
-using Chummer.Application.Tools;
 using Chummer.Contracts.Api;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Chummer.Android.Native;
 
 /// <summary>
-/// Phone-only Chummer5 Global Options surface for confirmation, visibility, selection behavior,
-/// update, and date/time settings.
-/// All controls are local drafts; only the explicit Save action invokes one atomic persistence boundary.
+/// Android-phone settings. Desktop-only Chummer5 preferences remain readable by the shared
+/// settings store for compatibility, but are deliberately not exposed as ineffective phone controls.
 /// </summary>
 public sealed class ApplicationSettingsPage : NativePageBase
 {
     private readonly ApplicationDeleteConfirmationState _baseline;
     private readonly IPlayReviewService? _playReview;
     private readonly Switch _confirmDelete;
-    private readonly Switch _confirmKarmaExpense;
-    private readonly Switch _hideMasterIndex;
-    private readonly Switch _hideCharacterRoster;
-    private readonly Switch _searchInCategoryOnly;
-    private readonly Switch _allowEasterEggs;
-    private readonly Switch _preferNightlyBuilds;
-    private readonly Switch _liveUpdateCleanCharacterFiles;
-    private readonly Switch _customDateTimeFormats;
-    private readonly Entry _dateFormat;
-    private readonly Label _datePreview;
-    private readonly Entry _timeFormat;
-    private readonly Label _timePreview;
-    private readonly Switch _datesIncludeTime;
-    private readonly CultureInfo _culture;
-    private readonly Label _revision;
 
     public ApplicationSettingsPage(RunnerSessionCoordinator coordinator)
         : this(
@@ -42,246 +24,75 @@ public sealed class ApplicationSettingsPage : NativePageBase
         RunnerSessionCoordinator coordinator,
         IPlayReviewService? playReview) : base(coordinator)
     {
-        Title = "Application settings";
+        Title = PhoneStrings.Get("ApplicationSettings", "Settings");
         AutomationId = "application-settings-page";
         _baseline = coordinator.ApplicationSettings;
         _playReview = playReview;
-        _culture = CultureInfo.CurrentCulture;
 
         VerticalStackLayout body = new()
         {
             Padding = new Thickness(20, 20, 20, 36),
             Spacing = 18
         };
-        body.Add(NativeTheme.Eyebrow("Global options"));
-        body.Add(NativeTheme.Title("Confirmations"));
+        body.Add(NativeTheme.Eyebrow(PhoneStrings.Get("SettingsPhone", "Android phone")));
+        body.Add(NativeTheme.Title(PhoneStrings.Get("ApplicationSettings", "Settings")));
         body.Add(NativeTheme.Body(
-            "Matches Chummer5’s confirmdelete and confirmkarmaexpense options. These settings do not modify runner XML.",
+            PhoneStrings.Get(
+                "SettingsPhoneOnlyDetail",
+                "Only options that change how Chummer behaves on this phone appear here."),
             NativeTheme.Muted));
 
+        body.Add(NativeTheme.Title(PhoneStrings.Get("SettingsSafety", "Safety")));
         _confirmDelete = new Switch
         {
             AutomationId = "settings-confirm-delete",
             IsToggled = _baseline.ConfirmDelete
         };
-        Grid row = new()
-        {
-            ColumnDefinitions =
-            {
-                new ColumnDefinition(GridLength.Star),
-                new ColumnDefinition(GridLength.Auto)
-            },
-            ColumnSpacing = 12
-        };
-        VerticalStackLayout labels = new() { Spacing = 3 };
-        labels.Add(NativeTheme.Title("Ask before deleting items", 20));
-        labels.Add(NativeTheme.Body(
-            "Changes remain a draft until Save. Back discards the draft.",
-            NativeTheme.Muted));
-        row.Add(labels);
-        row.Add(_confirmDelete, 1);
-        body.Add(NativeTheme.Card(row));
-
-        _confirmKarmaExpense = new Switch
-        {
-            AutomationId = "settings-confirm-karma-expense",
-            IsToggled = _baseline.ConfirmKarmaExpense
-        };
-        Grid karmaRow = new()
-        {
-            ColumnDefinitions =
-            {
-                new ColumnDefinition(GridLength.Star),
-                new ColumnDefinition(GridLength.Auto)
-            },
-            ColumnSpacing = 12
-        };
-        VerticalStackLayout karmaLabels = new() { Spacing = 3 };
-        karmaLabels.Add(NativeTheme.Title("Ask before Karma expenses", 20));
-        karmaLabels.Add(NativeTheme.Body(
-            "Changes remain a draft until Save. Back discards both confirmation drafts.",
-            NativeTheme.Muted));
-        karmaRow.Add(karmaLabels);
-        karmaRow.Add(_confirmKarmaExpense, 1);
-        body.Add(NativeTheme.Card(karmaRow));
-
-        body.Add(NativeTheme.Title("Navigation visibility"));
-        body.Add(NativeTheme.Body(
-            "Matches Chummer5’s independent hidemasterindex and hidecharacterroster application options.",
-            NativeTheme.Muted));
-
-        _hideMasterIndex = new Switch
-        {
-            AutomationId = "settings-hide-master-index",
-            IsToggled = _baseline.HideMasterIndex
-        };
         body.Add(CreateSwitchCard(
-            "Hide the Master Index",
-            "Stored as the hidemasterindex application setting. It does not change runner XML.",
-            _hideMasterIndex));
+            PhoneStrings.Get("SettingsConfirmDelete", "Ask before deleting items"),
+            PhoneStrings.Get(
+                "SettingsConfirmDeleteDetail",
+                "Shown before destructive item removal. Wizard review steps always remain enabled."),
+            _confirmDelete));
 
-        _hideCharacterRoster = new Switch
-        {
-            AutomationId = "settings-hide-character-roster",
-            IsToggled = _baseline.HideCharacterRoster
-        };
-        body.Add(CreateSwitchCard(
-            "Hide the Character Roster",
-            "Stored independently as hidecharacterroster. Back discards both visibility drafts.",
-            _hideCharacterRoster));
-
-        body.Add(NativeTheme.Title("Selection behavior"));
-        body.Add(NativeTheme.Body(
-            "Matches Chummer5’s independent searchincategoryonly and alloweastereggs application options.",
-            NativeTheme.Muted));
-
-        _searchInCategoryOnly = new Switch
-        {
-            AutomationId = "settings-search-in-category-only",
-            IsToggled = _baseline.SearchInCategoryOnly
-        };
-        body.Add(CreateSwitchCard(
-            "Search only in the current category",
-            "Enabled by default, matching Chummer5 selection forms.",
-            _searchInCategoryOnly));
-
-        _allowEasterEggs = new Switch
-        {
-            AutomationId = "settings-allow-easter-eggs",
-            IsToggled = _baseline.AllowEasterEggs
-        };
-        body.Add(CreateSwitchCard(
-            "Allow Easter Eggs",
-            "Disabled by default. It remains independent of category-restricted searching.",
-            _allowEasterEggs));
-
-        body.Add(NativeTheme.Title("Updates"));
-        body.Add(NativeTheme.Body(
-            "Matches Chummer5’s independent prefernightlybuilds and liveupdatecleancharacterfiles application options.",
-            NativeTheme.Muted));
-        Version applicationVersion = typeof(MauiProgram).Assembly.GetName().Version ?? new Version(0, 0);
-        Label updateDefaultAuthority = NativeTheme.Body(
-            $"Application assembly Build={applicationVersion.Build}; fresh Prefer Nightly default="
-            + ApplicationDeleteConfirmationState.PreferNightlyBuildsByDefault(applicationVersion),
+        Label languageAuthority = NativeTheme.Body(
+            PhoneStrings.Get(
+                "SettingsLanguageDeviceManaged",
+                "Chummer uses your phone language and regional date and time formats."),
             NativeTheme.Muted);
-        updateDefaultAuthority.AutomationId = "settings-update-default-authority";
-        body.Add(updateDefaultAuthority);
+        languageAuthority.AutomationId = "settings-language-device-managed";
+        VerticalStackLayout languageCard = new() { Spacing = 5 };
+        languageCard.Add(NativeTheme.Title(
+            PhoneStrings.Get("SettingsLanguageRegion", "Language & region"),
+            20));
+        languageCard.Add(languageAuthority);
+        languageCard.Add(NativeTheme.Body(
+            PhoneStrings.Get(
+                "SettingsSupportedLanguages",
+                "Supported: Deutsch, English, Español"),
+            NativeTheme.Muted));
+        body.Add(NativeTheme.Card(languageCard));
 
-        _preferNightlyBuilds = new Switch
-        {
-            AutomationId = "settings-prefer-nightly-builds",
-            IsToggled = _baseline.PreferNightlyBuilds
-        };
-        body.Add(CreateSwitchCard(
-            "Prefer Nightly builds when updating",
-            "The fresh-install default follows the running app version: off for milestone builds, on otherwise.",
-            _preferNightlyBuilds));
-
-        _liveUpdateCleanCharacterFiles = new Switch
-        {
-            AutomationId = "settings-live-update-clean-character-files",
-            IsToggled = _baseline.LiveUpdateCleanCharacterFiles
-        };
-        body.Add(CreateSwitchCard(
-            "Reload unchanged open character files",
-            "Automatically load external save-file changes only when the open character has no pending edits.",
-            _liveUpdateCleanCharacterFiles));
-
-        body.Add(NativeTheme.Title(PlayReviewStrings.SettingsSection()));
+        Label updateAuthority = NativeTheme.Body(
+            PhoneStrings.Get(
+                "SettingsUpdatesPlayManaged",
+                "Updates and preview access are managed by Google Play, not inside Chummer."),
+            NativeTheme.Muted);
+        updateAuthority.AutomationId = "settings-updates-play-managed";
+        body.Add(NativeTheme.Title(PhoneStrings.Get("SettingsGooglePlay", "Google Play")));
+        body.Add(updateAuthority);
         body.Add(NativeTheme.NavigationRow(
             PlayReviewStrings.RateOnGooglePlay(),
             PlayReviewStrings.RateOnGooglePlayDescription(),
             OpenStoreListingAsync,
             automationId: "settings-rate-on-google-play"));
 
-        body.Add(NativeTheme.Title("Date and time"));
-        body.Add(NativeTheme.Body(
-            "Matches Chummer5’s custom format phase and Dates include time option. Invalid custom text shows Error, as on desktop; Save preserves the exact draft.",
-            NativeTheme.Muted));
-
-        _customDateTimeFormats = new Switch
-        {
-            AutomationId = "settings-custom-date-time-formats",
-            IsToggled = _baseline.CustomDateTimeFormats
-        };
-        body.Add(CreateSwitchCard(
-            "Use custom date and time formats",
-            "Turning this off restores the current culture’s short date and time patterns in the draft.",
-            _customDateTimeFormats));
-
-        string initialDateFormat = _baseline.CustomDateTimeFormats
-            ? _baseline.CustomDateFormat
-            : _culture.DateTimeFormat.ShortDatePattern;
-        _dateFormat = new Entry
-        {
-            AutomationId = "settings-date-format",
-            Text = initialDateFormat,
-            IsEnabled = _baseline.CustomDateTimeFormats,
-            Placeholder = _culture.DateTimeFormat.ShortDatePattern
-        };
-        _datePreview = NativeTheme.Body(string.Empty, NativeTheme.Muted);
-        _datePreview.AutomationId = "settings-date-format-preview";
-        VerticalStackLayout dateCard = new() { Spacing = 8 };
-        dateCard.Add(NativeTheme.Title("Date format", 20));
-        dateCard.Add(_dateFormat);
-        dateCard.Add(_datePreview);
-        body.Add(NativeTheme.Card(dateCard));
-
-        string initialTimeFormat = _baseline.CustomDateTimeFormats
-            ? _baseline.CustomTimeFormat
-            : _culture.DateTimeFormat.ShortTimePattern;
-        _timeFormat = new Entry
-        {
-            AutomationId = "settings-time-format",
-            Text = initialTimeFormat,
-            IsEnabled = _baseline.CustomDateTimeFormats,
-            Placeholder = _culture.DateTimeFormat.ShortTimePattern
-        };
-        _timePreview = NativeTheme.Body(string.Empty, NativeTheme.Muted);
-        _timePreview.AutomationId = "settings-time-format-preview";
-        VerticalStackLayout timeCard = new() { Spacing = 8 };
-        timeCard.Add(NativeTheme.Title("Time format", 20));
-        timeCard.Add(_timeFormat);
-        timeCard.Add(_timePreview);
-        body.Add(NativeTheme.Card(timeCard));
-
-        _datesIncludeTime = new Switch
-        {
-            AutomationId = "settings-dates-include-time",
-            IsToggled = _baseline.DatesIncludeTime
-        };
-        body.Add(CreateSwitchCard(
-            "Dates include time",
-            "Independent of whether culture-default or custom formatting is active.",
-            _datesIncludeTime));
-
-        _customDateTimeFormats.Toggled += (_, args) =>
-            UpdateDateTimeDraft(resetCultureDefaults: !args.Value);
-        _dateFormat.TextChanged += (_, _) => UpdateDateTimePreviews();
-        _timeFormat.TextChanged += (_, _) => UpdateDateTimePreviews();
-        UpdateDateTimeDraft(resetCultureDefaults: false);
-
-        _revision = NativeTheme.Body(string.Empty, NativeTheme.Muted);
-        _revision.AutomationId = "settings-revision";
-        body.Add(_revision);
-
-        Button save = NativeTheme.PrimaryButton("Save");
+        Button save = NativeTheme.PrimaryButton(PhoneStrings.Get("Save", "Save"));
         save.AutomationId = "settings-save";
         save.Clicked += async (_, _) => await RunAsync(async () =>
         {
-            await Coordinator.SaveApplicationSettingsAsync(
+            await Coordinator.SaveDeleteConfirmationSettingAsync(
                 _confirmDelete.IsToggled,
-                _confirmKarmaExpense.IsToggled,
-                _customDateTimeFormats.IsToggled,
-                _dateFormat.Text ?? string.Empty,
-                _timeFormat.Text ?? string.Empty,
-                _datesIncludeTime.IsToggled,
-                _hideMasterIndex.IsToggled,
-                _hideCharacterRoster.IsToggled,
-                _searchInCategoryOnly.IsToggled,
-                _allowEasterEggs.IsToggled,
-                _preferNightlyBuilds.IsToggled,
-                _liveUpdateCleanCharacterFiles.IsToggled,
                 _baseline.Revision);
             await Navigation.PopAsync();
         });
@@ -292,41 +103,8 @@ public sealed class ApplicationSettingsPage : NativePageBase
 
     protected override void Refresh()
     {
-        _revision.Text = $"Settings revision {_baseline.Revision}";
-    }
-
-    private void UpdateDateTimeDraft(bool resetCultureDefaults)
-    {
-        bool custom = _customDateTimeFormats.IsToggled;
-        _dateFormat.IsEnabled = custom;
-        _timeFormat.IsEnabled = custom;
-        if (resetCultureDefaults)
-        {
-            _dateFormat.Text = _culture.DateTimeFormat.ShortDatePattern;
-            _timeFormat.Text = _culture.DateTimeFormat.ShortTimePattern;
-        }
-        UpdateDateTimePreviews();
-    }
-
-    private void UpdateDateTimePreviews()
-    {
-        DateTime sample = DateTime.Now;
-        ApplicationDateTimeFormatPreview date = ApplicationDeleteConfirmationRules.PreviewDateTimeFormat(
-            ApplicationSettingIdentity.CustomDateFormat,
-            _customDateTimeFormats.IsToggled,
-            _dateFormat.Text ?? string.Empty,
-            _culture.DateTimeFormat.ShortDatePattern,
-            sample,
-            _culture);
-        ApplicationDateTimeFormatPreview time = ApplicationDeleteConfirmationRules.PreviewDateTimeFormat(
-            ApplicationSettingIdentity.CustomTimeFormat,
-            _customDateTimeFormats.IsToggled,
-            _timeFormat.Text ?? string.Empty,
-            _culture.DateTimeFormat.ShortTimePattern,
-            sample,
-            _culture);
-        _datePreview.Text = $"{date.Phase} preview: {date.Sample}";
-        _timePreview.Text = $"{time.Phase} preview: {time.Sample}";
+        // This page stages one phone setting. The baseline is intentionally held stable until Save
+        // so a concurrent settings update fails through the coordinator's expected-revision check.
     }
 
     private static Border CreateSwitchCard(string title, string description, Switch value)

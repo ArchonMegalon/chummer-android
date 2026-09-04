@@ -2388,6 +2388,13 @@ APPLICATION_UPDATE_SETTINGS_CONTROLS = {
     "chkPreferNightlyBuilds": "settings-prefer-nightly-builds",
     "chkLiveUpdateCleanCharacterFiles": "settings-live-update-clean-character-files",
 }
+ANDROID_EXCLUDED_APPLICATION_SETTING_CONTROLS = {
+    APPLICATION_CONFIRM_KARMA_EXPENSE_CONTROL,
+    *APPLICATION_DATE_TIME_CONTROLS,
+    *APPLICATION_INDEX_VISIBILITY_CONTROLS,
+    *APPLICATION_SELECTION_BEHAVIOR_CONTROLS,
+    *APPLICATION_UPDATE_SETTINGS_CONTROLS,
+}
 APPLICATION_UPDATE_SETTINGS_LEGACY_AUTHORITY = {
     "revision": APPLICATION_INDEX_VISIBILITY_LEGACY_AUTHORITY["revision"],
     "fileDigests": {
@@ -9504,6 +9511,35 @@ def _known_phone_mapping(
             },
             "tabletE2e": {"status": "missing", "ref": None},
         }
+    if (
+        class_name == "EditGlobalSettings"
+        and control in ANDROID_EXCLUDED_APPLICATION_SETTING_CONTROLS
+    ):
+        return {
+            "status": "missing",
+            "route": None,
+            "surface": None,
+            "automationId": None,
+            "sourceRefs": [
+                "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
+            ],
+            "presenterMutation": None,
+            "persistenceAssertion": None,
+            "coverageLimit": (
+                "Deliberately not exposed on Android phone. This desktop-global preference either targets "
+                "desktop navigation, desktop file watching, desktop update channels, or behavior already "
+                "owned by mandatory wizard review and Android device/Google Play settings. Existing stored "
+                "legacy values remain readable and are not overwritten by the phone Settings page."
+            ),
+            "e2e": {"status": "missing", "ref": None},
+            "tablet": {
+                "status": "missing",
+                "surface": None,
+                "automationId": None,
+                "sourceRefs": [],
+            },
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
     if class_name == "EditGlobalSettings" and control in APPLICATION_CONFIRM_DELETE_CONTROLS:
         page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ApplicationSettingsPage.cs"
         home_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "HomePage.cs"
@@ -9523,17 +9559,16 @@ def _known_phone_mapping(
                 'AutomationId = "settings-confirm-delete"',
                 'AutomationId = "settings-save"',
                 "_baseline.Revision",
-                "SaveApplicationSettingsAsync",
+                "SaveDeleteConfirmationSettingAsync",
             )
             and _contains(home_page, 'AutomationId = "home-application-settings"', "new ApplicationSettingsPage")
             and _contains(
                 coordinator,
                 "ApplicationDeleteConfirmationState",
                 "SaveDeleteConfirmationSettingAsync",
-                "SaveApplicationConfirmationSettingsAsync",
-                "ApplicationConfirmationSettingsMutation",
+                "ApplicationDeleteConfirmationMutation",
                 "expectedRevision",
-                "_applicationSettingsPresenter.ApplySnapshot",
+                "_applicationSettingsPresenter.Apply",
             )
             and _contains(
                 maui_program,
