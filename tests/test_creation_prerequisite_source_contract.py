@@ -9633,6 +9633,12 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 )
 
             self.assertGreaterEqual(device.run.call_count, 1)
+            device.capture.assert_called_once()
+            self.assertEqual(
+                "creation-dashboard-route-ready-timeout",
+                device.capture.call_args.args[0],
+            )
+            self.assertIn("deadline", device.capture.call_args.kwargs)
             device.shell.assert_not_called()
             device.hierarchy.assert_not_called()
 

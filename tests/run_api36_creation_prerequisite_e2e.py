@@ -892,6 +892,18 @@ def wait_for_creation_dashboard_ready_log(
     )
     if len(exact_matches) != 1 or invalid_lines:
         if not exact_matches and not invalid_lines:
+            # Preserve the actual post-Back product state before failing.  The
+            # marker poll deliberately ends before the enclosing dashboard
+            # proof lease, so this read-only screenshot/hierarchy/logcat
+            # capture has its own bounded evidence time and never replays the
+            # already-issued Back action.  Without it, a missing marker cannot
+            # be distinguished from a wrong route, an authority load that is
+            # still progressing, or a marker-emission defect.
+            _capture_with_phase_deadline(
+                device,
+                "creation-dashboard-route-ready-timeout",
+                deadline=deadline,
+            )
             raise RuntimeError(
                 "Timed out waiting for the exact post-Back Creation "
                 "dashboard-ready marker"
