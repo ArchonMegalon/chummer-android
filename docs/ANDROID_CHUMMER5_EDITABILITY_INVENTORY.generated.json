@@ -897,7 +897,7 @@
       {
         "path": "src/Chummer.Android/Proof/Api36ProofStatePublisher.cs",
         "exists": true,
-        "sha256": "c8cce8a1f78b85d641f3548eae2d96e228ec2bbc74b4ef90fa79da1541fda7fd"
+        "sha256": "3143d6b5718d4d93280f9e8e7e1ceb7318e94612e44e7a1f1b6eabddd27eb797"
       },
       {
         "path": "tests/Chummer.Android.Native.CompileCheck/NativeCompileInputs.props",
@@ -952,7 +952,7 @@
       {
         "path": "tests/test_api36_proof_state_contract.py",
         "exists": true,
-        "sha256": "d74c80e4367b00288b7abf96af9b13af8444bd9c3f29fad90ac108eac91d7714"
+        "sha256": "0e67785b76f949a198403b17527b0a57fad5f767b6c453cb091ce016f5063542"
       },
       {
         "path": "tests/test_run_api36_sr5_before_run_edge_e2e_driver.py",
