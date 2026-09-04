@@ -1017,7 +1017,7 @@
       {
         "path": "tests/run_api36_editing_e2e.py",
         "exists": true,
-        "sha256": "c01601b1c0d15a8fd16add973a93e64fe1cf4b26fcac333dfa330ec4f8e7bc1c"
+        "sha256": "4837579c2d106b2455a583c35825b97da3e33659257da4f2f124930d207ffc51"
       },
       {
         "path": "tests/run_api36_career_active_skill_advance_e2e.py",

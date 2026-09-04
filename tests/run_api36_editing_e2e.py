@@ -309,11 +309,20 @@ ADB_SHARED_STORAGE_MAX_OBSERVATIONS = 7
 ADB_SHARED_STORAGE_OBSERVATION_DELAY_SECONDS = 1.0
 ADB_SHARED_STORAGE_PREFLIGHT_MAX_SECONDS = 30.0
 ADB_SHARED_STORAGE_STAT_ATTEMPT_MAX_SECONDS = 5.0
+ADB_SHARED_STORAGE_BOOTSTRAP_ATTEMPT_MINIMUM_SECONDS = 2.5
+ADB_SHARED_STORAGE_BOOTSTRAP_RECEIPT_HEADROOM_SECONDS = 2.0
+ADB_SHARED_STORAGE_BOOTSTRAP_DEVICE_CALLS = (
+    ADB_SHARED_STORAGE_REQUIRED_CONSECUTIVE + 3
+)
+ADB_SHARED_STORAGE_BOOTSTRAP_OBSERVATION_DELAYS = (
+    ADB_SHARED_STORAGE_REQUIRED_CONSECUTIVE
+)
 ADB_SHARED_STORAGE_INITIALIZATION_MINIMUM_LEASE_SECONDS = (
-    ADB_SHARED_STORAGE_STAT_ATTEMPT_MAX_SECONDS
-    * (ADB_SHARED_STORAGE_REQUIRED_CONSECUTIVE + 2)
+    ADB_SHARED_STORAGE_BOOTSTRAP_ATTEMPT_MINIMUM_SECONDS
+    * ADB_SHARED_STORAGE_BOOTSTRAP_DEVICE_CALLS
     + ADB_SHARED_STORAGE_OBSERVATION_DELAY_SECONDS
-    * (ADB_SHARED_STORAGE_REQUIRED_CONSECUTIVE - 1)
+    * ADB_SHARED_STORAGE_BOOTSTRAP_OBSERVATION_DELAYS
+    + ADB_SHARED_STORAGE_BOOTSTRAP_RECEIPT_HEADROOM_SECONDS
 )
 ADB_SHARED_STORAGE_ROOTS = ("/sdcard", "/sdcard/Download")
 ADB_SHARED_STORAGE_STAT_FORMAT = "%n:%d:%i:%f"
@@ -1063,6 +1072,34 @@ def _remaining_operation_timeout(
             "ADB operation deadline expired before command invocation"
         )
     return min(maximum, remaining)
+
+
+def _shared_storage_bootstrap_attempt_timeout(
+    *,
+    deadline: float,
+    remaining_device_calls: int,
+    remaining_observation_delays: int,
+) -> float:
+    """Allocate one bootstrap call without consuming later proof authority."""
+    if type(remaining_device_calls) is not int or remaining_device_calls <= 0:
+        raise ValueError("Shared-storage bootstrap requires remaining device calls")
+    if (
+        type(remaining_observation_delays) is not int
+        or remaining_observation_delays < 0
+    ):
+        raise ValueError("Shared-storage bootstrap delay count is invalid")
+    remaining = deadline - time.monotonic()
+    reserved = (
+        remaining_observation_delays
+        * ADB_SHARED_STORAGE_OBSERVATION_DELAY_SECONDS
+        + ADB_SHARED_STORAGE_BOOTSTRAP_RECEIPT_HEADROOM_SECONDS
+    )
+    available_per_call = (remaining - reserved) / remaining_device_calls
+    if available_per_call < ADB_SHARED_STORAGE_BOOTSTRAP_ATTEMPT_MINIMUM_SECONDS:
+        raise AdbOperationDeadlineExceeded(
+            "Shared-storage bootstrap cannot preserve its remaining proof lease"
+        )
+    return min(ADB_SHARED_STORAGE_STAT_ATTEMPT_MAX_SECONDS, available_per_call)
 
 
 def _read_only_retry_attempt_timeout(
@@ -2107,6 +2144,8 @@ class Device:
         initialized_root: dict[str, str] | None = None
         initialized_download: dict[str, str] | None = None
         initialization_mutations_issued = 0
+        bootstrap_device_calls_remaining = 0
+        bootstrap_observation_delays_remaining = 0
         bootstrap_written = False
         terminal_error: BaseException | None = None
         terminal_failure: dict[str, object] | None = None
@@ -2125,6 +2164,16 @@ class Device:
             "minimumDeadlineLeaseSeconds": (
                 ADB_SHARED_STORAGE_INITIALIZATION_MINIMUM_LEASE_SECONDS
             ),
+            "attemptMinimumSeconds": (
+                ADB_SHARED_STORAGE_BOOTSTRAP_ATTEMPT_MINIMUM_SECONDS
+            ),
+            "attemptMaximumSeconds": ADB_SHARED_STORAGE_STAT_ATTEMPT_MAX_SECONDS,
+            "deviceCalls": ADB_SHARED_STORAGE_BOOTSTRAP_DEVICE_CALLS,
+            "observationDelays": ADB_SHARED_STORAGE_BOOTSTRAP_OBSERVATION_DELAYS,
+            "receiptHeadroomSeconds": (
+                ADB_SHARED_STORAGE_BOOTSTRAP_RECEIPT_HEADROOM_SECONDS
+            ),
+            "attemptTimeoutAllocations": [],
             "command": list(ADB_SHARED_STORAGE_INITIALIZE_ARGUMENTS),
             "commandPolicy": "non-replayable",
             "maximumAttempts": 1,
@@ -2140,6 +2189,7 @@ class Device:
             "outcomeEvidenceFile": None,
             "outcomeSha256": None,
             "bootstrapEvidenceFile": None,
+            "bootstrapSha256": None,
         }
 
         def identity(root: dict[str, str]) -> tuple[str, str, str, str]:
@@ -2149,6 +2199,31 @@ class Device:
                 root["inode"],
                 root["mode"],
             )
+
+        def next_bootstrap_attempt_timeout(command_kind: str) -> float:
+            nonlocal bootstrap_device_calls_remaining
+            timeout = _shared_storage_bootstrap_attempt_timeout(
+                deadline=operation_deadline,
+                remaining_device_calls=bootstrap_device_calls_remaining,
+                remaining_observation_delays=(
+                    bootstrap_observation_delays_remaining
+                ),
+            )
+            allocations = initialization["attemptTimeoutAllocations"]
+            if not isinstance(allocations, list):
+                raise RuntimeError("Shared-storage bootstrap allocation state is invalid")
+            allocations.append(
+                {
+                    "commandKind": command_kind,
+                    "remainingDeviceCallsBefore": bootstrap_device_calls_remaining,
+                    "remainingObservationDelaysBefore": (
+                        bootstrap_observation_delays_remaining
+                    ),
+                    "attemptTimeoutSeconds": timeout,
+                }
+            )
+            bootstrap_device_calls_remaining -= 1
+            return timeout
 
         def write_bootstrap(status: str) -> None:
             nonlocal bootstrap_written
@@ -2199,11 +2274,26 @@ class Device:
                 "rootIdentity": initialized_root,
                 "terminalFailure": terminal_failure,
             }
-            _write_durable_new_json_receipt(bootstrap_path, bootstrap)
+            bootstrap_sha256 = _write_durable_new_json_receipt(
+                bootstrap_path,
+                bootstrap,
+            )
             initialization["bootstrapEvidenceFile"] = bootstrap_path.name
+            initialization["bootstrapSha256"] = bootstrap_sha256
             bootstrap_written = True
 
         def build_receipt(status: str) -> dict[str, object]:
+            if initialization_mutations_issued != 0:
+                bootstrap_sha256 = initialization.get("bootstrapSha256")
+                if not isinstance(bootstrap_sha256, str):
+                    raise RuntimeError(
+                        "Shared-storage readiness lacks bootstrap digest authority"
+                    )
+                _require_exact_receipt_digest(
+                    bootstrap_path,
+                    expected_sha256=bootstrap_sha256,
+                    label="Shared-storage bootstrap authority",
+                )
             return {
                 "schema": ADB_SHARED_STORAGE_PREFLIGHT_SCHEMA,
                 "status": status,
@@ -2220,6 +2310,19 @@ class Device:
                 ),
                 "statAttemptMaximumSeconds": (
                     ADB_SHARED_STORAGE_STAT_ATTEMPT_MAX_SECONDS
+                ),
+                "bootstrapAttemptMinimumSeconds": (
+                    ADB_SHARED_STORAGE_BOOTSTRAP_ATTEMPT_MINIMUM_SECONDS
+                ),
+                "bootstrapAttemptMaximumSeconds": (
+                    ADB_SHARED_STORAGE_STAT_ATTEMPT_MAX_SECONDS
+                ),
+                "bootstrapDeviceCalls": ADB_SHARED_STORAGE_BOOTSTRAP_DEVICE_CALLS,
+                "bootstrapObservationDelays": (
+                    ADB_SHARED_STORAGE_BOOTSTRAP_OBSERVATION_DELAYS
+                ),
+                "bootstrapReceiptHeadroomSeconds": (
+                    ADB_SHARED_STORAGE_BOOTSTRAP_RECEIPT_HEADROOM_SECONDS
                 ),
                 "maximumDurationSeconds": ADB_SHARED_STORAGE_PREFLIGHT_MAX_SECONDS,
                 "callerDeadlineEnforced": True,
@@ -2246,6 +2349,9 @@ class Device:
                 "environmentInitializationOutcomeSha256": initialization.get(
                     "outcomeSha256"
                 ),
+                "environmentInitializationBootstrapSha256": initialization.get(
+                    "bootstrapSha256"
+                ),
                 "observations": observations,
             }
 
@@ -2261,7 +2367,11 @@ class Device:
                     )
                 attempt_timeout = _remaining_operation_timeout(
                     deadline=operation_deadline,
-                    maximum=ADB_SHARED_STORAGE_STAT_ATTEMPT_MAX_SECONDS,
+                    maximum=(
+                        next_bootstrap_attempt_timeout("followed-root-observation")
+                        if initialized_download is not None
+                        else ADB_SHARED_STORAGE_STAT_ATTEMPT_MAX_SECONDS
+                    ),
                 )
                 read_only_commands_issued += 1
                 output = self._invoke_once(
@@ -2303,9 +2413,8 @@ class Device:
                     stable_identity = observed_identity
                 if consecutive >= ADB_SHARED_STORAGE_REQUIRED_CONSECUTIVE:
                     if initialized_download is not None:
-                        final_raw_timeout = _remaining_operation_timeout(
-                            deadline=operation_deadline,
-                            maximum=ADB_SHARED_STORAGE_STAT_ATTEMPT_MAX_SECONDS,
+                        final_raw_timeout = next_bootstrap_attempt_timeout(
+                            "final-raw-download-observation"
                         )
                         read_only_commands_issued += 1
                         final_raw = self._invoke_once(
@@ -2330,6 +2439,13 @@ class Device:
                         if identity(final_download) != identity(initialized_download):
                             raise RuntimeError(
                                 "Download raw identity changed after stable follow proof"
+                            )
+                        if (
+                            bootstrap_device_calls_remaining != 0
+                            or bootstrap_observation_delays_remaining != 0
+                        ):
+                            raise RuntimeError(
+                                "Shared-storage bootstrap proof allocation did not converge"
                             )
                         initialization["status"] = "verified"
                         initialization["finalRawDownloadIdentity"] = final_download
@@ -2456,7 +2572,7 @@ class Device:
                                 "retryableReadOnlyObservation": False,
                             }
                             break
-                        if remaining_lease < (
+                        if remaining_lease <= (
                             ADB_SHARED_STORAGE_INITIALIZATION_MINIMUM_LEASE_SECONDS
                         ):
                             terminal_error = AdbOperationDeadlineExceeded(
@@ -2489,6 +2605,12 @@ class Device:
                             break
 
                         initialized_root = dict(partial_root)
+                        bootstrap_device_calls_remaining = (
+                            ADB_SHARED_STORAGE_BOOTSTRAP_DEVICE_CALLS
+                        )
+                        bootstrap_observation_delays_remaining = (
+                            ADB_SHARED_STORAGE_BOOTSTRAP_OBSERVATION_DELAYS
+                        )
                         initialization["status"] = "intent-pending"
                         initialization["precondition"] = {
                             "consecutiveIdenticalObservations": (
@@ -2544,16 +2666,29 @@ class Device:
                             }
                         )
 
-                        initialization_mutations_issued = 1
-                        initialization["attempts"] = 1
-                        initialization["environmentInitializationMutation"] = True
+                        self._mutation_blocker = {
+                            "classification": (
+                                "shared-storage-bootstrap-verification-pending"
+                            ),
+                            "adbArgumentsSha256": _adb_arguments_sha256(
+                                ADB_SHARED_STORAGE_INITIALIZE_ARGUMENTS
+                            ),
+                            "evidenceFile": intent_path.name,
+                        }
                         mkdir_result: subprocess.CompletedProcess | None = None
                         mkdir_error: BaseException | None = None
+                        mkdir_invocation_performed = False
                         try:
-                            mkdir_result = self.run(
-                                *ADB_SHARED_STORAGE_INITIALIZE_ARGUMENTS,
-                                timeout=ADB_SHARED_STORAGE_STAT_ATTEMPT_MAX_SECONDS,
-                                deadline=operation_deadline,
+                            mkdir_timeout = next_bootstrap_attempt_timeout("mkdir")
+                            initialization_mutations_issued = 1
+                            initialization["attempts"] = 1
+                            initialization["environmentInitializationMutation"] = True
+                            mkdir_invocation_performed = True
+                            mkdir_result = self._invoke_once(
+                                ADB_SHARED_STORAGE_INITIALIZE_ARGUMENTS,
+                                timeout=mkdir_timeout,
+                                text=True,
+                                check=True,
                             )
                             if (
                                 mkdir_result.returncode != 0
@@ -2565,19 +2700,14 @@ class Device:
                                 )
                         except Exception as command_error:
                             mkdir_error = command_error
-                        self._mutation_blocker = {
-                            "classification": (
-                                "shared-storage-bootstrap-verification-pending"
-                            ),
-                            "adbArgumentsSha256": _adb_arguments_sha256(
-                                ADB_SHARED_STORAGE_INITIALIZE_ARGUMENTS
-                            ),
-                            "evidenceFile": intent_path.name,
-                        }
                         outcome_status = (
                             "pass-exact-rc0-silent"
                             if mkdir_error is None
-                            else "fail-closed-no-retry"
+                            else (
+                                "fail-closed-no-retry"
+                                if mkdir_invocation_performed
+                                else "fail-closed-before-invocation"
+                            )
                         )
                         transport_failure = (
                             mkdir_error.receipt.get("failure", {})
@@ -2594,25 +2724,38 @@ class Device:
                             "intentSha256": intent_sha256,
                             "command": list(ADB_SHARED_STORAGE_INITIALIZE_ARGUMENTS),
                             "commandPolicy": "non-replayable",
-                            "attempts": 1,
+                            "attempts": initialization_mutations_issued,
                             "maximumAttempts": 1,
+                            "commandInvocationPerformed": mkdir_invocation_performed,
                             "returnCode": (
                                 mkdir_result.returncode
                                 if mkdir_result is not None
-                                else transport_failure.get("returnCode")
+                                else getattr(
+                                    mkdir_error,
+                                    "returncode",
+                                    transport_failure.get("returnCode"),
+                                )
                             ),
                             "stdout": (
                                 _bounded_adb_detail(mkdir_result.stdout)
                                 if mkdir_result is not None
                                 else _bounded_adb_detail(
-                                    transport_failure.get("stdout", "")
+                                    getattr(
+                                        mkdir_error,
+                                        "stdout",
+                                        transport_failure.get("stdout", ""),
+                                    )
                                 )
                             ),
                             "stderr": (
                                 _bounded_adb_detail(mkdir_result.stderr)
                                 if mkdir_result is not None
                                 else _bounded_adb_detail(
-                                    transport_failure.get("stderr", "")
+                                    getattr(
+                                        mkdir_error,
+                                        "stderr",
+                                        transport_failure.get("stderr", ""),
+                                    )
                                 )
                             ),
                             "failure": (
@@ -2646,22 +2789,32 @@ class Device:
                             terminal_failure = {
                                 "classification": (
                                     "shared-storage-bootstrap-mkdir-failed"
+                                    if mkdir_invocation_performed
+                                    else (
+                                        "shared-storage-bootstrap-deadline-lease-"
+                                        "missing-after-intent"
+                                    )
                                 ),
                                 "classificationAuthority": (
                                     "one-shot-non-replayable-device-call"
+                                    if mkdir_invocation_performed
+                                    else "dynamic-proof-lease-allocation"
                                 ),
                                 "retryableReadOnlyObservation": False,
                                 "type": type(mkdir_error).__name__,
                                 "message": str(mkdir_error),
                             }
-                            initialization["status"] = "mkdir-failed"
+                            initialization["status"] = (
+                                "mkdir-failed"
+                                if mkdir_invocation_performed
+                                else "mkdir-not-invoked"
+                            )
                             break
 
                         initialization["status"] = "mkdir-succeeded-awaiting-proof"
                         try:
-                            raw_timeout = _remaining_operation_timeout(
-                                deadline=operation_deadline,
-                                maximum=ADB_SHARED_STORAGE_STAT_ATTEMPT_MAX_SECONDS,
+                            raw_timeout = next_bootstrap_attempt_timeout(
+                                "initial-raw-download-observation"
                             )
                             read_only_commands_issued += 1
                             raw = self._invoke_once(
@@ -2776,6 +2929,22 @@ class Device:
                         "message": str(terminal_error),
                     }
                     break
+                if initialized_download is not None:
+                    if bootstrap_observation_delays_remaining <= 0:
+                        terminal_error = RuntimeError(
+                            "Shared-storage bootstrap exceeded its observation-delay authority"
+                        )
+                        terminal_failure = {
+                            "classification": (
+                                "shared-storage-bootstrap-delay-authority-exhausted"
+                            ),
+                            "classificationAuthority": (
+                                "exact-three-post-bootstrap-observation-delays"
+                            ),
+                            "retryableReadOnlyObservation": False,
+                        }
+                        break
+                    bootstrap_observation_delays_remaining -= 1
                 time.sleep(ADB_SHARED_STORAGE_OBSERVATION_DELAY_SECONDS)
 
         if terminal_failure is None:
