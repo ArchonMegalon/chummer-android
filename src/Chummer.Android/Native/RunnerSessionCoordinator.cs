@@ -2981,62 +2981,12 @@ public sealed class RunnerSessionCoordinator : IDisposable
         bool confirmDelete,
         long expectedRevision,
         CancellationToken cancellationToken = default)
-        => SaveApplicationConfirmationSettingsAsync(
-            confirmDelete,
-            _applicationSettings.ConfirmKarmaExpense,
-            expectedRevision,
-            cancellationToken);
-
-    public Task SaveApplicationConfirmationSettingsAsync(
-        bool confirmDelete,
-        bool confirmKarmaExpense,
-        long expectedRevision,
-        CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        _applicationSettings = _applicationSettingsPresenter.ApplySnapshot(
-            new ApplicationConfirmationSettingsMutation(
+        _applicationSettings = _applicationSettingsPresenter.Apply(
+            new ApplicationDeleteConfirmationMutation(
+                ApplicationSettingIdentity.ConfirmDelete,
                 confirmDelete,
-                confirmKarmaExpense,
-                expectedRevision));
-        _notice = "Application settings saved.";
-        NotifyChanged();
-        return Task.CompletedTask;
-    }
-
-    public Task SaveApplicationSettingsAsync(
-        bool confirmDelete,
-        bool confirmKarmaExpense,
-        bool customDateTimeFormats,
-        string customDateFormat,
-        string customTimeFormat,
-        bool datesIncludeTime,
-        bool hideMasterIndex,
-        bool hideCharacterRoster,
-        bool searchInCategoryOnly,
-        bool allowEasterEggs,
-        bool preferNightlyBuilds,
-        bool liveUpdateCleanCharacterFiles,
-        long expectedRevision,
-        CancellationToken cancellationToken = default)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        _applicationSettings = _applicationSettingsPresenter.ApplySettingsSnapshot(
-            new ApplicationSettingsSnapshotMutation(
-                confirmDelete,
-                confirmKarmaExpense,
-                new(ApplicationSettingIdentity.CustomDateTimeFormats, customDateTimeFormats),
-                new(ApplicationSettingIdentity.CustomDateFormat, customDateFormat),
-                new(ApplicationSettingIdentity.CustomTimeFormat, customTimeFormat),
-                new(ApplicationSettingIdentity.DatesIncludeTime, datesIncludeTime),
-                new(ApplicationSettingIdentity.HideMasterIndex, hideMasterIndex),
-                new(ApplicationSettingIdentity.HideCharacterRoster, hideCharacterRoster),
-                new(ApplicationSettingIdentity.SearchInCategoryOnly, searchInCategoryOnly),
-                new(ApplicationSettingIdentity.AllowEasterEggs, allowEasterEggs),
-                new(ApplicationSettingIdentity.PreferNightlyBuilds, preferNightlyBuilds),
-                new(
-                    ApplicationSettingIdentity.LiveUpdateCleanCharacterFiles,
-                    liveUpdateCleanCharacterFiles),
                 expectedRevision));
         _notice = "Application settings saved.";
         NotifyChanged();

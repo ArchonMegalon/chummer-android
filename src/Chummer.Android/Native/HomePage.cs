@@ -102,7 +102,7 @@ public class HomePage : NativePageBase, IPlayReviewSafeSurface
         _body.Add(quick);
 
         Button applicationSettings = NativeTheme.SecondaryButton(
-            PhoneStrings.Get("ApplicationSettings", "Application settings"));
+            PhoneStrings.Get("ApplicationSettings", "Settings"));
         applicationSettings.AutomationId = "home-application-settings";
         applicationSettings.Clicked += async (_, _) =>
             await Navigation.PushAsync(new ApplicationSettingsPage(Coordinator));

@@ -14,8 +14,8 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 478,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 536,
-      "missing": 929,
+      "implemented_pending_emulator": 525,
+      "missing": 940,
       "not_applicable_non_mutating": 478,
       "partial_create_only": 106,
       "partial_exact_saved_data": 180
@@ -147,7 +147,7 @@
       {
         "path": "src/Chummer.Android/Native/HomePage.cs",
         "exists": true,
-        "sha256": "4b3c8dec756071bccf5a9efaac99b9d2aa6d999dbbc96249d1fac01d4ac078c1"
+        "sha256": "b4e2b1d5dc18db34fd6e5b13115ccd6cd63e75dffbf86e5c509d82bca7569db3"
       },
       {
         "path": "src/Chummer.Android/MauiProgram.cs",
@@ -157,7 +157,7 @@
       {
         "path": "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
         "exists": true,
-        "sha256": "caf1d1b28c143aeb11196dc425e368ffecfbeb667ec30b37c84e667b6e4effde"
+        "sha256": "4708645c46b0d0a930d72a9cb88eb0e5f44a1e083e6b8b0415b078d667dd9165"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ApplicationDeleteConfirmationPresenter.cs",
@@ -647,7 +647,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "fa1e85502176215760492aec40a734456fe4af8e27a58d804d27761e4ab60872"
+        "sha256": "5677e3f7294b012f6b2866716fcee52a12a41486a7935265d982fac899961e9a"
       },
       {
         "path": "src/Chummer.Android/Native/RunnerSessionSr5CareerWizardPhoneAuthority.cs",
@@ -1007,7 +1007,7 @@
       {
         "path": "tests/test_chummer5_editability_inventory.py",
         "exists": true,
-        "sha256": "7fb47d65683bdb58acc843166b040e70eeabc458101954869946037678cbdbef"
+        "sha256": "4481aeb01cf77c09c4385b255846491426736791f9b01025edf9e069e3512ea4"
       },
       {
         "path": "tests/test_sr5_contextual_wizard_scope.py",
@@ -2995,7 +2995,7 @@
     },
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "955ca056a422bd2f99ebd8c8c530c09a641b714d4abf54ea833bdab886ceb5e1"
+      "sha256": "e4394d5002ca0e3964b99407317f6518bf6dc49f1bd630cb4de24aa12df0dd05"
     }
   },
   "coverageByFamily": {
@@ -3016,7 +3016,7 @@
     "application_settings": {
       "rowCount": 73,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 43,
+      "phoneMissingCount": 54,
       "tabletMissingCount": 56,
       "completionProvenCount": 17
     },
@@ -96731,21 +96731,14 @@
       "mutationFamily": "application_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
-        "route": "Home > Application settings > Navigation visibility > Hide the Master Index > Save",
-        "surface": "ApplicationSettingsPage",
-        "automationId": "settings-hide-master-index",
+        "status": "missing",
+        "route": null,
+        "surface": null,
+        "automationId": null,
         "sourceRefs": [
-          "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
-          "src/Chummer.Android/Native/HomePage.cs",
-          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
-          "src/Chummer.Android/MauiProgram.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/ApplicationDeleteConfirmationPresenter.cs",
-          "chummer-core-engine/Chummer.Contracts/Api/ApplicationDeleteConfirmationContracts.cs",
-          "chummer-core-engine/Chummer.Application/Tools/ApplicationDeleteConfirmationRules.cs",
-          "chummer-core-engine/Chummer.Infrastructure/Files/FileApplicationDeleteConfirmationStore.cs"
+          "src/Chummer.Android/Native/ApplicationSettingsPage.cs"
         ],
-        "coverageLimit": "Phone application settings only for chkHideMasterIndex and chkHideCharacterRoster, authenticated against exact canonical Chummer5 revision and source/load/save digests. No other Global Settings or character-data row is newly claimed. Tablet intentionally remains missing and the API 36 phone driver is present but not yet executed"
+        "coverageLimit": "Deliberately not exposed on Android phone. This desktop-global preference either targets desktop navigation, desktop file watching, desktop update channels, or behavior already owned by mandatory wizard review and Android device/Google Play settings. Existing stored legacy values remain readable and are not overwritten by the phone Settings page."
       },
       "tablet": {
         "status": "missing",
@@ -96753,12 +96746,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": "ApplicationDeleteConfirmationPresenter.ApplySettingsSnapshot(ApplicationSettingsSnapshotMutation)",
-      "persistenceAssertion": "the two typed legacy booleans default false, load and save independently under hidemasterindex and hidecharacterroster, have no dependency or validation beyond the Boolean domain, and share the page's single explicit Save, whole-page expected-revision CAS, durable atomic replacement, and primary/.bak recovery; Back performs no write and character XML remains byte-independent",
+      "presenterMutation": null,
+      "persistenceAssertion": null,
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_application_index_visibility_settings_e2e.py"
+          "status": "missing",
+          "ref": null
         },
         "tablet": {
           "status": "missing",
@@ -96798,21 +96791,14 @@
       "mutationFamily": "application_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
-        "route": "Home > Application settings > Navigation visibility > Hide the Character Roster > Save",
-        "surface": "ApplicationSettingsPage",
-        "automationId": "settings-hide-character-roster",
+        "status": "missing",
+        "route": null,
+        "surface": null,
+        "automationId": null,
         "sourceRefs": [
-          "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
-          "src/Chummer.Android/Native/HomePage.cs",
-          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
-          "src/Chummer.Android/MauiProgram.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/ApplicationDeleteConfirmationPresenter.cs",
-          "chummer-core-engine/Chummer.Contracts/Api/ApplicationDeleteConfirmationContracts.cs",
-          "chummer-core-engine/Chummer.Application/Tools/ApplicationDeleteConfirmationRules.cs",
-          "chummer-core-engine/Chummer.Infrastructure/Files/FileApplicationDeleteConfirmationStore.cs"
+          "src/Chummer.Android/Native/ApplicationSettingsPage.cs"
         ],
-        "coverageLimit": "Phone application settings only for chkHideMasterIndex and chkHideCharacterRoster, authenticated against exact canonical Chummer5 revision and source/load/save digests. No other Global Settings or character-data row is newly claimed. Tablet intentionally remains missing and the API 36 phone driver is present but not yet executed"
+        "coverageLimit": "Deliberately not exposed on Android phone. This desktop-global preference either targets desktop navigation, desktop file watching, desktop update channels, or behavior already owned by mandatory wizard review and Android device/Google Play settings. Existing stored legacy values remain readable and are not overwritten by the phone Settings page."
       },
       "tablet": {
         "status": "missing",
@@ -96820,12 +96806,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": "ApplicationDeleteConfirmationPresenter.ApplySettingsSnapshot(ApplicationSettingsSnapshotMutation)",
-      "persistenceAssertion": "the two typed legacy booleans default false, load and save independently under hidemasterindex and hidecharacterroster, have no dependency or validation beyond the Boolean domain, and share the page's single explicit Save, whole-page expected-revision CAS, durable atomic replacement, and primary/.bak recovery; Back performs no write and character XML remains byte-independent",
+      "presenterMutation": null,
+      "persistenceAssertion": null,
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_application_index_visibility_settings_e2e.py"
+          "status": "missing",
+          "ref": null
         },
         "tablet": {
           "status": "missing",
@@ -96865,21 +96851,14 @@
       "mutationFamily": "application_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
-        "route": "Home > Application settings > Date and time > time-format draft and preview > Save",
-        "surface": "ApplicationSettingsPage",
-        "automationId": "settings-time-format",
+        "status": "missing",
+        "route": null,
+        "surface": null,
+        "automationId": null,
         "sourceRefs": [
-          "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
-          "src/Chummer.Android/Native/HomePage.cs",
-          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
-          "src/Chummer.Android/MauiProgram.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/ApplicationDeleteConfirmationPresenter.cs",
-          "chummer-core-engine/Chummer.Contracts/Api/ApplicationDeleteConfirmationContracts.cs",
-          "chummer-core-engine/Chummer.Application/Tools/ApplicationDeleteConfirmationRules.cs",
-          "chummer-core-engine/Chummer.Infrastructure/Files/FileApplicationDeleteConfirmationStore.cs"
+          "src/Chummer.Android/Native/ApplicationSettingsPage.cs"
         ],
-        "coverageLimit": "Phone application settings only for chkCustomDateTimeFormats, txtDateFormat, txtTimeFormat, and chkDatesIncludeTime. No confirmation, cmdOK, other Global Settings, or character-data row is newly claimed. Tablet intentionally remains missing and the API 36 driver is present but not yet executed"
+        "coverageLimit": "Deliberately not exposed on Android phone. This desktop-global preference either targets desktop navigation, desktop file watching, desktop update channels, or behavior already owned by mandatory wizard review and Android device/Google Play settings. Existing stored legacy values remain readable and are not overwritten by the phone Settings page."
       },
       "tablet": {
         "status": "missing",
@@ -96887,12 +96866,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": "ApplicationDeleteConfirmationPresenter.ApplySettingsSnapshot(ApplicationSettingsSnapshotMutation)",
-      "persistenceAssertion": "the four typed legacy date/time setting values share the page's single explicit Save, whole-page expected-revision CAS, durable atomic replacement, and primary/.bak recovery; culture-default phase resets the disabled UI drafts but does not overwrite stored custom strings, custom phase preserves raw text and the legacy Error preview, datesincludetime is independent, Back performs no write, and character XML remains byte-independent",
+      "presenterMutation": null,
+      "persistenceAssertion": null,
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_application_date_time_settings_e2e.py"
+          "status": "missing",
+          "ref": null
         },
         "tablet": {
           "status": "missing",
@@ -96984,21 +96963,14 @@
       "mutationFamily": "application_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
-        "route": "Home > Application settings > Selection behavior > Search only in the current category > Save",
-        "surface": "ApplicationSettingsPage",
-        "automationId": "settings-search-in-category-only",
+        "status": "missing",
+        "route": null,
+        "surface": null,
+        "automationId": null,
         "sourceRefs": [
-          "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
-          "src/Chummer.Android/Native/HomePage.cs",
-          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
-          "src/Chummer.Android/MauiProgram.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/ApplicationDeleteConfirmationPresenter.cs",
-          "chummer-core-engine/Chummer.Contracts/Api/ApplicationDeleteConfirmationContracts.cs",
-          "chummer-core-engine/Chummer.Application/Tools/ApplicationDeleteConfirmationRules.cs",
-          "chummer-core-engine/Chummer.Infrastructure/Files/FileApplicationDeleteConfirmationStore.cs"
+          "src/Chummer.Android/Native/ApplicationSettingsPage.cs"
         ],
-        "coverageLimit": "Phone application settings only for chkSearchInCategoryOnly and chkAllowEasterEggs, authenticated against exact canonical Chummer5 revision and source/load/dirty/save digests. No other Global Settings or character-data row is newly claimed. Tablet intentionally remains missing and the API 36 phone driver is present but not yet executed"
+        "coverageLimit": "Deliberately not exposed on Android phone. This desktop-global preference either targets desktop navigation, desktop file watching, desktop update channels, or behavior already owned by mandatory wizard review and Android device/Google Play settings. Existing stored legacy values remain readable and are not overwritten by the phone Settings page."
       },
       "tablet": {
         "status": "missing",
@@ -97006,12 +96978,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": "ApplicationDeleteConfirmationPresenter.ApplySettingsSnapshot(ApplicationSettingsSnapshotMutation)",
-      "persistenceAssertion": "the two typed legacy booleans default true/false, load and save independently under searchincategoryonly and alloweastereggs, and share the page's single explicit Save, whole-page expected-revision CAS, durable atomic replacement, and primary/.bak recovery; their only legacy UI dependency is OptionsChanged marking the dialog draft dirty, Boolean values need no further validation, Back performs no write, and character XML remains byte-independent",
+      "presenterMutation": null,
+      "persistenceAssertion": null,
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_application_selection_behavior_settings_e2e.py"
+          "status": "missing",
+          "ref": null
         },
         "tablet": {
           "status": "missing",
@@ -97051,21 +97023,14 @@
       "mutationFamily": "application_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
-        "route": "Home > Application settings > Selection behavior > Allow Easter Eggs > Save",
-        "surface": "ApplicationSettingsPage",
-        "automationId": "settings-allow-easter-eggs",
+        "status": "missing",
+        "route": null,
+        "surface": null,
+        "automationId": null,
         "sourceRefs": [
-          "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
-          "src/Chummer.Android/Native/HomePage.cs",
-          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
-          "src/Chummer.Android/MauiProgram.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/ApplicationDeleteConfirmationPresenter.cs",
-          "chummer-core-engine/Chummer.Contracts/Api/ApplicationDeleteConfirmationContracts.cs",
-          "chummer-core-engine/Chummer.Application/Tools/ApplicationDeleteConfirmationRules.cs",
-          "chummer-core-engine/Chummer.Infrastructure/Files/FileApplicationDeleteConfirmationStore.cs"
+          "src/Chummer.Android/Native/ApplicationSettingsPage.cs"
         ],
-        "coverageLimit": "Phone application settings only for chkSearchInCategoryOnly and chkAllowEasterEggs, authenticated against exact canonical Chummer5 revision and source/load/dirty/save digests. No other Global Settings or character-data row is newly claimed. Tablet intentionally remains missing and the API 36 phone driver is present but not yet executed"
+        "coverageLimit": "Deliberately not exposed on Android phone. This desktop-global preference either targets desktop navigation, desktop file watching, desktop update channels, or behavior already owned by mandatory wizard review and Android device/Google Play settings. Existing stored legacy values remain readable and are not overwritten by the phone Settings page."
       },
       "tablet": {
         "status": "missing",
@@ -97073,12 +97038,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": "ApplicationDeleteConfirmationPresenter.ApplySettingsSnapshot(ApplicationSettingsSnapshotMutation)",
-      "persistenceAssertion": "the two typed legacy booleans default true/false, load and save independently under searchincategoryonly and alloweastereggs, and share the page's single explicit Save, whole-page expected-revision CAS, durable atomic replacement, and primary/.bak recovery; their only legacy UI dependency is OptionsChanged marking the dialog draft dirty, Boolean values need no further validation, Back performs no write, and character XML remains byte-independent",
+      "presenterMutation": null,
+      "persistenceAssertion": null,
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_application_selection_behavior_settings_e2e.py"
+          "status": "missing",
+          "ref": null
         },
         "tablet": {
           "status": "missing",
@@ -97232,21 +97197,14 @@
       "mutationFamily": "application_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
-        "route": "Home > Application settings > Updates > Prefer Nightly builds when updating > Save",
-        "surface": "ApplicationSettingsPage",
-        "automationId": "settings-prefer-nightly-builds",
+        "status": "missing",
+        "route": null,
+        "surface": null,
+        "automationId": null,
         "sourceRefs": [
-          "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
-          "src/Chummer.Android/Native/HomePage.cs",
-          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
-          "src/Chummer.Android/MauiProgram.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/ApplicationDeleteConfirmationPresenter.cs",
-          "chummer-core-engine/Chummer.Contracts/Api/ApplicationDeleteConfirmationContracts.cs",
-          "chummer-core-engine/Chummer.Application/Tools/ApplicationDeleteConfirmationRules.cs",
-          "chummer-core-engine/Chummer.Infrastructure/Files/FileApplicationDeleteConfirmationStore.cs"
+          "src/Chummer.Android/Native/ApplicationSettingsPage.cs"
         ],
-        "coverageLimit": "Phone application settings only for chkPreferNightlyBuilds and chkLiveUpdateCleanCharacterFiles, authenticated against exact canonical Chummer5 revision and source/load/dirty/save/order digests. No other Global Settings or character-data row is newly claimed. Tablet intentionally remains missing and the API 36 phone driver is present but not yet executed"
+        "coverageLimit": "Deliberately not exposed on Android phone. This desktop-global preference either targets desktop navigation, desktop file watching, desktop update channels, or behavior already owned by mandatory wizard review and Android device/Google Play settings. Existing stored legacy values remain readable and are not overwritten by the phone Settings page."
       },
       "tablet": {
         "status": "missing",
@@ -97254,12 +97212,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": "ApplicationDeleteConfirmationPresenter.ApplySettingsSnapshot(ApplicationSettingsSnapshotMutation)",
-      "persistenceAssertion": "the two typed legacy update booleans load and save independently under prefernightlybuilds and liveupdatecleancharacterfiles; Prefer Nightly defaults to running Assembly Version.Build != 0, while live clean-file updates default false. Their only UI dependency is OptionsChanged marking the draft dirty, Boolean values need no extra validation, and both share the page's single explicit Save, whole-page expected-revision CAS, durable atomic replacement, and primary/.bak recovery; Back performs no write and character XML remains byte-independent",
+      "presenterMutation": null,
+      "persistenceAssertion": null,
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_application_update_settings_e2e.py"
+          "status": "missing",
+          "ref": null
         },
         "tablet": {
           "status": "missing",
@@ -97299,21 +97257,14 @@
       "mutationFamily": "application_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
-        "route": "Home > Application settings > Updates > Reload unchanged open character files > Save",
-        "surface": "ApplicationSettingsPage",
-        "automationId": "settings-live-update-clean-character-files",
+        "status": "missing",
+        "route": null,
+        "surface": null,
+        "automationId": null,
         "sourceRefs": [
-          "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
-          "src/Chummer.Android/Native/HomePage.cs",
-          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
-          "src/Chummer.Android/MauiProgram.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/ApplicationDeleteConfirmationPresenter.cs",
-          "chummer-core-engine/Chummer.Contracts/Api/ApplicationDeleteConfirmationContracts.cs",
-          "chummer-core-engine/Chummer.Application/Tools/ApplicationDeleteConfirmationRules.cs",
-          "chummer-core-engine/Chummer.Infrastructure/Files/FileApplicationDeleteConfirmationStore.cs"
+          "src/Chummer.Android/Native/ApplicationSettingsPage.cs"
         ],
-        "coverageLimit": "Phone application settings only for chkPreferNightlyBuilds and chkLiveUpdateCleanCharacterFiles, authenticated against exact canonical Chummer5 revision and source/load/dirty/save/order digests. No other Global Settings or character-data row is newly claimed. Tablet intentionally remains missing and the API 36 phone driver is present but not yet executed"
+        "coverageLimit": "Deliberately not exposed on Android phone. This desktop-global preference either targets desktop navigation, desktop file watching, desktop update channels, or behavior already owned by mandatory wizard review and Android device/Google Play settings. Existing stored legacy values remain readable and are not overwritten by the phone Settings page."
       },
       "tablet": {
         "status": "missing",
@@ -97321,12 +97272,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": "ApplicationDeleteConfirmationPresenter.ApplySettingsSnapshot(ApplicationSettingsSnapshotMutation)",
-      "persistenceAssertion": "the two typed legacy update booleans load and save independently under prefernightlybuilds and liveupdatecleancharacterfiles; Prefer Nightly defaults to running Assembly Version.Build != 0, while live clean-file updates default false. Their only UI dependency is OptionsChanged marking the draft dirty, Boolean values need no extra validation, and both share the page's single explicit Save, whole-page expected-revision CAS, durable atomic replacement, and primary/.bak recovery; Back performs no write and character XML remains byte-independent",
+      "presenterMutation": null,
+      "persistenceAssertion": null,
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_application_update_settings_e2e.py"
+          "status": "missing",
+          "ref": null
         },
         "tablet": {
           "status": "missing",
@@ -97366,21 +97317,14 @@
       "mutationFamily": "application_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
-        "route": "Home > Application settings > Date and time > dates-include-time toggle > Save",
-        "surface": "ApplicationSettingsPage",
-        "automationId": "settings-dates-include-time",
+        "status": "missing",
+        "route": null,
+        "surface": null,
+        "automationId": null,
         "sourceRefs": [
-          "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
-          "src/Chummer.Android/Native/HomePage.cs",
-          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
-          "src/Chummer.Android/MauiProgram.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/ApplicationDeleteConfirmationPresenter.cs",
-          "chummer-core-engine/Chummer.Contracts/Api/ApplicationDeleteConfirmationContracts.cs",
-          "chummer-core-engine/Chummer.Application/Tools/ApplicationDeleteConfirmationRules.cs",
-          "chummer-core-engine/Chummer.Infrastructure/Files/FileApplicationDeleteConfirmationStore.cs"
+          "src/Chummer.Android/Native/ApplicationSettingsPage.cs"
         ],
-        "coverageLimit": "Phone application settings only for chkCustomDateTimeFormats, txtDateFormat, txtTimeFormat, and chkDatesIncludeTime. No confirmation, cmdOK, other Global Settings, or character-data row is newly claimed. Tablet intentionally remains missing and the API 36 driver is present but not yet executed"
+        "coverageLimit": "Deliberately not exposed on Android phone. This desktop-global preference either targets desktop navigation, desktop file watching, desktop update channels, or behavior already owned by mandatory wizard review and Android device/Google Play settings. Existing stored legacy values remain readable and are not overwritten by the phone Settings page."
       },
       "tablet": {
         "status": "missing",
@@ -97388,12 +97332,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": "ApplicationDeleteConfirmationPresenter.ApplySettingsSnapshot(ApplicationSettingsSnapshotMutation)",
-      "persistenceAssertion": "the four typed legacy date/time setting values share the page's single explicit Save, whole-page expected-revision CAS, durable atomic replacement, and primary/.bak recovery; culture-default phase resets the disabled UI drafts but does not overwrite stored custom strings, custom phase preserves raw text and the legacy Error preview, datesincludetime is independent, Back performs no write, and character XML remains byte-independent",
+      "presenterMutation": null,
+      "persistenceAssertion": null,
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_application_date_time_settings_e2e.py"
+          "status": "missing",
+          "ref": null
         },
         "tablet": {
           "status": "missing",
@@ -98117,21 +98061,14 @@
       "mutationFamily": "application_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
-        "route": "Home > Application settings > Date and time > custom-format phase > Save",
-        "surface": "ApplicationSettingsPage",
-        "automationId": "settings-custom-date-time-formats",
+        "status": "missing",
+        "route": null,
+        "surface": null,
+        "automationId": null,
         "sourceRefs": [
-          "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
-          "src/Chummer.Android/Native/HomePage.cs",
-          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
-          "src/Chummer.Android/MauiProgram.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/ApplicationDeleteConfirmationPresenter.cs",
-          "chummer-core-engine/Chummer.Contracts/Api/ApplicationDeleteConfirmationContracts.cs",
-          "chummer-core-engine/Chummer.Application/Tools/ApplicationDeleteConfirmationRules.cs",
-          "chummer-core-engine/Chummer.Infrastructure/Files/FileApplicationDeleteConfirmationStore.cs"
+          "src/Chummer.Android/Native/ApplicationSettingsPage.cs"
         ],
-        "coverageLimit": "Phone application settings only for chkCustomDateTimeFormats, txtDateFormat, txtTimeFormat, and chkDatesIncludeTime. No confirmation, cmdOK, other Global Settings, or character-data row is newly claimed. Tablet intentionally remains missing and the API 36 driver is present but not yet executed"
+        "coverageLimit": "Deliberately not exposed on Android phone. This desktop-global preference either targets desktop navigation, desktop file watching, desktop update channels, or behavior already owned by mandatory wizard review and Android device/Google Play settings. Existing stored legacy values remain readable and are not overwritten by the phone Settings page."
       },
       "tablet": {
         "status": "missing",
@@ -98139,12 +98076,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": "ApplicationDeleteConfirmationPresenter.ApplySettingsSnapshot(ApplicationSettingsSnapshotMutation)",
-      "persistenceAssertion": "the four typed legacy date/time setting values share the page's single explicit Save, whole-page expected-revision CAS, durable atomic replacement, and primary/.bak recovery; culture-default phase resets the disabled UI drafts but does not overwrite stored custom strings, custom phase preserves raw text and the legacy Error preview, datesincludetime is independent, Back performs no write, and character XML remains byte-independent",
+      "presenterMutation": null,
+      "persistenceAssertion": null,
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_application_date_time_settings_e2e.py"
+          "status": "missing",
+          "ref": null
         },
         "tablet": {
           "status": "missing",
@@ -98184,21 +98121,14 @@
       "mutationFamily": "application_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
-        "route": "Home > Application settings > Karma expense confirmation > Save",
-        "surface": "ApplicationSettingsPage",
-        "automationId": "settings-confirm-karma-expense",
+        "status": "missing",
+        "route": null,
+        "surface": null,
+        "automationId": null,
         "sourceRefs": [
-          "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
-          "src/Chummer.Android/Native/HomePage.cs",
-          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
-          "src/Chummer.Android/MauiProgram.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/ApplicationDeleteConfirmationPresenter.cs",
-          "chummer-core-engine/Chummer.Contracts/Api/ApplicationDeleteConfirmationContracts.cs",
-          "chummer-core-engine/Chummer.Application/Tools/ApplicationDeleteConfirmationRules.cs",
-          "chummer-core-engine/Chummer.Infrastructure/Files/FileApplicationDeleteConfirmationStore.cs"
+          "src/Chummer.Android/Native/ApplicationSettingsPage.cs"
         ],
-        "coverageLimit": "Phone application setting confirmkarmaexpense only. The already-covered shared Save is reused and no cmdOK or unrelated Global Settings row is newly claimed. Tablet intentionally remains missing and the API 36 driver is present but not yet executed"
+        "coverageLimit": "Deliberately not exposed on Android phone. This desktop-global preference either targets desktop navigation, desktop file watching, desktop update channels, or behavior already owned by mandatory wizard review and Android device/Google Play settings. Existing stored legacy values remain readable and are not overwritten by the phone Settings page."
       },
       "tablet": {
         "status": "missing",
@@ -98206,12 +98136,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": "ApplicationDeleteConfirmationPresenter.ApplySnapshot(ApplicationConfirmationSettingsMutation)",
-      "persistenceAssertion": "the confirmdelete and confirmkarmaexpense drafts are committed together once by explicit Save with whole-snapshot expected-revision CAS, atomic replacement, backward-compatible missing-field default true, process-restart readback, and newest-valid primary/.bak recovery; Back performs no write and character XML remains byte-independent",
+      "presenterMutation": null,
+      "persistenceAssertion": null,
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_application_confirm_karma_expense_e2e.py"
+          "status": "missing",
+          "ref": null
         },
         "tablet": {
           "status": "missing",
@@ -98712,21 +98642,14 @@
       "mutationFamily": "application_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
-        "route": "Home > Application settings > Date and time > date-format draft and preview > Save",
-        "surface": "ApplicationSettingsPage",
-        "automationId": "settings-date-format",
+        "status": "missing",
+        "route": null,
+        "surface": null,
+        "automationId": null,
         "sourceRefs": [
-          "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
-          "src/Chummer.Android/Native/HomePage.cs",
-          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
-          "src/Chummer.Android/MauiProgram.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/ApplicationDeleteConfirmationPresenter.cs",
-          "chummer-core-engine/Chummer.Contracts/Api/ApplicationDeleteConfirmationContracts.cs",
-          "chummer-core-engine/Chummer.Application/Tools/ApplicationDeleteConfirmationRules.cs",
-          "chummer-core-engine/Chummer.Infrastructure/Files/FileApplicationDeleteConfirmationStore.cs"
+          "src/Chummer.Android/Native/ApplicationSettingsPage.cs"
         ],
-        "coverageLimit": "Phone application settings only for chkCustomDateTimeFormats, txtDateFormat, txtTimeFormat, and chkDatesIncludeTime. No confirmation, cmdOK, other Global Settings, or character-data row is newly claimed. Tablet intentionally remains missing and the API 36 driver is present but not yet executed"
+        "coverageLimit": "Deliberately not exposed on Android phone. This desktop-global preference either targets desktop navigation, desktop file watching, desktop update channels, or behavior already owned by mandatory wizard review and Android device/Google Play settings. Existing stored legacy values remain readable and are not overwritten by the phone Settings page."
       },
       "tablet": {
         "status": "missing",
@@ -98734,12 +98657,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": "ApplicationDeleteConfirmationPresenter.ApplySettingsSnapshot(ApplicationSettingsSnapshotMutation)",
-      "persistenceAssertion": "the four typed legacy date/time setting values share the page's single explicit Save, whole-page expected-revision CAS, durable atomic replacement, and primary/.bak recovery; culture-default phase resets the disabled UI drafts but does not overwrite stored custom strings, custom phase preserves raw text and the legacy Error preview, datesincludetime is independent, Back performs no write, and character XML remains byte-independent",
+      "presenterMutation": null,
+      "persistenceAssertion": null,
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_application_date_time_settings_e2e.py"
+          "status": "missing",
+          "ref": null
         },
         "tablet": {
           "status": "missing",

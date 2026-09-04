@@ -15,7 +15,17 @@
   <data name="HomeContinue" xml:space="preserve"><value>Continuar creando</value></data>
   <data name="OpenFile" xml:space="preserve"><value>Abrir archivo</value></data>
   <data name="NewRunner" xml:space="preserve"><value>Nuevo runner</value></data>
-  <data name="ApplicationSettings" xml:space="preserve"><value>Ajustes de la aplicación</value></data>
+  <data name="ApplicationSettings" xml:space="preserve"><value>Ajustes</value></data>
+  <data name="SettingsPhone" xml:space="preserve"><value>Teléfono Android</value></data>
+  <data name="SettingsPhoneOnlyDetail" xml:space="preserve"><value>Aquí solo aparecen las opciones que realmente cambian el comportamiento de Chummer en este teléfono.</value></data>
+  <data name="SettingsSafety" xml:space="preserve"><value>Seguridad</value></data>
+  <data name="SettingsConfirmDelete" xml:space="preserve"><value>Preguntar antes de eliminar elementos</value></data>
+  <data name="SettingsConfirmDeleteDetail" xml:space="preserve"><value>Se muestra antes de eliminar un elemento de forma definitiva. Los pasos de revisión de los asistentes siempre permanecen activos.</value></data>
+  <data name="SettingsLanguageRegion" xml:space="preserve"><value>Idioma y región</value></data>
+  <data name="SettingsLanguageDeviceManaged" xml:space="preserve"><value>Chummer usa el idioma y los formatos regionales de fecha y hora del teléfono.</value></data>
+  <data name="SettingsSupportedLanguages" xml:space="preserve"><value>Idiomas disponibles: Deutsch, English, Español</value></data>
+  <data name="SettingsGooglePlay" xml:space="preserve"><value>Google Play</value></data>
+  <data name="SettingsUpdatesPlayManaged" xml:space="preserve"><value>Google Play gestiona las actualizaciones y el acceso a las versiones preliminares, no Chummer.</value></data>
   <data name="RosterMetadata" xml:space="preserve"><value>Metadatos de la lista</value></data>
   <data name="OpenNow" xml:space="preserve"><value>Abiertos ahora</value></data>
   <data name="RunnerFallback" xml:space="preserve"><value>Runner</value></data>
