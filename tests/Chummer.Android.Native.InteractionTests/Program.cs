@@ -27,6 +27,7 @@ internal static class Program
             (nameof(BuildPageProjectsExactlyOneLifecycleRouteAsync), BuildPageProjectsExactlyOneLifecycleRouteAsync),
             (nameof(CreationIdentityGapFailsClosedAsync), CreationIdentityGapFailsClosedAsync),
             (nameof(DurableSaveNoticeFailsClosedAcrossStateChangesAsync), DurableSaveNoticeFailsClosedAcrossStateChangesAsync),
+            (nameof(CoordinatorRefreshBurstsRenderOnlyLatestStateAsync), CoordinatorRefreshBurstsRenderOnlyLatestStateAsync),
             (nameof(ExactWorkspaceAuthoritySnapshotRejectsEveryHostileBindingAsync), ExactWorkspaceAuthoritySnapshotRejectsEveryHostileBindingAsync),
 #if DEBUG
             (nameof(HomeAppearanceAuthorityRefreshFailsClosedForEveryHostileBindingAsync), HomeAppearanceAuthorityRefreshFailsClosedForEveryHostileBindingAsync),
@@ -65,6 +66,38 @@ internal static class Program
         }
 
         Console.WriteLine($"Native dialog interaction tests passed: {tests.Length}");
+    }
+
+    private static Task CoordinatorRefreshBurstsRenderOnlyLatestStateAsync()
+    {
+        var coalescer = new NativeRefreshCoalescer();
+        Require(coalescer.Request(), "The first refresh request did not acquire dispatcher ownership.");
+        for (int index = 0; index < 128; index++)
+        {
+            Require(!coalescer.Request(), "A refresh burst scheduled more than one dispatcher owner.");
+        }
+        Require(coalescer.TryTakePending(), "The refresh burst did not retain its latest state.");
+        Require(!coalescer.TryTakePending(), "One refresh burst was consumed more than once.");
+
+        for (int index = 0; index < 128; index++)
+        {
+            Require(!coalescer.Request(), "A request during rendering bypassed the active owner.");
+        }
+        Require(
+            coalescer.Complete(allowReschedule: true),
+            "A state change during rendering did not reserve exactly one follow-up pass.");
+        Require(coalescer.TryTakePending(), "The follow-up pass lost the newest state.");
+        coalescer.DiscardPending();
+        Require(
+            !coalescer.Complete(allowReschedule: true),
+            "A completed refresh with no pending state scheduled an empty pass.");
+
+        Require(coalescer.Request(), "The coalescer did not accept a later independent burst.");
+        coalescer.DiscardPending();
+        Require(
+            !coalescer.Complete(allowReschedule: false),
+            "A disappearing page retained dispatcher ownership.");
+        return Task.CompletedTask;
     }
 
     private static Task BuildPageProjectsExactlyOneLifecycleRouteAsync()
