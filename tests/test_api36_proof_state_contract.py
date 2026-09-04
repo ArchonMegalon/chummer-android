@@ -1038,6 +1038,20 @@ class Api36ProofStateContractTests(unittest.TestCase):
             gate["excludedFromGate"],
         )
 
+    def test_table_proof_rejects_hidden_or_disappearing_page_writers(self) -> None:
+        publisher = (
+            ROOT / "src/Chummer.Android/Proof/Api36ProofStatePublisher.cs"
+        ).read_text(encoding="utf-8")
+        entry = publisher[
+            publisher.index("public static void TryPublishTableWizard(") :
+            publisher.index("public void PublishTableWizard(")
+        ]
+
+        visibility_guard = "!ReferenceEquals(Shell.Current?.CurrentPage, page)"
+        service_lookup = "IPlatformApplication.Current?.Services"
+        self.assertEqual(1, entry.count(visibility_guard))
+        self.assertLess(entry.index(visibility_guard), entry.index(service_lookup))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -217,6 +217,14 @@ public sealed class Api36ProofStatePublisher
         string? statusCode)
     {
         ArgumentNullException.ThrowIfNull(page);
+        // A cached or disappearing page may finish a read-only load after Shell has already
+        // presented another destination. Its visual tree is no longer authoritative and must
+        // never overwrite the proof state emitted by the actually visible page.
+        if (!ReferenceEquals(Shell.Current?.CurrentPage, page))
+        {
+            return;
+        }
+
         Api36ProofStatePublisher? publisher = IPlatformApplication.Current?.Services
             .GetService(typeof(Api36ProofStatePublisher)) as Api36ProofStatePublisher;
         publisher?.PublishTableWizard(
