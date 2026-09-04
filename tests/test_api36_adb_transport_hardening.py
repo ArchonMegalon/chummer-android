@@ -107,6 +107,217 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
                 issued,
             )
 
+    def test_shared_storage_preflight_waits_for_three_stable_read_only_identities(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            evidence = Path(temporary)
+            device = self.make_device(evidence)
+            unavailable = subprocess.CalledProcessError(
+                1,
+                ("shell", "stat"),
+                output="",
+                stderr="stat: /sdcard: Transport endpoint is not connected",
+            )
+            root = "42:100:41ed\n"
+            downloads = "42:101:41ed\n"
+            responses = [
+                unavailable,
+                completed(("shell", "stat"), root),
+                completed(("shell", "stat"), downloads),
+                completed(("shell", "stat"), root),
+                completed(("shell", "stat"), downloads),
+                completed(("shell", "stat"), root),
+                completed(("shell", "stat"), downloads),
+            ]
+            with (
+                mock.patch.object(driver.subprocess, "run", side_effect=responses) as run,
+                mock.patch.object(driver.time, "sleep") as sleep,
+            ):
+                receipt = device.require_shared_storage_readiness()
+
+            self.assertEqual(7, run.call_count)
+            self.assertEqual(3, sleep.call_count)
+            self.assertEqual("pass", receipt["status"])
+            self.assertEqual(4, receipt["observationsPerformed"])
+            self.assertEqual(3, receipt["consecutiveStableObservations"])
+            self.assertEqual(7, receipt["readOnlyCommandsIssued"])
+            self.assertEqual(0, receipt["mutationCommandsIssued"])
+            self.assertTrue(receipt["observationRetryOnly"])
+            self.assertFalse(receipt["adbReconnectAttempted"])
+            self.assertFalse(receipt["applicationRelaunchAttempted"])
+            self.assertEqual(
+                "shared-storage-unavailable",
+                receipt["observations"][0]["classification"],
+            )
+            self.assertEqual(
+                ["storage-unavailable", "stable", "stable", "stable"],
+                [entry["status"] for entry in receipt["observations"]],
+            )
+            issued = [tuple(call.args[0][3:]) for call in run.call_args_list]
+            self.assertTrue(
+                all(arguments[:3] == ("shell", "stat", "-c") for arguments in issued)
+            )
+            self.assertFalse(any("reconnect" in arguments for arguments in issued))
+            stored = json.loads(
+                (evidence / "adb-shared-storage-readiness.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            self.assertEqual(receipt, stored)
+            self.assertEqual(
+                0o600,
+                (evidence / "adb-shared-storage-readiness.json").stat().st_mode
+                & 0o777,
+            )
+            self.assertEqual(receipt, device.require_shared_storage_readiness())
+            self.assertEqual(7, run.call_count)
+
+    def test_shared_storage_preflight_persistent_failure_blocks_without_mutation(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            evidence = Path(temporary)
+            device = self.make_device(evidence)
+            unavailable = subprocess.CalledProcessError(
+                1,
+                ("shell", "stat"),
+                output="",
+                stderr="Transport endpoint is not connected",
+            )
+            with (
+                mock.patch.object(
+                    driver.subprocess,
+                    "run",
+                    side_effect=[unavailable, unavailable, unavailable],
+                ) as run,
+                mock.patch.object(driver.time, "sleep") as sleep,
+            ):
+                with self.assertRaises(driver.AdbSharedStoragePreflightError) as raised:
+                    device.require_shared_storage_readiness(
+                        required_consecutive=2,
+                        max_observations=3,
+                    )
+                with self.assertRaises(driver.AdbSharedStoragePreflightError):
+                    device.require_shared_storage_readiness()
+
+            self.assertEqual(3, run.call_count)
+            self.assertEqual(2, sleep.call_count)
+            receipt = raised.exception.receipt
+            self.assertEqual("fail", receipt["status"])
+            self.assertEqual(0, receipt["mutationCommandsIssued"])
+            self.assertEqual(3, receipt["observationsPerformed"])
+            self.assertTrue(
+                all(
+                    entry["classification"] == "shared-storage-unavailable"
+                    for entry in receipt["observations"]
+                )
+            )
+            summary = device.transport_summary()
+            self.assertEqual("fail", summary["status"])
+            self.assertEqual(receipt, summary["sharedStorageReadiness"])
+
+    def test_shared_storage_preflight_rejects_non_directory_without_retry(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            device = self.make_device(Path(temporary))
+            with (
+                mock.patch.object(
+                    driver.subprocess,
+                    "run",
+                    return_value=completed(("shell", "stat"), "42:100:81a4\n"),
+                ) as run,
+                mock.patch.object(driver.time, "sleep") as sleep,
+            ):
+                with self.assertRaises(driver.AdbSharedStoragePreflightError) as raised:
+                    device.require_shared_storage_readiness()
+
+            self.assertEqual(1, run.call_count)
+            sleep.assert_not_called()
+            receipt = raised.exception.receipt
+            self.assertEqual("fail", receipt["status"])
+            self.assertEqual("invalid-observation", receipt["observations"][0]["status"])
+            self.assertEqual(0, receipt["mutationCommandsIssued"])
+
+    def test_stale_shared_storage_receipt_is_rejected_before_any_adb_command(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            evidence = Path(temporary)
+            stale = evidence / "adb-shared-storage-readiness.json"
+            stale.write_text('{"status":"pass"}\n', encoding="utf-8")
+            with mock.patch.object(driver.subprocess, "run") as run:
+                with self.assertRaisesRegex(RuntimeError, "contains stale receipts"):
+                    self.make_device(evidence)
+            run.assert_not_called()
+
+    def test_shared_storage_stat_policy_is_exact_and_read_only(self) -> None:
+        for root in driver.ADB_SHARED_STORAGE_ROOTS:
+            self.assertEqual(
+                (
+                    "read-only-retryable",
+                    "exact shared-storage directory identity observation",
+                ),
+                driver.adb_command_retry_policy(
+                    (
+                        "shell",
+                        "stat",
+                        "-c",
+                        driver.ADB_SHARED_STORAGE_STAT_FORMAT,
+                        root,
+                    )
+                ),
+            )
+        self.assertEqual(
+            "non-replayable",
+            driver.adb_command_retry_policy(
+                ("shell", "stat", "-c", "%d:%i:%f", "/sdcard/Other")
+            )[0],
+        )
+
+    def test_all_seven_wizard_drivers_preflight_storage_before_mutation(self) -> None:
+        first_mutation_markers = {
+            "run_api36_creation_prerequisite_e2e.py": "subprocess.run(",
+            "run_api36_career_active_skill_advance_e2e.py": "subprocess.run(",
+            "run_api36_career_weapon_fire_e2e.py": "subprocess.run(",
+            "run_api36_sr5_before_run_edge_e2e.py": "device.install_verified(",
+            "run_api36_sr5_playtime_short_burst_e2e.py": "device.install_verified(",
+            "run_api36_sr5_downtime_calendar_hosted_e2e.py": "device.install_verified(",
+            "run_api36_sr5_after_run_settlement_hosted_e2e.py": (
+                "for remote in remote_temporary_files:"
+            ),
+        }
+        for filename, mutation_marker in first_mutation_markers.items():
+            with self.subTest(filename=filename):
+                source = (ROOT / "tests" / filename).read_text(encoding="utf-8")
+                readiness_index = source.index("device.require_shared_storage_readiness()")
+                mutation_index = source.index(mutation_marker, readiness_index)
+                self.assertLess(readiness_index, mutation_index)
+
+    def test_shared_storage_marker_never_authorizes_mutation_replay(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            device = self.make_device(Path(temporary))
+            unavailable = subprocess.CalledProcessError(
+                1,
+                ("shell", "rm"),
+                output="",
+                stderr="Transport endpoint is not connected",
+            )
+            with mock.patch.object(
+                driver.subprocess,
+                "run",
+                side_effect=unavailable,
+            ) as run:
+                with self.assertRaises(driver.AdbTransportError) as raised:
+                    device.shell(
+                        "rm",
+                        "-f",
+                        "/sdcard/Download/runner.chum5",
+                    )
+
+            self.assertEqual(1, run.call_count)
+            receipt = raised.exception.receipt
+            self.assertEqual("shared-storage-unavailable", receipt["classification"])
+            self.assertTrue(receipt["retryableTransportClassification"])
+            self.assertEqual("non-replayable", receipt["commandPolicy"])
+            self.assertFalse(receipt["replay"]["eligible"])
+            self.assertFalse(receipt["replay"]["performed"])
+            self.assertFalse(receipt["replay"]["scheduled"])
+            self.assertTrue(receipt["replay"]["suppressed"])
+
     def test_stale_transport_receipt_is_rejected_before_any_adb_command(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             evidence = Path(temporary)

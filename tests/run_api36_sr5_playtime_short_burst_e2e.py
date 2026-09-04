@@ -128,6 +128,7 @@ def execute(args: argparse.Namespace) -> dict[str, object]:
             f"got {abi!r}"
         )
 
+    device.require_shared_storage_readiness()
     device.install_verified(apk, apk_sha256, "--no-streaming", "-r")
     provider_registration = device.publish_document_for_documents_ui(
         fixture,

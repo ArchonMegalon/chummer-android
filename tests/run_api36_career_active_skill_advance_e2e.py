@@ -469,6 +469,7 @@ def main() -> int:
         raise RuntimeError(
             f"Career Active-Skill E2E requires the hosted x86_64 phone lane, got {abi!r}"
         )
+    device.require_shared_storage_readiness()
     subprocess.run(
         [
             str(args.adb),

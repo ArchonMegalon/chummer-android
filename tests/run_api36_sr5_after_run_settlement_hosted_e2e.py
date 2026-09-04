@@ -132,6 +132,7 @@ def execute(args: argparse.Namespace) -> dict[str, object]:
         raise RuntimeError(
             f"After Run hosted E2E requires the x86_64 phone lane, got {abi!r}"
         )
+    device.require_shared_storage_readiness()
 
     remote_runner = f"/sdcard/Download/{runner.name}"
     remote_temporary_files = [
