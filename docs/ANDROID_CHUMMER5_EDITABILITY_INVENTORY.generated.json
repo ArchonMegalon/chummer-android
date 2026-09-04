@@ -882,7 +882,7 @@
       {
         "path": "scripts/verify-api36-editing-e2e-aggregate.py",
         "exists": true,
-        "sha256": "21bd944e589ae26b035f06175fe82e8252b4edd24d05c4fc03719fd26e2b2a38"
+        "sha256": "3995b2aa075ab85c43a6f8df3cebac6a9cbfdbc3079ee870e40c9c34c1d6b739"
       },
       {
         "path": "src/Chummer.Android/Chummer.Android.csproj",
@@ -912,7 +912,7 @@
       {
         "path": "tests/test_api36_e2e_artifact_authority.py",
         "exists": true,
-        "sha256": "7092c61957637830f48b2379cd9afc5238ca4220c73fc643a932d97e80b1fe3c"
+        "sha256": "ba3f2845b7340c741ba929408cfbd74789586304f4c85cca3e347ba5bb766673"
       },
       {
         "path": "tests/test_api36_proof_environment_receipt.py",

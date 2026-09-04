@@ -151,6 +151,32 @@ def creation_method_one_shot_origin_scan() -> dict[str, object]:
     }
 
 
+def creation_method_reacquisition_scan(phase_id: str) -> dict[str, object]:
+    if phase_id not in AGGREGATE.CREATION_METHOD_REACQUISITION_PHASES:
+        raise ValueError(f"unsupported creation method reacquisition phase: {phase_id}")
+    return {
+        "scanId": AGGREGATE.CREATION_METHOD_REACQUISITION_SCAN_ID,
+        "status": "resolved",
+        "phaseId": phase_id,
+        "direction": "down",
+        "distanceRatio": 0.60,
+        "screens": 8 if phase_id == "advanced-editor-gate-inventory" else 1,
+        "swipes": 7 if phase_id == "advanced-editor-gate-inventory" else 0,
+        "configuredMaxScrolls": 18,
+        "stableRepeats": 2,
+        "emptyHierarchyReads": 0,
+        "maximumEmptyHierarchyReads": 3,
+        "systemUiDismissals": 0,
+        "maximumSystemUiDismissals": 3,
+        "deadlineEnforced": True,
+        "phaseBudgetMs": AGGREGATE.CREATION_PHASE_BUDGETS_MS[phase_id],
+        "hierarchyReadCount": 8 if phase_id == "advanced-editor-gate-inventory" else 1,
+        "hierarchyElapsedMs": 4_000 if phase_id == "advanced-editor-gate-inventory" else 1_000,
+        "maximumHierarchyReadMs": 500 if phase_id == "advanced-editor-gate-inventory" else 1_000,
+        "elapsedMs": 5_400 if phase_id == "advanced-editor-gate-inventory" else 1_000,
+    }
+
+
 def talent_reacquisition_scan(phase_id: str) -> dict[str, object]:
     return {
         "scanId": f"{phase_id}-fixture-reacquisition",
@@ -610,29 +636,9 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                         "phaseId": "advanced-editor-gate-inventory",
                         "elapsedMs": 33_278,
                     },
-                    {
-                        "scanId": (
-                            AGGREGATE.CREATION_METHOD_REACQUISITION_SCAN_ID
-                        ),
-                        "status": "resolved",
-                        "phaseId": "advanced-editor-gate-inventory",
-                        "direction": "down",
-                        "distanceRatio": 0.60,
-                        "screens": 8,
-                        "swipes": 7,
-                        "configuredMaxScrolls": 18,
-                        "stableRepeats": 2,
-                        "emptyHierarchyReads": 0,
-                        "maximumEmptyHierarchyReads": 3,
-                        "systemUiDismissals": 0,
-                        "maximumSystemUiDismissals": 3,
-                        "deadlineEnforced": True,
-                        "phaseBudgetMs": 90_000,
-                        "hierarchyReadCount": 8,
-                        "hierarchyElapsedMs": 4_000,
-                        "maximumHierarchyReadMs": 500,
-                        "elapsedMs": 5_400,
-                    },
+                    creation_method_reacquisition_scan(
+                        "advanced-editor-gate-inventory"
+                    ),
                     creation_method_one_shot_origin_scan(),
                     {
                         "scanId": "prerequisite-authority",
@@ -646,6 +652,9 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                     confirmed_receipt_scan(),
                     confirmed_receipt_back_reacquisition_scan(),
                     post_confirm_dashboard_route_ready_scan(),
+                    creation_method_reacquisition_scan(
+                        "resources-prerequisite-rebind"
+                    ),
                 ],
             }
         else:
@@ -1589,11 +1598,120 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                         creation_receipt_with_timing(timing)
                     )
 
-    def test_creation_timing_requires_exactly_one_method_reacquisition_scan(
+    def test_creation_timing_requires_one_method_reacquisition_scan_per_phase(
         self,
     ) -> None:
-        for case in ("omitted", "duplicated"):
-            with self.subTest(case=case):
+        for phase_id in AGGREGATE.CREATION_METHOD_REACQUISITION_PHASES:
+            for case in ("omitted", "duplicated"):
+                with self.subTest(phase_id=phase_id, case=case):
+                    timing = json.loads(json.dumps(
+                        self.raw_receipt("creation-prerequisite")["timing"]
+                    ))
+                    method = next(
+                        scan
+                        for scan in timing["scans"]
+                        if scan.get("scanId")
+                        == AGGREGATE.CREATION_METHOD_REACQUISITION_SCAN_ID
+                        and scan.get("phaseId") == phase_id
+                    )
+                    if case == "omitted":
+                        timing["scans"].remove(method)
+                    else:
+                        timing["scans"].append(dict(method))
+                    with self.assertRaisesRegex(ValueError, "scan cardinality differs"):
+                        AGGREGATE.require_creation_timing_within_budget(
+                            creation_receipt_with_timing(timing)
+                        )
+
+    def test_creation_timing_rejects_balanced_method_scan_omission_and_duplicate(
+        self,
+    ) -> None:
+        """Two total receipts cannot hide a duplicate phase and omitted phase."""
+        timing = json.loads(json.dumps(
+            self.raw_receipt("creation-prerequisite")["timing"]
+        ))
+        methods = [
+            scan
+            for scan in timing["scans"]
+            if scan.get("scanId")
+            == AGGREGATE.CREATION_METHOD_REACQUISITION_SCAN_ID
+        ]
+        timing["scans"].remove(methods[1])
+        duplicate = dict(methods[0])
+        insert_at = timing["scans"].index(methods[0]) + 1
+        timing["scans"].insert(insert_at, duplicate)
+        with self.assertRaisesRegex(ValueError, "per-phase cardinality differs"):
+            AGGREGATE.require_creation_timing_within_budget(
+                creation_receipt_with_timing(timing)
+            )
+
+    def test_creation_timing_rejects_unknown_method_reacquisition_phase(
+        self,
+    ) -> None:
+        timing = json.loads(json.dumps(
+            self.raw_receipt("creation-prerequisite")["timing"]
+        ))
+        method = next(
+            scan
+            for scan in timing["scans"]
+            if scan.get("scanId")
+            == AGGREGATE.CREATION_METHOD_REACQUISITION_SCAN_ID
+            and scan.get("phaseId") == "resources-prerequisite-rebind"
+        )
+        method["phaseId"] = "same-process-reopen"
+        method["phaseBudgetMs"] = AGGREGATE.CREATION_PHASE_BUDGETS_MS[
+            "same-process-reopen"
+        ]
+        with self.assertRaisesRegex(ValueError, "phase whitelist differs"):
+            AGGREGATE.require_creation_timing_within_budget(
+                creation_receipt_with_timing(timing)
+            )
+
+    def test_creation_timing_rejects_cross_phase_method_scan_order(self) -> None:
+        timing = json.loads(json.dumps(
+            self.raw_receipt("creation-prerequisite")["timing"]
+        ))
+        methods = [
+            scan
+            for scan in timing["scans"]
+            if scan.get("scanId")
+            == AGGREGATE.CREATION_METHOD_REACQUISITION_SCAN_ID
+        ]
+        first_index = timing["scans"].index(methods[0])
+        second_index = timing["scans"].index(methods[1])
+        timing["scans"][first_index], timing["scans"][second_index] = (
+            timing["scans"][second_index],
+            timing["scans"][first_index],
+        )
+        with self.assertRaisesRegex(ValueError, "phase order differs"):
+            AGGREGATE.require_creation_timing_within_budget(
+                creation_receipt_with_timing(timing)
+            )
+
+    def test_creation_timing_accepts_exact_method_reacquisition_phase_set(
+        self,
+    ) -> None:
+        timing = json.loads(json.dumps(
+            self.raw_receipt("creation-prerequisite")["timing"]
+        ))
+        self.assertEqual(
+            list(AGGREGATE.CREATION_METHOD_REACQUISITION_PHASES),
+            [
+                scan["phaseId"]
+                for scan in timing["scans"]
+                if scan.get("scanId")
+                == AGGREGATE.CREATION_METHOD_REACQUISITION_SCAN_ID
+            ],
+        )
+        AGGREGATE.require_creation_timing_within_budget(
+            creation_receipt_with_timing(timing)
+        )
+
+    def test_creation_timing_rejects_forged_method_phase_budget(
+        self,
+    ) -> None:
+        for phase_id in AGGREGATE.CREATION_METHOD_REACQUISITION_PHASES:
+            with self.subTest(phase_id=phase_id):
                 timing = json.loads(json.dumps(
                     self.raw_receipt("creation-prerequisite")["timing"]
                 ))
@@ -1602,12 +1720,10 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                     for scan in timing["scans"]
                     if scan.get("scanId")
                     == AGGREGATE.CREATION_METHOD_REACQUISITION_SCAN_ID
+                    and scan.get("phaseId") == phase_id
                 )
-                if case == "omitted":
-                    timing["scans"].remove(method)
-                else:
-                    timing["scans"].append(dict(method))
-                with self.assertRaisesRegex(ValueError, "scan cardinality differs"):
+                method["phaseBudgetMs"] += 1
+                with self.assertRaisesRegex(ValueError, "scan authority differs"):
                     AGGREGATE.require_creation_timing_within_budget(
                         creation_receipt_with_timing(timing)
                     )
@@ -1679,7 +1795,6 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
     ) -> None:
         cases = {
             "status": "failed",
-            "phaseId": "dashboard-authority-inventory",
             "direction": "up",
             "distanceRatio": 0.61,
             "configuredMaxScrolls": 19,
@@ -1687,10 +1802,28 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             "maximumEmptyHierarchyReads": 4,
             "maximumSystemUiDismissals": 4,
             "deadlineEnforced": False,
-            "phaseBudgetMs": 90_001,
         }
-        for field, forged in cases.items():
-            with self.subTest(field=field):
+        for phase_id in AGGREGATE.CREATION_METHOD_REACQUISITION_PHASES:
+            for field, forged in cases.items():
+                with self.subTest(phase_id=phase_id, field=field):
+                    timing = json.loads(json.dumps(
+                        self.raw_receipt("creation-prerequisite")["timing"]
+                    ))
+                    method = next(
+                        scan
+                        for scan in timing["scans"]
+                        if scan.get("scanId")
+                        == AGGREGATE.CREATION_METHOD_REACQUISITION_SCAN_ID
+                        and scan.get("phaseId") == phase_id
+                    )
+                    method[field] = forged
+                    with self.assertRaisesRegex(ValueError, "scan authority differs"):
+                        AGGREGATE.require_creation_timing_within_budget(
+                            creation_receipt_with_timing(timing)
+                        )
+
+        for phase_id in AGGREGATE.CREATION_METHOD_REACQUISITION_PHASES:
+            with self.subTest(phase_id=phase_id, field="deadlineEnforced-int"):
                 timing = json.loads(json.dumps(
                     self.raw_receipt("creation-prerequisite")["timing"]
                 ))
@@ -1699,48 +1832,38 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                     for scan in timing["scans"]
                     if scan.get("scanId")
                     == AGGREGATE.CREATION_METHOD_REACQUISITION_SCAN_ID
+                    and scan.get("phaseId") == phase_id
                 )
-                method[field] = forged
-                with self.assertRaisesRegex(ValueError, "scan authority differs"):
+                method["deadlineEnforced"] = 1
+                with self.assertRaisesRegex(ValueError, "JSON boolean true"):
                     AGGREGATE.require_creation_timing_within_budget(
                         creation_receipt_with_timing(timing)
                     )
-
-        timing = json.loads(json.dumps(
-            self.raw_receipt("creation-prerequisite")["timing"]
-        ))
-        method = next(
-            scan
-            for scan in timing["scans"]
-            if scan.get("scanId")
-            == AGGREGATE.CREATION_METHOD_REACQUISITION_SCAN_ID
-        )
-        method["deadlineEnforced"] = 1
-        with self.assertRaisesRegex(ValueError, "JSON boolean true"):
-            AGGREGATE.require_creation_timing_within_budget(creation_receipt_with_timing(timing))
 
     def test_creation_timing_rejects_omitted_method_reacquisition_fields(
         self,
     ) -> None:
-        for field in ("direction", "deadlineEnforced", "hierarchyReadCount"):
-            with self.subTest(field=field):
-                timing = json.loads(json.dumps(
-                    self.raw_receipt("creation-prerequisite")["timing"]
-                ))
-                method = next(
-                    scan
-                    for scan in timing["scans"]
-                    if scan.get("scanId")
-                    == AGGREGATE.CREATION_METHOD_REACQUISITION_SCAN_ID
-                )
-                method.pop(field)
-                with self.assertRaisesRegex(
-                    ValueError,
-                    "authority differs|timing/count data differs",
-                ):
-                    AGGREGATE.require_creation_timing_within_budget(
-                        creation_receipt_with_timing(timing)
+        for phase_id in AGGREGATE.CREATION_METHOD_REACQUISITION_PHASES:
+            for field in ("direction", "deadlineEnforced", "hierarchyReadCount"):
+                with self.subTest(phase_id=phase_id, field=field):
+                    timing = json.loads(json.dumps(
+                        self.raw_receipt("creation-prerequisite")["timing"]
+                    ))
+                    method = next(
+                        scan
+                        for scan in timing["scans"]
+                        if scan.get("scanId")
+                        == AGGREGATE.CREATION_METHOD_REACQUISITION_SCAN_ID
+                        and scan.get("phaseId") == phase_id
                     )
+                    method.pop(field)
+                    with self.assertRaisesRegex(
+                        ValueError,
+                        "authority differs|timing/count data differs",
+                    ):
+                        AGGREGATE.require_creation_timing_within_budget(
+                            creation_receipt_with_timing(timing)
+                        )
 
     def test_creation_timing_rejects_forged_method_reacquisition_relationships(
         self,
@@ -1759,32 +1882,36 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                 ]
                 + 1
             ),
-            "mandatory-wait-elapsedMs": 4_000,
+            "mandatory-wait-elapsedMs": 0,
         }
-        for field, forged in cases.items():
-            with self.subTest(field=field):
-                timing = json.loads(json.dumps(
-                    self.raw_receipt("creation-prerequisite")["timing"]
-                ))
-                method = next(
-                    scan
-                    for scan in timing["scans"]
-                    if scan.get("scanId")
-                    == AGGREGATE.CREATION_METHOD_REACQUISITION_SCAN_ID
-                )
-                target_field = (
-                    "elapsedMs"
-                    if field == "mandatory-wait-elapsedMs"
-                    else field
-                )
-                method[target_field] = forged
-                with self.assertRaisesRegex(
-                    ValueError,
-                    "did not reconcile|timing/count data differs",
-                ):
-                    AGGREGATE.require_creation_timing_within_budget(
-                        creation_receipt_with_timing(timing)
+        for phase_id in AGGREGATE.CREATION_METHOD_REACQUISITION_PHASES:
+            for field, forged in cases.items():
+                with self.subTest(phase_id=phase_id, field=field):
+                    timing = json.loads(json.dumps(
+                        self.raw_receipt("creation-prerequisite")["timing"]
+                    ))
+                    method = next(
+                        scan
+                        for scan in timing["scans"]
+                        if scan.get("scanId")
+                        == AGGREGATE.CREATION_METHOD_REACQUISITION_SCAN_ID
+                        and scan.get("phaseId") == phase_id
                     )
+                    target_field = (
+                        "elapsedMs"
+                        if field == "mandatory-wait-elapsedMs"
+                        else field
+                    )
+                    if field == "elapsedMs":
+                        forged = CREATION_PROSPECTIVE_PHASE_ELAPSED_MS[phase_id] + 1
+                    method[target_field] = forged
+                    with self.assertRaisesRegex(
+                        ValueError,
+                        "did not reconcile|timing/count data differs",
+                    ):
+                        AGGREGATE.require_creation_timing_within_budget(
+                            creation_receipt_with_timing(timing)
+                        )
 
     def test_creation_timing_requires_exactly_one_confirmed_receipt_back_reacquisition_scan(
         self,
