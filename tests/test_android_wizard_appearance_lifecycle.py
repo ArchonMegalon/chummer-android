@@ -31,6 +31,33 @@ def test_native_wizard_appearance_loads_use_the_awaited_base_hook() -> None:
         assert "PrepareForAppearanceRefreshAsync(" in page
 
 
+def test_base_rejects_stale_appearance_continuations_before_rendering() -> None:
+    base = source("NativePageBase.cs")
+    appearance = base.split("protected override async void OnAppearing()", 1)[1].split(
+        "protected override void OnDisappearing()", 1
+    )[0]
+
+    assert "Interlocked.Increment(ref _appearanceGeneration)" in appearance
+    assert appearance.count("ThrowIfAppearanceIsStale(") >= 4
+    assert "await Coordinator.InitializeAsync();\n            ThrowIfAppearanceIsStale(" in appearance
+    assert "await PrepareForAppearanceRefreshAsync(appearanceToken);\n            ThrowIfAppearanceIsStale(" in appearance
+    assert "ClearAppearanceRefreshIfCurrent(appearanceGeneration);" in appearance
+    assert "Volatile.Write(ref _appearanceRefreshActive, 0);" not in appearance
+
+
+def test_disappearing_invalidates_generation_without_disposing_live_token_source() -> None:
+    base = source("NativePageBase.cs")
+    disappearing = base.split("protected override void OnDisappearing()", 1)[1].split(
+        "protected abstract void Refresh()", 1
+    )[0]
+
+    assert "Interlocked.Increment(ref _appearanceGeneration);" in disappearing
+    assert "Interlocked.Exchange(ref _appearanceLifetime, null)" in disappearing
+    assert "appearanceLifetime?.Cancel();" in disappearing
+    assert "appearanceLifetime?.Dispose();" not in disappearing
+    assert "appearanceLifetime.Dispose();" in base
+
+
 def test_table_wizard_does_not_double_initialize_during_appearance() -> None:
     page = source("Sr5TableWizardPage.cs")
     appearance = page.split("PrepareForAppearanceRefreshAsync(", 1)[1].split(
