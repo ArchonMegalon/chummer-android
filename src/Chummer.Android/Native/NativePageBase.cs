@@ -202,6 +202,7 @@ public abstract class NativePageBase : ContentPage
         {
             if (!_subscribed
                 || Volatile.Read(ref _runningActionDepth) > 0
+                || Volatile.Read(ref _appearanceRefreshActive) > 0
                 || !_coordinatorRefresh.TryTakePending())
             {
                 return;
@@ -219,7 +220,9 @@ public abstract class NativePageBase : ContentPage
         }
         finally
         {
-            bool mayRender = _subscribed && Volatile.Read(ref _runningActionDepth) == 0;
+            bool mayRender = _subscribed
+                && Volatile.Read(ref _runningActionDepth) == 0
+                && Volatile.Read(ref _appearanceRefreshActive) == 0;
             if (_coordinatorRefresh.Complete(mayRender))
             {
                 DispatchCoordinatorRefresh();
