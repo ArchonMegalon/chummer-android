@@ -93,6 +93,10 @@ CREATION_DASHBOARD_CONTINUITY_PREFIX = (
     "creation-dashboard-continuity-failure"
 )
 CREATION_DASHBOARD_CONTINUITY_ROUTE_ID = "phone-runner-page"
+CREATION_DASHBOARD_RESUMED_AUTHORITY = re.compile(
+    r"^\s*(?:topResumedActivity\s*=|mResumedActivity\s*:|"
+    r"ResumedActivity\s*:|Resumed\s*:)\s*(?P<value>.*)$"
+)
 PROGRESS_SCHEMA = "chummer.android.creation-prerequisite-progress/v5"
 PROGRESS_FILE_NAME = "creation-prerequisite-progress.json"
 PROGRESS_EVENTS_FILE_NAME = "creation-prerequisite-progress.jsonl"
@@ -1230,11 +1234,71 @@ def _creation_dashboard_hierarchy_authority(
     return packages, len(route_matches), exact_route
 
 
+def _creation_dashboard_resumed_activity_authority(
+    activity_dump: str,
+) -> tuple[str | None, str, int]:
+    """Resolve agreeing Android resumed-activity forms without guessing.
+
+    Android emits several equivalent authority labels depending on the exact
+    point at which ``dumpsys activity activities`` is observed. Repeated forms
+    are accepted only when every one names the same normalized component.
+    Explicit absence, malformed forms, and conflicting components remain
+    fail-closed.
+    """
+    if not isinstance(activity_dump, str) or not activity_dump.strip():
+        return None, "invalid-empty-output", 0
+    nonempty_lines = [line for line in activity_dump.splitlines() if line.strip()]
+    if (
+        not nonempty_lines
+        or nonempty_lines[0].strip()
+        != "ACTIVITY MANAGER ACTIVITIES (dumpsys activity activities)"
+    ):
+        return None, "invalid-output-shape", 0
+
+    marker_count = 0
+    malformed = False
+    explicit_absence = False
+    components: list[str] = []
+    for line in activity_dump.splitlines():
+        marker = CREATION_DASHBOARD_RESUMED_AUTHORITY.fullmatch(line)
+        if marker is None:
+            continue
+        marker_count += 1
+        value = marker.group("value").strip()
+        if value.lower() in {"null", "none"}:
+            explicit_absence = True
+            continue
+        matches = [
+            normalized
+            for match in shared.COMPONENT.finditer(value)
+            if (normalized := shared.normalize_component(match.group(0)))
+            is not None
+        ]
+        if len(matches) != 1:
+            malformed = True
+            continue
+        components.append(matches[0])
+
+    unique_components = tuple(sorted(set(components)))
+    if explicit_absence and components:
+        return None, "conflicting-present-and-absent", marker_count
+    if explicit_absence:
+        return None, "authoritative-not-resumed", marker_count
+    if malformed:
+        return None, "malformed-resumed-authority", marker_count
+    if len(unique_components) > 1:
+        return None, "conflicting-resumed-components", marker_count
+    if len(unique_components) == 1:
+        return unique_components[0], "authoritative", marker_count
+    return None, "missing-resumed-authority", marker_count
+
+
 def _strict_creation_dashboard_launch_state(
     device: shared.Device,
     *,
     deadline: float,
     pid_observations_out: list[tuple[str, ...]] | None = None,
+    launch_observations_out: list[dict[str, object]] | None = None,
 ) -> shared.LaunchState:
     """Bracket one activity read with two identical exact PID reads."""
 
@@ -1272,18 +1336,13 @@ def _strict_creation_dashboard_launch_state(
         check=False,
         deadline=deadline,
     )
-    activity_dump = activity_result.stdout
-    resumed_components = [
-        normalized
-        for line in activity_dump.splitlines()
-        if "ResumedActivity" in line or "topResumedActivity" in line
-        for match in shared.COMPONENT.finditer(line)
-        if (normalized := shared.normalize_component(match.group(0))) is not None
-    ]
-    resumed_component = (
-        next(iter(resumed_components))
-        if activity_result.returncode == 0 and len(resumed_components) == 1
-        else None
+    activity_dump = (
+        activity_result.stdout if isinstance(activity_result.stdout, str) else ""
+    )
+    resumed_component, activity_authority_status, marker_count = (
+        _creation_dashboard_resumed_activity_authority(activity_dump)
+        if activity_result.returncode == 0
+        else (None, "activity-command-failed", 0)
     )
     process_ids_after = read_exact_process_ids()
     if pid_observations_out is not None:
@@ -1293,6 +1352,21 @@ def _strict_creation_dashboard_launch_state(
         if process_ids_before and process_ids_before == process_ids_after
         else ()
     )
+    if launch_observations_out is not None:
+        launch_observations_out.append({
+            "ordinal": len(launch_observations_out) + 1,
+            "processIdsBeforeActivityRead": list(process_ids_before),
+            "processIdsAfterActivityRead": list(process_ids_after),
+            "pidBracketStable": bool(process_ids),
+            "activityCommandReturnCode": activity_result.returncode,
+            "activityOutputLength": len(activity_dump),
+            "activityOutputSha256": hashlib.sha256(
+                activity_dump.encode("utf-8")
+            ).hexdigest(),
+            "resumedAuthorityMarkerCount": marker_count,
+            "resumedComponent": resumed_component,
+            "activityAuthorityStatus": activity_authority_status,
+        })
     return shared.LaunchState(process_ids, resumed_component, activity_dump)
 
 
@@ -1508,12 +1582,16 @@ class CreationDashboardContinuityGuard:
                 "Creation dashboard continuity already failed; no recovery or "
                 "further gesture is authorized"
             )
-        pid_observations: list[tuple[str, ...]] = []
+        packages, route_cardinality, exact_route = (
+            _creation_dashboard_hierarchy_authority(nodes)
+        )
+        hierarchy_matches = packages == (shared.PACKAGE,) and exact_route
+        launch_observations: list[dict[str, object]] = []
         try:
             observed = _strict_creation_dashboard_launch_state(
                 self._device,
                 deadline=self._deadline,
-                pid_observations_out=pid_observations,
+                launch_observations_out=launch_observations,
             )
         except Exception as error:
             observed = shared.LaunchState(
@@ -1522,14 +1600,20 @@ class CreationDashboardContinuityGuard:
                 "continuity observation failed: "
                 f"{type(error).__name__}: {shared._bounded_evidence(error)}",
             )
-        packages, route_cardinality, exact_route = (
-            _creation_dashboard_hierarchy_authority(nodes)
-        )
         pid_matches = observed.process_ids == self._expected.process_ids
         component_matches = (
             observed.resumed_component == self._expected.resumed_component
         )
-        hierarchy_matches = packages == (shared.PACKAGE,) and exact_route
+        final_pid_before = (
+            launch_observations[-1].get("processIdsBeforeActivityRead", [])
+            if launch_observations
+            else []
+        )
+        final_pid_after = (
+            launch_observations[-1].get("processIdsAfterActivityRead", [])
+            if launch_observations
+            else []
+        )
         observation = {
             "ordinal": len(self._scroll_journal) + 1,
             "phaseId": self._phase_id,
@@ -1539,12 +1623,9 @@ class CreationDashboardContinuityGuard:
             "expectedProcessIds": list(self._expected.process_ids),
             "expectedResumedComponent": self._expected.resumed_component,
             "processIds": list(observed.process_ids),
-            "processIdsBeforeActivityRead": (
-                list(pid_observations[0]) if len(pid_observations) > 0 else []
-            ),
-            "processIdsAfterActivityRead": (
-                list(pid_observations[1]) if len(pid_observations) > 1 else []
-            ),
+            "processIdsBeforeActivityRead": final_pid_before,
+            "processIdsAfterActivityRead": final_pid_after,
+            "launchStateObservations": launch_observations,
             "resumedComponent": observed.resumed_component,
             "packages": list(packages),
             "hierarchySignatureSha256": accessibility_signature_sha256(nodes),

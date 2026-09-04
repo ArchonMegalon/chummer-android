@@ -8679,6 +8679,9 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
     def test_strict_dashboard_launch_state_rejects_ambiguous_pid_and_activity(self) -> None:
         component = self.continuity_launch_state().resumed_component
         assert component is not None
+        activity_header = (
+            "ACTIVITY MANAGER ACTIVITIES (dumpsys activity activities)"
+        )
 
         class StrictStateDevice:
             def __init__(
@@ -8699,7 +8702,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 )
                 return subprocess.CompletedProcess(arguments, 0, stdout, "")
 
-        exact_activity = f"mResumedActivity: ActivityRecord{{abc {component} t12}}"
+        exact_marker = f"mResumedActivity: ActivityRecord{{abc {component} t12}}"
+        exact_activity = f"{activity_header}\n{exact_marker}"
         exact = StrictStateDevice(("41\n", "41\n"), exact_activity)
         deadline = driver.time.monotonic() + 30
         pid_observations: list[tuple[str, ...]] = []
@@ -8743,7 +8747,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         second_component = "com.google.android.apps.nexuslauncher/.NexusLauncherActivity"
         ambiguous_activity = StrictStateDevice(
             ("41\n", "41\n"),
-            f"{exact_activity}\ntopResumedActivity={second_component}",
+            f"{exact_activity}\ntopResumedActivity=ActivityRecord{{def {second_component} t1}}",
         )
         observed = driver._strict_creation_dashboard_launch_state(
             ambiguous_activity,
@@ -8753,13 +8757,110 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
         duplicated_activity = StrictStateDevice(
             ("41\n", "41\n"),
-            f"{exact_activity}\n{exact_activity}",
+            f"{exact_activity}\nResumedActivity: ActivityRecord{{def {component} t12}}",
         )
         observed = driver._strict_creation_dashboard_launch_state(
             duplicated_activity,
             deadline=driver.time.monotonic() + 30,
         )
+        self.assertEqual(component, observed.resumed_component)
+        self.assertEqual(3, len(duplicated_activity.calls))
+
+    def test_dashboard_resumed_authority_accepts_all_agreeing_real_android_forms(self) -> None:
+        component = self.continuity_launch_state().resumed_component
+        assert component is not None
+        header = "ACTIVITY MANAGER ACTIVITIES (dumpsys activity activities)"
+        markers = (
+            f"topResumedActivity=ActivityRecord{{a u0 {component} t8}}",
+            f"mResumedActivity: ActivityRecord{{b u0 {component} t8}}",
+            f"Resumed: ActivityRecord{{c u0 {component} t8}}",
+            f"ResumedActivity: ActivityRecord{{d u0 {component} t8}}",
+        )
+        for marker in markers:
+            with self.subTest(marker=marker.split("ActivityRecord", 1)[0]):
+                observed, status, marker_count = (
+                    driver._creation_dashboard_resumed_activity_authority(
+                        f"{header}\n{marker}"
+                    )
+                )
+                self.assertEqual(component, observed)
+                self.assertEqual("authoritative", status)
+                self.assertEqual(1, marker_count)
+
+        observed, status, marker_count = (
+            driver._creation_dashboard_resumed_activity_authority(
+                f"{header}\n" + "\n".join(markers)
+            )
+        )
+        self.assertEqual(component, observed)
+        self.assertEqual("authoritative", status)
+        self.assertEqual(4, marker_count)
+
+    def test_dashboard_resumed_authority_rejects_missing_malformed_and_conflicting_forms(self) -> None:
+        component = self.continuity_launch_state().resumed_component
+        assert component is not None
+        header = "ACTIVITY MANAGER ACTIVITIES (dumpsys activity activities)"
+        launcher = "com.google.android.apps.nexuslauncher/.NexusLauncherActivity"
+        hostile = {
+            "empty": "",
+            "truncated-valid-marker": (
+                f"ResumedActivity: ActivityRecord{{a u0 {component} t8}}"
+            ),
+            "missing": f"{header}\nDisplay #0",
+            "null": f"{header}\ntopResumedActivity=null",
+            "malformed": f"{header}\nResumedActivity: ActivityRecord{{no-component}}",
+            "multiple-components-one-marker": (
+                f"{header}\nResumedActivity: ActivityRecord{{a {component} "
+                f"{launcher} t8}}"
+            ),
+            "conflicting-markers": (
+                f"{header}\nResumedActivity: ActivityRecord{{a {component} t8}}\n"
+                f"Resumed: ActivityRecord{{b {launcher} t1}}"
+            ),
+        }
+        for name, activity_dump in hostile.items():
+            with self.subTest(name=name):
+                observed, status, _marker_count = (
+                    driver._creation_dashboard_resumed_activity_authority(
+                        activity_dump
+                    )
+                )
+                self.assertIsNone(observed)
+                self.assertNotEqual("authoritative", status)
+
+    def test_strict_dashboard_launch_state_rejects_nonzero_activity_command_without_retry(self) -> None:
+        component = self.continuity_launch_state().resumed_component
+        assert component is not None
+        calls: list[tuple[str, ...]] = []
+
+        class NonzeroActivityDevice:
+            def run(self, *arguments: str, **_options: object) -> subprocess.CompletedProcess:
+                calls.append(arguments)
+                if arguments[1:3] == ("pidof", driver.shared.PACKAGE):
+                    return subprocess.CompletedProcess(arguments, 0, "41\n", "")
+                return subprocess.CompletedProcess(
+                    arguments,
+                    1,
+                    (
+                        "ACTIVITY MANAGER ACTIVITIES "
+                        "(dumpsys activity activities)\n"
+                        f"ResumedActivity: ActivityRecord{{a {component} t8}}"
+                    ),
+                    "failed",
+                )
+
+        launch_observations: list[dict[str, object]] = []
+        observed = driver._strict_creation_dashboard_launch_state(
+            NonzeroActivityDevice(),
+            deadline=driver.time.monotonic() + 30,
+            launch_observations_out=launch_observations,
+        )
         self.assertIsNone(observed.resumed_component)
+        self.assertEqual(3, len(calls))
+        self.assertEqual(
+            "activity-command-failed",
+            launch_observations[0]["activityAuthorityStatus"],
+        )
 
     def test_dashboard_continuity_diagnostics_are_log_first_and_navigation_free(self) -> None:
         expected = self.continuity_launch_state()
