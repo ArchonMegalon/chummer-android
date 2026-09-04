@@ -8,7 +8,9 @@ public abstract class NativePageBase : ContentPage
     private bool _subscribed;
     private bool _dialogVisible;
     private int _runningActionDepth;
+    private int _appearanceRefreshActive;
     private CancellationTokenSource? _appearanceLifetime;
+    private readonly NativeRefreshCoalescer _coordinatorRefresh = new();
 
     protected NativePageBase(RunnerSessionCoordinator coordinator)
     {
@@ -21,6 +23,7 @@ public abstract class NativePageBase : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        Interlocked.Exchange(ref _appearanceRefreshActive, 1);
         _appearanceLifetime?.Cancel();
         _appearanceLifetime?.Dispose();
         _appearanceLifetime = new CancellationTokenSource();
@@ -35,7 +38,9 @@ public abstract class NativePageBase : ContentPage
         {
             await Coordinator.InitializeAsync();
             await PrepareForAppearanceRefreshAsync(appearanceToken);
+            _coordinatorRefresh.DiscardPending();
             Refresh();
+            Volatile.Write(ref _appearanceRefreshActive, 0);
             await ShowActiveDialogAsync();
             await Task.Delay(TimeSpan.FromMilliseconds(750), appearanceToken);
             await NotifyPlayReviewSafeMomentAsync(
@@ -48,8 +53,14 @@ public abstract class NativePageBase : ContentPage
         }
         catch (Exception ex)
         {
+            _coordinatorRefresh.DiscardPending();
             Refresh();
+            Volatile.Write(ref _appearanceRefreshActive, 0);
             await DisplayAlertAsync("Chummer", ex.Message, "OK");
+        }
+        finally
+        {
+            Volatile.Write(ref _appearanceRefreshActive, 0);
         }
     }
 
@@ -58,6 +69,7 @@ public abstract class NativePageBase : ContentPage
         _appearanceLifetime?.Cancel();
         _appearanceLifetime?.Dispose();
         _appearanceLifetime = null;
+        _coordinatorRefresh.DiscardPending();
         if (_subscribed)
         {
             Coordinator.Changed -= OnCoordinatorChanged;
@@ -82,6 +94,7 @@ public abstract class NativePageBase : ContentPage
         try
         {
             await action();
+            _coordinatorRefresh.DiscardPending();
             Refresh();
             await ShowActiveDialogAsync();
             succeeded = true;
@@ -117,6 +130,7 @@ public abstract class NativePageBase : ContentPage
         {
             if (await action())
             {
+                _coordinatorRefresh.DiscardPending();
                 Refresh();
             }
             await ShowActiveDialogAsync();
@@ -164,11 +178,53 @@ public abstract class NativePageBase : ContentPage
             return;
         }
 
-        Dispatcher.Dispatch(async () =>
+        // Initialize/prepare owns one explicit render. Dispatching Changed while
+        // that pipeline is active can replace an already-proven button after the
+        // page reports settled, losing the user's next tap. The explicit render
+        // observes the newest coordinator state, so these requests are redundant.
+        if (Volatile.Read(ref _appearanceRefreshActive) > 0)
         {
+            return;
+        }
+
+        if (_coordinatorRefresh.Request())
+        {
+            DispatchCoordinatorRefresh();
+        }
+    }
+
+    private void DispatchCoordinatorRefresh()
+        => Dispatcher.Dispatch(() => _ = DrainCoordinatorRefreshAsync());
+
+    private async Task DrainCoordinatorRefreshAsync()
+    {
+        try
+        {
+            if (!_subscribed
+                || Volatile.Read(ref _runningActionDepth) > 0
+                || !_coordinatorRefresh.TryTakePending())
+            {
+                return;
+            }
+
             Refresh();
             await ShowActiveDialogAsync();
-        });
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            if (_subscribed)
+            {
+                await DisplayAlertAsync("Chummer", ex.Message, "OK");
+            }
+        }
+        finally
+        {
+            bool mayRender = _subscribed && Volatile.Read(ref _runningActionDepth) == 0;
+            if (_coordinatorRefresh.Complete(mayRender))
+            {
+                DispatchCoordinatorRefresh();
+            }
+        }
     }
 
     private async Task NotifyPlayReviewSafeMomentAsync(
