@@ -34,6 +34,7 @@ fi
 echo "bundletool validation passed."
 "$java_command" -jar "$bundletool_path" dump manifest --bundle="$aab_path" > "$temporary_dir/manifest.xml"
 python3 "$repo_dir/scripts/inspect_aab.py" "$aab_path" "$temporary_dir/manifest.xml"
+python3 "$repo_dir/scripts/verify_release_aab_excludes_api36_proof.py" "$aab_path"
 
 if [[ -n "$upload_certificate_path" ]]; then
   if [[ ! -f "$upload_certificate_path" ]]; then
