@@ -83,6 +83,16 @@ CREATION_AUTHORITY_PENDING_TIMEOUT_HIERARCHY = (
     "/sdcard/chummer-creation-authority-pending-timeout.xml"
 )
 CREATION_AUTHORITY_PENDING_TIMEOUT_TEXT_LIMIT = 1_000_000
+CREATION_DASHBOARD_CONTINUITY_FAILURE_SCHEMA = (
+    "chummer.android.creation-dashboard-continuity-failure/v1"
+)
+CREATION_DASHBOARD_CONTINUITY_JOURNAL_SCHEMA = (
+    "chummer.android.creation-dashboard-continuity-journal/v1"
+)
+CREATION_DASHBOARD_CONTINUITY_PREFIX = (
+    "creation-dashboard-continuity-failure"
+)
+CREATION_DASHBOARD_CONTINUITY_ROUTE_ID = "phone-runner-page"
 PROGRESS_SCHEMA = "chummer.android.creation-prerequisite-progress/v5"
 PROGRESS_FILE_NAME = "creation-prerequisite-progress.json"
 PROGRESS_EVENTS_FILE_NAME = "creation-prerequisite-progress.jsonl"
@@ -1197,6 +1207,368 @@ class PriorityRankOrigin(NamedTuple):
     empty_hierarchy_reads: int
 
 
+def _creation_dashboard_hierarchy_authority(
+    nodes: list[shared.UiNode],
+) -> tuple[tuple[str, ...], int, bool]:
+    packages = tuple(sorted({
+        package
+        for node in nodes
+        if (package := node.attributes.get("package", ""))
+    }))
+    route_matches = [
+        node
+        for node in nodes
+        if _exact_resource_id(node) == CREATION_DASHBOARD_CONTINUITY_ROUTE_ID
+    ]
+    exact_route = (
+        len(route_matches) == 1
+        and route_matches[0].attributes.get("package") == shared.PACKAGE
+        and route_matches[0].attributes.get("resource-id")
+        == f"{shared.PACKAGE}:id/{CREATION_DASHBOARD_CONTINUITY_ROUTE_ID}"
+        and route_matches[0].attributes.get("class") == "android.view.ViewGroup"
+    )
+    return packages, len(route_matches), exact_route
+
+
+def _strict_creation_dashboard_launch_state(
+    device: shared.Device,
+    *,
+    deadline: float,
+) -> shared.LaunchState:
+    """Read one exact PID set and one exact resumed-component projection."""
+    process_result = device.run(
+        "shell",
+        "pidof",
+        shared.PACKAGE,
+        timeout=shared._remaining_operation_timeout(
+            deadline=deadline,
+            maximum=15,
+        ),
+        check=False,
+        deadline=deadline,
+    )
+    process_tokens = process_result.stdout.split()
+    process_ids = (
+        tuple(process_tokens)
+        if process_result.returncode == 0
+        and len(process_tokens) == 1
+        and shared.PROCESS_ID.fullmatch(process_tokens[0]) is not None
+        else ()
+    )
+    activity_result = device.run(
+        "shell",
+        "dumpsys",
+        "activity",
+        "activities",
+        timeout=shared._remaining_operation_timeout(
+            deadline=deadline,
+            maximum=30,
+        ),
+        check=False,
+        deadline=deadline,
+    )
+    activity_dump = activity_result.stdout
+    resumed_components = {
+        normalized
+        for line in activity_dump.splitlines()
+        if "ResumedActivity" in line or "topResumedActivity" in line
+        for match in shared.COMPONENT.finditer(line)
+        if (normalized := shared.normalize_component(match.group(0))) is not None
+    }
+    resumed_component = (
+        next(iter(resumed_components))
+        if activity_result.returncode == 0 and len(resumed_components) == 1
+        else None
+    )
+    return shared.LaunchState(process_ids, resumed_component, activity_dump)
+
+
+def _continuity_diagnostic_text(
+    device: shared.Device,
+    name: str,
+    arguments: tuple[str, ...],
+) -> None:
+    try:
+        result = device.run(*arguments, timeout=60, check=False)
+        value = shared._bounded_evidence(result.stdout)
+        if result.stderr:
+            value = (
+                f"{value}\n[diagnostic stderr]\n"
+                f"{shared._bounded_evidence(result.stderr)}"
+            )
+    except Exception as error:
+        value = (
+            f"diagnostic command failed: {type(error).__name__}: "
+            f"{shared._bounded_evidence(error)}\n"
+            f"{shared._bounded_evidence(getattr(error, 'stdout', ''))}\n"
+            f"{shared._bounded_evidence(getattr(error, 'stderr', ''))}"
+        )
+    try:
+        shared._write_launch_evidence(device, name, value)
+    except Exception:
+        pass
+
+
+def capture_creation_dashboard_continuity_failure(
+    device: shared.Device,
+    *,
+    reason: str,
+    expected: shared.LaunchState,
+    observed: shared.LaunchState,
+    hierarchy_packages: tuple[str, ...],
+    route_cardinality: int,
+    exact_route: bool,
+    scroll_journal: list[dict[str, object]],
+) -> None:
+    """Capture one foreground loss without attempting to repair or relaunch it.
+
+    Crash-bearing log buffers are read first. Later UIAutomator or dumpsys work
+    must not evict the short-lived event that explains the foreground loss.
+    Every command after the detected mismatch is read-only.
+    """
+    prefix = CREATION_DASHBOARD_CONTINUITY_PREFIX
+    for buffer_name, arguments in (
+        (
+            "all",
+            ("logcat", "-d", "-b", "all", "-v", "threadtime", "-t", "4000"),
+        ),
+        ("events", ("logcat", "-d", "-b", "events", "-v", "threadtime")),
+        ("crash", ("logcat", "-d", "-b", "crash", "-v", "threadtime")),
+    ):
+        _continuity_diagnostic_text(
+            device,
+            f"{prefix}-logcat-{buffer_name}.txt",
+            arguments,
+        )
+
+    for name, arguments in (
+        (
+            "exit-info",
+            ("dumpsys", "activity", "exit-info", shared.PACKAGE),
+        ),
+        ("activities", ("dumpsys", "activity", "activities")),
+        ("window", ("dumpsys", "window", "windows")),
+        ("processes", ("dumpsys", "activity", "processes")),
+    ):
+        _continuity_diagnostic_text(
+            device,
+            f"{prefix}-{name}.txt",
+            arguments,
+        )
+
+    try:
+        screenshot = device.run(
+            "exec-out",
+            "screencap",
+            "-p",
+            timeout=60,
+            text=False,
+            check=False,
+        )
+        if screenshot.returncode == 0 and isinstance(screenshot.stdout, bytes):
+            (device.evidence / f"{prefix}.png").write_bytes(screenshot.stdout)
+    except Exception as error:
+        try:
+            shared._write_launch_evidence(
+                device,
+                f"{prefix}-screenshot-error.txt",
+                error,
+            )
+        except Exception:
+            pass
+    try:
+        hierarchy = device.run(
+            "exec-out",
+            "cat",
+            shared.ADB_FILE_HIERARCHY_REMOTE_PATH,
+            timeout=60,
+            check=False,
+        )
+        if hierarchy.returncode == 0:
+            shared._write_launch_evidence(
+                device,
+                f"{prefix}.xml",
+                hierarchy.stdout,
+            )
+    except Exception as error:
+        try:
+            shared._write_launch_evidence(
+                device,
+                f"{prefix}-hierarchy-error.txt",
+                error,
+            )
+        except Exception:
+            pass
+
+    journal_receipt = {
+        "schema": CREATION_DASHBOARD_CONTINUITY_JOURNAL_SCHEMA,
+        "status": "fail-closed",
+        "observations": scroll_journal,
+        "recoveryAttempted": False,
+        "furtherGesturesAttempted": False,
+    }
+    failure_receipt = {
+        "schema": CREATION_DASHBOARD_CONTINUITY_FAILURE_SCHEMA,
+        "status": "fail-closed",
+        "reason": reason,
+        "phaseId": (
+            scroll_journal[-1].get("phaseId") if scroll_journal else None
+        ),
+        "scanId": (
+            scroll_journal[-1].get("scanId") if scroll_journal else None
+        ),
+        "expected": shared._launch_state_json(expected),
+        "observed": shared._launch_state_json(observed),
+        "hierarchy": {
+            "packages": list(hierarchy_packages),
+            "routeResourceId": CREATION_DASHBOARD_CONTINUITY_ROUTE_ID,
+            "routeCardinality": route_cardinality,
+            "exactRoute": exact_route,
+        },
+        "trigger": scroll_journal[-1] if scroll_journal else None,
+        "recoveryAttempted": False,
+        "furtherGesturesAttempted": False,
+        "noRelaunch": True,
+        "noReplay": True,
+        "noNavigation": True,
+    }
+    for name, value in (
+        (f"{prefix}-scroll-journal.json", journal_receipt),
+        (f"{prefix}.json", failure_receipt),
+    ):
+        try:
+            shared._write_new_json_receipt(device.evidence / name, value)
+        except Exception:
+            pass
+
+
+class CreationDashboardContinuityGuard:
+    """Bind the initial dashboard scan to one uninterrupted app foreground."""
+
+    def __init__(
+        self,
+        device: shared.Device,
+        expected: shared.LaunchState,
+        *,
+        deadline: float,
+        phase_id: str,
+    ) -> None:
+        component = (
+            shared.COMPONENT.fullmatch(expected.resumed_component)
+            if expected.resumed_component is not None
+            else None
+        )
+        if (
+            len(expected.process_ids) != 1
+            or component is None
+            or component.group("package") != shared.PACKAGE
+            or not component.group("activity").endswith("MainActivity")
+            or not math.isfinite(deadline)
+            or not phase_id
+        ):
+            raise ValueError(
+                "Creation dashboard continuity requires one exact Chummer PID "
+                "and resumed MainActivity"
+            )
+        self._device = device
+        self._expected = expected
+        self._deadline = deadline
+        self._phase_id = phase_id
+        self._scroll_journal: list[dict[str, object]] = []
+        self._failed = False
+
+    @property
+    def scroll_journal(self) -> tuple[dict[str, object], ...]:
+        return tuple(self._scroll_journal)
+
+    def require(
+        self,
+        nodes: list[shared.UiNode],
+        scan_id: str,
+        traversal: str,
+        gestures_issued: int,
+    ) -> None:
+        if self._failed:
+            raise RuntimeError(
+                "Creation dashboard continuity already failed; no recovery or "
+                "further gesture is authorized"
+            )
+        try:
+            observed = _strict_creation_dashboard_launch_state(
+                self._device,
+                deadline=self._deadline,
+            )
+        except Exception as error:
+            observed = shared.LaunchState(
+                (),
+                None,
+                "continuity observation failed: "
+                f"{type(error).__name__}: {shared._bounded_evidence(error)}",
+            )
+        packages, route_cardinality, exact_route = (
+            _creation_dashboard_hierarchy_authority(nodes)
+        )
+        pid_matches = observed.process_ids == self._expected.process_ids
+        component_matches = (
+            observed.resumed_component == self._expected.resumed_component
+        )
+        require_exact_route = traversal == "pre-scan"
+        hierarchy_matches = packages == (shared.PACKAGE,) and (
+            exact_route or not require_exact_route
+        )
+        observation = {
+            "ordinal": len(self._scroll_journal) + 1,
+            "phaseId": self._phase_id,
+            "scanId": scan_id,
+            "traversal": traversal,
+            "gesturesIssued": gestures_issued,
+            "expectedProcessIds": list(self._expected.process_ids),
+            "expectedResumedComponent": self._expected.resumed_component,
+            "processIds": list(observed.process_ids),
+            "resumedComponent": observed.resumed_component,
+            "packages": list(packages),
+            "hierarchySignatureSha256": accessibility_signature_sha256(nodes),
+            "routeCardinality": route_cardinality,
+            "exactRoute": exact_route,
+            "exactRouteRequired": require_exact_route,
+            "status": (
+                "pass"
+                if pid_matches and component_matches and hierarchy_matches
+                else "fail"
+            ),
+        }
+        self._scroll_journal.append(observation)
+        if pid_matches and component_matches and hierarchy_matches:
+            return
+
+        reasons = []
+        if not pid_matches:
+            reasons.append("package-pid-changed")
+        if not component_matches:
+            reasons.append("resumed-component-changed")
+        if packages != (shared.PACKAGE,):
+            reasons.append("hierarchy-package-changed")
+        if require_exact_route and not exact_route:
+            reasons.append("dashboard-route-changed")
+        reason = "+".join(reasons)
+        self._failed = True
+        capture_creation_dashboard_continuity_failure(
+            self._device,
+            reason=reason,
+            expected=self._expected,
+            observed=observed,
+            hierarchy_packages=packages,
+            route_cardinality=route_cardinality,
+            exact_route=exact_route,
+            scroll_journal=list(self._scroll_journal),
+        )
+        raise RuntimeError(
+            "Creation dashboard lost its exact process, foreground, package, or "
+            f"route continuity before another scan gesture: reason={reason!r}; "
+            "no recovery or further gesture was attempted"
+        )
+
+
 def require_reusable_scan_origin(
     origin: PriorityRankOrigin,
     *,
@@ -1236,6 +1608,9 @@ def acquire_stable_start_origin(
     max_consecutive_empty_reads: int = 3,
     delay_seconds: float = 0.0,
     deadline: float | None = None,
+    continuity_check: (
+        Callable[[list[shared.UiNode], str, str, int], None] | None
+    ) = None,
 ) -> PriorityRankOrigin:
     """Prove a measured page start and retain its fresh final hierarchy.
 
@@ -1290,6 +1665,8 @@ def acquire_stable_start_origin(
             )
             continue
         consecutive_empty_reads = 0
+        if continuity_check is not None:
+            continuity_check(nodes, scan_id, "reverse", reverse_swipes)
         signature = accessibility_signature(nodes)
         unchanged = unchanged + 1 if previous is not None and signature == previous else 0
         previous = signature
@@ -1350,6 +1727,9 @@ def scan_forward_until_stable(
     hierarchy_dump_attempt_max_seconds: float | None = None,
     allow_direct_hierarchy_reconciliation: bool = True,
     allow_direct_swipe_reconciliation: bool = True,
+    continuity_check: (
+        Callable[[list[shared.UiNode], str, str, int], None] | None
+    ) = None,
 ) -> list[list[shared.UiNode]]:
     """Scan through the exact stable page end instead of spending the full bound.
 
@@ -1483,6 +1863,8 @@ def scan_forward_until_stable(
             )
             continue
         consecutive_empty_reads = 0
+        if continuity_check is not None:
+            continuity_check(nodes, scan_id, "forward", swipes)
         screens.append(nodes)
         signature = accessibility_signature(nodes)
         unchanged = unchanged + 1 if previous is not None and signature == previous else 0
@@ -1568,6 +1950,9 @@ def scan_forward_with_receipt(
     hierarchy_dump_attempt_max_seconds: float | None = None,
     allow_direct_hierarchy_reconciliation: bool = True,
     allow_direct_swipe_reconciliation: bool = True,
+    continuity_check: (
+        Callable[[list[shared.UiNode], str, str, int], None] | None
+    ) = None,
 ) -> StableViewportScan:
     """Return the stable scan's actual viewport delta without another dump."""
     receipt: dict[str, object] = {}
@@ -1597,6 +1982,7 @@ def scan_forward_with_receipt(
             allow_direct_hierarchy_reconciliation
         ),
         allow_direct_swipe_reconciliation=allow_direct_swipe_reconciliation,
+        continuity_check=continuity_check,
     )
     swipes = receipt.get("swipes")
     stable_repeats = receipt.get("stableRepeats")
@@ -2987,6 +3373,7 @@ def assert_uncreated_advanced_editor_gated(
     scan_id: str = "advanced-editor-gate",
     deadline: float | None = None,
     compact_current: bool = False,
+    continuity_guard: CreationDashboardContinuityGuard | None = None,
 ) -> CreationDashboardScanProof:
     """Scan the dashboard once for forbidden controls and reusable authority."""
     def capture(name: str) -> None:
@@ -3027,6 +3414,9 @@ def assert_uncreated_advanced_editor_gated(
         )
         max_scrolls = POST_CONFIRM_DASHBOARD_SCAN_MAX_SCROLLS
     else:
+        origin_options: dict[str, object] = {}
+        if continuity_guard is not None:
+            origin_options["continuity_check"] = continuity_guard.require
         scan_origin = acquire_stable_start_origin(
             device,
             scan_id=f"{scan_id}-origin",
@@ -3036,6 +3426,7 @@ def assert_uncreated_advanced_editor_gated(
             max_consecutive_empty_reads=3,
             delay_seconds=0.0,
             deadline=deadline,
+            **origin_options,
         )
         max_scrolls = DASHBOARD_SCAN_MAX_SCROLLS
     scan_options: dict[str, object] = {}
@@ -3047,6 +3438,8 @@ def assert_uncreated_advanced_editor_gated(
             allow_direct_hierarchy_reconciliation=False,
             allow_direct_swipe_reconciliation=False,
         )
+    if continuity_guard is not None:
+        scan_options["continuity_check"] = continuity_guard.require
     scan = scan_forward_with_receipt(
         device,
         scan_id=scan_id,
@@ -10584,11 +10977,24 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     advanced_editor_deadline = progress.active_phase_deadline(
         "advanced-editor-gate-inventory"
     )
+    dashboard_continuity = CreationDashboardContinuityGuard(
+        device,
+        initial_launch,
+        deadline=advanced_editor_deadline,
+        phase_id="advanced-editor-gate-inventory",
+    )
+    dashboard_continuity.require(
+        resolved_dashboard_viewport[0].nodes,
+        "advanced-editor-gate-initial-pre-scan",
+        "pre-scan",
+        0,
+    )
     dashboard_scan = assert_uncreated_advanced_editor_gated(
         device,
         scan_observer=progress.record_scan,
         scan_id="advanced-editor-gate-initial",
         deadline=advanced_editor_deadline,
+        continuity_guard=dashboard_continuity,
     )
     dashboard_binding = dashboard_scan.binding
     _positioned_method_node, method_detail, _ = reacquire_exact_ready_creation_method(
