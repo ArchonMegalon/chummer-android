@@ -107,7 +107,7 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "feb1d5e42fbb68aed5abd6fd0b9ef2df026eccb05ef11a0f7b40e80870846041"
+        "sha256": "6f2502d7e316a13a45ce34c62034bf6e2fcb1378387a9bce781830f2f02235a4"
       },
       {
         "path": "src/Chummer.Android/Native/MorePage.cs",
@@ -667,7 +667,7 @@
       {
         "path": "src/Chummer.Android/Native/Sr5CareerWizardPage.cs",
         "exists": true,
-        "sha256": "0f2256d602ca81e3e85679726264596fdd487b05babe90aa0da85c6b26153708"
+        "sha256": "88ef80ab1d91a3e14c61a02c03f16e06aad5da3bea6fda00a51bdcad2c8d4b3b"
       },
       {
         "path": "src/Chummer.Android/Native/Sr5CareerWizardPhoneModel.cs",
@@ -747,17 +747,17 @@
       {
         "path": "src/Chummer.Android/Resources/Localization/WizardStrings.resx",
         "exists": true,
-        "sha256": "70fb1397a7326a4f74a4ca7787a957bdb613d381a6d4023f27be4e70dd4f8791"
+        "sha256": "739ca8d5ad1c0e4fbd560adc44d5eab413e3dd19da6d8ed4d580c42bcb2d8819"
       },
       {
         "path": "src/Chummer.Android/Resources/Localization/WizardStrings.de.resx",
         "exists": true,
-        "sha256": "113c720719a4b6258fb882fbba1635c53ffed9f9af30cde6adc3eccf47592fb3"
+        "sha256": "ea5683c7e308d57fba86542107b6d1a1b7ae19fb0eb974ae88dded289abb40e3"
       },
       {
         "path": "src/Chummer.Android/Resources/Localization/WizardStrings.es.resx",
         "exists": true,
-        "sha256": "a26e31af78820c44ea0e2c80f3d7ab0ee726e280774237975dbc57e09e9be39d"
+        "sha256": "8bcd47a4356f766bcfe5b8691a1a2939e06f78907964953e7f0e3f0d402f2ddc"
       },
       {
         "path": "tests/Chummer.Android.Sr5CareerChooser.Tests/Chummer.Android.Sr5CareerChooser.Tests.csproj",
@@ -902,7 +902,7 @@
       {
         "path": "tests/test_api36_e2e_workflow.py",
         "exists": true,
-        "sha256": "28ff6fe7c4597f5cd8cc162e76e7dbcbe7eaceb5aae674ced4e0b4ad18e5e9ce"
+        "sha256": "56b3faf75b562e814d8db1d378b50de2a16b32085d9a9e5466b79b7e52dc7eb3"
       },
       {
         "path": "tests/test_api36_e2e_artifact_authority.py",
