@@ -4,7 +4,15 @@ on:
   workflow_dispatch:
     inputs:
       review_run_id:
-        description: Exact successful pull_request or merge_group API 36 run ID
+        description: Exact successful pull_request API 36 run ID
+        required: true
+        type: string
+      review_pull_request_number:
+        description: Exact pull request proven by the reviewed run
+        required: true
+        type: string
+      review_event_sha:
+        description: Exact tested pull request merge commit from the review P0 authority
         required: true
         type: string
       main_run_id:
@@ -14,7 +22,9 @@ on:
 
 permissions:
   actions: read
+  checks: read
   contents: read
+  pull-requests: read
 
 concurrency:
   group: api36-two-green-${{ github.repository }}-${{ inputs.main_run_id }}
@@ -30,11 +40,15 @@ jobs:
         shell: bash
         env:
           REVIEW_RUN_ID: ${{ inputs.review_run_id }}
+          REVIEW_PULL_REQUEST_NUMBER: ${{ inputs.review_pull_request_number }}
+          REVIEW_EVENT_SHA: ${{ inputs.review_event_sha }}
           MAIN_RUN_ID: ${{ inputs.main_run_id }}
         run: |
           set -euo pipefail
           test "$GITHUB_REF" = refs/heads/main
           [[ "$REVIEW_RUN_ID" =~ ^[1-9][0-9]*$ ]]
+          [[ "$REVIEW_PULL_REQUEST_NUMBER" =~ ^[1-9][0-9]*$ ]]
+          [[ "$REVIEW_EVENT_SHA" =~ ^[0-9a-f]{40}$ ]]
           [[ "$MAIN_RUN_ID" =~ ^[1-9][0-9]*$ ]]
           test "$REVIEW_RUN_ID" != "$MAIN_RUN_ID"
 
@@ -50,6 +64,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REVIEW_RUN_ID: ${{ inputs.review_run_id }}
+          REVIEW_PULL_REQUEST_NUMBER: ${{ inputs.review_pull_request_number }}
+          REVIEW_EVENT_SHA: ${{ inputs.review_event_sha }}
           MAIN_RUN_ID: ${{ inputs.main_run_id }}
         run: |
           set -euo pipefail
@@ -97,11 +113,52 @@ jobs:
                 >"$role_root/$kind.zip"
             done
           done
+          gh api \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "repos/$GITHUB_REPOSITORY/pulls/$REVIEW_PULL_REQUEST_NUMBER" \
+            >"$evidence/review/pull-request.json"
+          review_head_sha="$(jq -er '.head_sha | select(type == "string" and test("^[0-9a-f]{40}$"))' "$evidence/review/run.json")"
+          review_base_sha="$(jq -er '.base.sha | select(type == "string" and test("^[0-9a-f]{40}$"))' "$evidence/review/pull-request.json")"
+          gh api \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "repos/$GITHUB_REPOSITORY/commits/$review_head_sha/pulls" \
+            >"$evidence/review/head-pull-requests.json"
+          aggregate_job_id="$(jq -er --arg name 'Aggregate exact API 36 phone evidence' '[.jobs[] | select(.name == $name)] | if length == 1 then .[0].id else error("aggregate job cardinality differs") end | select(type == "number" and . >= 1 and floor == .)' "$evidence/review/jobs.json")"
+          gh api \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "repos/$GITHUB_REPOSITORY/check-runs/$aggregate_job_id" \
+            >"$evidence/review/aggregate-check-run.json"
+          gh api \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "repos/$GITHUB_REPOSITORY/git/commits/$review_base_sha" \
+            >"$evidence/review/base-commit.json"
+          gh api \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "repos/$GITHUB_REPOSITORY/git/commits/$review_head_sha" \
+            >"$evidence/review/head-commit.json"
+          gh api \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "repos/$GITHUB_REPOSITORY/git/commits/$REVIEW_EVENT_SHA" \
+            >"$evidence/review/event-commit.json"
+          main_head_sha="$(jq -er '.head_sha | select(type == "string" and test("^[0-9a-f]{40}$"))' "$evidence/main/run.json")"
+          gh api \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "repos/$GITHUB_REPOSITORY/git/commits/$main_head_sha" \
+            >"$evidence/main/commit.json"
 
       - name: Materialize and replay eligibility without publication authority
         shell: bash
         env:
           REVIEW_RUN_ID: ${{ inputs.review_run_id }}
+          REVIEW_PULL_REQUEST_NUMBER: ${{ inputs.review_pull_request_number }}
+          REVIEW_EVENT_SHA: ${{ inputs.review_event_sha }}
           MAIN_RUN_ID: ${{ inputs.main_run_id }}
           PYTHONDONTWRITEBYTECODE: "1"
         run: |
@@ -116,17 +173,26 @@ jobs:
             --environment-policy "$GITHUB_WORKSPACE/chummer-android/eng/api36-proof-environment-authority.json"
             --source-workflow "$GITHUB_WORKSPACE/chummer-android/.github/workflows/api36-editing-e2e.yml"
             --review-run-id "$REVIEW_RUN_ID"
+            --review-pull-request-number "$REVIEW_PULL_REQUEST_NUMBER"
+            --review-event-sha "$REVIEW_EVENT_SHA"
             --main-run-id "$MAIN_RUN_ID"
             --review-run "$evidence/review/run.json"
             --review-jobs "$evidence/review/jobs.json"
             --review-artifacts "$evidence/review/artifacts.json"
             --review-aggregate-archive "$evidence/review/aggregate.zip"
             --review-p0-archive "$evidence/review/p0.zip"
+            --review-pull-request "$evidence/review/pull-request.json"
+            --review-head-pull-requests "$evidence/review/head-pull-requests.json"
+            --review-aggregate-check-run "$evidence/review/aggregate-check-run.json"
+            --review-base-commit "$evidence/review/base-commit.json"
+            --review-head-commit "$evidence/review/head-commit.json"
+            --review-event-commit "$evidence/review/event-commit.json"
             --main-run "$evidence/main/run.json"
             --main-jobs "$evidence/main/jobs.json"
             --main-artifacts "$evidence/main/artifacts.json"
             --main-aggregate-archive "$evidence/main/aggregate.zip"
             --main-p0-archive "$evidence/main/p0.zip"
+            --main-commit "$evidence/main/commit.json"
           )
           python3 chummer-android/scripts/materialize-api36-two-green-eligibility.py \
             materialize "${common[@]}" --output "$output"

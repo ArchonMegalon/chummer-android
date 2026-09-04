@@ -79,7 +79,7 @@ WORKFLOW_NAME = "API 36 phone beta SR5 wizard E2E"
 WORKFLOW_PATH = ".github/workflows/api36-editing-e2e.yml"
 P0_SCHEMA = "chummer.android.p0-pr-authority/v1"
 ELIGIBILITY_SCOPE = "preview11_internal_testing_candidate"
-REVIEW_EVENTS = ("pull_request", "merge_group")
+REVIEW_EVENTS = ("pull_request",)
 MAIN_REF = "refs/heads/main"
 SHA40 = re.compile(r"^[0-9a-f]{40}$")
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
@@ -106,7 +106,6 @@ DOES_NOT_ASSERT = (
     "public_release_readiness",
     "publication_authority",
     "zero_intervening_workflow_runs",
-    "pull_request_merge_commit_lineage_reconstruction",
     "non_android_dependency_commit_tree_reconstruction",
 )
 
@@ -174,7 +173,7 @@ class StableFile:
         if self._stat_identity(current) != self._identity:
             raise ValueError(f"{self.label} changed after capture")
 
-    def json(self) -> dict[str, object]:
+    def json_value(self) -> object:
         try:
             value = json.loads(
                 self.data.decode("utf-8", errors="strict"),
@@ -185,8 +184,18 @@ class StableFile:
             )
         except (UnicodeDecodeError, json.JSONDecodeError) as error:
             raise ValueError(f"{self.label} is not strict UTF-8 JSON") from error
+        return value
+
+    def json(self) -> dict[str, object]:
+        value = self.json_value()
         if not isinstance(value, dict):
             raise ValueError(f"{self.label} must contain one JSON object")
+        return value
+
+    def json_array(self) -> list[object]:
+        value = self.json_value()
+        if not isinstance(value, list):
+            raise ValueError(f"{self.label} must contain one JSON array")
         return value
 
 
@@ -207,6 +216,12 @@ def expected_policy() -> dict[str, object]:
         "eligibilityScope": ELIGIBILITY_SCOPE,
         "requiresDistinctRuns": True,
         "requiresReviewCompletionBeforeMainStart": True,
+        "requiresExactPullRequestAuthority": True,
+        "requiresEmptyActionsPullRequestSummaries": True,
+        "requiresCommitAssociatedPullRequest": True,
+        "requiresExactMergeCommitGraphs": True,
+        "requiresExactAggregateCheckRun": True,
+        "requiresCanonicalActionsDetailsUrls": True,
         "sequenceSemantics": (
             "reviewed_green_followed_later_by_main_green_not_run_adjacency"
         ),
@@ -261,11 +276,10 @@ def _utc(value: object, label: str) -> datetime:
 def git_source_tree(android_root: Path, workflow: StableFile) -> str:
     """Bind the governed workflow to one clean tracked HEAD tree.
 
-    The two-green inputs do not include the review merge object or the
-    non-Android repositories.  Their commit-to-tree relationships therefore
-    remain transitively bound by the immutable P0 artifact rather than being
-    reconstructed here.  The current Android checkout is available, so its
-    cleanliness and workflow blob are verified directly instead of inferred.
+    The current Android checkout is available, so its cleanliness and workflow
+    blob are verified directly instead of inferred.  Non-Android repositories
+    are not inputs, so their commit-to-tree relationships remain transitively
+    bound by the immutable P0 artifact rather than reconstructed here.
     """
     if (
         not android_root.is_absolute()
@@ -341,8 +355,22 @@ def validate_run_metadata(
     value: dict[str, object], *, expected_id: int, role: str
 ) -> dict[str, object]:
     repository = value.get("repository")
-    if not isinstance(repository, dict) or repository.get("full_name") != REPOSITORY:
+    head_repository = value.get("head_repository")
+    if (
+        not isinstance(repository, dict)
+        or repository.get("full_name") != REPOSITORY
+        or repository.get("url") != f"https://api.github.com/repos/{REPOSITORY}"
+        or repository.get("html_url") != f"https://github.com/{REPOSITORY}"
+    ):
         raise ValueError(f"{role} run repository differs")
+    if (
+        not isinstance(head_repository, dict)
+        or head_repository.get("full_name") != REPOSITORY
+        or head_repository.get("url")
+        != f"https://api.github.com/repos/{REPOSITORY}"
+        or head_repository.get("html_url") != f"https://github.com/{REPOSITORY}"
+    ):
+        raise ValueError(f"{role} run head repository differs")
     run_id = _positive_integer(value.get("id"), f"{role} run ID")
     attempt = _positive_integer(value.get("run_attempt"), f"{role} run attempt")
     workflow_id = _positive_integer(value.get("workflow_id"), f"{role} workflow ID")
@@ -350,19 +378,30 @@ def validate_run_metadata(
     branch = value.get("head_branch")
     if run_id != expected_id:
         raise ValueError(f"{role} run ID differs from explicit operator input")
+    api_root = f"https://api.github.com/repos/{REPOSITORY}"
+    html_root = f"https://github.com/{REPOSITORY}"
+    check_suite_id = _positive_integer(
+        value.get("check_suite_id"), f"{role} check suite ID"
+    )
+    if (
+        value.get("url") != f"{api_root}/actions/runs/{run_id}"
+        or value.get("html_url") != f"{html_root}/actions/runs/{run_id}"
+        or value.get("jobs_url") != f"{api_root}/actions/runs/{run_id}/jobs"
+        or value.get("artifacts_url")
+        != f"{api_root}/actions/runs/{run_id}/artifacts"
+        or value.get("check_suite_url")
+        != f"{api_root}/check-suites/{check_suite_id}"
+    ):
+        raise ValueError(f"{role} run API/details authority differs")
     if value.get("name") != WORKFLOW_NAME or value.get("path") != WORKFLOW_PATH:
         raise ValueError(f"{role} run workflow identity differs")
     if value.get("status") != "completed" or value.get("conclusion") != "success":
         raise ValueError(f"{role} run is not completed successfully")
     if role == "review":
         if event not in REVIEW_EVENTS:
-            raise ValueError("review run is not pull_request or merge_group")
+            raise ValueError("review run is not an exact pull_request run")
         if not isinstance(branch, str) or not branch or branch == "main":
             raise ValueError("review run head branch is invalid")
-        if event == "pull_request":
-            pull_requests = value.get("pull_requests")
-            if not isinstance(pull_requests, list) or len(pull_requests) != 1:
-                raise ValueError("pull_request run must bind exactly one pull request")
     elif role == "main":
         if event != "push" or branch != "main":
             raise ValueError("main run must be a refs/heads/main push")
@@ -373,6 +412,14 @@ def validate_run_metadata(
     updated = _utc(value.get("updated_at"), f"{role} updated_at")
     if not created <= started <= updated:
         raise ValueError(f"{role} run timestamps are not monotonic")
+    pull_requests = value.get("pull_requests")
+    if not isinstance(pull_requests, list):
+        raise ValueError(f"{role} run pull request summary is malformed")
+    if pull_requests:
+        raise ValueError(
+            f"{role} run must use the independently authenticated empty "
+            "pull request summary path"
+        )
     return {
         "id": run_id,
         "attempt": attempt,
@@ -381,6 +428,8 @@ def validate_run_metadata(
         "headBranch": branch,
         "headSha": _sha40(value.get("head_sha"), f"{role} head SHA"),
         "workflowId": workflow_id,
+        "checkSuiteId": check_suite_id,
+        "reportedPullRequests": [],
         "createdAtUtc": value["created_at"],
         "startedAtUtc": value["run_started_at"],
         "completedAtUtc": value["updated_at"],
@@ -410,12 +459,19 @@ def validate_jobs(
         if job_id in identifiers:
             raise ValueError(f"{role} job ID is duplicated")
         identifiers.add(job_id)
+        api_root = f"https://api.github.com/repos/{REPOSITORY}"
+        html_root = f"https://github.com/{REPOSITORY}"
         if (
             raw.get("status") != "completed"
             or raw.get("conclusion") != "success"
             or raw.get("workflow_name") != WORKFLOW_NAME
             or raw.get("run_id") != run["id"]
             or raw.get("run_attempt") != run["attempt"]
+            or raw.get("head_sha") != run["headSha"]
+            or raw.get("url") != f"{api_root}/actions/jobs/{job_id}"
+            or raw.get("html_url")
+            != f"{html_root}/actions/runs/{run['id']}/job/{job_id}"
+            or raw.get("check_run_url") != f"{api_root}/check-runs/{job_id}"
         ):
             raise ValueError(f"{role} job is not exact and successful: {name}")
         started = _utc(raw.get("started_at"), f"{role} job started_at")
@@ -428,10 +484,288 @@ def validate_jobs(
             "conclusion": "success",
             "startedAtUtc": raw["started_at"],
             "completedAtUtc": raw["completed_at"],
+            "detailsUrl": raw["html_url"],
+            "checkRunUrl": raw["check_run_url"],
         }
     if set(rows) != set(REQUIRED_JOB_NAMES):
         raise ValueError(f"{role} run job names differ from the exact gate")
     return {name: rows[name] for name in REQUIRED_JOB_NAMES}
+
+
+def validate_git_commit_authority(
+    snapshot: StableFile,
+    *,
+    expected_sha: str,
+    expected_tree: str | None,
+    expected_parents: list[str] | None,
+    label: str,
+) -> dict[str, object]:
+    value = snapshot.json()
+    api_root = f"https://api.github.com/repos/{REPOSITORY}"
+    html_root = f"https://github.com/{REPOSITORY}"
+    tree = value.get("tree")
+    parents = value.get("parents")
+    if not isinstance(tree, dict):
+        raise ValueError(f"{label} commit identity differs")
+    observed_tree = _sha40(tree.get("sha"), f"{label} commit tree")
+    if (
+        value.get("sha") != expected_sha
+        or value.get("url") != f"{api_root}/git/commits/{expected_sha}"
+        or value.get("html_url") != f"{html_root}/commit/{expected_sha}"
+        or (expected_tree is not None and observed_tree != expected_tree)
+        or tree.get("url") != f"{api_root}/git/trees/{observed_tree}"
+        or not isinstance(parents, list)
+        or (
+            expected_parents is not None
+            and len(parents) != len(expected_parents)
+        )
+    ):
+        raise ValueError(f"{label} commit identity differs")
+    parent_shas: list[str] = []
+    for index, parent in enumerate(parents):
+        expected_parent = (
+            expected_parents[index]
+            if expected_parents is not None
+            else _sha40(
+                parent.get("sha") if isinstance(parent, dict) else None,
+                f"{label} commit parent SHA",
+            )
+        )
+        if (
+            not isinstance(parent, dict)
+            or parent.get("sha") != expected_parent
+            or parent.get("url") != f"{api_root}/git/commits/{expected_parent}"
+            or parent.get("html_url") != f"{html_root}/commit/{expected_parent}"
+        ):
+            raise ValueError(f"{label} commit parent authority differs")
+        parent_shas.append(expected_parent)
+    return {
+        "sha": expected_sha,
+        "tree": observed_tree,
+        "parents": parent_shas,
+        "apiSnapshotSha256": snapshot.sha256,
+        "apiSnapshotSizeBytes": snapshot.size,
+    }
+
+
+def validate_commit_pull_request_association(
+    snapshot: StableFile,
+    *,
+    number: int,
+    base_sha: str,
+    merged_at: str,
+    review_run: dict[str, object],
+    main_run: dict[str, object],
+) -> dict[str, object]:
+    rows = snapshot.json_array()
+    if len(rows) != 1 or not isinstance(rows[0], dict):
+        raise ValueError("review head must be associated with exactly one pull request")
+    value = rows[0]
+    api_root = f"https://api.github.com/repos/{REPOSITORY}"
+    html_root = f"https://github.com/{REPOSITORY}"
+    base = value.get("base")
+    head = value.get("head")
+    if (
+        value.get("number") != number
+        or value.get("url") != f"{api_root}/pulls/{number}"
+        or value.get("html_url") != f"{html_root}/pull/{number}"
+        or value.get("state") != "closed"
+        or value.get("merge_commit_sha") != main_run["headSha"]
+        or value.get("merged_at") != merged_at
+        or not isinstance(base, dict)
+        or base.get("ref") != "main"
+        or base.get("sha") != base_sha
+        or not isinstance(base.get("repo"), dict)
+        or base["repo"].get("full_name") != REPOSITORY
+        or base["repo"].get("url") != api_root
+        or base["repo"].get("html_url") != html_root
+        or not isinstance(head, dict)
+        or head.get("ref") != review_run["headBranch"]
+        or head.get("sha") != review_run["headSha"]
+        or not isinstance(head.get("repo"), dict)
+        or head["repo"].get("full_name") != REPOSITORY
+        or head["repo"].get("url") != api_root
+        or head["repo"].get("html_url") != html_root
+    ):
+        raise ValueError("review head pull request association differs")
+    return {
+        "endpoint": f"{api_root}/commits/{review_run['headSha']}/pulls",
+        "number": number,
+        "apiSnapshotSha256": snapshot.sha256,
+        "apiSnapshotSizeBytes": snapshot.size,
+    }
+
+
+def validate_aggregate_check_run_authority(
+    snapshot: StableFile,
+    *,
+    review: dict[str, object],
+) -> dict[str, object]:
+    value = snapshot.json()
+    run = review["run"]
+    jobs = review["jobs"]
+    assert isinstance(run, dict)
+    assert isinstance(jobs, dict)
+    aggregate_job = jobs[REQUIRED_JOB_NAMES[-1]]
+    assert isinstance(aggregate_job, dict)
+    check_run_id = aggregate_job["id"]
+    check_suite = value.get("check_suite")
+    app = value.get("app")
+    api_url = f"https://api.github.com/repos/{REPOSITORY}/check-runs/{check_run_id}"
+    details_url = (
+        f"https://github.com/{REPOSITORY}/actions/runs/{run['id']}/job/"
+        f"{check_run_id}"
+    )
+    if (
+        value.get("id") != check_run_id
+        or value.get("name") != REQUIRED_JOB_NAMES[-1]
+        or value.get("head_sha") != run["headSha"]
+        or value.get("status") != "completed"
+        or value.get("conclusion") != "success"
+        or value.get("url") != api_url
+        or value.get("html_url") != details_url
+        or value.get("details_url") != details_url
+        or aggregate_job.get("checkRunUrl") != api_url
+        or aggregate_job.get("detailsUrl") != details_url
+        or not isinstance(check_suite, dict)
+        or check_suite.get("id") != run["checkSuiteId"]
+        or not isinstance(app, dict)
+        or app.get("id") != 15368
+        or app.get("slug") != "github-actions"
+    ):
+        raise ValueError("review aggregate check-run authority differs")
+    pull_requests = value.get("pull_requests")
+    if not isinstance(pull_requests, list) or pull_requests:
+        raise ValueError("review aggregate check-run pull request summary is malformed")
+    return {
+        "id": check_run_id,
+        "name": REQUIRED_JOB_NAMES[-1],
+        "headSha": run["headSha"],
+        "checkSuiteId": run["checkSuiteId"],
+        "app": {"id": 15368, "slug": "github-actions"},
+        "status": "completed",
+        "conclusion": "success",
+        "detailsUrl": details_url,
+        "reportedPullRequests": [],
+        "apiSnapshotSha256": snapshot.sha256,
+        "apiSnapshotSizeBytes": snapshot.size,
+    }
+
+
+def validate_review_pull_request_authority(
+    *,
+    pull_request_number: int,
+    pull_request_snapshot: StableFile,
+    head_pull_requests_snapshot: StableFile,
+    base_commit_snapshot: StableFile,
+    head_commit_snapshot: StableFile,
+    review_event_commit_snapshot: StableFile,
+    main_commit_snapshot: StableFile,
+    review: dict[str, object],
+    main: dict[str, object],
+    local_tree: str,
+) -> dict[str, object]:
+    number = _positive_integer(pull_request_number, "review pull request number")
+    review_run = review["run"]
+    main_run = main["run"]
+    assert isinstance(review_run, dict)
+    assert isinstance(main_run, dict)
+    value = pull_request_snapshot.json()
+    api_root = f"https://api.github.com/repos/{REPOSITORY}"
+    html_root = f"https://github.com/{REPOSITORY}"
+    base = value.get("base")
+    head = value.get("head")
+    repository_api_url = f"{api_root}"
+    repository_html_url = f"{html_root}"
+    if (
+        value.get("number") != number
+        or value.get("url") != f"{api_root}/pulls/{number}"
+        or value.get("html_url") != f"{html_root}/pull/{number}"
+        or value.get("commits_url") != f"{api_root}/pulls/{number}/commits"
+        or value.get("statuses_url")
+        != f"{api_root}/statuses/{review_run['headSha']}"
+        or value.get("state") != "closed"
+        or value.get("merged") is not True
+        or value.get("merge_commit_sha") != main_run["headSha"]
+        or not isinstance(base, dict)
+        or not isinstance(base.get("repo"), dict)
+        or base["repo"].get("full_name") != REPOSITORY
+        or base["repo"].get("url") != repository_api_url
+        or base["repo"].get("html_url") != repository_html_url
+        or base.get("ref") != "main"
+        or not isinstance(head, dict)
+        or not isinstance(head.get("repo"), dict)
+        or head["repo"].get("full_name") != REPOSITORY
+        or head["repo"].get("url") != repository_api_url
+        or head["repo"].get("html_url") != repository_html_url
+        or head.get("ref") != review_run["headBranch"]
+        or head.get("sha") != review_run["headSha"]
+    ):
+        raise ValueError("review pull request identity differs")
+    base_sha = _sha40(base.get("sha"), "review pull request base SHA")
+    if review.get("p0BaseSha") != base_sha:
+        raise ValueError("review pull request base differs from the P0 authority")
+    merged_at = _utc(value.get("merged_at"), "review pull request merged_at")
+    review_completed = _utc(
+        review_run["completedAtUtc"], "review completion time"
+    )
+    main_started = _utc(main_run["startedAtUtc"], "main start time")
+    if not review_completed <= merged_at <= main_started:
+        raise ValueError("pull request merge is not between review and main runs")
+    reported = review_run.get("reportedPullRequests")
+    if reported not in ([], [number]):
+        raise ValueError("Actions run pull request summary disagrees with PR authority")
+    parents = [base_sha, review_run["headSha"]]
+    base_commit = validate_git_commit_authority(
+        base_commit_snapshot,
+        expected_sha=base_sha,
+        expected_tree=None,
+        expected_parents=None,
+        label="pull request base",
+    )
+    head_commit = validate_git_commit_authority(
+        head_commit_snapshot,
+        expected_sha=review_run["headSha"],
+        expected_tree=local_tree,
+        expected_parents=None,
+        label="pull request head",
+    )
+    review_commit = validate_git_commit_authority(
+        review_event_commit_snapshot,
+        expected_sha=review["p0EventSha"],
+        expected_tree=local_tree,
+        expected_parents=parents,
+        label="review event",
+    )
+    main_commit = validate_git_commit_authority(
+        main_commit_snapshot,
+        expected_sha=main_run["headSha"],
+        expected_tree=local_tree,
+        expected_parents=parents,
+        label="main merge",
+    )
+    association = validate_commit_pull_request_association(
+        head_pull_requests_snapshot,
+        number=number,
+        base_sha=base_sha,
+        merged_at=value["merged_at"],
+        review_run=review_run,
+        main_run=main_run,
+    )
+    return {
+        "number": number,
+        "repository": REPOSITORY,
+        "url": value["html_url"],
+        "base": {"ref": "main", "sha": base_sha},
+        "head": {"ref": head["ref"], "sha": head["sha"]},
+        "commitAssociation": association,
+        "baseCommit": base_commit,
+        "headCommit": head_commit,
+        "reviewEventCommit": review_commit,
+        "mainMergeCommit": main_commit,
+        "apiSnapshotSha256": pull_request_snapshot.sha256,
+        "apiSnapshotSizeBytes": pull_request_snapshot.size,
+    }
 
 
 def validate_artifact_metadata(
@@ -651,6 +985,7 @@ def validate_proof_artifacts(
         or github_run.get("eventName") != run["event"]
         or github_run.get("headSha") != run["headSha"]
         or (role == "main" and github_run.get("eventSha") != run["headSha"])
+        or (role == "main" and github_run.get("baseSha") != run["headSha"])
         or not isinstance(android_source, dict)
         or android_source.get("checkedOutTree") != local_tree
         or android_source.get("checkedOutHead") != github_run.get("eventSha")
@@ -751,6 +1086,7 @@ def run_evidence(
             "p0Authority": p0_artifact,
         },
         "p0AuthoritySha256": p0["authoritySha256"],
+        "p0BaseSha": p0["githubRun"]["baseSha"],
         "p0EventSha": p0["githubRun"]["eventSha"],
         "aggregateStatus": aggregate["status"],
     }
@@ -764,17 +1100,26 @@ def create_authority(
     environment_policy: Path,
     source_workflow: Path,
     review_run_id: int,
+    review_pull_request_number: int,
+    review_event_sha: str,
     main_run_id: int,
     review_run: Path,
     review_jobs: Path,
     review_artifacts: Path,
     review_aggregate_archive: Path,
     review_p0_archive: Path,
+    review_pull_request: Path,
+    review_head_pull_requests: Path,
+    review_aggregate_check_run: Path,
+    review_base_commit: Path,
+    review_head_commit: Path,
+    review_event_commit: Path,
     main_run: Path,
     main_jobs: Path,
     main_artifacts: Path,
     main_aggregate_archive: Path,
     main_p0_archive: Path,
+    main_commit: Path,
 ) -> dict[str, object]:
     if review_run_id == main_run_id:
         raise ValueError("review and main run IDs must be distinct")
@@ -789,11 +1134,31 @@ def create_authority(
         "reviewArtifacts": StableFile(review_artifacts, "review artifacts metadata"),
         "reviewAggregate": StableFile(review_aggregate_archive, "review aggregate archive"),
         "reviewP0": StableFile(review_p0_archive, "review P0 archive"),
+        "reviewPullRequest": StableFile(
+            review_pull_request, "review pull request API response"
+        ),
+        "reviewHeadPullRequests": StableFile(
+            review_head_pull_requests,
+            "review head commit-associated pull requests API response",
+        ),
+        "reviewAggregateCheckRun": StableFile(
+            review_aggregate_check_run, "review aggregate check-run API response"
+        ),
+        "reviewBaseCommit": StableFile(
+            review_base_commit, "review pull request base commit API response"
+        ),
+        "reviewHeadCommit": StableFile(
+            review_head_commit, "review pull request head commit API response"
+        ),
+        "reviewEventCommit": StableFile(
+            review_event_commit, "review event commit API response"
+        ),
         "mainRun": StableFile(main_run, "main run metadata"),
         "mainJobs": StableFile(main_jobs, "main jobs metadata"),
         "mainArtifacts": StableFile(main_artifacts, "main artifacts metadata"),
         "mainAggregate": StableFile(main_aggregate_archive, "main aggregate archive"),
         "mainP0": StableFile(main_p0_archive, "main P0 archive"),
+        "mainCommit": StableFile(main_commit, "main commit API response"),
     }
     policy_authority = policy_binding(snapshots["policy"])
     environment_policy_authority = ENVIRONMENT.policy_binding(
@@ -831,6 +1196,24 @@ def create_authority(
     )
     if review_common != main_common:
         raise ValueError("review and main authority or environment compatibility differs")
+    if _sha40(review_event_sha, "review event SHA") != review["p0EventSha"]:
+        raise ValueError("explicit review event SHA differs from the P0 authority")
+    pull_request_authority = validate_review_pull_request_authority(
+        pull_request_number=review_pull_request_number,
+        pull_request_snapshot=snapshots["reviewPullRequest"],
+        head_pull_requests_snapshot=snapshots["reviewHeadPullRequests"],
+        base_commit_snapshot=snapshots["reviewBaseCommit"],
+        head_commit_snapshot=snapshots["reviewHeadCommit"],
+        review_event_commit_snapshot=snapshots["reviewEventCommit"],
+        main_commit_snapshot=snapshots["mainCommit"],
+        review=review,
+        main=main,
+        local_tree=local_tree,
+    )
+    review["aggregateCheckRun"] = validate_aggregate_check_run_authority(
+        snapshots["reviewAggregateCheckRun"],
+        review=review,
+    )
     review_completed = _utc(
         review["run"]["completedAtUtc"], "review completion time"
     )
@@ -848,6 +1231,7 @@ def create_authority(
         "policyAuthority": policy_authority,
         "sourceTree": local_tree,
         "commonAuthority": review_common,
+        "reviewPullRequest": pull_request_authority,
         "reviewRun": review,
         "mainRun": main,
         "decisionTimeUtc": main["run"]["completedAtUtc"],
@@ -865,7 +1249,7 @@ def validate_authority(value: dict[str, object]) -> dict[str, object]:
         "schema", "status", "eligibilityScope", "eligible", "internalTestingEligible",
         "publicationAuthorized", "googlePlayUploadAuthorized", "policyAuthority",
         "sourceTree", "commonAuthority", "reviewRun", "mainRun", "decisionTimeUtc",
-        "doesNotAssert", "eligibilitySha256",
+        "reviewPullRequest", "doesNotAssert", "eligibilitySha256",
     }
     if set(value) != fields:
         raise ValueError("two-green eligibility fields are not exact")
@@ -918,6 +1302,8 @@ def _input_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--environment-policy", type=Path, required=True)
     parser.add_argument("--source-workflow", type=Path, required=True)
     parser.add_argument("--review-run-id", type=int, required=True)
+    parser.add_argument("--review-pull-request-number", type=int, required=True)
+    parser.add_argument("--review-event-sha", required=True)
     parser.add_argument("--main-run-id", type=int, required=True)
     for role in ("review", "main"):
         parser.add_argument(f"--{role}-run", type=Path, required=True)
@@ -925,6 +1311,13 @@ def _input_arguments(parser: argparse.ArgumentParser) -> None:
         parser.add_argument(f"--{role}-artifacts", type=Path, required=True)
         parser.add_argument(f"--{role}-aggregate-archive", type=Path, required=True)
         parser.add_argument(f"--{role}-p0-archive", type=Path, required=True)
+    parser.add_argument("--review-pull-request", type=Path, required=True)
+    parser.add_argument("--review-head-pull-requests", type=Path, required=True)
+    parser.add_argument("--review-aggregate-check-run", type=Path, required=True)
+    parser.add_argument("--review-base-commit", type=Path, required=True)
+    parser.add_argument("--review-head-commit", type=Path, required=True)
+    parser.add_argument("--review-event-commit", type=Path, required=True)
+    parser.add_argument("--main-commit", type=Path, required=True)
 
 
 def main(argv: list[str] | None = None) -> int:

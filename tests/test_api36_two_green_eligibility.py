@@ -56,10 +56,14 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
             "commit-tree", self.tree,
             "-p", self.base_commit,
             "-p", self.pr_head,
-            "-m", "Merge pull request #32 from feature/two-green",
+            "-m", "Merge pull request #33 from feature/two-green",
         )
         self.assertNotEqual(self.review_merge_commit, self.main_merge_commit)
         self.git("checkout", "--quiet", "--detach", self.main_merge_commit)
+        self.review_run_id = 33852701828
+        self.main_run_id = 33856875877
+        self.pull_request_number = 33
+        self.review_branch = "codex/android-api36-environment-aggregate-v2-20260903"
         self.policy = self.root / "policy.json"
         self.policy.write_bytes(gate.canonical_json_bytes(gate.expected_policy()))
         self.environment_policy = self.root / "environment-policy.json"
@@ -73,14 +77,16 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
             "policy": self.policy,
             "environment_policy": self.environment_policy,
             "source_workflow": self.source_workflow,
-            "review_run_id": 100,
-            "main_run_id": 200,
+            "review_run_id": self.review_run_id,
+            "review_pull_request_number": self.pull_request_number,
+            "review_event_sha": self.review_merge_commit,
+            "main_run_id": self.main_run_id,
         }
         self.make_run(
             "review",
-            run_id=100,
+            run_id=self.review_run_id,
             event="pull_request",
-            branch="feature/two-green",
+            branch=self.review_branch,
             head_sha=self.pr_head,
             event_sha=self.review_merge_commit,
             created="2026-09-03T10:00:00Z",
@@ -89,7 +95,7 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
         )
         self.make_run(
             "main",
-            run_id=200,
+            run_id=self.main_run_id,
             event="push",
             branch="main",
             head_sha=self.main_merge_commit,
@@ -98,6 +104,7 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
             started="2026-09-03T11:01:00Z",
             completed="2026-09-03T11:30:00Z",
         )
+        self.write_pull_request_authority_files()
 
     def tearDown(self) -> None:
         self.temporary.cleanup()
@@ -279,6 +286,9 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
         root = self.root / role
         root.mkdir()
         attempt = 1
+        api_root = f"https://api.github.com/repos/{gate.REPOSITORY}"
+        html_root = f"https://github.com/{gate.REPOSITORY}"
+        check_suite_id = 91743668109 if run_id == 33852701828 else run_id + 500
         run = {
             "id": run_id,
             "run_attempt": attempt,
@@ -290,25 +300,60 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
             "conclusion": "success",
             "head_branch": branch,
             "head_sha": head_sha,
+            "url": f"{api_root}/actions/runs/{run_id}",
+            "html_url": f"{html_root}/actions/runs/{run_id}",
+            "jobs_url": f"{api_root}/actions/runs/{run_id}/jobs",
+            "artifacts_url": f"{api_root}/actions/runs/{run_id}/artifacts",
+            "check_suite_id": check_suite_id,
+            "check_suite_url": f"{api_root}/check-suites/{check_suite_id}",
             "created_at": created,
             "run_started_at": started,
             "updated_at": completed,
-            "repository": {"full_name": gate.REPOSITORY},
-            "pull_requests": [{"number": 32}] if event == "pull_request" else [],
+            "repository": {
+                "full_name": gate.REPOSITORY,
+                "url": api_root,
+                "html_url": html_root,
+            },
+            "head_repository": {
+                "full_name": gate.REPOSITORY,
+                "url": api_root,
+                "html_url": html_root,
+            },
+            # Run 33852701828 is a genuine pull_request run whose canonical
+            # Actions response has an empty summary.  Independent PR and Git
+            # commit API snapshots below must carry the missing authority.
+            "pull_requests": [],
         }
+        def job_id(index: int, name: str) -> int:
+            if (
+                run_id == self.review_run_id
+                and name == gate.REQUIRED_JOB_NAMES[-1]
+            ):
+                return 100971293598
+            return run_id * 100 + index
+
         jobs = {
             "total_count": len(gate.REQUIRED_JOB_NAMES),
             "jobs": [
                 {
-                    "id": run_id * 100 + index,
+                    "id": job_id(index, name),
                     "run_id": run_id,
                     "run_attempt": attempt,
+                    "head_sha": head_sha,
                     "workflow_name": gate.WORKFLOW_NAME,
                     "name": name,
                     "status": "completed",
                     "conclusion": "success",
                     "started_at": started,
                     "completed_at": completed,
+                    "url": f"{api_root}/actions/jobs/{job_id(index, name)}",
+                    "html_url": (
+                        f"{html_root}/actions/runs/{run_id}/job/"
+                        f"{job_id(index, name)}"
+                    ),
+                    "check_run_url": (
+                        f"{api_root}/check-runs/{job_id(index, name)}"
+                    ),
                 }
                 for index, name in enumerate(gate.REQUIRED_JOB_NAMES, start=1)
             ],
@@ -368,6 +413,114 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
         )
         for name, path in paths.items():
             self.inputs[f"{role}_{name}"] = path
+
+    def write_pull_request_authority_files(self) -> None:
+        api_root = f"https://api.github.com/repos/{gate.REPOSITORY}"
+        html_root = f"https://github.com/{gate.REPOSITORY}"
+
+        def commit_payload(
+            commit: str, parents: tuple[str, ...]
+        ) -> dict[str, object]:
+            return {
+                "sha": commit,
+                "url": f"{api_root}/git/commits/{commit}",
+                "html_url": f"{html_root}/commit/{commit}",
+                "tree": {
+                    "sha": self.tree,
+                    "url": f"{api_root}/git/trees/{self.tree}",
+                },
+                "parents": [
+                    {
+                        "sha": parent,
+                        "url": f"{api_root}/git/commits/{parent}",
+                        "html_url": f"{html_root}/commit/{parent}",
+                    }
+                    for parent in parents
+                ],
+            }
+
+        repository = {
+            "full_name": gate.REPOSITORY,
+            "url": api_root,
+            "html_url": html_root,
+        }
+
+        pull_request = {
+            "number": self.pull_request_number,
+            "url": f"{api_root}/pulls/{self.pull_request_number}",
+            "html_url": f"{html_root}/pull/{self.pull_request_number}",
+            "commits_url": (
+                f"{api_root}/pulls/{self.pull_request_number}/commits"
+            ),
+            "statuses_url": f"{api_root}/statuses/{self.pr_head}",
+            "state": "closed",
+            "merged": True,
+            "merged_at": "2026-09-03T10:45:00Z",
+            "merge_commit_sha": self.main_merge_commit,
+            "base": {
+                "ref": "main",
+                "sha": self.base_commit,
+                "repo": repository,
+            },
+            "head": {
+                "ref": self.review_branch,
+                "sha": self.pr_head,
+                "repo": repository,
+            },
+        }
+        review_jobs = json.loads(self.inputs["review_jobs"].read_text())
+        aggregate_job = next(
+            row
+            for row in review_jobs["jobs"]
+            if row["name"] == gate.REQUIRED_JOB_NAMES[-1]
+        )
+        aggregate_check_run = {
+            "id": 100971293598,
+            "name": gate.REQUIRED_JOB_NAMES[-1],
+            "head_sha": self.pr_head,
+            "status": "completed",
+            "conclusion": "success",
+            "url": f"{api_root}/check-runs/100971293598",
+            "html_url": aggregate_job["html_url"],
+            "details_url": aggregate_job["html_url"],
+            "check_suite": {"id": 91743668109},
+            "app": {"id": 15368, "slug": "github-actions"},
+            # The live check-run also omits PRs; this is observed but never
+            # substitutes for the commit-associated PR endpoint below.
+            "pull_requests": [],
+        }
+        paths = {
+            "review_pull_request": self.root / "review-pull-request.json",
+            "review_head_pull_requests": self.root / "head-pull-requests.json",
+            "review_aggregate_check_run": self.root / "aggregate-check-run.json",
+            "review_base_commit": self.root / "base-commit.json",
+            "review_head_commit": self.root / "head-commit.json",
+            "review_event_commit": self.root / "review-event-commit.json",
+            "main_commit": self.root / "main-commit.json",
+        }
+        self.write_json(paths["review_pull_request"], pull_request)
+        self.write_json(paths["review_head_pull_requests"], [pull_request])
+        self.write_json(paths["review_aggregate_check_run"], aggregate_check_run)
+        self.write_json(
+            paths["review_base_commit"], commit_payload(self.base_commit, ())
+        )
+        self.write_json(
+            paths["review_head_commit"],
+            commit_payload(self.pr_head, (self.base_commit,)),
+        )
+        self.write_json(
+            paths["review_event_commit"],
+            commit_payload(
+                self.review_merge_commit, (self.base_commit, self.pr_head)
+            ),
+        )
+        self.write_json(
+            paths["main_commit"],
+            commit_payload(
+                self.main_merge_commit, (self.base_commit, self.pr_head)
+            ),
+        )
+        self.inputs.update(paths)
 
     def create(self) -> dict[str, object]:
         return gate.create_authority(**self.inputs)
@@ -436,6 +589,41 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
         self.assertEqual("push", result["mainRun"]["run"]["event"])
         self.assertEqual(self.review_merge_commit, result["reviewRun"]["p0EventSha"])
         self.assertEqual(self.main_merge_commit, result["mainRun"]["p0EventSha"])
+        self.assertEqual([], result["reviewRun"]["run"]["reportedPullRequests"])
+        self.assertEqual(
+            self.pull_request_number, result["reviewPullRequest"]["number"]
+        )
+        self.assertEqual(
+            self.pull_request_number,
+            result["reviewPullRequest"]["commitAssociation"]["number"],
+        )
+        self.assertEqual(
+            self.tree, result["reviewPullRequest"]["headCommit"]["tree"]
+        )
+        self.assertEqual(
+            100971293598, result["reviewRun"]["aggregateCheckRun"]["id"]
+        )
+        self.assertEqual(
+            {"id": 15368, "slug": "github-actions"},
+            result["reviewRun"]["aggregateCheckRun"]["app"],
+        )
+        self.assertEqual(
+            [], result["reviewRun"]["aggregateCheckRun"]["reportedPullRequests"]
+        )
+        self.assertEqual(
+            [self.base_commit, self.pr_head],
+            result["reviewPullRequest"]["reviewEventCommit"]["parents"],
+        )
+        self.assertEqual(
+            [self.base_commit, self.pr_head],
+            result["reviewPullRequest"]["mainMergeCommit"]["parents"],
+        )
+        self.assertEqual(
+            self.tree, result["reviewPullRequest"]["reviewEventCommit"]["tree"]
+        )
+        self.assertEqual(
+            self.tree, result["reviewPullRequest"]["mainMergeCommit"]["tree"]
+        )
         self.assertEqual(
             self.review_merge_commit,
             self.read_p0("review")["androidSource"]["checkedOutHead"],
@@ -482,6 +670,123 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
         self.assertEqual(result, json.loads(self.output.read_text(encoding="utf-8")))
         self.assertEqual(0, gate.main(["verify", *self.cli_inputs(), "--authority", str(self.output)]))
 
+    def test_live_review_33852701828_empty_summary_has_independent_authority(self) -> None:
+        api_root = f"https://api.github.com/repos/{gate.REPOSITORY}"
+        html_root = f"https://github.com/{gate.REPOSITORY}"
+        head_sha = "236a25c30f7a3c6df6bb9399b242ac6b447e5b6f"
+        base_sha = "11578520aab86922be2d783444d4d60ef85585f8"
+        merge_sha = "59f365dc0677153bd83a07853d53f989fe074991"
+        run = gate.validate_run_metadata(
+            {
+                "id": 33852701828,
+                "run_attempt": 1,
+                "workflow_id": 334405532,
+                "name": gate.WORKFLOW_NAME,
+                "path": gate.WORKFLOW_PATH,
+                "event": "pull_request",
+                "status": "completed",
+                "conclusion": "success",
+                "head_branch": self.review_branch,
+                "head_sha": head_sha,
+                "url": f"{api_root}/actions/runs/33852701828",
+                "html_url": f"{html_root}/actions/runs/33852701828",
+                "jobs_url": f"{api_root}/actions/runs/33852701828/jobs",
+                "artifacts_url": f"{api_root}/actions/runs/33852701828/artifacts",
+                "check_suite_id": 91743668109,
+                "check_suite_url": f"{api_root}/check-suites/91743668109",
+                "created_at": "2026-09-04T08:17:11Z",
+                "run_started_at": "2026-09-04T08:17:11Z",
+                "updated_at": "2026-09-04T09:05:50Z",
+                "repository": {
+                    "full_name": gate.REPOSITORY,
+                    "url": api_root,
+                    "html_url": html_root,
+                },
+                "head_repository": {
+                    "full_name": gate.REPOSITORY,
+                    "url": api_root,
+                    "html_url": html_root,
+                },
+                "pull_requests": [],
+            },
+            expected_id=33852701828,
+            role="review",
+        )
+        details_url = (
+            f"{html_root}/actions/runs/33852701828/job/100971293598"
+        )
+        check_run_path = self.root / "live-review-check-run.json"
+        self.write_json(
+            check_run_path,
+            {
+                "id": 100971293598,
+                "name": gate.REQUIRED_JOB_NAMES[-1],
+                "head_sha": head_sha,
+                "status": "completed",
+                "conclusion": "success",
+                "url": f"{api_root}/check-runs/100971293598",
+                "html_url": details_url,
+                "details_url": details_url,
+                "check_suite": {"id": 91743668109},
+                "app": {"id": 15368, "slug": "github-actions"},
+                "pull_requests": [],
+            },
+        )
+        review = {
+            "run": run,
+            "jobs": {
+                gate.REQUIRED_JOB_NAMES[-1]: {
+                    "id": 100971293598,
+                    "detailsUrl": details_url,
+                    "checkRunUrl": f"{api_root}/check-runs/100971293598",
+                }
+            },
+        }
+        check_run = gate.validate_aggregate_check_run_authority(
+            gate.StableFile(check_run_path, "live review aggregate check-run"),
+            review=review,
+        )
+        self.assertEqual([], check_run["reportedPullRequests"])
+
+        repository = {
+            "full_name": gate.REPOSITORY,
+            "url": api_root,
+            "html_url": html_root,
+        }
+        associated_path = self.root / "live-head-pull-requests.json"
+        self.write_json(
+            associated_path,
+            [
+                {
+                    "number": 33,
+                    "url": f"{api_root}/pulls/33",
+                    "html_url": f"{html_root}/pull/33",
+                    "state": "closed",
+                    "merged_at": "2026-09-04T09:08:38Z",
+                    "merge_commit_sha": merge_sha,
+                    "base": {
+                        "ref": "main",
+                        "sha": base_sha,
+                        "repo": repository,
+                    },
+                    "head": {
+                        "ref": self.review_branch,
+                        "sha": head_sha,
+                        "repo": repository,
+                    },
+                }
+            ],
+        )
+        association = gate.validate_commit_pull_request_association(
+            gate.StableFile(associated_path, "live head pull requests"),
+            number=33,
+            base_sha=base_sha,
+            merged_at="2026-09-04T09:08:38Z",
+            review_run=run,
+            main_run={"headSha": merge_sha},
+        )
+        self.assertEqual(33, association["number"])
+
     def p0_aggregate_sha(self, role: str) -> str:
         with zipfile.ZipFile(self.inputs[f"{role}_p0_archive"]) as archive:
             p0 = json.loads(archive.read(gate.P0.OUTPUT_NAME))
@@ -498,6 +803,13 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
             ("review event", "review_run", lambda value: value.update({"event": "workflow_dispatch"})),
             ("main branch", "main_run", lambda value: value.update({"head_branch": "release"})),
             ("run conclusion", "main_run", lambda value: value.update({"conclusion": "failure"})),
+            (
+                "main pull request summary",
+                "main_run",
+                lambda value: value.update(
+                    {"pull_requests": [{"number": self.pull_request_number}]}
+                ),
+            ),
             ("time ordering", "main_run", lambda value: value.update({"run_started_at": "2026-09-03T10:20:00Z"})),
         ]
         for label, key, mutate in cases:
@@ -645,6 +957,190 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
         ):
             self.create()
 
+    def test_main_base_sha_must_equal_the_actions_push_head(self) -> None:
+        with zipfile.ZipFile(self.inputs["main_aggregate_archive"]) as archive:
+            aggregate = json.loads(archive.read("receipt.json"))
+
+        def substitute_base_sha(p0: dict[str, object]) -> None:
+            p0["githubRun"]["baseSha"] = "a" * 40
+
+        self.rewrite_proof("main", aggregate, mutate_p0=substitute_base_sha)
+        with self.assertRaisesRegex(
+            ValueError, "P0/run/tree/aggregate authority differs"
+        ):
+            self.create()
+
+    def test_pull_request_and_commit_authority_hostile_drift_fails_closed(self) -> None:
+        def reject_json(key: str, mutate, expected: str) -> None:
+            path = self.inputs[key]
+            original = path.read_bytes()
+            value = json.loads(original)
+            mutate(value)
+            self.write_json(path, value)
+            try:
+                with self.assertRaisesRegex(ValueError, expected):
+                    self.create()
+            finally:
+                path.write_bytes(original)
+
+        cases = (
+            (
+                "PR head",
+                "review_pull_request",
+                lambda value: value["head"].update({"sha": "0" * 40}),
+                "pull request identity differs",
+            ),
+            (
+                "PR base",
+                "review_pull_request",
+                lambda value: value["base"].update({"sha": "0" * 40}),
+                "base differs from the P0 authority",
+            ),
+            (
+                "PR merge",
+                "review_pull_request",
+                lambda value: value.update({"merge_commit_sha": "0" * 40}),
+                "pull request identity differs",
+            ),
+            (
+                "PR repository",
+                "review_pull_request",
+                lambda value: value["head"]["repo"].update(
+                    {"full_name": "ForeignOwner/chummer-android"}
+                ),
+                "pull request identity differs",
+            ),
+            (
+                "commit-associated PR",
+                "review_head_pull_requests",
+                lambda value: value[0].update({"number": 34}),
+                "pull request association differs",
+            ),
+            (
+                "commit-associated PR cardinality",
+                "review_head_pull_requests",
+                lambda value: value.clear(),
+                "associated with exactly one pull request",
+            ),
+            (
+                "PR base commit",
+                "review_base_commit",
+                lambda value: value.update({"sha": "0" * 40}),
+                "pull request base commit identity differs",
+            ),
+            (
+                "PR head commit tree",
+                "review_head_commit",
+                lambda value: value["tree"].update({"sha": "0" * 40}),
+                "pull request head commit identity differs",
+            ),
+            (
+                "review commit tree",
+                "review_event_commit",
+                lambda value: value["tree"].update({"sha": "0" * 40}),
+                "review event commit identity differs",
+            ),
+            (
+                "main commit tree",
+                "main_commit",
+                lambda value: value["tree"].update({"sha": "0" * 40}),
+                "main merge commit identity differs",
+            ),
+            (
+                "check URL",
+                "review_jobs",
+                lambda value: value["jobs"][0].update(
+                    {"check_run_url": "https://api.github.com/foreign/check-runs/1"}
+                ),
+                "job is not exact and successful",
+            ),
+            (
+                "aggregate check URL",
+                "review_aggregate_check_run",
+                lambda value: value.update(
+                    {"url": "https://api.github.com/foreign/check-runs/1"}
+                ),
+                "aggregate check-run authority differs",
+            ),
+            (
+                "aggregate check details URL",
+                "review_aggregate_check_run",
+                lambda value: value.update(
+                    {"details_url": "https://github.com/foreign/actions/1"}
+                ),
+                "aggregate check-run authority differs",
+            ),
+            (
+                "aggregate check suite",
+                "review_aggregate_check_run",
+                lambda value: value["check_suite"].update({"id": 1}),
+                "aggregate check-run authority differs",
+            ),
+            (
+                "aggregate check app",
+                "review_aggregate_check_run",
+                lambda value: value["app"].update({"slug": "foreign-app"}),
+                "aggregate check-run authority differs",
+            ),
+            (
+                "run head repository",
+                "review_run",
+                lambda value: value["head_repository"].update(
+                    {"full_name": "ForeignOwner/chummer-android"}
+                ),
+                "run head repository differs",
+            ),
+            (
+                "nonempty Actions PR summary",
+                "review_run",
+                lambda value: value.update(
+                    {"pull_requests": [{"number": self.pull_request_number}]}
+                ),
+                "independently authenticated empty pull request summary path",
+            ),
+            (
+                "nonempty check-run PR summary",
+                "review_aggregate_check_run",
+                lambda value: value.update(
+                    {"pull_requests": [{"number": self.pull_request_number}]}
+                ),
+                "check-run pull request summary is malformed",
+            ),
+            (
+                "details URL",
+                "review_jobs",
+                lambda value: value["jobs"][0].update(
+                    {"html_url": "https://github.com/foreign/actions/runs/1/job/1"}
+                ),
+                "job is not exact and successful",
+            ),
+            (
+                "review event",
+                "review_run",
+                lambda value: value.update({"event": "merge_group"}),
+                "not an exact pull_request run",
+            ),
+        )
+        for label, key, mutate, expected in cases:
+            with self.subTest(label=label):
+                reject_json(key, mutate, expected)
+
+        original_number = self.inputs["review_pull_request_number"]
+        self.inputs["review_pull_request_number"] = self.pull_request_number + 1
+        try:
+            with self.assertRaisesRegex(ValueError, "pull request identity differs"):
+                self.create()
+        finally:
+            self.inputs["review_pull_request_number"] = original_number
+
+        original_event_sha = self.inputs["review_event_sha"]
+        self.inputs["review_event_sha"] = "0" * 40
+        try:
+            with self.assertRaisesRegex(ValueError, "differs from the P0 authority"):
+                self.create()
+        finally:
+            self.inputs["review_event_sha"] = original_event_sha
+
     def test_workflow_must_be_the_clean_tracked_head_blob(self) -> None:
         (self.android / "untracked-hostile-input").write_text(
             "hostile\n", encoding="utf-8"
@@ -710,7 +1206,7 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
             policy["sequenceSemantics"],
         )
         self.assertIn("zero_intervening_workflow_runs", policy["doesNotAssert"])
-        self.assertIn(
+        self.assertNotIn(
             "pull_request_merge_commit_lineage_reconstruction",
             policy["doesNotAssert"],
         )
@@ -718,6 +1214,13 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
             "non_android_dependency_commit_tree_reconstruction",
             policy["doesNotAssert"],
         )
+        self.assertEqual(["pull_request"], policy["reviewEvents"])
+        self.assertTrue(policy["requiresExactPullRequestAuthority"])
+        self.assertTrue(policy["requiresEmptyActionsPullRequestSummaries"])
+        self.assertTrue(policy["requiresCommitAssociatedPullRequest"])
+        self.assertTrue(policy["requiresExactMergeCommitGraphs"])
+        self.assertTrue(policy["requiresExactAggregateCheckRun"])
+        self.assertTrue(policy["requiresCanonicalActionsDetailsUrls"])
 
     def test_cli_rejects_symlinked_output_and_authority_before_resolution(self) -> None:
         output_target = self.root / "output-target.json"
@@ -744,9 +1247,13 @@ class Api36TwoGreenWorkflowSourceTests(unittest.TestCase):
     def test_workflow_is_manual_read_only_and_main_ref_bound(self) -> None:
         self.assertIn("workflow_dispatch:", self.text)
         self.assertIn("review_run_id:", self.text)
+        self.assertIn("review_pull_request_number:", self.text)
+        self.assertIn("review_event_sha:", self.text)
         self.assertIn("main_run_id:", self.text)
         self.assertIn("actions: read", self.text)
+        self.assertIn("checks: read", self.text)
         self.assertIn("contents: read", self.text)
+        self.assertIn("pull-requests: read", self.text)
         self.assertNotIn("actions: write", self.text)
         self.assertNotIn("contents: write", self.text)
         self.assertIn('test "$GITHUB_REF" = refs/heads/main', self.text)
@@ -755,6 +1262,13 @@ class Api36TwoGreenWorkflowSourceTests(unittest.TestCase):
         self.assertIn("actions/runs/$run_id", self.text)
         self.assertIn("attempts/$run_attempt/jobs?per_page=100", self.text)
         self.assertIn("actions/artifacts/$artifact_id/zip", self.text)
+        self.assertIn("pulls/$REVIEW_PULL_REQUEST_NUMBER", self.text)
+        self.assertIn("commits/$review_head_sha/pulls", self.text)
+        self.assertIn("check-runs/$aggregate_job_id", self.text)
+        self.assertIn("git/commits/$review_base_sha", self.text)
+        self.assertIn("git/commits/$review_head_sha", self.text)
+        self.assertIn("git/commits/$REVIEW_EVENT_SHA", self.text)
+        self.assertIn("git/commits/$main_head_sha", self.text)
         self.assertNotIn("google-github-actions/auth", self.text)
         self.assertNotIn("playDeveloper", self.text)
         self.assertNotIn("serviceAccount", self.text)
@@ -762,6 +1276,10 @@ class Api36TwoGreenWorkflowSourceTests(unittest.TestCase):
         self.assertIn("publicationAuthorized == false", self.text)
         self.assertIn("googlePlayUploadAuthorized == false", self.text)
         self.assertIn("--environment-policy", self.text)
+        self.assertIn("--review-head-pull-requests", self.text)
+        self.assertIn("--review-aggregate-check-run", self.text)
+        self.assertIn("--review-base-commit", self.text)
+        self.assertIn("--review-head-commit", self.text)
         self.assertIn("api36-proof-environment-authority.json", self.text)
         self.assertIn('PYTHONDONTWRITEBYTECODE: "1"', self.text)
 
@@ -788,6 +1306,11 @@ class Api36TwoGreenWorkflowSourceTests(unittest.TestCase):
         for body in run_blocks:
             self.assertNotRegex(body, re.escape("${{ inputs."))
         self.assertIn("REVIEW_RUN_ID: ${{ inputs.review_run_id }}", self.text)
+        self.assertIn(
+            "REVIEW_PULL_REQUEST_NUMBER: ${{ inputs.review_pull_request_number }}",
+            self.text,
+        )
+        self.assertIn("REVIEW_EVENT_SHA: ${{ inputs.review_event_sha }}", self.text)
         self.assertIn("MAIN_RUN_ID: ${{ inputs.main_run_id }}", self.text)
 
 
