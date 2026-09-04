@@ -342,9 +342,11 @@ public sealed class Sr5TableWizardPage : NativePageBase
         try
         {
             await Coordinator.InitializeAsync();
+            // This method owns MAUI view state in its finally block. Preserve the UI
+            // synchronization context so Refresh never mutates the visual tree from a
+            // thread-pool continuation.
             Sr5TableWizardSnapshot? snapshot = await _authority
-                .LoadAsync(_lane, cancellationToken)
-                .ConfigureAwait(false);
+                .LoadAsync(_lane, cancellationToken);
             if (cancellationToken.IsCancellationRequested
                 || version != Volatile.Read(ref _loadVersion))
             {
