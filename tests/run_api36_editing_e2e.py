@@ -479,6 +479,18 @@ def _parse_shared_storage_directory_identity(
     }
 
 
+def _is_exact_download_directory_already_exists(
+    error: BaseException,
+) -> bool:
+    """Recognize only Toybox's exact mkdir EEXIST result for read-only reconciliation."""
+    return (
+        isinstance(error, subprocess.CalledProcessError)
+        and error.returncode == 1
+        and error.stdout == ""
+        and error.stderr == "mkdir: '/sdcard/Download': File exists\n"
+    )
+
+
 def _parse_shared_storage_stat_output(output: str) -> list[dict[str, str]]:
     """Parse one exact follow-mode stat observation of both governed roots."""
     lines = output.splitlines()
@@ -2167,7 +2179,9 @@ class Device:
         observation contributes identity evidence or widens the seven-observation
         or caller-deadline bounds.  Only a hosted API-36 x86_64 proof attempt may
         use the ENOENT recovery or issue the separately receipted one-shot
-        Download bootstrap mutation.
+        Download bootstrap mutation.  If that exact mkdir reports Toybox EEXIST,
+        one read-only no-follow identity observation may reconcile the postcondition;
+        the mutation is never replayed and the normal stable/final proof still runs.
         """
         if type(deadline) is not float or not math.isfinite(deadline):
             raise TypeError("Shared-storage preflight requires one finite float deadline")
@@ -2242,6 +2256,7 @@ class Device:
             "maximumAttempts": 1,
             "attempts": 0,
             "replayAttempted": False,
+            "reconciliationAttempted": False,
             "adbReconnectAttempted": False,
             "applicationRelaunchAttempted": False,
             "environmentInitializationMutation": False,
@@ -2326,7 +2341,9 @@ class Device:
                 "attempts": 1,
                 "maximumAttempts": 1,
                 "replayAttempted": False,
-                "reconciliationAttempted": False,
+                "reconciliationAttempted": bool(
+                    initialization.get("reconciliationAttempted", False)
+                ),
                 "environmentInitializationMutationCommandsIssued": 1,
                 "applicationMutationCommandsIssued": 0,
                 "publicationAuthorized": False,
@@ -2852,6 +2869,8 @@ class Device:
                         mkdir_result: subprocess.CompletedProcess | None = None
                         mkdir_error: BaseException | None = None
                         mkdir_invocation_performed = False
+                        mkdir_reconciled = False
+                        reconciliation_error: BaseException | None = None
                         try:
                             mkdir_timeout = next_bootstrap_attempt_timeout("mkdir")
                             initialization_mutations_issued = 1
@@ -2874,13 +2893,55 @@ class Device:
                                 )
                         except Exception as command_error:
                             mkdir_error = command_error
+                        if (
+                            mkdir_error is not None
+                            and _is_exact_download_directory_already_exists(mkdir_error)
+                        ):
+                            initialization["reconciliationAttempted"] = True
+                            try:
+                                reconciliation_timeout = next_bootstrap_attempt_timeout(
+                                    "exact-eexist-raw-download-reconciliation"
+                                )
+                                read_only_commands_issued += 1
+                                reconciled_raw = self._invoke_once(
+                                    ADB_SHARED_STORAGE_DOWNLOAD_RAW_STAT_ARGUMENTS,
+                                    timeout=reconciliation_timeout,
+                                    text=True,
+                                    check=True,
+                                )
+                                if (
+                                    reconciled_raw.returncode != 0
+                                    or reconciled_raw.stderr != ""
+                                ):
+                                    raise RuntimeError(
+                                        "EEXIST reconciliation stat was not exactly "
+                                        "successful and silent"
+                                    )
+                                reconciled_lines = reconciled_raw.stdout.splitlines()
+                                if len(reconciled_lines) != 1:
+                                    raise RuntimeError(
+                                        "EEXIST reconciliation stat returned malformed output"
+                                    )
+                                initialized_download = (
+                                    _parse_shared_storage_directory_identity(
+                                        reconciled_lines[0],
+                                        expected_path="/sdcard/Download",
+                                    )
+                                )
+                                mkdir_reconciled = True
+                            except Exception as error:
+                                reconciliation_error = error
                         outcome_status = (
                             "pass-exact-rc0-silent"
                             if mkdir_error is None
                             else (
-                                "fail-closed-no-retry"
-                                if mkdir_invocation_performed
-                                else "fail-closed-before-invocation"
+                                "pass-reconciled-exact-eexist"
+                                if mkdir_reconciled
+                                else (
+                                    "fail-closed-no-retry"
+                                    if mkdir_invocation_performed
+                                    else "fail-closed-before-invocation"
+                                )
                             )
                         )
                         transport_failure = (
@@ -2941,7 +3002,29 @@ class Device:
                                 }
                             ),
                             "replayAttempted": False,
-                            "reconciliationAttempted": False,
+                            "reconciliationAttempted": bool(
+                                initialization.get("reconciliationAttempted", False)
+                            ),
+                            "reconciliationStatus": (
+                                "exact-directory-identity-observed"
+                                if mkdir_reconciled
+                                else (
+                                    "failed"
+                                    if reconciliation_error is not None
+                                    else "not-required"
+                                )
+                            ),
+                            "reconciledRawDownloadIdentity": (
+                                initialized_download if mkdir_reconciled else None
+                            ),
+                            "reconciliationFailure": (
+                                None
+                                if reconciliation_error is None
+                                else {
+                                    "type": type(reconciliation_error).__name__,
+                                    "message": str(reconciliation_error),
+                                }
+                            ),
                             "adbReconnectAttempted": False,
                             "applicationRelaunchAttempted": False,
                             "environmentInitializationMutation": True,
@@ -2958,8 +3041,8 @@ class Device:
                                 "outcomeSha256": outcome_sha256,
                             }
                         )
-                        if mkdir_error is not None:
-                            terminal_error = mkdir_error
+                        if mkdir_error is not None and not mkdir_reconciled:
+                            terminal_error = reconciliation_error or mkdir_error
                             terminal_failure = {
                                 "classification": (
                                     "shared-storage-bootstrap-mkdir-failed"
@@ -2975,8 +3058,8 @@ class Device:
                                     else "dynamic-proof-lease-allocation"
                                 ),
                                 "retryableReadOnlyObservation": False,
-                                "type": type(mkdir_error).__name__,
-                                "message": str(mkdir_error),
+                                "type": type(terminal_error).__name__,
+                                "message": str(terminal_error),
                             }
                             initialization["status"] = (
                                 "mkdir-failed"
@@ -2985,48 +3068,53 @@ class Device:
                             )
                             break
 
-                        initialization["status"] = "mkdir-succeeded-awaiting-proof"
-                        try:
-                            raw_timeout = next_bootstrap_attempt_timeout(
-                                "initial-raw-download-observation"
-                            )
-                            read_only_commands_issued += 1
-                            raw = self._invoke_once(
-                                ADB_SHARED_STORAGE_DOWNLOAD_RAW_STAT_ARGUMENTS,
-                                timeout=raw_timeout,
-                                text=True,
-                                check=True,
-                            )
-                            if raw.returncode != 0 or raw.stderr != "":
-                                raise RuntimeError(
-                                    "Raw Download stat was not exactly successful and silent"
+                        initialization["status"] = (
+                            "mkdir-reconciled-awaiting-post-proof"
+                            if mkdir_reconciled
+                            else "mkdir-succeeded-awaiting-proof"
+                        )
+                        if not mkdir_reconciled:
+                            try:
+                                raw_timeout = next_bootstrap_attempt_timeout(
+                                    "initial-raw-download-observation"
                                 )
-                            raw_lines = raw.stdout.splitlines()
-                            if len(raw_lines) != 1:
-                                raise RuntimeError(
-                                    "Raw Download stat returned malformed output"
+                                read_only_commands_issued += 1
+                                raw = self._invoke_once(
+                                    ADB_SHARED_STORAGE_DOWNLOAD_RAW_STAT_ARGUMENTS,
+                                    timeout=raw_timeout,
+                                    text=True,
+                                    check=True,
                                 )
-                            initialized_download = (
-                                _parse_shared_storage_directory_identity(
-                                    raw_lines[0],
-                                    expected_path="/sdcard/Download",
+                                if raw.returncode != 0 or raw.stderr != "":
+                                    raise RuntimeError(
+                                        "Raw Download stat was not exactly successful and silent"
+                                    )
+                                raw_lines = raw.stdout.splitlines()
+                                if len(raw_lines) != 1:
+                                    raise RuntimeError(
+                                        "Raw Download stat returned malformed output"
+                                    )
+                                initialized_download = (
+                                    _parse_shared_storage_directory_identity(
+                                        raw_lines[0],
+                                        expected_path="/sdcard/Download",
+                                    )
                                 )
-                            )
-                        except Exception as proof_error:
-                            terminal_error = proof_error
-                            terminal_failure = {
-                                "classification": (
-                                    "shared-storage-bootstrap-raw-proof-failed"
-                                ),
-                                "classificationAuthority": (
-                                    "exact-no-follow-directory-identity"
-                                ),
-                                "retryableReadOnlyObservation": False,
-                                "type": type(proof_error).__name__,
-                                "message": str(proof_error),
-                            }
-                            initialization["status"] = "raw-proof-failed"
-                            break
+                            except Exception as proof_error:
+                                terminal_error = proof_error
+                                terminal_failure = {
+                                    "classification": (
+                                        "shared-storage-bootstrap-raw-proof-failed"
+                                    ),
+                                    "classificationAuthority": (
+                                        "exact-no-follow-directory-identity"
+                                    ),
+                                    "retryableReadOnlyObservation": False,
+                                    "type": type(proof_error).__name__,
+                                    "message": str(proof_error),
+                                }
+                                initialization["status"] = "raw-proof-failed"
+                                break
                         initialization["status"] = "post-observation-pending"
                         initialization["rawDownloadIdentity"] = initialized_download
                         stable_identity = None

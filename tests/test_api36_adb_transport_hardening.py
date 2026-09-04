@@ -964,6 +964,147 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
             self.assertFalse(outcome["applicationMutation"])
             self.assertFalse(bootstrap["publicationAuthorized"])
 
+    def test_exact_mkdir_eexist_is_reconciled_without_replaying_mutation(self) -> None:
+        root = "/sdcard:43:106499:45f8\n"
+        raw_download = "/sdcard/Download:43:106500:41ed\n"
+        stable = root + raw_download
+        exists = subprocess.CalledProcessError(
+            1,
+            (
+                "adb",
+                "-s",
+                "SERIAL-API36",
+                *driver.ADB_SHARED_STORAGE_INITIALIZE_ARGUMENTS,
+            ),
+            output="",
+            stderr="mkdir: '/sdcard/Download': File exists\n",
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            evidence = Path(temporary)
+            responses = iter(
+                [
+                    download_missing(root),
+                    download_missing(root),
+                    download_missing(root),
+                    exists,
+                    completed(
+                        driver.ADB_SHARED_STORAGE_DOWNLOAD_RAW_STAT_ARGUMENTS,
+                        raw_download,
+                    ),
+                    completed(driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS, stable),
+                    completed(driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS, stable),
+                    completed(driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS, stable),
+                    completed(
+                        driver.ADB_SHARED_STORAGE_DOWNLOAD_RAW_STAT_ARGUMENTS,
+                        raw_download,
+                    ),
+                ]
+            )
+
+            def invoke(_command: list[str], **_kwargs: object) -> object:
+                response = next(responses)
+                if isinstance(response, BaseException):
+                    raise response
+                return response
+
+            device = self.make_device(evidence)
+            with (
+                mock.patch.object(driver.subprocess, "run", side_effect=invoke) as run,
+                mock.patch.object(driver.time, "sleep"),
+            ):
+                receipt = device.require_shared_storage_readiness(
+                    deadline=driver.time.monotonic()
+                    + driver.ADB_SHARED_STORAGE_PREFLIGHT_MAX_SECONDS,
+                    **hosted_storage_authority(),
+                )
+
+            issued = [tuple(call.args[0][3:]) for call in run.call_args_list]
+            self.assertEqual(9, run.call_count)
+            self.assertEqual(
+                1,
+                issued.count(driver.ADB_SHARED_STORAGE_INITIALIZE_ARGUMENTS),
+            )
+            self.assertEqual(
+                2,
+                issued.count(driver.ADB_SHARED_STORAGE_DOWNLOAD_RAW_STAT_ARGUMENTS),
+            )
+            self.assertEqual("pass", receipt["status"])
+            self.assertEqual(1, receipt["mutationCommandsIssued"])
+            initialization = receipt["environmentInitialization"]
+            self.assertEqual("verified", initialization["status"])
+            self.assertTrue(initialization["reconciliationAttempted"])
+            outcome = json.loads(
+                (
+                    evidence
+                    / driver.ADB_SHARED_STORAGE_INITIALIZATION_OUTCOME_FILENAME
+                ).read_text(encoding="utf-8")
+            )
+            self.assertEqual("pass-reconciled-exact-eexist", outcome["status"])
+            self.assertTrue(outcome["reconciliationAttempted"])
+            self.assertEqual(
+                "exact-directory-identity-observed",
+                outcome["reconciliationStatus"],
+            )
+            self.assertEqual(1, outcome["returnCode"])
+            self.assertEqual("", outcome["stdout"])
+            self.assertEqual(
+                "mkdir: '/sdcard/Download': File exists\n",
+                outcome["stderr"],
+            )
+            self.assertFalse(outcome["replayAttempted"])
+            bootstrap = json.loads(
+                (evidence / driver.ADB_SHARED_STORAGE_BOOTSTRAP_FILENAME).read_text(
+                    encoding="utf-8"
+                )
+            )
+            self.assertTrue(bootstrap["reconciliationAttempted"])
+
+    def test_mkdir_eexist_reconciliation_rejects_every_non_exact_variant(self) -> None:
+        command = (
+            "adb",
+            "-s",
+            "SERIAL-API36",
+            *driver.ADB_SHARED_STORAGE_INITIALIZE_ARGUMENTS,
+        )
+        exact = "mkdir: '/sdcard/Download': File exists\n"
+        self.assertTrue(
+            driver._is_exact_download_directory_already_exists(
+                subprocess.CalledProcessError(
+                    1,
+                    command,
+                    output="",
+                    stderr=exact,
+                )
+            )
+        )
+        hostile = (
+            subprocess.CalledProcessError(2, command, output="", stderr=exact),
+            subprocess.CalledProcessError(
+                1,
+                command,
+                output="unexpected\n",
+                stderr=exact,
+            ),
+            subprocess.CalledProcessError(
+                1,
+                command,
+                output="",
+                stderr="mkdir: '/sdcard/Download': File exists",
+            ),
+            subprocess.CalledProcessError(
+                1,
+                command,
+                output="",
+                stderr="mkdir: '/sdcard/Other': File exists\n",
+            ),
+            RuntimeError("File exists"),
+        )
+        for error in hostile:
+            with self.subTest(error=repr(error)):
+                self.assertFalse(
+                    driver._is_exact_download_directory_already_exists(error)
+                )
+
     def test_missing_download_directory_retry_rejects_every_non_exact_variant(
         self,
     ) -> None:
@@ -1611,7 +1752,7 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
                     *driver.ADB_SHARED_STORAGE_INITIALIZE_ARGUMENTS,
                 ),
                 output="",
-                stderr="mkdir: '/sdcard/Download': File exists\n",
+                stderr="mkdir: permission denied\n",
             ),
             subprocess.TimeoutExpired(
                 driver.ADB_SHARED_STORAGE_INITIALIZE_ARGUMENTS,
@@ -1673,7 +1814,7 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
                     self.assertEqual(1, outcome["returnCode"])
                     self.assertEqual("", outcome["stdout"])
                     self.assertEqual(
-                        "mkdir: '/sdcard/Download': File exists\n",
+                        command_failure.stderr,
                         outcome["stderr"],
                     )
                 self.assertFalse(outcome["replayAttempted"])
