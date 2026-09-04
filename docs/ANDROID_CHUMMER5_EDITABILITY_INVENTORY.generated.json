@@ -1017,12 +1017,12 @@
       {
         "path": "tests/run_api36_editing_e2e.py",
         "exists": true,
-        "sha256": "aad5220e81a5ff3c0d7285a80af2ac1297a79e595aa38ddd472d4e2fd37b9888"
+        "sha256": "aaa174cfa03ce9f972ba8249ac2abedc236c8751e4b5f2eaa7246a71209fe112"
       },
       {
         "path": "tests/run_api36_career_active_skill_advance_e2e.py",
         "exists": true,
-        "sha256": "80d172351be4cdb04da36fabc9493f5c31a6206e345a5350c110101b39e4d219"
+        "sha256": "f4d4cdc3e20b25dbe3c3937405737b7f05f8454ab510bfbd6010ca927ae6c30d"
       },
       {
         "path": "tests/fixtures/career-active-skill-advance-e2e.chum5",
@@ -1032,7 +1032,7 @@
       {
         "path": "tests/run_api36_career_weapon_fire_e2e.py",
         "exists": true,
-        "sha256": "ddbdb3a462760a341cddd764180721c8a7047671aa8bf74f913b11b6ff4ec35c"
+        "sha256": "5487ca46e647cd34d125d2bfe3e756cf394631a93d0d097f9f9c6f0d2c361290"
       },
       {
         "path": "tests/fixtures/career-weapon-fire-e2e.chum5",

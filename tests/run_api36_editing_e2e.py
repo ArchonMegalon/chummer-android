@@ -658,9 +658,10 @@ def classify_shared_storage_readiness_failure(
     """Recognize only exact Toybox stat failures for the requested roots.
 
     Ordinary ADB transport, daemon, offline, and timeout failures remain
-    non-retryable here.  The retry authority is limited to an anchored stderr
-    consisting solely of Toybox's shared-storage-not-connected marker for one
-    or both roots present in the exact command.
+    non-retryable here.  Retry authority is limited to either an anchored
+    shared-storage-not-connected marker for the governed roots, or the exact
+    Toybox partial observation where ``/sdcard`` is a followed directory and
+    only ``/sdcard/Download`` is not initialized yet.
     """
     generic_classification, _generic_retryable = classify_adb_failure(error)
     if not isinstance(error, subprocess.CalledProcessError):
@@ -685,15 +686,37 @@ def classify_shared_storage_readiness_failure(
         stderr = raw_stderr
     else:
         return (generic_classification, False)
-    lines = stderr.splitlines()
-    if not lines:
+    stderr_lines = stderr.splitlines()
+    if not stderr_lines:
         return (generic_classification, False)
+    if stderr_lines == [
+        "stat: '/sdcard/Download': No such file or directory"
+    ]:
+        raw_stdout = getattr(error, "stdout", "")
+        if isinstance(raw_stdout, bytes):
+            try:
+                stdout = raw_stdout.decode("utf-8", errors="strict")
+            except UnicodeDecodeError:
+                return (generic_classification, False)
+        elif isinstance(raw_stdout, str):
+            stdout = raw_stdout
+        else:
+            return (generic_classification, False)
+        stdout_lines = stdout.splitlines()
+        if len(stdout_lines) != 1:
+            return (generic_classification, False)
+        root = ADB_SHARED_STORAGE_STAT_LINE.fullmatch(stdout_lines[0])
+        if root is None or root.group("path") != "/sdcard":
+            return (generic_classification, False)
+        if int(root.group("mode"), 16) & 0o170000 != 0o040000:
+            return (generic_classification, False)
+        return ("shared-storage-download-not-initialized", True)
     marker = re.compile(
         r"^stat: (?P<quote>['\"]?)(?P<path>/sdcard(?:/Download)?)"
         r"(?P=quote): Transport endpoint is not connected$"
     )
     paths: list[str] = []
-    for line in lines:
+    for line in stderr_lines:
         match = marker.fullmatch(line)
         if match is None or match.group("path") not in ADB_SHARED_STORAGE_ROOTS:
             return (generic_classification, False)
@@ -710,10 +733,15 @@ def adb_classification_authority(classification: str) -> str:
         "transport-closed",
         "daemon-unavailable",
         "shared-storage-unavailable",
+        "shared-storage-download-not-initialized",
     }:
         return (
             "recognized-transient-shared-storage-marker"
-            if classification == "shared-storage-unavailable"
+            if classification
+            in {
+                "shared-storage-unavailable",
+                "shared-storage-download-not-initialized",
+            }
             else "recognized-transient-transport-marker"
         )
     if classification == "device-unauthorized":
@@ -2036,7 +2064,12 @@ class Device:
                 )
                 observation.update(
                     {
-                        "status": "storage-unavailable",
+                        "status": (
+                            "storage-not-initialized"
+                            if classification
+                            == "shared-storage-download-not-initialized"
+                            else "storage-unavailable"
+                        ),
                         "classification": classification,
                         "classificationAuthority": adb_classification_authority(
                             classification

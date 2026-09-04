@@ -342,6 +342,114 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
             driver.classify_shared_storage_readiness_failure(wrong_command)[1]
         )
 
+    def test_missing_download_directory_retries_only_from_exact_partial_stat_observation(
+        self,
+    ) -> None:
+        captured_failure = subprocess.CalledProcessError(
+            1,
+            (
+                "adb",
+                "-s",
+                "SERIAL-API36",
+                *driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS,
+            ),
+            output="/sdcard:43:106499:45f8\n",
+            stderr="stat: '/sdcard/Download': No such file or directory\n",
+        )
+        stable = "/sdcard:43:106499:45f8\n/sdcard/Download:43:106500:41ed\n"
+        with tempfile.TemporaryDirectory() as temporary:
+            device = self.make_device(Path(temporary))
+            with (
+                mock.patch.object(
+                    driver.subprocess,
+                    "run",
+                    side_effect=[
+                        captured_failure,
+                        completed(driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS, stable),
+                        completed(driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS, stable),
+                        completed(driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS, stable),
+                    ],
+                ) as run,
+                mock.patch.object(driver.time, "sleep") as sleep,
+            ):
+                receipt = device.require_shared_storage_readiness(
+                    deadline=driver.time.monotonic()
+                    + driver.ADB_SHARED_STORAGE_PREFLIGHT_MAX_SECONDS
+                )
+
+        self.assertEqual(4, run.call_count)
+        self.assertEqual(3, sleep.call_count)
+        self.assertEqual("pass", receipt["status"])
+        first = receipt["observations"][0]
+        self.assertEqual("storage-not-initialized", first["status"])
+        self.assertEqual(
+            "shared-storage-download-not-initialized",
+            first["classification"],
+        )
+        self.assertEqual(
+            "recognized-transient-shared-storage-marker",
+            first["classificationAuthority"],
+        )
+        self.assertTrue(first["retryableReadOnlyObservation"])
+        self.assertEqual(0, receipt["mutationCommandsIssued"])
+
+    def test_missing_download_directory_retry_rejects_every_non_exact_variant(
+        self,
+    ) -> None:
+        command = (
+            "adb",
+            "-s",
+            "SERIAL-API36",
+            *driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS,
+        )
+        hostile_outputs = (
+            ("", "stat: '/sdcard/Download': No such file or directory\n"),
+            (
+                "/sdcard:43:106499:45f8\nextra\n",
+                "stat: '/sdcard/Download': No such file or directory\n",
+            ),
+            (
+                "/sdcard/Download:43:106499:45f8\n",
+                "stat: '/sdcard/Download': No such file or directory\n",
+            ),
+            (
+                "/sdcard:43:106499:a1ff\n",
+                "stat: '/sdcard/Download': No such file or directory\n",
+            ),
+            (
+                "/sdcard:43:106499:45f8\n",
+                "stat: '/sdcard': No such file or directory\n",
+            ),
+            (
+                "/sdcard:43:106499:45f8\n",
+                "stat: '/sdcard/Other': No such file or directory\n",
+            ),
+            (
+                "/sdcard:43:106499:45f8\n",
+                "stat: /sdcard/Download: No such file or directory\n",
+            ),
+            (
+                "/sdcard:43:106499:45f8\n",
+                "stat: '/sdcard/Download': No such file or directory\nextra\n",
+            ),
+        )
+        for stdout, stderr in hostile_outputs:
+            with self.subTest(stdout=stdout, stderr=stderr):
+                failure = subprocess.CalledProcessError(
+                    1,
+                    command,
+                    output=stdout,
+                    stderr=stderr,
+                )
+                classification, retryable = (
+                    driver.classify_shared_storage_readiness_failure(failure)
+                )
+                self.assertNotEqual(
+                    "shared-storage-download-not-initialized",
+                    classification,
+                )
+                self.assertFalse(retryable)
+
     def test_shared_storage_preflight_never_retries_generic_adb_failures(self) -> None:
         failures = (
             offline(driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS),
@@ -357,6 +465,17 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
                 ("adb", "-s", "SERIAL-API36", *driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS),
                 output="",
                 stderr="transport is closed",
+            ),
+            subprocess.CalledProcessError(
+                1,
+                (
+                    "adb",
+                    "-s",
+                    "SERIAL-API36",
+                    *driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS,
+                ),
+                output="",
+                stderr="stat: '/sdcard/Download': No such file or directory\n",
             ),
         )
         for failure in failures:

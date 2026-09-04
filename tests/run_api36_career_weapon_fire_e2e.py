@@ -11,6 +11,7 @@ import json
 from pathlib import Path
 import subprocess
 import sys
+import time
 import xml.etree.ElementTree as ET
 
 import run_api36_editing_e2e as shared
