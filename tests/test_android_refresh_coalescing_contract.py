@@ -16,6 +16,12 @@ def test_coalesced_refresh_has_no_deferred_control_replacement_window() -> None:
     assert page.index("Volatile.Read(ref _appearanceRefreshActive) > 0") < page.index(
         "if (_coordinatorRefresh.Request())"
     )
+    drain = page.split("private async Task DrainCoordinatorRefreshAsync()", 1)[1]
+    assert "|| Volatile.Read(ref _appearanceRefreshActive) > 0" in drain
+    assert "&& Volatile.Read(ref _appearanceRefreshActive) == 0" in drain
+    assert drain.index("Volatile.Read(ref _appearanceRefreshActive) > 0") < drain.index(
+        "_coordinatorRefresh.TryTakePending()"
+    )
     assert "Task.Delay(CoordinatorRefreshSettleDelay)" not in page
     assert "CoordinatorRefreshSettleDelay" not in page
 
