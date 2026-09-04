@@ -11,8 +11,7 @@ namespace Chummer.Android.Native;
 public static class Preview11WizardScope
 {
     public static bool CoversCreationMethod(string buildMethod)
-        => buildMethod is CharacterCreationBuildMethods.Priority
-            or CharacterCreationBuildMethods.SumToTen;
+        => buildMethod is CharacterCreationBuildMethods.Priority;
 
     public static bool CoversCreationStage(string stepId)
         => string.Equals(

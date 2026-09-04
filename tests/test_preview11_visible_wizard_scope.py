@@ -33,7 +33,7 @@ class Preview11VisibleWizardScopeTests(unittest.TestCase):
         source = SCOPE.read_text(encoding="utf-8")
 
         assert "CharacterCreationBuildMethods.Priority" in source
-        assert "CharacterCreationBuildMethods.SumToTen" in source
+        assert "CharacterCreationBuildMethods.SumToTen" not in source
         assert "CharacterCreationBuildMethods.LifeModules" not in source
         assert "CharacterCreationWizardStepIds.Resources" in source
         for excluded_stage in (
