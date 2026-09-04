@@ -186,6 +186,9 @@ class AndroidP0PrAuthorityTests(unittest.TestCase):
                             f"{matrix_journey}-observation".encode()
                         ),
                         "compatibilitySha256": compatibility,
+                        "emulatorLiveObservationSha256": sha256(
+                            f"{matrix_journey}-emulator-observation".encode()
+                        ),
                     }
                     for matrix_journey in journeys
                 },
@@ -273,6 +276,28 @@ class AndroidP0PrAuthorityTests(unittest.TestCase):
         ]["compatibilitySha256"] = "f" * 64
         hostile_cases.append(
             ("environment compatibility", self.aggregate, incompatible_environment)
+        )
+        missing_emulator_observation = self.aggregate_payload()
+        del missing_emulator_observation["environmentAuthority"]["journeys"][
+            "after-run-settlement"
+        ]["emulatorLiveObservationSha256"]
+        hostile_cases.append(
+            (
+                "missing emulator live observation",
+                self.aggregate,
+                missing_emulator_observation,
+            )
+        )
+        invalid_emulator_observation = self.aggregate_payload()
+        invalid_emulator_observation["environmentAuthority"]["journeys"][
+            "before-run-edge"
+        ]["emulatorLiveObservationSha256"] = "not-a-sha256"
+        hostile_cases.append(
+            (
+                "invalid emulator live observation",
+                self.aggregate,
+                invalid_emulator_observation,
+            )
         )
         for label, path, value in hostile_cases:
             with self.subTest(label=label):

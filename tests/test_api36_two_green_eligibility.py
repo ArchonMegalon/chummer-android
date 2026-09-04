@@ -158,6 +158,9 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
                         "receiptSha256": sha256(f"{run_id}-{matrix}-receipt".encode()),
                         "environmentSha256": sha256(f"{run_id}-{matrix}-environment".encode()),
                         "compatibilitySha256": journey_compatibility,
+                        "emulatorLiveObservationSha256": sha256(
+                            f"{run_id}-{matrix}-emulator-observation".encode()
+                        ),
                     }
                     for matrix in journeys
                 },

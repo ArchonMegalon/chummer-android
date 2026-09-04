@@ -266,10 +266,16 @@ def validate_aggregate(
         "build": environment["build"],
         **environment_journeys,
     }.items():
+        expected_binding_fields = {
+            "receiptSha256",
+            "environmentSha256",
+            "compatibilitySha256",
+        }
+        if label != "build":
+            expected_binding_fields.add("emulatorLiveObservationSha256")
         if (
             not isinstance(binding, dict)
-            or set(binding)
-            != {"receiptSha256", "environmentSha256", "compatibilitySha256"}
+            or set(binding) != expected_binding_fields
         ):
             raise ValueError(f"wizard aggregate environment binding differs: {label}")
         for field in binding:
