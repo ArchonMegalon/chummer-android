@@ -104,14 +104,9 @@ public static class CreationDashboardProjectionScheduler
     public static IReadOnlyList<CreationDashboardAuthorityPhase> NextBatch(
         CreationDashboardAuthorityPhaseProgress progress)
     {
-        CreationDashboardAuthorityPhase[] foundation =
-        [
-            .. PhaseWhenLoading(progress.Prerequisite, CreationDashboardAuthorityPhase.Prerequisite),
-            .. PhaseWhenLoading(progress.Resources, CreationDashboardAuthorityPhase.Resources)
-        ];
-        if (foundation.Length > 0)
+        if (progress.Prerequisite == CreationDashboardAuthorityPhaseState.Loading)
         {
-            return foundation;
+            return [CreationDashboardAuthorityPhase.Prerequisite];
         }
 
         if (progress.Prerequisite == CreationDashboardAuthorityPhaseState.Ready)
@@ -127,7 +122,11 @@ public static class CreationDashboardProjectionScheduler
             }
         }
 
-        return [.. PhaseWhenLoading(progress.Contacts, CreationDashboardAuthorityPhase.Contacts)];
+        return
+        [
+            .. PhaseWhenLoading(progress.Contacts, CreationDashboardAuthorityPhase.Contacts),
+            .. PhaseWhenLoading(progress.Resources, CreationDashboardAuthorityPhase.Resources)
+        ];
     }
 
     public static bool ShouldRenderAfterCompletion(
@@ -135,13 +134,21 @@ public static class CreationDashboardProjectionScheduler
         CreationDashboardAuthorityPhaseProgress progress)
         => phase switch
         {
-            CreationDashboardAuthorityPhase.Prerequisite or CreationDashboardAuthorityPhase.Resources
-                => IsTerminal(progress.Prerequisite) && IsTerminal(progress.Resources),
+            CreationDashboardAuthorityPhase.Prerequisite => true,
             CreationDashboardAuthorityPhase.Attributes or CreationDashboardAuthorityPhase.Skills
-                => IsTerminal(progress.Attributes) && IsTerminal(progress.Skills),
-            CreationDashboardAuthorityPhase.Contacts => true,
+                => false,
+            CreationDashboardAuthorityPhase.Contacts or CreationDashboardAuthorityPhase.Resources
+                => IsTerminal(progress.Contacts) && IsTerminal(progress.Resources),
             _ => throw new ArgumentOutOfRangeException(nameof(phase), phase, null)
         };
+
+    public static bool ShouldAdvanceWithoutRenderAfterCompletion(
+        CreationDashboardAuthorityPhase phase,
+        CreationDashboardAuthorityPhaseProgress progress)
+        => phase is CreationDashboardAuthorityPhase.Attributes
+                or CreationDashboardAuthorityPhase.Skills
+           && IsTerminal(progress.Attributes)
+           && IsTerminal(progress.Skills);
 
     private static bool IsTerminal(CreationDashboardAuthorityPhaseState state)
         => state != CreationDashboardAuthorityPhaseState.Loading;
@@ -830,6 +837,7 @@ public sealed class BuildPage : NativePageBase
                 NativeTheme.Muted);
             loading.AutomationId = "creation-dashboard-authority-loading";
             _body.Add(NativeTheme.Card(loading));
+            return;
         }
         else if (projection.HasFailure)
         {
@@ -1358,8 +1366,19 @@ public sealed class BuildPage : NativePageBase
 
             TraceCreationPhase(phase, "take-accepted", request);
             accept(request.Key, completed, error);
-            if (_creationProjection is { } projection
-                && CreationDashboardProjectionScheduler.ShouldRenderAfterCompletion(
+            if (_creationProjection is not { } projection)
+                return;
+
+            if (CreationDashboardProjectionScheduler.ShouldAdvanceWithoutRenderAfterCompletion(
+                    phase,
+                    projection.Progress))
+            {
+                if (Coordinator.State.CreationWizard is { } snapshot)
+                    ResolveCreationProjection(snapshot);
+                return;
+            }
+
+            if (CreationDashboardProjectionScheduler.ShouldRenderAfterCompletion(
                     phase,
                     projection.Progress))
             {
