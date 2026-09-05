@@ -592,7 +592,7 @@
       {
         "path": "src/Chummer.Android/Native/NativeDialogPage.cs",
         "exists": true,
-        "sha256": "e83426b6ca2b30dc72e2f9a59f412c53fb033b22f769785d4a99a066ef0c3c1e"
+        "sha256": "675851e9cf45ac2d7864c429dbdd6d3b3d3f574c66358f2962b1adafb2efb941"
       },
       {
         "path": "src/Chummer.Android/Native/NativeCommandPage.cs",
