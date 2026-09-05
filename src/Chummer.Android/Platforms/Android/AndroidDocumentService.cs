@@ -40,15 +40,11 @@ public sealed class AndroidDocumentService : IAndroidDocumentService
                 return null;
             }
 
-            TryPersistDocumentGrant(activity, uri, ActivityFlags.GrantReadUriPermission);
-            await using Stream source = activity.ContentResolver?.OpenInputStream(uri)
-                ?? throw new IOException("Android did not provide a readable document stream.");
-            byte[] content = await ReadBoundedAsync(source, cancellationToken);
-            AndroidDocument document = new(
-                ResolveDisplayName(activity, uri) ?? "Chummer document",
-                uri.ToString() ?? string.Empty,
-                activity.ContentResolver?.GetType(uri),
-                content);
+            ContentResolver resolver = activity.ContentResolver
+                ?? throw new IOException("Android did not provide a content resolver.");
+            AndroidDocument document = await DocumentProviderWorkScheduler.RunAsync(
+                token => OpenDocumentAsync(resolver, uri, token),
+                cancellationToken);
 #if CHUMMER_API36_PROOF_INSTRUMENTATION
             Api36ProofStatePublisher.TryRecordDocumentStream(document);
 #endif
@@ -95,20 +91,51 @@ public sealed class AndroidDocumentService : IAndroidDocumentService
             return false;
         }
 
-        TryPersistDocumentGrant(
-            activity,
-            uri,
-            ActivityFlags.GrantReadUriPermission | ActivityFlags.GrantWriteUriPermission);
-        await using Stream destination = activity.ContentResolver?.OpenOutputStream(uri, "wt")
-            ?? throw new IOException("Android did not provide a writable document stream.");
-        await content.CopyToAsync(destination, cancellationToken);
-        await destination.FlushAsync(cancellationToken);
+        ContentResolver resolver = activity.ContentResolver
+            ?? throw new IOException("Android did not provide a content resolver.");
+        await DocumentProviderWorkScheduler.RunAsync(
+            token => WriteDocumentAsync(resolver, uri, content, token),
+            cancellationToken);
         return true;
     }
 
-    private static string? ResolveDisplayName(Activity activity, global::Android.Net.Uri uri)
+    private static async Task<AndroidDocument> OpenDocumentAsync(
+        ContentResolver resolver,
+        global::Android.Net.Uri uri,
+        CancellationToken cancellationToken)
     {
-        using ICursor? cursor = activity.ContentResolver?.Query(uri, [IOpenableColumns.DisplayName], null, null, null);
+        TryPersistDocumentGrant(resolver, uri, ActivityFlags.GrantReadUriPermission);
+        await using Stream source = resolver.OpenInputStream(uri)
+            ?? throw new IOException("Android did not provide a readable document stream.");
+        byte[] content = await ReadBoundedAsync(source, cancellationToken).ConfigureAwait(false);
+        return new AndroidDocument(
+            ResolveDisplayName(resolver, uri) ?? "Chummer document",
+            uri.ToString() ?? string.Empty,
+            resolver.GetType(uri),
+            content);
+    }
+
+    private static async Task WriteDocumentAsync(
+        ContentResolver resolver,
+        global::Android.Net.Uri uri,
+        Stream content,
+        CancellationToken cancellationToken)
+    {
+        TryPersistDocumentGrant(
+            resolver,
+            uri,
+            ActivityFlags.GrantReadUriPermission | ActivityFlags.GrantWriteUriPermission);
+        await using Stream destination = resolver.OpenOutputStream(uri, "wt")
+            ?? throw new IOException("Android did not provide a writable document stream.");
+        await content.CopyToAsync(destination, cancellationToken).ConfigureAwait(false);
+        await destination.FlushAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private static string? ResolveDisplayName(
+        ContentResolver resolver,
+        global::Android.Net.Uri uri)
+    {
+        using ICursor? cursor = resolver.Query(uri, [IOpenableColumns.DisplayName], null, null, null);
         if (cursor is null || !cursor.MoveToFirst())
         {
             return null;
@@ -119,13 +146,13 @@ public sealed class AndroidDocumentService : IAndroidDocumentService
     }
 
     private static void TryPersistDocumentGrant(
-        Activity activity,
+        ContentResolver resolver,
         global::Android.Net.Uri uri,
         ActivityFlags flags)
     {
         try
         {
-            activity.ContentResolver?.TakePersistableUriPermission(uri, flags);
+            resolver.TakePersistableUriPermission(uri, flags);
         }
         catch (Java.Lang.SecurityException)
         {

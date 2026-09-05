@@ -3,6 +3,7 @@
   <Project Path="tests/Chummer.Android.AccountLinkHttp.Tests/Chummer.Android.AccountLinkHttp.Tests.csproj" />
   <Project Path="tests/Chummer.Android.AccountLinkKey.AndroidCompileCheck/Chummer.Android.AccountLinkKey.AndroidCompileCheck.csproj" />
   <Project Path="tests/Chummer.Android.AccountLinkKey.Tests/Chummer.Android.AccountLinkKey.Tests.csproj" />
+  <Project Path="tests/Chummer.Android.DocumentProviderWork.Tests/Chummer.Android.DocumentProviderWork.Tests.csproj" />
   <Project Path="tests/Chummer.Android.Native.CompileCheck/Chummer.Android.Native.CompileCheck.csproj" />
   <Project Path="tests/Chummer.Android.Native.InteractionTests/Chummer.Android.Native.InteractionTests.csproj" />
   <Project Path="tests/Chummer.Android.PlayReview.BindingCompileCheck/Chummer.Android.PlayReview.BindingCompileCheck.csproj" />

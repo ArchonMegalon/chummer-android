@@ -9,6 +9,7 @@ account_link_http_tests_path="$repo_dir/tests/Chummer.Android.AccountLinkHttp.Te
 account_link_key_tests_path="$repo_dir/tests/Chummer.Android.AccountLinkKey.Tests/Chummer.Android.AccountLinkKey.Tests.csproj"
 account_link_key_android_compile_path="$repo_dir/tests/Chummer.Android.AccountLinkKey.AndroidCompileCheck/Chummer.Android.AccountLinkKey.AndroidCompileCheck.csproj"
 interaction_tests_path="$repo_dir/tests/Chummer.Android.Native.InteractionTests/Chummer.Android.Native.InteractionTests.csproj"
+document_provider_work_tests_path="$repo_dir/tests/Chummer.Android.DocumentProviderWork.Tests/Chummer.Android.DocumentProviderWork.Tests.csproj"
 play_review_tests_path="$repo_dir/tests/Chummer.Android.PlayReview.Tests/Chummer.Android.PlayReview.Tests.csproj"
 play_review_binding_check_path="$repo_dir/tests/Chummer.Android.PlayReview.BindingCompileCheck/Chummer.Android.PlayReview.BindingCompileCheck.csproj"
 compile_graph_verifier="$repo_dir/scripts/verify_native_compile_graph.py"
@@ -154,6 +155,12 @@ python3 "$compile_graph_verifier" \
   --project "$interaction_tests_path" \
   --configuration Debug \
   --no-build \
+  --no-restore \
+  --disable-build-servers
+
+"$dotnet_command" run \
+  --project "$document_provider_work_tests_path" \
+  --configuration Debug \
   --no-restore \
   --disable-build-servers
 
