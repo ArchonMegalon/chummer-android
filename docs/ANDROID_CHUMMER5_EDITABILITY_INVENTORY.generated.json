@@ -647,7 +647,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "5677e3f7294b012f6b2866716fcee52a12a41486a7935265d982fac899961e9a"
+        "sha256": "da199dd9a2531bf0c2ed4200264a353e4c1cea9f9310de56a14a1223f5ba2d6d"
       },
       {
         "path": "src/Chummer.Android/Native/RunnerSessionSr5CareerWizardPhoneAuthority.cs",

@@ -5330,7 +5330,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             DRIVER.wait_exact_text(device, "Improve · 10 Karma", timeout=45)
         device.capture.assert_called_once_with("career-attribute-text-mismatch")
 
-    def test_local_import_does_not_claim_success_for_a_guarded_workspace(self) -> None:
+    def test_local_import_requires_exact_authority_even_for_an_already_active_workspace(self) -> None:
         source = (
             REPO_ROOT
             / "src"
@@ -5345,15 +5345,16 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             )
         ]
 
-        self.assertIn("CharacterOverviewState previousState = State;", block)
+        self.assertNotIn("CharacterOverviewState previousState = State;", block)
         self.assertIn("_notice = null;", block)
         self.assertIn("ComputeExactImportPayloadSha256(document.Content)", block)
         self.assertIn(
-            "if (ActivatedNewWorkspace(previousState, State)",
+            "if (State.WorkspaceId is { } importedWorkspaceId)",
             block,
         )
-        guarded = block[block.index("if (ActivatedNewWorkspace") :]
+        guarded = block[block.index("if (State.WorkspaceId is { } importedWorkspaceId)") :]
         self.assertIn("TryRefreshWorkspaceAuthorityAsync", guarded)
+        self.assertIn("expectedPayloadSha256", guarded)
         self.assertIn("if (authority is not null)", guarded)
         self.assertIn("RememberRosterLocator", guarded)
         self.assertIn('_notice = $"Opened {document.DisplayName}.";', guarded)
@@ -5365,11 +5366,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             block,
         )
 
-        predicate = block[block.index("private static bool ActivatedNewWorkspace") :]
-        self.assertIn("current.WorkspaceId is { } currentWorkspace", predicate)
-        self.assertIn("!string.Equals(previousWorkspace.Value, currentWorkspace.Value", predicate)
-        self.assertNotIn("ContentRevision", predicate)
-        self.assertNotIn("SavedRevision", predicate)
+        self.assertNotIn("ActivatedNewWorkspace", block)
 
     def test_authoritative_import_and_restart_contracts_fail_closed(self) -> None:
         imported = DRIVER.WorkspaceAuthority("new", 4, 4, "a" * 64, "b" * 64)
@@ -5779,7 +5776,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
         local = source[
             source.index("public async Task<NativeWorkspaceActivationReceipt?> OpenLocalAsync") :
-            source.index("private static bool ActivatedNewWorkspace")
+            source.index("private static bool WorkspaceIsActive")
         ]
         online = source[
             source.index("public async Task<NativeWorkspaceActivationReceipt?> OpenOnlineAsync") :
@@ -5839,7 +5836,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         self.assertIn("NativeWorkspaceActivationKind.WorkspaceSwitch", block)
         self.assertIn("workspace.Id)", block)
 
-    def test_online_import_uses_the_same_guarded_activation_contract(self) -> None:
+    def test_online_import_uses_the_same_exact_authority_activation_contract(self) -> None:
         source = (
             REPO_ROOT
             / "src"
@@ -5854,16 +5851,17 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         ]
         block = block[: block.index("public async Task CreateRunnerAsync")]
 
-        self.assertIn("CharacterOverviewState previousState = State;", block)
+        self.assertNotIn("CharacterOverviewState previousState = State;", block)
         self.assertIn("_notice = null;", block)
         self.assertIn("await _workspaceActivationGate.WaitAsync(cancellationToken);", block)
         self.assertIn("string expectedPayloadSha256 = Sha256Hex(payload);", block)
         self.assertIn(
-            "if (ActivatedNewWorkspace(previousState, State)",
+            "if (State.WorkspaceId is { } importedWorkspaceId)",
             block,
         )
-        guarded = block[block.index("if (ActivatedNewWorkspace") :]
+        guarded = block[block.index("if (State.WorkspaceId is { } importedWorkspaceId)") :]
         self.assertIn("TryRefreshWorkspaceAuthorityAsync", guarded)
+        self.assertIn("expectedPayloadSha256", guarded)
         self.assertIn("if (authority is not null)", guarded)
         self.assertIn("RememberRosterLocator", guarded)
         self.assertIn(
@@ -5890,7 +5888,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             / "RunnerSessionCoordinator.cs"
         ).read_text(encoding="utf-8")
         local = source[source.index("public async Task<NativeWorkspaceActivationReceipt?> OpenLocalAsync") :]
-        local = local[: local.index("private static bool ActivatedNewWorkspace")]
+        local = local[: local.index("private static bool WorkspaceIsActive")]
         online = source[
             source.index(
                 "public async Task<NativeWorkspaceActivationReceipt?> OpenOnlineAsync"
