@@ -33,7 +33,6 @@ public sealed class NativeDialogPage : ContentPage
     {
         _coordinator = coordinator;
         BackgroundColor = NativeTheme.Paper;
-        Title = dialog.Title;
         _closeToolbarItem = new ToolbarItem
         {
             Text = PhoneStrings.Get("Close", "Close"),
@@ -55,6 +54,8 @@ public sealed class NativeDialogPage : ContentPage
     {
         _renderGeneration = _interactionGate.BeginRender();
         _renderedDialog = dialog;
+        string dialogTitle = AndroidDialogSettingsScope.Title(dialog);
+        Title = dialogTitle;
         _pendingTextFields.Clear();
         _interactiveElements.Clear();
         VerticalStackLayout body = new()
@@ -64,7 +65,7 @@ public sealed class NativeDialogPage : ContentPage
             Spacing = 16
         };
         body.Add(NativeTheme.Eyebrow(PhoneStrings.Get("RunnerSetup", "Runner setup")));
-        body.Add(NativeTheme.Title(dialog.Title, 24));
+        body.Add(NativeTheme.Title(dialogTitle, 24));
         if (!string.IsNullOrWhiteSpace(_coordinator.State.Error))
         {
             Label errorLabel = NativeTheme.Body(_coordinator.State.Error!, NativeTheme.Danger);
@@ -112,6 +113,7 @@ public sealed class NativeDialogPage : ContentPage
         int index = 0;
         foreach (DesktopDialogAction action in dialog.Actions)
         {
+            string actionLabel = AndroidDialogSettingsScope.ActionLabel(dialog, action);
             NativeDialogActionBinding binding = new(
                 _renderGeneration,
                 dialog.Id,
@@ -119,8 +121,8 @@ public sealed class NativeDialogPage : ContentPage
                 action.Label,
                 action.IsPrimary);
             Button button = action.IsPrimary
-                ? NativeTheme.PrimaryButton(action.Label)
-                : NativeTheme.SecondaryButton(action.Label);
+                ? NativeTheme.PrimaryButton(actionLabel)
+                : NativeTheme.SecondaryButton(actionLabel);
             button.AutomationId = $"dialog-action-{Token(action.Id)}";
             TrackInteractive(button, enabledWhenIdle: true);
             button.Clicked += async (_, _) => await ExecuteAsync(binding);
@@ -192,6 +194,7 @@ public sealed class NativeDialogPage : ContentPage
                 TextColor = NativeTheme.Text,
                 HeightRequest = 52
             };
+            NativeDialogAccessibility.BindFieldLabel(label, picker, scopedField.Label);
             TrackInteractive(picker, enabledWhenIdle: !field.IsReadOnly);
             if (!field.IsReadOnly)
             {
@@ -216,6 +219,7 @@ public sealed class NativeDialogPage : ContentPage
                 IsEnabled = !field.IsReadOnly && !_interactionBusy,
                 OnColor = NativeTheme.Signal
             };
+            NativeDialogAccessibility.BindFieldLabel(label, toggle, scopedField.Label);
             TrackInteractive(toggle, enabledWhenIdle: !field.IsReadOnly);
             if (!field.IsReadOnly)
             {
@@ -239,6 +243,7 @@ public sealed class NativeDialogPage : ContentPage
                 BackgroundColor = NativeTheme.Surface,
                 TextColor = NativeTheme.Text
             };
+            NativeDialogAccessibility.BindFieldLabel(label, editor, scopedField.Label);
             TrackInteractive(editor, enabledWhenIdle: !field.IsReadOnly);
             if (!field.IsReadOnly)
             {
@@ -262,6 +267,7 @@ public sealed class NativeDialogPage : ContentPage
                     ? Keyboard.Numeric
                     : Keyboard.Default
             };
+            NativeDialogAccessibility.BindFieldLabel(label, entry, scopedField.Label);
             TrackInteractive(entry, enabledWhenIdle: !field.IsReadOnly);
             if (!field.IsReadOnly)
             {
@@ -346,7 +352,6 @@ public sealed class NativeDialogPage : ContentPage
                 DesktopDialogState? next = _coordinator.State.ActiveDialog;
                 if (next is not null && RequiresStructuralRerender(previous, next, binding.FieldId))
                 {
-                    Title = next.Title;
                     Render(next);
                 }
             }
@@ -580,7 +585,6 @@ public sealed class NativeDialogPage : ContentPage
                     }
                     else
                     {
-                        Title = next.Title;
                         Render(next);
                     }
                 },
@@ -606,7 +610,6 @@ public sealed class NativeDialogPage : ContentPage
             return;
         }
 
-        Title = active.Title;
         Render(active);
     }
 
@@ -838,6 +841,23 @@ internal sealed class NativeDialogInteractionGate
     }
 }
 
+internal static class NativeDialogAccessibility
+{
+    internal static void BindFieldLabel(
+        Label decorativeLabel,
+        VisualElement input,
+        string accessibleLabel)
+    {
+        ArgumentNullException.ThrowIfNull(decorativeLabel);
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentException.ThrowIfNullOrWhiteSpace(accessibleLabel);
+
+        SemanticProperties.SetDescription(input, accessibleLabel);
+        AutomationProperties.SetLabeledBy(input, decorativeLabel);
+        AutomationProperties.SetIsInAccessibleTree(decorativeLabel, false);
+    }
+}
+
 internal sealed record NativeDialogScopedField(
     bool IsVisible,
     string Label,
@@ -870,6 +890,18 @@ internal static class AndroidDialogSettingsScope
         ["karma"] = ("CharacterSettingsSectionKarma", "Career Karma costs"),
         ["limits"] = ("CharacterSettingsSectionLimits", "Career rating limits"),
         ["build"] = ("CharacterSettingsSectionBuild", "Creation")
+    };
+
+    private static readonly IReadOnlyDictionary<string, (string ResourceKey, string EnglishLabel)> ActionLabels =
+        new Dictionary<string, (string ResourceKey, string EnglishLabel)>(StringComparer.Ordinal)
+    {
+        ["save"] = ("CharacterSettingsActionSave", "Save"),
+        ["save_and_close"] = ("CharacterSettingsActionSaveAndClose", "Save & Close"),
+        ["save_as"] = ("CharacterSettingsActionSaveAs", "Save As"),
+        ["rename"] = ("CharacterSettingsActionRename", "Rename"),
+        ["delete"] = ("CharacterSettingsActionDelete", "Delete"),
+        ["restore_defaults"] = ("CharacterSettingsActionRestoreDefaults", "Restore Defaults"),
+        ["cancel"] = ("CharacterSettingsActionCancel", "Cancel")
     };
 
     private static readonly HashSet<string> VisibleStructuralFieldIds = new(StringComparer.Ordinal)
@@ -954,6 +986,27 @@ internal static class AndroidDialogSettingsScope
                 "Edit only settings used by the Preview 11 phone wizards. Hidden desktop values remain unchanged in the profile.",
                 culture)
             : dialog.Message ?? string.Empty;
+    }
+
+    internal static string Title(DesktopDialogState dialog, CultureInfo? culture = null)
+    {
+        ArgumentNullException.ThrowIfNull(dialog);
+        return IsCharacterSettings(dialog)
+            ? PhoneStrings.Get("CharacterSettingsTitle", "Character Settings", culture)
+            : dialog.Title;
+    }
+
+    internal static string ActionLabel(
+        DesktopDialogState dialog,
+        DesktopDialogAction action,
+        CultureInfo? culture = null)
+    {
+        ArgumentNullException.ThrowIfNull(dialog);
+        ArgumentNullException.ThrowIfNull(action);
+        return IsCharacterSettings(dialog)
+               && ActionLabels.TryGetValue(action.Id, out var label)
+            ? PhoneStrings.Get(label.ResourceKey, label.EnglishLabel, culture)
+            : action.Label;
     }
 
     internal static string? Detail(DesktopDialogState dialog, CultureInfo? culture = null)

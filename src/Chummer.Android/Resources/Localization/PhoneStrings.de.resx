@@ -105,6 +105,14 @@
   <data name="CharacterSettingsRulesScope" xml:space="preserve"><value>Jede hier angezeigte Einstellung wird von einem aktuellen Preview-11-Assistenten auf dem Smartphone verwendet.</value></data>
   <data name="CharacterSettingsUnsupportedScope" xml:space="preserve"><value>Dieser Einstellungsbereich ist auf Android nicht verfügbar. Seine gespeicherten Werte bleiben im Profil erhalten.</value></data>
   <data name="CharacterSettingsPhoneMessage" xml:space="preserve"><value>Bearbeite nur Einstellungen, die von den Preview-11-Assistenten auf dem Smartphone verwendet werden. Ausgeblendete Desktop-Werte bleiben im Profil unverändert.</value></data>
+  <data name="CharacterSettingsTitle" xml:space="preserve"><value>Charaktereinstellungen</value></data>
+  <data name="CharacterSettingsActionSave" xml:space="preserve"><value>Speichern</value></data>
+  <data name="CharacterSettingsActionSaveAndClose" xml:space="preserve"><value>Speichern und schließen</value></data>
+  <data name="CharacterSettingsActionSaveAs" xml:space="preserve"><value>Speichern unter</value></data>
+  <data name="CharacterSettingsActionRename" xml:space="preserve"><value>Umbenennen</value></data>
+  <data name="CharacterSettingsActionDelete" xml:space="preserve"><value>Löschen</value></data>
+  <data name="CharacterSettingsActionRestoreDefaults" xml:space="preserve"><value>Standardwerte wiederherstellen</value></data>
+  <data name="CharacterSettingsActionCancel" xml:space="preserve"><value>Abbrechen</value></data>
   <data name="CharacterSettingsProfile" xml:space="preserve"><value>Einstellungsprofil</value></data>
   <data name="CharacterSettingsProfileName" xml:space="preserve"><value>Profilname</value></data>
   <data name="CharacterSettingsSection" xml:space="preserve"><value>Einstellungsbereich</value></data>

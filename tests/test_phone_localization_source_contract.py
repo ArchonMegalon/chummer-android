@@ -101,6 +101,14 @@ class PhoneLocalizationSourceContractTests(unittest.TestCase):
             "CharacterSettingsRulesScope",
             "CharacterSettingsUnsupportedScope",
             "CharacterSettingsPhoneMessage",
+            "CharacterSettingsTitle",
+            "CharacterSettingsActionSave",
+            "CharacterSettingsActionSaveAndClose",
+            "CharacterSettingsActionSaveAs",
+            "CharacterSettingsActionRename",
+            "CharacterSettingsActionDelete",
+            "CharacterSettingsActionRestoreDefaults",
+            "CharacterSettingsActionCancel",
             "CharacterSettingsProfile",
             "CharacterSettingsProfileName",
             "CharacterSettingsSection",
@@ -132,6 +140,21 @@ class PhoneLocalizationSourceContractTests(unittest.TestCase):
         self.assertIn("desktop-only", catalogs["en"]["CharacterSettingsCustomDataScope"])
         self.assertIn("nur auf dem Desktop", catalogs["de"]["CharacterSettingsCustomDataScope"])
         self.assertIn("exclusivos del escritorio", catalogs["es"]["CharacterSettingsCustomDataScope"])
+        self.assertEqual("Character Settings", catalogs["en"]["CharacterSettingsTitle"])
+        self.assertEqual("Charaktereinstellungen", catalogs["de"]["CharacterSettingsTitle"])
+        self.assertEqual("Ajustes del personaje", catalogs["es"]["CharacterSettingsTitle"])
+        self.assertEqual(
+            ["Save", "Save & Close", "Save As", "Rename", "Delete", "Restore Defaults", "Cancel"],
+            [catalogs["en"][key] for key in (
+                "CharacterSettingsActionSave",
+                "CharacterSettingsActionSaveAndClose",
+                "CharacterSettingsActionSaveAs",
+                "CharacterSettingsActionRename",
+                "CharacterSettingsActionDelete",
+                "CharacterSettingsActionRestoreDefaults",
+                "CharacterSettingsActionCancel",
+            )],
+        )
 
 
 if __name__ == "__main__":

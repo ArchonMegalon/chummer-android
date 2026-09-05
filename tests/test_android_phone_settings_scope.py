@@ -58,6 +58,46 @@ def test_character_settings_scope_preserves_profile_identity_and_fails_closed() 
     assert "Every other dialog passes through unchanged" in dialog_source
 
 
+def test_visible_native_dialog_inputs_have_one_localized_accessible_label() -> None:
+    dialog_source = NATIVE_DIALOG.read_text(encoding="utf-8")
+
+    assert dialog_source.count(
+        "NativeDialogAccessibility.BindFieldLabel(label,"
+    ) == 4
+    for control in ("picker", "toggle", "editor", "entry"):
+        assert f"BindFieldLabel(label, {control}, scopedField.Label)" in dialog_source
+    assert "SemanticProperties.SetDescription(input, accessibleLabel)" in dialog_source
+    assert "AutomationProperties.SetLabeledBy(input, decorativeLabel)" in dialog_source
+    assert (
+        "AutomationProperties.SetIsInAccessibleTree(decorativeLabel, false)"
+        in dialog_source
+    )
+    assert "if (scopedField.IsVisible)" in dialog_source
+    assert "body.Add(CreateField(dialog.Id, _renderGeneration, field, scopedField))" in dialog_source
+    assert dialog_source.count(
+        "_coordinator.UpdateDialogFieldAsync(binding.FieldId, value)"
+    ) == 2
+
+
+def test_character_settings_title_and_actions_use_stable_localized_ids() -> None:
+    dialog_source = NATIVE_DIALOG.read_text(encoding="utf-8")
+
+    assert "AndroidDialogSettingsScope.Title(dialog)" in dialog_source
+    assert "AndroidDialogSettingsScope.ActionLabel(dialog, action)" in dialog_source
+    expected = {
+        "save": "CharacterSettingsActionSave",
+        "save_and_close": "CharacterSettingsActionSaveAndClose",
+        "save_as": "CharacterSettingsActionSaveAs",
+        "rename": "CharacterSettingsActionRename",
+        "delete": "CharacterSettingsActionDelete",
+        "restore_defaults": "CharacterSettingsActionRestoreDefaults",
+        "cancel": "CharacterSettingsActionCancel",
+    }
+    for action_id, resource_key in expected.items():
+        assert f'["{action_id}"] = ("{resource_key}"' in dialog_source
+    assert 'PhoneStrings.Get("CharacterSettingsTitle", "Character Settings", culture)' in dialog_source
+
+
 def test_character_settings_phone_capability_inventory_is_exhaustive_and_fail_closed() -> None:
     inventory = json.loads(PHONE_CAPABILITIES.read_text(encoding="utf-8"))
     controls = inventory["controls"]

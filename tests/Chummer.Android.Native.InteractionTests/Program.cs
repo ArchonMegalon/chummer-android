@@ -7,6 +7,7 @@ using Chummer.Infrastructure.Files;
 using Chummer.Infrastructure.Workspaces;
 using Chummer.Infrastructure.Xml;
 using Chummer.Presentation.Overview;
+using Microsoft.Maui.Controls;
 
 internal static class Program
 {
@@ -30,6 +31,7 @@ internal static class Program
             (nameof(CoordinatorRefreshBurstsRenderOnlyLatestStateAsync), CoordinatorRefreshBurstsRenderOnlyLatestStateAsync),
             (nameof(PageActionGateRejectsOverlappingActionsAsync), PageActionGateRejectsOverlappingActionsAsync),
             (nameof(CharacterSettingsScopeIsExactAndFailClosedAsync), CharacterSettingsScopeIsExactAndFailClosedAsync),
+            (nameof(CharacterSettingsAccessibilityAndLocalizationAreExactAsync), CharacterSettingsAccessibilityAndLocalizationAreExactAsync),
             (nameof(ExactWorkspaceAuthoritySnapshotRejectsEveryHostileBindingAsync), ExactWorkspaceAuthoritySnapshotRejectsEveryHostileBindingAsync),
 #if DEBUG
             (nameof(HomeAppearanceAuthorityRefreshFailsClosedForEveryHostileBindingAsync), HomeAppearanceAuthorityRefreshFailsClosedForEveryHostileBindingAsync),
@@ -426,6 +428,89 @@ internal static class Program
             && AndroidDialogSettingsScope.Detail(wizard) is null
             && AndroidDialogSettingsScope.Message(wizard) == wizard.Message,
             "Character Settings scope changed an unrelated wizard projection.");
+        return Task.CompletedTask;
+    }
+
+    private static Task CharacterSettingsAccessibilityAndLocalizationAreExactAsync()
+    {
+        string accessibleLabel = PhoneStrings.Get(
+            "CharacterSettingsSection",
+            "Settings section",
+            new System.Globalization.CultureInfo("de-DE"));
+        VisualElement[] inputs = [new Picker(), new Switch(), new Entry(), new Editor()];
+        foreach (VisualElement input in inputs)
+        {
+            Label decorativeLabel = new() { Text = accessibleLabel };
+            NativeDialogAccessibility.BindFieldLabel(decorativeLabel, input, accessibleLabel);
+            Require(
+                SemanticProperties.GetDescription(input) == accessibleLabel,
+                $"{input.GetType().Name} did not receive the localized semantic field label.");
+            Require(
+                ReferenceEquals(AutomationProperties.GetLabeledBy(input), decorativeLabel),
+                $"{input.GetType().Name} was not associated with its visible field label.");
+            Require(
+                AutomationProperties.GetIsInAccessibleTree(decorativeLabel) == false,
+                $"{input.GetType().Name} retained a duplicate decorative label announcement.");
+        }
+
+        DesktopDialogAction[] actions =
+        [
+            new("save", "Save"),
+            new("save_and_close", "Save & Close", true),
+            new("save_as", "Save As"),
+            new("rename", "Rename"),
+            new("delete", "Delete"),
+            new("restore_defaults", "Restore Defaults"),
+            new("cancel", "Cancel")
+        ];
+        DesktopDialogState settings = new(
+            AndroidDialogSettingsScope.CharacterSettingsDialogId,
+            "Character Settings",
+            string.Empty,
+            [],
+            actions);
+        var german = new System.Globalization.CultureInfo("de-DE");
+        var spanish = new System.Globalization.CultureInfo("es-ES");
+        Require(
+            AndroidDialogSettingsScope.Title(settings, german) == "Charaktereinstellungen"
+            && AndroidDialogSettingsScope.Title(settings, spanish) == "Ajustes del personaje",
+            "The Character Settings page title was not localized exactly.");
+
+        string[] expectedGerman =
+        [
+            "Speichern",
+            "Speichern und schließen",
+            "Speichern unter",
+            "Umbenennen",
+            "Löschen",
+            "Standardwerte wiederherstellen",
+            "Abbrechen"
+        ];
+        string[] expectedSpanish =
+        [
+            "Guardar",
+            "Guardar y cerrar",
+            "Guardar como",
+            "Renombrar",
+            "Eliminar",
+            "Restaurar valores predeterminados",
+            "Cancelar"
+        ];
+        Require(
+            actions.Select(action => AndroidDialogSettingsScope.ActionLabel(settings, action, german))
+                .SequenceEqual(expectedGerman)
+            && actions.Select(action => AndroidDialogSettingsScope.ActionLabel(settings, action, spanish))
+                .SequenceEqual(expectedSpanish),
+            "The stable Character Settings action IDs were not localized exactly.");
+
+        DesktopDialogAction unknown = new("future_action", "Future action");
+        DesktopDialogState unrelated = settings with { Id = "dialog.unrelated", Title = "Unrelated" };
+        Require(
+            AndroidDialogSettingsScope.ActionLabel(settings, unknown, german) == unknown.Label
+            && AndroidDialogSettingsScope.Title(unrelated, german) == unrelated.Title
+            && AndroidDialogSettingsScope.ActionLabel(unrelated, actions[0], german) == actions[0].Label,
+            "Settings localization leaked into an unknown action or unrelated dialog.");
+
         return Task.CompletedTask;
     }
 

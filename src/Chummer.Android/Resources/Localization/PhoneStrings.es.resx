@@ -105,6 +105,14 @@
   <data name="CharacterSettingsRulesScope" xml:space="preserve"><value>Cada ajuste que se muestra aquí es utilizado por un asistente actual de Preview 11 para teléfono.</value></data>
   <data name="CharacterSettingsUnsupportedScope" xml:space="preserve"><value>Esta sección de ajustes no está disponible en Android. Sus valores guardados permanecen en el perfil.</value></data>
   <data name="CharacterSettingsPhoneMessage" xml:space="preserve"><value>Edita solo los ajustes utilizados por los asistentes de Preview 11 para teléfono. Los valores de escritorio ocultos permanecen sin cambios en el perfil.</value></data>
+  <data name="CharacterSettingsTitle" xml:space="preserve"><value>Ajustes del personaje</value></data>
+  <data name="CharacterSettingsActionSave" xml:space="preserve"><value>Guardar</value></data>
+  <data name="CharacterSettingsActionSaveAndClose" xml:space="preserve"><value>Guardar y cerrar</value></data>
+  <data name="CharacterSettingsActionSaveAs" xml:space="preserve"><value>Guardar como</value></data>
+  <data name="CharacterSettingsActionRename" xml:space="preserve"><value>Renombrar</value></data>
+  <data name="CharacterSettingsActionDelete" xml:space="preserve"><value>Eliminar</value></data>
+  <data name="CharacterSettingsActionRestoreDefaults" xml:space="preserve"><value>Restaurar valores predeterminados</value></data>
+  <data name="CharacterSettingsActionCancel" xml:space="preserve"><value>Cancelar</value></data>
   <data name="CharacterSettingsProfile" xml:space="preserve"><value>Perfil de ajustes</value></data>
   <data name="CharacterSettingsProfileName" xml:space="preserve"><value>Nombre del perfil</value></data>
   <data name="CharacterSettingsSection" xml:space="preserve"><value>Sección de ajustes</value></data>

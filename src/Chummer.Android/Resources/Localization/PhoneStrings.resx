@@ -105,6 +105,14 @@
   <data name="CharacterSettingsRulesScope" xml:space="preserve"><value>Every setting shown here is read by a current Preview 11 phone wizard.</value></data>
   <data name="CharacterSettingsUnsupportedScope" xml:space="preserve"><value>This settings section is not available on Android. Its saved values remain in the profile.</value></data>
   <data name="CharacterSettingsPhoneMessage" xml:space="preserve"><value>Edit only settings used by the Preview 11 phone wizards. Hidden desktop values remain unchanged in the profile.</value></data>
+  <data name="CharacterSettingsTitle" xml:space="preserve"><value>Character Settings</value></data>
+  <data name="CharacterSettingsActionSave" xml:space="preserve"><value>Save</value></data>
+  <data name="CharacterSettingsActionSaveAndClose" xml:space="preserve"><value>Save &amp; Close</value></data>
+  <data name="CharacterSettingsActionSaveAs" xml:space="preserve"><value>Save As</value></data>
+  <data name="CharacterSettingsActionRename" xml:space="preserve"><value>Rename</value></data>
+  <data name="CharacterSettingsActionDelete" xml:space="preserve"><value>Delete</value></data>
+  <data name="CharacterSettingsActionRestoreDefaults" xml:space="preserve"><value>Restore Defaults</value></data>
+  <data name="CharacterSettingsActionCancel" xml:space="preserve"><value>Cancel</value></data>
   <data name="CharacterSettingsProfile" xml:space="preserve"><value>Settings profile</value></data>
   <data name="CharacterSettingsProfileName" xml:space="preserve"><value>Profile name</value></data>
   <data name="CharacterSettingsSection" xml:space="preserve"><value>Settings section</value></data>
