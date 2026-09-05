@@ -15,9 +15,13 @@ public sealed class CreationAttributesPage : NativePageBase
         Spacing = 14
     };
     private IReadOnlyList<string> _previewBlockers = [];
+    private CharacterCreationAttributesState? _authority;
 
-    public CreationAttributesPage(RunnerSessionCoordinator coordinator) : base(coordinator)
+    public CreationAttributesPage(
+        RunnerSessionCoordinator coordinator,
+        CharacterCreationAttributesState? authority = null) : base(coordinator)
     {
+        _authority = authority;
         Title = CreationAllocationStrings.Get("Attributes.PageTitle", "Attributes");
         AutomationId = "creation-attributes-page";
         Content = new ScrollView { Content = _body };
@@ -38,16 +42,25 @@ public sealed class CreationAttributesPage : NativePageBase
                 "Every value, limit, and cost below is projected by Core for this exact Priority draft."),
             NativeTheme.Muted));
 
-        CharacterCreationFoundationResult<CharacterCreationAttributesState> load =
-            Coordinator.LoadCreationAttributes();
-        if (!string.Equals(
-                load.Outcome,
-                CharacterCreationFoundationOutcomes.Success,
-                StringComparison.Ordinal)
-            || load.Value is not { } state)
+        CharacterCreationFoundationResult<CharacterCreationAttributesState>? load = null;
+        CharacterCreationAttributesState? state = CreationPageAuthorityCache.Resolve(
+            _authority,
+            candidate => CreationAttributesPhoneAuthority.IsReady(candidate, Coordinator.State),
+            () =>
+            {
+                load = Coordinator.LoadCreationAttributes();
+                return string.Equals(
+                        load.Outcome,
+                        CharacterCreationFoundationOutcomes.Success,
+                        StringComparison.Ordinal)
+                    ? load.Value
+                    : null;
+            });
+        _authority = state;
+        if (state is null)
         {
             AddBlockers(
-                load.Blockers.Count > 0
+                load is { Blockers.Count: > 0 }
                     ? load.Blockers
                     : [CharacterCreationAttributesBlockers.AuthorityUnavailable],
                 "creation-attributes-unavailable");

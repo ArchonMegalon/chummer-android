@@ -17,6 +17,7 @@ public sealed class CreationResourcesPage : NativePageBase
     private readonly ICharacterOverviewPresenter _overview;
     private readonly ICharacterCreationGearInteractionPresenter? _gear;
     private readonly AndroidSurfaceCopy _copy;
+    private CharacterCreationResourcesInteractionState? _authority;
     private readonly VerticalStackLayout _body = new()
     {
         Padding = new Thickness(20, 18, 20, 40),
@@ -26,7 +27,7 @@ public sealed class CreationResourcesPage : NativePageBase
     public CreationResourcesPage(
         RunnerSessionCoordinator coordinator,
         ICharacterCreationResourcesInteractionPresenter resources,
-        ICharacterOverviewPresenter overview) : this(coordinator, resources, overview, null)
+        ICharacterOverviewPresenter overview) : this(coordinator, resources, overview, null, null)
     {
     }
 
@@ -34,11 +35,13 @@ public sealed class CreationResourcesPage : NativePageBase
         RunnerSessionCoordinator coordinator,
         ICharacterCreationResourcesInteractionPresenter resources,
         ICharacterOverviewPresenter overview,
-        ICharacterCreationGearInteractionPresenter? gear) : base(coordinator)
+        ICharacterCreationGearInteractionPresenter? gear,
+        CharacterCreationResourcesInteractionState? authority = null) : base(coordinator)
     {
         _resources = resources ?? throw new ArgumentNullException(nameof(resources));
         _overview = overview ?? throw new ArgumentNullException(nameof(overview));
         _gear = gear;
+        _authority = authority;
         _copy = AndroidSurfaceStrings.Resolve();
         Title = _copy["Resources.PageTitle"];
         AutomationId = "creation-resources-page";
@@ -52,13 +55,28 @@ public sealed class CreationResourcesPage : NativePageBase
         _body.Add(NativeTheme.Title(_copy["Resources.Title"]));
         _body.Add(NativeTheme.Body(_copy["Resources.Intro"], NativeTheme.Muted));
 
-        CharacterCreationResourcesInteractionLoadResult load = _resources.Load(Coordinator.State);
-        if (!string.Equals(load.Outcome, CharacterCreationResourcesOutcomes.Available, StringComparison.Ordinal)
-            || load.State is not { } state)
+        CharacterCreationResourcesInteractionLoadResult? load = null;
+        CharacterCreationResourcesInteractionState? state = CreationPageAuthorityCache.Resolve(
+            _authority,
+            candidate => CreationResourcesPhoneAuthority.IsReady(candidate, Coordinator.State),
+            () =>
+            {
+                load = _resources.Load(Coordinator.State);
+                return string.Equals(
+                        load.Outcome,
+                        CharacterCreationResourcesOutcomes.Available,
+                        StringComparison.Ordinal)
+                    ? load.State
+                    : null;
+            });
+        _authority = state;
+        if (state is null)
         {
             AddBlockers(
                 _copy["Resources.AuthorityUnavailable"],
-                load.Blockers.DefaultIfEmpty(load.Outcome).ToArray(),
+                load is null
+                    ? [CharacterCreationResourcesBlockers.AuthorityUnavailable]
+                    : load.Blockers.DefaultIfEmpty(load.Outcome).ToArray(),
                 "creation-resources-unavailable");
             return;
         }

@@ -1597,19 +1597,19 @@ public sealed class BuildPage : NativePageBase
                 : lifeModuleOrigin
                 ? OpenSr5LifeModuleOriginAsync
                 : canOpenResources
-                ? OpenCreationResourcesAsync
+                ? () => OpenCreationResourcesAsync(creationResources!.State!)
                 : canOpenPrerequisite
                 ? () => OpenCreationPrerequisiteAsync(prerequisite!.Value!)
                 : canOpenAttributes
-                    ? OpenCreationAttributesAsync
+                    ? () => OpenCreationAttributesAsync(attributes!.Value!)
                 : canOpenSkills
-                    ? OpenCreationSkillsAsync
+                    ? () => OpenCreationSkillsAsync(skills!.Value!)
                 : canOpenQualities
                     ? OpenCreationQualitiesAsync
                 : canOpenMagicResonance
                     ? OpenCreationMagicResonanceAsync
                 : canOpenContacts
-                    ? OpenCreationContactsAsync
+                    ? () => OpenCreationContactsAsync(creationContacts!.State!)
                 : canOpenFoundation
                     ? OpenCreationFoundationAsync
                     : () => Task.CompletedTask;
@@ -1797,19 +1797,19 @@ public sealed class BuildPage : NativePageBase
                 : lifeModuleOrigin
                 ? OpenSr5LifeModuleOriginAsync
                 : canOpenResources
-                ? OpenCreationResourcesAsync
+                ? () => OpenCreationResourcesAsync(creationResources!.State!)
                 : canOpenFoundation
                 ? OpenCreationFoundationAsync
                 : canOpenAttributes
-                    ? OpenCreationAttributesAsync
+                    ? () => OpenCreationAttributesAsync(attributeResult!.Value!)
                 : canOpenSkills
-                    ? OpenCreationSkillsAsync
+                    ? () => OpenCreationSkillsAsync(skillsResult!.Value!)
                 : canOpenQualities
                     ? OpenCreationQualitiesAsync
                 : canOpenMagicResonance
                     ? OpenCreationMagicResonanceAsync
                 : canOpenContacts
-                    ? OpenCreationContactsAsync
+                    ? () => OpenCreationContactsAsync(creationContacts!.State!)
                 : () => Task.CompletedTask;
             string detail = canOpenBasics
                 ? "Inspect the frozen SR5 settings profile; sourcebook changes stay fail-closed without a typed contract"
@@ -2071,11 +2071,11 @@ public sealed class BuildPage : NativePageBase
         CharacterCreationPrerequisiteState authority)
         => Navigation.PushAsync(new CreationPrerequisitePage(Coordinator, authority));
 
-    private Task OpenCreationAttributesAsync()
-        => Navigation.PushAsync(new CreationAttributesPage(Coordinator));
+    private Task OpenCreationAttributesAsync(CharacterCreationAttributesState authority)
+        => Navigation.PushAsync(new CreationAttributesPage(Coordinator, authority));
 
-    private Task OpenCreationSkillsAsync()
-        => Navigation.PushAsync(new CreationSkillsPage(Coordinator));
+    private Task OpenCreationSkillsAsync(CharacterCreationSkillsState authority)
+        => Navigation.PushAsync(new CreationSkillsPage(Coordinator, authority));
 
     private Task OpenCreationQualitiesAsync()
         => Navigation.PushAsync(new CreationQualitiesPage(Coordinator));
@@ -2083,10 +2083,11 @@ public sealed class BuildPage : NativePageBase
     private Task OpenCreationMagicResonanceAsync()
         => Navigation.PushAsync(new CreationMagicResonancePage(Coordinator));
 
-    private Task OpenCreationContactsAsync()
-        => Navigation.PushAsync(new CreationContactsPage(Coordinator));
+    private Task OpenCreationContactsAsync(CharacterCreationContactsInteractionState authority)
+        => Navigation.PushAsync(new CreationContactsPage(Coordinator, authority));
 
-    private async Task OpenCreationResourcesAsync()
+    private async Task OpenCreationResourcesAsync(
+        CharacterCreationResourcesInteractionState authority)
     {
         if (_resourcesPresenter is null || _overviewPresenter is null)
         {
@@ -2100,7 +2101,8 @@ public sealed class BuildPage : NativePageBase
             Coordinator,
             _resourcesPresenter,
             _overviewPresenter,
-            _gearPresenter));
+            _gearPresenter,
+            authority));
     }
 
     private static string CreationContactsStageDetail(

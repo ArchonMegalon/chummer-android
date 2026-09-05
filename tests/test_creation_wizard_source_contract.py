@@ -375,7 +375,8 @@ class CreationWizardSourceContractTests(unittest.TestCase):
 
         self.assertIn("Coordinator.LoadCreationAttributes", dashboard)
         self.assertIn("CreationAttributesPhoneAuthority.IsReady", dashboard)
-        self.assertIn("new CreationAttributesPage(Coordinator)", dashboard)
+        self.assertIn("new CreationAttributesPage(Coordinator, authority)", dashboard)
+        self.assertIn("CreationPageAuthorityCache.Resolve(", creation)
         self.assertIn("OpenCreationAttributesAsync", dashboard)
         self.assertIn("AttributeEditRequest path must", dashboard)
         self.assertIn("AttributeEditRequest", editor)

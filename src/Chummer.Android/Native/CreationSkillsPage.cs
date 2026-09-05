@@ -13,9 +13,13 @@ public sealed class CreationSkillsPage : NativePageBase
         Spacing = 14
     };
     private IReadOnlyList<string> _blockers = [];
+    private CharacterCreationSkillsState? _authority;
 
-    public CreationSkillsPage(RunnerSessionCoordinator coordinator) : base(coordinator)
+    public CreationSkillsPage(
+        RunnerSessionCoordinator coordinator,
+        CharacterCreationSkillsState? authority = null) : base(coordinator)
     {
+        _authority = authority;
         Title = CreationAllocationStrings.Get("Skills.PageTitle", "Skills");
         AutomationId = "creation-skills-page";
         Content = new ScrollView { Content = _body };
@@ -35,10 +39,21 @@ public sealed class CreationSkillsPage : NativePageBase
                 "Skills.Intro",
                 "Ratings, groups, specializations, native languages, and all three ledgers come from Core."),
             NativeTheme.Muted));
-        CharacterCreationFoundationResult<CharacterCreationSkillsState> load = Coordinator.LoadCreationSkills();
-        if (load.Value is not { } state)
+        CharacterCreationFoundationResult<CharacterCreationSkillsState>? load = null;
+        CharacterCreationSkillsState? state = CreationPageAuthorityCache.Resolve(
+            _authority,
+            candidate => CreationSkillsPhoneAuthority.IsReady(candidate, Coordinator.State),
+            () =>
+            {
+                load = Coordinator.LoadCreationSkills();
+                return load.Value;
+            });
+        _authority = state;
+        if (state is null)
         {
-            AddBlockers(load.Blockers.Count == 0 ? [CharacterCreationSkillsBlockers.AuthorityUnavailable] : load.Blockers);
+            AddBlockers(load is { Blockers.Count: > 0 }
+                ? load.Blockers
+                : [CharacterCreationSkillsBlockers.AuthorityUnavailable]);
             return;
         }
         _draft.Bind(state, Coordinator.State);

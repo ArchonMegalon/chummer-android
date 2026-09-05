@@ -12,9 +12,13 @@ public sealed class CreationContactsPage : NativePageBase
         Padding = new Thickness(20, 18, 20, 40),
         Spacing = 14
     };
+    private CharacterCreationContactsInteractionState? _authority;
 
-    public CreationContactsPage(RunnerSessionCoordinator coordinator) : base(coordinator)
+    public CreationContactsPage(
+        RunnerSessionCoordinator coordinator,
+        CharacterCreationContactsInteractionState? authority = null) : base(coordinator)
     {
+        _authority = authority;
         Title = CreationFlowStrings.Get("Contacts.PageTitle", "Creation contacts");
         AutomationId = "creation-contacts-page";
         Content = new ScrollView { Content = _body };
@@ -38,15 +42,30 @@ public sealed class CreationContactsPage : NativePageBase
                 "Open the Core catalog, configure a typed Lifestyle, and review exact nuyen/LP economics."),
             () => Navigation.PushAsync(new CreationLifestylesPage(Coordinator)),
             automationId: "creation-contacts-open-lifestyles"));
-        var load = Coordinator.LoadCreationContacts();
-        if (!string.Equals(load.Outcome, CharacterCreationContactOutcomes.Available, StringComparison.Ordinal)
-            || load.State is not { } state)
+        CharacterCreationContactsInteractionLoadResult? load = null;
+        CharacterCreationContactsInteractionState? state = CreationPageAuthorityCache.Resolve(
+            _authority,
+            candidate => CreationContactsPhoneAuthority.IsReady(candidate, Coordinator.State),
+            () =>
+            {
+                load = Coordinator.LoadCreationContacts();
+                return string.Equals(
+                        load.Outcome,
+                        CharacterCreationContactOutcomes.Available,
+                        StringComparison.Ordinal)
+                    ? load.State
+                    : null;
+            });
+        _authority = state;
+        if (state is null)
         {
             AddBlockers(
                 CreationFlowStrings.Get(
                     "Contacts.AuthorityUnavailable",
                     "Creation Contacts authority unavailable"),
-                load.Blockers.Count > 0 ? load.Blockers : [load.Outcome],
+                load is { Blockers.Count: > 0 }
+                    ? load.Blockers
+                    : [CharacterCreationContactsBlockers.AuthorityUnavailable],
                 "creation-contacts-unavailable");
             return;
         }

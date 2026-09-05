@@ -42,6 +42,7 @@ internal static class Program
             (nameof(PlayReviewFakeLauncherAndSilentFailureAreInjectableAsync), PlayReviewFakeLauncherAndSilentFailureAreInjectableAsync),
             (nameof(PlayReviewFileStateRoundTripsOnlyLocalPolicyDataAsync), PlayReviewFileStateRoundTripsOnlyLocalPolicyDataAsync),
             (nameof(SlowCreationDashboardProjectionDoesNotBlockCallerAsync), SlowCreationDashboardProjectionDoesNotBlockCallerAsync),
+            (nameof(CapturedCreationAuthorityAvoidsUiThreadReloadAsync), CapturedCreationAuthorityAvoidsUiThreadReloadAsync),
             (nameof(PrerequisiteAuthorityPublishesBeforeSlowLaterPhasesAsync), PrerequisiteAuthorityPublishesBeforeSlowLaterPhasesAsync),
             (nameof(CreationAuthorityPhaseMergesAreIndependentAndDeterministicAsync), CreationAuthorityPhaseMergesAreIndependentAndDeterministicAsync),
             (nameof(CreationDashboardReadyMarkerRequiresCurrentTerminalAuthorityAsync), CreationDashboardReadyMarkerRequiresCurrentTerminalAuthorityAsync),
@@ -1067,6 +1068,37 @@ internal static class Program
         Require(completed.Request == request, "The completed generation changed unexpectedly.");
         Require(completed.Result == "authoritative", "The worker result was not preserved.");
         Require(queue.TryAccept(completed.Request), "The exact completed generation was not accepted.");
+    }
+
+    private static Task CapturedCreationAuthorityAvoidsUiThreadReloadAsync()
+    {
+        var captured = new object();
+        int loadCount = 0;
+        object? reused = CreationPageAuthorityCache.Resolve(
+            captured,
+            candidate => ReferenceEquals(candidate, captured),
+            () =>
+            {
+                loadCount++;
+                return new object();
+            });
+        Require(
+            ReferenceEquals(reused, captured) && loadCount == 0,
+            "A current dashboard authority was synchronously reloaded on deep navigation.");
+
+        var refreshed = new object();
+        object? reloaded = CreationPageAuthorityCache.Resolve(
+            captured,
+            _ => false,
+            () =>
+            {
+                loadCount++;
+                return refreshed;
+            });
+        Require(
+            ReferenceEquals(reloaded, refreshed) && loadCount == 1,
+            "A stale dashboard authority did not reload exactly once from the current workspace.");
+        return Task.CompletedTask;
     }
 
     private static async Task PrerequisiteAuthorityPublishesBeforeSlowLaterPhasesAsync()
