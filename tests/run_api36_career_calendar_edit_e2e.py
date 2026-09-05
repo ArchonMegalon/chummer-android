@@ -61,13 +61,25 @@ def prepare_runner(
     launch = shared.launch_app(device)
     shared.wait_for_phone_runners(device, timeout=120)
     device.tap("home-open-file")
-    shared.select_android_document(device, fixture_name)
+    selection_proof = shared.select_android_document(
+        device,
+        fixture_name,
+        evidence_prefix="sr5-downtime",
+    )
     import_proof = (
         proof_state.wait_for_import_activation(
             device,
             expected=proof_expectation,
             content_sha256=fixture_sha256,
             timeout=120,
+            first_picker_result_observer=lambda snapshot: (
+                shared.record_documents_ui_file_first_import_state(
+                    device,
+                    selection_proof,
+                    import_state=snapshot.payload,
+                    serialized_sha256=snapshot.serialized_sha256,
+                )
+            ),
         )
         if proof_expectation is not None
         else None

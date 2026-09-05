@@ -9259,6 +9259,76 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         )
         sleep.assert_not_called()
 
+    def test_compact_dashboard_origin_retries_only_transient_empty_observations(
+        self,
+    ) -> None:
+        dashboard = self.dashboard_route_nodes()
+        observations: list[dict[str, object]] = []
+
+        class TransitionDevice:
+            def __init__(self) -> None:
+                self.responses = [[], dashboard]
+                self.reads = 0
+
+            def hierarchy(
+                self,
+                *,
+                deadline: float,
+                dump_attempt_max_seconds: float,
+                allow_direct_reconciliation: bool,
+            ) -> list[driver.shared.UiNode]:
+                if (
+                    dump_attempt_max_seconds
+                    != driver.POST_CONFIRM_DASHBOARD_DUMP_ATTEMPT_MAX_SECONDS
+                    or allow_direct_reconciliation is not False
+                ):
+                    raise AssertionError("compact dashboard used the wrong dump policy")
+                self.reads += 1
+                return self.responses.pop(0)
+
+            def capture(self, name: str, *, deadline: float) -> None:
+                raise AssertionError(f"recovered empty observation captured {name!r}")
+
+        device = TransitionDevice()
+        deadline = driver.time.monotonic() + 30.0
+        with mock.patch.object(
+            driver,
+            "sleep_before_phase_deadline",
+        ) as sleep:
+            nodes = driver.wait_for_compact_dashboard_origin(
+                device,
+                scan_id="advanced-editor-gate-post-confirm",
+                deadline=deadline,
+                scan_observer=observations.append,
+            )
+
+        self.assertIs(dashboard, nodes)
+        self.assertEqual(2, device.reads)
+        self.assertEqual([], device.responses)
+        sleep.assert_called_once_with(
+            driver.POST_CONFIRM_DASHBOARD_EMPTY_RETRY_DELAY_SECONDS,
+            deadline=deadline,
+            operation="compact dashboard empty hierarchy observation",
+        )
+        self.assertEqual(
+            [
+                {
+                    "scanId": "advanced-editor-gate-post-confirm-current-origin",
+                    "status": "resolved",
+                    "hierarchyReadCount": 2,
+                    "emptyHierarchyReads": 1,
+                    "maximumEmptyHierarchyReads": 3,
+                    "acceptedNonemptySnapshots": 1,
+                    "observationMode": "empty-retry-single-nonempty-file-backed",
+                    "allowDirectReconciliation": False,
+                    "mutationCommandsRetried": 0,
+                    "elapsedMs": observations[0]["elapsedMs"],
+                }
+            ],
+            observations,
+        )
+        self.assertGreaterEqual(observations[0]["elapsedMs"], 0)
+
     def test_compact_dashboard_origin_never_unions_split_route_snapshots(
         self,
     ) -> None:
@@ -9310,7 +9380,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             device.captures,
         )
 
-    def test_compact_dashboard_origin_empty_until_deadline_fails_without_action(
+    def test_compact_dashboard_origin_empty_retry_bound_fails_without_action(
         self,
     ) -> None:
         class EmptyDevice:
@@ -9338,7 +9408,10 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
         device = EmptyDevice()
         deadline = driver.time.monotonic() + 10.0
-        with self.assertRaisesRegex(
+        with mock.patch.object(
+            driver,
+            "sleep_before_phase_deadline",
+        ) as sleep, self.assertRaisesRegex(
             RuntimeError,
             "single post-marker dashboard snapshot",
         ):
@@ -9348,7 +9421,14 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 deadline=deadline,
             )
 
-        self.assertEqual(1, device.reads)
+        self.assertEqual(
+            driver.POST_CONFIRM_DASHBOARD_MAX_TRANSIENT_EMPTY_HIERARCHIES,
+            device.reads,
+        )
+        self.assertEqual(
+            driver.POST_CONFIRM_DASHBOARD_MAX_TRANSIENT_EMPTY_HIERARCHIES - 1,
+            sleep.call_count,
+        )
         self.assertEqual(
             ["advanced-editor-gate-post-confirm-current-transition-unavailable"],
             device.captures,
@@ -14815,7 +14895,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "_creationPrerequisiteQueue",
             "_creationAttributesQueue",
             "_creationSkillsQueue",
-            "Progress.Prerequisite: CreationDashboardAuthorityPhaseState.Ready",
+            "progress.Prerequisite == CreationDashboardAuthorityPhaseState.Ready",
             "Coordinator.LoadCreationPrerequisite",
             "Coordinator.LoadCreationAttributes",
             "Coordinator.LoadCreationSkills",

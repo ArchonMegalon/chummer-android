@@ -299,6 +299,8 @@ POST_CONFIRM_DASHBOARD_READY_READ_ATTEMPT_MAX_SECONDS = 5.0
 POST_CONFIRM_DASHBOARD_READY_READ_ATTEMPT_MIN_SECONDS = 0.5
 POST_CONFIRM_DASHBOARD_READY_POLL_DELAY_SECONDS = 0.25
 POST_CONFIRM_DASHBOARD_DUMP_ATTEMPT_MAX_SECONDS = 30.0
+POST_CONFIRM_DASHBOARD_MAX_TRANSIENT_EMPTY_HIERARCHIES = 3
+POST_CONFIRM_DASHBOARD_EMPTY_RETRY_DELAY_SECONDS = 0.20
 POST_CONFIRM_DASHBOARD_PROOF_TIMEOUT_SECONDS = 75.0
 # The post-confirm dashboard is observed from its current viewport, not rewound.
 # Exact-head run 33923577191 started this scan at the deterministically restored
@@ -3457,14 +3459,19 @@ def wait_for_compact_dashboard_origin(
     *,
     scan_id: str,
     deadline: float,
+    scan_observer: Callable[[dict[str, object]], None] | None = None,
 ) -> list[shared.UiNode]:
     """Observe the post-Back dashboard transition without another action.
 
-    The exact Back tap is persistent and must never be replayed.  API 36 may
-    briefly exposes the outgoing receipt viewport while MAUI publishes the
+    The exact Back tap is persistent and must never be replayed. API 36 may
+    briefly expose the outgoing receipt viewport while MAUI publishes the
     dashboard.  The caller first waits for the fresh, revision-bound,
-    post-layout app marker, then takes exactly one fresh file-backed hierarchy.
-    Both canonical dashboard identities must share that one snapshot. This
+    post-layout app marker, then accepts exactly one nonempty fresh file-backed
+    hierarchy. API 36 can acknowledge a dump while publishing neither a file
+    nor a root; those empty observations may be retried within the same
+    read-only lease. A nonempty observation is never combined with another
+    observation: both canonical dashboard identities must share that one
+    snapshot. This
     route-specific observer deliberately disables the shared
     direct ``/dev/tty`` reconciliation path: an ambiguous file dump may inspect
     only its pre-cleared owned file and must never invoke another UIAutomator
@@ -3472,13 +3479,67 @@ def wait_for_compact_dashboard_origin(
     """
     selectors = ("phone-runner-create", "creation-wizard-dashboard")
     require_phase_deadline(deadline, operation="compact dashboard transition")
-    current_nodes = device.hierarchy(
-        deadline=deadline,
-        dump_attempt_max_seconds=(
-            POST_CONFIRM_DASHBOARD_DUMP_ATTEMPT_MAX_SECONDS
-        ),
-        allow_direct_reconciliation=False,
-    )
+    started = time.monotonic()
+    hierarchy_reads = 0
+    empty_hierarchies = 0
+    terminal_receipt_emitted = False
+
+    def emit(status: str, *, failure_reason: str | None = None) -> None:
+        nonlocal terminal_receipt_emitted
+        if terminal_receipt_emitted:
+            return
+        terminal_receipt_emitted = True
+        if scan_observer is None:
+            return
+        receipt: dict[str, object] = {
+            "scanId": f"{scan_id}-current-origin",
+            "status": status,
+            "hierarchyReadCount": hierarchy_reads,
+            "emptyHierarchyReads": empty_hierarchies,
+            "maximumEmptyHierarchyReads": (
+                POST_CONFIRM_DASHBOARD_MAX_TRANSIENT_EMPTY_HIERARCHIES
+            ),
+            "acceptedNonemptySnapshots": 1 if status == "resolved" else 0,
+            "observationMode": "empty-retry-single-nonempty-file-backed",
+            "allowDirectReconciliation": False,
+            "mutationCommandsRetried": 0,
+            "elapsedMs": round((time.monotonic() - started) * 1000),
+        }
+        if failure_reason is not None:
+            receipt["failureReason"] = failure_reason
+        scan_observer(receipt)
+
+    current_nodes: list[shared.UiNode] = []
+    try:
+        while True:
+            require_phase_deadline(
+                deadline,
+                operation="compact dashboard hierarchy observation",
+            )
+            hierarchy_reads += 1
+            current_nodes = device.hierarchy(
+                deadline=deadline,
+                dump_attempt_max_seconds=(
+                    POST_CONFIRM_DASHBOARD_DUMP_ATTEMPT_MAX_SECONDS
+                ),
+                allow_direct_reconciliation=False,
+            )
+            if current_nodes:
+                break
+            empty_hierarchies += 1
+            if (
+                empty_hierarchies
+                >= POST_CONFIRM_DASHBOARD_MAX_TRANSIENT_EMPTY_HIERARCHIES
+            ):
+                break
+            sleep_before_phase_deadline(
+                POST_CONFIRM_DASHBOARD_EMPTY_RETRY_DELAY_SECONDS,
+                deadline=deadline,
+                operation="compact dashboard empty hierarchy observation",
+            )
+    except Exception as exc:
+        emit("failed", failure_reason=type(exc).__name__)
+        raise
     cardinalities = {
         selector: [
             node
@@ -3489,6 +3550,7 @@ def wait_for_compact_dashboard_origin(
     }
     for selector, exact in cardinalities.items():
         if len(exact) > 1:
+            emit("failed", failure_reason="DuplicateCanonicalRoute")
             _capture_with_phase_deadline(
                 device,
                 f"{scan_id}-{selector}-current-cardinality-invalid",
@@ -3502,6 +3564,14 @@ def wait_for_compact_dashboard_origin(
         selector for selector in selectors if len(cardinalities[selector]) != 1
     ]
     if missing:
+        emit(
+            "failed",
+            failure_reason=(
+                "TransientEmptyHierarchyExhausted"
+                if not current_nodes
+                else "IncompleteNonemptySnapshot"
+            ),
+        )
         _capture_with_phase_deadline(
             device,
             f"{scan_id}-current-transition-unavailable",
@@ -3520,6 +3590,7 @@ def wait_for_compact_dashboard_origin(
             surface_name="Compact dashboard current origin",
             deadline=deadline,
         )
+    emit("resolved")
     return current_nodes
 
 
@@ -3561,6 +3632,7 @@ def assert_uncreated_advanced_editor_gated(
             device,
             scan_id=scan_id,
             deadline=deadline,
+            scan_observer=scan_observer,
         )
         scan_origin = PriorityRankOrigin(
             current_nodes,

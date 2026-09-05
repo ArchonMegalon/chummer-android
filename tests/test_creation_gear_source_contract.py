@@ -128,7 +128,7 @@ class CreationGearSourceContractTests(unittest.TestCase):
         self.assertRegex(
             text,
             r"new CreationResourcesPage\(\s*Coordinator,\s*_resourcesPresenter,"
-            r"\s*_overviewPresenter,\s*_gearPresenter\)",
+            r"\s*_overviewPresenter,\s*_gearPresenter,\s*authority\)",
         )
         self.assertNotIn("CreationDashboardAuthorityPhase.Gear", text)
 

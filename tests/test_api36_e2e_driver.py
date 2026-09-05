@@ -7883,6 +7883,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         device.hierarchy.side_effect = [
             [],
             [self._documents_ui_node(text="linked-runner-e2e.chum5")],
+            [self._documents_ui_node(text="linked-runner-e2e.chum5")],
         ]
         device.display_size.return_value = (1080, 1920)
 
@@ -8498,12 +8499,27 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             )
 
         self.assertEqual(
-            ["diagnostic-hierarchy", "display-size", "final-hierarchy", "tap"],
+            [
+                "diagnostic-hierarchy",
+                "display-size",
+                "final-hierarchy",
+                "display-size",
+                "final-hierarchy",
+                "tap",
+            ],
             events,
         )
         self.assertEqual(1, proof["tap"]["count"])
         self.assertEqual(filename, proof["preTap"]["text"])
         self.assertEqual("com.google.android.documentsui", proof["preTap"]["package"])
+        self.assertEqual(
+            2,
+            proof["preTap"]["requiredConsecutiveStableTargetObservations"],
+        )
+        self.assertEqual(
+            2,
+            proof["preTap"]["consecutiveStableTargetObservations"],
+        )
         self.assertRegex(
             proof["preTap"]["hierarchyDigest"],
             r"^sha256:[0-9a-f]{64}$",
@@ -8538,6 +8554,33 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 display_height=1920,
             )
         )
+
+    def test_document_picker_restarts_stability_after_target_geometry_moves(self) -> None:
+        filename = "runner.chum5"
+        initial = self._documents_ui_node(text=filename)
+        moved = self._documents_ui_node(
+            text=filename,
+            bounds="[168,717][714,768]",
+        )
+        device = Mock(spec=DRIVER.Device)
+        device.find.return_value = None
+        device.hierarchy.side_effect = [[initial], [initial], [moved], [moved]]
+        device.display_size.return_value = (1080, 1920)
+
+        with patch.object(DRIVER.time, "sleep"):
+            proof = DRIVER.select_android_document(device, filename)
+
+        self.assertEqual(4, device.hierarchy.call_count)
+        device.shell.assert_called_once_with(
+            "input",
+            "tap",
+            "441",
+            "742",
+            timeout=ANY,
+            deadline=ANY,
+        )
+        self.assertEqual("[168,717][714,768]", proof["preTap"]["bounds"])
+        self.assertEqual(2, proof["preTap"]["consecutiveStableTargetObservations"])
 
     def test_document_picker_first_import_receipt_binds_tap_and_mismatch(self) -> None:
         filename = "runner.chum5"
@@ -8594,6 +8637,8 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 ("tap.count", 2),
                 ("preTap.text", "foreign.chum5"),
                 ("preTap.bounds", "[168,617][1114,668]"),
+                ("preTap.requiredConsecutiveStableTargetObservations", 1),
+                ("preTap.consecutiveStableTargetObservations", 1),
             ):
                 hostile = json.loads(json.dumps(selection))
                 if "." in field:
@@ -8645,7 +8690,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             ],
             device.shell.call_args_list,
         )
-        sleep.assert_called_once_with(0.75)
+        self.assertEqual([call(0.75), call(0.75)], sleep.call_args_list)
         device.tap.assert_not_called()
 
     def test_linked_identity_resets_editor_before_reading_top_fields(self) -> None:
