@@ -45,6 +45,7 @@ internal static class Program
         await StagedCredentialCommitRecoversAfterEveryWriteAsync();
         await CredentialCommitCleanupFailureRemainsRestartableAsync();
         await StaleLinkedRejectionCannotClearConcurrentRefreshAsync();
+        await RefreshOperationPublicationClosesPreVisibilityRaceAsync();
         await InvalidStagedCredentialIsQuarantinedWithoutDeletingNewerGrantAsync();
         await LostBootstrapResponseSurvivesProcessRestartAsync();
         await AlreadyRedeemedBootstrapConflictRetainsFreshCredentialsAsync();
@@ -52,7 +53,7 @@ internal static class Program
         await SuccessfulErasureCannotLeaveAStaleLinkedSnapshotAsync();
         await LostRefreshResponseSurvivesProcessRestartAsync();
         await MismatchedOperationResponsesRetainRecoveryStateAsync();
-        Console.WriteLine("Account-link HTTP hardening tests passed: 28");
+        Console.WriteLine("Account-link HTTP hardening tests passed: 29");
     }
 
     private static async Task BearerTokenIsRequestBoundAndRedacted()
@@ -878,7 +879,7 @@ internal static class Program
     {
         (string? Key, bool IsSet, bool AfterSuccess, bool ExpectCommitWait)[] boundaries =
         [
-            (RefreshAttemptKey, true, false, false),
+            (RefreshAttemptKey, true, false, true),
             (StagedGrantCommitKey, true, false, true),
             (StoredAccessTokenKey, true, false, true),
             (StoredGrantExpiryKey, true, false, true),
@@ -978,30 +979,103 @@ internal static class Program
         }
     }
 
+    private static async Task RefreshOperationPublicationClosesPreVisibilityRaceAsync()
+    {
+        foreach (HttpStatusCode staleStatus in new[]
+                 {
+                     HttpStatusCode.Unauthorized,
+                     HttpStatusCode.Conflict
+                 })
+        {
+            LinkFixture fixture = await CreateLinkedFixtureAsync(DateTimeOffset.UtcNow.AddDays(1));
+            var publicationBoundary = new MetadataWriteBoundary(
+                RefreshAttemptKey,
+                isSet: true,
+                beforeVisibility: true);
+            fixture.Metadata.WriteBoundary = publicationBoundary;
+            var staleRequestStarted = new TaskCompletionSource(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            var releaseStaleResponse = new TaskCompletionSource(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            var staleResponseSent = new TaskCompletionSource(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            var refreshRequestStarted = new TaskCompletionSource(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            var releaseRefreshResponse = new TaskCompletionSource(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            var terminal = new RecordingHandler(async (request, _) =>
+            {
+                string path = request.RequestUri!.AbsolutePath;
+                if (path == "/api/v2/android/linked/groups")
+                {
+                    staleRequestStarted.TrySetResult();
+                    await releaseStaleResponse.Task;
+                    staleResponseSent.TrySetResult();
+                    return JsonResponse("{}", staleStatus);
+                }
+                if (path == "/api/v2/install-linking/grants/status")
+                {
+                    return JsonResponse("{}");
+                }
+                if (path == "/api/v2/install-linking/grants/refresh")
+                {
+                    refreshRequestStarted.TrySetResult();
+                    await releaseRefreshResponse.Task;
+                    return RefreshGrantResponse(fixture.Identity, RequestOperationId(request));
+                }
+                throw new InvalidOperationException("Unexpected publication-race request path.");
+            });
+            using AndroidAccountLinkHttpTransport transport = CreateTransport(terminal);
+            AndroidAccountLinkService service = CreateService(transport, fixture);
+
+            Task<IReadOnlyList<AndroidLinkedGroup>> staleRequest = service.ListGroupsAsync();
+            await staleRequestStarted.Task;
+            Task refresh = service.InitializeAsync();
+            await publicationBoundary.Reached;
+            Require(!fixture.Metadata.Contains(RefreshAttemptKey));
+            Require(fixture.Metadata.GetRaw(StoredAccessTokenKey) == AccessToken);
+            Require(StoredBindingGrantId(fixture) == "grant-before-refresh");
+
+            releaseStaleResponse.TrySetResult();
+            await staleResponseSent.Task;
+            for (int yield = 0; yield < 4; yield++)
+            {
+                await Task.Yield();
+            }
+            Require(!staleRequest.IsCompleted);
+
+            publicationBoundary.Resume();
+            await refreshRequestStarted.Task;
+            InvalidOperationException staleFailure =
+                await RequireThrowsAsync<InvalidOperationException>(async () =>
+                    await staleRequest);
+            Require(staleFailure.Message.Contains("changed", StringComparison.Ordinal));
+            Require(fixture.Metadata.Contains(RefreshAttemptKey));
+            Require(fixture.Metadata.GetRaw(StoredAccessTokenKey) == AccessToken);
+            Require(StoredBindingGrantId(fixture) == "grant-before-refresh");
+
+            releaseRefreshResponse.TrySetResult();
+            await refresh;
+            Require(service.Snapshot.Status == AndroidAccountLinkStatus.Linked);
+            await RequireCommittedGrantAsync(fixture, "grant-after-refresh");
+            Require(!fixture.Metadata.Contains(RefreshAttemptKey));
+            Require(!fixture.Metadata.Contains(StagedGrantCommitKey));
+        }
+    }
+
     private static async Task InvalidStagedCredentialIsQuarantinedWithoutDeletingNewerGrantAsync()
     {
-        foreach (string invalidStage in new[] { "malformed", "expired", "tampered" })
+        foreach (string invalidStage in new[]
+                 {
+                     "malformed",
+                     "missing-grant",
+                     "null-grant",
+                     "expired",
+                     "tampered"
+                 })
         {
             LinkFixture fixture = await CreateInterruptedBootstrapStageAsync();
-            string serialized = fixture.Metadata.GetRaw(StagedGrantCommitKey)!;
-            if (invalidStage == "malformed")
-            {
-                serialized = "{not-json";
-            }
-            else
-            {
-                JsonObject staged = JsonNode.Parse(serialized)!.AsObject();
-                if (invalidStage == "expired")
-                {
-                    staged["grant"]!["expiresAtUtc"] = DateTimeOffset.UtcNow.AddMinutes(-1);
-                }
-                else
-                {
-                    staged["operationId"] = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB";
-                }
-                serialized = staged.ToJsonString();
-            }
-            fixture.Metadata.SetRaw(StagedGrantCommitKey, serialized);
+            SetInvalidStage(fixture, invalidStage);
 
             var noNetworkTerminal = new RecordingHandler(_ =>
                 throw new InvalidOperationException("Invalid stage quarantine must not call Hub."));
@@ -1021,41 +1095,80 @@ internal static class Program
             Require(fixture.Metadata.Contains(PendingPollOperationKey));
         }
 
-        LinkFixture unlinkFixture = await CreateInterruptedRefreshStageAsync();
-        unlinkFixture.Metadata.SetRaw(StagedGrantCommitKey, "{not-json");
-        var unlinkTerminal = new RecordingHandler(_ =>
-            throw new InvalidOperationException("Invalid stage unlink must not call Hub."));
-        using (AndroidAccountLinkHttpTransport transport = CreateTransport(unlinkTerminal))
+        foreach (string invalidStage in new[] { "missing-grant", "null-grant" })
         {
-            AndroidAccountLinkService service = CreateService(transport, unlinkFixture);
-            await service.UnlinkAsync();
-            Require(service.Snapshot.Status == AndroidAccountLinkStatus.Unlinked);
+            LinkFixture beginFixture = await CreateInterruptedBootstrapStageAsync();
+            SetInvalidStage(beginFixture, invalidStage);
+            var beginTerminal = new RecordingHandler(_ =>
+                throw new InvalidOperationException("Invalid stage Begin must not call Hub."));
+            using (AndroidAccountLinkHttpTransport transport = CreateTransport(beginTerminal))
+            {
+                AndroidAccountLinkService service = CreateService(transport, beginFixture);
+                await service.BeginLinkAsync();
+                Require(service.Snapshot.Status == AndroidAccountLinkStatus.Pending);
+            }
+            Require(!beginFixture.Metadata.Contains(StagedGrantCommitKey));
+            Require(beginFixture.Metadata.Contains(PendingPollOperationKey));
+
+            LinkFixture unlinkFixture = await CreateInterruptedRefreshStageAsync();
+            SetInvalidStage(unlinkFixture, invalidStage);
+            var unlinkTerminal = new RecordingHandler(_ =>
+                throw new InvalidOperationException("Invalid stage unlink must not call Hub."));
+            using (AndroidAccountLinkHttpTransport transport = CreateTransport(unlinkTerminal))
+            {
+                AndroidAccountLinkService service = CreateService(transport, unlinkFixture);
+                await service.UnlinkAsync();
+                Require(service.Snapshot.Status == AndroidAccountLinkStatus.Unlinked);
+            }
+            Require(!unlinkFixture.Metadata.Contains(StagedGrantCommitKey));
+            Require(!unlinkFixture.Metadata.Contains(RefreshAttemptKey));
+            Require(!unlinkFixture.Metadata.Contains(StoredAccessTokenKey));
+            Require(!unlinkFixture.Keys.Contains(unlinkFixture.Identity.Alias));
+
+            LinkFixture eraseFixture = await CreateInterruptedRefreshStageAsync();
+            SetInvalidStage(eraseFixture, invalidStage);
+            var eraseTerminal = new RecordingHandler(_ =>
+                throw new InvalidOperationException("Invalid stage erase must not call Hub."));
+            using (AndroidAccountLinkHttpTransport transport = CreateTransport(eraseTerminal))
+            {
+                AndroidAccountLinkService service = CreateService(transport, eraseFixture);
+                InvalidOperationException failure =
+                    await RequireThrowsAsync<InvalidOperationException>(() =>
+                        service.EraseAccountAsync(
+                            AndroidAccountErasureConfirmation.RequiredPhrase));
+                Require(failure.Message == "Link your account first.");
+            }
+            Require(!eraseFixture.Metadata.Contains(StagedGrantCommitKey));
+            Require(!eraseFixture.Metadata.Contains(RefreshAttemptKey));
+            Require(!eraseFixture.Metadata.Contains(StoredAccessTokenKey));
+            Require(!eraseFixture.Keys.Contains(eraseFixture.Identity.Alias));
         }
-        Require(!unlinkFixture.Metadata.Contains(StagedGrantCommitKey));
-        Require(!unlinkFixture.Metadata.Contains(StoredAccessTokenKey));
 
-        LinkFixture cleanupFixture = await CreateInterruptedBootstrapStageAsync();
-        cleanupFixture.Keys.FailDeleteAlias = cleanupFixture.Identity.Alias;
-        cleanupFixture.Metadata.SetRaw(StagedGrantCommitKey, "{not-json");
-        var cleanupTerminal = new RecordingHandler(_ =>
-            throw new InvalidOperationException("Invalid stage cleanup must not call Hub."));
-        using (AndroidAccountLinkHttpTransport transport = CreateTransport(cleanupTerminal))
+        foreach (string invalidStage in new[] { "missing-grant", "null-grant" })
         {
-            AndroidAccountLinkService service = CreateService(transport, cleanupFixture);
-            await service.InitializeAsync();
-            Require(service.Snapshot.Status == AndroidAccountLinkStatus.Error);
-            Require(!cleanupFixture.Metadata.Contains(StagedGrantCommitKey));
-            Require(!cleanupFixture.Metadata.Contains(PendingPollOperationKey));
-            Require(cleanupFixture.Metadata.Contains(
-                AndroidAccountLinkKeyAuthority.CleanupTombstoneStorageKey));
-            Require(cleanupFixture.Keys.Contains(cleanupFixture.Identity.Alias));
+            LinkFixture cleanupFixture = await CreateInterruptedBootstrapStageAsync();
+            cleanupFixture.Keys.FailDeleteAlias = cleanupFixture.Identity.Alias;
+            SetInvalidStage(cleanupFixture, invalidStage);
+            var cleanupTerminal = new RecordingHandler(_ =>
+                throw new InvalidOperationException("Invalid stage cleanup must not call Hub."));
+            using (AndroidAccountLinkHttpTransport transport = CreateTransport(cleanupTerminal))
+            {
+                AndroidAccountLinkService service = CreateService(transport, cleanupFixture);
+                await service.InitializeAsync();
+                Require(service.Snapshot.Status == AndroidAccountLinkStatus.Error);
+                Require(!cleanupFixture.Metadata.Contains(StagedGrantCommitKey));
+                Require(!cleanupFixture.Metadata.Contains(PendingPollOperationKey));
+                Require(cleanupFixture.Metadata.Contains(
+                    AndroidAccountLinkKeyAuthority.CleanupTombstoneStorageKey));
+                Require(cleanupFixture.Keys.Contains(cleanupFixture.Identity.Alias));
 
-            cleanupFixture.Keys.FailDeleteAlias = null;
-            await service.BeginLinkAsync();
-            Require(service.Snapshot.Status == AndroidAccountLinkStatus.Pending);
-            Require(!cleanupFixture.Metadata.Contains(
-                AndroidAccountLinkKeyAuthority.CleanupTombstoneStorageKey));
-            Require(!cleanupFixture.Keys.Contains(cleanupFixture.Identity.Alias));
+                cleanupFixture.Keys.FailDeleteAlias = null;
+                await service.BeginLinkAsync();
+                Require(service.Snapshot.Status == AndroidAccountLinkStatus.Pending);
+                Require(!cleanupFixture.Metadata.Contains(
+                    AndroidAccountLinkKeyAuthority.CleanupTombstoneStorageKey));
+                Require(!cleanupFixture.Keys.Contains(cleanupFixture.Identity.Alias));
+            }
         }
 
         LinkFixture newerFixture = await CreateLinkedFixtureAsync(DateTimeOffset.UtcNow.AddDays(1));
@@ -1102,6 +1215,36 @@ internal static class Program
         concurrentFixture.Metadata.BeforeGet = null;
         await RequireCommittedGrantAsync(concurrentFixture, "grant-after-refresh");
         Require(!concurrentFixture.Metadata.Contains(StagedGrantCommitKey));
+    }
+
+    private static void SetInvalidStage(LinkFixture fixture, string invalidStage)
+    {
+        if (invalidStage == "malformed")
+        {
+            fixture.Metadata.SetRaw(StagedGrantCommitKey, "{not-json");
+            return;
+        }
+
+        JsonObject staged = JsonNode.Parse(
+            fixture.Metadata.GetRaw(StagedGrantCommitKey)!)!.AsObject();
+        switch (invalidStage)
+        {
+            case "missing-grant":
+                Require(staged.Remove("grant"));
+                break;
+            case "null-grant":
+                staged["grant"] = null;
+                break;
+            case "expired":
+                staged["grant"]!["expiresAtUtc"] = DateTimeOffset.UtcNow.AddMinutes(-1);
+                break;
+            case "tampered":
+                staged["operationId"] = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB";
+                break;
+            default:
+                throw new InvalidOperationException("Unknown invalid staged-grant scenario.");
+        }
+        fixture.Metadata.SetRaw(StagedGrantCommitKey, staged.ToJsonString());
     }
 
     private static async Task LostBootstrapResponseSurvivesProcessRestartAsync()
@@ -1756,6 +1899,11 @@ internal static class Program
             CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (WriteBoundary is { IsSet: true, BeforeVisibility: true } beforeBoundary
+                && string.Equals(beforeBoundary.Key, key, StringComparison.Ordinal))
+            {
+                await beforeBoundary.PauseAsync();
+            }
             _values[key] = value;
             AfterSet?.Invoke(key);
             if (string.Equals(ThrowAfterSetKey, key, StringComparison.Ordinal))
@@ -1763,7 +1911,7 @@ internal static class Program
                 ThrowAfterSetKey = null;
                 throw new SimulatedProcessTerminationException();
             }
-            if (WriteBoundary is { IsSet: true } boundary
+            if (WriteBoundary is { IsSet: true, BeforeVisibility: false } boundary
                 && string.Equals(boundary.Key, key, StringComparison.Ordinal))
             {
                 await boundary.PauseAsync();
@@ -1808,15 +1956,21 @@ internal static class Program
         private readonly TaskCompletionSource _resume = new(
             TaskCreationOptions.RunContinuationsAsynchronously);
 
-        internal MetadataWriteBoundary(string key, bool isSet)
+        internal MetadataWriteBoundary(
+            string key,
+            bool isSet,
+            bool beforeVisibility = false)
         {
             Key = key;
             IsSet = isSet;
+            BeforeVisibility = beforeVisibility;
         }
 
         internal string Key { get; }
 
         internal bool IsSet { get; }
+
+        internal bool BeforeVisibility { get; }
 
         internal Task Reached => _reached.Task;
 

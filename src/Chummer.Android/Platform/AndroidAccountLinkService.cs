@@ -209,11 +209,13 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
 
             if (expiresAtUtc is not null && expiresAtUtc <= DateTimeOffset.UtcNow.Add(RefreshWindow))
             {
-                RefreshOperation refreshOperation = CreateRefreshOperation(grant);
-                await _metadataStore.SetAsync(
-                    RefreshAttemptKey,
-                    JsonSerializer.Serialize(refreshOperation, OperationJsonOptions),
+                RefreshOperation? refreshOperation = await CreateAndPersistRefreshOperationAsync(
+                    grant,
                     cancellationToken);
+                if (refreshOperation is null)
+                {
+                    return;
+                }
                 GrantContract? refreshed = await RefreshGrantAsync(
                     grant,
                     refreshOperation,
@@ -1458,6 +1460,11 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             && staged.CommitKind is BootstrapGrantCommitKind or RefreshGrantCommitKind
             && IsExpectedOperationId(staged.OperationId)
             && IsBoundedOperationText(staged.PublicKey, 4096)
+            // System.Text.Json permits null for a non-nullable reference property unless the
+            // runtime contract opts into stricter required-member handling. Treat an omitted or
+            // explicit-null nested grant as hostile persisted data and route it through the same
+            // fail-closed quarantine as every other unusable stage.
+            && staged.Grant is not null
             && IsUsableGrant(staged.Grant, staged.Grant.InstallationId);
 
     private async Task<StoredGrant?> ReadStoredGrantAsync(CancellationToken cancellationToken)
@@ -1649,6 +1656,40 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             : throw new InvalidDataException("The account refresh operation is invalid.");
     }
 
+    private async Task<RefreshOperation?> CreateAndPersistRefreshOperationAsync(
+        StoredGrant grant,
+        CancellationToken cancellationToken)
+    {
+        await _credentialCommitGate.WaitAsync(cancellationToken);
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(await _metadataStore.GetAsync(
+                    StagedGrantCommitKey,
+                    CancellationToken.None))
+                || !string.IsNullOrWhiteSpace(await _metadataStore.GetAsync(
+                    RefreshAttemptKey,
+                    CancellationToken.None))
+                || !await IsExactActiveGrantCoreAsync(grant))
+            {
+                return null;
+            }
+
+            RefreshOperation operation = CreateRefreshOperation(grant);
+            // Publication shares the exact lock used by compare-and-clear. Once this section
+            // starts, a stale rejection can observe either the old exact generation before the
+            // transition or this durable operation marker, never an absent-marker write gap.
+            await _metadataStore.SetAsync(
+                RefreshAttemptKey,
+                JsonSerializer.Serialize(operation, OperationJsonOptions),
+                CancellationToken.None);
+            return operation;
+        }
+        finally
+        {
+            _credentialCommitGate.Release();
+        }
+    }
+
     private static PendingPollOperation? TryDeserializePendingPollOperation(string serialized)
     {
         try
@@ -1794,29 +1835,7 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
                 // the in-flight response can still install a newer credential bundle.
                 return false;
             }
-
-            string? installationId = await _metadataStore.GetAsync(
-                InstallationIdKey,
-                CancellationToken.None);
-            string? accessToken = await _metadataStore.GetAsync(
-                AccessTokenKey,
-                CancellationToken.None);
-            if (!string.Equals(
-                    installationId,
-                    rejectedGrant.InstallationId,
-                    StringComparison.Ordinal)
-                || !FixedTimeEqualsSecret(accessToken, rejectedGrant.AccessToken))
-            {
-                return false;
-            }
-
-            AndroidAccountLinkKeyIdentity current = await _keyAuthority
-                .RequireLinkedIdentityAsync(rejectedGrant.InstallationId, CancellationToken.None);
-            if (!string.Equals(current.GrantId, rejectedGrant.GrantId, StringComparison.Ordinal)
-                || !string.Equals(
-                    current.PublicKey,
-                    rejectedGrant.Identity.PublicKey,
-                    StringComparison.Ordinal))
+            if (!await IsExactActiveGrantCoreAsync(rejectedGrant))
             {
                 return false;
             }
@@ -1828,6 +1847,32 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         {
             _credentialCommitGate.Release();
         }
+    }
+
+    private async Task<bool> IsExactActiveGrantCoreAsync(StoredGrant expectedGrant)
+    {
+        string? installationId = await _metadataStore.GetAsync(
+            InstallationIdKey,
+            CancellationToken.None);
+        string? accessToken = await _metadataStore.GetAsync(
+            AccessTokenKey,
+            CancellationToken.None);
+        if (!string.Equals(
+                installationId,
+                expectedGrant.InstallationId,
+                StringComparison.Ordinal)
+            || !FixedTimeEqualsSecret(accessToken, expectedGrant.AccessToken))
+        {
+            return false;
+        }
+
+        AndroidAccountLinkKeyIdentity current = await _keyAuthority
+            .RequireLinkedIdentityAsync(expectedGrant.InstallationId, CancellationToken.None);
+        return string.Equals(current.GrantId, expectedGrant.GrantId, StringComparison.Ordinal)
+            && string.Equals(
+                current.PublicKey,
+                expectedGrant.Identity.PublicKey,
+                StringComparison.Ordinal);
     }
 
     private static bool FixedTimeEqualsSecret(string? left, string right)
