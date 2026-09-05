@@ -9623,6 +9623,16 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                     "POST_CONFIRM_DASHBOARD_READY_POLL_DELAY_SECONDS",
                     0.005,
                 ),
+                mock.patch.object(
+                    driver,
+                    "POST_CONFIRM_DASHBOARD_READY_READ_ATTEMPT_MIN_SECONDS",
+                    0.001,
+                ),
+                mock.patch.object(
+                    driver.shared,
+                    "ADB_READ_ONLY_RETRY_DELAY_SECONDS",
+                    0.001,
+                ),
                 self.assertRaisesRegex(RuntimeError, "Timed out waiting"),
             ):
                 driver.wait_for_creation_dashboard_ready_log(

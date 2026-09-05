@@ -296,6 +296,7 @@ CONFIRMED_RECEIPT_PROOF_TIMEOUT_SECONDS = (
 PRE_BACK_ROUTE_LOG_CLEAR_TIMEOUT_SECONDS = 3.0
 POST_CONFIRM_DASHBOARD_READY_TIMEOUT_SECONDS = 30.0
 POST_CONFIRM_DASHBOARD_READY_READ_ATTEMPT_MAX_SECONDS = 5.0
+POST_CONFIRM_DASHBOARD_READY_READ_ATTEMPT_MIN_SECONDS = 0.5
 POST_CONFIRM_DASHBOARD_READY_POLL_DELAY_SECONDS = 0.25
 POST_CONFIRM_DASHBOARD_DUMP_ATTEMPT_MAX_SECONDS = 30.0
 POST_CONFIRM_DASHBOARD_PROOF_TIMEOUT_SECONDS = 75.0
@@ -815,6 +816,40 @@ def classify_creation_dashboard_ready_logcat(
     return raw_lines, exact_matches, divider_count, invalid_lines
 
 
+def creation_dashboard_ready_read_attempt_timeout(
+    *,
+    marker_deadline: float,
+) -> float | None:
+    """Lease one snapshot while preserving every bounded read-only retry.
+
+    ``Device.run`` may retry this exact logcat snapshot because it cannot
+    mutate app or emulator state.  Passing all remaining marker time to its
+    first subprocess attempt defeats that policy near the end of the marker
+    window: one timeout consumes the deadline and the two authorized retries
+    are necessarily suppressed.  Divide the remaining command time across all
+    attempts while reserving the fixed inter-attempt delays.  Stop polling when
+    even the minimum complete retry envelope no longer fits.
+    """
+    if not math.isfinite(marker_deadline):
+        raise ValueError("Creation dashboard marker deadline must be finite")
+    remaining = marker_deadline - time.monotonic()
+    retry_count = shared.ADB_READ_ONLY_MAX_ATTEMPTS - 1
+    reserved_retry_delay = (
+        retry_count * shared.ADB_READ_ONLY_RETRY_DELAY_SECONDS
+    )
+    available_command_time = remaining - reserved_retry_delay
+    minimum_command_time = (
+        shared.ADB_READ_ONLY_MAX_ATTEMPTS
+        * POST_CONFIRM_DASHBOARD_READY_READ_ATTEMPT_MIN_SECONDS
+    )
+    if available_command_time < minimum_command_time:
+        return None
+    return min(
+        POST_CONFIRM_DASHBOARD_READY_READ_ATTEMPT_MAX_SECONDS,
+        available_command_time / shared.ADB_READ_ONLY_MAX_ATTEMPTS,
+    )
+
+
 def wait_for_creation_dashboard_ready_log(
     device: shared.Device,
     *,
@@ -850,16 +885,16 @@ def wait_for_creation_dashboard_ready_log(
     invalid_lines: list[str] = []
     raw_lines: list[str] = []
     while time.monotonic() < marker_deadline:
+        read_attempt_timeout = creation_dashboard_ready_read_attempt_timeout(
+            marker_deadline=marker_deadline,
+        )
+        if read_attempt_timeout is None:
+            break
         read_started = time.perf_counter()
         try:
             result = device.run(
                 *shared.ADB_CREATION_DASHBOARD_READY_LOGCAT_ARGUMENTS,
-                timeout=shared._remaining_operation_timeout(
-                    deadline=marker_deadline,
-                    maximum=(
-                        POST_CONFIRM_DASHBOARD_READY_READ_ATTEMPT_MAX_SECONDS
-                    ),
-                ),
+                timeout=read_attempt_timeout,
                 deadline=marker_deadline,
             )
         finally:

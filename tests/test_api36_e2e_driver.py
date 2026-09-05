@@ -5330,7 +5330,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             DRIVER.wait_exact_text(device, "Improve · 10 Karma", timeout=45)
         device.capture.assert_called_once_with("career-attribute-text-mismatch")
 
-    def test_local_import_does_not_claim_success_for_a_guarded_workspace(self) -> None:
+    def test_local_import_requires_exact_authority_even_for_an_already_active_workspace(self) -> None:
         source = (
             REPO_ROOT
             / "src"
@@ -5345,15 +5345,16 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             )
         ]
 
-        self.assertIn("CharacterOverviewState previousState = State;", block)
+        self.assertNotIn("CharacterOverviewState previousState = State;", block)
         self.assertIn("_notice = null;", block)
         self.assertIn("ComputeExactImportPayloadSha256(document.Content)", block)
         self.assertIn(
-            "if (ActivatedNewWorkspace(previousState, State)",
+            "if (State.WorkspaceId is { } importedWorkspaceId)",
             block,
         )
-        guarded = block[block.index("if (ActivatedNewWorkspace") :]
+        guarded = block[block.index("if (State.WorkspaceId is { } importedWorkspaceId)") :]
         self.assertIn("TryRefreshWorkspaceAuthorityAsync", guarded)
+        self.assertIn("expectedPayloadSha256", guarded)
         self.assertIn("if (authority is not null)", guarded)
         self.assertIn("RememberRosterLocator", guarded)
         self.assertIn('_notice = $"Opened {document.DisplayName}.";', guarded)
@@ -5365,11 +5366,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             block,
         )
 
-        predicate = block[block.index("private static bool ActivatedNewWorkspace") :]
-        self.assertIn("current.WorkspaceId is { } currentWorkspace", predicate)
-        self.assertIn("!string.Equals(previousWorkspace.Value, currentWorkspace.Value", predicate)
-        self.assertNotIn("ContentRevision", predicate)
-        self.assertNotIn("SavedRevision", predicate)
+        self.assertNotIn("ActivatedNewWorkspace", block)
 
     def test_authoritative_import_and_restart_contracts_fail_closed(self) -> None:
         imported = DRIVER.WorkspaceAuthority("new", 4, 4, "a" * 64, "b" * 64)
@@ -5779,7 +5776,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
         local = source[
             source.index("public async Task<NativeWorkspaceActivationReceipt?> OpenLocalAsync") :
-            source.index("private static bool ActivatedNewWorkspace")
+            source.index("private static bool WorkspaceIsActive")
         ]
         online = source[
             source.index("public async Task<NativeWorkspaceActivationReceipt?> OpenOnlineAsync") :
@@ -5839,7 +5836,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         self.assertIn("NativeWorkspaceActivationKind.WorkspaceSwitch", block)
         self.assertIn("workspace.Id)", block)
 
-    def test_online_import_uses_the_same_guarded_activation_contract(self) -> None:
+    def test_online_import_uses_the_same_exact_authority_activation_contract(self) -> None:
         source = (
             REPO_ROOT
             / "src"
@@ -5854,16 +5851,17 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         ]
         block = block[: block.index("public async Task CreateRunnerAsync")]
 
-        self.assertIn("CharacterOverviewState previousState = State;", block)
+        self.assertNotIn("CharacterOverviewState previousState = State;", block)
         self.assertIn("_notice = null;", block)
         self.assertIn("await _workspaceActivationGate.WaitAsync(cancellationToken);", block)
         self.assertIn("string expectedPayloadSha256 = Sha256Hex(payload);", block)
         self.assertIn(
-            "if (ActivatedNewWorkspace(previousState, State)",
+            "if (State.WorkspaceId is { } importedWorkspaceId)",
             block,
         )
-        guarded = block[block.index("if (ActivatedNewWorkspace") :]
+        guarded = block[block.index("if (State.WorkspaceId is { } importedWorkspaceId)") :]
         self.assertIn("TryRefreshWorkspaceAuthorityAsync", guarded)
+        self.assertIn("expectedPayloadSha256", guarded)
         self.assertIn("if (authority is not null)", guarded)
         self.assertIn("RememberRosterLocator", guarded)
         self.assertIn(
@@ -5890,7 +5888,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             / "RunnerSessionCoordinator.cs"
         ).read_text(encoding="utf-8")
         local = source[source.index("public async Task<NativeWorkspaceActivationReceipt?> OpenLocalAsync") :]
-        local = local[: local.index("private static bool ActivatedNewWorkspace")]
+        local = local[: local.index("private static bool WorkspaceIsActive")]
         online = source[
             source.index(
                 "public async Task<NativeWorkspaceActivationReceipt?> OpenOnlineAsync"
@@ -10082,6 +10080,100 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
 
         self.assertEqual(2, hierarchy.call_count)
         sleep.assert_called_once_with(0.5)
+
+    def test_dashboard_ready_snapshot_preserves_retry_envelope_near_deadline(self) -> None:
+        now = [100.0]
+        digest = "sha256:" + ("a" * 64)
+        marker = "CHUMMER_CREATION_DASHBOARD_READY " + json.dumps(
+            {
+                "schema": CREATION.CREATION_DASHBOARD_READY_SCHEMA,
+                "routeAutomationId": "phone-runner-create",
+                "dashboardAutomationId": "creation-wizard-dashboard",
+                "workspaceId": "workspace-e2e",
+                "contentRevision": 7,
+                "savedRevision": 6,
+                "contentDigest": digest,
+                "sourceDigest": digest,
+                "runtimeFingerprint": "",
+                "buildMethod": "Priority",
+                "snapshotDigest": digest,
+                "characterCreated": False,
+                "authorityReady": True,
+            },
+            separators=(",", ":"),
+        )
+        calls = 0
+        observed_timeouts: list[float] = []
+
+        def invoke(
+            command: list[str],
+            *,
+            check: bool,
+            capture_output: bool,
+            text: bool,
+            timeout: float,
+        ) -> subprocess.CompletedProcess:
+            nonlocal calls
+            calls += 1
+            observed_timeouts.append(timeout)
+            self.assertTrue(check)
+            self.assertTrue(capture_output)
+            self.assertTrue(text)
+            self.assertEqual(
+                DRIVER.ADB_CREATION_DASHBOARD_READY_LOGCAT_ARGUMENTS,
+                tuple(command[3:]),
+            )
+            if calls <= 5:
+                # Model successful but near-timeout hosted ADB snapshots.  The
+                # sixth outer poll begins with too little time for a five-second
+                # first attempt plus both authorized retries.
+                now[0] += 5.01
+                return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
+            if calls == 6:
+                now[0] += timeout
+                raise subprocess.TimeoutExpired(command, timeout)
+            return subprocess.CompletedProcess(command, 0, stdout=marker, stderr="")
+
+        def sleep(seconds: float) -> None:
+            now[0] += seconds
+
+        scans: list[dict[str, object]] = []
+        with tempfile.TemporaryDirectory() as temporary:
+            device = DRIVER.Device(
+                Path("/unused/adb"),
+                "emulator-5554",
+                Path(temporary),
+            )
+            with (
+                patch.object(DRIVER.subprocess, "run", side_effect=invoke),
+                patch.object(DRIVER.time, "monotonic", side_effect=lambda: now[0]),
+                patch.object(DRIVER.time, "perf_counter", side_effect=lambda: now[0]),
+                patch.object(DRIVER.time, "sleep", side_effect=sleep),
+            ):
+                payload = CREATION.wait_for_creation_dashboard_ready_log(
+                    device,
+                    expected_content_revision=7,
+                    expected_saved_revision=6,
+                    deadline=175.0,
+                    scan_observer=scans.append,
+                )
+            events = device.transport_summary()["events"]
+
+        self.assertEqual("workspace-e2e", payload["workspaceId"])
+        self.assertEqual(7, calls)
+        self.assertLess(observed_timeouts[5], 1.0)
+        self.assertEqual(
+            ["retrying-read-only", "recovered-read-only"],
+            [event["status"] for event in events],
+        )
+        self.assertTrue(events[0]["replay"]["scheduled"])
+        self.assertTrue(events[1]["replay"]["performed"])
+        self.assertEqual(1, len(scans))
+        self.assertEqual("resolved", scans[0]["status"])
+        self.assertLessEqual(
+            scans[0]["elapsedMs"],
+            round(CREATION.POST_CONFIRM_DASHBOARD_READY_TIMEOUT_SECONDS * 1000),
+        )
 
 
 if __name__ == "__main__":
