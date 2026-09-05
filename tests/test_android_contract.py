@@ -696,7 +696,12 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("workspace.Id.Value", switch_handler)
         self.assertIn("NativeWorkspaceActivationReceipt", coordinator)
         self.assertIn("return null;", coordinator)
-        self.assertIn("ActivatedNewWorkspace(previousState, State)", coordinator)
+        self.assertNotIn("ActivatedNewWorkspace", coordinator)
+        self.assertEqual(
+            2,
+            coordinator.count("if (State.WorkspaceId is { } importedWorkspaceId)"),
+        )
+        self.assertGreaterEqual(coordinator.count("expectedPayloadSha256"), 2)
         self.assertIn("NativeWorkspaceActivationKind.LocalFile", coordinator)
         self.assertIn("ResolveInitialPhoneRouteAsync", phone_shell)
         initial_phone_route = shell[

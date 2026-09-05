@@ -12,6 +12,7 @@ ACTIVE_SKILL_COORDINATOR = ROOT / "src/Chummer.Android/Native/Sr5CareerActiveSki
 CHECKPOINT_STORE = ROOT / "src/Chummer.Android/Native/Sr5CareerDraftCheckpointStore.cs"
 MUTATION_OWNER_STORE = ROOT / "src/Chummer.Android/Native/Sr5CareerMutationOwnerStore.cs"
 BUILD = ROOT / "src/Chummer.Android/Native/BuildPage.cs"
+NATIVE_PAGE_BASE = ROOT / "src/Chummer.Android/Native/NativePageBase.cs"
 PHYSICAL_ACTIVE_SKILL_DRIVER = (
     ROOT / "tests/run_api36_sr5_career_active_skill_wizard_e2e.py"
 )
@@ -183,10 +184,26 @@ def test_globally_loaded_reviewed_checkpoint_is_authenticated_before_ui_or_delet
 
 def test_active_skill_deep_return_reloads_durable_recovery_before_routing() -> None:
     page = ACTIVE_SKILL.read_text(encoding="utf-8")
-    appearing = page.split("protected override async void OnAppearing()", maxsplit=1)[1]
+    native_page_base = NATIVE_PAGE_BASE.read_text(encoding="utf-8")
+    appearing = page.split(
+        "protected override async Task PrepareForAppearanceRefreshAsync(",
+        maxsplit=1,
+    )[1]
     appearing = appearing.split("protected override void Refresh()", maxsplit=1)[0]
 
-    assert "await Coordinator.InitializeAsync();" in appearing
+    base_appearing = native_page_base.split(
+        "protected override async void OnAppearing()",
+        maxsplit=1,
+    )[1]
+    base_appearing = base_appearing.split(
+        "protected override void OnDisappearing()",
+        maxsplit=1,
+    )[0]
+    assert "await Coordinator.InitializeAsync();" in base_appearing
+    assert "await PrepareForAppearanceRefreshAsync(appearanceToken);" in base_appearing
+    assert base_appearing.index("await Coordinator.InitializeAsync();") < base_appearing.index(
+        "await PrepareForAppearanceRefreshAsync(appearanceToken);"
+    )
     assert "LoadRecoveryCheckpoint();" in appearing
     assert "RefreshEnabledState();" in appearing
     assert appearing.index("LoadRecoveryCheckpoint();") < appearing.index(

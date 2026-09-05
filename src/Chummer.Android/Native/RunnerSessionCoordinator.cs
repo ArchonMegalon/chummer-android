@@ -2680,14 +2680,12 @@ public sealed class RunnerSessionCoordinator : IDisposable
             {
                 return null;
             }
-            CharacterOverviewState previousState = State;
             string expectedPayloadSha256 = ComputeExactImportPayloadSha256(document.Content);
             _notice = null;
             await _presenter.ImportAsync(
                 WorkspaceImportDocument.FromUtf8Bytes(document.Content, string.Empty, WorkspaceDocumentFormat.NativeXml),
                 cancellationToken);
-            if (ActivatedNewWorkspace(previousState, State)
-                && State.WorkspaceId is { } importedWorkspaceId)
+            if (State.WorkspaceId is { } importedWorkspaceId)
             {
                 NativeWorkspaceAuthoritySnapshot? authority = await TryRefreshWorkspaceAuthorityAsync(
                     importedWorkspaceId,
@@ -2752,13 +2750,6 @@ public sealed class RunnerSessionCoordinator : IDisposable
         return activation;
     }
 
-    private static bool ActivatedNewWorkspace(
-        CharacterOverviewState previous,
-        CharacterOverviewState current)
-        => current.WorkspaceId is { } currentWorkspace
-           && (previous.WorkspaceId is not { } previousWorkspace
-               || !string.Equals(previousWorkspace.Value, currentWorkspace.Value, StringComparison.Ordinal));
-
     private static bool WorkspaceIsActive(
         CharacterOverviewState state,
         CharacterWorkspaceId expectedWorkspaceId)
@@ -2781,14 +2772,12 @@ public sealed class RunnerSessionCoordinator : IDisposable
         try
         {
             payload = StrictUtf8.GetBytes(character.Payload);
-            CharacterOverviewState previousState = State;
             string expectedPayloadSha256 = Sha256Hex(payload);
             _notice = null;
             await _presenter.ImportAsync(
                 WorkspaceImportDocument.FromUtf8Bytes(payload, character.RulesetId, ParseFormat(character.Format)),
                 cancellationToken);
-            if (ActivatedNewWorkspace(previousState, State)
-                && State.WorkspaceId is { } importedWorkspaceId)
+            if (State.WorkspaceId is { } importedWorkspaceId)
             {
                 NativeWorkspaceAuthoritySnapshot? authority = await TryRefreshWorkspaceAuthorityAsync(
                     importedWorkspaceId,
