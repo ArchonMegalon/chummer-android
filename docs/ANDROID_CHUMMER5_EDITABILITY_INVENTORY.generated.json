@@ -112,7 +112,7 @@
       {
         "path": "src/Chummer.Android/Native/MorePage.cs",
         "exists": true,
-        "sha256": "52fdbf3c6fa329a555eb3809de7b69634106de81469e22a93ccfab3f9d897387"
+        "sha256": "ab0c227a368cc953ae566aa83673300dc5b9074de2774c80ea41f5282af2cc79"
       },
       {
         "path": "src/Chummer.Android/Native/CareerReputationPage.cs",
