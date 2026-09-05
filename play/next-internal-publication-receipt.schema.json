@@ -103,7 +103,9 @@
         "sourceGraphContract",
         "sourceGraphGeneratedAtUtc",
         "androidSourceCommit",
-        "androidSourceTree"
+        "androidSourceTree",
+        "buildSidecarSha256",
+        "buildAttestationSha256"
       ],
       "properties": {
         "aabFileName": { "type": "string", "pattern": "^[^/]+\\.aab$" },
@@ -115,7 +117,9 @@
         "sourceGraphContract": { "const": "chummer.android.release-source-graph/v3" },
         "sourceGraphGeneratedAtUtc": { "type": "string", "format": "date-time" },
         "androidSourceCommit": { "$ref": "#/$defs/commit" },
-        "androidSourceTree": { "$ref": "#/$defs/commit" }
+        "androidSourceTree": { "$ref": "#/$defs/commit" },
+        "buildSidecarSha256": { "$ref": "#/$defs/sha256" },
+        "buildAttestationSha256": { "$ref": "#/$defs/sha256" }
       }
     },
     "twoGreenEligibility": {
@@ -159,6 +163,8 @@
             "approvalScope",
             "approvalSha256",
             "receiptSha256",
+            "provenanceValidatorSha256",
+            "provenanceReplaySha256",
             "generatedAtUtc",
             "expiresAtUtc"
           ],
@@ -173,6 +179,8 @@
             },
             "approvalSha256": { "$ref": "#/$defs/sha256" },
             "receiptSha256": { "$ref": "#/$defs/sha256" },
+            "provenanceValidatorSha256": { "$ref": "#/$defs/sha256" },
+            "provenanceReplaySha256": { "$ref": "#/$defs/sha256" },
             "generatedAtUtc": { "type": "string", "format": "date-time" },
             "expiresAtUtc": { "type": "string", "format": "date-time" }
           }

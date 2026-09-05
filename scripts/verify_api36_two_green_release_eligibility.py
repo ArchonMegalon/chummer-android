@@ -236,6 +236,51 @@ def _utc_timestamp(value: object, label: str) -> datetime:
     return parsed.astimezone(UTC)
 
 
+def _verify_ed25519_signature(
+    unsigned: dict[str, Any],
+    signature_text: object,
+    *,
+    label: str,
+) -> None:
+    public_key_raw = _stable_bytes(
+        RELEASE_APPROVER_PUBLIC_KEY,
+        label="trusted release approver public key",
+        limit=16 * 1024,
+        owner_only=False,
+    )
+    if hashlib.sha256(public_key_raw).hexdigest() != RELEASE_APPROVER_PUBLIC_KEY_SHA256:
+        raise ValueError("trusted release approver public key digest differs")
+    if not isinstance(signature_text, str) or len(signature_text) > 256:
+        raise ValueError(f"{label} signature is invalid")
+    try:
+        signature = base64.b64decode(signature_text, validate=True)
+    except (binascii.Error, ValueError) as error:
+        raise ValueError(f"{label} signature is invalid") from error
+    if len(signature) != 64:
+        raise ValueError(f"{label} signature is invalid")
+    if not OPENSSL.is_file():
+        raise ValueError("trusted OpenSSL verifier is unavailable")
+    with tempfile.TemporaryDirectory(prefix="chummer-android-release-signature-") as directory:
+        root = Path(directory)
+        payload_path = root / "payload.json"
+        signature_path = root / "signature.bin"
+        payload_path.write_bytes(_canonical_json_bytes(unsigned))
+        signature_path.write_bytes(signature)
+        completed = subprocess.run(
+            [
+                os.fspath(OPENSSL), "pkeyutl", "-verify", "-pubin",
+                "-inkey", os.fspath(RELEASE_APPROVER_PUBLIC_KEY), "-rawin",
+                "-in", os.fspath(payload_path), "-sigfile", os.fspath(signature_path),
+            ],
+            check=False,
+            capture_output=True,
+            timeout=20,
+            env={"PATH": "/usr/bin:/bin", "LANG": "C", "LC_ALL": "C"},
+        )
+    if completed.returncode != 0:
+        raise ValueError(f"{label} signature is invalid")
+
+
 def release_approval_unsigned(
     receipt_raw: bytes,
     receipt: dict[str, Any],
@@ -243,6 +288,8 @@ def release_approval_unsigned(
     generated_at_utc: str,
     expires_at_utc: str,
     challenge_nonce: str,
+    provenance_validator_sha256: str,
+    provenance_replay_sha256: str,
 ) -> dict[str, Any]:
     common = receipt.get("commonAuthority")
     release = receipt.get("releaseIdentity")
@@ -261,6 +308,14 @@ def release_approval_unsigned(
         "generatedAtUtc": generated_at_utc,
         "expiresAtUtc": expires_at_utc,
         "challengeNonce": _sha256(challenge_nonce, "release approval challenge nonce"),
+        "provenanceValidatorSha256": _sha256(
+            provenance_validator_sha256,
+            "two-green provenance validator digest",
+        ),
+        "provenanceReplaySha256": _sha256(
+            provenance_replay_sha256,
+            "two-green provenance replay digest",
+        ),
         "receiptSha256": hashlib.sha256(receipt_raw).hexdigest(),
         "eligibilitySha256": _sha256(
             receipt.get("eligibilitySha256"), "two-green eligibility digest"
@@ -298,6 +353,7 @@ def _verify_release_approval(
     fields = {
         "contractName", "algorithm", "keyId", "role", "approvalScope",
         "generatedAtUtc", "expiresAtUtc", "challengeNonce", "receiptSha256",
+        "provenanceValidatorSha256", "provenanceReplaySha256",
         "eligibilitySha256", "sourceCommit", "sourceTree", "versionName",
         "versionCode", "dependencyGraphSha256", "environmentPolicySha256",
         "signingAuthorized", "publicationAuthorized", "googlePlayUploadAuthorized",
@@ -328,53 +384,32 @@ def _verify_release_approval(
         or current >= expires
     ):
         raise ValueError("two-green protected release approval is stale or outside its lifetime")
+    validator_raw = _stable_bytes(
+        TWO_GREEN_PATH,
+        label="two-green deep provenance validator",
+        limit=MAX_AUTHORITY_BYTES,
+        owner_only=False,
+    )
+    expected_validator_sha256 = hashlib.sha256(validator_raw).hexdigest()
+    if approval.get("provenanceValidatorSha256") != expected_validator_sha256:
+        raise ValueError("two-green protected approval used a different provenance validator")
     unsigned = release_approval_unsigned(
         receipt_raw,
         receipt,
         generated_at_utc=approval["generatedAtUtc"],
         expires_at_utc=approval["expiresAtUtc"],
         challenge_nonce=approval["challengeNonce"],
+        provenance_validator_sha256=approval["provenanceValidatorSha256"],
+        provenance_replay_sha256=approval["provenanceReplaySha256"],
     )
     if any(approval.get(key) != value for key, value in unsigned.items()):
         raise ValueError("two-green protected release approval claims differ from the receipt")
-    public_key_raw = _stable_bytes(
-        RELEASE_APPROVER_PUBLIC_KEY,
-        label="trusted release approver public key",
-        limit=16 * 1024,
-        owner_only=False,
-    )
-    if hashlib.sha256(public_key_raw).hexdigest() != RELEASE_APPROVER_PUBLIC_KEY_SHA256:
-        raise ValueError("trusted release approver public key digest differs")
     signature_text = approval.get("signatureBase64")
-    if not isinstance(signature_text, str) or len(signature_text) > 256:
-        raise ValueError("two-green protected release approval signature is invalid")
-    try:
-        signature = base64.b64decode(signature_text, validate=True)
-    except (binascii.Error, ValueError) as error:
-        raise ValueError("two-green protected release approval signature is invalid") from error
-    if len(signature) != 64:
-        raise ValueError("two-green protected release approval signature is invalid")
-    if not OPENSSL.is_file():
-        raise ValueError("trusted OpenSSL verifier is unavailable")
-    with tempfile.TemporaryDirectory(prefix="chummer-android-release-approval-") as directory:
-        root = Path(directory)
-        payload_path = root / "payload.json"
-        signature_path = root / "signature.bin"
-        payload_path.write_bytes(_canonical_json_bytes(unsigned))
-        signature_path.write_bytes(signature)
-        completed = subprocess.run(
-            [
-                os.fspath(OPENSSL), "pkeyutl", "-verify", "-pubin",
-                "-inkey", os.fspath(RELEASE_APPROVER_PUBLIC_KEY), "-rawin",
-                "-in", os.fspath(payload_path), "-sigfile", os.fspath(signature_path),
-            ],
-            check=False,
-            capture_output=True,
-            timeout=20,
-            env={"PATH": "/usr/bin:/bin", "LANG": "C", "LC_ALL": "C"},
-        )
-    if completed.returncode != 0:
-        raise ValueError("two-green protected release approval signature is invalid")
+    _verify_ed25519_signature(
+        unsigned,
+        signature_text,
+        label="two-green protected release approval",
+    )
     return {
         "contractName": RELEASE_APPROVAL_CONTRACT,
         "keyId": RELEASE_APPROVER_KEY_ID,
@@ -382,6 +417,8 @@ def _verify_release_approval(
         "approvalScope": RELEASE_APPROVAL_SCOPE,
         "approvalSha256": hashlib.sha256(approval_raw).hexdigest(),
         "receiptSha256": unsigned["receiptSha256"],
+        "provenanceValidatorSha256": unsigned["provenanceValidatorSha256"],
+        "provenanceReplaySha256": unsigned["provenanceReplaySha256"],
         "generatedAtUtc": unsigned["generatedAtUtc"],
         "expiresAtUtc": unsigned["expiresAtUtc"],
     }

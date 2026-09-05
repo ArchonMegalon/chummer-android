@@ -2,8 +2,8 @@
 """Materialize or verify a next-release Play Internal publication receipt.
 
 This offline contract combines explicit public browser readback with the exact
-local AAB, the protected build-sidecar digest of the v3 release source graph,
-and a detached-approved two-green receipt.  It never opens Play, accepts
+local AAB and v3 source graph bound by a detached protected build attestation,
+plus a detached-approved two-green receipt. It never opens Play, accepts
 credentials, or grants production/upload/tester-roster authority.
 """
 
@@ -126,6 +126,21 @@ def _load_qualification_module() -> Any:
 
 
 QUALIFICATION = _load_qualification_module()
+
+
+def _load_build_attestation_module() -> Any:
+    path = REPO_ROOT / "scripts/sign_android_release_build_attestation.py"
+    specification = importlib.util.spec_from_file_location(
+        "next_publication_release_build_attestation", path
+    )
+    if specification is None or specification.loader is None:
+        raise ValueError("cannot load the release build attestation verifier")
+    module = importlib.util.module_from_spec(specification)
+    specification.loader.exec_module(module)
+    return module
+
+
+BUILD_ATTESTATION = _load_build_attestation_module()
 
 
 def canonical_json_bytes(value: object) -> bytes:
@@ -609,9 +624,7 @@ def load_artifact_bindings(
     source_graph_path: Path,
     browser: dict[str, Any],
     *,
-    expected_android_source_commit: str,
-    expected_aab_sha256: str,
-    expected_source_graph_sha256: str,
+    build_attestation: dict[str, Any],
 ) -> dict[str, Any]:
     version_name = browser["release"]["versionName"]
     version_code = browser["release"]["versionCode"]
@@ -629,15 +642,9 @@ def load_artifact_bindings(
     graph = validate_source_graph(
         graph_raw, version_name=version_name, version_code=version_code
     )
-    expected_head = require_hex(
-        expected_android_source_commit, SHA40, "expected Android source commit"
-    )
-    expected_aab = require_hex(expected_aab_sha256, SHA256, "expected AAB sha256")
-    expected_graph = require_hex(
-        expected_source_graph_sha256,
-        SHA256,
-        "expected source graph sha256",
-    )
+    expected_head = require_hex(build_attestation.get("sourceCommit"), SHA40, "attested Android source commit")
+    expected_aab = require_hex(build_attestation.get("aab", {}).get("sha256"), SHA256, "attested AAB sha256")
+    expected_graph = require_hex(build_attestation.get("sourceGraph", {}).get("sha256"), SHA256, "attested source graph sha256")
     actual_aab = hashlib.sha256(aab_raw).hexdigest()
     actual_graph = hashlib.sha256(graph_raw).hexdigest()
     if graph["androidSourceCommit"] != expected_head:
@@ -665,6 +672,8 @@ def load_artifact_bindings(
         "sourceGraphGeneratedAtUtc": graph["generatedAtUtc"],
         "androidSourceCommit": graph["androidSourceCommit"],
         "androidSourceTree": graph["androidSourceTree"],
+        "buildSidecarSha256": build_attestation["buildSidecar"]["sha256"],
+        "buildAttestationSha256": build_attestation["attestationSha256"],
     }
 
 
@@ -750,9 +759,8 @@ def verify(
     aab_path: Path,
     source_graph_path: Path,
     *,
-    expected_android_source_commit: str,
-    expected_aab_sha256: str,
-    expected_source_graph_sha256: str,
+    build_sidecar_path: Path,
+    build_attestation_path: Path,
     two_green_receipt_path: Path,
     two_green_approval_path: Path,
 ) -> dict[str, Any]:
@@ -786,13 +794,18 @@ def verify(
         if receipt["contractName"] != CONTRACT:
             raise ValueError("publication receipt contract is not exact v4")
         browser = browser_from_receipt(receipt)
+        attestation = BUILD_ATTESTATION.verify(
+            build_attestation_path, aab_path, source_graph_path, build_sidecar_path,
+            two_green_receipt_path, two_green_approval_path,
+        )
+        attestation["attestationSha256"] = hashlib.sha256(
+            read_regular(build_attestation_path, label="release build attestation", limit=MAX_RECEIPT_BYTES, owner_only=True)
+        ).hexdigest()
         artifact = load_artifact_bindings(
             aab_path,
             source_graph_path,
             browser,
-            expected_android_source_commit=expected_android_source_commit,
-            expected_aab_sha256=expected_aab_sha256,
-            expected_source_graph_sha256=expected_source_graph_sha256,
+            build_attestation=attestation,
         )
         two_green_eligibility = QUALIFICATION.verify_release_eligibility(
             two_green_receipt_path,
@@ -866,9 +879,8 @@ def materialize(
     source_graph_path: Path,
     output_path: Path,
     *,
-    expected_android_source_commit: str,
-    expected_aab_sha256: str,
-    expected_source_graph_sha256: str,
+    build_sidecar_path: Path,
+    build_attestation_path: Path,
     two_green_receipt_path: Path,
     two_green_approval_path: Path,
 ) -> dict[str, Any]:
@@ -881,13 +893,18 @@ def materialize(
     browser = validate_browser_readback(
         strict_json(browser_raw, label="browser readback"), require_fresh=True
     )
+    attestation = BUILD_ATTESTATION.verify(
+        build_attestation_path, aab_path, source_graph_path, build_sidecar_path,
+        two_green_receipt_path, two_green_approval_path,
+    )
+    attestation["attestationSha256"] = hashlib.sha256(
+        read_regular(build_attestation_path, label="release build attestation", limit=MAX_RECEIPT_BYTES, owner_only=True)
+    ).hexdigest()
     artifact = load_artifact_bindings(
         aab_path,
         source_graph_path,
         browser,
-        expected_android_source_commit=expected_android_source_commit,
-        expected_aab_sha256=expected_aab_sha256,
-        expected_source_graph_sha256=expected_source_graph_sha256,
+        build_attestation=attestation,
     )
     two_green_eligibility = QUALIFICATION.verify_release_eligibility(
         two_green_receipt_path,
@@ -904,9 +921,8 @@ def materialize(
             output_path,
             aab_path,
             source_graph_path,
-            expected_android_source_commit=expected_android_source_commit,
-            expected_aab_sha256=expected_aab_sha256,
-            expected_source_graph_sha256=expected_source_graph_sha256,
+            build_sidecar_path=build_sidecar_path,
+            build_attestation_path=build_attestation_path,
             two_green_receipt_path=two_green_receipt_path,
             two_green_approval_path=two_green_approval_path,
         )
@@ -926,18 +942,16 @@ def main(argv: list[str] | None = None) -> int:
     materialize_parser.add_argument("--aab", required=True, type=Path)
     materialize_parser.add_argument("--source-graph", required=True, type=Path)
     materialize_parser.add_argument("--output", required=True, type=Path)
-    materialize_parser.add_argument("--expected-android-source-commit", required=True)
-    materialize_parser.add_argument("--expected-aab-sha256", required=True)
-    materialize_parser.add_argument("--expected-source-graph-sha256", required=True)
+    materialize_parser.add_argument("--build-sidecar", required=True, type=Path)
+    materialize_parser.add_argument("--build-attestation", required=True, type=Path)
     materialize_parser.add_argument("--two-green-receipt", required=True, type=Path)
     materialize_parser.add_argument("--two-green-approval", required=True, type=Path)
     verify_parser = actions.add_parser("verify")
     verify_parser.add_argument("--receipt", required=True, type=Path)
     verify_parser.add_argument("--aab", required=True, type=Path)
     verify_parser.add_argument("--source-graph", required=True, type=Path)
-    verify_parser.add_argument("--expected-android-source-commit", required=True)
-    verify_parser.add_argument("--expected-aab-sha256", required=True)
-    verify_parser.add_argument("--expected-source-graph-sha256", required=True)
+    verify_parser.add_argument("--build-sidecar", required=True, type=Path)
+    verify_parser.add_argument("--build-attestation", required=True, type=Path)
     verify_parser.add_argument("--two-green-receipt", required=True, type=Path)
     verify_parser.add_argument("--two-green-approval", required=True, type=Path)
     arguments = parser.parse_args(argv)
@@ -948,9 +962,8 @@ def main(argv: list[str] | None = None) -> int:
                 arguments.aab,
                 arguments.source_graph,
                 arguments.output,
-                expected_android_source_commit=arguments.expected_android_source_commit,
-                expected_aab_sha256=arguments.expected_aab_sha256,
-                expected_source_graph_sha256=arguments.expected_source_graph_sha256,
+                build_sidecar_path=arguments.build_sidecar,
+                build_attestation_path=arguments.build_attestation,
                 two_green_receipt_path=arguments.two_green_receipt,
                 two_green_approval_path=arguments.two_green_approval,
             )
@@ -959,9 +972,8 @@ def main(argv: list[str] | None = None) -> int:
                 arguments.receipt,
                 arguments.aab,
                 arguments.source_graph,
-                expected_android_source_commit=arguments.expected_android_source_commit,
-                expected_aab_sha256=arguments.expected_aab_sha256,
-                expected_source_graph_sha256=arguments.expected_source_graph_sha256,
+                build_sidecar_path=arguments.build_sidecar,
+                build_attestation_path=arguments.build_attestation,
                 two_green_receipt_path=arguments.two_green_receipt,
                 two_green_approval_path=arguments.two_green_approval,
             )

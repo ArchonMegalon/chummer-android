@@ -11,7 +11,9 @@ from __future__ import annotations
 import argparse
 import base64
 from datetime import UTC, datetime, timedelta
+import hashlib
 import importlib.util
+import inspect
 import json
 import os
 from pathlib import Path
@@ -37,6 +39,36 @@ def _load(path: Path, name: str):
 
 VERIFIER = _load(VERIFIER_PATH, "android_two_green_release_approval_verifier")
 TWO_GREEN = _load(TWO_GREEN_PATH, "android_two_green_release_approval_contract")
+PROVENANCE_REPLAY_CONTRACT = "chummer.android.two-green-provenance-replay/v1"
+PROVENANCE_REPLAY_PATH_FIELDS = {
+    "android_root",
+    "policy",
+    "environment_policy",
+    "source_workflow",
+    "review_run",
+    "review_jobs",
+    "review_artifacts",
+    "review_aggregate_archive",
+    "review_p0_archive",
+    "review_pull_request",
+    "review_head_pull_requests",
+    "review_aggregate_check_run",
+    "review_base_commit",
+    "review_head_commit",
+    "review_event_commit",
+    "main_run",
+    "main_jobs",
+    "main_artifacts",
+    "main_aggregate_archive",
+    "main_p0_archive",
+    "main_commit",
+}
+PROVENANCE_REPLAY_SCALAR_FIELDS = {
+    "review_run_id",
+    "review_pull_request_number",
+    "review_event_sha",
+    "main_run_id",
+}
 
 
 def _private_key(path: Path) -> Path:
@@ -76,7 +108,90 @@ def _write_exclusive(path: Path, raw: bytes) -> None:
         raise
 
 
-def sign(receipt_path: Path, private_key_path: Path, output_path: Path) -> dict[str, object]:
+def _deep_provenance_replay(
+    replay_path: Path,
+    receipt_raw: bytes,
+    receipt: dict[str, object],
+) -> tuple[str, str]:
+    replay_raw = VERIFIER._stable_bytes(
+        replay_path,
+        label="two-green authenticated provenance replay",
+        limit=VERIFIER.MAX_AUTHORITY_BYTES,
+        owner_only=True,
+    )
+    replay = VERIFIER._strict_json(
+        replay_raw, label="two-green authenticated provenance replay"
+    )
+    expected_parameters = set(inspect.signature(TWO_GREEN.create_authority).parameters)
+    expected_fields = {
+        "contractName",
+        *PROVENANCE_REPLAY_PATH_FIELDS,
+        *PROVENANCE_REPLAY_SCALAR_FIELDS,
+    }
+    if set(replay) != expected_fields or expected_parameters != (
+        PROVENANCE_REPLAY_PATH_FIELDS | PROVENANCE_REPLAY_SCALAR_FIELDS
+    ):
+        raise ValueError("two-green provenance replay fields are not exact")
+    if replay.get("contractName") != PROVENANCE_REPLAY_CONTRACT:
+        raise ValueError("two-green provenance replay contract is not exact")
+    def replay_input_digests() -> dict[str, str]:
+        return {
+            name: hashlib.sha256(
+                VERIFIER._stable_bytes(
+                    Path(replay[name]),
+                    label=f"two-green provenance replay input {name}",
+                    limit=VERIFIER.MAX_AUTHORITY_BYTES,
+                    owner_only=False,
+                )
+            ).hexdigest()
+            for name in sorted(PROVENANCE_REPLAY_PATH_FIELDS - {"android_root"})
+        }
+
+    input_sha256 = replay_input_digests()
+    arguments: dict[str, object] = {}
+    for name in PROVENANCE_REPLAY_PATH_FIELDS:
+        value = replay.get(name)
+        if not isinstance(value, str):
+            raise ValueError(f"two-green provenance replay path is invalid: {name}")
+        arguments[name] = Path(value)
+    for name in PROVENANCE_REPLAY_SCALAR_FIELDS:
+        arguments[name] = replay.get(name)
+    rebuilt = TWO_GREEN.create_authority(**arguments)
+    if replay_input_digests() != input_sha256:
+        raise ValueError("two-green provenance replay inputs changed during validation")
+    if rebuilt != receipt or TWO_GREEN.pretty_json_bytes(rebuilt) != receipt_raw:
+        raise ValueError(
+            "two-green receipt does not replay from complete authenticated provenance"
+        )
+    validator_raw = VERIFIER._stable_bytes(
+        TWO_GREEN_PATH,
+        label="two-green deep provenance validator",
+        limit=VERIFIER.MAX_AUTHORITY_BYTES,
+        owner_only=False,
+    )
+    validator_sha256 = hashlib.sha256(validator_raw).hexdigest()
+    replay_binding = {
+        "contractName": PROVENANCE_REPLAY_CONTRACT,
+        "validatorSha256": validator_sha256,
+        "receiptSha256": hashlib.sha256(receipt_raw).hexdigest(),
+        "eligibilitySha256": receipt["eligibilitySha256"],
+        "reviewRunId": replay["review_run_id"],
+        "reviewPullRequestNumber": replay["review_pull_request_number"],
+        "reviewEventSha": replay["review_event_sha"],
+        "mainRunId": replay["main_run_id"],
+        "inputSha256": input_sha256,
+    }
+    return validator_sha256, hashlib.sha256(
+        VERIFIER._canonical_json_bytes(replay_binding)
+    ).hexdigest()
+
+
+def sign(
+    receipt_path: Path,
+    provenance_replay_path: Path,
+    private_key_path: Path,
+    output_path: Path,
+) -> dict[str, object]:
     receipt_raw = VERIFIER._stable_bytes(
         receipt_path,
         label="two-green eligibility receipt",
@@ -85,6 +200,11 @@ def sign(receipt_path: Path, private_key_path: Path, output_path: Path) -> dict[
     )
     receipt = VERIFIER._strict_json(receipt_raw, label="two-green eligibility receipt")
     TWO_GREEN.validate_authority(receipt)
+    provenance_validator_sha256, provenance_replay_sha256 = _deep_provenance_replay(
+        provenance_replay_path,
+        receipt_raw,
+        receipt,
+    )
     generated = datetime.now(UTC).replace(microsecond=0)
     expires = generated + timedelta(hours=6)
     unsigned = VERIFIER.release_approval_unsigned(
@@ -93,6 +213,8 @@ def sign(receipt_path: Path, private_key_path: Path, output_path: Path) -> dict[
         generated_at_utc=generated.isoformat().replace("+00:00", "Z"),
         expires_at_utc=expires.isoformat().replace("+00:00", "Z"),
         challenge_nonce=secrets.token_hex(32),
+        provenance_validator_sha256=provenance_validator_sha256,
+        provenance_replay_sha256=provenance_replay_sha256,
     )
     private_key = _private_key(private_key_path)
     with tempfile.TemporaryDirectory(prefix="chummer-android-release-approval-sign-") as directory:
@@ -132,18 +254,24 @@ def sign(receipt_path: Path, private_key_path: Path, output_path: Path) -> dict[
         "signingAuthorized": False,
         "publicationAuthorized": False,
         "googlePlayUploadAuthorized": False,
-        "approval": os.fspath(output_path),
+        "approvalSha256": hashlib.sha256(raw).hexdigest(),
     }
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--receipt", required=True, type=Path)
+    parser.add_argument("--provenance-replay", required=True, type=Path)
     parser.add_argument("--private-key", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     arguments = parser.parse_args()
     try:
-        result = sign(arguments.receipt, arguments.private_key, arguments.output)
+        result = sign(
+            arguments.receipt,
+            arguments.provenance_replay,
+            arguments.private_key,
+            arguments.output,
+        )
     except (OSError, ValueError, subprocess.TimeoutExpired) as error:
         result = {
             "status": "fail",

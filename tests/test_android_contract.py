@@ -2161,7 +2161,10 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("pkeyutl", two_green_signer)
         self.assertIn("publicationAuthorized\": False", two_green_signer)
         self.assertNotIn("--expected-receipt-sha256", two_green_verifier)
-        self.assertIn("--expected-source-graph-sha256", publication_materializer)
+        self.assertNotIn("--expected-source-graph-sha256", publication_materializer)
+        self.assertNotIn("--expected-aab-sha256", publication_materializer)
+        self.assertIn("--build-attestation", publication_materializer)
+        self.assertIn("--build-sidecar", publication_materializer)
         self.assertIn("--two-green-approval", publication_materializer)
         self.assertIn(
             hashlib.sha256(release_approver_public_key).hexdigest(),
@@ -2177,6 +2180,10 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("google_play_upload_authorized=false", build)
         self.assertIn("--verify-existing", prepare)
         self.assertIn("release-input-directory-not-empty", prepare)
+        environment_handoff = prepare[prepare.index("{\n  printf 'export CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY") :]
+        self.assertNotIn("export CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT", environment_handoff)
+        self.assertNotIn("export CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL", environment_handoff)
+        self.assertIn("verify_release_artifact_hygiene.py", build)
         self.assertIn("publication_authorized=false", prepare)
         self.assertIn("ChummerReleaseIntermediateRoot", prepare)
         self.assertIn("ChummerReleaseLockRoot", prepare)
@@ -2262,6 +2269,8 @@ class AndroidContractTests(unittest.TestCase):
             "CHUMMER_ANDROID_SIGNING_DIR",
             "CHUMMER_PROVISION_STORE_PASSWORD",
             "CHUMMER_RECOVERY_STORE_PASSWORD",
+            "CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT",
+            "CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL",
         )
         build = (REPO / "scripts" / "build-release.sh").read_text(encoding="utf-8")
         deexport_boundary = build.index("for release_secret_variable in")

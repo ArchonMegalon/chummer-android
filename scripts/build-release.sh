@@ -14,6 +14,8 @@ release_test_environment=(
   -u CHUMMER_ANDROID_SIGNING_DIR
   -u CHUMMER_PROVISION_STORE_PASSWORD
   -u CHUMMER_RECOVERY_STORE_PASSWORD
+  -u CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT
+  -u CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL
 )
 for release_secret_variable in \
   AndroidSigningKeyStore \
@@ -29,6 +31,8 @@ for release_secret_variable in \
     export -n "$release_secret_variable"
   fi
 done
+unset CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT
+unset CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL
 unset release_secret_variable
 
 repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
@@ -176,9 +180,19 @@ case "$release_input_root/" in
 esac
 require_private_regular_file CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY
 require_private_regular_file CHUMMER_CURRENT_UI_PACKAGE_AUTHORITY_RECEIPT
-require_private_regular_file CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT
-require_private_regular_file CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL
-eligibility_sha256="$(sha256sum "$CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT" | cut -d' ' -f1)"
+two_green_receipt="$release_input_root/ANDROID_API36_TWO_GREEN_ELIGIBILITY.generated.json"
+two_green_approval="$release_input_root/ANDROID_API36_TWO_GREEN_RELEASE_APPROVAL.generated.json"
+for protected_input in "$two_green_receipt" "$two_green_approval"; do
+  [[ ! -L "$protected_input" && -f "$protected_input" \
+    && "$(realpath -e -- "$protected_input")" == "$protected_input" \
+    && "$(stat -c '%u' -- "$protected_input")" == "$(id -u)" ]] \
+    || fail "two-green-protected-input-invalid"
+  protected_permissions="$(stat -c '%a' -- "$protected_input")"
+  (( (8#$protected_permissions & 077) == 0 )) \
+    || fail "two-green-protected-input-not-owner-only"
+done
+unset protected_input protected_permissions
+eligibility_sha256="$(sha256sum "$two_green_receipt" | cut -d' ' -f1)"
 [[ -f "$AndroidSdkDirectory/platforms/android-36/android.jar" ]] \
   || fail "android-api36-platform-missing"
 [[ -x "$AndroidSdkDirectory/build-tools/36.0.0/aapt2" ]] \
@@ -203,8 +217,8 @@ python3 "$repo_dir/scripts/materialize_release_package_authority.py" \
   --package-feed "$CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED" \
   --verify-existing "$CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY"
 python3 "$repo_dir/scripts/verify_api36_two_green_release_eligibility.py" \
-  --receipt "$CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT" \
-  --approval "$CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL" \
+  --receipt "$two_green_receipt" \
+  --approval "$two_green_approval" \
   --android-root "$repo_dir" \
   --expected-version-name "$version_name" \
   --expected-version-code "$version_code" \
@@ -274,8 +288,8 @@ python3 "$repo_dir/scripts/verify_release_source_graph.py" \
   --expected-version-code "$version_code" \
   --output "$staged_graph"
 python3 "$repo_dir/scripts/verify_api36_two_green_release_eligibility.py" \
-  --receipt "$CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT" \
-  --approval "$CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL" \
+  --receipt "$two_green_receipt" \
+  --approval "$two_green_approval" \
   --android-root "$repo_dir" \
   --expected-version-name "$version_name" \
   --expected-version-code "$version_code" \
@@ -369,8 +383,8 @@ python3 "$repo_dir/scripts/seal_release_restore_consumption.py" materialize \
 # Signing material is admitted only after every test and non-signing release
 # preflight has completed. None of these values is written to argv or logs.
 python3 "$repo_dir/scripts/verify_api36_two_green_release_eligibility.py" \
-  --receipt "$CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT" \
-  --approval "$CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL" \
+  --receipt "$two_green_receipt" \
+  --approval "$two_green_approval" \
   --android-root "$repo_dir" \
   --expected-version-name "$version_name" \
   --expected-version-code "$version_code" \
@@ -485,6 +499,11 @@ source_aab="$(python3 "$repo_dir/scripts/verify_release_publish_output.py" \
   --resolve-exact-signed-aab)" || fail "fresh-signed-release-bundle-invalid"
 
 "$repo_dir/scripts/validate-aab.sh" "$source_aab"
+python3 "$repo_dir/scripts/verify_release_artifact_hygiene.py" \
+  --aab "$source_aab" \
+  --forbidden-path "$two_green_receipt" \
+  --forbidden-path "$two_green_approval" \
+  || fail "protected-release-input-leaked-into-aab"
 python3 "$repo_dir/scripts/verify_release_source_graph.py" \
   --android-root "$repo_dir" \
   --workspace-root "$workspace_root" \

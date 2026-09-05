@@ -598,6 +598,18 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
     def create(self) -> dict[str, object]:
         return gate.create_authority(**self.inputs)
 
+    def write_provenance_replay(self) -> Path:
+        replay = {"contractName": signer.PROVENANCE_REPLAY_CONTRACT}
+        for name in signer.PROVENANCE_REPLAY_PATH_FIELDS:
+            replay[name] = str(self.inputs[name])
+        for name in signer.PROVENANCE_REPLAY_SCALAR_FIELDS:
+            replay[name] = self.inputs[name]
+        path = self.root / "two-green-provenance-replay.json"
+        path.unlink(missing_ok=True)
+        path.write_bytes(gate.pretty_json_bytes(replay))
+        path.chmod(0o600)
+        return path
+
     def release_consumer_inputs(
         self, authority: dict[str, object]
     ) -> tuple[Path, Path, Path, Path]:
@@ -718,6 +730,8 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
             generated_at_utc=generated.isoformat().replace("+00:00", "Z"),
             expires_at_utc=expires.isoformat().replace("+00:00", "Z"),
             challenge_nonce="4" * 64,
+            provenance_validator_sha256=sha256(consumer.TWO_GREEN_PATH.read_bytes()),
+            provenance_replay_sha256="5" * 64,
         )
         payload = self.root / "release-approval-payload.json"
         payload.write_bytes(consumer._canonical_json_bytes(unsigned))
@@ -1525,7 +1539,8 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
             self.release_consumer_inputs(authority)
         )
         signed = self.root / "protected-release-approval.json"
-        result = signer.sign(receipt, self.approver_private_key, signed)
+        replay = self.write_provenance_replay()
+        result = signer.sign(receipt, replay, self.approver_private_key, signed)
         self.assertTrue(result["releasePreparationApproved"])
         self.assertFalse(result["signingAuthorized"])
         self.assertFalse(result["publicationAuthorized"])
@@ -1545,7 +1560,31 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
             binding["protectedApproval"]["approvalSha256"],
         )
         with self.assertRaisesRegex(ValueError, "output must be new"):
-            signer.sign(receipt, self.approver_private_key, signed)
+            signer.sign(receipt, replay, self.approver_private_key, signed)
+
+    def test_release_approval_signer_rejects_fabricated_pull_request_provenance(self) -> None:
+        self.inputs["policy"] = gate.POLICY_PATH
+        self.inputs["environment_policy"] = gate.ENVIRONMENT_POLICY_PATH
+        authority = self.create()
+        receipt, _approval, _package_authority, _source_graph = (
+            self.release_consumer_inputs(authority)
+        )
+        replay = self.write_provenance_replay()
+        fabricated = copy.deepcopy(authority)
+        fabricated["reviewPullRequest"]["number"] += 1
+        unsigned = {
+            key: value for key, value in fabricated.items()
+            if key != "eligibilitySha256"
+        }
+        fabricated["eligibilitySha256"] = gate.canonical_sha256(unsigned)
+        receipt.write_bytes(gate.pretty_json_bytes(fabricated))
+        with self.assertRaisesRegex(ValueError, "does not replay"):
+            signer.sign(
+                receipt,
+                replay,
+                self.approver_private_key,
+                self.root / "fabricated-approval.json",
+            )
 
     def test_recomputed_plain_receipt_hash_cannot_replace_protected_approval(self) -> None:
         self.inputs["policy"] = gate.POLICY_PATH
