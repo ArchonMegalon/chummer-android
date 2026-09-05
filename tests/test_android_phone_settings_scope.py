@@ -5,6 +5,7 @@ ROOT = Path(__file__).resolve().parents[1]
 MORE_PAGE = ROOT / "src/Chummer.Android/Native/MorePage.cs"
 PHONE_SHELL_PAGES = ROOT / "src/Chummer.Android/Native/PhoneShellPages.cs"
 APPLICATION_SETTINGS = ROOT / "src/Chummer.Android/Native/ApplicationSettingsPage.cs"
+NATIVE_DIALOG = ROOT / "src/Chummer.Android/Native/NativeDialogPage.cs"
 
 
 def test_phone_more_exposes_only_the_phone_owned_settings_surface() -> None:
@@ -29,3 +30,19 @@ def test_phone_settings_do_not_render_the_legacy_character_settings_catalog() ->
     assert "NativeDialogPage" not in settings_source
     assert "ActiveDialog" not in settings_source
     assert "CharacterSettings" not in settings_source
+
+
+def test_character_settings_scope_preserves_profile_identity_and_fails_closed() -> None:
+    dialog_source = NATIVE_DIALOG.read_text(encoding="utf-8")
+
+    assert 'CharacterSettingsDialogId = "dialog.character_settings"' in dialog_source
+    assert (
+        'CustomDataFieldId = "characterSettingsControl-treCustomDataDirectories"'
+        in dialog_source
+    )
+    assert 'ControlFieldPrefix = "characterSettingsControl-"' in dialog_source
+    assert 'AutomationId = "dialog-settings-scope"' in dialog_source
+    assert "KnownRulesSections.Contains(sectionId)" in dialog_source
+    assert "KnownSections.Contains(option.Value)" in dialog_source
+    assert "return new NativeDialogScopedField(false" in dialog_source
+    assert "Every other dialog passes through unchanged" in dialog_source
