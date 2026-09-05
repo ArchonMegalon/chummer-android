@@ -68,8 +68,8 @@ internal static class Program
             grantId,
             AccessToken,
             issuedAt,
-            canonical => Convert.ToBase64String(signingKey.SignData(
-                canonical,
+            (canonical, _) => Task.FromResult(signingKey.SignData(
+                canonical.Span,
                 HashAlgorithmName.SHA256,
                 RSASignaturePadding.Pkcs1)));
 
@@ -207,7 +207,9 @@ internal static class Program
                      GrantResponse($"Basic {RotatedAccessToken}", "grant-next"),
                      GrantResponse("Bearer", "grant-next"),
                      GrantResponse($"Bearer {RotatedAccessToken}"),
-                     GrantResponse($"Bearer {RotatedAccessToken}", "grant-a", "grant-b")
+                     GrantResponse($"Bearer {RotatedAccessToken}", "grant-a", "grant-b"),
+                     GrantResponse($"Bearer {RotatedAccessToken}", "grant-a,grant-b"),
+                     GrantResponse($"Bearer {RotatedAccessToken}", " grant-next")
                  })
         {
             using (hostile)
@@ -272,7 +274,7 @@ internal static class Program
                 "grant-v2",
                 injectedToken,
                 1_788_543_210,
-                _ => "signature"));
+                (_, _) => Task.FromResult(new byte[] { 1 })));
 
         Require(!error.ToString().Contains(injectedToken, StringComparison.Ordinal));
         Require(!CreateAuthority().ToString().Contains(AccessToken, StringComparison.Ordinal));
@@ -511,7 +513,7 @@ internal static class Program
             "grant-v2",
             AccessToken,
             1_788_543_210,
-            canonical => Convert.ToBase64String(SHA256.HashData(canonical)));
+            (canonical, _) => Task.FromResult(SHA256.HashData(canonical.Span)));
 
     private static HttpResponseMessage JsonResponse(string json)
         => new(HttpStatusCode.OK)

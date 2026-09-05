@@ -22,6 +22,8 @@
     <Compile Include="../../src/Chummer.Android/PhoneShellRoutes.cs" Link="PhoneShellRoutes.cs" />
     <Compile Include="../../src/Chummer.Android/MauiProgram.cs" Link="MauiProgram.cs" />
     <Compile Include="../../src/Chummer.Android/Platform/IAndroidAccountLinkService.cs" Link="Platform/IAndroidAccountLinkService.cs" />
+    <Compile Include="../../src/Chummer.Android/Platform/AndroidAccountLinkKeyAuthority.cs" Link="Platform/AndroidAccountLinkKeyAuthority.cs" />
+    <Compile Include="../../src/Chummer.Android/Platform/MauiSecureAndroidAccountLinkKeyMetadataStore.cs" Link="Platform/MauiSecureAndroidAccountLinkKeyMetadataStore.cs" />
     <Compile Include="../../src/Chummer.Android/Platform/IAndroidDocumentService.cs" Link="Platform/IAndroidDocumentService.cs" />
     <Compile Include="../../src/Chummer.Android/Platform/IAndroidImageDocumentService.cs" Link="Platform/IAndroidImageDocumentService.cs" />
     <Compile Include="../../src/Chummer.Android/Platform/IAndroidLinkedCharacterFileService.cs" Link="Platform/IAndroidLinkedCharacterFileService.cs" />

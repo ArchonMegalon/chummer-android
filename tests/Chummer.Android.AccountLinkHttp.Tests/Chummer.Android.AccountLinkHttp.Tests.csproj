@@ -22,6 +22,8 @@
              Link="ChummerWebRoutes.cs" />
     <Compile Include="../../src/Chummer.Android/Platform/AndroidAccountLinkService.cs"
              Link="AndroidAccountLinkService.cs" />
+    <Compile Include="../../src/Chummer.Android/Platform/AndroidAccountLinkKeyAuthority.cs"
+             Link="AndroidAccountLinkKeyAuthority.cs" />
     <Compile Include="../../src/Chummer.Android/Platform/AndroidAccountLinkHttpTransport.cs"
              Link="AndroidAccountLinkHttpTransport.cs" />
   </ItemGroup>

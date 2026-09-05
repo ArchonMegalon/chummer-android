@@ -76,7 +76,7 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
         };
         if (authority is not null)
         {
-            authority.Apply(request, json);
+            await authority.ApplyAsync(request, json, cancellationToken);
             AndroidAccountLinkAuthorizationHandler.SetBearerToken(request, authority.AccessToken);
         }
 
@@ -160,7 +160,11 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
         ArgumentNullException.ThrowIfNull(response);
         try
         {
-            string authorization = ReadSingleResponseHeader(response, "Authorization", 1024);
+            string authorization = ReadSingleResponseHeader(
+                response,
+                "Authorization",
+                1024,
+                allowSpaces: true);
             string grantId = ReadSingleResponseHeader(
                 response,
                 AndroidAccountLinkRequestAuthority.GrantHeader,
@@ -239,7 +243,8 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
     private static string ReadSingleResponseHeader(
         HttpResponseMessage response,
         string name,
-        int maxLength)
+        int maxLength,
+        bool allowSpaces = false)
     {
         if (!response.Headers.TryGetValues(name, out IEnumerable<string>? values))
         {
@@ -250,8 +255,13 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
         {
             throw InvalidGrantHeaders();
         }
-        string value = materialized[0].Trim();
-        return value.Length is > 0 && value.Length <= maxLength
+        string value = materialized[0];
+        return value.Length is > 0
+            && value.Length <= maxLength
+            && string.Equals(value, value.Trim(), StringComparison.Ordinal)
+            && !value.Contains(',', StringComparison.Ordinal)
+            && !value.Any(character => char.IsControl(character)
+                || (!allowSpaces && char.IsWhiteSpace(character)))
             ? value
             : throw InvalidGrantHeaders();
     }
@@ -542,14 +552,14 @@ internal sealed class AndroidAccountLinkRequestAuthority
     internal const string SignatureHeader = "X-Chummer-Packet-Signature";
     internal const int PacketKeyBytes = 32;
 
-    private readonly Func<byte[], string> _signCanonicalPayload;
+    private readonly Func<ReadOnlyMemory<byte>, CancellationToken, Task<byte[]>> _signCanonicalPayload;
 
     internal AndroidAccountLinkRequestAuthority(
         string installationId,
         string grantId,
         string accessToken,
         long issuedAtUnixSeconds,
-        Func<byte[], string> signCanonicalPayload)
+        Func<ReadOnlyMemory<byte>, CancellationToken, Task<byte[]>> signCanonicalPayload)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(installationId);
         ArgumentException.ThrowIfNullOrWhiteSpace(grantId);
@@ -584,7 +594,10 @@ internal sealed class AndroidAccountLinkRequestAuthority
     internal string AccessToken { get; }
     internal long IssuedAtUnixSeconds { get; }
 
-    internal void Apply(HttpRequestMessage request, ReadOnlySpan<byte> exactBody)
+    internal async Task ApplyAsync(
+        HttpRequestMessage request,
+        ReadOnlyMemory<byte> exactBody,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
         if (request.RequestUri is null
@@ -616,19 +629,28 @@ internal sealed class AndroidAccountLinkRequestAuthority
             GrantId,
             IssuedAtUnixSeconds,
             packetKey,
-            exactBody);
-        string signature;
+            exactBody.Span);
+        byte[] signatureBytes;
         try
         {
-            signature = _signCanonicalPayload(canonical);
+            signatureBytes = await _signCanonicalPayload(canonical, cancellationToken);
         }
         finally
         {
             CryptographicOperations.ZeroMemory(canonical);
         }
-        if (string.IsNullOrWhiteSpace(signature))
+        if (signatureBytes is null || signatureBytes.Length == 0)
         {
             throw new CryptographicException("Android account request proof signing failed.");
+        }
+        string signature;
+        try
+        {
+            signature = Convert.ToBase64String(signatureBytes);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(signatureBytes);
         }
 
         request.Headers.Add(SchemeHeader, Scheme);

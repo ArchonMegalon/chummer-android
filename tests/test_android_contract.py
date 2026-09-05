@@ -352,22 +352,48 @@ class AndroidContractTests(unittest.TestCase):
 
     def test_android_account_link_uses_device_proof_and_encrypted_storage(self) -> None:
         service = (PROJECT / "Platform" / "AndroidAccountLinkService.cs").read_text(encoding="utf-8")
+        transport = (PROJECT / "Platform" / "AndroidAccountLinkHttpTransport.cs").read_text(encoding="utf-8")
+        authority = (PROJECT / "Platform" / "AndroidAccountLinkKeyAuthority.cs").read_text(encoding="utf-8")
+        keystore = (
+            PROJECT / "Platforms" / "Android" / "AndroidKeystoreDeviceKeyStore.cs"
+        ).read_text(encoding="utf-8")
         program = (PROJECT / "MauiProgram.cs").read_text(encoding="utf-8")
+        solution = (REPO / "Chummer.Android.slnx").read_text(encoding="utf-8")
+        build_debug = (REPO / "scripts" / "build-debug.sh").read_text(encoding="utf-8")
         activity = (PROJECT / "Platforms" / "Android" / "MainActivity.cs").read_text(encoding="utf-8")
         more = (PROJECT / "Native" / "MorePage.cs").read_text(encoding="utf-8")
         privacy = (PROJECT / "Native" / "AccountPrivacyPage.cs").read_text(encoding="utf-8")
         home = (PROJECT / "Native" / "HomePage.cs").read_text(encoding="utf-8")
         self.assertIn("SecureStorage.Default", service)
-        self.assertIn("ExportPkcs8PrivateKey", service)
-        self.assertIn("RSASignaturePadding.Pkcs1", service)
-        self.assertIn("chummer.install-link.remote-callback.v1", service)
-        self.assertIn("/api/v1/install-linking/callbacks/poll", service)
-        self.assertIn("/api/v1/install-linking/grants/status", service)
-        self.assertIn("/api/v1/install-linking/grants/revoke", service)
+        self.assertNotIn("ExportPkcs8PrivateKey", service + authority + keystore)
+        self.assertNotIn("ImportPkcs8PrivateKey", service + authority + keystore)
+        self.assertIn('Provider = "AndroidKeyStore"', keystore)
+        self.assertIn('Signature.GetInstance("SHA256withRSA")', keystore)
+        self.assertIn("KeyStorePurpose.Sign", keystore)
+        self.assertIn("KeyProperties.SignaturePaddingRsaPkcs1", keystore)
+        self.assertIn("ExportSubjectPublicKeyInfo", keystore)
+        self.assertIn("LegacyPrivateKeyStorageKey", authority)
+        self.assertIn("RemoveLegacyPrivateKeyAsync", authority)
+        self.assertNotIn("GetAsync(LegacyPrivateKeyStorageKey", authority)
+        self.assertIn("AliasForInstallation", authority)
+        self.assertIn("CleanupTombstoneStorageKey", authority)
+        self.assertIn("IsExpectedAlias(alias)", keystore)
+        self.assertIn("GrantId", authority)
+        self.assertIn("RequireLinkedIdentityAsync", service)
+        self.assertIn("RequirePendingIdentityAsync", service)
+        self.assertIn("PendingInstallationIdKey", service)
+        self.assertIn("savedInstallationId, identity.InstallationId", service)
+        self.assertIn("VerifyProtocolSignature", authority)
+        self.assertIn("chummer.install-link.remote-callback.v2", transport)
+        self.assertIn("/api/v2/install-linking/callbacks/poll", transport)
+        self.assertIn("/api/v2/install-linking/grants/status", service)
+        self.assertIn("/api/v2/install-linking/grants/revoke", service)
+        self.assertNotIn("/api/v1/install-linking/", service + transport)
         self.assertIn("response.StatusCode == HttpStatusCode.Conflict", service)
-        self.assertIn("ClearAllCredentials();", service)
+        self.assertIn("ClearAllCredentialsAsync", service)
         self.assertIn("expiresAtUtc is null || expiresAtUtc <= DateTimeOffset.UtcNow", service)
         self.assertIn("IsPendingLinkCurrent(pendingStarted)", service)
+        self.assertIn("bool hadStoredGrant", service)
         self.assertIn("bool resumeCurrentAttempt", service)
         self.assertIn("string state = resumeCurrentAttempt ? savedState! : NewBase64UrlToken(24);", service)
         self.assertIn("HttpStatusCode.BadRequest or HttpStatusCode.Unauthorized", service)
@@ -380,7 +406,31 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("!string.IsNullOrEmpty(uri.Query)", service)
         self.assertIn("!string.IsNullOrEmpty(uri.Fragment)", service)
         self.assertNotIn("Preferences.Default", service)
-        self.assertIn("AddSingleton<IAndroidAccountLinkService, AndroidAccountLinkService>", program)
+        self.assertIn("IAndroidDeviceKeyStore", program)
+        self.assertIn("AndroidKeystoreDeviceKeyStore", program)
+        self.assertIn("Chummer.Android.AccountLinkKey.Tests", solution)
+        self.assertIn("Chummer.Android.AccountLinkKey.AndroidCompileCheck", solution)
+        self.assertIn("Chummer.Android.AccountLinkHttp.Tests", solution)
+        self.assertIn('account_link_http_tests_path=', build_debug)
+        self.assertIn('account_link_key_tests_path=', build_debug)
+        self.assertIn('account_link_key_android_compile_path=', build_debug)
+        save_grant = service[
+            service.index("private async Task SaveGrantAsync"):
+            service.index("private static async Task<DateTimeOffset?> ReadGrantExpiryAsync")
+        ]
+        self.assertLess(
+            save_grant.index("SecureStorage.Default.SetAsync(AccessTokenKey"),
+            save_grant.index("_keyAuthority.BindGrantAsync"),
+        )
+        self.assertIn("catch\n        {\n            ClearGrant();", save_grant)
+        self.assertIn("new AndroidAccountLinkService(", program)
+        self.assertIn("AndroidAccountLinkHttpTransport", program)
+        create_key = keystore[
+            keystore.index("public Task<AndroidDevicePublicKey> CreateAsync"):
+            keystore.index("public Task<AndroidDevicePublicKey> GetPublicKeyAsync")
+        ]
+        after_generation = create_key[create_key.index("GenerateKeyPair"):]
+        self.assertNotIn("ThrowIfCancellationRequested", after_generation)
         self.assertIn("OnNewIntent", activity)
         self.assertIn('"/app/install-link"', activity)
         self.assertIn("ResumePendingLinkAsync(uri)", activity)
@@ -396,7 +446,7 @@ class AndroidContractTests(unittest.TestCase):
         ]
         response_failure = unlink[
             unlink.index("if (!response.IsSuccessStatusCode"):
-            unlink.index("ClearAllCredentials();")
+            unlink.index("ClearAllCredentialsAsync")
         ]
         transport_failure = unlink[
             unlink.index("catch (HttpRequestException)"):
@@ -420,7 +470,7 @@ class AndroidContractTests(unittest.TestCase):
         )
         self.assertNotIn("AndroidAccountLinkStatus.Error", unlink)
         self.assertIn("return;", response_failure)
-        self.assertNotIn("ClearAllCredentials();", response_failure + transport_failure)
+        self.assertNotIn("ClearAllCredentialsAsync", response_failure + transport_failure)
 
     def test_account_unlink_success_alone_clears_linked_collections(self) -> None:
         service = (PROJECT / "Platform" / "AndroidAccountLinkService.cs").read_text(encoding="utf-8")
@@ -434,7 +484,7 @@ class AndroidContractTests(unittest.TestCase):
             coordinator.index("public Task OpenAccountAsync")
         ]
 
-        credentials_clear = unlink.index("ClearAllCredentials();")
+        credentials_clear = unlink.index("ClearAllCredentialsAsync")
         confirmed_unlinked = unlink.index("AndroidAccountLinkStatus.Unlinked")
         self.assertLess(credentials_clear, confirmed_unlinked)
         self.assertIn(
@@ -569,10 +619,10 @@ class AndroidContractTests(unittest.TestCase):
 
         self.assertIn(required_phrase, contract)
         self.assertIn(required_phrase, hub_contract)
-        self.assertIn('"/api/v1/android/linked/account/erase"', service)
+        self.assertIn('"/api/v2/android/linked/account/erase"', service)
         server_call = coordinator.index("await _account.EraseAccountAsync")
         local_delete = coordinator.index("await _presenter.DeleteWorkspaceAsync")
-        credentials_clear = service.index("ClearAllCredentials();", service.index("EraseAccountAsync"))
+        credentials_clear = service.index("ClearAllCredentialsAsync", service.index("EraseAccountAsync"))
         response_validation = service.index("if (!IsCompleteAccountErasureReceipt(receipt))", service.index("EraseAccountAsync"))
         self.assertLess(server_call, local_delete)
         self.assertLess(response_validation, credentials_clear)
@@ -1835,7 +1885,7 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("CreateGroupAsync", campaign)
         self.assertIn("UpdateGroupAsync", campaign)
         self.assertIn("CreateGroupInviteAsync", campaign)
-        self.assertIn('"/api/v1/android/linked/groups"', service)
+        self.assertIn('"/api/v2/android/linked/groups"', service)
         self.assertNotIn("WebView", play + campaign + coordinator + project)
         self.assertNotIn("IAndroidPlayHostService", activity)
 
@@ -1939,12 +1989,11 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("ICharacterOverviewPresenter presenter", coordinator)
         self.assertIn("IShellSurfaceResolver surfaceResolver", coordinator)
 
-    def test_linked_http_client_is_registered_after_local_runtime(self) -> None:
+    def test_linked_http_transport_is_registered_after_local_runtime(self) -> None:
         program = (PROJECT / "MauiProgram.cs").read_text(encoding="utf-8")
-        runtime_registration = program.index("AddChummerLocalRuntimeClient")
-        http_registration = program.index("AddSingleton(new HttpClient")
-        self.assertLess(runtime_registration, http_registration)
-        self.assertIn("AddSingleton<IAndroidAccountLinkService", program)
+        transport_registration = program.index("AndroidAccountLinkHttpTransport.CreateDefault")
+        account_registration = program.index("AddSingleton<IAndroidAccountLinkService")
+        self.assertLess(transport_registration, account_registration)
 
     def test_no_signing_secret_or_broad_provider_file_is_tracked(self) -> None:
         forbidden_suffixes = {".jks", ".keystore", ".p12"}
