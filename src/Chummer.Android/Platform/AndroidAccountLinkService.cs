@@ -105,7 +105,7 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             StoredGrant? grant = await ReadStoredGrantAsync(cancellationToken);
             if (grant is null)
             {
-                await ClearGrantAsync(CancellationToken.None);
+                await TryClearIncompleteGrantAsync();
                 string? pendingState = await _metadataStore.GetAsync(PendingStateKey, cancellationToken);
                 string? pendingInstallationId = await _metadataStore.GetAsync(
                     PendingInstallationIdKey,
@@ -184,22 +184,16 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
 
             if (expiresAtUtc is null || expiresAtUtc <= DateTimeOffset.UtcNow)
             {
-                await ClearGrantAsync(CancellationToken.None);
-                SetSnapshot(new(
-                    AndroidAccountLinkStatus.Unlinked,
-                    AccountText("AccountLinkExpired", "Link expired"),
-                    AccountText("AccountLinkAgainRestore", "Link again to restore account access.")));
+                await SetSnapshotAfterRejectedGrantAsync(
+                    await TryClearGrantIfCurrentAsync(grant));
                 return;
             }
 
             GrantValidationResult validation = await ValidateGrantAsync(grant, cancellationToken);
             if (validation == GrantValidationResult.Invalid)
             {
-                await ClearGrantAsync(CancellationToken.None);
-                SetSnapshot(new(
-                    AndroidAccountLinkStatus.Unlinked,
-                    AccountText("AccountLinkExpired", "Link expired"),
-                    AccountText("AccountLinkAgainRestore", "Link again to restore account access.")));
+                await SetSnapshotAfterRejectedGrantAsync(
+                    await TryClearGrantIfCurrentAsync(grant));
                 return;
             }
 
@@ -296,11 +290,21 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
                 return;
             }
 
-            bool hadStoredGrant = !string.IsNullOrWhiteSpace(
-                await _metadataStore.GetAsync(AccessTokenKey, cancellationToken));
-            AndroidAccountLinkKeyIdentity identity = await _keyAuthority
-                .StartOrResumeExplicitLinkAsync(cancellationToken);
-            await ClearGrantAsync(CancellationToken.None);
+            bool hadStoredGrant;
+            AndroidAccountLinkKeyIdentity identity;
+            await _credentialCommitGate.WaitAsync(cancellationToken);
+            try
+            {
+                hadStoredGrant = !string.IsNullOrWhiteSpace(
+                    await _metadataStore.GetAsync(AccessTokenKey, CancellationToken.None));
+                identity = await _keyAuthority
+                    .StartOrResumeExplicitLinkAsync(CancellationToken.None);
+                await ClearGrantCoreAsync(CancellationToken.None);
+            }
+            finally
+            {
+                _credentialCommitGate.Release();
+            }
             string? savedState = await _metadataStore.GetAsync(PendingStateKey, cancellationToken);
             string? savedInstallationId = await _metadataStore.GetAsync(
                 PendingInstallationIdKey,
@@ -1061,12 +1065,19 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             cancellationToken);
         if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Conflict)
         {
-            await ClearGrantAsync(CancellationToken.None);
-            SetSnapshot(new(
-                AndroidAccountLinkStatus.Unlinked,
-                AccountText("AccountLinkExpired", "Link expired"),
-                AccountText("AccountLinkAgainRestore", "Link again to restore account access.")));
-            throw new InvalidOperationException("Link your account again.");
+            if (await TryClearGrantIfCurrentAsync(grant))
+            {
+                SetSnapshot(new(
+                    AndroidAccountLinkStatus.Unlinked,
+                    AccountText("AccountLinkExpired", "Link expired"),
+                    AccountText("AccountLinkAgainRestore", "Link again to restore account access.")));
+                throw new InvalidOperationException("Link your account again.");
+            }
+
+            // The request raced a refresh or another credential transition. Its rejection says
+            // nothing about the newer generation, so leave both credentials and linked UI state
+            // untouched and let the caller retry with a fresh snapshot.
+            throw new InvalidOperationException("The account link changed. Try again.");
         }
 
         if (!response.IsSuccessStatusCode)
@@ -1238,24 +1249,79 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
 
     private async Task<GrantContract?> RecoverStagedGrantCommitCoreAsync()
     {
-        string? serialized = await _metadataStore.GetAsync(
+        for (int attempt = 0; attempt < 3; attempt++)
+        {
+            string? serialized = await _metadataStore.GetAsync(
+                StagedGrantCommitKey,
+                CancellationToken.None);
+            if (string.IsNullOrWhiteSpace(serialized))
+            {
+                return null;
+            }
+
+            StagedGrantCommit? staged = TryDeserializeStagedGrantCommit(serialized);
+            if (staged is null || !IsExpectedStagedGrantCommit(staged))
+            {
+                if (!await QuarantineInvalidStagedGrantCommitAsync(serialized))
+                {
+                    continue;
+                }
+                return null;
+            }
+
+            try
+            {
+                await ValidateStagedGrantOperationAsync(staged);
+            }
+            catch (InvalidDataException)
+            {
+                if (!await QuarantineInvalidStagedGrantCommitAsync(serialized))
+                {
+                    continue;
+                }
+                return null;
+            }
+
+            await FinalizeStagedGrantCommitAsync(staged);
+            await TryCleanupStagedGrantCommitAsync(staged);
+            return staged.Grant;
+        }
+
+        throw new InvalidDataException("The staged account grant changed during recovery.");
+    }
+
+    private async Task<bool> QuarantineInvalidStagedGrantCommitAsync(string observedStage)
+    {
+        string? currentStage = await _metadataStore.GetAsync(
             StagedGrantCommitKey,
             CancellationToken.None);
-        if (string.IsNullOrWhiteSpace(serialized))
+        if (!FixedTimeEqualsSecret(currentStage, observedStage))
         {
-            return null;
+            // Another serialized commit owner installed a newer generation. Restart validation
+            // from that exact stage and never clean using observations from the older value.
+            return false;
         }
 
-        StagedGrantCommit? staged = TryDeserializeStagedGrantCommit(serialized);
-        if (staged is null || !IsExpectedStagedGrantCommit(staged))
+        string? pendingOperation = await _metadataStore.GetAsync(
+            PendingPollOperationKey,
+            CancellationToken.None);
+        string? refreshOperation = await _metadataStore.GetAsync(
+            RefreshAttemptKey,
+            CancellationToken.None);
+        if (string.IsNullOrWhiteSpace(pendingOperation)
+            && string.IsNullOrWhiteSpace(refreshOperation))
         {
-            throw new InvalidDataException("The staged account grant is invalid.");
+            // Operation cleanup precedes stage removal, so this is a post-commit orphan. Remove
+            // only the exact bad stage; the already-committed active generation is independent.
+            await _metadataStore.RemoveAsync(StagedGrantCommitKey, CancellationToken.None);
+            return true;
         }
 
-        await ValidateStagedGrantOperationAsync(staged);
-        await FinalizeStagedGrantCommitAsync(staged);
-        await TryCleanupStagedGrantCommitAsync(staged);
-        return staged.Grant;
+        // An unusable stage with its operation still present can describe torn active fields.
+        // Fail closed through key-authority cleanup, which persists a durable alias tombstone if
+        // Android Keystore deletion fails, and remove every dependent credential selector.
+        await ClearAllCredentialsCoreAsync(CancellationToken.None);
+        return true;
     }
 
     private async Task ValidateStagedGrantOperationAsync(StagedGrantCommit staged)
@@ -1705,7 +1771,120 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
-    private async Task ClearGrantAsync(CancellationToken cancellationToken)
+    private async Task<bool> TryClearGrantIfCurrentAsync(StoredGrant rejectedGrant)
+    {
+        await _credentialCommitGate.WaitAsync(CancellationToken.None);
+        try
+        {
+            // Presence of any staged generation makes destructive cleanup ambiguous. The commit
+            // owner will either finish it or retain the exact restart bundle.
+            string? staged = await _metadataStore.GetAsync(
+                StagedGrantCommitKey,
+                CancellationToken.None);
+            if (!string.IsNullOrWhiteSpace(staged))
+            {
+                return false;
+            }
+            string? refreshOperation = await _metadataStore.GetAsync(
+                RefreshAttemptKey,
+                CancellationToken.None);
+            if (!string.IsNullOrWhiteSpace(refreshOperation))
+            {
+                // The operation is persisted before its request. Protect that pre-stage window:
+                // the in-flight response can still install a newer credential bundle.
+                return false;
+            }
+
+            string? installationId = await _metadataStore.GetAsync(
+                InstallationIdKey,
+                CancellationToken.None);
+            string? accessToken = await _metadataStore.GetAsync(
+                AccessTokenKey,
+                CancellationToken.None);
+            if (!string.Equals(
+                    installationId,
+                    rejectedGrant.InstallationId,
+                    StringComparison.Ordinal)
+                || !FixedTimeEqualsSecret(accessToken, rejectedGrant.AccessToken))
+            {
+                return false;
+            }
+
+            AndroidAccountLinkKeyIdentity current = await _keyAuthority
+                .RequireLinkedIdentityAsync(rejectedGrant.InstallationId, CancellationToken.None);
+            if (!string.Equals(current.GrantId, rejectedGrant.GrantId, StringComparison.Ordinal)
+                || !string.Equals(
+                    current.PublicKey,
+                    rejectedGrant.Identity.PublicKey,
+                    StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            await ClearGrantCoreAsync(CancellationToken.None);
+            return true;
+        }
+        finally
+        {
+            _credentialCommitGate.Release();
+        }
+    }
+
+    private static bool FixedTimeEqualsSecret(string? left, string right)
+    {
+        if (left is null)
+        {
+            return false;
+        }
+
+        byte[] leftBytes = Encoding.UTF8.GetBytes(left);
+        byte[] rightBytes = Encoding.UTF8.GetBytes(right);
+        try
+        {
+            return leftBytes.Length == rightBytes.Length
+                && CryptographicOperations.FixedTimeEquals(leftBytes, rightBytes);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(leftBytes);
+            CryptographicOperations.ZeroMemory(rightBytes);
+        }
+    }
+
+    private async Task<bool> TryClearIncompleteGrantAsync()
+    {
+        await _credentialCommitGate.WaitAsync(CancellationToken.None);
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(await _metadataStore.GetAsync(
+                    StagedGrantCommitKey,
+                    CancellationToken.None)))
+            {
+                return false;
+            }
+
+            string? installationId = await _metadataStore.GetAsync(
+                InstallationIdKey,
+                CancellationToken.None);
+            string? accessToken = await _metadataStore.GetAsync(
+                AccessTokenKey,
+                CancellationToken.None);
+            if (!string.IsNullOrWhiteSpace(installationId)
+                && !string.IsNullOrWhiteSpace(accessToken))
+            {
+                return false;
+            }
+
+            await ClearGrantCoreAsync(CancellationToken.None);
+            return true;
+        }
+        finally
+        {
+            _credentialCommitGate.Release();
+        }
+    }
+
+    private async Task ClearGrantCoreAsync(CancellationToken cancellationToken)
     {
         await _metadataStore.RemoveAsync(AccessTokenKey, cancellationToken);
         await _metadataStore.RemoveAsync(GrantExpiryKey, cancellationToken);
@@ -1723,13 +1902,26 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
 
     private async Task ClearAllCredentialsAsync(CancellationToken cancellationToken)
     {
+        await _credentialCommitGate.WaitAsync(cancellationToken);
+        try
+        {
+            await ClearAllCredentialsCoreAsync(cancellationToken);
+        }
+        finally
+        {
+            _credentialCommitGate.Release();
+        }
+    }
+
+    private async Task ClearAllCredentialsCoreAsync(CancellationToken cancellationToken)
+    {
         try
         {
             await _keyAuthority.RemoveAsync(cancellationToken);
         }
         finally
         {
-            await ClearGrantAsync(CancellationToken.None);
+            await ClearGrantCoreAsync(CancellationToken.None);
             await ClearPendingAsync(CancellationToken.None);
             await _metadataStore.RemoveAsync(LastProofTimestampKey, CancellationToken.None);
         }
@@ -1755,6 +1947,27 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             AccountText(
                 "AccountLocalCleanupPending",
                 "Remote access ended. Local key cleanup will be retried."));
+
+    private async Task SetSnapshotAfterRejectedGrantAsync(bool rejectedGenerationCleared)
+    {
+        if (rejectedGenerationCleared)
+        {
+            SetSnapshot(new(
+                AndroidAccountLinkStatus.Unlinked,
+                AccountText("AccountLinkExpired", "Link expired"),
+                AccountText("AccountLinkAgainRestore", "Link again to restore account access.")));
+            return;
+        }
+
+        GrantContract? recovered = await RecoverStagedGrantCommitAsync();
+        DateTimeOffset? expiresAtUtc = recovered?.ExpiresAtUtc
+            ?? await ReadGrantExpiryAsync(CancellationToken.None);
+        SetSnapshot(new(
+            AndroidAccountLinkStatus.Linked,
+            AccountText("AccountLinked", "Linked"),
+            null,
+            expiresAtUtc));
+    }
 
     private static AndroidAccountLinkSnapshot RefreshRecoveryPendingSnapshot(
         DateTimeOffset? grantExpiresAtUtc)
