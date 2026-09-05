@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import copy
+import base64
+from datetime import UTC, datetime, timedelta
 import hashlib
 import importlib.util
 import json
@@ -25,6 +27,13 @@ CONSUMER_SPEC = importlib.util.spec_from_file_location(
 assert CONSUMER_SPEC is not None and CONSUMER_SPEC.loader is not None
 consumer = importlib.util.module_from_spec(CONSUMER_SPEC)
 CONSUMER_SPEC.loader.exec_module(consumer)
+SIGNER_SCRIPT = REPO / "scripts/sign_api36_two_green_release_approval.py"
+SIGNER_SPEC = importlib.util.spec_from_file_location(
+    "api36_two_green_release_approval_signer", SIGNER_SCRIPT
+)
+assert SIGNER_SPEC is not None and SIGNER_SPEC.loader is not None
+signer = importlib.util.module_from_spec(SIGNER_SPEC)
+SIGNER_SPEC.loader.exec_module(signer)
 WORKFLOW = REPO / ".github/workflows/api36-two-consecutive-green.yml"
 
 
@@ -36,6 +45,43 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
         self.root = Path(self.temporary.name).resolve()
+        self.approver_private_key = self.root / "release-approver.private.pem"
+        self.approver_public_key = self.root / "release-approver.public.pem"
+        subprocess.run(
+            [
+                "openssl", "genpkey", "-algorithm", "ED25519", "-out",
+                str(self.approver_private_key),
+            ],
+            check=True,
+            capture_output=True,
+        )
+        self.approver_private_key.chmod(0o600)
+        subprocess.run(
+            [
+                "openssl", "pkey", "-in", str(self.approver_private_key),
+                "-pubout", "-out", str(self.approver_public_key),
+            ],
+            check=True,
+            capture_output=True,
+        )
+        self.original_approver_public_key = consumer.RELEASE_APPROVER_PUBLIC_KEY
+        self.original_approver_public_key_sha256 = (
+            consumer.RELEASE_APPROVER_PUBLIC_KEY_SHA256
+        )
+        consumer.RELEASE_APPROVER_PUBLIC_KEY = self.approver_public_key
+        consumer.RELEASE_APPROVER_PUBLIC_KEY_SHA256 = sha256(
+            self.approver_public_key.read_bytes()
+        )
+        self.original_signer_approver_public_key = (
+            signer.VERIFIER.RELEASE_APPROVER_PUBLIC_KEY
+        )
+        self.original_signer_approver_public_key_sha256 = (
+            signer.VERIFIER.RELEASE_APPROVER_PUBLIC_KEY_SHA256
+        )
+        signer.VERIFIER.RELEASE_APPROVER_PUBLIC_KEY = self.approver_public_key
+        signer.VERIFIER.RELEASE_APPROVER_PUBLIC_KEY_SHA256 = sha256(
+            self.approver_public_key.read_bytes()
+        )
         self.android = self.root / "android"
         self.source_workflow = self.android / gate.WORKFLOW_PATH
         self.source_workflow.parent.mkdir(parents=True)
@@ -124,6 +170,16 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
         self.write_pull_request_authority_files()
 
     def tearDown(self) -> None:
+        consumer.RELEASE_APPROVER_PUBLIC_KEY = self.original_approver_public_key
+        consumer.RELEASE_APPROVER_PUBLIC_KEY_SHA256 = (
+            self.original_approver_public_key_sha256
+        )
+        signer.VERIFIER.RELEASE_APPROVER_PUBLIC_KEY = (
+            self.original_signer_approver_public_key
+        )
+        signer.VERIFIER.RELEASE_APPROVER_PUBLIC_KEY_SHA256 = (
+            self.original_signer_approver_public_key_sha256
+        )
         self.temporary.cleanup()
 
     def git(self, *arguments: str) -> str:
@@ -544,7 +600,7 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
 
     def release_consumer_inputs(
         self, authority: dict[str, object]
-    ) -> tuple[Path, str, Path, Path]:
+    ) -> tuple[Path, Path, Path, Path]:
         receipt = self.root / "release-two-green.json"
         receipt.write_bytes(gate.pretty_json_bytes(authority))
         receipt.chmod(0o600)
@@ -578,8 +634,11 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
         repository_rows = [
             {
                 "name": "chummer-android",
+                "role": "app",
                 "commit": authority["sourceCommit"],
                 "tree": authority["sourceTree"],
+                "tree_sha256": "1" * 64,
+                "repository": "https://github.com/ArchonMegalon/chummer-android.git",
             }
         ]
         for source_name in (
@@ -590,18 +649,28 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
             "registry",
             "media",
         ):
+            repository_name = consumer.SOURCE_GRAPH_REPOSITORIES[source_name]
+            role, repository = consumer.SOURCE_GRAPH_REPOSITORY_AUTHORITY[
+                repository_name
+            ]
             repository_rows.append(
                 {
-                    "name": consumer.SOURCE_GRAPH_REPOSITORIES[source_name],
+                    "name": repository_name,
+                    "role": role,
                     "commit": sources[source_name]["commit"],
                     "tree": sources[source_name]["tree"],
+                    "tree_sha256": "2" * 64,
+                    "repository": repository,
                 }
             )
         repository_rows.append(
             {
                 "name": "chummer6-design",
+                "role": "validation",
                 "commit": "a" * 40,
                 "tree": "b" * 40,
+                "tree_sha256": "3" * 64,
+                "repository": "https://github.com/ArchonMegalon/chummer6-design.git",
             }
         )
         source_graph.write_bytes(
@@ -629,7 +698,49 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
             )
         )
         source_graph.chmod(0o600)
-        return receipt, sha256(receipt.read_bytes()), package_authority, source_graph
+        approval = self.write_release_approval(receipt, authority)
+        return receipt, approval, package_authority, source_graph
+
+    def write_release_approval(
+        self,
+        receipt: Path,
+        authority: dict[str, object],
+        *,
+        private_key: Path | None = None,
+        generated: datetime | None = None,
+        expires: datetime | None = None,
+    ) -> Path:
+        generated = (generated or datetime.now(UTC)).replace(microsecond=0)
+        expires = expires or generated + timedelta(hours=1)
+        unsigned = consumer.release_approval_unsigned(
+            receipt.read_bytes(),
+            authority,
+            generated_at_utc=generated.isoformat().replace("+00:00", "Z"),
+            expires_at_utc=expires.isoformat().replace("+00:00", "Z"),
+            challenge_nonce="4" * 64,
+        )
+        payload = self.root / "release-approval-payload.json"
+        payload.write_bytes(consumer._canonical_json_bytes(unsigned))
+        completed = subprocess.run(
+            [
+                "openssl", "pkeyutl", "-sign", "-inkey",
+                str(private_key or self.approver_private_key), "-rawin", "-in",
+                str(payload),
+            ],
+            check=True,
+            capture_output=True,
+        )
+        approval = self.root / "release-two-green.approval.json"
+        approval.write_bytes(
+            gate.pretty_json_bytes(
+                {
+                    **unsigned,
+                    "signatureBase64": base64.b64encode(completed.stdout).decode("ascii"),
+                }
+            )
+        )
+        approval.chmod(0o600)
+        return approval
 
     def read_p0(self, role: str) -> dict[str, object]:
         with zipfile.ZipFile(self.inputs[f"{role}_p0_archive"]) as archive:
@@ -1321,12 +1432,12 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
         self.inputs["policy"] = gate.POLICY_PATH
         self.inputs["environment_policy"] = gate.ENVIRONMENT_POLICY_PATH
         authority = self.create()
-        receipt, receipt_sha256, package_authority, source_graph = (
+        receipt, approval, package_authority, source_graph = (
             self.release_consumer_inputs(authority)
         )
         binding = consumer.verify_release_eligibility(
             receipt,
-            receipt_sha256,
+            approval,
             android_root=self.android,
             expected_version_name="0.1.0-preview.11",
             expected_version_code=11,
@@ -1348,6 +1459,10 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
         )
         self.assertEqual("success", binding["mainAggregateConclusion"])
         self.assertEqual("pass", binding["environmentCompatibilityStatus"])
+        self.assertEqual(
+            consumer.RELEASE_APPROVAL_CONTRACT,
+            binding["protectedApproval"]["contractName"],
+        )
 
     def test_release_consumer_cli_never_turns_eligibility_into_signing_or_upload_authority(
         self,
@@ -1355,15 +1470,15 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
         self.inputs["policy"] = gate.POLICY_PATH
         self.inputs["environment_policy"] = gate.ENVIRONMENT_POLICY_PATH
         authority = self.create()
-        receipt, receipt_sha256, package_authority, source_graph = (
+        receipt, approval, package_authority, source_graph = (
             self.release_consumer_inputs(authority)
         )
         arguments = [
             str(CONSUMER_SCRIPT),
             "--receipt",
             str(receipt),
-            "--expected-receipt-sha256",
-            receipt_sha256,
+            "--approval",
+            str(approval),
             "--android-root",
             str(self.android),
             "--expected-version-name",
@@ -1375,38 +1490,167 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
             "--source-graph",
             str(source_graph),
         ]
-        completed = subprocess.run(
-            ["python3", *arguments],
-            check=False,
-            capture_output=True,
-            text=True,
-        )
-        self.assertEqual(0, completed.returncode, completed.stderr)
-        result = json.loads(completed.stdout)
+        import contextlib
+        import io
+
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            return_code = consumer.main(arguments[1:])
+        self.assertEqual(0, return_code)
+        result = json.loads(output.getvalue())
         self.assertTrue(result["releasePreparationEligible"])
         self.assertFalse(result["signingAuthorizedByReceipt"])
         self.assertFalse(result["publicationAuthorized"])
         self.assertFalse(result["googlePlayUploadAuthorized"])
 
-        arguments[arguments.index(receipt_sha256)] = "0" * 64
-        rejected = subprocess.run(
-            ["python3", *arguments],
-            check=False,
-            capture_output=True,
-            text=True,
-        )
-        self.assertEqual(2, rejected.returncode, rejected.stderr)
-        failure = json.loads(rejected.stdout)
+        damaged = json.loads(approval.read_text(encoding="utf-8"))
+        damaged["signatureBase64"] = base64.b64encode(b"0" * 64).decode("ascii")
+        approval.write_bytes(gate.pretty_json_bytes(damaged))
+        approval.chmod(0o600)
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            return_code = consumer.main(arguments[1:])
+        self.assertEqual(2, return_code)
+        failure = json.loads(output.getvalue())
         self.assertFalse(failure["releasePreparationEligible"])
         self.assertFalse(failure["signingAuthorizedByReceipt"])
         self.assertFalse(failure["publicationAuthorized"])
         self.assertFalse(failure["googlePlayUploadAuthorized"])
 
+    def test_release_approval_signer_is_preparation_only_and_signature_bound(self) -> None:
+        self.inputs["policy"] = gate.POLICY_PATH
+        self.inputs["environment_policy"] = gate.ENVIRONMENT_POLICY_PATH
+        authority = self.create()
+        receipt, _approval, package_authority, source_graph = (
+            self.release_consumer_inputs(authority)
+        )
+        signed = self.root / "protected-release-approval.json"
+        result = signer.sign(receipt, self.approver_private_key, signed)
+        self.assertTrue(result["releasePreparationApproved"])
+        self.assertFalse(result["signingAuthorized"])
+        self.assertFalse(result["publicationAuthorized"])
+        self.assertFalse(result["googlePlayUploadAuthorized"])
+        self.assertEqual(0o600, signed.stat().st_mode & 0o777)
+        binding = consumer.verify_release_eligibility(
+            receipt,
+            signed,
+            android_root=self.android,
+            expected_version_name="0.1.0-preview.11",
+            expected_version_code=11,
+            package_authority_path=package_authority,
+            source_graph_path=source_graph,
+        )
+        self.assertEqual(
+            sha256(signed.read_bytes()),
+            binding["protectedApproval"]["approvalSha256"],
+        )
+        with self.assertRaisesRegex(ValueError, "output must be new"):
+            signer.sign(receipt, self.approver_private_key, signed)
+
+    def test_recomputed_plain_receipt_hash_cannot_replace_protected_approval(self) -> None:
+        self.inputs["policy"] = gate.POLICY_PATH
+        self.inputs["environment_policy"] = gate.ENVIRONMENT_POLICY_PATH
+        authority = self.create()
+        receipt, approval, package_authority, source_graph = (
+            self.release_consumer_inputs(authority)
+        )
+        receipt.write_bytes(gate.canonical_json_bytes(authority))
+        receipt.chmod(0o600)
+        self.assertEqual(
+            sha256(receipt.read_bytes()),
+            hashlib.sha256(receipt.read_bytes()).hexdigest(),
+        )
+        with self.assertRaisesRegex(ValueError, "claims differ from the receipt"):
+            consumer.verify_release_eligibility(
+                receipt,
+                approval,
+                android_root=self.android,
+                expected_version_name="0.1.0-preview.11",
+                expected_version_code=11,
+                package_authority_path=package_authority,
+                source_graph_path=source_graph,
+            )
+
+    def test_wrong_key_stale_and_escalating_release_approvals_fail_closed(self) -> None:
+        self.inputs["policy"] = gate.POLICY_PATH
+        self.inputs["environment_policy"] = gate.ENVIRONMENT_POLICY_PATH
+        authority = self.create()
+        receipt, approval, package_authority, source_graph = (
+            self.release_consumer_inputs(authority)
+        )
+
+        wrong_private = self.root / "wrong.private.pem"
+        subprocess.run(
+            ["openssl", "genpkey", "-algorithm", "ED25519", "-out", str(wrong_private)],
+            check=True,
+            capture_output=True,
+        )
+        wrong_private.chmod(0o600)
+        approval.unlink()
+        wrong_approval = self.write_release_approval(
+            receipt, authority, private_key=wrong_private
+        )
+        with self.assertRaisesRegex(ValueError, "signature is invalid"):
+            consumer.verify_release_eligibility(
+                receipt,
+                wrong_approval,
+                android_root=self.android,
+                expected_version_name="0.1.0-preview.11",
+                expected_version_code=11,
+                package_authority_path=package_authority,
+                source_graph_path=source_graph,
+            )
+
+        wrong_approval.unlink()
+        old = datetime.now(UTC).replace(microsecond=0) - timedelta(hours=2)
+        stale = self.write_release_approval(
+            receipt,
+            authority,
+            generated=old,
+            expires=old + timedelta(hours=1),
+        )
+        with self.assertRaisesRegex(ValueError, "stale or outside its lifetime"):
+            consumer.verify_release_eligibility(
+                receipt,
+                stale,
+                android_root=self.android,
+                expected_version_name="0.1.0-preview.11",
+                expected_version_code=11,
+                package_authority_path=package_authority,
+                source_graph_path=source_graph,
+            )
+        historical = consumer.verify_release_eligibility(
+            receipt,
+            stale,
+            android_root=self.android,
+            expected_version_name="0.1.0-preview.11",
+            expected_version_code=11,
+            package_authority_path=package_authority,
+            source_graph_path=source_graph,
+            approval_effective_time=old + timedelta(minutes=30),
+        )
+        self.assertTrue(historical["eligible"])
+
+        escalated = json.loads(stale.read_text(encoding="utf-8"))
+        escalated["signingAuthorized"] = True
+        stale.write_bytes(gate.pretty_json_bytes(escalated))
+        stale.chmod(0o600)
+        with self.assertRaisesRegex(ValueError, "posture is invalid"):
+            consumer.verify_release_eligibility(
+                receipt,
+                stale,
+                android_root=self.android,
+                expected_version_name="0.1.0-preview.11",
+                expected_version_code=11,
+                package_authority_path=package_authority,
+                source_graph_path=source_graph,
+            )
+
     def test_release_consumer_rejects_dirty_or_index_hidden_release_checkout(self) -> None:
         self.inputs["policy"] = gate.POLICY_PATH
         self.inputs["environment_policy"] = gate.ENVIRONMENT_POLICY_PATH
         authority = self.create()
-        receipt, receipt_sha256, package_authority, source_graph = (
+        receipt, approval, package_authority, source_graph = (
             self.release_consumer_inputs(authority)
         )
         untracked = self.android / "untracked-release-input"
@@ -1414,7 +1658,7 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "checkout is not clean"):
             consumer.verify_release_eligibility(
                 receipt,
-                receipt_sha256,
+                approval,
                 android_root=self.android,
                 expected_version_name="0.1.0-preview.11",
                 expected_version_code=11,
@@ -1433,7 +1677,7 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "hidden index flags"):
             consumer.verify_release_eligibility(
                 receipt,
-                receipt_sha256,
+                approval,
                 android_root=self.android,
                 expected_version_name="0.1.0-preview.11",
                 expected_version_code=11,
@@ -1510,13 +1754,13 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
                     if key != "eligibilitySha256"
                 }
                 candidate["eligibilitySha256"] = gate.canonical_sha256(unsigned)
-                receipt, receipt_sha256, package_authority, source_graph = (
+                receipt, approval, package_authority, source_graph = (
                     self.release_consumer_inputs(candidate)
                 )
                 with self.assertRaises(ValueError):
                     consumer.verify_release_eligibility(
                         receipt,
-                        receipt_sha256,
+                        approval,
                         android_root=self.android,
                         expected_version_name="0.1.0-preview.11",
                         expected_version_code=11,
@@ -1524,6 +1768,7 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
                         source_graph_path=source_graph,
                     )
                 receipt.unlink()
+                approval.unlink()
                 package_authority.unlink()
                 source_graph.unlink()
 
@@ -1531,7 +1776,7 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
         self.inputs["policy"] = gate.POLICY_PATH
         self.inputs["environment_policy"] = gate.ENVIRONMENT_POLICY_PATH
         authority = self.create()
-        receipt, receipt_sha256, package_authority, source_graph = (
+        receipt, approval, package_authority, source_graph = (
             self.release_consumer_inputs(authority)
         )
         graph = json.loads(source_graph.read_text(encoding="utf-8"))
@@ -1544,7 +1789,7 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "presentation"):
             consumer.verify_release_eligibility(
                 receipt,
-                receipt_sha256,
+                approval,
                 android_root=self.android,
                 expected_version_name="0.1.0-preview.11",
                 expected_version_code=11,

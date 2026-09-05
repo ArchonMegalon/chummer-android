@@ -56,15 +56,27 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
         self.graph = self.root / f"chummer-android-{self.version_name}-source-graph.json"
         self.receipt = self.root / "next-internal-publication.json"
         self.two_green_receipt = self.root / "two-green-eligibility.json"
+        self.two_green_approval = self.root / "two-green-release-approval.json"
         self.browser_payload = self.make_browser()
         self.graph_payload = self.make_graph()
         write_private(self.two_green_receipt, {"fixture": True})
+        write_private(self.two_green_approval, {"fixture": "protected-approval"})
         self.two_green_receipt_sha256 = hashlib.sha256(
             self.two_green_receipt.read_bytes()
         ).hexdigest()
         self.two_green_binding = {
             "contractName": self.module.QUALIFICATION.TWO_GREEN.CONTRACT,
             "receiptSha256": self.two_green_receipt_sha256,
+            "protectedApproval": {
+                "contractName": "chummer.android.two-green-release-approval/v1",
+                "keyId": "local-release-builder-2026",
+                "role": "android_internal_release_approver",
+                "approvalScope": "android_internal_release_preparation",
+                "approvalSha256": "9" * 64,
+                "receiptSha256": self.two_green_receipt_sha256,
+                "generatedAtUtc": "2026-09-05T10:00:00Z",
+                "expiresAtUtc": "2026-09-05T16:00:00Z",
+            },
             "eligibilitySha256": "a" * 64,
             "sourceCommit": self.graph_payload["repositories"][0]["commit"],
             "sourceTree": self.graph_payload["repositories"][0]["tree"],
@@ -93,6 +105,9 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
         write_private(self.browser, self.browser_payload)
         self.write_aab(self.aab)
         write_private(self.graph, self.graph_payload)
+        self.expected_source_graph_sha256 = hashlib.sha256(
+            self.graph.read_bytes()
+        ).hexdigest()
 
     def tearDown(self) -> None:
         self.module.QUALIFICATION.verify_release_eligibility = (
@@ -251,8 +266,9 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
             self.receipt,
             expected_android_source_commit=self.graph_payload["repositories"][0]["commit"],
             expected_aab_sha256=hashlib.sha256(self.aab.read_bytes()).hexdigest(),
+            expected_source_graph_sha256=self.expected_source_graph_sha256,
             two_green_receipt_path=self.two_green_receipt,
-            expected_two_green_receipt_sha256=self.two_green_receipt_sha256,
+            two_green_approval_path=self.two_green_approval,
         )
 
     def verify(self) -> dict[str, object]:
@@ -262,8 +278,9 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
             self.graph,
             expected_android_source_commit=self.graph_payload["repositories"][0]["commit"],
             expected_aab_sha256=hashlib.sha256(self.aab.read_bytes()).hexdigest(),
+            expected_source_graph_sha256=self.expected_source_graph_sha256,
             two_green_receipt_path=self.two_green_receipt,
-            expected_two_green_receipt_sha256=self.two_green_receipt_sha256,
+            two_green_approval_path=self.two_green_approval,
         )
 
     def test_round_trip_binds_explicit_readback_and_exact_local_outputs(self) -> None:
@@ -390,10 +407,12 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
                 self.graph_payload["repositories"][0]["commit"],
                 "--expected-aab-sha256",
                 hashlib.sha256(self.aab.read_bytes()).hexdigest(),
+                "--expected-source-graph-sha256",
+                self.expected_source_graph_sha256,
                 "--two-green-receipt",
                 str(self.two_green_receipt),
-                "--expected-two-green-receipt-sha256",
-                self.two_green_receipt_sha256,
+                "--two-green-approval",
+                str(self.two_green_approval),
                 "--token",
                 "do-not-record",
             ],
@@ -476,10 +495,9 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
                         self.aab,
                         self.graph,
                         self.receipt,
+                        expected_source_graph_sha256=self.expected_source_graph_sha256,
                         two_green_receipt_path=self.two_green_receipt,
-                        expected_two_green_receipt_sha256=(
-                            self.two_green_receipt_sha256
-                        ),
+                        two_green_approval_path=self.two_green_approval,
                         **bindings,
                     )
                 self.assertFalse(self.receipt.exists())
@@ -499,8 +517,9 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
                 self.receipt,
                 expected_android_source_commit=expected_head,
                 expected_aab_sha256=expected_digest,
+                expected_source_graph_sha256=self.expected_source_graph_sha256,
                 two_green_receipt_path=self.two_green_receipt,
-                expected_two_green_receipt_sha256=self.two_green_receipt_sha256,
+                two_green_approval_path=self.two_green_approval,
             )
         self.assertFalse(self.receipt.exists())
 
@@ -521,6 +540,32 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
         result = self.verify()
         self.assertEqual("fail", result["status"])
         self.assertFalse(result["publicationAuthorized"])
+
+    def test_protected_source_graph_digest_rejects_design_and_tree_substitution(self) -> None:
+        for label, mutate in (
+            (
+                "design",
+                lambda graph: next(
+                    row for row in graph["repositories"]
+                    if row["name"] == "chummer6-design"
+                ).update({"commit": "f" * 40, "tree": "e" * 40}),
+            ),
+            (
+                "repository tree bytes",
+                lambda graph: graph["repositories"][1].update(
+                    {"tree_sha256": "0" * 64}
+                ),
+            ),
+        ):
+            with self.subTest(label=label):
+                graph = copy.deepcopy(self.graph_payload)
+                mutate(graph)
+                write_private(self.graph, graph)
+                with self.assertRaisesRegex(
+                    ValueError, "source graph bytes do not match approved build-sidecar sha256"
+                ):
+                    self.materialize()
+                self.assertFalse(self.receipt.exists())
 
     def test_receipt_claim_escalation_and_noncanonical_bytes_fail_closed(self) -> None:
         self.materialize()
@@ -578,6 +623,12 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
         self.assertFalse(schema["properties"]["publicationAuthorized"]["const"])
         qualification = schema["properties"]["twoGreenEligibility"]
         self.assertFalse(qualification["additionalProperties"])
+        protected_approval = qualification["properties"]["protectedApproval"]
+        self.assertFalse(protected_approval["additionalProperties"])
+        self.assertEqual(
+            "android_internal_release_preparation",
+            protected_approval["properties"]["approvalScope"]["const"],
+        )
         self.assertTrue(
             qualification["properties"]["internalTestingEligible"]["const"]
         )

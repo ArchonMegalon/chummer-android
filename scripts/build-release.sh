@@ -177,9 +177,8 @@ esac
 require_private_regular_file CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY
 require_private_regular_file CHUMMER_CURRENT_UI_PACKAGE_AUTHORITY_RECEIPT
 require_private_regular_file CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT
-eligibility_sha256="${CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_SHA256:-}"
-[[ "$eligibility_sha256" =~ ^[0-9a-f]{64}$ ]] \
-  || fail "two-green-eligibility-sha256-invalid"
+require_private_regular_file CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL
+eligibility_sha256="$(sha256sum "$CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT" | cut -d' ' -f1)"
 [[ -f "$AndroidSdkDirectory/platforms/android-36/android.jar" ]] \
   || fail "android-api36-platform-missing"
 [[ -x "$AndroidSdkDirectory/build-tools/36.0.0/aapt2" ]] \
@@ -205,7 +204,7 @@ python3 "$repo_dir/scripts/materialize_release_package_authority.py" \
   --verify-existing "$CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY"
 python3 "$repo_dir/scripts/verify_api36_two_green_release_eligibility.py" \
   --receipt "$CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT" \
-  --expected-receipt-sha256 "$eligibility_sha256" \
+  --approval "$CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL" \
   --android-root "$repo_dir" \
   --expected-version-name "$version_name" \
   --expected-version-code "$version_code" \
@@ -276,7 +275,7 @@ python3 "$repo_dir/scripts/verify_release_source_graph.py" \
   --output "$staged_graph"
 python3 "$repo_dir/scripts/verify_api36_two_green_release_eligibility.py" \
   --receipt "$CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT" \
-  --expected-receipt-sha256 "$eligibility_sha256" \
+  --approval "$CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL" \
   --android-root "$repo_dir" \
   --expected-version-name "$version_name" \
   --expected-version-code "$version_code" \
@@ -371,7 +370,7 @@ python3 "$repo_dir/scripts/seal_release_restore_consumption.py" materialize \
 # preflight has completed. None of these values is written to argv or logs.
 python3 "$repo_dir/scripts/verify_api36_two_green_release_eligibility.py" \
   --receipt "$CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT" \
-  --expected-receipt-sha256 "$eligibility_sha256" \
+  --approval "$CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL" \
   --android-root "$repo_dir" \
   --expected-version-name "$version_name" \
   --expected-version-code "$version_code" \

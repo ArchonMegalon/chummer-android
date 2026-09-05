@@ -44,7 +44,7 @@ require_private_regular_file() {
   export "${variable_name?}"
 }
 
-for required in cmp dirname find git id install jq mkdir python3 realpath stat; do
+for required in cmp cut dirname find git id install jq mkdir python3 realpath sha256sum stat; do
   require_command "$required"
 done
 require_command "$dotnet_command"
@@ -82,13 +82,11 @@ require_exact_directory AndroidSdkDirectory
 require_exact_directory JavaSdkDirectory
 require_private_regular_file CHUMMER_CURRENT_UI_PACKAGE_AUTHORITY_RECEIPT
 require_private_regular_file CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT
+require_private_regular_file CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL
 require_exact_directory CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED
-eligibility_sha256="${CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_SHA256:-}"
-[[ "$eligibility_sha256" =~ ^[0-9a-f]{64}$ ]] \
-  || fail "two-green-eligibility-sha256-invalid"
 python3 "$repo_dir/scripts/verify_api36_two_green_release_eligibility.py" \
   --receipt "$CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT" \
-  --expected-receipt-sha256 "$eligibility_sha256" \
+  --approval "$CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL" \
   --android-root "$repo_dir" \
   --expected-version-name "$version_name" \
   --expected-version-code "$version_code" >/dev/null \
@@ -114,12 +112,18 @@ preparation_obj="$input_dir/preparation-obj"
 project_locks="$input_dir/project-locks"
 environment_file="$input_dir/release-inputs.env"
 prepared_eligibility="$input_dir/ANDROID_API36_TWO_GREEN_ELIGIBILITY.generated.json"
+prepared_approval="$input_dir/ANDROID_API36_TWO_GREEN_RELEASE_APPROVAL.generated.json"
 mkdir -m 0700 -- "$nuget_packages" "$preparation_obj" "$project_locks"
 install -m 0600 -- \
   "$CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT" \
   "$prepared_eligibility"
 CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT="$prepared_eligibility"
 export CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT
+install -m 0600 -- \
+  "$CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL" \
+  "$prepared_approval"
+CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL="$prepared_approval"
+export CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL
 install -m 0600 -- \
   "$repo_dir/src/Chummer.Android/packages.lock.json" \
   "$project_locks/Chummer.Android.packages.lock.json"
@@ -214,7 +218,7 @@ python3 "$repo_dir/scripts/materialize_release_package_authority.py" \
   --verify-existing "$authority"
 python3 "$repo_dir/scripts/verify_api36_two_green_release_eligibility.py" \
   --receipt "$CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT" \
-  --expected-receipt-sha256 "$eligibility_sha256" \
+  --approval "$CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL" \
   --android-root "$repo_dir" \
   --expected-version-name "$version_name" \
   --expected-version-code "$version_code" \
@@ -230,12 +234,13 @@ python3 "$repo_dir/scripts/verify_api36_two_green_release_eligibility.py" \
   printf 'export NUGET_PACKAGES=%q\n' "$nuget_packages"
   printf 'export CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT=%q\n' \
     "$CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT"
-  printf 'export CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_SHA256=%q\n' \
-    "$eligibility_sha256"
+  printf 'export CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL=%q\n' \
+    "$CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL"
   printf 'export CHUMMER_ANDROID_EXPECTED_VERSION_NAME=%q\n' "$version_name"
   printf 'export CHUMMER_ANDROID_EXPECTED_VERSION_CODE=%q\n' "$version_code"
 } > "$environment_file"
 chmod 0600 "$environment_file"
 
-printf 'android_release_inputs=prepared authority=%s environment=%s package_cache=%s two_green_sha256=%s publication_authorized=false\n' \
-  "$authority" "$environment_file" "$nuget_packages" "$eligibility_sha256"
+receipt_sha256="$(sha256sum "$CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT" | cut -d' ' -f1)"
+printf 'android_release_inputs=prepared authority=%s environment=%s package_cache=%s two_green_sha256=%s protected_approval=true publication_authorized=false\n' \
+  "$authority" "$environment_file" "$nuget_packages" "$receipt_sha256"

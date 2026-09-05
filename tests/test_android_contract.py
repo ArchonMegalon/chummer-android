@@ -1,4 +1,5 @@
 import json
+import hashlib
 import importlib.util
 import os
 import re
@@ -2010,6 +2011,21 @@ class AndroidContractTests(unittest.TestCase):
         )
         debug_build = (REPO / "scripts" / "build-debug.sh").read_text(encoding="utf-8")
         source_graph = (REPO / "scripts" / "verify_release_source_graph.py").read_text(encoding="utf-8")
+        two_green_verifier = (
+            REPO / "scripts" / "verify_api36_two_green_release_eligibility.py"
+        ).read_text(encoding="utf-8")
+        two_green_signer = (
+            REPO / "scripts" / "sign_api36_two_green_release_approval.py"
+        ).read_text(encoding="utf-8")
+        publication_materializer = (
+            REPO / "scripts" / "materialize_next_play_internal_publication_receipt.py"
+        ).read_text(encoding="utf-8")
+        release_approver_public_key = (
+            REPO
+            / "eng"
+            / "trusted-release-approvers"
+            / "local-release-builder-2026.public.pem"
+        ).read_bytes()
         bootstrap = (REPO / "scripts" / "bootstrap-build-environment.sh").read_text(encoding="utf-8")
         provision = (REPO / "scripts" / "provision-upload-key.sh").read_text(encoding="utf-8")
         recovery = (REPO / "scripts" / "import-signing-recovery.py").read_text(encoding="utf-8")
@@ -2102,7 +2118,9 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("--package-authority", build)
         self.assertIn("CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY", build)
         self.assertIn("CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT", build)
-        self.assertIn("CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_SHA256", build)
+        self.assertIn("CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL", build)
+        self.assertNotIn("CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_SHA256", build)
+        self.assertIn("--approval", build)
         self.assertGreaterEqual(
             build.count("verify_api36_two_green_release_eligibility.py"), 3
         )
@@ -2120,7 +2138,22 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("ChummerUseLockedOwnerContractPackages=true", prepare)
         self.assertIn("materialize_release_package_authority.py", prepare)
         self.assertIn("CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT", prepare)
-        self.assertIn("CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_SHA256", prepare)
+        self.assertIn("CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL", prepare)
+        self.assertNotIn("CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_SHA256", prepare)
+        self.assertIn("--approval", prepare)
+        self.assertIn("chummer.android.two-green-release-approval/v1", two_green_verifier)
+        self.assertIn("pkeyutl", two_green_verifier)
+        self.assertIn("pkeyutl", two_green_signer)
+        self.assertIn("publicationAuthorized\": False", two_green_signer)
+        self.assertNotIn("--expected-receipt-sha256", two_green_verifier)
+        self.assertIn("--expected-source-graph-sha256", publication_materializer)
+        self.assertIn("--two-green-approval", publication_materializer)
+        self.assertIn(
+            hashlib.sha256(release_approver_public_key).hexdigest(),
+            two_green_verifier,
+        )
+        self.assertIn(b"BEGIN PUBLIC KEY", release_approver_public_key)
+        self.assertNotIn(b"PRIVATE KEY", release_approver_public_key)
         self.assertGreaterEqual(
             prepare.count("verify_api36_two_green_release_eligibility.py"), 2
         )

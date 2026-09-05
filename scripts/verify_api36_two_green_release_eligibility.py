@@ -3,13 +3,17 @@
 
 The receipt remains eligibility evidence only.  A passing verification permits
 release preparation for Internal testing; it never grants signing, Play upload,
-or publication authority by itself.  The separately supplied SHA-256 is the
-protected-environment approval of the exact receipt bytes.
+or publication authority by itself.  A short-lived detached Ed25519 approval
+from the protected release boundary authenticates the exact receipt bytes and
+their release/dependency claims.
 """
 
 from __future__ import annotations
 
 import argparse
+import base64
+import binascii
+from datetime import UTC, datetime, timedelta
 import hashlib
 import importlib.util
 import json
@@ -18,6 +22,7 @@ from pathlib import Path
 import re
 import stat
 import subprocess
+import tempfile
 from typing import Any
 
 
@@ -26,6 +31,7 @@ REPO_ROOT = SCRIPT_DIRECTORY.parent
 TWO_GREEN_PATH = SCRIPT_DIRECTORY / "materialize-api36-two-green-eligibility.py"
 MAX_RECEIPT_BYTES = 2 * 1024 * 1024
 MAX_AUTHORITY_BYTES = 8 * 1024 * 1024
+MAX_APPROVAL_BYTES = 64 * 1024
 SHA40 = re.compile(r"^[0-9a-f]{40}$")
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
 PACKAGE_ID = "com.myexternalbrain.chummer"
@@ -60,6 +66,44 @@ SOURCE_GRAPH_REQUIRED_REPOSITORIES = {
     *SOURCE_GRAPH_REPOSITORIES.values(),
     "chummer6-design",
 }
+SOURCE_GRAPH_REPOSITORY_AUTHORITY = {
+    "chummer-android": ("app", "https://github.com/ArchonMegalon/chummer-android.git"),
+    "chummer6-ui": ("runtime", "https://github.com/ArchonMegalon/chummer6-ui.git"),
+    "chummer6-core": ("runtime", "https://github.com/ArchonMegalon/chummer6-core.git"),
+    "chummer6-ui-kit": (
+        "runtime",
+        "https://github.com/ArchonMegalon/chummer6-ui-kit.git",
+    ),
+    "chummer6-hub": (
+        "contracts_and_validation",
+        "https://github.com/ArchonMegalon/chummer6-hub.git",
+    ),
+    "chummer6-hub-registry": (
+        "contracts",
+        "https://github.com/ArchonMegalon/chummer6-hub-registry.git",
+    ),
+    "chummer6-media-factory": (
+        "contracts",
+        "https://github.com/ArchonMegalon/chummer6-media-factory.git",
+    ),
+    "chummer6-design": (
+        "validation",
+        "https://github.com/ArchonMegalon/chummer6-design.git",
+    ),
+}
+RELEASE_APPROVAL_CONTRACT = "chummer.android.two-green-release-approval/v1"
+RELEASE_APPROVAL_SCOPE = "android_internal_release_preparation"
+RELEASE_APPROVER_KEY_ID = "local-release-builder-2026"
+RELEASE_APPROVER_ROLE = "android_internal_release_approver"
+RELEASE_APPROVER_PUBLIC_KEY = (
+    REPO_ROOT / "eng/trusted-release-approvers/local-release-builder-2026.public.pem"
+)
+RELEASE_APPROVER_PUBLIC_KEY_SHA256 = (
+    "ed1fbe95fc7713bfc6d9d0fea21726c1ba3193533fc2d5523e054ad8fb86184c"
+)
+MAX_APPROVAL_LIFETIME = timedelta(hours=12)
+APPROVAL_CLOCK_SKEW = timedelta(minutes=2)
+OPENSSL = Path("/usr/bin/openssl")
 
 
 def _load_two_green_module() -> Any:
@@ -166,6 +210,181 @@ def _sha256(value: object, label: str) -> str:
     if not isinstance(value, str) or SHA256.fullmatch(value) is None:
         raise ValueError(f"{label} must be a lowercase SHA-256")
     return value
+
+
+def _canonical_json_bytes(value: object) -> bytes:
+    return json.dumps(
+        value,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+
+
+def _utc_timestamp(value: object, label: str) -> datetime:
+    if not isinstance(value, str) or not value.endswith("Z"):
+        raise ValueError(f"{label} must be a canonical UTC timestamp")
+    try:
+        parsed = datetime.fromisoformat(value.removesuffix("Z") + "+00:00")
+    except ValueError as error:
+        raise ValueError(f"{label} must be a canonical UTC timestamp") from error
+    if parsed.tzinfo is None or parsed.utcoffset() != timedelta(0):
+        raise ValueError(f"{label} must be a canonical UTC timestamp")
+    canonical = parsed.astimezone(UTC).isoformat().replace("+00:00", "Z")
+    if canonical != value:
+        raise ValueError(f"{label} must be a canonical UTC timestamp")
+    return parsed.astimezone(UTC)
+
+
+def release_approval_unsigned(
+    receipt_raw: bytes,
+    receipt: dict[str, Any],
+    *,
+    generated_at_utc: str,
+    expires_at_utc: str,
+    challenge_nonce: str,
+) -> dict[str, Any]:
+    common = receipt.get("commonAuthority")
+    release = receipt.get("releaseIdentity")
+    if not isinstance(common, dict) or not isinstance(release, dict):
+        raise ValueError("two-green receipt cannot be approved without exact authority")
+    dependency = common.get("dependencyGraph")
+    environment = common.get("environmentPolicy")
+    if not isinstance(dependency, dict) or not isinstance(environment, dict):
+        raise ValueError("two-green receipt cannot be approved without exact dependency authority")
+    return {
+        "contractName": RELEASE_APPROVAL_CONTRACT,
+        "algorithm": "ed25519",
+        "keyId": RELEASE_APPROVER_KEY_ID,
+        "role": RELEASE_APPROVER_ROLE,
+        "approvalScope": RELEASE_APPROVAL_SCOPE,
+        "generatedAtUtc": generated_at_utc,
+        "expiresAtUtc": expires_at_utc,
+        "challengeNonce": _sha256(challenge_nonce, "release approval challenge nonce"),
+        "receiptSha256": hashlib.sha256(receipt_raw).hexdigest(),
+        "eligibilitySha256": _sha256(
+            receipt.get("eligibilitySha256"), "two-green eligibility digest"
+        ),
+        "sourceCommit": _sha40(receipt.get("sourceCommit"), "two-green source commit"),
+        "sourceTree": _sha40(receipt.get("sourceTree"), "two-green source tree"),
+        "versionName": release.get("versionName"),
+        "versionCode": release.get("versionCode"),
+        "dependencyGraphSha256": _sha256(
+            dependency.get("sha256"), "two-green dependency graph digest"
+        ),
+        "environmentPolicySha256": _sha256(
+            environment.get("sha256"), "two-green environment policy digest"
+        ),
+        "signingAuthorized": False,
+        "publicationAuthorized": False,
+        "googlePlayUploadAuthorized": False,
+    }
+
+
+def _verify_release_approval(
+    approval_path: Path,
+    *,
+    receipt_raw: bytes,
+    receipt: dict[str, Any],
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    approval_raw = _stable_bytes(
+        approval_path,
+        label="two-green protected release approval",
+        limit=MAX_APPROVAL_BYTES,
+        owner_only=True,
+    )
+    approval = _strict_json(approval_raw, label="two-green protected release approval")
+    fields = {
+        "contractName", "algorithm", "keyId", "role", "approvalScope",
+        "generatedAtUtc", "expiresAtUtc", "challengeNonce", "receiptSha256",
+        "eligibilitySha256", "sourceCommit", "sourceTree", "versionName",
+        "versionCode", "dependencyGraphSha256", "environmentPolicySha256",
+        "signingAuthorized", "publicationAuthorized", "googlePlayUploadAuthorized",
+        "signatureBase64",
+    }
+    if set(approval) != fields:
+        raise ValueError("two-green protected release approval fields are not exact")
+    if (
+        approval.get("contractName") != RELEASE_APPROVAL_CONTRACT
+        or approval.get("algorithm") != "ed25519"
+        or approval.get("keyId") != RELEASE_APPROVER_KEY_ID
+        or approval.get("role") != RELEASE_APPROVER_ROLE
+        or approval.get("approvalScope") != RELEASE_APPROVAL_SCOPE
+        or approval.get("signingAuthorized") is not False
+        or approval.get("publicationAuthorized") is not False
+        or approval.get("googlePlayUploadAuthorized") is not False
+    ):
+        raise ValueError("two-green protected release approval posture is invalid")
+    generated = _utc_timestamp(approval.get("generatedAtUtc"), "release approval generatedAtUtc")
+    expires = _utc_timestamp(approval.get("expiresAtUtc"), "release approval expiresAtUtc")
+    if now is not None and (now.tzinfo is None or now.utcoffset() is None):
+        raise ValueError("release approval effective time must be timezone-aware")
+    current = (now or datetime.now(UTC)).astimezone(UTC)
+    if (
+        generated > current + APPROVAL_CLOCK_SKEW
+        or expires <= generated
+        or expires - generated > MAX_APPROVAL_LIFETIME
+        or current >= expires
+    ):
+        raise ValueError("two-green protected release approval is stale or outside its lifetime")
+    unsigned = release_approval_unsigned(
+        receipt_raw,
+        receipt,
+        generated_at_utc=approval["generatedAtUtc"],
+        expires_at_utc=approval["expiresAtUtc"],
+        challenge_nonce=approval["challengeNonce"],
+    )
+    if any(approval.get(key) != value for key, value in unsigned.items()):
+        raise ValueError("two-green protected release approval claims differ from the receipt")
+    public_key_raw = _stable_bytes(
+        RELEASE_APPROVER_PUBLIC_KEY,
+        label="trusted release approver public key",
+        limit=16 * 1024,
+        owner_only=False,
+    )
+    if hashlib.sha256(public_key_raw).hexdigest() != RELEASE_APPROVER_PUBLIC_KEY_SHA256:
+        raise ValueError("trusted release approver public key digest differs")
+    signature_text = approval.get("signatureBase64")
+    if not isinstance(signature_text, str) or len(signature_text) > 256:
+        raise ValueError("two-green protected release approval signature is invalid")
+    try:
+        signature = base64.b64decode(signature_text, validate=True)
+    except (binascii.Error, ValueError) as error:
+        raise ValueError("two-green protected release approval signature is invalid") from error
+    if len(signature) != 64:
+        raise ValueError("two-green protected release approval signature is invalid")
+    if not OPENSSL.is_file():
+        raise ValueError("trusted OpenSSL verifier is unavailable")
+    with tempfile.TemporaryDirectory(prefix="chummer-android-release-approval-") as directory:
+        root = Path(directory)
+        payload_path = root / "payload.json"
+        signature_path = root / "signature.bin"
+        payload_path.write_bytes(_canonical_json_bytes(unsigned))
+        signature_path.write_bytes(signature)
+        completed = subprocess.run(
+            [
+                os.fspath(OPENSSL), "pkeyutl", "-verify", "-pubin",
+                "-inkey", os.fspath(RELEASE_APPROVER_PUBLIC_KEY), "-rawin",
+                "-in", os.fspath(payload_path), "-sigfile", os.fspath(signature_path),
+            ],
+            check=False,
+            capture_output=True,
+            timeout=20,
+            env={"PATH": "/usr/bin:/bin", "LANG": "C", "LC_ALL": "C"},
+        )
+    if completed.returncode != 0:
+        raise ValueError("two-green protected release approval signature is invalid")
+    return {
+        "contractName": RELEASE_APPROVAL_CONTRACT,
+        "keyId": RELEASE_APPROVER_KEY_ID,
+        "role": RELEASE_APPROVER_ROLE,
+        "approvalScope": RELEASE_APPROVAL_SCOPE,
+        "approvalSha256": hashlib.sha256(approval_raw).hexdigest(),
+        "receiptSha256": unsigned["receiptSha256"],
+        "generatedAtUtc": unsigned["generatedAtUtc"],
+        "expiresAtUtc": unsigned["expiresAtUtc"],
+    }
 
 
 def _positive_integer(value: object, label: str) -> int:
@@ -429,11 +648,23 @@ def _validate_source_graph(
     repositories = value.get("repositories")
     if not isinstance(repositories, list):
         raise ValueError("release source graph repository inventory is missing")
-    by_name = {
-        row.get("name"): row
-        for row in repositories
-        if isinstance(row, dict) and isinstance(row.get("name"), str)
+    by_name: dict[str, dict[str, Any]] = {}
+    repository_fields = {
+        "name", "role", "commit", "tree", "tree_sha256", "repository"
     }
+    for row in repositories:
+        if not isinstance(row, dict) or set(row) != repository_fields:
+            raise ValueError("release source graph repository fields are not exact")
+        name = row.get("name")
+        if not isinstance(name, str) or name in by_name:
+            raise ValueError("release source graph repository inventory is ambiguous")
+        expected = SOURCE_GRAPH_REPOSITORY_AUTHORITY.get(name)
+        if expected is None or (row.get("role"), row.get("repository")) != expected:
+            raise ValueError("release source graph repository role or origin differs")
+        _sha40(row.get("commit"), f"release source graph {name} commit")
+        _sha40(row.get("tree"), f"release source graph {name} tree")
+        _sha256(row.get("tree_sha256"), f"release source graph {name} tree digest")
+        by_name[name] = row
     if len(by_name) != len(repositories):
         raise ValueError("release source graph repository inventory is ambiguous")
     if set(by_name) != SOURCE_GRAPH_REQUIRED_REPOSITORIES:
@@ -474,27 +705,30 @@ def _validate_source_graph(
 
 def verify_release_eligibility(
     receipt_path: Path,
-    expected_receipt_sha256: str,
+    approval_path: Path,
     *,
     android_root: Path,
     expected_version_name: str,
     expected_version_code: int | str,
     package_authority_path: Path | None = None,
     source_graph_path: Path | None = None,
+    approval_effective_time: datetime | None = None,
 ) -> dict[str, Any]:
-    expected_digest = _sha256(
-        expected_receipt_sha256, "approved two-green receipt SHA-256"
-    )
     raw = _stable_bytes(
         receipt_path,
         label="two-green eligibility receipt",
         limit=MAX_RECEIPT_BYTES,
         owner_only=True,
     )
-    if hashlib.sha256(raw).hexdigest() != expected_digest:
-        raise ValueError("two-green eligibility receipt bytes differ from the approved SHA-256")
     receipt = _strict_json(raw, label="two-green eligibility receipt")
     TWO_GREEN.validate_authority(receipt)
+    approval = _verify_release_approval(
+        approval_path,
+        receipt_raw=raw,
+        receipt=receipt,
+        now=approval_effective_time,
+    )
+    expected_digest = approval["receiptSha256"]
     expected_policy = TWO_GREEN.policy_binding(
         TWO_GREEN.StableFile(TWO_GREEN.POLICY_PATH, "current two-green policy")
     )
@@ -603,6 +837,7 @@ def verify_release_eligibility(
     return {
         "contractName": TWO_GREEN.CONTRACT,
         "receiptSha256": expected_digest,
+        "protectedApproval": approval,
         "eligibilitySha256": receipt["eligibilitySha256"],
         "sourceCommit": source_commit,
         "sourceTree": source_tree,
@@ -631,7 +866,7 @@ def verify_release_eligibility(
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--receipt", required=True, type=Path)
-    parser.add_argument("--expected-receipt-sha256", required=True)
+    parser.add_argument("--approval", required=True, type=Path)
     parser.add_argument("--android-root", required=True, type=Path)
     parser.add_argument("--expected-version-name", required=True)
     parser.add_argument("--expected-version-code", required=True)
@@ -641,7 +876,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         binding = verify_release_eligibility(
             arguments.receipt,
-            arguments.expected_receipt_sha256,
+            arguments.approval,
             android_root=arguments.android_root,
             expected_version_name=arguments.expected_version_name,
             expected_version_code=arguments.expected_version_code,

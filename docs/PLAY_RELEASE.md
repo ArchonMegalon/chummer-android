@@ -95,20 +95,33 @@ CHUMMER_ANDROID_RELEASE_INPUT_DIR=/absolute/private/chummer-next-release-inputs 
 CHUMMER_ANDROID_EXPECTED_VERSION_NAME=0.1.0-preview.11 \
 CHUMMER_ANDROID_EXPECTED_VERSION_CODE=11 \
 CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT=/absolute/private/ANDROID_API36_TWO_GREEN_ELIGIBILITY.generated.json \
-CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_SHA256=APPROVED_64_CHARACTER_RECEIPT_SHA256 \
+CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL=/absolute/private/ANDROID_API36_TWO_GREEN_RELEASE_APPROVAL.generated.json \
 CHUMMER_CURRENT_UI_PACKAGE_AUTHORITY_RECEIPT=/absolute/private/UI_CURRENT_MAIN_PACKAGE_PLANE.generated.json \
 CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED=/absolute/private/ui-package-cache/packages \
   scripts/prepare-release-inputs.sh
 . /absolute/private/chummer-next-release-inputs/release-inputs.env
 ```
 
-The receipt SHA-256 must come from the protected release-environment approval,
-not be calculated ad hoc by the build shell. The preparer copies the exact
-owner-only receipt into the release-input directory and binds it to the exact
-Android commit/tree, version, dependency authority, successful main aggregate,
-and compatible proof environment. It does not sign, publish, upload, or
-authorize publication. The release build re-verifies the same approved receipt
-and package/source graph before admitting signing material.
+The approval is a short-lived detached Ed25519 signature created by the
+protected release-builder environment for the exact receipt bytes, Android
+commit/tree, release version, dependency graph, and proof-environment policy.
+The public verification key is pinned in this repository; the private key must
+never enter the checkout or an ordinary build job. The protected controller can
+create the preparation-only approval with:
+
+```sh
+python3 scripts/sign_api36_two_green_release_approval.py \
+  --receipt /absolute/private/ANDROID_API36_TWO_GREEN_ELIGIBILITY.generated.json \
+  --private-key /absolute/protected/local-release-builder-2026.private.pem \
+  --output /absolute/private/ANDROID_API36_TWO_GREEN_RELEASE_APPROVAL.generated.json
+```
+
+The preparer copies both owner-only inputs into the release-input directory and
+verifies the detached signature before admitting them. Recomputing and
+self-supplying a plain receipt SHA-256 is not an approval. Neither the receipt
+nor the detached approval authorizes AAB signing, publication, upload, or tester
+mutation. The release build re-verifies the same receipt, signature, package
+authority, and source graph before admitting signing material.
 
 Run `scripts/build-release.sh` only from a complete coherent workspace whose
 `chummer-android` sibling is accompanied by exact clean Presentation, Core, UI
@@ -279,8 +292,9 @@ python3 scripts/materialize_next_play_internal_publication_receipt.py materializ
   --source-graph /absolute/private/chummer-android-VERSION-source-graph.json \
   --expected-android-source-commit APPROVED_40_CHARACTER_ANDROID_HEAD \
   --expected-aab-sha256 APPROVED_64_CHARACTER_AAB_SHA256 \
+  --expected-source-graph-sha256 BUILD_SIDECAR_64_CHARACTER_SOURCE_GRAPH_SHA256 \
   --two-green-receipt /absolute/private/ANDROID_API36_TWO_GREEN_ELIGIBILITY.generated.json \
-  --expected-two-green-receipt-sha256 APPROVED_64_CHARACTER_RECEIPT_SHA256 \
+  --two-green-approval /absolute/private/ANDROID_API36_TWO_GREEN_RELEASE_APPROVAL.generated.json \
   --output /absolute/private/next-internal-publication.json
 
 python3 scripts/materialize_next_play_internal_publication_receipt.py verify \
@@ -289,14 +303,17 @@ python3 scripts/materialize_next_play_internal_publication_receipt.py verify \
   --source-graph /absolute/private/chummer-android-VERSION-source-graph.json \
   --expected-android-source-commit APPROVED_40_CHARACTER_ANDROID_HEAD \
   --expected-aab-sha256 APPROVED_64_CHARACTER_AAB_SHA256 \
+  --expected-source-graph-sha256 BUILD_SIDECAR_64_CHARACTER_SOURCE_GRAPH_SHA256 \
   --two-green-receipt /absolute/private/ANDROID_API36_TWO_GREEN_ELIGIBILITY.generated.json \
-  --expected-two-green-receipt-sha256 APPROVED_64_CHARACTER_RECEIPT_SHA256
+  --two-green-approval /absolute/private/ANDROID_API36_TWO_GREEN_RELEASE_APPROVAL.generated.json
 ```
 
 A passing v4 receipt records only an observed Internal-testing Console state,
-the exact explicitly approved local source head and AAB bytes, and the exact
-two-green eligibility receipt consumed by that release transaction, including
-its dependency-graph and proof-environment digests. It always
+the exact explicitly approved local source head, AAB bytes, and build-sidecar
+source-graph bytes, and the detached-approved two-green eligibility receipt
+consumed by that release transaction. The source-graph digest covers every
+repository record, including `chummer6-design` and every repository
+`tree_sha256`; changing any of those bytes fails verification. It always
 sets `publicationAuthorized`, production, upload-action, and tester-roster
 authorization to false. Play does not expose the uploaded AAB digest here, and
 this lane does not prove that the approved local AAB is the artifact processed

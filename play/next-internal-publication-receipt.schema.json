@@ -124,6 +124,7 @@
       "required": [
         "contractName",
         "receiptSha256",
+        "protectedApproval",
         "eligibilitySha256",
         "sourceCommit",
         "sourceTree",
@@ -148,6 +149,34 @@
           "const": "chummer.android.api36-ordered-review-main-green-eligibility/v2"
         },
         "receiptSha256": { "$ref": "#/$defs/sha256" },
+        "protectedApproval": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "contractName",
+            "keyId",
+            "role",
+            "approvalScope",
+            "approvalSha256",
+            "receiptSha256",
+            "generatedAtUtc",
+            "expiresAtUtc"
+          ],
+          "properties": {
+            "contractName": {
+              "const": "chummer.android.two-green-release-approval/v1"
+            },
+            "keyId": { "const": "local-release-builder-2026" },
+            "role": { "const": "android_internal_release_approver" },
+            "approvalScope": {
+              "const": "android_internal_release_preparation"
+            },
+            "approvalSha256": { "$ref": "#/$defs/sha256" },
+            "receiptSha256": { "$ref": "#/$defs/sha256" },
+            "generatedAtUtc": { "type": "string", "format": "date-time" },
+            "expiresAtUtc": { "type": "string", "format": "date-time" }
+          }
+        },
         "eligibilitySha256": { "$ref": "#/$defs/sha256" },
         "sourceCommit": { "$ref": "#/$defs/commit" },
         "sourceTree": { "$ref": "#/$defs/commit" },
