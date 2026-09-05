@@ -38,7 +38,11 @@ public static class MauiProgram
         builder.Services.AddSingleton<IAndroidImageDocumentService, AndroidImageDocumentService>();
         builder.Services.AddSingleton<IAndroidLinkedCharacterFileService, AndroidLinkedCharacterFileService>();
         builder.Services.AddSingleton<IAndroidSystemService, AndroidSystemService>();
-        builder.Services.AddSingleton<IAndroidAccountLinkService, AndroidAccountLinkService>();
+        builder.Services.AddSingleton(AndroidAccountLinkHttpTransport.CreateDefault());
+        builder.Services.AddSingleton<IAndroidAccountLinkService>(provider =>
+            new AndroidAccountLinkService(
+                provider.GetRequiredService<AndroidAccountLinkHttpTransport>(),
+                provider.GetRequiredService<IAndroidSystemService>()));
         // Hub transport and public-catalog composition are not present in this graph. Bind the
         // exact Presentation contract and keep the missing list capability separately fail-closed.
         builder.Services.AddSingleton<IShadowArchivePresentationClient,
@@ -116,11 +120,6 @@ public static class MauiProgram
         builder.Services.AddSingleton<ISr5CareerVehicleWorkshopWorkspaceStore,
             AndroidSr5CareerVehicleWorkshopWorkspaceStore>();
         builder.Services.AddSingleton<Sr5CareerVehicleWorkshopService>();
-        builder.Services.AddSingleton(new HttpClient
-        {
-            BaseAddress = new Uri("https://chummer.run"),
-            Timeout = TimeSpan.FromSeconds(20)
-        });
         builder.Services.AddSingleton<IShellBootstrapDataProvider, ShellBootstrapDataProvider>();
         builder.Services.AddSingleton<IWorkspaceOverviewStateFactory>(provider =>
             new WorkspaceOverviewStateFactory(

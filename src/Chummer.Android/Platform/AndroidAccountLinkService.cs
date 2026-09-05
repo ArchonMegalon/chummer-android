@@ -1,12 +1,11 @@
 using System.Globalization;
 using System.Net;
-using System.Net.Http.Json;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
-using System.Text.Json;
 using Chummer.Android.Native;
 using Microsoft.Maui.ApplicationModel;
+using Microsoft.Maui.Devices;
 using Microsoft.Maui.Storage;
 
 namespace Chummer.Android.Platform;
@@ -15,6 +14,7 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
 {
     private const string InstallationIdKey = "chummer.account.installation-id.v1";
     private const string PrivateKeyKey = "chummer.account.installation-private-key.v1";
+    private const string GrantIdKey = "chummer.account.installation-grant-id.v2";
     private const string AccessTokenKey = "chummer.account.installation-grant.v1";
     private const string GrantExpiryKey = "chummer.account.installation-grant-expiry.v1";
     private const string PendingStateKey = "chummer.account.pending-state.v1";
@@ -27,7 +27,6 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
     private const string ReleaseChannel = "preview";
     private static readonly TimeSpan PendingLifetime = TimeSpan.FromMinutes(18);
     private static readonly TimeSpan RefreshWindow = TimeSpan.FromDays(7);
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private static readonly HashSet<string> RequiredErasureComponents = new(StringComparer.Ordinal)
     {
         "hosted_build_workspaces",
@@ -37,16 +36,18 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         "identity"
     };
 
-    private readonly HttpClient _httpClient;
+    private readonly AndroidAccountLinkHttpTransport _httpTransport;
     private readonly IAndroidSystemService _systemService;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private AndroidAccountLinkSnapshot _snapshot = new(
         AndroidAccountLinkStatus.Loading,
         AccountText("Checking", "Checking"));
 
-    public AndroidAccountLinkService(HttpClient httpClient, IAndroidSystemService systemService)
+    internal AndroidAccountLinkService(
+        AndroidAccountLinkHttpTransport httpTransport,
+        IAndroidSystemService systemService)
     {
-        _httpClient = httpClient;
+        _httpTransport = httpTransport;
         _systemService = systemService;
     }
 
@@ -59,10 +60,10 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            string? installationId = await SecureStorage.Default.GetAsync(InstallationIdKey);
-            string? accessToken = await SecureStorage.Default.GetAsync(AccessTokenKey);
-            if (string.IsNullOrWhiteSpace(installationId) || string.IsNullOrWhiteSpace(accessToken))
+            StoredGrant? grant = await ReadStoredGrantAsync();
+            if (grant is null)
             {
+                ClearGrant();
                 string? pendingState = await SecureStorage.Default.GetAsync(PendingStateKey);
                 DateTimeOffset? pendingStarted = await ReadTimestampAsync(PendingStartedKey);
                 if (string.IsNullOrWhiteSpace(pendingState) || !IsPendingLinkCurrent(pendingStarted))
@@ -93,7 +94,7 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
                 return;
             }
 
-            GrantValidationResult validation = await ValidateGrantAsync(installationId, accessToken, cancellationToken);
+            GrantValidationResult validation = await ValidateGrantAsync(grant, cancellationToken);
             if (validation == GrantValidationResult.Invalid)
             {
                 ClearGrant();
@@ -116,7 +117,7 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
 
             if (expiresAtUtc is not null && expiresAtUtc <= DateTimeOffset.UtcNow.Add(RefreshWindow))
             {
-                GrantContract? refreshed = await RefreshGrantAsync(installationId, accessToken, cancellationToken);
+                GrantContract? refreshed = await RefreshGrantAsync(grant, cancellationToken);
                 if (refreshed is not null)
                 {
                     await SaveGrantAsync(refreshed);
@@ -263,17 +264,17 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             string nonce = Convert.ToHexString(RandomNumberGenerator.GetBytes(24)).ToLowerInvariant();
             string architecture = ResolveArchitecture();
             string version = AppInfo.Current.VersionString;
-            byte[] proof = Encoding.UTF8.GetBytes(string.Join(
-                '\n',
-                "chummer.install-link.remote-callback.v1",
+            string hostLabel = ResolveHostLabel();
+            byte[] proof = AndroidAccountLinkBootstrapProof.CreateCanonicalPayload(
                 identity.InstallationId,
                 HeadId,
                 version,
                 ReleaseChannel,
                 PlatformId,
                 architecture,
-                issuedAt.ToString(CultureInfo.InvariantCulture),
-                nonce));
+                issuedAt,
+                nonce,
+                hostLabel);
             string signature;
             try
             {
@@ -298,11 +299,11 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
                 issuedAt,
                 nonce,
                 signature,
-                ResolveHostLabel());
-            using HttpResponseMessage response = await _httpClient.PostAsJsonAsync(
-                "/api/v1/install-linking/callbacks/poll",
+                hostLabel);
+            using HttpResponseMessage response = await _httpTransport.PostJsonAsync(
+                AndroidAccountLinkBootstrapProof.PollPath,
                 request,
-                JsonOptions,
+                authority: null,
                 cancellationToken);
             if (response.StatusCode == HttpStatusCode.Accepted)
             {
@@ -349,8 +350,16 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
                 return;
             }
 
-            ExchangeResponse? exchange = await response.Content.ReadFromJsonAsync<ExchangeResponse>(JsonOptions, cancellationToken);
-            if (exchange?.Grant is null || string.IsNullOrWhiteSpace(exchange.Grant.AccessToken))
+            AndroidAccountLinkResponseGrantAuthority responseAuthority =
+                AndroidAccountLinkHttpTransport.ReadResponseGrantAuthority(response);
+            ExchangeResponse exchange = await _httpTransport.ReadJsonAsync<ExchangeResponse>(
+                response,
+                cancellationToken);
+            GrantContract grant = MaterializeIssuedGrant(
+                exchange.Grant,
+                responseAuthority,
+                identity.InstallationId);
+            if (!IsUsableGrant(grant, identity.InstallationId))
             {
                 SetSnapshot(new(
                     AndroidAccountLinkStatus.Error,
@@ -359,13 +368,13 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
                 return;
             }
 
-            await SaveGrantAsync(exchange.Grant);
+            await SaveGrantAsync(grant);
             ClearPending();
             SetSnapshot(new(
                 AndroidAccountLinkStatus.Linked,
                 AccountText("AccountLinked", "Linked"),
                 null,
-                exchange.Grant.ExpiresAtUtc));
+                grant.ExpiresAtUtc));
         }
         catch (HttpRequestException)
         {
@@ -398,14 +407,14 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         try
         {
             grantExpiresAtUtc ??= await ReadGrantExpiryAsync();
-            string? installationId = await SecureStorage.Default.GetAsync(InstallationIdKey);
-            string? accessToken = await SecureStorage.Default.GetAsync(AccessTokenKey);
-            if (!string.IsNullOrWhiteSpace(installationId) && !string.IsNullOrWhiteSpace(accessToken))
+            StoredGrant? grant = await ReadStoredGrantAsync();
+            if (grant is not null)
             {
-                using HttpResponseMessage response = await _httpClient.PostAsJsonAsync(
-                    "/api/v1/install-linking/grants/revoke",
-                    new GrantBearerRequest(installationId, accessToken),
-                    JsonOptions,
+                AndroidAccountLinkRequestAuthority authority = CreateRequestAuthority(grant);
+                using HttpResponseMessage response = await _httpTransport.PostJsonAsync(
+                    "/api/v2/install-linking/grants/revoke",
+                    new InstallationGrantRequest(grant.InstallationId),
+                    authority,
                     cancellationToken);
                 if (!response.IsSuccessStatusCode && response.StatusCode != HttpStatusCode.Unauthorized)
                 {
@@ -462,13 +471,13 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            GrantBearerRequest grant = await RequireStoredGrantAsync();
+            StoredGrant grant = await RequireStoredGrantAsync();
             AndroidAccountErasureReceipt receipt = await SendLinkedAsync<AndroidAccountErasureReceipt>(
-                "/api/v1/android/linked/account/erase",
+                "/api/v2/android/linked/account/erase",
                 new AccountErasureRequest(
                     grant.InstallationId,
-                    grant.AccessToken,
                     AndroidAccountErasureConfirmation.RequiredPhrase),
+                grant,
                 cancellationToken);
             if (!IsCompleteAccountErasureReceipt(receipt))
             {
@@ -490,9 +499,10 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
     public async Task<IReadOnlyList<AndroidOnlineCharacter>> ListOnlineCharactersAsync(
         CancellationToken cancellationToken = default)
     {
-        GrantBearerRequest grant = await RequireStoredGrantAsync();
+        StoredGrant grant = await RequireStoredGrantAsync();
         WorkspaceListResponse response = await SendLinkedAsync<WorkspaceListResponse>(
-            "/api/v1/install-linking/continuation/workspaces/list",
+            "/api/v2/install-linking/continuation/workspaces/list",
+            new InstallationGrantRequest(grant.InstallationId),
             grant,
             cancellationToken);
         if (response.Snapshots.Count > 200
@@ -518,9 +528,10 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
     public async Task<IReadOnlyList<AndroidLinkedGroup>> ListGroupsAsync(
         CancellationToken cancellationToken = default)
     {
-        GrantBearerRequest grant = await RequireStoredGrantAsync();
+        StoredGrant grant = await RequireStoredGrantAsync();
         LinkedGroupListResponse response = await SendLinkedAsync<LinkedGroupListResponse>(
-            "/api/v1/android/linked/groups",
+            "/api/v2/android/linked/groups",
+            new InstallationGrantRequest(grant.InstallationId),
             grant,
             cancellationToken);
         return response.Groups.Select(ToLinkedGroup).ToArray();
@@ -531,10 +542,11 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         string visibility,
         CancellationToken cancellationToken = default)
     {
-        GrantBearerRequest grant = await RequireStoredGrantAsync();
+        StoredGrant grant = await RequireStoredGrantAsync();
         LinkedGroupDto group = await SendLinkedAsync<LinkedGroupDto>(
-            "/api/v1/android/linked/groups/create",
-            new LinkedGroupMutationRequest(grant.InstallationId, grant.AccessToken, name, visibility),
+            "/api/v2/android/linked/groups/create",
+            new LinkedGroupMutationRequest(grant.InstallationId, name, visibility),
+            grant,
             cancellationToken);
         return ToLinkedGroup(group);
     }
@@ -546,10 +558,11 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(groupId);
-        GrantBearerRequest grant = await RequireStoredGrantAsync();
+        StoredGrant grant = await RequireStoredGrantAsync();
         LinkedGroupDto group = await SendLinkedAsync<LinkedGroupDto>(
-            $"/api/v1/android/linked/groups/{Uri.EscapeDataString(groupId)}/update",
-            new LinkedGroupMutationRequest(grant.InstallationId, grant.AccessToken, name, visibility),
+            $"/api/v2/android/linked/groups/{Uri.EscapeDataString(groupId)}/update",
+            new LinkedGroupMutationRequest(grant.InstallationId, name, visibility),
+            grant,
             cancellationToken);
         return ToLinkedGroup(group);
     }
@@ -559,9 +572,10 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(groupId);
-        GrantBearerRequest grant = await RequireStoredGrantAsync();
+        StoredGrant grant = await RequireStoredGrantAsync();
         LinkedInviteResponse invite = await SendLinkedAsync<LinkedInviteResponse>(
-            $"/api/v1/android/linked/groups/{Uri.EscapeDataString(groupId)}/invites",
+            $"/api/v2/android/linked/groups/{Uri.EscapeDataString(groupId)}/invites",
+            new InstallationGrantRequest(grant.InstallationId),
             grant,
             cancellationToken);
         string code = invite.Code?.Trim() ?? string.Empty;
@@ -586,9 +600,10 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(groupId);
-        GrantBearerRequest grant = await RequireStoredGrantAsync();
+        StoredGrant grant = await RequireStoredGrantAsync();
         LinkedChronicleListResponse response = await SendLinkedAsync<LinkedChronicleListResponse>(
-            $"/api/v1/android/linked/groups/{Uri.EscapeDataString(groupId)}/chronicles",
+            $"/api/v2/android/linked/groups/{Uri.EscapeDataString(groupId)}/chronicles",
+            new InstallationGrantRequest(grant.InstallationId),
             grant,
             cancellationToken);
         return response.Projects.Select(ToChronicleProject).ToArray();
@@ -601,10 +616,11 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(groupId);
         ArgumentNullException.ThrowIfNull(draft);
-        GrantBearerRequest grant = await RequireStoredGrantAsync();
+        StoredGrant grant = await RequireStoredGrantAsync();
         LinkedChronicleDto project = await SendLinkedAsync<LinkedChronicleDto>(
-            $"/api/v1/android/linked/groups/{Uri.EscapeDataString(groupId)}/chronicles/create",
+            $"/api/v2/android/linked/groups/{Uri.EscapeDataString(groupId)}/chronicles/create",
             ToChronicleDraftRequest(grant, draft),
+            grant,
             cancellationToken);
         return ToChronicleProject(project);
     }
@@ -618,10 +634,11 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         ArgumentException.ThrowIfNullOrWhiteSpace(groupId);
         ArgumentException.ThrowIfNullOrWhiteSpace(chronicleProjectId);
         ArgumentNullException.ThrowIfNull(draft);
-        GrantBearerRequest grant = await RequireStoredGrantAsync();
+        StoredGrant grant = await RequireStoredGrantAsync();
         LinkedChronicleDto project = await SendLinkedAsync<LinkedChronicleDto>(
-            $"/api/v1/android/linked/groups/{Uri.EscapeDataString(groupId)}/chronicles/{Uri.EscapeDataString(chronicleProjectId)}/draft",
+            $"/api/v2/android/linked/groups/{Uri.EscapeDataString(groupId)}/chronicles/{Uri.EscapeDataString(chronicleProjectId)}/draft",
             ToChronicleDraftRequest(grant, draft),
+            grant,
             cancellationToken);
         return ToChronicleProject(project);
     }
@@ -639,17 +656,17 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         ArgumentException.ThrowIfNullOrWhiteSpace(groupId);
         ArgumentException.ThrowIfNullOrWhiteSpace(chronicleProjectId);
         ArgumentException.ThrowIfNullOrWhiteSpace(action);
-        GrantBearerRequest grant = await RequireStoredGrantAsync();
+        StoredGrant grant = await RequireStoredGrantAsync();
         LinkedChronicleDto project = await SendLinkedAsync<LinkedChronicleDto>(
-            $"/api/v1/android/linked/groups/{Uri.EscapeDataString(groupId)}/chronicles/{Uri.EscapeDataString(chronicleProjectId)}/actions",
+            $"/api/v2/android/linked/groups/{Uri.EscapeDataString(groupId)}/chronicles/{Uri.EscapeDataString(chronicleProjectId)}/actions",
             new LinkedChronicleActionRequest(
                 grant.InstallationId,
-                grant.AccessToken,
                 action,
                 externalProjectRef,
                 artifactUrl,
                 artifactSha256,
                 exportFormat),
+            grant,
             cancellationToken);
         return ToChronicleProject(project);
     }
@@ -661,9 +678,10 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(groupId);
         ArgumentException.ThrowIfNullOrWhiteSpace(chronicleProjectId);
-        GrantBearerRequest grant = await RequireStoredGrantAsync();
+        StoredGrant grant = await RequireStoredGrantAsync();
         LinkedChroniclePacketResponse packet = await SendLinkedAsync<LinkedChroniclePacketResponse>(
-            $"/api/v1/android/linked/groups/{Uri.EscapeDataString(groupId)}/chronicles/{Uri.EscapeDataString(chronicleProjectId)}/packet",
+            $"/api/v2/android/linked/groups/{Uri.EscapeDataString(groupId)}/chronicles/{Uri.EscapeDataString(chronicleProjectId)}/packet",
+            new InstallationGrantRequest(grant.InstallationId),
             grant,
             cancellationToken);
         return new AndroidChroniclePacket(packet.FileName, packet.MediaType, packet.ContentBase64, packet.Sha256);
@@ -676,9 +694,10 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(groupId);
         ArgumentException.ThrowIfNullOrWhiteSpace(chronicleProjectId);
-        GrantBearerRequest grant = await RequireStoredGrantAsync();
+        StoredGrant grant = await RequireStoredGrantAsync();
         LinkedChroniclePacketResponse handoff = await SendLinkedAsync<LinkedChroniclePacketResponse>(
-            $"/api/v1/android/linked/groups/{Uri.EscapeDataString(groupId)}/chronicles/{Uri.EscapeDataString(chronicleProjectId)}/handoff",
+            $"/api/v2/android/linked/groups/{Uri.EscapeDataString(groupId)}/chronicles/{Uri.EscapeDataString(chronicleProjectId)}/handoff",
+            new InstallationGrantRequest(grant.InstallationId),
             grant,
             cancellationToken);
         return new AndroidChroniclePacket(handoff.FileName, handoff.MediaType, handoff.ContentBase64, handoff.Sha256);
@@ -729,11 +748,10 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             && value.All(static character => Uri.IsHexDigit(character));
 
     private static LinkedChronicleDraftRequest ToChronicleDraftRequest(
-        GrantBearerRequest grant,
+        StoredGrant grant,
         AndroidChronicleDraft draft)
         => new(
             grant.InstallationId,
-            grant.AccessToken,
             draft.Title,
             draft.BookKind,
             draft.Audience,
@@ -792,24 +810,24 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             project.ExternalSendApprovedAtUtc,
             project.UploadApprovedAtUtc);
 
-    private static async Task<GrantBearerRequest> RequireStoredGrantAsync()
+    private static async Task<StoredGrant> RequireStoredGrantAsync()
     {
-        string? installationId = await SecureStorage.Default.GetAsync(InstallationIdKey);
-        string? accessToken = await SecureStorage.Default.GetAsync(AccessTokenKey);
-        if (string.IsNullOrWhiteSpace(installationId) || string.IsNullOrWhiteSpace(accessToken))
-        {
-            throw new InvalidOperationException("Link your account first.");
-        }
-
-        return new GrantBearerRequest(installationId, accessToken);
+        StoredGrant? grant = await ReadStoredGrantAsync();
+        return grant ?? throw new InvalidOperationException("Link your account first.");
     }
 
     private async Task<T> SendLinkedAsync<T>(
         string path,
         object request,
+        StoredGrant grant,
         CancellationToken cancellationToken)
     {
-        using HttpResponseMessage response = await _httpClient.PostAsJsonAsync(path, request, JsonOptions, cancellationToken);
+        AndroidAccountLinkRequestAuthority authority = CreateRequestAuthority(grant);
+        using HttpResponseMessage response = await _httpTransport.PostJsonAsync(
+            path,
+            request,
+            authority,
+            cancellationToken);
         if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Conflict)
         {
             ClearGrant();
@@ -828,21 +846,20 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
                 response.StatusCode);
         }
 
-        T? payload = await response.Content.ReadFromJsonAsync<T>(JsonOptions, cancellationToken);
-        return payload ?? throw new InvalidDataException("Chummer returned an empty account response.");
+        return await _httpTransport.ReadJsonAsync<T>(response, cancellationToken);
     }
 
     private async Task<GrantValidationResult> ValidateGrantAsync(
-        string installationId,
-        string accessToken,
+        StoredGrant grant,
         CancellationToken cancellationToken)
     {
         try
         {
-            using HttpResponseMessage response = await _httpClient.PostAsJsonAsync(
-                "/api/v1/install-linking/grants/status",
-                new GrantBearerRequest(installationId, accessToken),
-                JsonOptions,
+            AndroidAccountLinkRequestAuthority authority = CreateRequestAuthority(grant);
+            using HttpResponseMessage response = await _httpTransport.PostJsonAsync(
+                "/api/v2/install-linking/grants/status",
+                new InstallationGrantRequest(grant.InstallationId),
+                authority,
                 cancellationToken);
             return response.IsSuccessStatusCode
                 ? GrantValidationResult.Valid
@@ -857,18 +874,17 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
     }
 
     private async Task<GrantContract?> RefreshGrantAsync(
-        string installationId,
-        string accessToken,
+        StoredGrant grant,
         CancellationToken cancellationToken)
     {
         try
         {
             InstallationIdentity identity = await GetOrCreateInstallationIdentityAsync();
-            using HttpResponseMessage response = await _httpClient.PostAsJsonAsync(
-                "/api/v1/install-linking/grants/refresh",
+            AndroidAccountLinkRequestAuthority authority = CreateRequestAuthority(grant);
+            using HttpResponseMessage response = await _httpTransport.PostJsonAsync(
+                "/api/v2/install-linking/grants/refresh",
                 new RefreshRequest(
-                    installationId,
-                    accessToken,
+                    grant.InstallationId,
                     HeadId,
                     AppInfo.Current.VersionString,
                     ReleaseChannel,
@@ -876,15 +892,25 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
                     ResolveArchitecture(),
                     identity.PublicKey,
                     ResolveHostLabel()),
-                JsonOptions,
+                authority,
                 cancellationToken);
             if (!response.IsSuccessStatusCode)
             {
                 return null;
             }
 
-            RefreshResponse? refreshed = await response.Content.ReadFromJsonAsync<RefreshResponse>(JsonOptions, cancellationToken);
-            return refreshed?.Grant;
+            AndroidAccountLinkResponseGrantAuthority responseAuthority =
+                AndroidAccountLinkHttpTransport.ReadResponseGrantAuthority(response);
+            RefreshResponse refreshed = await _httpTransport.ReadJsonAsync<RefreshResponse>(
+                response,
+                cancellationToken);
+            GrantContract rotated = MaterializeIssuedGrant(
+                refreshed.Grant,
+                responseAuthority,
+                grant.InstallationId);
+            return IsUsableGrant(rotated, grant.InstallationId)
+                ? rotated
+                : null;
         }
         catch (HttpRequestException)
         {
@@ -936,7 +962,10 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
                     existingKey.ImportPkcs8PrivateKey(existingBytes, out int bytesRead);
                     if (bytesRead == existingBytes.Length && existingKey.KeySize >= 2048)
                     {
-                        return new(installationId, privateKey, Convert.ToBase64String(existingKey.ExportRSAPublicKey()));
+                        return new(
+                            installationId,
+                            privateKey,
+                            Convert.ToBase64String(existingKey.ExportSubjectPublicKeyInfo()));
                     }
                 }
                 finally
@@ -967,7 +996,10 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             privateKey = Convert.ToBase64String(exportedPrivateKey);
             await SecureStorage.Default.SetAsync(InstallationIdKey, installationId);
             await SecureStorage.Default.SetAsync(PrivateKeyKey, privateKey);
-            return new(installationId, privateKey, Convert.ToBase64String(newKey.ExportRSAPublicKey()));
+            return new(
+                installationId,
+                privateKey,
+                Convert.ToBase64String(newKey.ExportSubjectPublicKeyInfo()));
         }
         finally
         {
@@ -977,10 +1009,98 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
 
     private static async Task SaveGrantAsync(GrantContract grant)
     {
-        await SecureStorage.Default.SetAsync(AccessTokenKey, grant.AccessToken);
-        await SecureStorage.Default.SetAsync(
-            GrantExpiryKey,
-            grant.ExpiresAtUtc.ToString("O", CultureInfo.InvariantCulture));
+        if (!IsUsableGrant(grant, grant.InstallationId))
+        {
+            throw new InvalidDataException("Chummer returned an invalid account grant.");
+        }
+
+        try
+        {
+            await SecureStorage.Default.SetAsync(GrantIdKey, grant.GrantId);
+            await SecureStorage.Default.SetAsync(AccessTokenKey, grant.AccessToken);
+            await SecureStorage.Default.SetAsync(
+                GrantExpiryKey,
+                grant.ExpiresAtUtc.ToString("O", CultureInfo.InvariantCulture));
+        }
+        catch
+        {
+            // A partially rotated grant must never become request authority after restart.
+            ClearGrant();
+            throw;
+        }
+    }
+
+    private static async Task<StoredGrant?> ReadStoredGrantAsync()
+    {
+        string? installationId = await SecureStorage.Default.GetAsync(InstallationIdKey);
+        string? grantId = await SecureStorage.Default.GetAsync(GrantIdKey);
+        string? accessToken = await SecureStorage.Default.GetAsync(AccessTokenKey);
+        string? privateKey = await SecureStorage.Default.GetAsync(PrivateKeyKey);
+        return string.IsNullOrWhiteSpace(installationId)
+            || string.IsNullOrWhiteSpace(grantId)
+            || string.IsNullOrWhiteSpace(accessToken)
+            || string.IsNullOrWhiteSpace(privateKey)
+                ? null
+                : new StoredGrant(installationId, grantId, accessToken, privateKey);
+    }
+
+    private static AndroidAccountLinkRequestAuthority CreateRequestAuthority(StoredGrant grant)
+        => new(
+            grant.InstallationId,
+            grant.GrantId,
+            grant.AccessToken,
+            DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            canonical => SignRequestProof(grant.PrivateKey, canonical));
+
+    private static string SignRequestProof(string privateKeyPkcs8Base64, byte[] canonical)
+    {
+        byte[] privateKey = Convert.FromBase64String(privateKeyPkcs8Base64);
+        try
+        {
+            using RSA signingKey = RSA.Create();
+            signingKey.ImportPkcs8PrivateKey(privateKey, out int bytesRead);
+            if (bytesRead != privateKey.Length || signingKey.KeySize < 2048)
+            {
+                throw new CryptographicException("The protected installation key is invalid.");
+            }
+            return Convert.ToBase64String(signingKey.SignData(
+                canonical,
+                HashAlgorithmName.SHA256,
+                RSASignaturePadding.Pkcs1));
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(privateKey);
+        }
+    }
+
+    private static bool IsUsableGrant(GrantContract? grant, string expectedInstallationId)
+        => grant is not null
+            && !string.IsNullOrWhiteSpace(grant.GrantId)
+            && grant.GrantId.Length <= 128
+            && string.Equals(grant.InstallationId, expectedInstallationId, StringComparison.Ordinal)
+            && !string.IsNullOrWhiteSpace(grant.AccessToken)
+            && grant.AccessToken.Length <= 256
+            && grant.ExpiresAtUtc > grant.IssuedAtUtc
+            && grant.ExpiresAtUtc > DateTimeOffset.UtcNow;
+
+    private static GrantContract MaterializeIssuedGrant(
+        GrantMetadata metadata,
+        AndroidAccountLinkResponseGrantAuthority authority,
+        string expectedInstallationId)
+    {
+        if (!string.Equals(metadata.GrantId, authority.GrantId, StringComparison.Ordinal)
+            || !string.Equals(metadata.InstallationId, expectedInstallationId, StringComparison.Ordinal))
+        {
+            throw new InvalidDataException("Chummer returned a mismatched account grant.");
+        }
+        return new GrantContract(
+            metadata.GrantId,
+            metadata.InstallationId,
+            metadata.Status,
+            authority.AccessToken,
+            metadata.IssuedAtUtc,
+            metadata.ExpiresAtUtc);
     }
 
     private static async Task<DateTimeOffset?> ReadGrantExpiryAsync()
@@ -1068,6 +1188,7 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
 
     private static void ClearGrant()
     {
+        SecureStorage.Default.Remove(GrantIdKey);
         SecureStorage.Default.Remove(AccessTokenKey);
         SecureStorage.Default.Remove(GrantExpiryKey);
     }
@@ -1095,10 +1216,32 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
     }
 
     private sealed record InstallationIdentity(string InstallationId, string PrivateKey, string PublicKey);
-    private sealed record GrantBearerRequest(string InstallationId, string AccessToken);
+    private sealed class StoredGrant
+    {
+        internal StoredGrant(
+            string installationId,
+            string grantId,
+            string accessToken,
+            string privateKey)
+        {
+            InstallationId = installationId;
+            GrantId = grantId;
+            AccessToken = accessToken;
+            PrivateKey = privateKey;
+        }
+
+        internal string InstallationId { get; }
+        internal string GrantId { get; }
+        internal string AccessToken { get; }
+        internal string PrivateKey { get; }
+
+        public override string ToString()
+            => $"StoredGrant {{ InstallationId = {InstallationId}, GrantId = {GrantId}, AccessToken = [REDACTED], PrivateKey = [REDACTED] }}";
+    }
+
+    private sealed record InstallationGrantRequest(string InstallationId);
     private sealed record AccountErasureRequest(
         string InstallationId,
-        string AccessToken,
         string Confirmation);
     private sealed record PollRequest(
         string InstallationId,
@@ -1106,7 +1249,7 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         string ApplicationVersion,
         string ChannelId,
         string Platform,
-        string Arch,
+        string Architecture,
         string PublicKey,
         long IssuedAtUnixSeconds,
         string Nonce,
@@ -1114,12 +1257,11 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         string HostLabel);
     private sealed record RefreshRequest(
         string InstallationId,
-        string AccessToken,
         string HeadId,
         string ApplicationVersion,
         string ChannelId,
         string Platform,
-        string Arch,
+        string Architecture,
         string PublicKey,
         string HostLabel);
     private sealed record GrantContract(
@@ -1129,8 +1271,14 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         string AccessToken,
         DateTimeOffset IssuedAtUtc,
         DateTimeOffset ExpiresAtUtc);
-    private sealed record ExchangeResponse(GrantContract Grant, bool AlreadyClaimed);
-    private sealed record RefreshResponse(GrantContract Grant, bool Rotated);
+    private sealed record GrantMetadata(
+        string GrantId,
+        string InstallationId,
+        string Status,
+        DateTimeOffset IssuedAtUtc,
+        DateTimeOffset ExpiresAtUtc);
+    private sealed record ExchangeResponse(GrantMetadata Grant, bool AlreadyClaimed);
+    private sealed record RefreshResponse(GrantMetadata Grant, bool Rotated);
     private sealed record WorkspaceListResponse(IReadOnlyList<WorkspaceSnapshotDto> Snapshots);
     private sealed record WorkspaceSnapshotDto(
         string WorkspaceId,
@@ -1155,14 +1303,12 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
     private sealed record LinkedGroupMemberDto(string Role, string? RunnerHandle);
     private sealed record LinkedGroupMutationRequest(
         string InstallationId,
-        string AccessToken,
         string Name,
         string Visibility);
     private sealed record LinkedInviteResponse(string Code, string InviteUrl, DateTimeOffset? ExpiresAtUtc);
     private sealed record LinkedChronicleListResponse(IReadOnlyList<LinkedChronicleDto> Projects);
     private sealed record LinkedChronicleDraftRequest(
         string InstallationId,
-        string AccessToken,
         string Title,
         string BookKind,
         string Audience,
@@ -1181,7 +1327,6 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         bool SpoilerReviewConfirmed = false);
     private sealed record LinkedChronicleActionRequest(
         string InstallationId,
-        string AccessToken,
         string Action,
         string? ExternalProjectRef,
         string? ArtifactUrl,
