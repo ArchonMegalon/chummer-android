@@ -43,6 +43,7 @@ internal static class Program
             (nameof(PlayReviewFileStateRoundTripsOnlyLocalPolicyDataAsync), PlayReviewFileStateRoundTripsOnlyLocalPolicyDataAsync),
             (nameof(SlowCreationDashboardProjectionDoesNotBlockCallerAsync), SlowCreationDashboardProjectionDoesNotBlockCallerAsync),
             (nameof(CapturedCreationAuthorityAvoidsUiThreadReloadAsync), CapturedCreationAuthorityAvoidsUiThreadReloadAsync),
+            (nameof(CreationProjectionSchedulingPrioritizesWizardAllocationAsync), CreationProjectionSchedulingPrioritizesWizardAllocationAsync),
             (nameof(PrerequisiteAuthorityPublishesBeforeSlowLaterPhasesAsync), PrerequisiteAuthorityPublishesBeforeSlowLaterPhasesAsync),
             (nameof(CreationAuthorityPhaseMergesAreIndependentAndDeterministicAsync), CreationAuthorityPhaseMergesAreIndependentAndDeterministicAsync),
             (nameof(CreationDashboardReadyMarkerRequiresCurrentTerminalAuthorityAsync), CreationDashboardReadyMarkerRequiresCurrentTerminalAuthorityAsync),
@@ -1098,6 +1099,41 @@ internal static class Program
         Require(
             ReferenceEquals(reloaded, refreshed) && loadCount == 1,
             "A stale dashboard authority did not reload exactly once from the current workspace.");
+        return Task.CompletedTask;
+    }
+
+    private static Task CreationProjectionSchedulingPrioritizesWizardAllocationAsync()
+    {
+        CreationDashboardAuthorityPhaseProgress initial =
+            CreationDashboardAuthorityPhaseProgress.ForBuildMethod(CharacterCreationBuildMethods.Priority);
+        Require(
+            CreationDashboardProjectionScheduler.NextBatch(initial).SequenceEqual(
+                [CreationDashboardAuthorityPhase.Prerequisite]),
+            "Priority Creation started lower-value projections before prerequisite authority.");
+
+        CreationDashboardAuthorityPhaseProgress prerequisiteReady = initial.WithTerminal(
+            CreationDashboardAuthorityPhase.Prerequisite,
+            failed: false);
+        Require(
+            CreationDashboardProjectionScheduler.NextBatch(prerequisiteReady).SequenceEqual(
+                [CreationDashboardAuthorityPhase.Attributes, CreationDashboardAuthorityPhase.Skills]),
+            "Priority Creation did not give the two allocation projections exclusive next-batch priority.");
+
+        CreationDashboardAuthorityPhaseProgress allocationReady = prerequisiteReady
+            .WithTerminal(CreationDashboardAuthorityPhase.Attributes, failed: false)
+            .WithTerminal(CreationDashboardAuthorityPhase.Skills, failed: false);
+        Require(
+            CreationDashboardProjectionScheduler.NextBatch(allocationReady).SequenceEqual(
+                [CreationDashboardAuthorityPhase.Contacts, CreationDashboardAuthorityPhase.Resources]),
+            "Contacts and Resources did not wait for the allocation projections to become terminal.");
+
+        CreationDashboardAuthorityPhaseProgress lifeModules =
+            CreationDashboardAuthorityPhaseProgress.ForBuildMethod("life-modules");
+        Require(
+            CreationDashboardProjectionScheduler.NextBatch(lifeModules).SequenceEqual(
+                [CreationDashboardAuthorityPhase.Contacts]),
+            "A build method without prerequisite allocation authority did not proceed directly to Contacts.");
+
         return Task.CompletedTask;
     }
 
