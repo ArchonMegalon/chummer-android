@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+set +a
 umask 077
 
 repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
@@ -8,8 +9,29 @@ dotnet_command="${CHUMMER_DOTNET:-dotnet}"
 nuget_org_source="https://api.nuget.org/v3/index.json"
 two_green_receipt_input="${CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT:-}"
 two_green_approval_input="${CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL:-}"
-unset CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT
-unset CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL
+export -n two_green_receipt_input two_green_approval_input 2>/dev/null || true
+# Preparation never needs signing authority.  Scrub every ambient signing or
+# protected-approval variable before even the first Python, dotnet, or MSBuild
+# child can be started.  The two protected inputs survive only in shell-local
+# variables and are copied into the private preparation root below.
+for protected_release_variable in \
+  AndroidSigningKeyStore \
+  ChummerAndroidSigningStorePass \
+  ChummerAndroidSigningKeyPass \
+  ChummerAndroidSigningKeyAlias \
+  CHUMMER_ANDROID_UPLOAD_CERTIFICATE_PATH \
+  CHUMMER_ANDROID_PREFLIGHT_STORE_PASSWORD \
+  CHUMMER_ANDROID_SIGNING_DIR \
+  CHUMMER_PROVISION_STORE_PASSWORD \
+  CHUMMER_RECOVERY_STORE_PASSWORD \
+  CHUMMER_ANDROID_RELEASE_APPROVER_PRIVATE_KEY \
+  CHUMMER_ANDROID_BUILD_ATTESTATION_PRIVATE_KEY \
+  CHUMMER_ANDROID_GITHUB_PROVENANCE_TOKEN_FILE \
+  CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT \
+  CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL; do
+  unset "$protected_release_variable"
+done
+unset protected_release_variable
 
 fail() {
   printf 'android_release_inputs=failed stage=%s publication_authorized=false\n' "$1" >&2

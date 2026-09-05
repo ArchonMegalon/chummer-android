@@ -46,7 +46,7 @@ expected_upload_certificate_sha256="D9:C4:B6:35:12:15:44:D5:52:2A:BF:1E:C2:DF:DA
 expected_bundletool_sha256="a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29"
 nuget_org_source="https://api.nuget.org/v3/index.json"
 release_tmp=""
-seal_tmp=""
+capture_tmp=""
 
 fail() {
   printf 'android_release=failed stage=%s\n' "$1" >&2
@@ -56,11 +56,11 @@ fail() {
 cleanup() {
   local status="$?"
   trap - EXIT HUP INT TERM
-  if [[ -n "$seal_tmp" && -f "$seal_tmp" ]]; then
-    rm -f -- "$seal_tmp"
-  fi
   if [[ -n "$release_tmp" && -d "$release_tmp" ]]; then
     rm -rf -- "$release_tmp"
+  fi
+  if [[ -n "$capture_tmp" && -d "$capture_tmp" ]]; then
+    rm -rf -- "$capture_tmp"
   fi
   exit "$status"
 }
@@ -114,28 +114,12 @@ require_private_directory() {
     || fail "input-$variable_name-not-owner-owned"
 }
 
-seal_file_no_clobber() {
-  local source_path="$1"
-  local destination_path="$2"
-  local mode="$3"
-  local destination_dir destination_name
-  destination_dir="$(dirname -- "$destination_path")"
-  destination_name="$(basename -- "$destination_path")"
-  [[ ! -e "$destination_path" && ! -L "$destination_path" ]] \
-    || fail "sealed-output-already-exists"
-  seal_tmp="$(mktemp "$destination_dir/.${destination_name}.seal.XXXXXX")"
-  install -m "$mode" -- "$source_path" "$seal_tmp"
-  ln -- "$seal_tmp" "$destination_path" || fail "sealed-output-collision"
-  rm -f -- "$seal_tmp"
-  seal_tmp=""
-}
-
 trap cleanup EXIT
 trap 'exit 129' HUP
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-for required in basename chmod cmp cut dirname env git id install jq ln mkdir mktemp openssl python3 realpath rm sha256sum stat; do
+for required in basename chmod cmp cut dirname env git id install jq mkdir mktemp openssl python3 realpath rm sha256sum stat; do
   require_command "$required"
 done
 require_command "$dotnet_command"
@@ -391,6 +375,9 @@ python3 "$repo_dir/scripts/verify_api36_two_green_release_eligibility.py" \
   --package-authority "$CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY" \
   --source-graph "$staged_graph" >/dev/null \
   || fail "two-green-pre-signing-binding-invalid"
+python3 "$repo_dir/scripts/verify_release_private_key_hygiene.py" \
+  --repo-root "$repo_dir" \
+  || fail "repository-private-key-hygiene"
 require_private_regular_file AndroidSigningKeyStore
 require_private_regular_file CHUMMER_ANDROID_UPLOAD_CERTIFICATE_PATH
 require_private_regular_file CHUMMER_BUNDLETOOL_JAR
@@ -498,9 +485,25 @@ source_aab="$(python3 "$repo_dir/scripts/verify_release_publish_output.py" \
   --package-id "$package_id" \
   --resolve-exact-signed-aab)" || fail "fresh-signed-release-bundle-invalid"
 
-"$repo_dir/scripts/validate-aab.sh" "$source_aab"
-python3 "$repo_dir/scripts/verify_release_artifact_hygiene.py" \
+# Capture both outputs exactly once through stable descriptors onto the final
+# artifact filesystem.  Every validator below reads those immutable captured
+# inodes; promotion hard-links those same inodes rather than reopening mutable
+# publish or source-graph paths after verification.
+capture_tmp="$(mktemp -d "$artifact_dir/.chummer-android-$version_name.capture.XXXXXX")"
+chmod 0700 "$capture_tmp"
+python3 "$repo_dir/scripts/capture_android_release_outputs.py" capture \
   --aab "$source_aab" \
+  --source-graph "$staged_graph" \
+  --capture-dir "$capture_tmp" \
+  --final-aab-name "$(basename "$output_aab")" \
+  --final-graph-name "$(basename "$output_graph")" \
+  || fail "stable-release-output-capture"
+captured_aab="$capture_tmp/captured.aab"
+captured_graph="$capture_tmp/captured-source-graph.json"
+
+"$repo_dir/scripts/validate-aab.sh" "$captured_aab"
+python3 "$repo_dir/scripts/verify_release_artifact_hygiene.py" \
+  --aab "$captured_aab" \
   --forbidden-path "$two_green_receipt" \
   --forbidden-path "$two_green_approval" \
   || fail "protected-release-input-leaked-into-aab"
@@ -511,7 +514,7 @@ python3 "$repo_dir/scripts/verify_release_source_graph.py" \
   --authority-root "$authority_root" \
   --expected-version-name "$version_name" \
   --expected-version-code "$version_code" \
-  --verify-existing "$staged_graph"
+  --verify-existing "$captured_graph"
 python3 "$repo_dir/scripts/materialize_release_package_authority.py" \
   --android-root "$repo_dir" \
   --workspace-root "$workspace_root" \
@@ -520,17 +523,18 @@ python3 "$repo_dir/scripts/materialize_release_package_authority.py" \
   --package-feed "$CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED" \
   --verify-existing "$CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY"
 
-source_sha256="$(sha256sum "$source_aab" | cut -d' ' -f1)"
-graph_sha256="$(sha256sum "$staged_graph" | cut -d' ' -f1)"
-seal_file_no_clobber "$source_aab" "$output_aab" 0644
+source_sha256="$(sha256sum "$captured_aab" | cut -d' ' -f1)"
+graph_sha256="$(sha256sum "$captured_graph" | cut -d' ' -f1)"
+python3 "$repo_dir/scripts/capture_android_release_outputs.py" promote \
+  --capture-dir "$capture_tmp" \
+  --output-aab "$output_aab" \
+  --output-source-graph "$output_graph" \
+  --output-sidecar "$output_hash" \
+  || fail "stable-release-output-promotion"
 [[ "$(sha256sum "$output_aab" | cut -d' ' -f1)" == "$source_sha256" ]] \
   || fail "sealed-aab-digest-mismatch"
-seal_file_no_clobber "$staged_graph" "$output_graph" 0600
-printf '%s  artifacts/%s\n%s  artifacts/%s\n' \
-  "$source_sha256" "$(basename "$output_aab")" \
-  "$graph_sha256" "$(basename "$output_graph")" \
-  > "$release_tmp/aab.sha256"
-seal_file_no_clobber "$release_tmp/aab.sha256" "$output_hash" 0600
+[[ "$(sha256sum "$output_graph" | cut -d' ' -f1)" == "$graph_sha256" ]] \
+  || fail "sealed-graph-digest-mismatch"
 (cd "$repo_dir" && sha256sum --check "$output_hash" >/dev/null) \
   || fail "sealed-hash-verification"
 

@@ -2142,8 +2142,9 @@ class AndroidContractTests(unittest.TestCase):
             'output_graph="$artifact_dir/chummer-android-$version_name-source-graph.json"',
             build,
         )
-        self.assertIn("seal_file_no_clobber", build)
-        self.assertIn('ln -- "$seal_tmp" "$destination_path"', build)
+        self.assertIn("capture_android_release_outputs.py", build)
+        self.assertIn("stable-release-output-capture", build)
+        self.assertIn("stable-release-output-promotion", build)
         self.assertIn("--verify-existing", build)
         self.assertIn("bundletool-digest-mismatch", build)
         self.assertIn("upload-certificate-pin-mismatch", build)
@@ -2192,6 +2193,8 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("chummer.android.two-green-release-approval/v1", two_green_verifier)
         self.assertIn("pkeyutl", two_green_verifier)
         self.assertIn("pkeyutl", two_green_signer)
+        self.assertIn("--github-token-file", two_green_signer)
+        self.assertNotIn("--provenance-replay", two_green_signer)
         self.assertIn("publicationAuthorized\": False", two_green_signer)
         self.assertNotIn("--expected-receipt-sha256", two_green_verifier)
         self.assertNotIn("--expected-source-graph-sha256", publication_materializer)

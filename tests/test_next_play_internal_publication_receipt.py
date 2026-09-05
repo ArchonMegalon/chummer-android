@@ -11,6 +11,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 import zipfile
 
 
@@ -314,6 +315,30 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
             two_green_approval_path=self.two_green_approval,
         )
 
+    def protected_build_validation(self) -> dict[str, object]:
+        build = self.module.BUILD_ATTESTATION
+        validator_names = (
+            "validate-aab.sh",
+            "inspect_aab.py",
+            "verify_release_aab_excludes_api36_proof.py",
+            "verify_release_artifact_hygiene.py",
+            "verify_release_source_graph.py",
+        )
+        return {
+            "contractName": build.VALIDATION_CONTRACT,
+            "status": "pass",
+            "bundletoolSha256": build.EXPECTED_BUNDLETOOL_SHA256,
+            "uploadCertificateSha256": build.EXPECTED_UPLOAD_CERTIFICATE_SHA256,
+            "aabValidationOutputSha256": "1" * 64,
+            "artifactHygieneOutputSha256": "2" * 64,
+            "sourceGraphValidationOutputSha256": "3" * 64,
+            "validatorSha256": {
+                name: hashlib.sha256((REPO / "scripts" / name).read_bytes()).hexdigest()
+                for name in validator_names
+            },
+            "publicationAuthorized": False,
+        }
+
     def verify(self) -> dict[str, object]:
         return self.module.verify(
             self.receipt,
@@ -365,17 +390,50 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
     def test_signed_build_attestation_rejects_substituted_graph_and_sidecar(self) -> None:
         build = self.module.BUILD_ATTESTATION
         self.build_attestation.unlink()
-        attestation = build.sign(
-            self.aab, self.graph, self.build_sidecar,
-            self.two_green_receipt, self.two_green_approval,
-            self.attester_private_key, self.build_attestation,
-        )
+        with mock.patch.object(
+            build,
+            "_protected_validation",
+            return_value=self.protected_build_validation(),
+        ):
+            attestation = build.sign(
+                self.aab, self.graph, self.build_sidecar,
+                self.two_green_receipt, self.two_green_approval,
+                self.attester_private_key, self.build_attestation,
+                workspace_root=self.root,
+                package_authority=self.graph,
+                authority_root=self.root,
+                bundletool=self.graph,
+                upload_certificate=self.graph,
+                java_sdk=self.root,
+            )
         self.assertFalse(attestation["publicationAuthorized"])
+        self.assertEqual(
+            build.VALIDATION_CONTRACT,
+            attestation["protectedValidation"]["contractName"],
+        )
         verified = self.original_build_attestation_verifier(
             self.build_attestation, self.aab, self.graph, self.build_sidecar,
             self.two_green_receipt, self.two_green_approval,
         )
         self.assertEqual(self.expected_source_graph_sha256, verified["sourceGraph"]["sha256"])
+
+        unvalidated_output = self.root / "unvalidated-build-attestation.json"
+        with self.assertRaisesRegex(ValueError, "validation inputs are incomplete"):
+            build.sign(
+                self.aab,
+                self.graph,
+                self.build_sidecar,
+                self.two_green_receipt,
+                self.two_green_approval,
+                self.attester_private_key,
+                unvalidated_output,
+            )
+        self.assertFalse(unvalidated_output.exists())
+
+        fabricated_validation = self.protected_build_validation()
+        fabricated_validation["validatorSha256"]["validate-aab.sh"] = "0" * 64
+        with self.assertRaisesRegex(ValueError, "validator source changed"):
+            build._validate_validation_claims(fabricated_validation)
 
         graph = copy.deepcopy(self.graph_payload)
         next(row for row in graph["repositories"] if row["name"] == "chummer6-design").update(

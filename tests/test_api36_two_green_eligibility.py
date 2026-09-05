@@ -11,6 +11,7 @@ import re
 import subprocess
 import tempfile
 import unittest
+from unittest import mock
 import zipfile
 
 
@@ -41,12 +42,31 @@ def sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+class FakeAuthenticatedGitHubClient:
+    def __init__(self, android_root: Path, responses: dict[str, bytes]) -> None:
+        self.android_root = android_root
+        self.responses = responses
+        self.calls: list[tuple[str, bool]] = []
+
+    def fetch(self, endpoint: str, *, artifact: bool = False) -> bytes:
+        self.calls.append((endpoint, artifact))
+        if endpoint not in self.responses:
+            raise ValueError(f"unexpected authenticated GitHub endpoint: {endpoint}")
+        return self.responses[endpoint]
+
+
 class Api36TwoGreenEligibilityTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
         self.root = Path(self.temporary.name).resolve()
         self.approver_private_key = self.root / "release-approver.private.pem"
         self.approver_public_key = self.root / "release-approver.public.pem"
+        self.github_token = self.root / "github-provenance.token"
+        self.github_token.write_text(
+            "github_pat_test_provenance_token_0000000000000000\n",
+            encoding="ascii",
+        )
+        self.github_token.chmod(0o600)
         subprocess.run(
             [
                 "openssl", "genpkey", "-algorithm", "ED25519", "-out",
@@ -598,17 +618,70 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
     def create(self) -> dict[str, object]:
         return gate.create_authority(**self.inputs)
 
-    def write_provenance_replay(self) -> Path:
-        replay = {"contractName": signer.PROVENANCE_REPLAY_CONTRACT}
-        for name in signer.PROVENANCE_REPLAY_PATH_FIELDS:
-            replay[name] = str(self.inputs[name])
-        for name in signer.PROVENANCE_REPLAY_SCALAR_FIELDS:
-            replay[name] = self.inputs[name]
-        path = self.root / "two-green-provenance-replay.json"
-        path.unlink(missing_ok=True)
-        path.write_bytes(gate.pretty_json_bytes(replay))
-        path.chmod(0o600)
-        return path
+    def authenticated_github_client(
+        self,
+        *,
+        remote_main: str | None = None,
+        overrides: dict[str, bytes] | None = None,
+    ) -> FakeAuthenticatedGitHubClient:
+        repository = gate.REPOSITORY
+        responses: dict[str, bytes] = {}
+        for role, run_id in (
+            ("review", self.review_run_id),
+            ("main", self.main_run_id),
+        ):
+            run = json.loads(self.inputs[f"{role}_run"].read_text(encoding="utf-8"))
+            attempt = run["run_attempt"]
+            responses[f"repos/{repository}/actions/runs/{run_id}"] = self.inputs[
+                f"{role}_run"
+            ].read_bytes()
+            responses[
+                f"repos/{repository}/actions/runs/{run_id}/attempts/{attempt}/jobs?per_page=100"
+            ] = self.inputs[f"{role}_jobs"].read_bytes()
+            responses[
+                f"repos/{repository}/actions/runs/{run_id}/artifacts?per_page=100"
+            ] = self.inputs[f"{role}_artifacts"].read_bytes()
+            artifacts = json.loads(
+                self.inputs[f"{role}_artifacts"].read_text(encoding="utf-8")
+            )["artifacts"]
+            for kind, prefix in (
+                ("aggregate", "chummer-android-api36-phone-sr5-wizard-aggregate"),
+                ("p0", "chummer-android-p0-pr-authority"),
+            ):
+                row = next(item for item in artifacts if item["name"].startswith(prefix))
+                responses[
+                    f"repos/{repository}/actions/artifacts/{row['id']}/zip"
+                ] = self.inputs[f"{role}_{kind}_archive"].read_bytes()
+
+        review_jobs = json.loads(
+            self.inputs["review_jobs"].read_text(encoding="utf-8")
+        )["jobs"]
+        aggregate_job = next(
+            row for row in review_jobs
+            if row["name"] == gate.REQUIRED_JOB_NAMES[-1]
+        )
+        static_paths = {
+            f"repos/{repository}/pulls/{self.pull_request_number}": "review_pull_request",
+            f"repos/{repository}/commits/{self.pr_head}/pulls": "review_head_pull_requests",
+            f"repos/{repository}/check-runs/{aggregate_job['id']}": "review_aggregate_check_run",
+            f"repos/{repository}/git/commits/{self.base_commit}": "review_base_commit",
+            f"repos/{repository}/git/commits/{self.pr_head}": "review_head_commit",
+            f"repos/{repository}/git/commits/{self.review_merge_commit}": "review_event_commit",
+            f"repos/{repository}/git/commits/{self.main_merge_commit}": "main_commit",
+        }
+        for endpoint, name in static_paths.items():
+            responses[endpoint] = self.inputs[name].read_bytes()
+        responses[f"repos/{repository}/git/ref/heads/main"] = gate.canonical_json_bytes(
+            {
+                "ref": "refs/heads/main",
+                "object": {
+                    "type": "commit",
+                    "sha": remote_main or self.main_merge_commit,
+                },
+            }
+        )
+        responses.update(overrides or {})
+        return FakeAuthenticatedGitHubClient(self.android, responses)
 
     def release_consumer_inputs(
         self, authority: dict[str, object]
@@ -1539,8 +1612,14 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
             self.release_consumer_inputs(authority)
         )
         signed = self.root / "protected-release-approval.json"
-        replay = self.write_provenance_replay()
-        result = signer.sign(receipt, replay, self.approver_private_key, signed)
+        github = self.authenticated_github_client()
+        with mock.patch.object(signer, "GitHubApiClient", return_value=github):
+            result = signer.sign(
+                receipt,
+                self.github_token,
+                self.approver_private_key,
+                signed,
+            )
         self.assertTrue(result["releasePreparationApproved"])
         self.assertFalse(result["signingAuthorized"])
         self.assertFalse(result["publicationAuthorized"])
@@ -1559,8 +1638,14 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
             sha256(signed.read_bytes()),
             binding["protectedApproval"]["approvalSha256"],
         )
-        with self.assertRaisesRegex(ValueError, "output must be new"):
-            signer.sign(receipt, replay, self.approver_private_key, signed)
+        with mock.patch.object(signer, "GitHubApiClient", return_value=github):
+            with self.assertRaisesRegex(ValueError, "output must be new"):
+                signer.sign(
+                    receipt,
+                    self.github_token,
+                    self.approver_private_key,
+                    signed,
+                )
 
     def test_release_approval_signer_rejects_fabricated_pull_request_provenance(self) -> None:
         self.inputs["policy"] = gate.POLICY_PATH
@@ -1569,7 +1654,7 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
         receipt, _approval, _package_authority, _source_graph = (
             self.release_consumer_inputs(authority)
         )
-        replay = self.write_provenance_replay()
+        github = self.authenticated_github_client()
         fabricated = copy.deepcopy(authority)
         fabricated["reviewPullRequest"]["number"] += 1
         unsigned = {
@@ -1578,13 +1663,55 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
         }
         fabricated["eligibilitySha256"] = gate.canonical_sha256(unsigned)
         receipt.write_bytes(gate.pretty_json_bytes(fabricated))
-        with self.assertRaisesRegex(ValueError, "does not replay"):
-            signer.sign(
-                receipt,
-                replay,
-                self.approver_private_key,
-                self.root / "fabricated-approval.json",
-            )
+        with mock.patch.object(signer, "GitHubApiClient", return_value=github):
+            with self.assertRaisesRegex(ValueError, "authenticated GitHub|does not replay"):
+                signer.sign(
+                    receipt,
+                    self.github_token,
+                    self.approver_private_key,
+                    self.root / "fabricated-approval.json",
+                )
+
+    def test_release_approval_signer_rejects_remote_main_substitution(self) -> None:
+        self.inputs["policy"] = gate.POLICY_PATH
+        self.inputs["environment_policy"] = gate.ENVIRONMENT_POLICY_PATH
+        authority = self.create()
+        receipt, _approval, _package_authority, _source_graph = (
+            self.release_consumer_inputs(authority)
+        )
+        github = self.authenticated_github_client(remote_main="0" * 40)
+        with mock.patch.object(signer, "GitHubApiClient", return_value=github):
+            with self.assertRaisesRegex(ValueError, "remote main"):
+                signer.sign(
+                    receipt,
+                    self.github_token,
+                    self.approver_private_key,
+                    self.root / "remote-main-substitution.json",
+                )
+
+    def test_release_approval_signer_rejects_fabricated_authenticated_pr(self) -> None:
+        self.inputs["policy"] = gate.POLICY_PATH
+        self.inputs["environment_policy"] = gate.ENVIRONMENT_POLICY_PATH
+        authority = self.create()
+        receipt, _approval, _package_authority, _source_graph = (
+            self.release_consumer_inputs(authority)
+        )
+        endpoint = f"repos/{gate.REPOSITORY}/pulls/{self.pull_request_number}"
+        fabricated_pr = json.loads(
+            self.inputs["review_pull_request"].read_text(encoding="utf-8")
+        )
+        fabricated_pr["head"]["sha"] = "0" * 40
+        github = self.authenticated_github_client(
+            overrides={endpoint: gate.canonical_json_bytes(fabricated_pr)}
+        )
+        with mock.patch.object(signer, "GitHubApiClient", return_value=github):
+            with self.assertRaises(ValueError):
+                signer.sign(
+                    receipt,
+                    self.github_token,
+                    self.approver_private_key,
+                    self.root / "fabricated-authenticated-pr.json",
+                )
 
     def test_recomputed_plain_receipt_hash_cannot_replace_protected_approval(self) -> None:
         self.inputs["policy"] = gate.POLICY_PATH

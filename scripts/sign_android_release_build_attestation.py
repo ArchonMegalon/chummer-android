@@ -20,11 +20,25 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 VERIFY_PATH = ROOT / "scripts/verify_api36_two_green_release_eligibility.py"
-CONTRACT = "chummer.android.release-build-attestation/v1"
+KEY_HYGIENE_PATH = ROOT / "scripts/verify_release_private_key_hygiene.py"
+CONTRACT = "chummer.android.release-build-attestation/v2"
 SCOPE = "android_internal_release_artifact_binding"
 ROLE = "android_internal_release_builder"
 SOURCE_GRAPH_CONTRACT = "chummer.android.release-source-graph/v3"
+VALIDATION_CONTRACT = "chummer.android.protected-release-build-validation/v1"
 MAX_AAB_BYTES = 512 * 1024 * 1024
+EXPECTED_BUNDLETOOL_SHA256 = "a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29"
+EXPECTED_UPLOAD_CERTIFICATE_SHA256 = "D9:C4:B6:35:12:15:44:D5:52:2A:BF:1E:C2:DF:DA:3C:19:38:AA:B9:3D:67:26:BB:93:C9:87:1E:C9:ED:1D:15"
+REVISION_BY_REPOSITORY = {
+    "chummer-android": "CHUMMER_ANDROID_REVISION",
+    "chummer6-ui": "CHUMMER_PRESENTATION_REVISION",
+    "chummer6-core": "CHUMMER_CORE_ENGINE_REVISION",
+    "chummer6-ui-kit": "CHUMMER_UI_KIT_REVISION",
+    "chummer6-hub": "CHUMMER_RUN_SERVICES_REVISION",
+    "chummer6-hub-registry": "CHUMMER_HUB_REGISTRY_REVISION",
+    "chummer6-media-factory": "CHUMMER_MEDIA_FACTORY_REVISION",
+    "chummer6-design": "CHUMMER_DESIGN_REVISION",
+}
 
 
 def _load(path: Path, name: str) -> Any:
@@ -37,6 +51,7 @@ def _load(path: Path, name: str) -> Any:
 
 
 VERIFY = _load(VERIFY_PATH, "android_release_build_attestation_verifier")
+KEY_HYGIENE = _load(KEY_HYGIENE_PATH, "android_release_private_key_hygiene")
 
 
 def _pretty(value: object) -> bytes:
@@ -64,12 +79,223 @@ def _write_exclusive(path: Path, raw: bytes) -> None:
 
 
 def _private_key(path: Path) -> Path:
-    if not path.is_absolute() or path.is_symlink() or path.resolve(strict=True) != path:
-        raise ValueError("build attestation private key is not canonical")
-    mode = path.stat()
-    if not stat.S_ISREG(mode.st_mode) or mode.st_uid != os.getuid() or stat.S_IMODE(mode.st_mode) & 0o077:
-        raise ValueError("build attestation private key is not owner-only")
-    return path
+    KEY_HYGIENE.verify(ROOT)
+    return KEY_HYGIENE.private_key(path, ROOT, "build attestation private key")
+
+
+def _canonical_file(path: Path, label: str, *, owner_only: bool) -> Path:
+    if not path.is_absolute() or path.is_symlink() or not path.is_file():
+        raise ValueError(f"{label} must be one absolute regular file")
+    resolved = path.resolve(strict=True)
+    metadata = resolved.stat()
+    if resolved != path or metadata.st_uid != os.getuid():
+        raise ValueError(f"{label} must be canonical and owner-owned")
+    if owner_only and stat.S_IMODE(metadata.st_mode) & 0o077:
+        raise ValueError(f"{label} must be owner-only")
+    return resolved
+
+
+def _canonical_directory(path: Path, label: str, *, owner_only: bool) -> Path:
+    if not path.is_absolute() or path.is_symlink() or not path.is_dir():
+        raise ValueError(f"{label} must be one absolute directory")
+    resolved = path.resolve(strict=True)
+    metadata = resolved.stat()
+    if resolved != path or metadata.st_uid != os.getuid():
+        raise ValueError(f"{label} must be canonical and owner-owned")
+    if owner_only and stat.S_IMODE(metadata.st_mode) & 0o077:
+        raise ValueError(f"{label} must be owner-only")
+    return resolved
+
+
+def _sha256_file(path: Path, label: str, limit: int) -> str:
+    return hashlib.sha256(_read(path, label, limit, False)).hexdigest()
+
+
+def _run_validator(arguments: list[str], environment: dict[str, str], label: str, timeout: int) -> str:
+    completed = subprocess.run(
+        arguments,
+        check=False,
+        capture_output=True,
+        timeout=timeout,
+        env=environment,
+        text=True,
+    )
+    if completed.returncode != 0:
+        raise ValueError(f"protected {label} failed")
+    return hashlib.sha256(completed.stdout.encode("utf-8")).hexdigest()
+
+
+def _protected_validation_inputs(
+    claims: dict[str, Any],
+    aab: Path,
+    graph: Path,
+    receipt: Path,
+    approval: Path,
+    *,
+    workspace_root: Path,
+    package_authority: Path,
+    authority_root: Path,
+    bundletool: Path,
+    upload_certificate: Path,
+    java_sdk: Path,
+) -> dict[str, Any]:
+    workspace_root = _canonical_directory(workspace_root, "release workspace", owner_only=False)
+    if ROOT.resolve(strict=True) != (workspace_root / "chummer-android").resolve(strict=True):
+        raise ValueError("protected build attester is not running in the canonical Android workspace")
+    authority_root = _canonical_directory(authority_root, "package authority root", owner_only=False)
+    package_authority = _canonical_file(package_authority, "release package authority", owner_only=True)
+    bundletool = _canonical_file(bundletool, "bundletool", owner_only=True)
+    upload_certificate = _canonical_file(upload_certificate, "upload certificate", owner_only=True)
+    java_sdk = _canonical_directory(java_sdk, "Java SDK", owner_only=False)
+    tools = {
+        name: _canonical_file(java_sdk / "bin" / name, f"Java {name}", owner_only=False)
+        for name in ("java", "jarsigner", "keytool")
+    }
+    bundletool_sha = _sha256_file(bundletool, "bundletool", 64 * 1024 * 1024)
+    if bundletool_sha != EXPECTED_BUNDLETOOL_SHA256:
+        raise ValueError("protected build attester bundletool digest differs")
+    certificate_result = subprocess.run(
+        ["/usr/bin/openssl", "x509", "-in", os.fspath(upload_certificate), "-noout", "-fingerprint", "-sha256"],
+        check=False,
+        capture_output=True,
+        timeout=20,
+        env={"PATH": "/usr/bin:/bin", "LANG": "C", "LC_ALL": "C"},
+        text=True,
+    )
+    if certificate_result.returncode != 0:
+        raise ValueError("protected build attester cannot inspect the upload certificate")
+    certificate_sha = certificate_result.stdout.strip().removeprefix(
+        "sha256 Fingerprint="
+    ).removeprefix("SHA256 Fingerprint=")
+    if certificate_sha != EXPECTED_UPLOAD_CERTIFICATE_SHA256:
+        raise ValueError("protected build attester upload certificate differs")
+
+    graph_rows = claims["graph"].get("repositories")
+    if not isinstance(graph_rows, list):
+        raise ValueError("release source graph repository inventory is absent")
+    revisions: dict[str, str] = {}
+    for row in graph_rows:
+        if not isinstance(row, dict) or row.get("name") not in REVISION_BY_REPOSITORY:
+            raise ValueError("release source graph repository inventory is not closed")
+        revisions[REVISION_BY_REPOSITORY[row["name"]]] = VERIFY._sha40(
+            row.get("commit"), f"{row.get('name')} source commit"
+        )
+    if set(revisions) != set(REVISION_BY_REPOSITORY.values()):
+        raise ValueError("release source graph repository inventory is incomplete")
+    base_environment = {
+        "PATH": "/usr/bin:/bin",
+        "LANG": "C",
+        "LC_ALL": "C",
+        "CHUMMER_BUNDLETOOL_JAR": os.fspath(bundletool),
+        "CHUMMER_JAVA": os.fspath(tools["java"]),
+        "CHUMMER_JARSIGNER": os.fspath(tools["jarsigner"]),
+        "CHUMMER_KEYTOOL": os.fspath(tools["keytool"]),
+        "CHUMMER_ANDROID_UPLOAD_CERTIFICATE_PATH": os.fspath(upload_certificate),
+    }
+    aab_validation = _run_validator(
+        [os.fspath(ROOT / "scripts/validate-aab.sh"), os.fspath(aab)],
+        base_environment,
+        "AAB structure/signature/version/ABI/proof validation",
+        240,
+    )
+    hygiene_validation = _run_validator(
+        [
+            "/usr/bin/python3",
+            os.fspath(ROOT / "scripts/verify_release_artifact_hygiene.py"),
+            "--aab", os.fspath(aab),
+            "--forbidden-path", os.fspath(receipt),
+            "--forbidden-path", os.fspath(approval),
+        ],
+        {"PATH": "/usr/bin:/bin", "LANG": "C", "LC_ALL": "C"},
+        "protected-input artifact hygiene",
+        120,
+    )
+    identity = claims["graph"]["releaseIdentity"]
+    source_environment = {
+        "PATH": "/usr/bin:/bin",
+        "LANG": "C",
+        "LC_ALL": "C",
+        **revisions,
+    }
+    source_validation = _run_validator(
+        [
+            "/usr/bin/python3",
+            os.fspath(ROOT / "scripts/verify_release_source_graph.py"),
+            "--android-root", os.fspath(ROOT),
+            "--workspace-root", os.fspath(workspace_root),
+            "--package-authority", os.fspath(package_authority),
+            "--authority-root", os.fspath(authority_root),
+            "--expected-version-name", str(identity["versionName"]),
+            "--expected-version-code", str(identity["versionCode"]),
+            "--verify-existing", os.fspath(graph),
+        ],
+        source_environment,
+        "canonical clean source graph",
+        120,
+    )
+    validator_paths = (
+        ROOT / "scripts/validate-aab.sh",
+        ROOT / "scripts/inspect_aab.py",
+        ROOT / "scripts/verify_release_aab_excludes_api36_proof.py",
+        ROOT / "scripts/verify_release_artifact_hygiene.py",
+        ROOT / "scripts/verify_release_source_graph.py",
+    )
+    return {
+        "contractName": VALIDATION_CONTRACT,
+        "status": "pass",
+        "bundletoolSha256": bundletool_sha,
+        "uploadCertificateSha256": certificate_sha,
+        "aabValidationOutputSha256": aab_validation,
+        "artifactHygieneOutputSha256": hygiene_validation,
+        "sourceGraphValidationOutputSha256": source_validation,
+        "validatorSha256": {
+            path.name: _sha256_file(path, f"{path.name} validator", 8 * 1024 * 1024)
+            for path in validator_paths
+        },
+        "publicationAuthorized": False,
+    }
+
+
+def _protected_validation(
+    claims: dict[str, Any],
+    aab: Path,
+    graph: Path,
+    receipt: Path,
+    approval: Path,
+    **inputs: Any,
+) -> dict[str, Any]:
+    # Read each candidate exactly once through the stable-file verifier and run
+    # every external validator against owner-only copies of those exact bytes.
+    # A caller cannot swap a benign AAB/graph in for validation and restore
+    # different bytes before the detached attestation is written.
+    aab_raw = _read(aab, "protected validation AAB", MAX_AAB_BYTES, False)
+    graph_raw = _read(
+        graph,
+        "protected validation source graph",
+        VERIFY.MAX_AUTHORITY_BYTES,
+        True,
+    )
+    if (
+        hashlib.sha256(aab_raw).hexdigest() != claims["aab"]["sha256"]
+        or hashlib.sha256(graph_raw).hexdigest() != claims["sourceGraph"]["sha256"]
+    ):
+        raise ValueError("protected validation inputs changed before validation")
+    with tempfile.TemporaryDirectory(prefix="chummer-android-protected-build-validation-") as directory:
+        root = Path(directory)
+        captured_aab = root / aab.name
+        captured_graph = root / graph.name
+        captured_aab.write_bytes(aab_raw)
+        captured_graph.write_bytes(graph_raw)
+        captured_aab.chmod(0o400)
+        captured_graph.chmod(0o400)
+        return _protected_validation_inputs(
+            claims,
+            captured_aab,
+            captured_graph,
+            receipt,
+            approval,
+            **inputs,
+        )
 
 
 def _read(path: Path, label: str, limit: int, owner_only: bool) -> bytes:
@@ -147,7 +373,54 @@ def _artifact_claims(
     }
 
 
-def _unsigned(claims: dict[str, Any], qualification: dict[str, Any], generated: str, nonce: str) -> dict[str, Any]:
+def _validate_validation_claims(value: object) -> dict[str, Any]:
+    validator_names = {
+        "validate-aab.sh",
+        "inspect_aab.py",
+        "verify_release_aab_excludes_api36_proof.py",
+        "verify_release_artifact_hygiene.py",
+        "verify_release_source_graph.py",
+    }
+    expected = {
+        "contractName", "status", "bundletoolSha256", "uploadCertificateSha256",
+        "aabValidationOutputSha256", "artifactHygieneOutputSha256",
+        "sourceGraphValidationOutputSha256", "validatorSha256",
+        "publicationAuthorized",
+    }
+    if not isinstance(value, dict) or set(value) != expected:
+        raise ValueError("protected build validation fields are not exact")
+    if (
+        value.get("contractName") != VALIDATION_CONTRACT
+        or value.get("status") != "pass"
+        or value.get("publicationAuthorized") is not False
+        or value.get("bundletoolSha256") != EXPECTED_BUNDLETOOL_SHA256
+        or value.get("uploadCertificateSha256") != EXPECTED_UPLOAD_CERTIFICATE_SHA256
+    ):
+        raise ValueError("protected build validation authority is invalid")
+    for name in (
+        "aabValidationOutputSha256",
+        "artifactHygieneOutputSha256",
+        "sourceGraphValidationOutputSha256",
+    ):
+        VERIFY._sha256(value.get(name), f"protected build validation {name}")
+    validators = value.get("validatorSha256")
+    if not isinstance(validators, dict) or set(validators) != validator_names:
+        raise ValueError("protected build validator inventory is not exact")
+    for name, digest in validators.items():
+        path = ROOT / "scripts" / name
+        current = _sha256_file(path, f"{name} validator", 8 * 1024 * 1024)
+        if VERIFY._sha256(digest, f"{name} validator digest") != current:
+            raise ValueError("protected build validator source changed")
+    return value
+
+
+def _unsigned(
+    claims: dict[str, Any],
+    qualification: dict[str, Any],
+    validation: dict[str, Any],
+    generated: str,
+    nonce: str,
+) -> dict[str, Any]:
     graph_identity = claims["graph"]["releaseIdentity"]
     return {
         "contractName": CONTRACT,
@@ -175,13 +448,29 @@ def _unsigned(claims: dict[str, Any], qualification: dict[str, Any], generated: 
             "eligibilitySha256": qualification["eligibilitySha256"],
             "provenanceReplaySha256": qualification["protectedApproval"]["provenanceReplaySha256"],
         },
+        "protectedValidation": validation,
         "signingAuthorized": False,
         "publicationAuthorized": False,
         "googlePlayUploadAuthorized": False,
     }
 
 
-def sign(aab: Path, graph: Path, sidecar: Path, receipt: Path, approval: Path, private_key: Path, output: Path) -> dict[str, Any]:
+def sign(
+    aab: Path,
+    graph: Path,
+    sidecar: Path,
+    receipt: Path,
+    approval: Path,
+    private_key: Path,
+    output: Path,
+    *,
+    workspace_root: Path | None = None,
+    package_authority: Path | None = None,
+    authority_root: Path | None = None,
+    bundletool: Path | None = None,
+    upload_certificate: Path | None = None,
+    java_sdk: Path | None = None,
+) -> dict[str, Any]:
     claims = _artifact_claims(aab, graph, sidecar, receipt, approval)
     identity = claims["graph"]["releaseIdentity"]
     qualification = VERIFY.verify_release_eligibility(
@@ -189,8 +478,27 @@ def sign(aab: Path, graph: Path, sidecar: Path, receipt: Path, approval: Path, p
         expected_version_name=identity["versionName"],
         expected_version_code=identity["versionCode"], source_graph_path=graph,
     )
+    required = {
+        "workspace_root": workspace_root,
+        "package_authority": package_authority,
+        "authority_root": authority_root,
+        "bundletool": bundletool,
+        "upload_certificate": upload_certificate,
+        "java_sdk": java_sdk,
+    }
+    if any(value is None for value in required.values()):
+        raise ValueError("protected build validation inputs are incomplete")
+    validation = _protected_validation(
+        claims,
+        aab,
+        graph,
+        receipt,
+        approval,
+        **required,
+    )
+    validation = _validate_validation_claims(validation)
     unsigned = _unsigned(
-        claims, qualification,
+        claims, qualification, validation,
         datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
         secrets.token_hex(32),
     )
@@ -227,6 +535,24 @@ def verify(attestation: Path, aab: Path, graph: Path, sidecar: Path, receipt: Pa
             "graph": {"releaseIdentity": {"packageId": "", "versionName": "", "versionCode": 1}},
         },
         {"eligibilitySha256": "0" * 64, "protectedApproval": {"provenanceReplaySha256": "0" * 64}},
+        {
+            "contractName": VALIDATION_CONTRACT,
+            "status": "pass",
+            "bundletoolSha256": EXPECTED_BUNDLETOOL_SHA256,
+            "uploadCertificateSha256": EXPECTED_UPLOAD_CERTIFICATE_SHA256,
+            "aabValidationOutputSha256": "0" * 64,
+            "artifactHygieneOutputSha256": "0" * 64,
+            "sourceGraphValidationOutputSha256": "0" * 64,
+            "validatorSha256": {
+                name: "0" * 64 for name in (
+                    "validate-aab.sh", "inspect_aab.py",
+                    "verify_release_aab_excludes_api36_proof.py",
+                    "verify_release_artifact_hygiene.py",
+                    "verify_release_source_graph.py",
+                )
+            },
+            "publicationAuthorized": False,
+        },
         "1970-01-01T00:00:00Z", "0" * 64,
     ))
     if set(value) != required:
@@ -241,6 +567,7 @@ def verify(attestation: Path, aab: Path, graph: Path, sidecar: Path, receipt: Pa
     if attestation_time > datetime.now(UTC) + VERIFY.APPROVAL_CLOCK_SKEW:
         raise ValueError("release build attestation is dated in the future")
     VERIFY._verify_ed25519_signature(value, signature, label="release build attestation")
+    validation = _validate_validation_claims(value.get("protectedValidation"))
     claims = _artifact_claims(aab, graph, sidecar, receipt, approval)
     identity = claims["graph"]["releaseIdentity"]
     qualification = VERIFY.verify_release_eligibility(
@@ -249,7 +576,13 @@ def verify(attestation: Path, aab: Path, graph: Path, sidecar: Path, receipt: Pa
         expected_version_code=identity["versionCode"], source_graph_path=graph,
         approval_effective_time=datetime.fromisoformat(value["generatedAtUtc"].removesuffix("Z") + "+00:00"),
     )
-    expected = _unsigned(claims, qualification, value["generatedAtUtc"], value["challengeNonce"])
+    expected = _unsigned(
+        claims,
+        qualification,
+        validation,
+        value["generatedAtUtc"],
+        value["challengeNonce"],
+    )
     if value != expected or raw != _pretty({**value, "signatureBase64": signature}):
         raise ValueError("release build attestation differs from exact protected outputs")
     graph_time = datetime.fromisoformat(claims["graph"]["generatedAtUtc"].removesuffix("Z") + "+00:00")
@@ -268,10 +601,30 @@ def main() -> int:
         child.add_argument("--attestation" if action == "verify" else "--output", required=True, type=Path)
         if action == "sign":
             child.add_argument("--private-key", required=True, type=Path)
+            child.add_argument("--workspace-root", required=True, type=Path)
+            child.add_argument("--package-authority", required=True, type=Path)
+            child.add_argument("--authority-root", required=True, type=Path)
+            child.add_argument("--bundletool", required=True, type=Path)
+            child.add_argument("--upload-certificate", required=True, type=Path)
+            child.add_argument("--java-sdk", required=True, type=Path)
     args = parser.parse_args()
     try:
         common = (args.aab, args.source_graph, args.build_sidecar, args.two_green_receipt, args.two_green_approval)
-        result = sign(*common, args.private_key, args.output) if args.action == "sign" else verify(args.attestation, *common)
+        result = (
+            sign(
+                *common,
+                args.private_key,
+                args.output,
+                workspace_root=args.workspace_root,
+                package_authority=args.package_authority,
+                authority_root=args.authority_root,
+                bundletool=args.bundletool,
+                upload_certificate=args.upload_certificate,
+                java_sdk=args.java_sdk,
+            )
+            if args.action == "sign"
+            else verify(args.attestation, *common)
+        )
     except (OSError, ValueError, subprocess.TimeoutExpired) as error:
         print(json.dumps({"status": "fail", "publicationAuthorized": False, "error": str(error)}, sort_keys=True))
         return 2

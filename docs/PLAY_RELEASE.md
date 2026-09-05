@@ -105,11 +105,14 @@ CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED=/absolute/private/ui-package-cache/pack
 The approval is a short-lived detached Ed25519 signature created by the
 protected release-builder environment for the exact receipt bytes, Android
 commit/tree, release version, dependency graph, and proof-environment policy.
-Before signing, the signer reruns the complete two-green materializer from an
-owner-only provenance-replay manifest containing the authenticated Actions,
-check-run, artifact, pull-request, and commit snapshots. The approval binds the
-exact replay and validator digests; shallow receipt self-consistency is never
-sufficient.
+Before signing, the signer uses an owner-only GitHub token to fetch the exact
+Actions runs, attempt jobs, artifacts, pull-request association, check run,
+commits, and remote `main` ref directly from fixed GitHub API endpoints. It
+reruns the complete two-green materializer from those authenticated bytes and
+requires remote `main` to equal the release source commit. Caller-provided JSON,
+ZIP files, URLs, or replay manifests cannot become signing provenance. The
+approval binds the exact authenticated input and validator digests; shallow
+receipt self-consistency is never sufficient.
 The public verification key is pinned in this repository; the private key must
 never enter the checkout or an ordinary build job. The protected controller can
 create the preparation-only approval with:
@@ -117,7 +120,7 @@ create the preparation-only approval with:
 ```sh
 python3 scripts/sign_api36_two_green_release_approval.py \
   --receipt /absolute/private/ANDROID_API36_TWO_GREEN_ELIGIBILITY.generated.json \
-  --provenance-replay /absolute/private/ANDROID_API36_TWO_GREEN_PROVENANCE_REPLAY.generated.json \
+  --github-token-file /absolute/protected/github-release-provenance.token \
   --private-key /absolute/protected/local-release-builder-2026.private.pem \
   --output /absolute/private/ANDROID_API36_TWO_GREEN_RELEASE_APPROVAL.generated.json
 ```
@@ -297,7 +300,11 @@ After the build, a protected controller signs a detached build attestation that
 binds the exact AAB, its two-line build sidecar, the entire source graph
 (including `chummer6-design` and every repository `tree_sha256`), and the exact
 two-green receipt and approval. The attestation grants no signing, upload, or
-publication authority:
+publication authority. Before signing, the controller independently runs the
+pinned bundletool, JAR-signature/upload-certificate check, manifest/version/SDK
+and ABI inspection, proof-exclusion and protected-input hygiene checks, and a
+fresh clean-checkout reconstruction of the source graph. These validators run
+against stable owner-only copies of the exact bytes being attested:
 
 ```sh
 python3 scripts/sign_android_release_build_attestation.py sign \
@@ -306,6 +313,12 @@ python3 scripts/sign_android_release_build_attestation.py sign \
   --build-sidecar /absolute/path/chummer-android-VERSION-upload.aab.sha256 \
   --two-green-receipt /absolute/private/ANDROID_API36_TWO_GREEN_ELIGIBILITY.generated.json \
   --two-green-approval /absolute/private/ANDROID_API36_TWO_GREEN_RELEASE_APPROVAL.generated.json \
+  --workspace-root /absolute/coherent/chummer-workspace \
+  --package-authority /absolute/private/chummer.android.release-package-authority.v2.json \
+  --authority-root /absolute/private/retained-package-authority \
+  --bundletool /absolute/private/bundletool-all-1.18.2.jar \
+  --upload-certificate /absolute/private/chummer-upload-certificate.pem \
+  --java-sdk /absolute/pinned/jdk \
   --private-key /absolute/protected/local-release-builder-2026.private.pem \
   --output /absolute/private/ANDROID_RELEASE_BUILD_ATTESTATION.generated.json
 ```
