@@ -106,6 +106,20 @@ public sealed record CreationDashboardAuthorityPhaseProgress(
     CreationDashboardAuthorityPhaseState Contacts,
     CreationDashboardAuthorityPhaseState Resources)
 {
+    public bool HasLoading
+        => Prerequisite == CreationDashboardAuthorityPhaseState.Loading
+           || Attributes == CreationDashboardAuthorityPhaseState.Loading
+           || Skills == CreationDashboardAuthorityPhaseState.Loading
+           || Contacts == CreationDashboardAuthorityPhaseState.Loading
+           || Resources == CreationDashboardAuthorityPhaseState.Loading;
+
+    public int LoadingCount
+        => (Prerequisite == CreationDashboardAuthorityPhaseState.Loading ? 1 : 0)
+           + (Attributes == CreationDashboardAuthorityPhaseState.Loading ? 1 : 0)
+           + (Skills == CreationDashboardAuthorityPhaseState.Loading ? 1 : 0)
+           + (Contacts == CreationDashboardAuthorityPhaseState.Loading ? 1 : 0)
+           + (Resources == CreationDashboardAuthorityPhaseState.Loading ? 1 : 0);
+
     public bool IsTerminalReady
         => IsReadyOrNotApplicable(Prerequisite)
            && IsReadyOrNotApplicable(Attributes)
@@ -683,7 +697,7 @@ public sealed class BuildPage : NativePageBase
             ?? Coordinator.State.Profile?.Name
             ?? "New runner"));
         header.Add(NativeTheme.Body(
-            "Build this runner step by step. The full character editor unlocks after creation is complete.",
+            "Build this runner step by step. Career changes stay guided after creation is complete.",
             NativeTheme.Muted));
         long appearanceGeneration = _creationDashboardAppearanceGeneration;
         if (snapshot is not null)
@@ -776,6 +790,15 @@ public sealed class BuildPage : NativePageBase
             retry.Clicked += (_, _) => RetryCreationProjection();
             failure.Add(retry);
             _body.Add(NativeTheme.Card(failure));
+        }
+        else if (projection.Progress.HasLoading)
+        {
+            Label loading = NativeTheme.Body(
+                $"Refreshing {projection.Progress.LoadingCount.ToString(CultureInfo.InvariantCulture)} "
+                + "remaining rule projections in the background. Ready steps stay interactive and this page updates automatically.",
+                NativeTheme.Muted);
+            loading.AutomationId = "creation-dashboard-authority-partial-loading";
+            _body.Add(NativeTheme.Card(loading));
         }
         AddBudgetRibbon(snapshot, attributes, skills);
         AddWizardStages(

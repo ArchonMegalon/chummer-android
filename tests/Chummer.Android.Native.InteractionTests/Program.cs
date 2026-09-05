@@ -1136,6 +1136,9 @@ internal static class Program
             && initial.Skills == CreationDashboardAuthorityPhaseState.Loading
             && initial.Contacts == CreationDashboardAuthorityPhaseState.Loading,
             "Priority must begin with every authority phase explicitly fail-closed and loading.");
+        Require(
+            initial.HasLoading && initial.LoadingCount == 5,
+            "Priority must expose every pending authority phase to the progressive phone loading state.");
 
         CreationDashboardAuthorityPhaseProgress prerequisiteAccepted = initial.WithTerminal(
             CreationDashboardAuthorityPhase.Prerequisite,
@@ -1159,6 +1162,16 @@ internal static class Program
             && laterFailure.Skills == CreationDashboardAuthorityPhaseState.Ready
             && laterFailure.Contacts == CreationDashboardAuthorityPhaseState.Ready,
             "Out-of-order later phase merges were not deterministic and isolated.");
+        Require(
+            laterFailure.HasLoading && laterFailure.LoadingCount == 1,
+            "A terminal failure must not hide the independently pending Resources phase.");
+
+        CreationDashboardAuthorityPhaseProgress terminal = laterFailure.WithTerminal(
+            CreationDashboardAuthorityPhase.Resources,
+            failed: false);
+        Require(
+            !terminal.HasLoading && terminal.LoadingCount == 0,
+            "A terminal dashboard retained a false progressive-loading state.");
 
         CreationDashboardAuthorityPhaseProgress sumToTen =
             CreationDashboardAuthorityPhaseProgress.ForBuildMethod(CharacterCreationBuildMethods.SumToTen);
