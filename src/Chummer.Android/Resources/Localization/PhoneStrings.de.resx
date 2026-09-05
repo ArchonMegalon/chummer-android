@@ -60,6 +60,7 @@
   <data name="AccountNotLinked" xml:space="preserve"><value>Nicht verknüpft</value></data>
   <data name="AccountFinishLinking" xml:space="preserve"><value>Verknüpfung abschließen</value></data>
   <data name="AccountApproveBrowser" xml:space="preserve"><value>Bestätige die Verknüpfung im Browser und kehre dann zurück.</value></data>
+  <data name="AccountApprovalReceivedRetry" xml:space="preserve"><value>Die Bestätigung wurde empfangen. Behalte diese Verknüpfung und versuche es erneut.</value></data>
   <data name="AccountLinkExpired" xml:space="preserve"><value>Verknüpfung abgelaufen</value></data>
   <data name="AccountLinkAgainRestore" xml:space="preserve"><value>Verknüpfe dein Konto erneut, um den Kontozugriff wiederherzustellen.</value></data>
   <data name="AccountLinked" xml:space="preserve"><value>Verknüpft</value></data>
@@ -84,6 +85,9 @@
   <data name="AccountRevokeUnavailable" xml:space="preserve"><value>Chummer ist nicht erreichbar. Versuche erneut, die Verknüpfung aufzuheben.</value></data>
   <data name="AccountRevokeOffline" xml:space="preserve"><value>Stelle eine Internetverbindung her und versuche erneut, die Verknüpfung aufzuheben.</value></data>
   <data name="AccountDeleted" xml:space="preserve"><value>Konto gelöscht</value></data>
+  <data name="AccountLocalCleanupPending" xml:space="preserve"><value>Der Fernzugriff wurde beendet. Die lokale Schlüsselbereinigung wird erneut versucht.</value></data>
+  <data name="AccountRefreshPending" xml:space="preserve"><value>Die Sicherheitsaktualisierung des Kontos wird abgeschlossen</value></data>
+  <data name="AccountRefreshRetry" xml:space="preserve"><value>Behalte diese Verknüpfung und stelle erneut eine Verbindung her, um die Aktualisierung abzuschließen.</value></data>
   <data name="App" xml:space="preserve"><value>App</value></data>
   <data name="Version" xml:space="preserve"><value>Version</value></data>
   <data name="CheckUpdates" xml:space="preserve"><value>Nach Updates suchen</value></data>

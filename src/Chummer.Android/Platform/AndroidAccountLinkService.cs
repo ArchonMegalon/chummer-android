@@ -6,7 +6,6 @@ using System.Text;
 using Chummer.Android.Native;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Devices;
-using Microsoft.Maui.Storage;
 
 namespace Chummer.Android.Platform;
 
@@ -15,6 +14,7 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
     private const string InstallationIdKey = AndroidAccountLinkKeyAuthority.InstallationIdStorageKey;
     private const string AccessTokenKey = "chummer.account.installation-grant.v1";
     private const string GrantExpiryKey = "chummer.account.installation-grant-expiry.v1";
+    private const string RefreshAttemptKey = "chummer.account.installation-grant-refresh-attempt.v1";
     private const string PendingStateKey = "chummer.account.pending-state.v1";
     private const string PendingStartedKey = "chummer.account.pending-started.v1";
     private const string PendingInstallationIdKey = "chummer.account.pending-installation-id.v2";
@@ -38,6 +38,9 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
     private readonly AndroidAccountLinkHttpTransport _httpTransport;
     private readonly IAndroidSystemService _systemService;
     private readonly AndroidAccountLinkKeyAuthority _keyAuthority;
+    private readonly IAndroidAccountLinkKeyMetadataStore _metadataStore;
+    private readonly Func<string> _versionProvider;
+    private readonly Func<string> _hostLabelProvider;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private AndroidAccountLinkSnapshot _snapshot = new(
         AndroidAccountLinkStatus.Loading,
@@ -46,11 +49,17 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
     internal AndroidAccountLinkService(
         AndroidAccountLinkHttpTransport httpTransport,
         IAndroidSystemService systemService,
-        AndroidAccountLinkKeyAuthority keyAuthority)
+        AndroidAccountLinkKeyAuthority keyAuthority,
+        IAndroidAccountLinkKeyMetadataStore metadataStore,
+        Func<string>? versionProvider = null,
+        Func<string>? hostLabelProvider = null)
     {
         _httpTransport = httpTransport;
         _systemService = systemService;
         _keyAuthority = keyAuthority;
+        _metadataStore = metadataStore;
+        _versionProvider = versionProvider ?? (() => AppInfo.Current.VersionString);
+        _hostLabelProvider = hostLabelProvider ?? ResolveHostLabel;
     }
 
     public event EventHandler? Changed;
@@ -66,15 +75,19 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             StoredGrant? grant = await ReadStoredGrantAsync(cancellationToken);
             if (grant is null)
             {
-                ClearGrant();
-                string? pendingState = await SecureStorage.Default.GetAsync(PendingStateKey);
-                string? pendingInstallationId = await SecureStorage.Default.GetAsync(PendingInstallationIdKey);
-                DateTimeOffset? pendingStarted = await ReadTimestampAsync(PendingStartedKey);
+                await ClearGrantAsync(CancellationToken.None);
+                string? pendingState = await _metadataStore.GetAsync(PendingStateKey, cancellationToken);
+                string? pendingInstallationId = await _metadataStore.GetAsync(
+                    PendingInstallationIdKey,
+                    cancellationToken);
+                DateTimeOffset? pendingStarted = await ReadTimestampAsync(
+                    PendingStartedKey,
+                    cancellationToken);
                 if (string.IsNullOrWhiteSpace(pendingState)
                     || string.IsNullOrWhiteSpace(pendingInstallationId)
                     || !IsPendingLinkCurrent(pendingStarted))
                 {
-                    ClearPending();
+                    await ClearPendingAsync(CancellationToken.None);
                     SetSnapshot(new(
                         AndroidAccountLinkStatus.Unlinked,
                         AccountText("AccountNotLinked", "Not linked")));
@@ -92,10 +105,44 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
                 return;
             }
 
-            DateTimeOffset? expiresAtUtc = await ReadGrantExpiryAsync();
+            DateTimeOffset? expiresAtUtc = await ReadGrantExpiryAsync(cancellationToken);
+            string? refreshAttempt = await _metadataStore.GetAsync(
+                RefreshAttemptKey,
+                cancellationToken);
+            if (!string.IsNullOrWhiteSpace(refreshAttempt))
+            {
+                if (!IsExpectedRefreshAttempt(refreshAttempt))
+                {
+                    SetSnapshot(RefreshRecoveryPendingSnapshot(expiresAtUtc));
+                    return;
+                }
+
+                // A prior request may have rotated the remote grant before its response was lost.
+                // Retry the same durable attempt before validating or expiring the superseded
+                // local grant; the Hub contract replays the original rotation for this key.
+                GrantContract? recovered = await RefreshGrantAsync(
+                    grant,
+                    refreshAttempt,
+                    cancellationToken);
+                if (recovered is null)
+                {
+                    SetSnapshot(RefreshRecoveryPendingSnapshot(expiresAtUtc));
+                    return;
+                }
+
+                await SaveGrantAsync(recovered, cancellationToken);
+                await _metadataStore.RemoveAsync(RefreshAttemptKey, CancellationToken.None);
+                SetSnapshot(new(
+                    AndroidAccountLinkStatus.Linked,
+                    AccountText("AccountLinked", "Linked"),
+                    null,
+                    recovered.ExpiresAtUtc));
+                return;
+            }
+
             if (expiresAtUtc is null || expiresAtUtc <= DateTimeOffset.UtcNow)
             {
-                ClearGrant();
+                await ClearGrantAsync(CancellationToken.None);
                 SetSnapshot(new(
                     AndroidAccountLinkStatus.Unlinked,
                     AccountText("AccountLinkExpired", "Link expired"),
@@ -106,7 +153,7 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             GrantValidationResult validation = await ValidateGrantAsync(grant, cancellationToken);
             if (validation == GrantValidationResult.Invalid)
             {
-                ClearGrant();
+                await ClearGrantAsync(CancellationToken.None);
                 SetSnapshot(new(
                     AndroidAccountLinkStatus.Unlinked,
                     AccountText("AccountLinkExpired", "Link expired"),
@@ -126,12 +173,24 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
 
             if (expiresAtUtc is not null && expiresAtUtc <= DateTimeOffset.UtcNow.Add(RefreshWindow))
             {
-                GrantContract? refreshed = await RefreshGrantAsync(grant, cancellationToken);
-                if (refreshed is not null)
+                refreshAttempt = NewBase64UrlToken(24);
+                await _metadataStore.SetAsync(
+                    RefreshAttemptKey,
+                    refreshAttempt,
+                    cancellationToken);
+                GrantContract? refreshed = await RefreshGrantAsync(
+                    grant,
+                    refreshAttempt,
+                    cancellationToken);
+                if (refreshed is null)
                 {
-                    await SaveGrantAsync(refreshed, cancellationToken);
-                    expiresAtUtc = refreshed.ExpiresAtUtc;
+                    SetSnapshot(RefreshRecoveryPendingSnapshot(expiresAtUtc));
+                    return;
                 }
+
+                await SaveGrantAsync(refreshed, cancellationToken);
+                await _metadataStore.RemoveAsync(RefreshAttemptKey, CancellationToken.None);
+                expiresAtUtc = refreshed.ExpiresAtUtc;
             }
 
             SetSnapshot(new(
@@ -182,13 +241,17 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         try
         {
             bool hadStoredGrant = !string.IsNullOrWhiteSpace(
-                await SecureStorage.Default.GetAsync(AccessTokenKey));
+                await _metadataStore.GetAsync(AccessTokenKey, cancellationToken));
             AndroidAccountLinkKeyIdentity identity = await _keyAuthority
                 .StartOrResumeExplicitLinkAsync(cancellationToken);
-            ClearGrant();
-            string? savedState = await SecureStorage.Default.GetAsync(PendingStateKey);
-            string? savedInstallationId = await SecureStorage.Default.GetAsync(PendingInstallationIdKey);
-            DateTimeOffset? pendingStarted = await ReadTimestampAsync(PendingStartedKey);
+            await ClearGrantAsync(CancellationToken.None);
+            string? savedState = await _metadataStore.GetAsync(PendingStateKey, cancellationToken);
+            string? savedInstallationId = await _metadataStore.GetAsync(
+                PendingInstallationIdKey,
+                cancellationToken);
+            DateTimeOffset? pendingStarted = await ReadTimestampAsync(
+                PendingStartedKey,
+                cancellationToken);
             bool resumeCurrentAttempt = !hadStoredGrant
                 && !string.IsNullOrWhiteSpace(savedState)
                 && string.Equals(savedInstallationId, identity.InstallationId, StringComparison.Ordinal)
@@ -196,14 +259,16 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             string state = resumeCurrentAttempt ? savedState! : NewBase64UrlToken(24);
             if (!resumeCurrentAttempt)
             {
-                ClearPending();
-                await SecureStorage.Default.SetAsync(
+                await ClearPendingAsync(CancellationToken.None);
+                await _metadataStore.SetAsync(
                     PendingInstallationIdKey,
-                    identity.InstallationId);
-                await SecureStorage.Default.SetAsync(PendingStateKey, state);
-                await SecureStorage.Default.SetAsync(
+                    identity.InstallationId,
+                    cancellationToken);
+                await _metadataStore.SetAsync(PendingStateKey, state, cancellationToken);
+                await _metadataStore.SetAsync(
                     PendingStartedKey,
-                    DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture));
+                    DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture),
+                    cancellationToken);
             }
 
             string callback = $"https://chummer.run{CallbackPath}?state={Uri.EscapeDataString(state)}";
@@ -211,7 +276,7 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             {
                 ["installationId"] = identity.InstallationId,
                 ["headId"] = HeadId,
-                ["applicationVersion"] = AppInfo.Current.VersionString,
+                ["applicationVersion"] = _versionProvider(),
                 ["releaseChannel"] = ReleaseChannel,
                 ["platform"] = PlatformId,
                 ["arch"] = ResolveArchitecture(),
@@ -226,7 +291,7 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
                 AccountText("AccountApproveBrowser", "Approve in your browser, then return.")));
             if (!await _systemService.OpenUriAsync(ChummerWebRoutes.Resolve(href)))
             {
-                ClearPending();
+                await ClearPendingAsync(CancellationToken.None);
                 SetSnapshot(new(
                     AndroidAccountLinkStatus.Error,
                     AccountText("AccountBrowserUnavailable", "Browser unavailable"),
@@ -255,16 +320,18 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            string? pendingState = await SecureStorage.Default.GetAsync(PendingStateKey);
+            string? pendingState = await _metadataStore.GetAsync(PendingStateKey, cancellationToken);
             if (string.IsNullOrWhiteSpace(pendingState))
             {
                 return;
             }
 
-            string? pendingInstallationId = await SecureStorage.Default.GetAsync(PendingInstallationIdKey);
+            string? pendingInstallationId = await _metadataStore.GetAsync(
+                PendingInstallationIdKey,
+                cancellationToken);
             if (string.IsNullOrWhiteSpace(pendingInstallationId))
             {
-                ClearPending();
+                await ClearPendingAsync(CancellationToken.None);
                 SetSnapshot(new(
                     AndroidAccountLinkStatus.Error,
                     AccountText("AccountApprovalExpired", "Approval expired"),
@@ -281,10 +348,12 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
                 return;
             }
 
-            DateTimeOffset? pendingStarted = await ReadTimestampAsync(PendingStartedKey);
+            DateTimeOffset? pendingStarted = await ReadTimestampAsync(
+                PendingStartedKey,
+                cancellationToken);
             if (!IsPendingLinkCurrent(pendingStarted))
             {
-                ClearPending();
+                await ClearPendingAsync(CancellationToken.None);
                 SetSnapshot(new(
                     AndroidAccountLinkStatus.Error,
                     AccountText("AccountApprovalExpired", "Approval expired"),
@@ -298,8 +367,8 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             long issuedAt = await NextProofTimestampAsync();
             string nonce = Convert.ToHexString(RandomNumberGenerator.GetBytes(24)).ToLowerInvariant();
             string architecture = ResolveArchitecture();
-            string version = AppInfo.Current.VersionString;
-            string hostLabel = ResolveHostLabel();
+            string version = _versionProvider();
+            string hostLabel = _hostLabelProvider();
             byte[] proof = AndroidAccountLinkBootstrapProof.CreateCanonicalPayload(
                 identity.InstallationId,
                 HeadId,
@@ -358,11 +427,15 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             {
                 if (response.StatusCode == HttpStatusCode.Conflict)
                 {
-                    await ClearAllCredentialsAsync(CancellationToken.None);
+                    // A successful redemption response can be lost before local commit. Conflict
+                    // is therefore ambiguous and must never destroy the pending installation/key;
+                    // a later idempotent poll can still replay the originally issued grant.
                     SetSnapshot(new(
-                        AndroidAccountLinkStatus.Error,
-                        AccountText("AccountFreshLinkRequired", "Fresh link required"),
-                        AccountText("AccountChooseLinkTryAgain", "Choose Link account and try again.")));
+                        AndroidAccountLinkStatus.Pending,
+                        AccountText("AccountFinishLinking", "Finish linking"),
+                        AccountText(
+                            "AccountApprovalReceivedRetry",
+                            "Approval was received. Keep this link and try again.")));
                 }
                 else if (response.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.Unauthorized)
                 {
@@ -374,7 +447,7 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
                 }
                 else if (response.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.Gone)
                 {
-                    ClearPending();
+                    await ClearPendingAsync(CancellationToken.None);
                     SetSnapshot(new(
                         AndroidAccountLinkStatus.Error,
                         AccountText("AccountApprovalExpired", "Approval expired"),
@@ -409,7 +482,7 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             }
 
             await SaveGrantAsync(grant, cancellationToken);
-            ClearPending();
+            await ClearPendingAsync(CancellationToken.None);
             SetSnapshot(new(
                 AndroidAccountLinkStatus.Linked,
                 AccountText("AccountLinked", "Linked"),
@@ -463,7 +536,7 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         DateTimeOffset? grantExpiresAtUtc = _snapshot.GrantExpiresAtUtc;
         try
         {
-            grantExpiresAtUtc ??= await ReadGrantExpiryAsync();
+            grantExpiresAtUtc ??= await ReadGrantExpiryAsync(cancellationToken);
             StoredGrant? grant = await ReadStoredGrantAsync(cancellationToken);
             if (grant is not null)
             {
@@ -486,10 +559,16 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
                 }
             }
 
-            await ClearAllCredentialsAsync(CancellationToken.None);
-            SetSnapshot(new(
-                AndroidAccountLinkStatus.Unlinked,
-                AccountText("AccountNotLinked", "Not linked")));
+            if (await TryClearAllCredentialsAsync())
+            {
+                SetSnapshot(new(
+                    AndroidAccountLinkStatus.Unlinked,
+                    AccountText("AccountNotLinked", "Not linked")));
+            }
+            else
+            {
+                SetSnapshot(LocalCleanupPendingSnapshot());
+            }
         }
         catch (HttpRequestException)
         {
@@ -541,10 +620,16 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
                 throw new InvalidDataException("Chummer returned an invalid deletion receipt.");
             }
 
-            await ClearAllCredentialsAsync(CancellationToken.None);
-            SetSnapshot(new(
-                AndroidAccountLinkStatus.Unlinked,
-                AccountText("AccountDeleted", "Account deleted")));
+            if (await TryClearAllCredentialsAsync())
+            {
+                SetSnapshot(new(
+                    AndroidAccountLinkStatus.Unlinked,
+                    AccountText("AccountDeleted", "Account deleted")));
+            }
+            else
+            {
+                SetSnapshot(LocalCleanupPendingSnapshot());
+            }
             return receipt;
         }
         finally
@@ -887,7 +972,7 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             cancellationToken);
         if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Conflict)
         {
-            ClearGrant();
+            await ClearGrantAsync(CancellationToken.None);
             SetSnapshot(new(
                 AndroidAccountLinkStatus.Unlinked,
                 AccountText("AccountLinkExpired", "Link expired"),
@@ -932,6 +1017,7 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
 
     private async Task<GrantContract?> RefreshGrantAsync(
         StoredGrant grant,
+        string idempotencyKey,
         CancellationToken cancellationToken)
     {
         try
@@ -943,12 +1029,13 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
                 new RefreshRequest(
                     grant.InstallationId,
                     HeadId,
-                    AppInfo.Current.VersionString,
+                    _versionProvider(),
                     ReleaseChannel,
                     PlatformId,
                     ResolveArchitecture(),
                     identity.PublicKey,
-                    ResolveHostLabel()),
+                    _hostLabelProvider(),
+                    idempotencyKey),
                 authority,
                 cancellationToken);
             if (!response.IsSuccessStatusCode)
@@ -1013,10 +1100,11 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
 
         try
         {
-            await SecureStorage.Default.SetAsync(AccessTokenKey, grant.AccessToken);
-            await SecureStorage.Default.SetAsync(
+            await _metadataStore.SetAsync(AccessTokenKey, grant.AccessToken, cancellationToken);
+            await _metadataStore.SetAsync(
                 GrantExpiryKey,
-                grant.ExpiresAtUtc.ToString("O", CultureInfo.InvariantCulture));
+                grant.ExpiresAtUtc.ToString("O", CultureInfo.InvariantCulture),
+                cancellationToken);
             // Binding the grant is the local commit point. Metadata writes accept cancellation
             // only before the non-cancellable SecureStorage operation begins, so success here
             // cannot be reported as an ambiguous cancellation after a durable commit.
@@ -1024,15 +1112,15 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         }
         catch
         {
-            ClearGrant();
+            await ClearGrantAsync(CancellationToken.None);
             throw;
         }
     }
 
     private async Task<StoredGrant?> ReadStoredGrantAsync(CancellationToken cancellationToken)
     {
-        string? installationId = await SecureStorage.Default.GetAsync(InstallationIdKey);
-        string? accessToken = await SecureStorage.Default.GetAsync(AccessTokenKey);
+        string? installationId = await _metadataStore.GetAsync(InstallationIdKey, cancellationToken);
+        string? accessToken = await _metadataStore.GetAsync(AccessTokenKey, cancellationToken);
         return string.IsNullOrWhiteSpace(installationId)
             || string.IsNullOrWhiteSpace(accessToken)
                 ? null
@@ -1079,12 +1167,14 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             metadata.IssuedAtUtc,
             metadata.ExpiresAtUtc);
     }
-    private static async Task<DateTimeOffset?> ReadGrantExpiryAsync()
-        => await ReadTimestampAsync(GrantExpiryKey);
+    private async Task<DateTimeOffset?> ReadGrantExpiryAsync(CancellationToken cancellationToken)
+        => await ReadTimestampAsync(GrantExpiryKey, cancellationToken);
 
-    private static async Task<DateTimeOffset?> ReadTimestampAsync(string key)
+    private async Task<DateTimeOffset?> ReadTimestampAsync(
+        string key,
+        CancellationToken cancellationToken)
     {
-        string? value = await SecureStorage.Default.GetAsync(key);
+        string? value = await _metadataStore.GetAsync(key, cancellationToken);
         return DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out DateTimeOffset parsed)
             ? parsed
             : null;
@@ -1098,16 +1188,21 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             && startedAtUtc <= now.AddMinutes(2);
     }
 
-    private static async Task<long> NextProofTimestampAsync()
+    private async Task<long> NextProofTimestampAsync()
     {
         long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        string? saved = await SecureStorage.Default.GetAsync(LastProofTimestampKey);
+        string? saved = await _metadataStore.GetAsync(
+            LastProofTimestampKey,
+            CancellationToken.None);
         if (long.TryParse(saved, NumberStyles.None, CultureInfo.InvariantCulture, out long last) && now <= last)
         {
             now = last + 1;
         }
 
-        await SecureStorage.Default.SetAsync(LastProofTimestampKey, now.ToString(CultureInfo.InvariantCulture));
+        await _metadataStore.SetAsync(
+            LastProofTimestampKey,
+            now.ToString(CultureInfo.InvariantCulture),
+            CancellationToken.None);
         return now;
     }
 
@@ -1133,6 +1228,11 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             .TrimEnd('=')
             .Replace('+', '-')
             .Replace('/', '_');
+
+    private static bool IsExpectedRefreshAttempt(string value)
+        => value.Length == 32
+            && value.AsSpan().IndexOfAnyExcept(
+                "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_".AsSpan()) < 0;
 
     private static string? ParseQueryValue(string query, string key)
     {
@@ -1162,17 +1262,18 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
-    private static void ClearGrant()
+    private async Task ClearGrantAsync(CancellationToken cancellationToken)
     {
-        SecureStorage.Default.Remove(AccessTokenKey);
-        SecureStorage.Default.Remove(GrantExpiryKey);
+        await _metadataStore.RemoveAsync(AccessTokenKey, cancellationToken);
+        await _metadataStore.RemoveAsync(GrantExpiryKey, cancellationToken);
+        await _metadataStore.RemoveAsync(RefreshAttemptKey, cancellationToken);
     }
 
-    private static void ClearPending()
+    private async Task ClearPendingAsync(CancellationToken cancellationToken)
     {
-        SecureStorage.Default.Remove(PendingStateKey);
-        SecureStorage.Default.Remove(PendingStartedKey);
-        SecureStorage.Default.Remove(PendingInstallationIdKey);
+        await _metadataStore.RemoveAsync(PendingStateKey, cancellationToken);
+        await _metadataStore.RemoveAsync(PendingStartedKey, cancellationToken);
+        await _metadataStore.RemoveAsync(PendingInstallationIdKey, cancellationToken);
     }
 
     private async Task ClearAllCredentialsAsync(CancellationToken cancellationToken)
@@ -1183,9 +1284,9 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         }
         finally
         {
-            ClearGrant();
-            ClearPending();
-            SecureStorage.Default.Remove(LastProofTimestampKey);
+            await ClearGrantAsync(CancellationToken.None);
+            await ClearPendingAsync(CancellationToken.None);
+            await _metadataStore.RemoveAsync(LastProofTimestampKey, CancellationToken.None);
         }
     }
 
@@ -1201,6 +1302,24 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             return false;
         }
     }
+
+    private static AndroidAccountLinkSnapshot LocalCleanupPendingSnapshot()
+        => new(
+            AndroidAccountLinkStatus.Unlinked,
+            AccountText("AccountFreshLinkRequired", "Fresh link required"),
+            AccountText(
+                "AccountLocalCleanupPending",
+                "Remote access ended. Local key cleanup will be retried."));
+
+    private static AndroidAccountLinkSnapshot RefreshRecoveryPendingSnapshot(
+        DateTimeOffset? grantExpiresAtUtc)
+        => new(
+            AndroidAccountLinkStatus.Error,
+            AccountText("AccountRefreshPending", "Finishing account security refresh"),
+            AccountText(
+                "AccountRefreshRetry",
+                "Keep this link and reconnect to finish the refresh."),
+            grantExpiresAtUtc);
 
     private enum GrantValidationResult
     {
@@ -1250,7 +1369,8 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         string Platform,
         string Architecture,
         string PublicKey,
-        string HostLabel);
+        string HostLabel,
+        string IdempotencyKey);
     private sealed record GrantContract(
         string GrantId,
         string InstallationId,

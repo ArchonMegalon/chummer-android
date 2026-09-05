@@ -51,7 +51,8 @@ public static class MauiProgram
             new AndroidAccountLinkService(
                 provider.GetRequiredService<AndroidAccountLinkHttpTransport>(),
                 provider.GetRequiredService<IAndroidSystemService>(),
-                provider.GetRequiredService<AndroidAccountLinkKeyAuthority>()));
+                provider.GetRequiredService<AndroidAccountLinkKeyAuthority>(),
+                provider.GetRequiredService<IAndroidAccountLinkKeyMetadataStore>()));
         // Hub transport and public-catalog composition are not present in this graph. Bind the
         // exact Presentation contract and keep the missing list capability separately fail-closed.
         builder.Services.AddSingleton<IShadowArchivePresentationClient,

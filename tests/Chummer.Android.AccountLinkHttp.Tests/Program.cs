@@ -5,12 +5,19 @@ using System.Net.Http.Headers;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using Chummer.Android.Platform;
 
 internal static class Program
 {
     private const string AccessToken = "hostile-secret-token-that-must-never-be-logged";
     private const string RotatedAccessToken = "rotated-secret-token-that-must-never-be-logged";
+    private const string StoredAccessTokenKey = "chummer.account.installation-grant.v1";
+    private const string StoredGrantExpiryKey = "chummer.account.installation-grant-expiry.v1";
+    private const string RefreshAttemptKey = "chummer.account.installation-grant-refresh-attempt.v1";
+    private const string PendingStateKey = "chummer.account.pending-state.v1";
+    private const string PendingStartedKey = "chummer.account.pending-started.v1";
+    private const string PendingInstallationIdKey = "chummer.account.pending-installation-id.v2";
 
     private static async Task Main()
     {
@@ -28,7 +35,12 @@ internal static class Program
         await CrossOriginRedirectCannotReceiveBearerToken();
         await SameOriginRedirectAndUnsafePathsFailClosed();
         await MalformedCollectionsFailClosedWithoutEchoingResponseData();
-        Console.WriteLine("Account-link HTTP hardening tests passed: 14");
+        await LostBootstrapResponseCanReplayTheOriginalGrantAsync();
+        await AlreadyRedeemedBootstrapConflictRetainsFreshCredentialsAsync();
+        await SuccessfulUnlinkCannotLeaveAStaleLinkedSnapshotAsync();
+        await SuccessfulErasureCannotLeaveAStaleLinkedSnapshotAsync();
+        await LostRefreshResponseReusesItsDurableIdempotencyKeyAsync();
+        Console.WriteLine("Account-link HTTP hardening tests passed: 19");
     }
 
     private static async Task BearerTokenIsRequestBoundAndRedacted()
@@ -502,6 +514,282 @@ internal static class Program
         }
     }
 
+    private static async Task LostBootstrapResponseCanReplayTheOriginalGrantAsync()
+    {
+        LinkFixture fixture = await CreatePendingFixtureAsync();
+        int call = 0;
+        var terminal = new RecordingHandler(_ => ++call == 1
+            ? throw new HttpRequestException("Injected response loss after redemption.")
+            : BootstrapGrantResponse(fixture.Identity, alreadyClaimed: true));
+        using AndroidAccountLinkHttpTransport transport = CreateTransport(terminal);
+        AndroidAccountLinkService service = CreateService(transport, fixture);
+
+        await service.ResumePendingLinkAsync();
+        Require(service.Snapshot.Status == AndroidAccountLinkStatus.Pending);
+        Require(fixture.Metadata.Contains(PendingStateKey));
+        Require(fixture.Keys.Contains(fixture.Identity.Alias));
+
+        await service.ResumePendingLinkAsync();
+
+        Require(service.Snapshot.Status == AndroidAccountLinkStatus.Linked);
+        Require(fixture.Metadata.GetRaw(StoredAccessTokenKey) == RotatedAccessToken);
+        Require(!fixture.Metadata.Contains(PendingStateKey));
+        AndroidAccountLinkKeyIdentity linked = await fixture.Authority.RequireLinkedIdentityAsync(
+            fixture.Identity.InstallationId);
+        Require(linked.GrantId == "grant-after-response-loss");
+        Require(terminal.Requests.Count == 2);
+    }
+
+    private static async Task AlreadyRedeemedBootstrapConflictRetainsFreshCredentialsAsync()
+    {
+        LinkFixture fixture = await CreatePendingFixtureAsync();
+        int call = 0;
+        var terminal = new RecordingHandler(_ => ++call switch
+        {
+            1 => throw new HttpRequestException("Injected response loss after redemption."),
+            2 => JsonResponse("{\"alreadyRedeemed\":true}", HttpStatusCode.Conflict),
+            _ => BootstrapGrantResponse(fixture.Identity, alreadyClaimed: true)
+        });
+        using AndroidAccountLinkHttpTransport transport = CreateTransport(terminal);
+        AndroidAccountLinkService service = CreateService(transport, fixture);
+
+        await service.ResumePendingLinkAsync();
+        await service.ResumePendingLinkAsync();
+
+        Require(service.Snapshot.Status == AndroidAccountLinkStatus.Pending);
+        Require(fixture.Metadata.Contains(PendingStateKey));
+        Require(fixture.Metadata.Contains(PendingInstallationIdKey));
+        Require(fixture.Metadata.Contains(AndroidAccountLinkKeyAuthority.BindingStorageKey));
+        Require(fixture.Metadata.Contains(AndroidAccountLinkKeyAuthority.InstallationIdStorageKey));
+        Require(fixture.Keys.Contains(fixture.Identity.Alias));
+        AndroidAccountLinkKeyIdentity pending = await fixture.Authority.RequirePendingIdentityAsync(
+            fixture.Identity.InstallationId);
+        Require(pending.GrantId is null);
+
+        await service.ResumePendingLinkAsync();
+        Require(service.Snapshot.Status == AndroidAccountLinkStatus.Linked);
+        Require(terminal.Requests.Count == 3);
+    }
+
+    private static async Task SuccessfulUnlinkCannotLeaveAStaleLinkedSnapshotAsync()
+    {
+        LinkFixture fixture = await CreateLinkedFixtureAsync(DateTimeOffset.UtcNow.AddDays(30));
+        var terminal = new RecordingHandler(request => request.RequestUri!.AbsolutePath switch
+        {
+            "/api/v2/install-linking/grants/status" => JsonResponse("{}"),
+            "/api/v2/install-linking/grants/revoke" => JsonResponse("{}"),
+            _ => throw new InvalidOperationException("Unexpected account-link route.")
+        });
+        using AndroidAccountLinkHttpTransport transport = CreateTransport(terminal);
+        AndroidAccountLinkService service = CreateService(transport, fixture);
+        await service.InitializeAsync();
+        Require(service.Snapshot.Status == AndroidAccountLinkStatus.Linked);
+        fixture.Keys.FailDeleteAlias = fixture.Identity.Alias;
+
+        await service.UnlinkAsync();
+
+        Require(service.Snapshot.Status == AndroidAccountLinkStatus.Unlinked);
+        Require(!service.Snapshot.IsLinked);
+        Require(!fixture.Metadata.Contains(StoredAccessTokenKey));
+        Require(fixture.Metadata.Contains(AndroidAccountLinkKeyAuthority.CleanupTombstoneStorageKey));
+        Require(fixture.Keys.Contains(fixture.Identity.Alias));
+        fixture.Keys.FailDeleteAlias = null;
+        await fixture.Authority.RemoveAsync();
+    }
+
+    private static async Task SuccessfulErasureCannotLeaveAStaleLinkedSnapshotAsync()
+    {
+        LinkFixture fixture = await CreateLinkedFixtureAsync(DateTimeOffset.UtcNow.AddDays(30));
+        var terminal = new RecordingHandler(request => request.RequestUri!.AbsolutePath switch
+        {
+            "/api/v2/install-linking/grants/status" => JsonResponse("{}"),
+            "/api/v2/android/linked/account/erase" => AccountErasureResponse(),
+            _ => throw new InvalidOperationException("Unexpected account-link route.")
+        });
+        using AndroidAccountLinkHttpTransport transport = CreateTransport(terminal);
+        AndroidAccountLinkService service = CreateService(transport, fixture);
+        await service.InitializeAsync();
+        Require(service.Snapshot.Status == AndroidAccountLinkStatus.Linked);
+        fixture.Keys.FailDeleteAlias = fixture.Identity.Alias;
+
+        AndroidAccountErasureReceipt receipt = await service.EraseAccountAsync(
+            AndroidAccountErasureConfirmation.RequiredPhrase);
+
+        Require(receipt.Erased);
+        Require(service.Snapshot.Status == AndroidAccountLinkStatus.Unlinked);
+        Require(!service.Snapshot.IsLinked);
+        Require(!fixture.Metadata.Contains(StoredAccessTokenKey));
+        Require(fixture.Metadata.Contains(AndroidAccountLinkKeyAuthority.CleanupTombstoneStorageKey));
+        Require(fixture.Keys.Contains(fixture.Identity.Alias));
+        fixture.Keys.FailDeleteAlias = null;
+        await fixture.Authority.RemoveAsync();
+    }
+
+    private static async Task LostRefreshResponseReusesItsDurableIdempotencyKeyAsync()
+    {
+        LinkFixture fixture = await CreateLinkedFixtureAsync(DateTimeOffset.UtcNow.AddDays(1));
+        int firstPhaseCall = 0;
+        var lostResponseTerminal = new RecordingHandler(_ => ++firstPhaseCall switch
+        {
+            1 => JsonResponse("{}"),
+            _ => throw new HttpRequestException("Injected response loss after grant rotation.")
+        });
+        using (AndroidAccountLinkHttpTransport transport = CreateTransport(lostResponseTerminal))
+        {
+            AndroidAccountLinkService service = CreateService(transport, fixture);
+            await service.InitializeAsync();
+            Require(service.Snapshot.Status == AndroidAccountLinkStatus.Error);
+        }
+
+        Require(lostResponseTerminal.Requests.Count == 2);
+        string originalRefreshBody = lostResponseTerminal.Requests[1].Body;
+        Require(lostResponseTerminal.Requests[1].AuthorizationParameter == AccessToken);
+        Require(lostResponseTerminal.Requests[1].GrantId == "grant-before-refresh");
+        using (JsonDocument body = JsonDocument.Parse(originalRefreshBody))
+        {
+            string? requestKey = body.RootElement.GetProperty("idempotencyKey").GetString();
+            Require(requestKey is { Length: 32 });
+            Require(requestKey == fixture.Metadata.GetRaw(RefreshAttemptKey));
+        }
+        Require(fixture.Metadata.GetRaw(StoredAccessTokenKey) == AccessToken);
+        Require((await fixture.Authority.RequireLinkedIdentityAsync(fixture.Identity.InstallationId)).GrantId
+            == "grant-before-refresh");
+
+        int recoveryCall = 0;
+        var recoveryTerminal = new RecordingHandler(_ => ++recoveryCall == 1
+            ? JsonResponse("{\"alreadyRedeemed\":true}", HttpStatusCode.Conflict)
+            : RefreshGrantResponse(fixture.Identity));
+        using AndroidAccountLinkHttpTransport recoveryTransport = CreateTransport(recoveryTerminal);
+        AndroidAccountLinkService recoveryService = CreateService(recoveryTransport, fixture);
+
+        await recoveryService.InitializeAsync();
+        Require(recoveryService.Snapshot.Status == AndroidAccountLinkStatus.Error);
+        Require(fixture.Metadata.GetRaw(StoredAccessTokenKey) == AccessToken);
+        Require(fixture.Metadata.Contains(RefreshAttemptKey));
+        Require(recoveryTerminal.Requests[0].Body == originalRefreshBody);
+        Require(recoveryTerminal.Requests[0].AuthorizationParameter == AccessToken);
+        Require(recoveryTerminal.Requests[0].GrantId == "grant-before-refresh");
+
+        await recoveryService.InitializeAsync();
+        Require(recoveryService.Snapshot.Status == AndroidAccountLinkStatus.Linked);
+        Require(fixture.Metadata.GetRaw(StoredAccessTokenKey) == RotatedAccessToken);
+        Require(!fixture.Metadata.Contains(RefreshAttemptKey));
+        Require(recoveryTerminal.Requests[1].Body == originalRefreshBody);
+        Require((await fixture.Authority.RequireLinkedIdentityAsync(fixture.Identity.InstallationId)).GrantId
+            == "grant-after-refresh");
+    }
+
+    private static AndroidAccountLinkService CreateService(
+        AndroidAccountLinkHttpTransport transport,
+        LinkFixture fixture)
+        => new(
+            transport,
+            new StubSystemService(),
+            fixture.Authority,
+            fixture.Metadata,
+            versionProvider: static () => "0.1.0-preview.11",
+            hostLabelProvider: static () => "Hostile test phone");
+
+    private static async Task<LinkFixture> CreatePendingFixtureAsync()
+    {
+        MemoryMetadataStore metadata = new();
+        MemoryDeviceKeyStore keys = new();
+        AndroidAccountLinkKeyAuthority authority = new(keys, metadata);
+        AndroidAccountLinkKeyIdentity identity = await authority.StartOrResumeExplicitLinkAsync();
+        await metadata.SetAsync(PendingStateKey, "pending-state");
+        await metadata.SetAsync(PendingInstallationIdKey, identity.InstallationId);
+        await metadata.SetAsync(
+            PendingStartedKey,
+            DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture));
+        return new(metadata, keys, authority, identity);
+    }
+
+    private static async Task<LinkFixture> CreateLinkedFixtureAsync(DateTimeOffset expiresAtUtc)
+    {
+        MemoryMetadataStore metadata = new();
+        MemoryDeviceKeyStore keys = new();
+        AndroidAccountLinkKeyAuthority authority = new(keys, metadata);
+        AndroidAccountLinkKeyIdentity identity = await authority.StartOrResumeExplicitLinkAsync();
+        await authority.BindGrantAsync(identity.InstallationId, "grant-before-refresh");
+        await metadata.SetAsync(StoredAccessTokenKey, AccessToken);
+        await metadata.SetAsync(
+            StoredGrantExpiryKey,
+            expiresAtUtc.ToString("O", CultureInfo.InvariantCulture));
+        return new(metadata, keys, authority, identity);
+    }
+
+    private static HttpResponseMessage BootstrapGrantResponse(
+        AndroidAccountLinkKeyIdentity identity,
+        bool alreadyClaimed)
+        => GrantResponse(
+            "grant-after-response-loss",
+            RotatedAccessToken,
+            JsonSerializer.Serialize(new
+            {
+                grant = GrantMetadata("grant-after-response-loss", identity.InstallationId),
+                alreadyClaimed
+            }));
+
+    private static HttpResponseMessage RefreshGrantResponse(AndroidAccountLinkKeyIdentity identity)
+        => GrantResponse(
+            "grant-after-refresh",
+            RotatedAccessToken,
+            JsonSerializer.Serialize(new
+            {
+                grant = GrantMetadata("grant-after-refresh", identity.InstallationId),
+                rotated = true
+            }));
+
+    private static object GrantMetadata(string grantId, string installationId)
+        => new
+        {
+            grantId,
+            installationId,
+            status = "active",
+            issuedAtUtc = DateTimeOffset.UtcNow.AddMinutes(-1),
+            expiresAtUtc = DateTimeOffset.UtcNow.AddDays(30)
+        };
+
+    private static HttpResponseMessage GrantResponse(
+        string grantId,
+        string accessToken,
+        string json)
+    {
+        HttpResponseMessage response = JsonResponse(json);
+        response.Headers.TryAddWithoutValidation("Authorization", $"Bearer {accessToken}");
+        response.Headers.TryAddWithoutValidation(
+            AndroidAccountLinkRequestAuthority.GrantHeader,
+            grantId);
+        return response;
+    }
+
+    private static HttpResponseMessage AccountErasureResponse()
+    {
+        string digest = new('a', 64);
+        return JsonResponse(JsonSerializer.Serialize(new
+        {
+            erased = true,
+            subjectKeySha256 = digest,
+            userKeySha256 = digest,
+            components = new[]
+            {
+                "hosted_build_workspaces",
+                "support",
+                "first_party_auxiliary_stores",
+                "community",
+                "identity"
+            }.Select(component => new
+            {
+                component,
+                completed = true,
+                recordsRemoved = 1,
+                receiptSha256 = digest
+            }),
+            erasedAtUtc = DateTimeOffset.UtcNow,
+            receiptSha256 = digest
+        }));
+    }
+
     private static AndroidAccountLinkHttpTransport CreateTransport(
         HttpMessageHandler terminal,
         TimeSpan? timeout = null)
@@ -515,8 +803,10 @@ internal static class Program
             1_788_543_210,
             (canonical, _) => Task.FromResult(SHA256.HashData(canonical.Span)));
 
-    private static HttpResponseMessage JsonResponse(string json)
-        => new(HttpStatusCode.OK)
+    private static HttpResponseMessage JsonResponse(
+        string json,
+        HttpStatusCode statusCode = HttpStatusCode.OK)
+        => new(statusCode)
         {
             Content = new StringContent(json, Encoding.UTF8, "application/json")
         };
@@ -580,6 +870,12 @@ internal static class Program
 
     private sealed record CollectionEnvelope(IReadOnlyList<string> Items);
 
+    private sealed record LinkFixture(
+        MemoryMetadataStore Metadata,
+        MemoryDeviceKeyStore Keys,
+        AndroidAccountLinkKeyAuthority Authority,
+        AndroidAccountLinkKeyIdentity Identity);
+
     private sealed record ObservedRequest(
         Uri Uri,
         string Body,
@@ -594,6 +890,129 @@ internal static class Program
         string? PacketKey,
         string? IssuedAt,
         string? Signature);
+
+    private sealed class MemoryMetadataStore : IAndroidAccountLinkKeyMetadataStore
+    {
+        private readonly Dictionary<string, string> _values = new(StringComparer.Ordinal);
+
+        public Task<string?> GetAsync(string key, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(_values.GetValueOrDefault(key));
+        }
+
+        public Task SetAsync(
+            string key,
+            string value,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            _values[key] = value;
+            return Task.CompletedTask;
+        }
+
+        public Task RemoveAsync(string key, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            _values.Remove(key);
+            return Task.CompletedTask;
+        }
+
+        internal bool Contains(string key) => _values.ContainsKey(key);
+
+        internal string? GetRaw(string key) => _values.GetValueOrDefault(key);
+    }
+
+    private sealed class MemoryDeviceKeyStore : IAndroidDeviceKeyStore, IDisposable
+    {
+        private readonly Dictionary<string, RSA> _keys = new(StringComparer.Ordinal);
+
+        internal string? FailDeleteAlias { get; set; }
+
+        public Task<AndroidDevicePublicKey> CreateAsync(
+            string alias,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            RSA key = RSA.Create(2048);
+            _keys.Add(alias, key);
+            return Task.FromResult(new AndroidDevicePublicKey(
+                AndroidDeviceKeyAvailability.Available,
+                Convert.ToBase64String(key.ExportSubjectPublicKeyInfo())));
+        }
+
+        public Task<AndroidDevicePublicKey> GetPublicKeyAsync(
+            string alias,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(_keys.TryGetValue(alias, out RSA? key)
+                ? new AndroidDevicePublicKey(
+                    AndroidDeviceKeyAvailability.Available,
+                    Convert.ToBase64String(key.ExportSubjectPublicKeyInfo()))
+                : new AndroidDevicePublicKey(AndroidDeviceKeyAvailability.Missing));
+        }
+
+        public Task<byte[]> SignAsync(
+            string alias,
+            ReadOnlyMemory<byte> payload,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!_keys.TryGetValue(alias, out RSA? key))
+            {
+                throw new AndroidDeviceRelinkRequiredException(
+                    AndroidDeviceKeyAvailability.Missing,
+                    "Test key missing.");
+            }
+            return Task.FromResult(key.SignData(
+                payload.Span,
+                HashAlgorithmName.SHA256,
+                RSASignaturePadding.Pkcs1));
+        }
+
+        public Task DeleteAsync(string alias, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (string.Equals(FailDeleteAlias, alias, StringComparison.Ordinal))
+            {
+                throw new CryptographicException("Injected Android Keystore deletion failure.");
+            }
+            if (_keys.Remove(alias, out RSA? key))
+            {
+                key.Dispose();
+            }
+            return Task.CompletedTask;
+        }
+
+        internal bool Contains(string alias) => _keys.ContainsKey(alias);
+
+        public void Dispose()
+        {
+            foreach (RSA key in _keys.Values)
+            {
+                key.Dispose();
+            }
+            _keys.Clear();
+        }
+    }
+
+    private sealed class StubSystemService : IAndroidSystemService
+    {
+        public Task<bool> OpenUriAsync(Uri uri) => Task.FromResult(true);
+
+        public Task<AndroidUpdateCheckResult> CheckForUpdatesAsync()
+            => Task.FromResult(AndroidUpdateCheckResult.Unavailable);
+
+        public Task ShareTextAsync(string text) => Task.CompletedTask;
+
+        public Task<bool> PrintPdfAsync(
+            string fileName,
+            string contentBase64,
+            string title,
+            CancellationToken cancellationToken)
+            => Task.FromResult(false);
+    }
 
     private sealed class RecordingHandler : HttpMessageHandler
     {

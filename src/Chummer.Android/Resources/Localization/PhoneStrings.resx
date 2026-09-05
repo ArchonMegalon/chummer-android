@@ -60,6 +60,7 @@
   <data name="AccountNotLinked" xml:space="preserve"><value>Not linked</value></data>
   <data name="AccountFinishLinking" xml:space="preserve"><value>Finish linking</value></data>
   <data name="AccountApproveBrowser" xml:space="preserve"><value>Approve in your browser, then return.</value></data>
+  <data name="AccountApprovalReceivedRetry" xml:space="preserve"><value>Approval was received. Keep this link and try again.</value></data>
   <data name="AccountLinkExpired" xml:space="preserve"><value>Link expired</value></data>
   <data name="AccountLinkAgainRestore" xml:space="preserve"><value>Link again to restore account access.</value></data>
   <data name="AccountLinked" xml:space="preserve"><value>Linked</value></data>
@@ -84,6 +85,9 @@
   <data name="AccountRevokeUnavailable" xml:space="preserve"><value>Could not reach Chummer. Try unlinking again.</value></data>
   <data name="AccountRevokeOffline" xml:space="preserve"><value>Connect to the internet and try again.</value></data>
   <data name="AccountDeleted" xml:space="preserve"><value>Account deleted</value></data>
+  <data name="AccountLocalCleanupPending" xml:space="preserve"><value>Remote access ended. Local key cleanup will be retried.</value></data>
+  <data name="AccountRefreshPending" xml:space="preserve"><value>Finishing account security refresh</value></data>
+  <data name="AccountRefreshRetry" xml:space="preserve"><value>Keep this link and reconnect to finish the refresh.</value></data>
   <data name="App" xml:space="preserve"><value>App</value></data>
   <data name="Version" xml:space="preserve"><value>Version</value></data>
   <data name="CheckUpdates" xml:space="preserve"><value>Check for updates</value></data>

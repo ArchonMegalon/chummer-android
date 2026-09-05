@@ -240,6 +240,7 @@ public sealed class AndroidAccountLinkKeyAuthority
         string? serialized = null;
         string? serializedTombstone = null;
         Exception? firstFailure = null;
+        bool selectorsReadable = true;
 
         async Task<bool> AttemptAsync(Func<Task> action)
         {
@@ -255,18 +256,26 @@ public sealed class AndroidAccountLinkKeyAuthority
             }
         }
 
-        await AttemptAsync(async () =>
+        selectorsReadable = await AttemptAsync(async () =>
             installationId = await _metadataStore.GetAsync(
                 InstallationIdStorageKey,
-                cancellationToken));
-        await AttemptAsync(async () =>
+                cancellationToken)) && selectorsReadable;
+        selectorsReadable = await AttemptAsync(async () =>
             serialized = await _metadataStore.GetAsync(
                 BindingStorageKey,
-                cancellationToken));
-        await AttemptAsync(async () =>
+                cancellationToken)) && selectorsReadable;
+        selectorsReadable = await AttemptAsync(async () =>
             serializedTombstone = await _metadataStore.GetAsync(
                 CleanupTombstoneStorageKey,
-                cancellationToken));
+                cancellationToken)) && selectorsReadable;
+
+        if (!selectorsReadable)
+        {
+            // A failed read is an unknown selector, not an absent selector. In particular, the
+            // unread value can be the only durable route back to a non-exportable Keystore alias.
+            // Do not rewrite or remove any selector until every source has been observed.
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(firstFailure!).Throw();
+        }
 
         Dictionary<string, string> cleanupEntries = new(StringComparer.Ordinal);
         if (IsExpectedInstallationId(installationId))

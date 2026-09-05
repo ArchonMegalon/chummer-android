@@ -60,6 +60,7 @@
   <data name="AccountNotLinked" xml:space="preserve"><value>Sin vincular</value></data>
   <data name="AccountFinishLinking" xml:space="preserve"><value>Finalizar la vinculación</value></data>
   <data name="AccountApproveBrowser" xml:space="preserve"><value>Aprueba la vinculación en el navegador y después vuelve.</value></data>
+  <data name="AccountApprovalReceivedRetry" xml:space="preserve"><value>Se recibió la aprobación. Conserva esta vinculación e inténtalo de nuevo.</value></data>
   <data name="AccountLinkExpired" xml:space="preserve"><value>Vinculación caducada</value></data>
   <data name="AccountLinkAgainRestore" xml:space="preserve"><value>Vuelve a vincular tu cuenta para recuperar el acceso.</value></data>
   <data name="AccountLinked" xml:space="preserve"><value>Vinculada</value></data>
@@ -84,6 +85,9 @@
   <data name="AccountRevokeUnavailable" xml:space="preserve"><value>No se pudo contactar con Chummer. Intenta desvincular de nuevo.</value></data>
   <data name="AccountRevokeOffline" xml:space="preserve"><value>Conéctate a internet e intenta desvincular de nuevo.</value></data>
   <data name="AccountDeleted" xml:space="preserve"><value>Cuenta eliminada</value></data>
+  <data name="AccountLocalCleanupPending" xml:space="preserve"><value>El acceso remoto ha finalizado. Se volverá a intentar la limpieza de la clave local.</value></data>
+  <data name="AccountRefreshPending" xml:space="preserve"><value>Finalizando la actualización de seguridad de la cuenta</value></data>
+  <data name="AccountRefreshRetry" xml:space="preserve"><value>Conserva esta vinculación y vuelve a conectarte para finalizar la actualización.</value></data>
   <data name="App" xml:space="preserve"><value>Aplicación</value></data>
   <data name="Version" xml:space="preserve"><value>Versión</value></data>
   <data name="CheckUpdates" xml:space="preserve"><value>Buscar actualizaciones</value></data>

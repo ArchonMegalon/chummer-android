@@ -26,7 +26,10 @@ internal static class Program
         await PartialBindingRecoveryRemovesTheOrphanedKeyAsync();
         await UnlinkDeletesKeyAuthorityAndMetadataAsync();
         await UnlinkFailureRemovesMetadataAndSurfacesTheCleanupFailureAsync();
-        Console.WriteLine("Android account-link key authority tests passed: 20");
+        await SelectorReadCancellationPreservesTheOnlyCleanupRouteAsync();
+        await SelectorReadFailurePreservesTheOnlyCleanupRouteAsync();
+        await SelectorDeleteCancellationRetainsARecoverableOutcomeAsync();
+        Console.WriteLine("Android account-link key authority tests passed: 23");
     }
 
     private static async Task PersistedBindingNeverContainsPrivateKeyMaterialAsync()
@@ -435,6 +438,127 @@ internal static class Program
         Require(metadata.Values.Count == 0, "Successful retry must remove the cleanup tombstone.");
     }
 
+    private static async Task SelectorReadCancellationPreservesTheOnlyCleanupRouteAsync()
+    {
+        foreach (string selector in CleanupSelectorKeys())
+        {
+            (MemoryMetadataStore metadata, MemoryDeviceKeyStore keys, AndroidAccountLinkKeyAuthority authority,
+                AndroidAccountLinkKeyIdentity identity) = await CreateSingleSelectorFixtureAsync(selector);
+            metadata.CancelAfterGetKey = selector;
+
+            await RequireThrowsAsync<OperationCanceledException>(
+                () => authority.RemoveAsync(),
+                $"Cancellation while reading {selector} must abort cleanup.");
+
+            Require(keys.Contains(identity.Alias), "An unread selector must never orphan the surviving key.");
+            Require(metadata.Contains(selector), "The only cleanup selector must survive an ambiguous read.");
+            metadata.CancelAfterGetKey = null;
+            await authority.RemoveAsync();
+            Require(keys.KeyCount == 0, "A later readable cleanup must delete the retained key.");
+            Require(metadata.Values.Count == 0, "A later readable cleanup must remove its selectors.");
+        }
+    }
+
+    private static async Task SelectorReadFailurePreservesTheOnlyCleanupRouteAsync()
+    {
+        foreach (string selector in CleanupSelectorKeys())
+        {
+            (MemoryMetadataStore metadata, MemoryDeviceKeyStore keys, AndroidAccountLinkKeyAuthority authority,
+                AndroidAccountLinkKeyIdentity identity) = await CreateSingleSelectorFixtureAsync(selector);
+            metadata.FailAfterGetKey = selector;
+
+            await RequireThrowsAsync<IOException>(
+                () => authority.RemoveAsync(),
+                $"Failure while reading {selector} must abort cleanup.");
+
+            Require(keys.Contains(identity.Alias), "A failed selector read must retain the surviving key.");
+            Require(metadata.Contains(selector), "A failed read must retain the only durable cleanup selector.");
+            metadata.FailAfterGetKey = null;
+            await authority.RemoveAsync();
+            Require(keys.KeyCount == 0, "A later readable cleanup must delete the retained key.");
+        }
+    }
+
+    private static async Task SelectorDeleteCancellationRetainsARecoverableOutcomeAsync()
+    {
+        foreach (string selector in CleanupSelectorKeys())
+        {
+            MemoryMetadataStore metadata = new();
+            MemoryDeviceKeyStore keys = new();
+            AndroidAccountLinkKeyAuthority authority = new(keys, metadata);
+            AndroidAccountLinkKeyIdentity identity = await authority.StartOrResumeExplicitLinkAsync();
+            await authority.BindGrantAsync(identity.InstallationId, "grant-one");
+            if (!string.Equals(
+                    selector,
+                    AndroidAccountLinkKeyAuthority.CleanupTombstoneStorageKey,
+                    StringComparison.Ordinal))
+            {
+                keys.FailDeleteAlias = identity.Alias;
+            }
+            metadata.CancelAfterRemoveKey = selector;
+
+            await RequireThrowsAsync<OperationCanceledException>(
+                () => authority.RemoveAsync(),
+                $"Cancellation while deleting {selector} must remain visible.");
+
+            bool aliasRemains = keys.Contains(identity.Alias);
+            Require(
+                !aliasRemains || metadata.Contains(AndroidAccountLinkKeyAuthority.CleanupTombstoneStorageKey),
+                "A canceled selector deletion must retain a tombstone whenever the key remains.");
+            metadata.CancelAfterRemoveKey = null;
+            keys.FailDeleteAlias = null;
+            await authority.RemoveAsync();
+            Require(keys.KeyCount == 0, "A retry after selector-delete cancellation must finish key cleanup.");
+            Require(metadata.Values.Count == 0, "A retry after selector-delete cancellation must finish metadata cleanup.");
+        }
+    }
+
+    private static IReadOnlyList<string> CleanupSelectorKeys()
+        =>
+        [
+            AndroidAccountLinkKeyAuthority.InstallationIdStorageKey,
+            AndroidAccountLinkKeyAuthority.BindingStorageKey,
+            AndroidAccountLinkKeyAuthority.CleanupTombstoneStorageKey
+        ];
+
+    private static async Task<(
+        MemoryMetadataStore Metadata,
+        MemoryDeviceKeyStore Keys,
+        AndroidAccountLinkKeyAuthority Authority,
+        AndroidAccountLinkKeyIdentity Identity)> CreateSingleSelectorFixtureAsync(string selector)
+    {
+        MemoryMetadataStore metadata = new();
+        MemoryDeviceKeyStore keys = new();
+        AndroidAccountLinkKeyAuthority authority = new(keys, metadata);
+        AndroidAccountLinkKeyIdentity identity = await authority.StartOrResumeExplicitLinkAsync();
+        if (string.Equals(
+                selector,
+                AndroidAccountLinkKeyAuthority.InstallationIdStorageKey,
+                StringComparison.Ordinal))
+        {
+            metadata.RemoveRaw(AndroidAccountLinkKeyAuthority.BindingStorageKey);
+        }
+        else if (string.Equals(
+                     selector,
+                     AndroidAccountLinkKeyAuthority.BindingStorageKey,
+                     StringComparison.Ordinal))
+        {
+            metadata.RemoveRaw(AndroidAccountLinkKeyAuthority.InstallationIdStorageKey);
+        }
+        else
+        {
+            keys.FailDeleteAlias = identity.Alias;
+            await RequireThrowsAsync<CryptographicException>(
+                () => authority.RemoveAsync(),
+                "The tombstone-only fixture must observe a failed key deletion.");
+            keys.FailDeleteAlias = null;
+            Require(metadata.Values.Count == 1, "The fixture must retain only its cleanup tombstone.");
+        }
+
+        Require(metadata.Contains(selector), "The hostile fixture must retain its selected cleanup route.");
+        return (metadata, keys, authority, identity);
+    }
+
     private static string SerializeBinding(
         string installationId,
         string alias,
@@ -481,11 +605,26 @@ internal static class Program
 
         public string? FailNextSetKey { get; set; }
 
+        public string? CancelAfterGetKey { get; set; }
+
+        public string? FailAfterGetKey { get; set; }
+
+        public string? CancelAfterRemoveKey { get; set; }
+
         public Task<string?> GetAsync(string key, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
             _readCounts[key] = ReadCount(key) + 1;
-            return Task.FromResult(_values.GetValueOrDefault(key));
+            string? value = _values.GetValueOrDefault(key);
+            if (string.Equals(CancelAfterGetKey, key, StringComparison.Ordinal))
+            {
+                throw new OperationCanceledException("Injected cancellation after selector read.");
+            }
+            if (string.Equals(FailAfterGetKey, key, StringComparison.Ordinal))
+            {
+                throw new IOException("Injected failure after selector read.");
+            }
+            return Task.FromResult(value);
         }
 
         public Task SetAsync(string key, string value, CancellationToken cancellationToken = default)
@@ -512,6 +651,10 @@ internal static class Program
         {
             cancellationToken.ThrowIfCancellationRequested();
             _values.Remove(key);
+            if (string.Equals(CancelAfterRemoveKey, key, StringComparison.Ordinal))
+            {
+                throw new OperationCanceledException("Injected cancellation after selector removal.");
+            }
             return Task.CompletedTask;
         }
     }

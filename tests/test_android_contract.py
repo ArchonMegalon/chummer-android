@@ -358,6 +358,9 @@ class AndroidContractTests(unittest.TestCase):
         keystore = (
             PROJECT / "Platforms" / "Android" / "AndroidKeystoreDeviceKeyStore.cs"
         ).read_text(encoding="utf-8")
+        metadata_store = (
+            PROJECT / "Platform" / "MauiSecureAndroidAccountLinkKeyMetadataStore.cs"
+        ).read_text(encoding="utf-8")
         program = (PROJECT / "MauiProgram.cs").read_text(encoding="utf-8")
         solution = (REPO / "Chummer.Android.slnx").read_text(encoding="utf-8")
         build_debug = (REPO / "scripts" / "build-debug.sh").read_text(encoding="utf-8")
@@ -365,7 +368,8 @@ class AndroidContractTests(unittest.TestCase):
         more = (PROJECT / "Native" / "MorePage.cs").read_text(encoding="utf-8")
         privacy = (PROJECT / "Native" / "AccountPrivacyPage.cs").read_text(encoding="utf-8")
         home = (PROJECT / "Native" / "HomePage.cs").read_text(encoding="utf-8")
-        self.assertIn("SecureStorage.Default", service)
+        self.assertIn("SecureStorage.Default", metadata_store)
+        self.assertIn("IAndroidAccountLinkKeyMetadataStore _metadataStore", service)
         self.assertNotIn("ExportPkcs8PrivateKey", service + authority + keystore)
         self.assertNotIn("ImportPkcs8PrivateKey", service + authority + keystore)
         self.assertIn('Provider = "AndroidKeyStore"', keystore)
@@ -401,7 +405,10 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("startedAtUtc <= now.AddMinutes(2)", service)
         self.assertIn("HttpStatusCode.NotFound or HttpStatusCode.Gone", service)
         browser_failure = service[service.index('if (!await _systemService.OpenUriAsync'):]
-        self.assertLess(browser_failure.index("ClearPending();"), browser_failure.index('"Browser unavailable"'))
+        self.assertLess(
+            browser_failure.index("ClearPendingAsync(CancellationToken.None)"),
+            browser_failure.index('"Browser unavailable"'),
+        )
         self.assertIn('string expectedPath = $"/groups/join/{Uri.EscapeDataString(code)}";', service)
         self.assertIn("!string.Equals(uri.AbsolutePath, expectedPath, StringComparison.Ordinal)", service)
         self.assertIn("!string.IsNullOrEmpty(uri.Query)", service)
@@ -417,15 +424,16 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn('account_link_key_android_compile_path=', build_debug)
         save_grant = service[
             service.index("private async Task SaveGrantAsync"):
-            service.index("private static async Task<DateTimeOffset?> ReadGrantExpiryAsync")
+            service.index("private async Task<DateTimeOffset?> ReadGrantExpiryAsync")
         ]
         self.assertLess(
-            save_grant.index("SecureStorage.Default.SetAsync(AccessTokenKey"),
+            save_grant.index("_metadataStore.SetAsync(AccessTokenKey"),
             save_grant.index("_keyAuthority.BindGrantAsync"),
         )
-        self.assertIn("catch\n        {\n            ClearGrant();", save_grant)
+        self.assertIn("catch\n        {\n            await ClearGrantAsync", save_grant)
         self.assertIn("new AndroidAccountLinkService(", program)
         self.assertIn("AndroidAccountLinkHttpTransport", program)
+        self.assertIn("IAndroidAccountLinkKeyMetadataStore", program)
         create_key = keystore[
             keystore.index("public Task<AndroidDevicePublicKey> CreateAsync"):
             keystore.index("public Task<AndroidDevicePublicKey> GetPublicKeyAsync")
@@ -458,7 +466,10 @@ class AndroidContractTests(unittest.TestCase):
             "DateTimeOffset? grantExpiresAtUtc = _snapshot.GrantExpiresAtUtc;",
             unlink,
         )
-        self.assertIn("grantExpiresAtUtc ??= await ReadGrantExpiryAsync();", unlink)
+        self.assertIn(
+            "grantExpiresAtUtc ??= await ReadGrantExpiryAsync(cancellationToken);",
+            unlink,
+        )
         self.assertEqual(
             2,
             unlink.count("AndroidAccountLinkStatus.Linked"),
@@ -469,7 +480,7 @@ class AndroidContractTests(unittest.TestCase):
             unlink.count("grantExpiresAtUtc"),
             "both failure snapshots must preserve the grant expiry",
         )
-        self.assertNotIn("AndroidAccountLinkStatus.Error", unlink)
+        self.assertIn("SetSnapshot(LocalCleanupPendingSnapshot());", unlink)
         self.assertIn("return;", response_failure)
         self.assertNotIn("ClearAllCredentialsAsync", response_failure + transport_failure)
 
@@ -560,6 +571,7 @@ class AndroidContractTests(unittest.TestCase):
         }
         expected_service_keys = {
             "AccountApprovalExpired",
+            "AccountApprovalReceivedRetry",
             "AccountApproveBrowser",
             "AccountAvailableOffline",
             "AccountBrowserUnavailable",
@@ -575,11 +587,14 @@ class AndroidContractTests(unittest.TestCase):
             "AccountLinkExpired",
             "AccountLinkUnavailable",
             "AccountLinked",
+            "AccountLocalCleanupPending",
             "AccountNotLinked",
             "AccountOpenLinkingAgain",
             "AccountReturnRejected",
             "AccountRevokeOffline",
             "AccountRevokeUnavailable",
+            "AccountRefreshPending",
+            "AccountRefreshRetry",
             "AccountSecureStorageUnavailable",
             "AccountStartFreshLink",
             "AccountStartLinkingAgain",
