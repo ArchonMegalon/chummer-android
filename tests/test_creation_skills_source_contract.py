@@ -23,10 +23,13 @@ class CreationSkillsSourceContractTests(unittest.TestCase):
             "state.Authority.ActiveSkills",
             "state.Authority.KnowledgeSkills",
             "state.Authority.SkillGroups",
+            "CreationSkillsCatalogPaging.NormalizeOffset(",
+            ".Take(CatalogPageSize)",
+            'AutomationId = $"creation-skills-{catalogToken}-catalog-range"',
             "projection?.ActiveSkillPointBudget ?? state.ActiveSkillPointBudget",
             "projection?.SkillGroupPointBudget ?? state.SkillGroupPointBudget",
             "projection?.KnowledgeSkillPointBudget ?? state.KnowledgeSkillPointBudget",
-            "Coordinator.PreviewCreationSkills(state.Binding, skills, groups)",
+            "await Task.Run(() => Coordinator.PreviewCreationSkills(",
             "new CreationSkillsPreviewPage(",
             'AutomationId = "creation-skills-preview-page"',
             'AutomationId = "creation-skills-confirm"',
@@ -103,12 +106,12 @@ class CreationSkillsSourceContractTests(unittest.TestCase):
         page = (NATIVE / "CreationSkillsPage.cs").read_text(encoding="utf-8")
         for mutation in ("_draft.WithSkill(", "_draft.WithGroup(", "_draft.WithSpecialization("):
             self.assertIn(mutation, page)
-        self.assertIn(
-            "Coordinator.PreviewCreationSkills(state.Binding, skills, groups)", page
-        )
-        self.assertIn(
-            "_draft.TryAdopt(state, Coordinator.State, result, skills, groups)", page
-        )
+        self.assertIn("await Task.Run(() => Coordinator.PreviewCreationSkills(", page)
+        self.assertIn("requestedSkills", page)
+        self.assertIn("requestedGroups", page)
+        self.assertIn("_draft.TryAdopt(", page)
+        self.assertIn("requestedSkills,", page)
+        self.assertIn("requestedGroups);", page)
         self.assertNotIn("ActivePointTotal =", page)
         self.assertNotIn("KnowledgePointTotal =", page)
 

@@ -132,7 +132,8 @@ class CreationContactsSourceContractTests(unittest.TestCase):
 
         self.assertIn("if (Coordinator.State.Profile.Created == false)", build)
         self.assertIn("CharacterCreationWizardStepIds.ContactsLifestyles", build)
-        self.assertIn("new CreationContactsPage(Coordinator)", build)
+        self.assertIn("new CreationContactsPage(Coordinator, authority)", build)
+        self.assertIn("CreationPageAuthorityCache.Resolve(", listing)
         for marker in (
             "_creationContactsQueue",
             "CreationDashboardAuthorityPhase.Contacts",

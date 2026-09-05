@@ -42,6 +42,9 @@ internal static class Program
             (nameof(PlayReviewFakeLauncherAndSilentFailureAreInjectableAsync), PlayReviewFakeLauncherAndSilentFailureAreInjectableAsync),
             (nameof(PlayReviewFileStateRoundTripsOnlyLocalPolicyDataAsync), PlayReviewFileStateRoundTripsOnlyLocalPolicyDataAsync),
             (nameof(SlowCreationDashboardProjectionDoesNotBlockCallerAsync), SlowCreationDashboardProjectionDoesNotBlockCallerAsync),
+            (nameof(CapturedCreationAuthorityAvoidsUiThreadReloadAsync), CapturedCreationAuthorityAvoidsUiThreadReloadAsync),
+            (nameof(CreationProjectionSchedulingPrioritizesWizardAllocationAsync), CreationProjectionSchedulingPrioritizesWizardAllocationAsync),
+            (nameof(CreationSkillsCatalogPagingBoundsNativeControlMaterializationAsync), CreationSkillsCatalogPagingBoundsNativeControlMaterializationAsync),
             (nameof(PrerequisiteAuthorityPublishesBeforeSlowLaterPhasesAsync), PrerequisiteAuthorityPublishesBeforeSlowLaterPhasesAsync),
             (nameof(CreationAuthorityPhaseMergesAreIndependentAndDeterministicAsync), CreationAuthorityPhaseMergesAreIndependentAndDeterministicAsync),
             (nameof(CreationDashboardReadyMarkerRequiresCurrentTerminalAuthorityAsync), CreationDashboardReadyMarkerRequiresCurrentTerminalAuthorityAsync),
@@ -1069,6 +1072,142 @@ internal static class Program
         Require(queue.TryAccept(completed.Request), "The exact completed generation was not accepted.");
     }
 
+    private static Task CapturedCreationAuthorityAvoidsUiThreadReloadAsync()
+    {
+        var captured = new object();
+        int loadCount = 0;
+        object? reused = CreationPageAuthorityCache.Resolve(
+            captured,
+            candidate => ReferenceEquals(candidate, captured),
+            () =>
+            {
+                loadCount++;
+                return new object();
+            });
+        Require(
+            ReferenceEquals(reused, captured) && loadCount == 0,
+            "A current dashboard authority was synchronously reloaded on deep navigation.");
+
+        var refreshed = new object();
+        object? reloaded = CreationPageAuthorityCache.Resolve(
+            captured,
+            _ => false,
+            () =>
+            {
+                loadCount++;
+                return refreshed;
+            });
+        Require(
+            ReferenceEquals(reloaded, refreshed) && loadCount == 1,
+            "A stale dashboard authority did not reload exactly once from the current workspace.");
+        return Task.CompletedTask;
+    }
+
+    private static Task CreationProjectionSchedulingPrioritizesWizardAllocationAsync()
+    {
+        CreationDashboardAuthorityPhaseProgress initial =
+            CreationDashboardAuthorityPhaseProgress.ForBuildMethod(CharacterCreationBuildMethods.Priority);
+        Require(
+            CreationDashboardProjectionScheduler.NextBatch(initial).SequenceEqual(
+                [CreationDashboardAuthorityPhase.Prerequisite]),
+            "Priority Creation started lower-value projections before prerequisite authority.");
+
+        CreationDashboardAuthorityPhaseProgress prerequisiteReady = initial.WithTerminal(
+            CreationDashboardAuthorityPhase.Prerequisite,
+            failed: false);
+        Require(
+            CreationDashboardProjectionScheduler.NextBatch(prerequisiteReady).SequenceEqual(
+                [CreationDashboardAuthorityPhase.Attributes, CreationDashboardAuthorityPhase.Skills]),
+            "Priority Creation did not give the two allocation projections exclusive next-batch priority.");
+        Require(
+            CreationDashboardProjectionScheduler.ShouldRenderAfterCompletion(
+                CreationDashboardAuthorityPhase.Prerequisite,
+                prerequisiteReady),
+            "Priority Creation did not render its prerequisite authority as soon as it was ready.");
+
+        CreationDashboardAuthorityPhaseProgress attributesReady = prerequisiteReady
+            .WithTerminal(CreationDashboardAuthorityPhase.Attributes, failed: false);
+        Require(
+            !CreationDashboardProjectionScheduler.ShouldRenderAfterCompletion(
+                CreationDashboardAuthorityPhase.Attributes,
+                attributesReady),
+            "Priority Creation rebuilt the dashboard before its allocation batch was terminal.");
+        Require(
+            !CreationDashboardProjectionScheduler.ShouldAdvanceWithoutRenderAfterCompletion(
+                CreationDashboardAuthorityPhase.Attributes,
+                attributesReady),
+            "Priority Creation advanced before its allocation batch was terminal.");
+
+        CreationDashboardAuthorityPhaseProgress allocationReady = prerequisiteReady
+            .WithTerminal(CreationDashboardAuthorityPhase.Attributes, failed: false)
+            .WithTerminal(CreationDashboardAuthorityPhase.Skills, failed: false);
+        Require(
+            CreationDashboardProjectionScheduler.NextBatch(allocationReady).SequenceEqual(
+                [CreationDashboardAuthorityPhase.Contacts, CreationDashboardAuthorityPhase.Resources]),
+            "Contacts and Resources did not wait for the allocation projections to become terminal.");
+        Require(
+            !CreationDashboardProjectionScheduler.ShouldRenderAfterCompletion(
+                CreationDashboardAuthorityPhase.Skills,
+                allocationReady),
+            "Priority Creation rebuilt the dashboard merely to schedule its final batch.");
+        Require(
+            CreationDashboardProjectionScheduler.ShouldAdvanceWithoutRenderAfterCompletion(
+                CreationDashboardAuthorityPhase.Skills,
+                allocationReady),
+            "Priority Creation did not advance its final batch without a full dashboard rebuild.");
+
+        CreationDashboardAuthorityPhaseProgress contactsReady = allocationReady.WithTerminal(
+            CreationDashboardAuthorityPhase.Contacts,
+            failed: false);
+        Require(
+            !CreationDashboardProjectionScheduler.ShouldRenderAfterCompletion(
+                CreationDashboardAuthorityPhase.Contacts,
+                contactsReady),
+            "Priority Creation rebuilt before its final batch was terminal.");
+
+        CreationDashboardAuthorityPhaseProgress allReady = contactsReady.WithTerminal(
+            CreationDashboardAuthorityPhase.Resources,
+            failed: false);
+        Require(
+            CreationDashboardProjectionScheduler.ShouldRenderAfterCompletion(
+                CreationDashboardAuthorityPhase.Resources,
+                allReady),
+            "Priority Creation did not rebuild after its final batch became terminal.");
+
+        CreationDashboardAuthorityPhaseProgress lifeModules =
+            CreationDashboardAuthorityPhaseProgress.ForBuildMethod("life-modules");
+        Require(
+            CreationDashboardProjectionScheduler.NextBatch(lifeModules).SequenceEqual(
+                [CreationDashboardAuthorityPhase.Contacts]),
+            "A build method without prerequisite allocation authority did not proceed directly to Contacts.");
+
+        return Task.CompletedTask;
+    }
+
+    private static Task CreationSkillsCatalogPagingBoundsNativeControlMaterializationAsync()
+    {
+        const int pageSize = 20;
+        Require(
+            CreationSkillsCatalogPaging.NormalizeOffset(0, 87, pageSize) == 0,
+            "The first Skills catalog page did not begin at zero.");
+        Require(
+            CreationSkillsCatalogPaging.NextOffset(0, 87, pageSize) == 20,
+            "The Skills catalog did not advance by one bounded native-control page.");
+        Require(
+            CreationSkillsCatalogPaging.NextOffset(80, 87, pageSize) == 80,
+            "The final partial Skills page advanced beyond the catalog.");
+        Require(
+            CreationSkillsCatalogPaging.PreviousOffset(40, pageSize) == 20,
+            "The Skills catalog did not return by one page.");
+        Require(
+            CreationSkillsCatalogPaging.NormalizeOffset(400, 87, pageSize) == 80,
+            "A stale Skills offset was not clamped to the current authority.");
+        Require(
+            CreationSkillsCatalogPaging.NormalizeOffset(20, 0, pageSize) == 0,
+            "An empty Skills catalog retained a stale offset.");
+        return Task.CompletedTask;
+    }
+
     private static async Task PrerequisiteAuthorityPublishesBeforeSlowLaterPhasesAsync()
     {
         using var prerequisiteQueue = new LatestBackgroundProjectionQueue<string, string>();
@@ -1136,6 +1275,9 @@ internal static class Program
             && initial.Skills == CreationDashboardAuthorityPhaseState.Loading
             && initial.Contacts == CreationDashboardAuthorityPhaseState.Loading,
             "Priority must begin with every authority phase explicitly fail-closed and loading.");
+        Require(
+            initial.HasLoading && initial.LoadingCount == 5,
+            "Priority must expose every pending authority phase to the progressive phone loading state.");
 
         CreationDashboardAuthorityPhaseProgress prerequisiteAccepted = initial.WithTerminal(
             CreationDashboardAuthorityPhase.Prerequisite,
@@ -1159,6 +1301,16 @@ internal static class Program
             && laterFailure.Skills == CreationDashboardAuthorityPhaseState.Ready
             && laterFailure.Contacts == CreationDashboardAuthorityPhaseState.Ready,
             "Out-of-order later phase merges were not deterministic and isolated.");
+        Require(
+            laterFailure.HasLoading && laterFailure.LoadingCount == 1,
+            "A terminal failure must not hide the independently pending Resources phase.");
+
+        CreationDashboardAuthorityPhaseProgress terminal = laterFailure.WithTerminal(
+            CreationDashboardAuthorityPhase.Resources,
+            failed: false);
+        Require(
+            !terminal.HasLoading && terminal.LoadingCount == 0,
+            "A terminal dashboard retained a false progressive-loading state.");
 
         CreationDashboardAuthorityPhaseProgress sumToTen =
             CreationDashboardAuthorityPhaseProgress.ForBuildMethod(CharacterCreationBuildMethods.SumToTen);

@@ -107,12 +107,12 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "6f2502d7e316a13a45ce34c62034bf6e2fcb1378387a9bce781830f2f02235a4"
+        "sha256": "8aa451aedbc6214e65c711861f187f0cc8bd1daa5f1ddf4636803e45d360292b"
       },
       {
         "path": "src/Chummer.Android/Native/MorePage.cs",
         "exists": true,
-        "sha256": "52fdbf3c6fa329a555eb3809de7b69634106de81469e22a93ccfab3f9d897387"
+        "sha256": "ab0c227a368cc953ae566aa83673300dc5b9074de2774c80ea41f5282af2cc79"
       },
       {
         "path": "src/Chummer.Android/Native/CareerReputationPage.cs",
