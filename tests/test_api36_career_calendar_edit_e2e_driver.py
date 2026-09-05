@@ -45,6 +45,8 @@ class Api36CareerCalendarEditDriverTests(unittest.TestCase):
         self.assertIn('device.tap("Delete"', source)
         self.assertIn('attributes.get("enabled") != "false"', source)
         self.assertIn('notes.attributes.get("text") != "After-run complete"', source)
+        self.assertIn('evidence_prefix="sr5-downtime"', source)
+        self.assertIn("record_documents_ui_file_first_import_state", source)
         self.assertNotIn('device.wait("CareerCalendarEditE2E"', source)
         self.assertLess(
             source.index("shared.wait_for_phone_runner_route"),

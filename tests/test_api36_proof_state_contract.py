@@ -217,7 +217,10 @@ class Api36ProofStateContractTests(unittest.TestCase):
             def run(self, *_arguments: str, **_kwargs: object) -> SimpleNamespace:
                 return SimpleNamespace(returncode=0, stdout=encoded(value))
 
-        with self.assertRaisesRegex(RuntimeError, "differs from the governed fixture"):
+        with self.assertRaisesRegex(
+            RuntimeError,
+            "differs from the governed fixture",
+        ) as raised:
             proof.wait_for_import_activation(
                 Device(),
                 expected=expectation(),
@@ -227,6 +230,12 @@ class Api36ProofStateContractTests(unittest.TestCase):
             )
         self.assertEqual(1, len(observed))
         self.assertEqual(value, observed[0].payload)
+        self.assertIn(f"expected={'d' * 64}", str(raised.exception))
+        self.assertIn(f"actual={'b' * 64}", str(raised.exception))
+        self.assertIn(
+            "displayName='career-calendar-edit-e2e.chum5'",
+            str(raised.exception),
+        )
 
     def test_import_reader_observes_only_first_validated_picker_result(self) -> None:
         before_picker = import_state_payload()

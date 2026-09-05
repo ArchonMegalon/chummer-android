@@ -998,7 +998,12 @@ def wait_for_import_activation(
                 f"picker={state['picker']!r}"
             )
         if stream is not None and stream["contentSha256"] != content_sha256:
-            raise RuntimeError("Document import stream differs from the governed fixture")
+            raise RuntimeError(
+                "Document import stream differs from the governed fixture: "
+                f"expected={content_sha256}, actual={stream['contentSha256']}, "
+                f"displayName={stream['displayName']!r}, stage={stage!r}, "
+                f"pickerUriSha256={state['picker']['uriSha256']!r}"
+            )
         if stage == "activation-issued":
             workspace = state["workspace"]
             if (

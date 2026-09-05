@@ -14815,7 +14815,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "_creationPrerequisiteQueue",
             "_creationAttributesQueue",
             "_creationSkillsQueue",
-            "Progress.Prerequisite: CreationDashboardAuthorityPhaseState.Ready",
+            "progress.Prerequisite == CreationDashboardAuthorityPhaseState.Ready",
             "Coordinator.LoadCreationPrerequisite",
             "Coordinator.LoadCreationAttributes",
             "Coordinator.LoadCreationSkills",

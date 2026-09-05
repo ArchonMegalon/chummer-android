@@ -230,7 +230,7 @@ ADB_FILE_HIERARCHY_VISIBILITY_READ_ATTEMPT_MAX_SECONDS = 1.0
 ADB_FILE_HIERARCHY_VISIBILITY_MAX_SECONDS = 6.0
 DOCUMENTS_UI_PACKAGE = "com.google.android.documentsui"
 DOCUMENTS_UI_FILE_ONE_SHOT_SCHEMA = (
-    "chummer.android.documentsui-file-one-shot/v1"
+    "chummer.android.documentsui-file-one-shot/v2"
 )
 DOCUMENTS_UI_FILE_FIRST_IMPORT_SCHEMA = (
     "chummer.android.documentsui-file-first-import-observation/v1"
@@ -280,6 +280,7 @@ DOCUMENTS_UI_DOWNLOADS_DESTINATION = "Files in Downloads"
 DOCUMENTS_UI_MAX_DOWNLOADS_TAPS = 3
 DOCUMENTS_UI_DOWNLOADS_RETRY_SETTLE_SECONDS = 2.25
 DOCUMENTS_UI_POLL_DELAY_SECONDS = 0.75
+DOCUMENTS_UI_REQUIRED_STABLE_TARGET_OBSERVATIONS = 2
 ADB_CREATION_BOOTSTRAP_LOGCAT_ARGUMENTS = (
     "logcat",
     "-d",
@@ -8995,6 +8996,10 @@ def require_documents_ui_file_one_shot_proof(
         or pre_tap.get("enabled") is not True
         or type(pre_tap.get("scrollsBeforeFinalObservation")) is not int
         or int(pre_tap["scrollsBeforeFinalObservation"]) < 0
+        or pre_tap.get("requiredConsecutiveStableTargetObservations")
+        != DOCUMENTS_UI_REQUIRED_STABLE_TARGET_OBSERVATIONS
+        or pre_tap.get("consecutiveStableTargetObservations")
+        != DOCUMENTS_UI_REQUIRED_STABLE_TARGET_OBSERVATIONS
         or expected_center is None
         or center != expected_center
         or not bounds_valid
@@ -9050,6 +9055,8 @@ def select_android_document(
         select_documents_ui_downloads_root(device, timeout=45)
     deadline = time.monotonic() + 45
     scrolls = 0
+    stable_target_identity: tuple[str, str, str, str, int, int] | None = None
+    consecutive_stable_target_observations = 0
     while time.monotonic() < deadline:
         # Geometry is a device observation. Acquire it before the final fresh
         # hierarchy so no device call can make the selected coordinates stale.
@@ -9069,7 +9076,7 @@ def select_android_document(
             raise RuntimeError(
                 f"DocumentsUI exposed {len(matches)} exact rows for {filename!r}"
             )
-        if (
+        target_is_tappable = (
             len(matches) == 1
             and matches[0].attributes.get("enabled") == "true"
             and _node_has_tappable_bounds_in_display(
@@ -9077,8 +9084,29 @@ def select_android_document(
                 display_width=display_width,
                 display_height=display_height,
             )
-        ):
+        )
+        if target_is_tappable:
             selected = matches[0]
+            target_identity = (
+                selected.attributes.get("package", ""),
+                selected.attributes.get("text", ""),
+                selected.attributes.get("resource-id", ""),
+                selected.attributes.get("bounds", ""),
+                display_width,
+                display_height,
+            )
+            if target_identity == stable_target_identity:
+                consecutive_stable_target_observations += 1
+            else:
+                stable_target_identity = target_identity
+                consecutive_stable_target_observations = 1
+            if (
+                consecutive_stable_target_observations
+                < DOCUMENTS_UI_REQUIRED_STABLE_TARGET_OBSERVATIONS
+            ):
+                if not _documents_ui_sleep_before_deadline(deadline):
+                    break
+                continue
             x, y = selected.center
             observed_at_utc = datetime.now(timezone.utc).isoformat()
             device.shell(
@@ -9116,6 +9144,12 @@ def select_android_document(
                         "height": display_height,
                     },
                     "scrollsBeforeFinalObservation": scrolls,
+                    "requiredConsecutiveStableTargetObservations": (
+                        DOCUMENTS_UI_REQUIRED_STABLE_TARGET_OBSERVATIONS
+                    ),
+                    "consecutiveStableTargetObservations": (
+                        consecutive_stable_target_observations
+                    ),
                 },
                 "tap": {
                     "command": "input tap",
@@ -9130,6 +9164,8 @@ def select_android_document(
             if receipt_path is not None:
                 _write_new_json_receipt(receipt_path, proof)
             return proof
+        stable_target_identity = None
+        consecutive_stable_target_observations = 0
         if scrolls < 6:
             device.swipe_up(deadline=deadline)
             scrolls += 1
