@@ -22,10 +22,11 @@ internal static class Program
         await HostileSignerCannotReturnNullProofAsync();
         await InterruptedCreationRemovesPartialAuthorityAsync();
         await CancellationAfterPersistentCreationRemovesTheOrphanAsync();
+        await FailedPostCreationDeleteRetainsCleanupSelectorAsync();
         await PartialBindingRecoveryRemovesTheOrphanedKeyAsync();
         await UnlinkDeletesKeyAuthorityAndMetadataAsync();
         await UnlinkFailureRemovesMetadataAndSurfacesTheCleanupFailureAsync();
-        Console.WriteLine("Android account-link key authority tests passed: 19");
+        Console.WriteLine("Android account-link key authority tests passed: 20");
     }
 
     private static async Task PersistedBindingNeverContainsPrivateKeyMaterialAsync()
@@ -346,6 +347,31 @@ internal static class Program
         Require(metadata.Values.Count == 0, "Post-generation cancellation must not leave partial metadata.");
     }
 
+    private static async Task FailedPostCreationDeleteRetainsCleanupSelectorAsync()
+    {
+        MemoryMetadataStore metadata = new();
+        MemoryDeviceKeyStore keys = new()
+        {
+            CancelAfterPersistentCreate = true,
+            FailAllDeletes = true
+        };
+        AndroidAccountLinkKeyAuthority authority = new(keys, metadata);
+
+        await RequireThrowsAsync<CryptographicException>(
+            () => authority.StartOrResumeExplicitLinkAsync(),
+            "A failed cleanup after persistent generation must remain visible.");
+
+        Require(keys.KeyCount == 1, "The hostile backend must retain the key whose deletion failed.");
+        Require(
+            metadata.Contains(AndroidAccountLinkKeyAuthority.CleanupTombstoneStorageKey),
+            "A failed post-creation delete must retain the exact cleanup selector.");
+
+        keys.FailAllDeletes = false;
+        await authority.RemoveAsync();
+        Require(keys.KeyCount == 0, "A later cleanup attempt must delete the post-creation orphan.");
+        Require(metadata.Values.Count == 0, "Successful recovery must remove the cleanup tombstone.");
+    }
+
     private static async Task PartialBindingRecoveryRemovesTheOrphanedKeyAsync()
     {
         MemoryMetadataStore metadata = new();
@@ -509,6 +535,8 @@ internal static class Program
 
         public string? FailDeleteAlias { get; set; }
 
+        public bool FailAllDeletes { get; set; }
+
         public Task<AndroidDevicePublicKey> CreateAsync(
             string alias,
             CancellationToken cancellationToken = default)
@@ -586,7 +614,7 @@ internal static class Program
         public Task DeleteAsync(string alias, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (string.Equals(FailDeleteAlias, alias, StringComparison.Ordinal))
+            if (FailAllDeletes || string.Equals(FailDeleteAlias, alias, StringComparison.Ordinal))
             {
                 throw new CryptographicException("Injected Android Keystore deletion failure.");
             }

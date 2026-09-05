@@ -364,7 +364,7 @@ public sealed class AndroidAccountLinkKeyAuthority
         {
             // A hostile or buggy backend can observe cancellation after it has already generated
             // a persistent key. Cleanup uses a non-cancellable token so that key cannot orphan.
-            await CleanupFailedCreationAsync(alias);
+            await CleanupFailedCreationAsync(installationId, alias);
             throw;
         }
         if (created.Availability != AndroidDeviceKeyAvailability.Available
@@ -389,7 +389,7 @@ public sealed class AndroidAccountLinkKeyAuthority
         }
         catch
         {
-            await CleanupFailedCreationAsync(alias);
+            await CleanupFailedCreationAsync(installationId, alias);
             throw;
         }
     }
@@ -520,24 +520,44 @@ public sealed class AndroidAccountLinkKeyAuthority
         }
     }
 
-    private async Task CleanupFailedCreationAsync(string alias)
+    private async Task CleanupFailedCreationAsync(string installationId, string alias)
     {
         Exception? firstFailure = null;
-        async Task AttemptAsync(Func<Task> action)
+        async Task<bool> AttemptAsync(Func<Task> action)
         {
             try
             {
                 await action();
+                return true;
             }
             catch (Exception exception)
             {
                 firstFailure ??= exception;
+                return false;
             }
         }
 
-        await AttemptAsync(() => _keyStore.DeleteAsync(alias, CancellationToken.None));
-        await AttemptAsync(() => _metadataStore.RemoveAsync(BindingStorageKey, CancellationToken.None));
-        await AttemptAsync(() => _metadataStore.RemoveAsync(InstallationIdStorageKey, CancellationToken.None));
+        bool aliasDeleted = await AttemptAsync(
+            () => _keyStore.DeleteAsync(alias, CancellationToken.None));
+        bool cleanupRecoverable = aliasDeleted;
+        if (!aliasDeleted)
+        {
+            CleanupTombstone tombstone = new(
+                CleanupTombstoneVersion,
+                [new CleanupEntry(installationId, alias)]);
+            cleanupRecoverable = await AttemptAsync(() => _metadataStore.SetAsync(
+                CleanupTombstoneStorageKey,
+                JsonSerializer.Serialize(tombstone, JsonOptions),
+                CancellationToken.None));
+        }
+
+        // Remove partial link authority only after either the key is gone or its exact cleanup
+        // selector is durable. A failed tombstone write must not erase the last recoverable alias.
+        if (cleanupRecoverable)
+        {
+            await AttemptAsync(() => _metadataStore.RemoveAsync(BindingStorageKey, CancellationToken.None));
+            await AttemptAsync(() => _metadataStore.RemoveAsync(InstallationIdStorageKey, CancellationToken.None));
+        }
         if (firstFailure is not null)
         {
             throw new CryptographicException(
