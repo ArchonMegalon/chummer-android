@@ -1,0 +1,2461 @@
+{
+  "schema": "chummer.android.character-settings-phone-capabilities/v1",
+  "scope": "preview11_wizard_only",
+  "policy": "A value control is visible only when current Android code reads it into a Preview 11 creation or career wizard. Hidden controls remain in profile XML and are never cleared by projection.",
+  "summary": {
+    "valueControlCount": 150,
+    "visibleEditableCount": 17,
+    "hiddenPreservedCount": 133,
+    "visibleSectionCount": 5
+  },
+  "sourceInputs": [
+    {
+      "path": "scripts/materialize_android_character_settings_phone_capabilities.py",
+      "sha256": "bcee59f01d4015080a745c8ad3084beb393fcbb2fd1892a59b96655c7080c0f2"
+    },
+    {
+      "path": "docs/CHUMMER5_CHARACTER_SETTINGS_CONTRACT.generated.json",
+      "sha256": "b0d9e2dacf1104576a87d99aee078841596923d9367c2398e0108c7f6dac3ce2"
+    },
+    {
+      "path": "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
+      "sha256": "9a418082fa297c94d6af83096717cfcd34fe507e649cf00b562a1373cbf8fc96"
+    },
+    {
+      "path": "src/Chummer.Android/Native/NativeDialogPage.cs",
+      "sha256": "f4d095fad086f7730a91eda79109eda1c077c77bb6a6d45e41d0574e1ea68f47"
+    },
+    {
+      "path": "chummer-presentation/Chummer.Presentation/Overview/CareerActiveSkillAdvanceEditRequest.cs",
+      "sha256": "e96eea861758bec3462d0068a983c634ddeda2e033e8c61b3db07cb955d590af"
+    },
+    {
+      "path": "chummer-presentation/Chummer.Presentation/Overview/CareerAttributeAdvanceEditRequest.cs",
+      "sha256": "2ed8097da6cd544abbb0c38a206ec16f61c84fc7d6534e25b14df0c423969458"
+    },
+    {
+      "path": "chummer-presentation/Chummer.Presentation/Overview/CareerKnowledgeSkillAdvanceEditRequest.cs",
+      "sha256": "7df6469666a554b1560a979906d132f6178f4e73cca0b610d344784f5555b1b9"
+    },
+    {
+      "path": "chummer-presentation/Chummer.Presentation/Overview/CareerSkillGroupAdvanceEditRequest.cs",
+      "sha256": "3ae0d7b2c960bc5c98cea6291ffdaead5191559d670277a17dd58ef5ee467b36"
+    },
+    {
+      "path": "chummer-presentation/Chummer.Presentation/Overview/CareerSkillSpecializationEditRequest.cs",
+      "sha256": "618020200dbcbfc8bd14ea8490a92acb6e2a19f63e1b38798f1928c547df5e85"
+    },
+    {
+      "path": "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
+      "sha256": "3f9c41de15d3d807c00e74edd79c3d3878d2f9f2786e45bcdd8dbdc125108120"
+    },
+    {
+      "path": "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
+      "sha256": "acef24db637281075e68a6e6c289aed41b2d516566dbde85178700bb7bbd300c"
+    }
+  ],
+  "controls": [
+    {
+      "legacyControl": "chkGrade",
+      "fieldId": "characterSettingsControl-chkGrade",
+      "sectionId": "ware",
+      "inputType": "text",
+      "isMultiline": true,
+      "persistencePaths": [
+        "settings/bannedwaregrades/grade"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "treSourcebook",
+      "fieldId": "characterSettingsControl-treSourcebook",
+      "sectionId": "sourcebooks",
+      "inputType": "text",
+      "isMultiline": true,
+      "persistencePaths": [
+        "settings/books/book"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "chkDontUseCyberlimbCalculation",
+      "fieldId": "characterSettingsControl-chkDontUseCyberlimbCalculation",
+      "sectionId": "ware",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/dontusecyberlimbcalculation"
+      ],
+      "phoneStatus": "visible_editable",
+      "androidBehavior": "changes cyberlimb participation in phone career attribute totals",
+      "behaviorEvidence": "CareerAttributeAdvanceEditorProjector.ProjectFacts -> HasApplicableCyberlimb",
+      "labelResourceKey": "CharacterSettingDontUseCyberlimbCalculation",
+      "englishLabel": "Ignore cyberlimbs in augmented attribute totals",
+      "rationale": "The persisted value is read by a current Preview 11 phone wizard."
+    },
+    {
+      "legacyControl": "chkEnforceCapacity",
+      "fieldId": "characterSettingsControl-chkEnforceCapacity",
+      "sectionId": "rules",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/enforcecapacity"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "chkLicenseEachRestrictedItem",
+      "fieldId": "characterSettingsControl-chkLicenseEachRestrictedItem",
+      "sectionId": "rules",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/licenserestricted"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "chkDontRoundEssenceInternally",
+      "fieldId": "characterSettingsControl-chkDontRoundEssenceInternally",
+      "sectionId": "ware",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/donotroundessenceinternally"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "chkDronemods",
+      "fieldId": "characterSettingsControl-chkDronemods",
+      "sectionId": "ware",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/dronemods"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "chkRestrictRecoil",
+      "fieldId": "characterSettingsControl-chkRestrictRecoil",
+      "sectionId": "ware",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/restrictrecoil"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudNuyenDecimalsMinimum",
+      "fieldId": "characterSettingsControl-nudNuyenDecimalsMinimum",
+      "sectionId": "formulas",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/nuyenformat"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudNuyenDecimalsMaximum",
+      "fieldId": "characterSettingsControl-nudNuyenDecimalsMaximum",
+      "sectionId": "formulas",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/nuyenformat"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudEssenceDecimals",
+      "fieldId": "characterSettingsControl-nudEssenceDecimals",
+      "sectionId": "formulas",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/essenceformat"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "chkDronemodsMaximumPilot",
+      "fieldId": "characterSettingsControl-chkDronemodsMaximumPilot",
+      "sectionId": "ware",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/dronemodsmaximumpilot"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "cboLimbCount",
+      "fieldId": "characterSettingsControl-cboLimbCount",
+      "sectionId": "ware",
+      "inputType": "select",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/excludelimbslot",
+        "settings/limbcount"
+      ],
+      "phoneStatus": "visible_editable",
+      "androidBehavior": "changes which cyberlimb slots participate in phone career attribute totals",
+      "behaviorEvidence": "CareerAttributeAdvanceEditorProjector.HasApplicableCyberlimb -> settings/excludelimbslot",
+      "labelResourceKey": "CharacterSettingCyberlimbConfiguration",
+      "englishLabel": "Cyberlimb slots used for attribute totals",
+      "rationale": "The persisted value is read by a current Preview 11 phone wizard."
+    },
+    {
+      "legacyControl": "nudKarmaMysticAdeptPowerPoint",
+      "fieldId": "characterSettingsControl-nudKarmaMysticAdeptPowerPoint",
+      "sectionId": "karma",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/karmacost/karmamysadpp"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudKarmaSpecialization",
+      "fieldId": "characterSettingsControl-nudKarmaSpecialization",
+      "sectionId": "karma",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/karmacost/karmaspecialization"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudKarmaNewAIAdvancedProgram",
+      "fieldId": "characterSettingsControl-nudKarmaNewAIAdvancedProgram",
+      "sectionId": "karma",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/karmacost/karmanewaiadvancedprogram"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudKarmaInitiationFlat",
+      "fieldId": "characterSettingsControl-nudKarmaInitiationFlat",
+      "sectionId": "karma",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/karmacost/karmainitiationflat"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudKarmaWeaponFocus",
+      "fieldId": "characterSettingsControl-nudKarmaWeaponFocus",
+      "sectionId": "karma",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/karmacost/karmaweaponfocus"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudKarmaNewAIProgram",
+      "fieldId": "characterSettingsControl-nudKarmaNewAIProgram",
+      "sectionId": "karma",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/karmacost/karmanewaiprogram"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudKarmaKnowledgeSpecialization",
+      "fieldId": "characterSettingsControl-nudKarmaKnowledgeSpecialization",
+      "sectionId": "karma",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/karmacost/karmaknospecialization"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudKarmaRitualSpellcastingFocus",
+      "fieldId": "characterSettingsControl-nudKarmaRitualSpellcastingFocus",
+      "sectionId": "karma",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/karmacost/karmaritualspellcastingfocus"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudKarmaNewKnowledgeSkill",
+      "fieldId": "characterSettingsControl-nudKarmaNewKnowledgeSkill",
+      "sectionId": "karma",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/karmacost/karmanewknowledgeskill"
+      ],
+      "phoneStatus": "visible_editable",
+      "androidBehavior": "sets the phone career cost for learning a knowledge skill",
+      "behaviorEvidence": "CareerKnowledgeSkillAdvanceEditorProjector.ProjectState",
+      "labelResourceKey": "CharacterSettingKarmaNewKnowledgeSkill",
+      "englishLabel": "Karma cost: new knowledge skill",
+      "rationale": "The persisted value is read by a current Preview 11 phone wizard."
+    },
+    {
+      "legacyControl": "nudKarmaInitiation",
+      "fieldId": "characterSettingsControl-nudKarmaInitiation",
+      "sectionId": "karma",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/karmacost/karmainitiation"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudKarmaFlexibleSignatureFocus",
+      "fieldId": "characterSettingsControl-nudKarmaFlexibleSignatureFocus",
+      "sectionId": "karma",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/karmacost/karmaflexiblesignaturefocus"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudKarmaSpellShapingFocus",
+      "fieldId": "characterSettingsControl-nudKarmaSpellShapingFocus",
+      "sectionId": "karma",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/karmacost/karmaspellshapingfocus"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudKarmaMetamagic",
+      "fieldId": "characterSettingsControl-nudKarmaMetamagic",
+      "sectionId": "karma",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/karmacost/karmametamagic"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudKarmaContact",
+      "fieldId": "characterSettingsControl-nudKarmaContact",
+      "sectionId": "karma",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/karmacost/karmacontact"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudKarmaSustainingFocus",
+      "fieldId": "characterSettingsControl-nudKarmaSustainingFocus",
+      "sectionId": "karma",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/karmacost/karmasustainingfocus"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudKarmaJoinGroup",
+      "fieldId": "characterSettingsControl-nudKarmaJoinGroup",
+      "sectionId": "karma",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/karmacost/karmajoingroup"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudKarmaLeaveGroup",
+      "fieldId": "characterSettingsControl-nudKarmaLeaveGroup",
+      "sectionId": "karma",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/karmacost/karmaleavegroup"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudKarmaSummoningFocus",
+      "fieldId": "characterSettingsControl-nudKarmaSummoningFocus",
+      "sectionId": "karma",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/karmacost/karmasummoningfocus"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudKarmaTechnique",
+      "fieldId": "characterSettingsControl-nudKarmaTechnique",
+      "sectionId": "karma",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/karmacost/karmatechnique"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudKarmaNewActiveSkill",
+      "fieldId": "characterSettingsControl-nudKarmaNewActiveSkill",
+      "sectionId": "karma",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/karmacost/karmanewactiveskill"
+      ],
+      "phoneStatus": "visible_editable",
+      "androidBehavior": "sets the phone career cost for learning an active skill",
+      "behaviorEvidence": "CareerActiveSkillAdvanceEditorProjector.ProjectState",
+      "labelResourceKey": "CharacterSettingKarmaNewActiveSkill",
+      "englishLabel": "Karma cost: new active skill",
+      "rationale": "The persisted value is read by a current Preview 11 phone wizard."
+    },
+    {
+      "legacyControl": "nudKarmaSpellcastingFocus",
+      "fieldId": "characterSettingsControl-nudKarmaSpellcastingFocus",
+      "sectionId": "karma",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/karmacost/karmaspellcastingfocus"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudKarmaNuyenPerWftM",
+      "fieldId": "characterSettingsControl-nudKarmaNuyenPerWftM",
+      "sectionId": "rules",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/nuyenperbpwftm"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudKarmaSpirit",
+      "fieldId": "characterSettingsControl-nudKarmaSpirit",
+      "sectionId": "karma",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/karmacost/karmaspirit"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudKarmaAlchemicalFocus",
+      "fieldId": "characterSettingsControl-nudKarmaAlchemicalFocus",
+      "sectionId": "karma",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/karmacost/karmaalchemicalfocus"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudKarmaNewSkillGroup",
+      "fieldId": "characterSettingsControl-nudKarmaNewSkillGroup",
+      "sectionId": "karma",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/karmacost/karmanewskillgroup"
+      ],
+      "phoneStatus": "visible_editable",
+      "androidBehavior": "sets the phone career cost for learning a skill group",
+      "behaviorEvidence": "CareerActiveSkillAdvanceEditorProjector.ProjectState and CareerSkillGroupAdvanceEditorProjector.ProjectState",
+      "labelResourceKey": "CharacterSettingKarmaNewSkillGroup",
+      "englishLabel": "Karma cost: new skill group",
+      "rationale": "The persisted value is read by a current Preview 11 phone wizard."
+    },
+    {
+      "legacyControl": "nudKarmaBanishingFocus",
+      "fieldId": "characterSettingsControl-nudKarmaBanishingFocus",
+      "sectionId": "karma",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/karmacost/karmabanishingfocus"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudKarmaImproveKnowledgeSkill",
+      "fieldId": "characterSettingsControl-nudKarmaImproveKnowledgeSkill",
+      "sectionId": "karma",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/karmacost/karmaimproveknowledgeskill"
+      ],
+      "phoneStatus": "visible_editable",
+      "androidBehavior": "sets the phone career cost multiplier for improving a knowledge skill",
+      "behaviorEvidence": "CareerKnowledgeSkillAdvanceEditorProjector.ProjectState",
+      "labelResourceKey": "CharacterSettingKarmaImproveKnowledgeSkill",
+      "englishLabel": "Karma multiplier: improve knowledge skill",
+      "rationale": "The persisted value is read by a current Preview 11 phone wizard."
+    },
+    {
+      "legacyControl": "nudKarmaQiFocus",
+      "fieldId": "characterSettingsControl-nudKarmaQiFocus",
+      "sectionId": "karma",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/karmacost/karmaqifocus"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudKarmaBindingFocus",
+      "fieldId": "characterSettingsControl-nudKarmaBindingFocus",
+      "sectionId": "karma",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/karmacost/karmabindingfocus"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudKarmaPowerFocus",
+      "fieldId": "characterSettingsControl-nudKarmaPowerFocus",
+      "sectionId": "karma",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/karmacost/karmapowerfocus"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudKarmaImproveActiveSkill",
+      "fieldId": "characterSettingsControl-nudKarmaImproveActiveSkill",
+      "sectionId": "karma",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/karmacost/karmaimproveactiveskill"
+      ],
+      "phoneStatus": "visible_editable",
+      "androidBehavior": "sets the phone career cost multiplier for improving an active skill",
+      "behaviorEvidence": "CareerActiveSkillAdvanceEditorProjector.ProjectState",
+      "labelResourceKey": "CharacterSettingKarmaImproveActiveSkill",
+      "englishLabel": "Karma multiplier: improve active skill",
+      "rationale": "The persisted value is read by a current Preview 11 phone wizard."
+    },
+    {
+      "legacyControl": "nudKarmaMaskingFocus",
+      "fieldId": "characterSettingsControl-nudKarmaMaskingFocus",
+      "sectionId": "karma",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/karmacost/karmamaskingfocus"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudKarmaCenteringFocus",
+      "fieldId": "characterSettingsControl-nudKarmaCenteringFocus",
+      "sectionId": "karma",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/karmacost/karmacenteringfocus"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudKarmaCounterspellingFocus",
+      "fieldId": "characterSettingsControl-nudKarmaCounterspellingFocus",
+      "sectionId": "karma",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/karmacost/karmacounterspellingfocus"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudKarmaImproveSkillGroup",
+      "fieldId": "characterSettingsControl-nudKarmaImproveSkillGroup",
+      "sectionId": "karma",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/karmacost/karmaimproveskillgroup"
+      ],
+      "phoneStatus": "visible_editable",
+      "androidBehavior": "sets the phone career cost multiplier for improving a skill group",
+      "behaviorEvidence": "CareerActiveSkillAdvanceEditorProjector.ProjectState and CareerSkillGroupAdvanceEditorProjector.ProjectState",
+      "labelResourceKey": "CharacterSettingKarmaImproveSkillGroup",
+      "englishLabel": "Karma multiplier: improve skill group",
+      "rationale": "The persisted value is read by a current Preview 11 phone wizard."
+    },
+    {
+      "legacyControl": "nudKarmaDisenchantingFocus",
+      "fieldId": "characterSettingsControl-nudKarmaDisenchantingFocus",
+      "sectionId": "karma",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/karmacost/karmadisenchantingfocus"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudKarmaAttribute",
+      "fieldId": "characterSettingsControl-nudKarmaAttribute",
+      "sectionId": "karma",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/karmacost/karmaattribute"
+      ],
+      "phoneStatus": "visible_editable",
+      "androidBehavior": "sets the phone career cost multiplier for improving an attribute",
+      "behaviorEvidence": "CareerAttributeAdvanceEditorProjector.ProjectFacts",
+      "labelResourceKey": "CharacterSettingKarmaAttribute",
+      "englishLabel": "Karma multiplier: improve attribute",
+      "rationale": "The persisted value is read by a current Preview 11 phone wizard."
+    },
+    {
+      "legacyControl": "nudKarmaQuality",
+      "fieldId": "characterSettingsControl-nudKarmaQuality",
+      "sectionId": "karma",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/karmacost/karmaquality"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudKarmaSpell",
+      "fieldId": "characterSettingsControl-nudKarmaSpell",
+      "sectionId": "karma",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/karmacost/karmaspell"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudKarmaNewComplexForm",
+      "fieldId": "characterSettingsControl-nudKarmaNewComplexForm",
+      "sectionId": "karma",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/karmacost/karmanewcomplexform"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudMetatypeCostsKarmaMultiplier",
+      "fieldId": "characterSettingsControl-nudMetatypeCostsKarmaMultiplier",
+      "sectionId": "rules",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/metatypecostskarmamultiplier"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "treCustomDataDirectories",
+      "fieldId": "characterSettingsControl-treCustomDataDirectories",
+      "sectionId": "custom-data",
+      "inputType": "text",
+      "isMultiline": true,
+      "persistencePaths": [
+        "settings/customdatadirectorynames/customdatadirectoryname"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "chkIgnoreArt",
+      "fieldId": "characterSettingsControl-chkIgnoreArt",
+      "sectionId": "rules",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/ignoreart"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "chkExceedNegativeQualitiesNoBonus",
+      "fieldId": "characterSettingsControl-chkExceedNegativeQualitiesNoBonus",
+      "sectionId": "rules",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/exceednegativequalitiesnobonus"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "chkExceedNegativeQualities",
+      "fieldId": "characterSettingsControl-chkExceedNegativeQualities",
+      "sectionId": "rules",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/exceednegativequalities"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "chkExceedPositiveQualitiesCostDoubled",
+      "fieldId": "characterSettingsControl-chkExceedPositiveQualitiesCostDoubled",
+      "sectionId": "rules",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/exceedpositivequalitiescostdoubled"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "chkExceedPositiveQualities",
+      "fieldId": "characterSettingsControl-chkExceedPositiveQualities",
+      "sectionId": "rules",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/exceedpositivequalities"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "chkUnarmedSkillImprovements",
+      "fieldId": "characterSettingsControl-chkUnarmedSkillImprovements",
+      "sectionId": "rules",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/unarmedimprovementsapplytoweapons"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "chkCompensateSkillGroupKarmaDifference",
+      "fieldId": "characterSettingsControl-chkCompensateSkillGroupKarmaDifference",
+      "sectionId": "rules",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/compensateskillgroupkarmadifference"
+      ],
+      "phoneStatus": "visible_editable",
+      "androidBehavior": "changes phone career active-skill cost when a linked group has a different rating",
+      "behaviorEvidence": "CareerActiveSkillAdvanceEditorProjector.ProjectState",
+      "labelResourceKey": "CharacterSettingCompensateSkillGroupKarmaDifference",
+      "englishLabel": "Compensate skill-group Karma difference",
+      "rationale": "The persisted value is read by a current Preview 11 phone wizard."
+    },
+    {
+      "legacyControl": "chkMysAdeptSecondMAGAttribute",
+      "fieldId": "characterSettingsControl-chkMysAdeptSecondMAGAttribute",
+      "sectionId": "rules",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/mysadeptsecondmagattribute"
+      ],
+      "phoneStatus": "visible_editable",
+      "androidBehavior": "changes second-Magic handling in phone career attribute advancement",
+      "behaviorEvidence": "CareerAttributeAdvanceEditorProjector.ProjectFacts",
+      "labelResourceKey": "CharacterSettingMysticAdeptSecondMagicAttribute",
+      "englishLabel": "Use a second Magic attribute for mystic adepts",
+      "rationale": "The persisted value is read by a current Preview 11 phone wizard."
+    },
+    {
+      "legacyControl": "chkDontDoubleQualityPurchases",
+      "fieldId": "characterSettingsControl-chkDontDoubleQualityPurchases",
+      "sectionId": "rules",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/dontdoublequalities"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "chkDontDoubleQualityRefunds",
+      "fieldId": "characterSettingsControl-chkDontDoubleQualityRefunds",
+      "sectionId": "rules",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/dontdoublequalityrefunds"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "chkReverseAttributePriorityOrder",
+      "fieldId": "characterSettingsControl-chkReverseAttributePriorityOrder",
+      "sectionId": "rules",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/reverseattributepriorityorder"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "chkPrioritySpellsAsAdeptPowers",
+      "fieldId": "characterSettingsControl-chkPrioritySpellsAsAdeptPowers",
+      "sectionId": "rules",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/priorityspellsasadeptpowers"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "chkAllowInitiation",
+      "fieldId": "characterSettingsControl-chkAllowInitiation",
+      "sectionId": "rules",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/allowinitiationincreatemode"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "chkFreeMartialArtSpecialization",
+      "fieldId": "characterSettingsControl-chkFreeMartialArtSpecialization",
+      "sectionId": "rules",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/freemartialartspecialization"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "chkAllowCyberwareESSDiscounts",
+      "fieldId": "characterSettingsControl-chkAllowCyberwareESSDiscounts",
+      "sectionId": "ware",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/allowcyberwareessdiscounts"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "chkMysAdPp",
+      "fieldId": "characterSettingsControl-chkMysAdPp",
+      "sectionId": "rules",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/mysaddppcareer"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "chkESSLossReducesMaximumOnly",
+      "fieldId": "characterSettingsControl-chkESSLossReducesMaximumOnly",
+      "sectionId": "rules",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/esslossreducesmaximumonly"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "chkAlternateMetatypeAttributeKarma",
+      "fieldId": "characterSettingsControl-chkAlternateMetatypeAttributeKarma",
+      "sectionId": "rules",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/alternatemetatypeattributekarma"
+      ],
+      "phoneStatus": "visible_editable",
+      "androidBehavior": "changes metatype-adjusted phone career attribute costs",
+      "behaviorEvidence": "CareerAttributeAdvanceEditorProjector.ProjectFacts",
+      "labelResourceKey": "CharacterSettingAlternateMetatypeAttributeKarma",
+      "englishLabel": "Use alternate metatype attribute Karma",
+      "rationale": "The persisted value is read by a current Preview 11 phone wizard."
+    },
+    {
+      "legacyControl": "chkUseCalculatedPublicAwareness",
+      "fieldId": "characterSettingsControl-chkUseCalculatedPublicAwareness",
+      "sectionId": "rules",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/usecalculatedpublicawareness"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudDroneArmorMultiplier",
+      "fieldId": "characterSettingsControl-nudDroneArmorMultiplier",
+      "sectionId": "ware",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/dronearmorflatnumber"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "chkDroneArmorMultiplier",
+      "fieldId": "characterSettingsControl-chkDroneArmorMultiplier",
+      "sectionId": "ware",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/dronearmormultiplierenabled"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "chkIgnoreComplexFormLimit",
+      "fieldId": "characterSettingsControl-chkIgnoreComplexFormLimit",
+      "sectionId": "rules",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/ignorecomplexformlimit"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "chkSpecialKarmaCost",
+      "fieldId": "characterSettingsControl-chkSpecialKarmaCost",
+      "sectionId": "rules",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/specialkarmacostbasedonshownvalue"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "chkMoreLethalGameplay",
+      "fieldId": "characterSettingsControl-chkMoreLethalGameplay",
+      "sectionId": "rules",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/morelethalgameplay"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "chkExtendAnyDetectionSpell",
+      "fieldId": "characterSettingsControl-chkExtendAnyDetectionSpell",
+      "sectionId": "rules",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/extendanydetectionspell"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "chkAllowLimitedSpellsForBareHandedAdept",
+      "fieldId": "characterSettingsControl-chkAllowLimitedSpellsForBareHandedAdept",
+      "sectionId": "rules",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/allowlimitedspellsforbarehandedadept"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "chkAllowSkillRegrouping",
+      "fieldId": "characterSettingsControl-chkAllowSkillRegrouping",
+      "sectionId": "rules",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/allowskillregrouping"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "chkNoArmorEncumbrance",
+      "fieldId": "characterSettingsControl-chkNoArmorEncumbrance",
+      "sectionId": "limits",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/noarmorencumbrance"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "chkIncreasedImprovedAbilityModifier",
+      "fieldId": "characterSettingsControl-chkIncreasedImprovedAbilityModifier",
+      "sectionId": "rules",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/increasedimprovedabilitymodifier"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "chkAllowTechnomancerSchooling",
+      "fieldId": "characterSettingsControl-chkAllowTechnomancerSchooling",
+      "sectionId": "rules",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/allowtechnomancerschooling"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "chkUsePointsOnBrokenGroups",
+      "fieldId": "characterSettingsControl-chkUsePointsOnBrokenGroups",
+      "sectionId": "rules",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/usepointsonbrokengroups"
+      ],
+      "phoneStatus": "visible_editable",
+      "androidBehavior": "changes phone career active-skill, group, and specialization eligibility",
+      "behaviorEvidence": "CareerActiveSkillAdvanceEditorProjector.ProjectState, CareerSkillGroupAdvanceEditorProjector.ProjectState, and CareerSkillSpecializationEditorProjector.ProjectState",
+      "labelResourceKey": "CharacterSettingUsePointsOnBrokenGroups",
+      "englishLabel": "Allow points on broken skill groups",
+      "rationale": "The persisted value is read by a current Preview 11 phone wizard."
+    },
+    {
+      "legacyControl": "chkUnclampAttributeMinimum",
+      "fieldId": "characterSettingsControl-chkUnclampAttributeMinimum",
+      "sectionId": "rules",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/unclampattributeminimum"
+      ],
+      "phoneStatus": "visible_editable",
+      "androidBehavior": "changes minimum values used by the phone career attribute projector",
+      "behaviorEvidence": "CareerAttributeAdvanceEditorProjector.ProjectFacts -> ResolveTotalMinimum",
+      "labelResourceKey": "CharacterSettingUnclampAttributeMinimum",
+      "englishLabel": "Allow attributes below the normal minimum",
+      "rationale": "The persisted value is read by a current Preview 11 phone wizard."
+    },
+    {
+      "legacyControl": "chkCyberlegMovement",
+      "fieldId": "characterSettingsControl-chkCyberlegMovement",
+      "sectionId": "ware",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/cyberlegmovement"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "chkStrictSkillGroups",
+      "fieldId": "characterSettingsControl-chkStrictSkillGroups",
+      "sectionId": "rules",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/breakskillgroupsincreatemode"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "chkAllowFreeGrids",
+      "fieldId": "characterSettingsControl-chkAllowFreeGrids",
+      "sectionId": "rules",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/allowfreegrids"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "chkAllowPointBuySpecializationsOnKarmaSkills",
+      "fieldId": "characterSettingsControl-chkAllowPointBuySpecializationsOnKarmaSkills",
+      "sectionId": "rules",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/allowpointbuyspecializationsonkarmaskills"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudCyberlimbAttributeBonusCap",
+      "fieldId": "characterSettingsControl-nudCyberlimbAttributeBonusCap",
+      "sectionId": "ware",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/cyberlimbattributebonuscap"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "chkCyberlimbAttributeBonusCap",
+      "fieldId": "characterSettingsControl-chkCyberlimbAttributeBonusCap",
+      "sectionId": "ware",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/cyberlimbattributebonuscapoverride"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "txtContactPoints",
+      "fieldId": "characterSettingsControl-txtContactPoints",
+      "sectionId": "formulas",
+      "inputType": "text",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/contactpointsexpression"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "txtKnowledgePoints",
+      "fieldId": "characterSettingsControl-txtKnowledgePoints",
+      "sectionId": "formulas",
+      "inputType": "text",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/knowledgepointsexpression"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "txtGameplayOptionName",
+      "fieldId": "characterSettingsControl-txtGameplayOptionName",
+      "sectionId": "rules",
+      "inputType": "text",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/gameplayoptionname"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "cboBuildMethod",
+      "fieldId": "characterSettingsControl-cboBuildMethod",
+      "sectionId": "build",
+      "inputType": "select",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/buildmethod"
+      ],
+      "phoneStatus": "visible_editable",
+      "androidBehavior": "selects the preferred build method for the phone creation wizard",
+      "behaviorEvidence": "DialogCoordinator.ApplyCharacterSettings -> DesktopPreferenceState.CharacterPriority -> DesktopDialogFactory.BuildNewCharacterDialog",
+      "labelResourceKey": "CharacterSettingBuildMethod",
+      "englishLabel": "Creation build method",
+      "rationale": "The persisted value is read by a current Preview 11 phone wizard."
+    },
+    {
+      "legacyControl": "txtPriorities",
+      "fieldId": "characterSettingsControl-txtPriorities",
+      "sectionId": "build",
+      "inputType": "text",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/priorityarray"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudSumToTen",
+      "fieldId": "characterSettingsControl-nudSumToTen",
+      "sectionId": "build",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/sumtoten"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "cboPriorityTable",
+      "fieldId": "characterSettingsControl-cboPriorityTable",
+      "sectionId": "build",
+      "inputType": "text",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/prioritytable"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "chkRedlinerLimbsSkull",
+      "fieldId": "characterSettingsControl-chkRedlinerLimbsSkull",
+      "sectionId": "ware",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/redlinerexclusion/limb"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "chkRedlinerLimbsTorso",
+      "fieldId": "characterSettingsControl-chkRedlinerLimbsTorso",
+      "sectionId": "ware",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/redlinerexclusion/limb"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "chkRedlinerLimbsArms",
+      "fieldId": "characterSettingsControl-chkRedlinerLimbsArms",
+      "sectionId": "ware",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/redlinerexclusion/limb"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "chkRedlinerLimbsLegs",
+      "fieldId": "characterSettingsControl-chkRedlinerLimbsLegs",
+      "sectionId": "ware",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/redlinerexclusion/limb"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudStartingKarma",
+      "fieldId": "characterSettingsControl-nudStartingKarma",
+      "sectionId": "build",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/buildpoints"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudMaxAvail",
+      "fieldId": "characterSettingsControl-nudMaxAvail",
+      "sectionId": "build",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/availability"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudMaxNuyenKarma",
+      "fieldId": "characterSettingsControl-nudMaxNuyenKarma",
+      "sectionId": "build",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/nuyenmaxbp"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudQualityKarmaLimit",
+      "fieldId": "characterSettingsControl-nudQualityKarmaLimit",
+      "sectionId": "build",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/qualitykarmalimit"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudKarmaSpiritFettering",
+      "fieldId": "characterSettingsControl-nudKarmaSpiritFettering",
+      "sectionId": "karma",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/karmacost/karmaspiritfettering"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "txtNuyenExpression",
+      "fieldId": "characterSettingsControl-txtNuyenExpression",
+      "sectionId": "formulas",
+      "inputType": "text",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/chargenkarmatonuyenexpression"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudKarmaNuyenPerWftP",
+      "fieldId": "characterSettingsControl-nudKarmaNuyenPerWftP",
+      "sectionId": "rules",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/nuyenperbpwftp"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "txtBoundSpiritLimit",
+      "fieldId": "characterSettingsControl-txtBoundSpiritLimit",
+      "sectionId": "formulas",
+      "inputType": "text",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/boundspiritexpression"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "txtRegisteredSpriteLimit",
+      "fieldId": "characterSettingsControl-txtRegisteredSpriteLimit",
+      "sectionId": "formulas",
+      "inputType": "text",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/registeredspriteexpression"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "chkEnemyKarmaQualityLimit",
+      "fieldId": "characterSettingsControl-chkEnemyKarmaQualityLimit",
+      "sectionId": "rules",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/enemykarmaqualitylimit"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "chkEnable4eStyleEnemyTracking",
+      "fieldId": "characterSettingsControl-chkEnable4eStyleEnemyTracking",
+      "sectionId": "rules",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/enableenemytracking"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudKarmaGainedFromEnemies",
+      "fieldId": "characterSettingsControl-nudKarmaGainedFromEnemies",
+      "sectionId": "karma",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/karmacost/karmaenemy"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudMinInitiativeDice",
+      "fieldId": "characterSettingsControl-nudMinInitiativeDice",
+      "sectionId": "limits",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/mininitiativedice"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudMaxInitiativeDice",
+      "fieldId": "characterSettingsControl-nudMaxInitiativeDice",
+      "sectionId": "limits",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/maxinitiativedice"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudMaxAstralInitiativeDice",
+      "fieldId": "characterSettingsControl-nudMaxAstralInitiativeDice",
+      "sectionId": "limits",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/maxastralinitiativedice"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudMaxColdSimInitiativeDice",
+      "fieldId": "characterSettingsControl-nudMaxColdSimInitiativeDice",
+      "sectionId": "limits",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/maxcoldsiminitiativedice"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudMaxHotSimInitiativeDice",
+      "fieldId": "characterSettingsControl-nudMaxHotSimInitiativeDice",
+      "sectionId": "limits",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/maxhotsiminitiativedice"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudMinAstralInitiativeDice",
+      "fieldId": "characterSettingsControl-nudMinAstralInitiativeDice",
+      "sectionId": "limits",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/minastralinitiativedice"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudMinColdSimInitiativeDice",
+      "fieldId": "characterSettingsControl-nudMinColdSimInitiativeDice",
+      "sectionId": "limits",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/mincoldsiminitiativedice"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudMinHotSimInitiativeDice",
+      "fieldId": "characterSettingsControl-nudMinHotSimInitiativeDice",
+      "sectionId": "limits",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/minhotsiminitiativedice"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "txtLiftLimit",
+      "fieldId": "characterSettingsControl-txtLiftLimit",
+      "sectionId": "formulas",
+      "inputType": "text",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/liftlimitexpression"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "txtCarryLimit",
+      "fieldId": "characterSettingsControl-txtCarryLimit",
+      "sectionId": "formulas",
+      "inputType": "text",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/carrylimitexpression"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "txtEncumbranceInterval",
+      "fieldId": "characterSettingsControl-txtEncumbranceInterval",
+      "sectionId": "formulas",
+      "inputType": "text",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/encumbranceintervalexpression"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "chkEncumbrancePenaltyPhysicalLimit",
+      "fieldId": "characterSettingsControl-chkEncumbrancePenaltyPhysicalLimit",
+      "sectionId": "limits",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/doencumbrancepenaltyphysicallimit"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "chkEncumbrancePenaltyMovementSpeed",
+      "fieldId": "characterSettingsControl-chkEncumbrancePenaltyMovementSpeed",
+      "sectionId": "limits",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/doencumbrancepenaltymovementspeed"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "chkEncumbrancePenaltyAgility",
+      "fieldId": "characterSettingsControl-chkEncumbrancePenaltyAgility",
+      "sectionId": "limits",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/doencumbrancepenaltyagility"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "chkEncumbrancePenaltyReaction",
+      "fieldId": "characterSettingsControl-chkEncumbrancePenaltyReaction",
+      "sectionId": "limits",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/doencumbrancepenaltyreaction",
+        "settings/doencumbrancepenaltywoundmodifier"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "chkEncumbrancePenaltyWoundModifier",
+      "fieldId": "characterSettingsControl-chkEncumbrancePenaltyWoundModifier",
+      "sectionId": "limits",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/doencumbrancepenaltywoundmodifier"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudEncumbrancePenaltyPhysicalLimit",
+      "fieldId": "characterSettingsControl-nudEncumbrancePenaltyPhysicalLimit",
+      "sectionId": "limits",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/encumbrancepenaltyphysicallimit"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudEncumbrancePenaltyAgility",
+      "fieldId": "characterSettingsControl-nudEncumbrancePenaltyAgility",
+      "sectionId": "limits",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/encumbrancepenaltyagility"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudEncumbrancePenaltyReaction",
+      "fieldId": "characterSettingsControl-nudEncumbrancePenaltyReaction",
+      "sectionId": "limits",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/encumbrancepenaltyreaction"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudEncumbrancePenaltyWoundModifier",
+      "fieldId": "characterSettingsControl-nudEncumbrancePenaltyWoundModifier",
+      "sectionId": "limits",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/encumbrancepenaltywoundmodifier"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudEncumbrancePenaltyMovementSpeed",
+      "fieldId": "characterSettingsControl-nudEncumbrancePenaltyMovementSpeed",
+      "sectionId": "limits",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/encumbrancepenaltymovementspeed"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudWeightDecimals",
+      "fieldId": "characterSettingsControl-nudWeightDecimals",
+      "sectionId": "formulas",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/weightformat"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudMaxSkillRatingCreate",
+      "fieldId": "characterSettingsControl-nudMaxSkillRatingCreate",
+      "sectionId": "limits",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/maxskillratingcreate"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudMaxNumberMaxAttributes",
+      "fieldId": "characterSettingsControl-nudMaxNumberMaxAttributes",
+      "sectionId": "limits",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/maxnumbermaxattributescreate"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudMaxKnowledgeSkillRatingCreate",
+      "fieldId": "characterSettingsControl-nudMaxKnowledgeSkillRatingCreate",
+      "sectionId": "limits",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/maxknowledgeskillratingcreate"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudMaxSkillRating",
+      "fieldId": "characterSettingsControl-nudMaxSkillRating",
+      "sectionId": "limits",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/maxskillrating"
+      ],
+      "phoneStatus": "visible_editable",
+      "androidBehavior": "caps active-skill and skill-group ratings in phone career advancement",
+      "behaviorEvidence": "CareerActiveSkillAdvanceEditorProjector.ProjectState, CareerSkillGroupAdvanceEditorProjector.ProjectState, and CareerSkillSpecializationEditorProjector.ProjectState",
+      "labelResourceKey": "CharacterSettingMaxSkillRating",
+      "englishLabel": "Maximum career active-skill rating",
+      "rationale": "The persisted value is read by a current Preview 11 phone wizard."
+    },
+    {
+      "legacyControl": "nudMaxKnowledgeSkillRating",
+      "fieldId": "characterSettingsControl-nudMaxKnowledgeSkillRating",
+      "sectionId": "limits",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/maxknowledgeskillrating"
+      ],
+      "phoneStatus": "visible_editable",
+      "androidBehavior": "caps knowledge-skill ratings in phone career advancement",
+      "behaviorEvidence": "CareerKnowledgeSkillAdvanceEditorProjector.ProjectState",
+      "labelResourceKey": "CharacterSettingMaxKnowledgeSkillRating",
+      "englishLabel": "Maximum career knowledge-skill rating",
+      "rationale": "The persisted value is read by a current Preview 11 phone wizard."
+    },
+    {
+      "legacyControl": "chkSpecializationsBreakSkillGroups",
+      "fieldId": "characterSettingsControl-chkSpecializationsBreakSkillGroups",
+      "sectionId": "rules",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/specializationsbreakskillgroups"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "chkUncappedArmorAccessoryBonuses",
+      "fieldId": "characterSettingsControl-chkUncappedArmorAccessoryBonuses",
+      "sectionId": "ware",
+      "inputType": "checkbox",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/uncappedarmoraccessorybonuses"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "txtEssenceModifierPostExpression",
+      "fieldId": "characterSettingsControl-txtEssenceModifierPostExpression",
+      "sectionId": "formulas",
+      "inputType": "text",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/essencemodifierpostexpression"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudMaxMartialArts",
+      "fieldId": "characterSettingsControl-nudMaxMartialArts",
+      "sectionId": "limits",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/maxmartialarts"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudMaxMartialTechniques",
+      "fieldId": "characterSettingsControl-nudMaxMartialTechniques",
+      "sectionId": "limits",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/maxmartialtechniques"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudKarmaCarryover",
+      "fieldId": "characterSettingsControl-nudKarmaCarryover",
+      "sectionId": "karma",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/karmacost/karmacarryover"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    },
+    {
+      "legacyControl": "nudNuyenCarryover",
+      "fieldId": "characterSettingsControl-nudNuyenCarryover",
+      "sectionId": "build",
+      "inputType": "number",
+      "isMultiline": false,
+      "persistencePaths": [
+        "settings/nuyencarryover"
+      ],
+      "phoneStatus": "hidden_preserved",
+      "androidBehavior": null,
+      "behaviorEvidence": null,
+      "labelResourceKey": null,
+      "englishLabel": null,
+      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+    }
+  ]
+}

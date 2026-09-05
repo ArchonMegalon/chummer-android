@@ -71,9 +71,10 @@ public sealed class NativeDialogPage : ContentPage
             errorLabel.AutomationId = "dialog-error";
             body.Add(errorLabel);
         }
-        if (!string.IsNullOrWhiteSpace(dialog.Message))
+        string dialogMessage = AndroidDialogSettingsScope.Message(dialog);
+        if (!string.IsNullOrWhiteSpace(dialogMessage))
         {
-            body.Add(NativeTheme.Body(dialog.Message, NativeTheme.Muted));
+            body.Add(NativeTheme.Body(dialogMessage, NativeTheme.Muted));
         }
 
         string? settingsScopeDetail = AndroidDialogSettingsScope.Detail(dialog);
@@ -861,26 +862,21 @@ internal static class AndroidDialogSettingsScope
     internal const string CustomDataSectionId = "custom-data";
     internal const string CustomDataFieldId = "characterSettingsControl-treCustomDataDirectories";
 
-    private static readonly HashSet<string> KnownRulesSections = new(StringComparer.Ordinal)
+    private static readonly IReadOnlyDictionary<string, (string ResourceKey, string EnglishLabel)> SectionLabels =
+        new Dictionary<string, (string ResourceKey, string EnglishLabel)>(StringComparer.Ordinal)
     {
-        "ware",
-        "sourcebooks",
-        "rules",
-        "formulas",
-        "karma",
-        "limits",
-        "build"
+        ["ware"] = ("CharacterSettingsSectionWare", "Ware and cyberlimbs"),
+        ["rules"] = ("CharacterSettingsSectionRules", "Career rules"),
+        ["karma"] = ("CharacterSettingsSectionKarma", "Career Karma costs"),
+        ["limits"] = ("CharacterSettingsSectionLimits", "Career rating limits"),
+        ["build"] = ("CharacterSettingsSectionBuild", "Creation")
     };
 
-    private static readonly HashSet<string> KnownSections = new(KnownRulesSections, StringComparer.Ordinal);
-
-    private static readonly HashSet<string> StructuralFieldIds = new(StringComparer.Ordinal)
+    private static readonly HashSet<string> VisibleStructuralFieldIds = new(StringComparer.Ordinal)
     {
         ProfileFieldId,
         ProfileNameFieldId,
-        SectionFieldId,
-        LoadedProfileFieldId,
-        DraftXmlFieldId
+        SectionFieldId
     };
 
     internal static NativeDialogScopedField Project(
@@ -904,25 +900,60 @@ internal static class AndroidDialogSettingsScope
             }
 
             DesktopDialogFieldOption[] options = (field.Options ?? [])
-                .Where(option => KnownSections.Contains(option.Value))
+                .Where(option => AndroidCharacterSettingsPhoneCapabilities.SupportedSectionIds.Contains(option.Value))
+                .Select(option => new DesktopDialogFieldOption(
+                    option.Value,
+                    LocalizeSectionLabel(option.Value, option.Label, culture)))
                 .ToArray();
-            return new NativeDialogScopedField(true, field.Label, options);
+            return new NativeDialogScopedField(
+                true,
+                PhoneStrings.Get("CharacterSettingsSection", "Settings section", culture),
+                options);
         }
 
-        if (StructuralFieldIds.Contains(field.Id))
+        if (string.Equals(field.Id, ProfileFieldId, StringComparison.Ordinal)
+            && IsExpectedProfileField(field))
         {
-            return new NativeDialogScopedField(true, field.Label, field.Options);
+            return new NativeDialogScopedField(
+                true,
+                PhoneStrings.Get("CharacterSettingsProfile", "Settings profile", culture),
+                field.Options);
+        }
+
+        if (string.Equals(field.Id, ProfileNameFieldId, StringComparison.Ordinal)
+            && IsExpectedProfileNameField(field))
+        {
+            return new NativeDialogScopedField(
+                true,
+                PhoneStrings.Get("CharacterSettingsProfileName", "Profile name", culture),
+                field.Options);
         }
 
         string? sectionId = SelectedSectionId(dialog);
         if (sectionId is not null
-            && KnownRulesSections.Contains(sectionId)
-            && field.Id.StartsWith(ControlFieldPrefix, StringComparison.Ordinal))
+            && AndroidCharacterSettingsPhoneCapabilities.TryGet(
+                field.Id,
+                out AndroidCharacterSettingCapability capability)
+            && IsExpectedCapabilityField(sectionId, field, capability))
         {
-            return new NativeDialogScopedField(true, field.Label, field.Options);
+            return new NativeDialogScopedField(
+                true,
+                AndroidCharacterSettingsPhoneCapabilities.LocalizeLabel(capability, culture),
+                field.Options);
         }
 
         return new NativeDialogScopedField(false, field.Label, field.Options);
+    }
+
+    internal static string Message(DesktopDialogState dialog, CultureInfo? culture = null)
+    {
+        ArgumentNullException.ThrowIfNull(dialog);
+        return IsCharacterSettings(dialog)
+            ? PhoneStrings.Get(
+                "CharacterSettingsPhoneMessage",
+                "Edit only settings used by the Preview 11 phone wizards. Hidden desktop values remain unchanged in the profile.",
+                culture)
+            : dialog.Message ?? string.Empty;
     }
 
     internal static string? Detail(DesktopDialogState dialog, CultureInfo? culture = null)
@@ -942,11 +973,12 @@ internal static class AndroidDialogSettingsScope
                 culture);
         }
 
-        if (sectionId is not null && KnownRulesSections.Contains(sectionId))
+        if (sectionId is not null
+            && AndroidCharacterSettingsPhoneCapabilities.SupportedSectionIds.Contains(sectionId))
         {
             return PhoneStrings.Get(
                 "CharacterSettingsRulesScope",
-                "These runner rules belong to the settings profile and apply across Chummer platforms.",
+                "Every setting shown here is read by a current Preview 11 phone wizard.",
                 culture);
         }
 
@@ -975,6 +1007,39 @@ internal static class AndroidDialogSettingsScope
             && !field.IsReadOnly
             && !field.IsMultiline
             && field.Options is not null;
+
+    private static bool IsExpectedProfileField(DesktopDialogField field)
+        => VisibleStructuralFieldIds.Contains(field.Id)
+            && string.Equals(field.InputType, "select", StringComparison.OrdinalIgnoreCase)
+            && !field.IsReadOnly
+            && !field.IsMultiline
+            && field.Options is not null;
+
+    private static bool IsExpectedProfileNameField(DesktopDialogField field)
+        => VisibleStructuralFieldIds.Contains(field.Id)
+            && string.Equals(field.InputType, "text", StringComparison.OrdinalIgnoreCase)
+            && !field.IsReadOnly
+            && !field.IsMultiline;
+
+    private static bool IsExpectedCapabilityField(
+        string selectedSectionId,
+        DesktopDialogField field,
+        AndroidCharacterSettingCapability capability)
+        => string.Equals(selectedSectionId, capability.SectionId, StringComparison.Ordinal)
+            && string.Equals(field.Id, capability.FieldId, StringComparison.Ordinal)
+            && string.Equals(field.InputType, capability.InputType, StringComparison.OrdinalIgnoreCase)
+            && field.IsMultiline == capability.IsMultiline
+            && !field.IsReadOnly
+            && (!string.Equals(capability.InputType, "select", StringComparison.OrdinalIgnoreCase)
+                || field.Options is not null);
+
+    private static string LocalizeSectionLabel(
+        string sectionId,
+        string fallback,
+        CultureInfo? culture)
+        => SectionLabels.TryGetValue(sectionId, out var label)
+            ? PhoneStrings.Get(label.ResourceKey, label.EnglishLabel, culture)
+            : fallback;
 }
 
 internal sealed record NativeDialogFieldBinding(

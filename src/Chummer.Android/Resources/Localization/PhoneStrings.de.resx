@@ -102,6 +102,32 @@
   <data name="RunnerSetup" xml:space="preserve"><value>Runner-Erstellung</value></data>
   <data name="DialogApplyingChoice" xml:space="preserve"><value>Deine Auswahl wird übernommen… Das kann einen Moment dauern.</value></data>
   <data name="CharacterSettingsCustomDataScope" xml:space="preserve"><value>Verzeichnisse für benutzerdefinierte Daten sind nur auf dem Desktop verfügbar und auf Android ausgeblendet. Ihre gespeicherten Werte bleiben im Einstellungsprofil unverändert.</value></data>
-  <data name="CharacterSettingsRulesScope" xml:space="preserve"><value>Diese Runner-Regeln gehören zum Einstellungsprofil und gelten auf allen Chummer-Plattformen.</value></data>
+  <data name="CharacterSettingsRulesScope" xml:space="preserve"><value>Jede hier angezeigte Einstellung wird von einem aktuellen Preview-11-Assistenten auf dem Smartphone verwendet.</value></data>
   <data name="CharacterSettingsUnsupportedScope" xml:space="preserve"><value>Dieser Einstellungsbereich ist auf Android nicht verfügbar. Seine gespeicherten Werte bleiben im Profil erhalten.</value></data>
+  <data name="CharacterSettingsPhoneMessage" xml:space="preserve"><value>Bearbeite nur Einstellungen, die von den Preview-11-Assistenten auf dem Smartphone verwendet werden. Ausgeblendete Desktop-Werte bleiben im Profil unverändert.</value></data>
+  <data name="CharacterSettingsProfile" xml:space="preserve"><value>Einstellungsprofil</value></data>
+  <data name="CharacterSettingsProfileName" xml:space="preserve"><value>Profilname</value></data>
+  <data name="CharacterSettingsSection" xml:space="preserve"><value>Einstellungsbereich</value></data>
+  <data name="CharacterSettingsSectionWare" xml:space="preserve"><value>Ware und Cybergliedmaßen</value></data>
+  <data name="CharacterSettingsSectionRules" xml:space="preserve"><value>Karriereregeln</value></data>
+  <data name="CharacterSettingsSectionKarma" xml:space="preserve"><value>Karriere-Karmakosten</value></data>
+  <data name="CharacterSettingsSectionLimits" xml:space="preserve"><value>Karriere-Höchstwerte</value></data>
+  <data name="CharacterSettingsSectionBuild" xml:space="preserve"><value>Erschaffung</value></data>
+  <data name="CharacterSettingBuildMethod" xml:space="preserve"><value>Erschaffungsmethode</value></data>
+  <data name="CharacterSettingDontUseCyberlimbCalculation" xml:space="preserve"><value>Cybergliedmaßen bei augmentierten Attributswerten ignorieren</value></data>
+  <data name="CharacterSettingCyberlimbConfiguration" xml:space="preserve"><value>Cybergliedmaßen-Slots für Attributswerte</value></data>
+  <data name="CharacterSettingKarmaNewActiveSkill" xml:space="preserve"><value>Karmakosten: neue Aktionsfertigkeit</value></data>
+  <data name="CharacterSettingKarmaImproveActiveSkill" xml:space="preserve"><value>Karmamultiplikator: Aktionsfertigkeit steigern</value></data>
+  <data name="CharacterSettingKarmaNewSkillGroup" xml:space="preserve"><value>Karmakosten: neue Fertigkeitsgruppe</value></data>
+  <data name="CharacterSettingKarmaImproveSkillGroup" xml:space="preserve"><value>Karmamultiplikator: Fertigkeitsgruppe steigern</value></data>
+  <data name="CharacterSettingCompensateSkillGroupKarmaDifference" xml:space="preserve"><value>Karmaunterschied der Fertigkeitsgruppe ausgleichen</value></data>
+  <data name="CharacterSettingKarmaAttribute" xml:space="preserve"><value>Karmamultiplikator: Attribut steigern</value></data>
+  <data name="CharacterSettingAlternateMetatypeAttributeKarma" xml:space="preserve"><value>Alternative Metatyp-Attributskosten verwenden</value></data>
+  <data name="CharacterSettingUnclampAttributeMinimum" xml:space="preserve"><value>Attribute unter dem normalen Minimum erlauben</value></data>
+  <data name="CharacterSettingMysticAdeptSecondMagicAttribute" xml:space="preserve"><value>Zweites Magieattribut für mystische Adepten verwenden</value></data>
+  <data name="CharacterSettingKarmaNewKnowledgeSkill" xml:space="preserve"><value>Karmakosten: neue Wissensfertigkeit</value></data>
+  <data name="CharacterSettingKarmaImproveKnowledgeSkill" xml:space="preserve"><value>Karmamultiplikator: Wissensfertigkeit steigern</value></data>
+  <data name="CharacterSettingMaxSkillRating" xml:space="preserve"><value>Maximalwert für Aktionsfertigkeiten in der Karriere</value></data>
+  <data name="CharacterSettingMaxKnowledgeSkillRating" xml:space="preserve"><value>Maximalwert für Wissensfertigkeiten in der Karriere</value></data>
+  <data name="CharacterSettingUsePointsOnBrokenGroups" xml:space="preserve"><value>Punkte auf aufgebrochene Fertigkeitsgruppen anwenden</value></data>
 </root>

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prove the complete phone Character Settings route on API 36."""
+"""Prove the Preview 11 phone Character Settings capability boundary on API 36."""
 
 from __future__ import annotations
 
@@ -18,89 +18,16 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import run_api36_editing_e2e as shared
 
 
-SECTION_FIELDS = {
-    "Ware, armor, and vehicles": (
-        "dialog-field-charactersettingscontrol-chkdontusecyberlimbcalculation",
-        "Dont Use Cyberlimb Calculation",
-        "checkbox",
-        "true",
-    ),
-    "Sourcebooks": (
-        "dialog-field-charactersettingscontrol-tresourcebook",
-        "Enabled sourcebooks",
-        "text",
-        "SR5X",
-    ),
-    "Rules and options": (
-        "dialog-field-charactersettingscontrol-chkenforcecapacity",
-        "Enforce Capacity",
-        "checkbox",
-        "false",
-    ),
-    "Formulas and formatting": (
-        "dialog-field-charactersettingscontrol-nudnuyendecimalsminimum",
-        "Min Nuyen Decimals",
-        "text",
-        "1",
-    ),
-    "Karma costs": (
-        "dialog-field-charactersettingscontrol-nudkarmamysticadeptpowerpoint",
-        "Karma Mystic Adept Power Point",
-        "text",
-        "6",
-    ),
-    "Custom data": (
-        "dialog-field-charactersettingscontrol-trecustomdatadirectories",
-        "Custom data directories (ordered)",
-        "text",
-        "phone-e2e",
-    ),
-    "Limits and initiative": (
-        "dialog-field-charactersettingscontrol-chknoarmorencumbrance",
-        "No Armor Encumbrance",
-        "checkbox",
-        "true",
-    ),
-    "Build method": (
-        "dialog-field-charactersettingscontrol-cbobuildmethod",
-        "Build Method",
-        "select",
-        "Karma",
-    ),
-}
-
 SECTION_IDS = {
-    "Ware, armor, and vehicles": "ware",
-    "Sourcebooks": "sourcebooks",
-    "Rules and options": "rules",
-    "Formulas and formatting": "formulas",
-    "Karma costs": "karma",
-    "Custom data": "custom-data",
-    "Limits and initiative": "limits",
-    "Build method": "build",
+    "Ware and cyberlimbs": "ware",
+    "Career rules": "rules",
+    "Career Karma costs": "karma",
+    "Career rating limits": "limits",
+    "Creation": "build",
 }
 
-UI_READBACK_OVERRIDES = {
-    "chkGrade": "Betaware",
-    "treCustomDataDirectories": "[x] phone-e2e",
-}
-
-VALUE_OPERATIONS = frozenset(
-    {
-        "set_value",
-        "edit_sourcebooks",
-        "edit_custom_data_directories",
-    }
-)
 CONTROL_VALUE_OVERRIDES: dict[str, bool | str] = {
-    "chkGrade": "Betaware",
-    "treSourcebook": "SR5X",
     "chkDontUseCyberlimbCalculation": True,
-    "chkEnforceCapacity": False,
-    "nudNuyenDecimalsMinimum": "1",
-    "nudKarmaMysticAdeptPowerPoint": "6",
-    "treCustomDataDirectories": "phone-e2e",
-    "chkNoArmorEncumbrance": True,
     "cboBuildMethod": "Karma",
 }
 SELECT_OPTIONS = {
@@ -111,10 +38,6 @@ SELECT_OPTIONS = {
         "6",
     ),
     "cboBuildMethod": ("Priority", "SumtoTen", "Karma", "LifeModule"),
-}
-TEXT_VALUE_OVERRIDES = {
-    "txtGameplayOptionName": "Phone E2E",
-    "txtPriorities": "EDCBA",
 }
 CONTROL_PROOF_KEYS = (
     "mutated",
@@ -327,20 +250,36 @@ def android_token(value: str) -> str:
     return "".join(character if character.isalnum() else "-" for character in value.strip().lower())
 
 
-def load_value_controls(contract_path: Path) -> dict[str, dict[str, object]]:
-    payload = json.loads(contract_path.read_text(encoding="utf-8"))
+def load_phone_capabilities(
+    capability_path: Path,
+) -> tuple[dict[str, dict[str, object]], dict[str, dict[str, object]]]:
+    payload = json.loads(capability_path.read_text(encoding="utf-8"))
     controls = {
         str(row["legacyControl"]): row
         for row in payload.get("controls", [])
         if isinstance(row, dict)
-        and row.get("semanticOperation") in VALUE_OPERATIONS
     }
     if len(controls) != 150:
         raise RuntimeError(
-            "Character Settings E2E requires the exact 150-control value contract; "
+            "Character Settings E2E requires the exact 150-control capability inventory; "
             f"observed {len(controls)}"
         )
-    return controls
+    visible = {
+        control: row
+        for control, row in controls.items()
+        if row.get("phoneStatus") == "visible_editable"
+    }
+    hidden = {
+        control: row
+        for control, row in controls.items()
+        if row.get("phoneStatus") == "hidden_preserved"
+    }
+    if len(visible) != 17 or len(hidden) != 133:
+        raise RuntimeError(
+            "Character Settings E2E requires exactly 17 visible and 133 hidden controls; "
+            f"observed visible={len(visible)}, hidden={len(hidden)}"
+        )
+    return visible, hidden
 
 
 def selector_for_control(control: str) -> str:
@@ -351,7 +290,7 @@ def discover_section_controls(
     runtime_contract_path: Path,
     controls: dict[str, dict[str, object]],
 ) -> dict[str, list[str]]:
-    sections = {section: [] for section in SECTION_FIELDS}
+    sections = {section: [] for section in SECTION_IDS}
     section_labels = {section_id: label for label, section_id in SECTION_IDS.items()}
     field_pattern = re.compile(
         r'^\s*new\("([^"]+)",\s*"[^"]*",\s*"([^"]+)",',
@@ -368,13 +307,6 @@ def discover_section_controls(
                 f"Character Settings control {control!r} uses unknown section {section_id!r}"
             )
         sections[section].append(control)
-    rules = sections["Rules and options"]
-    for parent, dependent in (
-        ("chkExceedNegativeQualities", "chkExceedNegativeQualitiesNoBonus"),
-        ("chkExceedPositiveQualities", "chkExceedPositiveQualitiesCostDoubled"),
-    ):
-        rules.remove(parent)
-        rules.insert(rules.index(dependent), parent)
     discovered = {
         control
         for section_controls in sections.values()
@@ -385,29 +317,10 @@ def discover_section_controls(
         missing = sorted(expected - discovered)
         unexpected = sorted(discovered - expected)
         raise RuntimeError(
-            "Character Settings runtime contract did not expose the exact value-control contract; "
+            "Character Settings runtime contract did not expose the exact visible phone controls; "
             f"missing={missing!r}, unexpected={unexpected!r}"
         )
     return sections
-
-
-def control_kind(control: str) -> str:
-    if control in SELECT_OPTIONS:
-        return "select"
-    if control.startswith("chk") and control != "chkGrade":
-        return "checkbox"
-    if control.startswith("nud"):
-        return "number"
-    return "text"
-
-
-def alternate_text_value(control: str, current: str) -> str:
-    override = CONTROL_VALUE_OVERRIDES.get(control)
-    if isinstance(override, str):
-        return override
-    if control in TEXT_VALUE_OVERRIDES:
-        return TEXT_VALUE_OVERRIDES[control]
-    return "1" if current.strip() != "1" else "2"
 
 
 def alternate_number_value(control: str, current: str) -> str:
@@ -442,7 +355,7 @@ def edit_all_value_controls(
         for control in section_controls:
             selector = selector_for_control(control)
             node = wait_exact_field(device, selector)
-            kind = control_kind(control)
+            kind = str(controls[control]["inputType"])
             if kind == "checkbox":
                 override = CONTROL_VALUE_OVERRIDES.get(control)
                 expected: bool | str = (
@@ -454,14 +367,12 @@ def edit_all_value_controls(
             elif kind == "select":
                 expected = alternate_select_value(control, node.attributes.get("text", ""))
                 select_option(device, selector, str(expected))
-            else:
+            elif kind == "number":
                 current = node.attributes.get("text", "")
-                expected = (
-                    alternate_number_value(control, current)
-                    if kind == "number"
-                    else alternate_text_value(control, current)
-                )
+                expected = alternate_number_value(control, current)
                 set_exact_text(device, selector, str(expected))
+            else:
+                raise RuntimeError(f"Unsupported visible phone control kind {kind!r}")
             expectations[control] = {
                 "kind": kind,
                 "value": expected,
@@ -491,7 +402,7 @@ def assert_all_ui_readback(
                 actual: bool | str = node.attributes.get("checked") == "true"
             else:
                 actual = node.attributes.get("text", "")
-                expected = UI_READBACK_OVERRIDES.get(control, str(expected))
+                expected = str(expected)
             if actual != expected:
                 device.capture(f"readback-failed-{android_token(control)}")
                 raise RuntimeError(
@@ -565,6 +476,28 @@ def assert_all_controls_persisted(
         )
 
 
+def assert_hidden_controls_preserved(
+    baseline_catalog: dict[str, object],
+    saved_catalog: dict[str, object],
+    hidden_controls: dict[str, dict[str, object]],
+) -> None:
+    baseline = active_settings(baseline_catalog)
+    saved = active_settings(saved_catalog)
+    changed: dict[str, dict[str, tuple[str, ...]]] = {}
+    for control, capability in hidden_controls.items():
+        for raw_path in capability.get("persistencePaths", []):
+            path = str(raw_path)
+            before = settings_path_values(baseline, path)
+            after = settings_path_values(saved, path)
+            if before != after:
+                changed.setdefault(control, {})[path] = (before, after)
+    if changed:
+        raise RuntimeError(
+            "Hidden Character Settings values changed through the phone surface: "
+            f"{changed!r}"
+        )
+
+
 def assert_catalog_xml(catalog: dict[str, object]) -> None:
     profiles = catalog.get("Profiles")
     active_id = catalog.get("ActiveProfileId")
@@ -580,21 +513,12 @@ def assert_catalog_xml(catalog: dict[str, object]) -> None:
         raise RuntimeError(f"Active Character Settings profile name was {active.get('Name')!r}")
     settings = active_settings(catalog)
     expected = {
-        "books/book": "SR5X",
         "dontusecyberlimbcalculation": "True",
-        "enforcecapacity": "False",
-        "karmacost/karmamysadpp": "6",
-        "noarmorencumbrance": "True",
         "buildmethod": "Karma",
     }
     observed = {path: settings.findtext(path, default="") for path in expected}
     if observed != expected:
         raise RuntimeError(f"Character Settings XML mismatch: {observed!r}")
-    custom = settings.find("customdatadirectorynames/customdatadirectoryname")
-    if custom is None or custom.findtext("directoryname", default="") != "phone-e2e":
-        raise RuntimeError("Custom data directory did not persist")
-    if settings.findtext("nuyenformat", default="") != "#,0.0##":
-        raise RuntimeError("Nuyen decimal formatting did not persist")
 
 
 def main() -> int:
@@ -609,7 +533,11 @@ def main() -> int:
 
     driver_path = Path(__file__).resolve()
     android_root = driver_path.parents[1]
-    contract_path = android_root / "docs" / "CHUMMER5_CHARACTER_SETTINGS_CONTRACT.generated.json"
+    capability_path = (
+        android_root
+        / "docs"
+        / "ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json"
+    )
     workspace_root = args.workspace_root.resolve()
     presentation_root = workspace_root / "chummer-presentation" / "Chummer.Presentation" / "Overview"
     source_paths = {
@@ -617,6 +545,8 @@ def main() -> int:
         "sharedDriverSha256": Path(shared.__file__).resolve(),
         "nativeCommandPageSha256": android_root / "src/Chummer.Android/Native/NativeCommandPage.cs",
         "nativeDialogPageSha256": android_root / "src/Chummer.Android/Native/NativeDialogPage.cs",
+        "phoneCapabilitiesSourceSha256": android_root / "src/Chummer.Android/Native/AndroidCharacterSettingsPhoneCapabilities.Generated.cs",
+        "phoneCapabilitiesInventorySha256": capability_path,
         "runnerSessionCoordinatorSha256": android_root / "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "dialogFactorySha256": presentation_root / "DesktopDialogFactory.cs",
         "characterSettingsDialogSha256": presentation_root / "DesktopDialogFactory.CharacterSettings.cs",
@@ -627,7 +557,7 @@ def main() -> int:
     if not all(path.is_file() for path in source_paths.values()):
         missing = [str(path) for path in source_paths.values() if not path.is_file()]
         raise RuntimeError(f"Character Settings E2E source graph is incomplete: {missing!r}")
-    controls = load_value_controls(contract_path)
+    controls, hidden_controls = load_phone_capabilities(capability_path)
     sections = discover_section_controls(
         source_paths["characterSettingsContractSha256"],
         controls,
@@ -676,6 +606,7 @@ def main() -> int:
     device.wait("command-search", timeout=90)
     saved_catalog = read_catalog(device)
     assert_all_controls_persisted(baseline_catalog, saved_catalog, expectations)
+    assert_hidden_controls_preserved(baseline_catalog, saved_catalog, hidden_controls)
     assert_catalog_xml(saved_catalog)
     device.capture("phone-character-settings-saved")
     device.back()
@@ -686,12 +617,20 @@ def main() -> int:
     assert_all_ui_readback(device, expectations, sections)
     restarted_catalog = read_catalog(device)
     assert_all_controls_persisted(baseline_catalog, restarted_catalog, expectations)
+    assert_hidden_controls_preserved(baseline_catalog, restarted_catalog, hidden_controls)
     assert_catalog_xml(restarted_catalog)
     device.capture("phone-character-settings-after-restart")
 
     control_proofs = {
         control: {key: "pass" for key in CONTROL_PROOF_KEYS}
         for control in sorted(expectations)
+    }
+    hidden_control_proofs = {
+        control: {
+            "catalogPreserved": "pass",
+            "processRestartCatalogPreserved": "pass",
+        }
+        for control in sorted(hidden_controls)
     }
 
     receipt = {
@@ -706,24 +645,25 @@ def main() -> int:
         "apkSha256": shared.sha256(args.apk.resolve()),
         **{key: shared.sha256(path) for key, path in source_paths.items()},
         "valueControlCount": len(control_proofs),
+        "hiddenValueControlCount": len(hidden_control_proofs),
         "controls": control_proofs,
+        "hiddenControls": hidden_control_proofs,
         "journeys": {
             "actionSearchRoute": "pass",
-            "allEightPhoneSectionsReachable": "pass",
+            "allFivePhoneSectionsReachable": "pass",
             "checkboxEdited": "pass",
-            "textEdited": "pass",
             "numberEdited": "pass",
             "pickerEdited": "pass",
-            "sourcebookCollectionEdited": "pass",
-            "customDataCollectionEdited": "pass",
             "profileSavedWithoutClosing": "pass",
             "profileSavedAndClosed": "pass",
             "catalogXmlPersisted": "pass",
             "processRestartCatalogPersistence": "pass",
             "processRestartUiReadback": "pass",
-            "allValueControlsEdited": "pass",
-            "allValueControlsCatalogPersisted": "pass",
-            "allValueControlsRestartUiReadback": "pass",
+            "allVisibleValueControlsEdited": "pass",
+            "allVisibleValueControlsCatalogPersisted": "pass",
+            "allVisibleValueControlsRestartUiReadback": "pass",
+            "allHiddenValueControlsCatalogPreserved": "pass",
+            "allHiddenValueControlsRestartCatalogPreserved": "pass",
         },
     }
     args.receipt.parent.mkdir(parents=True, exist_ok=True)

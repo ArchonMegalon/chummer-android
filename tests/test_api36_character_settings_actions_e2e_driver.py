@@ -41,19 +41,14 @@ class Api36CharacterSettingsActionsE2EDriverTests(unittest.TestCase):
         self.assertIn('"profile": "phone"', source)
         self.assertNotIn('"profile": "tablet"', source)
 
-    def test_driver_covers_exactly_the_ten_remaining_actions(self) -> None:
+    def test_driver_covers_exactly_the_five_phone_profile_actions(self) -> None:
         self.assertEqual(
             {
                 "cboSetting",
-                "cmdEnableSourcebooks",
-                "cmdDecreaseCustomDirectoryLoadOrder",
-                "cmdIncreaseCustomDirectoryLoadOrder",
                 "cmdSaveAs",
                 "cmdRestoreDefaults",
                 "cmdDelete",
                 "cmdRename",
-                "cmdToBottomCustomDirectoryLoadOrder",
-                "cmdToTopCustomDirectoryLoadOrder",
             },
             set(driver.CONTROLS),
         )
@@ -65,13 +60,7 @@ class Api36CharacterSettingsActionsE2EDriverTests(unittest.TestCase):
             'tap_action(device, "rename")',
             'tap_action(device, "restore-defaults")',
             'tap_action(device, "delete")',
-            "save_custom_order",
-            "assert_sourcebook",
             "assert_after_restart",
-            '"customDataMovedDown": "pass"',
-            '"customDataMovedUp": "pass"',
-            '"customDataMovedToBottom": "pass"',
-            '"customDataMovedToTop": "pass"',
             '"processRestartUiReadback": "pass"',
         ):
             self.assertIn(marker, source)

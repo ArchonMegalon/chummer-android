@@ -483,26 +483,29 @@ CHARACTER_SETTINGS_PHONE_E2E_RECEIPT = (
 )
 CHARACTER_SETTINGS_E2E_JOURNEYS = (
     "actionSearchRoute",
-    "allEightPhoneSectionsReachable",
+    "allFivePhoneSectionsReachable",
     "checkboxEdited",
-    "textEdited",
     "numberEdited",
     "pickerEdited",
-    "sourcebookCollectionEdited",
-    "customDataCollectionEdited",
     "profileSavedWithoutClosing",
     "profileSavedAndClosed",
     "catalogXmlPersisted",
     "processRestartCatalogPersistence",
     "processRestartUiReadback",
-    "allValueControlsEdited",
-    "allValueControlsCatalogPersisted",
-    "allValueControlsRestartUiReadback",
+    "allVisibleValueControlsEdited",
+    "allVisibleValueControlsCatalogPersisted",
+    "allVisibleValueControlsRestartUiReadback",
+    "allHiddenValueControlsCatalogPreserved",
+    "allHiddenValueControlsRestartCatalogPreserved",
 )
 CHARACTER_SETTINGS_CONTROL_E2E_PROOF_KEYS = (
     "mutated",
     "catalogPersisted",
     "processRestartUiReadback",
+)
+CHARACTER_SETTINGS_HIDDEN_CONTROL_E2E_PROOF_KEYS = (
+    "catalogPreserved",
+    "processRestartCatalogPreserved",
 )
 CHARACTER_SETTINGS_ACTIONS_PHONE_E2E_RECEIPT = (
     REPO_ROOT
@@ -515,11 +518,6 @@ CHARACTER_SETTINGS_ACTIONS_E2E_JOURNEYS = (
     "profileSavedAs",
     "profileRenamed",
     "profileSelected",
-    "sourcebooksEnabled",
-    "customDataMovedDown",
-    "customDataMovedUp",
-    "customDataMovedToBottom",
-    "customDataMovedToTop",
     "defaultsRestored",
     "profileDeleted",
     "processRestartCatalogPersistence",
@@ -2125,9 +2123,17 @@ CHARACTER_SETTINGS_ACTION_AUTOMATION_IDS = {
     "cmdToBottomCustomDirectoryLoadOrder": "dialog-field-charactersettingscontrol-trecustomdatadirectories",
     "cmdToTopCustomDirectoryLoadOrder": "dialog-field-charactersettingscontrol-trecustomdatadirectories",
 }
+CHARACTER_SETTINGS_HIDDEN_COLLECTION_PROXIES = frozenset({
+    "cmdEnableSourcebooks",
+    "cmdDecreaseCustomDirectoryLoadOrder",
+    "cmdIncreaseCustomDirectoryLoadOrder",
+    "cmdToBottomCustomDirectoryLoadOrder",
+    "cmdToTopCustomDirectoryLoadOrder",
+})
 CHARACTER_SETTINGS_ACTION_E2E_CONTROLS = (
     frozenset(CHARACTER_SETTINGS_ACTION_AUTOMATION_IDS)
     - CHARACTER_SETTINGS_EXACT_API36_ACTIONS
+    - CHARACTER_SETTINGS_HIDDEN_COLLECTION_PROXIES
 )
 
 INERT_LEGACY_DESIGNER_FIELDS = {
@@ -6263,6 +6269,10 @@ def _validated_character_settings_phone_e2e_receipt() -> dict[str, Any] | None:
     native_root = REPO_ROOT / "src" / "Chummer.Android" / "Native"
     native_command = native_root / "NativeCommandPage.cs"
     native_dialog = native_root / "NativeDialogPage.cs"
+    phone_capabilities_source = native_root / "AndroidCharacterSettingsPhoneCapabilities.Generated.cs"
+    phone_capabilities_inventory = (
+        REPO_ROOT / "docs" / "ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json"
+    )
     coordinator = native_root / "RunnerSessionCoordinator.cs"
     presentation_root = WORKSPACE_ROOT / "chummer-presentation" / "Chummer.Presentation" / "Overview"
     dialog_factory = presentation_root / "DesktopDialogFactory.cs"
@@ -6275,6 +6285,8 @@ def _validated_character_settings_phone_e2e_receipt() -> dict[str, Any] | None:
         shared_driver,
         native_command,
         native_dialog,
+        phone_capabilities_source,
+        phone_capabilities_inventory,
         coordinator,
         dialog_factory,
         character_settings_dialog,
@@ -6291,19 +6303,29 @@ def _validated_character_settings_phone_e2e_receipt() -> dict[str, Any] | None:
         return None
     journeys = receipt.get("journeys")
     control_proofs = receipt.get("controls")
+    hidden_control_proofs = receipt.get("hiddenControls")
     apk_sha = str(receipt.get("apkSha256") or "")
-    contract_text = _read_text(contract)
-    fields_marker = "internal static IReadOnlyList<Chummer5CharacterSettingsFieldDefinition> Fields"
-    values_marker = "internal static IReadOnlyDictionary<string, IReadOnlyList<string>> BuiltInStandardValues"
-    if fields_marker not in contract_text or values_marker not in contract_text:
+    try:
+        capability_inventory = json.loads(_read_text(phone_capabilities_inventory))
+    except (json.JSONDecodeError, OSError):
         return None
-    fields_block = contract_text.split(fields_marker, 1)[1].split(values_marker, 1)[0]
-    expected_control_proofs = set(re.findall(r'new\("([^"]+)"', fields_block))
+    expected_control_proofs = {
+        str(row.get("legacyControl"))
+        for row in capability_inventory.get("controls", [])
+        if isinstance(row, dict) and row.get("phoneStatus") == "visible_editable"
+    }
+    expected_hidden_control_proofs = {
+        str(row.get("legacyControl"))
+        for row in capability_inventory.get("controls", [])
+        if isinstance(row, dict) and row.get("phoneStatus") == "hidden_preserved"
+    }
     expected_hashes = {
         "driverSha256": driver,
         "sharedDriverSha256": shared_driver,
         "nativeCommandPageSha256": native_command,
         "nativeDialogPageSha256": native_dialog,
+        "phoneCapabilitiesSourceSha256": phone_capabilities_source,
+        "phoneCapabilitiesInventorySha256": phone_capabilities_inventory,
         "runnerSessionCoordinatorSha256": coordinator,
         "dialogFactorySha256": dialog_factory,
         "characterSettingsDialogSha256": character_settings_dialog,
@@ -6321,12 +6343,23 @@ def _validated_character_settings_phone_e2e_receipt() -> dict[str, Any] | None:
         and isinstance(journeys, dict)
         and all(journeys.get(journey) == "pass" for journey in CHARACTER_SETTINGS_E2E_JOURNEYS)
         and isinstance(control_proofs, dict)
-        and receipt.get("valueControlCount") == len(expected_control_proofs) == 150
+        and receipt.get("valueControlCount") == len(expected_control_proofs) == 17
         and set(control_proofs) == expected_control_proofs
         and all(
             isinstance(proof, dict)
             and all(proof.get(key) == "pass" for key in CHARACTER_SETTINGS_CONTROL_E2E_PROOF_KEYS)
             for proof in control_proofs.values()
+        )
+        and isinstance(hidden_control_proofs, dict)
+        and receipt.get("hiddenValueControlCount") == len(expected_hidden_control_proofs) == 133
+        and set(hidden_control_proofs) == expected_hidden_control_proofs
+        and all(
+            isinstance(proof, dict)
+            and all(
+                proof.get(key) == "pass"
+                for key in CHARACTER_SETTINGS_HIDDEN_CONTROL_E2E_PROOF_KEYS
+            )
+            for proof in hidden_control_proofs.values()
         )
         and re.fullmatch(r"[0-9a-f]{64}", apk_sha)
     ):
@@ -6382,7 +6415,7 @@ def _validated_character_settings_actions_phone_e2e_receipt() -> dict[str, Any] 
             for journey in CHARACTER_SETTINGS_ACTIONS_E2E_JOURNEYS
         )
         and isinstance(control_proofs, dict)
-        and receipt.get("controlCount") == len(CHARACTER_SETTINGS_ACTION_E2E_CONTROLS) == 10
+        and receipt.get("controlCount") == len(CHARACTER_SETTINGS_ACTION_E2E_CONTROLS) == 5
         and set(control_proofs) == CHARACTER_SETTINGS_ACTION_E2E_CONTROLS
         and all(
             isinstance(proof, dict)
@@ -7725,6 +7758,7 @@ def _known_phone_mapping(
         character_settings_dialog = overview / "DesktopDialogFactory.CharacterSettings.cs"
         profiles = overview / "Chummer5CharacterSettingsProfiles.cs"
         runtime_contract = overview / "Chummer5CharacterSettingsRuntimeContract.Generated.cs"
+        phone_capabilities = native_root / "AndroidCharacterSettingsPhoneCapabilities.Generated.cs"
         dialog_coordinator = overview / "DialogCoordinator.cs"
         profile_tests = presentation_root / "Chummer.Tests" / "Presentation" / "Chummer5CharacterSettingsProfilesTests.cs"
 
@@ -7732,6 +7766,33 @@ def _known_phone_mapping(
         value_field = _contains(runtime_contract, f'new("{control}",')
         if not value_field and action_automation_id is None:
             return None
+        phone_value_field = _contains(phone_capabilities, f'new("{control}",')
+        hidden_collection_proxy = control in CHARACTER_SETTINGS_HIDDEN_COLLECTION_PROXIES
+        if (value_field and not phone_value_field) or hidden_collection_proxy:
+            return {
+                "status": "partial_exact_saved_data",
+                "route": "Build > Actions > Character Settings (hidden on phone)",
+                "surface": "NativeDialogPage",
+                "automationId": None,
+                "coverageLimit": (
+                    "the imported desktop value remains in the profile XML, but no current "
+                    "Preview 11 phone wizard reads it"
+                ),
+                "sourceRefs": [
+                    "src/Chummer.Android/Native/NativeDialogPage.cs",
+                    "src/Chummer.Android/Native/AndroidCharacterSettingsPhoneCapabilities.Generated.cs",
+                    "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
+                    "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs",
+                ],
+                "presenterMutation": None,
+                "persistenceAssertion": (
+                    f"Android projection hides {control} and retains its imported profile XML value unchanged"
+                ),
+                "e2e": {
+                    "status": "not_applicable_phone_scope",
+                    "ref": "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
+                },
+            }
 
         implementation_complete = (
             _contains(
@@ -7781,19 +7842,18 @@ def _known_phone_mapping(
         e2e_scripted = _contains(
             e2e_driver,
             "command-action-character-settings",
-            "dialog-field-charactersettingscontrol-chkdontusecyberlimbcalculation",
-            "dialog-field-charactersettingscontrol-tresourcebook",
-            "dialog-field-charactersettingscontrol-chkenforcecapacity",
-            "dialog-field-charactersettingscontrol-nudnuyendecimalsminimum",
-            "dialog-field-charactersettingscontrol-nudkarmamysticadeptpowerpoint",
-            "dialog-field-charactersettingscontrol-trecustomdatadirectories",
-            "dialog-field-charactersettingscontrol-chknoarmorencumbrance",
-            "dialog-field-charactersettingscontrol-cbobuildmethod",
+            "load_phone_capabilities",
+            "len(visible) != 17",
+            "len(hidden) != 133",
+            "assert_hidden_controls_preserved",
             "dialog-action-save-and-close",
             '"controls": control_proofs',
-            '"allValueControlsEdited": "pass"',
-            '"allValueControlsCatalogPersisted": "pass"',
-            '"allValueControlsRestartUiReadback": "pass"',
+            '"hiddenControls": hidden_control_proofs',
+            '"allVisibleValueControlsEdited": "pass"',
+            '"allVisibleValueControlsCatalogPersisted": "pass"',
+            '"allVisibleValueControlsRestartUiReadback": "pass"',
+            '"allHiddenValueControlsCatalogPreserved": "pass"',
+            '"allHiddenValueControlsRestartCatalogPreserved": "pass"',
             '"processRestartUiReadback": "pass"',
         )
         phone_e2e = (
@@ -7851,6 +7911,7 @@ def _known_phone_mapping(
         source_refs = [
             "src/Chummer.Android/Native/NativeCommandPage.cs",
             "src/Chummer.Android/Native/NativeDialogPage.cs",
+            "src/Chummer.Android/Native/AndroidCharacterSettingsPhoneCapabilities.Generated.cs",
             "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
             "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.CharacterSettings.cs",
             "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs",
@@ -7890,7 +7951,7 @@ def _known_phone_mapping(
             "coverageLimit": (
                 "this exact legacy control was mutated and read back after process restart on API 36"
                 if exact_api36
-                else "all 150 value controls round-trip mechanically and every section/control kind is device-proven, but this exact legacy control still needs an individual API 36 mutation"
+                else "all 17 phone-visible value controls are scripted with restart readback, but this exact legacy control still needs an individual API 36 mutation"
             ),
             "sourceRefs": source_refs,
             "presenterMutation": "Chummer5CharacterSettingsProfiles / DialogCoordinator.ApplyCharacterSettings",
@@ -23968,6 +24029,7 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ConditionMonitorEditPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "OriginDossierPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "NativeDialogPage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "AndroidCharacterSettingsPhoneCapabilities.Generated.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "NativeCommandPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CreationPrerequisitePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CreationPriorityCategoryPage.cs",

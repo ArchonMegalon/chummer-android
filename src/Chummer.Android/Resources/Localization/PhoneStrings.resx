@@ -102,6 +102,32 @@
   <data name="RunnerSetup" xml:space="preserve"><value>Runner setup</value></data>
   <data name="DialogApplyingChoice" xml:space="preserve"><value>Applying your choice… This may take a moment.</value></data>
   <data name="CharacterSettingsCustomDataScope" xml:space="preserve"><value>Custom data directories are desktop-only and hidden on Android. Their saved values remain unchanged in the settings profile.</value></data>
-  <data name="CharacterSettingsRulesScope" xml:space="preserve"><value>These runner rules belong to the settings profile and apply across Chummer platforms.</value></data>
+  <data name="CharacterSettingsRulesScope" xml:space="preserve"><value>Every setting shown here is read by a current Preview 11 phone wizard.</value></data>
   <data name="CharacterSettingsUnsupportedScope" xml:space="preserve"><value>This settings section is not available on Android. Its saved values remain in the profile.</value></data>
+  <data name="CharacterSettingsPhoneMessage" xml:space="preserve"><value>Edit only settings used by the Preview 11 phone wizards. Hidden desktop values remain unchanged in the profile.</value></data>
+  <data name="CharacterSettingsProfile" xml:space="preserve"><value>Settings profile</value></data>
+  <data name="CharacterSettingsProfileName" xml:space="preserve"><value>Profile name</value></data>
+  <data name="CharacterSettingsSection" xml:space="preserve"><value>Settings section</value></data>
+  <data name="CharacterSettingsSectionWare" xml:space="preserve"><value>Ware and cyberlimbs</value></data>
+  <data name="CharacterSettingsSectionRules" xml:space="preserve"><value>Career rules</value></data>
+  <data name="CharacterSettingsSectionKarma" xml:space="preserve"><value>Career Karma costs</value></data>
+  <data name="CharacterSettingsSectionLimits" xml:space="preserve"><value>Career rating limits</value></data>
+  <data name="CharacterSettingsSectionBuild" xml:space="preserve"><value>Creation</value></data>
+  <data name="CharacterSettingBuildMethod" xml:space="preserve"><value>Creation build method</value></data>
+  <data name="CharacterSettingDontUseCyberlimbCalculation" xml:space="preserve"><value>Ignore cyberlimbs in augmented attribute totals</value></data>
+  <data name="CharacterSettingCyberlimbConfiguration" xml:space="preserve"><value>Cyberlimb slots used for attribute totals</value></data>
+  <data name="CharacterSettingKarmaNewActiveSkill" xml:space="preserve"><value>Karma cost: new active skill</value></data>
+  <data name="CharacterSettingKarmaImproveActiveSkill" xml:space="preserve"><value>Karma multiplier: improve active skill</value></data>
+  <data name="CharacterSettingKarmaNewSkillGroup" xml:space="preserve"><value>Karma cost: new skill group</value></data>
+  <data name="CharacterSettingKarmaImproveSkillGroup" xml:space="preserve"><value>Karma multiplier: improve skill group</value></data>
+  <data name="CharacterSettingCompensateSkillGroupKarmaDifference" xml:space="preserve"><value>Compensate skill-group Karma difference</value></data>
+  <data name="CharacterSettingKarmaAttribute" xml:space="preserve"><value>Karma multiplier: improve attribute</value></data>
+  <data name="CharacterSettingAlternateMetatypeAttributeKarma" xml:space="preserve"><value>Use alternate metatype attribute Karma</value></data>
+  <data name="CharacterSettingUnclampAttributeMinimum" xml:space="preserve"><value>Allow attributes below the normal minimum</value></data>
+  <data name="CharacterSettingMysticAdeptSecondMagicAttribute" xml:space="preserve"><value>Use a second Magic attribute for mystic adepts</value></data>
+  <data name="CharacterSettingKarmaNewKnowledgeSkill" xml:space="preserve"><value>Karma cost: new knowledge skill</value></data>
+  <data name="CharacterSettingKarmaImproveKnowledgeSkill" xml:space="preserve"><value>Karma multiplier: improve knowledge skill</value></data>
+  <data name="CharacterSettingMaxSkillRating" xml:space="preserve"><value>Maximum career active-skill rating</value></data>
+  <data name="CharacterSettingMaxKnowledgeSkillRating" xml:space="preserve"><value>Maximum career knowledge-skill rating</value></data>
+  <data name="CharacterSettingUsePointsOnBrokenGroups" xml:space="preserve"><value>Allow points on broken skill groups</value></data>
 </root>

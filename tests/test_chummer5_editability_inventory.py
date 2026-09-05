@@ -3066,11 +3066,11 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 525,
+                "implemented_pending_emulator": 387,
                 "missing": 940,
                 "not_applicable_non_mutating": 478,
                 "partial_create_only": 106,
-                "partial_exact_saved_data": 180,
+                "partial_exact_saved_data": 318,
             },
             payload["summary"]["phoneStatusCounts"],
         )
@@ -3838,6 +3838,30 @@ int ammoRemaining = savedAmmoRemaining;
             if row["semanticOperation"]
             in {"set_value", "edit_sourcebooks", "edit_custom_data_directories"}
         }
+        phone_capabilities = json.loads(
+            (
+                REPO
+                / "docs"
+                / "ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json"
+            ).read_text(encoding="utf-8")
+        )
+        visible_value_controls = {
+            row["legacyControl"]
+            for row in phone_capabilities["controls"]
+            if row["phoneStatus"] == "visible_editable"
+        }
+        hidden_value_controls = value_controls - visible_value_controls
+        hidden_collection_proxies = {
+            "cmdEnableSourcebooks",
+            "cmdDecreaseCustomDirectoryLoadOrder",
+            "cmdIncreaseCustomDirectoryLoadOrder",
+            "cmdToBottomCustomDirectoryLoadOrder",
+            "cmdToTopCustomDirectoryLoadOrder",
+        }
+        visible_actions = (
+            set(inventory.CHARACTER_SETTINGS_ACTION_AUTOMATION_IDS)
+            - hidden_collection_proxies
+        )
         exact_controls = value_controls | set(inventory.CHARACTER_SETTINGS_ACTION_AUTOMATION_IDS)
         rows = {
             row["legacy"]["controlName"]: row
@@ -3853,10 +3877,10 @@ int ammoRemaining = savedAmmoRemaining;
         action_receipt_current = (
             inventory._validated_character_settings_actions_phone_e2e_receipt() is not None
         )
-        for control in exact_controls:
+        for control in visible_value_controls | visible_actions:
             receipt_current = (
                 value_receipt_current
-                if control in value_controls or control in inventory.CHARACTER_SETTINGS_EXACT_API36_ACTIONS
+                if control in visible_value_controls or control in inventory.CHARACTER_SETTINGS_EXACT_API36_ACTIONS
                 else action_receipt_current
             )
             self.assertEqual(
@@ -3880,6 +3904,14 @@ int ammoRemaining = savedAmmoRemaining;
                     },
                     rows[control]["e2e"]["phone"]["controlProof"],
                 )
+        for control in hidden_value_controls | hidden_collection_proxies:
+            self.assertEqual("partial_exact_saved_data", rows[control]["phone"]["status"])
+            self.assertIsNone(rows[control]["phone"]["automationId"])
+            self.assertEqual(
+                "not_applicable_phone_scope",
+                rows[control]["e2e"]["phone"]["status"],
+            )
+            self.assertIn("retains", rows[control]["persistenceAssertion"])
         self.assertTrue(all(row["tablet"]["status"] == "missing" for row in rows.values()))
         self.assertEqual(
             "dialog-field-charactersettingsprofile",
@@ -4524,8 +4556,6 @@ public sealed class Demo
             "The checked-in API-36 receipt must fail closed after source drift.",
         )
 
-        source = inventory.CHARACTER_SETTINGS_PHONE_E2E_RECEIPT
-        receipt = json.loads(source.read_text(encoding="utf-8"))
         native_root = REPO / "src" / "Chummer.Android" / "Native"
         overview = (
             inventory.WORKSPACE_ROOT
@@ -4538,6 +4568,8 @@ public sealed class Demo
             "sharedDriverSha256": REPO / "tests" / "run_api36_editing_e2e.py",
             "nativeCommandPageSha256": native_root / "NativeCommandPage.cs",
             "nativeDialogPageSha256": native_root / "NativeDialogPage.cs",
+            "phoneCapabilitiesSourceSha256": native_root / "AndroidCharacterSettingsPhoneCapabilities.Generated.cs",
+            "phoneCapabilitiesInventorySha256": REPO / "docs" / "ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
             "runnerSessionCoordinatorSha256": native_root / "RunnerSessionCoordinator.cs",
             "dialogFactorySha256": overview / "DesktopDialogFactory.cs",
             "characterSettingsDialogSha256": overview / "DesktopDialogFactory.CharacterSettings.cs",
@@ -4545,12 +4577,45 @@ public sealed class Demo
             "characterSettingsContractSha256": overview / "Chummer5CharacterSettingsRuntimeContract.Generated.cs",
             "dialogCoordinatorSha256": overview / "DialogCoordinator.cs",
         }
-        receipt.update(
-            {
+        capabilities = json.loads(
+            source_paths["phoneCapabilitiesInventorySha256"].read_text(encoding="utf-8")
+        )
+        visible = {
+            row["legacyControl"]: {
+                key: "pass"
+                for key in inventory.CHARACTER_SETTINGS_CONTROL_E2E_PROOF_KEYS
+            }
+            for row in capabilities["controls"]
+            if row["phoneStatus"] == "visible_editable"
+        }
+        hidden = {
+            row["legacyControl"]: {
+                key: "pass"
+                for key in inventory.CHARACTER_SETTINGS_HIDDEN_CONTROL_E2E_PROOF_KEYS
+            }
+            for row in capabilities["controls"]
+            if row["phoneStatus"] == "hidden_preserved"
+        }
+        receipt = {
+            "schema": "chummer.android.editing-e2e/v1",
+            "status": "pass",
+            "profile": "phone",
+            "journey": "character-settings",
+            "apiLevel": 36,
+            "apkSha256": "a" * 64,
+            "valueControlCount": len(visible),
+            "hiddenValueControlCount": len(hidden),
+            "controls": visible,
+            "hiddenControls": hidden,
+            "journeys": {
+                journey: "pass"
+                for journey in inventory.CHARACTER_SETTINGS_E2E_JOURNEYS
+            },
+            **{
                 key: inventory._sha256_file(path)
                 for key, path in source_paths.items()
-            }
-        )
+            },
+        }
         with tempfile.TemporaryDirectory(dir=REPO / "docs") as temporary:
             receipt_path = Path(temporary) / "receipt.json"
             receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
@@ -6646,11 +6711,11 @@ public sealed class Demo
         self.assertEqual(0, recognition["completionCountContribution"])
         self.assertEqual(
             {
-                "implemented_pending_emulator": 525,
+                "implemented_pending_emulator": 387,
                 "missing": 940,
                 "not_applicable_non_mutating": 478,
                 "partial_create_only": 106,
-                "partial_exact_saved_data": 180,
+                "partial_exact_saved_data": 318,
             },
             payload["summary"]["phoneStatusCounts"],
         )

@@ -7,7 +7,6 @@ import argparse
 import json
 import subprocess
 import sys
-import time
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from pathlib import Path
@@ -19,25 +18,18 @@ import run_api36_character_settings_e2e as settings
 shared = settings.shared
 CONTROLS = (
     "cboSetting",
-    "cmdEnableSourcebooks",
-    "cmdDecreaseCustomDirectoryLoadOrder",
-    "cmdIncreaseCustomDirectoryLoadOrder",
     "cmdSaveAs",
     "cmdRestoreDefaults",
     "cmdDelete",
     "cmdRename",
-    "cmdToBottomCustomDirectoryLoadOrder",
-    "cmdToTopCustomDirectoryLoadOrder",
 )
 CONTROL_PROOF_KEYS = (
     "mutated",
     "catalogPersisted",
     "processRestartReadback",
 )
-SOURCEBOOK = "ACTIONBOOK"
 PERSISTED_PROFILE = "Action Renamed"
 THROWAWAY_PROFILE = "Delete Me"
-FINAL_CUSTOM_ORDER = ("alpha-action", "beta-action", "gamma-action")
 
 
 def profiles(catalog: dict[str, object]) -> list[dict[str, object]]:
@@ -73,28 +65,6 @@ def assert_profile_names(catalog: dict[str, object], expected: set[str]) -> None
         )
 
 
-def assert_sourcebook(catalog: dict[str, object], profile_name: str) -> None:
-    observed = tuple(
-        element.text or ""
-        for element in profile_xml(catalog, profile_name).findall("books/book")
-    )
-    if observed != (SOURCEBOOK,):
-        raise RuntimeError(f"Enabled sourcebooks were {observed!r}, expected {(SOURCEBOOK,)!r}")
-
-
-def custom_order(catalog: dict[str, object], profile_name: str) -> tuple[str, ...]:
-    entries = profile_xml(catalog, profile_name).findall(
-        "customdatadirectorynames/customdatadirectoryname"
-    )
-    ordered = sorted(
-        entries,
-        key=lambda element: int(element.findtext("order", default="999999")),
-    )
-    if not all(element.findtext("enabled", default="").lower() == "true" for element in ordered):
-        raise RuntimeError("Custom data reorder disabled an entry")
-    return tuple(element.findtext("directoryname", default="") for element in ordered)
-
-
 def tap_action(device: shared.Device, action: str) -> None:
     device.tap(
         f"dialog-action-{action}",
@@ -115,49 +85,6 @@ def set_profile_name(device: shared.Device, name: str) -> None:
     )
 
 
-def set_multiline_text(
-    device: shared.Device,
-    selector: str,
-    lines: tuple[str, ...],
-) -> None:
-    if not lines:
-        raise RuntimeError("Multiline Character Settings mutation requires at least one line")
-    settings.set_exact_text(device, selector, lines[0])
-    node = settings.wait_exact_field(device, selector)
-    device.shell("input", "tap", *(str(value) for value in node.center))
-    device.shell("input", "keyevent", "123")
-    for line in lines[1:]:
-        device.shell("input", "keyevent", "66")
-        device.shell("input", "text", line)
-    time.sleep(0.75)
-    updated = settings.find_exact(device, selector)
-    actual = "" if updated is None else updated.attributes.get("text", "")
-    if tuple(actual.replace("\r", "").split("\n")) != lines:
-        device.capture("character-settings-custom-order-input-failed")
-        raise RuntimeError(
-            f"Custom data editor rendered {actual!r}, expected newline order {lines!r}"
-        )
-    device.dismiss_keyboard()
-
-
-def save_custom_order(
-    device: shared.Device,
-    expected: tuple[str, ...],
-) -> dict[str, object]:
-    settings.activate_section(device, "Custom data")
-    set_multiline_text(
-        device,
-        "dialog-field-charactersettingscontrol-trecustomdatadirectories",
-        expected,
-    )
-    tap_action(device, "save")
-    catalog = settings.read_catalog(device)
-    observed = custom_order(catalog, PERSISTED_PROFILE)
-    if observed != expected:
-        raise RuntimeError(f"Custom data order persisted as {observed!r}, expected {expected!r}")
-    return catalog
-
-
 def run_actions(device: shared.Device) -> None:
     settings.create_runner(device)
     settings.open_character_settings(device)
@@ -174,29 +101,12 @@ def run_actions(device: shared.Device) -> None:
     assert_profile_names(catalog, {"Standard", PERSISTED_PROFILE})
     assert_active_profile(catalog, PERSISTED_PROFILE)
 
-    settings.activate_section(device, "Sourcebooks")
-    settings.set_exact_text(
-        device,
-        "dialog-field-charactersettingscontrol-tresourcebook",
-        SOURCEBOOK,
-    )
-    tap_action(device, "save")
-    assert_sourcebook(settings.read_catalog(device), PERSISTED_PROFILE)
-
-    for expected in (
-        ("beta-action", "alpha-action", "gamma-action"),
-        ("alpha-action", "beta-action", "gamma-action"),
-        ("beta-action", "gamma-action", "alpha-action"),
-        FINAL_CUSTOM_ORDER,
-    ):
-        save_custom_order(device, expected)
-
     settings.shared.reset_scroll_to_top(device, swipes=12)
     settings.select_option(device, "dialog-field-charactersettingsprofile", "Standard")
     profile_node = settings.wait_exact_field(device, "dialog-field-charactersettingsprofile")
     if profile_node.attributes.get("text") != "Standard":
         raise RuntimeError("Character Settings profile selector did not switch to Standard")
-    settings.activate_section(device, "Build method")
+    settings.activate_section(device, "Creation")
     settings.select_option(
         device,
         "dialog-field-charactersettingscontrol-cbobuildmethod",
@@ -238,9 +148,6 @@ def run_actions(device: shared.Device) -> None:
     tap_action(device, "save")
     catalog = settings.read_catalog(device)
     assert_active_profile(catalog, PERSISTED_PROFILE)
-    assert_sourcebook(catalog, PERSISTED_PROFILE)
-    if custom_order(catalog, PERSISTED_PROFILE) != FINAL_CUSTOM_ORDER:
-        raise RuntimeError("Final custom data order was not durable before restart")
     if profile_xml(catalog, "Standard").findtext("buildmethod", default="") != "Priority":
         raise RuntimeError("Restored Standard build method was not saved")
     device.capture("phone-character-settings-actions-saved")
@@ -250,39 +157,15 @@ def assert_after_restart(device: shared.Device) -> None:
     catalog = settings.read_catalog(device)
     assert_profile_names(catalog, {"Standard", PERSISTED_PROFILE})
     assert_active_profile(catalog, PERSISTED_PROFILE)
-    assert_sourcebook(catalog, PERSISTED_PROFILE)
-    if custom_order(catalog, PERSISTED_PROFILE) != FINAL_CUSTOM_ORDER:
-        raise RuntimeError("Custom data action order did not survive process restart")
     if profile_xml(catalog, "Standard").findtext("buildmethod", default="") != "Priority":
         raise RuntimeError("Restore Defaults result did not survive process restart")
 
     active = settings.wait_exact_field(device, "dialog-field-charactersettingsprofile")
     if active.attributes.get("text") != PERSISTED_PROFILE:
         raise RuntimeError("Profile selection did not survive process restart")
-    settings.activate_section(device, "Sourcebooks")
-    sourcebooks = settings.wait_exact_field(
-        device,
-        "dialog-field-charactersettingscontrol-tresourcebook",
-    )
-    if sourcebooks.attributes.get("text") != SOURCEBOOK:
-        raise RuntimeError("Enabled sourcebook UI did not survive process restart")
-    settings.activate_section(device, "Custom data")
-    custom = settings.wait_exact_field(
-        device,
-        "dialog-field-charactersettingscontrol-trecustomdatadirectories",
-    )
-    rendered_order = tuple(
-        line.removeprefix("[x] ").strip()
-        for line in custom.attributes.get("text", "").replace("\r", "").split("\n")
-        if line.strip()
-    )
-    if rendered_order != FINAL_CUSTOM_ORDER:
-        raise RuntimeError(
-            f"Custom data UI order was {rendered_order!r}, expected {FINAL_CUSTOM_ORDER!r}"
-        )
     settings.shared.reset_scroll_to_top(device, swipes=12)
     settings.select_option(device, "dialog-field-charactersettingsprofile", "Standard")
-    settings.activate_section(device, "Build method")
+    settings.activate_section(device, "Creation")
     restored = settings.wait_exact_field(
         device,
         "dialog-field-charactersettingscontrol-cbobuildmethod",
@@ -373,11 +256,6 @@ def main() -> int:
             "profileSavedAs": "pass",
             "profileRenamed": "pass",
             "profileSelected": "pass",
-            "sourcebooksEnabled": "pass",
-            "customDataMovedDown": "pass",
-            "customDataMovedUp": "pass",
-            "customDataMovedToBottom": "pass",
-            "customDataMovedToTop": "pass",
             "defaultsRestored": "pass",
             "profileDeleted": "pass",
             "processRestartCatalogPersistence": "pass",

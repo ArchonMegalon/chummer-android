@@ -1,3 +1,4 @@
+import json
 import unittest
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -6,6 +7,9 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 PROJECT = REPO / "src" / "Chummer.Android"
 RESOURCES = PROJECT / "Resources" / "Localization"
+PHONE_CAPABILITIES = (
+    REPO / "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json"
+)
 
 
 def load_resx(name: str) -> dict[str, str]:
@@ -96,10 +100,34 @@ class PhoneLocalizationSourceContractTests(unittest.TestCase):
             "CharacterSettingsCustomDataScope",
             "CharacterSettingsRulesScope",
             "CharacterSettingsUnsupportedScope",
+            "CharacterSettingsPhoneMessage",
+            "CharacterSettingsProfile",
+            "CharacterSettingsProfileName",
+            "CharacterSettingsSection",
+            "CharacterSettingsSectionWare",
+            "CharacterSettingsSectionRules",
+            "CharacterSettingsSectionKarma",
+            "CharacterSettingsSectionLimits",
+            "CharacterSettingsSectionBuild",
         }
+        inventory = json.loads(PHONE_CAPABILITIES.read_text(encoding="utf-8"))
+        visible = [
+            row
+            for row in inventory["controls"]
+            if row["phoneStatus"] == "visible_editable"
+        ]
+        capability_label_keys = {row["labelResourceKey"] for row in visible}
         for language, catalog in catalogs.items():
-            self.assertTrue(scope_keys.issubset(catalog), language)
-            self.assertTrue(all(catalog[key] for key in scope_keys), language)
+            required = scope_keys | capability_label_keys
+            self.assertTrue(required.issubset(catalog), language)
+            self.assertTrue(all(catalog[key] for key in required), language)
+
+        for row in visible:
+            self.assertEqual(
+                row["englishLabel"],
+                catalogs["en"][row["labelResourceKey"]],
+                row["legacyControl"],
+            )
 
         self.assertIn("desktop-only", catalogs["en"]["CharacterSettingsCustomDataScope"])
         self.assertIn("nur auf dem Desktop", catalogs["de"]["CharacterSettingsCustomDataScope"])
