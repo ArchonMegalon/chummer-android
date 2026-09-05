@@ -86,6 +86,25 @@ class PhoneLocalizationSourceContractTests(unittest.TestCase):
             self.assertNotIn(f'AutomationId = "{desktop_only_id}"', settings)
         self.assertNotIn("SaveApplicationSettingsAsync", coordinator)
 
+    def test_character_settings_scope_is_explicit_in_all_supported_languages(self) -> None:
+        catalogs = {
+            "en": load_resx("PhoneStrings.resx"),
+            "de": load_resx("PhoneStrings.de.resx"),
+            "es": load_resx("PhoneStrings.es.resx"),
+        }
+        scope_keys = {
+            "CharacterSettingsCustomDataScope",
+            "CharacterSettingsRulesScope",
+            "CharacterSettingsUnsupportedScope",
+        }
+        for language, catalog in catalogs.items():
+            self.assertTrue(scope_keys.issubset(catalog), language)
+            self.assertTrue(all(catalog[key] for key in scope_keys), language)
+
+        self.assertIn("desktop-only", catalogs["en"]["CharacterSettingsCustomDataScope"])
+        self.assertIn("nur auf dem Desktop", catalogs["de"]["CharacterSettingsCustomDataScope"])
+        self.assertIn("exclusivos del escritorio", catalogs["es"]["CharacterSettingsCustomDataScope"])
+
 
 if __name__ == "__main__":
     unittest.main()

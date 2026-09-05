@@ -67,7 +67,7 @@ SHA256 = re.compile(r"^[0-9a-f]{64}$")
 PID = re.compile(r"^[1-9][0-9]*$")
 SERIAL = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 COMPONENT = re.compile(r"^com\.myexternalbrain\.chummer/[A-Za-z0-9._$]+$")
-ADB_FILE_HIERARCHY_REMOTE_PATH = "/sdcard/chummer-editing-window.xml"
+ADB_FILE_HIERARCHY_REMOTE_PATH = "/data/local/tmp/chummer-editing-window.xml"
 ADB_FILE_HIERARCHY_REMOVE_ARGUMENTS = (
     "shell", "rm", "-f", ADB_FILE_HIERARCHY_REMOTE_PATH,
 )
@@ -3172,7 +3172,7 @@ def validate_remote_cleanup(journey_id: str, raw: Mapping[str, object]) -> None:
         return
     if (
         len(paths) != len(set(paths))
-        or "/sdcard/chummer-editing-window.xml" not in paths
+        or "/data/local/tmp/chummer-editing-window.xml" not in paths
         or len([path for path in paths if re.fullmatch(r"/sdcard/Download/[A-Za-z0-9][A-Za-z0-9._-]{0,126}\.chum5", path)]) != 1
     ):
         raise ValueError(f"{journey_id} remote cleanup paths are not the exact fixture/hierarchy set")

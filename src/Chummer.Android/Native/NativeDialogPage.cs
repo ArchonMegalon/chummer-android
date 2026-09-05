@@ -1,4 +1,5 @@
 using Chummer.Presentation.Overview;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 
 [assembly: InternalsVisibleTo("Chummer.Android.Native.InteractionTests")]
@@ -75,6 +76,14 @@ public sealed class NativeDialogPage : ContentPage
             body.Add(NativeTheme.Body(dialog.Message, NativeTheme.Muted));
         }
 
+        string? settingsScopeDetail = AndroidDialogSettingsScope.Detail(dialog);
+        if (!string.IsNullOrWhiteSpace(settingsScopeDetail))
+        {
+            Label scopeLabel = NativeTheme.Body(settingsScopeDetail, NativeTheme.Muted);
+            scopeLabel.AutomationId = "dialog-settings-scope";
+            body.Add(NativeTheme.Card(scopeLabel));
+        }
+
         foreach (DesktopDialogField field in dialog.Fields)
         {
             if (string.Equals(field.LayoutSlot, DesktopDialogFieldLayoutSlots.Hidden, StringComparison.Ordinal))
@@ -82,7 +91,11 @@ public sealed class NativeDialogPage : ContentPage
                 continue;
             }
 
-            body.Add(CreateField(dialog.Id, _renderGeneration, field));
+            NativeDialogScopedField scopedField = AndroidDialogSettingsScope.Project(dialog, field);
+            if (scopedField.IsVisible)
+            {
+                body.Add(CreateField(dialog.Id, _renderGeneration, field, scopedField));
+            }
         }
 
         Grid actions = new()
@@ -148,23 +161,29 @@ public sealed class NativeDialogPage : ContentPage
         _closeToolbarItem.IsEnabled = !_interactionBusy;
     }
 
-    private View CreateField(string dialogId, long renderGeneration, DesktopDialogField field)
+    private View CreateField(
+        string dialogId,
+        long renderGeneration,
+        DesktopDialogField field,
+        NativeDialogScopedField scopedField)
     {
         VerticalStackLayout fieldLayout = new() { Spacing = 7 };
-        Label label = NativeTheme.Body(field.Label);
+        Label label = NativeTheme.Body(scopedField.Label);
         label.FontAttributes = FontAttributes.Bold;
         fieldLayout.Add(label);
         NativeDialogFieldBinding binding = CreateFieldBinding(dialogId, renderGeneration, field);
 
         if (string.Equals(field.InputType, "select", StringComparison.OrdinalIgnoreCase))
         {
-            IReadOnlyList<DesktopDialogFieldOption> options = field.Options ?? [];
+            IReadOnlyList<DesktopDialogFieldOption> options = scopedField.Options ?? [];
             int selectedIndex = options.ToList().FindIndex(option =>
                 string.Equals(option.Value, field.Value, StringComparison.Ordinal));
             Picker picker = new()
             {
                 AutomationId = $"dialog-field-{Token(field.Id)}",
-                Title = string.IsNullOrWhiteSpace(field.Placeholder) ? $"Choose {field.Label}" : field.Placeholder,
+                Title = string.IsNullOrWhiteSpace(field.Placeholder)
+                    ? $"Choose {scopedField.Label}"
+                    : field.Placeholder,
                 ItemsSource = options.Select(static option => option.Label).ToArray(),
                 SelectedIndex = selectedIndex,
                 IsEnabled = !field.IsReadOnly && !_interactionBusy,
@@ -816,6 +835,146 @@ internal sealed class NativeDialogInteractionGate
             completion.TrySetResult();
         }
     }
+}
+
+internal sealed record NativeDialogScopedField(
+    bool IsVisible,
+    string Label,
+    IReadOnlyList<DesktopDialogFieldOption>? Options);
+
+/// <summary>
+/// Applies Android-owned capability semantics to the desktop-compatible dialog projection without
+/// changing dialog, field, option, or persisted settings identities. Character-settings sections
+/// are an explicit Android allowlist: unknown or Android-unsupported sections and fields are hidden
+/// until the phone has deliberately classified them. Every other dialog passes through unchanged
+/// so creation and career wizard behavior remains presentation-owned.
+/// </summary>
+internal static class AndroidDialogSettingsScope
+{
+    internal const string CharacterSettingsDialogId = "dialog.character_settings";
+    internal const string ProfileFieldId = "characterSettingsProfile";
+    internal const string ProfileNameFieldId = "characterSettingsProfileName";
+    internal const string SectionFieldId = "characterSettingsSection";
+    internal const string LoadedProfileFieldId = "characterSettingsLoadedProfile";
+    internal const string DraftXmlFieldId = "characterSettingsDraftXml";
+    internal const string ControlFieldPrefix = "characterSettingsControl-";
+    internal const string CustomDataSectionId = "custom-data";
+    internal const string CustomDataFieldId = "characterSettingsControl-treCustomDataDirectories";
+
+    private static readonly HashSet<string> KnownRulesSections = new(StringComparer.Ordinal)
+    {
+        "ware",
+        "sourcebooks",
+        "rules",
+        "formulas",
+        "karma",
+        "limits",
+        "build"
+    };
+
+    private static readonly HashSet<string> KnownSections = new(KnownRulesSections, StringComparer.Ordinal);
+
+    private static readonly HashSet<string> StructuralFieldIds = new(StringComparer.Ordinal)
+    {
+        ProfileFieldId,
+        ProfileNameFieldId,
+        SectionFieldId,
+        LoadedProfileFieldId,
+        DraftXmlFieldId
+    };
+
+    internal static NativeDialogScopedField Project(
+        DesktopDialogState dialog,
+        DesktopDialogField field,
+        CultureInfo? culture = null)
+    {
+        ArgumentNullException.ThrowIfNull(dialog);
+        ArgumentNullException.ThrowIfNull(field);
+
+        if (!IsCharacterSettings(dialog))
+        {
+            return new NativeDialogScopedField(true, field.Label, field.Options);
+        }
+
+        if (string.Equals(field.Id, SectionFieldId, StringComparison.Ordinal))
+        {
+            if (!IsExpectedSectionField(field))
+            {
+                return new NativeDialogScopedField(false, field.Label, field.Options);
+            }
+
+            DesktopDialogFieldOption[] options = (field.Options ?? [])
+                .Where(option => KnownSections.Contains(option.Value))
+                .ToArray();
+            return new NativeDialogScopedField(true, field.Label, options);
+        }
+
+        if (StructuralFieldIds.Contains(field.Id))
+        {
+            return new NativeDialogScopedField(true, field.Label, field.Options);
+        }
+
+        string? sectionId = SelectedSectionId(dialog);
+        if (sectionId is not null
+            && KnownRulesSections.Contains(sectionId)
+            && field.Id.StartsWith(ControlFieldPrefix, StringComparison.Ordinal))
+        {
+            return new NativeDialogScopedField(true, field.Label, field.Options);
+        }
+
+        return new NativeDialogScopedField(false, field.Label, field.Options);
+    }
+
+    internal static string? Detail(DesktopDialogState dialog, CultureInfo? culture = null)
+    {
+        ArgumentNullException.ThrowIfNull(dialog);
+        if (!IsCharacterSettings(dialog))
+        {
+            return null;
+        }
+
+        string? sectionId = SelectedSectionId(dialog);
+        if (string.Equals(sectionId, CustomDataSectionId, StringComparison.Ordinal))
+        {
+            return PhoneStrings.Get(
+                "CharacterSettingsCustomDataScope",
+                "Custom data directories are desktop-only and hidden on Android. Their saved values remain unchanged in the settings profile.",
+                culture);
+        }
+
+        if (sectionId is not null && KnownRulesSections.Contains(sectionId))
+        {
+            return PhoneStrings.Get(
+                "CharacterSettingsRulesScope",
+                "These runner rules belong to the settings profile and apply across Chummer platforms.",
+                culture);
+        }
+
+        return PhoneStrings.Get(
+            "CharacterSettingsUnsupportedScope",
+            "This settings section is not available on Android. Its saved values remain in the profile.",
+            culture);
+    }
+
+    private static bool IsCharacterSettings(DesktopDialogState dialog)
+        => string.Equals(dialog.Id, CharacterSettingsDialogId, StringComparison.Ordinal);
+
+    private static string? SelectedSectionId(DesktopDialogState dialog)
+    {
+        DesktopDialogField[] matches = dialog.Fields
+            .Where(field => string.Equals(field.Id, SectionFieldId, StringComparison.Ordinal))
+            .Take(2)
+            .ToArray();
+        return matches.Length == 1 && IsExpectedSectionField(matches[0])
+            ? matches[0].Value
+            : null;
+    }
+
+    private static bool IsExpectedSectionField(DesktopDialogField field)
+        => string.Equals(field.InputType, "select", StringComparison.OrdinalIgnoreCase)
+            && !field.IsReadOnly
+            && !field.IsMultiline
+            && field.Options is not null;
 }
 
 internal sealed record NativeDialogFieldBinding(

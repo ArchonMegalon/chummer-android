@@ -1102,7 +1102,7 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
 
     def remote_cleanup_payload(self, journey: str) -> object:
         fixture = f"/sdcard/Download/{journey}.chum5"
-        hierarchy = "/sdcard/chummer-editing-window.xml"
+        hierarchy = "/data/local/tmp/chummer-editing-window.xml"
         if journey in {"before-run", "playtime"}:
             return {fixture: True, hierarchy: True}
         return [

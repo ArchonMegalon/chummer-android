@@ -97,4 +97,7 @@
   <data name="Close" xml:space="preserve"><value>Close</value></data>
   <data name="RunnerSetup" xml:space="preserve"><value>Runner setup</value></data>
   <data name="DialogApplyingChoice" xml:space="preserve"><value>Applying your choice… This may take a moment.</value></data>
+  <data name="CharacterSettingsCustomDataScope" xml:space="preserve"><value>Custom data directories are desktop-only and hidden on Android. Their saved values remain unchanged in the settings profile.</value></data>
+  <data name="CharacterSettingsRulesScope" xml:space="preserve"><value>These runner rules belong to the settings profile and apply across Chummer platforms.</value></data>
+  <data name="CharacterSettingsUnsupportedScope" xml:space="preserve"><value>This settings section is not available on Android. Its saved values remain in the profile.</value></data>
 </root>

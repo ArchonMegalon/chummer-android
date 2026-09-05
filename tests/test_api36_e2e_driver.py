@@ -2432,7 +2432,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             device.run.call_args_list,
         )
         self.assertEqual(
-            ("rm", "-f", "/sdcard/chummer-editing-window.xml"),
+            ("rm", "-f", "/data/local/tmp/chummer-editing-window.xml"),
             DRIVER.ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS,
         )
         self.assertEqual(
@@ -2440,7 +2440,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 "uiautomator",
                 "dump",
                 "--compressed",
-                "/sdcard/chummer-editing-window.xml",
+                "/data/local/tmp/chummer-editing-window.xml",
             ),
             DRIVER.ADB_FILE_HIERARCHY_DUMP_SHELL_ARGUMENTS,
         )
@@ -8414,7 +8414,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                     call(
                         "exec-out",
                         "cat",
-                        "/sdcard/chummer-editing-window.xml",
+                        "/data/local/tmp/chummer-editing-window.xml",
                     ),
                     call("logcat", "-d", "-t", "500"),
                 ],

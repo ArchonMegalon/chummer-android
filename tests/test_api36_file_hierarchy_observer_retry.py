@@ -398,7 +398,7 @@ class Api36FileHierarchyObserverRetryTests(unittest.TestCase):
                 "shell",
                 "sh",
                 "-c",
-                "uiautomator dump --compressed /sdcard/chummer-editing-window.xml",
+                "uiautomator dump --compressed /data/local/tmp/chummer-editing-window.xml",
             ),
         )
         for arguments in deviations:
