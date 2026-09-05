@@ -516,6 +516,7 @@ internal static class AndroidAccountLinkBootstrapProof
     internal const string PollPath = "/api/v2/install-linking/callbacks/poll";
 
     internal static byte[] CreateCanonicalPayload(
+        string installLinkTransport,
         string operationId,
         string installationId,
         string headId,
@@ -531,6 +532,7 @@ internal static class AndroidAccountLinkBootstrapProof
             Scheme,
             "POST",
             PollPath,
+            installLinkTransport,
             operationId,
             installationId,
             headId,

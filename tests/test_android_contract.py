@@ -391,6 +391,8 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("VerifyProtocolSignature", authority)
         self.assertIn("chummer.install-link.remote-callback.v2", transport)
         self.assertIn("/api/v2/install-linking/callbacks/poll", transport)
+        self.assertIn('InstallLinkTransport = "proof_poll_v2"', service)
+        self.assertIn("string installLinkTransport", transport)
         self.assertIn("/api/v2/install-linking/grants/status", service)
         self.assertIn("/api/v2/install-linking/grants/revoke", service)
         self.assertNotIn("/api/v1/install-linking/", service + transport)
@@ -404,11 +406,17 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("HttpStatusCode.BadRequest or HttpStatusCode.Unauthorized", service)
         self.assertIn("startedAtUtc <= now.AddMinutes(2)", service)
         self.assertIn("HttpStatusCode.NotFound or HttpStatusCode.Gone", service)
-        browser_failure = service[service.index('if (!await _systemService.OpenUriAsync'):]
+        begin_link = service[
+            service.index("public async Task BeginLinkAsync"):
+            service.index("public async Task ResumePendingLinkAsync")
+        ]
         self.assertLess(
-            browser_failure.index("ClearPendingAsync(CancellationToken.None)"),
-            browser_failure.index('"Browser unavailable"'),
+            begin_link.index("ReadOrCreatePendingPollOperationAsync"),
+            begin_link.index("_systemService.OpenUriAsync"),
         )
+        browser_failure = begin_link[begin_link.index('if (!await _systemService.OpenUriAsync'):]
+        self.assertNotIn("ClearPendingAsync", browser_failure)
+        self.assertIn('AccountText("AccountBrowserUnavailable", "Browser unavailable")', browser_failure)
         self.assertIn('string expectedPath = $"/groups/join/{Uri.EscapeDataString(code)}";', service)
         self.assertIn("!string.Equals(uri.AbsolutePath, expectedPath, StringComparison.Ordinal)", service)
         self.assertIn("!string.IsNullOrEmpty(uri.Query)", service)
@@ -427,10 +435,31 @@ class AndroidContractTests(unittest.TestCase):
             service.index("private async Task<DateTimeOffset?> ReadGrantExpiryAsync")
         ]
         self.assertLess(
-            save_grant.index("_metadataStore.SetAsync(AccessTokenKey"),
-            save_grant.index("_keyAuthority.BindGrantAsync"),
+            save_grant.index("StagedGrantCommitKey"),
+            save_grant.index("FinalizeStagedGrantCommitAsync(staged)"),
         )
-        self.assertIn("catch\n        {\n            await ClearGrantAsync", save_grant)
+        finalize_grant = save_grant[
+            save_grant.index("private async Task FinalizeStagedGrantCommitAsync"):
+            save_grant.index("private async Task TryCleanupStagedGrantCommitAsync")
+        ]
+        self.assertLess(
+            finalize_grant.index("AccessTokenKey"),
+            finalize_grant.index("GrantExpiryKey"),
+        )
+        self.assertLess(
+            finalize_grant.index("GrantExpiryKey"),
+            finalize_grant.index("_keyAuthority.BindGrantAsync"),
+        )
+        self.assertIn("CancellationToken.None", finalize_grant)
+        self.assertNotIn("ClearGrantAsync", save_grant)
+        cleanup_grant = save_grant[
+            save_grant.index("private async Task TryCleanupStagedGrantCommitAsync"):
+            save_grant.index("private static StagedGrantCommit? TryDeserializeStagedGrantCommit")
+        ]
+        self.assertLess(
+            cleanup_grant.index("ClearPendingAsync"),
+            cleanup_grant.index("StagedGrantCommitKey"),
+        )
         self.assertIn("new AndroidAccountLinkService(", program)
         self.assertIn("AndroidAccountLinkHttpTransport", program)
         self.assertIn("IAndroidAccountLinkKeyMetadataStore", program)

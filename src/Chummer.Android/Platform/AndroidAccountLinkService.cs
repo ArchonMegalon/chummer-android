@@ -17,6 +17,7 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
     private const string AccessTokenKey = "chummer.account.installation-grant.v1";
     private const string GrantExpiryKey = "chummer.account.installation-grant-expiry.v1";
     private const string RefreshAttemptKey = "chummer.account.installation-grant-refresh-attempt.v1";
+    private const string StagedGrantCommitKey = "chummer.account.staged-grant-commit.v1";
     private const string PendingPollOperationKey = "chummer.account.pending-poll-operation.v1";
     private const string PendingStateKey = "chummer.account.pending-state.v1";
     private const string PendingStartedKey = "chummer.account.pending-started.v1";
@@ -27,8 +28,12 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
     private const string HeadId = "android";
     private const string PlatformId = "android";
     private const string ReleaseChannel = "preview";
+    private const string InstallLinkTransport = "proof_poll_v2";
+    private const string BootstrapGrantCommitKind = "bootstrap";
+    private const string RefreshGrantCommitKind = "refresh";
     private const int PendingPollOperationVersion = 1;
     private const int RefreshOperationVersion = 1;
+    private const int StagedGrantCommitVersion = 1;
     private static readonly TimeSpan PendingLifetime = TimeSpan.FromMinutes(18);
     private static readonly TimeSpan RefreshWindow = TimeSpan.FromDays(7);
     private static readonly TimeSpan RefreshRecoveryLifetime = TimeSpan.FromMinutes(10);
@@ -51,7 +56,9 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
     private readonly IAndroidAccountLinkKeyMetadataStore _metadataStore;
     private readonly Func<string> _versionProvider;
     private readonly Func<string> _hostLabelProvider;
+    private readonly Func<string> _architectureProvider;
     private readonly SemaphoreSlim _gate = new(1, 1);
+    private readonly SemaphoreSlim _credentialCommitGate = new(1, 1);
     private AndroidAccountLinkSnapshot _snapshot = new(
         AndroidAccountLinkStatus.Loading,
         AccountText("Checking", "Checking"));
@@ -62,7 +69,8 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         AndroidAccountLinkKeyAuthority keyAuthority,
         IAndroidAccountLinkKeyMetadataStore metadataStore,
         Func<string>? versionProvider = null,
-        Func<string>? hostLabelProvider = null)
+        Func<string>? hostLabelProvider = null,
+        Func<string>? architectureProvider = null)
     {
         _httpTransport = httpTransport;
         _systemService = systemService;
@@ -70,6 +78,7 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         _metadataStore = metadataStore;
         _versionProvider = versionProvider ?? (() => AppInfo.Current.VersionString);
         _hostLabelProvider = hostLabelProvider ?? ResolveHostLabel;
+        _architectureProvider = architectureProvider ?? ResolveArchitecture;
     }
 
     public event EventHandler? Changed;
@@ -81,6 +90,17 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            GrantContract? recoveredCommit = await RecoverStagedGrantCommitAsync();
+            if (recoveredCommit is not null)
+            {
+                SetSnapshot(new(
+                    AndroidAccountLinkStatus.Linked,
+                    AccountText("AccountLinked", "Linked"),
+                    null,
+                    recoveredCommit.ExpiresAtUtc));
+                return;
+            }
+
             await _keyAuthority.RemoveLegacyPrivateKeyAsync(cancellationToken);
             StoredGrant? grant = await ReadStoredGrantAsync(cancellationToken);
             if (grant is null)
@@ -149,8 +169,11 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
                     return;
                 }
 
-                await SaveGrantAsync(recovered, cancellationToken);
-                await _metadataStore.RemoveAsync(RefreshAttemptKey, CancellationToken.None);
+                await SaveGrantAsync(
+                    recovered,
+                    refreshOperation.OperationId,
+                    refreshOperation.PublicKey,
+                    RefreshGrantCommitKind);
                 SetSnapshot(new(
                     AndroidAccountLinkStatus.Linked,
                     AccountText("AccountLinked", "Linked"),
@@ -207,8 +230,11 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
                     return;
                 }
 
-                await SaveGrantAsync(refreshed, cancellationToken);
-                await _metadataStore.RemoveAsync(RefreshAttemptKey, CancellationToken.None);
+                await SaveGrantAsync(
+                    refreshed,
+                    refreshOperation.OperationId,
+                    refreshOperation.PublicKey,
+                    RefreshGrantCommitKind);
                 expiresAtUtc = refreshed.ExpiresAtUtc;
             }
 
@@ -259,6 +285,17 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            GrantContract? recoveredCommit = await RecoverStagedGrantCommitAsync();
+            if (recoveredCommit is not null)
+            {
+                SetSnapshot(new(
+                    AndroidAccountLinkStatus.Linked,
+                    AccountText("AccountLinked", "Linked"),
+                    null,
+                    recoveredCommit.ExpiresAtUtc));
+                return;
+            }
+
             bool hadStoredGrant = !string.IsNullOrWhiteSpace(
                 await _metadataStore.GetAsync(AccessTokenKey, cancellationToken));
             AndroidAccountLinkKeyIdentity identity = await _keyAuthority
@@ -290,18 +327,25 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
                     cancellationToken);
             }
 
+            // The browser approval and proof-poll exchange are one immutable operation. Persist
+            // its exact callback-bound fields before launching the browser so an app upgrade,
+            // architecture change, process restart, or repeated Begin action cannot drift from
+            // the values the Hub authorized.
+            PendingPollOperation operation = await ReadOrCreatePendingPollOperationAsync(
+                identity,
+                cancellationToken);
             string callback = $"https://chummer.run{CallbackPath}?state={Uri.EscapeDataString(state)}";
             Dictionary<string, string> query = new(StringComparer.Ordinal)
             {
-                ["installationId"] = identity.InstallationId,
-                ["headId"] = HeadId,
-                ["applicationVersion"] = _versionProvider(),
-                ["releaseChannel"] = ReleaseChannel,
-                ["platform"] = PlatformId,
-                ["arch"] = ResolveArchitecture(),
+                ["installationId"] = operation.InstallationId,
+                ["headId"] = operation.HeadId,
+                ["applicationVersion"] = operation.ApplicationVersion,
+                ["releaseChannel"] = operation.ChannelId,
+                ["platform"] = operation.Platform,
+                ["arch"] = operation.Architecture,
                 ["installLinkCallbackUri"] = callback,
-                ["installLinkTransport"] = "proof_poll",
-                ["publicKey"] = identity.PublicKey
+                ["installLinkTransport"] = operation.InstallLinkTransport,
+                ["publicKey"] = operation.PublicKey
             };
             string href = $"{LinkPath}?{string.Join('&', query.Select(static item => $"{Uri.EscapeDataString(item.Key)}={Uri.EscapeDataString(item.Value)}"))}";
             SetSnapshot(new(
@@ -310,7 +354,8 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
                 AccountText("AccountApproveBrowser", "Approve in your browser, then return.")));
             if (!await _systemService.OpenUriAsync(ChummerWebRoutes.Resolve(href)))
             {
-                await ClearPendingAsync(CancellationToken.None);
+                // Platform launch results can be ambiguous. Retain the pending state, immutable
+                // operation, and non-exportable key so a later Begin/Resume can safely recover.
                 SetSnapshot(new(
                     AndroidAccountLinkStatus.Error,
                     AccountText("AccountBrowserUnavailable", "Browser unavailable"),
@@ -339,6 +384,17 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            GrantContract? recoveredCommit = await RecoverStagedGrantCommitAsync();
+            if (recoveredCommit is not null)
+            {
+                SetSnapshot(new(
+                    AndroidAccountLinkStatus.Linked,
+                    AccountText("AccountLinked", "Linked"),
+                    null,
+                    recoveredCommit.ExpiresAtUtc));
+                return;
+            }
+
             string? pendingState = await _metadataStore.GetAsync(PendingStateKey, cancellationToken);
             if (string.IsNullOrWhiteSpace(pendingState))
             {
@@ -389,6 +445,7 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             long issuedAt = await NextProofTimestampAsync();
             string nonce = Convert.ToHexString(RandomNumberGenerator.GetBytes(24)).ToLowerInvariant();
             byte[] proof = AndroidAccountLinkBootstrapProof.CreateCanonicalPayload(
+                operation.InstallLinkTransport,
                 operation.OperationId,
                 operation.InstallationId,
                 operation.HeadId,
@@ -418,6 +475,7 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             }
 
             PollRequest request = new(
+                operation.InstallLinkTransport,
                 operation.OperationId,
                 operation.InstallationId,
                 operation.HeadId,
@@ -509,8 +567,11 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
                 return;
             }
 
-            await SaveGrantAsync(grant, cancellationToken);
-            await ClearPendingAsync(CancellationToken.None);
+            await SaveGrantAsync(
+                grant,
+                operation.OperationId,
+                operation.PublicKey,
+                BootstrapGrantCommitKind);
             SetSnapshot(new(
                 AndroidAccountLinkStatus.Linked,
                 AccountText("AccountLinked", "Linked"),
@@ -1125,44 +1186,239 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         }
     }
 
-    private async Task SaveGrantAsync(GrantContract grant, CancellationToken cancellationToken)
+    private async Task SaveGrantAsync(
+        GrantContract grant,
+        string operationId,
+        string publicKey,
+        string commitKind)
     {
-        if (!IsUsableGrant(grant, grant.InstallationId))
+        StagedGrantCommit staged = new(
+            StagedGrantCommitVersion,
+            commitKind,
+            operationId,
+            publicKey,
+            grant);
+        if (!IsExpectedStagedGrantCommit(staged))
         {
             throw new InvalidDataException("Chummer returned an invalid account grant.");
         }
 
+        // Once the authenticated response and echoed operation ID have been accepted, caller
+        // cancellation can no longer interrupt the local transaction. The exact replacement
+        // bundle is written first; it remains the restart selector until all active credential
+        // fields and the key-binding commit marker are durably consistent.
+        await _credentialCommitGate.WaitAsync(CancellationToken.None);
         try
         {
-            await _metadataStore.SetAsync(AccessTokenKey, grant.AccessToken, cancellationToken);
             await _metadataStore.SetAsync(
-                GrantExpiryKey,
-                grant.ExpiresAtUtc.ToString("O", CultureInfo.InvariantCulture),
-                cancellationToken);
-            // Binding the grant is the local commit point. Metadata writes accept cancellation
-            // only before the non-cancellable SecureStorage operation begins, so success here
-            // cannot be reported as an ambiguous cancellation after a durable commit.
-            await _keyAuthority.BindGrantAsync(grant.InstallationId, grant.GrantId, cancellationToken);
+                StagedGrantCommitKey,
+                JsonSerializer.Serialize(staged, OperationJsonOptions),
+                CancellationToken.None);
+            await FinalizeStagedGrantCommitAsync(staged);
+            await TryCleanupStagedGrantCommitAsync(staged);
         }
-        catch
+        finally
         {
-            await ClearGrantAsync(CancellationToken.None);
-            throw;
+            _credentialCommitGate.Release();
         }
     }
 
+    private async Task<GrantContract?> RecoverStagedGrantCommitAsync()
+    {
+        await _credentialCommitGate.WaitAsync(CancellationToken.None);
+        try
+        {
+            return await RecoverStagedGrantCommitCoreAsync();
+        }
+        finally
+        {
+            _credentialCommitGate.Release();
+        }
+    }
+
+    private async Task<GrantContract?> RecoverStagedGrantCommitCoreAsync()
+    {
+        string? serialized = await _metadataStore.GetAsync(
+            StagedGrantCommitKey,
+            CancellationToken.None);
+        if (string.IsNullOrWhiteSpace(serialized))
+        {
+            return null;
+        }
+
+        StagedGrantCommit? staged = TryDeserializeStagedGrantCommit(serialized);
+        if (staged is null || !IsExpectedStagedGrantCommit(staged))
+        {
+            throw new InvalidDataException("The staged account grant is invalid.");
+        }
+
+        await ValidateStagedGrantOperationAsync(staged);
+        await FinalizeStagedGrantCommitAsync(staged);
+        await TryCleanupStagedGrantCommitAsync(staged);
+        return staged.Grant;
+    }
+
+    private async Task ValidateStagedGrantOperationAsync(StagedGrantCommit staged)
+    {
+        string? installationId = await _metadataStore.GetAsync(
+            InstallationIdKey,
+            CancellationToken.None);
+        if (!string.Equals(installationId, staged.Grant.InstallationId, StringComparison.Ordinal))
+        {
+            throw new InvalidDataException("The staged account grant installation is invalid.");
+        }
+
+        string operationKey = staged.CommitKind == BootstrapGrantCommitKind
+            ? PendingPollOperationKey
+            : RefreshAttemptKey;
+        string? serializedOperation = await _metadataStore.GetAsync(
+            operationKey,
+            CancellationToken.None);
+        if (string.IsNullOrWhiteSpace(serializedOperation))
+        {
+            // Operation cleanup runs before removal of the staged bundle. If that cleanup
+            // completed but stage removal failed, only an already-bound exact replacement may
+            // be finalized again.
+            AndroidAccountLinkKeyIdentity committed = await _keyAuthority
+                .RequireLinkedIdentityAsync(staged.Grant.InstallationId, CancellationToken.None);
+            if (!string.Equals(committed.GrantId, staged.Grant.GrantId, StringComparison.Ordinal)
+                || !string.Equals(committed.PublicKey, staged.PublicKey, StringComparison.Ordinal))
+            {
+                throw new InvalidDataException("The staged account grant lost its operation binding.");
+            }
+            return;
+        }
+
+        if (staged.CommitKind == BootstrapGrantCommitKind)
+        {
+            PendingPollOperation? operation = TryDeserializePendingPollOperation(serializedOperation);
+            if (operation is null
+                || operation.Version != PendingPollOperationVersion
+                || !string.Equals(
+                    operation.InstallLinkTransport,
+                    InstallLinkTransport,
+                    StringComparison.Ordinal)
+                || !string.Equals(operation.OperationId, staged.OperationId, StringComparison.Ordinal)
+                || !string.Equals(
+                    operation.InstallationId,
+                    staged.Grant.InstallationId,
+                    StringComparison.Ordinal)
+                || !string.Equals(operation.PublicKey, staged.PublicKey, StringComparison.Ordinal))
+            {
+                throw new InvalidDataException("The staged account grant operation is invalid.");
+            }
+            return;
+        }
+
+        RefreshOperation? refreshOperation = TryDeserializeRefreshOperation(serializedOperation);
+        if (refreshOperation is null
+            || refreshOperation.Version != RefreshOperationVersion
+            || !string.Equals(
+                refreshOperation.OperationId,
+                staged.OperationId,
+                StringComparison.Ordinal)
+            || !string.Equals(
+                refreshOperation.InstallationId,
+                staged.Grant.InstallationId,
+                StringComparison.Ordinal)
+            || !string.Equals(refreshOperation.PublicKey, staged.PublicKey, StringComparison.Ordinal))
+        {
+            throw new InvalidDataException("The staged account refresh operation is invalid.");
+        }
+    }
+
+    private async Task FinalizeStagedGrantCommitAsync(StagedGrantCommit staged)
+    {
+        await _metadataStore.SetAsync(
+            AccessTokenKey,
+            staged.Grant.AccessToken,
+            CancellationToken.None);
+        await _metadataStore.SetAsync(
+            GrantExpiryKey,
+            staged.Grant.ExpiresAtUtc.ToString("O", CultureInfo.InvariantCulture),
+            CancellationToken.None);
+        // The binding is the final consistency marker. Until it succeeds, the staged exact
+        // bundle remains present and every credential read resumes this idempotent finalize.
+        await _keyAuthority.BindGrantAsync(
+            staged.Grant.InstallationId,
+            staged.Grant.GrantId,
+            CancellationToken.None);
+    }
+
+    private async Task TryCleanupStagedGrantCommitAsync(StagedGrantCommit staged)
+    {
+        try
+        {
+            if (staged.CommitKind == BootstrapGrantCommitKind)
+            {
+                await ClearPendingAsync(CancellationToken.None);
+            }
+            else
+            {
+                await _metadataStore.RemoveAsync(
+                    RefreshAttemptKey,
+                    CancellationToken.None);
+            }
+
+            // Stage removal is deliberately last. Any interrupted or failed operation cleanup
+            // therefore leaves a complete restart selector instead of mixed active fields.
+            await _metadataStore.RemoveAsync(
+                StagedGrantCommitKey,
+                CancellationToken.None);
+        }
+        catch (Exception)
+        {
+            // The active credentials are already committed. A future read retries cleanup using
+            // the retained staged bundle; UI state must not regress from Linked.
+        }
+    }
+
+    private static StagedGrantCommit? TryDeserializeStagedGrantCommit(string serialized)
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<StagedGrantCommit>(
+                serialized,
+                OperationJsonOptions);
+        }
+        catch (Exception exception) when (exception is JsonException or NotSupportedException)
+        {
+            return null;
+        }
+    }
+
+    private static bool IsExpectedStagedGrantCommit(StagedGrantCommit staged)
+        => staged.Version == StagedGrantCommitVersion
+            && staged.CommitKind is BootstrapGrantCommitKind or RefreshGrantCommitKind
+            && IsExpectedOperationId(staged.OperationId)
+            && IsBoundedOperationText(staged.PublicKey, 4096)
+            && IsUsableGrant(staged.Grant, staged.Grant.InstallationId);
+
     private async Task<StoredGrant?> ReadStoredGrantAsync(CancellationToken cancellationToken)
     {
-        string? installationId = await _metadataStore.GetAsync(InstallationIdKey, cancellationToken);
-        string? accessToken = await _metadataStore.GetAsync(AccessTokenKey, cancellationToken);
-        return string.IsNullOrWhiteSpace(installationId)
-            || string.IsNullOrWhiteSpace(accessToken)
-                ? null
-                : new StoredGrant(
-                    await _keyAuthority.RequireLinkedIdentityAsync(
-                        installationId,
-                        cancellationToken),
-                    accessToken);
+        await _credentialCommitGate.WaitAsync(CancellationToken.None);
+        try
+        {
+            await RecoverStagedGrantCommitCoreAsync();
+            string? installationId = await _metadataStore.GetAsync(
+                InstallationIdKey,
+                cancellationToken);
+            string? accessToken = await _metadataStore.GetAsync(
+                AccessTokenKey,
+                cancellationToken);
+            return string.IsNullOrWhiteSpace(installationId)
+                || string.IsNullOrWhiteSpace(accessToken)
+                    ? null
+                    : new StoredGrant(
+                        await _keyAuthority.RequireLinkedIdentityAsync(
+                            installationId,
+                            cancellationToken),
+                        accessToken);
+        }
+        finally
+        {
+            _credentialCommitGate.Release();
+        }
     }
 
     private AndroidAccountLinkRequestAuthority CreateRequestAuthority(StoredGrant grant)
@@ -1285,13 +1541,14 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
 
         PendingPollOperation created = new(
             PendingPollOperationVersion,
+            InstallLinkTransport,
             NewBase64UrlToken(24),
             identity.InstallationId,
             HeadId,
             _versionProvider(),
             ReleaseChannel,
             PlatformId,
-            ResolveArchitecture(),
+            _architectureProvider(),
             identity.PublicKey,
             _hostLabelProvider());
         if (!IsExpectedPendingPollOperation(created, identity))
@@ -1318,7 +1575,7 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             _versionProvider(),
             ReleaseChannel,
             PlatformId,
-            ResolveArchitecture(),
+            _architectureProvider(),
             grant.Identity.PublicKey,
             _hostLabelProvider());
         return IsExpectedRefreshOperation(created, grant)
@@ -1358,6 +1615,10 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         PendingPollOperation operation,
         AndroidAccountLinkKeyIdentity identity)
         => operation.Version == PendingPollOperationVersion
+            && string.Equals(
+                operation.InstallLinkTransport,
+                InstallLinkTransport,
+                StringComparison.Ordinal)
             && IsExpectedOperationId(operation.OperationId)
             && string.Equals(operation.InstallationId, identity.InstallationId, StringComparison.Ordinal)
             && string.Equals(operation.PublicKey, identity.PublicKey, StringComparison.Ordinal)
@@ -1449,6 +1710,7 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         await _metadataStore.RemoveAsync(AccessTokenKey, cancellationToken);
         await _metadataStore.RemoveAsync(GrantExpiryKey, cancellationToken);
         await _metadataStore.RemoveAsync(RefreshAttemptKey, cancellationToken);
+        await _metadataStore.RemoveAsync(StagedGrantCommitKey, cancellationToken);
     }
 
     private async Task ClearPendingAsync(CancellationToken cancellationToken)
@@ -1539,6 +1801,7 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         string InstallationId,
         string Confirmation);
     private sealed record PollRequest(
+        string InstallLinkTransport,
         string OperationId,
         string InstallationId,
         string HeadId,
@@ -1563,6 +1826,7 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         string HostLabel);
     private sealed record PendingPollOperation(
         int Version,
+        string InstallLinkTransport,
         string OperationId,
         string InstallationId,
         string HeadId,
@@ -1585,6 +1849,12 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         string Architecture,
         string PublicKey,
         string HostLabel);
+    private sealed record StagedGrantCommit(
+        int Version,
+        string CommitKind,
+        string OperationId,
+        string PublicKey,
+        GrantContract Grant);
     private sealed record GrantContract(
         string GrantId,
         string InstallationId,

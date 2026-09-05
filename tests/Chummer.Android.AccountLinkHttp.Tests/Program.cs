@@ -15,6 +15,7 @@ internal static class Program
     private const string StoredAccessTokenKey = "chummer.account.installation-grant.v1";
     private const string StoredGrantExpiryKey = "chummer.account.installation-grant-expiry.v1";
     private const string RefreshAttemptKey = "chummer.account.installation-grant-refresh-attempt.v1";
+    private const string StagedGrantCommitKey = "chummer.account.staged-grant-commit.v1";
     private const string PendingPollOperationKey = "chummer.account.pending-poll-operation.v1";
     private const string PendingStateKey = "chummer.account.pending-state.v1";
     private const string PendingStartedKey = "chummer.account.pending-started.v1";
@@ -36,13 +37,19 @@ internal static class Program
         await CrossOriginRedirectCannotReceiveBearerToken();
         await SameOriginRedirectAndUnsafePathsFailClosed();
         await MalformedCollectionsFailClosedWithoutEchoingResponseData();
+        await BrowserLaunchAndFirstPollShareOperationAcrossRestartAsync();
+        await ReopeningPendingLinkReusesBrowserOperationAsync();
+        await BrowserOpenFailureRetainsRecoverableOperationAsync();
+        await CallerCancellationCannotInterruptCredentialCommitAsync();
+        await StagedCredentialCommitRecoversAfterEveryWriteAsync();
+        await CredentialCommitCleanupFailureRemainsRestartableAsync();
         await LostBootstrapResponseSurvivesProcessRestartAsync();
         await AlreadyRedeemedBootstrapConflictRetainsFreshCredentialsAsync();
         await SuccessfulUnlinkCannotLeaveAStaleLinkedSnapshotAsync();
         await SuccessfulErasureCannotLeaveAStaleLinkedSnapshotAsync();
         await LostRefreshResponseSurvivesProcessRestartAsync();
         await MismatchedOperationResponsesRetainRecoveryStateAsync();
-        Console.WriteLine("Account-link HTTP hardening tests passed: 20");
+        Console.WriteLine("Account-link HTTP hardening tests passed: 26");
     }
 
     private static async Task BearerTokenIsRequestBoundAndRedacted()
@@ -145,6 +152,7 @@ internal static class Program
         const string nonce = "bootstrap-nonce";
         const string hostLabel = "Runner Phone";
         byte[] canonical = AndroidAccountLinkBootstrapProof.CreateCanonicalPayload(
+            "proof_poll_v2",
             operationId,
             "android-install",
             "android",
@@ -162,6 +170,7 @@ internal static class Program
                 AndroidAccountLinkBootstrapProof.Scheme,
                 "POST",
                 AndroidAccountLinkBootstrapProof.PollPath,
+                "proof_poll_v2",
                 operationId,
                 "android-install",
                 "android",
@@ -184,6 +193,7 @@ internal static class Program
             AndroidAccountLinkBootstrapProof.PollPath,
             new
             {
+                InstallLinkTransport = "proof_poll_v2",
                 OperationId = operationId,
                 InstallationId = "android-install",
                 HeadId = "android",
@@ -202,6 +212,7 @@ internal static class Program
         ObservedRequest observed = RequireSingle(terminal.Requests);
         Require(observed.AuthorizationScheme is null);
         Require(observed.ProofScheme is null);
+        Require(observed.Body.Contains("\"installLinkTransport\":\"proof_poll_v2\"", StringComparison.Ordinal));
         Require(observed.Body.Contains($"\"operationId\":\"{operationId}\"", StringComparison.Ordinal));
         Require(observed.Body.Contains("\"architecture\":\"arm64\"", StringComparison.Ordinal));
         Require(!observed.Body.Contains("\"arch\"", StringComparison.Ordinal));
@@ -521,6 +532,345 @@ internal static class Program
         }
     }
 
+    private static async Task BrowserLaunchAndFirstPollShareOperationAcrossRestartAsync()
+    {
+        LinkFixture fixture = await CreateUnlinkedFixtureAsync();
+        var browser = new StubSystemService(_ =>
+        {
+            Require(fixture.Metadata.Contains(PendingPollOperationKey));
+            return true;
+        });
+        var unusedTerminal = new RecordingHandler(_ => JsonResponse("{}"));
+        using (AndroidAccountLinkHttpTransport transport = CreateTransport(unusedTerminal))
+        {
+            AndroidAccountLinkService service = CreateService(
+                transport,
+                fixture,
+                version: "0.1.0-preview.11",
+                hostLabel: "Launch phone",
+                architecture: "arm64",
+                systemService: browser);
+            await service.BeginLinkAsync();
+            Require(service.Snapshot.Status == AndroidAccountLinkStatus.Pending);
+        }
+
+        Require(browser.OpenedUris.Count == 1);
+        Require(unusedTerminal.Requests.Count == 0);
+        Uri browserUri = browser.OpenedUris[0];
+        IReadOnlyDictionary<string, string> browserQuery = QueryValues(browserUri);
+        string storedOperation = fixture.Metadata.GetRaw(PendingPollOperationKey)!;
+        using JsonDocument operation = JsonDocument.Parse(storedOperation);
+        string operationId = operation.RootElement.GetProperty("operationId").GetString()!;
+        Require(operation.RootElement.GetProperty("installLinkTransport").GetString()
+            == "proof_poll_v2");
+        Require(browserQuery["installationId"] == fixture.Identity.InstallationId);
+        Require(browserQuery["applicationVersion"] == "0.1.0-preview.11");
+        Require(browserQuery["arch"] == "arm64");
+        Require(browserQuery["installLinkTransport"] == "proof_poll_v2");
+        Require(browserQuery["installLinkTransport"] != "proof_poll");
+        Require(browserQuery["publicKey"] == fixture.Identity.PublicKey);
+        Require(operation.RootElement.GetProperty("applicationVersion").GetString()
+            == browserQuery["applicationVersion"]);
+        Require(operation.RootElement.GetProperty("architecture").GetString()
+            == browserQuery["arch"]);
+
+        var recoveryTerminal = new RecordingHandler(request => BootstrapGrantResponse(
+            fixture.Identity,
+            RequestOperationId(request),
+            alreadyClaimed: false));
+        using AndroidAccountLinkHttpTransport recoveryTransport = CreateTransport(recoveryTerminal);
+        AndroidAccountLinkService recoveryService = CreateService(
+            recoveryTransport,
+            fixture,
+            version: "0.1.0-preview.12",
+            hostLabel: "Restarted upgraded phone",
+            architecture: "x64");
+        await recoveryService.ResumePendingLinkAsync();
+
+        Require(recoveryService.Snapshot.Status == AndroidAccountLinkStatus.Linked);
+        ObservedRequest poll = RequireSingle(recoveryTerminal.Requests);
+        using JsonDocument pollBody = JsonDocument.Parse(poll.Body);
+        Require(pollBody.RootElement.GetProperty("operationId").GetString() == operationId);
+        Require(pollBody.RootElement.GetProperty("installLinkTransport").GetString()
+            == browserQuery["installLinkTransport"]);
+        Require(pollBody.RootElement.GetProperty("applicationVersion").GetString()
+            == browserQuery["applicationVersion"]);
+        Require(pollBody.RootElement.GetProperty("architecture").GetString()
+            == browserQuery["arch"]);
+        Require(pollBody.RootElement.GetProperty("publicKey").GetString()
+            == browserQuery["publicKey"]);
+        Require(pollBody.RootElement.GetProperty("hostLabel").GetString() == "Launch phone");
+    }
+
+    private static async Task ReopeningPendingLinkReusesBrowserOperationAsync()
+    {
+        LinkFixture fixture = await CreateUnlinkedFixtureAsync();
+        var browser = new StubSystemService();
+        var unusedTerminal = new RecordingHandler(_ => JsonResponse("{}"));
+        using AndroidAccountLinkHttpTransport transport = CreateTransport(unusedTerminal);
+        AndroidAccountLinkService firstService = CreateService(
+            transport,
+            fixture,
+            version: "0.1.0-preview.11",
+            hostLabel: "Original phone",
+            architecture: "arm64",
+            systemService: browser);
+        await firstService.BeginLinkAsync();
+        string originalOperation = fixture.Metadata.GetRaw(PendingPollOperationKey)!;
+        string originalState = fixture.Metadata.GetRaw(PendingStateKey)!;
+
+        AndroidAccountLinkService reopenedService = CreateService(
+            transport,
+            fixture,
+            version: "0.1.0-preview.13",
+            hostLabel: "Renamed phone",
+            architecture: "x86",
+            systemService: browser);
+        await reopenedService.BeginLinkAsync();
+
+        Require(reopenedService.Snapshot.Status == AndroidAccountLinkStatus.Pending);
+        Require(browser.OpenedUris.Count == 2);
+        Require(browser.OpenedUris[1] == browser.OpenedUris[0]);
+        Require(fixture.Metadata.GetRaw(PendingPollOperationKey) == originalOperation);
+        Require(fixture.Metadata.GetRaw(PendingStateKey) == originalState);
+        Require(fixture.Keys.Contains(fixture.Identity.Alias));
+    }
+
+    private static async Task BrowserOpenFailureRetainsRecoverableOperationAsync()
+    {
+        LinkFixture fixture = await CreateUnlinkedFixtureAsync();
+        var failingBrowser = new StubSystemService(_ =>
+        {
+            Require(fixture.Metadata.Contains(PendingStateKey));
+            Require(fixture.Metadata.Contains(PendingInstallationIdKey));
+            Require(fixture.Metadata.Contains(PendingStartedKey));
+            Require(fixture.Metadata.Contains(PendingPollOperationKey));
+            return false;
+        });
+        var unusedTerminal = new RecordingHandler(_ => JsonResponse("{}"));
+        using AndroidAccountLinkHttpTransport transport = CreateTransport(unusedTerminal);
+        AndroidAccountLinkService service = CreateService(
+            transport,
+            fixture,
+            version: "0.1.0-preview.11",
+            hostLabel: "Launch phone",
+            architecture: "arm64",
+            systemService: failingBrowser);
+        await service.BeginLinkAsync();
+
+        Require(service.Snapshot.Status == AndroidAccountLinkStatus.Error);
+        Require(fixture.Metadata.Contains(PendingStateKey));
+        Require(fixture.Metadata.Contains(PendingInstallationIdKey));
+        Require(fixture.Metadata.Contains(PendingStartedKey));
+        Require(fixture.Metadata.Contains(PendingPollOperationKey));
+        Require(fixture.Keys.Contains(fixture.Identity.Alias));
+        Require(failingBrowser.OpenedUris.Count == 1);
+        string originalOperation = fixture.Metadata.GetRaw(PendingPollOperationKey)!;
+
+        var recoveryBrowser = new StubSystemService();
+        AndroidAccountLinkService recoveryService = CreateService(
+            transport,
+            fixture,
+            version: "0.1.0-preview.12",
+            hostLabel: "Restarted phone",
+            architecture: "x64",
+            systemService: recoveryBrowser);
+        await recoveryService.BeginLinkAsync();
+
+        Require(recoveryService.Snapshot.Status == AndroidAccountLinkStatus.Pending);
+        Require(recoveryBrowser.OpenedUris.Count == 1);
+        Require(recoveryBrowser.OpenedUris[0] == failingBrowser.OpenedUris[0]);
+        Require(fixture.Metadata.GetRaw(PendingPollOperationKey) == originalOperation);
+        Require(fixture.Keys.Contains(fixture.Identity.Alias));
+    }
+
+    private static async Task CallerCancellationCannotInterruptCredentialCommitAsync()
+    {
+        string[] commitWrites =
+        [
+            StagedGrantCommitKey,
+            StoredAccessTokenKey,
+            StoredGrantExpiryKey,
+            AndroidAccountLinkKeyAuthority.BindingStorageKey
+        ];
+        foreach (string cancelAfterWrite in commitWrites)
+        {
+            LinkFixture bootstrapFixture = await CreatePendingFixtureAsync();
+            using var bootstrapCancellation = new CancellationTokenSource();
+            bootstrapFixture.Metadata.AfterSet = key =>
+            {
+                if (key == cancelAfterWrite)
+                {
+                    bootstrapCancellation.Cancel();
+                }
+            };
+            var bootstrapTerminal = new RecordingHandler(request => BootstrapGrantResponse(
+                bootstrapFixture.Identity,
+                RequestOperationId(request),
+                alreadyClaimed: false));
+            using (AndroidAccountLinkHttpTransport transport = CreateTransport(bootstrapTerminal))
+            {
+                AndroidAccountLinkService service = CreateService(transport, bootstrapFixture);
+                await service.ResumePendingLinkAsync(
+                    cancellationToken: bootstrapCancellation.Token);
+                Require(bootstrapCancellation.IsCancellationRequested);
+                Require(service.Snapshot.Status == AndroidAccountLinkStatus.Linked);
+            }
+            await RequireCommittedGrantAsync(bootstrapFixture, "grant-after-response-loss");
+            Require(!bootstrapFixture.Metadata.Contains(PendingPollOperationKey));
+            Require(!bootstrapFixture.Metadata.Contains(StagedGrantCommitKey));
+
+            LinkFixture refreshFixture = await CreateLinkedFixtureAsync(DateTimeOffset.UtcNow.AddDays(1));
+            using var refreshCancellation = new CancellationTokenSource();
+            refreshFixture.Metadata.AfterSet = key =>
+            {
+                if (key == cancelAfterWrite)
+                {
+                    refreshCancellation.Cancel();
+                }
+            };
+            int refreshCall = 0;
+            var refreshTerminal = new RecordingHandler(request => ++refreshCall == 1
+                ? JsonResponse("{}")
+                : RefreshGrantResponse(refreshFixture.Identity, RequestOperationId(request)));
+            using (AndroidAccountLinkHttpTransport transport = CreateTransport(refreshTerminal))
+            {
+                AndroidAccountLinkService service = CreateService(transport, refreshFixture);
+                await service.InitializeAsync(refreshCancellation.Token);
+                Require(refreshCancellation.IsCancellationRequested);
+                Require(service.Snapshot.Status == AndroidAccountLinkStatus.Linked);
+            }
+            await RequireCommittedGrantAsync(refreshFixture, "grant-after-refresh");
+            Require(!refreshFixture.Metadata.Contains(RefreshAttemptKey));
+            Require(!refreshFixture.Metadata.Contains(StagedGrantCommitKey));
+        }
+    }
+
+    private static async Task StagedCredentialCommitRecoversAfterEveryWriteAsync()
+    {
+        string[] commitWrites =
+        [
+            StagedGrantCommitKey,
+            StoredAccessTokenKey,
+            StoredGrantExpiryKey,
+            AndroidAccountLinkKeyAuthority.BindingStorageKey
+        ];
+        foreach (string terminateAfterWrite in commitWrites)
+        {
+            LinkFixture bootstrapFixture = await CreatePendingFixtureAsync();
+            bootstrapFixture.Metadata.ThrowAfterSetKey = terminateAfterWrite;
+            var bootstrapTerminal = new RecordingHandler(request => BootstrapGrantResponse(
+                bootstrapFixture.Identity,
+                RequestOperationId(request),
+                alreadyClaimed: false));
+            using (AndroidAccountLinkHttpTransport transport = CreateTransport(bootstrapTerminal))
+            {
+                AndroidAccountLinkService service = CreateService(transport, bootstrapFixture);
+                await service.ResumePendingLinkAsync();
+                Require(service.Snapshot.Status == AndroidAccountLinkStatus.Error);
+            }
+            Require(bootstrapFixture.Metadata.Contains(StagedGrantCommitKey));
+            Require(bootstrapFixture.Metadata.Contains(PendingPollOperationKey));
+            Require(bootstrapFixture.Keys.Contains(bootstrapFixture.Identity.Alias));
+            Require(
+                bootstrapFixture.Metadata.GetRaw(StoredAccessTokenKey)
+                == (terminateAfterWrite == StagedGrantCommitKey ? null : RotatedAccessToken));
+            Require(
+                StoredBindingGrantId(bootstrapFixture)
+                == (terminateAfterWrite == AndroidAccountLinkKeyAuthority.BindingStorageKey
+                    ? "grant-after-response-loss"
+                    : null));
+
+            var noNetworkTerminal = new RecordingHandler(_ =>
+                throw new InvalidOperationException("Staged recovery must not call Hub."));
+            using (AndroidAccountLinkHttpTransport transport = CreateTransport(noNetworkTerminal))
+            {
+                AndroidAccountLinkService restarted = CreateService(transport, bootstrapFixture);
+                await restarted.InitializeAsync();
+                Require(restarted.Snapshot.Status == AndroidAccountLinkStatus.Linked);
+            }
+            Require(noNetworkTerminal.Requests.Count == 0);
+            await RequireCommittedGrantAsync(bootstrapFixture, "grant-after-response-loss");
+            Require(!bootstrapFixture.Metadata.Contains(PendingPollOperationKey));
+            Require(!bootstrapFixture.Metadata.Contains(StagedGrantCommitKey));
+
+            LinkFixture refreshFixture = await CreateLinkedFixtureAsync(DateTimeOffset.UtcNow.AddDays(1));
+            refreshFixture.Metadata.ThrowAfterSetKey = terminateAfterWrite;
+            int refreshCall = 0;
+            var refreshTerminal = new RecordingHandler(request => ++refreshCall == 1
+                ? JsonResponse("{}")
+                : RefreshGrantResponse(refreshFixture.Identity, RequestOperationId(request)));
+            using (AndroidAccountLinkHttpTransport transport = CreateTransport(refreshTerminal))
+            {
+                AndroidAccountLinkService service = CreateService(transport, refreshFixture);
+                await service.InitializeAsync();
+                Require(service.Snapshot.Status == AndroidAccountLinkStatus.Error);
+            }
+            Require(refreshFixture.Metadata.Contains(StagedGrantCommitKey));
+            Require(refreshFixture.Metadata.Contains(RefreshAttemptKey));
+            Require(
+                refreshFixture.Metadata.GetRaw(StoredAccessTokenKey)
+                == (terminateAfterWrite == StagedGrantCommitKey ? AccessToken : RotatedAccessToken));
+            Require(
+                StoredBindingGrantId(refreshFixture)
+                == (terminateAfterWrite == AndroidAccountLinkKeyAuthority.BindingStorageKey
+                    ? "grant-after-refresh"
+                    : "grant-before-refresh"));
+
+            var refreshRecoveryTerminal = new RecordingHandler(_ =>
+                throw new InvalidOperationException("Staged refresh recovery must not call Hub."));
+            using (AndroidAccountLinkHttpTransport transport = CreateTransport(refreshRecoveryTerminal))
+            {
+                AndroidAccountLinkService restarted = CreateService(transport, refreshFixture);
+                await restarted.InitializeAsync();
+                Require(restarted.Snapshot.Status == AndroidAccountLinkStatus.Linked);
+            }
+            Require(refreshRecoveryTerminal.Requests.Count == 0);
+            await RequireCommittedGrantAsync(refreshFixture, "grant-after-refresh");
+            Require(!refreshFixture.Metadata.Contains(RefreshAttemptKey));
+            Require(!refreshFixture.Metadata.Contains(StagedGrantCommitKey));
+        }
+    }
+
+    private static async Task CredentialCommitCleanupFailureRemainsRestartableAsync()
+    {
+        foreach (string failedCleanup in new[] { PendingStateKey, StagedGrantCommitKey })
+        {
+            LinkFixture fixture = await CreatePendingFixtureAsync();
+            fixture.Metadata.ThrowBeforeRemoveKey = failedCleanup;
+            var terminal = new RecordingHandler(request => BootstrapGrantResponse(
+                fixture.Identity,
+                RequestOperationId(request),
+                alreadyClaimed: false));
+            using (AndroidAccountLinkHttpTransport transport = CreateTransport(terminal))
+            {
+                AndroidAccountLinkService service = CreateService(transport, fixture);
+                await service.ResumePendingLinkAsync();
+                Require(service.Snapshot.Status == AndroidAccountLinkStatus.Linked);
+            }
+            Require(fixture.Metadata.Contains(StagedGrantCommitKey));
+            await RecoverCommittedGrantWithoutNetworkAsync(fixture, "grant-after-response-loss");
+        }
+
+        foreach (string failedCleanup in new[] { RefreshAttemptKey, StagedGrantCommitKey })
+        {
+            LinkFixture fixture = await CreateLinkedFixtureAsync(DateTimeOffset.UtcNow.AddDays(1));
+            fixture.Metadata.ThrowBeforeRemoveKey = failedCleanup;
+            int call = 0;
+            var terminal = new RecordingHandler(request => ++call == 1
+                ? JsonResponse("{}")
+                : RefreshGrantResponse(fixture.Identity, RequestOperationId(request)));
+            using (AndroidAccountLinkHttpTransport transport = CreateTransport(terminal))
+            {
+                AndroidAccountLinkService service = CreateService(transport, fixture);
+                await service.InitializeAsync();
+                Require(service.Snapshot.Status == AndroidAccountLinkStatus.Linked);
+            }
+            Require(fixture.Metadata.Contains(StagedGrantCommitKey));
+            await RecoverCommittedGrantWithoutNetworkAsync(fixture, "grant-after-refresh");
+        }
+    }
+
     private static async Task LostBootstrapResponseSurvivesProcessRestartAsync()
     {
         LinkFixture fixture = await CreatePendingFixtureAsync();
@@ -783,27 +1133,75 @@ internal static class Program
         AndroidAccountLinkHttpTransport transport,
         LinkFixture fixture,
         string version = "0.1.0-preview.11",
-        string hostLabel = "Hostile test phone")
+        string hostLabel = "Hostile test phone",
+        string architecture = "arm64",
+        IAndroidSystemService? systemService = null)
         => new(
             transport,
-            new StubSystemService(),
+            systemService ?? new StubSystemService(),
             fixture.Authority,
             fixture.Metadata,
             versionProvider: () => version,
-            hostLabelProvider: () => hostLabel);
+            hostLabelProvider: () => hostLabel,
+            architectureProvider: () => architecture);
 
-    private static async Task<LinkFixture> CreatePendingFixtureAsync()
+    private static async Task RequireCommittedGrantAsync(
+        LinkFixture fixture,
+        string expectedGrantId)
+    {
+        Require(fixture.Metadata.GetRaw(StoredAccessTokenKey) == RotatedAccessToken);
+        Require(DateTimeOffset.TryParse(
+            fixture.Metadata.GetRaw(StoredGrantExpiryKey),
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.RoundtripKind,
+            out DateTimeOffset expiresAtUtc));
+        Require(expiresAtUtc > DateTimeOffset.UtcNow);
+        AndroidAccountLinkKeyIdentity linked = await fixture.Authority
+            .RequireLinkedIdentityAsync(fixture.Identity.InstallationId);
+        Require(linked.GrantId == expectedGrantId);
+    }
+
+    private static string? StoredBindingGrantId(LinkFixture fixture)
+    {
+        using JsonDocument binding = JsonDocument.Parse(
+            fixture.Metadata.GetRaw(AndroidAccountLinkKeyAuthority.BindingStorageKey)!);
+        JsonElement grantId = binding.RootElement.GetProperty("grantId");
+        return grantId.ValueKind == JsonValueKind.Null ? null : grantId.GetString();
+    }
+
+    private static async Task RecoverCommittedGrantWithoutNetworkAsync(
+        LinkFixture fixture,
+        string expectedGrantId)
+    {
+        var terminal = new RecordingHandler(_ =>
+            throw new InvalidOperationException("Staged cleanup recovery must not call Hub."));
+        using AndroidAccountLinkHttpTransport transport = CreateTransport(terminal);
+        AndroidAccountLinkService restarted = CreateService(transport, fixture);
+        await restarted.InitializeAsync();
+        Require(restarted.Snapshot.Status == AndroidAccountLinkStatus.Linked);
+        Require(terminal.Requests.Count == 0);
+        await RequireCommittedGrantAsync(fixture, expectedGrantId);
+        Require(!fixture.Metadata.Contains(StagedGrantCommitKey));
+    }
+
+    private static async Task<LinkFixture> CreateUnlinkedFixtureAsync()
     {
         MemoryMetadataStore metadata = new();
         MemoryDeviceKeyStore keys = new();
         AndroidAccountLinkKeyAuthority authority = new(keys, metadata);
         AndroidAccountLinkKeyIdentity identity = await authority.StartOrResumeExplicitLinkAsync();
-        await metadata.SetAsync(PendingStateKey, "pending-state");
-        await metadata.SetAsync(PendingInstallationIdKey, identity.InstallationId);
-        await metadata.SetAsync(
+        return new(metadata, keys, authority, identity);
+    }
+
+    private static async Task<LinkFixture> CreatePendingFixtureAsync()
+    {
+        LinkFixture fixture = await CreateUnlinkedFixtureAsync();
+        await fixture.Metadata.SetAsync(PendingStateKey, "pending-state");
+        await fixture.Metadata.SetAsync(PendingInstallationIdKey, fixture.Identity.InstallationId);
+        await fixture.Metadata.SetAsync(
             PendingStartedKey,
             DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture));
-        return new(metadata, keys, authority, identity);
+        return fixture;
     }
 
     private static async Task<LinkFixture> CreateLinkedFixtureAsync(DateTimeOffset expiresAtUtc)
@@ -860,6 +1258,23 @@ internal static class Program
             ?? throw new InvalidOperationException("Operation ID is required.");
     }
 
+    private static IReadOnlyDictionary<string, string> QueryValues(Uri uri)
+    {
+        var values = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (string pair in uri.Query.TrimStart('?').Split(
+            '&',
+            StringSplitOptions.RemoveEmptyEntries))
+        {
+            string[] parts = pair.Split('=', 2);
+            string key = Uri.UnescapeDataString(parts[0]);
+            string value = parts.Length == 2
+                ? Uri.UnescapeDataString(parts[1].Replace('+', ' '))
+                : string.Empty;
+            values.Add(key, value);
+        }
+        return values;
+    }
+
     private static void RequireBootstrapRetriesShareOnlyStableOperation(
         ObservedRequest original,
         ObservedRequest retry)
@@ -869,6 +1284,7 @@ internal static class Program
         foreach (string property in new[]
                  {
                      "operationId",
+                     "installLinkTransport",
                      "installationId",
                      "headId",
                      "applicationVersion",
@@ -1050,6 +1466,12 @@ internal static class Program
     {
         private readonly Dictionary<string, string> _values = new(StringComparer.Ordinal);
 
+        internal Action<string>? AfterSet { get; set; }
+
+        internal string? ThrowAfterSetKey { get; set; }
+
+        internal string? ThrowBeforeRemoveKey { get; set; }
+
         public Task<string?> GetAsync(string key, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -1063,12 +1485,23 @@ internal static class Program
         {
             cancellationToken.ThrowIfCancellationRequested();
             _values[key] = value;
+            AfterSet?.Invoke(key);
+            if (string.Equals(ThrowAfterSetKey, key, StringComparison.Ordinal))
+            {
+                ThrowAfterSetKey = null;
+                throw new SimulatedProcessTerminationException();
+            }
             return Task.CompletedTask;
         }
 
         public Task RemoveAsync(string key, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (string.Equals(ThrowBeforeRemoveKey, key, StringComparison.Ordinal))
+            {
+                ThrowBeforeRemoveKey = null;
+                throw new IOException("Injected SecureStorage cleanup failure.");
+            }
             _values.Remove(key);
             return Task.CompletedTask;
         }
@@ -1076,6 +1509,14 @@ internal static class Program
         internal bool Contains(string key) => _values.ContainsKey(key);
 
         internal string? GetRaw(string key) => _values.GetValueOrDefault(key);
+    }
+
+    private sealed class SimulatedProcessTerminationException : IOException
+    {
+        internal SimulatedProcessTerminationException()
+            : base("Injected process termination after a durable SecureStorage write.")
+        {
+        }
     }
 
     private sealed class MemoryDeviceKeyStore : IAndroidDeviceKeyStore, IDisposable
@@ -1154,7 +1595,20 @@ internal static class Program
 
     private sealed class StubSystemService : IAndroidSystemService
     {
-        public Task<bool> OpenUriAsync(Uri uri) => Task.FromResult(true);
+        private readonly Func<Uri, bool> _openUri;
+
+        internal StubSystemService(Func<Uri, bool>? openUri = null)
+        {
+            _openUri = openUri ?? (_ => true);
+        }
+
+        internal List<Uri> OpenedUris { get; } = [];
+
+        public Task<bool> OpenUriAsync(Uri uri)
+        {
+            OpenedUris.Add(uri);
+            return Task.FromResult(_openUri(uri));
+        }
 
         public Task<AndroidUpdateCheckResult> CheckForUpdatesAsync()
             => Task.FromResult(AndroidUpdateCheckResult.Unavailable);
