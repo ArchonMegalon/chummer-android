@@ -167,7 +167,7 @@ ADB_READ_ONLY_HIERARCHY_ARGUMENTS = (
     "--compressed",
     "/dev/tty",
 )
-ADB_FILE_HIERARCHY_REMOTE_PATH = "/sdcard/chummer-editing-window.xml"
+ADB_FILE_HIERARCHY_REMOTE_PATH = "/data/local/tmp/chummer-editing-window.xml"
 ADB_FILE_HIERARCHY_REMOVE_SHELL_ARGUMENTS = (
     "rm",
     "-f",
@@ -5940,7 +5940,7 @@ class Device:
             hierarchy_result = deadline_run(
                 "exec-out",
                 "cat",
-                "/sdcard/chummer-editing-window.xml",
+                ADB_FILE_HIERARCHY_REMOTE_PATH,
             )
             if time.monotonic() >= deadline:
                 return
@@ -5977,7 +5977,7 @@ class Device:
             )
         try:
             hierarchy = self.run(
-                "exec-out", "cat", "/sdcard/chummer-editing-window.xml"
+                "exec-out", "cat", ADB_FILE_HIERARCHY_REMOTE_PATH
             ).stdout
             (self.evidence / f"{name}.xml").write_text(hierarchy, encoding="utf-8")
         except subprocess.CalledProcessError:

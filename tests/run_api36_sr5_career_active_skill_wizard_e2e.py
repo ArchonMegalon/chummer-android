@@ -1237,7 +1237,7 @@ def execute(
             "deletedAndVerified": False,
         },
         {
-            "path": "/sdcard/chummer-editing-window.xml",
+            "path": shared.ADB_FILE_HIERARCHY_REMOTE_PATH,
             "purpose": "temporary UIAutomator hierarchy dump",
             "precleanAttempted": False,
             "precleaned": False,

@@ -19,7 +19,7 @@ SCHEMA = "chummer.android.sr5-after-run-settlement-hosted-e2e/v1"
 JOURNEY = "sr5-after-run-settlement"
 MATRIX_JOURNEY = "after-run-settlement"
 HOSTED_ABI = "x86_64"
-REMOTE_HIERARCHY = "/sdcard/chummer-editing-window.xml"
+REMOTE_HIERARCHY = "/data/local/tmp/chummer-editing-window.xml"
 
 
 def source_paths() -> dict[str, Path]:

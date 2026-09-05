@@ -726,7 +726,7 @@ class Api36Sr5CareerActiveSkillWizardDriverTests(unittest.TestCase):
         self.assertIn('parser.add_argument("--build-provenance-manifest", type=Path, required=True)', source)
         self.assertIn("validate_output_layout(receipt=receipt_path", source)
         self.assertIn("remove_remote_temporary_file(device, str(remote", source)
-        self.assertIn('"/sdcard/chummer-editing-window.xml"', source)
+        self.assertIn("shared.ADB_FILE_HIERARCHY_REMOTE_PATH", source)
         self.assertIn('"remoteTemporaryFiles": remote_temporary_files', source)
         self.assertIn('"deletedAndVerified": False', source)
         self.assertIn("device.require_transport_stability(expected_api_level=\"36\")", source)

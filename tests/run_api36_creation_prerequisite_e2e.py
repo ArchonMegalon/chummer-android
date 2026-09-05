@@ -4710,10 +4710,10 @@ def capture_creation_authority_pending_timeout_diagnostics(
     hierarchy_paths = (
         (
             CREATION_AUTHORITY_PENDING_TIMEOUT_HIERARCHY,
-            "/sdcard/chummer-editing-window.xml",
+            shared.ADB_FILE_HIERARCHY_REMOTE_PATH,
         )
         if fresh_dump_succeeded
-        else ("/sdcard/chummer-editing-window.xml",)
+        else (shared.ADB_FILE_HIERARCHY_REMOTE_PATH,)
     )
     for hierarchy_path in hierarchy_paths:
         try:

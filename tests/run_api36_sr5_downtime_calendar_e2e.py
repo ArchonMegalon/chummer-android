@@ -896,7 +896,10 @@ def execute(args: argparse.Namespace, context: dict[str, object]) -> dict[str, o
     remote_runner = f"/sdcard/Download/{runner.name}"
     remotes = [
         _remote(remote_runner, "temporary governed Downtime runner"),
-        _remote("/sdcard/chummer-editing-window.xml", "temporary UIAutomator hierarchy dump"),
+        _remote(
+            shared.ADB_FILE_HIERARCHY_REMOTE_PATH,
+            "temporary UIAutomator hierarchy dump",
+        ),
     ]
     context["remoteTemporaryFiles"] = remotes
     errors: list[str] = []

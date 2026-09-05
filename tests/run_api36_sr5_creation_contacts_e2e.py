@@ -742,7 +742,7 @@ def execute(args: argparse.Namespace, context: dict[str, object]) -> dict[str, o
             "deletedAndVerified": False,
         },
         {
-            "path": "/sdcard/chummer-editing-window.xml",
+            "path": shared.ADB_FILE_HIERARCHY_REMOTE_PATH,
             "precleanAttempted": False,
             "precleaned": False,
             "cleanupAttempted": False,

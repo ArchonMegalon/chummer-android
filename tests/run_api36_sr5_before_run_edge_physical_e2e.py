@@ -1729,7 +1729,7 @@ def execute_lane(
     source_hashes = require_object(source_before["sourceFileSha256"], "Source file hashes")
     fixture_sha256 = str(source_hashes["fixtureSha256"])
     remote_fixture = f"/sdcard/Download/{fixture_name}"
-    temporary = [remote_fixture, "/sdcard/chummer-editing-window.xml"]
+    temporary = [remote_fixture, shared.ADB_FILE_HIERARCHY_REMOTE_PATH]
     cleanup = {path: False for path in temporary}
     device = shared.Device(args.adb.resolve(), args.serial, args.evidence)
     errors: list[str] = []

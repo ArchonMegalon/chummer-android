@@ -1170,7 +1170,7 @@ def execute(args: argparse.Namespace, context: dict[str, object]) -> dict[str, o
     )
     device = shared.Device(args.adb.resolve(), args.serial, args.evidence.resolve())
     remote_fixture = f"/sdcard/Download/{fixture.name}"
-    cleanup = {remote_fixture: False, "/sdcard/chummer-editing-window.xml": False}
+    cleanup = {remote_fixture: False, shared.ADB_FILE_HIERARCHY_REMOTE_PATH: False}
     errors: list[str] = []
     journey: dict[str, object] | None = None
     observation: dict[str, object] | None = None
