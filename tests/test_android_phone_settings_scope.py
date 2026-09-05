@@ -44,5 +44,7 @@ def test_character_settings_scope_preserves_profile_identity_and_fails_closed() 
     assert 'AutomationId = "dialog-settings-scope"' in dialog_source
     assert "KnownRulesSections.Contains(sectionId)" in dialog_source
     assert "KnownSections.Contains(option.Value)" in dialog_source
+    assert "KnownSections = new(KnownRulesSections" in dialog_source
+    assert "matches.Length == 1 && IsExpectedSectionField(matches[0])" in dialog_source
     assert "return new NativeDialogScopedField(false" in dialog_source
     assert "Every other dialog passes through unchanged" in dialog_source

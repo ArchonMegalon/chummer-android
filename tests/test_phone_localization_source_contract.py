@@ -93,8 +93,6 @@ class PhoneLocalizationSourceContractTests(unittest.TestCase):
             "es": load_resx("PhoneStrings.es.resx"),
         }
         scope_keys = {
-            "CharacterSettingsCustomDataSection",
-            "CharacterSettingsCustomDataField",
             "CharacterSettingsCustomDataScope",
             "CharacterSettingsRulesScope",
             "CharacterSettingsUnsupportedScope",
@@ -103,11 +101,9 @@ class PhoneLocalizationSourceContractTests(unittest.TestCase):
             self.assertTrue(scope_keys.issubset(catalog), language)
             self.assertTrue(all(catalog[key] for key in scope_keys), language)
 
-        self.assertIn("desktop compatibility", catalogs["en"]["CharacterSettingsCustomDataSection"])
-        self.assertIn("Desktop-Kompatibilität", catalogs["de"]["CharacterSettingsCustomDataSection"])
-        self.assertIn("compatibilidad con escritorio", catalogs["es"]["CharacterSettingsCustomDataSection"])
-        for language in catalogs:
-            self.assertIn("Android", catalogs[language]["CharacterSettingsCustomDataScope"])
+        self.assertIn("desktop-only", catalogs["en"]["CharacterSettingsCustomDataScope"])
+        self.assertIn("nur auf dem Desktop", catalogs["de"]["CharacterSettingsCustomDataScope"])
+        self.assertIn("exclusivos del escritorio", catalogs["es"]["CharacterSettingsCustomDataScope"])
 
 
 if __name__ == "__main__":

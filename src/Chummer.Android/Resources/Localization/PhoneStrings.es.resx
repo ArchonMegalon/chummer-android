@@ -97,9 +97,7 @@
   <data name="Close" xml:space="preserve"><value>Cerrar</value></data>
   <data name="RunnerSetup" xml:space="preserve"><value>Configuración del runner</value></data>
   <data name="DialogApplyingChoice" xml:space="preserve"><value>Aplicando tu elección… Puede tardar un momento.</value></data>
-  <data name="CharacterSettingsCustomDataSection" xml:space="preserve"><value>Datos personalizados (compatibilidad con escritorio)</value></data>
-  <data name="CharacterSettingsCustomDataField" xml:space="preserve"><value>Entradas de datos personalizados (compatibilidad con perfiles de escritorio)</value></data>
-  <data name="CharacterSettingsCustomDataScope" xml:space="preserve"><value>Android usa los datos de juego incluidos. Estas entradas permanecen en el perfil de ajustes para la compatibilidad con los datos personalizados de escritorio.</value></data>
+  <data name="CharacterSettingsCustomDataScope" xml:space="preserve"><value>Los directorios de datos personalizados son exclusivos del escritorio y están ocultos en Android. Sus valores guardados permanecen sin cambios en el perfil de ajustes.</value></data>
   <data name="CharacterSettingsRulesScope" xml:space="preserve"><value>Estas reglas del runner pertenecen al perfil de ajustes y se aplican en todas las plataformas de Chummer.</value></data>
   <data name="CharacterSettingsUnsupportedScope" xml:space="preserve"><value>Esta sección de ajustes no está disponible en Android. Sus valores guardados permanecen en el perfil.</value></data>
 </root>

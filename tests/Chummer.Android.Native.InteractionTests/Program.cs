@@ -157,26 +157,20 @@ internal static class Program
         Require(projectedSection.IsVisible, "The exact Character Settings section picker was hidden.");
         Require(
             projectedSection.Options is not null
-            && projectedSection.Options.Select(option => option.Value).SequenceEqual(["rules", "custom-data"]),
-            "The phone did not fail closed on an unknown Character Settings section identity.");
-        Require(
-            projectedSection.Options![1].Label == "Custom data (desktop compatibility)",
-            "The desktop-only custom-data section was not given explicit phone scope.");
+            && projectedSection.Options.Select(option => option.Value).SequenceEqual(["rules"]),
+            "The phone exposed a desktop-only or unknown Character Settings section identity.");
 
         NativeDialogScopedField projectedCustomData = AndroidDialogSettingsScope.Project(
             customDataDialog,
             customData);
-        Require(projectedCustomData.IsVisible, "The profile-portability custom-data field was hidden.");
-        Require(
-            projectedCustomData.Label == "Custom data entries (desktop profile compatibility)",
-            "The custom-data field still claimed to control Android directories.");
+        Require(!projectedCustomData.IsVisible, "A desktop-only custom-data field was exposed on Android.");
         Require(
             customData.Id == AndroidDialogSettingsScope.CustomDataFieldId
             && customData.Value == "desktop-pack\ntrue\n0",
             "Phone scope projection changed persisted Character Settings identity or value.");
         Require(
             AndroidDialogSettingsScope.Detail(customDataDialog)?.StartsWith(
-                "Android uses bundled game data.",
+                "Custom data directories are desktop-only",
                 StringComparison.Ordinal) == true,
             "The custom-data section did not explain the Android capability boundary.");
 
@@ -216,6 +210,34 @@ internal static class Program
                 "not available on Android",
                 StringComparison.Ordinal) == true,
             "An unclassified section did not explain that its persisted values remain unavailable.");
+
+        DesktopDialogField malformedSection = new(
+            AndroidDialogSettingsScope.SectionFieldId,
+            section.Label,
+            "rules",
+            section.Placeholder,
+            InputType: "text",
+            Options: sectionOptions);
+        DesktopDialogField malformedRulesControl = new(
+            $"{AndroidDialogSettingsScope.ControlFieldPrefix}chkRulesEnabled",
+            "Rules enabled",
+            "true",
+            string.Empty,
+            InputType: "checkbox");
+        DesktopDialogState malformedSectionDialog = new(
+            AndroidDialogSettingsScope.CharacterSettingsDialogId,
+            "Character Settings",
+            string.Empty,
+            [malformedSection, malformedRulesControl],
+            []);
+        Require(
+            !AndroidDialogSettingsScope.Project(malformedSectionDialog, malformedRulesControl).IsVisible,
+            "A malformed section selector exposed a rules control on Android.");
+        Require(
+            AndroidDialogSettingsScope.Detail(malformedSectionDialog)?.Contains(
+                "not available on Android",
+                StringComparison.Ordinal) == true,
+            "A malformed section selector received a trusted rules explanation.");
 
         DesktopDialogField wizardField = new(
             "wizardFutureField",

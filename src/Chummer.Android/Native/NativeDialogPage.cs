@@ -845,9 +845,9 @@ internal sealed record NativeDialogScopedField(
 /// <summary>
 /// Applies Android-owned capability semantics to the desktop-compatible dialog projection without
 /// changing dialog, field, option, or persisted settings identities. Character-settings sections
-/// are an explicit allowlist: an unknown section or an unexpected custom-data field shape is hidden
-/// until the phone has deliberately classified it. Every other dialog passes through unchanged so
-/// creation and career wizard behavior remains presentation-owned.
+/// are an explicit Android allowlist: unknown or Android-unsupported sections and fields are hidden
+/// until the phone has deliberately classified them. Every other dialog passes through unchanged
+/// so creation and career wizard behavior remains presentation-owned.
 /// </summary>
 internal static class AndroidDialogSettingsScope
 {
@@ -872,10 +872,7 @@ internal static class AndroidDialogSettingsScope
         "build"
     };
 
-    private static readonly HashSet<string> KnownSections = new(KnownRulesSections, StringComparer.Ordinal)
-    {
-        CustomDataSectionId
-    };
+    private static readonly HashSet<string> KnownSections = new(KnownRulesSections, StringComparer.Ordinal);
 
     private static readonly HashSet<string> StructuralFieldIds = new(StringComparer.Ordinal)
     {
@@ -908,14 +905,6 @@ internal static class AndroidDialogSettingsScope
 
             DesktopDialogFieldOption[] options = (field.Options ?? [])
                 .Where(option => KnownSections.Contains(option.Value))
-                .Select(option => string.Equals(option.Value, CustomDataSectionId, StringComparison.Ordinal)
-                    ? new DesktopDialogFieldOption(
-                        option.Value,
-                        PhoneStrings.Get(
-                            "CharacterSettingsCustomDataSection",
-                            "Custom data (desktop compatibility)",
-                            culture))
-                    : option)
                 .ToArray();
             return new NativeDialogScopedField(true, field.Label, options);
         }
@@ -931,18 +920,6 @@ internal static class AndroidDialogSettingsScope
             && field.Id.StartsWith(ControlFieldPrefix, StringComparison.Ordinal))
         {
             return new NativeDialogScopedField(true, field.Label, field.Options);
-        }
-
-        if (string.Equals(sectionId, CustomDataSectionId, StringComparison.Ordinal)
-            && IsExpectedCustomDataField(field))
-        {
-            return new NativeDialogScopedField(
-                true,
-                PhoneStrings.Get(
-                    "CharacterSettingsCustomDataField",
-                    "Custom data entries (desktop profile compatibility)",
-                    culture),
-                field.Options);
         }
 
         return new NativeDialogScopedField(false, field.Label, field.Options);
@@ -961,7 +938,7 @@ internal static class AndroidDialogSettingsScope
         {
             return PhoneStrings.Get(
                 "CharacterSettingsCustomDataScope",
-                "Android uses bundled game data. These entries stay in the settings profile for desktop custom-data compatibility.",
+                "Custom data directories are desktop-only and hidden on Android. Their saved values remain unchanged in the settings profile.",
                 culture);
         }
 
@@ -988,7 +965,7 @@ internal static class AndroidDialogSettingsScope
             .Where(field => string.Equals(field.Id, SectionFieldId, StringComparison.Ordinal))
             .Take(2)
             .ToArray();
-        return matches.Length == 1 && KnownSections.Contains(matches[0].Value)
+        return matches.Length == 1 && IsExpectedSectionField(matches[0])
             ? matches[0].Value
             : null;
     }
@@ -998,13 +975,6 @@ internal static class AndroidDialogSettingsScope
             && !field.IsReadOnly
             && !field.IsMultiline
             && field.Options is not null;
-
-    private static bool IsExpectedCustomDataField(DesktopDialogField field)
-        => string.Equals(field.Id, CustomDataFieldId, StringComparison.Ordinal)
-            && string.Equals(field.InputType, "text", StringComparison.OrdinalIgnoreCase)
-            && !field.IsReadOnly
-            && field.IsMultiline
-            && (field.Options is null || field.Options.Count == 0);
 }
 
 internal sealed record NativeDialogFieldBinding(
