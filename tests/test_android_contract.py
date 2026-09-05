@@ -2052,6 +2052,15 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn('-p:ApplicationVersion="$version_code"', build)
         self.assertIn("--package-authority", build)
         self.assertIn("CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY", build)
+        self.assertIn("CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT", build)
+        self.assertIn("CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_SHA256", build)
+        self.assertGreaterEqual(
+            build.count("verify_api36_two_green_release_eligibility.py"), 3
+        )
+        self.assertLess(
+            build.index('|| fail "two-green-pre-signing-binding-invalid"'),
+            build.index("require_private_regular_file AndroidSigningKeyStore"),
+        )
         self.assertIn("set -euo pipefail", prepare)
         self.assertIn("umask 077", prepare)
         self.assertIn("release-input-directory-inside-workspace", prepare)
@@ -2061,6 +2070,14 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("ChummerUseLocalCompatibilityTree=false", prepare)
         self.assertIn("ChummerUseLockedOwnerContractPackages=true", prepare)
         self.assertIn("materialize_release_package_authority.py", prepare)
+        self.assertIn("CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT", prepare)
+        self.assertIn("CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_SHA256", prepare)
+        self.assertGreaterEqual(
+            prepare.count("verify_api36_two_green_release_eligibility.py"), 2
+        )
+        self.assertIn("two-green-release-input-binding-invalid", prepare)
+        self.assertIn("two_green_receipt_sha256=%s", build)
+        self.assertIn("google_play_upload_authorized=false", build)
         self.assertIn("--verify-existing", prepare)
         self.assertIn("release-input-directory-not-empty", prepare)
         self.assertIn("publication_authorized=false", prepare)

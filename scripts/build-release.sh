@@ -176,6 +176,10 @@ case "$release_input_root/" in
 esac
 require_private_regular_file CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY
 require_private_regular_file CHUMMER_CURRENT_UI_PACKAGE_AUTHORITY_RECEIPT
+require_private_regular_file CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT
+eligibility_sha256="${CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_SHA256:-}"
+[[ "$eligibility_sha256" =~ ^[0-9a-f]{64}$ ]] \
+  || fail "two-green-eligibility-sha256-invalid"
 [[ -f "$AndroidSdkDirectory/platforms/android-36/android.jar" ]] \
   || fail "android-api36-platform-missing"
 [[ -x "$AndroidSdkDirectory/build-tools/36.0.0/aapt2" ]] \
@@ -199,6 +203,14 @@ python3 "$repo_dir/scripts/materialize_release_package_authority.py" \
   --receipt "$CHUMMER_CURRENT_UI_PACKAGE_AUTHORITY_RECEIPT" \
   --package-feed "$CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED" \
   --verify-existing "$CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY"
+python3 "$repo_dir/scripts/verify_api36_two_green_release_eligibility.py" \
+  --receipt "$CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT" \
+  --expected-receipt-sha256 "$eligibility_sha256" \
+  --android-root "$repo_dir" \
+  --expected-version-name "$version_name" \
+  --expected-version-code "$version_code" \
+  --package-authority "$CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY" >/dev/null \
+  || fail "two-green-release-input-binding-invalid"
 python3 "$repo_dir/scripts/preflight_native_android_toolchain.py" \
   --repo-root "$repo_dir" \
   --dotnet "$dotnet_command" \
@@ -262,6 +274,15 @@ python3 "$repo_dir/scripts/verify_release_source_graph.py" \
   --expected-version-name "$version_name" \
   --expected-version-code "$version_code" \
   --output "$staged_graph"
+python3 "$repo_dir/scripts/verify_api36_two_green_release_eligibility.py" \
+  --receipt "$CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT" \
+  --expected-receipt-sha256 "$eligibility_sha256" \
+  --android-root "$repo_dir" \
+  --expected-version-name "$version_name" \
+  --expected-version-code "$version_code" \
+  --package-authority "$CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY" \
+  --source-graph "$staged_graph" >/dev/null \
+  || fail "two-green-release-graph-binding-invalid"
 python3 "$repo_dir/scripts/verify_release_publish_output.py" \
   --publish-dir "$staged_publish_dir" \
   --package-id "$package_id" \
@@ -348,6 +369,15 @@ python3 "$repo_dir/scripts/seal_release_restore_consumption.py" materialize \
 
 # Signing material is admitted only after every test and non-signing release
 # preflight has completed. None of these values is written to argv or logs.
+python3 "$repo_dir/scripts/verify_api36_two_green_release_eligibility.py" \
+  --receipt "$CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT" \
+  --expected-receipt-sha256 "$eligibility_sha256" \
+  --android-root "$repo_dir" \
+  --expected-version-name "$version_name" \
+  --expected-version-code "$version_code" \
+  --package-authority "$CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY" \
+  --source-graph "$staged_graph" >/dev/null \
+  || fail "two-green-pre-signing-binding-invalid"
 require_private_regular_file AndroidSigningKeyStore
 require_private_regular_file CHUMMER_ANDROID_UPLOAD_CERTIFICATE_PATH
 require_private_regular_file CHUMMER_BUNDLETOOL_JAR
@@ -486,5 +516,6 @@ seal_file_no_clobber "$release_tmp/aab.sha256" "$output_hash" 0600
 (cd "$repo_dir" && sha256sum --check "$output_hash" >/dev/null) \
   || fail "sealed-hash-verification"
 
-printf 'android_release=sealed version=%s code=%s aab=%s sha256=%s source_graph=%s source_graph_sha256=%s\n' \
-  "$version_name" "$version_code" "$output_aab" "$source_sha256" "$output_graph" "$graph_sha256"
+printf 'android_release=sealed version=%s code=%s aab=%s sha256=%s source_graph=%s source_graph_sha256=%s two_green_receipt_sha256=%s publication_authorized=false google_play_upload_authorized=false\n' \
+  "$version_name" "$version_code" "$output_aab" "$source_sha256" \
+  "$output_graph" "$graph_sha256" "$eligibility_sha256"

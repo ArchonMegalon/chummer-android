@@ -18,6 +18,13 @@ SPEC = importlib.util.spec_from_file_location("api36_two_green", SCRIPT)
 assert SPEC is not None and SPEC.loader is not None
 gate = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(gate)
+CONSUMER_SCRIPT = REPO / "scripts/verify_api36_two_green_release_eligibility.py"
+CONSUMER_SPEC = importlib.util.spec_from_file_location(
+    "api36_two_green_release_consumer", CONSUMER_SCRIPT
+)
+assert CONSUMER_SPEC is not None and CONSUMER_SPEC.loader is not None
+consumer = importlib.util.module_from_spec(CONSUMER_SPEC)
+CONSUMER_SPEC.loader.exec_module(consumer)
 WORKFLOW = REPO / ".github/workflows/api36-two-consecutive-green.yml"
 
 
@@ -35,10 +42,20 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
         self.source_workflow.write_bytes(
             gate.SOURCE_WORKFLOW.read_bytes()
         )
+        project = self.android / "src/Chummer.Android/Chummer.Android.csproj"
+        project.parent.mkdir(parents=True)
+        project.write_text(
+            "<Project><PropertyGroup>"
+            "<ApplicationId>com.myexternalbrain.chummer</ApplicationId>"
+            "<ApplicationDisplayVersion>0.1.0-preview.11</ApplicationDisplayVersion>"
+            "<ApplicationVersion>11</ApplicationVersion>"
+            "</PropertyGroup></Project>\n",
+            encoding="utf-8",
+        )
         self.git("init", "--quiet")
         self.git("config", "user.name", "Two Green Test")
         self.git("config", "user.email", "test@example.invalid")
-        self.git("add", gate.WORKFLOW_PATH)
+        self.git("add", gate.WORKFLOW_PATH, "src/Chummer.Android/Chummer.Android.csproj")
         self.git("commit", "--quiet", "-m", "base for realistic merge identities")
         self.tree = self.git("rev-parse", "HEAD^{tree}")
         self.base_commit = self.git("rev-parse", "HEAD")
@@ -524,6 +541,95 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
 
     def create(self) -> dict[str, object]:
         return gate.create_authority(**self.inputs)
+
+    def release_consumer_inputs(
+        self, authority: dict[str, object]
+    ) -> tuple[Path, str, Path, Path]:
+        receipt = self.root / "release-two-green.json"
+        receipt.write_bytes(gate.pretty_json_bytes(authority))
+        receipt.chmod(0o600)
+        sources = authority["commonAuthority"]["dependencyGraph"]["sources"]
+        package_authority = self.root / "release-package-authority.json"
+        package_authority.write_bytes(
+            gate.canonical_json_bytes(
+                {
+                    "contractName": consumer.PACKAGE_AUTHORITY_CONTRACT,
+                    "packagePins": [
+                        {
+                            "package_id": package_id,
+                            "commit": sources["core-runtime"]["commit"],
+                        }
+                        for package_id in consumer.RUNTIME_PACKAGES
+                    ],
+                    "ownerPackagePins": [
+                        {
+                            "package_id": package_id,
+                            "source_commit": sources[source_name]["commit"],
+                            "source_tree": sources[source_name]["tree"],
+                        }
+                        for package_id, source_name in consumer.OWNER_PACKAGES.items()
+                    ],
+                    "dependencyClosure": [],
+                }
+            )
+        )
+        package_authority.chmod(0o600)
+        source_graph = self.root / "release-source-graph.json"
+        repository_rows = [
+            {
+                "name": "chummer-android",
+                "commit": authority["sourceCommit"],
+                "tree": authority["sourceTree"],
+            }
+        ]
+        for source_name in (
+            "presentation",
+            "core-runtime",
+            "ui-kit",
+            "hub",
+            "registry",
+            "media",
+        ):
+            repository_rows.append(
+                {
+                    "name": consumer.SOURCE_GRAPH_REPOSITORIES[source_name],
+                    "commit": sources[source_name]["commit"],
+                    "tree": sources[source_name]["tree"],
+                }
+            )
+        repository_rows.append(
+            {
+                "name": "chummer6-design",
+                "commit": "a" * 40,
+                "tree": "b" * 40,
+            }
+        )
+        source_graph.write_bytes(
+            gate.canonical_json_bytes(
+                {
+                    "contractName": consumer.SOURCE_GRAPH_CONTRACT,
+                    "publicationAuthorized": False,
+                    "releaseIdentity": {
+                        "packageId": consumer.PACKAGE_ID,
+                        "versionName": authority["releaseIdentity"]["versionName"],
+                        "versionCode": authority["releaseIdentity"]["versionCode"],
+                        "intentAuthority": "explicit_build_input",
+                        "minimumExclusiveVersionCode": 10,
+                    },
+                    "repositories": repository_rows,
+                    "ownerPackagePins": [
+                        {
+                            "package_id": package_id,
+                            "source_commit": sources[source_name]["commit"],
+                            "source_tree": sources[source_name]["tree"],
+                        }
+                        for package_id, source_name in consumer.OWNER_PACKAGES.items()
+                    ],
+                }
+            )
+        )
+        source_graph.chmod(0o600)
+        return receipt, sha256(receipt.read_bytes()), package_authority, source_graph
 
     def read_p0(self, role: str) -> dict[str, object]:
         with zipfile.ZipFile(self.inputs[f"{role}_p0_archive"]) as archive:
@@ -1177,6 +1283,22 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "workflow bytes differ from tracked HEAD"):
             self.create()
 
+    def test_release_identity_must_come_from_the_tracked_main_tree(self) -> None:
+        project_path = Path("src/Chummer.Android/Chummer.Android.csproj")
+        self.git("update-index", "--assume-unchanged", project_path.as_posix())
+        project = self.android / project_path
+        project.write_text(
+            project.read_text(encoding="utf-8").replace(
+                "0.1.0-preview.11", "0.1.0-preview.12"
+            ),
+            encoding="utf-8",
+        )
+        self.assertEqual(
+            "", self.git("status", "--porcelain=v1", "--untracked-files=all")
+        )
+        with self.assertRaisesRegex(ValueError, "project bytes differ from tracked HEAD"):
+            self.create()
+
     def test_duplicate_json_and_claim_escalation_fail_closed(self) -> None:
         path = self.inputs["review_run"]
         original = path.read_bytes()
@@ -1194,6 +1316,241 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
             tampered["eligibilitySha256"] = gate.canonical_sha256(unsigned)
             with self.assertRaisesRegex(ValueError, "posture"):
                 gate.validate_authority(tampered)
+
+    def test_release_consumer_binds_exact_receipt_commit_graph_version_and_environment(self) -> None:
+        self.inputs["policy"] = gate.POLICY_PATH
+        self.inputs["environment_policy"] = gate.ENVIRONMENT_POLICY_PATH
+        authority = self.create()
+        receipt, receipt_sha256, package_authority, source_graph = (
+            self.release_consumer_inputs(authority)
+        )
+        binding = consumer.verify_release_eligibility(
+            receipt,
+            receipt_sha256,
+            android_root=self.android,
+            expected_version_name="0.1.0-preview.11",
+            expected_version_code=11,
+            package_authority_path=package_authority,
+            source_graph_path=source_graph,
+        )
+        self.assertTrue(binding["eligible"])
+        self.assertTrue(binding["internalTestingEligible"])
+        self.assertFalse(binding["publicationAuthorized"])
+        self.assertFalse(binding["googlePlayUploadAuthorized"])
+        self.assertEqual(self.main_merge_commit, binding["sourceCommit"])
+        self.assertEqual(
+            authority["commonAuthority"]["dependencyGraph"]["sha256"],
+            binding["dependencyGraphSha256"],
+        )
+        self.assertEqual(
+            authority["commonAuthority"]["environmentPolicy"]["sha256"],
+            binding["environmentPolicySha256"],
+        )
+        self.assertEqual("success", binding["mainAggregateConclusion"])
+        self.assertEqual("pass", binding["environmentCompatibilityStatus"])
+
+    def test_release_consumer_cli_never_turns_eligibility_into_signing_or_upload_authority(
+        self,
+    ) -> None:
+        self.inputs["policy"] = gate.POLICY_PATH
+        self.inputs["environment_policy"] = gate.ENVIRONMENT_POLICY_PATH
+        authority = self.create()
+        receipt, receipt_sha256, package_authority, source_graph = (
+            self.release_consumer_inputs(authority)
+        )
+        arguments = [
+            str(CONSUMER_SCRIPT),
+            "--receipt",
+            str(receipt),
+            "--expected-receipt-sha256",
+            receipt_sha256,
+            "--android-root",
+            str(self.android),
+            "--expected-version-name",
+            "0.1.0-preview.11",
+            "--expected-version-code",
+            "11",
+            "--package-authority",
+            str(package_authority),
+            "--source-graph",
+            str(source_graph),
+        ]
+        completed = subprocess.run(
+            ["python3", *arguments],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(0, completed.returncode, completed.stderr)
+        result = json.loads(completed.stdout)
+        self.assertTrue(result["releasePreparationEligible"])
+        self.assertFalse(result["signingAuthorizedByReceipt"])
+        self.assertFalse(result["publicationAuthorized"])
+        self.assertFalse(result["googlePlayUploadAuthorized"])
+
+        arguments[arguments.index(receipt_sha256)] = "0" * 64
+        rejected = subprocess.run(
+            ["python3", *arguments],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(2, rejected.returncode, rejected.stderr)
+        failure = json.loads(rejected.stdout)
+        self.assertFalse(failure["releasePreparationEligible"])
+        self.assertFalse(failure["signingAuthorizedByReceipt"])
+        self.assertFalse(failure["publicationAuthorized"])
+        self.assertFalse(failure["googlePlayUploadAuthorized"])
+
+    def test_release_consumer_rejects_dirty_or_index_hidden_release_checkout(self) -> None:
+        self.inputs["policy"] = gate.POLICY_PATH
+        self.inputs["environment_policy"] = gate.ENVIRONMENT_POLICY_PATH
+        authority = self.create()
+        receipt, receipt_sha256, package_authority, source_graph = (
+            self.release_consumer_inputs(authority)
+        )
+        untracked = self.android / "untracked-release-input"
+        untracked.write_text("hostile\n", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "checkout is not clean"):
+            consumer.verify_release_eligibility(
+                receipt,
+                receipt_sha256,
+                android_root=self.android,
+                expected_version_name="0.1.0-preview.11",
+                expected_version_code=11,
+                package_authority_path=package_authority,
+                source_graph_path=source_graph,
+            )
+        untracked.unlink()
+
+        project_path = Path("src/Chummer.Android/Chummer.Android.csproj")
+        self.git("update-index", "--assume-unchanged", project_path.as_posix())
+        project = self.android / project_path
+        project.write_text(project.read_text(encoding="utf-8") + "<!-- hostile -->\n")
+        self.assertEqual(
+            "", self.git("status", "--porcelain=v1", "--untracked-files=all")
+        )
+        with self.assertRaisesRegex(ValueError, "hidden index flags"):
+            consumer.verify_release_eligibility(
+                receipt,
+                receipt_sha256,
+                android_root=self.android,
+                expected_version_name="0.1.0-preview.11",
+                expected_version_code=11,
+                package_authority_path=package_authority,
+                source_graph_path=source_graph,
+            )
+
+    def test_release_consumer_rejects_adversarial_receipt_authority(self) -> None:
+        self.inputs["policy"] = gate.POLICY_PATH
+        self.inputs["environment_policy"] = gate.ENVIRONMENT_POLICY_PATH
+        original = self.create()
+
+        def stale_commit(value: dict[str, object]) -> None:
+            replacement = "f" * 40
+            value["sourceCommit"] = replacement
+            value["mainRun"]["run"]["headSha"] = replacement
+            value["mainRun"]["p0EventSha"] = replacement
+            value["mainRun"]["p0BaseSha"] = replacement
+
+        def different_tree(value: dict[str, object]) -> None:
+            replacement = "e" * 40
+            value["sourceTree"] = replacement
+            value["commonAuthority"]["androidTree"] = replacement
+            dependency = value["commonAuthority"]["dependencyGraph"]
+            dependency["sources"]["android"]["tree"] = replacement
+            dependency["sha256"] = gate.canonical_sha256(
+                {"mode": dependency["mode"], "sources": dependency["sources"]}
+            )
+
+        def different_graph(value: dict[str, object]) -> None:
+            dependency = value["commonAuthority"]["dependencyGraph"]
+            dependency["sources"]["core-runtime"]["commit"] = "d" * 40
+            dependency["sha256"] = gate.canonical_sha256(
+                {"mode": dependency["mode"], "sources": dependency["sources"]}
+            )
+
+        def different_version(value: dict[str, object]) -> None:
+            value["releaseIdentity"]["versionName"] = "0.1.0-preview.12"
+            value["releaseIdentity"]["versionCode"] = 12
+
+        def failed_environment(value: dict[str, object]) -> None:
+            value["commonAuthority"]["environmentCompatibilityStatus"] = "fail"
+
+        def different_environment_policy(value: dict[str, object]) -> None:
+            value["commonAuthority"]["environmentPolicy"]["sha256"] = "0" * 64
+
+        def failed_main_run(value: dict[str, object]) -> None:
+            value["mainRun"]["run"]["conclusion"] = "failure"
+
+        def failed_aggregate(value: dict[str, object]) -> None:
+            value["mainRun"]["aggregateStatus"] = "fail"
+
+        def failed_aggregate_job(value: dict[str, object]) -> None:
+            aggregate = value["mainRun"]["jobs"][gate.REQUIRED_JOB_NAMES[-1]]
+            aggregate["conclusion"] = "failure"
+
+        for label, mutate in (
+            ("stale commit", stale_commit),
+            ("different tree", different_tree),
+            ("different dependency graph", different_graph),
+            ("different version", different_version),
+            ("failed environment", failed_environment),
+            ("different environment policy", different_environment_policy),
+            ("failed main run", failed_main_run),
+            ("failed aggregate", failed_aggregate),
+            ("failed aggregate job", failed_aggregate_job),
+        ):
+            with self.subTest(label=label):
+                candidate = copy.deepcopy(original)
+                mutate(candidate)
+                unsigned = {
+                    key: value
+                    for key, value in candidate.items()
+                    if key != "eligibilitySha256"
+                }
+                candidate["eligibilitySha256"] = gate.canonical_sha256(unsigned)
+                receipt, receipt_sha256, package_authority, source_graph = (
+                    self.release_consumer_inputs(candidate)
+                )
+                with self.assertRaises(ValueError):
+                    consumer.verify_release_eligibility(
+                        receipt,
+                        receipt_sha256,
+                        android_root=self.android,
+                        expected_version_name="0.1.0-preview.11",
+                        expected_version_code=11,
+                        package_authority_path=package_authority,
+                        source_graph_path=source_graph,
+                    )
+                receipt.unlink()
+                package_authority.unlink()
+                source_graph.unlink()
+
+    def test_release_consumer_rejects_a_different_release_source_graph(self) -> None:
+        self.inputs["policy"] = gate.POLICY_PATH
+        self.inputs["environment_policy"] = gate.ENVIRONMENT_POLICY_PATH
+        authority = self.create()
+        receipt, receipt_sha256, package_authority, source_graph = (
+            self.release_consumer_inputs(authority)
+        )
+        graph = json.loads(source_graph.read_text(encoding="utf-8"))
+        presentation = next(
+            row for row in graph["repositories"] if row["name"] == "chummer6-ui"
+        )
+        presentation["commit"] = "0" * 40
+        source_graph.write_bytes(gate.canonical_json_bytes(graph))
+        source_graph.chmod(0o600)
+        with self.assertRaisesRegex(ValueError, "presentation"):
+            consumer.verify_release_eligibility(
+                receipt,
+                receipt_sha256,
+                android_root=self.android,
+                expected_version_name="0.1.0-preview.11",
+                expected_version_code=11,
+                package_authority_path=package_authority,
+                source_graph_path=source_graph,
+            )
 
     def test_policy_has_no_live_run_ids_and_remains_nonpublication(self) -> None:
         policy = gate.expected_policy()
@@ -1221,6 +1578,13 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
         self.assertTrue(policy["requiresExactMergeCommitGraphs"])
         self.assertTrue(policy["requiresExactAggregateCheckRun"])
         self.assertTrue(policy["requiresCanonicalActionsDetailsUrls"])
+        self.assertTrue(policy["requiresExactMainCommit"])
+        self.assertTrue(policy["requiresExactReleaseIdentity"])
+        self.assertTrue(policy["requiresExactDependencyGraph"])
+        self.assertTrue(policy["requiresEnvironmentCompatibilityPass"])
+        self.assertTrue(policy["requiresSuccessfulMainRun"])
+        self.assertTrue(policy["requiresSuccessfulMainAggregate"])
+        self.assertFalse(policy["googlePlayUploadAuthorized"])
 
     def test_cli_rejects_symlinked_output_and_authority_before_resolution(self) -> None:
         output_target = self.root / "output-target.json"

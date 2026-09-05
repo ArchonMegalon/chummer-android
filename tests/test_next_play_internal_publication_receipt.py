@@ -55,13 +55,49 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
         self.aab = self.root / f"chummer-android-{self.version_name}-upload.aab"
         self.graph = self.root / f"chummer-android-{self.version_name}-source-graph.json"
         self.receipt = self.root / "next-internal-publication.json"
+        self.two_green_receipt = self.root / "two-green-eligibility.json"
         self.browser_payload = self.make_browser()
         self.graph_payload = self.make_graph()
+        write_private(self.two_green_receipt, {"fixture": True})
+        self.two_green_receipt_sha256 = hashlib.sha256(
+            self.two_green_receipt.read_bytes()
+        ).hexdigest()
+        self.two_green_binding = {
+            "contractName": self.module.QUALIFICATION.TWO_GREEN.CONTRACT,
+            "receiptSha256": self.two_green_receipt_sha256,
+            "eligibilitySha256": "a" * 64,
+            "sourceCommit": self.graph_payload["repositories"][0]["commit"],
+            "sourceTree": self.graph_payload["repositories"][0]["tree"],
+            "versionName": self.version_name,
+            "versionCode": self.version_code,
+            "dependencyGraphSha256": "b" * 64,
+            "environmentPolicySha256": "c" * 64,
+            "buildEnvironmentCompatibilitySha256": "d" * 64,
+            "journeyEnvironmentCompatibilitySha256": "e" * 64,
+            "mainRunId": 123,
+            "mainRunAttempt": 1,
+            "mainRunConclusion": "success",
+            "mainAggregateConclusion": "success",
+            "environmentCompatibilityStatus": "pass",
+            "eligible": True,
+            "internalTestingEligible": True,
+            "publicationAuthorized": False,
+            "googlePlayUploadAuthorized": False,
+        }
+        self.original_qualification_verifier = (
+            self.module.QUALIFICATION.verify_release_eligibility
+        )
+        self.module.QUALIFICATION.verify_release_eligibility = (
+            lambda *_args, **_kwargs: copy.deepcopy(self.two_green_binding)
+        )
         write_private(self.browser, self.browser_payload)
         self.write_aab(self.aab)
         write_private(self.graph, self.graph_payload)
 
     def tearDown(self) -> None:
+        self.module.QUALIFICATION.verify_release_eligibility = (
+            self.original_qualification_verifier
+        )
         self.temporary.cleanup()
 
     def make_browser(self) -> dict[str, object]:
@@ -215,6 +251,8 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
             self.receipt,
             expected_android_source_commit=self.graph_payload["repositories"][0]["commit"],
             expected_aab_sha256=hashlib.sha256(self.aab.read_bytes()).hexdigest(),
+            two_green_receipt_path=self.two_green_receipt,
+            expected_two_green_receipt_sha256=self.two_green_receipt_sha256,
         )
 
     def verify(self) -> dict[str, object]:
@@ -224,6 +262,8 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
             self.graph,
             expected_android_source_commit=self.graph_payload["repositories"][0]["commit"],
             expected_aab_sha256=hashlib.sha256(self.aab.read_bytes()).hexdigest(),
+            two_green_receipt_path=self.two_green_receipt,
+            expected_two_green_receipt_sha256=self.two_green_receipt_sha256,
         )
 
     def test_round_trip_binds_explicit_readback_and_exact_local_outputs(self) -> None:
@@ -241,9 +281,10 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
         self.assertEqual(self.module.CONTRACT, payload["contractName"])
         self.assertFalse(payload["publicationAuthorized"])
         self.assertEqual(
-            "explicit_internal_browser_readback_plus_exact_local_release_outputs",
+            "explicit_internal_browser_readback_plus_exact_qualified_release_outputs",
             payload["evidenceClass"],
         )
+        self.assertEqual(self.two_green_binding, payload["twoGreenEligibility"])
         self.assertFalse(payload["authorization"]["publicationAuthorized"])
         self.assertFalse(payload["authorization"]["productionAuthorized"])
         self.assertFalse(payload["authorization"]["uploadActionAuthorized"])
@@ -349,6 +390,10 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
                 self.graph_payload["repositories"][0]["commit"],
                 "--expected-aab-sha256",
                 hashlib.sha256(self.aab.read_bytes()).hexdigest(),
+                "--two-green-receipt",
+                str(self.two_green_receipt),
+                "--expected-two-green-receipt-sha256",
+                self.two_green_receipt_sha256,
                 "--token",
                 "do-not-record",
             ],
@@ -431,6 +476,10 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
                         self.aab,
                         self.graph,
                         self.receipt,
+                        two_green_receipt_path=self.two_green_receipt,
+                        expected_two_green_receipt_sha256=(
+                            self.two_green_receipt_sha256
+                        ),
                         **bindings,
                     )
                 self.assertFalse(self.receipt.exists())
@@ -450,6 +499,8 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
                 self.receipt,
                 expected_android_source_commit=expected_head,
                 expected_aab_sha256=expected_digest,
+                two_green_receipt_path=self.two_green_receipt,
+                expected_two_green_receipt_sha256=self.two_green_receipt_sha256,
             )
         self.assertFalse(self.receipt.exists())
 
@@ -477,6 +528,11 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
         cases = (
             (lambda value: value["authorization"].update({"productionAuthorized": True})),
             (lambda value: value["authorization"].update({"uploadActionAuthorized": True})),
+            (
+                lambda value: value["twoGreenEligibility"].update(
+                    {"googlePlayUploadAuthorized": True}
+                )
+            ),
             (lambda value: value["doesNotClaim"].remove("tester_installation")),
             (lambda value: value.update({"credential": "secret"})),
         )
@@ -520,6 +576,17 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
         self.assertFalse(schema["additionalProperties"])
         self.assertEqual(self.module.CONTRACT, schema["properties"]["contractName"]["const"])
         self.assertFalse(schema["properties"]["publicationAuthorized"]["const"])
+        qualification = schema["properties"]["twoGreenEligibility"]
+        self.assertFalse(qualification["additionalProperties"])
+        self.assertTrue(
+            qualification["properties"]["internalTestingEligible"]["const"]
+        )
+        self.assertFalse(
+            qualification["properties"]["publicationAuthorized"]["const"]
+        )
+        self.assertFalse(
+            qualification["properties"]["googlePlayUploadAuthorized"]["const"]
+        )
         authorization = schema["properties"]["authorization"]
         self.assertFalse(authorization["additionalProperties"])
         self.assertEqual(

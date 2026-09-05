@@ -63,10 +63,36 @@ core_root="$workspace_root/chummer-core-engine"
   || fail "presentation-source-missing"
 [[ ! -L "$core_root" && -d "$core_root" ]] || fail "core-source-missing"
 
+expected_version_name="${CHUMMER_ANDROID_EXPECTED_VERSION_NAME:-}"
+expected_version_code="${CHUMMER_ANDROID_EXPECTED_VERSION_CODE:-}"
+[[ -n "$expected_version_name" && -n "$expected_version_code" ]] \
+  || fail "release-version-intent-missing"
+release_version_pair="$(python3 "$repo_dir/scripts/verify_android_release_intent.py" \
+  --project "$project_path" \
+  --expected-version-name "$expected_version_name" \
+  --expected-version-code "$expected_version_code")" \
+  || fail "release-version-intent-invalid"
+IFS=$'\t' read -r version_name version_code version_extra <<< "$release_version_pair"
+[[ -n "$version_name" && -n "$version_code" && -z "${version_extra:-}" \
+  && "$release_version_pair" == "$version_name"$'\t'"$version_code" ]] \
+  || fail "release-version-intent-ambiguous"
+unset release_version_pair version_extra
+
 require_exact_directory AndroidSdkDirectory
 require_exact_directory JavaSdkDirectory
 require_private_regular_file CHUMMER_CURRENT_UI_PACKAGE_AUTHORITY_RECEIPT
+require_private_regular_file CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT
 require_exact_directory CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED
+eligibility_sha256="${CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_SHA256:-}"
+[[ "$eligibility_sha256" =~ ^[0-9a-f]{64}$ ]] \
+  || fail "two-green-eligibility-sha256-invalid"
+python3 "$repo_dir/scripts/verify_api36_two_green_release_eligibility.py" \
+  --receipt "$CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT" \
+  --expected-receipt-sha256 "$eligibility_sha256" \
+  --android-root "$repo_dir" \
+  --expected-version-name "$version_name" \
+  --expected-version-code "$version_code" >/dev/null \
+  || fail "two-green-eligibility-invalid"
 
 input_dir="${CHUMMER_ANDROID_RELEASE_INPUT_DIR:-}"
 [[ -n "$input_dir" && "$input_dir" == /* ]] || fail "release-input-directory-not-absolute"
@@ -87,7 +113,13 @@ nuget_packages="$input_dir/nuget-packages"
 preparation_obj="$input_dir/preparation-obj"
 project_locks="$input_dir/project-locks"
 environment_file="$input_dir/release-inputs.env"
+prepared_eligibility="$input_dir/ANDROID_API36_TWO_GREEN_ELIGIBILITY.generated.json"
 mkdir -m 0700 -- "$nuget_packages" "$preparation_obj" "$project_locks"
+install -m 0600 -- \
+  "$CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT" \
+  "$prepared_eligibility"
+CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT="$prepared_eligibility"
+export CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT
 install -m 0600 -- \
   "$repo_dir/src/Chummer.Android/packages.lock.json" \
   "$project_locks/Chummer.Android.packages.lock.json"
@@ -180,6 +212,14 @@ python3 "$repo_dir/scripts/materialize_release_package_authority.py" \
   --receipt "$CHUMMER_CURRENT_UI_PACKAGE_AUTHORITY_RECEIPT" \
   --package-feed "$CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED" \
   --verify-existing "$authority"
+python3 "$repo_dir/scripts/verify_api36_two_green_release_eligibility.py" \
+  --receipt "$CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT" \
+  --expected-receipt-sha256 "$eligibility_sha256" \
+  --android-root "$repo_dir" \
+  --expected-version-name "$version_name" \
+  --expected-version-code "$version_code" \
+  --package-authority "$authority" >/dev/null \
+  || fail "two-green-release-input-binding-invalid"
 
 {
   printf 'export CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY=%q\n' "$authority"
@@ -188,8 +228,14 @@ python3 "$repo_dir/scripts/materialize_release_package_authority.py" \
   printf 'export CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED=%q\n' \
     "$CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED"
   printf 'export NUGET_PACKAGES=%q\n' "$nuget_packages"
+  printf 'export CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT=%q\n' \
+    "$CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT"
+  printf 'export CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_SHA256=%q\n' \
+    "$eligibility_sha256"
+  printf 'export CHUMMER_ANDROID_EXPECTED_VERSION_NAME=%q\n' "$version_name"
+  printf 'export CHUMMER_ANDROID_EXPECTED_VERSION_CODE=%q\n' "$version_code"
 } > "$environment_file"
 chmod 0600 "$environment_file"
 
-printf 'android_release_inputs=prepared authority=%s environment=%s package_cache=%s publication_authorized=false\n' \
-  "$authority" "$environment_file" "$nuget_packages"
+printf 'android_release_inputs=prepared authority=%s environment=%s package_cache=%s two_green_sha256=%s publication_authorized=false\n' \
+  "$authority" "$environment_file" "$nuget_packages" "$eligibility_sha256"
