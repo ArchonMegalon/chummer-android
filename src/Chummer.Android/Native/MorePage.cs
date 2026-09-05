@@ -119,10 +119,25 @@ public class MorePage : NativePageBase, IPlayReviewSafeSurface
         app.Add(NativeTheme.Metric(
             PhoneStrings.Get("Version", "Version"),
             AppInfo.Current.VersionString));
+        app.Add(NativeTheme.NavigationRow(
+            PhoneStrings.Get("ApplicationSettings", "Settings"),
+            PhoneStrings.Get(
+                "SettingsPhoneOnlyDetail",
+                "Only options that change how Chummer behaves on this phone appear here."),
+            () => Navigation.PushAsync(new ApplicationSettingsPage(Coordinator)),
+            automationId: "more-application-settings"));
         Button updates = NativeTheme.SecondaryButton(
             _updateStatus ?? PhoneStrings.Get("CheckUpdates", "Check for updates"));
+        updates.AutomationId = "more-check-play-updates";
         updates.Clicked += async (_, _) => await CheckUpdatesAsync(updates);
         app.Add(updates);
+        Label updateAuthority = NativeTheme.Body(
+            PhoneStrings.Get(
+                "SettingsUpdatesPlayManaged",
+                "Updates and preview access are managed by Google Play, not inside Chummer."),
+            NativeTheme.Muted);
+        updateAuthority.AutomationId = "more-updates-play-managed";
+        app.Add(updateAuthority);
         _body.Add(NativeTheme.Card(app));
     }
 
