@@ -15,6 +15,7 @@ internal static class Program
     private const string StoredAccessTokenKey = "chummer.account.installation-grant.v1";
     private const string StoredGrantExpiryKey = "chummer.account.installation-grant-expiry.v1";
     private const string RefreshAttemptKey = "chummer.account.installation-grant-refresh-attempt.v1";
+    private const string PendingPollOperationKey = "chummer.account.pending-poll-operation.v1";
     private const string PendingStateKey = "chummer.account.pending-state.v1";
     private const string PendingStartedKey = "chummer.account.pending-started.v1";
     private const string PendingInstallationIdKey = "chummer.account.pending-installation-id.v2";
@@ -35,12 +36,13 @@ internal static class Program
         await CrossOriginRedirectCannotReceiveBearerToken();
         await SameOriginRedirectAndUnsafePathsFailClosed();
         await MalformedCollectionsFailClosedWithoutEchoingResponseData();
-        await LostBootstrapResponseCanReplayTheOriginalGrantAsync();
+        await LostBootstrapResponseSurvivesProcessRestartAsync();
         await AlreadyRedeemedBootstrapConflictRetainsFreshCredentialsAsync();
         await SuccessfulUnlinkCannotLeaveAStaleLinkedSnapshotAsync();
         await SuccessfulErasureCannotLeaveAStaleLinkedSnapshotAsync();
-        await LostRefreshResponseReusesItsDurableIdempotencyKeyAsync();
-        Console.WriteLine("Account-link HTTP hardening tests passed: 19");
+        await LostRefreshResponseSurvivesProcessRestartAsync();
+        await MismatchedOperationResponsesRetainRecoveryStateAsync();
+        Console.WriteLine("Account-link HTTP hardening tests passed: 20");
     }
 
     private static async Task BearerTokenIsRequestBoundAndRedacted()
@@ -139,9 +141,11 @@ internal static class Program
     private static async Task BootstrapProofAndPollBodyMatchV2Contract()
     {
         const long issuedAt = 1_788_543_210;
+        const string operationId = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
         const string nonce = "bootstrap-nonce";
         const string hostLabel = "Runner Phone";
         byte[] canonical = AndroidAccountLinkBootstrapProof.CreateCanonicalPayload(
+            operationId,
             "android-install",
             "android",
             "0.1.0-preview.11",
@@ -158,6 +162,7 @@ internal static class Program
                 AndroidAccountLinkBootstrapProof.Scheme,
                 "POST",
                 AndroidAccountLinkBootstrapProof.PollPath,
+                operationId,
                 "android-install",
                 "android",
                 "0.1.0-preview.11",
@@ -179,6 +184,7 @@ internal static class Program
             AndroidAccountLinkBootstrapProof.PollPath,
             new
             {
+                OperationId = operationId,
                 InstallationId = "android-install",
                 HeadId = "android",
                 ApplicationVersion = "0.1.0-preview.11",
@@ -196,6 +202,7 @@ internal static class Program
         ObservedRequest observed = RequireSingle(terminal.Requests);
         Require(observed.AuthorizationScheme is null);
         Require(observed.ProofScheme is null);
+        Require(observed.Body.Contains($"\"operationId\":\"{operationId}\"", StringComparison.Ordinal));
         Require(observed.Body.Contains("\"architecture\":\"arm64\"", StringComparison.Ordinal));
         Require(!observed.Body.Contains("\"arch\"", StringComparison.Ordinal));
         Require(!observed.Body.Contains("accessToken", StringComparison.OrdinalIgnoreCase));
@@ -514,41 +521,68 @@ internal static class Program
         }
     }
 
-    private static async Task LostBootstrapResponseCanReplayTheOriginalGrantAsync()
+    private static async Task LostBootstrapResponseSurvivesProcessRestartAsync()
     {
         LinkFixture fixture = await CreatePendingFixtureAsync();
-        int call = 0;
-        var terminal = new RecordingHandler(_ => ++call == 1
-            ? throw new HttpRequestException("Injected response loss after redemption.")
-            : BootstrapGrantResponse(fixture.Identity, alreadyClaimed: true));
-        using AndroidAccountLinkHttpTransport transport = CreateTransport(terminal);
-        AndroidAccountLinkService service = CreateService(transport, fixture);
+        var lostResponseTerminal = new RecordingHandler(_ =>
+        {
+            Require(fixture.Metadata.Contains(PendingPollOperationKey));
+            throw new HttpRequestException("Injected response loss after redemption.");
+        });
+        using (AndroidAccountLinkHttpTransport transport = CreateTransport(lostResponseTerminal))
+        {
+            AndroidAccountLinkService service = CreateService(transport, fixture);
+            await service.ResumePendingLinkAsync();
+            Require(service.Snapshot.Status == AndroidAccountLinkStatus.Pending);
+        }
 
-        await service.ResumePendingLinkAsync();
-        Require(service.Snapshot.Status == AndroidAccountLinkStatus.Pending);
         Require(fixture.Metadata.Contains(PendingStateKey));
+        Require(fixture.Metadata.Contains(PendingPollOperationKey));
         Require(fixture.Keys.Contains(fixture.Identity.Alias));
+        Require(lostResponseTerminal.Requests.Count == 1);
+        string persistedOperation = fixture.Metadata.GetRaw(PendingPollOperationKey)!;
+        Require(!persistedOperation.Contains("signature", StringComparison.OrdinalIgnoreCase));
+        Require(!persistedOperation.Contains("nonce", StringComparison.OrdinalIgnoreCase));
+        Require(!persistedOperation.Contains(AccessToken, StringComparison.Ordinal));
 
-        await service.ResumePendingLinkAsync();
+        var recoveryTerminal = new RecordingHandler(request =>
+            BootstrapGrantResponse(
+                fixture.Identity,
+                RequestOperationId(request),
+                alreadyClaimed: true));
+        using AndroidAccountLinkHttpTransport recoveryTransport = CreateTransport(recoveryTerminal);
+        AndroidAccountLinkService recoveryService = CreateService(
+            recoveryTransport,
+            fixture,
+            version: "0.1.0-preview.12",
+            hostLabel: "Renamed restart phone");
+        await recoveryService.ResumePendingLinkAsync();
 
-        Require(service.Snapshot.Status == AndroidAccountLinkStatus.Linked);
+        Require(recoveryService.Snapshot.Status == AndroidAccountLinkStatus.Linked);
         Require(fixture.Metadata.GetRaw(StoredAccessTokenKey) == RotatedAccessToken);
         Require(!fixture.Metadata.Contains(PendingStateKey));
+        Require(!fixture.Metadata.Contains(PendingPollOperationKey));
         AndroidAccountLinkKeyIdentity linked = await fixture.Authority.RequireLinkedIdentityAsync(
             fixture.Identity.InstallationId);
         Require(linked.GrantId == "grant-after-response-loss");
-        Require(terminal.Requests.Count == 2);
+        Require(recoveryTerminal.Requests.Count == 1);
+        RequireBootstrapRetriesShareOnlyStableOperation(
+            lostResponseTerminal.Requests[0],
+            recoveryTerminal.Requests[0]);
     }
 
     private static async Task AlreadyRedeemedBootstrapConflictRetainsFreshCredentialsAsync()
     {
         LinkFixture fixture = await CreatePendingFixtureAsync();
         int call = 0;
-        var terminal = new RecordingHandler(_ => ++call switch
+        var terminal = new RecordingHandler(request => ++call switch
         {
             1 => throw new HttpRequestException("Injected response loss after redemption."),
-            2 => JsonResponse("{\"alreadyRedeemed\":true}", HttpStatusCode.Conflict),
-            _ => BootstrapGrantResponse(fixture.Identity, alreadyClaimed: true)
+            2 => AlreadyRedeemedResponse(RequestOperationId(request)),
+            _ => BootstrapGrantResponse(
+                fixture.Identity,
+                RequestOperationId(request),
+                alreadyClaimed: true)
         });
         using AndroidAccountLinkHttpTransport transport = CreateTransport(terminal);
         AndroidAccountLinkService service = CreateService(transport, fixture);
@@ -559,6 +593,7 @@ internal static class Program
         Require(service.Snapshot.Status == AndroidAccountLinkStatus.Pending);
         Require(fixture.Metadata.Contains(PendingStateKey));
         Require(fixture.Metadata.Contains(PendingInstallationIdKey));
+        Require(fixture.Metadata.Contains(PendingPollOperationKey));
         Require(fixture.Metadata.Contains(AndroidAccountLinkKeyAuthority.BindingStorageKey));
         Require(fixture.Metadata.Contains(AndroidAccountLinkKeyAuthority.InstallationIdStorageKey));
         Require(fixture.Keys.Contains(fixture.Identity.Alias));
@@ -625,14 +660,19 @@ internal static class Program
         await fixture.Authority.RemoveAsync();
     }
 
-    private static async Task LostRefreshResponseReusesItsDurableIdempotencyKeyAsync()
+    private static async Task LostRefreshResponseSurvivesProcessRestartAsync()
     {
         LinkFixture fixture = await CreateLinkedFixtureAsync(DateTimeOffset.UtcNow.AddDays(1));
         int firstPhaseCall = 0;
-        var lostResponseTerminal = new RecordingHandler(_ => ++firstPhaseCall switch
+        var lostResponseTerminal = new RecordingHandler(_ =>
         {
-            1 => JsonResponse("{}"),
-            _ => throw new HttpRequestException("Injected response loss after grant rotation.")
+            if (++firstPhaseCall == 1)
+            {
+                return JsonResponse("{}");
+            }
+
+            Require(fixture.Metadata.Contains(RefreshAttemptKey));
+            throw new HttpRequestException("Injected response loss after grant rotation.");
         });
         using (AndroidAccountLinkHttpTransport transport = CreateTransport(lostResponseTerminal))
         {
@@ -645,22 +685,34 @@ internal static class Program
         string originalRefreshBody = lostResponseTerminal.Requests[1].Body;
         Require(lostResponseTerminal.Requests[1].AuthorizationParameter == AccessToken);
         Require(lostResponseTerminal.Requests[1].GrantId == "grant-before-refresh");
+        string persistedOperation = fixture.Metadata.GetRaw(RefreshAttemptKey)!;
+        Require(!persistedOperation.Contains(AccessToken, StringComparison.Ordinal));
+        Require(!persistedOperation.Contains(RotatedAccessToken, StringComparison.Ordinal));
+        string requestOperationId;
         using (JsonDocument body = JsonDocument.Parse(originalRefreshBody))
         {
-            string? requestKey = body.RootElement.GetProperty("idempotencyKey").GetString();
-            Require(requestKey is { Length: 32 });
-            Require(requestKey == fixture.Metadata.GetRaw(RefreshAttemptKey));
+            requestOperationId = body.RootElement.GetProperty("operationId").GetString()!;
+            Require(requestOperationId.Length == 32);
+        }
+        using (JsonDocument stored = JsonDocument.Parse(persistedOperation))
+        {
+            Require(stored.RootElement.GetProperty("operationId").GetString() == requestOperationId);
+            Require(stored.RootElement.GetProperty("sourceGrantId").GetString() == "grant-before-refresh");
         }
         Require(fixture.Metadata.GetRaw(StoredAccessTokenKey) == AccessToken);
         Require((await fixture.Authority.RequireLinkedIdentityAsync(fixture.Identity.InstallationId)).GrantId
             == "grant-before-refresh");
 
         int recoveryCall = 0;
-        var recoveryTerminal = new RecordingHandler(_ => ++recoveryCall == 1
-            ? JsonResponse("{\"alreadyRedeemed\":true}", HttpStatusCode.Conflict)
-            : RefreshGrantResponse(fixture.Identity));
+        var recoveryTerminal = new RecordingHandler(request => ++recoveryCall == 1
+            ? AlreadyRedeemedResponse(RequestOperationId(request))
+            : RefreshGrantResponse(fixture.Identity, RequestOperationId(request)));
         using AndroidAccountLinkHttpTransport recoveryTransport = CreateTransport(recoveryTerminal);
-        AndroidAccountLinkService recoveryService = CreateService(recoveryTransport, fixture);
+        AndroidAccountLinkService recoveryService = CreateService(
+            recoveryTransport,
+            fixture,
+            version: "0.1.0-preview.12",
+            hostLabel: "Renamed restart phone");
 
         await recoveryService.InitializeAsync();
         Require(recoveryService.Snapshot.Status == AndroidAccountLinkStatus.Error);
@@ -669,26 +721,76 @@ internal static class Program
         Require(recoveryTerminal.Requests[0].Body == originalRefreshBody);
         Require(recoveryTerminal.Requests[0].AuthorizationParameter == AccessToken);
         Require(recoveryTerminal.Requests[0].GrantId == "grant-before-refresh");
+        Require(
+            recoveryTerminal.Requests[0].PacketKey
+            != lostResponseTerminal.Requests[1].PacketKey);
+        Require(
+            recoveryTerminal.Requests[0].Signature
+            != lostResponseTerminal.Requests[1].Signature);
 
         await recoveryService.InitializeAsync();
         Require(recoveryService.Snapshot.Status == AndroidAccountLinkStatus.Linked);
         Require(fixture.Metadata.GetRaw(StoredAccessTokenKey) == RotatedAccessToken);
         Require(!fixture.Metadata.Contains(RefreshAttemptKey));
         Require(recoveryTerminal.Requests[1].Body == originalRefreshBody);
+        Require(
+            recoveryTerminal.Requests[1].PacketKey
+            != recoveryTerminal.Requests[0].PacketKey);
+        Require(
+            recoveryTerminal.Requests[1].Signature
+            != recoveryTerminal.Requests[0].Signature);
         Require((await fixture.Authority.RequireLinkedIdentityAsync(fixture.Identity.InstallationId)).GrantId
             == "grant-after-refresh");
     }
 
+    private static async Task MismatchedOperationResponsesRetainRecoveryStateAsync()
+    {
+        const string mismatchedOperationId = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB";
+        LinkFixture pendingFixture = await CreatePendingFixtureAsync();
+        var bootstrapTerminal = new RecordingHandler(_ => BootstrapGrantResponse(
+            pendingFixture.Identity,
+            mismatchedOperationId,
+            alreadyClaimed: false));
+        using (AndroidAccountLinkHttpTransport transport = CreateTransport(bootstrapTerminal))
+        {
+            AndroidAccountLinkService service = CreateService(transport, pendingFixture);
+            await service.ResumePendingLinkAsync();
+            Require(service.Snapshot.Status == AndroidAccountLinkStatus.Error);
+        }
+        Require(pendingFixture.Metadata.Contains(PendingStateKey));
+        Require(pendingFixture.Metadata.Contains(PendingPollOperationKey));
+        Require(!pendingFixture.Metadata.Contains(StoredAccessTokenKey));
+        Require(pendingFixture.Keys.Contains(pendingFixture.Identity.Alias));
+
+        LinkFixture refreshFixture = await CreateLinkedFixtureAsync(DateTimeOffset.UtcNow.AddDays(1));
+        int call = 0;
+        var refreshTerminal = new RecordingHandler(_ => ++call == 1
+            ? JsonResponse("{}")
+            : RefreshGrantResponse(refreshFixture.Identity, mismatchedOperationId));
+        using (AndroidAccountLinkHttpTransport transport = CreateTransport(refreshTerminal))
+        {
+            AndroidAccountLinkService service = CreateService(transport, refreshFixture);
+            await service.InitializeAsync();
+            Require(service.Snapshot.Status == AndroidAccountLinkStatus.Error);
+        }
+        Require(refreshFixture.Metadata.GetRaw(StoredAccessTokenKey) == AccessToken);
+        Require(refreshFixture.Metadata.Contains(RefreshAttemptKey));
+        Require((await refreshFixture.Authority.RequireLinkedIdentityAsync(
+            refreshFixture.Identity.InstallationId)).GrantId == "grant-before-refresh");
+    }
+
     private static AndroidAccountLinkService CreateService(
         AndroidAccountLinkHttpTransport transport,
-        LinkFixture fixture)
+        LinkFixture fixture,
+        string version = "0.1.0-preview.11",
+        string hostLabel = "Hostile test phone")
         => new(
             transport,
             new StubSystemService(),
             fixture.Authority,
             fixture.Metadata,
-            versionProvider: static () => "0.1.0-preview.11",
-            hostLabelProvider: static () => "Hostile test phone");
+            versionProvider: () => version,
+            hostLabelProvider: () => hostLabel);
 
     private static async Task<LinkFixture> CreatePendingFixtureAsync()
     {
@@ -720,6 +822,7 @@ internal static class Program
 
     private static HttpResponseMessage BootstrapGrantResponse(
         AndroidAccountLinkKeyIdentity identity,
+        string operationId,
         bool alreadyClaimed)
         => GrantResponse(
             "grant-after-response-loss",
@@ -727,18 +830,70 @@ internal static class Program
             JsonSerializer.Serialize(new
             {
                 grant = GrantMetadata("grant-after-response-loss", identity.InstallationId),
-                alreadyClaimed
+                alreadyClaimed,
+                operationId
             }));
 
-    private static HttpResponseMessage RefreshGrantResponse(AndroidAccountLinkKeyIdentity identity)
+    private static HttpResponseMessage RefreshGrantResponse(
+        AndroidAccountLinkKeyIdentity identity,
+        string operationId)
         => GrantResponse(
             "grant-after-refresh",
             RotatedAccessToken,
             JsonSerializer.Serialize(new
             {
                 grant = GrantMetadata("grant-after-refresh", identity.InstallationId),
-                rotated = true
+                rotated = true,
+                operationId
             }));
+
+    private static HttpResponseMessage AlreadyRedeemedResponse(string operationId)
+        => JsonResponse(
+            JsonSerializer.Serialize(new { alreadyRedeemed = true, operationId }),
+            HttpStatusCode.Conflict);
+
+    private static string RequestOperationId(HttpRequestMessage request)
+    {
+        string body = request.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+        using JsonDocument json = JsonDocument.Parse(body);
+        return json.RootElement.GetProperty("operationId").GetString()
+            ?? throw new InvalidOperationException("Operation ID is required.");
+    }
+
+    private static void RequireBootstrapRetriesShareOnlyStableOperation(
+        ObservedRequest original,
+        ObservedRequest retry)
+    {
+        using JsonDocument originalJson = JsonDocument.Parse(original.Body);
+        using JsonDocument retryJson = JsonDocument.Parse(retry.Body);
+        foreach (string property in new[]
+                 {
+                     "operationId",
+                     "installationId",
+                     "headId",
+                     "applicationVersion",
+                     "channelId",
+                     "platform",
+                     "architecture",
+                     "publicKey",
+                     "hostLabel"
+                 })
+        {
+            Require(
+                originalJson.RootElement.GetProperty(property).GetString()
+                == retryJson.RootElement.GetProperty(property).GetString());
+        }
+
+        long originalIssued = originalJson.RootElement.GetProperty("issuedAtUnixSeconds").GetInt64();
+        long retryIssued = retryJson.RootElement.GetProperty("issuedAtUnixSeconds").GetInt64();
+        Require(retryIssued > originalIssued);
+        Require(
+            originalJson.RootElement.GetProperty("nonce").GetString()
+            != retryJson.RootElement.GetProperty("nonce").GetString());
+        Require(
+            originalJson.RootElement.GetProperty("signature").GetString()
+            != retryJson.RootElement.GetProperty("signature").GetString());
+    }
 
     private static object GrantMetadata(string grantId, string installationId)
         => new

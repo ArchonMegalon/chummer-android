@@ -3,6 +3,8 @@ using System.Net;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Chummer.Android.Native;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Devices;
@@ -15,6 +17,7 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
     private const string AccessTokenKey = "chummer.account.installation-grant.v1";
     private const string GrantExpiryKey = "chummer.account.installation-grant-expiry.v1";
     private const string RefreshAttemptKey = "chummer.account.installation-grant-refresh-attempt.v1";
+    private const string PendingPollOperationKey = "chummer.account.pending-poll-operation.v1";
     private const string PendingStateKey = "chummer.account.pending-state.v1";
     private const string PendingStartedKey = "chummer.account.pending-started.v1";
     private const string PendingInstallationIdKey = "chummer.account.pending-installation-id.v2";
@@ -24,8 +27,15 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
     private const string HeadId = "android";
     private const string PlatformId = "android";
     private const string ReleaseChannel = "preview";
+    private const int PendingPollOperationVersion = 1;
+    private const int RefreshOperationVersion = 1;
     private static readonly TimeSpan PendingLifetime = TimeSpan.FromMinutes(18);
     private static readonly TimeSpan RefreshWindow = TimeSpan.FromDays(7);
+    private static readonly TimeSpan RefreshRecoveryLifetime = TimeSpan.FromMinutes(10);
+    private static readonly JsonSerializerOptions OperationJsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow
+    };
     private static readonly HashSet<string> RequiredErasureComponents = new(StringComparer.Ordinal)
     {
         "hosted_build_workspaces",
@@ -106,23 +116,32 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             }
 
             DateTimeOffset? expiresAtUtc = await ReadGrantExpiryAsync(cancellationToken);
-            string? refreshAttempt = await _metadataStore.GetAsync(
+            string? serializedRefreshOperation = await _metadataStore.GetAsync(
                 RefreshAttemptKey,
                 cancellationToken);
-            if (!string.IsNullOrWhiteSpace(refreshAttempt))
+            if (!string.IsNullOrWhiteSpace(serializedRefreshOperation))
             {
-                if (!IsExpectedRefreshAttempt(refreshAttempt))
+                RefreshOperation? refreshOperation = TryDeserializeRefreshOperation(
+                    serializedRefreshOperation);
+                if (refreshOperation is null
+                    || !IsExpectedRefreshOperation(refreshOperation, grant))
                 {
-                    SetSnapshot(RefreshRecoveryPendingSnapshot(expiresAtUtc));
+                    SetSnapshot(RefreshRecoveryExpiredSnapshot());
+                    return;
+                }
+                if (!IsRefreshOperationCurrent(refreshOperation.StartedAtUtc))
+                {
+                    SetSnapshot(RefreshRecoveryExpiredSnapshot());
                     return;
                 }
 
                 // A prior request may have rotated the remote grant before its response was lost.
-                // Retry the same durable attempt before validating or expiring the superseded
-                // local grant; the Hub contract replays the original rotation for this key.
+                // Retry the exact stored operation fields before validating or expiring the
+                // superseded local grant. A fresh packet proof preserves anti-replay while the
+                // stable operation digest lets Hub replay the original rotation receipt.
                 GrantContract? recovered = await RefreshGrantAsync(
                     grant,
-                    refreshAttempt,
+                    refreshOperation,
                     cancellationToken);
                 if (recovered is null)
                 {
@@ -173,14 +192,14 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
 
             if (expiresAtUtc is not null && expiresAtUtc <= DateTimeOffset.UtcNow.Add(RefreshWindow))
             {
-                refreshAttempt = NewBase64UrlToken(24);
+                RefreshOperation refreshOperation = CreateRefreshOperation(grant);
                 await _metadataStore.SetAsync(
                     RefreshAttemptKey,
-                    refreshAttempt,
+                    JsonSerializer.Serialize(refreshOperation, OperationJsonOptions),
                     cancellationToken);
                 GrantContract? refreshed = await RefreshGrantAsync(
                     grant,
-                    refreshAttempt,
+                    refreshOperation,
                     cancellationToken);
                 if (refreshed is null)
                 {
@@ -363,22 +382,23 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
 
             AndroidAccountLinkKeyIdentity identity = await _keyAuthority
                 .RequirePendingIdentityAsync(pendingInstallationId, cancellationToken);
+            PendingPollOperation operation = await ReadOrCreatePendingPollOperationAsync(
+                identity,
+                cancellationToken);
 
             long issuedAt = await NextProofTimestampAsync();
             string nonce = Convert.ToHexString(RandomNumberGenerator.GetBytes(24)).ToLowerInvariant();
-            string architecture = ResolveArchitecture();
-            string version = _versionProvider();
-            string hostLabel = _hostLabelProvider();
             byte[] proof = AndroidAccountLinkBootstrapProof.CreateCanonicalPayload(
-                identity.InstallationId,
-                HeadId,
-                version,
-                ReleaseChannel,
-                PlatformId,
-                architecture,
+                operation.OperationId,
+                operation.InstallationId,
+                operation.HeadId,
+                operation.ApplicationVersion,
+                operation.ChannelId,
+                operation.Platform,
+                operation.Architecture,
                 issuedAt,
                 nonce,
-                hostLabel);
+                operation.HostLabel);
             string signature;
             try
             {
@@ -398,17 +418,18 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             }
 
             PollRequest request = new(
-                identity.InstallationId,
-                HeadId,
-                version,
-                ReleaseChannel,
-                PlatformId,
-                architecture,
-                identity.PublicKey,
+                operation.OperationId,
+                operation.InstallationId,
+                operation.HeadId,
+                operation.ApplicationVersion,
+                operation.ChannelId,
+                operation.Platform,
+                operation.Architecture,
+                operation.PublicKey,
                 issuedAt,
                 nonce,
                 signature,
-                hostLabel);
+                operation.HostLabel);
             using HttpResponseMessage response = await _httpTransport.PostJsonAsync(
                 AndroidAccountLinkBootstrapProof.PollPath,
                 request,
@@ -468,6 +489,13 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             ExchangeResponse exchange = await _httpTransport.ReadJsonAsync<ExchangeResponse>(
                 response,
                 cancellationToken);
+            if (!string.Equals(
+                    exchange.OperationId,
+                    operation.OperationId,
+                    StringComparison.Ordinal))
+            {
+                throw new InvalidDataException("Chummer returned a mismatched link operation.");
+            }
             GrantContract grant = MaterializeIssuedGrant(
                 exchange.Grant,
                 responseAuthority,
@@ -1017,25 +1045,24 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
 
     private async Task<GrantContract?> RefreshGrantAsync(
         StoredGrant grant,
-        string idempotencyKey,
+        RefreshOperation operation,
         CancellationToken cancellationToken)
     {
         try
         {
-            AndroidAccountLinkKeyIdentity identity = grant.Identity;
             AndroidAccountLinkRequestAuthority authority = CreateRequestAuthority(grant);
             using HttpResponseMessage response = await _httpTransport.PostJsonAsync(
                 "/api/v2/install-linking/grants/refresh",
                 new RefreshRequest(
-                    grant.InstallationId,
-                    HeadId,
-                    _versionProvider(),
-                    ReleaseChannel,
-                    PlatformId,
-                    ResolveArchitecture(),
-                    identity.PublicKey,
-                    _hostLabelProvider(),
-                    idempotencyKey),
+                    operation.OperationId,
+                    operation.InstallationId,
+                    operation.HeadId,
+                    operation.ApplicationVersion,
+                    operation.ChannelId,
+                    operation.Platform,
+                    operation.Architecture,
+                    operation.PublicKey,
+                    operation.HostLabel),
                 authority,
                 cancellationToken);
             if (!response.IsSuccessStatusCode)
@@ -1048,6 +1075,13 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             RefreshResponse refreshed = await _httpTransport.ReadJsonAsync<RefreshResponse>(
                 response,
                 cancellationToken);
+            if (!string.Equals(
+                    refreshed.OperationId,
+                    operation.OperationId,
+                    StringComparison.Ordinal))
+            {
+                throw new InvalidDataException("Chummer returned a mismatched refresh operation.");
+            }
             GrantContract rotated = MaterializeIssuedGrant(
                 refreshed.Grant,
                 responseAuthority,
@@ -1229,10 +1263,158 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             .Replace('+', '-')
             .Replace('/', '_');
 
-    private static bool IsExpectedRefreshAttempt(string value)
-        => value.Length == 32
+    private async Task<PendingPollOperation> ReadOrCreatePendingPollOperationAsync(
+        AndroidAccountLinkKeyIdentity identity,
+        CancellationToken cancellationToken)
+    {
+        string? serialized = await _metadataStore.GetAsync(
+            PendingPollOperationKey,
+            cancellationToken);
+        if (!string.IsNullOrWhiteSpace(serialized))
+        {
+            PendingPollOperation? stored = TryDeserializePendingPollOperation(serialized);
+            if (stored is not null && IsExpectedPendingPollOperation(stored, identity))
+            {
+                return stored;
+            }
+
+            throw new AndroidDeviceRelinkRequiredException(
+                AndroidDeviceKeyAvailability.Invalidated,
+                "The pending account-link operation is invalid.");
+        }
+
+        PendingPollOperation created = new(
+            PendingPollOperationVersion,
+            NewBase64UrlToken(24),
+            identity.InstallationId,
+            HeadId,
+            _versionProvider(),
+            ReleaseChannel,
+            PlatformId,
+            ResolveArchitecture(),
+            identity.PublicKey,
+            _hostLabelProvider());
+        if (!IsExpectedPendingPollOperation(created, identity))
+        {
+            throw new InvalidDataException("The pending account-link operation is invalid.");
+        }
+
+        await _metadataStore.SetAsync(
+            PendingPollOperationKey,
+            JsonSerializer.Serialize(created, OperationJsonOptions),
+            cancellationToken);
+        return created;
+    }
+
+    private RefreshOperation CreateRefreshOperation(StoredGrant grant)
+    {
+        RefreshOperation created = new(
+            RefreshOperationVersion,
+            NewBase64UrlToken(24),
+            DateTimeOffset.UtcNow,
+            grant.InstallationId,
+            grant.GrantId,
+            HeadId,
+            _versionProvider(),
+            ReleaseChannel,
+            PlatformId,
+            ResolveArchitecture(),
+            grant.Identity.PublicKey,
+            _hostLabelProvider());
+        return IsExpectedRefreshOperation(created, grant)
+            ? created
+            : throw new InvalidDataException("The account refresh operation is invalid.");
+    }
+
+    private static PendingPollOperation? TryDeserializePendingPollOperation(string serialized)
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<PendingPollOperation>(
+                serialized,
+                OperationJsonOptions);
+        }
+        catch (Exception exception) when (exception is JsonException or NotSupportedException)
+        {
+            return null;
+        }
+    }
+
+    private static RefreshOperation? TryDeserializeRefreshOperation(string serialized)
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<RefreshOperation>(
+                serialized,
+                OperationJsonOptions);
+        }
+        catch (Exception exception) when (exception is JsonException or NotSupportedException)
+        {
+            return null;
+        }
+    }
+
+    private static bool IsExpectedPendingPollOperation(
+        PendingPollOperation operation,
+        AndroidAccountLinkKeyIdentity identity)
+        => operation.Version == PendingPollOperationVersion
+            && IsExpectedOperationId(operation.OperationId)
+            && string.Equals(operation.InstallationId, identity.InstallationId, StringComparison.Ordinal)
+            && string.Equals(operation.PublicKey, identity.PublicKey, StringComparison.Ordinal)
+            && HasExpectedOperationFields(
+                operation.HeadId,
+                operation.ApplicationVersion,
+                operation.ChannelId,
+                operation.Platform,
+                operation.Architecture,
+                operation.HostLabel);
+
+    private static bool IsExpectedRefreshOperation(
+        RefreshOperation operation,
+        StoredGrant grant)
+        => operation.Version == RefreshOperationVersion
+            && IsExpectedOperationId(operation.OperationId)
+            && string.Equals(operation.InstallationId, grant.InstallationId, StringComparison.Ordinal)
+            && string.Equals(operation.SourceGrantId, grant.GrantId, StringComparison.Ordinal)
+            && string.Equals(operation.PublicKey, grant.Identity.PublicKey, StringComparison.Ordinal)
+            && HasExpectedOperationFields(
+                operation.HeadId,
+                operation.ApplicationVersion,
+                operation.ChannelId,
+                operation.Platform,
+                operation.Architecture,
+                operation.HostLabel);
+
+    private static bool HasExpectedOperationFields(
+        string headId,
+        string applicationVersion,
+        string channelId,
+        string platform,
+        string architecture,
+        string hostLabel)
+        => string.Equals(headId, HeadId, StringComparison.Ordinal)
+            && IsBoundedOperationText(applicationVersion, 64)
+            && string.Equals(channelId, ReleaseChannel, StringComparison.Ordinal)
+            && string.Equals(platform, PlatformId, StringComparison.Ordinal)
+            && architecture is "arm64" or "arm" or "x64" or "x86" or "unknown"
+            && IsBoundedOperationText(hostLabel, 120);
+
+    private static bool IsBoundedOperationText(string? value, int maximumLength)
+        => !string.IsNullOrWhiteSpace(value)
+            && value.Length <= maximumLength
+            && !value.Any(char.IsControl);
+
+    private static bool IsExpectedOperationId(string? value)
+        => value is { Length: 32 }
             && value.AsSpan().IndexOfAnyExcept(
                 "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_".AsSpan()) < 0;
+
+    private static bool IsRefreshOperationCurrent(DateTimeOffset startedAtUtc)
+    {
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        return startedAtUtc >= now.Subtract(RefreshRecoveryLifetime)
+            && startedAtUtc <= now.AddMinutes(2);
+    }
 
     private static string? ParseQueryValue(string query, string key)
     {
@@ -1274,6 +1456,7 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         await _metadataStore.RemoveAsync(PendingStateKey, cancellationToken);
         await _metadataStore.RemoveAsync(PendingStartedKey, cancellationToken);
         await _metadataStore.RemoveAsync(PendingInstallationIdKey, cancellationToken);
+        await _metadataStore.RemoveAsync(PendingPollOperationKey, cancellationToken);
     }
 
     private async Task ClearAllCredentialsAsync(CancellationToken cancellationToken)
@@ -1321,6 +1504,12 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
                 "Keep this link and reconnect to finish the refresh."),
             grantExpiresAtUtc);
 
+    private static AndroidAccountLinkSnapshot RefreshRecoveryExpiredSnapshot()
+        => new(
+            AndroidAccountLinkStatus.Error,
+            AccountText("AccountFreshLinkRequired", "Fresh link required"),
+            AccountText("AccountChooseLinkTryAgain", "Choose Link account and try again."));
+
     private enum GrantValidationResult
     {
         Valid,
@@ -1350,6 +1539,7 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         string InstallationId,
         string Confirmation);
     private sealed record PollRequest(
+        string OperationId,
         string InstallationId,
         string HeadId,
         string ApplicationVersion,
@@ -1362,6 +1552,7 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         string Signature,
         string HostLabel);
     private sealed record RefreshRequest(
+        string OperationId,
         string InstallationId,
         string HeadId,
         string ApplicationVersion,
@@ -1369,8 +1560,31 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         string Platform,
         string Architecture,
         string PublicKey,
-        string HostLabel,
-        string IdempotencyKey);
+        string HostLabel);
+    private sealed record PendingPollOperation(
+        int Version,
+        string OperationId,
+        string InstallationId,
+        string HeadId,
+        string ApplicationVersion,
+        string ChannelId,
+        string Platform,
+        string Architecture,
+        string PublicKey,
+        string HostLabel);
+    private sealed record RefreshOperation(
+        int Version,
+        string OperationId,
+        DateTimeOffset StartedAtUtc,
+        string InstallationId,
+        string SourceGrantId,
+        string HeadId,
+        string ApplicationVersion,
+        string ChannelId,
+        string Platform,
+        string Architecture,
+        string PublicKey,
+        string HostLabel);
     private sealed record GrantContract(
         string GrantId,
         string InstallationId,
@@ -1384,8 +1598,14 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         string Status,
         DateTimeOffset IssuedAtUtc,
         DateTimeOffset ExpiresAtUtc);
-    private sealed record ExchangeResponse(GrantMetadata Grant, bool AlreadyClaimed);
-    private sealed record RefreshResponse(GrantMetadata Grant, bool Rotated);
+    private sealed record ExchangeResponse(
+        GrantMetadata Grant,
+        bool AlreadyClaimed,
+        string OperationId);
+    private sealed record RefreshResponse(
+        GrantMetadata Grant,
+        bool Rotated,
+        string OperationId);
     private sealed record WorkspaceListResponse(IReadOnlyList<WorkspaceSnapshotDto> Snapshots);
     private sealed record WorkspaceSnapshotDto(
         string WorkspaceId,
