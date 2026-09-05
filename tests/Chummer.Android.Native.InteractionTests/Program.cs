@@ -28,6 +28,7 @@ internal static class Program
             (nameof(CreationIdentityGapFailsClosedAsync), CreationIdentityGapFailsClosedAsync),
             (nameof(DurableSaveNoticeFailsClosedAcrossStateChangesAsync), DurableSaveNoticeFailsClosedAcrossStateChangesAsync),
             (nameof(CoordinatorRefreshBurstsRenderOnlyLatestStateAsync), CoordinatorRefreshBurstsRenderOnlyLatestStateAsync),
+            (nameof(PageActionGateRejectsOverlappingActionsAsync), PageActionGateRejectsOverlappingActionsAsync),
             (nameof(ExactWorkspaceAuthoritySnapshotRejectsEveryHostileBindingAsync), ExactWorkspaceAuthoritySnapshotRejectsEveryHostileBindingAsync),
 #if DEBUG
             (nameof(HomeAppearanceAuthorityRefreshFailsClosedForEveryHostileBindingAsync), HomeAppearanceAuthorityRefreshFailsClosedForEveryHostileBindingAsync),
@@ -97,6 +98,24 @@ internal static class Program
         Require(
             !coalescer.Complete(allowReschedule: false),
             "A disappearing page retained dispatcher ownership.");
+        return Task.CompletedTask;
+    }
+
+    private static Task PageActionGateRejectsOverlappingActionsAsync()
+    {
+        var gate = new NativePageActionGate();
+        Require(!gate.IsClaimed, "A new page action gate started claimed.");
+        Require(gate.TryClaim(), "The first page action did not acquire ownership.");
+        Require(gate.IsClaimed, "The page action claim was not observable.");
+        for (int index = 0; index < 128; index++)
+        {
+            Require(!gate.TryClaim(), "An overlapping page action acquired ownership.");
+        }
+
+        gate.Release();
+        Require(!gate.IsClaimed, "The completed page action retained ownership.");
+        Require(gate.TryClaim(), "A later independent page action was rejected.");
+        gate.Release();
         return Task.CompletedTask;
     }
 

@@ -672,7 +672,7 @@
       {
         "path": "src/Chummer.Android/Native/Sr5CareerWizardPage.cs",
         "exists": true,
-        "sha256": "88ef80ab1d91a3e14c61a02c03f16e06aad5da3bea6fda00a51bdcad2c8d4b3b"
+        "sha256": "44d2014df5fa1c8534261f13e0e4dd68d02f207376eb338840cc190eb5d1e67d"
       },
       {
         "path": "src/Chummer.Android/Native/Sr5CareerWizardPhoneModel.cs",
@@ -702,7 +702,7 @@
       {
         "path": "src/Chummer.Android/Native/Sr5AfterRunSettlementWizardPage.cs",
         "exists": true,
-        "sha256": "a2910ffe1546cb7d5de62a7ccbdd1d09fb5ab054d69d12860108258a1b4a051a"
+        "sha256": "29c9571cedb264b20a68973aa8c1d7ea038c4121ff10046b6dc349c736b1af15"
       },
       {
         "path": "src/Chummer.Android/Native/Sr5AfterRunWizardModel.cs",
@@ -712,7 +712,7 @@
       {
         "path": "src/Chummer.Android/Native/Sr5TableWizardPage.cs",
         "exists": true,
-        "sha256": "25b7da0bb5593c1f1d8eeb2d4d411b2810986eca43458db76f04a278bd3a10fd"
+        "sha256": "5fc3183cf02d4f989612fb956062537f042b64227ccde61d666bc0adf4b8ab2e"
       },
       {
         "path": "src/Chummer.Android/Native/Sr5TableWizardPhoneModel.cs",
@@ -1002,7 +1002,7 @@
       {
         "path": "tests/test_api36_sr5_career_run_contextual_contract.py",
         "exists": true,
-        "sha256": "73b45a5d4c53b26b5451661b2af607a24e28aa703a3f6db53ae2d2cb593b5853"
+        "sha256": "40fecc02573ef39ebe355b16dcaae5d920cbe11777cf3e0ac6aa3117087333d7"
       },
       {
         "path": "tests/test_chummer5_editability_inventory.py",
@@ -1447,7 +1447,7 @@
       {
         "path": "tests/run_api36_creation_prerequisite_e2e.py",
         "exists": true,
-        "sha256": "38b4979a9130ca26200ae34928d19823fc7630fbcfa4227c834a6b3d0074c1f9"
+        "sha256": "5b67cd1afc4590ac83560a687830d9efaecc8f0b22236b316a7d6b64dd9c36b0"
       },
       {
         "path": "tests/fixtures/career-condition-monitor-e2e.chum5",

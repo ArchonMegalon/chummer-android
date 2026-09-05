@@ -50,13 +50,14 @@ public sealed class Sr5TableWizardPage : NativePageBase
         Content = new ScrollView { Content = _body };
     }
 
-    protected override async void OnAppearing()
+    protected override async Task PrepareForAppearanceRefreshAsync(
+        CancellationToken cancellationToken)
     {
-        base.OnAppearing();
         _loadLifetime?.Cancel();
         _loadLifetime?.Dispose();
-        _loadLifetime = new CancellationTokenSource();
-        await LoadLatestAsync(_loadLifetime.Token);
+        _loadLifetime = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        await LoadLatestAsync(_loadLifetime.Token, initializeCoordinator: false);
+        cancellationToken.ThrowIfCancellationRequested();
     }
 
     protected override void OnDisappearing()
@@ -327,10 +328,12 @@ public sealed class Sr5TableWizardPage : NativePageBase
         _loadLifetime?.Cancel();
         _loadLifetime?.Dispose();
         _loadLifetime = new CancellationTokenSource();
-        await LoadLatestAsync(_loadLifetime.Token);
+        await LoadLatestAsync(_loadLifetime.Token, initializeCoordinator: true);
     }
 
-    private async Task LoadLatestAsync(CancellationToken cancellationToken)
+    private async Task LoadLatestAsync(
+        CancellationToken cancellationToken,
+        bool initializeCoordinator)
     {
         long version = Interlocked.Increment(ref _loadVersion);
         _loading = true;
@@ -341,10 +344,13 @@ public sealed class Sr5TableWizardPage : NativePageBase
         Refresh();
         try
         {
-            await Coordinator.InitializeAsync();
             // This method owns MAUI view state in its finally block. Preserve the UI
             // synchronization context so Refresh never mutates the visual tree from a
             // thread-pool continuation.
+            if (initializeCoordinator)
+            {
+                await Coordinator.InitializeAsync();
+            }
             Sr5TableWizardSnapshot? snapshot = await _authority
                 .LoadAsync(_lane, cancellationToken);
             if (cancellationToken.IsCancellationRequested

@@ -9182,7 +9182,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             driver.POST_CONFIRM_DASHBOARD_SCAN_MAX_SCROLLS,
             scan.call_args.kwargs["max_scrolls"],
         )
-        self.assertEqual(10, driver.POST_CONFIRM_DASHBOARD_SCAN_MAX_SCROLLS)
+        self.assertEqual(12, driver.POST_CONFIRM_DASHBOARD_SCAN_MAX_SCROLLS)
         self.assertEqual(
             driver.POST_CONFIRM_DASHBOARD_DUMP_ATTEMPT_MAX_SECONDS,
             scan.call_args.kwargs["hierarchy_dump_attempt_max_seconds"],
@@ -9633,6 +9633,12 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 )
 
             self.assertGreaterEqual(device.run.call_count, 1)
+            device.capture.assert_called_once()
+            self.assertEqual(
+                "creation-dashboard-route-ready-timeout",
+                device.capture.call_args.args[0],
+            )
+            self.assertIn("deadline", device.capture.call_args.kwargs)
             device.shell.assert_not_called()
             device.hierarchy.assert_not_called()
 

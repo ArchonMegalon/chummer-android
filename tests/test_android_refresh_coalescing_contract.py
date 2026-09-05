@@ -39,3 +39,17 @@ def test_coalescer_keeps_one_follow_up_for_state_changed_during_render() -> None
     assert "Interlocked.Exchange(ref _pending, 1)" in coalescer
     assert "Interlocked.CompareExchange(ref _scheduled, 1, 0)" in coalescer
     assert "public bool Complete(bool allowReschedule)" in coalescer
+
+
+def test_page_actions_reject_overlapping_taps_without_queueing_mutations() -> None:
+    page = (ROOT / "src/Chummer.Android/Native/NativePageBase.cs").read_text(
+        encoding="utf-8"
+    )
+    gate = (ROOT / "src/Chummer.Android/Native/NativePageActionGate.cs").read_text(
+        encoding="utf-8"
+    )
+
+    assert page.count("if (!_actionGate.TryClaim())") == 2
+    assert page.count("_actionGate.Release();") == 2
+    assert "Interlocked.CompareExchange(ref _claimed, 1, 0)" in gate
+    assert "_runningActionDepth" not in page

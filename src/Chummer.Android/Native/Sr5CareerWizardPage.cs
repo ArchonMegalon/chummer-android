@@ -34,13 +34,14 @@ public sealed class Sr5CareerWizardPage : NativePageBase
         Content = new ScrollView { Content = _body };
     }
 
-    protected override async void OnAppearing()
+    protected override async Task PrepareForAppearanceRefreshAsync(
+        CancellationToken cancellationToken)
     {
-        base.OnAppearing();
         _loadLifetime?.Cancel();
         _loadLifetime?.Dispose();
-        _loadLifetime = new CancellationTokenSource();
+        _loadLifetime = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         await LoadLatestAsync(_loadLifetime.Token);
+        cancellationToken.ThrowIfCancellationRequested();
     }
 
     protected override void OnDisappearing()
@@ -302,6 +303,7 @@ public sealed class Sr5CareerWizardPage : NativePageBase
         _loadLifetime?.Cancel();
         _loadLifetime?.Dispose();
         _loadLifetime = new CancellationTokenSource();
+        await Coordinator.InitializeAsync();
         await LoadLatestAsync(_loadLifetime.Token);
     }
 
@@ -313,7 +315,6 @@ public sealed class Sr5CareerWizardPage : NativePageBase
         Refresh();
         try
         {
-            await Coordinator.InitializeAsync();
             Sr5CareerWizardPhoneLoadResult loaded =
                 await _authority.LoadAsync(cancellationToken);
             if (cancellationToken.IsCancellationRequested

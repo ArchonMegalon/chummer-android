@@ -7,10 +7,11 @@ public abstract class NativePageBase : ContentPage
 {
     private bool _subscribed;
     private bool _dialogVisible;
-    private int _runningActionDepth;
     private int _appearanceRefreshActive;
+    private long _appearanceGeneration;
     private CancellationTokenSource? _appearanceLifetime;
     private readonly NativeRefreshCoalescer _coordinatorRefresh = new();
+    private readonly NativePageActionGate _actionGate = new();
 
     protected NativePageBase(RunnerSessionCoordinator coordinator)
     {
@@ -23,11 +24,13 @@ public abstract class NativePageBase : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        long appearanceGeneration = Interlocked.Increment(ref _appearanceGeneration);
         Interlocked.Exchange(ref _appearanceRefreshActive, 1);
-        _appearanceLifetime?.Cancel();
-        _appearanceLifetime?.Dispose();
-        _appearanceLifetime = new CancellationTokenSource();
-        CancellationToken appearanceToken = _appearanceLifetime.Token;
+        CancellationTokenSource appearanceLifetime = new();
+        CancellationTokenSource? previousAppearance =
+            Interlocked.Exchange(ref _appearanceLifetime, appearanceLifetime);
+        previousAppearance?.Cancel();
+        CancellationToken appearanceToken = appearanceLifetime.Token;
         if (!_subscribed)
         {
             Coordinator.Changed += OnCoordinatorChanged;
@@ -37,38 +40,56 @@ public abstract class NativePageBase : ContentPage
         try
         {
             await Coordinator.InitializeAsync();
+            ThrowIfAppearanceIsStale(appearanceGeneration, appearanceToken);
             await PrepareForAppearanceRefreshAsync(appearanceToken);
+            ThrowIfAppearanceIsStale(appearanceGeneration, appearanceToken);
             _coordinatorRefresh.DiscardPending();
             Refresh();
-            Volatile.Write(ref _appearanceRefreshActive, 0);
+            ClearAppearanceRefreshIfCurrent(appearanceGeneration);
+            ThrowIfAppearanceIsStale(appearanceGeneration, appearanceToken);
             await ShowActiveDialogAsync();
             await Task.Delay(TimeSpan.FromMilliseconds(750), appearanceToken);
+            ThrowIfAppearanceIsStale(appearanceGeneration, appearanceToken);
             await NotifyPlayReviewSafeMomentAsync(
                 signalMeaningfulSuccess: false,
                 cancellationToken: appearanceToken);
         }
-        catch (OperationCanceledException) when (appearanceToken.IsCancellationRequested)
+        catch (OperationCanceledException) when (
+            appearanceToken.IsCancellationRequested
+            || !IsCurrentAppearance(appearanceGeneration, appearanceLifetime))
         {
             // The page left before the deliberately deferred idle checkpoint.
         }
         catch (Exception ex)
         {
+            if (!IsCurrentAppearance(appearanceGeneration, appearanceLifetime))
+            {
+                return;
+            }
+
             _coordinatorRefresh.DiscardPending();
             Refresh();
-            Volatile.Write(ref _appearanceRefreshActive, 0);
+            ClearAppearanceRefreshIfCurrent(appearanceGeneration);
             await DisplayAlertAsync("Chummer", ex.Message, "OK");
         }
         finally
         {
-            Volatile.Write(ref _appearanceRefreshActive, 0);
+            ClearAppearanceRefreshIfCurrent(appearanceGeneration);
+            Interlocked.CompareExchange(
+                ref _appearanceLifetime,
+                null,
+                appearanceLifetime);
+            appearanceLifetime.Dispose();
         }
     }
 
     protected override void OnDisappearing()
     {
-        _appearanceLifetime?.Cancel();
-        _appearanceLifetime?.Dispose();
-        _appearanceLifetime = null;
+        Interlocked.Increment(ref _appearanceGeneration);
+        CancellationTokenSource? appearanceLifetime =
+            Interlocked.Exchange(ref _appearanceLifetime, null);
+        appearanceLifetime?.Cancel();
+        Volatile.Write(ref _appearanceRefreshActive, 0);
         _coordinatorRefresh.DiscardPending();
         if (_subscribed)
         {
@@ -85,14 +106,51 @@ public abstract class NativePageBase : ContentPage
         CancellationToken cancellationToken)
         => Task.CompletedTask;
 
+    private bool IsCurrentAppearance(
+        long appearanceGeneration,
+        CancellationTokenSource appearanceLifetime)
+        => _subscribed
+            && Volatile.Read(ref _appearanceGeneration) == appearanceGeneration
+            && ReferenceEquals(
+                Interlocked.CompareExchange(
+                    ref _appearanceLifetime,
+                    null,
+                    null),
+                appearanceLifetime);
+
+    private void ThrowIfAppearanceIsStale(
+        long appearanceGeneration,
+        CancellationToken appearanceToken)
+    {
+        appearanceToken.ThrowIfCancellationRequested();
+        if (!_subscribed
+            || Volatile.Read(ref _appearanceGeneration) != appearanceGeneration)
+        {
+            throw new OperationCanceledException(appearanceToken);
+        }
+    }
+
+    private void ClearAppearanceRefreshIfCurrent(long appearanceGeneration)
+    {
+        if (Volatile.Read(ref _appearanceGeneration) == appearanceGeneration)
+        {
+            Volatile.Write(ref _appearanceRefreshActive, 0);
+        }
+    }
+
     protected async Task RunAsync(Func<Task> action)
     {
-        PlayReviewMeaningfulState before = CapturePlayReviewMeaningfulState();
-        Interlocked.Increment(ref _runningActionDepth);
+        if (!_actionGate.TryClaim())
+        {
+            return;
+        }
+
+        PlayReviewMeaningfulState before = default;
         PlayReviewInteractionGuard.EnterAction();
         bool succeeded = false;
         try
         {
+            before = CapturePlayReviewMeaningfulState();
             await action();
             _coordinatorRefresh.DiscardPending();
             Refresh();
@@ -109,8 +167,8 @@ public abstract class NativePageBase : ContentPage
         }
         finally
         {
-            Interlocked.Decrement(ref _runningActionDepth);
             PlayReviewInteractionGuard.ExitAction();
+            _actionGate.Release();
         }
 
         if (succeeded)
@@ -122,12 +180,17 @@ public abstract class NativePageBase : ContentPage
 
     protected async Task RunWithConditionalRefreshAsync(Func<Task<bool>> action)
     {
-        PlayReviewMeaningfulState before = CapturePlayReviewMeaningfulState();
-        Interlocked.Increment(ref _runningActionDepth);
+        if (!_actionGate.TryClaim())
+        {
+            return;
+        }
+
+        PlayReviewMeaningfulState before = default;
         PlayReviewInteractionGuard.EnterAction();
         bool succeeded = false;
         try
         {
+            before = CapturePlayReviewMeaningfulState();
             if (await action())
             {
                 _coordinatorRefresh.DiscardPending();
@@ -146,8 +209,8 @@ public abstract class NativePageBase : ContentPage
         }
         finally
         {
-            Interlocked.Decrement(ref _runningActionDepth);
             PlayReviewInteractionGuard.ExitAction();
+            _actionGate.Release();
         }
 
         if (succeeded)
@@ -173,7 +236,7 @@ public abstract class NativePageBase : ContentPage
 
     private void OnCoordinatorChanged(object? sender, EventArgs args)
     {
-        if (Volatile.Read(ref _runningActionDepth) > 0)
+        if (_actionGate.IsClaimed)
         {
             return;
         }
@@ -217,7 +280,7 @@ public abstract class NativePageBase : ContentPage
         try
         {
             if (!_subscribed
-                || Volatile.Read(ref _runningActionDepth) > 0
+                || _actionGate.IsClaimed
                 || Volatile.Read(ref _appearanceRefreshActive) > 0
                 || !_coordinatorRefresh.TryTakePending())
             {
@@ -237,7 +300,7 @@ public abstract class NativePageBase : ContentPage
         finally
         {
             bool mayRender = _subscribed
-                && Volatile.Read(ref _runningActionDepth) == 0
+                && !_actionGate.IsClaimed
                 && Volatile.Read(ref _appearanceRefreshActive) == 0;
             if (_coordinatorRefresh.Complete(mayRender))
             {

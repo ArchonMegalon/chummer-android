@@ -300,12 +300,12 @@ POST_CONFIRM_DASHBOARD_READY_POLL_DELAY_SECONDS = 0.25
 POST_CONFIRM_DASHBOARD_DUMP_ATTEMPT_MAX_SECONDS = 30.0
 POST_CONFIRM_DASHBOARD_PROOF_TIMEOUT_SECONDS = 75.0
 # The post-confirm dashboard is observed from its current viewport, not rewound.
-# Exact-head run 33534835752 required eight genuine forward movements to reach
-# the bottom after Core opened the Attributes prerequisite. Stable-end proof
-# then needs two additional clamped gestures. Keep this route-specific bound
-# exact so the observer can prove the end without widening the normal dashboard
-# inventory or replaying the already-consumed Back action.
-POST_CONFIRM_DASHBOARD_SCAN_MAX_SCROLLS = 10
+# Exact-head run 33923577191 started this scan at the deterministically restored
+# top and required ten genuine forward movements to reach the visible page end.
+# Stable-end proof then needs two additional clamped gestures. Keep this
+# route-specific bound exact so the observer can prove the end without widening
+# the normal dashboard inventory or replaying the already-consumed Back action.
+POST_CONFIRM_DASHBOARD_SCAN_MAX_SCROLLS = 12
 CONFIRMED_RECEIPT_BACK_DOWNSTREAM_RESERVE_SECONDS = (
     PRE_BACK_ROUTE_LOG_CLEAR_TIMEOUT_SECONDS
     + PERSISTENT_PREVIEW_ACTION_TIMEOUT_SECONDS
@@ -892,6 +892,18 @@ def wait_for_creation_dashboard_ready_log(
     )
     if len(exact_matches) != 1 or invalid_lines:
         if not exact_matches and not invalid_lines:
+            # Preserve the actual post-Back product state before failing.  The
+            # marker poll deliberately ends before the enclosing dashboard
+            # proof lease, so this read-only screenshot/hierarchy/logcat
+            # capture has its own bounded evidence time and never replays the
+            # already-issued Back action.  Without it, a missing marker cannot
+            # be distinguished from a wrong route, an authority load that is
+            # still progressing, or a marker-emission defect.
+            _capture_with_phase_deadline(
+                device,
+                "creation-dashboard-route-ready-timeout",
+                deadline=deadline,
+            )
             raise RuntimeError(
                 "Timed out waiting for the exact post-Back Creation "
                 "dashboard-ready marker"

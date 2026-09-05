@@ -121,7 +121,7 @@ class CareerAttributeWizardSourceContractTests(unittest.TestCase):
         self.assertIn("CryptographicOperations.FixedTimeEquals", coordinator)
         self.assertIn("checkpointStore.AcquireDurableApplyingLeaseAsync", coordinator)
         page = self.read("Sr5CareerAttributeWizardPage.cs")
-        appearing = page.split("protected override async void OnAppearing()", maxsplit=1)[1]
+        appearing = page.split("PrepareForAppearanceRefreshAsync(", maxsplit=1)[1]
         appearing = appearing.split("protected override void Refresh()", maxsplit=1)[0]
         self.assertIn("LoadRecoveryCheckpoint();", appearing)
         self.assertLess(

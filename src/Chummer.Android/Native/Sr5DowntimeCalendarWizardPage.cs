@@ -141,25 +141,34 @@ public class Sr5DowntimeCalendarWizardPage : NativePageBase
         RefreshEnabledState();
     }
 
-    protected override async void OnAppearing()
+    protected override async Task PrepareForAppearanceRefreshAsync(
+        CancellationToken cancellationToken)
     {
-        base.OnAppearing();
         if (_loaded) return;
         _loaded = true;
-        try { await LoadAndRecoverAsync(); }
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            await LoadAndRecoverAsync(cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            _loaded = false;
+            throw;
+        }
         catch (Exception exception)
         {
             _status.Text = exception.Message;
             _status.TextColor = NativeTheme.Danger;
         }
-        RefreshEnabledState();
     }
 
     protected override void Refresh() => RefreshEnabledState();
 
-    private async Task LoadAndRecoverAsync()
+    private async Task LoadAndRecoverAsync(CancellationToken cancellationToken)
     {
-        _load = await _authority.LoadAsync();
+        _load = await _authority.LoadAsync(cancellationToken);
         if (!_load.IsReady)
         {
             _binding.Text = _load.Blocker ?? Text("Exact Downtime Calendar authority is unavailable.");

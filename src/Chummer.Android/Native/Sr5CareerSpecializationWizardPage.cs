@@ -133,19 +133,13 @@ public sealed class Sr5CareerSpecializationWizardPage : NativePageBase
 
     protected override void Refresh() => RefreshEnabledState();
 
-    protected override async void OnAppearing()
+    protected override Task PrepareForAppearanceRefreshAsync(
+        CancellationToken cancellationToken)
     {
-        base.OnAppearing();
-        try
-        {
-            await Coordinator.InitializeAsync();
-            LoadCheckpoint();
-            RefreshEnabledState();
-        }
-        catch (Exception exception)
-        {
-            await DisplayAlertAsync(Text("Specialization recovery unavailable"), exception.Message, Text("OK"));
-        }
+        cancellationToken.ThrowIfCancellationRequested();
+        LoadCheckpoint();
+        RefreshEnabledState();
+        return Task.CompletedTask;
     }
 
     private static string SkillLabel(CareerSkillSpecializationCandidate skill)
