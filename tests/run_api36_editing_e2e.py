@@ -142,6 +142,15 @@ ADB_FILE_HIERARCHY_RETRY_SCHEMA = (
 DURABLE_SAVE_OUTCOME_FAILURE_SCHEMA = (
     "chummer.android.durable-save-outcome-failure/v1"
 )
+PRODUCT_ANR_HIERARCHY_SCHEMA = "chummer.android.product-anr-hierarchy/v1"
+ANDROID_ANR_TEXT_MARKERS = (
+    "isn't responding",
+    "is not responding",
+    "isn\u2019t responding",
+    "not responding",
+    "reagiert nicht",
+    "no responde",
+)
 ADB_READ_ONLY_MAX_ATTEMPTS = 3
 ADB_READ_ONLY_RETRY_DELAY_SECONDS = 1.0
 ADB_READ_ONLY_HIERARCHY_ATTEMPT_MAX_SECONDS = 8.0
@@ -3983,6 +3992,7 @@ class Device:
             self,
             complete[0],
             "last-invalid-hierarchy.txt",
+            deadline=deadline,
         )
         if len(nodes) != complete[1]:
             observation["status"] = "fail"
@@ -4184,6 +4194,7 @@ class Device:
             self,
             xml,
             "last-invalid-hierarchy.txt",
+            deadline=deadline,
         )
         if nodes or xml.strip() != ADB_FILE_HIERARCHY_ABSENT_OUTPUT:
             return nodes
@@ -4244,6 +4255,7 @@ class Device:
                 self,
                 xml,
                 "last-invalid-hierarchy.txt",
+                deadline=deadline,
             )
             if nodes or xml.strip() != ADB_FILE_HIERARCHY_ABSENT_OUTPUT:
                 return nodes
@@ -4270,6 +4282,7 @@ class Device:
             self,
             xml,
             "last-read-only-invalid-hierarchy.txt",
+            deadline=deadline,
         )
 
     def _read_only_hierarchy_xml_once(
@@ -4322,9 +4335,20 @@ class Device:
             deadline=deadline,
             attempt_max_seconds=attempt_max_seconds,
         )
-        return Device._parse_hierarchy(self, xml, diagnostic_name)
+        return Device._parse_hierarchy(
+            self,
+            xml,
+            diagnostic_name,
+            deadline=deadline,
+        )
 
-    def _parse_hierarchy(self, xml: str, diagnostic_name: str) -> list[UiNode]:
+    def _parse_hierarchy(
+        self,
+        xml: str,
+        diagnostic_name: str,
+        *,
+        deadline: float | None = None,
+    ) -> list[UiNode]:
         hierarchy_start = xml.find("<hierarchy")
         if hierarchy_start < 0:
             (self.evidence / diagnostic_name).write_text(
@@ -4346,7 +4370,14 @@ class Device:
                 encoding="utf-8",
             )
             return []
-        return [UiNode(dict(node.attrib)) for node in root.iter("node")]
+        nodes = [UiNode(dict(node.attrib)) for node in root.iter("node")]
+        Device._raise_if_android_anr(
+            self,
+            nodes,
+            hierarchy_xml=payload,
+            deadline=deadline,
+        )
+        return nodes
 
     @staticmethod
     def _hierarchy_sha256(nodes: list[UiNode]) -> str:
@@ -4486,6 +4517,7 @@ class Device:
                 self,
                 xml,
                 "last-hierarchy-dump-reconciliation-invalid.txt",
+                deadline=owned_file_deadline,
             )
             if not nodes:
                 previous_sha256 = None
@@ -4568,6 +4600,7 @@ class Device:
                 self,
                 xml,
                 "last-hierarchy-dump-direct-reconciliation-invalid.txt",
+                deadline=direct_deadline,
             )
             if not nodes:
                 previous_sha256 = None
@@ -4620,6 +4653,56 @@ class Device:
             resource_id,
         }
         return selector in values or any(value.startswith(selector) for value in values if value)
+
+    @staticmethod
+    def _android_anr_nodes(nodes: list[UiNode]) -> list[UiNode]:
+        """Recognize Android app-error/ANR surfaces without relying on one button.
+
+        API/OEM variants do not all publish ``aerr_wait``. Treat any Android
+        ``aerr_*`` control or an EN/DE/ES not-responding title as an ANR. The
+        proof harness owns only Chummer, so a suspected generic ANR must fail
+        closed instead of touching any dialog action or an underlying app node.
+        """
+        matches: list[UiNode] = []
+        for node in nodes:
+            attributes = node.attributes
+            raw_resource_id = attributes.get("resource-id", "")
+            _, separator, resource_name = raw_resource_id.partition(":id/")
+            if not separator:
+                resource_name = raw_resource_id.rsplit("/", 1)[-1]
+            rendered_text = " ".join(
+                value.casefold()
+                for value in (
+                    attributes.get("text", ""),
+                    attributes.get("content-desc", ""),
+                )
+                if value
+            )
+            if resource_name.startswith("aerr_") or any(
+                marker in rendered_text for marker in ANDROID_ANR_TEXT_MARKERS
+            ):
+                matches.append(node)
+        return matches
+
+    def _raise_if_android_anr(
+        self,
+        nodes: list[UiNode],
+        *,
+        hierarchy_xml: str | None = None,
+        deadline: float | None = None,
+    ) -> None:
+        if not Device._android_anr_nodes(nodes):
+            return
+        self.capture_product_anr_evidence(
+            nodes=nodes,
+            hierarchy_xml=hierarchy_xml,
+            deadline=deadline,
+        )
+        raise ProductAnrDetected(
+            "Android reported a generic app-not-responding surface while proving "
+            f"{PACKAGE}; captured product-ANR diagnostics and refused to dismiss "
+            "the dialog as success"
+        )
 
     @staticmethod
     def _has_exact_resource_id(node: UiNode, selector: str) -> bool:
@@ -4971,76 +5054,148 @@ class Device:
         *,
         deadline: float | None = None,
     ) -> bool:
-        wait_button = (
-            self.find("aerr_wait")
-            if nodes is None
-            else next((node for node in nodes if self._matches(node, "aerr_wait")), None)
-        )
-        if wait_button is None:
-            if nodes is None:
-                return False
-            packages = {
-                node.attributes.get("package", "")
-                for node in nodes
-                if node.attributes.get("package", "")
-            }
-            resource_ids = {
-                node.attributes.get("resource-id", "")
-                for node in nodes
-                if node.attributes.get("resource-id", "")
-            }
-            notification_shade_expanded = (
-                PACKAGE not in packages
-                and packages == {"com.android.systemui"}
-                and "com.android.systemui:id/notification_stack_scroller"
-                in resource_ids
-                and (
-                    "com.android.systemui:id/legacy_window_root" in resource_ids
-                    or "com.android.systemui:id/split_shade_status_bar"
-                    in resource_ids
-                )
+        if nodes is None:
+            observed_nodes = (
+                self.hierarchy()
+                if deadline is None
+                else self.hierarchy(deadline=deadline)
             )
-            if not notification_shade_expanded:
-                return False
-            arguments = ("cmd", "statusbar", "collapse")
-            if deadline is None:
-                self.shell(*arguments, timeout=15)
-            else:
-                self.shell(
-                    *arguments,
-                    timeout=_remaining_operation_timeout(
-                        deadline=deadline,
-                        maximum=15,
-                    ),
-                    deadline=deadline,
-                )
-            return True
-        if deadline is None:
-            self.capture_product_anr_evidence()
         else:
-            self.capture("product-anr", deadline=deadline)
-        raise ProductAnrDetected(
-            "Android reported that Chummer is not responding; captured product-ANR "
-            "diagnostics and refused to dismiss the dialog as success"
+            observed_nodes = nodes
+        Device._raise_if_android_anr(
+            self,
+            observed_nodes,
+            deadline=deadline,
         )
+        packages = {
+            node.attributes.get("package", "")
+            for node in observed_nodes
+            if node.attributes.get("package", "")
+        }
+        resource_ids = {
+            node.attributes.get("resource-id", "")
+            for node in observed_nodes
+            if node.attributes.get("resource-id", "")
+        }
+        notification_shade_expanded = (
+            PACKAGE not in packages
+            and packages == {"com.android.systemui"}
+            and "com.android.systemui:id/notification_stack_scroller"
+            in resource_ids
+            and (
+                "com.android.systemui:id/legacy_window_root" in resource_ids
+                or "com.android.systemui:id/split_shade_status_bar"
+                in resource_ids
+            )
+        )
+        if not notification_shade_expanded:
+            return False
+        arguments = ("cmd", "statusbar", "collapse")
+        if deadline is None:
+            self.shell(*arguments, timeout=15)
+        else:
+            self.shell(
+                *arguments,
+                timeout=_remaining_operation_timeout(
+                    deadline=deadline,
+                    maximum=15,
+                ),
+                deadline=deadline,
+            )
+        return True
 
-    def capture_product_anr_evidence(self) -> None:
+    def capture_product_anr_evidence(
+        self,
+        *,
+        nodes: list[UiNode] | None = None,
+        hierarchy_xml: str | None = None,
+        deadline: float | None = None,
+    ) -> None:
         """Capture bounded diagnostics without mutating or dismissing the ANR dialog."""
+        observed_nodes = [] if nodes is None else nodes
+        hierarchy_receipt = {
+            "schema": PRODUCT_ANR_HIERARCHY_SCHEMA,
+            "status": "suspected-android-anr-fail-closed",
+            "proofTargetPackage": PACKAGE,
+            "autoDismissAttempted": False,
+            "nodeCount": len(observed_nodes),
+            "hierarchySha256": Device._hierarchy_sha256(observed_nodes),
+            "anrNodeCount": len(Device._android_anr_nodes(observed_nodes)),
+            "nodes": [
+                dict(sorted(node.attributes.items())) for node in observed_nodes
+            ],
+        }
+        _write_launch_evidence(
+            self,
+            "product-anr-hierarchy.json",
+            json.dumps(hierarchy_receipt, indent=2) + "\n",
+        )
+        if hierarchy_xml is not None:
+            _write_launch_evidence(
+                self,
+                "product-anr-hierarchy.xml",
+                hierarchy_xml,
+            )
+
+        def deadline_available() -> bool:
+            return deadline is None or time.monotonic() < deadline
+
+        def capture_shell(name: str, arguments: tuple[str, ...]) -> str:
+            if not deadline_available():
+                value = "diagnostic unavailable: caller-owned deadline exhausted"
+                _write_launch_evidence(self, name, value)
+                return value
+            try:
+                value = (
+                    self.shell(*arguments, timeout=15)
+                    if deadline is None
+                    else self.shell(
+                        *arguments,
+                        timeout=_remaining_operation_timeout(
+                            deadline=deadline,
+                            maximum=15,
+                        ),
+                        deadline=deadline,
+                    )
+                )
+            except Exception as error:
+                value = f"diagnostic unavailable: {type(error).__name__}: {error}"
+            _write_launch_evidence(self, name, value)
+            return value
+
         try:
-            screenshot = self.run(
-                "exec-out",
-                "screencap",
-                "-p",
-                timeout=15,
-                text=False,
-            ).stdout
-            (self.evidence / "product-anr.png").write_bytes(screenshot)
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
+            if deadline_available():
+                screenshot = (
+                    self.run(
+                        "exec-out",
+                        "screencap",
+                        "-p",
+                        timeout=15,
+                        text=False,
+                    )
+                    if deadline is None
+                    else self.run(
+                        "exec-out",
+                        "screencap",
+                        "-p",
+                        timeout=_remaining_operation_timeout(
+                            deadline=deadline,
+                            maximum=15,
+                        ),
+                        text=False,
+                        deadline=deadline,
+                    )
+                ).stdout
+                (self.evidence / "product-anr.png").write_bytes(screenshot)
+        except Exception as error:
             _write_launch_evidence(self, "product-anr-screenshot-error.txt", error)
 
         process_ids = tuple(
             token
-            for token in _safe_shell(self, "pidof", PACKAGE, timeout=15).split()
+            for token in capture_shell(
+                "product-anr-process-id-observation.txt",
+                ("pidof", PACKAGE),
+            ).split()
             if PROCESS_ID.fullmatch(token)
         )
         _write_launch_evidence(
@@ -5051,8 +5206,25 @@ class Device:
 
         diagnostics = (
             (
+                "product-anr-logcat.txt",
+                (
+                    "logcat",
+                    "-d",
+                    "-b",
+                    "all",
+                    "-v",
+                    "threadtime",
+                    "-t",
+                    "4000",
+                ),
+            ),
+            (
                 "product-anr-lastanr.txt",
                 ("dumpsys", "activity", "lastanr"),
+            ),
+            (
+                "product-anr-activity.txt",
+                ("dumpsys", "activity", "activities"),
             ),
             (
                 "product-anr-processes.txt",
@@ -5070,17 +5242,9 @@ class Device:
                 "product-anr-data-anr.txt",
                 ("ls", "-la", "/data/anr"),
             ),
-            (
-                "product-anr-logcat.txt",
-                ("logcat", "-d", "-b", "all", "-v", "threadtime", "-t", "4000"),
-            ),
         )
         for name, arguments in diagnostics:
-            _write_launch_evidence(
-                self,
-                name,
-                _safe_shell(self, *arguments, timeout=15),
-            )
+            capture_shell(name, arguments)
 
     def tap(
         self,
@@ -5492,6 +5656,7 @@ class Device:
     ) -> UiNode:
         deadline = time.monotonic() + timeout
         scrolls = 0
+        tap_issued = False
         while time.monotonic() < deadline:
             target_node = self.find(target)
             if target_node is not None:
@@ -5499,11 +5664,12 @@ class Device:
             if self.dismiss_system_ui_anr():
                 time.sleep(2)
                 continue
-            source_node = self.find(selector)
+            source_node = None if tap_issued else self.find(selector)
             if source_node is not None:
                 x, y = source_node.center
                 self.shell("input", "tap", str(x), str(y))
-            elif scroll and scrolls < max_scrolls:
+                tap_issued = True
+            elif not tap_issued and scroll and scrolls < max_scrolls:
                 self.swipe_up(
                     x_ratio=self._scroll_x_ratio(selector),
                     distance_ratio=scroll_distance_ratio,
@@ -5531,15 +5697,23 @@ class Device:
         """Open a route without depending on localized visible text.
 
         Both ends use exact resource-id cardinality.  The source is reacquired
-        from the current hierarchy before every tap; a duplicate source/target
-        or stale/non-tappable source fails closed.
+        from the current hierarchy immediately before one non-replayable tap;
+        after that, only the target is observed. A duplicate source/target or
+        stale/non-tappable source fails closed.
         """
         deadline = time.monotonic() + timeout
         target_scrolls = 0
+        tap_issued = False
         while time.monotonic() < deadline:
+            # Acquire display geometry before the authoritative hierarchy so no
+            # later device observation can age the coordinates used by the tap.
+            self.display_size()
             nodes = self.hierarchy()
             if not nodes:
                 time.sleep(0.75)
+                continue
+            if self.dismiss_system_ui_anr(nodes):
+                time.sleep(2)
                 continue
             targets = [
                 node
@@ -5605,7 +5779,7 @@ class Device:
                 raise RuntimeError(
                     f"{source_name} {selector!r} has cardinality {len(sources)}; expected one"
                 )
-            if len(sources) == 1:
+            if len(sources) == 1 and not tap_issued:
                 source = sources[0]
                 if not self.node_has_tappable_bounds(source):
                     self.capture(f"{evidence_prefix}-source-not-tappable")
@@ -5613,9 +5787,7 @@ class Device:
                         f"{source_name} {selector!r} did not expose exact tappable bounds"
                     )
                 self.shell("input", "tap", *(str(value) for value in source.center))
-            if self.dismiss_system_ui_anr(nodes):
-                time.sleep(2)
-                continue
+                tap_issued = True
             time.sleep(1.25)
         self.capture(f"{evidence_prefix}-target-unavailable")
         raise RuntimeError(
