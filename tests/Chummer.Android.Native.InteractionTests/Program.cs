@@ -44,6 +44,7 @@ internal static class Program
             (nameof(SlowCreationDashboardProjectionDoesNotBlockCallerAsync), SlowCreationDashboardProjectionDoesNotBlockCallerAsync),
             (nameof(CapturedCreationAuthorityAvoidsUiThreadReloadAsync), CapturedCreationAuthorityAvoidsUiThreadReloadAsync),
             (nameof(CreationProjectionSchedulingPrioritizesWizardAllocationAsync), CreationProjectionSchedulingPrioritizesWizardAllocationAsync),
+            (nameof(CreationSkillsCatalogPagingBoundsNativeControlMaterializationAsync), CreationSkillsCatalogPagingBoundsNativeControlMaterializationAsync),
             (nameof(PrerequisiteAuthorityPublishesBeforeSlowLaterPhasesAsync), PrerequisiteAuthorityPublishesBeforeSlowLaterPhasesAsync),
             (nameof(CreationAuthorityPhaseMergesAreIndependentAndDeterministicAsync), CreationAuthorityPhaseMergesAreIndependentAndDeterministicAsync),
             (nameof(CreationDashboardReadyMarkerRequiresCurrentTerminalAuthorityAsync), CreationDashboardReadyMarkerRequiresCurrentTerminalAuthorityAsync),
@@ -1134,6 +1135,30 @@ internal static class Program
                 [CreationDashboardAuthorityPhase.Contacts]),
             "A build method without prerequisite allocation authority did not proceed directly to Contacts.");
 
+        return Task.CompletedTask;
+    }
+
+    private static Task CreationSkillsCatalogPagingBoundsNativeControlMaterializationAsync()
+    {
+        const int pageSize = 20;
+        Require(
+            CreationSkillsCatalogPaging.NormalizeOffset(0, 87, pageSize) == 0,
+            "The first Skills catalog page did not begin at zero.");
+        Require(
+            CreationSkillsCatalogPaging.NextOffset(0, 87, pageSize) == 20,
+            "The Skills catalog did not advance by one bounded native-control page.");
+        Require(
+            CreationSkillsCatalogPaging.NextOffset(80, 87, pageSize) == 80,
+            "The final partial Skills page advanced beyond the catalog.");
+        Require(
+            CreationSkillsCatalogPaging.PreviousOffset(40, pageSize) == 20,
+            "The Skills catalog did not return by one page.");
+        Require(
+            CreationSkillsCatalogPaging.NormalizeOffset(400, 87, pageSize) == 80,
+            "A stale Skills offset was not clamped to the current authority.");
+        Require(
+            CreationSkillsCatalogPaging.NormalizeOffset(20, 0, pageSize) == 0,
+            "An empty Skills catalog retained a stale offset.");
         return Task.CompletedTask;
     }
 

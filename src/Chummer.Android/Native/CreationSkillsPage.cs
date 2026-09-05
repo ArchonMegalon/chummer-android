@@ -6,6 +6,7 @@ namespace Chummer.Android.Native;
 /// <summary>Phone Skills step; every tap is accepted only after a full Core preview.</summary>
 public sealed class CreationSkillsPage : NativePageBase
 {
+    private const int CatalogPageSize = 20;
     private readonly CreationSkillsPhoneDraft _draft = new();
     private readonly VerticalStackLayout _body = new()
     {
@@ -14,6 +15,9 @@ public sealed class CreationSkillsPage : NativePageBase
     };
     private IReadOnlyList<string> _blockers = [];
     private CharacterCreationSkillsState? _authority;
+    private string? _catalogSnapshotDigest;
+    private int _activeCatalogOffset;
+    private int _knowledgeCatalogOffset;
 
     public CreationSkillsPage(
         RunnerSessionCoordinator coordinator,
@@ -57,6 +61,7 @@ public sealed class CreationSkillsPage : NativePageBase
             return;
         }
         _draft.Bind(state, Coordinator.State);
+        ResetCatalogPagingIfAuthorityChanged(state);
         AddBinding(state);
         CharacterCreationSkillsPreview? projection = _draft.Preview;
         AddBudget(projection?.ActiveSkillPointBudget ?? state.ActiveSkillPointBudget, "active");
@@ -70,12 +75,14 @@ public sealed class CreationSkillsPage : NativePageBase
         AddCatalog(
             state,
             state.Authority.ActiveSkills,
-            CreationAllocationStrings.Get("Skills.ActiveSkills", "Active skills"));
+            CreationAllocationStrings.Get("Skills.ActiveSkills", "Active skills"),
+            "active");
         AddGroups(state);
         AddCatalog(
             state,
             state.Authority.KnowledgeSkills,
-            CreationAllocationStrings.Get("Skills.KnowledgeLanguages", "Knowledge & languages"));
+            CreationAllocationStrings.Get("Skills.KnowledgeLanguages", "Knowledge & languages"),
+            "knowledge");
         if (_blockers.Count > 0) AddBlockers(_blockers);
         AddReview(state);
     }
@@ -114,11 +121,38 @@ public sealed class CreationSkillsPage : NativePageBase
         _body.Add(border);
     }
 
-    private void AddCatalog(CharacterCreationSkillsState state,
-        IReadOnlyList<CharacterCreationSkillCatalogEntry> catalog, string title)
+    private void AddCatalog(
+        CharacterCreationSkillsState state,
+        IReadOnlyList<CharacterCreationSkillCatalogEntry> catalog,
+        string title,
+        string catalogToken)
     {
         _body.Add(NativeTheme.Eyebrow(title));
-        foreach (CharacterCreationSkillCatalogEntry source in catalog)
+        int currentOffset = string.Equals(catalogToken, "knowledge", StringComparison.Ordinal)
+            ? _knowledgeCatalogOffset
+            : _activeCatalogOffset;
+        int offset = CreationSkillsCatalogPaging.NormalizeOffset(
+            currentOffset,
+            catalog.Count,
+            CatalogPageSize);
+        SetCatalogOffset(catalogToken, offset);
+        int end = Math.Min(catalog.Count, offset + CatalogPageSize);
+        Label range = NativeTheme.Body(
+            catalog.Count == 0
+                ? CreationAllocationStrings.Get("Skills.NoCatalogEntries", "No available entries")
+                : CreationAllocationStrings.Format(
+                    "Skills.CatalogRange",
+                    "Showing {0}–{1} of {2}",
+                    offset + 1,
+                    end,
+                    catalog.Count),
+            NativeTheme.Muted);
+        range.AutomationId = $"creation-skills-{catalogToken}-catalog-range";
+        _body.Add(range);
+
+        foreach (CharacterCreationSkillCatalogEntry source in catalog
+                     .Skip(offset)
+                     .Take(CatalogPageSize))
         {
             CharacterCreationSkillAllocation? selected = _draft.Skills.SingleOrDefault(item =>
                 item.Kind == source.Kind && item.SourceSkillId == source.SourceSkillId);
@@ -138,18 +172,24 @@ public sealed class CreationSkillsPage : NativePageBase
                 "Common.Decrease",
                 "−"));
             minus.IsEnabled = selected is { IsNativeLanguage: false, Rating: > 0 };
-            minus.Clicked += (_, _) => Preview(state, _draft.WithSkill(source, -1), _draft.Groups);
+            minus.Clicked += async (_, _) => await PreviewAsync(
+                state,
+                _draft.WithSkill(source, -1),
+                _draft.Groups);
             Button plus = NativeTheme.SecondaryButton(CreationAllocationStrings.Get(
                 "Common.Increase",
                 "+"));
-            plus.Clicked += (_, _) => Preview(state, _draft.WithSkill(source, 1), _draft.Groups);
+            plus.Clicked += async (_, _) => await PreviewAsync(
+                state,
+                _draft.WithSkill(source, 1),
+                _draft.Groups);
             controls.Add(minus); controls.Add(plus);
             if (source.CanBeNativeLanguage)
             {
                 Button native = NativeTheme.SecondaryButton(selected?.IsNativeLanguage == true
                     ? CreationAllocationStrings.Get("Skills.RemoveNative", "Remove native")
                     : CreationAllocationStrings.Get("Skills.NativeAction", "Native"));
-                native.Clicked += (_, _) => Preview(state,
+                native.Clicked += async (_, _) => await PreviewAsync(state,
                     selected?.IsNativeLanguage == true
                         ? _draft.Skills.Where(item => item.SourceSkillId != source.SourceSkillId).ToArray()
                         : _draft.WithSkill(source, 0, native: true),
@@ -163,7 +203,10 @@ public sealed class CreationSkillsPage : NativePageBase
                 foreach (CharacterCreationSkillSpecializationOption option in source.Specializations.Take(6))
                 {
                     Button button = NativeTheme.SecondaryButton(option.Name);
-                    button.Clicked += (_, _) => Preview(state, _draft.WithSpecialization(source, option.OptionId), _draft.Groups);
+                    button.Clicked += async (_, _) => await PreviewAsync(
+                        state,
+                        _draft.WithSpecialization(source, option.OptionId),
+                        _draft.Groups);
                     specs.Add(button);
                 }
                 card.Add(specs);
@@ -172,6 +215,53 @@ public sealed class CreationSkillsPage : NativePageBase
             border.AutomationId = $"creation-skill-{Token(source.SourceSkillId)}";
             _body.Add(border);
         }
+
+        HorizontalStackLayout pager = new() { Spacing = 10 };
+        Button previous = NativeTheme.SecondaryButton(CreationAllocationStrings.Get(
+            "Common.Previous",
+            "Previous"));
+        previous.AutomationId = $"creation-skills-{catalogToken}-catalog-previous";
+        previous.IsEnabled = offset > 0;
+        previous.Clicked += (_, _) =>
+        {
+            SetCatalogOffset(
+                catalogToken,
+                CreationSkillsCatalogPaging.PreviousOffset(offset, CatalogPageSize));
+            Refresh();
+        };
+        pager.Add(previous);
+        Button next = NativeTheme.SecondaryButton(CreationAllocationStrings.Get(
+            "Common.Next",
+            "Next"));
+        next.AutomationId = $"creation-skills-{catalogToken}-catalog-next";
+        next.IsEnabled = end < catalog.Count;
+        next.Clicked += (_, _) =>
+        {
+            SetCatalogOffset(
+                catalogToken,
+                CreationSkillsCatalogPaging.NextOffset(offset, catalog.Count, CatalogPageSize));
+            Refresh();
+        };
+        pager.Add(next);
+        _body.Add(pager);
+    }
+
+    private void ResetCatalogPagingIfAuthorityChanged(CharacterCreationSkillsState state)
+    {
+        if (string.Equals(_catalogSnapshotDigest, state.SnapshotDigest, StringComparison.Ordinal))
+            return;
+
+        _catalogSnapshotDigest = state.SnapshotDigest;
+        _activeCatalogOffset = 0;
+        _knowledgeCatalogOffset = 0;
+    }
+
+    private void SetCatalogOffset(string catalogToken, int offset)
+    {
+        if (string.Equals(catalogToken, "knowledge", StringComparison.Ordinal))
+            _knowledgeCatalogOffset = offset;
+        else
+            _activeCatalogOffset = offset;
     }
 
     private void AddGroups(CharacterCreationSkillsState state)
@@ -194,25 +284,44 @@ public sealed class CreationSkillsPage : NativePageBase
                 "Common.Decrease",
                 "−"));
             minus.IsEnabled = selected?.Rating > 0;
-            minus.Clicked += (_, _) => Preview(state, _draft.Skills, _draft.WithGroup(source, -1));
+            minus.Clicked += async (_, _) => await PreviewAsync(
+                state,
+                _draft.Skills,
+                _draft.WithGroup(source, -1));
             Button plus = NativeTheme.SecondaryButton(CreationAllocationStrings.Get(
                 "Common.Increase",
                 "+"));
-            plus.Clicked += (_, _) => Preview(state, _draft.Skills, _draft.WithGroup(source, 1));
+            plus.Clicked += async (_, _) => await PreviewAsync(
+                state,
+                _draft.Skills,
+                _draft.WithGroup(source, 1));
             controls.Add(minus); controls.Add(plus); card.Add(controls);
             _body.Add(NativeTheme.Card(card));
         }
     }
 
-    private void Preview(CharacterCreationSkillsState state,
+    private async Task PreviewAsync(
+        CharacterCreationSkillsState state,
         IReadOnlyList<CharacterCreationSkillAllocation> skills,
         IReadOnlyList<CharacterCreationSkillGroupAllocation> groups)
     {
-        CharacterCreationFoundationResult<CharacterCreationSkillsPreview> result =
-            Coordinator.PreviewCreationSkills(state.Binding, skills, groups);
-        _blockers = result.Blockers;
-        _draft.TryAdopt(state, Coordinator.State, result, skills, groups);
-        Refresh();
+        CharacterCreationSkillAllocation[] requestedSkills = skills.ToArray();
+        CharacterCreationSkillGroupAllocation[] requestedGroups = groups.ToArray();
+        await RunAsync(async () =>
+        {
+            CharacterCreationFoundationResult<CharacterCreationSkillsPreview> result =
+                await Task.Run(() => Coordinator.PreviewCreationSkills(
+                    state.Binding,
+                    requestedSkills,
+                    requestedGroups));
+            _blockers = result.Blockers;
+            _draft.TryAdopt(
+                state,
+                Coordinator.State,
+                result,
+                requestedSkills,
+                requestedGroups);
+        });
     }
 
     private void AddReview(CharacterCreationSkillsState state)
@@ -223,10 +332,15 @@ public sealed class CreationSkillsPage : NativePageBase
         review.AutomationId = "creation-skills-review";
         review.Clicked += async (_, _) => await RunAsync(async () =>
         {
+            CharacterCreationSkillAllocation[] requestedSkills = _draft.Skills.ToArray();
+            CharacterCreationSkillGroupAllocation[] requestedGroups = _draft.Groups.ToArray();
             CharacterCreationFoundationResult<CharacterCreationSkillsPreview> result =
-                Coordinator.PreviewCreationSkills(state.Binding, _draft.Skills, _draft.Groups);
+                await Task.Run(() => Coordinator.PreviewCreationSkills(
+                    state.Binding,
+                    requestedSkills,
+                    requestedGroups));
             if (!CreationSkillsPhoneAuthority.CanAdoptPreview(
-                    state, Coordinator.State, result, _draft.Skills, _draft.Groups)
+                    state, Coordinator.State, result, requestedSkills, requestedGroups)
                 || result.Value is not { } preview)
             {
                 _blockers = result.Blockers;
@@ -235,8 +349,8 @@ public sealed class CreationSkillsPage : NativePageBase
             await Navigation.PushAsync(new CreationSkillsPreviewPage(
                 Coordinator,
                 preview,
-                _draft.Skills,
-                _draft.Groups));
+                requestedSkills,
+                requestedGroups));
         });
         _body.Add(review);
     }
@@ -253,6 +367,30 @@ public sealed class CreationSkillsPage : NativePageBase
 
     private static string Token(string value) => new(value.ToLowerInvariant()
         .Select(character => char.IsLetterOrDigit(character) ? character : '-').ToArray());
+}
+
+public static class CreationSkillsCatalogPaging
+{
+    public static int NormalizeOffset(int offset, int count, int pageSize)
+    {
+        if (pageSize <= 0)
+            throw new ArgumentOutOfRangeException(nameof(pageSize));
+        if (count <= 0)
+            return 0;
+
+        int maximumOffset = (count - 1) / pageSize * pageSize;
+        return Math.Clamp(offset / pageSize * pageSize, 0, maximumOffset);
+    }
+
+    public static int PreviousOffset(int offset, int pageSize)
+    {
+        if (pageSize <= 0)
+            throw new ArgumentOutOfRangeException(nameof(pageSize));
+        return Math.Max(0, offset / pageSize * pageSize - pageSize);
+    }
+
+    public static int NextOffset(int offset, int count, int pageSize)
+        => NormalizeOffset(offset + pageSize, count, pageSize);
 }
 
 /// <summary>Immutable Core preview followed by one explicit digest-bound confirmation.</summary>
