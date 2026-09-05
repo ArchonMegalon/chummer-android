@@ -445,6 +445,48 @@ class Api36Sr5CareerActiveSkillWizardDriverTests(unittest.TestCase):
         remote_device.shell.assert_not_called()
         remote_device.run.assert_not_called()
 
+    def test_remote_cleanup_accepts_only_governed_roots_and_safe_ascii_names(self) -> None:
+        remote_device = mock.Mock()
+        for path in (
+            "/sdcard/Download/runner-1.chum5",
+            "/data/local/tmp/chummer-editing-window.xml",
+        ):
+            with self.subTest(path=path):
+                driver.remove_remote_temporary_file(remote_device, path)
+        self.assertEqual(
+            [
+                mock.call("rm", "-f", "/sdcard/Download/runner-1.chum5"),
+                mock.call("rm", "-f", "/data/local/tmp/chummer-editing-window.xml"),
+            ],
+            remote_device.shell.call_args_list,
+        )
+        self.assertEqual(
+            [
+                mock.call("shell", "test", "!", "-e", "/sdcard/Download/runner-1.chum5"),
+                mock.call("shell", "test", "!", "-e", "/data/local/tmp/chummer-editing-window.xml"),
+            ],
+            remote_device.run.call_args_list,
+        )
+
+        for path in (
+            "/data/local/tmp/../chummer-editing-window.xml",
+            "/data/local/tmp/subdir/chummer-editing-window.xml",
+            "/data/local/tmp/chummer editing-window.xml",
+            "/data/local/tmp/chummer;editing-window.xml",
+            "/data/local/tmp/chummer-editing-windowé.xml",
+            "/data/local/tmp/.chummer-editing-window.xml",
+            "/data/local/chummer-editing-window.xml",
+            "/tmp/chummer-editing-window.xml",
+            "/sdcard/chummer-editing-window.xml",
+        ):
+            with self.subTest(path=path), self.assertRaisesRegex(
+                RuntimeError,
+                "safe ASCII",
+            ):
+                driver.remove_remote_temporary_file(remote_device, path)
+        self.assertEqual(2, remote_device.shell.call_count)
+        self.assertEqual(2, remote_device.run.call_count)
+
     def test_local_build_manifest_is_honest_about_release_attestation(self) -> None:
         source = DRIVER.read_text(encoding="utf-8")
         self.assertIn('"status": "device-pass-source-bound"', source)

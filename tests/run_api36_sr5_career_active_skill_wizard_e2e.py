@@ -59,8 +59,8 @@ SAFE_FIXTURE_BASENAME = re.compile(
     r"^[A-Za-z0-9][A-Za-z0-9._-]{0,126}\.chum5$"
 )
 SAFE_REMOTE_PATH = re.compile(
-    r"^/sdcard/(?:Download/[A-Za-z0-9][A-Za-z0-9._-]{0,126}\.chum5"
-    r"|chummer-editing-window\.xml)$"
+    r"^(?:/sdcard/Download/[A-Za-z0-9][A-Za-z0-9._-]{0,126}\.chum5"
+    r"|/data/local/tmp/[A-Za-z0-9][A-Za-z0-9._-]{0,126})$"
 )
 SAFE_ADB_SERIAL = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 CHECKPOINT_FIELDS = {

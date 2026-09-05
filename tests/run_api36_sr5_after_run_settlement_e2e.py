@@ -1404,7 +1404,7 @@ def execute(args: argparse.Namespace, context: dict[str, object]) -> dict[str, o
     remotes = [
         _remote(remote_runner, "temporary governed After Run runner"),
         _remote(
-            shared.ADB_FILE_HIERARCHY_REMOTE_PATH,
+            physical.shared.ADB_FILE_HIERARCHY_REMOTE_PATH,
             "temporary UIAutomator hierarchy dump",
         ),
     ]
