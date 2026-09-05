@@ -52,6 +52,7 @@ public sealed class AndroidDocumentService : IAndroidDocumentService
         }
         catch (Exception error)
         {
+            _ = error;
 #if CHUMMER_API36_PROOF_INSTRUMENTATION
             Api36ProofStatePublisher.TryRecordDocumentImportFailure(
                 "document-open-" + error.GetType().Name);
