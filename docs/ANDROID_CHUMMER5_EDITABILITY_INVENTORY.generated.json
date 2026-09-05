@@ -107,7 +107,7 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "d4fde628b2693de75916df2278aa93fb955eb2b24ae9ed18e7b58d1d2cb929b8"
+        "sha256": "7d3f8378e8677f2ba8765dfa4ec4167dfe5dc32b23187c4bd958b5c4784468e0"
       },
       {
         "path": "src/Chummer.Android/Native/MorePage.cs",

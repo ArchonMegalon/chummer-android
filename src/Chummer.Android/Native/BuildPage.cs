@@ -104,9 +104,14 @@ public static class CreationDashboardProjectionScheduler
     public static IReadOnlyList<CreationDashboardAuthorityPhase> NextBatch(
         CreationDashboardAuthorityPhaseProgress progress)
     {
-        if (progress.Prerequisite == CreationDashboardAuthorityPhaseState.Loading)
+        CreationDashboardAuthorityPhase[] foundation =
+        [
+            .. PhaseWhenLoading(progress.Prerequisite, CreationDashboardAuthorityPhase.Prerequisite),
+            .. PhaseWhenLoading(progress.Resources, CreationDashboardAuthorityPhase.Resources)
+        ];
+        if (foundation.Length > 0)
         {
-            return [CreationDashboardAuthorityPhase.Prerequisite];
+            return foundation;
         }
 
         if (progress.Prerequisite == CreationDashboardAuthorityPhaseState.Ready)
@@ -122,12 +127,24 @@ public static class CreationDashboardProjectionScheduler
             }
         }
 
-        return
-        [
-            .. PhaseWhenLoading(progress.Contacts, CreationDashboardAuthorityPhase.Contacts),
-            .. PhaseWhenLoading(progress.Resources, CreationDashboardAuthorityPhase.Resources)
-        ];
+        return [.. PhaseWhenLoading(progress.Contacts, CreationDashboardAuthorityPhase.Contacts)];
     }
+
+    public static bool ShouldRenderAfterCompletion(
+        CreationDashboardAuthorityPhase phase,
+        CreationDashboardAuthorityPhaseProgress progress)
+        => phase switch
+        {
+            CreationDashboardAuthorityPhase.Prerequisite or CreationDashboardAuthorityPhase.Resources
+                => IsTerminal(progress.Prerequisite) && IsTerminal(progress.Resources),
+            CreationDashboardAuthorityPhase.Attributes or CreationDashboardAuthorityPhase.Skills
+                => IsTerminal(progress.Attributes) && IsTerminal(progress.Skills),
+            CreationDashboardAuthorityPhase.Contacts => true,
+            _ => throw new ArgumentOutOfRangeException(nameof(phase), phase, null)
+        };
+
+    private static bool IsTerminal(CreationDashboardAuthorityPhaseState state)
+        => state != CreationDashboardAuthorityPhaseState.Loading;
 
     private static IEnumerable<CreationDashboardAuthorityPhase> PhaseWhenLoading(
         CreationDashboardAuthorityPhaseState state,
@@ -1341,7 +1358,13 @@ public sealed class BuildPage : NativePageBase
 
             TraceCreationPhase(phase, "take-accepted", request);
             accept(request.Key, completed, error);
-            Refresh();
+            if (_creationProjection is { } projection
+                && CreationDashboardProjectionScheduler.ShouldRenderAfterCompletion(
+                    phase,
+                    projection.Progress))
+            {
+                Refresh();
+            }
         });
     }
 

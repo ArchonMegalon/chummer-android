@@ -1109,24 +1109,64 @@ internal static class Program
             CreationDashboardAuthorityPhaseProgress.ForBuildMethod(CharacterCreationBuildMethods.Priority);
         Require(
             CreationDashboardProjectionScheduler.NextBatch(initial).SequenceEqual(
-                [CreationDashboardAuthorityPhase.Prerequisite]),
-            "Priority Creation started lower-value projections before prerequisite authority.");
+                [CreationDashboardAuthorityPhase.Prerequisite, CreationDashboardAuthorityPhase.Resources]),
+            "Priority Creation did not start the prerequisite and budget foundation together.");
 
         CreationDashboardAuthorityPhaseProgress prerequisiteReady = initial.WithTerminal(
             CreationDashboardAuthorityPhase.Prerequisite,
             failed: false);
         Require(
             CreationDashboardProjectionScheduler.NextBatch(prerequisiteReady).SequenceEqual(
+                [CreationDashboardAuthorityPhase.Resources]),
+            "Priority Creation started allocation projections before the foundation batch was terminal.");
+        Require(
+            !CreationDashboardProjectionScheduler.ShouldRenderAfterCompletion(
+                CreationDashboardAuthorityPhase.Prerequisite,
+                prerequisiteReady),
+            "Priority Creation rebuilt the dashboard before its foundation batch was terminal.");
+
+        CreationDashboardAuthorityPhaseProgress foundationReady = prerequisiteReady.WithTerminal(
+            CreationDashboardAuthorityPhase.Resources,
+            failed: false);
+        Require(
+            CreationDashboardProjectionScheduler.NextBatch(foundationReady).SequenceEqual(
                 [CreationDashboardAuthorityPhase.Attributes, CreationDashboardAuthorityPhase.Skills]),
             "Priority Creation did not give the two allocation projections exclusive next-batch priority.");
+        Require(
+            CreationDashboardProjectionScheduler.ShouldRenderAfterCompletion(
+                CreationDashboardAuthorityPhase.Resources,
+                foundationReady),
+            "Priority Creation did not rebuild after its foundation batch became terminal.");
 
-        CreationDashboardAuthorityPhaseProgress allocationReady = prerequisiteReady
+        CreationDashboardAuthorityPhaseProgress attributesReady = foundationReady
+            .WithTerminal(CreationDashboardAuthorityPhase.Attributes, failed: false);
+        Require(
+            !CreationDashboardProjectionScheduler.ShouldRenderAfterCompletion(
+                CreationDashboardAuthorityPhase.Attributes,
+                attributesReady),
+            "Priority Creation rebuilt the dashboard before its allocation batch was terminal.");
+
+        CreationDashboardAuthorityPhaseProgress allocationReady = foundationReady
             .WithTerminal(CreationDashboardAuthorityPhase.Attributes, failed: false)
             .WithTerminal(CreationDashboardAuthorityPhase.Skills, failed: false);
         Require(
             CreationDashboardProjectionScheduler.NextBatch(allocationReady).SequenceEqual(
-                [CreationDashboardAuthorityPhase.Contacts, CreationDashboardAuthorityPhase.Resources]),
-            "Contacts and Resources did not wait for the allocation projections to become terminal.");
+                [CreationDashboardAuthorityPhase.Contacts]),
+            "Contacts did not wait for the allocation projections to become terminal.");
+        Require(
+            CreationDashboardProjectionScheduler.ShouldRenderAfterCompletion(
+                CreationDashboardAuthorityPhase.Skills,
+                allocationReady),
+            "Priority Creation did not rebuild after its allocation batch became terminal.");
+
+        CreationDashboardAuthorityPhaseProgress contactsReady = allocationReady.WithTerminal(
+            CreationDashboardAuthorityPhase.Contacts,
+            failed: false);
+        Require(
+            CreationDashboardProjectionScheduler.ShouldRenderAfterCompletion(
+                CreationDashboardAuthorityPhase.Contacts,
+                contactsReady),
+            "Priority Creation did not rebuild after Contacts became terminal.");
 
         CreationDashboardAuthorityPhaseProgress lifeModules =
             CreationDashboardAuthorityPhaseProgress.ForBuildMethod("life-modules");
