@@ -186,7 +186,7 @@ done
   || fail "android-candidate-not-clean"
 [[ "$CHUMMER_ANDROID_REVISION" == "$("$git_command" -C "$repo_dir" rev-parse HEAD)" ]] \
   || fail "android-source-head-mismatch"
-[[ "$CHUMMER_PRESENTATION_REVISION" == "8aedcd44bd16e6c2d00847f6012275c1f50cb672" ]] \
+[[ "$CHUMMER_PRESENTATION_REVISION" == "c2b13e11852b1866ef47c148e1fc68d09d413999" ]] \
   || fail "presentation-revision-input-mismatch"
 [[ "$CHUMMER_CORE_ENGINE_REVISION" == "60112dccb6a3faad330d32c3c98eef0aa81d97af" ]] \
   || fail "core-runtime-revision-input-mismatch"
@@ -196,13 +196,13 @@ done
   || fail "ui-kit-revision-input-mismatch"
 [[ "$CHUMMER_HUB_REGISTRY_REVISION" == "af9a7e19c3bf331e96411dfb8f9e7820a98cab29" ]] \
   || fail "registry-revision-input-mismatch"
-[[ "$("$git_command" -C "$CHUMMER_PRESENTATION_ROOT" rev-parse HEAD)" == "8aedcd44bd16e6c2d00847f6012275c1f50cb672" ]] \
+[[ "$("$git_command" -C "$CHUMMER_PRESENTATION_ROOT" rev-parse HEAD)" == "c2b13e11852b1866ef47c148e1fc68d09d413999" ]] \
   || fail "current-presentation-commit-mismatch"
-[[ "$("$git_command" -C "$CHUMMER_PRESENTATION_ROOT" rev-parse 'HEAD^{tree}')" == "97aad9116139af0757b8d2f43503fb4cf87e2a02" ]] \
+[[ "$("$git_command" -C "$CHUMMER_PRESENTATION_ROOT" rev-parse 'HEAD^{tree}')" == "4d5ada6b27e9e7122436f03a77f2b44ce3a11f1a" ]] \
   || fail "current-presentation-tree-mismatch"
 [[ -z "$("$git_command" -C "$CHUMMER_PRESENTATION_ROOT" status --porcelain=v1 --untracked-files=all)" ]] \
   || fail "current-presentation-not-clean"
-[[ "$("$sha256sum_command" "$CHUMMER_PRESENTATION_ROOT/config/package-plane.lock.json" | "$cut_command" -d' ' -f1)" == "708bb6699f07e9cbfedc25e251d1956936023097d511d756e6059091477f7788" ]] \
+[[ "$("$sha256sum_command" "$CHUMMER_PRESENTATION_ROOT/config/package-plane.lock.json" | "$cut_command" -d' ' -f1)" == "940d5c33b6be355d1f9408ad8360b72bbb7c4a9bcb17e29089b1ec2b262ba69e" ]] \
   || fail "current-presentation-lock-mismatch"
 [[ "$("$git_command" -C "$CHUMMER_CORE_CONTENT_ROOT" rev-parse HEAD)" == "c06f22c185c7b733637fdb76b3cf333f31716781" ]] \
   || fail "core-content-commit-mismatch"
