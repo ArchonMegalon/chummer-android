@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <Target Name="RequireExplicitChummerCoreRoot"
+          BeforeTargets="PrepareForBuild;CollectPackageReferences;_GenerateRestoreGraphProjectEntry">
+    <Error Condition="'$(ChummerCoreRoot)' == ''"
+           Text="Supply ChummerCoreRoot explicitly with the reviewed Core checkout. This harness has no ambient Core fallback." />
+    <Error Condition="'$(ChummerCoreRoot)' != '' and !Exists('$(ChummerCoreRoot)/Chummer.Contracts/Chummer.Contracts.csproj')"
+           Text="ChummerCoreRoot must contain the real Chummer.Contracts project." />
+    <Error Condition="'$(ChummerCoreRoot)' != '' and !Exists('$(ChummerCoreRoot)/Chummer.Application/Chummer.Application.csproj')"
+           Text="ChummerCoreRoot must contain the real Chummer.Application project." />
+    <Error Condition="'$(ChummerCoreRoot)' != '' and !Exists('$(ChummerCoreRoot)/Chummer.Infrastructure/Chummer.Infrastructure.csproj')"
+           Text="ChummerCoreRoot must contain the real Chummer.Infrastructure project." />
+  </Target>
+  <ItemGroup Condition="'$(ChummerCoreRoot)' != ''">
+    <ProjectReference Include="$(ChummerCoreRoot)/Chummer.Contracts/Chummer.Contracts.csproj" />
+    <ProjectReference Include="$(ChummerCoreRoot)/Chummer.Application/Chummer.Application.csproj" />
+    <ProjectReference Include="$(ChummerCoreRoot)/Chummer.Infrastructure/Chummer.Infrastructure.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="HostStorageCompileSeams.cs" />
+    <Compile Include="RealAfterRunRewardFixture.cs" />
+    <Compile Include="JournalOwnershipTests.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5AfterRunRewardWizardModel.cs"
+             Link="Native/Sr5AfterRunRewardWizardModel.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5AfterRunRewardCheckpointStore.cs"
+             Link="Native/Sr5AfterRunRewardCheckpointStore.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5AfterRunRewardCoordinator.cs"
+             Link="Native/Sr5AfterRunRewardCoordinator.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5CareerMutationOwnerStore.cs"
+             Link="Native/Sr5CareerMutationOwnerStore.cs" />
+  </ItemGroup>
+</Project>
