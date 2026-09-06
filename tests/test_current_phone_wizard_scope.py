@@ -9,6 +9,12 @@ SCOPE = NATIVE / "CurrentPhoneWizardScope.cs"
 BUILD = NATIVE / "BuildPage.cs"
 CAREER_PAGE = NATIVE / "Sr5CareerWizardPage.cs"
 LOCALIZATION = ROOT / "src" / "Chummer.Android" / "Resources" / "Localization"
+NATIVE_COMPILE_CHECK = (
+    ROOT
+    / "tests"
+    / "Chummer.Android.Native.CompileCheck"
+    / "Chummer.Android.Native.CompileCheck.csproj"
+)
 
 
 def resource(path: Path, key: str) -> str:
@@ -114,6 +120,18 @@ class CurrentPhoneWizardScopeTests(unittest.TestCase):
             value = resource(LOCALIZATION / filename, "CurrentPhoneWizard.ExperimentalRoute")
             assert phrase in value
             assert "{0}" in value
+
+    def test_native_interaction_gate_embeds_wizard_localizations(self) -> None:
+        project = NATIVE_COMPILE_CHECK.read_text(encoding="utf-8")
+        for filename in (
+            "WizardStrings.resx",
+            "WizardStrings.de.resx",
+            "WizardStrings.es.resx",
+        ):
+            assert (
+                f'EmbeddedResource Include="../../src/Chummer.Android/'
+                f'Resources/Localization/{filename}"' in project
+            )
 
 
 if __name__ == "__main__":

@@ -15,7 +15,7 @@
     },
     {
       "path": "docs/CHUMMER5_CHARACTER_SETTINGS_CONTRACT.generated.json",
-      "sha256": "0aaba3ffe3b8ce558f9250d54cd2d0f8fd988d95b850029890c00db1946f127d"
+      "sha256": "6a160c9790923bb30d656922d8e26ad5c2a10e2c9a47c749ffad20631ab8e1ac"
     },
     {
       "path": "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
@@ -23,7 +23,7 @@
     },
     {
       "path": "src/Chummer.Android/Native/NativeDialogPage.cs",
-      "sha256": "752eb03294be1e3272e4f86a122da4c7b410c77e0e13643076adcf8220265271"
+      "sha256": "08cebaaa8bd7b62353976d4e63cbebfde44f537afb80753a742069a33e60515f"
     },
     {
       "path": "chummer-presentation/Chummer.Presentation/Overview/CareerActiveSkillAdvanceEditRequest.cs",

@@ -157,7 +157,7 @@
       {
         "path": "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
         "exists": true,
-        "sha256": "4708645c46b0d0a930d72a9cb88eb0e5f44a1e083e6b8b0415b078d667dd9165"
+        "sha256": "826a7762e9f20fe7b29f104fae00f870ad2f91c7a4a81a39ce5de7a12e007bf5"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ApplicationDeleteConfirmationPresenter.cs",
@@ -592,7 +592,7 @@
       {
         "path": "src/Chummer.Android/Native/NativeDialogPage.cs",
         "exists": true,
-        "sha256": "752eb03294be1e3272e4f86a122da4c7b410c77e0e13643076adcf8220265271"
+        "sha256": "08cebaaa8bd7b62353976d4e63cbebfde44f537afb80753a742069a33e60515f"
       },
       {
         "path": "src/Chummer.Android/Native/AndroidCharacterSettingsPhoneCapabilities.Generated.cs",
@@ -647,7 +647,7 @@
       {
         "path": "src/Chummer.Android/Native/CurrentPhoneWizardScope.cs",
         "exists": true,
-        "sha256": "6db1a2919173769e772a42675e6754963d6afa3a9d3c23ad297ef7a2dd52f14a"
+        "sha256": "6ef70114aae80b93c13bd2053b9e00b1472c6867c4da0f4fbb7ab65eff36e628"
       },
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
@@ -937,7 +937,7 @@
       {
         "path": "tests/test_current_phone_wizard_scope.py",
         "exists": true,
-        "sha256": "24bef051f60f218e804c23835390f7f22e3ef1a37cfed11aa92ae8067b70af5e"
+        "sha256": "0475b388d397b12ff91fba730059232127ec7317e54e4d36f456bb8fb0fa6f2a"
       },
       {
         "path": "tests/run_api36_sr5_before_run_edge_e2e.py",
