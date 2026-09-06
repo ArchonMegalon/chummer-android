@@ -77,6 +77,7 @@ CONTRACT = "chummer.android.api36-ordered-review-main-green-eligibility/v2"
 OUTPUT_NAME = "ANDROID_API36_TWO_GREEN_ELIGIBILITY.generated.json"
 REPOSITORY = "ArchonMegalon/chummer-android"
 PACKAGE_ID = "com.myexternalbrain.chummer"
+HISTORICAL_VERSION_CODE_FLOOR = 11
 WORKFLOW_NAME = "API 36 phone beta SR5 wizard E2E"
 WORKFLOW_PATH = ".github/workflows/api36-editing-e2e.yml"
 PROJECT_PATH = "src/Chummer.Android/Chummer.Android.csproj"
@@ -291,8 +292,8 @@ def release_identity(project: StableFile) -> dict[str, object]:
     ):
         raise ValueError("Android release identity is not canonical")
     version_code = int(version_code_text)
-    if version_code <= 10:
-        raise ValueError("Android release identity is not newer than Preview.10")
+    if version_code <= HISTORICAL_VERSION_CODE_FLOOR:
+        raise ValueError("Android release identity is not newer than Preview.11")
     return {
         "packageId": PACKAGE_ID,
         "versionName": version_name,

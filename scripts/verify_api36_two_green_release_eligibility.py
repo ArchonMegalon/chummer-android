@@ -882,8 +882,10 @@ def verify_release_eligibility(
         version_code = int(str(expected_version_code))
     except ValueError as error:
         raise ValueError("expected release version code is not canonical") from error
-    if str(version_code) != str(expected_version_code) or version_code <= 10:
+    if str(version_code) != str(expected_version_code):
         raise ValueError("expected release version code is not canonical")
+    if version_code <= TWO_GREEN.HISTORICAL_VERSION_CODE_FLOOR:
+        raise ValueError("expected release version code is not newer than Preview.11")
     release_identity = receipt.get("releaseIdentity")
     if release_identity != {
         "packageId": PACKAGE_ID,

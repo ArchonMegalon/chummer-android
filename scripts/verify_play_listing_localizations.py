@@ -28,6 +28,7 @@ LIMITS = {
 PACKAGE_ID = "com.myexternalbrain.chummer"
 VERSION_NAME = "0.1.0-preview.12"
 VERSION_CODE = "12"
+FULL_DESCRIPTION_RELEASE_PREFIX = f"Chummer Preview.{VERSION_CODE} "
 DATA_SAFETY_SHA256 = "0379209d99ba666ba72a150d88c1855e6b4db17d64199402eb0f9bb80f4fa0f3"
 PREVIEW10_EVIDENCE_SHA256 = "8f245fcf6e8fd62d6ed2d7e75170617d3c5430e024ce14ab77535ca1c57fece9"
 PREVIEW10_NOTES_SHA256 = "b45905778f70e9c459b37c5a450a75800aca780f8ca4a4c8aa176f685cb39037"
@@ -451,6 +452,14 @@ def validate_listing(
             locale_lengths[name] = len(value)
         if fields["title.txt"] != "Chummer":
             raise ValueError(f"Play title is not the exact product identity for {locale}")
+        if (
+            not fields["full-description.txt"].startswith(FULL_DESCRIPTION_RELEASE_PREFIX)
+            or re.findall(r"\bPreview\.([0-9]+)\b", fields["full-description.txt"])
+            != [VERSION_CODE]
+        ):
+            raise ValueError(
+                f"{locale}/full-description.txt must describe the exact Preview.12 candidate"
+            )
         for name, fragments in REQUIRED_FRAGMENTS[locale].items():
             for fragment in fragments:
                 if fragment not in fields[name]:

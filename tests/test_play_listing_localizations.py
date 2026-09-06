@@ -83,6 +83,23 @@ class PlayListingLocalizationTests(unittest.TestCase):
             completed.stdout,
         )
 
+    def test_stale_full_description_release_version_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for locale in ("en-US", "de-DE", "es-ES"):
+                listing = self.copy_listing(root / locale)
+                description = listing / locale / "full-description.txt"
+                description.write_text(
+                    description.read_text(encoding="utf-8").replace(
+                        "Preview.12", "Preview.11", 1
+                    ),
+                    encoding="utf-8",
+                )
+                with self.subTest(locale=locale), self.assertRaisesRegex(
+                    ValueError, "exact Preview.12 candidate"
+                ):
+                    self.validate(listing)
+
     def test_missing_extra_untranslated_and_overlong_locales_fail_closed(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

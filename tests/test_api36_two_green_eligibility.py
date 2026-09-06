@@ -1506,6 +1506,18 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "workflow bytes differ from tracked HEAD"):
             self.create()
 
+    def test_materializer_rejects_published_preview11_version(self) -> None:
+        preview11 = self.root / "preview11.csproj"
+        preview11.write_text(
+            (self.android / "src/Chummer.Android/Chummer.Android.csproj")
+            .read_text(encoding="utf-8")
+            .replace("0.1.0-preview.12", "0.1.0-preview.11")
+            .replace("<ApplicationVersion>12", "<ApplicationVersion>11"),
+            encoding="utf-8",
+        )
+        with self.assertRaisesRegex(ValueError, "not newer than Preview.11"):
+            gate.release_identity(gate.StableFile(preview11, "Preview.11 project"))
+
     def test_release_identity_must_come_from_the_tracked_main_tree(self) -> None:
         project_path = Path("src/Chummer.Android/Chummer.Android.csproj")
         self.git("update-index", "--assume-unchanged", project_path.as_posix())
@@ -1602,6 +1614,24 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
             },
             hub_package["source_authority"],
         )
+
+    def test_release_consumer_rejects_published_preview11_version(self) -> None:
+        self.inputs["policy"] = gate.POLICY_PATH
+        self.inputs["environment_policy"] = gate.ENVIRONMENT_POLICY_PATH
+        authority = self.create()
+        receipt, approval, package_authority, source_graph = (
+            self.release_consumer_inputs(authority)
+        )
+        with self.assertRaisesRegex(ValueError, "not newer than Preview.11"):
+            consumer.verify_release_eligibility(
+                receipt,
+                approval,
+                android_root=self.android,
+                expected_version_name="0.1.0-preview.11",
+                expected_version_code=11,
+                package_authority_path=package_authority,
+                source_graph_path=source_graph,
+            )
 
     def test_release_consumer_cli_never_turns_eligibility_into_signing_or_upload_authority(
         self,
