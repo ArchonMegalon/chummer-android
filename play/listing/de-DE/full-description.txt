@@ -12,6 +12,9 @@ Zusätzliche sichtbare Wizard-Routen bleiben für Feedback verfügbar. Jede ist 
 LOKAL ZUERST ARBEITEN
 Öffne und speichere ausgewählte Runner-Dateien über die Android-Dateiauswahl. Die App fordert keinen umfassenden Speicherzugriff an. Optionale verknüpfte Kontofunktionen verwenden verschlüsselte Verbindungen zu Chummer-Diensten.
 
+UPDATE VON PREVIEW.10
+Verknüpfe dein Konto erneut, um die Kontofunktionen weiterzuverwenden. Die Kontoverknüpfung bleibt optional; lokale Runner-Dateien lassen sich auch ohne sie öffnen.
+
 GRENZEN DER AKTUELLEN VORSCHAU
 Diese interne Testversion ist auf die sieben genannten SR5-Flows für Telefone begrenzt. Vollständige Bearbeitung, Tablet- oder Foldable-Unterstützung, SR4- oder SR6-Erstellung, Rook- oder Live-Avatar-Unterstützung, öffentliche Verfügbarkeit und eine Produktivveröffentlichung sind nicht Teil dieses Tests.
 

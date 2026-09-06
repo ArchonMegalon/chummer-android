@@ -23,6 +23,12 @@
                       Link="Resources/Localization/PhoneStrings.de.resx" />
     <EmbeddedResource Include="../../src/Chummer.Android/Resources/Localization/PhoneStrings.es.resx"
                       Link="Resources/Localization/PhoneStrings.es.resx" />
+    <EmbeddedResource Include="../../src/Chummer.Android/Resources/Localization/WizardStrings.resx"
+                      Link="Resources/Localization/WizardStrings.resx" />
+    <EmbeddedResource Include="../../src/Chummer.Android/Resources/Localization/WizardStrings.de.resx"
+                      Link="Resources/Localization/WizardStrings.de.resx" />
+    <EmbeddedResource Include="../../src/Chummer.Android/Resources/Localization/WizardStrings.es.resx"
+                      Link="Resources/Localization/WizardStrings.es.resx" />
   </ItemGroup>
   <Import Project="NativeCompileInputs.props" />
   <Target Name="VerifyNativeCompileGraph" BeforeTargets="PrepareForBuild">

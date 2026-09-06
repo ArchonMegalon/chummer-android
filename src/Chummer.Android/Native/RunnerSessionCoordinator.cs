@@ -301,6 +301,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
     private readonly SemaphoreSlim _shellSyncGate = new(1, 1);
     private readonly CancellationTokenSource _lifetime = new();
     private readonly object _workspaceAuthoritySync = new();
+    private Task? _accountInitialization;
     private bool _initialized;
     private bool _disposed;
     private long _handledDownloadVersion;
@@ -2642,7 +2643,6 @@ public sealed class RunnerSessionCoordinator : IDisposable
             {
                 await _presenter.InitializeAsync(cancellationToken);
                 await RestoreSelectedWorkspaceAsync(cancellationToken);
-                await _account.InitializeAsync(cancellationToken);
                 await SyncShellAsync(cancellationToken);
                 _ = await TryRefreshWorkspaceAuthorityAsync(
                     expectedWorkspaceId: State.WorkspaceId,
@@ -2656,6 +2656,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
             _surface = _surfaceResolver.Resolve(State, _shellPresenter.State);
             RestorePlayState();
             _initialized = true;
+            _accountInitialization = InitializeAccountInBackgroundAsync();
         }
         finally
         {
@@ -2663,6 +2664,28 @@ public sealed class RunnerSessionCoordinator : IDisposable
         }
 
         NotifyChanged();
+    }
+
+    private async Task InitializeAccountInBackgroundAsync()
+    {
+        try
+        {
+            await AccountStartupWorkScheduler.RunAsync(
+                    _account.InitializeAsync,
+                    _lifetime.Token)
+                .ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
+        {
+            // Process-scoped shutdown owns cancellation of startup account recovery.
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            // The production account service publishes a fail-closed Error snapshot for
+            // recoverable failures. Keep an unexpected implementation fault observed so
+            // it cannot surface later as an unobserved background-task exception.
+            _ = exception;
+        }
     }
 
     public async Task<NativeWorkspaceActivationReceipt?> OpenLocalAsync(
@@ -6012,7 +6035,16 @@ public sealed class RunnerSessionCoordinator : IDisposable
     }
 
     public async Task BeginAccountLinkAsync(CancellationToken cancellationToken = default)
-        => await _account.BeginLinkAsync(cancellationToken);
+    {
+        if (_account.Snapshot.IsLoading)
+        {
+            _notice = "Account recovery is still finishing.";
+            NotifyChanged();
+            return;
+        }
+
+        await _account.BeginLinkAsync(cancellationToken);
+    }
 
     public async Task UnlinkAccountAsync(CancellationToken cancellationToken = default)
     {

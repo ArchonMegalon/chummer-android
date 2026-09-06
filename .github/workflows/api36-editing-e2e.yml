@@ -228,6 +228,19 @@ jobs:
           test "${installed_sdks[0]}" = "10.0.110"
           test "$("$DOTNET_ROOT/dotnet" --version)" = "10.0.110"
 
+      - name: Verify native page refresh concurrency regressions
+        working-directory: chummer-android
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$DOTNET_ROOT/dotnet" restore \
+            tests/Chummer.Android.NativePageRefresh.Tests/Chummer.Android.NativePageRefresh.Tests.csproj \
+            --locked-mode --disable-parallel
+          "$DOTNET_ROOT/dotnet" run \
+            --project tests/Chummer.Android.NativePageRefresh.Tests/Chummer.Android.NativePageRefresh.Tests.csproj \
+            --configuration Release --no-restore \
+            -p:BuildInParallel=false -p:UseSharedCompilation=false
+
       - name: Install the governed Java runtime
         uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
         with:

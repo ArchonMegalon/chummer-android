@@ -690,7 +690,9 @@ class Api36ProofStateContractTests(unittest.TestCase):
         uri_snapshot = callback.index("documentUri =")
         proof_callback = callback.index("TryRecordDocumentPickerCallback")
         base_callback = callback.index("base.OnActivityResult")
-        broker_complete = callback.index("DocumentIntentBroker.Complete(documentUri)")
+        broker_complete = callback.index(
+            "DocumentIntentBroker.Complete(this, requestCode, documentUri)"
+        )
         self.assertLess(uri_snapshot, proof_callback)
         self.assertLess(proof_callback, base_callback)
         self.assertLess(base_callback, broker_complete)

@@ -100,6 +100,7 @@ public class MorePage : NativePageBase, IPlayReviewSafeSurface
         else
         {
             Button link = NativeTheme.PrimaryButton(PhoneStrings.Get("LinkAccount", "Link account"));
+            link.IsEnabled = !Coordinator.Account.IsLoading;
             link.Clicked += async (_, _) => await RunAsync(() => Coordinator.BeginAccountLinkAsync());
             account.Add(link);
         }

@@ -112,7 +112,7 @@
       {
         "path": "src/Chummer.Android/Native/MorePage.cs",
         "exists": true,
-        "sha256": "ab0c227a368cc953ae566aa83673300dc5b9074de2774c80ea41f5282af2cc79"
+        "sha256": "00fffb845e50596903609e7e7752ba15c19115f5e0d80bc625a0fee636628862"
       },
       {
         "path": "src/Chummer.Android/Native/CareerReputationPage.cs",
@@ -157,7 +157,7 @@
       {
         "path": "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
         "exists": true,
-        "sha256": "4708645c46b0d0a930d72a9cb88eb0e5f44a1e083e6b8b0415b078d667dd9165"
+        "sha256": "826a7762e9f20fe7b29f104fae00f870ad2f91c7a4a81a39ce5de7a12e007bf5"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ApplicationDeleteConfirmationPresenter.cs",
@@ -592,7 +592,7 @@
       {
         "path": "src/Chummer.Android/Native/NativeDialogPage.cs",
         "exists": true,
-        "sha256": "752eb03294be1e3272e4f86a122da4c7b410c77e0e13643076adcf8220265271"
+        "sha256": "08cebaaa8bd7b62353976d4e63cbebfde44f537afb80753a742069a33e60515f"
       },
       {
         "path": "src/Chummer.Android/Native/AndroidCharacterSettingsPhoneCapabilities.Generated.cs",
@@ -647,12 +647,12 @@
       {
         "path": "src/Chummer.Android/Native/CurrentPhoneWizardScope.cs",
         "exists": true,
-        "sha256": "6db1a2919173769e772a42675e6754963d6afa3a9d3c23ad297ef7a2dd52f14a"
+        "sha256": "6ef70114aae80b93c13bd2053b9e00b1472c6867c4da0f4fbb7ab65eff36e628"
       },
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "da199dd9a2531bf0c2ed4200264a353e4c1cea9f9310de56a14a1223f5ba2d6d"
+        "sha256": "c9d8293339af450d0dacc16d957077e71fd55b6a4ec926d39a02214aed66f9f1"
       },
       {
         "path": "src/Chummer.Android/Native/RunnerSessionSr5CareerWizardPhoneAuthority.cs",
@@ -812,7 +812,7 @@
       {
         "path": ".github/workflows/api36-editing-e2e.yml",
         "exists": true,
-        "sha256": "0d52eec7e9b02776c16711e342b261daffd0a33f25616abd8505cd7d28031045"
+        "sha256": "2084ebbc4cbe82c08548f7fac52a4d7b1c42eca6cb9b8354724c9cf6c40c0444"
       },
       {
         "path": ".github/workflows/api36-two-consecutive-green.yml",
@@ -887,7 +887,7 @@
       {
         "path": "scripts/verify-api36-editing-e2e-aggregate.py",
         "exists": true,
-        "sha256": "3995b2aa075ab85c43a6f8df3cebac6a9cbfdbc3079ee870e40c9c34c1d6b739"
+        "sha256": "ab94b7d1835550b982fd457546474b45f362766ad0797753ef46c728a35b6124"
       },
       {
         "path": "src/Chummer.Android/Chummer.Android.csproj",
@@ -907,17 +907,17 @@
       {
         "path": "tests/Chummer.Android.Native.CompileCheck/NativeCompileInputs.props",
         "exists": true,
-        "sha256": "7fc5ce1f98238b46d8d959c90519ba55b9bc69983e02f12e0c8e8c8722e8c137"
+        "sha256": "9aec146406a0e2414ecc75fd1a57b9b96cba73887831f8924bdd7bc7671b45ad"
       },
       {
         "path": "tests/test_api36_e2e_workflow.py",
         "exists": true,
-        "sha256": "b13ed6716072f58b7b95ea5b4ad02db3029b5ed0a6fc33a81d1e0cf7d9144a81"
+        "sha256": "74ab6754b44b813d9aaddb732b65c966b793576f75fa0180be7bab19b873c9b3"
       },
       {
         "path": "tests/test_api36_e2e_artifact_authority.py",
         "exists": true,
-        "sha256": "ba3f2845b7340c741ba929408cfbd74789586304f4c85cca3e347ba5bb766673"
+        "sha256": "99d879ab64fe9136b9a43eadc8a0c4513ddc2da5faba5d4cbce5e10d7a82bc3a"
       },
       {
         "path": "tests/test_api36_proof_environment_receipt.py",
@@ -937,7 +937,7 @@
       {
         "path": "tests/test_current_phone_wizard_scope.py",
         "exists": true,
-        "sha256": "24bef051f60f218e804c23835390f7f22e3ef1a37cfed11aa92ae8067b70af5e"
+        "sha256": "0475b388d397b12ff91fba730059232127ec7317e54e4d36f456bb8fb0fa6f2a"
       },
       {
         "path": "tests/run_api36_sr5_before_run_edge_e2e.py",
@@ -957,7 +957,7 @@
       {
         "path": "tests/test_api36_proof_state_contract.py",
         "exists": true,
-        "sha256": "b35d37afbeb5442eac15bf9df08b5878cd7e6e60257ff58c704990efc06c57e9"
+        "sha256": "24fa5da83eb4c5774b45ac21c0fa8fc1c730caf9e3f180f64a85d4f503d67b58"
       },
       {
         "path": "tests/test_run_api36_sr5_before_run_edge_e2e_driver.py",
@@ -1452,7 +1452,7 @@
       {
         "path": "tests/run_api36_creation_prerequisite_e2e.py",
         "exists": true,
-        "sha256": "a5b64db9e8933a10aaa1c8980bf3399ec172acd380c5127a00aef4f3045d7900"
+        "sha256": "89df17fc8f6c199bb381ff3a7254089e458fcf3f72b60a2063b52d9ae1a44f9b"
       },
       {
         "path": "tests/fixtures/career-condition-monitor-e2e.chum5",

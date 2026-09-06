@@ -51,7 +51,16 @@ def test_disappearing_invalidates_generation_without_disposing_live_token_source
         "protected abstract void Refresh()", 1
     )[0]
 
-    assert "Interlocked.Increment(ref _appearanceGeneration);" in disappearing
+    invalidation = (
+        "long departedGeneration = Interlocked.Increment(ref _appearanceGeneration) - 1;"
+    )
+    assert invalidation in disappearing
+    assert "Interlocked.Exchange(ref _subscribed, 0)" in disappearing
+    retirement = "_coordinatorRefresh.AbandonThrough(departedGeneration);"
+    assert retirement in disappearing
+    assert disappearing.index(invalidation) < disappearing.index(
+        "Interlocked.Exchange(ref _subscribed, 0)"
+    ) < disappearing.index(retirement)
     assert "Interlocked.Exchange(ref _appearanceLifetime, null)" in disappearing
     assert "appearanceLifetime?.Cancel();" in disappearing
     assert "appearanceLifetime?.Dispose();" not in disappearing

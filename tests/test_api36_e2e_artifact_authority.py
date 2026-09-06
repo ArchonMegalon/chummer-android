@@ -263,6 +263,42 @@ def talent_overlap_recovery_scan(phase_id: str) -> dict[str, object]:
     return scan
 
 
+def talent_completion_reflow_scan(
+    phase_id: str, *, swipes: int = 1,
+) -> dict[str, object]:
+    scan = talent_reacquisition_scan(phase_id)
+    scan.update(
+        {
+            "direction": "forward",
+            "startingViewport": 9,
+            "targetViewport": 9,
+            "normalizedTargetViewport": 9,
+            "configuredMaxScrolls": 4,
+            "distanceRatio": 0.22,
+            "exactResourceIds": [
+                "creation-prerequisite-talent-active-skill-option-0dbcb9cd-f824-4b5d-a387-90d33318b04c",
+                "creation-prerequisite-talent-grant-complete",
+            ],
+            "completionReflowUsed": True,
+            "completionReflowMaxScrolls": 4,
+            "completionReflowViewport": [0, 275, 1080, 2190],
+            "completionReflowDisplaySize": [1080, 2400],
+            "primaryDirection": "forward",
+            "primaryDistanceRatio": 0.22,
+            "primaryConfiguredMaxScrolls": 4,
+            "primaryScreens": swipes + 1,
+            "primarySwipes": swipes,
+            "screens": swipes + 1,
+            "swipes": swipes,
+            "hierarchyReadCount": swipes + 1,
+            "hierarchyElapsedMs": 100 * (swipes + 1),
+            "maximumHierarchyReadMs": 100,
+            "elapsedMs": 100 * (swipes + 1) + 200 * swipes + 100,
+        }
+    )
+    return scan
+
+
 def confirmed_receipt_back_reacquisition_scan() -> dict[str, object]:
     return {
         "scanId": AGGREGATE.CONFIRMED_RECEIPT_BACK_REACQUISITION_SCAN_ID,
@@ -2699,6 +2735,162 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
         phase_id = str(timing["scans"][target_index]["phaseId"])
         timing["scans"][target_index] = talent_overlap_recovery_scan(phase_id)
         AGGREGATE.require_creation_timing_within_budget(creation_receipt_with_timing(timing))
+
+    def test_creation_timing_accepts_bounded_completion_reflow(self) -> None:
+        for swipes in range(1, 5):
+            for geometry_type in (list, tuple):
+                with self.subTest(swipes=swipes, geometry_type=geometry_type):
+                    timing = copy.deepcopy(self.raw_receipt("creation-prerequisite")["timing"])
+                    target_index = next(
+                        index for index, scan in enumerate(timing["scans"])
+                        if isinstance(scan, dict) and "exactResourceIds" in scan
+                    )
+                    target = talent_completion_reflow_scan(
+                        str(timing["scans"][target_index]["phaseId"]), swipes=swipes,
+                    )
+                    for field in ("completionReflowViewport", "completionReflowDisplaySize"):
+                        target[field] = geometry_type(target[field])
+                    timing["scans"][target_index] = target
+                    AGGREGATE.require_creation_timing_within_budget(
+                        creation_receipt_with_timing(timing)
+                    )
+
+    def test_creation_timing_accepts_legacy_and_unused_completion_reflow(self) -> None:
+        for reflow_bound in (None, 0, 4):
+            with self.subTest(reflow_bound=reflow_bound):
+                timing = copy.deepcopy(self.raw_receipt("creation-prerequisite")["timing"])
+                target = next(scan for scan in timing["scans"] if "exactResourceIds" in scan)
+                if reflow_bound is not None:
+                    target.update({
+                        "completionReflowUsed": False,
+                        "completionReflowMaxScrolls": reflow_bound,
+                        "completionReflowViewport": None,
+                        "completionReflowDisplaySize": None,
+                    })
+                if reflow_bound == 4:
+                    target["exactResourceIds"] = talent_completion_reflow_scan(
+                        str(target["phaseId"])
+                    )["exactResourceIds"]
+                AGGREGATE.require_creation_timing_within_budget(
+                    creation_receipt_with_timing(timing)
+                )
+
+    def test_creation_timing_rejects_forged_completion_reflow(self) -> None:
+        completion_id = "creation-prerequisite-talent-grant-complete"
+        option_id = "creation-prerequisite-talent-active-skill-option-swimming"
+        cases = (
+            {"completionReflowUsed": 1},
+            {"completionReflowUsed": "true"},
+            {"completionReflowUsed": None},
+            {"completionReflowUsed": False},
+            {"completionReflowMaxScrolls": True},
+            {"completionReflowMaxScrolls": "4"},
+            {"completionReflowMaxScrolls": 4.0},
+            {"completionReflowMaxScrolls": None},
+            {"completionReflowMaxScrolls": 0},
+            {"completionReflowMaxScrolls": 5},
+            {"completionReflowViewport": None},
+            {"completionReflowViewport": "[0,275,1080,2190]"},
+            {"completionReflowViewport": [0, 275, 1080]},
+            {"completionReflowViewport": [0, 275, 1080, 2190, 2400]},
+            {"completionReflowViewport": [False, 275, 1080, 2190]},
+            {"completionReflowViewport": [0, 275.0, 1080, 2190]},
+            {"completionReflowViewport": [0, "275", 1080, 2190]},
+            {"completionReflowViewport": [-1, 275, 1080, 2190]},
+            {"completionReflowViewport": [0, 275, 1081, 2190]},
+            {"completionReflowViewport": [0, 275, 1080, 2401]},
+            {"completionReflowViewport": [0, 275, 0, 2190]},
+            {"completionReflowViewport": [0, 2190, 1080, 275]},
+            {"completionReflowViewport": [540, 275, 1080, 2190]},
+            {"completionReflowViewport": [0, 275, 540, 2190]},
+            {"completionReflowViewport": [0, 1440, 1080, 2190]},
+            {"completionReflowViewport": [0, 275, 1080, 1968]},
+            {"completionReflowDisplaySize": None},
+            {"completionReflowDisplaySize": "1080x2400"},
+            {"completionReflowDisplaySize": [1080]},
+            {"completionReflowDisplaySize": [1080, 2400, 1]},
+            {"completionReflowDisplaySize": [True, 2400]},
+            {"completionReflowDisplaySize": [1080, 2400.0]},
+            {"completionReflowDisplaySize": [1080, "2400"]},
+            {"completionReflowDisplaySize": [0, 2400]},
+            {"completionReflowDisplaySize": [1080, -2400]},
+            {"completionReflowDisplaySize": [1080, 3000]},
+            {"direction": "none"},
+            {"direction": "reverse"},
+            {"primaryDirection": "none"},
+            {"primaryDirection": "reverse"},
+            {"distanceRatio": 0.60},
+            {"primaryDistanceRatio": 0.60},
+            {"configuredMaxScrolls": 40},
+            {"primaryConfiguredMaxScrolls": 40},
+            {"recoveryEligible": True},
+            {"recoveryUsed": True},
+            {"recoveryDirection": "reverse"},
+            {"primaryStableBoundaryProven": True},
+            {"exactResourceIds": [completion_id]},
+            {"exactResourceIds": [option_id]},
+            {"exactResourceIds": [completion_id, option_id, "creation-prerequisite-talent-grant-digest"]},
+            {"exactResourceIds": [completion_id, option_id, "creation-prerequisite-talent-grant-authority"]},
+            {"exactResourceIds": [completion_id, option_id, option_id]},
+            {"exactResourceIds": [completion_id, "creation-prerequisite-talent-active-skill-option-"]},
+            {"exactResourceIds": [completion_id, option_id + "!"]},
+            {"exactResourceIds": [completion_id, [option_id]]},
+            {"targetViewport": 10, "normalizedTargetViewport": 10, "measuredDelta": 1},
+        )
+        for fields in cases:
+            with self.subTest(fields=fields):
+                timing = copy.deepcopy(self.raw_receipt("creation-prerequisite")["timing"])
+                target_index = next(
+                    index for index, scan in enumerate(timing["scans"])
+                    if isinstance(scan, dict) and "exactResourceIds" in scan
+                )
+                target = talent_completion_reflow_scan(str(timing["scans"][target_index]["phaseId"]))
+                target.update(fields)
+                timing["scans"][target_index] = target
+                with self.assertRaisesRegex(ValueError, "Talent reacquisition"):
+                    AGGREGATE.require_creation_timing_within_budget(
+                        creation_receipt_with_timing(timing)
+                    )
+
+    def test_creation_timing_rejects_reconciled_completion_reflow_swipe_counts(self) -> None:
+        for swipes in (0, 5):
+            with self.subTest(swipes=swipes):
+                timing = copy.deepcopy(self.raw_receipt("creation-prerequisite")["timing"])
+                target_index = next(
+                    index for index, scan in enumerate(timing["scans"])
+                    if isinstance(scan, dict) and "exactResourceIds" in scan
+                )
+                timing["scans"][target_index] = talent_completion_reflow_scan(
+                    str(timing["scans"][target_index]["phaseId"]), swipes=swipes,
+                )
+                with self.assertRaisesRegex(ValueError, "Talent reacquisition"):
+                    AGGREGATE.require_creation_timing_within_budget(
+                        creation_receipt_with_timing(timing)
+                    )
+
+    def test_creation_timing_rejects_ineligible_unused_completion_reflow(self) -> None:
+        for case in ("nonzero_delta", "wrong_group", "viewport", "display"):
+            with self.subTest(case=case):
+                timing = copy.deepcopy(self.raw_receipt("creation-prerequisite")["timing"])
+                target_index = next(
+                    index for index, scan in enumerate(timing["scans"])
+                    if isinstance(scan, dict) and "exactResourceIds" in scan
+                )
+                phase_id = str(timing["scans"][target_index]["phaseId"])
+                target = (
+                    talent_overlap_recovery_scan(phase_id) if case == "nonzero_delta"
+                    else talent_reacquisition_scan(phase_id)
+                )
+                target.update({"completionReflowUsed": False, "completionReflowMaxScrolls": 4})
+                if case in ("viewport", "display"):
+                    target["exactResourceIds"] = talent_completion_reflow_scan(phase_id)["exactResourceIds"]
+                    field = "completionReflowViewport" if case == "viewport" else "completionReflowDisplaySize"
+                    target[field] = talent_completion_reflow_scan(phase_id)[field]
+                timing["scans"][target_index] = target
+                with self.assertRaisesRegex(ValueError, "Talent reacquisition"):
+                    AGGREGATE.require_creation_timing_within_budget(
+                        creation_receipt_with_timing(timing)
+                    )
 
     def test_creation_timing_keeps_coarse_primary_for_non_option_groups(self) -> None:
         timing = json.loads(json.dumps(

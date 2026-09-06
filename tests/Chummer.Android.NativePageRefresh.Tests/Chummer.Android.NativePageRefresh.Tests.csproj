@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Maui.Controls" Version="10.0.20" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="../../src/Chummer.Android/Native/NativePageBase.cs" Link="Native/NativePageBase.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/NativePageActionGate.cs" Link="Native/NativePageActionGate.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/NativeRefreshCoalescer.cs" Link="Native/NativeRefreshCoalescer.cs" />
+    <Compile Include="NativePageBaseStubs.cs" />
+    <Compile Include="Program.cs" />
+  </ItemGroup>
+</Project>

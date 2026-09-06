@@ -5,6 +5,7 @@ namespace Chummer.Android.Native;
 
 public sealed class CampaignPage : NativePageBase
 {
+    private readonly ToolbarItem _refreshToolbar;
     private readonly VerticalStackLayout _body = new()
     {
         Padding = new Thickness(20, 18, 20, 40),
@@ -15,16 +16,18 @@ public sealed class CampaignPage : NativePageBase
     public CampaignPage(RunnerSessionCoordinator coordinator) : base(coordinator)
     {
         Title = "Campaign";
-        ToolbarItems.Add(new ToolbarItem
+        _refreshToolbar = new ToolbarItem
         {
             Text = "Refresh",
             Command = new Command(async () => await RunAsync(() => Coordinator.RefreshLinkedDataAsync()))
-        });
+        };
+        ToolbarItems.Add(_refreshToolbar);
         Content = new ScrollView { Content = _body };
     }
 
     protected override void Refresh()
     {
+        _refreshToolbar.IsEnabled = Coordinator.Account.IsLinked;
         _body.Clear();
         _body.Add(NativeTheme.Eyebrow("Groups"));
         _body.Add(NativeTheme.Title("Campaign"));
@@ -33,6 +36,7 @@ public sealed class CampaignPage : NativePageBase
         {
             _body.Add(NativeTheme.Body("Link your Chummer account to see or run a group.", NativeTheme.Muted));
             Button link = NativeTheme.PrimaryButton("Link account");
+            link.IsEnabled = !Coordinator.Account.IsLoading;
             link.Clicked += async (_, _) => await RunAsync(() => Coordinator.BeginAccountLinkAsync());
             _body.Add(link);
             return;

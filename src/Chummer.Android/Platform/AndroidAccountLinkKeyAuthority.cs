@@ -379,7 +379,7 @@ public sealed class AndroidAccountLinkKeyAuthority
         if (created.Availability != AndroidDeviceKeyAvailability.Available
             || !IsValidProtocolPublicKey(created.PublicKey))
         {
-            await _keyStore.DeleteAsync(alias, CancellationToken.None);
+            await CleanupFailedCreationAsync(installationId, alias);
             throw RelinkRequired(created.Availability == AndroidDeviceKeyAvailability.Available
                 ? AndroidDeviceKeyAvailability.Invalidated
                 : created.Availability);

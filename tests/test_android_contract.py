@@ -376,6 +376,8 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn('Signature.GetInstance("SHA256withRSA")', keystore)
         self.assertIn("KeyStorePurpose.Sign", keystore)
         self.assertIn("KeyProperties.SignaturePaddingRsaPkcs1", keystore)
+        self.assertIn("RequireNonExportable(generatedPrivateKey)", keystore)
+        self.assertIn("encoded = privateKey.GetEncoded()", keystore)
         self.assertIn("ExportSubjectPublicKeyInfo", keystore)
         self.assertIn("LegacyPrivateKeyStorageKey", authority)
         self.assertIn("RemoveLegacyPrivateKeyAsync", authority)
@@ -390,6 +392,8 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("savedInstallationId, identity.InstallationId", service)
         self.assertIn("VerifyProtocolSignature", authority)
         self.assertIn("chummer.install-link.remote-callback.v2", transport)
+        self.assertIn("CaptureResponseAuthorization(response)", transport)
+        self.assertIn("ResponseAuthorizations.Remove(response)", transport)
         self.assertIn("/api/v2/install-linking/callbacks/poll", transport)
         self.assertIn('InstallLinkTransport = "proof_poll_v2"', service)
         self.assertIn("string installLinkTransport", transport)
@@ -475,6 +479,12 @@ class AndroidContractTests(unittest.TestCase):
         ]
         after_generation = create_key[create_key.index("GenerateKeyPair"):]
         self.assertNotIn("ThrowIfCancellationRequested", after_generation)
+        probe_key = keystore[
+            keystore.index("public Task<AndroidDevicePublicKey> GetPublicKeyAsync"):
+            keystore.index("public Task<byte[]> SignAsync")
+        ]
+        self.assertIn("RequireNonExportable(privateKey)", probe_key)
+        self.assertIn("signer.InitSign(privateKey)", probe_key)
         self.assertIn("OnNewIntent", activity)
         self.assertIn('"/app/install-link"', activity)
         self.assertIn("ResumePendingLinkAsync(uri)", activity)

@@ -67,6 +67,25 @@ class PlayListingLocalizationTests(unittest.TestCase):
                     self.assertGreater(length, 0)
                     self.assertLessEqual(length, self.module.LIMITS[name])
 
+    def test_preview10_upgrade_discloses_optional_account_relink_in_each_locale(self) -> None:
+        notices = {
+            "en-US": ("Link your account again", "Account linking remains optional"),
+            "de-DE": ("Konto neu verknüpfen", "Kontoverknüpfung bleibt optional"),
+            "es-ES": ("vuelve a vincular tu cuenta", "vinculación sigue siendo opcional"),
+        }
+        for locale, (release_notice, optional_notice) in notices.items():
+            with self.subTest(locale=locale):
+                notes = (LISTING / locale / "release-notes-12.txt").read_text(
+                    encoding="utf-8"
+                )
+                description = (LISTING / locale / "full-description.txt").read_text(
+                    encoding="utf-8"
+                )
+                self.assertIn("Preview.10", notes)
+                self.assertIn(release_notice, notes)
+                self.assertIn("PREVIEW.10", description)
+                self.assertIn(optional_notice, description)
+
     def test_cli_reports_listing_validation_without_publication_authority(self) -> None:
         completed = subprocess.run(
             [sys.executable, str(SCRIPT)],
@@ -249,7 +268,10 @@ class PlayListingLocalizationTests(unittest.TestCase):
             root = Path(temporary)
             for index, (locale, claim) in enumerate(cases):
                 listing = self.copy_listing(root / str(index))
-                path = listing / locale / "release-notes-12.txt"
+                # The real release notes approach Play's size cap. Use the full
+                # description to isolate the scope rejection from length rejection;
+                # both fields pass through the same positive-claim validator.
+                path = listing / locale / "full-description.txt"
                 path.write_text(
                     path.read_text(encoding="utf-8").rstrip("\n") + claim + "\n",
                     encoding="utf-8",

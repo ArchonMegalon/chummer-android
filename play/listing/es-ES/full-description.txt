@@ -12,6 +12,9 @@ Las rutas adicionales visibles de los asistentes siguen disponibles para recibir
 TRABAJA PRIMERO EN LOCAL
 Abre y guarda los archivos de runner que elijas mediante el selector de documentos de Android. La aplicación no solicita acceso amplio al almacenamiento. Las funciones opcionales de cuenta vinculada usan conexiones cifradas con los servicios de Chummer.
 
+ACTUALIZACIÓN DESDE PREVIEW.10
+Vuelve a vincular tu cuenta para seguir usando sus funciones. La vinculación sigue siendo opcional; puedes abrir archivos locales de runner sin ella.
+
 LÍMITES DE LA VISTA PREVIA ACTUAL
 Esta prueba interna está limitada a los siete flujos de SR5 para teléfonos indicados. La edición completa, las tabletas o los plegables, la creación para SR4 o SR6, Rook o los avatares en directo, la disponibilidad pública y la publicación en producción no forman parte de esta prueba.
 

@@ -14,6 +14,7 @@ internal static class Program
         await LegacyPrivateKeyIsRemovedWithoutBeingReadAsync();
         await MissingKeyRequiresExplicitRelinkingAsync();
         await InvalidatedKeyRequiresExplicitRelinkingAsync();
+        await InvalidatedKeyCleanupMustFinishBeforeReplacementAsync();
         await PendingIdentityIsBoundToTheExactInstallationAsync();
         await TamperedBindingCannotRedirectSigningOrDeletionAsync();
         await TamperedPublicKeyFailsClosedAsync();
@@ -23,13 +24,14 @@ internal static class Program
         await InterruptedCreationRemovesPartialAuthorityAsync();
         await CancellationAfterPersistentCreationRemovesTheOrphanAsync();
         await FailedPostCreationDeleteRetainsCleanupSelectorAsync();
+        await RejectedCreationRetainsCleanupAcrossRestartAsync();
         await PartialBindingRecoveryRemovesTheOrphanedKeyAsync();
         await UnlinkDeletesKeyAuthorityAndMetadataAsync();
         await UnlinkFailureRemovesMetadataAndSurfacesTheCleanupFailureAsync();
         await SelectorReadCancellationPreservesTheOnlyCleanupRouteAsync();
         await SelectorReadFailurePreservesTheOnlyCleanupRouteAsync();
         await SelectorDeleteCancellationRetainsARecoverableOutcomeAsync();
-        Console.WriteLine("Android account-link key authority tests passed: 23");
+        Console.WriteLine("Android account-link key authority tests passed: 25");
     }
 
     private static async Task PersistedBindingNeverContainsPrivateKeyMaterialAsync()
@@ -203,6 +205,35 @@ internal static class Program
         Require(replacement.Alias != original.Alias, "An invalidated key alias must not regain authority.");
     }
 
+    private static async Task InvalidatedKeyCleanupMustFinishBeforeReplacementAsync()
+    {
+        MemoryMetadataStore metadata = new();
+        MemoryDeviceKeyStore keys = new();
+        AndroidAccountLinkKeyAuthority authority = new(keys, metadata);
+        AndroidAccountLinkKeyIdentity original = await authority.StartOrResumeExplicitLinkAsync();
+        keys.Invalidate(original.Alias);
+        keys.FailDeleteAlias = original.Alias;
+
+        await RequireThrowsAsync<CryptographicException>(
+            () => authority.StartOrResumeExplicitLinkAsync(),
+            "A replacement key must not be created while invalidated-alias cleanup is failing.");
+        Require(keys.CreatedCount == 1, "Failed invalidation cleanup must not create parallel authority.");
+        Require(keys.Contains(original.Alias), "The failed invalidated-key deletion must remain observable.");
+        Require(
+            metadata.Contains(AndroidAccountLinkKeyAuthority.CleanupTombstoneStorageKey),
+            "Failed invalidation cleanup must retain the exact alias tombstone.");
+
+        keys.FailDeleteAlias = null;
+        AndroidAccountLinkKeyIdentity replacement = await authority.StartOrResumeExplicitLinkAsync();
+
+        Require(keys.CreatedCount == 2, "A later explicit retry may create one replacement key.");
+        Require(!keys.Contains(original.Alias), "The invalidated alias must be deleted before replacement.");
+        Require(replacement.Alias != original.Alias, "The replacement must use fresh installation authority.");
+        Require(
+            !metadata.Contains(AndroidAccountLinkKeyAuthority.CleanupTombstoneStorageKey),
+            "Successful invalidation recovery must clear its cleanup tombstone.");
+    }
+
     private static async Task PendingIdentityIsBoundToTheExactInstallationAsync()
     {
         MemoryMetadataStore metadata = new();
@@ -373,6 +404,53 @@ internal static class Program
         await authority.RemoveAsync();
         Require(keys.KeyCount == 0, "A later cleanup attempt must delete the post-creation orphan.");
         Require(metadata.Values.Count == 0, "Successful recovery must remove the cleanup tombstone.");
+    }
+
+    private static async Task RejectedCreationRetainsCleanupAcrossRestartAsync()
+    {
+        AndroidDevicePublicKey[] rejectedResults =
+        [
+            new(AndroidDeviceKeyAvailability.Missing),
+            new(AndroidDeviceKeyAvailability.Invalidated),
+            new(AndroidDeviceKeyAvailability.Available, "invalid-public-key")
+        ];
+        foreach (AndroidDevicePublicKey rejectedResult in rejectedResults)
+        {
+            MemoryMetadataStore metadata = new();
+            using MemoryDeviceKeyStore keys = new()
+            {
+                CreatedPublicKeyOverride = rejectedResult,
+                FailAllDeletes = true
+            };
+            AndroidAccountLinkKeyAuthority authority = new(keys, metadata);
+
+            await RequireThrowsAsync<CryptographicException>(
+                () => authority.StartOrResumeExplicitLinkAsync(),
+                "An unusable creation result must fail the link attempt.");
+            Require(keys.KeyCount == 1 && keys.CreatedCount == 1,
+                "The rejected key must exist until its deletion succeeds.");
+            Require(metadata.Contains(AndroidAccountLinkKeyAuthority.CleanupTombstoneStorageKey),
+                "Rejected creation must preserve a durable selector when key deletion fails.");
+            Require(!metadata.Contains(AndroidAccountLinkKeyAuthority.BindingStorageKey)
+                && !metadata.Contains(AndroidAccountLinkKeyAuthority.InstallationIdStorageKey),
+                "An unusable creation result must never publish a link identity.");
+
+            AndroidAccountLinkKeyAuthority restarted = new(keys, metadata);
+            await RequireThrowsAsync<CryptographicException>(
+                () => restarted.StartOrResumeExplicitLinkAsync(),
+                "Restart must finish the pending cleanup before creating another key.");
+            Require(keys.KeyCount == 1 && keys.CreatedCount == 1,
+                "Repeated deletion failure must not accumulate replacement keys.");
+
+            keys.FailAllDeletes = false;
+            keys.CreatedPublicKeyOverride = null;
+            AndroidAccountLinkKeyIdentity replacement =
+                await restarted.StartOrResumeExplicitLinkAsync();
+            Require(keys.KeyCount == 1 && keys.CreatedCount == 2 && keys.Contains(replacement.Alias),
+                "Recovery must remove the orphan and leave only the replacement key.");
+            Require(!metadata.Contains(AndroidAccountLinkKeyAuthority.CleanupTombstoneStorageKey),
+                "Successful recovery must remove its cleanup selector.");
+        }
     }
 
     private static async Task PartialBindingRecoveryRemovesTheOrphanedKeyAsync()
@@ -676,6 +754,8 @@ internal static class Program
 
         public bool CancelAfterPersistentCreate { get; init; }
 
+        public AndroidDevicePublicKey? CreatedPublicKeyOverride { get; set; }
+
         public string? FailDeleteAlias { get; set; }
 
         public bool FailAllDeletes { get; set; }
@@ -694,7 +774,7 @@ internal static class Program
                     "Injected cancellation after persistent key generation.",
                     cancellationToken);
             }
-            return Task.FromResult(new AndroidDevicePublicKey(
+            return Task.FromResult(CreatedPublicKeyOverride ?? new AndroidDevicePublicKey(
                 AndroidDeviceKeyAvailability.Available,
                 Convert.ToBase64String(key.ExportSubjectPublicKeyInfo())));
         }

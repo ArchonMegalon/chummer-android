@@ -12,6 +12,9 @@ Additional visible wizard routes remain available for feedback. Each is marked E
 WORK LOCAL-FIRST
 Open and save runner files you choose through Android's document picker. The app does not request broad storage access. Optional linked-account features use encrypted connections to Chummer services.
 
+UPGRADING FROM PREVIEW.10
+Link your account again to resume linked-account features. Account linking remains optional; local runner files can still be opened without it.
+
 CURRENT PREVIEW LIMITS
 This Internal testing preview is limited to the seven named SR5 phone flows. Full Editing, tablet or foldable support, SR4 or SR6 creation, Rook or live-avatar support, public availability, and production release are not included.
 

@@ -10,6 +10,9 @@ NATIVE_DIALOG = ROOT / "src/Chummer.Android/Native/NativeDialogPage.cs"
 PHONE_CAPABILITIES = (
     ROOT / "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json"
 )
+EDITABILITY_INVENTORY = (
+    ROOT / "docs/ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json"
+)
 RUNTIME_CAPABILITIES = (
     ROOT
     / "src/Chummer.Android/Native/AndroidCharacterSettingsPhoneCapabilities.Generated.cs"
@@ -38,6 +41,45 @@ def test_phone_settings_do_not_render_the_legacy_character_settings_catalog() ->
     assert "NativeDialogPage" not in settings_source
     assert "ActiveDialog" not in settings_source
     assert "CharacterSettings" not in settings_source
+
+
+def test_unproven_visible_settings_are_clearly_marked_experimental() -> None:
+    settings_source = APPLICATION_SETTINGS.read_text(encoding="utf-8")
+    dialog_source = NATIVE_DIALOG.read_text(encoding="utf-8")
+    inventory = json.loads(EDITABILITY_INVENTORY.read_text(encoding="utf-8"))
+    unproven = [
+        row
+        for row in inventory["rows"]
+        if row["legacy"]["formOrControl"]
+        in {"EditGlobalSettings", "EditCharacterSettings"}
+        and row["phone"]["status"] == "implemented_pending_emulator"
+        and not row["completionProven"]
+    ]
+
+    assert len(unproven) == 26
+    assert {row["phone"]["surface"] for row in unproven} == {
+        "ApplicationSettingsPage",
+        "NativeDialogPage",
+    }
+    assert all(row["e2e"]["phone"]["status"] == "scripted_not_executed" for row in unproven)
+    assert '"settings-confirm-delete-experimental"' in settings_source
+    assert "CurrentPhoneWizardScope.MarkExperimental(" in settings_source
+    assert 'SemanticProperties.SetDescription(value, $"{title}. {description}")' in settings_source
+    assert '"dialog-settings-experimental"' in dialog_source
+    message_start = dialog_source.index("internal static string Message(")
+    message_end = dialog_source.index("internal static string Title(", message_start)
+    assert "CurrentPhoneWizardScope.MarkExperimental(" in dialog_source[message_start:message_end]
+
+
+def test_unavailable_play_review_service_does_not_render_a_noop_control() -> None:
+    settings_source = APPLICATION_SETTINGS.read_text(encoding="utf-8")
+    guard = settings_source.index("if (_playReview is not null)")
+    guarded_block = settings_source[
+        guard : settings_source.index("Button save", guard)
+    ]
+
+    assert 'automationId: "settings-rate-on-google-play"' in guarded_block
+    assert "OpenStoreListingAsync" in guarded_block
 
 
 def test_character_settings_scope_preserves_profile_identity_and_fails_closed() -> None:
