@@ -91,7 +91,7 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
         self.assertIn('on:\n  push:\n    branches-ignore:\n      - "**"', text)
         self.assertNotIn("\non: []\n", text)
         self.assertIn("if: ${{ false }}", text)
-        self.assertIn("c2b13e11852b1866ef47c148e1fc68d09d413999", text)
+        self.assertIn("a9e5bbd4fd44826177dd048b24417fad27397497", text)
         final_receipt_name = "UI_CURRENT_MAIN_PACKAGE_PLANE.generated.json"
         self.assertEqual(1, text.count(final_receipt_name))
         self.assertIn(
@@ -244,7 +244,7 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
                 "compileProject": str(
                     root / "tests/Chummer.Android.Native.CompileCheck/Chummer.Android.Native.CompileCheck.csproj"
                 ),
-                "compiledOwnedSourceCount": 222,
+                "compiledOwnedSourceCount": self.receipt.expected_compiled_owned_source_count(),
                 "generatedProjectReferenceCount": 3,
                 "issues": [],
                 "repoRoot": str(root),
@@ -718,7 +718,9 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
             receipt, evidence, payload = self.seed_compile_receipt(Path(temporary))
             graph_path = evidence / "owned-compile-graph.log"
             graph = json.loads(graph_path.read_text(encoding="utf-8"))
-            graph["compiledOwnedSourceCount"] = 212
+            graph["compiledOwnedSourceCount"] = (
+                self.receipt.expected_compiled_owned_source_count() - 1
+            )
             graph_path.write_text(json.dumps(graph), encoding="utf-8")
             self.refresh_evidence_binding(
                 receipt, evidence, payload, "owned-compile-graph.log", "owned-compile-graph"

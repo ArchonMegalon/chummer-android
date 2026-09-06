@@ -152,7 +152,7 @@
       {
         "path": "src/Chummer.Android/MauiProgram.cs",
         "exists": true,
-        "sha256": "6e318c794a72b09d03efa4c8e5106325c7da28a3dc17fabe56b714fa40038a92"
+        "sha256": "939e7ab90fca0e2b5da88f79b2e67d093e170f4ffa8eed3d27cea1743240828b"
       },
       {
         "path": "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
@@ -592,7 +592,7 @@
       {
         "path": "src/Chummer.Android/Native/NativeDialogPage.cs",
         "exists": true,
-        "sha256": "f4d095fad086f7730a91eda79109eda1c077c77bb6a6d45e41d0574e1ea68f47"
+        "sha256": "14ec73cce7762ae2755202ad967da246e780bb641ef365cac22122e57ad31d89"
       },
       {
         "path": "src/Chummer.Android/Native/AndroidCharacterSettingsPhoneCapabilities.Generated.cs",
@@ -812,7 +812,7 @@
       {
         "path": ".github/workflows/api36-editing-e2e.yml",
         "exists": true,
-        "sha256": "3c20676f91703f83b282e39b83ae61a44554b22654025ba71919de5532aca2eb"
+        "sha256": "0d52eec7e9b02776c16711e342b261daffd0a33f25616abd8505cd7d28031045"
       },
       {
         "path": ".github/workflows/api36-two-consecutive-green.yml",
@@ -832,12 +832,12 @@
       {
         "path": "eng/api36-two-consecutive-green-authority.json",
         "exists": true,
-        "sha256": "9c9fbf0fee4e33146c46033713c4f360b9a6d2c2b4a3166ce63a0f7339d55614"
+        "sha256": "aa2bb1542c1343141e6e4f622b970293c9ae364622fdc6f35bf9942b45b532db"
       },
       {
         "path": "scripts/build-debug.sh",
         "exists": true,
-        "sha256": "c2defce5f6cbca41c6119699df1717f86a7e9cb34fd2b1a2aa943ec3e4d52344"
+        "sha256": "5852663dd846e610580ae2fdd97374b2bb5884bff7419957aea5062befe004ba"
       },
       {
         "path": "scripts/api36_proof_environment_authority.py",
@@ -867,12 +867,12 @@
       {
         "path": "scripts/materialize-api36-two-green-eligibility.py",
         "exists": true,
-        "sha256": "85ed712953477a9c3dbaeafdd359564f12e31c7c0d65ae2728826f71d122b527"
+        "sha256": "9db5a0057fc6895a78d48509f62b28be62e53d399b368f381485a42fc2c43586"
       },
       {
         "path": "scripts/materialize-android-p0-pr-authority.py",
         "exists": true,
-        "sha256": "57304ac62883fe5681473c858f03eb114794e20043444eb369b625faf27ab6b5"
+        "sha256": "0558e63125b429b3073533adf34d57fc1f661d8ceb9296deec5fca42a8e076dd"
       },
       {
         "path": "scripts/prepare-api36-emulator-live-log.py",
@@ -907,12 +907,12 @@
       {
         "path": "tests/Chummer.Android.Native.CompileCheck/NativeCompileInputs.props",
         "exists": true,
-        "sha256": "73fe43f3108bbe5777f2cd59a8009626e4ffdb162e44d89ef8f1e3e0a8f2547e"
+        "sha256": "7fc5ce1f98238b46d8d959c90519ba55b9bc69983e02f12e0c8e8c8722e8c137"
       },
       {
         "path": "tests/test_api36_e2e_workflow.py",
         "exists": true,
-        "sha256": "a987921fdf750dc650bcb837234161fbc6c0bb7ceda7cb118b79af632dc32065"
+        "sha256": "391e101c76abc58f405d397189b413f8343a5aa7c0eedd972c9ab353c0d77cf7"
       },
       {
         "path": "tests/test_api36_e2e_artifact_authority.py",
@@ -927,7 +927,7 @@
       {
         "path": "tests/test_api36_two_green_eligibility.py",
         "exists": true,
-        "sha256": "f4e9aec4320163ca83b2f974d87119f4f18a6456248f0dcfbda606f00d9a5ae8"
+        "sha256": "536758700e5f3e7276339728251320bb39c6530c6b2f1e50e2e3cdc08384acd6"
       },
       {
         "path": "tests/test_android_p0_pr_authority.py",
@@ -1032,7 +1032,7 @@
       {
         "path": "tests/run_api36_editing_e2e.py",
         "exists": true,
-        "sha256": "0e7ce3cce839bfa4d62d2c1b4eadb33f45d7ef6c1b19ba6fb2cb7bb0341fcc71"
+        "sha256": "81a8e7995e4c1f02046b858a86535ff9b3451c0a2e561270988d9b5bb45cbbdc"
       },
       {
         "path": "tests/run_api36_career_active_skill_advance_e2e.py",
@@ -2762,12 +2762,12 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.CharacterSettings.cs",
         "exists": true,
-        "sha256": "758669c780238031334020ad7af44b5b17612a697cbeff172662788995967ba5"
+        "sha256": "90108cb1454459d3aef57de9644c3a448f3a7f862ee8c70ebc8cb26c23157884"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs",
         "exists": true,
-        "sha256": "989158b6876e6ac1bbf70813bbe5e4a7f4d7055c8cd0cefa65531cae911eb575"
+        "sha256": "0dabd8282cd087a27b2e2c65bcf876b91aa91393bbd02ef0ba6de50b16878617"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
@@ -2797,7 +2797,7 @@
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
         "exists": true,
-        "sha256": "9753a446b1eddbbe3c45cddf4d19b297896c5052b77ccfb42e593c8d5590a16b"
+        "sha256": "b9bf4ea68431d54cddb76640fba8af92c591620b14ee98fd21630d2ef3bfdaa0"
       }
     ],
     "api36JourneyRecognition": {
