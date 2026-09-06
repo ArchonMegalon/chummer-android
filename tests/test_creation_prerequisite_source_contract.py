@@ -15133,7 +15133,21 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             write_error.call_args.args[1].endswith("-collection-error.txt")
         )
 
-    def test_pending_authority_timeout_bundle_is_pid_bound_and_never_anr_named(self) -> None:
+    def test_pending_timeout_shell_treats_transport_runtime_failure_as_evidence(self) -> None:
+        device = mock.Mock()
+        device.shell.side_effect = RuntimeError("classified ADB transport failure")
+
+        output, status = driver._safe_pending_timeout_shell(
+            device,
+            "dumpsys",
+            "activity",
+            "activities",
+        )
+
+        self.assertEqual("command-error", status)
+        self.assertIn("classified ADB transport failure", output)
+
+    def test_pending_authority_timeout_bundle_is_read_only_and_never_anr_named(self) -> None:
         class DiagnosticDevice:
             def __init__(self, evidence: Path) -> None:
                 self.evidence = evidence
@@ -15144,12 +15158,6 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 self.shell_calls.append((arguments, timeout))
                 if arguments == ("pidof", driver.shared.PACKAGE):
                     return "42 invalid 7 42"
-                if arguments[:2] == ("kill", "-3"):
-                    return ""
-                if arguments[:2] == ("debuggerd", "-b"):
-                    return f"native backtrace for {arguments[2]}"
-                if arguments[:2] == ("uiautomator", "dump"):
-                    return "UI hierarchy dumped"
                 return "diagnostic output"
 
             def run(
@@ -15159,7 +15167,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 text: bool = True,
             ) -> subprocess.CompletedProcess:
                 self.run_calls.append((arguments, timeout, text))
-                if arguments[:2] == ("exec-out", "cat"):
+                if arguments == driver.shared.ADB_READ_ONLY_HIERARCHY_ARGUMENTS:
                     return subprocess.CompletedProcess(
                         arguments,
                         0,
@@ -15177,17 +15185,14 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as directory:
             device = DiagnosticDevice(Path(directory))
-            with mock.patch.object(driver.time, "sleep") as sleep:
-                manifest = driver.capture_creation_authority_pending_timeout_diagnostics(
-                    device,
-                    timeout=30.0,
-                )
+            manifest = driver.capture_creation_authority_pending_timeout_diagnostics(
+                device,
+                timeout=30.0,
+            )
 
             prefix = driver.CREATION_AUTHORITY_PENDING_TIMEOUT_PREFIX
             expected_artifacts = {
                 f"{prefix}-process-ids.txt",
-                f"{prefix}-managed-thread-signal.txt",
-                f"{prefix}-native-backtrace.txt",
                 f"{prefix}-activity-activities.txt",
                 f"{prefix}-activity-processes.txt",
                 f"{prefix}-window-windows.txt",
@@ -15213,7 +15218,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 manifest["selectors"],
             )
             self.assertEqual(
-                driver.CREATION_AUTHORITY_PENDING_TIMEOUT_HIERARCHY,
+                driver.shared.ADB_READ_ONLY_HIERARCHY_ARGUMENTS[-1],
                 manifest["hierarchySource"],
             )
             self.assertNotIn("anr", json.dumps(manifest).casefold())
@@ -15235,12 +15240,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                     for artifact in manifest["artifacts"]
                 )
             )
-            self.assertEqual([mock.call(0.75)], sleep.call_args_list)
 
         shell_commands = [call[0] for call in device.shell_calls]
-        for process_id in ("7", "42"):
-            self.assertIn(("kill", "-3", process_id), shell_commands)
-            self.assertIn(("debuggerd", "-b", process_id), shell_commands)
         for command in (
             ("dumpsys", "activity", "activities"),
             ("dumpsys", "activity", "processes"),
@@ -15248,19 +15249,30 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             ("logcat", "-d", "-b", "all", "-v", "threadtime", "-t", "4000"),
         ):
             self.assertIn(command, shell_commands)
+        self.assertFalse(
+            any(command and command[0] in {"kill", "debuggerd"} for command in shell_commands),
+            "Pending-timeout evidence must never signal or attach to the application process.",
+        )
         self.assertIn(
-            (
-                "uiautomator",
-                "dump",
-                "--compressed",
-                driver.CREATION_AUTHORITY_PENDING_TIMEOUT_HIERARCHY,
-            ),
-            shell_commands,
+            (driver.shared.ADB_READ_ONLY_HIERARCHY_ARGUMENTS, 15, True),
+            device.run_calls,
         )
         self.assertIn(
             (("exec-out", "screencap", "-p"), 15, False),
             device.run_calls,
         )
+        for command in shell_commands:
+            self.assertEqual(
+                "read-only-retryable",
+                driver.shared.adb_command_retry_policy(("shell", *command))[0],
+                f"Pending-timeout shell diagnostic is not read-only: {command!r}",
+            )
+        for command, _, _ in device.run_calls:
+            self.assertEqual(
+                "read-only-retryable",
+                driver.shared.adb_command_retry_policy(command)[0],
+                f"Pending-timeout direct diagnostic is not read-only: {command!r}",
+            )
 
     def test_direct_priority_bootstrap_does_not_require_a_second_saved_workspace(self) -> None:
         source = DRIVER.read_text(encoding="utf-8")
