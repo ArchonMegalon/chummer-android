@@ -275,6 +275,18 @@ public static class BuildPageUiProjection
     public const string CreationKarmaAuthorityRequired =
         "creation-karma-authority-required";
 
+    /// <summary>
+    /// A terminal typed or finalization authority projection can rebuild the complete
+    /// dashboard. Rows from the preceding render must therefore stay non-interactive
+    /// until every projection that can still publish such a refresh is terminal.
+    /// </summary>
+    public static bool IsCreationDashboardNavigationStable(
+        CreationDashboardAuthorityProjection? projection,
+        bool finalizationProjectionTerminal)
+        => projection is not null
+           && !projection.Progress.HasLoading
+           && finalizationProjectionTerminal;
+
     public static BuildPageRouteMarker RouteMarker(CharacterProfileSection? profile)
         => profile switch
         {
@@ -818,6 +830,7 @@ public sealed class BuildPage : NativePageBase
         }
 
         CreationDashboardAuthorityProjection? projection = ResolveCreationProjection(snapshot);
+        PrepareCreationFinalizationProjection(snapshot, projection);
         CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>? prerequisite =
             projection?.Prerequisite;
         CharacterCreationFoundationResult<CharacterCreationAttributesState>? attributes =
@@ -839,7 +852,7 @@ public sealed class BuildPage : NativePageBase
             _body.Add(NativeTheme.Card(loading));
             return;
         }
-        else if (projection.HasFailure)
+        if (projection.HasFailure)
         {
             VerticalStackLayout failure = new() { Spacing = 8 };
             Label failed = NativeTheme.Body(
@@ -857,11 +870,23 @@ public sealed class BuildPage : NativePageBase
             failure.Add(retry);
             _body.Add(NativeTheme.Card(failure));
         }
-        else if (projection.Progress.HasLoading)
+        if (projection.Progress.HasLoading)
         {
             Label loading = NativeTheme.Body(
-                $"Refreshing {projection.Progress.LoadingCount.ToString(CultureInfo.InvariantCulture)} "
-                + "remaining rule projections in the background. Ready steps stay interactive and this page updates automatically.",
+                WizardStrings.Format(
+                    "Creation.Dashboard.PartialLoading",
+                    "Refreshing {0} remaining rule projections in the background. Navigation stays disabled and unlocks automatically after the stable update.",
+                    projection.Progress.LoadingCount),
+                NativeTheme.Muted);
+            loading.AutomationId = "creation-dashboard-authority-partial-loading";
+            _body.Add(NativeTheme.Card(loading));
+        }
+        else if (!IsCreationDashboardNavigationStableForCurrentRender(projection))
+        {
+            Label loading = NativeTheme.Body(
+                WizardStrings.Get(
+                    "Creation.Dashboard.NavigationLoadingDetail",
+                    "Loading the remaining creation rules. Steps unlock automatically as soon as this dashboard is stable."),
                 NativeTheme.Muted);
             loading.AutomationId = "creation-dashboard-authority-partial-loading";
             _body.Add(NativeTheme.Card(loading));
@@ -884,7 +909,7 @@ public sealed class BuildPage : NativePageBase
             skills,
             creationContacts,
             creationResources);
-        AddFinalizationReviewAction(snapshot);
+        AddFinalizationReviewAction();
     }
 
     private void ScheduleCreationDashboardRouteReady(
@@ -939,6 +964,12 @@ public sealed class BuildPage : NativePageBase
                         || header.Width <= 0
                         || header.Height <= 0
                         || !ReferenceEquals(Shell.Current?.CurrentPage, this))
+                    {
+                        return;
+                    }
+
+                    if (!IsCreationDashboardNavigationStableForCurrentRender(
+                            _creationProjection))
                     {
                         return;
                     }
@@ -1002,6 +1033,8 @@ public sealed class BuildPage : NativePageBase
         CreationDashboardAuthorityProjection? projection,
         CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>? prerequisite)
     {
+        bool navigationStable =
+            IsCreationDashboardNavigationStableForCurrentRender(projection);
         bool prerequisiteMethod = snapshot.BuildMethod is (CharacterCreationBuildMethods.Priority
             or CharacterCreationBuildMethods.SumToTen);
         bool lifeModuleMethod = string.Equals(
@@ -1047,16 +1080,24 @@ public sealed class BuildPage : NativePageBase
         string detail = $"Active stage: {activeStage} · {authorityDetail}";
         if (canOpen && !CurrentPhoneWizardScope.CoversCreationMethod(snapshot.BuildMethod))
             detail = CurrentPhoneWizardScope.MarkExperimental(detail);
+        if (!navigationStable)
+            detail = WizardStrings.Get(
+                "Creation.Dashboard.NavigationLoadingDetail",
+                "Loading the remaining creation rules. Steps unlock automatically as soon as this dashboard is stable.");
         _body.Add(NativeTheme.NavigationRow(
             $"Build method · {method}",
             detail,
             selected,
-            enabled: canOpen,
+            enabled: canOpen && navigationStable,
             automationId: "creation-stage-method"));
     }
 
-    private void AddFinalizationReviewAction(CharacterCreationWizardSnapshot snapshot)
+    private void PrepareCreationFinalizationProjection(
+        CharacterCreationWizardSnapshot snapshot,
+        CreationDashboardAuthorityProjection? projection)
     {
+        if (projection is null || projection.Progress.HasLoading)
+            return;
         if (!CreationDashboardProjectionBinding.TryCreate(
                 Coordinator.State,
                 snapshot,
@@ -1070,7 +1111,8 @@ public sealed class BuildPage : NativePageBase
             _creationFinalizationAuthority = null;
             _creationFinalizationFailureReason = null;
         }
-        if (_creationFinalizationAuthority is null)
+        if (_creationFinalizationAuthority is null
+            && _creationFinalizationFailureReason is null)
         {
             _creationFinalizationQueue.TryRequest(
                 binding,
@@ -1094,7 +1136,23 @@ public sealed class BuildPage : NativePageBase
                     : "creation-finalization-authority-load-failed";
             }
         }
+    }
 
+    private bool IsCreationDashboardNavigationStableForCurrentRender(
+        CreationDashboardAuthorityProjection? projection)
+    {
+        CreationDashboardProjectionBinding? binding = projection?.Binding;
+        bool finalizationProjectionTerminal = binding is not null
+            && _creationFinalizationBinding?.Equals(binding) == true
+            && (_creationFinalizationAuthority is not null
+                || _creationFinalizationFailureReason is not null);
+        return BuildPageUiProjection.IsCreationDashboardNavigationStable(
+            projection,
+            finalizationProjectionTerminal);
+    }
+
+    private void AddFinalizationReviewAction()
+    {
         CharacterCreationFinalizationResult<CharacterCreationFinalizationState>? authority =
             _creationFinalizationAuthority;
         CreationPriorityLegalPathProjection legalPath =
@@ -1105,7 +1163,9 @@ public sealed class BuildPage : NativePageBase
                {
                    Outcome: CharacterCreationFinalizationOutcomes.Available,
                    Value.CanReview: true
-               })
+               }
+            || !IsCreationDashboardNavigationStableForCurrentRender(
+                _creationProjection))
         {
             return;
         }
@@ -1598,6 +1658,8 @@ public sealed class BuildPage : NativePageBase
         CharacterCreationContactsInteractionLoadResult? creationContacts,
         CharacterCreationResourcesInteractionLoadResult? creationResources)
     {
+        bool navigationStable =
+            IsCreationDashboardNavigationStableForCurrentRender(projection);
         _body.Add(NativeTheme.Eyebrow("Generation steps"));
         foreach (CharacterCreationWizardStageState stage in snapshot.Steps)
         {
@@ -1749,11 +1811,15 @@ public sealed class BuildPage : NativePageBase
             }
             if (canOpen && !CurrentPhoneWizardScope.CoversCreationStage(stage.StepId))
                 detail = CurrentPhoneWizardScope.MarkExperimental(detail);
+            if (!navigationStable)
+                detail = WizardStrings.Get(
+                    "Creation.Dashboard.NavigationLoadingDetail",
+                    "Loading the remaining creation rules. Steps unlock automatically as soon as this dashboard is stable.");
             Border row = NativeTheme.NavigationRow(
                 stage.Label,
                 detail,
                 selected,
-                enabled: canOpen,
+                enabled: canOpen && navigationStable,
                 automationId: $"creation-stage-{Token(stage.StepId)}");
             _body.Add(row);
         }
@@ -1786,6 +1852,8 @@ public sealed class BuildPage : NativePageBase
         CharacterCreationContactsInteractionLoadResult? creationContacts,
         CharacterCreationResourcesInteractionLoadResult? creationResources)
     {
+        bool navigationStable =
+            IsCreationDashboardNavigationStableForCurrentRender(projection);
         CharacterCreationWizardStageState? active = snapshot.Steps.FirstOrDefault(stage =>
             string.Equals(stage.StepId, snapshot.ActiveStepId, StringComparison.Ordinal));
         string[] candidateIds = new[] { snapshot.ActiveStepId }
@@ -1967,11 +2035,15 @@ public sealed class BuildPage : NativePageBase
                     : stage.Blockers.FirstOrDefault() ?? "Blocked by the current projection";
             if (canOpen && !CurrentPhoneWizardScope.CoversCreationStage(stepId))
                 detail = CurrentPhoneWizardScope.MarkExperimental(detail);
+            if (!navigationStable)
+                detail = WizardStrings.Get(
+                    "Creation.Dashboard.NavigationLoadingDetail",
+                    "Loading the remaining creation rules. Steps unlock automatically as soon as this dashboard is stable.");
             _body.Add(NativeTheme.NavigationRow(
                 stage.Label,
                 detail,
                 selected,
-                canOpen,
+                canOpen && navigationStable,
                 $"creation-next-{Token(stepId)}"));
         }
     }

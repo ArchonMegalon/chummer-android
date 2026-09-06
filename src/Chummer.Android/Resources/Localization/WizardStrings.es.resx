@@ -13,6 +13,8 @@
   <data name="CurrentPhoneWizard.CareerHubDetail" xml:space="preserve"><value>Hay siete flujos con autoridad de vista previa; las rutas adicionales están marcadas como experimentales.</value></data>
   <data name="CurrentPhoneWizard.ContainsExperimentalRoutes" xml:space="preserve"><value>{0} · Contiene rutas experimentales no cubiertas por la autoridad de la vista previa actual.</value></data>
   <data name="CurrentPhoneWizard.ExperimentalRoute" xml:space="preserve"><value>{0} · Experimental — no cubierto por la autoridad de la vista previa actual.</value></data>
+  <data name="Creation.Dashboard.NavigationLoadingDetail" xml:space="preserve"><value>Cargando las reglas de creación restantes. Los pasos se habilitarán automáticamente en cuanto este panel sea estable.</value></data>
+  <data name="Creation.Dashboard.PartialLoading" xml:space="preserve"><value>Se están actualizando {0} proyecciones de reglas restantes en segundo plano. La navegación permanece deshabilitada y se habilitará automáticamente tras la actualización estable.</value></data>
   <data name="Common.Rank" xml:space="preserve"><value>Rango {0}</value></data>
   <data name="Common.RankLabel" xml:space="preserve"><value>Rango</value></data>
   <data name="Common.Remaining" xml:space="preserve"><value>Restante</value></data>

@@ -50,6 +50,8 @@ internal static class Program
             (nameof(CreationSkillsCatalogPagingBoundsNativeControlMaterializationAsync), CreationSkillsCatalogPagingBoundsNativeControlMaterializationAsync),
             (nameof(PrerequisiteAuthorityPublishesBeforeSlowLaterPhasesAsync), PrerequisiteAuthorityPublishesBeforeSlowLaterPhasesAsync),
             (nameof(CreationAuthorityPhaseMergesAreIndependentAndDeterministicAsync), CreationAuthorityPhaseMergesAreIndependentAndDeterministicAsync),
+            (nameof(CreationDashboardNavigationWaitsForStableRenderAsync), CreationDashboardNavigationWaitsForStableRenderAsync),
+            (nameof(CreationFinalizationCompletionCannotRaceDashboardNavigationAsync), CreationFinalizationCompletionCannotRaceDashboardNavigationAsync),
             (nameof(CreationDashboardReadyMarkerRequiresCurrentTerminalAuthorityAsync), CreationDashboardReadyMarkerRequiresCurrentTerminalAuthorityAsync),
             (nameof(ExactTypedCreationAuthorityRehydratesConservativeStageAsync), ExactTypedCreationAuthorityRehydratesConservativeStageAsync),
             (nameof(ResourcesAuxiliaryStateDigestUsesRawLowerSha256Async), ResourcesAuxiliaryStateDigestUsesRawLowerSha256Async),
@@ -1713,6 +1715,149 @@ internal static class Program
             && sumToTen.Contacts == CreationDashboardAuthorityPhaseState.Loading,
             "Contacts must remain an independent Core phase even when Priority-only Skills do not apply.");
         return Task.CompletedTask;
+    }
+
+    private static Task CreationDashboardNavigationWaitsForStableRenderAsync()
+    {
+        var binding = new CreationDashboardProjectionBinding(
+            "phone-dashboard-navigation",
+            ContentRevision: 12,
+            SavedRevision: 11,
+            ContentDigest: CanonicalDigest('1'),
+            SourceDigest: CanonicalDigest('2'),
+            RuntimeFingerprint: CanonicalDigest('3'),
+            CharacterCreationBuildMethods.Priority,
+            SnapshotDigest: CanonicalDigest('4'));
+        CreationDashboardAuthorityProjection loading =
+            CreationDashboardAuthorityProjection.Loading(binding);
+        Require(
+            !BuildPageUiProjection.IsCreationDashboardNavigationStable(
+                null,
+                finalizationProjectionTerminal: true),
+            "An absent Creation authority projection enabled dashboard navigation.");
+        Require(
+            !BuildPageUiProjection.IsCreationDashboardNavigationStable(
+                loading,
+                finalizationProjectionTerminal: true),
+            "The initial loading projection enabled dashboard navigation.");
+
+        CreationDashboardAuthorityProjection prerequisiteReady = loading with
+        {
+            Progress = loading.Progress.WithTerminal(
+                CreationDashboardAuthorityPhase.Prerequisite,
+                failed: false)
+        };
+        Require(
+            !BuildPageUiProjection.IsCreationDashboardNavigationStable(
+                prerequisiteReady,
+                finalizationProjectionTerminal: true),
+            "A rendered prerequisite route stayed tappable while later phases could rebuild the dashboard.");
+
+        CreationDashboardAuthorityProjection onePhaseRemaining = prerequisiteReady with
+        {
+            Progress = prerequisiteReady.Progress
+                .WithTerminal(CreationDashboardAuthorityPhase.Attributes, failed: false)
+                .WithTerminal(CreationDashboardAuthorityPhase.Skills, failed: true)
+                .WithTerminal(CreationDashboardAuthorityPhase.Contacts, failed: false)
+        };
+        Require(
+            !BuildPageUiProjection.IsCreationDashboardNavigationStable(
+                onePhaseRemaining,
+                finalizationProjectionTerminal: true),
+            "A partial failure hid a remaining refresh-capable loading phase.");
+
+        CreationDashboardAuthorityProjection terminalFailure = onePhaseRemaining with
+        {
+            Progress = onePhaseRemaining.Progress.WithTerminal(
+                CreationDashboardAuthorityPhase.Resources,
+                failed: false)
+        };
+        Require(
+            BuildPageUiProjection.IsCreationDashboardNavigationStable(
+                terminalFailure,
+                finalizationProjectionTerminal: true),
+            "An unrelated terminal failure kept unaffected ready routes disabled after destructive refreshes ended.");
+
+        CreationDashboardAuthorityProjection terminalReady = terminalFailure with
+        {
+            Progress = terminalFailure.Progress.WithTerminal(
+                CreationDashboardAuthorityPhase.Skills,
+                failed: false)
+        };
+        Require(
+            BuildPageUiProjection.IsCreationDashboardNavigationStable(
+                terminalReady,
+                finalizationProjectionTerminal: true),
+            "Terminal Creation authority did not unlock navigation after the stable render.");
+        return Task.CompletedTask;
+    }
+
+    private static async Task CreationFinalizationCompletionCannotRaceDashboardNavigationAsync()
+    {
+        var binding = new CreationDashboardProjectionBinding(
+            "phone-dashboard-finalization-race",
+            ContentRevision: 12,
+            SavedRevision: 11,
+            ContentDigest: CanonicalDigest('1'),
+            SourceDigest: CanonicalDigest('2'),
+            RuntimeFingerprint: CanonicalDigest('3'),
+            CharacterCreationBuildMethods.Priority,
+            SnapshotDigest: CanonicalDigest('4'));
+        CreationDashboardAuthorityPhaseProgress terminalProgress =
+            CreationDashboardAuthorityPhaseProgress
+                .ForBuildMethod(CharacterCreationBuildMethods.Priority)
+                .WithTerminal(CreationDashboardAuthorityPhase.Prerequisite, failed: false)
+                .WithTerminal(CreationDashboardAuthorityPhase.Attributes, failed: false)
+                .WithTerminal(CreationDashboardAuthorityPhase.Skills, failed: false)
+                .WithTerminal(CreationDashboardAuthorityPhase.Contacts, failed: false)
+                .WithTerminal(CreationDashboardAuthorityPhase.Resources, failed: false);
+        var projection = new CreationDashboardAuthorityProjection(
+            binding,
+            terminalProgress,
+            Prerequisite: null,
+            Attributes: null,
+            Skills: null,
+            Contacts: null,
+            Resources: null);
+        using var finalizationQueue = new LatestBackgroundProjectionQueue<
+            CreationDashboardProjectionBinding,
+            string>();
+        using var finalizationEntered = new ManualResetEventSlim();
+        using var releaseFinalization = new ManualResetEventSlim();
+        var completion = new TaskCompletionSource<
+            BackgroundProjectionCompletion<CreationDashboardProjectionBinding, string>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        finalizationQueue.Completed += value => completion.TrySetResult(value);
+        finalizationQueue.TryRequest(
+            binding,
+            (_, cancellationToken) =>
+            {
+                finalizationEntered.Set();
+                releaseFinalization.Wait(cancellationToken);
+                return "terminal";
+            },
+            out BackgroundProjectionRequest<CreationDashboardProjectionBinding> request);
+        Require(
+            finalizationEntered.Wait(TimeSpan.FromSeconds(5)),
+            "The finalization projection never entered its background worker.");
+        Require(
+            !BuildPageUiProjection.IsCreationDashboardNavigationStable(
+                projection,
+                finalizationProjectionTerminal: false),
+            "A method tap was enabled while finalization could still rebuild the dashboard.");
+
+        releaseFinalization.Set();
+        await completion.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Require(
+            finalizationQueue.TryTake(request, out string result, out Exception? error)
+            && error is null
+            && result == "terminal",
+            "The terminal finalization projection was not accepted exactly once.");
+        Require(
+            BuildPageUiProjection.IsCreationDashboardNavigationStable(
+                projection,
+                finalizationProjectionTerminal: true),
+            "Navigation did not unlock after the final destructive refresh source became terminal.");
     }
 
     private static Task CreationDashboardReadyMarkerRequiresCurrentTerminalAuthorityAsync()

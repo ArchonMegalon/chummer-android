@@ -13,6 +13,8 @@
   <data name="CurrentPhoneWizard.CareerHubDetail" xml:space="preserve"><value>Seven Preview-authority flows are available; additional routes are marked Experimental.</value></data>
   <data name="CurrentPhoneWizard.ContainsExperimentalRoutes" xml:space="preserve"><value>{0} · Contains Experimental routes that are not covered by the current Preview authority.</value></data>
   <data name="CurrentPhoneWizard.ExperimentalRoute" xml:space="preserve"><value>{0} · Experimental — not covered by the current Preview authority.</value></data>
+  <data name="Creation.Dashboard.NavigationLoadingDetail" xml:space="preserve"><value>Loading the remaining creation rules. Steps unlock automatically as soon as this dashboard is stable.</value></data>
+  <data name="Creation.Dashboard.PartialLoading" xml:space="preserve"><value>Refreshing {0} remaining rule projections in the background. Navigation stays disabled and unlocks automatically after the stable update.</value></data>
   <data name="Common.Rank" xml:space="preserve"><value>Rank {0}</value></data>
   <data name="Common.RankLabel" xml:space="preserve"><value>Rank</value></data>
   <data name="Common.Remaining" xml:space="preserve"><value>Remaining</value></data>

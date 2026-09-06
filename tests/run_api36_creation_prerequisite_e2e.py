@@ -4811,7 +4811,10 @@ def capture_creation_authority_pending_timeout_diagnostics(
     manifest = {
         "schemaVersion": 1,
         "diagnosticKind": "creation-dashboard-authority-pending-timeout",
-        "selector": "creation-dashboard-authority-loading",
+        "selectors": [
+            "creation-dashboard-authority-loading",
+            "creation-dashboard-authority-partial-loading",
+        ],
         "boundedWaitSeconds": timeout,
         "package": shared.PACKAGE,
         "processIds": list(process_ids),
@@ -4910,6 +4913,7 @@ def wait_creation_dashboard_authority(
             for selector in (
                 "creation-dashboard-authority-failed",
                 "creation-dashboard-authority-loading",
+                "creation-dashboard-authority-partial-loading",
             )
         }
         ambiguous = {
@@ -4929,7 +4933,10 @@ def wait_creation_dashboard_authority(
             raise RuntimeError(
                 "Creation dashboard reported an explicit authority projection failure"
             )
-        if not matches["creation-dashboard-authority-loading"]:
+        if not (
+            matches["creation-dashboard-authority-loading"]
+            or matches["creation-dashboard-authority-partial-loading"]
+        ):
             if resolved_viewport_out is not None:
                 resolved_viewport_out.append(current_observation)
             record_observation("resolved")

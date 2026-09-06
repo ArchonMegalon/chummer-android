@@ -14834,10 +14834,16 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
             def hierarchy(self):
                 self.loading_reads += 1
-                if self.loading_reads < 3:
+                if self.loading_reads == 1:
                     return [
                         driver.shared.UiNode(
                             {"resource-id": "creation-dashboard-authority-loading"}
+                        )
+                    ]
+                if self.loading_reads == 2:
+                    return [
+                        driver.shared.UiNode(
+                            {"resource-id": "creation-dashboard-authority-partial-loading"}
                         )
                     ]
                 return [driver.shared.UiNode({"resource-id": "creation-wizard-dashboard"})]
@@ -14887,6 +14893,82 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertIn(
             "projectionBoundStage && !string.IsNullOrWhiteSpace(projectionBlocker)",
             source,
+        )
+
+    def test_dashboard_navigation_waits_for_stable_authority_render(self) -> None:
+        source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
+        method = source[
+            source.index("private void AddCreationMethodRoute(") :
+            source.index("private void AddFinalizationReviewAction(")
+        ]
+        stages = source[
+            source.index("private void AddWizardStages(") :
+            source.index("private void AddCompletionBlockers(")
+        ]
+        next_steps = source[
+            source.index("private void AddLegalNextSteps(") :
+            source.index("private static string? ProjectionStageBlocker(")
+        ]
+
+        self.assertIn(
+            "&& !projection.Progress.HasLoading",
+            source,
+        )
+        self.assertIn("&& finalizationProjectionTerminal", source)
+        self.assertNotIn("Ready steps stay interactive", source)
+        self.assertIn(
+            "Navigation stays disabled and unlocks automatically after the stable update.",
+            source,
+        )
+        self.assertIn('"Creation.Dashboard.PartialLoading"', source)
+        self.assertGreaterEqual(
+            source.count('loading.AutomationId = "creation-dashboard-authority-partial-loading";'),
+            2,
+        )
+        route_ready = source[
+            source.index("private async Task EmitCreationDashboardRouteReadyAsync(") :
+            source.index("private void AddCreationMethodRoute(")
+        ]
+        self.assertIn(
+            "IsCreationDashboardNavigationStableForCurrentRender(\n                            _creationProjection)",
+            route_ready,
+        )
+        finalization = source[
+            source.index("private void AddFinalizationReviewAction(") :
+            source.index("private void AddCreationFinalizationStatus(")
+        ]
+        for route_source in (method, stages, next_steps):
+            with self.subTest(route=route_source[:80]):
+                self.assertIn(
+                    "IsCreationDashboardNavigationStableForCurrentRender(projection)",
+                    route_source,
+                )
+                self.assertIn(
+                    '"Creation.Dashboard.NavigationLoadingDetail"',
+                    route_source,
+                )
+                self.assertIn("canOpen && navigationStable", route_source)
+        self.assertIn(
+            "IsCreationDashboardNavigationStableForCurrentRender(\n                _creationProjection)",
+            finalization,
+        )
+        dashboard = source[
+            source.index("private void AddCreationWizardDashboard()") :
+            source.index("private void ScheduleCreationDashboardRouteReady(")
+        ]
+        self.assertLess(
+            dashboard.index("PrepareCreationFinalizationProjection(snapshot, projection);"),
+            dashboard.index("AddCreationMethodRoute(snapshot, projection, prerequisite);"),
+        )
+        prepare_finalization = source[
+            source.index("private void PrepareCreationFinalizationProjection(") :
+            source.index("private bool IsCreationDashboardNavigationStableForCurrentRender(")
+        ]
+        self.assertIn(
+            "&& _creationFinalizationFailureReason is null",
+            prepare_finalization,
+            "A failed finalization load must stay terminal until the explicit Retry authority action; "
+            "an automatic retry can otherwise rebuild the dashboard after navigation unlocks.",
         )
 
     def test_dashboard_loads_and_merges_creation_authority_in_independent_phases(self) -> None:
@@ -15122,6 +15204,13 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             self.assertEqual(
                 "creation-dashboard-authority-pending-timeout",
                 manifest["diagnosticKind"],
+            )
+            self.assertEqual(
+                [
+                    "creation-dashboard-authority-loading",
+                    "creation-dashboard-authority-partial-loading",
+                ],
+                manifest["selectors"],
             )
             self.assertEqual(
                 driver.CREATION_AUTHORITY_PENDING_TIMEOUT_HIERARCHY,
