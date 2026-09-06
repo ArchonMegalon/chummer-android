@@ -403,9 +403,256 @@ public static class BuildPageUiProjection
         => queue.TryAccept(request);
 }
 
+/// <summary>
+/// Protects a Creation navigation gesture from dashboard rebuilds published between
+/// the hidden button's Pressed and Clicked events. Background completions are still
+/// accepted immediately; only their destructive visual refresh is coalesced.
+/// </summary>
+public sealed class CreationNavigationRefreshLease
+{
+    private enum LeaseState
+    {
+        Idle,
+        Pressed,
+        Navigating
+    }
+
+    private readonly object _sync = new();
+    private LeaseState _state;
+    private bool _refreshPending;
+    private long _generation;
+
+    public bool IsActive
+    {
+        get
+        {
+            lock (_sync)
+                return _state != LeaseState.Idle;
+        }
+    }
+
+    public bool HasPendingRefresh
+    {
+        get
+        {
+            lock (_sync)
+                return _refreshPending;
+        }
+    }
+
+    public long ActiveGeneration
+    {
+        get
+        {
+            lock (_sync)
+                return _state == LeaseState.Idle ? 0 : _generation;
+        }
+    }
+
+    public long BeginPress()
+    {
+        lock (_sync)
+        {
+            if (_state == LeaseState.Navigating)
+                return 0;
+
+            _generation = NextGeneration(_generation);
+            _state = LeaseState.Pressed;
+            return _generation;
+        }
+    }
+
+    public bool TryBeginNavigation(long pressGeneration, out long navigationGeneration)
+    {
+        lock (_sync)
+        {
+            navigationGeneration = 0;
+            if (_state == LeaseState.Navigating)
+                return false;
+
+            if (_state == LeaseState.Pressed)
+            {
+                if (pressGeneration == 0 || pressGeneration != _generation)
+                    return false;
+            }
+            else
+            {
+                // Accessibility activation can publish Clicked without Pressed.
+                // A non-zero generation from an old rendered button is stale.
+                if (pressGeneration != 0)
+                    return false;
+                _generation = NextGeneration(_generation);
+            }
+
+            _state = LeaseState.Navigating;
+            navigationGeneration = _generation;
+            return true;
+        }
+    }
+
+    public bool TryDeferRefresh()
+    {
+        lock (_sync)
+        {
+            if (_state == LeaseState.Idle)
+                return false;
+
+            _refreshPending = true;
+            return true;
+        }
+    }
+
+    public bool CancelPress(long pressGeneration)
+        => TryCancelPress(pressGeneration, out bool refresh) && refresh;
+
+    public bool TryCancelPress(long pressGeneration, out bool refreshRequired)
+    {
+        lock (_sync)
+        {
+            refreshRequired = false;
+            if (_state != LeaseState.Pressed || pressGeneration != _generation)
+                return false;
+
+            refreshRequired = Release(discardPending: false);
+            return true;
+        }
+    }
+
+    public bool CompleteNavigation(long navigationGeneration, bool departed)
+    {
+        lock (_sync)
+        {
+            if (_state != LeaseState.Navigating || navigationGeneration != _generation)
+                return false;
+
+            return Release(discardPending: departed);
+        }
+    }
+
+    public void DiscardForDeparture()
+    {
+        lock (_sync)
+            Release(discardPending: true);
+    }
+
+    private bool Release(bool discardPending)
+    {
+        bool refresh = _refreshPending && !discardPending;
+        _refreshPending = false;
+        _state = LeaseState.Idle;
+        return refresh;
+    }
+
+    private static long NextGeneration(long generation)
+    {
+        long next = unchecked(generation + 1);
+        return next == 0 ? 1 : next;
+    }
+}
+
+/// <summary>
+/// Settles Released cleanup through a positive delayed post. Android queues its
+/// PerformClick after the Released listener returns, so a same-turn dispatcher
+/// post can still run before MAUI publishes Clicked.
+/// </summary>
+public sealed class CreationNavigationReleaseScheduler
+{
+    private readonly Func<TimeSpan, Action, bool> _postDelayed;
+
+    public CreationNavigationReleaseScheduler(Func<TimeSpan, Action, bool> postDelayed)
+        => _postDelayed = postDelayed ?? throw new ArgumentNullException(nameof(postDelayed));
+
+    public bool TrySchedule(TimeSpan delay, Action callback)
+    {
+        if (delay <= TimeSpan.Zero)
+            throw new ArgumentOutOfRangeException(nameof(delay), "Release settlement must use a positive delay.");
+        ArgumentNullException.ThrowIfNull(callback);
+        return _postDelayed(delay, callback);
+    }
+}
+
+public sealed record CreationNavigationActionResult(
+    bool Claimed,
+    long Generation,
+    bool Departed,
+    bool Canceled,
+    bool RefreshRequired,
+    Exception? Error);
+
+/// <summary>
+/// Owns one Clicked navigation and converts cancellation/failure into a result.
+/// Exceptions from an async-void MAUI event must never escape to Android.
+/// </summary>
+public sealed class CreationNavigationActionRunner
+{
+    private readonly CreationNavigationRefreshLease _lease;
+
+    public CreationNavigationActionRunner(CreationNavigationRefreshLease lease)
+        => _lease = lease ?? throw new ArgumentNullException(nameof(lease));
+
+    public async Task<CreationNavigationActionResult> RunAsync(
+        long pressGeneration,
+        Func<Task> selected,
+        Func<bool> hasDeparted,
+        Action<bool, long>? claimObserved = null)
+    {
+        ArgumentNullException.ThrowIfNull(selected);
+        ArgumentNullException.ThrowIfNull(hasDeparted);
+        if (!_lease.TryBeginNavigation(pressGeneration, out long navigationGeneration))
+        {
+            claimObserved?.Invoke(false, pressGeneration);
+            return new CreationNavigationActionResult(
+                Claimed: false,
+                Generation: pressGeneration,
+                Departed: false,
+                Canceled: false,
+                RefreshRequired: false,
+                Error: null);
+        }
+        claimObserved?.Invoke(true, navigationGeneration);
+
+        bool canceled = false;
+        Exception? error = null;
+        try
+        {
+            await selected();
+        }
+        catch (OperationCanceledException)
+        {
+            canceled = true;
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            error = ex;
+        }
+
+        bool departed = false;
+        try
+        {
+            departed = hasDeparted();
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            // Route observation is part of the contained async-void boundary too.
+            // Complete the claim as a stayed-page failure so the lease cannot strand.
+            error ??= ex;
+        }
+        bool refresh = _lease.CompleteNavigation(navigationGeneration, departed);
+        return new CreationNavigationActionResult(
+            Claimed: true,
+            Generation: navigationGeneration,
+            Departed: departed,
+            Canceled: canceled,
+            RefreshRequired: refresh,
+            Error: error);
+    }
+}
+
 public sealed class BuildPage : NativePageBase
 {
     private const string CreationDashboardRouteReadyLogTag = "ChummerRoute";
+    private const string CreationNavigationTraceLogTag = "ChummerCreation";
+    private const int CreationNavigationTraceMaximumPerAppearance = 64;
     private const string CreationDashboardRouteReadyLogPrefix =
         "CHUMMER_CREATION_DASHBOARD_READY ";
     private static readonly JsonSerializerOptions CreationDashboardRouteReadyJson = new()
@@ -418,6 +665,8 @@ public sealed class BuildPage : NativePageBase
         TimeSpan.FromMilliseconds(250);
     private static readonly TimeSpan CreationDashboardRouteReadyMaximumWait =
         TimeSpan.FromSeconds(25);
+    private static readonly TimeSpan CreationNavigationReleaseSettlementDelay =
+        TimeSpan.FromMilliseconds(100);
     private readonly VerticalStackLayout _body = new()
     {
         Padding = new Thickness(20, 18, 20, 40),
@@ -454,6 +703,10 @@ public sealed class BuildPage : NativePageBase
     private CancellationTokenSource? _creationDashboardRouteReadyLifetime;
     private long _creationDashboardAppearanceGeneration;
     private long _creationDashboardRouteReadyEmittedGeneration = -1;
+    private readonly CreationNavigationRefreshLease _creationNavigationRefreshLease = new();
+    private readonly CreationNavigationReleaseScheduler _creationNavigationReleaseScheduler;
+    private readonly CreationNavigationActionRunner _creationNavigationActionRunner;
+    private int _creationNavigationTraceCount;
     private bool _resetScrollOnNextRefresh;
 
     public BuildPage(
@@ -465,6 +718,9 @@ public sealed class BuildPage : NativePageBase
         _resourcesPresenter = resourcesPresenter;
         _overviewPresenter = overviewPresenter;
         _gearPresenter = gearPresenter;
+        _creationNavigationReleaseScheduler = new(
+            (delay, action) => Dispatcher.DispatchDelayed(delay, action));
+        _creationNavigationActionRunner = new(_creationNavigationRefreshLease);
         Title = "Runner";
         AutomationId = "phone-runner-page";
         _save = new ToolbarItem
@@ -534,6 +790,7 @@ public sealed class BuildPage : NativePageBase
 
     protected override void OnAppearing()
     {
+        Interlocked.Exchange(ref _creationNavigationTraceCount, 0);
         _resetScrollOnNextRefresh = true;
         _creationDashboardRouteReadyLifetime?.Cancel();
         _creationDashboardRouteReadyLifetime?.Dispose();
@@ -544,6 +801,7 @@ public sealed class BuildPage : NativePageBase
 
     protected override void OnDisappearing()
     {
+        _creationNavigationRefreshLease.DiscardForDeparture();
         _creationDashboardRouteReadyLifetime?.Cancel();
         _creationDashboardRouteReadyLifetime?.Dispose();
         _creationDashboardRouteReadyLifetime = null;
@@ -818,6 +1076,7 @@ public sealed class BuildPage : NativePageBase
         }
 
         CreationDashboardAuthorityProjection? projection = ResolveCreationProjection(snapshot);
+        PrepareCreationFinalizationProjection(snapshot, projection);
         CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>? prerequisite =
             projection?.Prerequisite;
         CharacterCreationFoundationResult<CharacterCreationAttributesState>? attributes =
@@ -839,7 +1098,7 @@ public sealed class BuildPage : NativePageBase
             _body.Add(NativeTheme.Card(loading));
             return;
         }
-        else if (projection.HasFailure)
+        if (projection.HasFailure)
         {
             VerticalStackLayout failure = new() { Spacing = 8 };
             Label failed = NativeTheme.Body(
@@ -857,11 +1116,13 @@ public sealed class BuildPage : NativePageBase
             failure.Add(retry);
             _body.Add(NativeTheme.Card(failure));
         }
-        else if (projection.Progress.HasLoading)
+        if (projection.Progress.HasLoading)
         {
             Label loading = NativeTheme.Body(
-                $"Refreshing {projection.Progress.LoadingCount.ToString(CultureInfo.InvariantCulture)} "
-                + "remaining rule projections in the background. Ready steps stay interactive and this page updates automatically.",
+                WizardStrings.Format(
+                    "Creation.Dashboard.PartialLoading",
+                    "Refreshing {0} remaining rule projections in the background. Ready steps stay interactive and this page updates automatically.",
+                    projection.Progress.LoadingCount),
                 NativeTheme.Muted);
             loading.AutomationId = "creation-dashboard-authority-partial-loading";
             _body.Add(NativeTheme.Card(loading));
@@ -884,7 +1145,7 @@ public sealed class BuildPage : NativePageBase
             skills,
             creationContacts,
             creationResources);
-        AddFinalizationReviewAction(snapshot);
+        AddFinalizationReviewAction();
     }
 
     private void ScheduleCreationDashboardRouteReady(
@@ -1047,7 +1308,7 @@ public sealed class BuildPage : NativePageBase
         string detail = $"Active stage: {activeStage} · {authorityDetail}";
         if (canOpen && !CurrentPhoneWizardScope.CoversCreationMethod(snapshot.BuildMethod))
             detail = CurrentPhoneWizardScope.MarkExperimental(detail);
-        _body.Add(NativeTheme.NavigationRow(
+        _body.Add(CreationNavigationRow(
             $"Build method · {method}",
             detail,
             selected,
@@ -1055,8 +1316,184 @@ public sealed class BuildPage : NativePageBase
             automationId: "creation-stage-method"));
     }
 
-    private void AddFinalizationReviewAction(CharacterCreationWizardSnapshot snapshot)
+    private Border CreationNavigationRow(
+        string title,
+        string? detail,
+        Func<Task> selected,
+        bool enabled,
+        string automationId)
     {
+        long pressGeneration = 0;
+        return NativeTheme.NavigationRow(
+            title,
+            detail,
+            () => RunCreationNavigationAsync(selected, pressGeneration),
+            enabled,
+            automationId,
+            pressed: () => pressGeneration = BeginCreationNavigationPress(),
+            released: () => ScheduleCreationNavigationPressCancellation(pressGeneration));
+    }
+
+    private long BeginCreationNavigationPress()
+    {
+        long generation = _creationNavigationRefreshLease.BeginPress();
+        TraceCreationNavigation("pressed", generation);
+        return generation;
+    }
+
+    private void ScheduleCreationNavigationPressCancellation(long pressGeneration)
+    {
+        // Android posts PerformClick after Released. A positive DispatchDelayed
+        // settlement lets that native click claim this generation first.
+        try
+        {
+            bool scheduled = _creationNavigationReleaseScheduler.TrySchedule(
+                CreationNavigationReleaseSettlementDelay,
+                () =>
+                {
+                    try
+                    {
+                        if (_creationNavigationRefreshLease.TryCancelPress(
+                                pressGeneration,
+                                out bool refreshRequired))
+                        {
+                            TraceCreationNavigation("cancel", pressGeneration);
+                            if (refreshRequired && IsCurrentCreationDashboardPage())
+                                Refresh();
+                        }
+                    }
+                    catch (Exception ex) when (ex is not OutOfMemoryException)
+                    {
+                        if (IsCurrentCreationDashboardPage())
+                            _ = TryShowCreationNavigationErrorAsync(ex.Message);
+                    }
+                });
+            if (scheduled)
+                TraceCreationNavigation("released-scheduled", pressGeneration);
+            if (!scheduled && !IsCurrentCreationDashboardPage())
+                _creationNavigationRefreshLease.DiscardForDeparture();
+            // If a still-visible page dispatcher rejects the post, retain the pressed
+            // lease. Refreshing or canceling inline would recreate the Released/Clicked
+            // race. Clicked can still promote the same generation; a later press or page
+            // departure safely supersedes/discards it.
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            if (IsCurrentCreationDashboardPage())
+                _ = TryShowCreationNavigationErrorAsync(ex.Message);
+            else
+                _creationNavigationRefreshLease.DiscardForDeparture();
+        }
+    }
+
+    private async Task RunCreationNavigationAsync(
+        Func<Task> selected,
+        long pressGeneration)
+    {
+        try
+        {
+            CreationNavigationActionResult result =
+                await _creationNavigationActionRunner.RunAsync(
+                    pressGeneration,
+                    selected,
+                    () => !IsCurrentCreationDashboardPage(),
+                    (claimed, generation) => TraceCreationNavigation(
+                        claimed ? "click-claimed" : "click-rejected",
+                        generation));
+            if (!result.Claimed)
+                return;
+
+            if (result.Departed)
+                TraceCreationNavigation("departed", result.Generation);
+
+            if (result.Error is not null && IsCurrentCreationDashboardPage())
+                await TryShowCreationNavigationErrorAsync(result.Error.Message);
+            if (result.RefreshRequired && IsCurrentCreationDashboardPage())
+                Refresh();
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            // This method is awaited by an async-void MAUI Clicked handler. Contain
+            // every recoverable UI/dispatcher failure at that boundary.
+            if (IsCurrentCreationDashboardPage())
+                await TryShowCreationNavigationErrorAsync(ex.Message);
+        }
+    }
+
+    private async Task TryShowCreationNavigationErrorAsync(string message)
+    {
+        try
+        {
+            await DisplayAlertAsync("Chummer", message, "OK");
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+#if ANDROID
+            global::Android.Util.Log.Warn("ChummerNavigation", ex.Message);
+#else
+            Console.Error.WriteLine($"Creation navigation alert suppressed: {ex.GetType().Name}");
+#endif
+        }
+    }
+
+    private void RequestCreationAuthorityRefresh()
+    {
+        if (_creationNavigationRefreshLease.TryDeferRefresh())
+        {
+            TraceCreationNavigation(
+                "refresh-deferred",
+                _creationNavigationRefreshLease.ActiveGeneration);
+            return;
+        }
+        if (IsCurrentCreationDashboardPage())
+            Refresh();
+    }
+
+    protected override bool TryDeferCoordinatorRefresh()
+    {
+        bool deferred = Coordinator.State.Profile?.Created == false
+                        && _creationNavigationRefreshLease.TryDeferRefresh();
+        if (deferred)
+            TraceCreationNavigation(
+                "refresh-deferred",
+                _creationNavigationRefreshLease.ActiveGeneration);
+        return deferred;
+    }
+
+    private void TraceCreationNavigation(string eventName, long generation)
+    {
+        if (Interlocked.Increment(ref _creationNavigationTraceCount)
+            > CreationNavigationTraceMaximumPerAppearance)
+        {
+            return;
+        }
+
+        string message = $"navigation event={eventName} generation={generation}";
+        try
+        {
+#if ANDROID
+            global::Android.Util.Log.Info(CreationNavigationTraceLogTag, message);
+#else
+            Console.WriteLine($"{CreationNavigationTraceLogTag} {message}");
+#endif
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            // Diagnostic traces must never alter navigation behavior.
+            _ = ex;
+        }
+    }
+
+    private bool IsCurrentCreationDashboardPage()
+        => _creationDashboardRouteReadyLifetime is not null
+           && ReferenceEquals(Shell.Current?.CurrentPage, this);
+
+    private void PrepareCreationFinalizationProjection(
+        CharacterCreationWizardSnapshot snapshot,
+        CreationDashboardAuthorityProjection? projection)
+    {
+        if (projection is null || projection.Progress.HasLoading)
+            return;
         if (!CreationDashboardProjectionBinding.TryCreate(
                 Coordinator.State,
                 snapshot,
@@ -1070,7 +1507,8 @@ public sealed class BuildPage : NativePageBase
             _creationFinalizationAuthority = null;
             _creationFinalizationFailureReason = null;
         }
-        if (_creationFinalizationAuthority is null)
+        if (_creationFinalizationAuthority is null
+            && _creationFinalizationFailureReason is null)
         {
             _creationFinalizationQueue.TryRequest(
                 binding,
@@ -1094,7 +1532,10 @@ public sealed class BuildPage : NativePageBase
                     : "creation-finalization-authority-load-failed";
             }
         }
+    }
 
+    private void AddFinalizationReviewAction()
+    {
         CharacterCreationFinalizationResult<CharacterCreationFinalizationState>? authority =
             _creationFinalizationAuthority;
         CreationPriorityLegalPathProjection legalPath =
@@ -1113,7 +1554,11 @@ public sealed class BuildPage : NativePageBase
         Button review = NativeTheme.PrimaryButton(
             CurrentPhoneWizardScope.MarkExperimental("Review and finish creation"));
         review.AutomationId = "creation-finalization-open-review";
-        review.Clicked += async (_, _) => await RunAsync(async () =>
+        long pressGeneration = 0;
+        review.Pressed += (_, _) => pressGeneration = BeginCreationNavigationPress();
+        review.Released += (_, _) =>
+            ScheduleCreationNavigationPressCancellation(pressGeneration);
+        review.Clicked += async (_, _) => await RunCreationNavigationAsync(async () =>
         {
             CharacterCreationFinalizationResult<CharacterCreationFinalizationReview> result =
                 Coordinator.ReviewCreationFinalization(authority.Value.Binding);
@@ -1128,7 +1573,7 @@ public sealed class BuildPage : NativePageBase
                     ?? "The final creation authority changed. Reload the runner and review again.");
             }
             await Navigation.PushAsync(new CreationFinalizationPage(Coordinator, result.Value));
-        });
+        }, pressGeneration);
         _body.Add(review);
     }
 
@@ -1216,7 +1661,7 @@ public sealed class BuildPage : NativePageBase
             _creationFinalizationFailureReason = error is null
                 ? null
                 : "creation-finalization-authority-load-failed";
-            Refresh();
+            RequestCreationAuthorityRefresh();
         });
     }
 
@@ -1353,7 +1798,7 @@ public sealed class BuildPage : NativePageBase
                 if (BuildPageUiProjection.ConsumeRejectedCreationPhaseForRefresh(queue, request))
                 {
                     TraceCreationPhase(phase, "take-rejected-refresh", request);
-                    Refresh();
+                    RequestCreationAuthorityRefresh();
                 }
                 return;
             }
@@ -1382,7 +1827,7 @@ public sealed class BuildPage : NativePageBase
                     phase,
                     projection.Progress))
             {
-                Refresh();
+                RequestCreationAuthorityRefresh();
             }
         });
     }
@@ -1519,7 +1964,7 @@ public sealed class BuildPage : NativePageBase
     {
         CancelCreationProjectionQueues();
         _creationProjection = null;
-        Refresh();
+        RequestCreationAuthorityRefresh();
     }
 
     private void AddBudgetRibbon(
@@ -1749,7 +2194,7 @@ public sealed class BuildPage : NativePageBase
             }
             if (canOpen && !CurrentPhoneWizardScope.CoversCreationStage(stage.StepId))
                 detail = CurrentPhoneWizardScope.MarkExperimental(detail);
-            Border row = NativeTheme.NavigationRow(
+            Border row = CreationNavigationRow(
                 stage.Label,
                 detail,
                 selected,
@@ -1967,7 +2412,7 @@ public sealed class BuildPage : NativePageBase
                     : stage.Blockers.FirstOrDefault() ?? "Blocked by the current projection";
             if (canOpen && !CurrentPhoneWizardScope.CoversCreationStage(stepId))
                 detail = CurrentPhoneWizardScope.MarkExperimental(detail);
-            _body.Add(NativeTheme.NavigationRow(
+            _body.Add(CreationNavigationRow(
                 stage.Label,
                 detail,
                 selected,

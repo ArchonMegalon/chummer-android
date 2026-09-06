@@ -13,6 +13,7 @@
   <data name="CurrentPhoneWizard.CareerHubDetail" xml:space="preserve"><value>Sieben Flows gehören zur Preview-Autorität; zusätzliche Routen sind als experimentell markiert.</value></data>
   <data name="CurrentPhoneWizard.ContainsExperimentalRoutes" xml:space="preserve"><value>{0} · Enthält experimentelle Routen, die nicht durch die aktuelle Preview-Autorität abgedeckt sind.</value></data>
   <data name="CurrentPhoneWizard.ExperimentalRoute" xml:space="preserve"><value>{0} · Experimentell — nicht durch die aktuelle Preview-Autorität abgedeckt.</value></data>
+  <data name="Creation.Dashboard.PartialLoading" xml:space="preserve"><value>{0} verbleibende Regelprojektionen werden im Hintergrund aktualisiert. Bereite Schritte bleiben interaktiv und diese Seite wird automatisch aktualisiert.</value></data>
   <data name="Common.Rank" xml:space="preserve"><value>Rang {0}</value></data>
   <data name="Common.RankLabel" xml:space="preserve"><value>Rang</value></data>
   <data name="Common.Remaining" xml:space="preserve"><value>Verbleibend</value></data>

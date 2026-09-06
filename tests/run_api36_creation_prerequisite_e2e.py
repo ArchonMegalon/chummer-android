@@ -79,9 +79,6 @@ CREATION_AUTHORITY_PENDING_TIMEOUT_PREFIX = (
 CREATION_AUTHORITY_PENDING_TIMEOUT_MANIFEST = (
     f"{CREATION_AUTHORITY_PENDING_TIMEOUT_PREFIX}-manifest.json"
 )
-CREATION_AUTHORITY_PENDING_TIMEOUT_HIERARCHY = (
-    "/sdcard/chummer-creation-authority-pending-timeout.xml"
-)
 CREATION_AUTHORITY_PENDING_TIMEOUT_TEXT_LIMIT = 1_000_000
 CREATION_DASHBOARD_CONTINUITY_FAILURE_SCHEMA = (
     "chummer.android.creation-dashboard-continuity-failure/v1"
@@ -4556,53 +4553,13 @@ def _safe_pending_timeout_shell(
 ) -> tuple[str, str]:
     try:
         return device.shell(*arguments, timeout=15), "captured"
-    except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
+    except (
+        OSError,
+        RuntimeError,
+        subprocess.CalledProcessError,
+        subprocess.TimeoutExpired,
+    ) as error:
         return _pending_timeout_error(error), "command-error"
-
-
-def _capture_per_process_timeout_diagnostic(
-    device: shared.Device,
-    name: str,
-    process_ids: tuple[str, ...],
-    command: Callable[[str], tuple[str, ...]],
-) -> dict[str, object]:
-    if not process_ids:
-        return _write_pending_timeout_artifact(
-            device,
-            name,
-            "status=not-attempted\nreason=no-valid-package-process-id\n",
-            status="not-attempted",
-        )
-
-    sections: list[str] = []
-    statuses: list[str] = []
-    for process_id in process_ids:
-        arguments = command(process_id)
-        output, status = _safe_pending_timeout_shell(device, *arguments)
-        statuses.append(status)
-        sections.append(
-            "\n".join(
-                (
-                    f"pid={process_id}",
-                    f"command={' '.join(arguments)}",
-                    f"status={status}",
-                    output,
-                )
-            ).rstrip()
-        )
-    aggregate_status = (
-        "captured"
-        if all(status == "captured" for status in statuses)
-        else "command-error"
-        if all(status == "command-error" for status in statuses)
-        else "partial"
-    )
-    return _write_pending_timeout_artifact(
-        device,
-        name,
-        "\n\n".join(sections) + "\n",
-        status=aggregate_status,
-    )
 
 
 def capture_creation_authority_pending_timeout_diagnostics(
@@ -4652,27 +4609,6 @@ def capture_creation_authority_pending_timeout_diagnostics(
             status=process_status,
         )
     )
-    artifacts.append(
-        _capture_per_process_timeout_diagnostic(
-            device,
-            f"{prefix}-managed-thread-signal.txt",
-            process_ids,
-            lambda process_id: ("kill", "-3", process_id),
-        )
-    )
-    artifacts.append(
-        _capture_per_process_timeout_diagnostic(
-            device,
-            f"{prefix}-native-backtrace.txt",
-            process_ids,
-            lambda process_id: ("debuggerd", "-b", process_id),
-        )
-    )
-    if process_ids:
-        # Give Android's runtime logger one bounded beat to publish SIGQUIT output
-        # before the fixed post-signal logcat snapshot is taken.
-        time.sleep(0.75)
-
     for suffix, arguments in (
         ("activity-activities.txt", ("dumpsys", "activity", "activities")),
         ("activity-processes.txt", ("dumpsys", "activity", "processes")),
@@ -4688,57 +4624,29 @@ def capture_creation_authority_pending_timeout_diagnostics(
             )
         )
 
-    fresh_dump_output, fresh_dump_status = _safe_pending_timeout_shell(
-        device,
-        "uiautomator",
-        "dump",
-        "--compressed",
-        CREATION_AUTHORITY_PENDING_TIMEOUT_HIERARCHY,
-    )
-    hierarchy_errors = [
-        f"fresh_dump_status={fresh_dump_status}",
-        f"fresh_dump_output={fresh_dump_output}",
-    ]
+    hierarchy_errors: list[str] = []
     hierarchy_payload: str | None = None
     hierarchy_status = "command-error"
     hierarchy_source = ""
-    normalized_dump_output = fresh_dump_output.casefold()
-    fresh_dump_succeeded = fresh_dump_status == "captured" and any(
-        marker in normalized_dump_output
-        for marker in ("hierarchy dumped", "hierchary dumped")
-    )
-    hierarchy_paths = (
-        (
-            CREATION_AUTHORITY_PENDING_TIMEOUT_HIERARCHY,
-            shared.ADB_FILE_HIERARCHY_REMOTE_PATH,
+    try:
+        result = device.run(
+            *shared.ADB_READ_ONLY_HIERARCHY_ARGUMENTS,
+            timeout=15,
         )
-        if fresh_dump_succeeded
-        else (shared.ADB_FILE_HIERARCHY_REMOTE_PATH,)
-    )
-    for hierarchy_path in hierarchy_paths:
-        try:
-            result = device.run(
-                "exec-out",
-                "cat",
-                hierarchy_path,
-                timeout=15,
-            )
-            candidate = _pending_timeout_text(result.stdout)
-            if "<hierarchy" not in candidate:
-                hierarchy_errors.append(
-                    f"{hierarchy_path}: hierarchy root was absent"
-                )
-                continue
+        candidate = _pending_timeout_text(result.stdout)
+        if "<hierarchy" not in candidate:
+            hierarchy_errors.append("direct hierarchy root was absent")
+        else:
             hierarchy_payload = candidate
-            hierarchy_source = hierarchy_path
-            hierarchy_status = (
-                "captured"
-                if hierarchy_path == CREATION_AUTHORITY_PENDING_TIMEOUT_HIERARCHY
-                else "fallback-captured"
-            )
-            break
-        except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
-            hierarchy_errors.append(f"{hierarchy_path}: {_pending_timeout_error(error)}")
+            hierarchy_source = shared.ADB_READ_ONLY_HIERARCHY_ARGUMENTS[-1]
+            hierarchy_status = "captured"
+    except (
+        OSError,
+        RuntimeError,
+        subprocess.CalledProcessError,
+        subprocess.TimeoutExpired,
+    ) as error:
+        hierarchy_errors.append(_pending_timeout_error(error))
     if hierarchy_payload is not None:
         artifacts.append(
             _write_pending_timeout_artifact(
@@ -4811,7 +4719,10 @@ def capture_creation_authority_pending_timeout_diagnostics(
     manifest = {
         "schemaVersion": 1,
         "diagnosticKind": "creation-dashboard-authority-pending-timeout",
-        "selector": "creation-dashboard-authority-loading",
+        "selectors": [
+            "creation-dashboard-authority-loading",
+            "creation-dashboard-authority-partial-loading",
+        ],
         "boundedWaitSeconds": timeout,
         "package": shared.PACKAGE,
         "processIds": list(process_ids),

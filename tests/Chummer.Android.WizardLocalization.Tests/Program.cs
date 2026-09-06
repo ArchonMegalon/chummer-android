@@ -43,6 +43,14 @@ Assert(
     "es-MX must fall back to the Spanish satellite resource");
 Assert(
     WizardStrings.Format(
+        CultureInfo.GetCultureInfo("es-MX"),
+        "Creation.Dashboard.PartialLoading",
+        "fallback",
+        4)
+        == "Se están actualizando 4 proyecciones de reglas restantes en segundo plano. Los pasos listos siguen siendo interactivos y esta página se actualiza automáticamente.",
+    "Creation dashboard partial-loading copy must use the Spanish satellite resource and preserve its count");
+Assert(
+    WizardStrings.Format(
         CultureInfo.GetCultureInfo("de-AT"),
         "Priority.Binding",
         "fallback",
@@ -152,7 +160,8 @@ static HashSet<string> ReadSourceKeys(string workspace)
         "CreationPriorityDetailPage.cs",
         "CreationPrerequisitePreviewPage.cs",
         "Sr5CareerWizardPage.cs",
-        "CurrentPhoneWizardScope.cs"
+        "CurrentPhoneWizardScope.cs",
+        "BuildPage.cs"
     ];
     var result = new HashSet<string>(StringComparer.Ordinal);
     var pattern = new Regex(@"WizardStrings\.(?:Get|Format)\(\s*""([^""]+)""");

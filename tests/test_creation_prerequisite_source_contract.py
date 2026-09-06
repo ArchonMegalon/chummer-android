@@ -12330,7 +12330,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 self.assertIn(marker, route)
         self.assertNotIn("enabled: true", route)
         method_guard = stages.index("CharacterCreationWizardStepIds.Method")
-        self.assertLess(method_guard, stages.index("NativeTheme.NavigationRow("))
+        self.assertLess(method_guard, stages.index("CreationNavigationRow("))
         self.assertIn(
             "continue;",
             stages[method_guard:stages.index("bool foundation", method_guard)],
@@ -14834,10 +14834,16 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
             def hierarchy(self):
                 self.loading_reads += 1
-                if self.loading_reads < 3:
+                if self.loading_reads == 1:
                     return [
                         driver.shared.UiNode(
                             {"resource-id": "creation-dashboard-authority-loading"}
+                        )
+                    ]
+                if self.loading_reads == 2:
+                    return [
+                        driver.shared.UiNode(
+                            {"resource-id": "creation-dashboard-authority-partial-loading"}
                         )
                     ]
                 return [driver.shared.UiNode({"resource-id": "creation-wizard-dashboard"})]
@@ -14865,9 +14871,9 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
              mock.patch.object(driver.time, "sleep") as sleep:
             evidence = driver.wait_creation_method_navigation(device, ready=False)
 
-        self.assertEqual(3, device.loading_reads)
+        self.assertEqual(2, device.loading_reads)
         self.assertEqual(
-            [mock.call(0.5), mock.call(0.5), mock.call(1.25)],
+            [mock.call(0.5), mock.call(1.25)],
             sleep.call_args_list,
         )
         self.assertTrue(evidence["authorityProjectionWaited"])
@@ -14888,6 +14894,136 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "projectionBoundStage && !string.IsNullOrWhiteSpace(projectionBlocker)",
             source,
         )
+
+    def test_dashboard_navigation_refresh_lease_preserves_ready_routes(self) -> None:
+        source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
+        method = source[
+            source.index("private void AddCreationMethodRoute(") :
+            source.index("private void AddFinalizationReviewAction(")
+        ]
+        stages = source[
+            source.index("private void AddWizardStages(") :
+            source.index("private void AddCompletionBlockers(")
+        ]
+        next_steps = source[
+            source.index("private void AddLegalNextSteps(") :
+            source.index("private static string? ProjectionStageBlocker(")
+        ]
+
+        self.assertNotIn("IsCreationDashboardNavigationStable", source)
+        self.assertIn(
+            "Ready steps stay interactive and this page updates automatically.",
+            source,
+        )
+        self.assertIn('"Creation.Dashboard.PartialLoading"', source)
+        self.assertNotIn('"Creation.Dashboard.NavigationLoadingDetail"', source)
+        self.assertEqual(
+            1,
+            source.count('loading.AutomationId = "creation-dashboard-authority-partial-loading";'),
+        )
+        route_ready = source[
+            source.index("private async Task EmitCreationDashboardRouteReadyAsync(") :
+            source.index("private void AddCreationMethodRoute(")
+        ]
+        self.assertNotIn("NavigationStable", route_ready)
+        finalization = source[
+            source.index("private void AddFinalizationReviewAction(") :
+            source.index("private void AddCreationFinalizationStatus(")
+        ]
+        for route_source in (method, stages, next_steps):
+            with self.subTest(route=route_source[:80]):
+                self.assertIn("CreationNavigationRow(", route_source)
+                self.assertNotIn("canOpen && navigationStable", route_source)
+        self.assertIn("review.Pressed +=", finalization)
+        self.assertIn("review.Released +=", finalization)
+        self.assertIn("RunCreationNavigationAsync", finalization)
+
+        lease = source[
+            source.index("public sealed class CreationNavigationRefreshLease") :
+            source.index("public sealed class BuildPage")
+        ]
+        for marker in (
+            "BeginPress()",
+            "TryBeginNavigation(long pressGeneration, out long navigationGeneration)",
+            "TryDeferRefresh()",
+            "CancelPress(long pressGeneration)",
+            "CompleteNavigation(long navigationGeneration, bool departed)",
+            "DiscardForDeparture()",
+            "public sealed class CreationNavigationReleaseScheduler",
+            "public sealed class CreationNavigationActionRunner",
+            "catch (OperationCanceledException)",
+        ):
+            self.assertIn(marker, lease)
+        self.assertIn("return _postDelayed(delay, callback);", lease)
+        self.assertIn("delay <= TimeSpan.Zero", lease)
+
+        helpers = source[
+            source.index("private Border CreationNavigationRow(") :
+            source.index("private void PrepareCreationFinalizationProjection(")
+        ]
+        for marker in (
+            "pressed: () => pressGeneration = BeginCreationNavigationPress()",
+            "released: () => ScheduleCreationNavigationPressCancellation(pressGeneration)",
+            "_creationNavigationReleaseScheduler.TrySchedule(",
+            "CreationNavigationReleaseSettlementDelay",
+            "_creationNavigationActionRunner.RunAsync",
+            "_creationNavigationRefreshLease.TryDeferRefresh()",
+        ):
+            self.assertIn(marker, helpers)
+        self.assertNotIn("MainThread.BeginInvokeOnMainThread(()", helpers)
+        self.assertIn("Dispatcher.DispatchDelayed(delay, action)", source)
+        self.assertIn('TraceCreationNavigation("pressed"', helpers)
+        self.assertIn('TraceCreationNavigation("released-scheduled"', helpers)
+        self.assertIn('claimed ? "click-claimed" : "click-rejected"', helpers)
+        self.assertIn('TraceCreationNavigation("cancel"', helpers)
+        self.assertIn('"refresh-deferred"', helpers)
+        self.assertIn('TraceCreationNavigation("departed"', helpers)
+        self.assertIn("CreationNavigationTraceMaximumPerAppearance", source)
+
+        native_page_base = (NATIVE / "NativePageBase.cs").read_text(encoding="utf-8")
+        self.assertIn("protected virtual bool TryDeferCoordinatorRefresh()", native_page_base)
+        self.assertGreaterEqual(
+            native_page_base.count("TryDeferCoordinatorRefresh()"),
+            3,
+            "Both newly requested and already-dispatched coordinator refreshes must pass through the lease hook.",
+        )
+        self.assertIn("protected override bool TryDeferCoordinatorRefresh()", source)
+        retry = source[
+            source.index("private void RetryCreationProjection()") :
+            source.index("private void AddBudgetRibbon(")
+        ]
+        self.assertIn("RequestCreationAuthorityRefresh();", retry)
+        self.assertNotIn("\n        Refresh();", retry)
+
+        typed_acceptance = source[
+            source.index("private void ScheduleCreationPhaseAcceptance<TResult>(") :
+            source.index("private static void TraceCreationPhase(")
+        ]
+        self.assertEqual(2, typed_acceptance.count("RequestCreationAuthorityRefresh();"))
+        finalization_acceptance = source[
+            source.index("private void ScheduleCreationFinalizationAcceptance(") :
+            source.index("private CreationDashboardAuthorityProjection? ResolveCreationProjection(")
+        ]
+        self.assertIn("RequestCreationAuthorityRefresh();", finalization_acceptance)
+        dashboard = source[
+            source.index("private void AddCreationWizardDashboard()") :
+            source.index("private void ScheduleCreationDashboardRouteReady(")
+        ]
+        self.assertLess(
+            dashboard.index("PrepareCreationFinalizationProjection(snapshot, projection);"),
+            dashboard.index("AddCreationMethodRoute(snapshot, projection, prerequisite);"),
+        )
+        prepare_finalization = source[
+            source.index("private void PrepareCreationFinalizationProjection(") :
+            source.index("private void AddFinalizationReviewAction(")
+        ]
+        self.assertIn(
+            "&& _creationFinalizationFailureReason is null",
+            prepare_finalization,
+            "A failed finalization load must stay terminal until the explicit Retry authority action; "
+            "an automatic retry can otherwise rebuild the dashboard after navigation unlocks.",
+        )
+        self.assertNotIn("RunAsync(", finalization)
 
     def test_dashboard_loads_and_merges_creation_authority_in_independent_phases(self) -> None:
         source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
@@ -15051,7 +15187,21 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             write_error.call_args.args[1].endswith("-collection-error.txt")
         )
 
-    def test_pending_authority_timeout_bundle_is_pid_bound_and_never_anr_named(self) -> None:
+    def test_pending_timeout_shell_treats_transport_runtime_failure_as_evidence(self) -> None:
+        device = mock.Mock()
+        device.shell.side_effect = RuntimeError("classified ADB transport failure")
+
+        output, status = driver._safe_pending_timeout_shell(
+            device,
+            "dumpsys",
+            "activity",
+            "activities",
+        )
+
+        self.assertEqual("command-error", status)
+        self.assertIn("classified ADB transport failure", output)
+
+    def test_pending_authority_timeout_bundle_is_read_only_and_never_anr_named(self) -> None:
         class DiagnosticDevice:
             def __init__(self, evidence: Path) -> None:
                 self.evidence = evidence
@@ -15062,12 +15212,6 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 self.shell_calls.append((arguments, timeout))
                 if arguments == ("pidof", driver.shared.PACKAGE):
                     return "42 invalid 7 42"
-                if arguments[:2] == ("kill", "-3"):
-                    return ""
-                if arguments[:2] == ("debuggerd", "-b"):
-                    return f"native backtrace for {arguments[2]}"
-                if arguments[:2] == ("uiautomator", "dump"):
-                    return "UI hierarchy dumped"
                 return "diagnostic output"
 
             def run(
@@ -15077,7 +15221,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 text: bool = True,
             ) -> subprocess.CompletedProcess:
                 self.run_calls.append((arguments, timeout, text))
-                if arguments[:2] == ("exec-out", "cat"):
+                if arguments == driver.shared.ADB_READ_ONLY_HIERARCHY_ARGUMENTS:
                     return subprocess.CompletedProcess(
                         arguments,
                         0,
@@ -15095,17 +15239,14 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as directory:
             device = DiagnosticDevice(Path(directory))
-            with mock.patch.object(driver.time, "sleep") as sleep:
-                manifest = driver.capture_creation_authority_pending_timeout_diagnostics(
-                    device,
-                    timeout=30.0,
-                )
+            manifest = driver.capture_creation_authority_pending_timeout_diagnostics(
+                device,
+                timeout=30.0,
+            )
 
             prefix = driver.CREATION_AUTHORITY_PENDING_TIMEOUT_PREFIX
             expected_artifacts = {
                 f"{prefix}-process-ids.txt",
-                f"{prefix}-managed-thread-signal.txt",
-                f"{prefix}-native-backtrace.txt",
                 f"{prefix}-activity-activities.txt",
                 f"{prefix}-activity-processes.txt",
                 f"{prefix}-window-windows.txt",
@@ -15124,7 +15265,14 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 manifest["diagnosticKind"],
             )
             self.assertEqual(
-                driver.CREATION_AUTHORITY_PENDING_TIMEOUT_HIERARCHY,
+                [
+                    "creation-dashboard-authority-loading",
+                    "creation-dashboard-authority-partial-loading",
+                ],
+                manifest["selectors"],
+            )
+            self.assertEqual(
+                driver.shared.ADB_READ_ONLY_HIERARCHY_ARGUMENTS[-1],
                 manifest["hierarchySource"],
             )
             self.assertNotIn("anr", json.dumps(manifest).casefold())
@@ -15146,12 +15294,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                     for artifact in manifest["artifacts"]
                 )
             )
-            self.assertEqual([mock.call(0.75)], sleep.call_args_list)
 
         shell_commands = [call[0] for call in device.shell_calls]
-        for process_id in ("7", "42"):
-            self.assertIn(("kill", "-3", process_id), shell_commands)
-            self.assertIn(("debuggerd", "-b", process_id), shell_commands)
         for command in (
             ("dumpsys", "activity", "activities"),
             ("dumpsys", "activity", "processes"),
@@ -15159,19 +15303,30 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             ("logcat", "-d", "-b", "all", "-v", "threadtime", "-t", "4000"),
         ):
             self.assertIn(command, shell_commands)
+        self.assertFalse(
+            any(command and command[0] in {"kill", "debuggerd"} for command in shell_commands),
+            "Pending-timeout evidence must never signal or attach to the application process.",
+        )
         self.assertIn(
-            (
-                "uiautomator",
-                "dump",
-                "--compressed",
-                driver.CREATION_AUTHORITY_PENDING_TIMEOUT_HIERARCHY,
-            ),
-            shell_commands,
+            (driver.shared.ADB_READ_ONLY_HIERARCHY_ARGUMENTS, 15, True),
+            device.run_calls,
         )
         self.assertIn(
             (("exec-out", "screencap", "-p"), 15, False),
             device.run_calls,
         )
+        for command in shell_commands:
+            self.assertEqual(
+                "read-only-retryable",
+                driver.shared.adb_command_retry_policy(("shell", *command))[0],
+                f"Pending-timeout shell diagnostic is not read-only: {command!r}",
+            )
+        for command, _, _ in device.run_calls:
+            self.assertEqual(
+                "read-only-retryable",
+                driver.shared.adb_command_retry_policy(command)[0],
+                f"Pending-timeout direct diagnostic is not read-only: {command!r}",
+            )
 
     def test_direct_priority_bootstrap_does_not_require_a_second_saved_workspace(self) -> None:
         source = DRIVER.read_text(encoding="utf-8")

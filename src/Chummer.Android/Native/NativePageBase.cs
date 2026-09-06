@@ -106,6 +106,13 @@ public abstract class NativePageBase : ContentPage
         CancellationToken cancellationToken)
         => Task.CompletedTask;
 
+    /// <summary>
+    /// Allows a page to coalesce a destructive coordinator render while a native
+    /// gesture owns controls from the current visual tree.
+    /// </summary>
+    protected virtual bool TryDeferCoordinatorRefresh()
+        => false;
+
     private bool IsCurrentAppearance(
         long appearanceGeneration,
         CancellationTokenSource appearanceLifetime)
@@ -250,6 +257,11 @@ public abstract class NativePageBase : ContentPage
             return;
         }
 
+        if (TryDeferCoordinatorRefresh())
+        {
+            return;
+        }
+
         if (_coordinatorRefresh.Request())
         {
             DispatchCoordinatorRefresh();
@@ -281,8 +293,17 @@ public abstract class NativePageBase : ContentPage
         {
             if (!_subscribed
                 || _actionGate.IsClaimed
-                || Volatile.Read(ref _appearanceRefreshActive) > 0
-                || !_coordinatorRefresh.TryTakePending())
+                || Volatile.Read(ref _appearanceRefreshActive) > 0)
+            {
+                return;
+            }
+
+            if (TryDeferCoordinatorRefresh())
+            {
+                _coordinatorRefresh.DiscardPending();
+                return;
+            }
+            if (!_coordinatorRefresh.TryTakePending())
             {
                 return;
             }

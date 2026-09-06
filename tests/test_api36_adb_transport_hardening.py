@@ -34,11 +34,14 @@ def offline(arguments: tuple[str, ...]) -> subprocess.CalledProcessError:
 
 def download_missing(
     root_identity: str = "/sdcard:43:106499:45f8\n",
+    *,
+    command: tuple[str, ...] | None = None,
 ) -> subprocess.CalledProcessError:
     return subprocess.CalledProcessError(
         1,
-        (
-            "adb",
+        command
+        or (
+            "/trusted/adb",
             "-s",
             "SERIAL-API36",
             *driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS,
@@ -52,7 +55,7 @@ def shared_storage_unavailable() -> subprocess.CalledProcessError:
     return subprocess.CalledProcessError(
         1,
         (
-            "adb",
+            "/trusted/adb",
             "-s",
             "SERIAL-API36",
             *driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS,
@@ -82,6 +85,20 @@ def shared_storage_roots_not_mounted(
         ),
         output=stdout,
         stderr=stderr,
+    )
+
+
+def shared_storage_stat_timeout() -> subprocess.TimeoutExpired:
+    return subprocess.TimeoutExpired(
+        (
+            "/trusted/adb",
+            "-s",
+            "SERIAL-API36",
+            *driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS,
+        ),
+        driver.ADB_SHARED_STORAGE_STAT_ATTEMPT_MAX_SECONDS,
+        output="",
+        stderr="",
     )
 
 
@@ -415,7 +432,7 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
             driver.classify_shared_storage_readiness_failure(wrong_command)[1]
         )
 
-    def test_exact_preintent_two_root_enoent_gets_one_fresh_observation(
+    def test_emulator_admission_separates_enoent_and_timeout_from_closed_proof(
         self,
     ) -> None:
         root = "/sdcard:43:106499:45f8\n"
@@ -423,6 +440,7 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
         stable = root + raw_download
         responses = [
             shared_storage_roots_not_mounted(),
+            shared_storage_stat_timeout(),
             download_missing(root),
             download_missing(root),
             download_missing(root),
@@ -455,17 +473,24 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
                     + driver.ADB_SHARED_STORAGE_PREFLIGHT_MAX_SECONDS,
                     **hosted_storage_authority(),
                 )
+                admission_bytes = (
+                    evidence / driver.ADB_SHARED_STORAGE_EMULATOR_ADMISSION_FILENAME
+                ).read_bytes()
 
         self.assertEqual("pass", receipt["status"])
-        self.assertEqual(10, run.call_count)
-        self.assertEqual(6, sleep.call_count)
+        self.assertEqual(11, run.call_count)
+        self.assertEqual(7, sleep.call_count)
         sleep.assert_any_call(driver.ADB_SHARED_STORAGE_OBSERVATION_DELAY_SECONDS)
-        self.assertEqual(7, receipt["observationsPerformed"])
+        self.assertEqual(6, receipt["observationsPerformed"])
         self.assertEqual(3, receipt["consecutiveStableObservations"])
+        self.assertLessEqual(
+            receipt["observationsPerformed"],
+            driver.ADB_SHARED_STORAGE_MAX_OBSERVATIONS,
+        )
+        self.assertEqual(10, receipt["readOnlyCommandsIssued"])
         self.assertEqual(1, receipt["mutationCommandsIssued"])
         self.assertEqual(
             [
-                "pre-intent-shared-storage-roots-not-mounted",
                 "storage-not-initialized",
                 "storage-not-initialized",
                 "storage-not-initialized",
@@ -475,23 +500,50 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
             ],
             [entry["status"] for entry in receipt["observations"]],
         )
-        first = receipt["observations"][0]
-        self.assertEqual("shared-storage-roots-not-mounted", first["classification"])
+        admission = receipt["emulatorAdmission"]
+        self.assertEqual("pass", admission["status"])
         self.assertEqual(
-            "exact-pre-intent-one-fresh-root-observation",
-            first["classificationAuthority"],
+            [
+                "waiting-for-responsive-shared-storage",
+                "waiting-for-responsive-shared-storage",
+                "responsive-download-missing",
+            ],
+            [entry["status"] for entry in admission["observations"]],
         )
-        self.assertTrue(first["retryableReadOnlyObservation"])
-        self.assertTrue(first["freshObservationScheduled"])
-        self.assertNotIn("roots", first)
+        self.assertEqual(1, admission["rootEnoentRetriesPerformed"])
+        self.assertEqual(1, admission["timeoutRetriesPerformed"])
+        self.assertEqual(3, admission["readOnlyCommandsIssued"])
+        self.assertTrue(admission["acceptedObservationTransferredToGovernedProof"])
+        self.assertEqual(0, admission["mutationCommandsIssued"])
+        self.assertEqual(
+            admission,
+            json.loads(admission_bytes.decode("utf-8")),
+        )
+        self.assertEqual(
+            receipt["emulatorAdmissionSha256"],
+            driver.hashlib.sha256(admission_bytes).hexdigest(),
+        )
+        issued = [tuple(call.args[0][3:]) for call in run.call_args_list]
+        self.assertEqual(
+            [driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS] * 5,
+            issued[:5],
+        )
+        self.assertEqual(
+            driver.ADB_SHARED_STORAGE_INITIALIZE_ARGUMENTS,
+            issued[5],
+        )
         recovery = receipt["preIntentSharedStorageRootEnoentRecovery"]
         self.assertEqual(1, recovery["maximumRetries"])
-        self.assertEqual(1, recovery["retriesPerformed"])
+        self.assertEqual(0, recovery["retriesPerformed"])
         self.assertTrue(recovery["freshReadOnlyInvocationRequired"])
         self.assertFalse(recovery["mutationCommandReplayAuthorized"])
         self.assertFalse(recovery["observationBoundWidened"])
         self.assertFalse(recovery["deadlineWidened"])
         self.assertEqual(7, driver.ADB_SHARED_STORAGE_MAX_OBSERVATIONS)
+        self.assertEqual(
+            3,
+            driver.ADB_SHARED_STORAGE_EMULATOR_ADMISSION_MAX_OBSERVATIONS,
+        )
         self.assertEqual(30.0, driver.ADB_SHARED_STORAGE_PREFLIGHT_MAX_SECONDS)
 
     def test_preintent_two_root_enoent_recovery_allows_only_one_retry(self) -> None:
@@ -519,17 +571,24 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
 
         self.assertEqual(2, run.call_count)
         self.assertEqual(1, sleep.call_count)
-        first, second = raised.exception.receipt["observations"]
+        admission = raised.exception.receipt["emulatorAdmission"]
+        first, second = admission["observations"]
         self.assertTrue(first["retryableReadOnlyObservation"])
         self.assertTrue(first["freshObservationScheduled"])
         self.assertFalse(second["retryableReadOnlyObservation"])
         self.assertFalse(second["freshObservationScheduled"])
         self.assertEqual(0, raised.exception.receipt["mutationCommandsIssued"])
+        self.assertEqual(0, raised.exception.receipt["observationsPerformed"])
+        self.assertEqual("blocked", admission["status"])
+        self.assertFalse(admission["acceptedObservationTransferredToGovernedProof"])
+        self.assertEqual(0, admission["mutationCommandsIssued"])
         self.assertEqual(
             1,
-            raised.exception.receipt[
-                "preIntentSharedStorageRootEnoentRecovery"
-            ]["retriesPerformed"],
+            admission["rootEnoentRetriesPerformed"],
+        )
+        self.assertEqual(
+            "shared-storage-emulator-admission-blocked",
+            raised.exception.receipt["terminalFailure"]["classification"],
         )
 
     def test_two_root_enoent_recovery_rejects_nonexact_output_and_argv(self) -> None:
@@ -566,6 +625,22 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
                     *driver.ADB_SHARED_STORAGE_ROOTS,
                 )
             ),
+            shared_storage_roots_not_mounted(
+                command=(
+                    "adb",
+                    "-s",
+                    "SERIAL-API36",
+                    *driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS,
+                )
+            ),
+            download_missing(
+                command=(
+                    "adb",
+                    "-s",
+                    "SERIAL-API36",
+                    *driver.ADB_SHARED_STORAGE_STAT_ARGUMENTS,
+                )
+            ),
         )
         for failure in cases:
             with (
@@ -592,7 +667,7 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
                 self.assertEqual(1, run.call_count)
                 sleep.assert_not_called()
                 self.assertFalse(
-                    raised.exception.receipt["observations"][0][
+                    raised.exception.receipt["emulatorAdmission"]["observations"][0][
                         "retryableReadOnlyObservation"
                     ]
                 )
@@ -603,7 +678,7 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
                     ]["retriesPerformed"],
                 )
 
-    def test_two_root_enoent_recovery_requires_lease_and_observation_slots(
+    def test_emulator_admission_requires_lease_and_remains_bounded(
         self,
     ) -> None:
         cases = (
@@ -612,6 +687,7 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
                 driver.ADB_SHARED_STORAGE_PREINTENT_ROOT_ENOENT_RETRY_MINIMUM_LEASE_SECONDS
                 - 0.5,
                 1,
+                0,
                 0,
             ),
             (
@@ -623,11 +699,18 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
                     shared_storage_roots_not_mounted(),
                 ],
                 driver.ADB_SHARED_STORAGE_PREFLIGHT_MAX_SECONDS,
-                5,
-                4,
+                2,
+                1,
+                1,
             ),
         )
-        for responses, lease, expected_calls, expected_sleeps in cases:
+        for (
+            responses,
+            lease,
+            expected_calls,
+            expected_sleeps,
+            expected_admission_retries,
+        ) in cases:
             with (
                 self.subTest(responses=len(responses), lease=lease),
                 tempfile.TemporaryDirectory() as temporary,
@@ -652,9 +735,16 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
                 self.assertEqual(expected_sleeps, sleep.call_count)
                 self.assertEqual(0, raised.exception.receipt["mutationCommandsIssued"])
                 self.assertFalse(
-                    raised.exception.receipt["observations"][-1][
+                    raised.exception.receipt["emulatorAdmission"]["observations"][-1][
                         "retryableReadOnlyObservation"
                     ]
+                )
+                admission = raised.exception.receipt["emulatorAdmission"]
+                self.assertEqual(
+                    expected_admission_retries,
+                    admission["timeoutRetriesPerformed"]
+                    + admission["rootEnoentRetriesPerformed"]
+                    + admission["fuseUnavailableRetriesPerformed"],
                 )
                 self.assertEqual(
                     0,
@@ -2564,15 +2654,20 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
             self.assertEqual("invalid-observation", receipt["observations"][0]["status"])
             self.assertEqual(0, receipt["mutationCommandsIssued"])
 
-    def test_stale_shared_storage_receipt_is_rejected_before_any_adb_command(self) -> None:
-        with tempfile.TemporaryDirectory() as temporary:
-            evidence = Path(temporary)
-            stale = evidence / "adb-shared-storage-readiness.json"
-            stale.write_text('{"status":"pass"}\n', encoding="utf-8")
-            with mock.patch.object(driver.subprocess, "run") as run:
-                with self.assertRaisesRegex(RuntimeError, "contains stale receipts"):
-                    self.make_device(evidence)
-            run.assert_not_called()
+    def test_stale_shared_storage_receipts_are_rejected_before_any_adb_command(self) -> None:
+        filenames = (
+            "adb-shared-storage-readiness.json",
+            driver.ADB_SHARED_STORAGE_EMULATOR_ADMISSION_FILENAME,
+        )
+        for filename in filenames:
+            with self.subTest(filename=filename), tempfile.TemporaryDirectory() as temporary:
+                evidence = Path(temporary)
+                stale = evidence / filename
+                stale.write_text('{"status":"pass"}\n', encoding="utf-8")
+                with mock.patch.object(driver.subprocess, "run") as run:
+                    with self.assertRaisesRegex(RuntimeError, "contains stale receipts"):
+                        self.make_device(evidence)
+                run.assert_not_called()
 
     def test_shared_storage_stat_policy_is_exact_and_read_only(self) -> None:
         self.assertEqual(

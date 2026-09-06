@@ -81,7 +81,9 @@ internal static class NativeTheme
         string? detail,
         Func<Task> selected,
         bool enabled = true,
-        string? automationId = null)
+        string? automationId = null,
+        Action? pressed = null,
+        Action? released = null)
     {
         Grid row = new()
         {
@@ -129,6 +131,10 @@ internal static class NativeTheme
         SemanticProperties.SetDescription(
             interaction,
             string.IsNullOrWhiteSpace(detail) ? title : $"{title}. {detail}");
+        if (pressed is not null)
+            interaction.Pressed += (_, _) => pressed();
+        if (released is not null)
+            interaction.Released += (_, _) => released();
         interaction.Clicked += async (_, _) => await selected();
         row.Add(interaction);
         Grid.SetColumnSpan(interaction, 2);

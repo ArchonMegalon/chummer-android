@@ -135,6 +135,9 @@ ADB_TRANSPORT_PREFLIGHT_SCHEMA = "chummer.android.adb-transport-preflight/v1"
 ADB_SHARED_STORAGE_PREFLIGHT_SCHEMA = (
     "chummer.android.shared-storage-readiness/v2"
 )
+ADB_SHARED_STORAGE_EMULATOR_ADMISSION_SCHEMA = (
+    "chummer.android.shared-storage-emulator-admission/v1"
+)
 ADB_TRANSPORT_SUMMARY_SCHEMA = "chummer.android.adb-transport-summary/v1"
 ADB_FILE_HIERARCHY_RETRY_SCHEMA = (
     "chummer.android.file-hierarchy-retry-evidence/v1"
@@ -319,6 +322,11 @@ ADB_SHARED_STORAGE_MAX_OBSERVATIONS = 7
 ADB_SHARED_STORAGE_OBSERVATION_DELAY_SECONDS = 1.0
 ADB_SHARED_STORAGE_PREFLIGHT_MAX_SECONDS = 30.0
 ADB_SHARED_STORAGE_STAT_ATTEMPT_MAX_SECONDS = 5.0
+ADB_SHARED_STORAGE_EMULATOR_ADMISSION_MAX_OBSERVATIONS = 3
+ADB_SHARED_STORAGE_EMULATOR_ADMISSION_RETRY_MINIMUM_LEASE_SECONDS = (
+    ADB_SHARED_STORAGE_OBSERVATION_DELAY_SECONDS
+    + ADB_SHARED_STORAGE_STAT_ATTEMPT_MAX_SECONDS
+)
 ADB_SHARED_STORAGE_PREINTENT_STAT_TIMEOUT_MAX_RETRIES = 1
 ADB_SHARED_STORAGE_PREINTENT_STAT_TIMEOUT_RETRY_MINIMUM_LEASE_SECONDS = (
     ADB_SHARED_STORAGE_OBSERVATION_DELAY_SECONDS
@@ -385,6 +393,9 @@ ADB_SHARED_STORAGE_INITIALIZATION_OUTCOME_FILENAME = (
     "adb-shared-storage-initialization-outcome.json"
 )
 ADB_SHARED_STORAGE_BOOTSTRAP_FILENAME = "adb-shared-storage-bootstrap.json"
+ADB_SHARED_STORAGE_EMULATOR_ADMISSION_FILENAME = (
+    "adb-shared-storage-emulator-admission.json"
+)
 MAX_ADB_TRANSPORT_EVENTS = 64
 MAX_ADB_FAILURE_DETAIL_CHARACTERS = 4000
 SAFE_READ_ONLY_REMOTE_PATH = re.compile(r"^/[A-Za-z0-9._/:-]{1,511}$")
@@ -1476,6 +1487,7 @@ class Device:
             for path in (
                 self.evidence / "adb-transport-preflight.json",
                 self.evidence / "adb-shared-storage-readiness.json",
+                self.evidence / ADB_SHARED_STORAGE_EMULATOR_ADMISSION_FILENAME,
                 self.evidence / ADB_SHARED_STORAGE_INITIALIZATION_INTENT_FILENAME,
                 self.evidence / ADB_SHARED_STORAGE_INITIALIZATION_OUTCOME_FILENAME,
                 self.evidence / ADB_SHARED_STORAGE_BOOTSTRAP_FILENAME,
@@ -2182,7 +2194,13 @@ class Device:
         """Observe both governed shared-storage roots before device mutation.
 
         Policy is closed to three consecutive observations in at most seven
-        attempts.  Only one exact Toybox ``stat -L`` command is issued per
+        attempts.  Before that closed proof, hosted API-36 x86_64 emulator runs
+        receive a separate three-attempt, read-only admission lane.  Admission
+        waits for a responsive ``/sdcard`` identity (with either a present or
+        exactly missing Download directory), so mount startup ENOENT/timeouts do
+        not consume the seven governed proof slots.  Its accepted responsive
+        observation becomes the first governed observation without replaying the
+        stat command.  Only one exact Toybox ``stat -L`` command is issued per
         observation.  A fully anchored FUSE readiness marker, one exact
         pre-intent read-only stat timeout, or one exact pre-intent ordered
         two-root ENOENT may cause another fresh observation.  Neither exceptional
@@ -2205,6 +2223,9 @@ class Device:
             started + ADB_SHARED_STORAGE_PREFLIGHT_MAX_SECONDS,
         )
         receipt_path = self.evidence / "adb-shared-storage-readiness.json"
+        admission_path = (
+            self.evidence / ADB_SHARED_STORAGE_EMULATOR_ADMISSION_FILENAME
+        )
         bootstrap_path = self.evidence / ADB_SHARED_STORAGE_BOOTSTRAP_FILENAME
         intent_path = (
             self.evidence / ADB_SHARED_STORAGE_INITIALIZATION_INTENT_FILENAME
@@ -2242,6 +2263,15 @@ class Device:
             "emulator": hosted_emulator,
             "proofAttempt": hosted_proof_attempt,
         }
+        emulator_admission_required = (
+            hosted_api_level == "36"
+            and hosted_abi == "x86_64"
+            and hosted_emulator == "1"
+            and hosted_proof_attempt is True
+        )
+        emulator_admission: dict[str, object] | None = None
+        emulator_admission_sha256: str | None = None
+        admission_proof_candidate: tuple[str, object] | None = None
         initialization: dict[str, object] = {
             "status": "not-required",
             "hostedAuthority": hosted_authority,
@@ -2373,6 +2403,16 @@ class Device:
             bootstrap_written = True
 
         def build_receipt(status: str) -> dict[str, object]:
+            if emulator_admission_required:
+                if not isinstance(emulator_admission_sha256, str):
+                    raise RuntimeError(
+                        "Shared-storage readiness lacks emulator admission authority"
+                    )
+                _require_exact_receipt_digest(
+                    admission_path,
+                    expected_sha256=emulator_admission_sha256,
+                    label="Shared-storage emulator admission authority",
+                )
             if initialization_mutations_issued != 0:
                 bootstrap_sha256 = initialization.get("bootstrapSha256")
                 if not isinstance(bootstrap_sha256, str):
@@ -2419,6 +2459,12 @@ class Device:
                 "callerDeadlineClampedToMaximumDuration": (
                     operation_deadline < deadline
                 ),
+                "emulatorAdmissionRequired": emulator_admission_required,
+                "emulatorAdmissionEvidenceFile": (
+                    admission_path.name if emulator_admission_required else None
+                ),
+                "emulatorAdmissionSha256": emulator_admission_sha256,
+                "emulatorAdmission": emulator_admission,
                 "observationsPerformed": len(observations),
                 "consecutiveStableObservations": consecutive,
                 "readOnlyCommandsIssued": read_only_commands_issued,
@@ -2488,6 +2534,305 @@ class Device:
                 "observations": observations,
             }
 
+        if emulator_admission_required:
+            admission_observations: list[dict[str, object]] = []
+            admission_timeout_retries = 0
+            admission_root_enoent_retries = 0
+            admission_unavailable_retries = 0
+            admission_read_only_commands_issued = 0
+            admission_failure: dict[str, object] | None = None
+            exact_stat_command = (
+                str(self.adb),
+                "-s",
+                self.serial,
+                *ADB_SHARED_STORAGE_STAT_ARGUMENTS,
+            )
+            for admission_index in range(
+                1,
+                ADB_SHARED_STORAGE_EMULATOR_ADMISSION_MAX_OBSERVATIONS + 1,
+            ):
+                admission_observation: dict[str, object] = {
+                    "index": admission_index,
+                }
+                try:
+                    if (
+                        adb_command_retry_policy(ADB_SHARED_STORAGE_STAT_ARGUMENTS)[0]
+                        != "read-only-retryable"
+                    ):
+                        raise RuntimeError(
+                            "Shared-storage emulator admission command lost "
+                            "read-only authority"
+                        )
+                    attempt_timeout = _remaining_operation_timeout(
+                        deadline=operation_deadline,
+                        maximum=ADB_SHARED_STORAGE_STAT_ATTEMPT_MAX_SECONDS,
+                    )
+                    read_only_commands_issued += 1
+                    admission_read_only_commands_issued += 1
+                    output = self._invoke_once(
+                        ADB_SHARED_STORAGE_STAT_ARGUMENTS,
+                        timeout=attempt_timeout,
+                        text=True,
+                        check=True,
+                    ).stdout
+                    roots = _parse_shared_storage_stat_output(output)
+                    admission_observation.update(
+                        {
+                            "status": "responsive",
+                            "classification": "shared-storage-roots-responsive",
+                            "classificationAuthority": (
+                                "exact-followed-two-root-directory-identity"
+                            ),
+                            "retryableReadOnlyObservation": False,
+                            "transferredToGovernedProof": True,
+                            "roots": roots,
+                        }
+                    )
+                    admission_observations.append(admission_observation)
+                    admission_proof_candidate = ("output", output)
+                    break
+                except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
+                    terminal_error = error
+                    classification, retryable = (
+                        classify_shared_storage_readiness_failure(error)
+                    )
+                    command = getattr(error, "cmd", ())
+                    command_arguments = (
+                        tuple(command) if isinstance(command, (list, tuple)) else ()
+                    )
+                    exact_timeout = (
+                        isinstance(error, subprocess.TimeoutExpired)
+                        and command_arguments == exact_stat_command
+                    )
+                    partial_root = _download_not_initialized_root_identity(error)
+                    if (
+                        partial_root is not None
+                        and command_arguments == exact_stat_command
+                    ):
+                        admission_observation.update(
+                            {
+                                "status": "responsive-download-missing",
+                                "classification": (
+                                    "shared-storage-download-not-initialized"
+                                ),
+                                "classificationAuthority": (
+                                    "exact-followed-root-identity-and-download-enoent"
+                                ),
+                                "retryableReadOnlyObservation": False,
+                                "transferredToGovernedProof": True,
+                                "rootIdentity": partial_root,
+                            }
+                        )
+                        admission_observations.append(admission_observation)
+                        admission_proof_candidate = ("error", error)
+                        terminal_error = None
+                        break
+
+                    retry_authorized = False
+                    retry_kind: str | None = None
+                    classification_authority = adb_classification_authority(
+                        classification
+                    )
+                    if (
+                        exact_timeout
+                        and admission_timeout_retries < 1
+                    ):
+                        retry_authorized = True
+                        retry_kind = "timeout"
+                        classification_authority = (
+                            "exact-emulator-admission-read-only-stat-timeout"
+                        )
+                    elif (
+                        classification == "shared-storage-roots-not-mounted"
+                        and command_arguments == exact_stat_command
+                        and admission_root_enoent_retries < 1
+                    ):
+                        retry_authorized = True
+                        retry_kind = "root-enoent"
+                        classification_authority = (
+                            "exact-emulator-admission-two-root-enoent"
+                        )
+                    elif (
+                        classification == "shared-storage-unavailable"
+                        and retryable
+                        and command_arguments == exact_stat_command
+                        and admission_unavailable_retries < 1
+                    ):
+                        retry_authorized = True
+                        retry_kind = "fuse-unavailable"
+                        classification_authority = (
+                            "exact-emulator-admission-fuse-unavailable"
+                        )
+                    retry_authorized = (
+                        retry_authorized
+                        and admission_index
+                        < ADB_SHARED_STORAGE_EMULATOR_ADMISSION_MAX_OBSERVATIONS
+                        and operation_deadline - time.monotonic()
+                        >= (
+                            ADB_SHARED_STORAGE_EMULATOR_ADMISSION_RETRY_MINIMUM_LEASE_SECONDS
+                        )
+                    )
+                    if retry_authorized:
+                        if retry_kind == "timeout":
+                            admission_timeout_retries += 1
+                        elif retry_kind == "root-enoent":
+                            admission_root_enoent_retries += 1
+                        elif retry_kind == "fuse-unavailable":
+                            admission_unavailable_retries += 1
+                        else:
+                            raise RuntimeError(
+                                "Shared-storage emulator admission retry kind "
+                                "was not exact"
+                            )
+                    admission_observation.update(
+                        {
+                            "status": "waiting-for-responsive-shared-storage",
+                            "classification": classification,
+                            "classificationAuthority": classification_authority,
+                            "retryableReadOnlyObservation": retry_authorized,
+                            "freshObservationScheduled": retry_authorized,
+                            "timedOutProcessReused": False,
+                            "mutationCommandReplayAuthorized": False,
+                            "transferredToGovernedProof": False,
+                            "failure": {
+                                "type": type(error).__name__,
+                                "returnCode": getattr(error, "returncode", None),
+                                "stdout": _bounded_adb_detail(
+                                    getattr(error, "stdout", "")
+                                ),
+                                "stderr": _bounded_adb_detail(
+                                    getattr(error, "stderr", "")
+                                ),
+                            },
+                        }
+                    )
+                    admission_observations.append(admission_observation)
+                    if not retry_authorized:
+                        admission_failure = {
+                            "classification": (
+                                "shared-storage-emulator-admission-blocked"
+                            ),
+                            "classificationAuthority": (
+                                "bounded-read-only-emulator-admission"
+                            ),
+                            "underlyingClassification": classification,
+                            "retryableReadOnlyObservation": False,
+                            "type": type(error).__name__,
+                            "message": str(error),
+                        }
+                        break
+                except (AdbOperationDeadlineExceeded, RuntimeError) as error:
+                    terminal_error = error
+                    admission_observation.update(
+                        {
+                            "status": "invalid-or-expired-admission-observation",
+                            "classification": (
+                                "shared-storage-emulator-admission-blocked"
+                            ),
+                            "classificationAuthority": (
+                                "bounded-read-only-emulator-admission"
+                            ),
+                            "retryableReadOnlyObservation": False,
+                            "freshObservationScheduled": False,
+                            "mutationCommandReplayAuthorized": False,
+                            "transferredToGovernedProof": False,
+                            "failure": {
+                                "type": type(error).__name__,
+                                "message": str(error),
+                            },
+                        }
+                    )
+                    admission_observations.append(admission_observation)
+                    admission_failure = {
+                        "classification": (
+                            "shared-storage-emulator-admission-blocked"
+                        ),
+                        "classificationAuthority": (
+                            "bounded-read-only-emulator-admission"
+                        ),
+                        "retryableReadOnlyObservation": False,
+                        "type": type(error).__name__,
+                        "message": str(error),
+                    }
+                    break
+
+                if admission_index < (
+                    ADB_SHARED_STORAGE_EMULATOR_ADMISSION_MAX_OBSERVATIONS
+                ):
+                    try:
+                        _sleep_before_operation_deadline(
+                            ADB_SHARED_STORAGE_OBSERVATION_DELAY_SECONDS,
+                            deadline=operation_deadline,
+                        )
+                    except AdbOperationDeadlineExceeded as error:
+                        terminal_error = error
+                        admission_failure = {
+                            "classification": (
+                                "shared-storage-emulator-admission-blocked"
+                            ),
+                            "classificationAuthority": (
+                                "caller-owned-monotonic-deadline"
+                            ),
+                            "retryableReadOnlyObservation": False,
+                            "type": type(error).__name__,
+                            "message": str(error),
+                        }
+                        break
+
+            admission_status = (
+                "pass" if admission_proof_candidate is not None else "blocked"
+            )
+            if admission_status == "blocked" and admission_failure is None:
+                admission_failure = {
+                    "classification": "shared-storage-emulator-admission-blocked",
+                    "classificationAuthority": (
+                        "bounded-read-only-emulator-admission"
+                    ),
+                    "retryableReadOnlyObservation": False,
+                }
+            emulator_admission = {
+                "schema": ADB_SHARED_STORAGE_EMULATOR_ADMISSION_SCHEMA,
+                "status": admission_status,
+                "serial": self.serial,
+                "hostedAuthority": hosted_authority,
+                "statArguments": list(ADB_SHARED_STORAGE_STAT_ARGUMENTS),
+                "commandPolicy": "read-only-retryable",
+                "maximumObservations": (
+                    ADB_SHARED_STORAGE_EMULATOR_ADMISSION_MAX_OBSERVATIONS
+                ),
+                "retryMinimumRemainingLeaseSeconds": (
+                    ADB_SHARED_STORAGE_EMULATOR_ADMISSION_RETRY_MINIMUM_LEASE_SECONDS
+                ),
+                "observationsPerformed": len(admission_observations),
+                "readOnlyCommandsIssued": admission_read_only_commands_issued,
+                "acceptedObservationTransferredToGovernedProof": (
+                    admission_proof_candidate is not None
+                ),
+                "timeoutRetriesPerformed": admission_timeout_retries,
+                "rootEnoentRetriesPerformed": admission_root_enoent_retries,
+                "fuseUnavailableRetriesPerformed": admission_unavailable_retries,
+                "mutationCommandsIssued": 0,
+                "applicationMutationCommandsIssued": 0,
+                "mutationCommandReplayAuthorized": False,
+                "deadlineWidened": False,
+                "governedProofObservationBoundWidened": False,
+                "terminalFailure": admission_failure,
+                "observations": admission_observations,
+            }
+            emulator_admission_sha256 = _write_durable_new_json_receipt(
+                admission_path,
+                emulator_admission,
+            )
+            if admission_status != "pass":
+                terminal_failure = admission_failure
+                receipt = build_receipt("fail")
+                _write_new_json_receipt(receipt_path, receipt)
+                self._shared_storage_preflight = receipt
+                failure = AdbSharedStoragePreflightError(receipt, receipt_path)
+                if terminal_error is None:
+                    raise failure
+                raise failure from terminal_error
+
         for index in range(1, ADB_SHARED_STORAGE_MAX_OBSERVATIONS + 1):
             observation: dict[str, object] = {"index": index}
             try:
@@ -2498,21 +2843,37 @@ class Device:
                     raise RuntimeError(
                         "Shared-storage preflight command lost read-only authority"
                     )
-                attempt_timeout = _remaining_operation_timeout(
-                    deadline=operation_deadline,
-                    maximum=(
-                        next_bootstrap_attempt_timeout("followed-root-observation")
-                        if initialized_download is not None
-                        else ADB_SHARED_STORAGE_STAT_ATTEMPT_MAX_SECONDS
-                    ),
-                )
-                read_only_commands_issued += 1
-                output = self._invoke_once(
-                    ADB_SHARED_STORAGE_STAT_ARGUMENTS,
-                    timeout=attempt_timeout,
-                    text=True,
-                    check=True,
-                ).stdout
+                if index == 1 and admission_proof_candidate is not None:
+                    candidate_kind, candidate = admission_proof_candidate
+                    if candidate_kind == "error":
+                        if not isinstance(candidate, subprocess.CalledProcessError):
+                            raise RuntimeError(
+                                "Shared-storage emulator admission transferred an "
+                                "invalid failure candidate"
+                            )
+                        raise candidate
+                    if candidate_kind != "output" or not isinstance(candidate, str):
+                        raise RuntimeError(
+                            "Shared-storage emulator admission transferred an "
+                            "invalid success candidate"
+                        )
+                    output = candidate
+                else:
+                    attempt_timeout = _remaining_operation_timeout(
+                        deadline=operation_deadline,
+                        maximum=(
+                            next_bootstrap_attempt_timeout("followed-root-observation")
+                            if initialized_download is not None
+                            else ADB_SHARED_STORAGE_STAT_ATTEMPT_MAX_SECONDS
+                        ),
+                    )
+                    read_only_commands_issued += 1
+                    output = self._invoke_once(
+                        ADB_SHARED_STORAGE_STAT_ARGUMENTS,
+                        timeout=attempt_timeout,
+                        text=True,
+                        check=True,
+                    ).stdout
                 roots = _parse_shared_storage_stat_output(output)
                 observed_identity = tuple(identity(root) for root in roots)
                 if initialized_root is not None and identity(roots[0]) != identity(
