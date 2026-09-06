@@ -29,6 +29,7 @@ internal static class Program
         await PacketProofBindsExactBodyAndCaseSensitivePath();
         await BootstrapProofAndPollBodyMatchV2Contract();
         ResponseGrantHeadersAreSingleBoundedAndRedacted();
+        await ResponseGrantAuthorityIsRedactedAndOneShot();
         await BearerTokenCannotBeSerializedIntoRequestBody();
         ServiceRequestDtosCannotCarryAccessToken();
         BearerAuthorityRejectsHeaderInjectionWithoutEchoingCredential();
@@ -55,7 +56,7 @@ internal static class Program
         await SuccessfulErasureCannotLeaveAStaleLinkedSnapshotAsync();
         await LostRefreshResponseSurvivesProcessRestartAsync();
         await MismatchedOperationResponsesRetainRecoveryStateAsync();
-        Console.WriteLine("Account-link HTTP hardening tests passed: 30");
+        Console.WriteLine("Account-link HTTP hardening tests passed: 31");
     }
 
     private static async Task BearerTokenIsRequestBoundAndRedacted()
@@ -276,6 +277,37 @@ internal static class Program
             }
         }
         return response;
+    }
+
+    private static async Task ResponseGrantAuthorityIsRedactedAndOneShot()
+    {
+        var terminal = new RecordingHandler(_ => GrantResponse(
+            "grant-next",
+            RotatedAccessToken,
+            "{\"ok\":true}"));
+        using AndroidAccountLinkHttpTransport transport = CreateTransport(terminal);
+
+        using HttpResponseMessage response = await transport.PostJsonAsync(
+            "/api/v2/install-linking/grants/refresh",
+            new InstallationRequest("android-install"),
+            CreateAuthority(),
+            CancellationToken.None);
+
+        Require(!response.Headers.Contains("Authorization"));
+        Require(!response.ToString().Contains(RotatedAccessToken, StringComparison.Ordinal));
+        Require(response.RequestMessage is null
+            || !response.RequestMessage.ToString().Contains(
+                RotatedAccessToken,
+                StringComparison.Ordinal));
+
+        AndroidAccountLinkResponseGrantAuthority authority =
+            AndroidAccountLinkHttpTransport.ReadResponseGrantAuthority(response);
+        Require(authority.GrantId == "grant-next");
+        Require(authority.AccessToken == RotatedAccessToken);
+
+        InvalidDataException replay = RequireThrows<InvalidDataException>(() =>
+            AndroidAccountLinkHttpTransport.ReadResponseGrantAuthority(response));
+        Require(!replay.ToString().Contains(RotatedAccessToken, StringComparison.Ordinal));
     }
 
     private static async Task BearerTokenCannotBeSerializedIntoRequestBody()
