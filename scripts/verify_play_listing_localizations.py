@@ -70,7 +70,7 @@ REQUIRED_FRAGMENTS = {
         ),
         "release-notes-12.txt": (
             "Internal testing build for phones",
-            "Settings respond faster",
+            "Upgrading from Preview.10? Link your account again.",
             "seven named flows",
             "Additional wizard routes are marked Experimental",
             "not covered by the current Preview authority",
@@ -98,7 +98,7 @@ REQUIRED_FRAGMENTS = {
         ),
         "release-notes-12.txt": (
             "interner Telefontest",
-            "Einstellungen sind klarer und reaktionsschneller",
+            "Beim Update von Preview.10 das Konto neu verknüpfen.",
             "Sieben Flows",
             "Weitere Wizard-Routen: Experimentell",
             "nicht durch die aktuelle Preview-Autorität abgedeckt",
@@ -126,7 +126,7 @@ REQUIRED_FRAGMENTS = {
         ),
         "release-notes-12.txt": (
             "prueba interna para teléfonos",
-            "Ajustes más ágiles",
+            "Al actualizar desde Preview.10, vuelve a vincular tu cuenta.",
             "Siete flujos",
             "Otras rutas: Experimental",
             "no cubiertas por la autoridad de la vista previa actual",
