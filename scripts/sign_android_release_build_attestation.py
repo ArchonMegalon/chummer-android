@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import argparse
 import base64
-import ctypes
 from datetime import UTC, datetime
 import hashlib
 import importlib.util
@@ -32,9 +31,9 @@ ROLE = "android_internal_release_builder"
 SOURCE_GRAPH_CONTRACT = "chummer.android.release-source-graph/v3"
 VALIDATION_CONTRACT = "chummer.android.protected-release-build-validation/v1"
 EXTERNAL_SIGNER_REQUEST_CONTRACT = "chummer.android.external-release-signer-request/v1"
-JAVA_TOOLCHAIN_CONTRACT = "chummer.android.trusted-release-toolchain/v2"
-JAVA_TOOLCHAIN_ROLE = "android_release_toolchain_approver"
-JAVA_TOOLCHAIN_SCOPE = "android_release_toolchain"
+JAVA_TOOLCHAIN_CONTRACT = "chummer.android.local-unsigned-toolchain-observation/v1"
+JAVA_TOOLCHAIN_ROLE = "android_unsigned_preparation_observer"
+JAVA_TOOLCHAIN_SCOPE = "android_local_unsigned_preparation"
 MAX_AAB_BYTES = 512 * 1024 * 1024
 EXPECTED_BUNDLETOOL_SHA256 = "a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29"
 EXPECTED_UPLOAD_CERTIFICATE_SHA256 = "D9:C4:B6:35:12:15:44:D5:52:2A:BF:1E:C2:DF:DA:3C:19:38:AA:B9:3D:67:26:BB:93:C9:87:1E:C9:ED:1D:15"
@@ -105,39 +104,16 @@ def _write_exclusive(path: Path, raw: bytes) -> None:
 
 
 def _private_key(path: Path) -> Path:
-    _require_protected_process()
-    KEY_HYGIENE.verify(ROOT)
-    # A mode-0600 path owned by the release UID is still readable and
-    # replaceable by the same-UID filesystem attacker in this gate's threat
-    # model. Private-key operations therefore belong to a separately hosted
-    # privileged signer and are intentionally unavailable here.
+    del path
+    _external_signer_required("build-attestation")
+    raise AssertionError("unreachable")
+
+
+def _external_signer_required(operation: str) -> None:
     raise ValueError(
-        "external-signer-required: build-attestation private keys are not accepted "
-        "by the build-user release gate"
+        f"external-signer-required: {operation} is unavailable in the local "
+        "unsigned build-user lane"
     )
-
-
-def _require_protected_process() -> None:
-    if os.environ.get("CHUMMER_RELEASE_PROCESS_ISOLATED") != "v1":
-        raise ValueError("protected release supervisor is required")
-    libc = ctypes.CDLL(None, use_errno=True)
-    if libc.prctl(3, 0, 0, 0, 0) != 0:
-        raise ValueError("protected release process is dumpable")
-    try:
-        scope = int(
-            Path("/proc/sys/kernel/yama/ptrace_scope")
-            .read_text(encoding="ascii")
-            .strip()
-        )
-    except (OSError, ValueError) as error:
-        raise ValueError("cannot establish protected release Yama posture") from error
-    if scope < 2:
-        raise ValueError("protected release requires Yama ptrace_scope >= 2")
-    docker_socket = Path("/var/run/docker.sock")
-    if docker_socket.exists() and (
-        os.access(docker_socket, os.R_OK) or os.access(docker_socket, os.W_OK)
-    ):
-        raise ValueError("protected release identity has rootful Docker access")
 
 
 def _canonical_file(path: Path, label: str, *, owner_only: bool) -> Path:
@@ -259,10 +235,9 @@ def _java_toolchain_unsigned(java_sdk: Path, dotnet: Path) -> dict[str, Any]:
     }
     return {
         "contractName": JAVA_TOOLCHAIN_CONTRACT,
-        "algorithm": "ed25519",
-        "keyId": VERIFY.RELEASE_APPROVER_KEY_ID,
         "role": JAVA_TOOLCHAIN_ROLE,
         "authorityScope": JAVA_TOOLCHAIN_SCOPE,
+        "authorityClass": "non_authoritative_local_unsigned_preparation",
         "javaSdkRoot": os.fspath(java_sdk),
         "javaSdkTreeSha256": java_tree_sha,
         "javaSdkTreeFileCount": java_tree_files,
@@ -280,8 +255,28 @@ def _java_toolchain_unsigned(java_sdk: Path, dotnet: Path) -> dict[str, Any]:
         "dotnetSdkTreeSha256": dotnet_tree_sha,
         "dotnetSdkTreeFileCount": dotnet_tree_files,
         "dotnetSdkTreeSizeBytes": dotnet_tree_bytes,
+        "androidSdkBound": False,
+        "externalSignerMustBindFullJdkDotnetAndroidSdkClosure": True,
+        "signingAuthorized": False,
         "publicationAuthorized": False,
     }
+
+
+def materialize_java_toolchain_observation(
+    java_sdk: Path,
+    dotnet: Path,
+    output: Path,
+) -> dict[str, Any]:
+    """Record local build inputs without creating signing authority."""
+
+    observation = _java_toolchain_unsigned(java_sdk, dotnet)
+    _write_exclusive(output, _pretty(observation))
+    try:
+        _load_trusted_java_toolchain(output)
+    except Exception:
+        output.unlink(missing_ok=True)
+        raise
+    return observation
 
 
 def sign_java_toolchain_authority(
@@ -290,6 +285,7 @@ def sign_java_toolchain_authority(
     private_key: Path,
     output: Path,
 ) -> dict[str, Any]:
+    _external_signer_required("toolchain-authority signing")
     unsigned = _java_toolchain_unsigned(java_sdk, dotnet)
     with tempfile.TemporaryDirectory(prefix="chummer-android-java-toolchain-authority-") as directory:
         payload = Path(directory) / "payload.json"
@@ -333,29 +329,32 @@ def _load_trusted_java_toolchain(authority_path: Path) -> dict[str, Any]:
         True,
     )
     value = VERIFY._strict_json(raw, label="trusted Java toolchain authority")
-    signature = value.pop("signatureBase64", None)
     expected_fields = {
-        "contractName", "algorithm", "keyId", "role", "authorityScope",
+        "contractName", "role", "authorityScope",
+        "authorityClass",
         "javaSdkRoot", "javaSdkTreeSha256", "javaSdkTreeFileCount",
         "javaSdkTreeSizeBytes", "javaVersionOutputSha256", "tools", "dotnet",
         "dotnetSdkTreeSha256", "dotnetSdkTreeFileCount", "dotnetSdkTreeSizeBytes",
-        "publicationAuthorized",
+        "androidSdkBound", "externalSignerMustBindFullJdkDotnetAndroidSdkClosure",
+        "signingAuthorized", "publicationAuthorized",
     }
     if set(value) != expected_fields or (
         value.get("contractName") != JAVA_TOOLCHAIN_CONTRACT
-        or value.get("algorithm") != "ed25519"
-        or value.get("keyId") != VERIFY.RELEASE_APPROVER_KEY_ID
         or value.get("role") != JAVA_TOOLCHAIN_ROLE
         or value.get("authorityScope") != JAVA_TOOLCHAIN_SCOPE
+        or value.get("authorityClass")
+        != "non_authoritative_local_unsigned_preparation"
+        or value.get("androidSdkBound") is not False
+        or value.get("externalSignerMustBindFullJdkDotnetAndroidSdkClosure") is not True
+        or value.get("signingAuthorized") is not False
         or value.get("publicationAuthorized") is not False
     ):
         raise ValueError("trusted Java toolchain authority fields are not exact")
     VERIFY._sha256(
         value.get("javaVersionOutputSha256"), "trusted Java version output digest"
     )
-    VERIFY._verify_ed25519_signature(value, signature, label="trusted Java toolchain authority")
-    if raw != _pretty({**value, "signatureBase64": signature}):
-        raise ValueError("trusted Java toolchain authority is not canonical")
+    if raw != _pretty(value):
+        raise ValueError("local unsigned toolchain observation is not canonical")
 
     java_sdk_value = value.get("javaSdkRoot")
     if not isinstance(java_sdk_value, str):
@@ -424,7 +423,7 @@ def _load_trusted_java_toolchain(authority_path: Path) -> dict[str, Any]:
     ):
         raise ValueError("trusted dotnet SDK closure differs")
     return {
-        "authoritySha256": hashlib.sha256(raw).hexdigest(),
+        "observationSha256": hashlib.sha256(raw).hexdigest(),
         "javaSdkRoot": java_sdk,
         "javaVersionOutputSha256": value["javaVersionOutputSha256"],
         "javaSdkTreeSha256": value["javaSdkTreeSha256"],
@@ -834,7 +833,9 @@ def _protected_validation_inputs(
         "bundletoolSha256": bundletool_sha,
         "uploadCertificateSha256": certificate_sha,
         "uploadCertificateFileSha256": upload_certificate_file_sha,
-        "javaToolAuthoritySha256": trusted_java["authoritySha256"],
+        "javaToolAuthoritySha256": trusted_java["observationSha256"],
+        "toolchainAuthorityClass": "non_authoritative_local_unsigned_preparation",
+        "androidSdkBound": False,
         "javaSdkTreeSha256": trusted_java["javaSdkTreeSha256"],
         "javaVersionOutputSha256": trusted_java["javaVersionOutputSha256"],
         "javaToolSha256": trusted_java["toolSha256"],
@@ -1135,13 +1136,31 @@ def prepare_external_signer_request(
             },
             "expectedUploadCertificateSha256": EXPECTED_UPLOAD_CERTIFICATE_SHA256,
             "requiredExternalSigner": {
+                "implementedByThisRepository": False,
                 "inputTransport": "authenticated_descriptor_or_immutable_artifact",
                 "mustRehashInputs": True,
                 "mustRebuildAndMatchUnsignedAab": True,
                 "mustReplayTwoGreenAndSourceGraph": True,
+                "mustBindFullJdkDotnetAndroidSdkClosure": True,
                 "mustValidatePackageVersionAbiAndProofExclusion": True,
                 "mustVerifyOutputCertificate": True,
                 "mustEmitDetachedAttestation": True,
+                "outputMustBindUnsignedAabSha256": True,
+                "outputMustBindSignedAabSha256": True,
+                "outputMustBindSourceGraphSha256": True,
+                "outputMustBindReleaseIdentity": True,
+            },
+            "expectedExternalSignerOutput": {
+                "contractName": "chummer.android.external-release-signer-attestation/v1",
+                "mustContainDetachedAuthoritySignature": True,
+                "mustBindUnsignedAabSha256": transaction["aabSha256"],
+                "mustBindSourceGraphSha256": transaction["sourceGraphSha256"],
+                "mustBindExpectedUploadCertificateSha256": EXPECTED_UPLOAD_CERTIFICATE_SHA256,
+                "mustBindReleaseIdentity": release_identity,
+                "mustReportSignedAabSha256": True,
+                "mustReportFullToolchainClosureSha256": True,
+                "publicationAuthorized": False,
+                "googlePlayUploadAuthorized": False,
             },
             "signingAuthorized": False,
             "publicationAuthorized": False,
@@ -1177,7 +1196,7 @@ def _validate_validation_claims(value: object) -> dict[str, Any]:
         "uploadCertificateFileSha256",
         "javaToolAuthoritySha256", "javaVersionOutputSha256", "javaToolSha256",
         "javaSdkTreeSha256", "dotnetSha256", "dotnetVersionOutputSha256",
-        "dotnetSdkTreeSha256",
+        "dotnetSdkTreeSha256", "toolchainAuthorityClass", "androidSdkBound",
         "aabValidationOutputSha256", "artifactHygieneOutputSha256",
         "sourceGraphValidationOutputSha256", "validatorSha256",
         "publicationAuthorized",
@@ -1188,6 +1207,9 @@ def _validate_validation_claims(value: object) -> dict[str, Any]:
         value.get("contractName") != VALIDATION_CONTRACT
         or value.get("status") != "pass"
         or value.get("publicationAuthorized") is not False
+        or value.get("toolchainAuthorityClass")
+        != "non_authoritative_local_unsigned_preparation"
+        or value.get("androidSdkBound") is not False
         or value.get("bundletoolSha256") != EXPECTED_BUNDLETOOL_SHA256
         or value.get("uploadCertificateSha256") != EXPECTED_UPLOAD_CERTIFICATE_SHA256
     ):
@@ -1285,6 +1307,10 @@ def sign(
     upload_certificate: Path | None = None,
     java_tool_authority: Path | None = None,
 ) -> dict[str, Any]:
+    # This build-user lane never admits GitHub tokens or private keys.  A
+    # separately implemented protected signer must independently rebuild and
+    # validate the candidate; this legacy entry point is intentionally closed.
+    _external_signer_required("build-attestation signing")
     claims = _artifact_claims(aab, graph, sidecar, receipt, approval)
     identity = claims["graph"]["releaseIdentity"]
     qualification = VERIFY.verify_release_eligibility(
@@ -1376,6 +1402,8 @@ def verify(attestation: Path, aab: Path, graph: Path, sidecar: Path, receipt: Pa
             "uploadCertificateSha256": EXPECTED_UPLOAD_CERTIFICATE_SHA256,
             "uploadCertificateFileSha256": "0" * 64,
             "javaToolAuthoritySha256": "0" * 64,
+            "toolchainAuthorityClass": "non_authoritative_local_unsigned_preparation",
+            "androidSdkBound": False,
             "javaSdkTreeSha256": "0" * 64,
             "javaVersionOutputSha256": "0" * 64,
             "javaToolSha256": {
@@ -1460,6 +1488,10 @@ def main() -> int:
     java_authority.add_argument("--dotnet", required=True, type=Path)
     java_authority.add_argument("--private-key", required=True, type=Path)
     java_authority.add_argument("--output", required=True, type=Path)
+    java_observation = actions.add_parser("observe-toolchain")
+    java_observation.add_argument("--java-sdk", required=True, type=Path)
+    java_observation.add_argument("--dotnet", required=True, type=Path)
+    java_observation.add_argument("--output", required=True, type=Path)
     verify_toolchain = actions.add_parser("verify-toolchain")
     verify_toolchain.add_argument("--authority", required=True, type=Path)
     transaction_parser = actions.add_parser("validate-promote")
@@ -1493,12 +1525,31 @@ def main() -> int:
                 ).hexdigest(),
             }, sort_keys=True))
             return 0
+        if args.action == "observe-toolchain":
+            materialize_java_toolchain_observation(
+                args.java_sdk, args.dotnet, args.output
+            )
+            print(json.dumps({
+                "status": "pass",
+                "authorityClass": "non_authoritative_local_unsigned_preparation",
+                "androidSdkBound": False,
+                "signingAuthorized": False,
+                "publicationAuthorized": False,
+                "observationSha256": hashlib.sha256(
+                    _read(args.output, "local unsigned toolchain observation", VERIFY.MAX_APPROVAL_BYTES, True)
+                ).hexdigest(),
+            }, sort_keys=True))
+            return 0
         if args.action == "verify-toolchain":
             trusted = _load_trusted_java_toolchain(args.authority)
             print(json.dumps({
                 "status": "pass",
+                "authorityClass": "non_authoritative_local_unsigned_preparation",
+                "androidSdkBound": False,
+                "externalSignerMustBindFullJdkDotnetAndroidSdkClosure": True,
+                "signingAuthorized": False,
                 "publicationAuthorized": False,
-                "authoritySha256": trusted["authoritySha256"],
+                "observationSha256": trusted["observationSha256"],
                 "javaSdkRoot": os.fspath(trusted["javaSdkRoot"]),
                 "dotnetPath": os.fspath(trusted["dotnet"]),
             }, sort_keys=True))

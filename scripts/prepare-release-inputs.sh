@@ -1,21 +1,17 @@
-#!/usr/bin/env bash
+#!/bin/bash
 set -euo pipefail
 set +a
 umask 077
 PATH=/usr/bin:/bin
 export PATH
 
-repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
-project_path="$repo_dir/src/Chummer.Android/Chummer.Android.csproj"
-dotnet_command=""
-nuget_org_source="https://api.nuget.org/v3/index.json"
 two_green_receipt_input="${CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT:-}"
 two_green_approval_input="${CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL:-}"
 export -n two_green_receipt_input two_green_approval_input 2>/dev/null || true
-# Preparation never needs signing authority.  Scrub every ambient signing or
-# protected-approval variable before even the first Python, dotnet, or MSBuild
-# child can be started.  The two protected inputs survive only in shell-local
-# variables and are copied into the private preparation root below.
+# Preparation never needs signing authority. Reject and scrub every ambient
+# signing/private-key/password input before the first external command. The two
+# signed public authority inputs survive only in shell-local variables.
+ambient_signing_input=false
 for protected_release_variable in \
   AndroidSigningKeyStore \
   ChummerAndroidSigningStorePass \
@@ -28,16 +24,54 @@ for protected_release_variable in \
   CHUMMER_RECOVERY_STORE_PASSWORD \
   CHUMMER_ANDROID_RELEASE_APPROVER_PRIVATE_KEY \
   CHUMMER_ANDROID_BUILD_ATTESTATION_PRIVATE_KEY \
-  CHUMMER_ANDROID_GITHUB_PROVENANCE_TOKEN_FILE \
-  CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT \
-  CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL \
-  SSLKEYLOGFILE; do
+  CHUMMER_ANDROID_GITHUB_PROVENANCE_TOKEN_FILE; do
+  if [[ -v "$protected_release_variable" ]]; then
+    ambient_signing_input=true
+  fi
   unset "$protected_release_variable"
 done
 unset protected_release_variable
+if [[ "$ambient_signing_input" == true ]]; then
+  unset CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT
+  unset CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL
+  printf 'android_release_inputs=failed stage=external-signer-required-readable-signing-input-rejected publication_authorized=false\n' >&2
+  exit 1
+fi
+unset ambient_signing_input
+unset CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT
+unset CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL
+
+for hostile_startup_variable in \
+  BASH_ENV ENV CDPATH GIT_EXEC_PATH \
+  LD_AUDIT LD_LIBRARY_PATH LD_PRELOAD \
+  DYLD_INSERT_LIBRARIES DYLD_LIBRARY_PATH \
+  PYTHONHOME PYTHONPATH PYTHONSTARTUP PYTHONINSPECT \
+  OPENSSL_CONF OPENSSL_ENGINES OPENSSL_MODULES \
+  SSLKEYLOGFILE SSL_CERT_FILE SSL_CERT_DIR \
+  JAVA_TOOL_OPTIONS JDK_JAVA_OPTIONS _JAVA_OPTIONS CLASSPATH \
+  DOTNET_ROOT DOTNET_ROOT_X64 MSBuildSDKsPath MSBUILD_EXE_PATH \
+  NUGET_PLUGIN_PATHS COREHOST_TRACEFILE; do
+  unset "$hostile_startup_variable"
+done
+unset hostile_startup_variable
+
 caller_dotnet="${CHUMMER_DOTNET:-}"
 export -n caller_dotnet 2>/dev/null || true
 unset CHUMMER_DOTNET
+
+repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+project_path="$repo_dir/src/Chummer.Android/Chummer.Android.csproj"
+dotnet_command=""
+nuget_org_source="https://api.nuget.org/v3/index.json"
+python3() {
+  if [[ "${1:-}" == "-c" ]]; then
+    /usr/bin/python3 -I -E -S "$@"
+    return
+  fi
+  /usr/bin/python3 -I -E -S -c \
+    'import pathlib,runpy,sys; p=pathlib.Path(sys.argv[1]).resolve(strict=True); sys.path.insert(0, str(p.parent)); sys.argv=sys.argv[1:]; runpy.run_path(str(p), run_name="__main__")' \
+    "$@"
+}
 
 fail() {
   printf 'android_release_inputs=failed stage=%s publication_authorized=false\n' "$1" >&2

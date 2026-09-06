@@ -1,18 +1,56 @@
-#!/usr/bin/env bash
+#!/bin/bash
 set -euo pipefail
+set +a
 umask 077
 PATH=/usr/bin:/bin
 export PATH
 
-# This script is release-authoritative only when entered through the protected
-# supervisor, which seals this script, disables dumpability, and verifies Yama.
-[[ "${CHUMMER_RELEASE_PROCESS_ISOLATED:-}" == "v1" ]] || {
-  printf 'android_release=failed stage=protected-process-supervisor-required\n' >&2
+# This process is deliberately a non-authoritative unsigned builder. Reject all
+# ambient signing material before the first external command. A same-UID caller
+# can read owner-only files, so no local path or environment secret can confer
+# signing authority.
+ambient_signing_input=false
+for release_secret_variable in \
+  AndroidSigningKeyStore \
+  ChummerAndroidSigningStorePass \
+  ChummerAndroidSigningKeyPass \
+  ChummerAndroidSigningKeyAlias \
+  CHUMMER_ANDROID_PREFLIGHT_STORE_PASSWORD \
+  CHUMMER_ANDROID_SIGNING_DIR \
+  CHUMMER_PROVISION_STORE_PASSWORD \
+  CHUMMER_RECOVERY_STORE_PASSWORD \
+  CHUMMER_ANDROID_RELEASE_APPROVER_PRIVATE_KEY \
+  CHUMMER_ANDROID_BUILD_ATTESTATION_PRIVATE_KEY \
+  CHUMMER_ANDROID_GITHUB_PROVENANCE_TOKEN_FILE; do
+  if [[ -v "$release_secret_variable" ]]; then
+    ambient_signing_input=true
+  fi
+  unset "$release_secret_variable"
+done
+unset release_secret_variable
+if [[ "$ambient_signing_input" == true ]]; then
+  printf 'android_release=failed stage=external-signer-required-readable-signing-input-rejected publication_authorized=false\n' >&2
   exit 1
-}
+fi
+unset ambient_signing_input
 
-# Legacy signing values may be present in an operator shell. They are removed
-# from child environments immediately and later rejected rather than used.
+# No child receives loader, language-runtime, TLS-keylog, Java, or MSBuild
+# startup injection from the caller.
+for hostile_startup_variable in \
+  BASH_ENV ENV CDPATH GIT_EXEC_PATH \
+  LD_AUDIT LD_LIBRARY_PATH LD_PRELOAD \
+  DYLD_INSERT_LIBRARIES DYLD_LIBRARY_PATH \
+  PYTHONHOME PYTHONPATH PYTHONSTARTUP PYTHONINSPECT \
+  OPENSSL_CONF OPENSSL_ENGINES OPENSSL_MODULES \
+  SSLKEYLOGFILE SSL_CERT_FILE SSL_CERT_DIR \
+  JAVA_TOOL_OPTIONS JDK_JAVA_OPTIONS _JAVA_OPTIONS CLASSPATH \
+  DOTNET_ROOT DOTNET_ROOT_X64 MSBuildSDKsPath MSBUILD_EXE_PATH \
+  NUGET_PLUGIN_PATHS COREHOST_TRACEFILE; do
+  unset "$hostile_startup_variable"
+done
+unset hostile_startup_variable
+
+# Defensive child-environment scrub for every unsigned test subprocess.
 release_test_environment=(
   -u AndroidSigningKeyStore
   -u ChummerAndroidSigningStorePass
@@ -31,58 +69,17 @@ release_test_environment=(
   -u CHUMMER_DOTNET
   -u SSLKEYLOGFILE
 )
-for release_secret_variable in \
-  AndroidSigningKeyStore \
-  ChummerAndroidSigningStorePass \
-  ChummerAndroidSigningKeyPass \
-  ChummerAndroidSigningKeyAlias \
-  CHUMMER_ANDROID_UPLOAD_CERTIFICATE_PATH \
-  CHUMMER_ANDROID_PREFLIGHT_STORE_PASSWORD \
-  CHUMMER_ANDROID_SIGNING_DIR \
-  CHUMMER_PROVISION_STORE_PASSWORD \
-  CHUMMER_RECOVERY_STORE_PASSWORD; do
-  if [[ -v "$release_secret_variable" ]]; then
-    export -n "$release_secret_variable"
-  fi
-done
+export -n CHUMMER_ANDROID_UPLOAD_CERTIFICATE_PATH 2>/dev/null || true
 unset CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT
 unset CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL
-unset CHUMMER_ANDROID_RELEASE_APPROVER_PRIVATE_KEY
-unset CHUMMER_ANDROID_BUILD_ATTESTATION_PRIVATE_KEY
-unset CHUMMER_ANDROID_GITHUB_PROVENANCE_TOKEN_FILE
-unset SSLKEYLOGFILE
-unset release_secret_variable
-/usr/bin/python3 -c '
-import ctypes
-import os
-from pathlib import Path
-libc = ctypes.CDLL(None, use_errno=True)
-if libc.prctl(3, 0, 0, 0, 0) != 0:
-    raise SystemExit("release process is dumpable")
-try:
-    scope = int(Path("/proc/sys/kernel/yama/ptrace_scope").read_text(encoding="ascii").strip())
-except (OSError, ValueError) as error:
-    raise SystemExit(f"cannot establish Yama posture: {error}")
-if scope < 2:
-    raise SystemExit("Yama ptrace_scope must be at least 2")
-docker_socket = Path("/var/run/docker.sock")
-if docker_socket.exists() and (os.access(docker_socket, os.R_OK) or os.access(docker_socket, os.W_OK)):
-    raise SystemExit("release identity can access the rootful Docker socket")
-' || {
-  printf 'android_release=failed stage=protected-process-isolation-invalid\n' >&2
-  exit 1
-}
 caller_dotnet="${CHUMMER_DOTNET:-}"
 export -n caller_dotnet 2>/dev/null || true
 unset CHUMMER_DOTNET
 
-repo_dir="${CHUMMER_RELEASE_REPO_ROOT:-}"
-[[ -n "$repo_dir" && "$repo_dir" == /* && ! -L "$repo_dir" && -d "$repo_dir" ]] || {
-  printf 'android_release=failed stage=protected-repository-root-missing\n' >&2
-  exit 1
-}
+repo_dir="${CHUMMER_RELEASE_REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)}"
+[[ -n "$repo_dir" && "$repo_dir" == /* && ! -L "$repo_dir" && -d "$repo_dir" ]] || exit 1
 repo_dir="$(cd "$repo_dir" && pwd -P)"
-unset CHUMMER_RELEASE_REPO_ROOT CHUMMER_RELEASE_PROCESS_ISOLATED
+unset CHUMMER_RELEASE_REPO_ROOT
 project_path="$repo_dir/src/Chummer.Android/Chummer.Android.csproj"
 
 # Do not dispatch release commands through caller-controlled PATH lookup. These
@@ -101,7 +98,15 @@ jq() { /usr/bin/jq "$@"; }
 mkdir() { /usr/bin/mkdir "$@"; }
 mktemp() { /usr/bin/mktemp "$@"; }
 openssl() { /usr/bin/openssl "$@"; }
-python3() { /usr/bin/python3 "$@"; }
+python3() {
+  if [[ "${1:-}" == "-c" ]]; then
+    /usr/bin/python3 -I -E -S "$@"
+    return
+  fi
+  /usr/bin/python3 -I -E -S -c \
+    'import pathlib,runpy,sys; p=pathlib.Path(sys.argv[1]).resolve(strict=True); sys.path.insert(0, str(p.parent)); sys.argv=sys.argv[1:]; runpy.run_path(str(p), run_name="__main__")' \
+    "$@"
+}
 realpath() { /usr/bin/realpath "$@"; }
 rm() { /usr/bin/rm "$@"; }
 sha256sum() { /usr/bin/sha256sum "$@"; }

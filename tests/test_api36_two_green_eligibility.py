@@ -1695,7 +1695,11 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
         )
         signed = self.root / "protected-release-approval.json"
         github = self.authenticated_github_client()
-        with mock.patch.object(signer, "GitHubApiClient", return_value=github):
+        with mock.patch.object(
+            signer, "_external_signer_required", return_value=None
+        ), mock.patch.object(
+            signer, "_private_key", return_value=self.approver_private_key
+        ), mock.patch.object(signer, "GitHubApiClient", return_value=github):
             result = signer.sign(
                 receipt,
                 self.github_token,
@@ -1720,7 +1724,11 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
             sha256(signed.read_bytes()),
             binding["protectedApproval"]["approvalSha256"],
         )
-        with mock.patch.object(signer, "GitHubApiClient", return_value=github):
+        with mock.patch.object(
+            signer, "_external_signer_required", return_value=None
+        ), mock.patch.object(
+            signer, "_private_key", return_value=self.approver_private_key
+        ), mock.patch.object(signer, "GitHubApiClient", return_value=github):
             with self.assertRaisesRegex(ValueError, "output must be new"):
                 signer.sign(
                     receipt,
@@ -1745,7 +1753,11 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
         }
         fabricated["eligibilitySha256"] = gate.canonical_sha256(unsigned)
         receipt.write_bytes(gate.pretty_json_bytes(fabricated))
-        with mock.patch.object(signer, "GitHubApiClient", return_value=github):
+        with mock.patch.object(
+            signer, "_external_signer_required", return_value=None
+        ), mock.patch.object(
+            signer, "_private_key", return_value=self.approver_private_key
+        ), mock.patch.object(signer, "GitHubApiClient", return_value=github):
             with self.assertRaisesRegex(ValueError, "authenticated GitHub|does not replay"):
                 signer.sign(
                     receipt,
@@ -1762,7 +1774,11 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
             self.release_consumer_inputs(authority)
         )
         github = self.authenticated_github_client(remote_main="0" * 40)
-        with mock.patch.object(signer, "GitHubApiClient", return_value=github):
+        with mock.patch.object(
+            signer, "_external_signer_required", return_value=None
+        ), mock.patch.object(
+            signer, "_private_key", return_value=self.approver_private_key
+        ), mock.patch.object(signer, "GitHubApiClient", return_value=github):
             with self.assertRaisesRegex(ValueError, "remote main"):
                 signer.sign(
                     receipt,
@@ -1786,7 +1802,11 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
         github = self.authenticated_github_client(
             overrides={endpoint: gate.canonical_json_bytes(fabricated_pr)}
         )
-        with mock.patch.object(signer, "GitHubApiClient", return_value=github):
+        with mock.patch.object(
+            signer, "_external_signer_required", return_value=None
+        ), mock.patch.object(
+            signer, "_private_key", return_value=self.approver_private_key
+        ), mock.patch.object(signer, "GitHubApiClient", return_value=github):
             with self.assertRaises(ValueError):
                 signer.sign(
                     receipt,

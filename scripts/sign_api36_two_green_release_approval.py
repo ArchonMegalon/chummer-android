@@ -1,16 +1,14 @@
 #!/usr/bin/env python3
-"""Create a short-lived detached approval for one exact two-green receipt.
+"""Verify two-green inputs; local signing is deliberately unavailable.
 
-This command belongs in the protected release-builder environment.  Its output
-authorizes release preparation only; it cannot authorize AAB signing, Play
-upload, tester mutation, or publication.
+The build-user lane has no signing authority.  The external signer must replay
+GitHub provenance independently and issue its own detached approval.
 """
 
 from __future__ import annotations
 
 import argparse
 import base64
-import ctypes
 from datetime import UTC, datetime, timedelta
 import hashlib
 import importlib.util
@@ -194,35 +192,16 @@ def _private_file(path: Path, label: str, *, outside_repo: bool) -> Path:
 
 
 def _private_key(path: Path) -> Path:
-    _require_protected_process()
-    KEY_HYGIENE.verify(REPO_ROOT)
+    del path
+    _external_signer_required("release-approval signing")
+    raise AssertionError("unreachable")
+
+
+def _external_signer_required(operation: str) -> None:
     raise ValueError(
-        "external-signer-required: release-approval private keys are not accepted "
-        "by the build-user release gate"
+        f"external-signer-required: {operation} is unavailable in the local "
+        "unsigned build-user lane"
     )
-
-
-def _require_protected_process() -> None:
-    if os.environ.get("CHUMMER_RELEASE_PROCESS_ISOLATED") != "v1":
-        raise ValueError("protected release supervisor is required")
-    libc = ctypes.CDLL(None, use_errno=True)
-    if libc.prctl(3, 0, 0, 0, 0) != 0:
-        raise ValueError("protected release process is dumpable")
-    try:
-        scope = int(
-            Path("/proc/sys/kernel/yama/ptrace_scope")
-            .read_text(encoding="ascii")
-            .strip()
-        )
-    except (OSError, ValueError) as error:
-        raise ValueError("cannot establish protected release Yama posture") from error
-    if scope < 2:
-        raise ValueError("protected release requires Yama ptrace_scope >= 2")
-    docker_socket = Path("/var/run/docker.sock")
-    if docker_socket.exists() and (
-        os.access(docker_socket, os.R_OK) or os.access(docker_socket, os.W_OK)
-    ):
-        raise ValueError("protected release identity has rootful Docker access")
 
 
 def _write_exclusive(path: Path, raw: bytes) -> None:
@@ -452,6 +431,10 @@ def sign(
     private_key_path: Path,
     output_path: Path,
 ) -> dict[str, object]:
+    # Fail before reading a receipt, GitHub token, or private-key path.  This
+    # module can still replay public provenance in tests/tools, but the local
+    # build-user process can never turn it into signing authority.
+    _external_signer_required("release-approval signing")
     receipt_raw = VERIFIER._stable_bytes(
         receipt_path,
         label="two-green eligibility receipt",

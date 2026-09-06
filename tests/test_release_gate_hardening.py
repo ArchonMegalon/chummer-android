@@ -174,8 +174,8 @@ class ReleaseGateHardeningTests(unittest.TestCase):
                         "contractName": BUILD_ATTESTATION.SOURCE_GRAPH_CONTRACT,
                         "releaseIdentity": {
                             "packageId": "com.myexternalbrain.chummer",
-                            "versionName": "0.1.0-preview.12",
-                            "versionCode": 12,
+                            "versionName": "9.9.9-candidate",
+                            "versionCode": 999,
                         },
                     }
                 )
@@ -222,6 +222,25 @@ class ReleaseGateHardeningTests(unittest.TestCase):
             self.assertTrue(
                 request["requiredExternalSigner"]["mustRebuildAndMatchUnsignedAab"]
             )
+            self.assertFalse(
+                request["requiredExternalSigner"]["implementedByThisRepository"]
+            )
+            self.assertTrue(
+                request["requiredExternalSigner"][
+                    "mustBindFullJdkDotnetAndroidSdkClosure"
+                ]
+            )
+            expected_output = request["expectedExternalSignerOutput"]
+            self.assertEqual(
+                "chummer.android.external-release-signer-attestation/v1",
+                expected_output["contractName"],
+            )
+            self.assertEqual(
+                request["sourceGraph"]["sha256"],
+                expected_output["mustBindSourceGraphSha256"],
+            )
+            self.assertFalse(expected_output["publicationAuthorized"])
+            self.assertFalse(expected_output["googlePlayUploadAuthorized"])
             self.assertEqual(
                 hashlib.sha256(b"unsigned-bundle").hexdigest(),
                 request["unsignedAab"]["sha256"],
@@ -280,19 +299,32 @@ class ReleaseGateHardeningTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "root-owned"):
                     BUILD_ATTESTATION._java_toolchain_unsigned(java_sdk, dotnet)
             attacker_private = root / "attacker.private.pem"
-            attacker_public = root / "attacker.public.pem"
             subprocess.run(
                 ["openssl", "genpkey", "-algorithm", "ED25519", "-out", str(attacker_private)],
-                check=True,
-                capture_output=True,
+                check=True, capture_output=True,
             )
             attacker_private.chmod(0o600)
-            subprocess.run(
-                ["openssl", "pkey", "-in", str(attacker_private), "-pubout", "-out", str(attacker_public)],
-                check=True,
-                capture_output=True,
-            )
             authority = root / "attacker-toolchain-authority.json"
+            with self.assertRaisesRegex(ValueError, "external-signer-required"):
+                BUILD_ATTESTATION.sign_java_toolchain_authority(
+                    java_sdk, dotnet, attacker_private, authority
+                )
+            self.assertFalse(authority.exists())
+
+    def test_local_toolchain_record_is_unsigned_non_authority_and_omits_android_sdk(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            java_sdk = root / "jdk"
+            (java_sdk / "bin").mkdir(parents=True)
+            for name in ("java", "javac", "jarsigner", "keytool"):
+                tool = java_sdk / "bin" / name
+                tool.write_bytes(f"local-{name}".encode("ascii"))
+                tool.chmod(0o700)
+            dotnet = root / "dotnet" / "dotnet"
+            dotnet.parent.mkdir()
+            dotnet.write_bytes(b"local-dotnet")
+            dotnet.chmod(0o700)
+            output = root / "toolchain-observation.json"
             with mock.patch.object(
                 BUILD_ATTESTATION, "_trusted_tool_root", side_effect=lambda path, _label: path
             ), mock.patch.object(
@@ -302,25 +334,23 @@ class ReleaseGateHardeningTests(unittest.TestCase):
             ), mock.patch.object(
                 BUILD_ATTESTATION, "_dotnet_version_digest", return_value="2" * 64
             ), mock.patch.object(
-                BUILD_ATTESTATION,
-                "_trusted_tree_digest",
-                return_value=("3" * 64, 4, 100),
-            ), mock.patch.object(
-                BUILD_ATTESTATION.VERIFY, "RELEASE_APPROVER_PUBLIC_KEY", attacker_public
-            ), mock.patch.object(
-                BUILD_ATTESTATION.VERIFY,
-                "RELEASE_APPROVER_PUBLIC_KEY_SHA256",
-                hashlib.sha256(attacker_public.read_bytes()).hexdigest(),
-            ), mock.patch.object(
-                BUILD_ATTESTATION, "_require_protected_process", return_value=None
-            ), mock.patch.object(
-                BUILD_ATTESTATION, "_private_key", return_value=attacker_private
+                BUILD_ATTESTATION, "_trusted_tree_digest", return_value=("3" * 64, 4, 100)
             ):
-                BUILD_ATTESTATION.sign_java_toolchain_authority(
-                    java_sdk, dotnet, attacker_private, authority
+                observation = BUILD_ATTESTATION.materialize_java_toolchain_observation(
+                    java_sdk, dotnet, output
                 )
-            with self.assertRaisesRegex(ValueError, "signature is invalid"):
-                BUILD_ATTESTATION._load_trusted_java_toolchain(authority)
+            self.assertEqual(
+                "non_authoritative_local_unsigned_preparation",
+                observation["authorityClass"],
+            )
+            self.assertFalse(observation["androidSdkBound"])
+            self.assertFalse(observation["signingAuthorized"])
+            self.assertFalse(observation["publicationAuthorized"])
+            self.assertNotIn("signatureBase64", observation)
+            self.assertNotIn("keyId", observation)
+            self.assertTrue(
+                observation["externalSignerMustBindFullJdkDotnetAndroidSdkClosure"]
+            )
 
     def test_readable_owner_only_private_keys_cannot_authorize_local_signing(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -332,23 +362,61 @@ class ReleaseGateHardeningTests(unittest.TestCase):
             )
             readable_key.chmod(0o600)
             with mock.patch.object(
-                BUILD_ATTESTATION, "_require_protected_process", return_value=None
-            ), mock.patch.object(
                 BUILD_ATTESTATION.KEY_HYGIENE, "verify", return_value=None
             ), self.assertRaisesRegex(ValueError, "external-signer-required"):
                 BUILD_ATTESTATION._private_key(readable_key)
             with mock.patch.object(
-                TWO_GREEN_SIGNER, "_require_protected_process", return_value=None
-            ), mock.patch.object(
                 TWO_GREEN_SIGNER.KEY_HYGIENE, "verify", return_value=None
             ), self.assertRaisesRegex(ValueError, "external-signer-required"):
                 TWO_GREEN_SIGNER._private_key(readable_key)
+
+            with mock.patch.object(
+                BUILD_ATTESTATION, "_artifact_claims"
+            ) as artifact_claims, self.assertRaisesRegex(
+                ValueError, "external-signer-required"
+            ):
+                BUILD_ATTESTATION.sign(
+                    readable_key, readable_key, readable_key, readable_key,
+                    readable_key, readable_key, root / "output", readable_key,
+                )
+            artifact_claims.assert_not_called()
+            with mock.patch.object(
+                TWO_GREEN_SIGNER.VERIFIER, "_stable_bytes"
+            ) as stable_bytes, self.assertRaisesRegex(
+                ValueError, "external-signer-required"
+            ):
+                TWO_GREEN_SIGNER.sign(
+                    readable_key, readable_key, readable_key, root / "approval"
+                )
+            stable_bytes.assert_not_called()
 
             build = (REPO / "scripts/build-release.sh").read_text(encoding="utf-8")
             self.assertIn("external-signer-required-readable-signing-input-rejected", build)
             self.assertIn("-p:AndroidKeyStore=false", build)
             self.assertNotIn("signing-keystore-preflight", build)
             self.assertNotIn("ChummerAndroidSigningStorePass=", build)
+
+            for script_name, marker in (
+                ("build-release.sh", "android_release=failed"),
+                ("prepare-release-inputs.sh", "android_release_inputs=failed"),
+            ):
+                completed = subprocess.run(
+                    ["/bin/bash", str(REPO / "scripts" / script_name)],
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                    env={
+                        "PATH": "/usr/bin:/bin",
+                        "CHUMMER_ANDROID_BUILD_ATTESTATION_PRIVATE_KEY": str(readable_key),
+                    },
+                )
+                self.assertNotEqual(0, completed.returncode)
+                self.assertIn(marker, completed.stderr)
+                self.assertIn(
+                    "external-signer-required-readable-signing-input-rejected",
+                    completed.stderr,
+                )
+                self.assertNotIn("release-version-intent", completed.stderr)
 
     def test_protected_tool_leases_reject_path_and_metadata_drift(self) -> None:
         for mutation in ("replace", "world-writable", "link-count", "ctime-only"):
@@ -544,17 +612,14 @@ class ReleaseGateHardeningTests(unittest.TestCase):
             probe.write_text(scrub_program + '\nenv > "$1"\n', encoding="utf-8")
             environment = dict(os.environ)
             for name in (
-                "AndroidSigningKeyStore",
-                "ChummerAndroidSigningStorePass",
-                "ChummerAndroidSigningKeyPass",
-                "ChummerAndroidSigningKeyAlias",
-                "CHUMMER_ANDROID_RELEASE_APPROVER_PRIVATE_KEY",
-                "CHUMMER_ANDROID_BUILD_ATTESTATION_PRIVATE_KEY",
-                "CHUMMER_ANDROID_GITHUB_PROVENANCE_TOKEN_FILE",
                 "CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT",
                 "CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL",
                 "CHUMMER_DOTNET",
                 "SSLKEYLOGFILE",
+                "PYTHONPATH",
+                "LD_LIBRARY_PATH",
+                "JAVA_TOOL_OPTIONS",
+                "MSBuildSDKsPath",
             ):
                 environment[name] = f"hostile-{name}"
             subprocess.run(
@@ -566,8 +631,28 @@ class ReleaseGateHardeningTests(unittest.TestCase):
             child = observed.read_text(encoding="utf-8")
             self.assertNotIn("hostile-", child)
 
+            rejected = subprocess.run(
+                ["/bin/bash", str(probe), str(observed)],
+                check=False,
+                env={
+                    "PATH": "/usr/bin:/bin",
+                    "CHUMMER_ANDROID_RELEASE_APPROVER_PRIVATE_KEY": "readable-key",
+                },
+                capture_output=True,
+                text=True,
+            )
+            self.assertNotEqual(0, rejected.returncode)
+            self.assertIn(
+                "external-signer-required-readable-signing-input-rejected",
+                rejected.stderr,
+            )
+
     def test_build_scrubs_protected_signer_environment_before_children(self) -> None:
         script = (REPO / "scripts/build-release.sh").read_text(encoding="utf-8")
+        prepare = (REPO / "scripts/prepare-release-inputs.sh").read_text(encoding="utf-8")
+        documentation = (REPO / "docs/PLAY_RELEASE.md").read_text(encoding="utf-8")
+        self.assertTrue(script.startswith("#!/bin/bash\n"))
+        self.assertTrue(prepare.startswith("#!/bin/bash\n"))
         prefix_end = "unset CHUMMER_DOTNET\n"
         prefix = script[: script.index(prefix_end) + len(prefix_end)]
         for name in (
@@ -577,12 +662,18 @@ class ReleaseGateHardeningTests(unittest.TestCase):
             "CHUMMER_DOTNET",
             "SSLKEYLOGFILE",
         ):
-            self.assertIn(f"unset {name}", prefix)
+            self.assertIn(name, prefix)
             self.assertIn(f"-u {name}", prefix)
-        self.assertIn("protected-process-supervisor-required", prefix)
-        self.assertIn("release process is dumpable", prefix)
-        self.assertIn("Yama ptrace_scope must be at least 2", prefix)
-        self.assertIn("rootful Docker socket", prefix)
+        self.assertIn('unset "$release_secret_variable"', prefix)
+        self.assertIn("non-authoritative unsigned builder", prefix)
+        self.assertIn("external-signer-required-readable-signing-input-rejected", prefix)
+        self.assertNotIn("protected-process-supervisor-required", script)
+        self.assertNotIn("ptrace_scope", script)
+        self.assertNotIn("PR_SET_DUMPABLE", script)
+        self.assertNotIn("run_protected_android_release.py", script)
+        self.assertNotIn("run_protected_android_release.py", documentation)
+        self.assertIn("separate, not-yet-implemented transaction", documentation)
+        self.assertIn("full JDK, .NET SDK/workload/\nMSBuild, and Android SDK closure", documentation)
 
 
 if __name__ == "__main__":

@@ -18,7 +18,8 @@ documented at https://support.google.com/googleplay/android-developer/answer/119
 
 ## Secret boundary
 
-Upload keys and passwords are never committed. Release automation supplies:
+Upload keys and passwords are never committed. They belong only to a separate
+protected external signer, which is not implemented by this repository:
 
 - `AndroidSigningKeyStore`
 - `ChummerAndroidSigningStorePass`
@@ -63,15 +64,15 @@ signer:
 CHUMMER_ANDROID_EXPECTED_VERSION_NAME=0.1.0-preview.12 \
 CHUMMER_ANDROID_EXPECTED_VERSION_CODE=12 \
 CHUMMER_BUNDLETOOL_JAR=/secure/tools/bundletool-all-1.18.3.jar \
-  /usr/bin/python3 scripts/run_protected_android_release.py
+  /bin/bash scripts/build-release.sh
 ```
 
 The expected version name and code are mandatory release intent, not defaults.
 They must be canonical, must exactly match the single
 `ApplicationDisplayVersion`/`ApplicationVersion` pair in the Android project,
-and the code must be greater than the already published Preview.11 code `11`.
-The responsiveness/settings follow-up is therefore Preview.12/code `12`, not a
-replacement of Preview.11. Supplying only one value, reusing an already
+and the code must be greater than the separately recorded current Play version.
+This gate contains no hard-coded preview floor; advancing release identity is a
+separate candidate transaction. Supplying only one value, reusing an already
 published code, using a leading-zero code, or
 disagreeing with the project fails before workspace, signing, or build inputs
 are admitted. The resolved pair is bound into the AAB/checksum/source-graph
@@ -82,7 +83,8 @@ remain immutable historical evidence. This next-release lane neither rebuilds
 nor replaces them, and it does not manufacture a Preview.11 receipt from the
 live Console observation that established the new version floor.
 
-Before the signed build, prepare the package authority and `--no-restore` assets
+Before the unsigned candidate build, prepare the package authority and
+`--no-restore` assets
 from the retained UI package-plane receipt and its exact private package cache.
 The input directory must be a new empty owner-only directory outside the
 repository. The preparer derives `chummer.android.release-package-authority/v2`
@@ -97,7 +99,7 @@ CHUMMER_ANDROID_EXPECTED_VERSION_NAME=0.1.0-preview.12 \
 CHUMMER_ANDROID_EXPECTED_VERSION_CODE=12 \
 CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT=/absolute/private/ANDROID_API36_TWO_GREEN_ELIGIBILITY.generated.json \
 CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL=/absolute/private/ANDROID_API36_TWO_GREEN_RELEASE_APPROVAL.generated.json \
-CHUMMER_ANDROID_RELEASE_TOOLCHAIN_AUTHORITY=/absolute/protected/ANDROID_RELEASE_TOOLCHAIN_AUTHORITY.generated.json \
+CHUMMER_ANDROID_RELEASE_TOOLCHAIN_AUTHORITY=/absolute/private/ANDROID_LOCAL_UNSIGNED_TOOLCHAIN_OBSERVATION.generated.json \
 CHUMMER_CURRENT_UI_PACKAGE_AUTHORITY_RECEIPT=/absolute/private/UI_CURRENT_MAIN_PACKAGE_PLANE.generated.json \
 CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED=/absolute/private/ui-package-cache/packages \
   scripts/prepare-release-inputs.sh
@@ -120,13 +122,23 @@ never enter the checkout or the build-user process. Local `sign` entry points
 fail with `external-signer-required`. The external signer must fetch and replay
 GitHub provenance itself and deliver only the detached approval.
 
-The same protected key approves one exact root-owned, non-writable Java/.NET
-toolchain. This authority is also created by that external signer. It binds the
-full JDK and .NET SDK/workload/MSBuild trees,
-not only launcher files and version strings. Caller-owned SDK shims are never
-accepted by either release preparation or protected build attestation. There is
-no safe operator command for creating this signature on the ordinary Docker-
-capable development host.
+The local builder records a non-authoritative observation of the complete
+root-owned JDK and .NET SDK/workload/MSBuild trees. It deliberately does not
+bind the Android SDK and cannot authorize signing. Materialize it with an
+isolated interpreter:
+
+```sh
+/usr/bin/python3 -I -E -S scripts/sign_android_release_build_attestation.py \
+  observe-toolchain \
+  --java-sdk /absolute/root-owned/jdk \
+  --dotnet /absolute/root-owned/dotnet/dotnet \
+  --output /absolute/private/ANDROID_LOCAL_UNSIGNED_TOOLCHAIN_OBSERVATION.generated.json
+```
+
+The external signer must independently bind the full JDK, .NET SDK/workload/
+MSBuild, and Android SDK closure. It must independently rebuild from the exact
+authenticated source graph and match the unsigned candidate digest. The local
+observation is never signer input authority.
 
 The preparer copies both owner-only inputs into fixed release-input paths and
 verifies the detached signature before admitting them. Recomputing and
@@ -137,22 +149,22 @@ scrubbed from every restore, test, dotnet, and MSBuild child environment. The
 release build re-verifies the same receipt, signature, package
 authority, and source graph before producing the unsigned signer handoff.
 
-Never invoke `scripts/build-release.sh` directly. Enter it through
-`scripts/run_protected_android_release.py`, which holds an immutable sealed copy
-of the release script, makes the process non-dumpable, enables no-new-privileges,
-and requires Yama `ptrace_scope >= 2`. The release identity must not have access
-to a rootful Docker socket. The ordinary development host is therefore suitable
-for preparation and tests only; it is not a qualified final signer.
+`scripts/prepare-release-inputs.sh` and `scripts/build-release.sh` are local
+unsigned preparation only. They reject any signing/private-key/password/token
+environment at entry, scrub language-runtime, loader, TLS-keylog, Java, and
+MSBuild startup variables before child processes, and use isolated Python
+invocations. A hostile caller can still control the build-user process itself;
+therefore none of its outputs is signing authority. The ordinary development
+host is suitable for preparation and tests only and must never receive
+production signing credentials.
 
-The release threat model begins after the protected process has loaded its
-reviewed code. An attacker may read, write, rename, and relink every filesystem
-path accessible to the build user and may control its initial environment. The
-attacker may not ptrace, use `process_vm_readv`, signal/kill, or execute code
-inside the already-running protected process. A host that cannot enforce that
-boundary must use a separate privileged signer identity/service and must never
-receive production signing credentials.
+The protected external signer is a separate, not-yet-implemented transaction.
+It must run under a distinct credential and filesystem authority, authenticate
+all inputs, bind the full toolchain closure, rebuild from exact source, validate
+the signed result, and emit a detached output attestation. Until that exists,
+the repository intentionally stops at `external-signer-required`.
 
-Run the protected release only from a complete coherent workspace whose
+Run the unsigned preparation only from a complete coherent workspace whose
 `chummer-android` sibling is accompanied by exact clean Presentation, Core, UI
 Kit, Hub, Hub Registry, Media Factory, and Design checkouts. Set
 `CHUMMER_COMPLETE_ROOT` to that workspace and supply all eight exact

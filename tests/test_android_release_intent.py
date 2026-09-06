@@ -104,7 +104,7 @@ class AndroidReleaseIntentTests(unittest.TestCase):
         )
         self.assertNotEqual(0, completed.returncode)
         self.assertEqual(
-            "android_release=failed stage=protected-process-supervisor-required\n",
+            "android_release=failed stage=release-version-intent-missing\n",
             completed.stderr,
         )
 
@@ -127,7 +127,8 @@ class AndroidReleaseIntentTests(unittest.TestCase):
                 self.assertTrue(
                     completed.stderr.endswith(
                         "android_release=failed stage=release-version-intent-invalid\n"
-                    )
+                    ),
+                    completed.stderr,
                 )
 
     def test_release_shell_has_no_google_play_mutation_transport(self) -> None:

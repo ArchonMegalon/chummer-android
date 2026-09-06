@@ -334,6 +334,8 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
             "uploadCertificateSha256": build.EXPECTED_UPLOAD_CERTIFICATE_SHA256,
             "uploadCertificateFileSha256": "0" * 64,
             "javaToolAuthoritySha256": "4" * 64,
+            "toolchainAuthorityClass": "non_authoritative_local_unsigned_preparation",
+            "androidSdkBound": False,
             "javaSdkTreeSha256": "c" * 64,
             "javaVersionOutputSha256": "5" * 64,
             "javaToolSha256": {
@@ -411,7 +413,7 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
             "_protected_validation",
             return_value=self.protected_build_validation(),
         ), mock.patch.object(
-            build, "_require_protected_process", return_value=None,
+            build, "_external_signer_required", return_value=None,
         ), mock.patch.object(
             build, "_private_key", return_value=self.attester_private_key,
         ), mock.patch.object(
@@ -443,41 +445,31 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
         self.assertEqual(self.expected_source_graph_sha256, verified["sourceGraph"]["sha256"])
 
         unvalidated_output = self.root / "unvalidated-build-attestation.json"
-        with mock.patch.object(
-            build.APPROVAL_SIGNER,
-            "_authenticated_github_replay",
-            return_value=("8" * 64, "7" * 64),
-        ):
-            with self.assertRaisesRegex(ValueError, "validation inputs are incomplete"):
-                build.sign(
-                    self.aab,
-                    self.graph,
-                    self.build_sidecar,
-                    self.two_green_receipt,
-                    self.two_green_approval,
-                    self.attester_private_key,
-                    unvalidated_output,
-                    self.github_token,
-                )
+        with self.assertRaisesRegex(ValueError, "external-signer-required"):
+            build.sign(
+                self.aab,
+                self.graph,
+                self.build_sidecar,
+                self.two_green_receipt,
+                self.two_green_approval,
+                self.attester_private_key,
+                unvalidated_output,
+                self.github_token,
+            )
         self.assertFalse(unvalidated_output.exists())
 
         mismatched_provenance_output = self.root / "mismatched-provenance-attestation.json"
-        with mock.patch.object(
-            build.APPROVAL_SIGNER,
-            "_authenticated_github_replay",
-            return_value=("0" * 64, "7" * 64),
-        ):
-            with self.assertRaisesRegex(ValueError, "authenticated provenance differs"):
-                build.sign(
-                    self.aab,
-                    self.graph,
-                    self.build_sidecar,
-                    self.two_green_receipt,
-                    self.two_green_approval,
-                    self.attester_private_key,
-                    mismatched_provenance_output,
-                    self.github_token,
-                )
+        with self.assertRaisesRegex(ValueError, "external-signer-required"):
+            build.sign(
+                self.aab,
+                self.graph,
+                self.build_sidecar,
+                self.two_green_receipt,
+                self.two_green_approval,
+                self.attester_private_key,
+                mismatched_provenance_output,
+                self.github_token,
+            )
         self.assertFalse(mismatched_provenance_output.exists())
 
         fabricated_validation = self.protected_build_validation()
