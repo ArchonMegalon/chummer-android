@@ -1,0 +1,16 @@
+{
+  "sourceRunId": "34049451151",
+  "sourceArtifactId": "9994438007",
+  "sourceArtifactSha256": "2b87852b9fe66ccf7c19e71afb68aa48634446a37f411d890d118bbb49b0f4f8",
+  "description": "Minimal canonical node projection of the initial-zero and explicit-reselect-viewport-9-zero-delta-unresolved XML captures. The recovered frame is a deterministic simulated 266px forward movement, not device proof.",
+  "displaySize": [1080, 2400],
+  "logicalViewport": 9,
+  "viewportBounds": "[0,275][1080,2190]",
+  "optionId": "creation-prerequisite-talent-active-skill-option-0dbcb9cd-f824-4b5d-a387-90d33318b04c",
+  "optionDetail": "Swimming. Physical Active · Group Athletics · Attribute STR · Source 0dbcb9cd-f824-4b5d-a387-90d33318b04c · Anchors skills.xml#skill:0dbcb9cd-f824-4b5d-a387-90d33318b04c",
+  "selectedDetail": "✓ Swimming. Selected slot 1 · Physical Active · Group Athletics · Attribute STR · Source 0dbcb9cd-f824-4b5d-a387-90d33318b04c · Anchors skills.xml#skill:0dbcb9cd-f824-4b5d-a387-90d33318b04c",
+  "initialOptionBounds": "[98,653][984,881]",
+  "initialCompletionBounds": "[53,1953][1028,2085]",
+  "reflowOptionBounds": "[98,878][984,1147]",
+  "recoveredOptionBounds": "[98,612][984,881]"
+}

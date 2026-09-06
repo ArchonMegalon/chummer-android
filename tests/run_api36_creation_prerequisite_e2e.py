@@ -357,6 +357,7 @@ TALENT_GRANT_SCAN_GESTURE_RATIO = 0.60
 TALENT_GRANT_OPTION_RECOVERY_GESTURE_RATIO = 0.22
 TALENT_GRANT_REACQUISITION_MAX_SCROLLS = 40
 TALENT_GRANT_OPTION_RECOVERY_MAX_SCROLLS = 40
+TALENT_GRANT_COMPLETION_REFLOW_MAX_SCROLLS = 4
 TALENT_GRANT_REACQUISITION_STABLE_REPEATS = 2
 MAX_STABLE_START_REVERSE_SWIPES = 40
 # Forward and reverse Android ScrollView gestures are not exact inverses when
@@ -7058,6 +7059,115 @@ def choose_navigation_local_talent_options(
     return selected, tap_order
 
 
+def _require_talent_completion_reflow_frame(
+    device: shared.Device,
+    nodes: list[shared.UiNode],
+    selected_options: dict[str, tuple[tuple[str, ...], int]],
+    *,
+    previous_viewport: tuple[int, ...] | None,
+    deadline: float | None,
+) -> tuple[int, ...]:
+    """Bind footer-only movement to fresh selected rows in the same native page.
+
+    CreationTalentSkillGrantPage appends completion after all option rows. Its
+    Refresh rebuilds those rows, and the Selected slot decorator can expand a
+    row without moving the inventory coordinate. Only that exact composition
+    supplies the forward hint; a missing option or an unknown page never does.
+    """
+    route_id = "creation-prerequisite-talent-grant-page"
+    completion_id = "creation-prerequisite-talent-grant-complete"
+
+    def exact(selector: str, *, optional: bool = False) -> shared.UiNode | None:
+        matches = [node for node in nodes if _exact_resource_id(node) == selector]
+        if optional and not matches:
+            return None
+        if len(matches) != 1:
+            raise RuntimeError(f"Talent completion reflow has ambiguous or missing {selector!r}")
+        node = matches[0]
+        if (
+            node.attributes.get("package") != shared.PACKAGE
+            or node.attributes.get("resource-id") != f"{shared.PACKAGE}:id/{selector}"
+        ):
+            raise RuntimeError("Talent completion reflow lost canonical resource identity")
+        return node
+
+    def bounds(node: shared.UiNode) -> tuple[int, ...]:
+        match = shared.BOUNDS.fullmatch(node.attributes.get("bounds", ""))
+        if match is None:
+            raise RuntimeError("Talent completion reflow has invalid viewport geometry")
+        return tuple(int(value) for value in match.groups())
+
+    route = exact(route_id)
+    assert route is not None
+    viewport = bounds(route)
+    width, height = (
+        device.display_size() if deadline is None
+        else device.display_size(deadline=deadline)
+    )
+    left, top, right, bottom = viewport
+    viewport_and_display = (*viewport, width, height)
+    if (
+        not (0 <= left < right <= width and 0 <= top < bottom <= height)
+        or (previous_viewport is not None and viewport_and_display != previous_viewport)
+        or not (
+            left < round(width * 0.5) < right
+            and top < round(height * (0.82 - TALENT_GRANT_OPTION_RECOVERY_GESTURE_RATIO))
+            < round(height * 0.82) < bottom
+        )
+    ):
+        raise RuntimeError("Talent completion reflow changed its page viewport")
+    scrolls = [
+        node for node in nodes
+        if node.attributes.get("class") == "android.widget.ScrollView"
+        and node.attributes.get("scrollable") == "true"
+    ]
+    if (
+        len(scrolls) != 1
+        or scrolls[0].attributes.get("package") != shared.PACKAGE
+        or bounds(scrolls[0]) != viewport
+    ):
+        raise RuntimeError("Talent completion reflow has no unambiguous page scroll viewport")
+    if any(
+        _exact_resource_id(node) in {
+            "creation-prerequisite-talent-grant-stale",
+            "creation-prerequisite-talent-grant-recover",
+            "creation-prerequisite-talent-grant-blockers",
+        }
+        or (
+            _exact_resource_id(node).startswith("creation-")
+            and _exact_resource_id(node).endswith("-page")
+            and _exact_resource_id(node) != route_id
+        )
+        for node in nodes
+    ):
+        raise RuntimeError("Talent completion reflow exposed stale or blocked grant state")
+    selected_bottoms = []
+    for resource_id, (expected_detail, expected_slot) in selected_options.items():
+        option = exact(resource_id)
+        assert option is not None
+        x1, y1, x2, y2 = bounds(option)
+        if (
+            _talent_option_identity_values(option) != expected_detail
+            or not _talent_option_matches_exact_slot(option, expected_slot)
+            or option.attributes.get("enabled") != "true"
+            or option.attributes.get("clickable") != "true"
+            or not (left <= x1 < x2 <= right and top <= y1 < y2 <= bottom)
+        ):
+            raise RuntimeError("Talent completion reflow changed exact selected option state")
+        selected_bottoms.append(y2)
+    completion = exact(completion_id, optional=True)
+    if completion is not None:
+        x1, y1, x2, y2 = bounds(completion)
+        if (
+            _accessible_values(completion) != ("Continue with exact grant",)
+            or completion.attributes.get("enabled") != "true"
+            or completion.attributes.get("clickable") != "true"
+            or not (left <= x1 < x2 <= right and max(selected_bottoms) <= y1 < y2 <= bottom)
+        ):
+            raise RuntimeError("Talent completion reflow changed exact completion state")
+    return viewport_and_display
+
+
 def reacquire_exact_talent_state_group(
     device: shared.Device,
     resource_ids: tuple[str, ...],
@@ -7070,6 +7180,7 @@ def reacquire_exact_talent_state_group(
     max_system_ui_dismissals: int = 3,
     scan_observer: Callable[[dict[str, object]], None] | None = None,
     deadline: float | None = None,
+    completion_reflow_selected_options: dict[str, tuple[tuple[str, ...], int]] | None = None,
 ) -> TalentStateGroupSnapshot:
     """Reacquire one exact state group under boundary-proven hard ceilings.
 
@@ -7078,9 +7189,11 @@ def reacquire_exact_talent_state_group(
     therefore chooses only the primary direction. Exact Talent option groups
     use overlapping gestures in both the primary and boundary-proven recovery
     directions so a virtualized row cannot be skipped by a coarse gesture;
-    authority, digest, completion, and zero-delta groups retain the coarse
-    primary traversal and never receive recovery. Every gesture is followed
-    by a fresh hierarchy. Primary and recovery gestures and transient retries
+    authority and digest groups retain the coarse primary traversal. A zero
+    delta group containing fresh selected options and only a missing footer
+    may make at most four small forward corrections in the same page viewport.
+    Every gesture is followed by a fresh hierarchy. Primary and recovery
+    gestures and transient retries
     have separate hard ceilings while sharing the active phase deadline.
     """
     if (
@@ -7141,6 +7254,22 @@ def reacquire_exact_talent_state_group(
         if recovery_eligible
         else TALENT_GRANT_SCAN_GESTURE_RATIO
     )
+    completion_reflow_used = False
+    completion_reflow_viewport: tuple[int, ...] | None = None
+    completion_id = "creation-prerequisite-talent-grant-complete"
+    reflow_options = completion_reflow_selected_options or {}
+    completion_reflow_eligible = (
+        not measured_delta
+        and bool(reflow_options)
+        and set(resource_ids) == {completion_id, *reflow_options}
+        and all(
+            any(_is_exact_tokenized_resource_id(resource_id, prefix)
+                for prefix in TALENT_GRANT_OPTION_PREFIX.values())
+            and bool(detail) and all(isinstance(value, str) and value for value in detail)
+            and type(slot) is int and slot > 0
+            for resource_id, (detail, slot) in reflow_options.items()
+        )
+    )
     stage = "primary"
     primary_swipes = 0
     recovery_swipes = 0
@@ -7182,6 +7311,10 @@ def reacquire_exact_talent_state_group(
             "measuredDelta": abs(measured_delta),
             "configuredMaxScrolls": primary_bound,
             "catalogMovementExtent": scan_end_viewport,
+            "completionReflowUsed": completion_reflow_used,
+            "completionReflowViewport": completion_reflow_viewport[:4] if completion_reflow_viewport else None,
+            "completionReflowDisplaySize": completion_reflow_viewport[4:] if completion_reflow_viewport else None,
+            "completionReflowMaxScrolls": TALENT_GRANT_COMPLETION_REFLOW_MAX_SCROLLS if completion_reflow_eligible else 0,
             "stableRepeats": TALENT_GRANT_REACQUISITION_STABLE_REPEATS,
             # This compatibility field remains terminal-boundary authority.
             # Successful recovery has a proven primary boundary but no proven
@@ -7241,6 +7374,22 @@ def reacquire_exact_talent_state_group(
             device.capture(name)
         else:
             device.capture(name, deadline=deadline)
+
+    def validate_reflow_frame(
+        nodes: list[shared.UiNode], unavailable: tuple[str, ...],
+    ) -> None:
+        nonlocal completion_reflow_viewport
+        try:
+            completion_reflow_viewport = _require_talent_completion_reflow_frame(
+                device, nodes, reflow_options,
+                previous_viewport=completion_reflow_viewport, deadline=deadline,
+            )
+            if unavailable not in ((), (completion_id,)):
+                raise RuntimeError("Talent completion reflow lost its selected option anchor")
+        except Exception:
+            emit(unresolved_status("completion-reflow-invalid"))
+            capture(f"{evidence_prefix}-completion-reflow-invalid")
+            raise
 
     while True:
         try:
@@ -7318,6 +7467,8 @@ def reacquire_exact_talent_state_group(
             )
         )
         if not unavailable:
+            if completion_reflow_used:
+                validate_reflow_frame(nodes, unavailable)
             emit("resolved")
             return TalentStateGroupSnapshot(
                 nodes=nodes,
@@ -7365,6 +7516,8 @@ def reacquire_exact_talent_state_group(
                 emit(unresolved_status("system-ui-wait-unresolved"))
                 raise
             continue
+        if completion_reflow_used:
+            validate_reflow_frame(nodes, unavailable)
         signature = accessibility_signature(nodes)
         unchanged_signatures = (
             unchanged_signatures + 1
@@ -7399,12 +7552,19 @@ def reacquire_exact_talent_state_group(
                     f"physical boundary without exact resources {unavailable!r}"
                 )
         if stage == "primary" and primary_direction == "none":
-            emit("zero-delta-unresolved")
-            capture(f"{evidence_prefix}-zero-delta-unresolved")
-            raise RuntimeError(
-                "Grouped Talent state changed physical geometry at one logical "
-                f"viewport without a safe directional hint: {unavailable!r}"
-            )
+            if completion_reflow_eligible and unavailable == (completion_id,):
+                validate_reflow_frame(nodes, unavailable)
+                completion_reflow_used = True
+                primary_direction = "forward"
+                primary_distance_ratio = TALENT_GRANT_OPTION_RECOVERY_GESTURE_RATIO
+                primary_bound = TALENT_GRANT_COMPLETION_REFLOW_MAX_SCROLLS
+            else:
+                emit("zero-delta-unresolved")
+                capture(f"{evidence_prefix}-zero-delta-unresolved")
+                raise RuntimeError(
+                    "Grouped Talent state changed physical geometry at one logical "
+                    f"viewport without a safe directional hint: {unavailable!r}"
+                )
         active_direction = (
             primary_direction if stage == "primary" else recovery_direction
         )
@@ -7427,7 +7587,13 @@ def reacquire_exact_talent_state_group(
                         deadline=deadline,
                     )
             elif active_direction == "forward":
-                if deadline is None:
+                if completion_reflow_used:
+                    device.swipe_up(
+                        distance_ratio=active_distance_ratio,
+                        deadline=deadline,
+                        allow_direct_reconciliation=False,
+                    )
+                elif deadline is None:
                     device.swipe_up(distance_ratio=active_distance_ratio)
                 else:
                     device.swipe_up(
@@ -7648,6 +7814,14 @@ def read_talent_grant_grouped_state(
             evidence_prefix=f"{evidence_prefix}-viewport-{viewport}",
             scan_observer=scan_observer,
             deadline=deadline,
+            completion_reflow_selected_options={
+                resource_id: (
+                    expected_option_details[resource_id],
+                    expected_selected_slots[resource_id],
+                )
+                for resource_id in grouped[viewport]
+                if resource_id in expected_selected_slots
+            } if expected_completion_enabled else None,
         )
         observed.update(snapshot.resources)
         current_viewport = snapshot.logical_viewport

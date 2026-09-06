@@ -80,6 +80,7 @@ POST_CONFIRM_DASHBOARD_ROUTE_READY_READ_ATTEMPT_MAX_MS = 5_000
 POST_CONFIRM_DASHBOARD_ROUTE_READY_POLL_DELAY_MS = 250
 TALENT_REACQUISITION_MAX_SCROLLS = 40
 TALENT_OPTION_RECOVERY_MAX_SCROLLS = 40
+TALENT_COMPLETION_REFLOW_MAX_SCROLLS = 4
 TALENT_REACQUISITION_STABLE_REPEATS = 2
 TALENT_REACQUISITION_DISTANCE_RATIO = 0.60
 TALENT_OPTION_RECOVERY_DISTANCE_RATIO = 0.22
@@ -760,6 +761,10 @@ def require_talent_reacquisition_scans(
     for scan in matches:
         phase_id = scan.get("phaseId")
         resource_ids = scan.get("exactResourceIds")
+        completion_reflow_used = scan.get("completionReflowUsed", False)
+        completion_reflow_bound = scan.get("completionReflowMaxScrolls", 0)
+        completion_reflow_viewport = scan.get("completionReflowViewport")
+        completion_reflow_display = scan.get("completionReflowDisplaySize")
         integer_fields = (
             "startingViewport",
             "targetViewport",
@@ -807,12 +812,15 @@ def require_talent_reacquisition_scans(
             or scan.get("recoveryStableBoundaryProven") is not False
             or type(scan.get("recoveryEligible")) is not bool
             or type(scan.get("recoveryUsed")) is not bool
+            or type(completion_reflow_used) is not bool
+            or type(completion_reflow_bound) is not int
+            or completion_reflow_bound not in (0, TALENT_COMPLETION_REFLOW_MAX_SCROLLS)
             or type(scan.get("deadlineEnforced")) is not bool
             or scan.get("deadlineEnforced") is not True
             or not isinstance(resource_ids, list)
             or not resource_ids
-            or len(resource_ids) != len(set(resource_ids))
             or any(not isinstance(value, str) or not value for value in resource_ids)
+            or len(resource_ids) != len(set(resource_ids))
             or any(
                 type(scan.get(field)) is not int or int(scan[field]) < 0
                 for field in integer_fields
@@ -820,29 +828,68 @@ def require_talent_reacquisition_scans(
         ):
             raise ValueError("Talent reacquisition scan identity or typed data differs")
         value = {field: int(scan[field]) for field in integer_fields}
+
+        def exact_talent_option(resource_id: str) -> bool:
+            return any(
+                resource_id.startswith(prefix)
+                and re.fullmatch(
+                    r"[a-z0-9](?:[a-z0-9-]*[a-z0-9])?",
+                    resource_id[len(prefix) :],
+                ) is not None
+                for prefix in TALENT_OPTION_PREFIXES
+            )
+
+        completion_id = "creation-prerequisite-talent-grant-complete"
+        if completion_reflow_bound and not (
+            value["measuredDelta"] == 0
+            and completion_id in resource_ids
+            and len(resource_ids) >= 2
+            and all(
+                resource_id == completion_id or exact_talent_option(resource_id)
+                for resource_id in resource_ids
+            )
+        ):
+            raise ValueError("Talent reacquisition completion reflow group differs")
+        if completion_reflow_used:
+            if not (
+                completion_reflow_bound == TALENT_COMPLETION_REFLOW_MAX_SCROLLS
+                and 1 <= value["primarySwipes"] <= completion_reflow_bound
+                and isinstance(completion_reflow_viewport, (list, tuple))
+                and len(completion_reflow_viewport) == 4
+                and all(type(coordinate) is int for coordinate in completion_reflow_viewport)
+                and isinstance(completion_reflow_display, (list, tuple))
+                and len(completion_reflow_display) == 2
+                and all(type(dimension) is int for dimension in completion_reflow_display)
+            ):
+                raise ValueError("Talent reacquisition completion reflow typed geometry differs")
+            left, top, right, bottom = completion_reflow_viewport
+            width, height = completion_reflow_display
+            if not (
+                0 <= left < right <= width
+                and 0 <= top < bottom <= height
+                and left < round(width * 0.5) < right
+                and top < round(height * (0.82 - TALENT_OPTION_RECOVERY_DISTANCE_RATIO))
+                < round(height * 0.82) < bottom
+            ):
+                raise ValueError("Talent reacquisition completion reflow gesture leaves viewport")
+        elif completion_reflow_viewport is not None or completion_reflow_display is not None:
+            raise ValueError("Talent reacquisition unused completion reflow claims geometry")
         expected_direction = (
             "forward"
-            if value["targetViewport"] > value["startingViewport"]
+            if completion_reflow_used or value["targetViewport"] > value["startingViewport"]
             else "reverse"
             if value["targetViewport"] < value["startingViewport"]
             else "none"
         )
         expected_bound = (
-            TALENT_REACQUISITION_MAX_SCROLLS
+            TALENT_COMPLETION_REFLOW_MAX_SCROLLS
+            if completion_reflow_used
+            else TALENT_REACQUISITION_MAX_SCROLLS
             if value["measuredDelta"] > 0
             else 0
         )
         expected_recovery_eligible = value["measuredDelta"] > 0 and all(
-            any(
-                value.startswith(prefix)
-                and re.fullmatch(
-                    r"[a-z0-9](?:[a-z0-9-]*[a-z0-9])?",
-                    value[len(prefix) :],
-                )
-                is not None
-                for prefix in TALENT_OPTION_PREFIXES
-            )
-            for value in resource_ids
+            exact_talent_option(resource_id) for resource_id in resource_ids
         )
         expected_recovery_direction = (
             "reverse"
@@ -858,7 +905,7 @@ def require_talent_reacquisition_scans(
         )
         expected_primary_distance_ratio = (
             TALENT_OPTION_RECOVERY_DISTANCE_RATIO
-            if expected_recovery_eligible
+            if expected_recovery_eligible or completion_reflow_used
             else TALENT_REACQUISITION_DISTANCE_RATIO
         )
         read_rounding_ms = (value["hierarchyReadCount"] + 1) // 2
