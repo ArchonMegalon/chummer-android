@@ -72,6 +72,9 @@ class PhoneLocalizationSourceContractTests(unittest.TestCase):
         self.assertIn('AutomationId = "settings-confirm-delete"', settings)
         self.assertIn('AutomationId = "settings-language-device-managed"', settings)
         self.assertIn('AutomationId = "settings-updates-play-managed"', settings)
+        self.assertIn('"settings-confirm-delete-experimental"', settings)
+        self.assertIn("CurrentPhoneWizardScope.MarkExperimental(", settings)
+        self.assertIn("if (_playReview is not null)", settings)
         self.assertIn("SaveDeleteConfirmationSettingAsync", settings)
         self.assertIn("ApplicationDeleteConfirmationMutation", coordinator)
         for desktop_only_id in (

@@ -50,10 +50,12 @@ public sealed class ApplicationSettingsPage : NativePageBase
         };
         body.Add(CreateSwitchCard(
             PhoneStrings.Get("SettingsConfirmDelete", "Ask before deleting items"),
-            PhoneStrings.Get(
-                "SettingsConfirmDeleteDetail",
-                "Shown before destructive item removal. Wizard review steps always remain enabled."),
-            _confirmDelete));
+            CurrentPhoneWizardScope.MarkExperimental(
+                PhoneStrings.Get(
+                    "SettingsConfirmDeleteDetail",
+                    "Shown before destructive item removal. Wizard review steps always remain enabled.")),
+            _confirmDelete,
+            "settings-confirm-delete-experimental"));
 
         Label languageAuthority = NativeTheme.Body(
             PhoneStrings.Get(
@@ -81,11 +83,14 @@ public sealed class ApplicationSettingsPage : NativePageBase
         updateAuthority.AutomationId = "settings-updates-play-managed";
         body.Add(NativeTheme.Title(PhoneStrings.Get("SettingsGooglePlay", "Google Play")));
         body.Add(updateAuthority);
-        body.Add(NativeTheme.NavigationRow(
-            PlayReviewStrings.RateOnGooglePlay(),
-            PlayReviewStrings.RateOnGooglePlayDescription(),
-            OpenStoreListingAsync,
-            automationId: "settings-rate-on-google-play"));
+        if (_playReview is not null)
+        {
+            body.Add(NativeTheme.NavigationRow(
+                PlayReviewStrings.RateOnGooglePlay(),
+                PlayReviewStrings.RateOnGooglePlayDescription(),
+                OpenStoreListingAsync,
+                automationId: "settings-rate-on-google-play"));
+        }
 
         Button save = NativeTheme.PrimaryButton(PhoneStrings.Get("Save", "Save"));
         save.AutomationId = "settings-save";
@@ -107,7 +112,11 @@ public sealed class ApplicationSettingsPage : NativePageBase
         // so a concurrent settings update fails through the coordinator's expected-revision check.
     }
 
-    private static Border CreateSwitchCard(string title, string description, Switch value)
+    private static Border CreateSwitchCard(
+        string title,
+        string description,
+        Switch value,
+        string descriptionAutomationId)
     {
         Grid row = new()
         {
@@ -120,7 +129,10 @@ public sealed class ApplicationSettingsPage : NativePageBase
         };
         VerticalStackLayout labels = new() { Spacing = 3 };
         labels.Add(NativeTheme.Title(title, 20));
-        labels.Add(NativeTheme.Body(description, NativeTheme.Muted));
+        Label descriptionLabel = NativeTheme.Body(description, NativeTheme.Danger);
+        descriptionLabel.AutomationId = descriptionAutomationId;
+        labels.Add(descriptionLabel);
+        SemanticProperties.SetDescription(value, $"{title}. {description}");
         row.Add(labels);
         row.Add(value, 1);
         return NativeTheme.Card(row);

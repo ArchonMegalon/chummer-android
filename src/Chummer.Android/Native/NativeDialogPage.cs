@@ -75,7 +75,16 @@ public sealed class NativeDialogPage : ContentPage
         string dialogMessage = AndroidDialogSettingsScope.Message(dialog);
         if (!string.IsNullOrWhiteSpace(dialogMessage))
         {
-            body.Add(NativeTheme.Body(dialogMessage, NativeTheme.Muted));
+            Label dialogMessageLabel = NativeTheme.Body(
+                dialogMessage,
+                AndroidDialogSettingsScope.IsCharacterSettings(dialog)
+                    ? NativeTheme.Danger
+                    : NativeTheme.Muted);
+            if (AndroidDialogSettingsScope.IsCharacterSettings(dialog))
+            {
+                dialogMessageLabel.AutomationId = "dialog-settings-experimental";
+            }
+            body.Add(dialogMessageLabel);
         }
 
         string? settingsScopeDetail = AndroidDialogSettingsScope.Detail(dialog);
@@ -981,9 +990,11 @@ internal static class AndroidDialogSettingsScope
     {
         ArgumentNullException.ThrowIfNull(dialog);
         return IsCharacterSettings(dialog)
-            ? PhoneStrings.Get(
-                "CharacterSettingsPhoneMessage",
-                "Edit only settings used by the current Android phone wizards. Hidden desktop values remain unchanged in the profile.",
+            ? CurrentPhoneWizardScope.MarkExperimental(
+                PhoneStrings.Get(
+                    "CharacterSettingsPhoneMessage",
+                    "Edit only settings used by the current Android phone wizards. Hidden desktop values remain unchanged in the profile.",
+                    culture),
                 culture)
             : dialog.Message ?? string.Empty;
     }
@@ -1041,7 +1052,7 @@ internal static class AndroidDialogSettingsScope
             culture);
     }
 
-    private static bool IsCharacterSettings(DesktopDialogState dialog)
+    internal static bool IsCharacterSettings(DesktopDialogState dialog)
         => string.Equals(dialog.Id, CharacterSettingsDialogId, StringComparison.Ordinal);
 
     private static string? SelectedSectionId(DesktopDialogState dialog)
