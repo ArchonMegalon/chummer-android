@@ -15,7 +15,7 @@ VERSION_NAME = re.compile(
     r"[0-9]+(?:\.[0-9]+){2}(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?"
 )
 VERSION_CODE = re.compile(r"[1-9][0-9]*")
-HISTORICAL_VERSION_CODE_FLOOR = 10
+HISTORICAL_VERSION_CODE_FLOOR = 11
 
 
 def resolve_release_intent(

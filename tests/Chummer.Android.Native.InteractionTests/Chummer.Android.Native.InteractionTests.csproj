@@ -8,6 +8,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
+    <Compile Include="CharacterSettingsPhoneCapabilityInventory.Generated.cs" />
     <ProjectReference Include="../Chummer.Android.Native.CompileCheck/Chummer.Android.Native.CompileCheck.csproj" />
   </ItemGroup>
 </Project>

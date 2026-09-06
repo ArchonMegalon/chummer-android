@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-android36.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <SupportedOSPlatformVersion>24.0</SupportedOSPlatformVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/Chummer.Android/Platform/AndroidAccountLinkKeyAuthority.cs"
+             Link="Platform/AndroidAccountLinkKeyAuthority.cs" />
+    <Compile Include="../../src/Chummer.Android/Platforms/Android/AndroidKeystoreDeviceKeyStore.cs"
+             Link="Platforms/Android/AndroidKeystoreDeviceKeyStore.cs" />
+  </ItemGroup>
+</Project>

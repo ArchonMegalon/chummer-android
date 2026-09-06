@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify the exact, truthful Preview.11 Google Play listing localizations."""
+"""Verify the exact, truthful Preview.12 Google Play listing localizations."""
 
 from __future__ import annotations
 
@@ -17,20 +17,26 @@ CURRENT_FILES = (
     "title.txt",
     "short-description.txt",
     "full-description.txt",
-    "release-notes-11.txt",
+    "release-notes-12.txt",
 )
 LIMITS = {
     "title.txt": 30,
     "short-description.txt": 80,
     "full-description.txt": 4000,
-    "release-notes-11.txt": 500,
+    "release-notes-12.txt": 500,
 }
 PACKAGE_ID = "com.myexternalbrain.chummer"
-VERSION_NAME = "0.1.0-preview.11"
-VERSION_CODE = "11"
+VERSION_NAME = "0.1.0-preview.12"
+VERSION_CODE = "12"
+FULL_DESCRIPTION_RELEASE_PREFIX = f"Chummer Preview.{VERSION_CODE} "
 DATA_SAFETY_SHA256 = "0379209d99ba666ba72a150d88c1855e6b4db17d64199402eb0f9bb80f4fa0f3"
 PREVIEW10_EVIDENCE_SHA256 = "8f245fcf6e8fd62d6ed2d7e75170617d3c5430e024ce14ab77535ca1c57fece9"
 PREVIEW10_NOTES_SHA256 = "b45905778f70e9c459b37c5a450a75800aca780f8ca4a4c8aa176f685cb39037"
+PREVIEW11_NOTES_SHA256 = {
+    "en-US": "00aa91900a4090e14140b91626be4443367fa755e73fbe675ea9ff97745bb422",
+    "de-DE": "91ae2b99da5315da43e7e02b426058ae78d9e04a3116a56518c65d4ef69c327e",
+    "es-ES": "86580a5027a052ceb5291482f87b99eabeffe1b844c5a611e1900e0a4cd8e0c1",
+}
 WIZARD_GATE_SHA256 = "c867b4fd8c2a771e3ddb4c3e20c0b843ea87510a197b476c7ce75dc013fec7b4"
 REQUIRED_GATE_JOURNEYS = (
     "creation-prerequisite",
@@ -62,8 +68,9 @@ REQUIRED_FRAGMENTS = {
             "public availability",
             "production release are not included",
         ),
-        "release-notes-11.txt": (
+        "release-notes-12.txt": (
             "Internal testing build for phones",
+            "Settings respond faster",
             "seven named flows",
             "Additional wizard routes are marked Experimental",
             "not covered by the current Preview authority",
@@ -89,8 +96,9 @@ REQUIRED_FRAGMENTS = {
             "öffentliche Verfügbarkeit",
             "Produktivveröffentlichung",
         ),
-        "release-notes-11.txt": (
+        "release-notes-12.txt": (
             "interner Telefontest",
+            "Einstellungen sind klarer und reaktionsschneller",
             "Sieben Flows",
             "Weitere Wizard-Routen: Experimentell",
             "nicht durch die aktuelle Preview-Autorität abgedeckt",
@@ -116,8 +124,9 @@ REQUIRED_FRAGMENTS = {
             "disponibilidad pública",
             "publicación en producción",
         ),
-        "release-notes-11.txt": (
+        "release-notes-12.txt": (
             "prueba interna para teléfonos",
+            "Ajustes más ágiles",
             "Siete flujos",
             "Otras rutas: Experimental",
             "no cubiertas por la autoridad de la vista previa actual",
@@ -137,7 +146,7 @@ EXACT_FLOW_LABELS = {
             "Downtime Calendar",
             "After Run Settlement",
         ),
-        "release-notes-11.txt": (
+        "release-notes-12.txt": (
             "Creation Prerequisite",
             "Career Active Skill Advance",
             "Career Weapon Fire",
@@ -157,7 +166,7 @@ EXACT_FLOW_LABELS = {
             "Auszeit-Kalender",
             "Abrechnung nach dem Run",
         ),
-        "release-notes-11.txt": (
+        "release-notes-12.txt": (
             "Erstellungs-Voraussetzungen",
             "aktive Fertigkeit steigern",
             "Karriere-Waffenfeuer",
@@ -177,7 +186,7 @@ EXACT_FLOW_LABELS = {
             "Calendario de tiempo libre",
             "Liquidación después de la misión",
         ),
-        "release-notes-11.txt": (
+        "release-notes-12.txt": (
             "Requisitos de creación",
             "Avance de habilidad activa",
             "Disparo de arma",
@@ -214,7 +223,7 @@ NONCLAIM_SENTENCES = {
             "Rook or live-avatar support, public availability, and production "
             "release are not included."
         ),
-        "release-notes-11.txt": (
+        "release-notes-12.txt": (
             "Full Editing, tablet or foldable support, SR4 or SR6 creation, and "
             "Rook or live-avatar support remain outside this test."
         ),
@@ -225,7 +234,7 @@ NONCLAIM_SENTENCES = {
             "oder SR6-Erstellung, Rook- oder Live-Avatar-Unterstützung, öffentliche "
             "Verfügbarkeit und eine Produktivveröffentlichung sind nicht Teil dieses Tests."
         ),
-        "release-notes-11.txt": (
+        "release-notes-12.txt": (
             "Vollständige Bearbeitung, Tablets/Foldables, SR4/SR6 und "
             "Rook/Live-Avatar sind nicht Teil dieses Tests."
         ),
@@ -236,7 +245,7 @@ NONCLAIM_SENTENCES = {
             "o SR6, Rook o los avatares en directo, la disponibilidad pública y la "
             "publicación en producción no forman parte de esta prueba."
         ),
-        "release-notes-11.txt": (
+        "release-notes-12.txt": (
             "La edición completa, tabletas/plegables, SR4/SR6 y "
             "Rook/avatares en directo no forman parte de esta prueba."
         ),
@@ -340,7 +349,7 @@ def _reject_positive_or_unproven_claims(
     fields: dict[str, str],
 ) -> None:
     scrubbed: list[str] = []
-    for name in ("short-description.txt", "full-description.txt", "release-notes-11.txt"):
+    for name in ("short-description.txt", "full-description.txt", "release-notes-12.txt"):
         value = fields[name]
         permitted = NONCLAIM_SENTENCES.get(locale, {}).get(name)
         if permitted is not None:
@@ -374,9 +383,9 @@ def _project_identity(project: Path) -> tuple[str, str, str]:
     if values["ApplicationId"] != [PACKAGE_ID]:
         raise ValueError("Android package identity is not exact")
     if values["ApplicationDisplayVersion"] != [VERSION_NAME]:
-        raise ValueError("Android version name is not exact Preview.11")
+        raise ValueError("Android version name is not exact Preview.12")
     if values["ApplicationVersion"] != [VERSION_CODE]:
-        raise ValueError("Android version code is not exact Preview.11")
+        raise ValueError("Android version code is not exact Preview.12")
     return PACKAGE_ID, VERSION_NAME, VERSION_CODE
 
 
@@ -426,6 +435,7 @@ def validate_listing(
         if locale_root.is_symlink() or not locale_root.is_dir():
             raise ValueError(f"Play listing locale {locale} must be one real directory")
         expected_files = set(CURRENT_FILES)
+        expected_files.add("release-notes-11.txt")
         if locale == "en-US":
             expected_files.update(f"release-notes-{version}.txt" for version in range(1, 11))
         actual_files = {entry.name for entry in locale_root.iterdir()}
@@ -442,6 +452,14 @@ def validate_listing(
             locale_lengths[name] = len(value)
         if fields["title.txt"] != "Chummer":
             raise ValueError(f"Play title is not the exact product identity for {locale}")
+        if (
+            not fields["full-description.txt"].startswith(FULL_DESCRIPTION_RELEASE_PREFIX)
+            or re.findall(r"\bPreview\.([0-9]+)\b", fields["full-description.txt"])
+            != [VERSION_CODE]
+        ):
+            raise ValueError(
+                f"{locale}/full-description.txt must describe the exact Preview.12 candidate"
+            )
         for name, fragments in REQUIRED_FRAGMENTS[locale].items():
             for fragment in fragments:
                 if fragment not in fields[name]:
@@ -461,7 +479,7 @@ def validate_listing(
     for name in (
         "short-description.txt",
         "full-description.txt",
-        "release-notes-11.txt",
+        "release-notes-12.txt",
     ):
         values = {localized_fields[locale][name] for locale in LOCALES}
         if len(values) != len(LOCALES):
@@ -475,6 +493,16 @@ def validate_listing(
         != PREVIEW10_NOTES_SHA256
     ):
         raise ValueError("Preview.10 historical release notes drifted")
+
+    for locale, expected_digest in PREVIEW11_NOTES_SHA256.items():
+        if (
+            _sha256(
+                listing_root / locale / "release-notes-11.txt",
+                f"{locale} Preview.11 release notes",
+            )
+            != expected_digest
+        ):
+            raise ValueError(f"{locale} Preview.11 historical release notes drifted")
 
     return {
         "packageId": PACKAGE_ID,

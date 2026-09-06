@@ -5,7 +5,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 NATIVE = ROOT / "src" / "Chummer.Android" / "Native"
-SCOPE = NATIVE / "Preview11WizardScope.cs"
+SCOPE = NATIVE / "CurrentPhoneWizardScope.cs"
 BUILD = NATIVE / "BuildPage.cs"
 CAREER_PAGE = NATIVE / "Sr5CareerWizardPage.cs"
 LOCALIZATION = ROOT / "src" / "Chummer.Android" / "Resources" / "Localization"
@@ -28,8 +28,8 @@ def route_block(source: str, automation_id: str) -> str:
     return source[start : end + len(marker)]
 
 
-class Preview11VisibleWizardScopeTests(unittest.TestCase):
-    def test_preview11_scope_catalog_is_exactly_the_seven_gated_flow_surface(self) -> None:
+class CurrentPhoneWizardScopeTests(unittest.TestCase):
+    def test_current_scope_catalog_is_exactly_the_seven_gated_flow_surface(self) -> None:
         source = SCOPE.read_text(encoding="utf-8")
 
         assert "CharacterCreationBuildMethods.Priority" in source
@@ -70,14 +70,14 @@ class Preview11VisibleWizardScopeTests(unittest.TestCase):
         method = source[source.index("private void AddCreationMethodRoute(") : source.index("private void AddFinalizationReviewAction(")]
         finalization = source[source.index("private void AddFinalizationReviewAction(") : source.index("private void AddCreationFinalizationStatus(")]
 
-        assert "canOpen && !Preview11WizardScope.CoversCreationStage(stage.StepId)" in stages
-        assert "detail = Preview11WizardScope.MarkExperimental(detail);" in stages
+        assert "canOpen && !CurrentPhoneWizardScope.CoversCreationStage(stage.StepId)" in stages
+        assert "detail = CurrentPhoneWizardScope.MarkExperimental(detail);" in stages
         assert "enabled: canOpen" in stages
-        assert "canOpen && !Preview11WizardScope.CoversCreationStage(stepId)" in next_steps
-        assert "detail = Preview11WizardScope.MarkExperimental(detail);" in next_steps
-        assert "canOpen && !Preview11WizardScope.CoversCreationMethod(snapshot.BuildMethod)" in method
-        assert "detail = Preview11WizardScope.MarkExperimental(detail);" in method
-        assert 'Preview11WizardScope.MarkExperimental("Review and finish creation")' in finalization
+        assert "canOpen && !CurrentPhoneWizardScope.CoversCreationStage(stepId)" in next_steps
+        assert "detail = CurrentPhoneWizardScope.MarkExperimental(detail);" in next_steps
+        assert "canOpen && !CurrentPhoneWizardScope.CoversCreationMethod(snapshot.BuildMethod)" in method
+        assert "detail = CurrentPhoneWizardScope.MarkExperimental(detail);" in method
+        assert 'CurrentPhoneWizardScope.MarkExperimental("Review and finish creation")' in finalization
 
 
     def test_every_visible_uncovered_career_route_is_marked_without_being_hidden(self) -> None:
@@ -90,17 +90,17 @@ class Preview11VisibleWizardScopeTests(unittest.TestCase):
             "build-career-vehicle-workshop",
         ):
             block = route_block(build, automation_id)
-            assert "Preview11WizardScope.MarkExperimental(" in block
+            assert "CurrentPhoneWizardScope.MarkExperimental(" in block
 
         page = CAREER_PAGE.read_text(encoding="utf-8")
-        assert "!Preview11WizardScope.CoversCareerAction(action.ActionId)" in page
-        assert "detail = Preview11WizardScope.MarkExperimental(detail);" in page
-        assert "Preview11WizardScope.ContainsExperimentalRoutes(familyDetail)" in page
+        assert "!CurrentPhoneWizardScope.CoversCareerAction(action.ActionId)" in page
+        assert "detail = CurrentPhoneWizardScope.MarkExperimental(detail);" in page
+        assert "CurrentPhoneWizardScope.ContainsExperimentalRoutes(familyDetail)" in page
         commerce = page[
             page.index("View commerceRoute = NativeTheme.NavigationRow(") :
             page.index("_body.Add(commerceRoute);")
         ]
-        assert "Preview11WizardScope.MarkExperimental(" in commerce
+        assert "CurrentPhoneWizardScope.MarkExperimental(" in commerce
         assert "enabled: canOpenCommerce" in commerce
 
 
@@ -111,7 +111,7 @@ class Preview11VisibleWizardScopeTests(unittest.TestCase):
             "WizardStrings.es.resx": "Experimental — no cubierto por la autoridad de la vista previa actual",
         }
         for filename, phrase in expected.items():
-            value = resource(LOCALIZATION / filename, "Preview11.ExperimentalRoute")
+            value = resource(LOCALIZATION / filename, "CurrentPhoneWizard.ExperimentalRoute")
             assert phrase in value
             assert "{0}" in value
 

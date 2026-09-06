@@ -10,9 +10,9 @@
   <data name="Common.NotSelected" xml:space="preserve"><value>not selected</value></data>
   <data name="Common.OK" xml:space="preserve"><value>OK</value></data>
   <data name="Common.PreviewBlockers" xml:space="preserve"><value>Preview blockers</value></data>
-  <data name="Preview11.CareerHubDetail" xml:space="preserve"><value>Seven Preview-authority flows are available; additional routes are marked Experimental.</value></data>
-  <data name="Preview11.ContainsExperimentalRoutes" xml:space="preserve"><value>{0} · Contains Experimental routes that are not covered by the current Preview authority.</value></data>
-  <data name="Preview11.ExperimentalRoute" xml:space="preserve"><value>{0} · Experimental — not covered by the current Preview authority.</value></data>
+  <data name="CurrentPhoneWizard.CareerHubDetail" xml:space="preserve"><value>Seven Preview-authority flows are available; additional routes are marked Experimental.</value></data>
+  <data name="CurrentPhoneWizard.ContainsExperimentalRoutes" xml:space="preserve"><value>{0} · Contains Experimental routes that are not covered by the current Preview authority.</value></data>
+  <data name="CurrentPhoneWizard.ExperimentalRoute" xml:space="preserve"><value>{0} · Experimental — not covered by the current Preview authority.</value></data>
   <data name="Common.Rank" xml:space="preserve"><value>Rank {0}</value></data>
   <data name="Common.RankLabel" xml:space="preserve"><value>Rank</value></data>
   <data name="Common.Remaining" xml:space="preserve"><value>Remaining</value></data>

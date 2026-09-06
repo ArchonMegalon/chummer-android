@@ -60,6 +60,7 @@
   <data name="AccountNotLinked" xml:space="preserve"><value>Sin vincular</value></data>
   <data name="AccountFinishLinking" xml:space="preserve"><value>Finalizar la vinculación</value></data>
   <data name="AccountApproveBrowser" xml:space="preserve"><value>Aprueba la vinculación en el navegador y después vuelve.</value></data>
+  <data name="AccountApprovalReceivedRetry" xml:space="preserve"><value>Se recibió la aprobación. Conserva esta vinculación e inténtalo de nuevo.</value></data>
   <data name="AccountLinkExpired" xml:space="preserve"><value>Vinculación caducada</value></data>
   <data name="AccountLinkAgainRestore" xml:space="preserve"><value>Vuelve a vincular tu cuenta para recuperar el acceso.</value></data>
   <data name="AccountLinked" xml:space="preserve"><value>Vinculada</value></data>
@@ -84,6 +85,9 @@
   <data name="AccountRevokeUnavailable" xml:space="preserve"><value>No se pudo contactar con Chummer. Intenta desvincular de nuevo.</value></data>
   <data name="AccountRevokeOffline" xml:space="preserve"><value>Conéctate a internet e intenta desvincular de nuevo.</value></data>
   <data name="AccountDeleted" xml:space="preserve"><value>Cuenta eliminada</value></data>
+  <data name="AccountLocalCleanupPending" xml:space="preserve"><value>El acceso remoto ha finalizado. Se volverá a intentar la limpieza de la clave local.</value></data>
+  <data name="AccountRefreshPending" xml:space="preserve"><value>Finalizando la actualización de seguridad de la cuenta</value></data>
+  <data name="AccountRefreshRetry" xml:space="preserve"><value>Conserva esta vinculación y vuelve a conectarte para finalizar la actualización.</value></data>
   <data name="App" xml:space="preserve"><value>Aplicación</value></data>
   <data name="Version" xml:space="preserve"><value>Versión</value></data>
   <data name="CheckUpdates" xml:space="preserve"><value>Buscar actualizaciones</value></data>
@@ -98,6 +102,40 @@
   <data name="RunnerSetup" xml:space="preserve"><value>Configuración del runner</value></data>
   <data name="DialogApplyingChoice" xml:space="preserve"><value>Aplicando tu elección… Puede tardar un momento.</value></data>
   <data name="CharacterSettingsCustomDataScope" xml:space="preserve"><value>Los directorios de datos personalizados son exclusivos del escritorio y están ocultos en Android. Sus valores guardados permanecen sin cambios en el perfil de ajustes.</value></data>
-  <data name="CharacterSettingsRulesScope" xml:space="preserve"><value>Estas reglas del runner pertenecen al perfil de ajustes y se aplican en todas las plataformas de Chummer.</value></data>
+  <data name="CharacterSettingsRulesScope" xml:space="preserve"><value>Cada ajuste que se muestra aquí es utilizado por un asistente actual de Android para teléfono.</value></data>
   <data name="CharacterSettingsUnsupportedScope" xml:space="preserve"><value>Esta sección de ajustes no está disponible en Android. Sus valores guardados permanecen en el perfil.</value></data>
+  <data name="CharacterSettingsPhoneMessage" xml:space="preserve"><value>Edita solo los ajustes utilizados por los asistentes actuales de Android para teléfono. Los valores de escritorio ocultos permanecen sin cambios en el perfil.</value></data>
+  <data name="CharacterSettingsTitle" xml:space="preserve"><value>Ajustes del personaje</value></data>
+  <data name="CharacterSettingsActionSave" xml:space="preserve"><value>Guardar</value></data>
+  <data name="CharacterSettingsActionSaveAndClose" xml:space="preserve"><value>Guardar y cerrar</value></data>
+  <data name="CharacterSettingsActionSaveAs" xml:space="preserve"><value>Guardar como</value></data>
+  <data name="CharacterSettingsActionRename" xml:space="preserve"><value>Renombrar</value></data>
+  <data name="CharacterSettingsActionDelete" xml:space="preserve"><value>Eliminar</value></data>
+  <data name="CharacterSettingsActionRestoreDefaults" xml:space="preserve"><value>Restaurar valores predeterminados</value></data>
+  <data name="CharacterSettingsActionCancel" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="CharacterSettingsProfile" xml:space="preserve"><value>Perfil de ajustes</value></data>
+  <data name="CharacterSettingsProfileName" xml:space="preserve"><value>Nombre del perfil</value></data>
+  <data name="CharacterSettingsSection" xml:space="preserve"><value>Sección de ajustes</value></data>
+  <data name="CharacterSettingsSectionWare" xml:space="preserve"><value>Implantes y cibermiembros</value></data>
+  <data name="CharacterSettingsSectionRules" xml:space="preserve"><value>Reglas de carrera</value></data>
+  <data name="CharacterSettingsSectionKarma" xml:space="preserve"><value>Costes de Karma de carrera</value></data>
+  <data name="CharacterSettingsSectionLimits" xml:space="preserve"><value>Límites de nivel de carrera</value></data>
+  <data name="CharacterSettingsSectionBuild" xml:space="preserve"><value>Creación</value></data>
+  <data name="CharacterSettingBuildMethod" xml:space="preserve"><value>Método de creación</value></data>
+  <data name="CharacterSettingDontUseCyberlimbCalculation" xml:space="preserve"><value>Ignorar cibermiembros en los totales de atributos aumentados</value></data>
+  <data name="CharacterSettingCyberlimbConfiguration" xml:space="preserve"><value>Espacios de cibermiembros usados en los totales de atributos</value></data>
+  <data name="CharacterSettingKarmaNewActiveSkill" xml:space="preserve"><value>Coste de Karma: nueva habilidad activa</value></data>
+  <data name="CharacterSettingKarmaImproveActiveSkill" xml:space="preserve"><value>Multiplicador de Karma: mejorar habilidad activa</value></data>
+  <data name="CharacterSettingKarmaNewSkillGroup" xml:space="preserve"><value>Coste de Karma: nuevo grupo de habilidades</value></data>
+  <data name="CharacterSettingKarmaImproveSkillGroup" xml:space="preserve"><value>Multiplicador de Karma: mejorar grupo de habilidades</value></data>
+  <data name="CharacterSettingCompensateSkillGroupKarmaDifference" xml:space="preserve"><value>Compensar la diferencia de Karma del grupo de habilidades</value></data>
+  <data name="CharacterSettingKarmaAttribute" xml:space="preserve"><value>Multiplicador de Karma: mejorar atributo</value></data>
+  <data name="CharacterSettingAlternateMetatypeAttributeKarma" xml:space="preserve"><value>Usar Karma alternativo para atributos de metatipo</value></data>
+  <data name="CharacterSettingUnclampAttributeMinimum" xml:space="preserve"><value>Permitir atributos por debajo del mínimo normal</value></data>
+  <data name="CharacterSettingMysticAdeptSecondMagicAttribute" xml:space="preserve"><value>Usar un segundo atributo de Magia para adeptos místicos</value></data>
+  <data name="CharacterSettingKarmaNewKnowledgeSkill" xml:space="preserve"><value>Coste de Karma: nueva habilidad de conocimiento</value></data>
+  <data name="CharacterSettingKarmaImproveKnowledgeSkill" xml:space="preserve"><value>Multiplicador de Karma: mejorar habilidad de conocimiento</value></data>
+  <data name="CharacterSettingMaxSkillRating" xml:space="preserve"><value>Nivel máximo de habilidad activa en carrera</value></data>
+  <data name="CharacterSettingMaxKnowledgeSkillRating" xml:space="preserve"><value>Nivel máximo de habilidad de conocimiento en carrera</value></data>
+  <data name="CharacterSettingUsePointsOnBrokenGroups" xml:space="preserve"><value>Permitir puntos en grupos de habilidades rotos</value></data>
 </root>

@@ -168,9 +168,9 @@ public sealed class Sr5CareerWizardPage : NativePageBase
                 selected,
                 WizardStrings.CareerFamilyDetail(definition.FamilyId, definition.Detail));
             if (family.Actions.Any(action =>
-                    action.CanOpen && !Preview11WizardScope.CoversCareerAction(action.ActionId)))
+                    action.CanOpen && !CurrentPhoneWizardScope.CoversCareerAction(action.ActionId)))
             {
-                familyDetail = Preview11WizardScope.ContainsExperimentalRoutes(familyDetail);
+                familyDetail = CurrentPhoneWizardScope.ContainsExperimentalRoutes(familyDetail);
             }
             _body.Add(NativeTheme.NavigationRow(
                 WizardStrings.CareerFamilyTitle(definition.FamilyId, definition.Title),
@@ -210,7 +210,7 @@ public sealed class Sr5CareerWizardPage : NativePageBase
             WizardStrings.Get("Career.Commerce", "Commerce")));
         View commerceRoute = NativeTheme.NavigationRow(
             Sr5CareerFlowStrings.Text("Gear and implants"),
-            Preview11WizardScope.MarkExperimental(
+            CurrentPhoneWizardScope.MarkExperimental(
                 Sr5CareerFlowStrings.Text(
                     "Source-bound Cyberware and custom-drug recipes → Core quote → durable receipt")),
             () => Navigation.PushAsync(new Sr5CareerCommerceHubPage(Coordinator)),
@@ -516,8 +516,8 @@ public sealed class Sr5CareerActionFamilyPage : NativePageBase
                 ? WizardStrings.Get("Career.Selected", "Selected · ")
                 : string.Empty;
             string detail = selected + WizardStrings.CareerActionDetail(route.ActionId, route.Detail);
-            if (!Preview11WizardScope.CoversCareerAction(action.ActionId))
-                detail = Preview11WizardScope.MarkExperimental(detail);
+            if (!CurrentPhoneWizardScope.CoversCareerAction(action.ActionId))
+                detail = CurrentPhoneWizardScope.MarkExperimental(detail);
             _body.Add(NativeTheme.NavigationRow(
                 WizardStrings.CareerActionTitle(route.ActionId, route.Title),
                 detail,

@@ -12,11 +12,11 @@ GITIGNORE = REPO_ROOT / ".gitignore"
 PLAY_RELEASE = REPO_ROOT / "docs" / "PLAY_RELEASE.md"
 COMPATIBILITY_GRAPH = {
     "ArchonMegalon/chummer6-ui":
-        "c2b13e11852b1866ef47c148e1fc68d09d413999",
+        "a9e5bbd4fd44826177dd048b24417fad27397497",
     "ArchonMegalon/chummer6-core":
         "60112dccb6a3faad330d32c3c98eef0aa81d97af",
     "ArchonMegalon/chummer6-hub":
-        "bc199cbe0982833ec2fc9ce625826e612759d67a",
+        "4f335d6cebbd4101212fd2cc77265b50f252775c",
     "ArchonMegalon/chummer6-hub-registry":
         "af9a7e19c3bf331e96411dfb8f9e7820a98cab29",
     "ArchonMegalon/chummer6-ui-kit":
@@ -66,11 +66,11 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
             self.play_release_text,
         )
         self.assertIn(
-            "General and public release gates — outside Preview.11 Internal",
+            "General and public release gates — outside Preview.12 Internal",
             self.play_release_text,
         )
         self.assertIn(
-            "tablet items do not add a tablet gate to Preview.11",
+            "tablet items do not add a tablet gate to Preview.12",
             " ".join(self.play_release_text.split()),
         )
         self.assertNotIn("three-journey aggregate", self.play_release_text)

@@ -35,17 +35,17 @@ RECEIPT_TOP_LEVEL_KEYS = {
     "sdkArchiveSha512", "sdkVersion", "sourceInventory", "status",
     "stubPackagesAllowed", "testExecutions", "testProjects", "uiOwnerFeed",
 }
-EXPECTED_PRESENTATION_COMMIT = "c2b13e11852b1866ef47c148e1fc68d09d413999"
-EXPECTED_PRESENTATION_TREE = "4d5ada6b27e9e7122436f03a77f2b44ce3a11f1a"
+EXPECTED_PRESENTATION_COMMIT = "a9e5bbd4fd44826177dd048b24417fad27397497"
+EXPECTED_PRESENTATION_TREE = "a6d77fd56e5caa599f476dbe2e59146b88e9744d"
 EXPECTED_PRESENTATION_REPOSITORY = "https://github.com/ArchonMegalon/chummer6-ui.git"
 EXPECTED_LOCK_PATH = "config/package-plane.lock.json"
-EXPECTED_LOCK_SHA256 = "940d5c33b6be355d1f9408ad8360b72bbb7c4a9bcb17e29089b1ec2b262ba69e"
+EXPECTED_LOCK_SHA256 = "b63ce17ce2105eedf1ed388f7eb59cf2232e9b8a65f66e940860965adced3ef5"
 EXPECTED_LOCK_SIZE = 54835
-EXPECTED_LOCK_BLOB = "3d59d06743ef71417636951a0f8ae891491bbe28"
-EXPECTED_RECEIPT_SHA256 = "b541b99ac4fa92d0791123888af30b19ad1f13527c30e04c15669aae5d89874d"
+EXPECTED_LOCK_BLOB = "973619c8560a474c1896d83e708f0c39bd89eecd"
+EXPECTED_RECEIPT_SHA256 = "e0bd4e4ea8174fa5985378baef820ca064f3af6557d5dec62e0a57d4d1f45600"
 EXPECTED_RECEIPT_SIZE = 39791
-EXPECTED_CACHE_KEY = "92a5b27ce696f54d44a28f5939dfba4d0638e35212933e5f334a635ee502f5ab"
-EXPECTED_CACHE_MANIFEST_SHA256 = "31fa184f6cf91622ae9616a01f3a22c135f0e6b8d7c7a7e93bcfb88c097a97a8"
+EXPECTED_CACHE_KEY = "09e80f5f583c1f46eb1811999b6f4d529f62b321e75e6b7f206c9931b3624ca5"
+EXPECTED_CACHE_MANIFEST_SHA256 = "41c20c3eb10ff5b10677200bafb58aa40e2accf66007bdd67ae0b415f336471a"
 EXPECTED_CACHE_MANIFEST_SIZE = 13707
 EXPECTED_PACKAGE_COUNT = 18
 EXPECTED_SOURCE_GRAPH = {
@@ -55,6 +55,8 @@ EXPECTED_SOURCE_GRAPH = {
     "registryCommit": "af9a7e19c3bf331e96411dfb8f9e7820a98cab29",
     "uiKitCommit": "d51ecd99cf72098d4adc8db0192bff7bf9fd8e61",
 }
+EXPECTED_RUNTIME_HUB_COMMIT = "4f335d6cebbd4101212fd2cc77265b50f252775c"
+RUNTIME_SOURCE_WORKFLOW_PATH = ".github/workflows/api36-editing-e2e.yml"
 EXPECTED_ANDROID_LOCKS = (
     (
         "src/Chummer.Android/Chummer.Android.csproj",
@@ -119,6 +121,34 @@ def strict_json(path: Path, label: str) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise ValueError(f"{label} must be one JSON object")
     return value
+
+
+def validate_runtime_hub_source_checkout(workflow_path: Path) -> dict[str, str]:
+    """Keep runtime source assembly distinct from the sealed Hub package producer."""
+    if workflow_path.is_symlink() or not workflow_path.is_file():
+        raise ValueError("API-36 runtime source workflow is unavailable")
+    lines = workflow_path.read_text(encoding="utf-8").splitlines()
+    repository_line = "repository: ArchonMegalon/chummer6-hub"
+    checkout_indexes = [
+        index for index, line in enumerate(lines) if line.strip() == repository_line
+    ]
+    if len(checkout_indexes) != 1:
+        raise ValueError("API-36 runtime Hub checkout must occur exactly once")
+    index = checkout_indexes[0]
+    refs = [
+        line.strip().split(":", 1)[1].strip()
+        for line in lines[index + 1 : index + 8]
+        if line.strip().startswith("ref:")
+    ]
+    if refs != [EXPECTED_RUNTIME_HUB_COMMIT]:
+        raise ValueError("API-36 runtime Hub checkout commit drifted")
+    package_producer = EXPECTED_SOURCE_GRAPH["hubProducerCommit"]
+    if EXPECTED_RUNTIME_HUB_COMMIT == package_producer:
+        raise ValueError("runtime Hub source cannot be conflated with its package producer")
+    return {
+        "runtimeSourceCommit": EXPECTED_RUNTIME_HUB_COMMIT,
+        "packageProducerCommit": package_producer,
+    }
 
 
 def require_exact_object(
@@ -913,6 +943,9 @@ def main() -> int:
                 package_authority.get("packageProofSdkVersion"),
                 "bound package proof SDK authority",
             ),
+        )
+        validate_runtime_hub_source_checkout(
+            args.android_root / RUNTIME_SOURCE_WORKFLOW_PATH
         )
         cache = validate_package_feed(args.package_feed)
         validate_receipt_cache_equivalence(receipt, cache)

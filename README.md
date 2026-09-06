@@ -153,14 +153,14 @@ The repeatable arm64 release lane requires the pinned official bundletool JAR:
 
 ```sh
 CHUMMER_BUNDLETOOL_JAR=/secure/tools/bundletool-all-1.18.3.jar \
-CHUMMER_ANDROID_EXPECTED_VERSION_NAME=0.1.0-preview.11 \
-CHUMMER_ANDROID_EXPECTED_VERSION_CODE=11 \
+CHUMMER_ANDROID_EXPECTED_VERSION_NAME=0.1.0-preview.12 \
+CHUMMER_ANDROID_EXPECTED_VERSION_CODE=12 \
   scripts/build-release.sh
 ```
 
 The release version pair is explicit and fail-closed: both values must exactly
 match the project and the version code must be greater than the immutable
-Preview.10 code `10`. The build creates only local versioned artifacts and a
+Preview.11 code `11`. The build creates only local versioned artifacts and a
 version-bound source graph; it never uploads or changes Google Play.
 
 The script runs contract tests, publishes the AAB, validates it with bundletool,

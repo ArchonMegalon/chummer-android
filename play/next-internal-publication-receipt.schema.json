@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://chummer.run/schemas/android-play-internal-publication-receipt-v3.schema.json",
-  "title": "Chummer Android next Play Internal publication receipt v3",
+  "$id": "https://chummer.run/schemas/android-play-internal-publication-receipt-v4.schema.json",
+  "title": "Chummer Android next Play Internal publication receipt v4",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -13,6 +13,7 @@
     "track",
     "release",
     "artifact",
+    "twoGreenEligibility",
     "browserReadback",
     "artifactLinkage",
     "authorization",
@@ -20,11 +21,11 @@
   ],
   "properties": {
     "contractName": {
-      "const": "chummer.android.play-internal-publication-receipt/v3"
+      "const": "chummer.android.play-internal-publication-receipt/v4"
     },
     "recordedAtUtc": { "type": "string", "format": "date-time" },
     "evidenceClass": {
-      "const": "explicit_internal_browser_readback_plus_exact_local_release_outputs"
+      "const": "explicit_internal_browser_readback_plus_exact_qualified_release_outputs"
     },
     "publicationAuthorized": { "const": false },
     "application": {
@@ -102,7 +103,9 @@
         "sourceGraphContract",
         "sourceGraphGeneratedAtUtc",
         "androidSourceCommit",
-        "androidSourceTree"
+        "androidSourceTree",
+        "buildSidecarSha256",
+        "buildAttestationSha256"
       ],
       "properties": {
         "aabFileName": { "type": "string", "pattern": "^[^/]+\\.aab$" },
@@ -114,7 +117,96 @@
         "sourceGraphContract": { "const": "chummer.android.release-source-graph/v3" },
         "sourceGraphGeneratedAtUtc": { "type": "string", "format": "date-time" },
         "androidSourceCommit": { "$ref": "#/$defs/commit" },
-        "androidSourceTree": { "$ref": "#/$defs/commit" }
+        "androidSourceTree": { "$ref": "#/$defs/commit" },
+        "buildSidecarSha256": { "$ref": "#/$defs/sha256" },
+        "buildAttestationSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "twoGreenEligibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractName",
+        "receiptSha256",
+        "protectedApproval",
+        "eligibilitySha256",
+        "sourceCommit",
+        "sourceTree",
+        "versionName",
+        "versionCode",
+        "dependencyGraphSha256",
+        "environmentPolicySha256",
+        "buildEnvironmentCompatibilitySha256",
+        "journeyEnvironmentCompatibilitySha256",
+        "mainRunId",
+        "mainRunAttempt",
+        "mainRunConclusion",
+        "mainAggregateConclusion",
+        "environmentCompatibilityStatus",
+        "eligible",
+        "internalTestingEligible",
+        "publicationAuthorized",
+        "googlePlayUploadAuthorized"
+      ],
+      "properties": {
+        "contractName": {
+          "const": "chummer.android.api36-ordered-review-main-green-eligibility/v2"
+        },
+        "receiptSha256": { "$ref": "#/$defs/sha256" },
+        "protectedApproval": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "contractName",
+            "keyId",
+            "role",
+            "approvalScope",
+            "approvalSha256",
+            "receiptSha256",
+            "provenanceValidatorSha256",
+            "provenanceReplaySha256",
+            "generatedAtUtc",
+            "expiresAtUtc"
+          ],
+          "properties": {
+            "contractName": {
+              "const": "chummer.android.two-green-release-approval/v1"
+            },
+            "keyId": { "const": "local-release-builder-2026" },
+            "role": { "const": "android_internal_release_approver" },
+            "approvalScope": {
+              "const": "android_internal_release_preparation"
+            },
+            "approvalSha256": { "$ref": "#/$defs/sha256" },
+            "receiptSha256": { "$ref": "#/$defs/sha256" },
+            "provenanceValidatorSha256": { "$ref": "#/$defs/sha256" },
+            "provenanceReplaySha256": { "$ref": "#/$defs/sha256" },
+            "generatedAtUtc": { "type": "string", "format": "date-time" },
+            "expiresAtUtc": { "type": "string", "format": "date-time" }
+          }
+        },
+        "eligibilitySha256": { "$ref": "#/$defs/sha256" },
+        "sourceCommit": { "$ref": "#/$defs/commit" },
+        "sourceTree": { "$ref": "#/$defs/commit" },
+        "versionName": {
+          "type": "string",
+          "pattern": "^[0-9]+(?:\\.[0-9]+){2}(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$",
+          "maxLength": 128
+        },
+        "versionCode": { "type": "integer", "minimum": 11 },
+        "dependencyGraphSha256": { "$ref": "#/$defs/sha256" },
+        "environmentPolicySha256": { "$ref": "#/$defs/sha256" },
+        "buildEnvironmentCompatibilitySha256": { "$ref": "#/$defs/sha256" },
+        "journeyEnvironmentCompatibilitySha256": { "$ref": "#/$defs/sha256" },
+        "mainRunId": { "type": "integer", "minimum": 1 },
+        "mainRunAttempt": { "type": "integer", "minimum": 1 },
+        "mainRunConclusion": { "const": "success" },
+        "mainAggregateConclusion": { "const": "success" },
+        "environmentCompatibilityStatus": { "const": "pass" },
+        "eligible": { "const": true },
+        "internalTestingEligible": { "const": true },
+        "publicationAuthorized": { "const": false },
+        "googlePlayUploadAuthorized": { "const": false }
       }
     },
     "browserReadback": {
@@ -151,7 +243,9 @@
         "sourceGraphRetrievedFromPlay"
       ],
       "properties": {
-        "basis": { "const": "exact_local_release_outputs_plus_explicit_browser_readback" },
+        "basis": {
+          "const": "two_green_qualified_exact_local_release_outputs_plus_explicit_browser_readback"
+        },
         "localAabBytesVerified": { "const": true },
         "localSourceGraphBytesVerified": { "const": true },
         "playConsoleExposesArtifactDigest": { "const": false },

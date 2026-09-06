@@ -31,13 +31,24 @@ public sealed class AndroidImageDocumentService : IAndroidImageDocumentService
         {
             return null;
         }
+
+        ContentResolver resolver = activity.ContentResolver
+            ?? throw new IOException("Android did not provide a content resolver.");
+        return await DocumentProviderWorkScheduler.RunAsync(
+            token => OpenValidatedDocumentAsync(resolver, uri, token),
+            cancellationToken);
+    }
+
+    private static async Task<AndroidImageDocumentCandidate> OpenValidatedDocumentAsync(
+        ContentResolver resolver,
+        global::Android.Net.Uri uri,
+        CancellationToken cancellationToken)
+    {
         if (!string.Equals(uri.Scheme, "content", StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidDataException("Android image selection requires a content:// document URI.");
         }
 
-        ContentResolver resolver = activity.ContentResolver
-            ?? throw new IOException("Android did not provide a content resolver.");
         string? declaredMediaType = resolver.GetType(uri);
         if (!AndroidImageDocumentValidation.IsImageMediaType(declaredMediaType))
         {
@@ -55,7 +66,7 @@ public sealed class AndroidImageDocumentService : IAndroidImageDocumentService
         await using (Stream source = resolver.OpenInputStream(uri)
             ?? throw new IOException("Android did not provide a readable image-document stream."))
         {
-            encodedBytes = await ReadBoundedAsync(source, cancellationToken);
+            encodedBytes = await ReadBoundedAsync(source, cancellationToken).ConfigureAwait(false);
         }
 
         try

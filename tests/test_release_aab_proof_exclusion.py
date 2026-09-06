@@ -189,8 +189,8 @@ class ReleaseAabProofExclusionTests(unittest.TestCase):
 
     def test_validate_aab_pipeline_invokes_binary_proof_verifier(self) -> None:
         validate = (REPO / "scripts" / "validate-aab.sh").read_text(encoding="utf-8")
-        inspect_index = validate.index('inspect_aab.py" "$aab_path"')
-        verifier_index = validate.index('verify_release_aab_excludes_api36_proof.py" "$aab_path"')
+        inspect_index = validate.index('"$inspect_aab_script" "$aab_path"')
+        verifier_index = validate.index('"$proof_exclusion_script" "$aab_path"')
         signer_index = validate.index('if [[ -n "$upload_certificate_path" ]]')
         self.assertLess(inspect_index, verifier_index)
         self.assertLess(verifier_index, signer_index)

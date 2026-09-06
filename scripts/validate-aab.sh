@@ -1,18 +1,34 @@
 #!/usr/bin/env bash
 set -euo pipefail
+PATH=/usr/bin:/bin
+export PATH
+
+# Protected release validation executes this script from a sealed descriptor.
+# Resolve every operating-system utility to a root-owned absolute path so a
+# caller-controlled PATH cannot change the program executed after validation
+# credentials have been admitted.
+cut() { /usr/bin/cut "$@"; }
+mktemp() { /usr/bin/mktemp "$@"; }
+openssl() { /usr/bin/openssl "$@"; }
+rm() { /usr/bin/rm "$@"; }
+sed() { /usr/bin/sed "$@"; }
+sha256sum() { /usr/bin/sha256sum "$@"; }
 
 if [[ $# -ne 1 ]]; then
   echo "usage: CHUMMER_BUNDLETOOL_JAR=/path/to/bundletool.jar $0 /path/to/chummer.aab" >&2
   exit 64
 fi
 
-repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-aab_path="$(realpath "$1")"
+repo_dir="${CHUMMER_VALIDATOR_REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+aab_path="$1"
 bundletool_path="${CHUMMER_BUNDLETOOL_JAR:-}"
 java_command="${CHUMMER_JAVA:-java}"
 jarsigner_command="${CHUMMER_JARSIGNER:-jarsigner}"
 keytool_command="${CHUMMER_KEYTOOL:-keytool}"
 upload_certificate_path="${CHUMMER_ANDROID_UPLOAD_CERTIFICATE_PATH:-}"
+python_command="${CHUMMER_PYTHON3:-python3}"
+inspect_aab_script="${CHUMMER_INSPECT_AAB_SCRIPT:-$repo_dir/scripts/inspect_aab.py}"
+proof_exclusion_script="${CHUMMER_PROOF_EXCLUSION_SCRIPT:-$repo_dir/scripts/verify_release_aab_excludes_api36_proof.py}"
 
 if [[ ! -f "$aab_path" ]]; then
   echo "AAB not found: $aab_path" >&2
@@ -33,8 +49,8 @@ if ! "$java_command" -jar "$bundletool_path" validate --bundle="$aab_path" > "$t
 fi
 echo "bundletool validation passed."
 "$java_command" -jar "$bundletool_path" dump manifest --bundle="$aab_path" > "$temporary_dir/manifest.xml"
-python3 "$repo_dir/scripts/inspect_aab.py" "$aab_path" "$temporary_dir/manifest.xml"
-python3 "$repo_dir/scripts/verify_release_aab_excludes_api36_proof.py" "$aab_path"
+"$python_command" -I -E -S "$inspect_aab_script" "$aab_path" "$temporary_dir/manifest.xml"
+"$python_command" -I -E -S "$proof_exclusion_script" "$aab_path"
 
 if [[ -n "$upload_certificate_path" ]]; then
   if [[ ! -f "$upload_certificate_path" ]]; then

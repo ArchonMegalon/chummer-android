@@ -1,4 +1,4 @@
-Chummer Preview.11 es una versión de prueba interna para teléfonos. La autoridad de la vista previa actual cubre exactamente siete flujos de SR5: Requisitos de creación, Avance de habilidad activa en Carrera, Disparo de arma en Carrera, Edge antes de la misión, Cambio breve durante la partida, Calendario de tiempo libre y Liquidación después de la misión.
+Chummer Preview.12 es una versión de prueba interna para teléfonos destinada a la siguiente ronda. La autoridad de la vista previa actual cubre exactamente siete flujos de SR5: Requisitos de creación, Avance de habilidad activa en Carrera, Disparo de arma en Carrera, Edge antes de la misión, Cambio breve durante la partida, Calendario de tiempo libre y Liquidación después de la misión.
 
 CREA EL INICIO CUBIERTO
 Usa el flujo Requisitos de creación para las decisiones de Prioridades y la elección de Recursos ejercitadas en la prueba actual para teléfonos. Esta autoridad de vista previa no cubre las demás etapas de creación visibles.

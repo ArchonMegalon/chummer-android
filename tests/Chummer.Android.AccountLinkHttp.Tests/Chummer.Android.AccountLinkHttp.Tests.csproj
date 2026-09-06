@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <RootNamespace>Chummer.Android</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Maui.Essentials" Version="10.0.20" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/PhoneStrings.cs"
+             Link="PhoneStrings.cs" />
+    <Compile Include="../../src/Chummer.Android/Platform/IAndroidAccountLinkService.cs"
+             Link="IAndroidAccountLinkService.cs" />
+    <Compile Include="../../src/Chummer.Android/Platform/IAndroidSystemService.cs"
+             Link="IAndroidSystemService.cs" />
+    <Compile Include="../../src/Chummer.Android/Platform/ChummerWebRoutes.cs"
+             Link="ChummerWebRoutes.cs" />
+    <Compile Include="../../src/Chummer.Android/Platform/AndroidAccountLinkService.cs"
+             Link="AndroidAccountLinkService.cs" />
+    <Compile Include="../../src/Chummer.Android/Platform/AndroidAccountLinkKeyAuthority.cs"
+             Link="AndroidAccountLinkKeyAuthority.cs" />
+    <Compile Include="../../src/Chummer.Android/Platform/AndroidAccountLinkHttpTransport.cs"
+             Link="AndroidAccountLinkHttpTransport.cs" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/Chummer.Android/Platform/IAndroidDocumentService.cs"
+             Link="Platform/IAndroidDocumentService.cs" />
+    <Compile Include="../../src/Chummer.Android/Platform/IAndroidImageDocumentService.cs"
+             Link="Platform/IAndroidImageDocumentService.cs" />
+    <Compile Include="../../src/Chummer.Android/Platform/DocumentProviderWorkScheduler.cs"
+             Link="Platform/DocumentProviderWorkScheduler.cs" />
+    <Compile Include="../../src/Chummer.Android/Platforms/Android/AndroidDocumentService.cs"
+             Link="Platforms/Android/AndroidDocumentService.cs" />
+    <Compile Include="../../src/Chummer.Android/Platforms/Android/AndroidImageDocumentService.cs"
+             Link="Platforms/Android/AndroidImageDocumentService.cs" />
+    <Compile Include="../../src/Chummer.Android/Platforms/Android/DocumentIntentBroker.cs"
+             Link="Platforms/Android/DocumentIntentBroker.cs" />
+    <Compile Include="AndroidCompileStubs.cs" />
+    <Compile Include="Program.cs" />
+  </ItemGroup>
+</Project>

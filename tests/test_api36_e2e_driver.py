@@ -812,7 +812,11 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         device.hierarchy.return_value = [self.phone_runner_toolbar()]
 
         with (
-            patch.object(DRIVER.time, "monotonic", side_effect=[0.0, 0.0, 2.0]),
+            patch.object(
+                DRIVER.time,
+                "monotonic",
+                side_effect=[0.0, 0.0, 0.5, 2.0],
+            ),
             patch.object(DRIVER.time, "sleep"),
             patch.object(DRIVER, "rewind_surface_to_stable_start") as reset_scroll,
             self.assertRaisesRegex(RuntimeError, "Timed out proving the exact"),
@@ -3364,7 +3368,12 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 return target
             return None
 
+        def expensive_hierarchy() -> list[DRIVER.UiNode]:
+            elapsed[0] += 4.0
+            return []
+
         device.find.side_effect = expensive_find
+        device.hierarchy.side_effect = expensive_hierarchy
         device.swipe_down.side_effect = lambda **_kwargs: down_find_counts.append(
             device.find.call_count
         )
@@ -3385,7 +3394,8 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             )
 
         self.assertEqual([0] * 24, down_find_counts)
-        self.assertEqual(25, device.find.call_count)
+        self.assertEqual(13, device.find.call_count)
+        self.assertEqual(12, device.hierarchy.call_count)
         self.assertEqual(12, device.dismiss_system_ui_anr.call_count)
         self.assertEqual(24, device.swipe_down.call_count)
         self.assertEqual(12, device.swipe_up.call_count)
@@ -4020,8 +4030,67 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         ):
             DRIVER.Device.dismiss_system_ui_anr(device, [wait_button])
 
-        device.capture_product_anr_evidence.assert_called_once_with()
+        device.capture_product_anr_evidence.assert_called_once_with(
+            nodes=[wait_button],
+            hierarchy_xml=None,
+            deadline=None,
+        )
         device.shell.assert_not_called()
+
+    def test_generic_android_anr_variants_fail_closed_without_dialog_taps(self) -> None:
+        variants = (
+            DRIVER.UiNode(
+                {
+                    "package": "android",
+                    "resource-id": "android:id/aerr_close",
+                    "text": "Close app",
+                }
+            ),
+            DRIVER.UiNode(
+                {
+                    "package": "android",
+                    "resource-id": "android:id/alertTitle",
+                    "text": "Chummer isn't responding",
+                }
+            ),
+        )
+        for node in variants:
+            with self.subTest(attributes=node.attributes):
+                device = Mock(spec=DRIVER.Device)
+                with self.assertRaises(DRIVER.ProductAnrDetected):
+                    DRIVER.Device.dismiss_system_ui_anr(device, [node])
+
+                device.capture_product_anr_evidence.assert_called_once_with(
+                    nodes=[node],
+                    hierarchy_xml=None,
+                    deadline=None,
+                )
+                device.shell.assert_not_called()
+
+    def test_hierarchy_parse_detects_anr_before_returning_underlying_app_nodes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            device = DRIVER.Device(
+                Path("/unused/adb"),
+                "emulator-5554",
+                Path(temporary),
+            )
+            device.capture_product_anr_evidence = Mock()
+            xml = (
+                '<hierarchy rotation="0">'
+                f'<node package="{DRIVER.PACKAGE}" resource-id="phone-runners" />'
+                '<node package="android" resource-id="android:id/alertTitle" '
+                'text="Chummer isn\'t responding" />'
+                '</hierarchy>'
+            )
+
+            with self.assertRaises(DRIVER.ProductAnrDetected):
+                DRIVER.Device._parse_hierarchy(device, xml, "invalid.txt")
+
+        device.capture_product_anr_evidence.assert_called_once()
+        call_options = device.capture_product_anr_evidence.call_args.kwargs
+        self.assertEqual(xml, call_options["hierarchy_xml"])
+        self.assertEqual(2, len(call_options["nodes"]))
+        self.assertIsNone(call_options["deadline"])
 
     def test_expanded_notification_shade_is_collapsed_before_product_reobservation(
         self,
@@ -4107,22 +4176,11 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                     **options,
                 )
             )
-            device.capture.side_effect = (
-                lambda name, **options: DRIVER.Device.capture(
-                    device,
-                    name,
-                    **options,
-                )
-            )
-            device.run.return_value = subprocess.CompletedProcess(
-                args=[], returncode=0, stdout=b"bounded screenshot", stderr=b""
-            )
-
             with (
                 patch.object(
                     DRIVER.time,
                     "monotonic",
-                    side_effect=[0.0, 0.0, 0.0, 0.0, 10.0],
+                    side_effect=[0.0, 0.0, 0.0],
                 ),
                 self.assertRaisesRegex(
                     DRIVER.ProductAnrDetected,
@@ -4142,14 +4200,9 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             [wait_button],
             deadline=5.0,
         )
-        device.capture.assert_called_once_with("product-anr", deadline=5.0)
-        device.capture_product_anr_evidence.assert_not_called()
-        device.run.assert_called_once_with(
-            "exec-out",
-            "screencap",
-            "-p",
-            timeout=5.0,
-            text=False,
+        device.capture_product_anr_evidence.assert_called_once_with(
+            nodes=[wait_button],
+            hierarchy_xml=None,
             deadline=5.0,
         )
         device.swipe_down.assert_not_called()
@@ -4172,7 +4225,27 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
 
             device.shell.side_effect = shell
 
-            DRIVER.Device.capture_product_anr_evidence(device)
+            nodes = [
+                DRIVER.UiNode(
+                    {
+                        "package": "android",
+                        "resource-id": "android:id/aerr_close",
+                    }
+                )
+            ]
+            DRIVER.Device.capture_product_anr_evidence(
+                device,
+                nodes=nodes,
+                hierarchy_xml='<hierarchy rotation="0"></hierarchy>',
+            )
+            hierarchy = json.loads(
+                (evidence / "product-anr-hierarchy.json").read_text()
+            )
+            self.assertEqual(DRIVER.PRODUCT_ANR_HIERARCHY_SCHEMA, hierarchy["schema"])
+            self.assertEqual(DRIVER.PACKAGE, hierarchy["proofTargetPackage"])
+            self.assertFalse(hierarchy["autoDismissAttempted"])
+            self.assertEqual(1, hierarchy["anrNodeCount"])
+            self.assertTrue((evidence / "product-anr-hierarchy.xml").is_file())
 
         self.assertNotIn(
             call("kill", "-3", "3105", timeout=15),
@@ -4184,15 +4257,58 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         )
         self.assertEqual(
             [
+                (
+                    "logcat",
+                    "-d",
+                    "-b",
+                    "all",
+                    "-v",
+                    "threadtime",
+                    "-t",
+                    "4000",
+                ),
                 ("dumpsys", "activity", "lastanr"),
+                ("dumpsys", "activity", "activities"),
                 ("dumpsys", "activity", "processes"),
                 ("dumpsys", "activity", "exit-info", DRIVER.PACKAGE),
                 ("dumpsys", "window", "windows"),
                 ("ls", "-la", "/data/anr"),
-                ("logcat", "-d", "-b", "all", "-v", "threadtime", "-t", "4000"),
             ],
             [entry.args for entry in device.shell.call_args_list[1:]],
         )
+
+    def test_product_anr_diagnostics_do_not_start_after_owned_deadline(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            device = Mock(spec=DRIVER.Device)
+            device.evidence = Path(temporary)
+            nodes = [
+                DRIVER.UiNode(
+                    {
+                        "package": "android",
+                        "resource-id": "android:id/aerr_wait",
+                    }
+                )
+            ]
+
+            with patch.object(DRIVER.time, "monotonic", return_value=10.0):
+                DRIVER.Device.capture_product_anr_evidence(
+                    device,
+                    nodes=nodes,
+                    deadline=5.0,
+                )
+
+            self.assertTrue(
+                (Path(temporary) / "product-anr-hierarchy.json").is_file()
+            )
+            self.assertIn(
+                "caller-owned deadline exhausted",
+                (
+                    Path(temporary) / "product-anr-lastanr.txt"
+                ).read_text(),
+            )
+
+        device.run.assert_not_called()
+        device.shell.assert_not_called()
 
     def test_wait_hard_fails_on_anr_without_scrolling_or_retrying(self) -> None:
         device = Mock(spec=DRIVER.Device)
@@ -4419,6 +4535,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         )
         device.hierarchy.return_value = [surface, clipped_target]
         device.node_has_tappable_bounds.side_effect = [False, True]
+        device.dismiss_system_ui_anr.return_value = False
 
         with patch.object(DRIVER.time, "monotonic", side_effect=[0.0, 0.0]), \
              self.assertRaisesRegex(
@@ -4483,6 +4600,82 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         device.capture.assert_called_once_with(
             "new-runner-build-method-dialog-target-unavailable"
         )
+
+    def test_exact_resource_transition_never_replays_a_pending_source_tap(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        source = DRIVER.UiNode(
+            {
+                "resource-id": f"{DRIVER.PACKAGE}:id/home-new-runner",
+                "clickable": "true",
+                "bounds": "[40,400][1040,560]",
+            }
+        )
+        device.hierarchy.return_value = [source]
+        device.display_size.return_value = (1080, 2400)
+        device.node_has_tappable_bounds.return_value = True
+        device.dismiss_system_ui_anr.return_value = False
+
+        with (
+            patch.object(
+                DRIVER.time,
+                "monotonic",
+                side_effect=[0.0, 0.0, 0.5, 2.0],
+            ),
+            patch.object(DRIVER.time, "sleep"),
+            self.assertRaisesRegex(RuntimeError, "target.*after tapping exact"),
+        ):
+            DRIVER.Device.tap_exact_resource_id_until_exact_resource_id(
+                device,
+                "home-new-runner",
+                "dialog-action-create-character",
+                timeout=1,
+                target_name="Target",
+            )
+
+        device.shell.assert_called_once_with("input", "tap", "540", "480")
+        self.assertEqual(2, device.hierarchy.call_count)
+        device.capture.assert_called_once_with(
+            "exact-resource-transition-target-unavailable"
+        )
+
+    def test_legacy_transition_polling_never_replays_a_pending_source_tap(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        source = DRIVER.UiNode(
+            {
+                "resource-id": f"{DRIVER.PACKAGE}:id/home-new-runner",
+                "clickable": "true",
+                "bounds": "[40,400][1040,560]",
+            }
+        )
+        device.find.side_effect = [None, source, None]
+        device.dismiss_system_ui_anr.return_value = False
+
+        with (
+            patch.object(
+                DRIVER.time,
+                "monotonic",
+                side_effect=[0.0, 0.0, 0.5, 2.0],
+            ),
+            patch.object(DRIVER.time, "sleep"),
+            self.assertRaisesRegex(RuntimeError, "after tapping 'home-new-runner'"),
+        ):
+            DRIVER.Device.tap_until_visible(
+                device,
+                "home-new-runner",
+                "Select Build Method",
+                timeout=1,
+            )
+
+        device.shell.assert_called_once_with("input", "tap", "540", "480")
+        self.assertEqual(
+            [
+                call("Select Build Method"),
+                call("home-new-runner"),
+                call("Select Build Method"),
+            ],
+            device.find.call_args_list,
+        )
+        device.capture.assert_called_once_with("failure")
 
     def test_durable_save_observation_uses_one_exact_tap_and_read_only_polling(self) -> None:
         device = Mock(spec=DRIVER.Device)

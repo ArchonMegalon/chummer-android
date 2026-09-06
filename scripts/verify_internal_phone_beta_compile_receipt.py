@@ -10,7 +10,9 @@ import os
 import re
 import stat
 import subprocess
+import sys
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 
 
@@ -117,12 +119,12 @@ LATER_DEVICE_REQUIREMENTS = (
     "apk_install",
     "physical_api36_execution",
 )
-PRESENTATION_COMMIT = "c2b13e11852b1866ef47c148e1fc68d09d413999"
-PRESENTATION_TREE = "4d5ada6b27e9e7122436f03a77f2b44ce3a11f1a"
-AUTHORITY_RECEIPT_SHA256 = "b541b99ac4fa92d0791123888af30b19ad1f13527c30e04c15669aae5d89874d"
-AUTHORITY_CACHE_MANIFEST_SHA256 = "31fa184f6cf91622ae9616a01f3a22c135f0e6b8d7c7a7e93bcfb88c097a97a8"
-PACKAGE_AUTHORITY_SHA256 = "940d5c33b6be355d1f9408ad8360b72bbb7c4a9bcb17e29089b1ec2b262ba69e"
-AUTHORITY_BINDING_SHA256 = "7e9073eedf3d90dbd69fe62d7d7c1b5bbe32c1bee437c691c3eba5f23a4ee48a"
+PRESENTATION_COMMIT = "a9e5bbd4fd44826177dd048b24417fad27397497"
+PRESENTATION_TREE = "a6d77fd56e5caa599f476dbe2e59146b88e9744d"
+AUTHORITY_RECEIPT_SHA256 = "e0bd4e4ea8174fa5985378baef820ca064f3af6557d5dec62e0a57d4d1f45600"
+AUTHORITY_CACHE_MANIFEST_SHA256 = "41c20c3eb10ff5b10677200bafb58aa40e2accf66007bdd67ae0b415f336471a"
+PACKAGE_AUTHORITY_SHA256 = "b63ce17ce2105eedf1ed388f7eb59cf2232e9b8a65f66e940860965adced3ef5"
+AUTHORITY_BINDING_SHA256 = "4acf84c893e87f392b2d16030e45aff4f42ebd34f330feec35403dbb43a08226"
 ANDROID_LOCK_SHA256 = "f421578231b43f5bd81eebedb5b82fd4b9345dc91bc2af005cbefcaab117b00b"
 ANDROID_LOCK_SIZE = 16178
 PRODUCER_SDK_VERSION = "10.0.103"
@@ -497,6 +499,48 @@ def validate_authority_evidence(paths: dict[str, Path], facts: JournalFacts) -> 
             raise ValueError("authority binding evidence facts mismatch")
 
 
+@lru_cache(maxsize=1)
+def expected_compiled_owned_source_count() -> int:
+    root = ROOT.resolve(strict=True)
+    project = (
+        root
+        / "tests/Chummer.Android.Native.CompileCheck/Chummer.Android.Native.CompileCheck.csproj"
+    )
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(root / "scripts/verify_native_compile_graph.py"),
+            "--repo-root",
+            str(root),
+            "--project",
+            str(project),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    try:
+        graph = require_object(
+            parse_json_bytes(completed.stdout.encode("utf-8"), "current owned compile graph"),
+            "current owned compile graph",
+        )
+    except ValueError as exc:
+        raise ValueError("current owned compile graph is unavailable") from exc
+    count = graph.get("compiledOwnedSourceCount")
+    if (
+        completed.returncode != 0
+        or graph.get("schema") != "chummer.android.native-compile-graph/v1"
+        or graph.get("status") != "pass"
+        or graph.get("issues") != []
+        or not isinstance(count, int)
+        or isinstance(count, bool)
+        or count <= 0
+    ):
+        raise ValueError("current owned compile graph is not authoritative")
+    return count
+
+
 def validate_graph_evidence(paths: dict[str, Path], facts: JournalFacts) -> None:
     if "owned-compile-graph.log" in paths:
         passed = "owned-compile-graph" in facts.passed_phases
@@ -511,7 +555,8 @@ def validate_graph_evidence(paths: dict[str, Path], facts: JournalFacts) -> None
             pass_facts = (
                 owned.get("schema") == "chummer.android.native-compile-graph/v1"
                 and owned.get("status") == "pass"
-                and owned.get("compiledOwnedSourceCount") == 222
+                and owned.get("compiledOwnedSourceCount")
+                == expected_compiled_owned_source_count()
                 and owned.get("generatedProjectReferenceCount") == 3
                 and owned.get("issues") == []
                 and isinstance(owned.get("compileProject"), str)

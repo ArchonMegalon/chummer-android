@@ -18,7 +18,8 @@ documented at https://support.google.com/googleplay/android-developer/answer/119
 
 ## Secret boundary
 
-Upload keys and passwords are never committed. Release automation supplies:
+Upload keys and passwords are never committed. They belong only to a separate
+protected Fleet signer, which is not implemented by this repository:
 
 - `AndroidSigningKeyStore`
 - `ChummerAndroidSigningStorePass`
@@ -53,35 +54,40 @@ scripts/import-signing-recovery.py \
   --keytool /absolute/java/bin/keytool
 ```
 
-Source the generated environment only in the release shell. The environment file
-uses the four MSBuild property names above, while passwords stay out of process
-arguments and logs. It also binds the public upload certificate so validation can
-prove that the AAB signer is the intended Chummer upload identity:
+The historical recovery environment is not accepted by the current build-user
+release gate. Under the same-UID filesystem attacker model, a readable mode-0600
+keystore is not a signing authority. The build-user lane accepts only public
+inputs and produces a non-authoritative unsigned handoff. It must be launched
+by a credential-free job from a constructed empty environment, never from an
+operator shell that also contains GitHub, Actions, cloud, Play, upload-key, or
+other credentials:
 
 ```sh
-set -a
-. /absolute/private/path/android-release.env
-set +a
-CHUMMER_ANDROID_EXPECTED_VERSION_NAME=0.1.0-preview.11 \
-CHUMMER_ANDROID_EXPECTED_VERSION_CODE=11 \
-CHUMMER_BUNDLETOOL_JAR=/secure/tools/bundletool-all-1.18.3.jar \
-  scripts/build-release.sh
+/usr/bin/env -i PATH=/usr/bin:/bin LANG=C LC_ALL=C \
+  CHUMMER_ANDROID_EXPECTED_VERSION_NAME=0.1.0-preview.12 \
+  CHUMMER_ANDROID_EXPECTED_VERSION_CODE=12 \
+  CHUMMER_BUNDLETOOL_JAR=/secure/tools/bundletool-all-1.18.3.jar \
+  /bin/bash -p scripts/build-release.sh
 ```
 
 The expected version name and code are mandatory release intent, not defaults.
 They must be canonical, must exactly match the single
 `ApplicationDisplayVersion`/`ApplicationVersion` pair in the Android project,
-and the code must be greater than the already published Preview.10 code `10`.
-Supplying only one value, reusing code `10`, using a leading-zero code, or
+and the code must be greater than the separately recorded current Play version.
+This gate contains no hard-coded preview floor; advancing release identity is a
+separate candidate transaction. Supplying only one value, reusing an already
+published code, using a leading-zero code, or
 disagreeing with the project fails before workspace, signing, or build inputs
 are admitted. The resolved pair is bound into the AAB/checksum/source-graph
 filenames, the v3 source graph, and the MSBuild publish properties.
 
-The Preview.10 AAB, source graph, publication receipt, and dedicated verifier
+The Preview.10 repository receipt and the Preview.10/Preview.11 release records
 remain immutable historical evidence. This next-release lane neither rebuilds
-nor replaces them.
+nor replaces them, and it does not manufacture a Preview.11 receipt from the
+live Console observation that established the new version floor.
 
-Before the signed build, prepare the package authority and `--no-restore` assets
+Before the unsigned candidate build, prepare the package authority and
+`--no-restore` assets
 from the retained UI package-plane receipt and its exact private package cache.
 The input directory must be a new empty owner-only directory outside the
 repository. The preparer derives `chummer.android.release-package-authority/v2`
@@ -91,18 +97,83 @@ an isolated NuGet package root and emits an owner-only environment handoff:
 
 ```sh
 install -d -m 0700 /absolute/private/chummer-next-release-inputs
-CHUMMER_ANDROID_RELEASE_INPUT_DIR=/absolute/private/chummer-next-release-inputs \
-CHUMMER_CURRENT_UI_PACKAGE_AUTHORITY_RECEIPT=/absolute/private/UI_CURRENT_MAIN_PACKAGE_PLANE.generated.json \
-CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED=/absolute/private/ui-package-cache/packages \
-  scripts/prepare-release-inputs.sh
+/usr/bin/env -i PATH=/usr/bin:/bin LANG=C LC_ALL=C \
+  CHUMMER_ANDROID_RELEASE_INPUT_DIR=/absolute/private/chummer-next-release-inputs \
+  CHUMMER_ANDROID_EXPECTED_VERSION_NAME=0.1.0-preview.12 \
+  CHUMMER_ANDROID_EXPECTED_VERSION_CODE=12 \
+  CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT=/absolute/private/ANDROID_API36_TWO_GREEN_ELIGIBILITY.generated.json \
+  CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL=/absolute/private/ANDROID_API36_TWO_GREEN_RELEASE_APPROVAL.generated.json \
+  CHUMMER_ANDROID_RELEASE_TOOLCHAIN_AUTHORITY=/absolute/private/ANDROID_LOCAL_UNSIGNED_TOOLCHAIN_OBSERVATION.generated.json \
+  CHUMMER_CURRENT_UI_PACKAGE_AUTHORITY_RECEIPT=/absolute/private/UI_CURRENT_MAIN_PACKAGE_PLANE.generated.json \
+  CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED=/absolute/private/ui-package-cache/packages \
+  /bin/bash -p scripts/prepare-release-inputs.sh
 . /absolute/private/chummer-next-release-inputs/release-inputs.env
 ```
 
-The preparer does not sign, publish, upload, or authorize publication. The
-release build re-derives and verifies the package authority before and after the
-signed AAB build.
+The approval is a short-lived detached Ed25519 signature created by a separate
+privileged external signer for the exact receipt bytes, Android
+commit/tree, release version, dependency graph, and proof-environment policy.
+Before signing, the signer uses an owner-only GitHub token to fetch the exact
+Actions runs, attempt jobs, artifacts, pull-request association, check run,
+commits, and remote `main` ref directly from fixed GitHub API endpoints. It
+reruns the complete two-green materializer from those authenticated bytes and
+requires remote `main` to equal the release source commit. Caller-provided JSON,
+ZIP files, URLs, or replay manifests cannot become signing provenance. The
+approval binds the exact authenticated input and validator digests; shallow
+receipt self-consistency is never sufficient.
+The public verification key is pinned in this repository; the private key must
+never enter the checkout or the build-user process. Local `sign` entry points
+fail with `external-signer-required`. The external signer must fetch and replay
+GitHub provenance itself and deliver only the detached approval.
 
-Run `scripts/build-release.sh` only from a complete coherent workspace whose
+The local builder records a non-authoritative observation of the complete
+root-owned JDK and .NET SDK/workload/MSBuild trees. It deliberately does not
+bind the Android SDK and cannot authorize signing. Materialize it with an
+isolated interpreter:
+
+```sh
+/usr/bin/python3 -I -E -S scripts/sign_android_release_build_attestation.py \
+  observe-toolchain \
+  --java-sdk /absolute/root-owned/jdk \
+  --dotnet /absolute/root-owned/dotnet/dotnet \
+  --output /absolute/private/ANDROID_LOCAL_UNSIGNED_TOOLCHAIN_OBSERVATION.generated.json
+```
+
+The external signer must independently bind the full JDK, .NET SDK/workload/
+MSBuild, and Android SDK closure. It must independently rebuild from the exact
+authenticated source graph and match the unsigned candidate digest. The local
+observation is never signer input authority.
+
+The preparer copies both owner-only inputs into fixed release-input paths and
+verifies the detached signature before admitting them. Recomputing and
+self-supplying a plain receipt SHA-256 is not an approval. Neither the receipt
+nor the detached approval authorizes AAB signing, publication, upload, or tester
+mutation. Their paths are not exported by the environment handoff and are
+scrubbed from every restore, test, dotnet, and MSBuild child environment. The
+release build re-verifies the same receipt, signature, package
+authority, and source graph before producing the unsigned signer handoff.
+
+`scripts/prepare-release-inputs.sh` and `scripts/build-release.sh` are local
+unsigned preparation only. Dynamic-loader and interpreter startup occur before
+script code, so these scripts make no impossible claim that they can neutralize
+a hostile `LD_PRELOAD`, `BASH_ENV`, or equivalent value before entry. The
+credential-free job is responsible for starting them through `/usr/bin/env -i`
+and `/bin/bash -p`. After entry they reject common generic and Chummer-specific
+credential variables, scrub language-runtime, loader, TLS-keylog, Java, and
+MSBuild injection variables, run Python with `-I -E -S`, and construct an exact
+allowlisted environment for every child. A hostile caller can still control the
+local build-user process itself; therefore none of its outputs is signing
+authority. The ordinary development host is suitable for preparation and tests
+only and must never receive production signing credentials.
+
+The protected Fleet signer is a separate, not-yet-implemented transaction and
+the sole secret boundary.
+It must run under a distinct credential and filesystem authority, authenticate
+all inputs, bind the full toolchain closure, rebuild from exact source, validate
+the signed result, and emit a detached output attestation. Until that exists,
+the repository intentionally stops at `external-signer-required`.
+
+Run the unsigned preparation only from a complete coherent workspace whose
 `chummer-android` sibling is accompanied by exact clean Presentation, Core, UI
 Kit, Hub, Hub Registry, Media Factory, and Design checkouts. Set
 `CHUMMER_COMPLETE_ROOT` to that workspace and supply all eight exact
@@ -110,20 +181,27 @@ Kit, Hub, Hub Registry, Media Factory, and Design checkouts. Set
 The packager requires the assets and isolated `NUGET_PACKAGES` produced by the
 preparer plus explicit canonical `AndroidSdkDirectory` and `JavaSdkDirectory`
 paths; it never restores or installs tooling. It also requires the pinned
-bundletool JAR and all five signing/certificate
-environment values. Passwords remain in the environment and are never printed or
-interpolated into process arguments.
+bundletool JAR and the public upload certificate. Any inherited keystore or
+signing-password variable fails closed; no production signing credential is
+admitted by this lane.
 
 The release outputs are versioned and immutable. The packager fails before the
 build if the AAB, source graph, or checksum target already exists, validates the
 source graph again after packaging, publishes only into a fresh unique private
-staging directory, requires exactly one new package-ID-bound signed AAB there,
-and seals each output with an exclusive no-clobber link. Persistent `bin/`
+staging directory, requires exactly one new unsigned AAB there,
+and snapshots the AAB, source graph, and sidecar into sealed Linux memfds. One
+process validates and promotes those descriptor-held bytes into exclusive
+no-clobber outputs. There is no build-user-readable HMAC key or intermediate
+receipt that can self-authorize substituted bytes. Persistent `bin/`
 outputs are never accepted as release input. A partial failed release is not
 overwritten automatically.
 
-The release packager only seals a local AAB and sidecars. It never uploads to
-Google Play, changes a Play track, edits testers, or authorizes publication.
+The release packager only seals an unsigned local AAB, source graph, sidecar, and
+non-authoritative `chummer.android.external-release-signer-request/v1`. It exits
+with `external-signer-required`; it never signs, uploads to Google Play, changes
+a Play track, edits testers, or authorizes publication. The external signer must
+rebuild independently in its immutable environment and match the unsigned AAB
+digest before signing.
 
 If SDK API 36 and Java are absent, the guarded
 `scripts/bootstrap-build-environment.sh` uses .NET's official
@@ -167,11 +245,11 @@ The wizard aggregate uses schema
 only the stated phone wizard scope; it does not itself authorize a Play upload,
 tablet support, broad Android parity, or public release.
 
-### General and public release gates — outside Preview.11 Internal
+### General and public release gates — outside Preview.12 Internal
 
-The following broader checklist is not part of the seven-journey Preview.11
+The following broader checklist is not part of the seven-journey Preview.12
 Internal denominator. In particular, its tablet items do not add a tablet gate
-to Preview.11, and satisfying the internal phone aggregate does not satisfy or
+to Preview.12, and satisfying the internal phone aggregate does not satisfy or
 authorize any item below.
 
 1. parity and privacy contract tests pass;
@@ -264,25 +342,49 @@ The release AAB and v3 source graph must be the exact canonical local build
 outputs; both are reread, structurally checked, hashed, and bound into the
 receipt.
 
+After the build, a separate privileged controller signs a detached build
+attestation that
+binds the exact AAB, its two-line build sidecar, the entire source graph
+(including `chummer6-design` and every repository `tree_sha256`), and the exact
+two-green receipt and approval. The attestation grants no signing, upload, or
+publication authority. Before signing, the controller independently runs the
+pinned bundletool, JAR-signature/upload-certificate check, manifest/version/SDK
+and ABI inspection, proof-exclusion and protected-input hygiene checks, and a
+fresh clean-checkout reconstruction of the source graph. These validators run
+against exact descriptor-held copies of the handoff bytes. The external signer
+must rerun the source/two-green checks, independently rebuild and match the
+unsigned AAB, sign it with a credential unavailable to the build UID, verify the
+expected certificate, and emit the detached build attestation. The repository's
+local signing CLI is intentionally disabled; hosting that signer is a separate
+release-authority transaction.
+
 ```sh
 python3 scripts/materialize_next_play_internal_publication_receipt.py materialize \
   --browser-readback /absolute/private/explicit-browser-readback.json \
   --aab /absolute/path/chummer-android-VERSION-upload.aab \
   --source-graph /absolute/private/chummer-android-VERSION-source-graph.json \
-  --expected-android-source-commit APPROVED_40_CHARACTER_ANDROID_HEAD \
-  --expected-aab-sha256 APPROVED_64_CHARACTER_AAB_SHA256 \
+  --build-sidecar /absolute/path/chummer-android-VERSION-upload.aab.sha256 \
+  --build-attestation /absolute/private/ANDROID_RELEASE_BUILD_ATTESTATION.generated.json \
+  --two-green-receipt /absolute/private/ANDROID_API36_TWO_GREEN_ELIGIBILITY.generated.json \
+  --two-green-approval /absolute/private/ANDROID_API36_TWO_GREEN_RELEASE_APPROVAL.generated.json \
   --output /absolute/private/next-internal-publication.json
 
 python3 scripts/materialize_next_play_internal_publication_receipt.py verify \
   --receipt /absolute/private/next-internal-publication.json \
   --aab /absolute/path/chummer-android-VERSION-upload.aab \
   --source-graph /absolute/private/chummer-android-VERSION-source-graph.json \
-  --expected-android-source-commit APPROVED_40_CHARACTER_ANDROID_HEAD \
-  --expected-aab-sha256 APPROVED_64_CHARACTER_AAB_SHA256
+  --build-sidecar /absolute/path/chummer-android-VERSION-upload.aab.sha256 \
+  --build-attestation /absolute/private/ANDROID_RELEASE_BUILD_ATTESTATION.generated.json \
+  --two-green-receipt /absolute/private/ANDROID_API36_TWO_GREEN_ELIGIBILITY.generated.json \
+  --two-green-approval /absolute/private/ANDROID_API36_TWO_GREEN_RELEASE_APPROVAL.generated.json
 ```
 
-A passing v3 receipt records only an observed Internal-testing Console state
-plus the exact explicitly approved local source head and AAB bytes. It always
+A passing v4 receipt records only an observed Internal-testing Console state,
+the exact explicitly approved local source head, AAB bytes, and build-sidecar
+source-graph bytes, and the detached-approved two-green eligibility receipt
+consumed by that release transaction. The source-graph digest covers every
+repository record, including `chummer6-design` and every repository
+`tree_sha256`; changing any of those bytes fails verification. It always
 sets `publicationAuthorized`, production, upload-action, and tester-roster
 authorization to false. Play does not expose the uploaded AAB digest here, and
 this lane does not prove that the approved local AAB is the artifact processed
@@ -292,7 +394,7 @@ publication claim. Browser readback must be fresh when the receipt is first
 materialized; durable verification may occur later against its exact inputs.
 Keep the generated receipt
 outside the repository until a real readback has occurred and its exact evidence
-has been reviewed; this lane deliberately provides no Preview.11 receipt.
+has been reviewed; this lane deliberately provides no Preview.12 receipt.
 
 The recorded Preview.10 Internal-testing publication truth is
 `play/evidence/preview10-internal-publication.json`. Verify the durable record

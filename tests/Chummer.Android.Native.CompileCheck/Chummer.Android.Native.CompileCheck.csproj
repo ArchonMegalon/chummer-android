@@ -3,6 +3,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <RootNamespace>Chummer.Android</RootNamespace>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <ChummerPresentationRoot Condition="'$(ChummerPresentationRoot)' == ''">../../../chummer-presentation</ChummerPresentationRoot>
@@ -14,6 +15,14 @@
   <ItemGroup>
     <ProjectReference Include="$(ChummerPresentationRoot)/Chummer.Presentation/Chummer.Presentation.csproj" />
     <ProjectReference Include="$(ChummerPresentationRoot)/Chummer.Desktop.Runtime/Chummer.Desktop.Runtime.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="../../src/Chummer.Android/Resources/Localization/PhoneStrings.resx"
+                      Link="Resources/Localization/PhoneStrings.resx" />
+    <EmbeddedResource Include="../../src/Chummer.Android/Resources/Localization/PhoneStrings.de.resx"
+                      Link="Resources/Localization/PhoneStrings.de.resx" />
+    <EmbeddedResource Include="../../src/Chummer.Android/Resources/Localization/PhoneStrings.es.resx"
+                      Link="Resources/Localization/PhoneStrings.es.resx" />
   </ItemGroup>
   <Import Project="NativeCompileInputs.props" />
   <Target Name="VerifyNativeCompileGraph" BeforeTargets="PrepareForBuild">

@@ -4,16 +4,13 @@
 from __future__ import annotations
 
 import sys
+import os
 import xml.etree.ElementTree as ET
 import zipfile
 from pathlib import Path
 
-from read_android_version import read_project_version
-
-
 ANDROID = "{http://schemas.android.com/apk/res/android}"
 PACKAGE_ID = "com.myexternalbrain.chummer"
-PROJECT_PATH = Path(__file__).resolve().parents[1] / "src" / "Chummer.Android" / "Chummer.Android.csproj"
 ALLOWED_PERMISSIONS = {
     "android.permission.ACCESS_NETWORK_STATE",
     "android.permission.INTERNET",
@@ -31,7 +28,10 @@ def attr(element: ET.Element, name: str) -> str | None:
 
 
 def inspect(aab_path: Path, manifest_path: Path) -> None:
-    expected_version_name, expected_version_code = read_project_version(PROJECT_PATH)
+    expected_version_name = os.environ.get("CHUMMER_EXPECTED_VERSION_NAME")
+    expected_version_code = os.environ.get("CHUMMER_EXPECTED_VERSION_CODE")
+    require(bool(expected_version_name), "protected expected version name is missing")
+    require(bool(expected_version_code), "protected expected version code is missing")
     root = ET.parse(manifest_path).getroot()
     require(root.get("package") == PACKAGE_ID, "unexpected package id")
     require(attr(root, "compileSdkVersion") == "36", "compile SDK must be 36")
@@ -98,8 +98,11 @@ def inspect(aab_path: Path, manifest_path: Path) -> None:
 
 def main() -> None:
     require(len(sys.argv) == 3, "usage: inspect_aab.py AAB MANIFEST_XML")
-    aab_path = Path(sys.argv[1]).resolve()
-    manifest_path = Path(sys.argv[2]).resolve()
+    # /proc/self/fd paths are intentionally not resolved: the protected
+    # attester supplies immutable inherited descriptors rather than names that
+    # a same-UID filesystem attacker can swap.
+    aab_path = Path(sys.argv[1])
+    manifest_path = Path(sys.argv[2])
     require(aab_path.is_file(), f"bundle not found: {aab_path}")
     require(manifest_path.is_file(), f"manifest not found: {manifest_path}")
     inspect(aab_path, manifest_path)

@@ -1,16 +1,141 @@
-#!/usr/bin/env bash
+#!/bin/bash -p
 set -euo pipefail
+set +a
 umask 077
+PATH=/usr/bin:/bin
+export PATH
 
-repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+two_green_receipt_input="${CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT:-}"
+two_green_approval_input="${CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL:-}"
+export -n two_green_receipt_input two_green_approval_input 2>/dev/null || true
+# Preparation never needs signing authority. Interpreter startup is outside
+# this script's control; the invoking job MUST already have a constructed
+# credential-free environment. Rejection below is a post-entry fail-closed
+# check. The two signed public authority inputs survive only in shell locals.
+ambient_signing_input=false
+for protected_release_variable in \
+  AndroidSigningKeyStore \
+  ChummerAndroidSigningStorePass \
+  ChummerAndroidSigningKeyPass \
+  ChummerAndroidSigningKeyAlias \
+  CHUMMER_ANDROID_UPLOAD_CERTIFICATE_PATH \
+  CHUMMER_ANDROID_PREFLIGHT_STORE_PASSWORD \
+  CHUMMER_ANDROID_SIGNING_DIR \
+  CHUMMER_PROVISION_STORE_PASSWORD \
+  CHUMMER_RECOVERY_STORE_PASSWORD \
+  CHUMMER_ANDROID_RELEASE_APPROVER_PRIVATE_KEY \
+  CHUMMER_ANDROID_BUILD_ATTESTATION_PRIVATE_KEY \
+  CHUMMER_ANDROID_GITHUB_PROVENANCE_TOKEN_FILE; do
+  if [[ -v "$protected_release_variable" ]]; then
+    ambient_signing_input=true
+  fi
+  unset "$protected_release_variable"
+done
+unset protected_release_variable
+for generic_credential_variable in \
+  GITHUB_TOKEN GH_TOKEN ACTIONS_RUNTIME_TOKEN ACTIONS_ID_TOKEN_REQUEST_TOKEN \
+  ACTIONS_ID_TOKEN_REQUEST_URL GOOGLE_APPLICATION_CREDENTIALS GOOGLE_API_KEY \
+  PLAY_SERVICE_ACCOUNT_JSON PLAY_PUBLISHER_CREDENTIALS \
+  AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN \
+  AZURE_CLIENT_SECRET ARM_CLIENT_SECRET CLOUDFLARE_API_TOKEN CF_API_TOKEN \
+  NUGET_AUTH_TOKEN NPM_TOKEN DOCKER_AUTH_CONFIG SSH_AUTH_SOCK; do
+  if [[ -v "$generic_credential_variable" ]]; then
+    ambient_signing_input=true
+  fi
+  unset "$generic_credential_variable"
+done
+unset generic_credential_variable
+for prefixed_credential_variable in \
+  ${!ACTIONS_@} ${!AWS_@} ${!AZURE_@} ${!ARM_@} ${!PLAY_@} \
+  ${!GOOGLE_@} ${!GCP_@} ${!CLOUDSDK_@} ${!CLOUDFLARE_@} ${!CF_@} \
+  ${!DOCKER_@} ${!SSH_@} ${!VAULT_@} ${!OP_@}; do
+  ambient_signing_input=true
+  unset "$prefixed_credential_variable"
+done
+unset prefixed_credential_variable
+if [[ "$ambient_signing_input" == true ]]; then
+  unset CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT
+  unset CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL
+  printf 'android_release_inputs=failed stage=external-signer-required-readable-signing-input-rejected publication_authorized=false\n' >&2
+  exit 1
+fi
+unset ambient_signing_input
+unset CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT
+unset CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL
+
+for hostile_startup_variable in \
+  BASH_ENV ENV CDPATH GIT_EXEC_PATH \
+  LD_AUDIT LD_LIBRARY_PATH LD_PRELOAD \
+  DYLD_INSERT_LIBRARIES DYLD_LIBRARY_PATH \
+  PYTHONHOME PYTHONPATH PYTHONSTARTUP PYTHONINSPECT \
+  OPENSSL_CONF OPENSSL_ENGINES OPENSSL_MODULES \
+  SSLKEYLOGFILE SSL_CERT_FILE SSL_CERT_DIR \
+  JAVA_TOOL_OPTIONS JDK_JAVA_OPTIONS _JAVA_OPTIONS CLASSPATH \
+  DOTNET_ROOT DOTNET_ROOT_X64 MSBuildSDKsPath MSBUILD_EXE_PATH \
+  NUGET_PLUGIN_PATHS COREHOST_TRACEFILE; do
+  unset "$hostile_startup_variable"
+done
+unset hostile_startup_variable
+
+caller_dotnet="${CHUMMER_DOTNET:-}"
+export -n caller_dotnet 2>/dev/null || true
+unset CHUMMER_DOTNET
+
+script_dir="${BASH_SOURCE[0]%/*}"
+repo_dir="$(cd "$script_dir/.." && pwd -P)"
 project_path="$repo_dir/src/Chummer.Android/Chummer.Android.csproj"
-dotnet_command="${CHUMMER_DOTNET:-dotnet}"
+dotnet_command=""
 nuget_org_source="https://api.nuget.org/v3/index.json"
+release_child_home=""
+
+clean_exec() {
+  local child_home="${release_child_home:-/nonexistent/chummer-android-unsigned}"
+  local -a child_environment=(
+    PATH=/usr/bin:/bin LANG=C LC_ALL=C HOME="$child_home"
+    XDG_CONFIG_HOME="$child_home" DOTNET_CLI_HOME="$child_home"
+  )
+  local allowed_name
+  for allowed_name in \
+    CHUMMER_ANDROID_REVISION CHUMMER_PRESENTATION_REVISION \
+    CHUMMER_CORE_ENGINE_REVISION CHUMMER_UI_KIT_REVISION \
+    CHUMMER_RUN_SERVICES_REVISION CHUMMER_HUB_REGISTRY_REVISION \
+    CHUMMER_MEDIA_FACTORY_REVISION CHUMMER_DESIGN_REVISION \
+    NUGET_PACKAGES DOTNET_CLI_USE_MSBUILD_SERVER MSBUILDDISABLENODEREUSE; do
+    if [[ -v "$allowed_name" ]]; then
+      child_environment+=("$allowed_name=${!allowed_name}")
+    fi
+  done
+  /usr/bin/env -i "${child_environment[@]}" "$@"
+}
+
+python3() {
+  if [[ "${1:-}" == "-c" || "${1:-}" == "-m" ]]; then
+    clean_exec /usr/bin/python3 -I -E -S "$@"
+    return
+  fi
+  clean_exec /usr/bin/python3 -I -E -S -c \
+    'import pathlib,runpy,sys; p=pathlib.Path(sys.argv[1]).resolve(strict=True); sys.path.insert(0, str(p.parent)); sys.argv=sys.argv[1:]; runpy.run_path(str(p), run_name="__main__")' \
+    "$@"
+}
 
 fail() {
   printf 'android_release_inputs=failed stage=%s publication_authorized=false\n' "$1" >&2
   exit 1
 }
+
+cmp() { clean_exec /usr/bin/cmp "$@"; }
+chmod() { clean_exec /usr/bin/chmod "$@"; }
+cut() { clean_exec /usr/bin/cut "$@"; }
+dirname() { clean_exec /usr/bin/dirname "$@"; }
+find() { clean_exec /usr/bin/find "$@"; }
+git() { clean_exec /usr/bin/git "$@"; }
+id() { clean_exec /usr/bin/id "$@"; }
+install() { clean_exec /usr/bin/install "$@"; }
+jq() { clean_exec /usr/bin/jq "$@"; }
+mkdir() { clean_exec /usr/bin/mkdir "$@"; }
+realpath() { clean_exec /usr/bin/realpath "$@"; }
+sha256sum() { clean_exec /usr/bin/sha256sum "$@"; }
+stat() { clean_exec /usr/bin/stat "$@"; }
 
 require_command() {
   command -v "$1" >/dev/null 2>&1 || fail "missing-command-$1"
@@ -44,10 +169,26 @@ require_private_regular_file() {
   export "${variable_name?}"
 }
 
-for required in cmp dirname find git id install jq mkdir python3 realpath stat; do
+for required in chmod cmp cut dirname find git id install jq mkdir python3 realpath sha256sum stat; do
   require_command "$required"
 done
-require_command "$dotnet_command"
+require_private_regular_file CHUMMER_ANDROID_RELEASE_TOOLCHAIN_AUTHORITY
+toolchain_identity="$(python3 "$repo_dir/scripts/sign_android_release_build_attestation.py" \
+  verify-toolchain \
+  --authority "$CHUMMER_ANDROID_RELEASE_TOOLCHAIN_AUTHORITY")" \
+  || fail "trusted-release-toolchain-invalid"
+trusted_dotnet="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["dotnetPath"])' <<<"$toolchain_identity")" \
+  || fail "trusted-dotnet-path-absent"
+trusted_java_sdk="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["javaSdkRoot"])' <<<"$toolchain_identity")" \
+  || fail "trusted-java-sdk-path-absent"
+[[ -z "$caller_dotnet" || "$caller_dotnet" == "$trusted_dotnet" ]] \
+  || fail "caller-dotnet-differs-from-trusted-toolchain"
+[[ -n "${JavaSdkDirectory:-}" && "$(realpath -e -- "$JavaSdkDirectory")" == "$trusted_java_sdk" ]] \
+  || fail "caller-java-sdk-differs-from-trusted-toolchain"
+dotnet_command="$trusted_dotnet"
+JavaSdkDirectory="$trusted_java_sdk"
+unset toolchain_identity trusted_dotnet trusted_java_sdk caller_dotnet
+export -n CHUMMER_ANDROID_RELEASE_TOOLCHAIN_AUTHORITY 2>/dev/null || true
 
 workspace_root="${CHUMMER_COMPLETE_ROOT:-}"
 [[ -n "$workspace_root" && "$workspace_root" == /* ]] \
@@ -63,10 +204,40 @@ core_root="$workspace_root/chummer-core-engine"
   || fail "presentation-source-missing"
 [[ ! -L "$core_root" && -d "$core_root" ]] || fail "core-source-missing"
 
+expected_version_name="${CHUMMER_ANDROID_EXPECTED_VERSION_NAME:-}"
+expected_version_code="${CHUMMER_ANDROID_EXPECTED_VERSION_CODE:-}"
+[[ -n "$expected_version_name" && -n "$expected_version_code" ]] \
+  || fail "release-version-intent-missing"
+release_version_pair="$(python3 "$repo_dir/scripts/verify_android_release_intent.py" \
+  --project "$project_path" \
+  --expected-version-name "$expected_version_name" \
+  --expected-version-code "$expected_version_code")" \
+  || fail "release-version-intent-invalid"
+IFS=$'\t' read -r version_name version_code version_extra <<< "$release_version_pair"
+[[ -n "$version_name" && -n "$version_code" && -z "${version_extra:-}" \
+  && "$release_version_pair" == "$version_name"$'\t'"$version_code" ]] \
+  || fail "release-version-intent-ambiguous"
+unset release_version_pair version_extra
+
 require_exact_directory AndroidSdkDirectory
 require_exact_directory JavaSdkDirectory
 require_private_regular_file CHUMMER_CURRENT_UI_PACKAGE_AUTHORITY_RECEIPT
+CHUMMER_PROTECTED_INPUT="$two_green_receipt_input"
+require_private_regular_file CHUMMER_PROTECTED_INPUT
+two_green_receipt_input="$CHUMMER_PROTECTED_INPUT"
+unset CHUMMER_PROTECTED_INPUT
+CHUMMER_PROTECTED_INPUT="$two_green_approval_input"
+require_private_regular_file CHUMMER_PROTECTED_INPUT
+two_green_approval_input="$CHUMMER_PROTECTED_INPUT"
+unset CHUMMER_PROTECTED_INPUT
 require_exact_directory CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED
+python3 "$repo_dir/scripts/verify_api36_two_green_release_eligibility.py" \
+  --receipt "$two_green_receipt_input" \
+  --approval "$two_green_approval_input" \
+  --android-root "$repo_dir" \
+  --expected-version-name "$version_name" \
+  --expected-version-code "$version_code" >/dev/null \
+  || fail "two-green-eligibility-invalid"
 
 input_dir="${CHUMMER_ANDROID_RELEASE_INPUT_DIR:-}"
 [[ -n "$input_dir" && "$input_dir" == /* ]] || fail "release-input-directory-not-absolute"
@@ -87,7 +258,17 @@ nuget_packages="$input_dir/nuget-packages"
 preparation_obj="$input_dir/preparation-obj"
 project_locks="$input_dir/project-locks"
 environment_file="$input_dir/release-inputs.env"
-mkdir -m 0700 -- "$nuget_packages" "$preparation_obj" "$project_locks"
+prepared_eligibility="$input_dir/ANDROID_API36_TWO_GREEN_ELIGIBILITY.generated.json"
+prepared_approval="$input_dir/ANDROID_API36_TWO_GREEN_RELEASE_APPROVAL.generated.json"
+release_child_home="$input_dir/unsigned-child-home"
+mkdir -m 0700 -- "$nuget_packages" "$preparation_obj" "$project_locks" \
+  "$release_child_home"
+install -m 0600 -- \
+  "$two_green_receipt_input" \
+  "$prepared_eligibility"
+install -m 0600 -- \
+  "$two_green_approval_input" \
+  "$prepared_approval"
 install -m 0600 -- \
   "$repo_dir/src/Chummer.Android/packages.lock.json" \
   "$project_locks/Chummer.Android.packages.lock.json"
@@ -142,7 +323,7 @@ package_arguments=(
 export DOTNET_CLI_USE_MSBUILD_SERVER=0
 export MSBUILDDISABLENODEREUSE=1
 export NUGET_PACKAGES="$nuget_packages"
-"$dotnet_command" restore "$project_path" \
+clean_exec "$dotnet_command" restore "$project_path" \
   --locked-mode \
   --force-evaluate \
   --disable-parallel \
@@ -180,6 +361,14 @@ python3 "$repo_dir/scripts/materialize_release_package_authority.py" \
   --receipt "$CHUMMER_CURRENT_UI_PACKAGE_AUTHORITY_RECEIPT" \
   --package-feed "$CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED" \
   --verify-existing "$authority"
+python3 "$repo_dir/scripts/verify_api36_two_green_release_eligibility.py" \
+  --receipt "$prepared_eligibility" \
+  --approval "$prepared_approval" \
+  --android-root "$repo_dir" \
+  --expected-version-name "$version_name" \
+  --expected-version-code "$version_code" \
+  --package-authority "$authority" >/dev/null \
+  || fail "two-green-release-input-binding-invalid"
 
 {
   printf 'export CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY=%q\n' "$authority"
@@ -188,8 +377,13 @@ python3 "$repo_dir/scripts/materialize_release_package_authority.py" \
   printf 'export CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED=%q\n' \
     "$CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED"
   printf 'export NUGET_PACKAGES=%q\n' "$nuget_packages"
+  printf 'export CHUMMER_ANDROID_EXPECTED_VERSION_NAME=%q\n' "$version_name"
+  printf 'export CHUMMER_ANDROID_EXPECTED_VERSION_CODE=%q\n' "$version_code"
+  printf 'export CHUMMER_ANDROID_RELEASE_TOOLCHAIN_AUTHORITY=%q\n' \
+    "$CHUMMER_ANDROID_RELEASE_TOOLCHAIN_AUTHORITY"
 } > "$environment_file"
 chmod 0600 "$environment_file"
 
-printf 'android_release_inputs=prepared authority=%s environment=%s package_cache=%s publication_authorized=false\n' \
-  "$authority" "$environment_file" "$nuget_packages"
+receipt_sha256="$(sha256sum "$prepared_eligibility" | cut -d' ' -f1)"
+printf 'android_release_inputs=prepared authority=%s environment=%s package_cache=%s two_green_sha256=%s protected_approval=true publication_authorized=false\n' \
+  "$authority" "$environment_file" "$nuget_packages" "$receipt_sha256"

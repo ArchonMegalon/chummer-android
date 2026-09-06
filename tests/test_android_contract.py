@@ -1,4 +1,5 @@
 import json
+import hashlib
 import importlib.util
 import os
 import re
@@ -253,8 +254,8 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("<ApplicationId>com.myexternalbrain.chummer</ApplicationId>", project)
         self.assertIn("<TargetSdkVersion>36</TargetSdkVersion>", project)
         self.assertIn("<AndroidMinSdkVersion>24</AndroidMinSdkVersion>", project)
-        self.assertIn("<ApplicationDisplayVersion>0.1.0-preview.11</ApplicationDisplayVersion>", project)
-        self.assertIn("<ApplicationVersion>11</ApplicationVersion>", project)
+        self.assertIn("<ApplicationDisplayVersion>0.1.0-preview.12</ApplicationDisplayVersion>", project)
+        self.assertIn("<ApplicationVersion>12</ApplicationVersion>", project)
         self.assertIn("<AndroidPackageFormats Condition=\"'$(Configuration)' == 'Release'\">aab</AndroidPackageFormats>", project)
         self.assertIn('<ChummerAndroidRuntimeIdentifier Condition="\'$(ChummerAndroidRuntimeIdentifier)\' == \'\'">android-arm64</ChummerAndroidRuntimeIdentifier>', project)
         self.assertIn('<RuntimeIdentifier Condition="\'$(RuntimeIdentifier)\' == \'\'">$(ChummerAndroidRuntimeIdentifier)</RuntimeIdentifier>', project)
@@ -268,7 +269,7 @@ class AndroidContractTests(unittest.TestCase):
         )
 
         for dependency, commits in (
-            ("ArchonMegalon/chummer6-ui", ("c2b13e11852b1866ef47c148e1fc68d09d413999",) * 2),
+            ("ArchonMegalon/chummer6-ui", ("a9e5bbd4fd44826177dd048b24417fad27397497",) * 2),
             (
                 "ArchonMegalon/chummer6-core",
                 (
@@ -277,7 +278,7 @@ class AndroidContractTests(unittest.TestCase):
                     "60112dccb6a3faad330d32c3c98eef0aa81d97af",
                 ),
             ),
-            ("ArchonMegalon/chummer6-hub", ("bc199cbe0982833ec2fc9ce625826e612759d67a",)),
+            ("ArchonMegalon/chummer6-hub", ("4f335d6cebbd4101212fd2cc77265b50f252775c",)),
             ("ArchonMegalon/chummer6-ui-kit", ("d51ecd99cf72098d4adc8db0192bff7bf9fd8e61",)),
             ("ArchonMegalon/chummer6-hub-registry", ("af9a7e19c3bf331e96411dfb8f9e7820a98cab29",)),
             ("ArchonMegalon/chummer6-media-factory", ("415c8163d3d90b1211e4014fef332bdec6d75f73",)),
@@ -352,35 +353,128 @@ class AndroidContractTests(unittest.TestCase):
 
     def test_android_account_link_uses_device_proof_and_encrypted_storage(self) -> None:
         service = (PROJECT / "Platform" / "AndroidAccountLinkService.cs").read_text(encoding="utf-8")
+        transport = (PROJECT / "Platform" / "AndroidAccountLinkHttpTransport.cs").read_text(encoding="utf-8")
+        authority = (PROJECT / "Platform" / "AndroidAccountLinkKeyAuthority.cs").read_text(encoding="utf-8")
+        keystore = (
+            PROJECT / "Platforms" / "Android" / "AndroidKeystoreDeviceKeyStore.cs"
+        ).read_text(encoding="utf-8")
+        metadata_store = (
+            PROJECT / "Platform" / "MauiSecureAndroidAccountLinkKeyMetadataStore.cs"
+        ).read_text(encoding="utf-8")
         program = (PROJECT / "MauiProgram.cs").read_text(encoding="utf-8")
+        solution = (REPO / "Chummer.Android.slnx").read_text(encoding="utf-8")
+        build_debug = (REPO / "scripts" / "build-debug.sh").read_text(encoding="utf-8")
         activity = (PROJECT / "Platforms" / "Android" / "MainActivity.cs").read_text(encoding="utf-8")
         more = (PROJECT / "Native" / "MorePage.cs").read_text(encoding="utf-8")
         privacy = (PROJECT / "Native" / "AccountPrivacyPage.cs").read_text(encoding="utf-8")
         home = (PROJECT / "Native" / "HomePage.cs").read_text(encoding="utf-8")
-        self.assertIn("SecureStorage.Default", service)
-        self.assertIn("ExportPkcs8PrivateKey", service)
-        self.assertIn("RSASignaturePadding.Pkcs1", service)
-        self.assertIn("chummer.install-link.remote-callback.v1", service)
-        self.assertIn("/api/v1/install-linking/callbacks/poll", service)
-        self.assertIn("/api/v1/install-linking/grants/status", service)
-        self.assertIn("/api/v1/install-linking/grants/revoke", service)
+        self.assertIn("SecureStorage.Default", metadata_store)
+        self.assertIn("IAndroidAccountLinkKeyMetadataStore _metadataStore", service)
+        self.assertNotIn("ExportPkcs8PrivateKey", service + authority + keystore)
+        self.assertNotIn("ImportPkcs8PrivateKey", service + authority + keystore)
+        self.assertIn('Provider = "AndroidKeyStore"', keystore)
+        self.assertIn('Signature.GetInstance("SHA256withRSA")', keystore)
+        self.assertIn("KeyStorePurpose.Sign", keystore)
+        self.assertIn("KeyProperties.SignaturePaddingRsaPkcs1", keystore)
+        self.assertIn("ExportSubjectPublicKeyInfo", keystore)
+        self.assertIn("LegacyPrivateKeyStorageKey", authority)
+        self.assertIn("RemoveLegacyPrivateKeyAsync", authority)
+        self.assertNotIn("GetAsync(LegacyPrivateKeyStorageKey", authority)
+        self.assertIn("AliasForInstallation", authority)
+        self.assertIn("CleanupTombstoneStorageKey", authority)
+        self.assertIn("IsExpectedAlias(alias)", keystore)
+        self.assertIn("GrantId", authority)
+        self.assertIn("RequireLinkedIdentityAsync", service)
+        self.assertIn("RequirePendingIdentityAsync", service)
+        self.assertIn("PendingInstallationIdKey", service)
+        self.assertIn("savedInstallationId, identity.InstallationId", service)
+        self.assertIn("VerifyProtocolSignature", authority)
+        self.assertIn("chummer.install-link.remote-callback.v2", transport)
+        self.assertIn("/api/v2/install-linking/callbacks/poll", transport)
+        self.assertIn('InstallLinkTransport = "proof_poll_v2"', service)
+        self.assertIn("string installLinkTransport", transport)
+        self.assertIn("/api/v2/install-linking/grants/status", service)
+        self.assertIn("/api/v2/install-linking/grants/revoke", service)
+        self.assertNotIn("/api/v1/install-linking/", service + transport)
         self.assertIn("response.StatusCode == HttpStatusCode.Conflict", service)
-        self.assertIn("ClearAllCredentials();", service)
+        self.assertIn("TryClearGrantIfCurrentAsync(grant)", service)
+        self.assertIn("CreateAndPersistRefreshOperationAsync", service)
+        self.assertIn("FixedTimeEqualsSecret(accessToken, expectedGrant.AccessToken)", service)
+        self.assertIn("QuarantineInvalidStagedGrantCommitAsync", service)
+        self.assertIn("staged.Grant is not null", service)
+        self.assertIn("ClearAllCredentialsCoreAsync", service)
+        self.assertIn("ClearAllCredentialsAsync", service)
         self.assertIn("expiresAtUtc is null || expiresAtUtc <= DateTimeOffset.UtcNow", service)
         self.assertIn("IsPendingLinkCurrent(pendingStarted)", service)
+        self.assertIn("bool hadStoredGrant", service)
         self.assertIn("bool resumeCurrentAttempt", service)
         self.assertIn("string state = resumeCurrentAttempt ? savedState! : NewBase64UrlToken(24);", service)
         self.assertIn("HttpStatusCode.BadRequest or HttpStatusCode.Unauthorized", service)
         self.assertIn("startedAtUtc <= now.AddMinutes(2)", service)
         self.assertIn("HttpStatusCode.NotFound or HttpStatusCode.Gone", service)
-        browser_failure = service[service.index('if (!await _systemService.OpenUriAsync'):]
-        self.assertLess(browser_failure.index("ClearPending();"), browser_failure.index('"Browser unavailable"'))
+        begin_link = service[
+            service.index("public async Task BeginLinkAsync"):
+            service.index("public async Task ResumePendingLinkAsync")
+        ]
+        self.assertLess(
+            begin_link.index("ReadOrCreatePendingPollOperationAsync"),
+            begin_link.index("_systemService.OpenUriAsync"),
+        )
+        browser_failure = begin_link[begin_link.index('if (!await _systemService.OpenUriAsync'):]
+        self.assertNotIn("ClearPendingAsync", browser_failure)
+        self.assertIn('AccountText("AccountBrowserUnavailable", "Browser unavailable")', browser_failure)
         self.assertIn('string expectedPath = $"/groups/join/{Uri.EscapeDataString(code)}";', service)
         self.assertIn("!string.Equals(uri.AbsolutePath, expectedPath, StringComparison.Ordinal)", service)
         self.assertIn("!string.IsNullOrEmpty(uri.Query)", service)
         self.assertIn("!string.IsNullOrEmpty(uri.Fragment)", service)
         self.assertNotIn("Preferences.Default", service)
-        self.assertIn("AddSingleton<IAndroidAccountLinkService, AndroidAccountLinkService>", program)
+        self.assertIn("IAndroidDeviceKeyStore", program)
+        self.assertIn("AndroidKeystoreDeviceKeyStore", program)
+        self.assertIn("Chummer.Android.AccountLinkKey.Tests", solution)
+        self.assertIn("Chummer.Android.AccountLinkKey.AndroidCompileCheck", solution)
+        self.assertIn("Chummer.Android.AccountLinkHttp.Tests", solution)
+        self.assertIn('account_link_http_tests_path=', build_debug)
+        self.assertIn('account_link_key_tests_path=', build_debug)
+        self.assertIn('account_link_key_android_compile_path=', build_debug)
+        save_grant = service[
+            service.index("private async Task SaveGrantAsync"):
+            service.index("private async Task<DateTimeOffset?> ReadGrantExpiryAsync")
+        ]
+        self.assertLess(
+            save_grant.index("StagedGrantCommitKey"),
+            save_grant.index("FinalizeStagedGrantCommitAsync(staged)"),
+        )
+        finalize_grant = save_grant[
+            save_grant.index("private async Task FinalizeStagedGrantCommitAsync"):
+            save_grant.index("private async Task TryCleanupStagedGrantCommitAsync")
+        ]
+        self.assertLess(
+            finalize_grant.index("AccessTokenKey"),
+            finalize_grant.index("GrantExpiryKey"),
+        )
+        self.assertLess(
+            finalize_grant.index("GrantExpiryKey"),
+            finalize_grant.index("_keyAuthority.BindGrantAsync"),
+        )
+        self.assertIn("CancellationToken.None", finalize_grant)
+        self.assertNotIn("ClearGrantAsync", save_grant)
+        cleanup_grant = save_grant[
+            save_grant.index("private async Task TryCleanupStagedGrantCommitAsync"):
+            save_grant.index("private static StagedGrantCommit? TryDeserializeStagedGrantCommit")
+        ]
+        self.assertLess(
+            cleanup_grant.index("ClearPendingAsync"),
+            cleanup_grant.index("StagedGrantCommitKey"),
+        )
+        self.assertIn("new AndroidAccountLinkService(", program)
+        self.assertIn("AndroidAccountLinkHttpTransport", program)
+        self.assertIn("IAndroidAccountLinkKeyMetadataStore", program)
+        create_key = keystore[
+            keystore.index("public Task<AndroidDevicePublicKey> CreateAsync"):
+            keystore.index("public Task<AndroidDevicePublicKey> GetPublicKeyAsync")
+        ]
+        after_generation = create_key[create_key.index("GenerateKeyPair"):]
+        self.assertNotIn("ThrowIfCancellationRequested", after_generation)
         self.assertIn("OnNewIntent", activity)
         self.assertIn('"/app/install-link"', activity)
         self.assertIn("ResumePendingLinkAsync(uri)", activity)
@@ -396,7 +490,7 @@ class AndroidContractTests(unittest.TestCase):
         ]
         response_failure = unlink[
             unlink.index("if (!response.IsSuccessStatusCode"):
-            unlink.index("ClearAllCredentials();")
+            unlink.index("ClearAllCredentialsAsync")
         ]
         transport_failure = unlink[
             unlink.index("catch (HttpRequestException)"):
@@ -407,7 +501,10 @@ class AndroidContractTests(unittest.TestCase):
             "DateTimeOffset? grantExpiresAtUtc = _snapshot.GrantExpiresAtUtc;",
             unlink,
         )
-        self.assertIn("grantExpiresAtUtc ??= await ReadGrantExpiryAsync();", unlink)
+        self.assertIn(
+            "grantExpiresAtUtc ??= await ReadGrantExpiryAsync(cancellationToken);",
+            unlink,
+        )
         self.assertEqual(
             2,
             unlink.count("AndroidAccountLinkStatus.Linked"),
@@ -418,9 +515,9 @@ class AndroidContractTests(unittest.TestCase):
             unlink.count("grantExpiresAtUtc"),
             "both failure snapshots must preserve the grant expiry",
         )
-        self.assertNotIn("AndroidAccountLinkStatus.Error", unlink)
+        self.assertIn("SetSnapshot(LocalCleanupPendingSnapshot());", unlink)
         self.assertIn("return;", response_failure)
-        self.assertNotIn("ClearAllCredentials();", response_failure + transport_failure)
+        self.assertNotIn("ClearAllCredentialsAsync", response_failure + transport_failure)
 
     def test_account_unlink_success_alone_clears_linked_collections(self) -> None:
         service = (PROJECT / "Platform" / "AndroidAccountLinkService.cs").read_text(encoding="utf-8")
@@ -434,7 +531,7 @@ class AndroidContractTests(unittest.TestCase):
             coordinator.index("public Task OpenAccountAsync")
         ]
 
-        credentials_clear = unlink.index("ClearAllCredentials();")
+        credentials_clear = unlink.index("ClearAllCredentialsAsync")
         confirmed_unlinked = unlink.index("AndroidAccountLinkStatus.Unlinked")
         self.assertLess(credentials_clear, confirmed_unlinked)
         self.assertIn(
@@ -509,6 +606,7 @@ class AndroidContractTests(unittest.TestCase):
         }
         expected_service_keys = {
             "AccountApprovalExpired",
+            "AccountApprovalReceivedRetry",
             "AccountApproveBrowser",
             "AccountAvailableOffline",
             "AccountBrowserUnavailable",
@@ -524,11 +622,14 @@ class AndroidContractTests(unittest.TestCase):
             "AccountLinkExpired",
             "AccountLinkUnavailable",
             "AccountLinked",
+            "AccountLocalCleanupPending",
             "AccountNotLinked",
             "AccountOpenLinkingAgain",
             "AccountReturnRejected",
             "AccountRevokeOffline",
             "AccountRevokeUnavailable",
+            "AccountRefreshPending",
+            "AccountRefreshRetry",
             "AccountSecureStorageUnavailable",
             "AccountStartFreshLink",
             "AccountStartLinkingAgain",
@@ -569,10 +670,10 @@ class AndroidContractTests(unittest.TestCase):
 
         self.assertIn(required_phrase, contract)
         self.assertIn(required_phrase, hub_contract)
-        self.assertIn('"/api/v1/android/linked/account/erase"', service)
+        self.assertIn('"/api/v2/android/linked/account/erase"', service)
         server_call = coordinator.index("await _account.EraseAccountAsync")
         local_delete = coordinator.index("await _presenter.DeleteWorkspaceAsync")
-        credentials_clear = service.index("ClearAllCredentials();", service.index("EraseAccountAsync"))
+        credentials_clear = service.index("ClearAllCredentialsAsync", service.index("EraseAccountAsync"))
         response_validation = service.index("if (!IsCompleteAccountErasureReceipt(receipt))", service.index("EraseAccountAsync"))
         self.assertLess(server_call, local_delete)
         self.assertLess(response_validation, credentials_clear)
@@ -1835,7 +1936,7 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("CreateGroupAsync", campaign)
         self.assertIn("UpdateGroupAsync", campaign)
         self.assertIn("CreateGroupInviteAsync", campaign)
-        self.assertIn('"/api/v1/android/linked/groups"', service)
+        self.assertIn('"/api/v2/android/linked/groups"', service)
         self.assertNotIn("WebView", play + campaign + coordinator + project)
         self.assertNotIn("IAndroidPlayHostService", activity)
 
@@ -1939,12 +2040,11 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("ICharacterOverviewPresenter presenter", coordinator)
         self.assertIn("IShellSurfaceResolver surfaceResolver", coordinator)
 
-    def test_linked_http_client_is_registered_after_local_runtime(self) -> None:
+    def test_linked_http_transport_is_registered_after_local_runtime(self) -> None:
         program = (PROJECT / "MauiProgram.cs").read_text(encoding="utf-8")
-        runtime_registration = program.index("AddChummerLocalRuntimeClient")
-        http_registration = program.index("AddSingleton(new HttpClient")
-        self.assertLess(runtime_registration, http_registration)
-        self.assertIn("AddSingleton<IAndroidAccountLinkService", program)
+        transport_registration = program.index("AndroidAccountLinkHttpTransport.CreateDefault")
+        account_registration = program.index("AddSingleton<IAndroidAccountLinkService")
+        self.assertLess(transport_registration, account_registration)
 
     def test_no_signing_secret_or_broad_provider_file_is_tracked(self) -> None:
         forbidden_suffixes = {".jks", ".keystore", ".p12"}
@@ -1961,6 +2061,21 @@ class AndroidContractTests(unittest.TestCase):
         )
         debug_build = (REPO / "scripts" / "build-debug.sh").read_text(encoding="utf-8")
         source_graph = (REPO / "scripts" / "verify_release_source_graph.py").read_text(encoding="utf-8")
+        two_green_verifier = (
+            REPO / "scripts" / "verify_api36_two_green_release_eligibility.py"
+        ).read_text(encoding="utf-8")
+        two_green_signer = (
+            REPO / "scripts" / "sign_api36_two_green_release_approval.py"
+        ).read_text(encoding="utf-8")
+        publication_materializer = (
+            REPO / "scripts" / "materialize_next_play_internal_publication_receipt.py"
+        ).read_text(encoding="utf-8")
+        release_approver_public_key = (
+            REPO
+            / "eng"
+            / "trusted-release-approvers"
+            / "local-release-builder-2026.public.pem"
+        ).read_bytes()
         bootstrap = (REPO / "scripts" / "bootstrap-build-environment.sh").read_text(encoding="utf-8")
         provision = (REPO / "scripts" / "provision-upload-key.sh").read_text(encoding="utf-8")
         recovery = (REPO / "scripts" / "import-signing-recovery.py").read_text(encoding="utf-8")
@@ -2021,21 +2136,29 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn('mkdir -m 0700 -- "$staged_publish_dir"', build)
         self.assertIn("verify_release_publish_output.py", build)
         self.assertIn("--require-empty", build)
-        self.assertIn("--resolve-exact-signed-aab", build)
+        self.assertIn("--resolve-exact-unsigned-aab", build)
         self.assertNotIn('publish_dir="$repo_dir/src/Chummer.Android/bin', build)
         self.assertIn("versioned-output-already-exists", build)
-        self.assertIn('output_aab="$artifact_dir/chummer-android-$version_name-upload.aab"', build)
+        self.assertIn('output_aab="$artifact_dir/chummer-android-$version_name-unsigned.aab"', build)
         self.assertIn(
             'output_graph="$artifact_dir/chummer-android-$version_name-source-graph.json"',
             build,
         )
-        self.assertIn("seal_file_no_clobber", build)
-        self.assertIn('ln -- "$seal_tmp" "$destination_path"', build)
+        self.assertIn("sign_android_release_build_attestation.py", build)
+        self.assertIn("prepare-external-signer", build)
+        self.assertIn("unsigned-external-signer-handoff", build)
+        self.assertNotIn("capture_authentication_key", build)
+        self.assertIn("descriptor-held inputs", build)
         self.assertIn("--verify-existing", build)
         self.assertIn("bundletool-digest-mismatch", build)
         self.assertIn("upload-certificate-pin-mismatch", build)
-        self.assertIn("signing-keystore-certificate-mismatch", build)
+        self.assertIn("external-signer-required-readable-signing-input-rejected", build)
+        self.assertIn("-p:AndroidKeyStore=false", build)
+        self.assertNotIn("signing-keystore-certificate-mismatch", build)
         self.assertIn("preflight_native_android_toolchain.py", build)
+        self.assertIn("CHUMMER_ANDROID_RELEASE_TOOLCHAIN_AUTHORITY", build)
+        self.assertIn("verify-toolchain", build)
+        self.assertIn("caller-dotnet-differs-from-trusted-toolchain", build)
         self.assertNotIn("CHUMMER_ANDROID_PUBLISH_DIR", build)
         self.assertIn('"chummer.android.release-source-graph/v3"', source_graph)
         self.assertIn('"releaseIdentity"', source_graph)
@@ -2052,6 +2175,14 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn('-p:ApplicationVersion="$version_code"', build)
         self.assertIn("--package-authority", build)
         self.assertIn("CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY", build)
+        self.assertIn("CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT", build)
+        self.assertIn("CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL", build)
+        self.assertNotIn("CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_SHA256", build)
+        self.assertIn("--approval", build)
+        self.assertGreaterEqual(
+            build.count("verify_api36_two_green_release_eligibility.py"), 3
+        )
+        self.assertIn('|| fail "two-green-pre-build-binding-invalid"', build)
         self.assertIn("set -euo pipefail", prepare)
         self.assertIn("umask 077", prepare)
         self.assertIn("release-input-directory-inside-workspace", prepare)
@@ -2061,8 +2192,41 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("ChummerUseLocalCompatibilityTree=false", prepare)
         self.assertIn("ChummerUseLockedOwnerContractPackages=true", prepare)
         self.assertIn("materialize_release_package_authority.py", prepare)
+        self.assertIn("CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT", prepare)
+        self.assertIn("CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL", prepare)
+        self.assertIn("CHUMMER_ANDROID_RELEASE_TOOLCHAIN_AUTHORITY", prepare)
+        self.assertNotIn("CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_SHA256", prepare)
+        self.assertIn("--approval", prepare)
+        self.assertIn("chummer.android.two-green-release-approval/v1", two_green_verifier)
+        self.assertIn("pkeyutl", two_green_verifier)
+        self.assertIn("pkeyutl", two_green_signer)
+        self.assertIn("--github-token-file", two_green_signer)
+        self.assertNotIn("--provenance-replay", two_green_signer)
+        self.assertIn("publicationAuthorized\": False", two_green_signer)
+        self.assertNotIn("--expected-receipt-sha256", two_green_verifier)
+        self.assertNotIn("--expected-source-graph-sha256", publication_materializer)
+        self.assertNotIn("--expected-aab-sha256", publication_materializer)
+        self.assertIn("--build-attestation", publication_materializer)
+        self.assertIn("--build-sidecar", publication_materializer)
+        self.assertIn("--two-green-approval", publication_materializer)
+        self.assertIn(
+            hashlib.sha256(release_approver_public_key).hexdigest(),
+            two_green_verifier,
+        )
+        self.assertIn(b"BEGIN PUBLIC KEY", release_approver_public_key)
+        self.assertNotIn(b"PRIVATE KEY", release_approver_public_key)
+        self.assertGreaterEqual(
+            prepare.count("verify_api36_two_green_release_eligibility.py"), 2
+        )
+        self.assertIn("two-green-release-input-binding-invalid", prepare)
+        self.assertIn("two_green_receipt_sha256=%s", build)
+        self.assertIn("google_play_upload_authorized=false", build)
         self.assertIn("--verify-existing", prepare)
         self.assertIn("release-input-directory-not-empty", prepare)
+        environment_handoff = prepare[prepare.index("{\n  printf 'export CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY") :]
+        self.assertNotIn("export CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT", environment_handoff)
+        self.assertNotIn("export CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL", environment_handoff)
+        self.assertIn("prepare-external-signer", build)
         self.assertIn("publication_authorized=false", prepare)
         self.assertIn("ChummerReleaseIntermediateRoot", prepare)
         self.assertIn("ChummerReleaseLockRoot", prepare)
@@ -2103,16 +2267,19 @@ class AndroidContractTests(unittest.TestCase):
         )
         self.assertIn("read_android_version", release_intent)
         self.assertNotIn('version_name="0.1.0-preview.', build)
-        self.assertIn('source_sha256="$(sha256sum "$source_aab"', build)
-        self.assertIn('graph_sha256="$(sha256sum "$staged_graph"', build)
-        self.assertIn('artifacts/%s\\n', build)
+        self.assertIn('source_sha256="$(sha256sum "$output_aab"', build)
+        self.assertIn('graph_sha256="$(sha256sum "$output_graph"', build)
+        self.assertNotIn("--authentication-key", build)
+        self.assertIn("descriptor-held inputs", build)
         self.assertIn("CHUMMER_JARSIGNER", build)
         self.assertIn("CHUMMER_BUNDLETOOL_JAR", validate)
         self.assertIn("bundletool validation passed", validate)
         self.assertIn("-verify -certs", validate)
         self.assertIn("AAB signer does not match", validate)
         self.assertIn("ALLOWED_PERMISSIONS", inspect)
-        self.assertIn("read_project_version(PROJECT_PATH)", inspect)
+        self.assertIn("CHUMMER_EXPECTED_VERSION_NAME", inspect)
+        self.assertIn("CHUMMER_EXPECTED_VERSION_CODE", inspect)
+        self.assertNotIn("read_project_version", inspect)
         self.assertNotIn('versionName") == "0.1.0-preview.', inspect)
         self.assertIn('native_abis == {"arm64-v8a"}', inspect)
         self.assertIn("ApplicationDisplayVersion", version_reader)
@@ -2148,64 +2315,47 @@ class AndroidContractTests(unittest.TestCase):
             "CHUMMER_ANDROID_SIGNING_DIR",
             "CHUMMER_PROVISION_STORE_PASSWORD",
             "CHUMMER_RECOVERY_STORE_PASSWORD",
+            "CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT",
+            "CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL",
         )
         build = (REPO / "scripts" / "build-release.sh").read_text(encoding="utf-8")
         deexport_boundary = build.index("for release_secret_variable in")
-        self.assertLess(deexport_boundary, build.index('repo_dir="$(cd'))
-        self.assertIn('export -n "$release_secret_variable"', build[:build.index('repo_dir="$(cd')])
-        suite_boundary = build.index('env "${release_test_environment[@]}"')
-        for variable in signing_variables:
-            self.assertIn(f"-u {variable}", build[:suite_boundary])
-        for first_secret_use in (
-            "require_private_regular_file AndroidSigningKeyStore",
-            "require_private_regular_file CHUMMER_ANDROID_UPLOAD_CERTIFICATE_PATH",
-            "require_secret_variable ChummerAndroidSigningStorePass",
-            "require_secret_variable ChummerAndroidSigningKeyPass",
-            "require_secret_variable ChummerAndroidSigningKeyAlias",
-        ):
-            self.assertGreater(build.index(first_secret_use), suite_boundary)
-        pre_publish_verify = build.index('|| fail "locked-restore-consumption-pre-publish"')
-        pre_publish_verify_start = build.rfind(
-            'env "${release_test_environment[@]}"', 0, pre_publish_verify
+        repo_boundary = build.index('repo_dir="${CHUMMER_RELEASE_REPO_ROOT:-')
+        self.assertLess(deexport_boundary, repo_boundary)
+        self.assertIn(
+            'unset "$release_secret_variable"',
+            build[:repo_boundary],
         )
-        signing_intake = build.index("require_private_regular_file AndroidSigningKeyStore")
-        self.assertGreater(pre_publish_verify_start, signing_intake)
+        for variable in signing_variables:
+            self.assertIn(variable, build[:repo_boundary])
+        self.assertNotIn("release_test_environment", build)
+        self.assertIn("/usr/bin/env -i", build)
+        self.assertNotIn("require_private_regular_file AndroidSigningKeyStore", build)
+        self.assertNotIn("require_secret_variable ChummerAndroidSigningStorePass", build)
+        self.assertNotIn("require_secret_variable ChummerAndroidSigningKeyPass", build)
+        self.assertNotIn("require_secret_variable ChummerAndroidSigningKeyAlias", build)
+        pre_publish_verify = build.index('|| fail "locked-restore-consumption-pre-publish"')
+        pre_publish_verify_start = build.rfind("python3 ", 0, pre_publish_verify)
+        signing_rejection = build.index(
+            "external-signer-required-readable-signing-input-rejected"
+        )
+        self.assertGreater(pre_publish_verify_start, signing_rejection)
         publish_boundary = build.index('"$dotnet_command" publish')
         self.assertLess(pre_publish_verify_start, publish_boundary)
-        post_publish_boundary = build.index('source_aab="$(python3')
-        for secret_cleanup in (
-            "unset ChummerAndroidSigningStorePass",
-            "unset ChummerAndroidSigningKeyPass",
-            "unset ChummerAndroidSigningKeyAlias",
-            "unset AndroidSigningKeyStore",
-        ):
-            cleanup_index = build.index(secret_cleanup)
-            self.assertGreater(cleanup_index, publish_boundary)
-            self.assertLess(cleanup_index, post_publish_boundary)
+        self.assertIn("-p:AndroidKeyStore=false", build[publish_boundary:])
+        self.assertIn("prepare-external-signer", build[publish_boundary:])
+        self.assertIn("signing_authorized=false", build[publish_boundary:])
 
         with tempfile.TemporaryDirectory() as temporary:
-            tests_root = Path(temporary)
-            probe = tests_root / "test_signing_environment_probe.py"
-            child_probe = (
-                "import os, sys\n"
-                f"SIGNING_VARIABLES = {signing_variables!r}\n"
-                "sys.exit(1 if set(SIGNING_VARIABLES) & set(os.environ) else 0)\n"
-            )
+            root = Path(temporary).resolve()
+            child_environment = root / "child.env"
+            clean_exec_start = build.index('release_child_home=""')
+            clean_exec_end = build.index("\n# Every child starts", clean_exec_start)
+            probe = root / "clean-env-probe.sh"
             probe.write_text(
-                "import os\n"
-                "import subprocess\n"
-                "import sys\n"
-                "import unittest\n"
-                f"SIGNING_VARIABLES = {signing_variables!r}\n"
-                f"CHILD_PROBE = {child_probe!r}\n"
-                "class SigningEnvironmentProbe(unittest.TestCase):\n"
-                "    def test_suite_and_child_are_scrubbed(self):\n"
-                "        self.assertFalse(set(SIGNING_VARIABLES) & set(os.environ))\n"
-                "        child = subprocess.run(\n"
-                "            [sys.executable, '-c', CHILD_PROBE],\n"
-                "            check=False,\n"
-                "        )\n"
-                "        self.assertEqual(0, child.returncode)\n",
+                "#!/bin/bash -p\nset -euo pipefail\n"
+                + build[clean_exec_start:clean_exec_end]
+                + '\nclean_exec /usr/bin/env > "$1"\n',
                 encoding="utf-8",
             )
             hostile_environment = dict(os.environ)
@@ -2214,23 +2364,23 @@ class AndroidContractTests(unittest.TestCase):
                 for index, variable in enumerate(signing_variables, start=1)
             }
             hostile_environment.update(canaries)
-            command = ["env"]
-            for variable in signing_variables:
-                command.extend(("-u", variable))
-            command.extend((
-                sys.executable, "-m", "unittest", "discover", "-s", str(tests_root), "-v",
-            ))
+            hostile_environment["UNRELATED_CALLER_SECRET"] = "must-not-reach-child"
+            hostile_environment["CHUMMER_ANDROID_REVISION"] = "a" * 40
             completed = subprocess.run(
-                command,
+                ["/bin/bash", "-p", str(probe), str(child_environment)],
                 check=False,
                 capture_output=True,
                 env=hostile_environment,
                 text=True,
             )
             self.assertEqual(0, completed.returncode, completed.stdout + completed.stderr)
-            combined_output = completed.stdout + completed.stderr
+            combined_output = (
+                completed.stdout + completed.stderr + child_environment.read_text(encoding="utf-8")
+            )
             for canary in canaries.values():
                 self.assertNotIn(canary, combined_output)
+            self.assertNotIn("must-not-reach-child", combined_output)
+            self.assertIn("CHUMMER_ANDROID_REVISION=" + "a" * 40, combined_output)
 
     def test_release_version_reader_matches_project(self) -> None:
         import importlib.util
@@ -2243,7 +2393,7 @@ class AndroidContractTests(unittest.TestCase):
         spec.loader.exec_module(module)
 
         self.assertEqual(
-            ("0.1.0-preview.11", "11"),
+            ("0.1.0-preview.12", "12"),
             module.read_project_version(PROJECT / "Chummer.Android.csproj"),
         )
 
@@ -2252,11 +2402,12 @@ class AndroidContractTests(unittest.TestCase):
         title = (listing / "title.txt").read_text(encoding="utf-8").strip()
         short_description = (listing / "short-description.txt").read_text(encoding="utf-8").strip()
         full_description = (listing / "full-description.txt").read_text(encoding="utf-8").strip()
-        release_notes = (listing / "release-notes-11.txt").read_text(encoding="utf-8").strip()
-        self.assertTrue(
-            (listing / "release-notes-10.txt").is_file(),
-            "preview.10 release notes are immutable historical evidence",
-        )
+        release_notes = (listing / "release-notes-12.txt").read_text(encoding="utf-8").strip()
+        for historical_version in (10, 11):
+            self.assertTrue(
+                (listing / f"release-notes-{historical_version}.txt").is_file(),
+                f"preview.{historical_version} release notes are immutable historical evidence",
+            )
         self.assertLessEqual(len(title), 30)
         self.assertLessEqual(len(short_description), 80)
         self.assertLessEqual(len(full_description), 4000)

@@ -36,25 +36,24 @@ class Api36CharacterSettingsE2EDriverTests(unittest.TestCase):
         self.assertIn('"profile": "phone"', source)
         self.assertNotIn('"profile": "tablet"', source)
 
-    def test_driver_reaches_every_phone_section_and_field_kind(self) -> None:
+    def test_driver_reaches_every_supported_phone_section_and_field_kind(self) -> None:
         source = DRIVER.read_text(encoding="utf-8")
         for marker in (
-            "Ware, armor, and vehicles",
-            "Sourcebooks",
-            "Rules and options",
-            "Formulas and formatting",
-            "Karma costs",
-            "Custom data",
-            "Limits and initiative",
-            "Build method",
+            "Ware and cyberlimbs",
+            "Career rules",
+            "Career Karma costs",
+            "Career rating limits",
+            "Creation",
             "command-action-character-settings",
             "dialog-action-save-and-close",
-            "load_value_controls",
+            "load_phone_capabilities",
             "discover_section_controls",
             "edit_all_value_controls",
             "wait_exact_field",
             "set_exact_text",
             "len(controls) != 150",
+            "len(visible) != 17",
+            "len(hidden) != 133",
         ):
             self.assertIn(marker, source)
 
@@ -67,12 +66,17 @@ class Api36CharacterSettingsE2EDriverTests(unittest.TestCase):
             "processRestartUiReadback",
             "profileSavedWithoutClosing",
             "assert_all_controls_persisted",
+            "assert_hidden_controls_preserved",
             "assert_all_ui_readback",
             '"controls": control_proofs',
-            '"allValueControlsEdited": "pass"',
-            '"allValueControlsCatalogPersisted": "pass"',
-            '"allValueControlsRestartUiReadback": "pass"',
+            '"hiddenControls": hidden_control_proofs',
+            '"allVisibleValueControlsEdited": "pass"',
+            '"allVisibleValueControlsCatalogPersisted": "pass"',
+            '"allVisibleValueControlsRestartUiReadback": "pass"',
+            '"allHiddenValueControlsCatalogPreserved": "pass"',
+            '"allHiddenValueControlsRestartCatalogPreserved": "pass"',
             "characterSettingsContractSha256",
+            "phoneCapabilitiesInventorySha256",
         ):
             self.assertIn(marker, source)
 

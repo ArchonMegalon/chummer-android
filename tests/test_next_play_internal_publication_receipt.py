@@ -11,6 +11,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 import zipfile
 
 
@@ -55,13 +56,111 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
         self.aab = self.root / f"chummer-android-{self.version_name}-upload.aab"
         self.graph = self.root / f"chummer-android-{self.version_name}-source-graph.json"
         self.receipt = self.root / "next-internal-publication.json"
+        self.two_green_receipt = self.root / "two-green-eligibility.json"
+        self.two_green_approval = self.root / "two-green-release-approval.json"
+        self.build_sidecar = self.root / f"{self.aab.name}.sha256"
+        self.build_attestation = self.root / "release-build-attestation.json"
+        self.github_token = self.root / "github-provenance.token"
+        self.github_token.write_text("a" * 32, encoding="ascii")
+        self.github_token.chmod(0o600)
+        self.attester_private_key = self.root / "release-attester.private.pem"
+        self.attester_public_key = self.root / "release-attester.public.pem"
+        subprocess.run(
+            ["openssl", "genpkey", "-algorithm", "ED25519", "-out", str(self.attester_private_key)],
+            check=True, capture_output=True,
+        )
+        self.attester_private_key.chmod(0o600)
+        subprocess.run(
+            ["openssl", "pkey", "-in", str(self.attester_private_key), "-pubout", "-out", str(self.attester_public_key)],
+            check=True, capture_output=True,
+        )
         self.browser_payload = self.make_browser()
         self.graph_payload = self.make_graph()
+        write_private(self.two_green_receipt, {"fixture": True})
+        write_private(self.two_green_approval, {"fixture": "protected-approval"})
+        self.two_green_receipt_sha256 = hashlib.sha256(
+            self.two_green_receipt.read_bytes()
+        ).hexdigest()
+        self.two_green_binding = {
+            "contractName": self.module.QUALIFICATION.TWO_GREEN.CONTRACT,
+            "receiptSha256": self.two_green_receipt_sha256,
+            "protectedApproval": {
+                "contractName": "chummer.android.two-green-release-approval/v1",
+                "keyId": "local-release-builder-2026",
+                "role": "android_internal_release_approver",
+                "approvalScope": "android_internal_release_preparation",
+                "approvalSha256": "9" * 64,
+                "receiptSha256": self.two_green_receipt_sha256,
+                "provenanceValidatorSha256": "8" * 64,
+                "provenanceReplaySha256": "7" * 64,
+                "generatedAtUtc": "2026-09-05T10:00:00Z",
+                "expiresAtUtc": "2026-09-05T16:00:00Z",
+            },
+            "eligibilitySha256": "a" * 64,
+            "sourceCommit": self.graph_payload["repositories"][0]["commit"],
+            "sourceTree": self.graph_payload["repositories"][0]["tree"],
+            "versionName": self.version_name,
+            "versionCode": self.version_code,
+            "dependencyGraphSha256": "b" * 64,
+            "environmentPolicySha256": "c" * 64,
+            "buildEnvironmentCompatibilitySha256": "d" * 64,
+            "journeyEnvironmentCompatibilitySha256": "e" * 64,
+            "mainRunId": 123,
+            "mainRunAttempt": 1,
+            "mainRunConclusion": "success",
+            "mainAggregateConclusion": "success",
+            "environmentCompatibilityStatus": "pass",
+            "eligible": True,
+            "internalTestingEligible": True,
+            "publicationAuthorized": False,
+            "googlePlayUploadAuthorized": False,
+        }
+        self.original_qualification_verifier = (
+            self.module.QUALIFICATION.verify_release_eligibility
+        )
+        self.module.QUALIFICATION.verify_release_eligibility = (
+            lambda *_args, **_kwargs: copy.deepcopy(self.two_green_binding)
+        )
         write_private(self.browser, self.browser_payload)
         self.write_aab(self.aab)
         write_private(self.graph, self.graph_payload)
+        self.expected_source_graph_sha256 = hashlib.sha256(
+            self.graph.read_bytes()
+        ).hexdigest()
+        self.build_sidecar.write_text(
+            f"{hashlib.sha256(self.aab.read_bytes()).hexdigest()}  artifacts/{self.aab.name}\n"
+            f"{self.expected_source_graph_sha256}  artifacts/{self.graph.name}\n",
+            encoding="ascii",
+        )
+        self.build_sidecar.chmod(0o600)
+        write_private(self.build_attestation, {"fixture": "signed"})
+        self.build_attestation_binding = {
+            "sourceCommit": self.graph_payload["repositories"][0]["commit"],
+            "aab": {"sha256": hashlib.sha256(self.aab.read_bytes()).hexdigest()},
+            "sourceGraph": {"sha256": self.expected_source_graph_sha256},
+            "buildSidecar": {"sha256": hashlib.sha256(self.build_sidecar.read_bytes()).hexdigest()},
+        }
+        self.original_build_attestation_verifier = self.module.BUILD_ATTESTATION.verify
+        self.original_build_attestation_qualification = self.module.BUILD_ATTESTATION.VERIFY.verify_release_eligibility
+        self.original_build_attestation_public_key = self.module.BUILD_ATTESTATION.VERIFY.RELEASE_APPROVER_PUBLIC_KEY
+        self.original_build_attestation_public_key_sha256 = self.module.BUILD_ATTESTATION.VERIFY.RELEASE_APPROVER_PUBLIC_KEY_SHA256
+        self.module.BUILD_ATTESTATION.VERIFY.verify_release_eligibility = (
+            lambda *_args, **_kwargs: copy.deepcopy(self.two_green_binding)
+        )
+        self.module.BUILD_ATTESTATION.VERIFY.RELEASE_APPROVER_PUBLIC_KEY = self.attester_public_key
+        self.module.BUILD_ATTESTATION.VERIFY.RELEASE_APPROVER_PUBLIC_KEY_SHA256 = hashlib.sha256(self.attester_public_key.read_bytes()).hexdigest()
+        self.module.BUILD_ATTESTATION.verify = (
+            lambda *_args, **_kwargs: copy.deepcopy(self.build_attestation_binding)
+        )
 
     def tearDown(self) -> None:
+        self.module.QUALIFICATION.verify_release_eligibility = (
+            self.original_qualification_verifier
+        )
+        self.module.BUILD_ATTESTATION.verify = self.original_build_attestation_verifier
+        self.module.BUILD_ATTESTATION.VERIFY.verify_release_eligibility = self.original_build_attestation_qualification
+        self.module.BUILD_ATTESTATION.VERIFY.RELEASE_APPROVER_PUBLIC_KEY = self.original_build_attestation_public_key
+        self.module.BUILD_ATTESTATION.VERIFY.RELEASE_APPROVER_PUBLIC_KEY_SHA256 = self.original_build_attestation_public_key_sha256
         self.temporary.cleanup()
 
     def make_browser(self) -> dict[str, object]:
@@ -176,7 +275,7 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
                 "versionName": self.version_name,
                 "versionCode": self.version_code,
                 "intentAuthority": "explicit_build_input",
-                "minimumExclusiveVersionCode": 10,
+                "minimumExclusiveVersionCode": 11,
             },
             "generator": {
                 "path": "scripts/verify_release_source_graph.py",
@@ -213,17 +312,60 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
             self.aab,
             self.graph,
             self.receipt,
-            expected_android_source_commit=self.graph_payload["repositories"][0]["commit"],
-            expected_aab_sha256=hashlib.sha256(self.aab.read_bytes()).hexdigest(),
+            build_sidecar_path=self.build_sidecar,
+            build_attestation_path=self.build_attestation,
+            two_green_receipt_path=self.two_green_receipt,
+            two_green_approval_path=self.two_green_approval,
         )
+
+    def protected_build_validation(self) -> dict[str, object]:
+        build = self.module.BUILD_ATTESTATION
+        validator_names = (
+            "validate-aab.sh",
+            "inspect_aab.py",
+            "verify_release_aab_excludes_api36_proof.py",
+            "verify_release_artifact_hygiene.py",
+            "verify_release_source_graph.py",
+        )
+        return {
+            "contractName": build.VALIDATION_CONTRACT,
+            "status": "pass",
+            "bundletoolSha256": build.EXPECTED_BUNDLETOOL_SHA256,
+            "uploadCertificateSha256": build.EXPECTED_UPLOAD_CERTIFICATE_SHA256,
+            "uploadCertificateFileSha256": "0" * 64,
+            "javaToolAuthoritySha256": "4" * 64,
+            "toolchainAuthorityClass": "non_authoritative_local_unsigned_preparation",
+            "androidSdkBound": False,
+            "javaSdkTreeSha256": "c" * 64,
+            "javaVersionOutputSha256": "5" * 64,
+            "javaToolSha256": {
+                "java": "6" * 64,
+                "javac": "b" * 64,
+                "jarsigner": "7" * 64,
+                "keytool": "8" * 64,
+            },
+            "dotnetSha256": "9" * 64,
+            "dotnetVersionOutputSha256": "a" * 64,
+            "dotnetSdkTreeSha256": "d" * 64,
+            "aabValidationOutputSha256": "1" * 64,
+            "artifactHygieneOutputSha256": "2" * 64,
+            "sourceGraphValidationOutputSha256": "3" * 64,
+            "validatorSha256": {
+                name: hashlib.sha256((REPO / "scripts" / name).read_bytes()).hexdigest()
+                for name in validator_names
+            },
+            "publicationAuthorized": False,
+        }
 
     def verify(self) -> dict[str, object]:
         return self.module.verify(
             self.receipt,
             self.aab,
             self.graph,
-            expected_android_source_commit=self.graph_payload["repositories"][0]["commit"],
-            expected_aab_sha256=hashlib.sha256(self.aab.read_bytes()).hexdigest(),
+            build_sidecar_path=self.build_sidecar,
+            build_attestation_path=self.build_attestation,
+            two_green_receipt_path=self.two_green_receipt,
+            two_green_approval_path=self.two_green_approval,
         )
 
     def test_round_trip_binds_explicit_readback_and_exact_local_outputs(self) -> None:
@@ -241,9 +383,10 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
         self.assertEqual(self.module.CONTRACT, payload["contractName"])
         self.assertFalse(payload["publicationAuthorized"])
         self.assertEqual(
-            "explicit_internal_browser_readback_plus_exact_local_release_outputs",
+            "explicit_internal_browser_readback_plus_exact_qualified_release_outputs",
             payload["evidenceClass"],
         )
+        self.assertEqual(self.two_green_binding, payload["twoGreenEligibility"])
         self.assertFalse(payload["authorization"]["publicationAuthorized"])
         self.assertFalse(payload["authorization"]["productionAuthorized"])
         self.assertFalse(payload["authorization"]["uploadActionAuthorized"])
@@ -262,6 +405,95 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
         self.assertEqual("pass", verified["status"], verified["failures"])
         self.assertTrue(verified["localArtifactBytesVerified"])
 
+    def test_signed_build_attestation_rejects_substituted_graph_and_sidecar(self) -> None:
+        build = self.module.BUILD_ATTESTATION
+        self.build_attestation.unlink()
+        with mock.patch.object(
+            build,
+            "_protected_validation",
+            return_value=self.protected_build_validation(),
+        ), mock.patch.object(
+            build, "_external_signer_required", return_value=None,
+        ), mock.patch.object(
+            build, "_private_key", return_value=self.attester_private_key,
+        ), mock.patch.object(
+            build.APPROVAL_SIGNER,
+            "_authenticated_github_replay",
+            return_value=("8" * 64, "7" * 64),
+        ):
+            attestation = build.sign(
+                self.aab, self.graph, self.build_sidecar,
+                self.two_green_receipt, self.two_green_approval,
+                self.attester_private_key, self.build_attestation,
+                self.github_token,
+                workspace_root=self.root,
+                package_authority=self.graph,
+                authority_root=self.root,
+                bundletool=self.graph,
+                upload_certificate=self.graph,
+                java_tool_authority=self.graph,
+            )
+        self.assertFalse(attestation["publicationAuthorized"])
+        self.assertEqual(
+            build.VALIDATION_CONTRACT,
+            attestation["protectedValidation"]["contractName"],
+        )
+        verified = self.original_build_attestation_verifier(
+            self.build_attestation, self.aab, self.graph, self.build_sidecar,
+            self.two_green_receipt, self.two_green_approval,
+        )
+        self.assertEqual(self.expected_source_graph_sha256, verified["sourceGraph"]["sha256"])
+
+        unvalidated_output = self.root / "unvalidated-build-attestation.json"
+        with self.assertRaisesRegex(ValueError, "external-signer-required"):
+            build.sign(
+                self.aab,
+                self.graph,
+                self.build_sidecar,
+                self.two_green_receipt,
+                self.two_green_approval,
+                self.attester_private_key,
+                unvalidated_output,
+                self.github_token,
+            )
+        self.assertFalse(unvalidated_output.exists())
+
+        mismatched_provenance_output = self.root / "mismatched-provenance-attestation.json"
+        with self.assertRaisesRegex(ValueError, "external-signer-required"):
+            build.sign(
+                self.aab,
+                self.graph,
+                self.build_sidecar,
+                self.two_green_receipt,
+                self.two_green_approval,
+                self.attester_private_key,
+                mismatched_provenance_output,
+                self.github_token,
+            )
+        self.assertFalse(mismatched_provenance_output.exists())
+
+        fabricated_validation = self.protected_build_validation()
+        fabricated_validation["validatorSha256"]["validate-aab.sh"] = "0" * 64
+        with self.assertRaisesRegex(ValueError, "validator source changed"):
+            build._validate_validation_claims(fabricated_validation)
+
+        graph = copy.deepcopy(self.graph_payload)
+        next(row for row in graph["repositories"] if row["name"] == "chummer6-design").update(
+            {"tree": "f" * 40, "tree_sha256": "e" * 64}
+        )
+        write_private(self.graph, graph)
+        substituted_graph_sha = hashlib.sha256(self.graph.read_bytes()).hexdigest()
+        self.build_sidecar.write_text(
+            f"{hashlib.sha256(self.aab.read_bytes()).hexdigest()}  artifacts/{self.aab.name}\n"
+            f"{substituted_graph_sha}  artifacts/{self.graph.name}\n",
+            encoding="ascii",
+        )
+        with self.assertRaisesRegex(ValueError, "differs from exact protected outputs"):
+            self.original_build_attestation_verifier(
+                self.build_attestation, self.aab, self.graph, self.build_sidecar,
+                self.two_green_receipt, self.two_green_approval,
+            )
+
     def test_preview10_verifier_receipt_and_schema_are_immutable(self) -> None:
         expected = {
             PREVIEW10_SCRIPT: "b5774d06d00ea0f0bf99a1eac17a21119d1111da5b105fa86ce4cac619d62f52",
@@ -275,6 +507,7 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
         self.assertEqual("pass", historical["status"], historical["failures"])
         self.assertFalse(historical["authorization"]["productionAuthorized"])
         self.assertFalse((REPO / "play/evidence/preview11-internal-publication.json").exists())
+        self.assertFalse((REPO / "play/evidence/preview12-internal-publication.json").exists())
 
     def test_browser_input_is_closed_and_rejects_secret_or_session_fields(self) -> None:
         cases = (
@@ -298,6 +531,16 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
             (
                 lambda value: value["release"].update({"status": "In review"}),
                 "not available to Internal testers",
+            ),
+            (
+                lambda value: value["release"].update(
+                    {
+                        "name": "11 (0.1.0-preview.11)",
+                        "versionCode": 11,
+                        "versionName": "0.1.0-preview.11",
+                    }
+                ),
+                "post-Preview.11 version",
             ),
             (
                 lambda value: value["release"]["releasedAt"].update(
@@ -345,10 +588,14 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
                 str(self.graph),
                 "--output",
                 str(self.receipt),
-                "--expected-android-source-commit",
-                self.graph_payload["repositories"][0]["commit"],
-                "--expected-aab-sha256",
-                hashlib.sha256(self.aab.read_bytes()).hexdigest(),
+                "--build-sidecar",
+                str(self.build_sidecar),
+                "--build-attestation",
+                str(self.build_attestation),
+                "--two-green-receipt",
+                str(self.two_green_receipt),
+                "--two-green-approval",
+                str(self.two_green_approval),
                 "--token",
                 "do-not-record",
             ],
@@ -413,26 +660,21 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
         expected_digest = hashlib.sha256(self.aab.read_bytes()).hexdigest()
         cases = (
             (
-                {"expected_android_source_commit": "f" * 40,
-                 "expected_aab_sha256": expected_digest},
+                {"sourceCommit": "f" * 40, "aab": {"sha256": expected_digest}},
                 "does not match approved source head",
             ),
             (
-                {"expected_android_source_commit": expected_head,
-                 "expected_aab_sha256": "f" * 64},
+                {"sourceCommit": expected_head, "aab": {"sha256": "f" * 64}},
                 "AAB bytes do not match approved AAB sha256",
             ),
         )
         for bindings, message in cases:
             with self.subTest(message=message):
+                original = copy.deepcopy(self.build_attestation_binding)
+                self.build_attestation_binding.update(bindings)
                 with self.assertRaisesRegex(ValueError, message):
-                    self.module.materialize(
-                        self.browser,
-                        self.aab,
-                        self.graph,
-                        self.receipt,
-                        **bindings,
-                    )
+                    self.materialize()
+                self.build_attestation_binding = original
                 self.assertFalse(self.receipt.exists())
 
         stale = copy.deepcopy(self.browser_payload)
@@ -443,14 +685,7 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
         write_private(self.browser, stale)
         write_private(self.graph, self.graph_payload)
         with self.assertRaisesRegex(ValueError, "too old"):
-            self.module.materialize(
-                self.browser,
-                self.aab,
-                self.graph,
-                self.receipt,
-                expected_android_source_commit=expected_head,
-                expected_aab_sha256=expected_digest,
-            )
+            self.materialize()
         self.assertFalse(self.receipt.exists())
 
     def test_noncanonical_or_changed_aab_and_source_graph_bytes_fail_closed(self) -> None:
@@ -471,12 +706,43 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
         self.assertEqual("fail", result["status"])
         self.assertFalse(result["publicationAuthorized"])
 
+    def test_protected_source_graph_digest_rejects_design_and_tree_substitution(self) -> None:
+        for label, mutate in (
+            (
+                "design",
+                lambda graph: next(
+                    row for row in graph["repositories"]
+                    if row["name"] == "chummer6-design"
+                ).update({"commit": "f" * 40, "tree": "e" * 40}),
+            ),
+            (
+                "repository tree bytes",
+                lambda graph: graph["repositories"][1].update(
+                    {"tree_sha256": "0" * 64}
+                ),
+            ),
+        ):
+            with self.subTest(label=label):
+                graph = copy.deepcopy(self.graph_payload)
+                mutate(graph)
+                write_private(self.graph, graph)
+                with self.assertRaisesRegex(
+                    ValueError, "source graph bytes do not match approved build-sidecar sha256"
+                ):
+                    self.materialize()
+                self.assertFalse(self.receipt.exists())
+
     def test_receipt_claim_escalation_and_noncanonical_bytes_fail_closed(self) -> None:
         self.materialize()
         original = json.loads(self.receipt.read_text(encoding="utf-8"))
         cases = (
             (lambda value: value["authorization"].update({"productionAuthorized": True})),
             (lambda value: value["authorization"].update({"uploadActionAuthorized": True})),
+            (
+                lambda value: value["twoGreenEligibility"].update(
+                    {"googlePlayUploadAuthorized": True}
+                )
+            ),
             (lambda value: value["doesNotClaim"].remove("tester_installation")),
             (lambda value: value.update({"credential": "secret"})),
         )
@@ -520,6 +786,23 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
         self.assertFalse(schema["additionalProperties"])
         self.assertEqual(self.module.CONTRACT, schema["properties"]["contractName"]["const"])
         self.assertFalse(schema["properties"]["publicationAuthorized"]["const"])
+        qualification = schema["properties"]["twoGreenEligibility"]
+        self.assertFalse(qualification["additionalProperties"])
+        protected_approval = qualification["properties"]["protectedApproval"]
+        self.assertFalse(protected_approval["additionalProperties"])
+        self.assertEqual(
+            "android_internal_release_preparation",
+            protected_approval["properties"]["approvalScope"]["const"],
+        )
+        self.assertTrue(
+            qualification["properties"]["internalTestingEligible"]["const"]
+        )
+        self.assertFalse(
+            qualification["properties"]["publicationAuthorized"]["const"]
+        )
+        self.assertFalse(
+            qualification["properties"]["googlePlayUploadAuthorized"]["const"]
+        )
         authorization = schema["properties"]["authorization"]
         self.assertFalse(authorization["additionalProperties"])
         self.assertEqual(

@@ -9,6 +9,12 @@ artifacts/
 __pycache__/
 *.py[cod]
 *.user
+*.private.pem
+*.key
+*.p8
+*.pk8
+*.p12
+*.pfx
 *.keystore
 *.jks
 *.aab

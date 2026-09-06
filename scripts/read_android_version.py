@@ -13,8 +13,11 @@ VERSION_NAME_RE = re.compile(r"[0-9]+(?:\.[0-9]+){2}(?:-[0-9A-Za-z][0-9A-Za-z.-]
 VERSION_CODE_RE = re.compile(r"[1-9][0-9]*")
 
 
-def read_project_version(project_path: Path) -> tuple[str, str]:
-    root = ET.parse(project_path).getroot()
+def read_project_version_bytes(project_bytes: bytes) -> tuple[str, str]:
+    try:
+        root = ET.fromstring(project_bytes)
+    except ET.ParseError as error:
+        raise SystemExit("Android project must be well-formed XML") from error
 
     def values(name: str) -> list[str]:
         return [
@@ -30,6 +33,10 @@ def read_project_version(project_path: Path) -> tuple[str, str]:
     if len(version_codes) != 1 or VERSION_CODE_RE.fullmatch(version_codes[0]) is None:
         raise SystemExit("Android project must declare one positive integer ApplicationVersion")
     return version_names[0], version_codes[0]
+
+
+def read_project_version(project_path: Path) -> tuple[str, str]:
+    return read_project_version_bytes(project_path.read_bytes())
 
 
 def main() -> None:

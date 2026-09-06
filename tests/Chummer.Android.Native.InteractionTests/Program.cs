@@ -7,6 +7,7 @@ using Chummer.Infrastructure.Files;
 using Chummer.Infrastructure.Workspaces;
 using Chummer.Infrastructure.Xml;
 using Chummer.Presentation.Overview;
+using Microsoft.Maui.Controls;
 
 internal static class Program
 {
@@ -30,6 +31,7 @@ internal static class Program
             (nameof(CoordinatorRefreshBurstsRenderOnlyLatestStateAsync), CoordinatorRefreshBurstsRenderOnlyLatestStateAsync),
             (nameof(PageActionGateRejectsOverlappingActionsAsync), PageActionGateRejectsOverlappingActionsAsync),
             (nameof(CharacterSettingsScopeIsExactAndFailClosedAsync), CharacterSettingsScopeIsExactAndFailClosedAsync),
+            (nameof(CharacterSettingsAccessibilityAndLocalizationAreExactAsync), CharacterSettingsAccessibilityAndLocalizationAreExactAsync),
             (nameof(ExactWorkspaceAuthoritySnapshotRejectsEveryHostileBindingAsync), ExactWorkspaceAuthoritySnapshotRejectsEveryHostileBindingAsync),
 #if DEBUG
             (nameof(HomeAppearanceAuthorityRefreshFailsClosedForEveryHostileBindingAsync), HomeAppearanceAuthorityRefreshFailsClosedForEveryHostileBindingAsync),
@@ -127,8 +129,14 @@ internal static class Program
     {
         DesktopDialogFieldOption[] sectionOptions =
         [
+            new("ware", "Ware, armor, and vehicles"),
+            new("sourcebooks", "Sourcebooks"),
             new("rules", "Rules and options"),
+            new("formulas", "Formulas and formatting"),
+            new("karma", "Karma costs"),
             new("custom-data", "Custom data"),
+            new("limits", "Limits and initiative"),
+            new("build", "Build method"),
             new("future-desktop-scope", "Future desktop scope")
         ];
         DesktopDialogField section = new(
@@ -157,8 +165,17 @@ internal static class Program
         Require(projectedSection.IsVisible, "The exact Character Settings section picker was hidden.");
         Require(
             projectedSection.Options is not null
-            && projectedSection.Options.Select(option => option.Value).SequenceEqual(["rules"]),
+            && projectedSection.Options.Select(option => option.Value).SequenceEqual(
+                ["ware", "rules", "karma", "limits", "build"]),
             "The phone exposed a desktop-only or unknown Character Settings section identity.");
+        NativeDialogScopedField germanSection = AndroidDialogSettingsScope.Project(
+            customDataDialog,
+            section,
+            new System.Globalization.CultureInfo("de-DE"));
+        Require(
+            germanSection.Label == "Einstellungsbereich"
+            && germanSection.Options?.Single(option => option.Value == "build").Label == "Erschaffung",
+            "The phone Character Settings section did not use the requested native locale.");
 
         NativeDialogScopedField projectedCustomData = AndroidDialogSettingsScope.Project(
             customDataDialog,
@@ -183,6 +200,159 @@ internal static class Program
         Require(
             !AndroidDialogSettingsScope.Project(customDataDialog, malformedCustomData).IsVisible,
             "A drifted custom-data field shape was exposed on Android.");
+
+        CharacterSettingsPhoneCapabilityInventoryEntry[] inventory =
+            CharacterSettingsPhoneCapabilityInventoryGenerated.Entries.ToArray();
+        Require(inventory.Length == 150, "The exhaustive phone settings inventory did not cover 150 value controls.");
+        Require(
+            inventory.Select(entry => entry.FieldId).Distinct(StringComparer.Ordinal).Count() == inventory.Length,
+            "The exhaustive phone settings inventory contains duplicate field identities.");
+        Require(
+            inventory.Count(entry => entry.IsVisible) == 17
+            && inventory.Count(entry => !entry.IsVisible) == 133,
+            "The phone settings inventory did not retain the exact 17-visible/133-hidden boundary.");
+        Require(
+            AndroidCharacterSettingsPhoneCapabilities.Supported.Count == 17,
+            "The runtime phone capability catalog did not retain exactly 17 supported controls.");
+
+        foreach (CharacterSettingsPhoneCapabilityInventoryEntry entry in inventory)
+        {
+            IReadOnlyList<DesktopDialogFieldOption>? options =
+                string.Equals(entry.InputType, "select", StringComparison.Ordinal)
+                    ? [new DesktopDialogFieldOption("choice", "Choice")]
+                    : null;
+            string originalValue = entry.InputType switch
+            {
+                "checkbox" => "true",
+                "number" => "19",
+                "select" => "choice",
+                _ => $"preserve::{entry.LegacyControl}"
+            };
+            DesktopDialogField control = new(
+                entry.FieldId,
+                $"Desktop label::{entry.LegacyControl}",
+                originalValue,
+                "desktop placeholder",
+                IsMultiline: entry.IsMultiline,
+                InputType: entry.InputType,
+                Options: options);
+            DesktopDialogField selectedSection = section with { Value = entry.SectionId };
+            DesktopDialogState dialog = customDataDialog with
+            {
+                Fields = [selectedSection, control]
+            };
+
+            NativeDialogScopedField projected = AndroidDialogSettingsScope.Project(dialog, control);
+            Require(
+                projected.IsVisible == entry.IsVisible,
+                $"Phone capability drifted for {entry.LegacyControl}.");
+            Require(
+                control.Id == entry.FieldId
+                && control.Value == originalValue
+                && control.InputType == entry.InputType
+                && control.IsMultiline == entry.IsMultiline
+                && ReferenceEquals(control.Options, options),
+                $"Phone projection changed the imported value or shape for {entry.LegacyControl}.");
+
+            bool runtimeSupported = AndroidCharacterSettingsPhoneCapabilities.TryGet(
+                entry.FieldId,
+                out AndroidCharacterSettingCapability capability);
+            Require(
+                runtimeSupported == entry.IsVisible,
+                $"Runtime capability classification disagreed with the inventory for {entry.LegacyControl}.");
+            if (entry.IsVisible)
+            {
+                Require(
+                    !string.IsNullOrWhiteSpace(entry.AndroidBehavior)
+                    && string.Equals(
+                        capability.AndroidBehavior,
+                        entry.AndroidBehavior,
+                        StringComparison.Ordinal),
+                    $"Visible phone setting {entry.LegacyControl} has no exact Android behavior receipt.");
+                DesktopDialogState wrongSection = dialog with
+                {
+                    Fields = [selectedSection with { Value = "future-desktop-scope" }, control]
+                };
+                Require(
+                    !AndroidDialogSettingsScope.Project(wrongSection, control).IsVisible,
+                    $"Supported setting {entry.LegacyControl} escaped its exact section binding.");
+            }
+            else
+            {
+                Require(
+                    projected.Label == control.Label
+                    && ReferenceEquals(projected.Options, control.Options),
+                    $"Hidden phone setting {entry.LegacyControl} did not preserve its source projection.");
+            }
+        }
+
+        AndroidCharacterSettingCapability buildMethod =
+            AndroidCharacterSettingsPhoneCapabilities.Supported.Single(
+                capability => capability.LegacyControl == "cboBuildMethod");
+        DesktopDialogField malformedSupportedControl = new(
+            buildMethod.FieldId,
+            buildMethod.EnglishLabel,
+            "Priority",
+            string.Empty,
+            InputType: "text");
+        DesktopDialogState malformedSupportedDialog = customDataDialog with
+        {
+            Fields = [section with { Value = buildMethod.SectionId }, malformedSupportedControl]
+        };
+        Require(
+            !AndroidDialogSettingsScope.Project(
+                malformedSupportedDialog,
+                malformedSupportedControl).IsVisible,
+            "A supported control with a drifted field shape was exposed on Android.");
+
+        foreach (string transportFieldId in new[]
+                 {
+                     AndroidDialogSettingsScope.LoadedProfileFieldId,
+                     AndroidDialogSettingsScope.DraftXmlFieldId
+                 })
+        {
+            DesktopDialogField transport = new(
+                transportFieldId,
+                "Desktop transport",
+                $"preserve::{transportFieldId}",
+                string.Empty,
+                IsMultiline: transportFieldId == AndroidDialogSettingsScope.DraftXmlFieldId,
+                IsReadOnly: true);
+            Require(
+                !AndroidDialogSettingsScope.Project(customDataDialog, transport).IsVisible
+                && transport.Value == $"preserve::{transportFieldId}",
+                $"Internal settings transport {transportFieldId} became visible or lost its value.");
+        }
+
+        DesktopDialogField profile = new(
+            AndroidDialogSettingsScope.ProfileFieldId,
+            "Settings profile",
+            "standard",
+            "standard",
+            InputType: "select",
+            Options: [new DesktopDialogFieldOption("standard", "Standard")]);
+        DesktopDialogField profileName = new(
+            AndroidDialogSettingsScope.ProfileNameFieldId,
+            "Profile name",
+            "Standard",
+            "Standard");
+        Require(
+            AndroidDialogSettingsScope.Project(customDataDialog, profile).IsVisible
+            && AndroidDialogSettingsScope.Project(customDataDialog, profileName).IsVisible,
+            "Functional phone profile selection or naming was hidden.");
+        Require(
+            !AndroidDialogSettingsScope.Project(
+                customDataDialog,
+                profile with { InputType = "text" }).IsVisible,
+            "A malformed profile selector was exposed on Android.");
+
+        string phoneMessage = AndroidDialogSettingsScope.Message(
+            customDataDialog,
+            new System.Globalization.CultureInfo("es-ES"));
+        Require(
+            phoneMessage.Contains("asistentes actuales de Android", StringComparison.Ordinal)
+            && phoneMessage.Contains("ocultos", StringComparison.Ordinal),
+            "The phone-only settings scope was not explained in Spanish.");
 
         DesktopDialogField unknownSection = new(
             AndroidDialogSettingsScope.SectionFieldId,
@@ -255,8 +425,92 @@ internal static class Program
         Require(
             projectedWizard.IsVisible
             && ReferenceEquals(projectedWizard.Options, wizardField.Options)
-            && AndroidDialogSettingsScope.Detail(wizard) is null,
+            && AndroidDialogSettingsScope.Detail(wizard) is null
+            && AndroidDialogSettingsScope.Message(wizard) == wizard.Message,
             "Character Settings scope changed an unrelated wizard projection.");
+        return Task.CompletedTask;
+    }
+
+    private static Task CharacterSettingsAccessibilityAndLocalizationAreExactAsync()
+    {
+        string accessibleLabel = PhoneStrings.Get(
+            "CharacterSettingsSection",
+            "Settings section",
+            new System.Globalization.CultureInfo("de-DE"));
+        VisualElement[] inputs = [new Picker(), new Switch(), new Entry(), new Editor()];
+        foreach (VisualElement input in inputs)
+        {
+            Label decorativeLabel = new() { Text = accessibleLabel };
+            NativeDialogAccessibility.BindFieldLabel(decorativeLabel, input, accessibleLabel);
+            Require(
+                SemanticProperties.GetDescription(input) == accessibleLabel,
+                $"{input.GetType().Name} did not receive the localized semantic field label.");
+            Require(
+                ReferenceEquals(AutomationProperties.GetLabeledBy(input), decorativeLabel),
+                $"{input.GetType().Name} was not associated with its visible field label.");
+            Require(
+                AutomationProperties.GetIsInAccessibleTree(decorativeLabel) == false,
+                $"{input.GetType().Name} retained a duplicate decorative label announcement.");
+        }
+
+        DesktopDialogAction[] actions =
+        [
+            new("save", "Save"),
+            new("save_and_close", "Save & Close", true),
+            new("save_as", "Save As"),
+            new("rename", "Rename"),
+            new("delete", "Delete"),
+            new("restore_defaults", "Restore Defaults"),
+            new("cancel", "Cancel")
+        ];
+        DesktopDialogState settings = new(
+            AndroidDialogSettingsScope.CharacterSettingsDialogId,
+            "Character Settings",
+            string.Empty,
+            [],
+            actions);
+        var german = new System.Globalization.CultureInfo("de-DE");
+        var spanish = new System.Globalization.CultureInfo("es-ES");
+        Require(
+            AndroidDialogSettingsScope.Title(settings, german) == "Charaktereinstellungen"
+            && AndroidDialogSettingsScope.Title(settings, spanish) == "Ajustes del personaje",
+            "The Character Settings page title was not localized exactly.");
+
+        string[] expectedGerman =
+        [
+            "Speichern",
+            "Speichern und schließen",
+            "Speichern unter",
+            "Umbenennen",
+            "Löschen",
+            "Standardwerte wiederherstellen",
+            "Abbrechen"
+        ];
+        string[] expectedSpanish =
+        [
+            "Guardar",
+            "Guardar y cerrar",
+            "Guardar como",
+            "Renombrar",
+            "Eliminar",
+            "Restaurar valores predeterminados",
+            "Cancelar"
+        ];
+        Require(
+            actions.Select(action => AndroidDialogSettingsScope.ActionLabel(settings, action, german))
+                .SequenceEqual(expectedGerman)
+            && actions.Select(action => AndroidDialogSettingsScope.ActionLabel(settings, action, spanish))
+                .SequenceEqual(expectedSpanish),
+            "The stable Character Settings action IDs were not localized exactly.");
+
+        DesktopDialogAction unknown = new("future_action", "Future action");
+        DesktopDialogState unrelated = settings with { Id = "dialog.unrelated", Title = "Unrelated" };
+        Require(
+            AndroidDialogSettingsScope.ActionLabel(settings, unknown, german) == unknown.Label
+            && AndroidDialogSettingsScope.Title(unrelated, german) == unrelated.Title
+            && AndroidDialogSettingsScope.ActionLabel(unrelated, actions[0], german) == actions[0].Label,
+            "Settings localization leaked into an unknown action or unrelated dialog.");
+
         return Task.CompletedTask;
     }
 

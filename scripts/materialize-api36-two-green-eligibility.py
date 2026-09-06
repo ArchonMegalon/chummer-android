@@ -39,6 +39,7 @@ from api36_wizard_gate_contract import (  # noqa: E402
     contract_binding,
     journey_map,
 )
+from read_android_version import read_project_version_bytes  # noqa: E402
 
 
 def _load_p0_module() -> Any:
@@ -71,18 +72,24 @@ REPO_ROOT = SCRIPT_DIRECTORY.parent
 POLICY_PATH = REPO_ROOT / "eng/api36-two-consecutive-green-authority.json"
 ENVIRONMENT_POLICY_PATH = REPO_ROOT / "eng/api36-proof-environment-authority.json"
 SOURCE_WORKFLOW = REPO_ROOT / ".github/workflows/api36-editing-e2e.yml"
-POLICY_SCHEMA = "chummer.android.api36-ordered-review-main-green-policy/v1"
-CONTRACT = "chummer.android.api36-ordered-review-main-green-eligibility/v1"
+POLICY_SCHEMA = "chummer.android.api36-ordered-review-main-green-policy/v2"
+CONTRACT = "chummer.android.api36-ordered-review-main-green-eligibility/v2"
 OUTPUT_NAME = "ANDROID_API36_TWO_GREEN_ELIGIBILITY.generated.json"
 REPOSITORY = "ArchonMegalon/chummer-android"
+PACKAGE_ID = "com.myexternalbrain.chummer"
+HISTORICAL_VERSION_CODE_FLOOR = 11
 WORKFLOW_NAME = "API 36 phone beta SR5 wizard E2E"
 WORKFLOW_PATH = ".github/workflows/api36-editing-e2e.yml"
+PROJECT_PATH = "src/Chummer.Android/Chummer.Android.csproj"
 P0_SCHEMA = "chummer.android.p0-pr-authority/v1"
-ELIGIBILITY_SCOPE = "preview11_internal_testing_candidate"
+ELIGIBILITY_SCOPE = "current_preview_internal_testing_candidate"
 REVIEW_EVENTS = ("pull_request",)
 MAIN_REF = "refs/heads/main"
 SHA40 = re.compile(r"^[0-9a-f]{40}$")
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
+VERSION_NAME = re.compile(
+    r"^[0-9]+(?:\.[0-9]+){2}(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$"
+)
 ARTIFACT_DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
 RFC3339_UTC = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 MAX_JSON_ARTIFACT_BYTES = 16 * 1024 * 1024
@@ -226,10 +233,17 @@ def expected_policy() -> dict[str, object]:
             "reviewed_green_followed_later_by_main_green_not_run_adjacency"
         ),
         "requiresExactSameAndroidTree": True,
+        "requiresExactMainCommit": True,
+        "requiresExactReleaseIdentity": True,
+        "requiresExactDependencyGraph": True,
         "requiresExactSameAuthorityIdentities": True,
         "requiresCompatibleEnvironmentFingerprints": True,
+        "requiresEnvironmentCompatibilityPass": True,
+        "requiresSuccessfulMainRun": True,
+        "requiresSuccessfulMainAggregate": True,
         "internalTestingEligibleWhenSatisfied": True,
         "publicationAuthorized": False,
+        "googlePlayUploadAuthorized": False,
         "doesNotAssert": list(DOES_NOT_ASSERT),
     }
 
@@ -264,6 +278,30 @@ def _sha256(value: object, label: str) -> str:
     return value
 
 
+def release_identity(project: StableFile) -> dict[str, object]:
+    try:
+        version_name, version_code_text = read_project_version_bytes(project.data)
+    except SystemExit as error:
+        raise ValueError("Android release identity is not canonical") from error
+    if (
+        len(version_name) > 128
+        or VERSION_NAME.fullmatch(version_name) is None
+        or not version_code_text.isascii()
+        or not version_code_text.isdigit()
+        or version_code_text.startswith("0")
+    ):
+        raise ValueError("Android release identity is not canonical")
+    version_code = int(version_code_text)
+    if version_code <= HISTORICAL_VERSION_CODE_FLOOR:
+        raise ValueError("Android release identity is not newer than Preview.11")
+    return {
+        "packageId": PACKAGE_ID,
+        "versionName": version_name,
+        "versionCode": version_code,
+        "intentAuthority": "android_project_at_exact_main_tree",
+    }
+
+
 def _utc(value: object, label: str) -> datetime:
     if not isinstance(value, str) or RFC3339_UTC.fullmatch(value) is None:
         raise ValueError(f"{label} must be canonical UTC RFC3339 seconds")
@@ -273,7 +311,11 @@ def _utc(value: object, label: str) -> datetime:
     return parsed
 
 
-def git_source_tree(android_root: Path, workflow: StableFile) -> str:
+def git_source_tree(
+    android_root: Path,
+    workflow: StableFile,
+    project: StableFile,
+) -> str:
     """Bind the governed workflow to one clean tracked HEAD tree.
 
     The current Android checkout is available, so its cleanliness and workflow
@@ -293,6 +335,9 @@ def git_source_tree(android_root: Path, workflow: StableFile) -> str:
     expected_workflow = android_root / WORKFLOW_PATH
     if workflow.path != expected_workflow:
         raise ValueError("source API-36 workflow must be the governed checkout path")
+    expected_project = android_root / PROJECT_PATH
+    if project.path != expected_project:
+        raise ValueError("Android project must be the governed checkout path")
     environment = {
         "PATH": "/usr/bin:/bin",
         "LANG": "C",
@@ -343,9 +388,33 @@ def git_source_tree(android_root: Path, workflow: StableFile) -> str:
     tracked_bytes = git_bytes("show", f"{head}:{WORKFLOW_PATH}")
     if tracked_bytes != workflow.data:
         raise ValueError("source API-36 workflow bytes differ from tracked HEAD")
+    project_entry = git_bytes("ls-tree", "-z", head, "--", PROJECT_PATH)
+    project_suffix = b"\t" + PROJECT_PATH.encode("utf-8") + b"\x00"
+    if (
+        len(project_entry) != len(expected_prefix) + 40 + len(project_suffix)
+        or not project_entry.startswith(expected_prefix)
+        or project_entry[-len(project_suffix):] != project_suffix
+        or SHA40.fullmatch(
+            project_entry[
+                len(expected_prefix):len(expected_prefix) + 40
+            ].decode("ascii")
+        )
+        is None
+    ):
+        raise ValueError("Android project is not one exact tracked regular file")
+    if git_bytes("show", f"{head}:{PROJECT_PATH}") != project.data:
+        raise ValueError("Android project bytes differ from tracked HEAD")
+    tracked_index = git_bytes("ls-files", "-v", "-z")
+    if any(
+        not entry.startswith(b"H ")
+        for entry in tracked_index.split(b"\0")
+        if entry
+    ):
+        raise ValueError("governed Android checkout contains hidden index flags")
     if (
         git_bytes("rev-parse", "HEAD").decode("ascii").strip() != head
         or git_bytes("status", "--porcelain=v1", "--untracked-files=all")
+        or git_bytes("ls-files", "-v", "-z") != tracked_index
     ):
         raise ValueError("governed Android checkout changed during authentication")
     return tree
@@ -1030,6 +1099,7 @@ def validate_proof_artifacts(
             environment.get("journeyCompatibilitySha256"),
             f"{role} journey environment compatibility",
         ),
+        "environmentCompatibilityStatus": "pass",
     }
 
 
@@ -1129,6 +1199,10 @@ def create_authority(
             environment_policy, "API-36 proof environment policy"
         ),
         "workflow": StableFile(source_workflow, "source API-36 workflow"),
+        "project": StableFile(
+            android_root / PROJECT_PATH,
+            "Android release project",
+        ),
         "reviewRun": StableFile(review_run, "review run metadata"),
         "reviewJobs": StableFile(review_jobs, "review jobs metadata"),
         "reviewArtifacts": StableFile(review_artifacts, "review artifacts metadata"),
@@ -1169,7 +1243,11 @@ def create_authority(
         "sha256": snapshots["workflow"].sha256,
         "sizeBytes": snapshots["workflow"].size,
     }
-    local_tree = git_source_tree(android_root, snapshots["workflow"])
+    local_tree = git_source_tree(
+        android_root,
+        snapshots["workflow"],
+        snapshots["project"],
+    )
     review, review_common = run_evidence(
         role="review",
         expected_run_id=review_run_id,
@@ -1229,7 +1307,9 @@ def create_authority(
         "publicationAuthorized": False,
         "googlePlayUploadAuthorized": False,
         "policyAuthority": policy_authority,
+        "sourceCommit": main["run"]["headSha"],
         "sourceTree": local_tree,
+        "releaseIdentity": release_identity(snapshots["project"]),
         "commonAuthority": review_common,
         "reviewPullRequest": pull_request_authority,
         "reviewRun": review,
@@ -1248,7 +1328,8 @@ def validate_authority(value: dict[str, object]) -> dict[str, object]:
     fields = {
         "schema", "status", "eligibilityScope", "eligible", "internalTestingEligible",
         "publicationAuthorized", "googlePlayUploadAuthorized", "policyAuthority",
-        "sourceTree", "commonAuthority", "reviewRun", "mainRun", "decisionTimeUtc",
+        "sourceCommit", "sourceTree", "releaseIdentity", "commonAuthority",
+        "reviewRun", "mainRun", "decisionTimeUtc",
         "reviewPullRequest", "doesNotAssert", "eligibilitySha256",
     }
     if set(value) != fields:
@@ -1264,7 +1345,37 @@ def validate_authority(value: dict[str, object]) -> dict[str, object]:
         or value["doesNotAssert"] != list(DOES_NOT_ASSERT)
     ):
         raise ValueError("two-green eligibility posture is invalid")
+    source_commit = _sha40(value["sourceCommit"], "two-green source commit")
     _sha40(value["sourceTree"], "two-green source tree")
+    release = value["releaseIdentity"]
+    if (
+        not isinstance(release, dict)
+        or set(release)
+        != {"packageId", "versionName", "versionCode", "intentAuthority"}
+        or release.get("packageId") != PACKAGE_ID
+        or not isinstance(release.get("versionName"), str)
+        or VERSION_NAME.fullmatch(release["versionName"]) is None
+        or type(release.get("versionCode")) is not int
+        or release["versionCode"] <= 10
+        or release.get("intentAuthority") != "android_project_at_exact_main_tree"
+    ):
+        raise ValueError("two-green release identity is invalid")
+    main_run = value["mainRun"]
+    if (
+        not isinstance(main_run, dict)
+        or not isinstance(main_run.get("run"), dict)
+        or main_run["run"].get("headSha") != source_commit
+        or main_run.get("p0EventSha") != source_commit
+        or main_run.get("aggregateStatus") != "pass"
+    ):
+        raise ValueError("two-green main commit or aggregate authority is invalid")
+    common = value["commonAuthority"]
+    if (
+        not isinstance(common, dict)
+        or common.get("androidTree") != value["sourceTree"]
+        or common.get("environmentCompatibilityStatus") != "pass"
+    ):
+        raise ValueError("two-green common environment authority is invalid")
     unsigned = {key: member for key, member in value.items() if key != "eligibilitySha256"}
     if value["eligibilitySha256"] != canonical_sha256(unsigned):
         raise ValueError("two-green eligibility digest is invalid")

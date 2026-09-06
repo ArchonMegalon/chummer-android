@@ -1,5 +1,5 @@
 {
-  "schema": "chummer.android.api36-ordered-review-main-green-policy/v1",
+  "schema": "chummer.android.api36-ordered-review-main-green-policy/v2",
   "repository": "ArchonMegalon/chummer-android",
   "sourceWorkflow": {
     "name": "API 36 phone beta SR5 wizard E2E",
@@ -30,7 +30,7 @@
   ],
   "aggregateSchema": "chummer.android.api36-sr5-wizard-e2e-aggregate/v2",
   "p0AuthoritySchema": "chummer.android.p0-pr-authority/v1",
-  "eligibilityScope": "preview11_internal_testing_candidate",
+  "eligibilityScope": "current_preview_internal_testing_candidate",
   "requiresDistinctRuns": true,
   "requiresReviewCompletionBeforeMainStart": true,
   "requiresExactPullRequestAuthority": true,
@@ -41,10 +41,17 @@
   "requiresCanonicalActionsDetailsUrls": true,
   "sequenceSemantics": "reviewed_green_followed_later_by_main_green_not_run_adjacency",
   "requiresExactSameAndroidTree": true,
+  "requiresExactMainCommit": true,
+  "requiresExactReleaseIdentity": true,
+  "requiresExactDependencyGraph": true,
   "requiresExactSameAuthorityIdentities": true,
   "requiresCompatibleEnvironmentFingerprints": true,
+  "requiresEnvironmentCompatibilityPass": true,
+  "requiresSuccessfulMainRun": true,
+  "requiresSuccessfulMainAggregate": true,
   "internalTestingEligibleWhenSatisfied": true,
   "publicationAuthorized": false,
+  "googlePlayUploadAuthorized": false,
   "doesNotAssert": [
     "google_play_upload",
     "google_play_processing",

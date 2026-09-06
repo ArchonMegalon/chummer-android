@@ -60,6 +60,7 @@
   <data name="AccountNotLinked" xml:space="preserve"><value>Not linked</value></data>
   <data name="AccountFinishLinking" xml:space="preserve"><value>Finish linking</value></data>
   <data name="AccountApproveBrowser" xml:space="preserve"><value>Approve in your browser, then return.</value></data>
+  <data name="AccountApprovalReceivedRetry" xml:space="preserve"><value>Approval was received. Keep this link and try again.</value></data>
   <data name="AccountLinkExpired" xml:space="preserve"><value>Link expired</value></data>
   <data name="AccountLinkAgainRestore" xml:space="preserve"><value>Link again to restore account access.</value></data>
   <data name="AccountLinked" xml:space="preserve"><value>Linked</value></data>
@@ -84,6 +85,9 @@
   <data name="AccountRevokeUnavailable" xml:space="preserve"><value>Could not reach Chummer. Try unlinking again.</value></data>
   <data name="AccountRevokeOffline" xml:space="preserve"><value>Connect to the internet and try again.</value></data>
   <data name="AccountDeleted" xml:space="preserve"><value>Account deleted</value></data>
+  <data name="AccountLocalCleanupPending" xml:space="preserve"><value>Remote access ended. Local key cleanup will be retried.</value></data>
+  <data name="AccountRefreshPending" xml:space="preserve"><value>Finishing account security refresh</value></data>
+  <data name="AccountRefreshRetry" xml:space="preserve"><value>Keep this link and reconnect to finish the refresh.</value></data>
   <data name="App" xml:space="preserve"><value>App</value></data>
   <data name="Version" xml:space="preserve"><value>Version</value></data>
   <data name="CheckUpdates" xml:space="preserve"><value>Check for updates</value></data>
@@ -98,6 +102,40 @@
   <data name="RunnerSetup" xml:space="preserve"><value>Runner setup</value></data>
   <data name="DialogApplyingChoice" xml:space="preserve"><value>Applying your choice… This may take a moment.</value></data>
   <data name="CharacterSettingsCustomDataScope" xml:space="preserve"><value>Custom data directories are desktop-only and hidden on Android. Their saved values remain unchanged in the settings profile.</value></data>
-  <data name="CharacterSettingsRulesScope" xml:space="preserve"><value>These runner rules belong to the settings profile and apply across Chummer platforms.</value></data>
+  <data name="CharacterSettingsRulesScope" xml:space="preserve"><value>Every setting shown here is read by a current Android phone wizard.</value></data>
   <data name="CharacterSettingsUnsupportedScope" xml:space="preserve"><value>This settings section is not available on Android. Its saved values remain in the profile.</value></data>
+  <data name="CharacterSettingsPhoneMessage" xml:space="preserve"><value>Edit only settings used by the current Android phone wizards. Hidden desktop values remain unchanged in the profile.</value></data>
+  <data name="CharacterSettingsTitle" xml:space="preserve"><value>Character Settings</value></data>
+  <data name="CharacterSettingsActionSave" xml:space="preserve"><value>Save</value></data>
+  <data name="CharacterSettingsActionSaveAndClose" xml:space="preserve"><value>Save &amp; Close</value></data>
+  <data name="CharacterSettingsActionSaveAs" xml:space="preserve"><value>Save As</value></data>
+  <data name="CharacterSettingsActionRename" xml:space="preserve"><value>Rename</value></data>
+  <data name="CharacterSettingsActionDelete" xml:space="preserve"><value>Delete</value></data>
+  <data name="CharacterSettingsActionRestoreDefaults" xml:space="preserve"><value>Restore Defaults</value></data>
+  <data name="CharacterSettingsActionCancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="CharacterSettingsProfile" xml:space="preserve"><value>Settings profile</value></data>
+  <data name="CharacterSettingsProfileName" xml:space="preserve"><value>Profile name</value></data>
+  <data name="CharacterSettingsSection" xml:space="preserve"><value>Settings section</value></data>
+  <data name="CharacterSettingsSectionWare" xml:space="preserve"><value>Ware and cyberlimbs</value></data>
+  <data name="CharacterSettingsSectionRules" xml:space="preserve"><value>Career rules</value></data>
+  <data name="CharacterSettingsSectionKarma" xml:space="preserve"><value>Career Karma costs</value></data>
+  <data name="CharacterSettingsSectionLimits" xml:space="preserve"><value>Career rating limits</value></data>
+  <data name="CharacterSettingsSectionBuild" xml:space="preserve"><value>Creation</value></data>
+  <data name="CharacterSettingBuildMethod" xml:space="preserve"><value>Creation build method</value></data>
+  <data name="CharacterSettingDontUseCyberlimbCalculation" xml:space="preserve"><value>Ignore cyberlimbs in augmented attribute totals</value></data>
+  <data name="CharacterSettingCyberlimbConfiguration" xml:space="preserve"><value>Cyberlimb slots used for attribute totals</value></data>
+  <data name="CharacterSettingKarmaNewActiveSkill" xml:space="preserve"><value>Karma cost: new active skill</value></data>
+  <data name="CharacterSettingKarmaImproveActiveSkill" xml:space="preserve"><value>Karma multiplier: improve active skill</value></data>
+  <data name="CharacterSettingKarmaNewSkillGroup" xml:space="preserve"><value>Karma cost: new skill group</value></data>
+  <data name="CharacterSettingKarmaImproveSkillGroup" xml:space="preserve"><value>Karma multiplier: improve skill group</value></data>
+  <data name="CharacterSettingCompensateSkillGroupKarmaDifference" xml:space="preserve"><value>Compensate skill-group Karma difference</value></data>
+  <data name="CharacterSettingKarmaAttribute" xml:space="preserve"><value>Karma multiplier: improve attribute</value></data>
+  <data name="CharacterSettingAlternateMetatypeAttributeKarma" xml:space="preserve"><value>Use alternate metatype attribute Karma</value></data>
+  <data name="CharacterSettingUnclampAttributeMinimum" xml:space="preserve"><value>Allow attributes below the normal minimum</value></data>
+  <data name="CharacterSettingMysticAdeptSecondMagicAttribute" xml:space="preserve"><value>Use a second Magic attribute for mystic adepts</value></data>
+  <data name="CharacterSettingKarmaNewKnowledgeSkill" xml:space="preserve"><value>Karma cost: new knowledge skill</value></data>
+  <data name="CharacterSettingKarmaImproveKnowledgeSkill" xml:space="preserve"><value>Karma multiplier: improve knowledge skill</value></data>
+  <data name="CharacterSettingMaxSkillRating" xml:space="preserve"><value>Maximum career active-skill rating</value></data>
+  <data name="CharacterSettingMaxKnowledgeSkillRating" xml:space="preserve"><value>Maximum career knowledge-skill rating</value></data>
+  <data name="CharacterSettingUsePointsOnBrokenGroups" xml:space="preserve"><value>Allow points on broken skill groups</value></data>
 </root>

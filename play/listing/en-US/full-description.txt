@@ -1,4 +1,4 @@
-Chummer Preview.11 is an Internal testing build for phones. Current Preview authority covers exactly seven SR5 flows: Creation Prerequisite, Career Active Skill Advance, Career Weapon Fire, Before Run Edge, Playtime Short Burst, Downtime Calendar, and After Run Settlement.
+Chummer Preview.12 is a candidate Internal testing build for phones. Current Preview authority covers exactly seven SR5 flows: Creation Prerequisite, Career Active Skill Advance, Career Weapon Fire, Before Run Edge, Playtime Short Burst, Downtime Calendar, and After Run Settlement.
 
 CREATE THE COVERED START
 Use the Creation Prerequisite flow to make the Priority selections and Resources choice exercised by the current phone test. Other visible creation stages are not claimed by this Preview authority.
