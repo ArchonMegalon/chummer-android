@@ -56,6 +56,7 @@ public sealed class AccountPrivacyPage : NativePageBase
                     "Link this device to open online runners, groups, and account controls."),
                 NativeTheme.Muted));
             Button link = NativeTheme.PrimaryButton(PhoneStrings.Get("LinkAccount", "Link account"));
+            link.IsEnabled = !Coordinator.Account.IsLoading;
             link.Clicked += async (_, _) => await RunAsync(() => Coordinator.BeginAccountLinkAsync());
             device.Add(link);
         }
@@ -242,6 +243,7 @@ public sealed class AccountDeletionPage : NativePageBase
     private Button CreateLinkButton()
     {
         Button link = NativeTheme.PrimaryButton("Link account");
+        link.IsEnabled = !Coordinator.Account.IsLoading;
         link.Clicked += async (_, _) => await RunAsync(() => Coordinator.BeginAccountLinkAsync());
         return link;
     }

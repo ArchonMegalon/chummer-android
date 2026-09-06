@@ -145,6 +145,7 @@ public sealed class MainActivity : MauiAppCompatActivity
     {
         _destroyed = true;
         _resumed = false;
+        Platform.DocumentIntentBroker.Cancel(this);
         CancelReviewHeartbeat();
         GetPlayReviewService()?.OnBackgrounded();
         _reviewHeartbeat?.Dispose();
@@ -351,7 +352,7 @@ public sealed class MainActivity : MauiAppCompatActivity
 
         if (isDocumentResult)
         {
-            Platform.DocumentIntentBroker.Complete(documentUri);
+            Platform.DocumentIntentBroker.Complete(this, requestCode, documentUri);
         }
     }
 
