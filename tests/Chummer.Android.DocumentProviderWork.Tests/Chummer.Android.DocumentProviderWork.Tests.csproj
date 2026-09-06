@@ -13,6 +13,8 @@
              Link="Platform/IAndroidImageDocumentService.cs" />
     <Compile Include="../../src/Chummer.Android/Platform/DocumentProviderWorkScheduler.cs"
              Link="Platform/DocumentProviderWorkScheduler.cs" />
+    <Compile Include="../../src/Chummer.Android/Platform/AccountStartupWorkScheduler.cs"
+             Link="Platform/AccountStartupWorkScheduler.cs" />
     <Compile Include="../../src/Chummer.Android/Platforms/Android/AndroidDocumentService.cs"
              Link="Platforms/Android/AndroidDocumentService.cs" />
     <Compile Include="../../src/Chummer.Android/Platforms/Android/AndroidImageDocumentService.cs"

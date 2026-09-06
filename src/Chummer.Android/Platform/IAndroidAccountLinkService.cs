@@ -17,6 +17,7 @@ public sealed record AndroidAccountLinkSnapshot(
 {
     public bool IsLinked => Status == AndroidAccountLinkStatus.Linked;
     public bool IsPending => Status == AndroidAccountLinkStatus.Pending;
+    public bool IsLoading => Status == AndroidAccountLinkStatus.Loading;
 }
 
 public static class AndroidAccountErasureConfirmation
