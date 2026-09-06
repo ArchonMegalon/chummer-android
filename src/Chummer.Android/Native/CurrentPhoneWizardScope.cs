@@ -1,11 +1,12 @@
 using Chummer.Contracts.Characters;
 using Chummer.Presentation.Overview;
+using System.Globalization;
 
 namespace Chummer.Android.Native;
 
 /// <summary>
 /// Presentation-only boundary for the current internal phone-wizard scope.
-/// This catalog labels routes; it never grants runtime, persistence, or
+/// This catalog labels visible routes and settings; it never grants runtime, persistence, or
 /// publication authority.
 /// </summary>
 public static class CurrentPhoneWizardScope
@@ -25,11 +26,17 @@ public static class CurrentPhoneWizardScope
             or Sr5CareerWizardActionIds.Playtime
             or Sr5CareerWizardActionIds.ManageCalendarEntry;
 
-    public static string MarkExperimental(string detail)
-        => WizardStrings.Format(
-            "CurrentPhoneWizard.ExperimentalRoute",
-            "{0} · Experimental — not covered by the current Preview authority.",
-            detail);
+    public static string MarkExperimental(string detail, CultureInfo? culture = null)
+        => culture is null
+            ? WizardStrings.Format(
+                "CurrentPhoneWizard.ExperimentalRoute",
+                "{0} · Experimental — not covered by the current Preview authority.",
+                detail)
+            : WizardStrings.Format(
+                culture,
+                "CurrentPhoneWizard.ExperimentalRoute",
+                "{0} · Experimental — not covered by the current Preview authority.",
+                detail);
 
     public static string ContainsExperimentalRoutes(string detail)
         => WizardStrings.Format(

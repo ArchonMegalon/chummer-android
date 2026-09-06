@@ -362,8 +362,11 @@ internal static class Program
             new System.Globalization.CultureInfo("es-ES"));
         Require(
             phoneMessage.Contains("asistentes actuales de Android", StringComparison.Ordinal)
-            && phoneMessage.Contains("ocultos", StringComparison.Ordinal),
-            "The phone-only settings scope was not explained in Spanish.");
+            && phoneMessage.Contains("ocultos", StringComparison.Ordinal)
+            && phoneMessage.Contains(
+                "Experimental — no cubierto por la autoridad de la vista previa actual",
+                StringComparison.Ordinal),
+            "The phone-only settings scope and experimental status were not explained in Spanish.");
 
         DesktopDialogField unknownSection = new(
             AndroidDialogSettingsScope.SectionFieldId,
