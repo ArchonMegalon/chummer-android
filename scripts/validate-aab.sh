@@ -49,8 +49,8 @@ if ! "$java_command" -jar "$bundletool_path" validate --bundle="$aab_path" > "$t
 fi
 echo "bundletool validation passed."
 "$java_command" -jar "$bundletool_path" dump manifest --bundle="$aab_path" > "$temporary_dir/manifest.xml"
-"$python_command" "$inspect_aab_script" "$aab_path" "$temporary_dir/manifest.xml"
-"$python_command" "$proof_exclusion_script" "$aab_path"
+"$python_command" -I -E -S "$inspect_aab_script" "$aab_path" "$temporary_dir/manifest.xml"
+"$python_command" -I -E -S "$proof_exclusion_script" "$aab_path"
 
 if [[ -n "$upload_certificate_path" ]]; then
   if [[ ! -f "$upload_certificate_path" ]]; then

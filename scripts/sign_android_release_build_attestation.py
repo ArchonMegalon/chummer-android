@@ -793,6 +793,7 @@ def _protected_validation_inputs(
         hygiene_validation = _run_validator(
             [
                 os.fspath(python),
+                "-I", "-E", "-S",
                 _lease_fd_path(by_name["verify_release_artifact_hygiene.py"]),
                 "--aab", os.fspath(aab),
                 "--forbidden-path", os.fspath(receipt),
@@ -813,6 +814,7 @@ def _protected_validation_inputs(
         source_validation = _run_validator(
             [
                 os.fspath(python),
+                "-I", "-E", "-S",
                 _lease_fd_path(by_name["verify_release_source_graph.py"]),
                 "--android-root", os.fspath(ROOT),
                 "--workspace-root", os.fspath(workspace_root),

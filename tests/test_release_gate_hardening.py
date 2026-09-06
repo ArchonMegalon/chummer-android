@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import tempfile
 import time
@@ -39,6 +40,71 @@ TWO_GREEN_SIGNER = load(
 
 
 class ReleaseGateHardeningTests(unittest.TestCase):
+    def test_release_shell_entry_ignores_hostile_bash_env(self) -> None:
+        """Both supported entry forms must keep BASH_ENV from running."""
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            marker = root / "bash-env-executed"
+            hostile_bash_env = root / "hostile-bash-env.sh"
+            hostile_bash_env.write_text(
+                f'printf %s hostile > "{marker}"\n',
+                encoding="utf-8",
+            )
+            environment = {
+                "PATH": "/usr/bin:/bin",
+                "BASH_ENV": os.fspath(hostile_bash_env),
+            }
+            for script_name in ("build-release.sh", "prepare-release-inputs.sh"):
+                script = REPO / "scripts" / script_name
+                for invocation in (
+                    [os.fspath(script)],
+                    ["/bin/bash", "-p", os.fspath(script)],
+                ):
+                    with self.subTest(script=script_name, invocation=invocation):
+                        marker.unlink(missing_ok=True)
+                        completed = subprocess.run(
+                            invocation,
+                            cwd=REPO,
+                            check=False,
+                            capture_output=True,
+                            env=environment,
+                            text=True,
+                        )
+                        self.assertNotEqual(0, completed.returncode)
+                        self.assertFalse(
+                            marker.exists(),
+                            "BASH_ENV executed before the unsigned release lane rejected its incomplete input",
+                        )
+
+    def test_every_nested_release_python_validator_is_isolated(self) -> None:
+        attester = (
+            REPO / "scripts" / "sign_android_release_build_attestation.py"
+        ).read_text(encoding="utf-8")
+        command_bodies = re.findall(
+            r"\[\s*os\.fspath\(python\),(.*?)\]",
+            attester,
+            flags=re.DOTALL,
+        )
+        self.assertEqual(2, len(command_bodies), "unexpected protected Python validator inventory")
+        for body in command_bodies:
+            self.assertRegex(body, r'^\s*"-I", "-E", "-S",')
+
+        validate_aab = (REPO / "scripts" / "validate-aab.sh").read_text(
+            encoding="utf-8"
+        )
+        nested_python_lines = [
+            line.strip()
+            for line in validate_aab.splitlines()
+            if line.lstrip().startswith('"$python_command"')
+        ]
+        self.assertEqual(2, len(nested_python_lines), "unexpected AAB Python validator inventory")
+        for line in nested_python_lines:
+            self.assertTrue(
+                line.startswith('"$python_command" -I -E -S '),
+                f"nested Python validator is not isolated: {line}",
+            )
+
     def test_transaction_promotes_only_validated_sealed_descriptor_bytes(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()

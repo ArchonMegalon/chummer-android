@@ -2320,26 +2320,22 @@ class AndroidContractTests(unittest.TestCase):
         )
         build = (REPO / "scripts" / "build-release.sh").read_text(encoding="utf-8")
         deexport_boundary = build.index("for release_secret_variable in")
-        self.assertLess(deexport_boundary, build.index('repo_dir="${CHUMMER_RELEASE_REPO_ROOT:-}"'))
+        repo_boundary = build.index('repo_dir="${CHUMMER_RELEASE_REPO_ROOT:-')
+        self.assertLess(deexport_boundary, repo_boundary)
         self.assertIn(
-            'export -n "$release_secret_variable"',
-            build[:build.index('repo_dir="${CHUMMER_RELEASE_REPO_ROOT:-}"')],
+            'unset "$release_secret_variable"',
+            build[:repo_boundary],
         )
-        suite_boundary = build.index('env "${release_test_environment[@]}"')
         for variable in signing_variables:
-            self.assertIn(f"-u {variable}", build[:suite_boundary])
-        self.assertGreater(
-            build.index("require_private_regular_file CHUMMER_ANDROID_UPLOAD_CERTIFICATE_PATH"),
-            suite_boundary,
-        )
+            self.assertIn(variable, build[:repo_boundary])
+        self.assertNotIn("release_test_environment", build)
+        self.assertIn("/usr/bin/env -i", build)
         self.assertNotIn("require_private_regular_file AndroidSigningKeyStore", build)
         self.assertNotIn("require_secret_variable ChummerAndroidSigningStorePass", build)
         self.assertNotIn("require_secret_variable ChummerAndroidSigningKeyPass", build)
         self.assertNotIn("require_secret_variable ChummerAndroidSigningKeyAlias", build)
         pre_publish_verify = build.index('|| fail "locked-restore-consumption-pre-publish"')
-        pre_publish_verify_start = build.rfind(
-            'env "${release_test_environment[@]}"', 0, pre_publish_verify
-        )
+        pre_publish_verify_start = build.rfind("python3 ", 0, pre_publish_verify)
         signing_rejection = build.index(
             "external-signer-required-readable-signing-input-rejected"
         )
@@ -2351,28 +2347,15 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("signing_authorized=false", build[publish_boundary:])
 
         with tempfile.TemporaryDirectory() as temporary:
-            tests_root = Path(temporary)
-            probe = tests_root / "test_signing_environment_probe.py"
-            child_probe = (
-                "import os, sys\n"
-                f"SIGNING_VARIABLES = {signing_variables!r}\n"
-                "sys.exit(1 if set(SIGNING_VARIABLES) & set(os.environ) else 0)\n"
-            )
+            root = Path(temporary).resolve()
+            child_environment = root / "child.env"
+            clean_exec_start = build.index('release_child_home=""')
+            clean_exec_end = build.index("\n# Every child starts", clean_exec_start)
+            probe = root / "clean-env-probe.sh"
             probe.write_text(
-                "import os\n"
-                "import subprocess\n"
-                "import sys\n"
-                "import unittest\n"
-                f"SIGNING_VARIABLES = {signing_variables!r}\n"
-                f"CHILD_PROBE = {child_probe!r}\n"
-                "class SigningEnvironmentProbe(unittest.TestCase):\n"
-                "    def test_suite_and_child_are_scrubbed(self):\n"
-                "        self.assertFalse(set(SIGNING_VARIABLES) & set(os.environ))\n"
-                "        child = subprocess.run(\n"
-                "            [sys.executable, '-c', CHILD_PROBE],\n"
-                "            check=False,\n"
-                "        )\n"
-                "        self.assertEqual(0, child.returncode)\n",
+                "#!/bin/bash -p\nset -euo pipefail\n"
+                + build[clean_exec_start:clean_exec_end]
+                + '\nclean_exec /usr/bin/env > "$1"\n',
                 encoding="utf-8",
             )
             hostile_environment = dict(os.environ)
@@ -2381,23 +2364,23 @@ class AndroidContractTests(unittest.TestCase):
                 for index, variable in enumerate(signing_variables, start=1)
             }
             hostile_environment.update(canaries)
-            command = ["env"]
-            for variable in signing_variables:
-                command.extend(("-u", variable))
-            command.extend((
-                sys.executable, "-m", "unittest", "discover", "-s", str(tests_root), "-v",
-            ))
+            hostile_environment["UNRELATED_CALLER_SECRET"] = "must-not-reach-child"
+            hostile_environment["CHUMMER_ANDROID_REVISION"] = "a" * 40
             completed = subprocess.run(
-                command,
+                ["/bin/bash", "-p", str(probe), str(child_environment)],
                 check=False,
                 capture_output=True,
                 env=hostile_environment,
                 text=True,
             )
             self.assertEqual(0, completed.returncode, completed.stdout + completed.stderr)
-            combined_output = completed.stdout + completed.stderr
+            combined_output = (
+                completed.stdout + completed.stderr + child_environment.read_text(encoding="utf-8")
+            )
             for canary in canaries.values():
                 self.assertNotIn(canary, combined_output)
+            self.assertNotIn("must-not-reach-child", combined_output)
+            self.assertIn("CHUMMER_ANDROID_REVISION=" + "a" * 40, combined_output)
 
     def test_release_version_reader_matches_project(self) -> None:
         import importlib.util
