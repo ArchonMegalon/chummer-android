@@ -1480,6 +1480,7 @@ public sealed class BuildPage : NativePageBase
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
             // Diagnostic traces must never alter navigation behavior.
+            _ = ex;
         }
     }
 
