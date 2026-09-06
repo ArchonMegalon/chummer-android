@@ -104,7 +104,7 @@ def test_character_settings_phone_capability_inventory_is_exhaustive_and_fail_cl
     visible = [row for row in controls if row["phoneStatus"] == "visible_editable"]
     hidden = [row for row in controls if row["phoneStatus"] == "hidden_preserved"]
 
-    assert inventory["scope"] == "preview11_wizard_only"
+    assert inventory["scope"] == "current_phone_wizard_only"
     assert inventory["summary"] == {
         "valueControlCount": 150,
         "visibleEditableCount": 17,

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Materialize the Preview 11 phone capability boundary for Character Settings.
+"""Materialize the current phone capability boundary for Character Settings.
 
-The Chummer5 settings contract is intentionally exhaustive.  The Android Preview 11
+The Chummer5 settings contract is intentionally exhaustive. The Android phone
 surface is narrower: a control is editable only when a current phone wizard reads the
 saved value.  Everything else remains in the profile XML but is hidden on the phone.
 """
@@ -49,7 +49,7 @@ RUNTIME_FIELD_RE = re.compile(
     r'(?P<multiline>true|false),'
 )
 
-# Each entry is an observed Preview 11 phone behavior, not a future intent.  Evidence
+# Each entry is an observed current phone behavior, not a future intent. Evidence
 # names the current projector or coordinator path that reads the persisted value.
 SUPPORTED: dict[str, dict[str, str]] = {
     "cboBuildMethod": {
@@ -261,9 +261,9 @@ def _build(
             "labelResourceKey": capability["labelKey"] if capability else None,
             "englishLabel": capability["label"] if capability else None,
             "rationale": (
-                "The persisted value is read by a current Preview 11 phone wizard."
+                "The persisted value is read by a current Android phone wizard."
                 if capability
-                else "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+                else "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
             ),
         }
         controls.append(row)
@@ -272,8 +272,8 @@ def _build(
     hidden = [row for row in controls if row["phoneStatus"] == "hidden_preserved"]
     payload: dict[str, object] = {
         "schema": "chummer.android.character-settings-phone-capabilities/v1",
-        "scope": "preview11_wizard_only",
-        "policy": "A value control is visible only when current Android code reads it into a Preview 11 creation or career wizard. Hidden controls remain in profile XML and are never cleared by projection.",
+        "scope": "current_phone_wizard_only",
+        "policy": "A value control is visible only when current Android code reads it into a current creation or career phone wizard. Hidden controls remain in profile XML and are never cleared by projection.",
         "summary": {
             "valueControlCount": len(controls),
             "visibleEditableCount": len(visible),

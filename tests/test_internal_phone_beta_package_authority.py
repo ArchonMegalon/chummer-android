@@ -351,7 +351,56 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
         workflow = (REPO / ".github/workflows/api36-editing-e2e.yml").read_text(encoding="utf-8")
         self.assertIn(self.module.EXPECTED_PRESENTATION_COMMIT, workflow)
         self.assertIn(self.module.EXPECTED_SOURCE_GRAPH["coreRuntimeSourceCommit"], workflow)
-        self.assertIn(self.module.EXPECTED_SOURCE_GRAPH["hubProducerCommit"], workflow)
+        runtime_hub = self.module.validate_runtime_hub_source_checkout(
+            REPO / self.module.RUNTIME_SOURCE_WORKFLOW_PATH
+        )
+        self.assertEqual(
+            self.module.EXPECTED_RUNTIME_HUB_COMMIT,
+            runtime_hub["runtimeSourceCommit"],
+        )
+        self.assertEqual(
+            self.module.EXPECTED_SOURCE_GRAPH["hubProducerCommit"],
+            runtime_hub["packageProducerCommit"],
+        )
+        self.assertNotEqual(
+            runtime_hub["runtimeSourceCommit"],
+            runtime_hub["packageProducerCommit"],
+        )
+
+    def test_runtime_hub_checkout_rejects_package_producer_and_duplicate_source(self) -> None:
+        canonical = (
+            REPO / self.module.RUNTIME_SOURCE_WORKFLOW_PATH
+        ).read_text(encoding="utf-8")
+        repository_line = "repository: ArchonMegalon/chummer6-hub"
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            producer_as_runtime = root / "producer-as-runtime.yml"
+            producer_as_runtime.write_text(
+                canonical.replace(
+                    f"ref: {self.module.EXPECTED_RUNTIME_HUB_COMMIT}",
+                    f"ref: {self.module.EXPECTED_SOURCE_GRAPH['hubProducerCommit']}",
+                    1,
+                ),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ValueError, "runtime Hub checkout commit drifted"):
+                self.module.validate_runtime_hub_source_checkout(producer_as_runtime)
+
+            duplicate = root / "duplicate-runtime-hub.yml"
+            duplicate.write_text(
+                canonical + "\n  repository: ArchonMegalon/chummer6-hub\n"
+                + f"  ref: {self.module.EXPECTED_RUNTIME_HUB_COMMIT}\n",
+                encoding="utf-8",
+            )
+            self.assertEqual(
+                1,
+                sum(
+                    line.strip() == repository_line
+                    for line in canonical.splitlines()
+                ),
+            )
+            with self.assertRaisesRegex(ValueError, "must occur exactly once"):
+                self.module.validate_runtime_hub_source_checkout(duplicate)
 
     def test_canonical_presentation_origin_is_accepted(self) -> None:
         self.validate_presentation_checkout(

@@ -107,7 +107,7 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "8aa451aedbc6214e65c711861f187f0cc8bd1daa5f1ddf4636803e45d360292b"
+        "sha256": "149c2bdb9c9afbc4829f40e671262518f9cab37bdcff6f452bf1b915e3d3642b"
       },
       {
         "path": "src/Chummer.Android/Native/MorePage.cs",
@@ -592,7 +592,7 @@
       {
         "path": "src/Chummer.Android/Native/NativeDialogPage.cs",
         "exists": true,
-        "sha256": "14ec73cce7762ae2755202ad967da246e780bb641ef365cac22122e57ad31d89"
+        "sha256": "752eb03294be1e3272e4f86a122da4c7b410c77e0e13643076adcf8220265271"
       },
       {
         "path": "src/Chummer.Android/Native/AndroidCharacterSettingsPhoneCapabilities.Generated.cs",
@@ -645,9 +645,9 @@
         "sha256": "43a1192605525e055bea0a31138fbba1673119779a1e359c7084fd998dd2b3a5"
       },
       {
-        "path": "src/Chummer.Android/Native/Preview11WizardScope.cs",
+        "path": "src/Chummer.Android/Native/CurrentPhoneWizardScope.cs",
         "exists": true,
-        "sha256": "bc9f7bc49d7cf70a55e0a57695967f31a8e62f6b4641b4af6db110828c9d953e"
+        "sha256": "6db1a2919173769e772a42675e6754963d6afa3a9d3c23ad297ef7a2dd52f14a"
       },
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
@@ -677,7 +677,7 @@
       {
         "path": "src/Chummer.Android/Native/Sr5CareerWizardPage.cs",
         "exists": true,
-        "sha256": "44d2014df5fa1c8534261f13e0e4dd68d02f207376eb338840cc190eb5d1e67d"
+        "sha256": "dd06dfec254849aefa1522cf825116e6c42438c0ad1b55bcc6be0d48f21433ae"
       },
       {
         "path": "src/Chummer.Android/Native/Sr5CareerWizardPhoneModel.cs",
@@ -757,17 +757,17 @@
       {
         "path": "src/Chummer.Android/Resources/Localization/WizardStrings.resx",
         "exists": true,
-        "sha256": "739ca8d5ad1c0e4fbd560adc44d5eab413e3dd19da6d8ed4d580c42bcb2d8819"
+        "sha256": "9d1f61f49c334d56a3cf68ab8d7235853e97eac81d3a5a0739a79a2035b56441"
       },
       {
         "path": "src/Chummer.Android/Resources/Localization/WizardStrings.de.resx",
         "exists": true,
-        "sha256": "ea5683c7e308d57fba86542107b6d1a1b7ae19fb0eb974ae88dded289abb40e3"
+        "sha256": "533a2c67fbf071e939e8ac4f492046ce7796a621300f079b01111c161965002a"
       },
       {
         "path": "src/Chummer.Android/Resources/Localization/WizardStrings.es.resx",
         "exists": true,
-        "sha256": "8bcd47a4356f766bcfe5b8691a1a2939e06f78907964953e7f0e3f0d402f2ddc"
+        "sha256": "047384751cf6403a012df071103592a8404d41c729bf1f0b28b6c23aa7599da5"
       },
       {
         "path": "tests/Chummer.Android.Sr5CareerChooser.Tests/Chummer.Android.Sr5CareerChooser.Tests.csproj",
@@ -807,7 +807,7 @@
       {
         "path": "tests/Chummer.Android.Sr5TableWizard.Tests/Program.cs",
         "exists": true,
-        "sha256": "e1c2e6cbb78a3a23c3e19eb5fb02055e535664be822ec4cc9318c2c751702a89"
+        "sha256": "41c96ad0c21450c094071604eee830748bfa2b2949ef123b9371e3d152807c5a"
       },
       {
         "path": ".github/workflows/api36-editing-e2e.yml",
@@ -832,7 +832,7 @@
       {
         "path": "eng/api36-two-consecutive-green-authority.json",
         "exists": true,
-        "sha256": "aa2bb1542c1343141e6e4f622b970293c9ae364622fdc6f35bf9942b45b532db"
+        "sha256": "7ed114298a09f31bb8b4e7f43e79dc6f7be86859eb9f1cc64b673127ac139cb9"
       },
       {
         "path": "scripts/build-debug.sh",
@@ -867,7 +867,7 @@
       {
         "path": "scripts/materialize-api36-two-green-eligibility.py",
         "exists": true,
-        "sha256": "9db5a0057fc6895a78d48509f62b28be62e53d399b368f381485a42fc2c43586"
+        "sha256": "6129faf8f1cac0e540126a39cb46e16352387c370dbbd003e1fe5ace1edf4492"
       },
       {
         "path": "scripts/materialize-android-p0-pr-authority.py",
@@ -892,7 +892,7 @@
       {
         "path": "src/Chummer.Android/Chummer.Android.csproj",
         "exists": true,
-        "sha256": "35d9511b900c427cd41a17a4f6c08462aa64a35a842331eff7518e6ed509f62a"
+        "sha256": "6187a3a88bc23b9a24d8c70be6f3042cdbe15cf91e4f095aae2adc0fd6f898c8"
       },
       {
         "path": "src/Chummer.Android/Proof/Api36ProofState.cs",
@@ -912,7 +912,7 @@
       {
         "path": "tests/test_api36_e2e_workflow.py",
         "exists": true,
-        "sha256": "391e101c76abc58f405d397189b413f8343a5aa7c0eedd972c9ab353c0d77cf7"
+        "sha256": "b13ed6716072f58b7b95ea5b4ad02db3029b5ed0a6fc33a81d1e0cf7d9144a81"
       },
       {
         "path": "tests/test_api36_e2e_artifact_authority.py",
@@ -927,7 +927,7 @@
       {
         "path": "tests/test_api36_two_green_eligibility.py",
         "exists": true,
-        "sha256": "536758700e5f3e7276339728251320bb39c6530c6b2f1e50e2e3cdc08384acd6"
+        "sha256": "5b3c04b78fbc7c7c055e7b47742117ed707315affed08b4cc4bd427ba59b8e32"
       },
       {
         "path": "tests/test_android_p0_pr_authority.py",
@@ -935,9 +935,9 @@
         "sha256": "88ddec495f44d7804c70511f868c7c240b02e5391a8ba2936b6f8a1d452ab7c5"
       },
       {
-        "path": "tests/test_preview11_visible_wizard_scope.py",
+        "path": "tests/test_current_phone_wizard_scope.py",
         "exists": true,
-        "sha256": "f98e0418016be31768a82c8eff5b66cbed56fe5ac954a836525d38c16e9ebe82"
+        "sha256": "24bef051f60f218e804c23835390f7f22e3ef1a37cfed11aa92ae8067b70af5e"
       },
       {
         "path": "tests/run_api36_sr5_before_run_edge_e2e.py",
@@ -952,12 +952,12 @@
       {
         "path": "tests/api36_proof_state.py",
         "exists": true,
-        "sha256": "92df11ba7dd7b672cc6923dd636eb2f363e7f6773c0a6a94aff0a80d16f8b7aa"
+        "sha256": "64f0bae8e1803aa3330602b43cb126d4817d3362c7ea08aa9c6f73c0c824bad7"
       },
       {
         "path": "tests/test_api36_proof_state_contract.py",
         "exists": true,
-        "sha256": "22e6eda8f6d715b87f07ab561e25ca87d7c52b5c31374b9e59c738e4f075e75f"
+        "sha256": "b35d37afbeb5442eac15bf9df08b5878cd7e6e60257ff58c704990efc06c57e9"
       },
       {
         "path": "tests/test_run_api36_sr5_before_run_edge_e2e_driver.py",
@@ -1417,7 +1417,7 @@
       {
         "path": "tests/run_api36_character_settings_e2e.py",
         "exists": true,
-        "sha256": "cdd26b1267b9adbb440dc633d8913ab4462291658bcd1d382b39c7918a77fe09"
+        "sha256": "f8ec6e93ac6dfd01320489659f85656a79f000f751e25b10bf8f5e38cf063376"
       },
       {
         "path": "tests/run_api36_character_settings_actions_e2e.py",
@@ -2829,7 +2829,7 @@
       "androidSourcePaths": [
         "src/Chummer.Android/Native/AndroidAfterRunWorkspaceSnapshotSource.cs",
         "src/Chummer.Android/Native/PhoneShellPages.cs",
-        "src/Chummer.Android/Native/Preview11WizardScope.cs",
+        "src/Chummer.Android/Native/CurrentPhoneWizardScope.cs",
         "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "src/Chummer.Android/Native/RunnerSessionSr5CareerWizardPhoneAuthority.cs",
         "src/Chummer.Android/Native/RunnerSessionSr5TableWizardPhoneAuthority.cs",
@@ -2895,7 +2895,7 @@
         "tests/test_api36_proof_environment_receipt.py",
         "tests/test_api36_two_green_eligibility.py",
         "tests/test_android_p0_pr_authority.py",
-        "tests/test_preview11_visible_wizard_scope.py",
+        "tests/test_current_phone_wizard_scope.py",
         "tests/run_api36_sr5_before_run_edge_e2e.py",
         "tests/run_api36_sr5_before_run_edge_physical_e2e.py",
         "tests/api36_proof_state.py",
@@ -3000,7 +3000,7 @@
     },
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "640c3c1b79892dc114dad1bdf6da5f23872f32771b40639b560fa3e3f666a087"
+      "sha256": "ff6cfbf8d4e93834f4b05f15a77645337df74b751bfbcb26418bbeaf822c5ae7"
     }
   },
   "coverageByFamily": {
@@ -85911,7 +85911,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -86034,7 +86034,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -86092,7 +86092,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -86150,7 +86150,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -86208,7 +86208,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -86266,7 +86266,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -86324,7 +86324,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -86382,7 +86382,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -86440,7 +86440,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -86498,7 +86498,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -86631,7 +86631,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -86689,7 +86689,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -86747,7 +86747,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -86805,7 +86805,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -86863,7 +86863,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -86921,7 +86921,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -86979,7 +86979,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -87037,7 +87037,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -87095,7 +87095,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -87218,7 +87218,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -87276,7 +87276,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -87334,7 +87334,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -87392,7 +87392,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -87450,7 +87450,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -87508,7 +87508,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -87566,7 +87566,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -87624,7 +87624,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -87682,7 +87682,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -87740,7 +87740,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -87863,7 +87863,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -87921,7 +87921,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -87979,7 +87979,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -88037,7 +88037,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -88160,7 +88160,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -88283,7 +88283,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -88341,7 +88341,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -88399,7 +88399,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -88522,7 +88522,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -88580,7 +88580,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -88638,7 +88638,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -88761,7 +88761,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -88884,7 +88884,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -88942,7 +88942,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -89000,7 +89000,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -89058,7 +89058,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -89121,7 +89121,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -89184,7 +89184,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -89251,7 +89251,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -89309,7 +89309,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -89367,7 +89367,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -89425,7 +89425,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -89483,7 +89483,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -89541,7 +89541,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -89599,7 +89599,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -89787,7 +89787,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -89845,7 +89845,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -89903,7 +89903,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -89961,7 +89961,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -90019,7 +90019,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -90077,7 +90077,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -90135,7 +90135,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -90193,7 +90193,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -90251,7 +90251,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -90374,7 +90374,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -90432,7 +90432,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -90490,7 +90490,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -90548,7 +90548,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -90606,7 +90606,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -90664,7 +90664,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -90722,7 +90722,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -90780,7 +90780,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -90838,7 +90838,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -90896,7 +90896,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -90954,7 +90954,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -91012,7 +91012,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -91340,7 +91340,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -91398,7 +91398,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -91456,7 +91456,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -91514,7 +91514,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -91572,7 +91572,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -91630,7 +91630,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -91693,7 +91693,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -91756,7 +91756,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -91819,7 +91819,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -91951,7 +91951,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -92009,7 +92009,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -92072,7 +92072,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -92130,7 +92130,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -92188,7 +92188,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -92246,7 +92246,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -92304,7 +92304,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -92362,7 +92362,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -92420,7 +92420,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -92478,7 +92478,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -92676,7 +92676,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -92931,7 +92931,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -92994,7 +92994,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -93052,7 +93052,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -93115,7 +93115,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -93178,7 +93178,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -93241,7 +93241,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -93304,7 +93304,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -93362,7 +93362,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -93420,7 +93420,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -93478,7 +93478,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -93536,7 +93536,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -93594,7 +93594,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -93652,7 +93652,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -93710,7 +93710,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -93768,7 +93768,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -93826,7 +93826,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -93884,7 +93884,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -93942,7 +93942,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -94057,7 +94057,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -94120,7 +94120,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -94183,7 +94183,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -94241,7 +94241,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -94299,7 +94299,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -94357,7 +94357,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -94415,7 +94415,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -94473,7 +94473,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -94531,7 +94531,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -94589,7 +94589,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -94647,7 +94647,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -94705,7 +94705,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -94763,7 +94763,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -94821,7 +94821,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -94879,7 +94879,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -94937,7 +94937,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -94995,7 +94995,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -95183,7 +95183,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -95241,7 +95241,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -95304,7 +95304,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -95362,7 +95362,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -95420,7 +95420,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -95478,7 +95478,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -95536,7 +95536,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",
@@ -95599,7 +95599,7 @@
           "docs/ANDROID_CHARACTER_SETTINGS_PHONE_CAPABILITIES.generated.json",
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs"
         ],
-        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Preview 11 phone wizard reads it"
+        "coverageLimit": "the imported desktop value remains in the profile XML, but no current Android phone wizard reads it"
       },
       "tablet": {
         "status": "missing",

@@ -4,11 +4,11 @@ using Chummer.Presentation.Overview;
 namespace Chummer.Android.Native;
 
 /// <summary>
-/// Presentation-only boundary for the exact Preview.11 internal phone scope.
+/// Presentation-only boundary for the current internal phone-wizard scope.
 /// This catalog labels routes; it never grants runtime, persistence, or
 /// publication authority.
 /// </summary>
-public static class Preview11WizardScope
+public static class CurrentPhoneWizardScope
 {
     public static bool CoversCreationMethod(string buildMethod)
         => buildMethod is CharacterCreationBuildMethods.Priority;
@@ -27,13 +27,13 @@ public static class Preview11WizardScope
 
     public static string MarkExperimental(string detail)
         => WizardStrings.Format(
-            "Preview11.ExperimentalRoute",
+            "CurrentPhoneWizard.ExperimentalRoute",
             "{0} · Experimental — not covered by the current Preview authority.",
             detail);
 
     public static string ContainsExperimentalRoutes(string detail)
         => WizardStrings.Format(
-            "Preview11.ContainsExperimentalRoutes",
+            "CurrentPhoneWizard.ContainsExperimentalRoutes",
             "{0} · Contains Experimental routes that are not covered by the current Preview authority.",
             detail);
 }

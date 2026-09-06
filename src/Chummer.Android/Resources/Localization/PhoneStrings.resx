@@ -102,9 +102,9 @@
   <data name="RunnerSetup" xml:space="preserve"><value>Runner setup</value></data>
   <data name="DialogApplyingChoice" xml:space="preserve"><value>Applying your choice… This may take a moment.</value></data>
   <data name="CharacterSettingsCustomDataScope" xml:space="preserve"><value>Custom data directories are desktop-only and hidden on Android. Their saved values remain unchanged in the settings profile.</value></data>
-  <data name="CharacterSettingsRulesScope" xml:space="preserve"><value>Every setting shown here is read by a current Preview 11 phone wizard.</value></data>
+  <data name="CharacterSettingsRulesScope" xml:space="preserve"><value>Every setting shown here is read by a current Android phone wizard.</value></data>
   <data name="CharacterSettingsUnsupportedScope" xml:space="preserve"><value>This settings section is not available on Android. Its saved values remain in the profile.</value></data>
-  <data name="CharacterSettingsPhoneMessage" xml:space="preserve"><value>Edit only settings used by the Preview 11 phone wizards. Hidden desktop values remain unchanged in the profile.</value></data>
+  <data name="CharacterSettingsPhoneMessage" xml:space="preserve"><value>Edit only settings used by the current Android phone wizards. Hidden desktop values remain unchanged in the profile.</value></data>
   <data name="CharacterSettingsTitle" xml:space="preserve"><value>Character Settings</value></data>
   <data name="CharacterSettingsActionSave" xml:space="preserve"><value>Save</value></data>
   <data name="CharacterSettingsActionSaveAndClose" xml:space="preserve"><value>Save &amp; Close</value></data>

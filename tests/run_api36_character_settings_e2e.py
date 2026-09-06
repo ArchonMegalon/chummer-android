@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prove the Preview 11 phone Character Settings capability boundary on API 36."""
+"""Prove the current phone Character Settings capability boundary on API 36."""
 
 from __future__ import annotations
 

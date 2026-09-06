@@ -55,6 +55,8 @@ EXPECTED_SOURCE_GRAPH = {
     "registryCommit": "af9a7e19c3bf331e96411dfb8f9e7820a98cab29",
     "uiKitCommit": "d51ecd99cf72098d4adc8db0192bff7bf9fd8e61",
 }
+EXPECTED_RUNTIME_HUB_COMMIT = "4f335d6cebbd4101212fd2cc77265b50f252775c"
+RUNTIME_SOURCE_WORKFLOW_PATH = ".github/workflows/api36-editing-e2e.yml"
 EXPECTED_ANDROID_LOCKS = (
     (
         "src/Chummer.Android/Chummer.Android.csproj",
@@ -119,6 +121,34 @@ def strict_json(path: Path, label: str) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise ValueError(f"{label} must be one JSON object")
     return value
+
+
+def validate_runtime_hub_source_checkout(workflow_path: Path) -> dict[str, str]:
+    """Keep runtime source assembly distinct from the sealed Hub package producer."""
+    if workflow_path.is_symlink() or not workflow_path.is_file():
+        raise ValueError("API-36 runtime source workflow is unavailable")
+    lines = workflow_path.read_text(encoding="utf-8").splitlines()
+    repository_line = "repository: ArchonMegalon/chummer6-hub"
+    checkout_indexes = [
+        index for index, line in enumerate(lines) if line.strip() == repository_line
+    ]
+    if len(checkout_indexes) != 1:
+        raise ValueError("API-36 runtime Hub checkout must occur exactly once")
+    index = checkout_indexes[0]
+    refs = [
+        line.strip().split(":", 1)[1].strip()
+        for line in lines[index + 1 : index + 8]
+        if line.strip().startswith("ref:")
+    ]
+    if refs != [EXPECTED_RUNTIME_HUB_COMMIT]:
+        raise ValueError("API-36 runtime Hub checkout commit drifted")
+    package_producer = EXPECTED_SOURCE_GRAPH["hubProducerCommit"]
+    if EXPECTED_RUNTIME_HUB_COMMIT == package_producer:
+        raise ValueError("runtime Hub source cannot be conflated with its package producer")
+    return {
+        "runtimeSourceCommit": EXPECTED_RUNTIME_HUB_COMMIT,
+        "packageProducerCommit": package_producer,
+    }
 
 
 def require_exact_object(
@@ -913,6 +943,9 @@ def main() -> int:
                 package_authority.get("packageProofSdkVersion"),
                 "bound package proof SDK authority",
             ),
+        )
+        validate_runtime_hub_source_checkout(
+            args.android_root / RUNTIME_SOURCE_WORKFLOW_PATH
         )
         cache = validate_package_feed(args.package_feed)
         validate_receipt_cache_equivalence(receipt, cache)

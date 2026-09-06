@@ -102,9 +102,9 @@
   <data name="RunnerSetup" xml:space="preserve"><value>Configuración del runner</value></data>
   <data name="DialogApplyingChoice" xml:space="preserve"><value>Aplicando tu elección… Puede tardar un momento.</value></data>
   <data name="CharacterSettingsCustomDataScope" xml:space="preserve"><value>Los directorios de datos personalizados son exclusivos del escritorio y están ocultos en Android. Sus valores guardados permanecen sin cambios en el perfil de ajustes.</value></data>
-  <data name="CharacterSettingsRulesScope" xml:space="preserve"><value>Cada ajuste que se muestra aquí es utilizado por un asistente actual de Preview 11 para teléfono.</value></data>
+  <data name="CharacterSettingsRulesScope" xml:space="preserve"><value>Cada ajuste que se muestra aquí es utilizado por un asistente actual de Android para teléfono.</value></data>
   <data name="CharacterSettingsUnsupportedScope" xml:space="preserve"><value>Esta sección de ajustes no está disponible en Android. Sus valores guardados permanecen en el perfil.</value></data>
-  <data name="CharacterSettingsPhoneMessage" xml:space="preserve"><value>Edita solo los ajustes utilizados por los asistentes de Preview 11 para teléfono. Los valores de escritorio ocultos permanecen sin cambios en el perfil.</value></data>
+  <data name="CharacterSettingsPhoneMessage" xml:space="preserve"><value>Edita solo los ajustes utilizados por los asistentes actuales de Android para teléfono. Los valores de escritorio ocultos permanecen sin cambios en el perfil.</value></data>
   <data name="CharacterSettingsTitle" xml:space="preserve"><value>Ajustes del personaje</value></data>
   <data name="CharacterSettingsActionSave" xml:space="preserve"><value>Guardar</value></data>
   <data name="CharacterSettingsActionSaveAndClose" xml:space="preserve"><value>Guardar y cerrar</value></data>

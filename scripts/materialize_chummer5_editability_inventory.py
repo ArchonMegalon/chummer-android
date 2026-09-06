@@ -69,7 +69,7 @@ SR5_AFTER_RUN_SETTLEMENT_API36_JOURNEY_ID = "sr5-after-run-settlement"
 SR5_TABLE_WIZARD_ANDROID_SOURCE_INPUTS = (
     "src/Chummer.Android/Native/AndroidAfterRunWorkspaceSnapshotSource.cs",
     "src/Chummer.Android/Native/PhoneShellPages.cs",
-    "src/Chummer.Android/Native/Preview11WizardScope.cs",
+    "src/Chummer.Android/Native/CurrentPhoneWizardScope.cs",
     "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
     "src/Chummer.Android/Native/RunnerSessionSr5CareerWizardPhoneAuthority.cs",
     "src/Chummer.Android/Native/RunnerSessionSr5TableWizardPhoneAuthority.cs",
@@ -141,7 +141,7 @@ SR5_TABLE_WIZARD_GATE_INPUTS = (
     "tests/test_api36_proof_environment_receipt.py",
     "tests/test_api36_two_green_eligibility.py",
     "tests/test_android_p0_pr_authority.py",
-    "tests/test_preview11_visible_wizard_scope.py",
+    "tests/test_current_phone_wizard_scope.py",
     "tests/run_api36_sr5_before_run_edge_e2e.py",
     "tests/run_api36_sr5_before_run_edge_physical_e2e.py",
     "tests/api36_proof_state.py",
@@ -7776,7 +7776,7 @@ def _known_phone_mapping(
                 "automationId": None,
                 "coverageLimit": (
                     "the imported desktop value remains in the profile XML, but no current "
-                    "Preview 11 phone wizard reads it"
+                    "Android phone wizard reads it"
                 ),
                 "sourceRefs": [
                     "src/Chummer.Android/Native/NativeDialogPage.cs",

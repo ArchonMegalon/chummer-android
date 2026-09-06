@@ -983,7 +983,7 @@ internal static class AndroidDialogSettingsScope
         return IsCharacterSettings(dialog)
             ? PhoneStrings.Get(
                 "CharacterSettingsPhoneMessage",
-                "Edit only settings used by the Preview 11 phone wizards. Hidden desktop values remain unchanged in the profile.",
+                "Edit only settings used by the current Android phone wizards. Hidden desktop values remain unchanged in the profile.",
                 culture)
             : dialog.Message ?? string.Empty;
     }
@@ -1031,7 +1031,7 @@ internal static class AndroidDialogSettingsScope
         {
             return PhoneStrings.Get(
                 "CharacterSettingsRulesScope",
-                "Every setting shown here is read by a current Preview 11 phone wizard.",
+                "Every setting shown here is read by a current Android phone wizard.",
                 culture);
         }
 

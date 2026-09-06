@@ -350,7 +350,7 @@ internal static class Program
             customDataDialog,
             new System.Globalization.CultureInfo("es-ES"));
         Require(
-            phoneMessage.Contains("Preview 11", StringComparison.Ordinal)
+            phoneMessage.Contains("asistentes actuales de Android", StringComparison.Ordinal)
             && phoneMessage.Contains("ocultos", StringComparison.Ordinal),
             "The phone-only settings scope was not explained in Spanish.");
 

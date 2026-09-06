@@ -30,7 +30,7 @@
   ],
   "aggregateSchema": "chummer.android.api36-sr5-wizard-e2e-aggregate/v2",
   "p0AuthoritySchema": "chummer.android.p0-pr-authority/v1",
-  "eligibilityScope": "preview11_internal_testing_candidate",
+  "eligibilityScope": "current_preview_internal_testing_candidate",
   "requiresDistinctRuns": true,
   "requiresReviewCompletionBeforeMainStart": true,
   "requiresExactPullRequestAuthority": true,

@@ -152,7 +152,7 @@ static HashSet<string> ReadSourceKeys(string workspace)
         "CreationPriorityDetailPage.cs",
         "CreationPrerequisitePreviewPage.cs",
         "Sr5CareerWizardPage.cs",
-        "Preview11WizardScope.cs"
+        "CurrentPhoneWizardScope.cs"
     ];
     var result = new HashSet<string>(StringComparer.Ordinal);
     var pattern = new Regex(@"WizardStrings\.(?:Get|Format)\(\s*""([^""]+)""");

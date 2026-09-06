@@ -1,7 +1,7 @@
 {
   "schema": "chummer.android.character-settings-phone-capabilities/v1",
-  "scope": "preview11_wizard_only",
-  "policy": "A value control is visible only when current Android code reads it into a Preview 11 creation or career wizard. Hidden controls remain in profile XML and are never cleared by projection.",
+  "scope": "current_phone_wizard_only",
+  "policy": "A value control is visible only when current Android code reads it into a current creation or career phone wizard. Hidden controls remain in profile XML and are never cleared by projection.",
   "summary": {
     "valueControlCount": 150,
     "visibleEditableCount": 17,
@@ -11,7 +11,7 @@
   "sourceInputs": [
     {
       "path": "scripts/materialize_android_character_settings_phone_capabilities.py",
-      "sha256": "bcee59f01d4015080a745c8ad3084beb393fcbb2fd1892a59b96655c7080c0f2"
+      "sha256": "c275cea824ea5956a0624ed13596303e689cbf9b9b75afb2cafaea4ebfd0a8fc"
     },
     {
       "path": "docs/CHUMMER5_CHARACTER_SETTINGS_CONTRACT.generated.json",
@@ -23,7 +23,7 @@
     },
     {
       "path": "src/Chummer.Android/Native/NativeDialogPage.cs",
-      "sha256": "14ec73cce7762ae2755202ad967da246e780bb641ef365cac22122e57ad31d89"
+      "sha256": "752eb03294be1e3272e4f86a122da4c7b410c77e0e13643076adcf8220265271"
     },
     {
       "path": "chummer-presentation/Chummer.Presentation/Overview/CareerActiveSkillAdvanceEditRequest.cs",
@@ -69,7 +69,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "treSourcebook",
@@ -85,7 +85,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "chkDontUseCyberlimbCalculation",
@@ -101,7 +101,7 @@
       "behaviorEvidence": "CareerAttributeAdvanceEditorProjector.ProjectFacts -> HasApplicableCyberlimb",
       "labelResourceKey": "CharacterSettingDontUseCyberlimbCalculation",
       "englishLabel": "Ignore cyberlimbs in augmented attribute totals",
-      "rationale": "The persisted value is read by a current Preview 11 phone wizard."
+      "rationale": "The persisted value is read by a current Android phone wizard."
     },
     {
       "legacyControl": "chkEnforceCapacity",
@@ -117,7 +117,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "chkLicenseEachRestrictedItem",
@@ -133,7 +133,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "chkDontRoundEssenceInternally",
@@ -149,7 +149,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "chkDronemods",
@@ -165,7 +165,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "chkRestrictRecoil",
@@ -181,7 +181,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudNuyenDecimalsMinimum",
@@ -197,7 +197,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudNuyenDecimalsMaximum",
@@ -213,7 +213,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudEssenceDecimals",
@@ -229,7 +229,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "chkDronemodsMaximumPilot",
@@ -245,7 +245,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "cboLimbCount",
@@ -262,7 +262,7 @@
       "behaviorEvidence": "CareerAttributeAdvanceEditorProjector.HasApplicableCyberlimb -> settings/excludelimbslot",
       "labelResourceKey": "CharacterSettingCyberlimbConfiguration",
       "englishLabel": "Cyberlimb slots used for attribute totals",
-      "rationale": "The persisted value is read by a current Preview 11 phone wizard."
+      "rationale": "The persisted value is read by a current Android phone wizard."
     },
     {
       "legacyControl": "nudKarmaMysticAdeptPowerPoint",
@@ -278,7 +278,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudKarmaSpecialization",
@@ -294,7 +294,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudKarmaNewAIAdvancedProgram",
@@ -310,7 +310,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudKarmaInitiationFlat",
@@ -326,7 +326,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudKarmaWeaponFocus",
@@ -342,7 +342,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudKarmaNewAIProgram",
@@ -358,7 +358,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudKarmaKnowledgeSpecialization",
@@ -374,7 +374,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudKarmaRitualSpellcastingFocus",
@@ -390,7 +390,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudKarmaNewKnowledgeSkill",
@@ -406,7 +406,7 @@
       "behaviorEvidence": "CareerKnowledgeSkillAdvanceEditorProjector.ProjectState",
       "labelResourceKey": "CharacterSettingKarmaNewKnowledgeSkill",
       "englishLabel": "Karma cost: new knowledge skill",
-      "rationale": "The persisted value is read by a current Preview 11 phone wizard."
+      "rationale": "The persisted value is read by a current Android phone wizard."
     },
     {
       "legacyControl": "nudKarmaInitiation",
@@ -422,7 +422,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudKarmaFlexibleSignatureFocus",
@@ -438,7 +438,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudKarmaSpellShapingFocus",
@@ -454,7 +454,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudKarmaMetamagic",
@@ -470,7 +470,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudKarmaContact",
@@ -486,7 +486,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudKarmaSustainingFocus",
@@ -502,7 +502,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudKarmaJoinGroup",
@@ -518,7 +518,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudKarmaLeaveGroup",
@@ -534,7 +534,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudKarmaSummoningFocus",
@@ -550,7 +550,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudKarmaTechnique",
@@ -566,7 +566,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudKarmaNewActiveSkill",
@@ -582,7 +582,7 @@
       "behaviorEvidence": "CareerActiveSkillAdvanceEditorProjector.ProjectState",
       "labelResourceKey": "CharacterSettingKarmaNewActiveSkill",
       "englishLabel": "Karma cost: new active skill",
-      "rationale": "The persisted value is read by a current Preview 11 phone wizard."
+      "rationale": "The persisted value is read by a current Android phone wizard."
     },
     {
       "legacyControl": "nudKarmaSpellcastingFocus",
@@ -598,7 +598,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudKarmaNuyenPerWftM",
@@ -614,7 +614,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudKarmaSpirit",
@@ -630,7 +630,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudKarmaAlchemicalFocus",
@@ -646,7 +646,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudKarmaNewSkillGroup",
@@ -662,7 +662,7 @@
       "behaviorEvidence": "CareerActiveSkillAdvanceEditorProjector.ProjectState and CareerSkillGroupAdvanceEditorProjector.ProjectState",
       "labelResourceKey": "CharacterSettingKarmaNewSkillGroup",
       "englishLabel": "Karma cost: new skill group",
-      "rationale": "The persisted value is read by a current Preview 11 phone wizard."
+      "rationale": "The persisted value is read by a current Android phone wizard."
     },
     {
       "legacyControl": "nudKarmaBanishingFocus",
@@ -678,7 +678,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudKarmaImproveKnowledgeSkill",
@@ -694,7 +694,7 @@
       "behaviorEvidence": "CareerKnowledgeSkillAdvanceEditorProjector.ProjectState",
       "labelResourceKey": "CharacterSettingKarmaImproveKnowledgeSkill",
       "englishLabel": "Karma multiplier: improve knowledge skill",
-      "rationale": "The persisted value is read by a current Preview 11 phone wizard."
+      "rationale": "The persisted value is read by a current Android phone wizard."
     },
     {
       "legacyControl": "nudKarmaQiFocus",
@@ -710,7 +710,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudKarmaBindingFocus",
@@ -726,7 +726,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudKarmaPowerFocus",
@@ -742,7 +742,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudKarmaImproveActiveSkill",
@@ -758,7 +758,7 @@
       "behaviorEvidence": "CareerActiveSkillAdvanceEditorProjector.ProjectState",
       "labelResourceKey": "CharacterSettingKarmaImproveActiveSkill",
       "englishLabel": "Karma multiplier: improve active skill",
-      "rationale": "The persisted value is read by a current Preview 11 phone wizard."
+      "rationale": "The persisted value is read by a current Android phone wizard."
     },
     {
       "legacyControl": "nudKarmaMaskingFocus",
@@ -774,7 +774,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudKarmaCenteringFocus",
@@ -790,7 +790,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudKarmaCounterspellingFocus",
@@ -806,7 +806,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudKarmaImproveSkillGroup",
@@ -822,7 +822,7 @@
       "behaviorEvidence": "CareerActiveSkillAdvanceEditorProjector.ProjectState and CareerSkillGroupAdvanceEditorProjector.ProjectState",
       "labelResourceKey": "CharacterSettingKarmaImproveSkillGroup",
       "englishLabel": "Karma multiplier: improve skill group",
-      "rationale": "The persisted value is read by a current Preview 11 phone wizard."
+      "rationale": "The persisted value is read by a current Android phone wizard."
     },
     {
       "legacyControl": "nudKarmaDisenchantingFocus",
@@ -838,7 +838,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudKarmaAttribute",
@@ -854,7 +854,7 @@
       "behaviorEvidence": "CareerAttributeAdvanceEditorProjector.ProjectFacts",
       "labelResourceKey": "CharacterSettingKarmaAttribute",
       "englishLabel": "Karma multiplier: improve attribute",
-      "rationale": "The persisted value is read by a current Preview 11 phone wizard."
+      "rationale": "The persisted value is read by a current Android phone wizard."
     },
     {
       "legacyControl": "nudKarmaQuality",
@@ -870,7 +870,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudKarmaSpell",
@@ -886,7 +886,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudKarmaNewComplexForm",
@@ -902,7 +902,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudMetatypeCostsKarmaMultiplier",
@@ -918,7 +918,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "treCustomDataDirectories",
@@ -934,7 +934,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "chkIgnoreArt",
@@ -950,7 +950,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "chkExceedNegativeQualitiesNoBonus",
@@ -966,7 +966,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "chkExceedNegativeQualities",
@@ -982,7 +982,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "chkExceedPositiveQualitiesCostDoubled",
@@ -998,7 +998,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "chkExceedPositiveQualities",
@@ -1014,7 +1014,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "chkUnarmedSkillImprovements",
@@ -1030,7 +1030,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "chkCompensateSkillGroupKarmaDifference",
@@ -1046,7 +1046,7 @@
       "behaviorEvidence": "CareerActiveSkillAdvanceEditorProjector.ProjectState",
       "labelResourceKey": "CharacterSettingCompensateSkillGroupKarmaDifference",
       "englishLabel": "Compensate skill-group Karma difference",
-      "rationale": "The persisted value is read by a current Preview 11 phone wizard."
+      "rationale": "The persisted value is read by a current Android phone wizard."
     },
     {
       "legacyControl": "chkMysAdeptSecondMAGAttribute",
@@ -1062,7 +1062,7 @@
       "behaviorEvidence": "CareerAttributeAdvanceEditorProjector.ProjectFacts",
       "labelResourceKey": "CharacterSettingMysticAdeptSecondMagicAttribute",
       "englishLabel": "Use a second Magic attribute for mystic adepts",
-      "rationale": "The persisted value is read by a current Preview 11 phone wizard."
+      "rationale": "The persisted value is read by a current Android phone wizard."
     },
     {
       "legacyControl": "chkDontDoubleQualityPurchases",
@@ -1078,7 +1078,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "chkDontDoubleQualityRefunds",
@@ -1094,7 +1094,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "chkReverseAttributePriorityOrder",
@@ -1110,7 +1110,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "chkPrioritySpellsAsAdeptPowers",
@@ -1126,7 +1126,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "chkAllowInitiation",
@@ -1142,7 +1142,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "chkFreeMartialArtSpecialization",
@@ -1158,7 +1158,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "chkAllowCyberwareESSDiscounts",
@@ -1174,7 +1174,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "chkMysAdPp",
@@ -1190,7 +1190,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "chkESSLossReducesMaximumOnly",
@@ -1206,7 +1206,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "chkAlternateMetatypeAttributeKarma",
@@ -1222,7 +1222,7 @@
       "behaviorEvidence": "CareerAttributeAdvanceEditorProjector.ProjectFacts",
       "labelResourceKey": "CharacterSettingAlternateMetatypeAttributeKarma",
       "englishLabel": "Use alternate metatype attribute Karma",
-      "rationale": "The persisted value is read by a current Preview 11 phone wizard."
+      "rationale": "The persisted value is read by a current Android phone wizard."
     },
     {
       "legacyControl": "chkUseCalculatedPublicAwareness",
@@ -1238,7 +1238,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudDroneArmorMultiplier",
@@ -1254,7 +1254,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "chkDroneArmorMultiplier",
@@ -1270,7 +1270,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "chkIgnoreComplexFormLimit",
@@ -1286,7 +1286,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "chkSpecialKarmaCost",
@@ -1302,7 +1302,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "chkMoreLethalGameplay",
@@ -1318,7 +1318,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "chkExtendAnyDetectionSpell",
@@ -1334,7 +1334,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "chkAllowLimitedSpellsForBareHandedAdept",
@@ -1350,7 +1350,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "chkAllowSkillRegrouping",
@@ -1366,7 +1366,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "chkNoArmorEncumbrance",
@@ -1382,7 +1382,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "chkIncreasedImprovedAbilityModifier",
@@ -1398,7 +1398,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "chkAllowTechnomancerSchooling",
@@ -1414,7 +1414,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "chkUsePointsOnBrokenGroups",
@@ -1430,7 +1430,7 @@
       "behaviorEvidence": "CareerActiveSkillAdvanceEditorProjector.ProjectState, CareerSkillGroupAdvanceEditorProjector.ProjectState, and CareerSkillSpecializationEditorProjector.ProjectState",
       "labelResourceKey": "CharacterSettingUsePointsOnBrokenGroups",
       "englishLabel": "Allow points on broken skill groups",
-      "rationale": "The persisted value is read by a current Preview 11 phone wizard."
+      "rationale": "The persisted value is read by a current Android phone wizard."
     },
     {
       "legacyControl": "chkUnclampAttributeMinimum",
@@ -1446,7 +1446,7 @@
       "behaviorEvidence": "CareerAttributeAdvanceEditorProjector.ProjectFacts -> ResolveTotalMinimum",
       "labelResourceKey": "CharacterSettingUnclampAttributeMinimum",
       "englishLabel": "Allow attributes below the normal minimum",
-      "rationale": "The persisted value is read by a current Preview 11 phone wizard."
+      "rationale": "The persisted value is read by a current Android phone wizard."
     },
     {
       "legacyControl": "chkCyberlegMovement",
@@ -1462,7 +1462,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "chkStrictSkillGroups",
@@ -1478,7 +1478,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "chkAllowFreeGrids",
@@ -1494,7 +1494,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "chkAllowPointBuySpecializationsOnKarmaSkills",
@@ -1510,7 +1510,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudCyberlimbAttributeBonusCap",
@@ -1526,7 +1526,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "chkCyberlimbAttributeBonusCap",
@@ -1542,7 +1542,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "txtContactPoints",
@@ -1558,7 +1558,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "txtKnowledgePoints",
@@ -1574,7 +1574,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "txtGameplayOptionName",
@@ -1590,7 +1590,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "cboBuildMethod",
@@ -1606,7 +1606,7 @@
       "behaviorEvidence": "DialogCoordinator.ApplyCharacterSettings -> DesktopPreferenceState.CharacterPriority -> DesktopDialogFactory.BuildNewCharacterDialog",
       "labelResourceKey": "CharacterSettingBuildMethod",
       "englishLabel": "Creation build method",
-      "rationale": "The persisted value is read by a current Preview 11 phone wizard."
+      "rationale": "The persisted value is read by a current Android phone wizard."
     },
     {
       "legacyControl": "txtPriorities",
@@ -1622,7 +1622,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudSumToTen",
@@ -1638,7 +1638,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "cboPriorityTable",
@@ -1654,7 +1654,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "chkRedlinerLimbsSkull",
@@ -1670,7 +1670,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "chkRedlinerLimbsTorso",
@@ -1686,7 +1686,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "chkRedlinerLimbsArms",
@@ -1702,7 +1702,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "chkRedlinerLimbsLegs",
@@ -1718,7 +1718,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudStartingKarma",
@@ -1734,7 +1734,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudMaxAvail",
@@ -1750,7 +1750,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudMaxNuyenKarma",
@@ -1766,7 +1766,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudQualityKarmaLimit",
@@ -1782,7 +1782,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudKarmaSpiritFettering",
@@ -1798,7 +1798,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "txtNuyenExpression",
@@ -1814,7 +1814,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudKarmaNuyenPerWftP",
@@ -1830,7 +1830,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "txtBoundSpiritLimit",
@@ -1846,7 +1846,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "txtRegisteredSpriteLimit",
@@ -1862,7 +1862,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "chkEnemyKarmaQualityLimit",
@@ -1878,7 +1878,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "chkEnable4eStyleEnemyTracking",
@@ -1894,7 +1894,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudKarmaGainedFromEnemies",
@@ -1910,7 +1910,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudMinInitiativeDice",
@@ -1926,7 +1926,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudMaxInitiativeDice",
@@ -1942,7 +1942,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudMaxAstralInitiativeDice",
@@ -1958,7 +1958,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudMaxColdSimInitiativeDice",
@@ -1974,7 +1974,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudMaxHotSimInitiativeDice",
@@ -1990,7 +1990,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudMinAstralInitiativeDice",
@@ -2006,7 +2006,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudMinColdSimInitiativeDice",
@@ -2022,7 +2022,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudMinHotSimInitiativeDice",
@@ -2038,7 +2038,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "txtLiftLimit",
@@ -2054,7 +2054,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "txtCarryLimit",
@@ -2070,7 +2070,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "txtEncumbranceInterval",
@@ -2086,7 +2086,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "chkEncumbrancePenaltyPhysicalLimit",
@@ -2102,7 +2102,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "chkEncumbrancePenaltyMovementSpeed",
@@ -2118,7 +2118,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "chkEncumbrancePenaltyAgility",
@@ -2134,7 +2134,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "chkEncumbrancePenaltyReaction",
@@ -2151,7 +2151,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "chkEncumbrancePenaltyWoundModifier",
@@ -2167,7 +2167,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudEncumbrancePenaltyPhysicalLimit",
@@ -2183,7 +2183,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudEncumbrancePenaltyAgility",
@@ -2199,7 +2199,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudEncumbrancePenaltyReaction",
@@ -2215,7 +2215,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudEncumbrancePenaltyWoundModifier",
@@ -2231,7 +2231,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudEncumbrancePenaltyMovementSpeed",
@@ -2247,7 +2247,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudWeightDecimals",
@@ -2263,7 +2263,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudMaxSkillRatingCreate",
@@ -2279,7 +2279,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudMaxNumberMaxAttributes",
@@ -2295,7 +2295,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudMaxKnowledgeSkillRatingCreate",
@@ -2311,7 +2311,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudMaxSkillRating",
@@ -2327,7 +2327,7 @@
       "behaviorEvidence": "CareerActiveSkillAdvanceEditorProjector.ProjectState, CareerSkillGroupAdvanceEditorProjector.ProjectState, and CareerSkillSpecializationEditorProjector.ProjectState",
       "labelResourceKey": "CharacterSettingMaxSkillRating",
       "englishLabel": "Maximum career active-skill rating",
-      "rationale": "The persisted value is read by a current Preview 11 phone wizard."
+      "rationale": "The persisted value is read by a current Android phone wizard."
     },
     {
       "legacyControl": "nudMaxKnowledgeSkillRating",
@@ -2343,7 +2343,7 @@
       "behaviorEvidence": "CareerKnowledgeSkillAdvanceEditorProjector.ProjectState",
       "labelResourceKey": "CharacterSettingMaxKnowledgeSkillRating",
       "englishLabel": "Maximum career knowledge-skill rating",
-      "rationale": "The persisted value is read by a current Preview 11 phone wizard."
+      "rationale": "The persisted value is read by a current Android phone wizard."
     },
     {
       "legacyControl": "chkSpecializationsBreakSkillGroups",
@@ -2359,7 +2359,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "chkUncappedArmorAccessoryBonuses",
@@ -2375,7 +2375,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "txtEssenceModifierPostExpression",
@@ -2391,7 +2391,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudMaxMartialArts",
@@ -2407,7 +2407,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudMaxMartialTechniques",
@@ -2423,7 +2423,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudKarmaCarryover",
@@ -2439,7 +2439,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     },
     {
       "legacyControl": "nudNuyenCarryover",
@@ -2455,7 +2455,7 @@
       "behaviorEvidence": null,
       "labelResourceKey": null,
       "englishLabel": null,
-      "rationale": "No current Preview 11 phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
+      "rationale": "No current Android phone wizard reads this catalog value; Android keeps the imported XML value unchanged."
     }
   ]
 }
