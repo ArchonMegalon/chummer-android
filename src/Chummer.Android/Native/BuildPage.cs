@@ -417,49 +417,109 @@ public sealed class CreationNavigationRefreshLease
         Navigating
     }
 
+    private readonly object _sync = new();
     private LeaseState _state;
     private bool _refreshPending;
+    private long _generation;
 
-    public bool IsActive => _state != LeaseState.Idle;
-
-    public bool HasPendingRefresh => _refreshPending;
-
-    public void BeginPress()
+    public bool IsActive
     {
-        if (_state == LeaseState.Idle)
-            _state = LeaseState.Pressed;
+        get
+        {
+            lock (_sync)
+                return _state != LeaseState.Idle;
+        }
     }
 
-    public void BeginNavigation()
-        => _state = LeaseState.Navigating;
+    public bool HasPendingRefresh
+    {
+        get
+        {
+            lock (_sync)
+                return _refreshPending;
+        }
+    }
+
+    public long BeginPress()
+    {
+        lock (_sync)
+        {
+            if (_state == LeaseState.Navigating)
+                return 0;
+
+            _generation = NextGeneration(_generation);
+            _state = LeaseState.Pressed;
+            return _generation;
+        }
+    }
+
+    public bool TryBeginNavigation(long pressGeneration, out long navigationGeneration)
+    {
+        lock (_sync)
+        {
+            navigationGeneration = 0;
+            if (_state == LeaseState.Navigating)
+                return false;
+
+            if (_state == LeaseState.Pressed)
+            {
+                if (pressGeneration == 0 || pressGeneration != _generation)
+                    return false;
+            }
+            else
+            {
+                // Accessibility activation can publish Clicked without Pressed.
+                // A non-zero generation from an old rendered button is stale.
+                if (pressGeneration != 0)
+                    return false;
+                _generation = NextGeneration(_generation);
+            }
+
+            _state = LeaseState.Navigating;
+            navigationGeneration = _generation;
+            return true;
+        }
+    }
 
     public bool TryDeferRefresh()
     {
-        if (_state == LeaseState.Idle)
-            return false;
+        lock (_sync)
+        {
+            if (_state == LeaseState.Idle)
+                return false;
 
-        _refreshPending = true;
-        return true;
+            _refreshPending = true;
+            return true;
+        }
     }
 
-    public bool CancelPress()
+    public bool CancelPress(long pressGeneration)
     {
-        if (_state != LeaseState.Pressed)
-            return false;
+        lock (_sync)
+        {
+            if (_state != LeaseState.Pressed || pressGeneration != _generation)
+                return false;
 
-        return Release(discardPending: false);
+            return Release(discardPending: false);
+        }
     }
 
-    public bool CompleteNavigation(bool departed)
+    public bool CompleteNavigation(long navigationGeneration, bool departed)
     {
-        if (_state != LeaseState.Navigating)
-            return false;
+        lock (_sync)
+        {
+            if (_state != LeaseState.Navigating || navigationGeneration != _generation)
+                return false;
 
-        return Release(discardPending: departed);
+            return Release(discardPending: departed);
+        }
     }
 
     public void DiscardForDeparture()
-        => Release(discardPending: true);
+    {
+        lock (_sync)
+            Release(discardPending: true);
+    }
 
     private bool Release(bool discardPending)
     {
@@ -467,6 +527,102 @@ public sealed class CreationNavigationRefreshLease
         _refreshPending = false;
         _state = LeaseState.Idle;
         return refresh;
+    }
+
+    private static long NextGeneration(long generation)
+    {
+        long next = unchecked(generation + 1);
+        return next == 0 ? 1 : next;
+    }
+}
+
+/// <summary>
+/// Posts Released cleanup through the owning page dispatcher. Unlike
+/// MainThread.BeginInvokeOnMainThread, Dispatcher.Dispatch is a true post when
+/// invoked by the current UI event, so MAUI can publish Clicked first.
+/// </summary>
+public sealed class CreationNavigationReleaseScheduler
+{
+    private readonly Func<Action, bool> _post;
+
+    public CreationNavigationReleaseScheduler(Func<Action, bool> post)
+        => _post = post ?? throw new ArgumentNullException(nameof(post));
+
+    public bool TrySchedule(Action callback)
+    {
+        ArgumentNullException.ThrowIfNull(callback);
+        return _post(callback);
+    }
+}
+
+public sealed record CreationNavigationActionResult(
+    bool Claimed,
+    bool Departed,
+    bool Canceled,
+    bool RefreshRequired,
+    Exception? Error);
+
+/// <summary>
+/// Owns one Clicked navigation and converts cancellation/failure into a result.
+/// Exceptions from an async-void MAUI event must never escape to Android.
+/// </summary>
+public sealed class CreationNavigationActionRunner
+{
+    private readonly CreationNavigationRefreshLease _lease;
+
+    public CreationNavigationActionRunner(CreationNavigationRefreshLease lease)
+        => _lease = lease ?? throw new ArgumentNullException(nameof(lease));
+
+    public async Task<CreationNavigationActionResult> RunAsync(
+        long pressGeneration,
+        Func<Task> selected,
+        Func<bool> hasDeparted)
+    {
+        ArgumentNullException.ThrowIfNull(selected);
+        ArgumentNullException.ThrowIfNull(hasDeparted);
+        if (!_lease.TryBeginNavigation(pressGeneration, out long navigationGeneration))
+        {
+            return new CreationNavigationActionResult(
+                Claimed: false,
+                Departed: false,
+                Canceled: false,
+                RefreshRequired: false,
+                Error: null);
+        }
+
+        bool canceled = false;
+        Exception? error = null;
+        try
+        {
+            await selected();
+        }
+        catch (OperationCanceledException)
+        {
+            canceled = true;
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            error = ex;
+        }
+
+        bool departed = false;
+        try
+        {
+            departed = hasDeparted();
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            // Route observation is part of the contained async-void boundary too.
+            // Complete the claim as a stayed-page failure so the lease cannot strand.
+            error ??= ex;
+        }
+        bool refresh = _lease.CompleteNavigation(navigationGeneration, departed);
+        return new CreationNavigationActionResult(
+            Claimed: true,
+            Departed: departed,
+            Canceled: canceled,
+            RefreshRequired: refresh,
+            Error: error);
     }
 }
 
@@ -522,6 +678,8 @@ public sealed class BuildPage : NativePageBase
     private long _creationDashboardAppearanceGeneration;
     private long _creationDashboardRouteReadyEmittedGeneration = -1;
     private readonly CreationNavigationRefreshLease _creationNavigationRefreshLease = new();
+    private readonly CreationNavigationReleaseScheduler _creationNavigationReleaseScheduler;
+    private readonly CreationNavigationActionRunner _creationNavigationActionRunner;
     private bool _resetScrollOnNextRefresh;
 
     public BuildPage(
@@ -533,6 +691,8 @@ public sealed class BuildPage : NativePageBase
         _resourcesPresenter = resourcesPresenter;
         _overviewPresenter = overviewPresenter;
         _gearPresenter = gearPresenter;
+        _creationNavigationReleaseScheduler = new(action => Dispatcher.Dispatch(action));
+        _creationNavigationActionRunner = new(_creationNavigationRefreshLease);
         Title = "Runner";
         AutomationId = "phone-runner-page";
         _save = new ToolbarItem
@@ -1133,46 +1293,100 @@ public sealed class BuildPage : NativePageBase
         Func<Task> selected,
         bool enabled,
         string automationId)
-        => NativeTheme.NavigationRow(
+    {
+        long pressGeneration = 0;
+        return NativeTheme.NavigationRow(
             title,
             detail,
-            () => RunCreationNavigationAsync(selected),
+            () => RunCreationNavigationAsync(selected, pressGeneration),
             enabled,
             automationId,
-            pressed: BeginCreationNavigationPress,
-            released: ScheduleCreationNavigationPressCancellation);
-
-    private void BeginCreationNavigationPress()
-        => _creationNavigationRefreshLease.BeginPress();
-
-    private void ScheduleCreationNavigationPressCancellation()
-    {
-        // MAUI publishes Released before Clicked for a successful gesture. Queue the
-        // cancellation so Clicked can synchronously promote the lease first.
-        MainThread.BeginInvokeOnMainThread(() =>
-        {
-            if (_creationNavigationRefreshLease.CancelPress()
-                && IsCurrentCreationDashboardPage())
-            {
-                Refresh();
-            }
-        });
+            pressed: () => pressGeneration = BeginCreationNavigationPress(),
+            released: () => ScheduleCreationNavigationPressCancellation(pressGeneration));
     }
 
-    private async Task RunCreationNavigationAsync(Func<Task> selected)
+    private long BeginCreationNavigationPress()
+        => _creationNavigationRefreshLease.BeginPress();
+
+    private void ScheduleCreationNavigationPressCancellation(long pressGeneration)
     {
-        _creationNavigationRefreshLease.BeginNavigation();
-        bool departed = false;
+        // Android publishes Released before Clicked. Dispatcher.Dispatch is used as a
+        // true post; MainThread.BeginInvokeOnMainThread can execute inline here.
         try
         {
-            await selected();
-            departed = !IsCurrentCreationDashboardPage();
+            bool scheduled = _creationNavigationReleaseScheduler.TrySchedule(() =>
+            {
+                try
+                {
+                    if (_creationNavigationRefreshLease.CancelPress(pressGeneration)
+                        && IsCurrentCreationDashboardPage())
+                    {
+                        Refresh();
+                    }
+                }
+                catch (Exception ex) when (ex is not OutOfMemoryException)
+                {
+                    if (IsCurrentCreationDashboardPage())
+                        _ = TryShowCreationNavigationErrorAsync(ex.Message);
+                }
+            });
+            if (!scheduled && !IsCurrentCreationDashboardPage())
+                _creationNavigationRefreshLease.DiscardForDeparture();
+            // If a still-visible page dispatcher rejects the post, retain the pressed
+            // lease. Refreshing or canceling inline would recreate the Released/Clicked
+            // race. Clicked can still promote the same generation; a later press or page
+            // departure safely supersedes/discards it.
         }
-        finally
+        catch (Exception ex) when (ex is not OutOfMemoryException)
         {
-            bool refresh = _creationNavigationRefreshLease.CompleteNavigation(departed);
-            if (refresh && IsCurrentCreationDashboardPage())
+            if (IsCurrentCreationDashboardPage())
+                _ = TryShowCreationNavigationErrorAsync(ex.Message);
+            else
+                _creationNavigationRefreshLease.DiscardForDeparture();
+        }
+    }
+
+    private async Task RunCreationNavigationAsync(
+        Func<Task> selected,
+        long pressGeneration)
+    {
+        try
+        {
+            CreationNavigationActionResult result =
+                await _creationNavigationActionRunner.RunAsync(
+                    pressGeneration,
+                    selected,
+                    () => !IsCurrentCreationDashboardPage());
+            if (!result.Claimed)
+                return;
+
+            if (result.Error is not null && IsCurrentCreationDashboardPage())
+                await TryShowCreationNavigationErrorAsync(result.Error.Message);
+            if (result.RefreshRequired && IsCurrentCreationDashboardPage())
                 Refresh();
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            // This method is awaited by an async-void MAUI Clicked handler. Contain
+            // every recoverable UI/dispatcher failure at that boundary.
+            if (IsCurrentCreationDashboardPage())
+                await TryShowCreationNavigationErrorAsync(ex.Message);
+        }
+    }
+
+    private async Task TryShowCreationNavigationErrorAsync(string message)
+    {
+        try
+        {
+            await DisplayAlertAsync("Chummer", message, "OK");
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+#if ANDROID
+            global::Android.Util.Log.Warn("ChummerNavigation", ex.Message);
+#else
+            Console.Error.WriteLine($"Creation navigation alert suppressed: {ex.GetType().Name}");
+#endif
         }
     }
 
@@ -1183,6 +1397,10 @@ public sealed class BuildPage : NativePageBase
         if (IsCurrentCreationDashboardPage())
             Refresh();
     }
+
+    protected override bool TryDeferCoordinatorRefresh()
+        => Coordinator.State.Profile?.Created == false
+           && _creationNavigationRefreshLease.TryDeferRefresh();
 
     private bool IsCurrentCreationDashboardPage()
         => _creationDashboardRouteReadyLifetime is not null
@@ -1254,9 +1472,11 @@ public sealed class BuildPage : NativePageBase
         Button review = NativeTheme.PrimaryButton(
             CurrentPhoneWizardScope.MarkExperimental("Review and finish creation"));
         review.AutomationId = "creation-finalization-open-review";
-        review.Pressed += (_, _) => BeginCreationNavigationPress();
-        review.Released += (_, _) => ScheduleCreationNavigationPressCancellation();
-        review.Clicked += async (_, _) => await RunCreationNavigationAsync(() => RunAsync(async () =>
+        long pressGeneration = 0;
+        review.Pressed += (_, _) => pressGeneration = BeginCreationNavigationPress();
+        review.Released += (_, _) =>
+            ScheduleCreationNavigationPressCancellation(pressGeneration);
+        review.Clicked += async (_, _) => await RunCreationNavigationAsync(async () =>
         {
             CharacterCreationFinalizationResult<CharacterCreationFinalizationReview> result =
                 Coordinator.ReviewCreationFinalization(authority.Value.Binding);
@@ -1271,7 +1491,7 @@ public sealed class BuildPage : NativePageBase
                     ?? "The final creation authority changed. Reload the runner and review again.");
             }
             await Navigation.PushAsync(new CreationFinalizationPage(Coordinator, result.Value));
-        }));
+        }, pressGeneration);
         _body.Add(review);
     }
 
@@ -1662,7 +1882,7 @@ public sealed class BuildPage : NativePageBase
     {
         CancelCreationProjectionQueues();
         _creationProjection = null;
-        Refresh();
+        RequestCreationAuthorityRefresh();
     }
 
     private void AddBudgetRibbon(

@@ -51,8 +51,14 @@ internal static class Program
             (nameof(PrerequisiteAuthorityPublishesBeforeSlowLaterPhasesAsync), PrerequisiteAuthorityPublishesBeforeSlowLaterPhasesAsync),
             (nameof(CreationAuthorityPhaseMergesAreIndependentAndDeterministicAsync), CreationAuthorityPhaseMergesAreIndependentAndDeterministicAsync),
             (nameof(CreationNavigationRefreshDefersUntilSuccessfulDepartureAsync), CreationNavigationRefreshDefersUntilSuccessfulDepartureAsync),
+            (nameof(CreationReleasedCleanupIsDeferredAndClickedPromotionWinsAsync), CreationReleasedCleanupIsDeferredAndClickedPromotionWinsAsync),
+            (nameof(RejectedCreationReleasePostRetainsLeaseForClickedAsync), RejectedCreationReleasePostRetainsLeaseForClickedAsync),
+            (nameof(StaleCreationReleaseGenerationCannotCancelNewerPressAsync), StaleCreationReleaseGenerationCannotCancelNewerPressAsync),
             (nameof(CancelledCreationNavigationPressFlushesExactlyOnceAsync), CancelledCreationNavigationPressFlushesExactlyOnceAsync),
             (nameof(FailedCreationNavigationFlushesExactlyOnceAsync), FailedCreationNavigationFlushesExactlyOnceAsync),
+            (nameof(ThrowingCreationNavigationIsContainedAndFlushesOnceAsync), ThrowingCreationNavigationIsContainedAndFlushesOnceAsync),
+            (nameof(ThrowingCreationDepartureObservationCannotStrandLeaseAsync), ThrowingCreationDepartureObservationCannotStrandLeaseAsync),
+            (nameof(DuplicateCreationNavigationClickIsRejectedAsync), DuplicateCreationNavigationClickIsRejectedAsync),
             (nameof(CreationNavigationRefreshCoalescesTypedAndFinalizationCompletionsAsync), CreationNavigationRefreshCoalescesTypedAndFinalizationCompletionsAsync),
             (nameof(TerminalCreationFailureDoesNotBlockUnrelatedReadyRouteAsync), TerminalCreationFailureDoesNotBlockUnrelatedReadyRouteAsync),
             (nameof(CreationDashboardReadyMarkerRequiresCurrentTerminalAuthorityAsync), CreationDashboardReadyMarkerRequiresCurrentTerminalAuthorityAsync),
@@ -1720,34 +1726,124 @@ internal static class Program
         return Task.CompletedTask;
     }
 
-    private static Task CreationNavigationRefreshDefersUntilSuccessfulDepartureAsync()
+    private static async Task CreationNavigationRefreshDefersUntilSuccessfulDepartureAsync()
     {
         var lease = new CreationNavigationRefreshLease();
-        lease.BeginPress();
+        long pressGeneration = lease.BeginPress();
         Require(lease.IsActive, "Pressed did not acquire the Creation navigation refresh lease.");
         Require(
             lease.TryDeferRefresh() && lease.HasPendingRefresh,
             "A typed completion rebuilt the dashboard during a pressed navigation gesture.");
-        lease.BeginNavigation();
+        var runner = new CreationNavigationActionRunner(lease);
+        CreationNavigationActionResult result = await runner.RunAsync(
+            pressGeneration,
+            static () => Task.CompletedTask,
+            static () => true);
         Require(
-            !lease.CompleteNavigation(departed: true),
+            result.Claimed && result.Departed && !result.RefreshRequired,
             "A successful route departure flushed the superseded dashboard refresh.");
         Require(
             !lease.IsActive && !lease.HasPendingRefresh,
             "A successful route departure retained the Creation refresh lease.");
+    }
+
+    private static async Task CreationReleasedCleanupIsDeferredAndClickedPromotionWinsAsync()
+    {
+        var posted = new Queue<Action>();
+        var scheduler = new CreationNavigationReleaseScheduler(callback =>
+        {
+            posted.Enqueue(callback);
+            return true;
+        });
+        var lease = new CreationNavigationRefreshLease();
+        long pressGeneration = lease.BeginPress();
+        Require(lease.TryDeferRefresh(), "Pressed did not retain the pending refresh.");
+        bool releaseFlush = false;
+        Require(
+            scheduler.TrySchedule(() => releaseFlush = lease.CancelPress(pressGeneration)),
+            "Released cleanup was not posted to the owning dispatcher.");
+        Require(
+            posted.Count == 1 && !releaseFlush && lease.IsActive,
+            "Released cleanup executed inline before Clicked could be published.");
+
+        var runner = new CreationNavigationActionRunner(lease);
+        TaskCompletionSource navigation = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        Task<CreationNavigationActionResult> run = runner.RunAsync(
+            pressGeneration,
+            () => navigation.Task,
+            static () => false);
+        posted.Dequeue()();
+        Require(
+            !releaseFlush && lease.IsActive,
+            "The deferred Released callback canceled a Clicked navigation claim.");
+        navigation.SetResult();
+        CreationNavigationActionResult result = await run;
+        Require(
+            result.Claimed && result.RefreshRequired,
+            "Clicked did not promote and later flush the pending navigation refresh.");
+    }
+
+    private static async Task RejectedCreationReleasePostRetainsLeaseForClickedAsync()
+    {
+        var scheduler = new CreationNavigationReleaseScheduler(static _ => false);
+        var lease = new CreationNavigationRefreshLease();
+        long pressGeneration = lease.BeginPress();
+        Require(lease.TryDeferRefresh(), "The pressed route did not retain its refresh.");
+        Require(
+            !scheduler.TrySchedule(() => lease.CancelPress(pressGeneration)),
+            "The rejecting dispatcher reported a scheduled Released cleanup.");
+        Require(
+            lease.IsActive && lease.HasPendingRefresh,
+            "A rejected dispatcher post canceled or refreshed inline before Clicked.");
+
+        var runner = new CreationNavigationActionRunner(lease);
+        CreationNavigationActionResult result = await runner.RunAsync(
+            pressGeneration,
+            static () => Task.CompletedTask,
+            static () => false);
+        Require(
+            result.Claimed && result.RefreshRequired && !lease.IsActive,
+            "Clicked could not safely promote a lease after its Released post was rejected.");
+    }
+
+    private static Task StaleCreationReleaseGenerationCannotCancelNewerPressAsync()
+    {
+        var posted = new Queue<Action>();
+        var scheduler = new CreationNavigationReleaseScheduler(callback =>
+        {
+            posted.Enqueue(callback);
+            return true;
+        });
+        var lease = new CreationNavigationRefreshLease();
+        long staleGeneration = lease.BeginPress();
+        Require(lease.TryDeferRefresh(), "The first press did not retain its refresh.");
+        Require(
+            scheduler.TrySchedule(() => lease.CancelPress(staleGeneration)),
+            "The stale release callback was not scheduled.");
+        long currentGeneration = lease.BeginPress();
+        Require(
+            currentGeneration != staleGeneration,
+            "A newer press reused the stale release generation.");
+        posted.Dequeue()();
+        Require(
+            lease.IsActive && lease.HasPendingRefresh,
+            "A stale Released callback canceled the newer pressed lease.");
+        Require(
+            lease.CancelPress(currentGeneration),
+            "The current press did not flush the one coalesced refresh.");
         return Task.CompletedTask;
     }
 
     private static Task CancelledCreationNavigationPressFlushesExactlyOnceAsync()
     {
         var lease = new CreationNavigationRefreshLease();
-        lease.BeginPress();
+        long pressGeneration = lease.BeginPress();
         Require(lease.TryDeferRefresh(), "The pressed gesture did not defer its refresh.");
         Require(
-            lease.CancelPress(),
+            lease.CancelPress(pressGeneration),
             "A canceled press did not request the one deferred dashboard refresh.");
         Require(
-            !lease.CancelPress() && !lease.HasPendingRefresh,
+            !lease.CancelPress(pressGeneration) && !lease.HasPendingRefresh,
             "A canceled press flushed its deferred refresh more than once.");
         return Task.CompletedTask;
     }
@@ -1755,22 +1851,86 @@ internal static class Program
     private static Task FailedCreationNavigationFlushesExactlyOnceAsync()
     {
         var lease = new CreationNavigationRefreshLease();
-        lease.BeginPress();
-        lease.BeginNavigation();
+        long pressGeneration = lease.BeginPress();
+        Require(
+            lease.TryBeginNavigation(pressGeneration, out long navigationGeneration),
+            "Navigation did not claim the pressed lease.");
         Require(lease.TryDeferRefresh(), "Navigation did not retain a concurrent refresh.");
         Require(
-            lease.CompleteNavigation(departed: false),
+            lease.CompleteNavigation(navigationGeneration, departed: false),
             "A navigation failure did not request the deferred dashboard refresh.");
         Require(
-            !lease.CompleteNavigation(departed: false) && !lease.HasPendingRefresh,
+            !lease.CompleteNavigation(navigationGeneration, departed: false)
+            && !lease.HasPendingRefresh,
             "A navigation failure flushed its deferred refresh more than once.");
         return Task.CompletedTask;
+    }
+
+    private static async Task ThrowingCreationNavigationIsContainedAndFlushesOnceAsync()
+    {
+        var lease = new CreationNavigationRefreshLease();
+        long pressGeneration = lease.BeginPress();
+        Require(lease.TryDeferRefresh(), "The throwing route did not defer its refresh.");
+        var runner = new CreationNavigationActionRunner(lease);
+        CreationNavigationActionResult result = await runner.RunAsync(
+            pressGeneration,
+            static () => throw new InvalidOperationException("route failed"),
+            static () => false);
+        Require(
+            result.Claimed
+            && result.Error is InvalidOperationException
+            && result.Error.Message == "route failed"
+            && result.RefreshRequired,
+            "A throwing selected route escaped or lost its one deferred refresh.");
+        Require(
+            !lease.IsActive && !lease.HasPendingRefresh,
+            "A throwing selected route retained its completed lease.");
+    }
+
+    private static async Task ThrowingCreationDepartureObservationCannotStrandLeaseAsync()
+    {
+        var lease = new CreationNavigationRefreshLease();
+        long pressGeneration = lease.BeginPress();
+        Require(lease.TryDeferRefresh(), "The route observer test did not retain its refresh.");
+        var runner = new CreationNavigationActionRunner(lease);
+        CreationNavigationActionResult result = await runner.RunAsync(
+            pressGeneration,
+            static () => Task.CompletedTask,
+            static () => throw new InvalidOperationException("route observation failed"));
+        Require(
+            result.Claimed
+            && result.Error is InvalidOperationException
+            && result.RefreshRequired
+            && !lease.IsActive,
+            "A throwing departure observer stranded the navigation claim or pending refresh.");
+    }
+
+    private static async Task DuplicateCreationNavigationClickIsRejectedAsync()
+    {
+        var lease = new CreationNavigationRefreshLease();
+        long pressGeneration = lease.BeginPress();
+        var runner = new CreationNavigationActionRunner(lease);
+        TaskCompletionSource navigation = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        Task<CreationNavigationActionResult> first = runner.RunAsync(
+            pressGeneration,
+            () => navigation.Task,
+            static () => false);
+        CreationNavigationActionResult duplicate = await runner.RunAsync(
+            pressGeneration,
+            static () => Task.CompletedTask,
+            static () => false);
+        Require(
+            !duplicate.Claimed,
+            "A duplicate Clicked event acquired a second Creation navigation claim.");
+        navigation.SetResult();
+        CreationNavigationActionResult completed = await first;
+        Require(completed.Claimed, "The original Creation navigation lost its claim.");
     }
 
     private static Task CreationNavigationRefreshCoalescesTypedAndFinalizationCompletionsAsync()
     {
         var lease = new CreationNavigationRefreshLease();
-        lease.BeginPress();
+        long pressGeneration = lease.BeginPress();
         for (int index = 0; index < 5; index++)
         {
             Require(
@@ -1780,12 +1940,14 @@ internal static class Program
         Require(
             lease.TryDeferRefresh(),
             "The finalization authority completion bypassed the active navigation lease.");
-        lease.BeginNavigation();
         Require(
-            lease.CompleteNavigation(departed: false),
+            lease.TryBeginNavigation(pressGeneration, out long navigationGeneration),
+            "Coalesced completions could not promote the pressed lease.");
+        Require(
+            lease.CompleteNavigation(navigationGeneration, departed: false),
             "Coalesced typed and finalization completions did not flush after navigation cancellation.");
         Require(
-            !lease.CompleteNavigation(departed: false),
+            !lease.CompleteNavigation(navigationGeneration, departed: false),
             "Coalesced completions produced more than one destructive dashboard refresh.");
         return Task.CompletedTask;
     }

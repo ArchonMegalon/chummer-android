@@ -14944,26 +14944,47 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         ]
         for marker in (
             "BeginPress()",
-            "BeginNavigation()",
+            "TryBeginNavigation(long pressGeneration, out long navigationGeneration)",
             "TryDeferRefresh()",
-            "CancelPress()",
-            "CompleteNavigation(bool departed)",
+            "CancelPress(long pressGeneration)",
+            "CompleteNavigation(long navigationGeneration, bool departed)",
             "DiscardForDeparture()",
+            "public sealed class CreationNavigationReleaseScheduler",
+            "public sealed class CreationNavigationActionRunner",
+            "catch (OperationCanceledException)",
         ):
             self.assertIn(marker, lease)
+        self.assertIn("return _post(callback);", lease)
 
         helpers = source[
             source.index("private Border CreationNavigationRow(") :
             source.index("private void PrepareCreationFinalizationProjection(")
         ]
         for marker in (
-            "pressed: BeginCreationNavigationPress",
-            "released: ScheduleCreationNavigationPressCancellation",
-            "_creationNavigationRefreshLease.BeginNavigation();",
-            "_creationNavigationRefreshLease.CompleteNavigation(departed)",
+            "pressed: () => pressGeneration = BeginCreationNavigationPress()",
+            "released: () => ScheduleCreationNavigationPressCancellation(pressGeneration)",
+            "_creationNavigationReleaseScheduler.TrySchedule",
+            "_creationNavigationActionRunner.RunAsync",
             "_creationNavigationRefreshLease.TryDeferRefresh()",
         ):
             self.assertIn(marker, helpers)
+        self.assertNotIn("MainThread.BeginInvokeOnMainThread(()", helpers)
+        self.assertIn("new(action => Dispatcher.Dispatch(action))", source)
+
+        native_page_base = (NATIVE / "NativePageBase.cs").read_text(encoding="utf-8")
+        self.assertIn("protected virtual bool TryDeferCoordinatorRefresh()", native_page_base)
+        self.assertGreaterEqual(
+            native_page_base.count("TryDeferCoordinatorRefresh()"),
+            3,
+            "Both newly requested and already-dispatched coordinator refreshes must pass through the lease hook.",
+        )
+        self.assertIn("protected override bool TryDeferCoordinatorRefresh()", source)
+        retry = source[
+            source.index("private void RetryCreationProjection()") :
+            source.index("private void AddBudgetRibbon(")
+        ]
+        self.assertIn("RequestCreationAuthorityRefresh();", retry)
+        self.assertNotIn("\n        Refresh();", retry)
 
         typed_acceptance = source[
             source.index("private void ScheduleCreationPhaseAcceptance<TResult>(") :
@@ -14993,6 +15014,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "A failed finalization load must stay terminal until the explicit Retry authority action; "
             "an automatic retry can otherwise rebuild the dashboard after navigation unlocks.",
         )
+        self.assertNotIn("RunAsync(", finalization)
 
     def test_dashboard_loads_and_merges_creation_authority_in_independent_phases(self) -> None:
         source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
