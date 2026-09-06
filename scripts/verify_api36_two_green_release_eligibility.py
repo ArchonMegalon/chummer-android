@@ -91,6 +91,8 @@ SOURCE_GRAPH_REPOSITORY_AUTHORITY = {
         "https://github.com/ArchonMegalon/chummer6-design.git",
     ),
 }
+OWNER_SOURCE_RELATIONSHIP = "ancestor_or_equal"
+OWNER_SOURCE_VERIFICATION = "git-merge-base-is-ancestor-without-replace-objects"
 RELEASE_APPROVAL_CONTRACT = "chummer.android.two-green-release-approval/v1"
 RELEASE_APPROVAL_SCOPE = "android_internal_release_preparation"
 RELEASE_APPROVER_KEY_ID = "local-release-builder-2026"
@@ -586,7 +588,8 @@ def _validate_package_authority(
     path: Path,
     *,
     sources: dict[str, dict[str, Any]],
-) -> None:
+    hub_producer_commit: str,
+) -> dict[str, dict[str, Any]]:
     value = _strict_json(
         _stable_bytes(
             path,
@@ -618,19 +621,34 @@ def _validate_package_authority(
         != set(OWNER_PACKAGES)
     ):
         raise ValueError("release owner package authority inventory differs")
+    owner_by_id: dict[str, dict[str, Any]] = {}
     for row in owner:
         assert isinstance(row, dict)
-        source_name = OWNER_PACKAGES[row["package_id"]]
+        package_id = row["package_id"]
+        source_name = OWNER_PACKAGES[package_id]
+        expected_commit = (
+            hub_producer_commit
+            if source_name == "hub"
+            else sources[source_name]["commit"]
+        )
         if (
-            row.get("source_commit") != sources[source_name]["commit"]
-            or row.get("source_tree") != sources[source_name]["tree"]
+            row.get("source_commit") != expected_commit
+            or (
+                source_name != "hub"
+                and row.get("source_tree") != sources[source_name]["tree"]
+            )
         ):
             raise ValueError(
                 f"release owner package authority differs from two-green dependency: {source_name}"
             )
+        _sha40(row.get("source_tree"), f"release {package_id} package source tree")
+        owner_by_id[package_id] = row
+    return owner_by_id
 
 
-def _validate_current_dependency_pins(sources: dict[str, dict[str, Any]]) -> None:
+def _validate_current_dependency_pins(
+    sources: dict[str, dict[str, Any]],
+) -> str:
     manifest_path = REPO_ROOT / "eng/internal-phone-beta-package-authority.json"
     manifest = _strict_json(manifest_path.read_bytes(), label="internal package authority")
     source_graph = manifest.get("sourceGraph")
@@ -640,7 +658,6 @@ def _validate_current_dependency_pins(sources: dict[str, dict[str, Any]]) -> Non
     expected = {
         "core-content": source_graph.get("corePackageRecipeCommit"),
         "core-runtime": source_graph.get("coreRuntimeSourceCommit"),
-        "hub": source_graph.get("hubProducerCommit"),
         "registry": source_graph.get("registryCommit"),
         "ui-kit": source_graph.get("uiKitCommit"),
         "presentation": presentation.get("commit"),
@@ -649,6 +666,11 @@ def _validate_current_dependency_pins(sources: dict[str, dict[str, Any]]) -> Non
     for name, commit in expected.items():
         if commit != sources[name].get("commit"):
             raise ValueError(f"current release dependency pin differs from two-green graph: {name}")
+    # The sealed Hub packages can legitimately have been produced by an older
+    # commit than the Hub source checkout used by the Android runtime graph.
+    # Their ancestry is authenticated by each source-graph owner pin below;
+    # equating the producer with the pinned Hub head destroys that distinction.
+    return _sha40(source_graph.get("hubProducerCommit"), "sealed Hub package producer commit")
 
 
 def _validate_source_graph(
@@ -659,6 +681,8 @@ def _validate_source_graph(
     version_name: str,
     version_code: int,
     sources: dict[str, dict[str, Any]],
+    hub_producer_commit: str,
+    package_owner_pins: dict[str, dict[str, Any]] | None,
 ) -> None:
     value = _strict_json(
         _stable_bytes(
@@ -713,7 +737,9 @@ def _validate_source_graph(
         or android.get("tree") != source_tree
     ):
         raise ValueError("release source graph Android commit/tree differs from two-green eligibility")
-    for source_name in ("presentation", "core-runtime", "media"):
+    for source_name in (
+        "presentation", "core-runtime", "hub", "registry", "ui-kit", "media"
+    ):
         row = by_name.get(SOURCE_GRAPH_REPOSITORIES[source_name])
         if (
             not isinstance(row, dict)
@@ -733,11 +759,40 @@ def _validate_source_graph(
         raise ValueError("release source graph owner package inventory differs")
     for package_id, source_name in OWNER_PACKAGES.items():
         row = owner_by_id[package_id]
+        owner_repository = by_name[SOURCE_GRAPH_REPOSITORIES[source_name]]
+        expected_commit = (
+            hub_producer_commit
+            if source_name == "hub"
+            else sources[source_name]["commit"]
+        )
         if (
-            row.get("source_commit") != sources[source_name]["commit"]
-            or row.get("source_tree") != sources[source_name]["tree"]
+            row.get("source_commit") != expected_commit
+            or (
+                source_name != "hub"
+                and row.get("source_tree") != sources[source_name]["tree"]
+            )
         ):
             raise ValueError(f"release source graph differs from two-green package source: {source_name}")
+        _sha40(row.get("source_tree"), f"release source graph {package_id} source tree")
+        if package_owner_pins is not None:
+            package_pin = package_owner_pins[package_id]
+            if (
+                row.get("source_commit") != package_pin.get("source_commit")
+                or row.get("source_tree") != package_pin.get("source_tree")
+            ):
+                raise ValueError(
+                    f"release source graph differs from release package authority: {source_name}"
+                )
+        if row.get("source_authority") != {
+            "owner_head_commit": owner_repository["commit"],
+            "owner_head_tree": owner_repository["tree"],
+            "relationship": OWNER_SOURCE_RELATIONSHIP,
+            "verification": OWNER_SOURCE_VERIFICATION,
+        }:
+            raise ValueError(
+                f"release source graph {source_name} package producer is not bound "
+                "as an ancestor of its runtime/source repository head"
+            )
 
 
 def verify_release_eligibility(
@@ -859,9 +914,14 @@ def verify_release_eligibility(
     sources = _validate_dependency_authority(
         common.get("dependencyGraph"), source_tree=source_tree
     )
-    _validate_current_dependency_pins(sources)
+    hub_producer_commit = _validate_current_dependency_pins(sources)
+    package_owner_pins = None
     if package_authority_path is not None:
-        _validate_package_authority(package_authority_path, sources=sources)
+        package_owner_pins = _validate_package_authority(
+            package_authority_path,
+            sources=sources,
+            hub_producer_commit=hub_producer_commit,
+        )
     if source_graph_path is not None:
         _validate_source_graph(
             source_graph_path,
@@ -870,6 +930,8 @@ def verify_release_eligibility(
             version_name=expected_version_name,
             version_code=version_code,
             sources=sources,
+            hub_producer_commit=hub_producer_commit,
+            package_owner_pins=package_owner_pins,
         )
     return {
         "contractName": TWO_GREEN.CONTRACT,

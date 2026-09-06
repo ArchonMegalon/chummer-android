@@ -508,6 +508,7 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
         historical = self.preview10.verify(PREVIEW10_RECEIPT)
         self.assertEqual("pass", historical["status"], historical["failures"])
         self.assertFalse(historical["authorization"]["productionAuthorized"])
+        self.assertFalse((REPO / "play/evidence/preview11-internal-publication.json").exists())
         self.assertFalse((REPO / "play/evidence/preview12-internal-publication.json").exists())
 
     def test_browser_input_is_closed_and_rejects_secret_or_session_fields(self) -> None:

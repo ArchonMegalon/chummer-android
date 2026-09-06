@@ -690,6 +690,31 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
         receipt.write_bytes(gate.pretty_json_bytes(authority))
         receipt.chmod(0o600)
         sources = authority["commonAuthority"]["dependencyGraph"]["sources"]
+        internal_authority = json.loads(
+            (REPO / "eng/internal-phone-beta-package-authority.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        hub_producer_commit = internal_authority["sourceGraph"]["hubProducerCommit"]
+        hub_producer_tree = "d" * 40
+
+        def owner_source(package_id: str, source_name: str) -> dict[str, object]:
+            source_commit = (
+                hub_producer_commit
+                if source_name == "hub"
+                else sources[source_name]["commit"]
+            )
+            source_tree = (
+                hub_producer_tree
+                if source_name == "hub"
+                else sources[source_name]["tree"]
+            )
+            return {
+                "package_id": package_id,
+                "source_commit": source_commit,
+                "source_tree": source_tree,
+            }
+
         package_authority = self.root / "release-package-authority.json"
         package_authority.write_bytes(
             gate.canonical_json_bytes(
@@ -703,11 +728,7 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
                         for package_id in consumer.RUNTIME_PACKAGES
                     ],
                     "ownerPackagePins": [
-                        {
-                            "package_id": package_id,
-                            "source_commit": sources[source_name]["commit"],
-                            "source_tree": sources[source_name]["tree"],
-                        }
+                        owner_source(package_id, source_name)
                         for package_id, source_name in consumer.OWNER_PACKAGES.items()
                     ],
                     "dependencyClosure": [],
@@ -773,9 +794,13 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
                     "repositories": repository_rows,
                     "ownerPackagePins": [
                         {
-                            "package_id": package_id,
-                            "source_commit": sources[source_name]["commit"],
-                            "source_tree": sources[source_name]["tree"],
+                            **owner_source(package_id, source_name),
+                            "source_authority": {
+                                "owner_head_commit": sources[source_name]["commit"],
+                                "owner_head_tree": sources[source_name]["tree"],
+                                "relationship": consumer.OWNER_SOURCE_RELATIONSHIP,
+                                "verification": consumer.OWNER_SOURCE_VERIFICATION,
+                            },
                         }
                         for package_id, source_name in consumer.OWNER_PACKAGES.items()
                     ],
@@ -1550,6 +1575,33 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
             consumer.RELEASE_APPROVAL_CONTRACT,
             binding["protectedApproval"]["contractName"],
         )
+        graph = json.loads(source_graph.read_text(encoding="utf-8"))
+        hub_head = next(
+            row for row in graph["repositories"] if row["name"] == "chummer6-hub"
+        )
+        hub_package = next(
+            row
+            for row in graph["ownerPackagePins"]
+            if row["package_id"] == "Chummer.Campaign.Contracts"
+        )
+        self.assertEqual(
+            "4f335d6cebbd4101212fd2cc77265b50f252775c",
+            hub_head["commit"],
+        )
+        self.assertEqual(
+            "bc199cbe0982833ec2fc9ce625826e612759d67a",
+            hub_package["source_commit"],
+        )
+        self.assertNotEqual(hub_package["source_commit"], hub_head["commit"])
+        self.assertEqual(
+            {
+                "owner_head_commit": hub_head["commit"],
+                "owner_head_tree": hub_head["tree"],
+                "relationship": consumer.OWNER_SOURCE_RELATIONSHIP,
+                "verification": consumer.OWNER_SOURCE_VERIFICATION,
+            },
+            hub_package["source_authority"],
+        )
 
     def test_release_consumer_cli_never_turns_eligibility_into_signing_or_upload_authority(
         self,
@@ -1953,6 +2005,60 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
         source_graph.write_bytes(gate.canonical_json_bytes(graph))
         source_graph.chmod(0o600)
         with self.assertRaisesRegex(ValueError, "presentation"):
+            consumer.verify_release_eligibility(
+                receipt,
+                approval,
+                android_root=self.android,
+                expected_version_name="0.1.0-preview.12",
+                expected_version_code=12,
+                package_authority_path=package_authority,
+                source_graph_path=source_graph,
+            )
+
+        receipt, approval, package_authority, source_graph = (
+            self.release_consumer_inputs(authority)
+        )
+        graph = json.loads(source_graph.read_text(encoding="utf-8"))
+        hub_package = next(
+            row
+            for row in graph["ownerPackagePins"]
+            if row["package_id"] == "Chummer.Campaign.Contracts"
+        )
+        hub_package["source_authority"]["relationship"] = "unrelated"
+        source_graph.write_bytes(gate.canonical_json_bytes(graph))
+        source_graph.chmod(0o600)
+        with self.assertRaisesRegex(ValueError, "ancestor"):
+            consumer.verify_release_eligibility(
+                receipt,
+                approval,
+                android_root=self.android,
+                expected_version_name="0.1.0-preview.12",
+                expected_version_code=12,
+                package_authority_path=package_authority,
+                source_graph_path=source_graph,
+            )
+
+        receipt, approval, package_authority, source_graph = (
+            self.release_consumer_inputs(authority)
+        )
+        package = json.loads(package_authority.read_text(encoding="utf-8"))
+        graph = json.loads(source_graph.read_text(encoding="utf-8"))
+        hub_head = next(
+            row for row in graph["repositories"] if row["name"] == "chummer6-hub"
+        )
+        for row in package["ownerPackagePins"]:
+            if consumer.OWNER_PACKAGES[row["package_id"]] == "hub":
+                row["source_commit"] = hub_head["commit"]
+                row["source_tree"] = hub_head["tree"]
+        for row in graph["ownerPackagePins"]:
+            if consumer.OWNER_PACKAGES[row["package_id"]] == "hub":
+                row["source_commit"] = hub_head["commit"]
+                row["source_tree"] = hub_head["tree"]
+        package_authority.write_bytes(gate.canonical_json_bytes(package))
+        package_authority.chmod(0o600)
+        source_graph.write_bytes(gate.canonical_json_bytes(graph))
+        source_graph.chmod(0o600)
+        with self.assertRaisesRegex(ValueError, "package authority differs.*hub"):
             consumer.verify_release_eligibility(
                 receipt,
                 approval,
