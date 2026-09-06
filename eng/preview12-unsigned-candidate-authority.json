@@ -1,0 +1,90 @@
+{
+  "schema": "chummer.android.preview12-unsigned-candidate-policy/v1",
+  "activeAutomatically": false,
+  "releaseIdentity": {
+    "packageId": "com.myexternalbrain.chummer",
+    "versionName": "0.1.0-preview.12",
+    "versionCode": 12,
+    "compileSdk": 36,
+    "targetSdk": 36,
+    "minimumSdk": 24,
+    "runtimeIdentifier": "android-arm64",
+    "configuration": "Release",
+    "packageFormat": "aab"
+  },
+  "sourceAuthority": {
+    "repository": "https://github.com/ArchonMegalon/chummer-android.git",
+    "requiredRef": "refs/heads/main",
+    "requiresExactTwoGreenCommit": true,
+    "requiresExactTwoGreenTree": true,
+    "requiresCleanCheckout": true
+  },
+  "dependencies": {
+    "core-content": {
+      "repository": "https://github.com/ArchonMegalon/chummer6-core.git",
+      "commit": "c06f22c185c7b733637fdb76b3cf333f31716781"
+    },
+    "core-runtime": {
+      "repository": "https://github.com/ArchonMegalon/chummer6-core.git",
+      "commit": "60112dccb6a3faad330d32c3c98eef0aa81d97af"
+    },
+    "hub": {
+      "repository": "https://github.com/ArchonMegalon/chummer6-hub.git",
+      "commit": "4f335d6cebbd4101212fd2cc77265b50f252775c"
+    },
+    "media": {
+      "repository": "https://github.com/ArchonMegalon/chummer6-media-factory.git",
+      "commit": "415c8163d3d90b1211e4014fef332bdec6d75f73"
+    },
+    "presentation": {
+      "repository": "https://github.com/ArchonMegalon/chummer6-ui.git",
+      "commit": "a9e5bbd4fd44826177dd048b24417fad27397497"
+    },
+    "registry": {
+      "repository": "https://github.com/ArchonMegalon/chummer6-hub-registry.git",
+      "commit": "af9a7e19c3bf331e96411dfb8f9e7820a98cab29"
+    },
+    "ui-kit": {
+      "repository": "https://github.com/ArchonMegalon/chummer6-ui-kit.git",
+      "commit": "d51ecd99cf72098d4adc8db0192bff7bf9fd8e61"
+    }
+  },
+  "toolchain": {
+    "runner": "ubuntu-24.04",
+    "dotnetSdk": "10.0.110",
+    "javaMajor": 17,
+    "androidNetSdk": "36.1.69",
+    "mauiVersion": "10.0.20",
+    "bundletoolVersion": "1.18.3",
+    "bundletoolSha256": "a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29"
+  },
+  "producer": {
+    "workflow": ".github/workflows/preview12-unsigned-candidate-producer.yml",
+    "receipt": "PREVIEW12_UNSIGNED_CANDIDATE.generated.json",
+    "artifact": "chummer-android-preview12-unsigned-candidate"
+  },
+  "independentVerifier": {
+    "workflow": ".github/workflows/preview12-independent-candidate-verifier.yml",
+    "receipt": "PREVIEW12_INDEPENDENT_REBUILD.generated.json",
+    "signerEligibility": "PREVIEW12_SIGNER_ELIGIBILITY.generated.json",
+    "requiresDistinctWorkflowRun": true,
+    "requiresExactAabSha256Agreement": true,
+    "requiresExactToolchainCompatibility": true
+  },
+  "proofExclusion": {
+    "required": true,
+    "verifier": "scripts/verify_release_aab_excludes_api36_proof.py"
+  },
+  "signingAuthorized": false,
+  "googlePlayUploadAuthorized": false,
+  "publicationAuthorized": false,
+  "doesNotAssert": [
+    "release_signing",
+    "google_play_upload",
+    "google_play_processing",
+    "tester_distribution",
+    "tester_installation",
+    "public_release_readiness",
+    "publication_authority"
+  ]
+}
