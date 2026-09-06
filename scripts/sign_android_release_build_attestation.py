@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/python3
 """Sign and verify the exact AAB/source-graph/build-sidecar transaction."""
 
 from __future__ import annotations

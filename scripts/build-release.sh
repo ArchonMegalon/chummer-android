@@ -1,14 +1,14 @@
-#!/bin/bash
+#!/bin/bash -p
 set -euo pipefail
 set +a
 umask 077
 PATH=/usr/bin:/bin
 export PATH
 
-# This process is deliberately a non-authoritative unsigned builder. Reject all
-# ambient signing material before the first external command. A same-UID caller
-# can read owner-only files, so no local path or environment secret can confer
-# signing authority.
+# This process is deliberately a non-authoritative unsigned builder. Interpreter
+# startup is outside this script's control; the invoking job MUST already have a
+# constructed credential-free environment. Rejection below is a fail-closed
+# post-entry check, not a claim that hostile pre-entry loader/Bash code was safe.
 ambient_signing_input=false
 for release_secret_variable in \
   AndroidSigningKeyStore \
@@ -28,14 +28,35 @@ for release_secret_variable in \
   unset "$release_secret_variable"
 done
 unset release_secret_variable
+for generic_credential_variable in \
+  GITHUB_TOKEN GH_TOKEN ACTIONS_RUNTIME_TOKEN ACTIONS_ID_TOKEN_REQUEST_TOKEN \
+  ACTIONS_ID_TOKEN_REQUEST_URL GOOGLE_APPLICATION_CREDENTIALS GOOGLE_API_KEY \
+  PLAY_SERVICE_ACCOUNT_JSON PLAY_PUBLISHER_CREDENTIALS \
+  AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN \
+  AZURE_CLIENT_SECRET ARM_CLIENT_SECRET CLOUDFLARE_API_TOKEN CF_API_TOKEN \
+  NUGET_AUTH_TOKEN NPM_TOKEN DOCKER_AUTH_CONFIG SSH_AUTH_SOCK; do
+  if [[ -v "$generic_credential_variable" ]]; then
+    ambient_signing_input=true
+  fi
+  unset "$generic_credential_variable"
+done
+unset generic_credential_variable
+for prefixed_credential_variable in \
+  ${!ACTIONS_@} ${!AWS_@} ${!AZURE_@} ${!ARM_@} ${!PLAY_@} \
+  ${!GOOGLE_@} ${!GCP_@} ${!CLOUDSDK_@} ${!CLOUDFLARE_@} ${!CF_@} \
+  ${!DOCKER_@} ${!SSH_@} ${!VAULT_@} ${!OP_@}; do
+  ambient_signing_input=true
+  unset "$prefixed_credential_variable"
+done
+unset prefixed_credential_variable
 if [[ "$ambient_signing_input" == true ]]; then
   printf 'android_release=failed stage=external-signer-required-readable-signing-input-rejected publication_authorized=false\n' >&2
   exit 1
 fi
 unset ambient_signing_input
 
-# No child receives loader, language-runtime, TLS-keylog, Java, or MSBuild
-# startup injection from the caller.
+# After entry, no child receives loader, language-runtime, TLS-keylog, Java, or
+# MSBuild startup injection from the caller.
 for hostile_startup_variable in \
   BASH_ENV ENV CDPATH GIT_EXEC_PATH \
   LD_AUDIT LD_LIBRARY_PATH LD_PRELOAD \
@@ -50,25 +71,6 @@ for hostile_startup_variable in \
 done
 unset hostile_startup_variable
 
-# Defensive child-environment scrub for every unsigned test subprocess.
-release_test_environment=(
-  -u AndroidSigningKeyStore
-  -u ChummerAndroidSigningStorePass
-  -u ChummerAndroidSigningKeyPass
-  -u ChummerAndroidSigningKeyAlias
-  -u CHUMMER_ANDROID_UPLOAD_CERTIFICATE_PATH
-  -u CHUMMER_ANDROID_PREFLIGHT_STORE_PASSWORD
-  -u CHUMMER_ANDROID_SIGNING_DIR
-  -u CHUMMER_PROVISION_STORE_PASSWORD
-  -u CHUMMER_RECOVERY_STORE_PASSWORD
-  -u CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT
-  -u CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL
-  -u CHUMMER_ANDROID_RELEASE_APPROVER_PRIVATE_KEY
-  -u CHUMMER_ANDROID_BUILD_ATTESTATION_PRIVATE_KEY
-  -u CHUMMER_ANDROID_GITHUB_PROVENANCE_TOKEN_FILE
-  -u CHUMMER_DOTNET
-  -u SSLKEYLOGFILE
-)
 export -n CHUMMER_ANDROID_UPLOAD_CERTIFICATE_PATH 2>/dev/null || true
 unset CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT
 unset CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL
@@ -76,41 +78,61 @@ caller_dotnet="${CHUMMER_DOTNET:-}"
 export -n caller_dotnet 2>/dev/null || true
 unset CHUMMER_DOTNET
 
-repo_dir="${CHUMMER_RELEASE_REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)}"
+script_dir="${BASH_SOURCE[0]%/*}"
+repo_dir="${CHUMMER_RELEASE_REPO_ROOT:-$(cd "$script_dir/.." && pwd -P)}"
 [[ -n "$repo_dir" && "$repo_dir" == /* && ! -L "$repo_dir" && -d "$repo_dir" ]] || exit 1
 repo_dir="$(cd "$repo_dir" && pwd -P)"
 unset CHUMMER_RELEASE_REPO_ROOT
 project_path="$repo_dir/src/Chummer.Android/Chummer.Android.csproj"
+release_child_home=""
 
-# Do not dispatch release commands through caller-controlled PATH lookup. These
-# shell functions are parsed from the sealed release script and invoke only the
-# canonical root-owned system paths.
-basename() { /usr/bin/basename "$@"; }
-chmod() { /usr/bin/chmod "$@"; }
-cmp() { /usr/bin/cmp "$@"; }
-cut() { /usr/bin/cut "$@"; }
-dirname() { /usr/bin/dirname "$@"; }
-env() { /usr/bin/env "$@"; }
-git() { /usr/bin/git "$@"; }
-id() { /usr/bin/id "$@"; }
-install() { /usr/bin/install "$@"; }
-jq() { /usr/bin/jq "$@"; }
-mkdir() { /usr/bin/mkdir "$@"; }
-mktemp() { /usr/bin/mktemp "$@"; }
-openssl() { /usr/bin/openssl "$@"; }
+clean_exec() {
+  local child_home="${release_child_home:-/nonexistent/chummer-android-unsigned}"
+  local -a child_environment=(
+    PATH=/usr/bin:/bin LANG=C LC_ALL=C HOME="$child_home"
+    XDG_CONFIG_HOME="$child_home" DOTNET_CLI_HOME="$child_home"
+  )
+  local allowed_name
+  for allowed_name in \
+    CHUMMER_ANDROID_REVISION CHUMMER_PRESENTATION_REVISION \
+    CHUMMER_CORE_ENGINE_REVISION CHUMMER_UI_KIT_REVISION \
+    CHUMMER_RUN_SERVICES_REVISION CHUMMER_HUB_REGISTRY_REVISION \
+    CHUMMER_MEDIA_FACTORY_REVISION CHUMMER_DESIGN_REVISION \
+    NUGET_PACKAGES DOTNET_CLI_USE_MSBUILD_SERVER MSBUILDDISABLENODEREUSE; do
+    if [[ -v "$allowed_name" ]]; then
+      child_environment+=("$allowed_name=${!allowed_name}")
+    fi
+  done
+  /usr/bin/env -i "${child_environment[@]}" "$@"
+}
+
+# Every child starts from an explicit allowlist rather than the caller's
+# environment. These wrappers do not make the local output authoritative.
+basename() { clean_exec /usr/bin/basename "$@"; }
+chmod() { clean_exec /usr/bin/chmod "$@"; }
+cmp() { clean_exec /usr/bin/cmp "$@"; }
+cut() { clean_exec /usr/bin/cut "$@"; }
+dirname() { clean_exec /usr/bin/dirname "$@"; }
+git() { clean_exec /usr/bin/git "$@"; }
+id() { clean_exec /usr/bin/id "$@"; }
+install() { clean_exec /usr/bin/install "$@"; }
+jq() { clean_exec /usr/bin/jq "$@"; }
+mkdir() { clean_exec /usr/bin/mkdir "$@"; }
+mktemp() { clean_exec /usr/bin/mktemp "$@"; }
+openssl() { clean_exec /usr/bin/openssl "$@"; }
 python3() {
-  if [[ "${1:-}" == "-c" ]]; then
-    /usr/bin/python3 -I -E -S "$@"
+  if [[ "${1:-}" == "-c" || "${1:-}" == "-m" ]]; then
+    clean_exec /usr/bin/python3 -I -E -S "$@"
     return
   fi
-  /usr/bin/python3 -I -E -S -c \
+  clean_exec /usr/bin/python3 -I -E -S -c \
     'import pathlib,runpy,sys; p=pathlib.Path(sys.argv[1]).resolve(strict=True); sys.path.insert(0, str(p.parent)); sys.argv=sys.argv[1:]; runpy.run_path(str(p), run_name="__main__")' \
     "$@"
 }
-realpath() { /usr/bin/realpath "$@"; }
-rm() { /usr/bin/rm "$@"; }
-sha256sum() { /usr/bin/sha256sum "$@"; }
-stat() { /usr/bin/stat "$@"; }
+realpath() { clean_exec /usr/bin/realpath "$@"; }
+rm() { clean_exec /usr/bin/rm "$@"; }
+sha256sum() { clean_exec /usr/bin/sha256sum "$@"; }
+stat() { clean_exec /usr/bin/stat "$@"; }
 dotnet_command=""
 configuration="Release"
 framework="net10.0-android36.0"
@@ -241,6 +263,14 @@ release_input_root="$(dirname -- "$prepared_packages")"
 release_input_permissions="$(stat -c '%a' -- "$release_input_root")"
 (( (8#$release_input_permissions & 077) == 0 )) \
   || fail "release-input-root-not-owner-only"
+release_child_home="$release_input_root/unsigned-child-home"
+[[ ! -L "$release_child_home" && -d "$release_child_home" \
+  && "$(realpath -e -- "$release_child_home")" == "$release_child_home" \
+  && "$(stat -c '%u' -- "$release_child_home")" == "$(id -u)" ]] \
+  || fail "unsigned-child-home-invalid"
+child_home_permissions="$(stat -c '%a' -- "$release_child_home")"
+(( (8#$child_home_permissions & 077) == 0 )) \
+  || fail "unsigned-child-home-not-owner-only"
 case "$release_input_root/" in
   "$workspace_root/"*) fail "release-input-root-inside-workspace" ;;
 esac
@@ -296,10 +326,8 @@ python3 "$repo_dir/scripts/preflight_native_android_toolchain.py" \
   --android-sdk "$AndroidSdkDirectory" \
   --java-sdk "$JavaSdkDirectory"
 
-# The complete test process tree receives a second, defensive environment
-# scrub even though the imported variables are already non-exported.
-env "${release_test_environment[@]}" \
-  python3 -m unittest discover -s "$repo_dir/tests" -v
+# The complete test process tree starts from clean_exec's explicit allowlist.
+python3 -m unittest discover -s "$repo_dir/tests" -v
 
 artifact_dir="$release_input_root/artifacts"
 mkdir -p -- "$artifact_dir"
@@ -382,7 +410,7 @@ python3 "$repo_dir/scripts/seal_release_restore_consumption.py" assert-clean \
 
 NUGET_PACKAGES="$isolated_packages"
 export NUGET_PACKAGES
-"$dotnet_command" restore "$project_path" \
+clean_exec "$dotnet_command" restore "$project_path" \
   --locked-mode \
   --force-evaluate \
   --disable-parallel \
@@ -490,8 +518,7 @@ certificate_sha256="$(openssl x509 -in "$CHUMMER_ANDROID_UPLOAD_CERTIFICATE_PATH
 [[ "$certificate_sha256" == "$expected_upload_certificate_sha256" ]] \
   || fail "upload-certificate-pin-mismatch"
 
-env "${release_test_environment[@]}" \
-  python3 "$repo_dir/scripts/seal_release_restore_consumption.py" verify \
+python3 "$repo_dir/scripts/seal_release_restore_consumption.py" verify \
   --input-root "$release_tmp" \
   --workspace-root "$workspace_root" \
   --authority "$CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY" \
@@ -501,7 +528,7 @@ env "${release_test_environment[@]}" \
   --project-lock "$repo_dir/src/Chummer.Android/packages.lock.json" \
   --manifest "$restore_manifest" \
   || fail "locked-restore-consumption-pre-publish"
-"$dotnet_command" publish "$project_path" \
+clean_exec "$dotnet_command" publish "$project_path" \
   --configuration "$configuration" \
   --framework "$framework" \
   --self-contained true \
@@ -558,7 +585,7 @@ source_aab="$(python3 "$repo_dir/scripts/verify_release_publish_output.py" \
 # non-authoritative request records exact descriptor-held inputs, but it never
 # grants signing or publication. A separately hosted privileged signer must
 # independently replay every bound authority before returning a signed AAB.
-/usr/bin/python3 "$repo_dir/scripts/sign_android_release_build_attestation.py" prepare-external-signer \
+python3 "$repo_dir/scripts/sign_android_release_build_attestation.py" prepare-external-signer \
   --aab "$source_aab" \
   --source-graph "$staged_graph" \
   --output-aab "$output_aab" \
@@ -574,9 +601,9 @@ source_aab="$(python3 "$repo_dir/scripts/verify_release_publish_output.py" \
   --upload-certificate "$CHUMMER_ANDROID_UPLOAD_CERTIFICATE_PATH" \
   --java-tool-authority "$release_toolchain_authority" \
   || fail "unsigned-external-signer-handoff"
-source_sha256="$(/usr/bin/sha256sum "$output_aab" | /usr/bin/cut -d' ' -f1)"
-graph_sha256="$(/usr/bin/sha256sum "$output_graph" | /usr/bin/cut -d' ' -f1)"
-(cd "$repo_dir" && /usr/bin/sha256sum --check "$output_hash" >/dev/null) \
+source_sha256="$(sha256sum "$output_aab" | cut -d' ' -f1)"
+graph_sha256="$(sha256sum "$output_graph" | cut -d' ' -f1)"
+(cd "$repo_dir" && sha256sum --check "$output_hash" >/dev/null) \
   || fail "sealed-hash-verification"
 
 printf 'android_release=external-signer-required version=%s code=%s unsigned_aab=%s sha256=%s source_graph=%s source_graph_sha256=%s signer_request=%s two_green_receipt_sha256=%s signing_authorized=false publication_authorized=false google_play_upload_authorized=false\n' \

@@ -19,7 +19,7 @@ documented at https://support.google.com/googleplay/android-developer/answer/119
 ## Secret boundary
 
 Upload keys and passwords are never committed. They belong only to a separate
-protected external signer, which is not implemented by this repository:
+protected Fleet signer, which is not implemented by this repository:
 
 - `AndroidSigningKeyStore`
 - `ChummerAndroidSigningStorePass`
@@ -56,15 +56,18 @@ scripts/import-signing-recovery.py \
 
 The historical recovery environment is not accepted by the current build-user
 release gate. Under the same-UID filesystem attacker model, a readable mode-0600
-keystore is not a signing authority. The build-user lane accepts only the public
-upload certificate and produces an unsigned handoff for a separate privileged
-signer:
+keystore is not a signing authority. The build-user lane accepts only public
+inputs and produces a non-authoritative unsigned handoff. It must be launched
+by a credential-free job from a constructed empty environment, never from an
+operator shell that also contains GitHub, Actions, cloud, Play, upload-key, or
+other credentials:
 
 ```sh
-CHUMMER_ANDROID_EXPECTED_VERSION_NAME=0.1.0-preview.12 \
-CHUMMER_ANDROID_EXPECTED_VERSION_CODE=12 \
-CHUMMER_BUNDLETOOL_JAR=/secure/tools/bundletool-all-1.18.3.jar \
-  /bin/bash scripts/build-release.sh
+/usr/bin/env -i PATH=/usr/bin:/bin LANG=C LC_ALL=C \
+  CHUMMER_ANDROID_EXPECTED_VERSION_NAME=0.1.0-preview.12 \
+  CHUMMER_ANDROID_EXPECTED_VERSION_CODE=12 \
+  CHUMMER_BUNDLETOOL_JAR=/secure/tools/bundletool-all-1.18.3.jar \
+  /bin/bash -p scripts/build-release.sh
 ```
 
 The expected version name and code are mandatory release intent, not defaults.
@@ -94,15 +97,16 @@ an isolated NuGet package root and emits an owner-only environment handoff:
 
 ```sh
 install -d -m 0700 /absolute/private/chummer-next-release-inputs
-CHUMMER_ANDROID_RELEASE_INPUT_DIR=/absolute/private/chummer-next-release-inputs \
-CHUMMER_ANDROID_EXPECTED_VERSION_NAME=0.1.0-preview.12 \
-CHUMMER_ANDROID_EXPECTED_VERSION_CODE=12 \
-CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT=/absolute/private/ANDROID_API36_TWO_GREEN_ELIGIBILITY.generated.json \
-CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL=/absolute/private/ANDROID_API36_TWO_GREEN_RELEASE_APPROVAL.generated.json \
-CHUMMER_ANDROID_RELEASE_TOOLCHAIN_AUTHORITY=/absolute/private/ANDROID_LOCAL_UNSIGNED_TOOLCHAIN_OBSERVATION.generated.json \
-CHUMMER_CURRENT_UI_PACKAGE_AUTHORITY_RECEIPT=/absolute/private/UI_CURRENT_MAIN_PACKAGE_PLANE.generated.json \
-CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED=/absolute/private/ui-package-cache/packages \
-  scripts/prepare-release-inputs.sh
+/usr/bin/env -i PATH=/usr/bin:/bin LANG=C LC_ALL=C \
+  CHUMMER_ANDROID_RELEASE_INPUT_DIR=/absolute/private/chummer-next-release-inputs \
+  CHUMMER_ANDROID_EXPECTED_VERSION_NAME=0.1.0-preview.12 \
+  CHUMMER_ANDROID_EXPECTED_VERSION_CODE=12 \
+  CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT=/absolute/private/ANDROID_API36_TWO_GREEN_ELIGIBILITY.generated.json \
+  CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL=/absolute/private/ANDROID_API36_TWO_GREEN_RELEASE_APPROVAL.generated.json \
+  CHUMMER_ANDROID_RELEASE_TOOLCHAIN_AUTHORITY=/absolute/private/ANDROID_LOCAL_UNSIGNED_TOOLCHAIN_OBSERVATION.generated.json \
+  CHUMMER_CURRENT_UI_PACKAGE_AUTHORITY_RECEIPT=/absolute/private/UI_CURRENT_MAIN_PACKAGE_PLANE.generated.json \
+  CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED=/absolute/private/ui-package-cache/packages \
+  /bin/bash -p scripts/prepare-release-inputs.sh
 . /absolute/private/chummer-next-release-inputs/release-inputs.env
 ```
 
@@ -150,15 +154,20 @@ release build re-verifies the same receipt, signature, package
 authority, and source graph before producing the unsigned signer handoff.
 
 `scripts/prepare-release-inputs.sh` and `scripts/build-release.sh` are local
-unsigned preparation only. They reject any signing/private-key/password/token
-environment at entry, scrub language-runtime, loader, TLS-keylog, Java, and
-MSBuild startup variables before child processes, and use isolated Python
-invocations. A hostile caller can still control the build-user process itself;
-therefore none of its outputs is signing authority. The ordinary development
-host is suitable for preparation and tests only and must never receive
-production signing credentials.
+unsigned preparation only. Dynamic-loader and interpreter startup occur before
+script code, so these scripts make no impossible claim that they can neutralize
+a hostile `LD_PRELOAD`, `BASH_ENV`, or equivalent value before entry. The
+credential-free job is responsible for starting them through `/usr/bin/env -i`
+and `/bin/bash -p`. After entry they reject common generic and Chummer-specific
+credential variables, scrub language-runtime, loader, TLS-keylog, Java, and
+MSBuild injection variables, run Python with `-I -E -S`, and construct an exact
+allowlisted environment for every child. A hostile caller can still control the
+local build-user process itself; therefore none of its outputs is signing
+authority. The ordinary development host is suitable for preparation and tests
+only and must never receive production signing credentials.
 
-The protected external signer is a separate, not-yet-implemented transaction.
+The protected Fleet signer is a separate, not-yet-implemented transaction and
+the sole secret boundary.
 It must run under a distinct credential and filesystem authority, authenticate
 all inputs, bind the full toolchain closure, rebuild from exact source, validate
 the signed result, and emit a detached output attestation. Until that exists,

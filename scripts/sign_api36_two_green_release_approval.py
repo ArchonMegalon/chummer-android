@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/python3
 """Verify two-green inputs; local signing is deliberately unavailable.
 
 The build-user lane has no signing authority.  The external signer must replay

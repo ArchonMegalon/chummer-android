@@ -400,23 +400,27 @@ class ReleaseGateHardeningTests(unittest.TestCase):
                 ("build-release.sh", "android_release=failed"),
                 ("prepare-release-inputs.sh", "android_release_inputs=failed"),
             ):
-                completed = subprocess.run(
-                    ["/bin/bash", str(REPO / "scripts" / script_name)],
-                    check=False,
-                    capture_output=True,
-                    text=True,
-                    env={
-                        "PATH": "/usr/bin:/bin",
-                        "CHUMMER_ANDROID_BUILD_ATTESTATION_PRIVATE_KEY": str(readable_key),
-                    },
-                )
-                self.assertNotEqual(0, completed.returncode)
-                self.assertIn(marker, completed.stderr)
-                self.assertIn(
-                    "external-signer-required-readable-signing-input-rejected",
-                    completed.stderr,
-                )
-                self.assertNotIn("release-version-intent", completed.stderr)
+                for credential_name, credential_value in (
+                    ("CHUMMER_ANDROID_BUILD_ATTESTATION_PRIVATE_KEY", str(readable_key)),
+                    ("GITHUB_TOKEN", "github-secret"),
+                    ("ACTIONS_RUNTIME_TOKEN", "actions-secret"),
+                    ("GOOGLE_OAUTH_ACCESS_TOKEN", "play-secret"),
+                ):
+                    completed = subprocess.run(
+                        ["/bin/bash", "-p", str(REPO / "scripts" / script_name)],
+                        check=False,
+                        capture_output=True,
+                        text=True,
+                        env={"PATH": "/usr/bin:/bin", credential_name: credential_value},
+                    )
+                    self.assertNotEqual(0, completed.returncode)
+                    self.assertIn(marker, completed.stderr)
+                    self.assertIn(
+                        "external-signer-required-readable-signing-input-rejected",
+                        completed.stderr,
+                    )
+                    self.assertNotIn("release-version-intent", completed.stderr)
+                    self.assertNotIn(credential_value, completed.stderr)
 
     def test_protected_tool_leases_reject_path_and_metadata_drift(self) -> None:
         for mutation in ("replace", "world-writable", "link-count", "ctime-only"):
@@ -610,7 +614,7 @@ class ReleaseGateHardeningTests(unittest.TestCase):
             probe = root / "probe.sh"
             observed = root / "observed.env"
             probe.write_text(scrub_program + '\nenv > "$1"\n', encoding="utf-8")
-            environment = dict(os.environ)
+            environment = {"PATH": "/usr/bin:/bin"}
             for name in (
                 "CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT",
                 "CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL",
@@ -623,7 +627,7 @@ class ReleaseGateHardeningTests(unittest.TestCase):
             ):
                 environment[name] = f"hostile-{name}"
             subprocess.run(
-                ["bash", str(probe), str(observed)],
+                ["/bin/bash", "-p", str(probe), str(observed)],
                 check=True,
                 env=environment,
                 capture_output=True,
@@ -632,7 +636,7 @@ class ReleaseGateHardeningTests(unittest.TestCase):
             self.assertNotIn("hostile-", child)
 
             rejected = subprocess.run(
-                ["/bin/bash", str(probe), str(observed)],
+                ["/bin/bash", "-p", str(probe), str(observed)],
                 check=False,
                 env={
                     "PATH": "/usr/bin:/bin",
@@ -651,8 +655,8 @@ class ReleaseGateHardeningTests(unittest.TestCase):
         script = (REPO / "scripts/build-release.sh").read_text(encoding="utf-8")
         prepare = (REPO / "scripts/prepare-release-inputs.sh").read_text(encoding="utf-8")
         documentation = (REPO / "docs/PLAY_RELEASE.md").read_text(encoding="utf-8")
-        self.assertTrue(script.startswith("#!/bin/bash\n"))
-        self.assertTrue(prepare.startswith("#!/bin/bash\n"))
+        self.assertTrue(script.startswith("#!/bin/bash -p\n"))
+        self.assertTrue(prepare.startswith("#!/bin/bash -p\n"))
         prefix_end = "unset CHUMMER_DOTNET\n"
         prefix = script[: script.index(prefix_end) + len(prefix_end)]
         for name in (
@@ -663,7 +667,6 @@ class ReleaseGateHardeningTests(unittest.TestCase):
             "SSLKEYLOGFILE",
         ):
             self.assertIn(name, prefix)
-            self.assertIn(f"-u {name}", prefix)
         self.assertIn('unset "$release_secret_variable"', prefix)
         self.assertIn("non-authoritative unsigned builder", prefix)
         self.assertIn("external-signer-required-readable-signing-input-rejected", prefix)
@@ -673,7 +676,48 @@ class ReleaseGateHardeningTests(unittest.TestCase):
         self.assertNotIn("run_protected_android_release.py", script)
         self.assertNotIn("run_protected_android_release.py", documentation)
         self.assertIn("separate, not-yet-implemented transaction", documentation)
+        self.assertIn("sole secret boundary", documentation)
+        self.assertIn("make no impossible claim", documentation)
+        self.assertIn("/usr/bin/env -i", documentation)
         self.assertIn("full JDK, .NET SDK/workload/\nMSBuild, and Android SDK closure", documentation)
+
+        # A caller may carry arbitrary non-credential data, but every child is
+        # created from clean_exec's explicit allowlist.
+        start = script.index('release_child_home=""')
+        end = script.index("\n# Every child starts", start)
+        clean_exec_program = script[start:end]
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            probe = root / "clean-child.sh"
+            observed = root / "child.env"
+            probe.write_text(
+                "#!/bin/bash -p\nset -euo pipefail\n"
+                + clean_exec_program
+                + '\nclean_exec /usr/bin/env > "$1"\n',
+                encoding="utf-8",
+            )
+            subprocess.run(
+                ["/bin/bash", "-p", str(probe), str(observed)],
+                check=True,
+                capture_output=True,
+                env={
+                    "PATH": "/usr/bin:/bin",
+                    "UNRELATED_CALLER_SECRET": "must-not-reach-child",
+                    "CHUMMER_ANDROID_REVISION": "a" * 40,
+                },
+            )
+            child_environment = observed.read_text(encoding="utf-8")
+            self.assertNotIn("UNRELATED_CALLER_SECRET", child_environment)
+            self.assertNotIn("must-not-reach-child", child_environment)
+            self.assertIn("CHUMMER_ANDROID_REVISION=" + "a" * 40, child_environment)
+
+        for module_name in (
+            "sign_android_release_build_attestation.py",
+            "sign_api36_two_green_release_approval.py",
+        ):
+            module = REPO / "scripts" / module_name
+            self.assertFalse(os.access(module, os.X_OK))
+            self.assertTrue(module.read_text(encoding="utf-8").startswith("#!/usr/bin/python3\n"))
 
 
 if __name__ == "__main__":
