@@ -12330,7 +12330,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 self.assertIn(marker, route)
         self.assertNotIn("enabled: true", route)
         method_guard = stages.index("CharacterCreationWizardStepIds.Method")
-        self.assertLess(method_guard, stages.index("NativeTheme.NavigationRow("))
+        self.assertLess(method_guard, stages.index("CreationNavigationRow("))
         self.assertIn(
             "continue;",
             stages[method_guard:stages.index("bool foundation", method_guard)],
@@ -14871,9 +14871,9 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
              mock.patch.object(driver.time, "sleep") as sleep:
             evidence = driver.wait_creation_method_navigation(device, ready=False)
 
-        self.assertEqual(3, device.loading_reads)
+        self.assertEqual(2, device.loading_reads)
         self.assertEqual(
-            [mock.call(0.5), mock.call(0.5), mock.call(1.25)],
+            [mock.call(0.5), mock.call(1.25)],
             sleep.call_args_list,
         )
         self.assertTrue(evidence["authorityProjectionWaited"])
@@ -14895,7 +14895,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             source,
         )
 
-    def test_dashboard_navigation_waits_for_stable_authority_render(self) -> None:
+    def test_dashboard_navigation_refresh_lease_preserves_ready_routes(self) -> None:
         source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
         method = source[
             source.index("private void AddCreationMethodRoute(") :
@@ -14910,48 +14910,71 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             source.index("private static string? ProjectionStageBlocker(")
         ]
 
+        self.assertNotIn("IsCreationDashboardNavigationStable", source)
         self.assertIn(
-            "&& !projection.Progress.HasLoading",
-            source,
-        )
-        self.assertIn("&& finalizationProjectionTerminal", source)
-        self.assertNotIn("Ready steps stay interactive", source)
-        self.assertIn(
-            "Navigation stays disabled and unlocks automatically after the stable update.",
+            "Ready steps stay interactive and this page updates automatically.",
             source,
         )
         self.assertIn('"Creation.Dashboard.PartialLoading"', source)
-        self.assertGreaterEqual(
+        self.assertNotIn('"Creation.Dashboard.NavigationLoadingDetail"', source)
+        self.assertEqual(
+            1,
             source.count('loading.AutomationId = "creation-dashboard-authority-partial-loading";'),
-            2,
         )
         route_ready = source[
             source.index("private async Task EmitCreationDashboardRouteReadyAsync(") :
             source.index("private void AddCreationMethodRoute(")
         ]
-        self.assertIn(
-            "IsCreationDashboardNavigationStableForCurrentRender(\n                            _creationProjection)",
-            route_ready,
-        )
+        self.assertNotIn("NavigationStable", route_ready)
         finalization = source[
             source.index("private void AddFinalizationReviewAction(") :
             source.index("private void AddCreationFinalizationStatus(")
         ]
         for route_source in (method, stages, next_steps):
             with self.subTest(route=route_source[:80]):
-                self.assertIn(
-                    "IsCreationDashboardNavigationStableForCurrentRender(projection)",
-                    route_source,
-                )
-                self.assertIn(
-                    '"Creation.Dashboard.NavigationLoadingDetail"',
-                    route_source,
-                )
-                self.assertIn("canOpen && navigationStable", route_source)
-        self.assertIn(
-            "IsCreationDashboardNavigationStableForCurrentRender(\n                _creationProjection)",
-            finalization,
-        )
+                self.assertIn("CreationNavigationRow(", route_source)
+                self.assertNotIn("canOpen && navigationStable", route_source)
+        self.assertIn("review.Pressed +=", finalization)
+        self.assertIn("review.Released +=", finalization)
+        self.assertIn("RunCreationNavigationAsync", finalization)
+
+        lease = source[
+            source.index("public sealed class CreationNavigationRefreshLease") :
+            source.index("public sealed class BuildPage")
+        ]
+        for marker in (
+            "BeginPress()",
+            "BeginNavigation()",
+            "TryDeferRefresh()",
+            "CancelPress()",
+            "CompleteNavigation(bool departed)",
+            "DiscardForDeparture()",
+        ):
+            self.assertIn(marker, lease)
+
+        helpers = source[
+            source.index("private Border CreationNavigationRow(") :
+            source.index("private void PrepareCreationFinalizationProjection(")
+        ]
+        for marker in (
+            "pressed: BeginCreationNavigationPress",
+            "released: ScheduleCreationNavigationPressCancellation",
+            "_creationNavigationRefreshLease.BeginNavigation();",
+            "_creationNavigationRefreshLease.CompleteNavigation(departed)",
+            "_creationNavigationRefreshLease.TryDeferRefresh()",
+        ):
+            self.assertIn(marker, helpers)
+
+        typed_acceptance = source[
+            source.index("private void ScheduleCreationPhaseAcceptance<TResult>(") :
+            source.index("private static void TraceCreationPhase(")
+        ]
+        self.assertEqual(2, typed_acceptance.count("RequestCreationAuthorityRefresh();"))
+        finalization_acceptance = source[
+            source.index("private void ScheduleCreationFinalizationAcceptance(") :
+            source.index("private CreationDashboardAuthorityProjection? ResolveCreationProjection(")
+        ]
+        self.assertIn("RequestCreationAuthorityRefresh();", finalization_acceptance)
         dashboard = source[
             source.index("private void AddCreationWizardDashboard()") :
             source.index("private void ScheduleCreationDashboardRouteReady(")
@@ -14962,7 +14985,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         )
         prepare_finalization = source[
             source.index("private void PrepareCreationFinalizationProjection(") :
-            source.index("private bool IsCreationDashboardNavigationStableForCurrentRender(")
+            source.index("private void AddFinalizationReviewAction(")
         ]
         self.assertIn(
             "&& _creationFinalizationFailureReason is null",

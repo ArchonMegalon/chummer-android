@@ -42,26 +42,12 @@ Assert(
         CultureInfo.GetCultureInfo("es-MX")) == "Asistente de carrera",
     "es-MX must fall back to the Spanish satellite resource");
 Assert(
-    WizardStrings.Get(
-        "Creation.Dashboard.NavigationLoadingDetail",
-        "fallback",
-        CultureInfo.GetCultureInfo("en-GB"))
-        == "Loading the remaining creation rules. Steps unlock automatically as soon as this dashboard is stable.",
-    "Creation dashboard navigation loading copy must use the neutral English resource");
-Assert(
-    WizardStrings.Get(
-        "Creation.Dashboard.NavigationLoadingDetail",
-        "fallback",
-        CultureInfo.GetCultureInfo("de-AT"))
-        == "Die verbleibenden Erschaffungsregeln werden geladen. Schritte werden automatisch freigeschaltet, sobald diese Übersicht stabil ist.",
-    "Creation dashboard navigation loading copy must use the German satellite resource");
-Assert(
     WizardStrings.Format(
         CultureInfo.GetCultureInfo("es-MX"),
         "Creation.Dashboard.PartialLoading",
         "fallback",
         4)
-        == "Se están actualizando 4 proyecciones de reglas restantes en segundo plano. La navegación permanece deshabilitada y se habilitará automáticamente tras la actualización estable.",
+        == "Se están actualizando 4 proyecciones de reglas restantes en segundo plano. Los pasos listos siguen siendo interactivos y esta página se actualiza automáticamente.",
     "Creation dashboard partial-loading copy must use the Spanish satellite resource and preserve its count");
 Assert(
     WizardStrings.Format(

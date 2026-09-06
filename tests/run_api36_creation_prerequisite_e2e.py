@@ -4821,7 +4821,6 @@ def wait_creation_dashboard_authority(
             for selector in (
                 "creation-dashboard-authority-failed",
                 "creation-dashboard-authority-loading",
-                "creation-dashboard-authority-partial-loading",
             )
         }
         ambiguous = {
@@ -4841,10 +4840,7 @@ def wait_creation_dashboard_authority(
             raise RuntimeError(
                 "Creation dashboard reported an explicit authority projection failure"
             )
-        if not (
-            matches["creation-dashboard-authority-loading"]
-            or matches["creation-dashboard-authority-partial-loading"]
-        ):
+        if not matches["creation-dashboard-authority-loading"]:
             if resolved_viewport_out is not None:
                 resolved_viewport_out.append(current_observation)
             record_observation("resolved")

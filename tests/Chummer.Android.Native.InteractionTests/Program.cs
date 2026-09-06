@@ -50,8 +50,11 @@ internal static class Program
             (nameof(CreationSkillsCatalogPagingBoundsNativeControlMaterializationAsync), CreationSkillsCatalogPagingBoundsNativeControlMaterializationAsync),
             (nameof(PrerequisiteAuthorityPublishesBeforeSlowLaterPhasesAsync), PrerequisiteAuthorityPublishesBeforeSlowLaterPhasesAsync),
             (nameof(CreationAuthorityPhaseMergesAreIndependentAndDeterministicAsync), CreationAuthorityPhaseMergesAreIndependentAndDeterministicAsync),
-            (nameof(CreationDashboardNavigationWaitsForStableRenderAsync), CreationDashboardNavigationWaitsForStableRenderAsync),
-            (nameof(CreationFinalizationCompletionCannotRaceDashboardNavigationAsync), CreationFinalizationCompletionCannotRaceDashboardNavigationAsync),
+            (nameof(CreationNavigationRefreshDefersUntilSuccessfulDepartureAsync), CreationNavigationRefreshDefersUntilSuccessfulDepartureAsync),
+            (nameof(CancelledCreationNavigationPressFlushesExactlyOnceAsync), CancelledCreationNavigationPressFlushesExactlyOnceAsync),
+            (nameof(FailedCreationNavigationFlushesExactlyOnceAsync), FailedCreationNavigationFlushesExactlyOnceAsync),
+            (nameof(CreationNavigationRefreshCoalescesTypedAndFinalizationCompletionsAsync), CreationNavigationRefreshCoalescesTypedAndFinalizationCompletionsAsync),
+            (nameof(TerminalCreationFailureDoesNotBlockUnrelatedReadyRouteAsync), TerminalCreationFailureDoesNotBlockUnrelatedReadyRouteAsync),
             (nameof(CreationDashboardReadyMarkerRequiresCurrentTerminalAuthorityAsync), CreationDashboardReadyMarkerRequiresCurrentTerminalAuthorityAsync),
             (nameof(ExactTypedCreationAuthorityRehydratesConservativeStageAsync), ExactTypedCreationAuthorityRehydratesConservativeStageAsync),
             (nameof(ResourcesAuxiliaryStateDigestUsesRawLowerSha256Async), ResourcesAuxiliaryStateDigestUsesRawLowerSha256Async),
@@ -1717,147 +1720,91 @@ internal static class Program
         return Task.CompletedTask;
     }
 
-    private static Task CreationDashboardNavigationWaitsForStableRenderAsync()
+    private static Task CreationNavigationRefreshDefersUntilSuccessfulDepartureAsync()
     {
-        var binding = new CreationDashboardProjectionBinding(
-            "phone-dashboard-navigation",
-            ContentRevision: 12,
-            SavedRevision: 11,
-            ContentDigest: CanonicalDigest('1'),
-            SourceDigest: CanonicalDigest('2'),
-            RuntimeFingerprint: CanonicalDigest('3'),
-            CharacterCreationBuildMethods.Priority,
-            SnapshotDigest: CanonicalDigest('4'));
-        CreationDashboardAuthorityProjection loading =
-            CreationDashboardAuthorityProjection.Loading(binding);
+        var lease = new CreationNavigationRefreshLease();
+        lease.BeginPress();
+        Require(lease.IsActive, "Pressed did not acquire the Creation navigation refresh lease.");
         Require(
-            !BuildPageUiProjection.IsCreationDashboardNavigationStable(
-                null,
-                finalizationProjectionTerminal: true),
-            "An absent Creation authority projection enabled dashboard navigation.");
+            lease.TryDeferRefresh() && lease.HasPendingRefresh,
+            "A typed completion rebuilt the dashboard during a pressed navigation gesture.");
+        lease.BeginNavigation();
         Require(
-            !BuildPageUiProjection.IsCreationDashboardNavigationStable(
-                loading,
-                finalizationProjectionTerminal: true),
-            "The initial loading projection enabled dashboard navigation.");
-
-        CreationDashboardAuthorityProjection prerequisiteReady = loading with
-        {
-            Progress = loading.Progress.WithTerminal(
-                CreationDashboardAuthorityPhase.Prerequisite,
-                failed: false)
-        };
+            !lease.CompleteNavigation(departed: true),
+            "A successful route departure flushed the superseded dashboard refresh.");
         Require(
-            !BuildPageUiProjection.IsCreationDashboardNavigationStable(
-                prerequisiteReady,
-                finalizationProjectionTerminal: true),
-            "A rendered prerequisite route stayed tappable while later phases could rebuild the dashboard.");
-
-        CreationDashboardAuthorityProjection onePhaseRemaining = prerequisiteReady with
-        {
-            Progress = prerequisiteReady.Progress
-                .WithTerminal(CreationDashboardAuthorityPhase.Attributes, failed: false)
-                .WithTerminal(CreationDashboardAuthorityPhase.Skills, failed: true)
-                .WithTerminal(CreationDashboardAuthorityPhase.Contacts, failed: false)
-        };
-        Require(
-            !BuildPageUiProjection.IsCreationDashboardNavigationStable(
-                onePhaseRemaining,
-                finalizationProjectionTerminal: true),
-            "A partial failure hid a remaining refresh-capable loading phase.");
-
-        CreationDashboardAuthorityProjection terminalFailure = onePhaseRemaining with
-        {
-            Progress = onePhaseRemaining.Progress.WithTerminal(
-                CreationDashboardAuthorityPhase.Resources,
-                failed: false)
-        };
-        Require(
-            BuildPageUiProjection.IsCreationDashboardNavigationStable(
-                terminalFailure,
-                finalizationProjectionTerminal: true),
-            "An unrelated terminal failure kept unaffected ready routes disabled after destructive refreshes ended.");
-
-        CreationDashboardAuthorityProjection terminalReady = terminalFailure with
-        {
-            Progress = terminalFailure.Progress.WithTerminal(
-                CreationDashboardAuthorityPhase.Skills,
-                failed: false)
-        };
-        Require(
-            BuildPageUiProjection.IsCreationDashboardNavigationStable(
-                terminalReady,
-                finalizationProjectionTerminal: true),
-            "Terminal Creation authority did not unlock navigation after the stable render.");
+            !lease.IsActive && !lease.HasPendingRefresh,
+            "A successful route departure retained the Creation refresh lease.");
         return Task.CompletedTask;
     }
 
-    private static async Task CreationFinalizationCompletionCannotRaceDashboardNavigationAsync()
+    private static Task CancelledCreationNavigationPressFlushesExactlyOnceAsync()
     {
-        var binding = new CreationDashboardProjectionBinding(
-            "phone-dashboard-finalization-race",
-            ContentRevision: 12,
-            SavedRevision: 11,
-            ContentDigest: CanonicalDigest('1'),
-            SourceDigest: CanonicalDigest('2'),
-            RuntimeFingerprint: CanonicalDigest('3'),
-            CharacterCreationBuildMethods.Priority,
-            SnapshotDigest: CanonicalDigest('4'));
-        CreationDashboardAuthorityPhaseProgress terminalProgress =
-            CreationDashboardAuthorityPhaseProgress
-                .ForBuildMethod(CharacterCreationBuildMethods.Priority)
-                .WithTerminal(CreationDashboardAuthorityPhase.Prerequisite, failed: false)
-                .WithTerminal(CreationDashboardAuthorityPhase.Attributes, failed: false)
-                .WithTerminal(CreationDashboardAuthorityPhase.Skills, failed: false)
-                .WithTerminal(CreationDashboardAuthorityPhase.Contacts, failed: false)
-                .WithTerminal(CreationDashboardAuthorityPhase.Resources, failed: false);
-        var projection = new CreationDashboardAuthorityProjection(
-            binding,
-            terminalProgress,
-            Prerequisite: null,
-            Attributes: null,
-            Skills: null,
-            Contacts: null,
-            Resources: null);
-        using var finalizationQueue = new LatestBackgroundProjectionQueue<
-            CreationDashboardProjectionBinding,
-            string>();
-        using var finalizationEntered = new ManualResetEventSlim();
-        using var releaseFinalization = new ManualResetEventSlim();
-        var completion = new TaskCompletionSource<
-            BackgroundProjectionCompletion<CreationDashboardProjectionBinding, string>>(
-            TaskCreationOptions.RunContinuationsAsynchronously);
-        finalizationQueue.Completed += value => completion.TrySetResult(value);
-        finalizationQueue.TryRequest(
-            binding,
-            (_, cancellationToken) =>
-            {
-                finalizationEntered.Set();
-                releaseFinalization.Wait(cancellationToken);
-                return "terminal";
-            },
-            out BackgroundProjectionRequest<CreationDashboardProjectionBinding> request);
+        var lease = new CreationNavigationRefreshLease();
+        lease.BeginPress();
+        Require(lease.TryDeferRefresh(), "The pressed gesture did not defer its refresh.");
         Require(
-            finalizationEntered.Wait(TimeSpan.FromSeconds(5)),
-            "The finalization projection never entered its background worker.");
+            lease.CancelPress(),
+            "A canceled press did not request the one deferred dashboard refresh.");
         Require(
-            !BuildPageUiProjection.IsCreationDashboardNavigationStable(
-                projection,
-                finalizationProjectionTerminal: false),
-            "A method tap was enabled while finalization could still rebuild the dashboard.");
+            !lease.CancelPress() && !lease.HasPendingRefresh,
+            "A canceled press flushed its deferred refresh more than once.");
+        return Task.CompletedTask;
+    }
 
-        releaseFinalization.Set();
-        await completion.Task.WaitAsync(TimeSpan.FromSeconds(5));
+    private static Task FailedCreationNavigationFlushesExactlyOnceAsync()
+    {
+        var lease = new CreationNavigationRefreshLease();
+        lease.BeginPress();
+        lease.BeginNavigation();
+        Require(lease.TryDeferRefresh(), "Navigation did not retain a concurrent refresh.");
         Require(
-            finalizationQueue.TryTake(request, out string result, out Exception? error)
-            && error is null
-            && result == "terminal",
-            "The terminal finalization projection was not accepted exactly once.");
+            lease.CompleteNavigation(departed: false),
+            "A navigation failure did not request the deferred dashboard refresh.");
         Require(
-            BuildPageUiProjection.IsCreationDashboardNavigationStable(
-                projection,
-                finalizationProjectionTerminal: true),
-            "Navigation did not unlock after the final destructive refresh source became terminal.");
+            !lease.CompleteNavigation(departed: false) && !lease.HasPendingRefresh,
+            "A navigation failure flushed its deferred refresh more than once.");
+        return Task.CompletedTask;
+    }
+
+    private static Task CreationNavigationRefreshCoalescesTypedAndFinalizationCompletionsAsync()
+    {
+        var lease = new CreationNavigationRefreshLease();
+        lease.BeginPress();
+        for (int index = 0; index < 5; index++)
+        {
+            Require(
+                lease.TryDeferRefresh(),
+                "A typed authority completion bypassed the active navigation lease.");
+        }
+        Require(
+            lease.TryDeferRefresh(),
+            "The finalization authority completion bypassed the active navigation lease.");
+        lease.BeginNavigation();
+        Require(
+            lease.CompleteNavigation(departed: false),
+            "Coalesced typed and finalization completions did not flush after navigation cancellation.");
+        Require(
+            !lease.CompleteNavigation(departed: false),
+            "Coalesced completions produced more than one destructive dashboard refresh.");
+        return Task.CompletedTask;
+    }
+
+    private static Task TerminalCreationFailureDoesNotBlockUnrelatedReadyRouteAsync()
+    {
+        CharacterCreationWizardStageState resources = ConservativeStage(
+            CharacterCreationWizardStepIds.Resources);
+        Require(
+            BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                resources,
+                exactTypedAuthorityReady: true),
+            "An unrelated terminal Creation failure blocked an exact ready Resources route.");
+
+        var lease = new CreationNavigationRefreshLease();
+        Require(
+            !lease.TryDeferRefresh(),
+            "A terminal background failure acquired a navigation lease without a press.");
+        return Task.CompletedTask;
     }
 
     private static Task CreationDashboardReadyMarkerRequiresCurrentTerminalAuthorityAsync()

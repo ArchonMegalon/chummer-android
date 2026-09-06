@@ -275,18 +275,6 @@ public static class BuildPageUiProjection
     public const string CreationKarmaAuthorityRequired =
         "creation-karma-authority-required";
 
-    /// <summary>
-    /// A terminal typed or finalization authority projection can rebuild the complete
-    /// dashboard. Rows from the preceding render must therefore stay non-interactive
-    /// until every projection that can still publish such a refresh is terminal.
-    /// </summary>
-    public static bool IsCreationDashboardNavigationStable(
-        CreationDashboardAuthorityProjection? projection,
-        bool finalizationProjectionTerminal)
-        => projection is not null
-           && !projection.Progress.HasLoading
-           && finalizationProjectionTerminal;
-
     public static BuildPageRouteMarker RouteMarker(CharacterProfileSection? profile)
         => profile switch
         {
@@ -415,6 +403,73 @@ public static class BuildPageUiProjection
         => queue.TryAccept(request);
 }
 
+/// <summary>
+/// Protects a Creation navigation gesture from dashboard rebuilds published between
+/// the hidden button's Pressed and Clicked events. Background completions are still
+/// accepted immediately; only their destructive visual refresh is coalesced.
+/// </summary>
+public sealed class CreationNavigationRefreshLease
+{
+    private enum LeaseState
+    {
+        Idle,
+        Pressed,
+        Navigating
+    }
+
+    private LeaseState _state;
+    private bool _refreshPending;
+
+    public bool IsActive => _state != LeaseState.Idle;
+
+    public bool HasPendingRefresh => _refreshPending;
+
+    public void BeginPress()
+    {
+        if (_state == LeaseState.Idle)
+            _state = LeaseState.Pressed;
+    }
+
+    public void BeginNavigation()
+        => _state = LeaseState.Navigating;
+
+    public bool TryDeferRefresh()
+    {
+        if (_state == LeaseState.Idle)
+            return false;
+
+        _refreshPending = true;
+        return true;
+    }
+
+    public bool CancelPress()
+    {
+        if (_state != LeaseState.Pressed)
+            return false;
+
+        return Release(discardPending: false);
+    }
+
+    public bool CompleteNavigation(bool departed)
+    {
+        if (_state != LeaseState.Navigating)
+            return false;
+
+        return Release(discardPending: departed);
+    }
+
+    public void DiscardForDeparture()
+        => Release(discardPending: true);
+
+    private bool Release(bool discardPending)
+    {
+        bool refresh = _refreshPending && !discardPending;
+        _refreshPending = false;
+        _state = LeaseState.Idle;
+        return refresh;
+    }
+}
+
 public sealed class BuildPage : NativePageBase
 {
     private const string CreationDashboardRouteReadyLogTag = "ChummerRoute";
@@ -466,6 +521,7 @@ public sealed class BuildPage : NativePageBase
     private CancellationTokenSource? _creationDashboardRouteReadyLifetime;
     private long _creationDashboardAppearanceGeneration;
     private long _creationDashboardRouteReadyEmittedGeneration = -1;
+    private readonly CreationNavigationRefreshLease _creationNavigationRefreshLease = new();
     private bool _resetScrollOnNextRefresh;
 
     public BuildPage(
@@ -556,6 +612,7 @@ public sealed class BuildPage : NativePageBase
 
     protected override void OnDisappearing()
     {
+        _creationNavigationRefreshLease.DiscardForDeparture();
         _creationDashboardRouteReadyLifetime?.Cancel();
         _creationDashboardRouteReadyLifetime?.Dispose();
         _creationDashboardRouteReadyLifetime = null;
@@ -875,18 +932,8 @@ public sealed class BuildPage : NativePageBase
             Label loading = NativeTheme.Body(
                 WizardStrings.Format(
                     "Creation.Dashboard.PartialLoading",
-                    "Refreshing {0} remaining rule projections in the background. Navigation stays disabled and unlocks automatically after the stable update.",
+                    "Refreshing {0} remaining rule projections in the background. Ready steps stay interactive and this page updates automatically.",
                     projection.Progress.LoadingCount),
-                NativeTheme.Muted);
-            loading.AutomationId = "creation-dashboard-authority-partial-loading";
-            _body.Add(NativeTheme.Card(loading));
-        }
-        else if (!IsCreationDashboardNavigationStableForCurrentRender(projection))
-        {
-            Label loading = NativeTheme.Body(
-                WizardStrings.Get(
-                    "Creation.Dashboard.NavigationLoadingDetail",
-                    "Loading the remaining creation rules. Steps unlock automatically as soon as this dashboard is stable."),
                 NativeTheme.Muted);
             loading.AutomationId = "creation-dashboard-authority-partial-loading";
             _body.Add(NativeTheme.Card(loading));
@@ -968,12 +1015,6 @@ public sealed class BuildPage : NativePageBase
                         return;
                     }
 
-                    if (!IsCreationDashboardNavigationStableForCurrentRender(
-                            _creationProjection))
-                    {
-                        return;
-                    }
-
                     CreationDashboardRouteReadyMarker? marker =
                         BuildPageUiProjection.CreationDashboardRouteReady(
                             Coordinator.State,
@@ -1033,8 +1074,6 @@ public sealed class BuildPage : NativePageBase
         CreationDashboardAuthorityProjection? projection,
         CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>? prerequisite)
     {
-        bool navigationStable =
-            IsCreationDashboardNavigationStableForCurrentRender(projection);
         bool prerequisiteMethod = snapshot.BuildMethod is (CharacterCreationBuildMethods.Priority
             or CharacterCreationBuildMethods.SumToTen);
         bool lifeModuleMethod = string.Equals(
@@ -1080,17 +1119,74 @@ public sealed class BuildPage : NativePageBase
         string detail = $"Active stage: {activeStage} · {authorityDetail}";
         if (canOpen && !CurrentPhoneWizardScope.CoversCreationMethod(snapshot.BuildMethod))
             detail = CurrentPhoneWizardScope.MarkExperimental(detail);
-        if (!navigationStable)
-            detail = WizardStrings.Get(
-                "Creation.Dashboard.NavigationLoadingDetail",
-                "Loading the remaining creation rules. Steps unlock automatically as soon as this dashboard is stable.");
-        _body.Add(NativeTheme.NavigationRow(
+        _body.Add(CreationNavigationRow(
             $"Build method · {method}",
             detail,
             selected,
-            enabled: canOpen && navigationStable,
+            enabled: canOpen,
             automationId: "creation-stage-method"));
     }
+
+    private Border CreationNavigationRow(
+        string title,
+        string? detail,
+        Func<Task> selected,
+        bool enabled,
+        string automationId)
+        => NativeTheme.NavigationRow(
+            title,
+            detail,
+            () => RunCreationNavigationAsync(selected),
+            enabled,
+            automationId,
+            pressed: BeginCreationNavigationPress,
+            released: ScheduleCreationNavigationPressCancellation);
+
+    private void BeginCreationNavigationPress()
+        => _creationNavigationRefreshLease.BeginPress();
+
+    private void ScheduleCreationNavigationPressCancellation()
+    {
+        // MAUI publishes Released before Clicked for a successful gesture. Queue the
+        // cancellation so Clicked can synchronously promote the lease first.
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            if (_creationNavigationRefreshLease.CancelPress()
+                && IsCurrentCreationDashboardPage())
+            {
+                Refresh();
+            }
+        });
+    }
+
+    private async Task RunCreationNavigationAsync(Func<Task> selected)
+    {
+        _creationNavigationRefreshLease.BeginNavigation();
+        bool departed = false;
+        try
+        {
+            await selected();
+            departed = !IsCurrentCreationDashboardPage();
+        }
+        finally
+        {
+            bool refresh = _creationNavigationRefreshLease.CompleteNavigation(departed);
+            if (refresh && IsCurrentCreationDashboardPage())
+                Refresh();
+        }
+    }
+
+    private void RequestCreationAuthorityRefresh()
+    {
+        if (_creationNavigationRefreshLease.TryDeferRefresh())
+            return;
+        if (IsCurrentCreationDashboardPage())
+            Refresh();
+    }
+
+    private bool IsCurrentCreationDashboardPage()
+        => _creationDashboardRouteReadyLifetime is not null
+           && ReferenceEquals(Shell.Current?.CurrentPage, this);
 
     private void PrepareCreationFinalizationProjection(
         CharacterCreationWizardSnapshot snapshot,
@@ -1138,19 +1234,6 @@ public sealed class BuildPage : NativePageBase
         }
     }
 
-    private bool IsCreationDashboardNavigationStableForCurrentRender(
-        CreationDashboardAuthorityProjection? projection)
-    {
-        CreationDashboardProjectionBinding? binding = projection?.Binding;
-        bool finalizationProjectionTerminal = binding is not null
-            && _creationFinalizationBinding?.Equals(binding) == true
-            && (_creationFinalizationAuthority is not null
-                || _creationFinalizationFailureReason is not null);
-        return BuildPageUiProjection.IsCreationDashboardNavigationStable(
-            projection,
-            finalizationProjectionTerminal);
-    }
-
     private void AddFinalizationReviewAction()
     {
         CharacterCreationFinalizationResult<CharacterCreationFinalizationState>? authority =
@@ -1163,9 +1246,7 @@ public sealed class BuildPage : NativePageBase
                {
                    Outcome: CharacterCreationFinalizationOutcomes.Available,
                    Value.CanReview: true
-               }
-            || !IsCreationDashboardNavigationStableForCurrentRender(
-                _creationProjection))
+               })
         {
             return;
         }
@@ -1173,7 +1254,9 @@ public sealed class BuildPage : NativePageBase
         Button review = NativeTheme.PrimaryButton(
             CurrentPhoneWizardScope.MarkExperimental("Review and finish creation"));
         review.AutomationId = "creation-finalization-open-review";
-        review.Clicked += async (_, _) => await RunAsync(async () =>
+        review.Pressed += (_, _) => BeginCreationNavigationPress();
+        review.Released += (_, _) => ScheduleCreationNavigationPressCancellation();
+        review.Clicked += async (_, _) => await RunCreationNavigationAsync(() => RunAsync(async () =>
         {
             CharacterCreationFinalizationResult<CharacterCreationFinalizationReview> result =
                 Coordinator.ReviewCreationFinalization(authority.Value.Binding);
@@ -1188,7 +1271,7 @@ public sealed class BuildPage : NativePageBase
                     ?? "The final creation authority changed. Reload the runner and review again.");
             }
             await Navigation.PushAsync(new CreationFinalizationPage(Coordinator, result.Value));
-        });
+        }));
         _body.Add(review);
     }
 
@@ -1276,7 +1359,7 @@ public sealed class BuildPage : NativePageBase
             _creationFinalizationFailureReason = error is null
                 ? null
                 : "creation-finalization-authority-load-failed";
-            Refresh();
+            RequestCreationAuthorityRefresh();
         });
     }
 
@@ -1413,7 +1496,7 @@ public sealed class BuildPage : NativePageBase
                 if (BuildPageUiProjection.ConsumeRejectedCreationPhaseForRefresh(queue, request))
                 {
                     TraceCreationPhase(phase, "take-rejected-refresh", request);
-                    Refresh();
+                    RequestCreationAuthorityRefresh();
                 }
                 return;
             }
@@ -1442,7 +1525,7 @@ public sealed class BuildPage : NativePageBase
                     phase,
                     projection.Progress))
             {
-                Refresh();
+                RequestCreationAuthorityRefresh();
             }
         });
     }
@@ -1658,8 +1741,6 @@ public sealed class BuildPage : NativePageBase
         CharacterCreationContactsInteractionLoadResult? creationContacts,
         CharacterCreationResourcesInteractionLoadResult? creationResources)
     {
-        bool navigationStable =
-            IsCreationDashboardNavigationStableForCurrentRender(projection);
         _body.Add(NativeTheme.Eyebrow("Generation steps"));
         foreach (CharacterCreationWizardStageState stage in snapshot.Steps)
         {
@@ -1811,15 +1892,11 @@ public sealed class BuildPage : NativePageBase
             }
             if (canOpen && !CurrentPhoneWizardScope.CoversCreationStage(stage.StepId))
                 detail = CurrentPhoneWizardScope.MarkExperimental(detail);
-            if (!navigationStable)
-                detail = WizardStrings.Get(
-                    "Creation.Dashboard.NavigationLoadingDetail",
-                    "Loading the remaining creation rules. Steps unlock automatically as soon as this dashboard is stable.");
-            Border row = NativeTheme.NavigationRow(
+            Border row = CreationNavigationRow(
                 stage.Label,
                 detail,
                 selected,
-                enabled: canOpen && navigationStable,
+                enabled: canOpen,
                 automationId: $"creation-stage-{Token(stage.StepId)}");
             _body.Add(row);
         }
@@ -1852,8 +1929,6 @@ public sealed class BuildPage : NativePageBase
         CharacterCreationContactsInteractionLoadResult? creationContacts,
         CharacterCreationResourcesInteractionLoadResult? creationResources)
     {
-        bool navigationStable =
-            IsCreationDashboardNavigationStableForCurrentRender(projection);
         CharacterCreationWizardStageState? active = snapshot.Steps.FirstOrDefault(stage =>
             string.Equals(stage.StepId, snapshot.ActiveStepId, StringComparison.Ordinal));
         string[] candidateIds = new[] { snapshot.ActiveStepId }
@@ -2035,15 +2110,11 @@ public sealed class BuildPage : NativePageBase
                     : stage.Blockers.FirstOrDefault() ?? "Blocked by the current projection";
             if (canOpen && !CurrentPhoneWizardScope.CoversCreationStage(stepId))
                 detail = CurrentPhoneWizardScope.MarkExperimental(detail);
-            if (!navigationStable)
-                detail = WizardStrings.Get(
-                    "Creation.Dashboard.NavigationLoadingDetail",
-                    "Loading the remaining creation rules. Steps unlock automatically as soon as this dashboard is stable.");
-            _body.Add(NativeTheme.NavigationRow(
+            _body.Add(CreationNavigationRow(
                 stage.Label,
                 detail,
                 selected,
-                canOpen && navigationStable,
+                canOpen,
                 $"creation-next-{Token(stepId)}"));
         }
     }
