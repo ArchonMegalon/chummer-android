@@ -1,9 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 umask 077
+PATH=/usr/bin:/bin
+export PATH
 
-# Imported release secrets remain available to this shell for the later signing
-# phase, but no child process inherits them before that explicit boundary.
+# This script is release-authoritative only when entered through the protected
+# supervisor, which seals this script, disables dumpability, and verifies Yama.
+[[ "${CHUMMER_RELEASE_PROCESS_ISOLATED:-}" == "v1" ]] || {
+  printf 'android_release=failed stage=protected-process-supervisor-required\n' >&2
+  exit 1
+}
+
+# Legacy signing values may be present in an operator shell. They are removed
+# from child environments immediately and later rejected rather than used.
 release_test_environment=(
   -u AndroidSigningKeyStore
   -u ChummerAndroidSigningStorePass
@@ -20,6 +29,7 @@ release_test_environment=(
   -u CHUMMER_ANDROID_BUILD_ATTESTATION_PRIVATE_KEY
   -u CHUMMER_ANDROID_GITHUB_PROVENANCE_TOKEN_FILE
   -u CHUMMER_DOTNET
+  -u SSLKEYLOGFILE
 )
 for release_secret_variable in \
   AndroidSigningKeyStore \
@@ -40,13 +50,62 @@ unset CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL
 unset CHUMMER_ANDROID_RELEASE_APPROVER_PRIVATE_KEY
 unset CHUMMER_ANDROID_BUILD_ATTESTATION_PRIVATE_KEY
 unset CHUMMER_ANDROID_GITHUB_PROVENANCE_TOKEN_FILE
+unset SSLKEYLOGFILE
 unset release_secret_variable
+/usr/bin/python3 -c '
+import ctypes
+import os
+from pathlib import Path
+libc = ctypes.CDLL(None, use_errno=True)
+if libc.prctl(3, 0, 0, 0, 0) != 0:
+    raise SystemExit("release process is dumpable")
+try:
+    scope = int(Path("/proc/sys/kernel/yama/ptrace_scope").read_text(encoding="ascii").strip())
+except (OSError, ValueError) as error:
+    raise SystemExit(f"cannot establish Yama posture: {error}")
+if scope < 2:
+    raise SystemExit("Yama ptrace_scope must be at least 2")
+docker_socket = Path("/var/run/docker.sock")
+if docker_socket.exists() and (os.access(docker_socket, os.R_OK) or os.access(docker_socket, os.W_OK)):
+    raise SystemExit("release identity can access the rootful Docker socket")
+' || {
+  printf 'android_release=failed stage=protected-process-isolation-invalid\n' >&2
+  exit 1
+}
 caller_dotnet="${CHUMMER_DOTNET:-}"
 export -n caller_dotnet 2>/dev/null || true
 unset CHUMMER_DOTNET
 
-repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+repo_dir="${CHUMMER_RELEASE_REPO_ROOT:-}"
+[[ -n "$repo_dir" && "$repo_dir" == /* && ! -L "$repo_dir" && -d "$repo_dir" ]] || {
+  printf 'android_release=failed stage=protected-repository-root-missing\n' >&2
+  exit 1
+}
+repo_dir="$(cd "$repo_dir" && pwd -P)"
+unset CHUMMER_RELEASE_REPO_ROOT CHUMMER_RELEASE_PROCESS_ISOLATED
 project_path="$repo_dir/src/Chummer.Android/Chummer.Android.csproj"
+
+# Do not dispatch release commands through caller-controlled PATH lookup. These
+# shell functions are parsed from the sealed release script and invoke only the
+# canonical root-owned system paths.
+basename() { /usr/bin/basename "$@"; }
+chmod() { /usr/bin/chmod "$@"; }
+cmp() { /usr/bin/cmp "$@"; }
+cut() { /usr/bin/cut "$@"; }
+dirname() { /usr/bin/dirname "$@"; }
+env() { /usr/bin/env "$@"; }
+git() { /usr/bin/git "$@"; }
+id() { /usr/bin/id "$@"; }
+install() { /usr/bin/install "$@"; }
+jq() { /usr/bin/jq "$@"; }
+mkdir() { /usr/bin/mkdir "$@"; }
+mktemp() { /usr/bin/mktemp "$@"; }
+openssl() { /usr/bin/openssl "$@"; }
+python3() { /usr/bin/python3 "$@"; }
+realpath() { /usr/bin/realpath "$@"; }
+rm() { /usr/bin/rm "$@"; }
+sha256sum() { /usr/bin/sha256sum "$@"; }
+stat() { /usr/bin/stat "$@"; }
 dotnet_command=""
 configuration="Release"
 framework="net10.0-android36.0"
@@ -56,7 +115,6 @@ expected_upload_certificate_sha256="D9:C4:B6:35:12:15:44:D5:52:2A:BF:1E:C2:DF:DA
 expected_bundletool_sha256="a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29"
 nuget_org_source="https://api.nuget.org/v3/index.json"
 release_tmp=""
-capture_tmp=""
 
 fail() {
   printf 'android_release=failed stage=%s\n' "$1" >&2
@@ -69,20 +127,11 @@ cleanup() {
   if [[ -n "$release_tmp" && -d "$release_tmp" ]]; then
     rm -rf -- "$release_tmp"
   fi
-  if [[ -n "$capture_tmp" && -d "$capture_tmp" ]]; then
-    rm -rf -- "$capture_tmp"
-  fi
   exit "$status"
 }
 
 require_command() {
   command -v "$1" >/dev/null 2>&1 || fail "missing-command-$1"
-}
-
-require_secret_variable() {
-  local variable_name="$1"
-  [[ -n "${!variable_name:-}" ]] || fail "signing-variable-$variable_name-missing"
-  export "${variable_name?}"
 }
 
 require_private_regular_file() {
@@ -149,6 +198,7 @@ unset release_version_pair expected_version_name expected_version_code version_e
 unset CHUMMER_ANDROID_EXPECTED_VERSION_NAME CHUMMER_ANDROID_EXPECTED_VERSION_CODE
 
 require_private_regular_file CHUMMER_ANDROID_RELEASE_TOOLCHAIN_AUTHORITY
+release_toolchain_authority="$CHUMMER_ANDROID_RELEASE_TOOLCHAIN_AUTHORITY"
 toolchain_identity="$(python3 "$repo_dir/scripts/sign_android_release_build_attestation.py" \
   verify-toolchain \
   --authority "$CHUMMER_ANDROID_RELEASE_TOOLCHAIN_AUTHORITY")" \
@@ -164,6 +214,7 @@ trusted_java_sdk="$(jq -er '.javaSdkRoot' <<<"$toolchain_identity")" \
 dotnet_command="$trusted_dotnet"
 JavaSdkDirectory="$trusted_java_sdk"
 unset toolchain_identity trusted_dotnet trusted_java_sdk caller_dotnet
+export -n CHUMMER_ANDROID_RELEASE_TOOLCHAIN_AUTHORITY 2>/dev/null || true
 unset CHUMMER_ANDROID_RELEASE_TOOLCHAIN_AUTHORITY
 
 workspace_root="${CHUMMER_COMPLETE_ROOT:-}"
@@ -245,11 +296,11 @@ python3 "$repo_dir/scripts/preflight_native_android_toolchain.py" \
 env "${release_test_environment[@]}" \
   python3 -m unittest discover -s "$repo_dir/tests" -v
 
-artifact_dir="$repo_dir/artifacts"
+artifact_dir="$release_input_root/artifacts"
 mkdir -p -- "$artifact_dir"
-[[ ! -L "$artifact_dir" && "$(realpath -e -- "$artifact_dir")" == "$repo_dir/artifacts" ]] \
+[[ ! -L "$artifact_dir" && "$(realpath -e -- "$artifact_dir")" == "$release_input_root/artifacts" ]] \
   || fail "artifact-directory-not-canonical"
-output_aab="$artifact_dir/chummer-android-$version_name-upload.aab"
+output_aab="$artifact_dir/chummer-android-$version_name-unsigned.aab"
 output_hash="$output_aab.sha256"
 output_graph="$artifact_dir/chummer-android-$version_name-source-graph.json"
 for output_path in "$output_aab" "$output_hash" "$output_graph"; do
@@ -269,8 +320,12 @@ selected_package_feed="$release_tmp/selected-owner-feed"
 isolated_packages="$release_tmp/nuget-packages"
 routed_locks="$release_tmp/project-locks"
 restore_manifest="$release_tmp/restore-consumption.json"
+release_intermediate="$release_tmp/intermediate"
+external_signer_request="$release_input_root/$release_attempt_id.external-signer-request.json"
+[[ ! -e "$external_signer_request" && ! -L "$external_signer_request" ]] \
+  || fail "external-signer-request-already-exists"
 mkdir -m 0700 -- "$staged_publish_dir" "$selected_package_feed" \
-  "$isolated_packages" "$routed_locks"
+  "$isolated_packages" "$routed_locks" "$release_intermediate"
 install -m 0600 -- \
   "$repo_dir/src/Chummer.Android/packages.lock.json" \
   "$routed_locks/Chummer.Android.packages.lock.json"
@@ -340,6 +395,7 @@ export NUGET_PACKAGES
   -p:RestorePackagesWithLockFile=true \
   -p:CustomBeforeMicrosoftCommonProps="$repo_dir/eng/ReleaseRestoreRouting.props" \
   -p:ChummerReleaseLockRoot="$routed_locks" \
+  -p:ChummerReleaseIntermediateRoot="$release_intermediate" \
   -p:NuGetAudit=false \
   -p:ChummerContractsPackageVersion="$core_version" \
   -p:ChummerCoreRuntimePackageVersion="$core_version" \
@@ -367,7 +423,7 @@ cmp --silent \
   "$routed_locks/Chummer.Android.packages.lock.json" \
   || fail "routed-android-lock-drift"
 
-assets_path="$repo_dir/src/Chummer.Android/obj/project.assets.json"
+assets_path="$release_intermediate/Chummer.Android/project.assets.json"
 [[ -f "$assets_path" && ! -L "$assets_path" ]] || fail "locked-restore-assets-missing"
 jq -e --arg package_root "$isolated_packages" \
   '.packageFolders | keys | length == 1 and
@@ -390,8 +446,10 @@ python3 "$repo_dir/scripts/seal_release_restore_consumption.py" materialize \
   --manifest "$restore_manifest" \
   || fail "locked-restore-consumption-seal"
 
-# Signing material is admitted only after every test and non-signing release
-# preflight has completed. None of these values is written to argv or logs.
+# Recheck the complete release binding immediately before the unsigned build.
+# This build-user process deliberately admits no production signing key. Under
+# the same-UID filesystem attacker model, even an owner-only mode-0600 key is
+# readable and replaceable. Signing is a separate privileged external lane.
 python3 "$repo_dir/scripts/verify_api36_two_green_release_eligibility.py" \
   --receipt "$two_green_receipt" \
   --approval "$two_green_approval" \
@@ -400,24 +458,24 @@ python3 "$repo_dir/scripts/verify_api36_two_green_release_eligibility.py" \
   --expected-version-code "$version_code" \
   --package-authority "$CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY" \
   --source-graph "$staged_graph" >/dev/null \
-  || fail "two-green-pre-signing-binding-invalid"
+  || fail "two-green-pre-build-binding-invalid"
 python3 "$repo_dir/scripts/verify_release_private_key_hygiene.py" \
   --repo-root "$repo_dir" \
   || fail "repository-private-key-hygiene"
-require_private_regular_file AndroidSigningKeyStore
 require_private_regular_file CHUMMER_ANDROID_UPLOAD_CERTIFICATE_PATH
 require_private_regular_file CHUMMER_BUNDLETOOL_JAR
-case "$AndroidSigningKeyStore" in
-  "$repo_dir"/*) fail "signing-keystore-inside-repository" ;;
-esac
 case "$CHUMMER_ANDROID_UPLOAD_CERTIFICATE_PATH" in
   "$repo_dir"/*) fail "upload-certificate-inside-repository" ;;
 esac
-require_secret_variable ChummerAndroidSigningStorePass
-require_secret_variable ChummerAndroidSigningKeyPass
-require_secret_variable ChummerAndroidSigningKeyAlias
-[[ "$ChummerAndroidSigningKeyAlias" =~ ^[A-Za-z0-9._-]+$ ]] \
-  || fail "signing-key-alias-invalid"
+for forbidden_signing_input in \
+  AndroidSigningKeyStore \
+  ChummerAndroidSigningStorePass \
+  ChummerAndroidSigningKeyPass \
+  ChummerAndroidSigningKeyAlias; do
+  [[ ! -v "$forbidden_signing_input" ]] \
+    || fail "external-signer-required-readable-signing-input-rejected"
+done
+unset forbidden_signing_input
 
 bundletool_sha256="$(sha256sum "$CHUMMER_BUNDLETOOL_JAR" | cut -d' ' -f1)"
 [[ "$bundletool_sha256" == "$expected_bundletool_sha256" ]] \
@@ -426,23 +484,6 @@ certificate_sha256="$(openssl x509 -in "$CHUMMER_ANDROID_UPLOAD_CERTIFICATE_PATH
   -noout -fingerprint -sha256 | cut -d= -f2)"
 [[ "$certificate_sha256" == "$expected_upload_certificate_sha256" ]] \
   || fail "upload-certificate-pin-mismatch"
-
-export CHUMMER_ANDROID_PREFLIGHT_STORE_PASSWORD="$ChummerAndroidSigningStorePass"
-if ! "$CHUMMER_KEYTOOL" -exportcert -rfc \
-  -keystore "$AndroidSigningKeyStore" \
-  -storetype PKCS12 \
-  -storepass:env CHUMMER_ANDROID_PREFLIGHT_STORE_PASSWORD \
-  -alias "$ChummerAndroidSigningKeyAlias" \
-  -file "$release_tmp/keystore-certificate.pem" \
-  >"$release_tmp/keytool-preflight.log" 2>&1; then
-  unset CHUMMER_ANDROID_PREFLIGHT_STORE_PASSWORD
-  fail "signing-keystore-preflight"
-fi
-unset CHUMMER_ANDROID_PREFLIGHT_STORE_PASSWORD
-keystore_certificate_sha256="$(openssl x509 -in "$release_tmp/keystore-certificate.pem" \
-  -noout -fingerprint -sha256 | cut -d= -f2)"
-[[ "$keystore_certificate_sha256" == "$expected_upload_certificate_sha256" ]] \
-  || fail "signing-keystore-certificate-mismatch"
 
 env "${release_test_environment[@]}" \
   python3 "$repo_dir/scripts/seal_release_restore_consumption.py" verify \
@@ -475,6 +516,7 @@ env "${release_test_environment[@]}" \
   -p:RestorePackagesWithLockFile=true \
   -p:CustomBeforeMicrosoftCommonProps="$repo_dir/eng/ReleaseRestoreRouting.props" \
   -p:ChummerReleaseLockRoot="$routed_locks" \
+  -p:ChummerReleaseIntermediateRoot="$release_intermediate" \
   -p:NuGetAudit=false \
   -p:ChummerContractsPackageVersion="$core_version" \
   -p:ChummerCoreRuntimePackageVersion="$core_version" \
@@ -487,12 +529,8 @@ env "${release_test_environment[@]}" \
   -p:ApplicationDisplayVersion="$version_name" \
   -p:ApplicationVersion="$version_code" \
   -p:PublishDir="$staged_publish_dir/" \
+  -p:AndroidKeyStore=false \
   -p:AndroidPackageFormats=aab
-
-unset ChummerAndroidSigningStorePass
-unset ChummerAndroidSigningKeyPass
-unset ChummerAndroidSigningKeyAlias
-unset AndroidSigningKeyStore
 
 python3 "$repo_dir/scripts/seal_release_restore_consumption.py" verify \
   --input-root "$release_tmp" \
@@ -509,76 +547,34 @@ python3 "$repo_dir/scripts/seal_release_restore_consumption.py" verify \
 source_aab="$(python3 "$repo_dir/scripts/verify_release_publish_output.py" \
   --publish-dir "$staged_publish_dir" \
   --package-id "$package_id" \
-  --resolve-exact-signed-aab)" || fail "fresh-signed-release-bundle-invalid"
+  --resolve-exact-unsigned-aab)" || fail "fresh-unsigned-release-bundle-invalid"
 
-# Capture both outputs exactly once through stable descriptors onto the final
-# artifact filesystem. Every validator below reads the authenticated captured
-# files; promotion copies and hashes from opened capture descriptors directly
-# into exclusive final outputs, so no validator-to-path-reopen race is trusted.
-capture_tmp="$(mktemp -d "$artifact_dir/.chummer-android-$version_name.capture.XXXXXX")"
-chmod 0700 "$capture_tmp"
-capture_authentication_key="$release_tmp/release-output-capture-authentication.key"
-openssl rand -out "$capture_authentication_key" 32
-chmod 0600 "$capture_authentication_key"
-capture_authentication_key_sha256="$(sha256sum "$capture_authentication_key" | cut -d' ' -f1)"
-[[ ! -L "$capture_authentication_key" \
-  && "$(stat -c '%s' -- "$capture_authentication_key")" == 32 \
-  && "$(stat -c '%u' -- "$capture_authentication_key")" == "$(id -u)" ]] \
-  || fail "stable-release-output-authentication-key"
-python3 "$repo_dir/scripts/capture_android_release_outputs.py" capture \
+# Capture, validate, and promote the unsigned handoff inside one process. The
+# non-authoritative request records exact descriptor-held inputs, but it never
+# grants signing or publication. A separately hosted privileged signer must
+# independently replay every bound authority before returning a signed AAB.
+/usr/bin/python3 "$repo_dir/scripts/sign_android_release_build_attestation.py" prepare-external-signer \
   --aab "$source_aab" \
   --source-graph "$staged_graph" \
-  --capture-dir "$capture_tmp" \
-  --authentication-key "$capture_authentication_key" \
-  --expected-authentication-key-sha256 "$capture_authentication_key_sha256" \
-  --final-aab-name "$(basename "$output_aab")" \
-  --final-graph-name "$(basename "$output_graph")" \
-  || fail "stable-release-output-capture"
-captured_aab="$capture_tmp/captured.aab"
-captured_graph="$capture_tmp/captured-source-graph.json"
-
-"$repo_dir/scripts/validate-aab.sh" "$captured_aab"
-python3 "$repo_dir/scripts/verify_release_artifact_hygiene.py" \
-  --aab "$captured_aab" \
-  --forbidden-path "$two_green_receipt" \
-  --forbidden-path "$two_green_approval" \
-  || fail "protected-release-input-leaked-into-aab"
-python3 "$repo_dir/scripts/verify_release_source_graph.py" \
-  --android-root "$repo_dir" \
-  --workspace-root "$workspace_root" \
-  --package-authority "$CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY" \
-  --authority-root "$authority_root" \
-  --expected-version-name "$version_name" \
-  --expected-version-code "$version_code" \
-  --verify-existing "$captured_graph"
-python3 "$repo_dir/scripts/materialize_release_package_authority.py" \
-  --android-root "$repo_dir" \
-  --workspace-root "$workspace_root" \
-  --presentation-root "$workspace_root/chummer-presentation" \
-  --receipt "$CHUMMER_CURRENT_UI_PACKAGE_AUTHORITY_RECEIPT" \
-  --package-feed "$CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED" \
-  --verify-existing "$CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY"
-
-source_sha256="$(sha256sum "$captured_aab" | cut -d' ' -f1)"
-graph_sha256="$(sha256sum "$captured_graph" | cut -d' ' -f1)"
-[[ "$(sha256sum "$capture_authentication_key" | cut -d' ' -f1)" \
-  == "$capture_authentication_key_sha256" ]] \
-  || fail "stable-release-output-authentication-key-drift"
-python3 "$repo_dir/scripts/capture_android_release_outputs.py" promote \
-  --capture-dir "$capture_tmp" \
-  --authentication-key "$capture_authentication_key" \
-  --expected-authentication-key-sha256 "$capture_authentication_key_sha256" \
   --output-aab "$output_aab" \
   --output-source-graph "$output_graph" \
   --output-sidecar "$output_hash" \
-  || fail "stable-release-output-promotion"
-[[ "$(sha256sum "$output_aab" | cut -d' ' -f1)" == "$source_sha256" ]] \
-  || fail "sealed-aab-digest-mismatch"
-[[ "$(sha256sum "$output_graph" | cut -d' ' -f1)" == "$graph_sha256" ]] \
-  || fail "sealed-graph-digest-mismatch"
-(cd "$repo_dir" && sha256sum --check "$output_hash" >/dev/null) \
+  --output-request "$external_signer_request" \
+  --two-green-receipt "$two_green_receipt" \
+  --two-green-approval "$two_green_approval" \
+  --workspace-root "$workspace_root" \
+  --package-authority "$CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY" \
+  --authority-root "$authority_root" \
+  --bundletool "$CHUMMER_BUNDLETOOL_JAR" \
+  --upload-certificate "$CHUMMER_ANDROID_UPLOAD_CERTIFICATE_PATH" \
+  --java-tool-authority "$release_toolchain_authority" \
+  || fail "unsigned-external-signer-handoff"
+source_sha256="$(/usr/bin/sha256sum "$output_aab" | /usr/bin/cut -d' ' -f1)"
+graph_sha256="$(/usr/bin/sha256sum "$output_graph" | /usr/bin/cut -d' ' -f1)"
+(cd "$repo_dir" && /usr/bin/sha256sum --check "$output_hash" >/dev/null) \
   || fail "sealed-hash-verification"
 
-printf 'android_release=sealed version=%s code=%s aab=%s sha256=%s source_graph=%s source_graph_sha256=%s two_green_receipt_sha256=%s publication_authorized=false google_play_upload_authorized=false\n' \
+printf 'android_release=external-signer-required version=%s code=%s unsigned_aab=%s sha256=%s source_graph=%s source_graph_sha256=%s signer_request=%s two_green_receipt_sha256=%s signing_authorized=false publication_authorized=false google_play_upload_authorized=false\n' \
   "$version_name" "$version_code" "$output_aab" "$source_sha256" \
-  "$output_graph" "$graph_sha256" "$eligibility_sha256"
+  "$output_graph" "$graph_sha256" "$external_signer_request" "$eligibility_sha256"
+exit 3

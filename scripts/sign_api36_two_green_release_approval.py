@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import ctypes
 from datetime import UTC, datetime, timedelta
 import hashlib
 import importlib.util
@@ -28,7 +29,9 @@ from urllib.parse import urljoin, urlsplit
 from urllib.request import HTTPRedirectHandler, HTTPSHandler, ProxyHandler, Request, build_opener
 
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(
+    os.environ.get("CHUMMER_RELEASE_REPO_ROOT", Path(__file__).resolve().parents[1])
+).resolve(strict=True)
 VERIFIER_PATH = REPO_ROOT / "scripts/verify_api36_two_green_release_eligibility.py"
 TWO_GREEN_PATH = REPO_ROOT / "scripts/materialize-api36-two-green-eligibility.py"
 KEY_HYGIENE_PATH = REPO_ROOT / "scripts/verify_release_private_key_hygiene.py"
@@ -110,6 +113,11 @@ class _SafeRedirect(HTTPRedirectHandler):
 
 class GitHubApiClient:
     def __init__(self, token_file: Path) -> None:
+        # CPython's TLS layer honors SSLKEYLOGFILE.  A hostile inherited value
+        # would exfiltrate session keys even though proxies and CA overrides
+        # are disabled, so provenance networking refuses to start with it.
+        if os.environ.get("SSLKEYLOGFILE"):
+            raise ValueError("SSLKEYLOGFILE is forbidden for authenticated GitHub provenance")
         token_raw = VERIFIER._stable_bytes(
             token_file,
             label="GitHub provenance token",
@@ -131,6 +139,8 @@ class GitHubApiClient:
         ):
             raise ValueError("system GitHub provenance CA bundle is not trusted")
         context = ssl.create_default_context(cafile=os.fspath(SYSTEM_CA_BUNDLE))
+        if getattr(context, "keylog_filename", None) is not None:
+            raise ValueError("GitHub provenance TLS key logging is enabled")
         self._opener = build_opener(
             ProxyHandler({}),
             HTTPSHandler(context=context),
@@ -184,8 +194,35 @@ def _private_file(path: Path, label: str, *, outside_repo: bool) -> Path:
 
 
 def _private_key(path: Path) -> Path:
+    _require_protected_process()
     KEY_HYGIENE.verify(REPO_ROOT)
-    return KEY_HYGIENE.private_key(path, REPO_ROOT, "release approval private key")
+    raise ValueError(
+        "external-signer-required: release-approval private keys are not accepted "
+        "by the build-user release gate"
+    )
+
+
+def _require_protected_process() -> None:
+    if os.environ.get("CHUMMER_RELEASE_PROCESS_ISOLATED") != "v1":
+        raise ValueError("protected release supervisor is required")
+    libc = ctypes.CDLL(None, use_errno=True)
+    if libc.prctl(3, 0, 0, 0, 0) != 0:
+        raise ValueError("protected release process is dumpable")
+    try:
+        scope = int(
+            Path("/proc/sys/kernel/yama/ptrace_scope")
+            .read_text(encoding="ascii")
+            .strip()
+        )
+    except (OSError, ValueError) as error:
+        raise ValueError("cannot establish protected release Yama posture") from error
+    if scope < 2:
+        raise ValueError("protected release requires Yama ptrace_scope >= 2")
+    docker_socket = Path("/var/run/docker.sock")
+    if docker_socket.exists() and (
+        os.access(docker_socket, os.R_OK) or os.access(docker_socket, os.W_OK)
+    ):
+        raise ValueError("protected release identity has rootful Docker access")
 
 
 def _write_exclusive(path: Path, raw: bytes) -> None:

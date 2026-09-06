@@ -104,7 +104,7 @@ class AndroidReleaseIntentTests(unittest.TestCase):
         )
         self.assertNotEqual(0, completed.returncode)
         self.assertEqual(
-            "android_release=failed stage=release-version-intent-missing\n",
+            "android_release=failed stage=protected-process-supervisor-required\n",
             completed.stderr,
         )
 

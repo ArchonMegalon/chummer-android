@@ -334,6 +334,7 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
             "uploadCertificateSha256": build.EXPECTED_UPLOAD_CERTIFICATE_SHA256,
             "uploadCertificateFileSha256": "0" * 64,
             "javaToolAuthoritySha256": "4" * 64,
+            "javaSdkTreeSha256": "c" * 64,
             "javaVersionOutputSha256": "5" * 64,
             "javaToolSha256": {
                 "java": "6" * 64,
@@ -343,6 +344,7 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
             },
             "dotnetSha256": "9" * 64,
             "dotnetVersionOutputSha256": "a" * 64,
+            "dotnetSdkTreeSha256": "d" * 64,
             "aabValidationOutputSha256": "1" * 64,
             "artifactHygieneOutputSha256": "2" * 64,
             "sourceGraphValidationOutputSha256": "3" * 64,
@@ -408,6 +410,10 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
             build,
             "_protected_validation",
             return_value=self.protected_build_validation(),
+        ), mock.patch.object(
+            build, "_require_protected_process", return_value=None,
+        ), mock.patch.object(
+            build, "_private_key", return_value=self.attester_private_key,
         ), mock.patch.object(
             build.APPROVAL_SIGNER,
             "_authenticated_github_replay",

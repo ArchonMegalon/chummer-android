@@ -2136,21 +2136,25 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn('mkdir -m 0700 -- "$staged_publish_dir"', build)
         self.assertIn("verify_release_publish_output.py", build)
         self.assertIn("--require-empty", build)
-        self.assertIn("--resolve-exact-signed-aab", build)
+        self.assertIn("--resolve-exact-unsigned-aab", build)
         self.assertNotIn('publish_dir="$repo_dir/src/Chummer.Android/bin', build)
         self.assertIn("versioned-output-already-exists", build)
-        self.assertIn('output_aab="$artifact_dir/chummer-android-$version_name-upload.aab"', build)
+        self.assertIn('output_aab="$artifact_dir/chummer-android-$version_name-unsigned.aab"', build)
         self.assertIn(
             'output_graph="$artifact_dir/chummer-android-$version_name-source-graph.json"',
             build,
         )
-        self.assertIn("capture_android_release_outputs.py", build)
-        self.assertIn("stable-release-output-capture", build)
-        self.assertIn("stable-release-output-promotion", build)
+        self.assertIn("sign_android_release_build_attestation.py", build)
+        self.assertIn("prepare-external-signer", build)
+        self.assertIn("unsigned-external-signer-handoff", build)
+        self.assertNotIn("capture_authentication_key", build)
+        self.assertIn("descriptor-held inputs", build)
         self.assertIn("--verify-existing", build)
         self.assertIn("bundletool-digest-mismatch", build)
         self.assertIn("upload-certificate-pin-mismatch", build)
-        self.assertIn("signing-keystore-certificate-mismatch", build)
+        self.assertIn("external-signer-required-readable-signing-input-rejected", build)
+        self.assertIn("-p:AndroidKeyStore=false", build)
+        self.assertNotIn("signing-keystore-certificate-mismatch", build)
         self.assertIn("preflight_native_android_toolchain.py", build)
         self.assertIn("CHUMMER_ANDROID_RELEASE_TOOLCHAIN_AUTHORITY", build)
         self.assertIn("verify-toolchain", build)
@@ -2178,10 +2182,7 @@ class AndroidContractTests(unittest.TestCase):
         self.assertGreaterEqual(
             build.count("verify_api36_two_green_release_eligibility.py"), 3
         )
-        self.assertLess(
-            build.index('|| fail "two-green-pre-signing-binding-invalid"'),
-            build.index("require_private_regular_file AndroidSigningKeyStore"),
-        )
+        self.assertIn('|| fail "two-green-pre-build-binding-invalid"', build)
         self.assertIn("set -euo pipefail", prepare)
         self.assertIn("umask 077", prepare)
         self.assertIn("release-input-directory-inside-workspace", prepare)
@@ -2225,7 +2226,7 @@ class AndroidContractTests(unittest.TestCase):
         environment_handoff = prepare[prepare.index("{\n  printf 'export CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY") :]
         self.assertNotIn("export CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT", environment_handoff)
         self.assertNotIn("export CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL", environment_handoff)
-        self.assertIn("verify_release_artifact_hygiene.py", build)
+        self.assertIn("prepare-external-signer", build)
         self.assertIn("publication_authorized=false", prepare)
         self.assertIn("ChummerReleaseIntermediateRoot", prepare)
         self.assertIn("ChummerReleaseLockRoot", prepare)
@@ -2266,16 +2267,19 @@ class AndroidContractTests(unittest.TestCase):
         )
         self.assertIn("read_android_version", release_intent)
         self.assertNotIn('version_name="0.1.0-preview.', build)
-        self.assertIn('source_sha256="$(sha256sum "$captured_aab"', build)
-        self.assertIn('graph_sha256="$(sha256sum "$captured_graph"', build)
-        self.assertGreaterEqual(build.count("--authentication-key"), 2)
+        self.assertIn('source_sha256="$(/usr/bin/sha256sum "$output_aab"', build)
+        self.assertIn('graph_sha256="$(/usr/bin/sha256sum "$output_graph"', build)
+        self.assertNotIn("--authentication-key", build)
+        self.assertIn("descriptor-held inputs", build)
         self.assertIn("CHUMMER_JARSIGNER", build)
         self.assertIn("CHUMMER_BUNDLETOOL_JAR", validate)
         self.assertIn("bundletool validation passed", validate)
         self.assertIn("-verify -certs", validate)
         self.assertIn("AAB signer does not match", validate)
         self.assertIn("ALLOWED_PERMISSIONS", inspect)
-        self.assertIn("read_project_version(PROJECT_PATH)", inspect)
+        self.assertIn("CHUMMER_EXPECTED_VERSION_NAME", inspect)
+        self.assertIn("CHUMMER_EXPECTED_VERSION_CODE", inspect)
+        self.assertNotIn("read_project_version", inspect)
         self.assertNotIn('versionName") == "0.1.0-preview.', inspect)
         self.assertIn('native_abis == {"arm64-v8a"}', inspect)
         self.assertIn("ApplicationDisplayVersion", version_reader)
@@ -2316,37 +2320,35 @@ class AndroidContractTests(unittest.TestCase):
         )
         build = (REPO / "scripts" / "build-release.sh").read_text(encoding="utf-8")
         deexport_boundary = build.index("for release_secret_variable in")
-        self.assertLess(deexport_boundary, build.index('repo_dir="$(cd'))
-        self.assertIn('export -n "$release_secret_variable"', build[:build.index('repo_dir="$(cd')])
+        self.assertLess(deexport_boundary, build.index('repo_dir="${CHUMMER_RELEASE_REPO_ROOT:-}"'))
+        self.assertIn(
+            'export -n "$release_secret_variable"',
+            build[:build.index('repo_dir="${CHUMMER_RELEASE_REPO_ROOT:-}"')],
+        )
         suite_boundary = build.index('env "${release_test_environment[@]}"')
         for variable in signing_variables:
             self.assertIn(f"-u {variable}", build[:suite_boundary])
-        for first_secret_use in (
-            "require_private_regular_file AndroidSigningKeyStore",
-            "require_private_regular_file CHUMMER_ANDROID_UPLOAD_CERTIFICATE_PATH",
-            "require_secret_variable ChummerAndroidSigningStorePass",
-            "require_secret_variable ChummerAndroidSigningKeyPass",
-            "require_secret_variable ChummerAndroidSigningKeyAlias",
-        ):
-            self.assertGreater(build.index(first_secret_use), suite_boundary)
+        self.assertGreater(
+            build.index("require_private_regular_file CHUMMER_ANDROID_UPLOAD_CERTIFICATE_PATH"),
+            suite_boundary,
+        )
+        self.assertNotIn("require_private_regular_file AndroidSigningKeyStore", build)
+        self.assertNotIn("require_secret_variable ChummerAndroidSigningStorePass", build)
+        self.assertNotIn("require_secret_variable ChummerAndroidSigningKeyPass", build)
+        self.assertNotIn("require_secret_variable ChummerAndroidSigningKeyAlias", build)
         pre_publish_verify = build.index('|| fail "locked-restore-consumption-pre-publish"')
         pre_publish_verify_start = build.rfind(
             'env "${release_test_environment[@]}"', 0, pre_publish_verify
         )
-        signing_intake = build.index("require_private_regular_file AndroidSigningKeyStore")
-        self.assertGreater(pre_publish_verify_start, signing_intake)
+        signing_rejection = build.index(
+            "external-signer-required-readable-signing-input-rejected"
+        )
+        self.assertGreater(pre_publish_verify_start, signing_rejection)
         publish_boundary = build.index('"$dotnet_command" publish')
         self.assertLess(pre_publish_verify_start, publish_boundary)
-        post_publish_boundary = build.index('source_aab="$(python3')
-        for secret_cleanup in (
-            "unset ChummerAndroidSigningStorePass",
-            "unset ChummerAndroidSigningKeyPass",
-            "unset ChummerAndroidSigningKeyAlias",
-            "unset AndroidSigningKeyStore",
-        ):
-            cleanup_index = build.index(secret_cleanup)
-            self.assertGreater(cleanup_index, publish_boundary)
-            self.assertLess(cleanup_index, post_publish_boundary)
+        self.assertIn("-p:AndroidKeyStore=false", build[publish_boundary:])
+        self.assertIn("prepare-external-signer", build[publish_boundary:])
+        self.assertIn("signing_authorized=false", build[publish_boundary:])
 
         with tempfile.TemporaryDirectory() as temporary:
             tests_root = Path(temporary)

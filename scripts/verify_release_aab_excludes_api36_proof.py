@@ -11,6 +11,7 @@ parses and expands every managed assembly in every assembly store.
 from __future__ import annotations
 
 import re
+import os
 import struct
 import sys
 import zipfile
@@ -335,7 +336,8 @@ def _scan_assembly_store(
 def verify(aab_path: Path, repo_root: Path) -> tuple[int, int, int]:
     require(aab_path.is_absolute(), "AAB path must be absolute")
     require(aab_path.is_file() and not aab_path.is_symlink(), "AAB must be a regular non-symlink file")
-    require(aab_path.resolve(strict=True) == aab_path, "AAB path must be canonical")
+    if not str(aab_path).startswith("/proc/self/fd/"):
+        require(aab_path.resolve(strict=True) == aab_path, "AAB path must be canonical")
     markers = load_markers(repo_root)
 
     expanded_total = 0
@@ -377,7 +379,9 @@ def verify(aab_path: Path, repo_root: Path) -> tuple[int, int, int]:
 def main() -> None:
     if len(sys.argv) != 2:
         raise SystemExit(f"usage: {Path(sys.argv[0]).name} /absolute/path/to/release.aab")
-    repo_root = Path(__file__).resolve().parents[1]
+    repo_root = Path(
+        os.environ.get("CHUMMER_VALIDATOR_REPO_ROOT", Path(__file__).resolve().parents[1])
+    )
     aab_path = Path(sys.argv[1])
     try:
         stores, assemblies, expanded_bytes = verify(aab_path, repo_root)

@@ -38,6 +38,21 @@ def resolve_exact_signed_aab(path: Path, package_id: str) -> Path:
     return candidate.resolve()
 
 
+def resolve_exact_unsigned_aab(path: Path, package_id: str) -> Path:
+    directory = canonical_directory(path)
+    candidates = sorted(directory.glob("*.aab"))
+    if len(candidates) != 1:
+        raise ValueError("release publish staging must contain exactly one unsigned AAB")
+    candidate = candidates[0]
+    if candidate.name != f"{package_id}.aab":
+        raise ValueError("release publish unsigned AAB identity is unexpected")
+    if candidate.is_symlink() or not candidate.is_file():
+        raise ValueError("release publish unsigned AAB must be a regular non-symlink file")
+    if candidate.absolute() != candidate.resolve() or candidate.resolve().parent != directory:
+        raise ValueError("release publish unsigned AAB escaped its staging directory")
+    return candidate.resolve()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--publish-dir", required=True, type=Path)
@@ -45,12 +60,15 @@ def main() -> int:
     action = parser.add_mutually_exclusive_group(required=True)
     action.add_argument("--require-empty", action="store_true")
     action.add_argument("--resolve-exact-signed-aab", action="store_true")
+    action.add_argument("--resolve-exact-unsigned-aab", action="store_true")
     arguments = parser.parse_args()
 
     if arguments.require_empty:
         require_empty(arguments.publish_dir)
-    else:
+    elif arguments.resolve_exact_signed_aab:
         print(resolve_exact_signed_aab(arguments.publish_dir, arguments.package_id))
+    else:
+        print(resolve_exact_unsigned_aab(arguments.publish_dir, arguments.package_id))
     return 0
 
 

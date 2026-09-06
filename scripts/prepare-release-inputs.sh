@@ -2,6 +2,8 @@
 set -euo pipefail
 set +a
 umask 077
+PATH=/usr/bin:/bin
+export PATH
 
 repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 project_path="$repo_dir/src/Chummer.Android/Chummer.Android.csproj"
@@ -28,7 +30,8 @@ for protected_release_variable in \
   CHUMMER_ANDROID_BUILD_ATTESTATION_PRIVATE_KEY \
   CHUMMER_ANDROID_GITHUB_PROVENANCE_TOKEN_FILE \
   CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT \
-  CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL; do
+  CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL \
+  SSLKEYLOGFILE; do
   unset "$protected_release_variable"
 done
 unset protected_release_variable
