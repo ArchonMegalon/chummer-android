@@ -18,8 +18,8 @@ AUTHORITY_PATHS = (
     "authority/package-inventory.json",
     "authority/package-plane.lock.json",
 )
-NEXT_VERSION_NAME = "0.1.0-preview.11"
-NEXT_VERSION_CODE = "11"
+NEXT_VERSION_NAME = "0.1.0-preview.12"
+NEXT_VERSION_CODE = "12"
 
 
 def load_module():
@@ -175,9 +175,9 @@ class ReleaseSourceGraphTests(unittest.TestCase):
                 {
                     "packageId": "com.myexternalbrain.chummer",
                     "versionName": NEXT_VERSION_NAME,
-                    "versionCode": 11,
+                    "versionCode": 12,
                     "intentAuthority": "explicit_build_input",
-                    "minimumExclusiveVersionCode": 10,
+                    "minimumExclusiveVersionCode": 11,
                 },
                 graph["releaseIdentity"],
             )
@@ -202,11 +202,12 @@ class ReleaseSourceGraphTests(unittest.TestCase):
                 Path(temporary)
             )
             cases = (
-                ("", "11", "version name"),
-                ("0.1.0-preview.11\n0.1.0-preview.12", "11", "version name"),
-                ("0.1.0-preview.11", "", "version code"),
-                ("0.1.0-preview.11", "010", "version code"),
-                ("0.1.0-preview.10", "10", "Preview.10 floor"),
+                ("", "12", "version name"),
+                ("0.1.0-preview.12\n0.1.0-preview.13", "12", "version name"),
+                ("0.1.0-preview.12", "", "version code"),
+                ("0.1.0-preview.12", "012", "version code"),
+                ("0.1.0-preview.10", "10", "Preview.11 floor"),
+                ("0.1.0-preview.11", "11", "Preview.11 floor"),
             )
             for version_name, version_code, message in cases:
                 with self.subTest(version_name=version_name, version_code=version_code):
@@ -442,8 +443,8 @@ class ReleaseSourceGraphTests(unittest.TestCase):
                         authority,
                         authority_root,
                         revisions,
-                        version_name="0.1.0-preview.12",
-                        version_code="12",
+                        version_name="0.1.0-preview.13",
+                        version_code="13",
                     ),
                 )
             with self.assertRaises(FileExistsError):

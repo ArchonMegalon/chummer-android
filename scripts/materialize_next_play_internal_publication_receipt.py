@@ -32,7 +32,7 @@ PACKAGE_ID = "com.myexternalbrain.chummer"
 PLAY_APPLICATION_ID = "4975957268242186974"
 TRACK_ID = "4700678198570024687"
 JOIN_URL = f"https://play.google.com/apps/internaltest/{TRACK_ID}"
-HISTORICAL_VERSION_CODE_FLOOR = 10
+HISTORICAL_VERSION_CODE_FLOOR = 11
 EXPECTED_OBSERVED_FIELDS = ("application", "track", "release", "join_url")
 EXPECTED_SOURCE_REPOSITORIES = {
     "chummer-android": ("app", "https://github.com/ArchonMegalon/chummer-android.git"),
@@ -341,7 +341,7 @@ def validate_browser_readback(
         or VERSION_NAME.fullmatch(version_name) is None
     ):
         raise ValueError(
-            "browser readback release identity is not a canonical post-Preview.10 version"
+            "browser readback release identity is not a canonical post-Preview.11 version"
         )
     if release["name"] != f"{version_code} ({version_name})":
         raise ValueError("browser readback release name does not bind version code and name")

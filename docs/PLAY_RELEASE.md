@@ -62,8 +62,8 @@ prove that the AAB signer is the intended Chummer upload identity:
 set -a
 . /absolute/private/path/android-release.env
 set +a
-CHUMMER_ANDROID_EXPECTED_VERSION_NAME=0.1.0-preview.11 \
-CHUMMER_ANDROID_EXPECTED_VERSION_CODE=11 \
+CHUMMER_ANDROID_EXPECTED_VERSION_NAME=0.1.0-preview.12 \
+CHUMMER_ANDROID_EXPECTED_VERSION_CODE=12 \
 CHUMMER_BUNDLETOOL_JAR=/secure/tools/bundletool-all-1.18.3.jar \
   scripts/build-release.sh
 ```
@@ -71,15 +71,16 @@ CHUMMER_BUNDLETOOL_JAR=/secure/tools/bundletool-all-1.18.3.jar \
 The expected version name and code are mandatory release intent, not defaults.
 They must be canonical, must exactly match the single
 `ApplicationDisplayVersion`/`ApplicationVersion` pair in the Android project,
-and the code must be greater than the already published Preview.10 code `10`.
-Supplying only one value, reusing code `10`, using a leading-zero code, or
+and the code must be greater than the already published Preview.11 code `11`.
+Supplying only one value, reusing code `11`, using a leading-zero code, or
 disagreeing with the project fails before workspace, signing, or build inputs
 are admitted. The resolved pair is bound into the AAB/checksum/source-graph
 filenames, the v3 source graph, and the MSBuild publish properties.
 
-The Preview.10 AAB, source graph, publication receipt, and dedicated verifier
+The Preview.10 repository receipt and the Preview.10/Preview.11 release records
 remain immutable historical evidence. This next-release lane neither rebuilds
-nor replaces them.
+nor replaces them, and it does not manufacture a Preview.11 receipt from the
+live Console observation that established the new version floor.
 
 Before the signed build, prepare the package authority and `--no-restore` assets
 from the retained UI package-plane receipt and its exact private package cache.
@@ -92,8 +93,8 @@ an isolated NuGet package root and emits an owner-only environment handoff:
 ```sh
 install -d -m 0700 /absolute/private/chummer-next-release-inputs
 CHUMMER_ANDROID_RELEASE_INPUT_DIR=/absolute/private/chummer-next-release-inputs \
-CHUMMER_ANDROID_EXPECTED_VERSION_NAME=0.1.0-preview.11 \
-CHUMMER_ANDROID_EXPECTED_VERSION_CODE=11 \
+CHUMMER_ANDROID_EXPECTED_VERSION_NAME=0.1.0-preview.12 \
+CHUMMER_ANDROID_EXPECTED_VERSION_CODE=12 \
 CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT=/absolute/private/ANDROID_API36_TWO_GREEN_ELIGIBILITY.generated.json \
 CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL=/absolute/private/ANDROID_API36_TWO_GREEN_RELEASE_APPROVAL.generated.json \
 CHUMMER_ANDROID_RELEASE_TOOLCHAIN_AUTHORITY=/absolute/protected/ANDROID_RELEASE_TOOLCHAIN_AUTHORITY.generated.json \
@@ -212,11 +213,11 @@ The wizard aggregate uses schema
 only the stated phone wizard scope; it does not itself authorize a Play upload,
 tablet support, broad Android parity, or public release.
 
-### General and public release gates — outside Preview.11 Internal
+### General and public release gates — outside Preview.12 Internal
 
-The following broader checklist is not part of the seven-journey Preview.11
+The following broader checklist is not part of the seven-journey Preview.12
 Internal denominator. In particular, its tablet items do not add a tablet gate
-to Preview.11, and satisfying the internal phone aggregate does not satisfy or
+to Preview.12, and satisfying the internal phone aggregate does not satisfy or
 authorize any item below.
 
 1. parity and privacy contract tests pass;
@@ -373,7 +374,7 @@ publication claim. Browser readback must be fresh when the receipt is first
 materialized; durable verification may occur later against its exact inputs.
 Keep the generated receipt
 outside the repository until a real readback has occurred and its exact evidence
-has been reviewed; this lane deliberately provides no Preview.11 receipt.
+has been reviewed; this lane deliberately provides no Preview.12 receipt.
 
 The recorded Preview.10 Internal-testing publication truth is
 `play/evidence/preview10-internal-publication.json`. Verify the durable record

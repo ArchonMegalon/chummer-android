@@ -113,8 +113,8 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
         project.write_text(
             "<Project><PropertyGroup>"
             "<ApplicationId>com.myexternalbrain.chummer</ApplicationId>"
-            "<ApplicationDisplayVersion>0.1.0-preview.11</ApplicationDisplayVersion>"
-            "<ApplicationVersion>11</ApplicationVersion>"
+            "<ApplicationDisplayVersion>0.1.0-preview.12</ApplicationDisplayVersion>"
+            "<ApplicationVersion>12</ApplicationVersion>"
             "</PropertyGroup></Project>\n",
             encoding="utf-8",
         )
@@ -768,7 +768,7 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
                         "versionName": authority["releaseIdentity"]["versionName"],
                         "versionCode": authority["releaseIdentity"]["versionCode"],
                         "intentAuthority": "explicit_build_input",
-                        "minimumExclusiveVersionCode": 10,
+                        "minimumExclusiveVersionCode": 11,
                     },
                     "repositories": repository_rows,
                     "ownerPackagePins": [
@@ -1487,7 +1487,7 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
         project = self.android / project_path
         project.write_text(
             project.read_text(encoding="utf-8").replace(
-                "0.1.0-preview.11", "0.1.0-preview.12"
+                "0.1.0-preview.12", "0.1.0-preview.13"
             ),
             encoding="utf-8",
         )
@@ -1526,8 +1526,8 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
             receipt,
             approval,
             android_root=self.android,
-            expected_version_name="0.1.0-preview.11",
-            expected_version_code=11,
+            expected_version_name="0.1.0-preview.12",
+            expected_version_code=12,
             package_authority_path=package_authority,
             source_graph_path=source_graph,
         )
@@ -1569,9 +1569,9 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
             "--android-root",
             str(self.android),
             "--expected-version-name",
-            "0.1.0-preview.11",
+            "0.1.0-preview.12",
             "--expected-version-code",
-            "11",
+            "12",
             "--package-authority",
             str(package_authority),
             "--source-graph",
@@ -1629,8 +1629,8 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
             receipt,
             signed,
             android_root=self.android,
-            expected_version_name="0.1.0-preview.11",
-            expected_version_code=11,
+            expected_version_name="0.1.0-preview.12",
+            expected_version_code=12,
             package_authority_path=package_authority,
             source_graph_path=source_graph,
         )
@@ -1731,8 +1731,8 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
                 receipt,
                 approval,
                 android_root=self.android,
-                expected_version_name="0.1.0-preview.11",
-                expected_version_code=11,
+                expected_version_name="0.1.0-preview.12",
+                expected_version_code=12,
                 package_authority_path=package_authority,
                 source_graph_path=source_graph,
             )
@@ -1761,8 +1761,8 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
                 receipt,
                 wrong_approval,
                 android_root=self.android,
-                expected_version_name="0.1.0-preview.11",
-                expected_version_code=11,
+                expected_version_name="0.1.0-preview.12",
+                expected_version_code=12,
                 package_authority_path=package_authority,
                 source_graph_path=source_graph,
             )
@@ -1780,8 +1780,8 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
                 receipt,
                 stale,
                 android_root=self.android,
-                expected_version_name="0.1.0-preview.11",
-                expected_version_code=11,
+                expected_version_name="0.1.0-preview.12",
+                expected_version_code=12,
                 package_authority_path=package_authority,
                 source_graph_path=source_graph,
             )
@@ -1789,8 +1789,8 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
             receipt,
             stale,
             android_root=self.android,
-            expected_version_name="0.1.0-preview.11",
-            expected_version_code=11,
+            expected_version_name="0.1.0-preview.12",
+            expected_version_code=12,
             package_authority_path=package_authority,
             source_graph_path=source_graph,
             approval_effective_time=old + timedelta(minutes=30),
@@ -1806,8 +1806,8 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
                 receipt,
                 stale,
                 android_root=self.android,
-                expected_version_name="0.1.0-preview.11",
-                expected_version_code=11,
+                expected_version_name="0.1.0-preview.12",
+                expected_version_code=12,
                 package_authority_path=package_authority,
                 source_graph_path=source_graph,
             )
@@ -1826,8 +1826,8 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
                 receipt,
                 approval,
                 android_root=self.android,
-                expected_version_name="0.1.0-preview.11",
-                expected_version_code=11,
+                expected_version_name="0.1.0-preview.12",
+                expected_version_code=12,
                 package_authority_path=package_authority,
                 source_graph_path=source_graph,
             )
@@ -1845,8 +1845,8 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
                 receipt,
                 approval,
                 android_root=self.android,
-                expected_version_name="0.1.0-preview.11",
-                expected_version_code=11,
+                expected_version_name="0.1.0-preview.12",
+                expected_version_code=12,
                 package_authority_path=package_authority,
                 source_graph_path=source_graph,
             )
@@ -1881,8 +1881,8 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
             )
 
         def different_version(value: dict[str, object]) -> None:
-            value["releaseIdentity"]["versionName"] = "0.1.0-preview.12"
-            value["releaseIdentity"]["versionCode"] = 12
+            value["releaseIdentity"]["versionName"] = "0.1.0-preview.13"
+            value["releaseIdentity"]["versionCode"] = 13
 
         def failed_environment(value: dict[str, object]) -> None:
             value["commonAuthority"]["environmentCompatibilityStatus"] = "fail"
@@ -1928,8 +1928,8 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
                         receipt,
                         approval,
                         android_root=self.android,
-                        expected_version_name="0.1.0-preview.11",
-                        expected_version_code=11,
+                        expected_version_name="0.1.0-preview.12",
+                        expected_version_code=12,
                         package_authority_path=package_authority,
                         source_graph_path=source_graph,
                     )
@@ -1957,8 +1957,8 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
                 receipt,
                 approval,
                 android_root=self.android,
-                expected_version_name="0.1.0-preview.11",
-                expected_version_code=11,
+                expected_version_name="0.1.0-preview.12",
+                expected_version_code=12,
                 package_authority_path=package_authority,
                 source_graph_path=source_graph,
             )

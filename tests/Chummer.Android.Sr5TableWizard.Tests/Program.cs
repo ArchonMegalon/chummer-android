@@ -406,8 +406,8 @@ static void AssertApi36ProofStateContract()
         new string('3', 64),
         "hosted-123-1",
         "com.myexternalbrain.chummer",
-        "0.1.0-preview.11",
-        "11",
+        "0.1.0-preview.12",
+        "12",
         "android-x64");
     var surface = new Api36ProofSurfaceState(
         "runner",
@@ -451,7 +451,7 @@ static void AssertApi36ProofStateContract()
         transaction);
     Assert(Api36ProofStateContract.IsExact(state),
         "the debug-only proof state must validate its exact digest-bound fields");
-    Assert(state.StateDigest == "sha256:91636cc4c9b516d42ac99be1b19e5d5888897a8611fa676e2aefe99888332c1d",
+    Assert(state.StateDigest == "sha256:6d924d3d15c1d073cde12d995b4d75f951e18bbab5daba468895a4c761130269",
         "the C# proof digest must match the strict Python reader's canonical vector");
     Assert(Api36ProofStateContract.Serialize(state).Length > 0,
         "the exact proof state must serialize to bounded JSON");

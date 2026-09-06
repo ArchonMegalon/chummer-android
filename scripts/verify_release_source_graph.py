@@ -15,7 +15,7 @@ from typing import Mapping
 
 SOURCE_GRAPH_CONTRACT = "chummer.android.release-source-graph/v3"
 PACKAGE_ID = "com.myexternalbrain.chummer"
-HISTORICAL_VERSION_CODE_FLOOR = 10
+HISTORICAL_VERSION_CODE_FLOOR = 11
 PACKAGE_AUTHORITY_CONTRACT = "chummer.android.release-package-authority/v2"
 PRESENTATION_SOURCE_COMMIT = "a9e5bbd4fd44826177dd048b24417fad27397497"
 PRESENTATION_SOURCE_TREE = "a6d77fd56e5caa599f476dbe2e59146b88e9744d"
@@ -451,7 +451,7 @@ def build_graph(
     version_code = int(expected_version_code)
     if version_code <= HISTORICAL_VERSION_CODE_FLOOR:
         raise ValueError(
-            "release version code must be greater than the immutable Preview.10 floor"
+            "release version code must be greater than the immutable Preview.11 floor"
         )
     return {
         "contractName": SOURCE_GRAPH_CONTRACT,

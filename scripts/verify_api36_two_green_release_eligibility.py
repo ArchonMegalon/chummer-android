@@ -679,7 +679,7 @@ def _validate_source_graph(
         "versionName": version_name,
         "versionCode": version_code,
         "intentAuthority": "explicit_build_input",
-        "minimumExclusiveVersionCode": 10,
+        "minimumExclusiveVersionCode": 11,
     }:
         raise ValueError("release source graph version differs from two-green eligibility")
     repositories = value.get("repositories")

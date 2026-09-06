@@ -66,11 +66,11 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
             self.play_release_text,
         )
         self.assertIn(
-            "General and public release gates — outside Preview.11 Internal",
+            "General and public release gates — outside Preview.12 Internal",
             self.play_release_text,
         )
         self.assertIn(
-            "tablet items do not add a tablet gate to Preview.11",
+            "tablet items do not add a tablet gate to Preview.12",
             " ".join(self.play_release_text.split()),
         )
         self.assertNotIn("three-journey aggregate", self.play_release_text)

@@ -275,7 +275,7 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
                 "versionName": self.version_name,
                 "versionCode": self.version_code,
                 "intentAuthority": "explicit_build_input",
-                "minimumExclusiveVersionCode": 10,
+                "minimumExclusiveVersionCode": 11,
             },
             "generator": {
                 "path": "scripts/verify_release_source_graph.py",
@@ -508,7 +508,7 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
         historical = self.preview10.verify(PREVIEW10_RECEIPT)
         self.assertEqual("pass", historical["status"], historical["failures"])
         self.assertFalse(historical["authorization"]["productionAuthorized"])
-        self.assertFalse((REPO / "play/evidence/preview11-internal-publication.json").exists())
+        self.assertFalse((REPO / "play/evidence/preview12-internal-publication.json").exists())
 
     def test_browser_input_is_closed_and_rejects_secret_or_session_fields(self) -> None:
         cases = (
@@ -532,6 +532,16 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
             (
                 lambda value: value["release"].update({"status": "In review"}),
                 "not available to Internal testers",
+            ),
+            (
+                lambda value: value["release"].update(
+                    {
+                        "name": "11 (0.1.0-preview.11)",
+                        "versionCode": 11,
+                        "versionName": "0.1.0-preview.11",
+                    }
+                ),
+                "post-Preview.11 version",
             ),
             (
                 lambda value: value["release"]["releasedAt"].update(

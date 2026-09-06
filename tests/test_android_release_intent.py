@@ -39,29 +39,30 @@ class AndroidReleaseIntentTests(unittest.TestCase):
 
     def test_exact_next_version_is_resolved(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            project = write_project(Path(temporary), "0.1.0-preview.11", "11")
+            project = write_project(Path(temporary), "0.1.0-preview.12", "12")
             self.assertEqual(
-                ("0.1.0-preview.11", 11),
+                ("0.1.0-preview.12", 12),
                 self.module.resolve_release_intent(
                     project,
-                    "0.1.0-preview.11",
-                    "11",
+                    "0.1.0-preview.12",
+                    "12",
                 ),
             )
 
     def test_missing_malformed_historical_and_mismatched_intents_fail_closed(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            project = write_project(Path(temporary), "0.1.0-preview.11", "11")
+            project = write_project(Path(temporary), "0.1.0-preview.12", "12")
             cases = (
-                ("", "11", "name is missing"),
-                ("0.1.0-preview.11\n0.1.0-preview.12", "11", "name is missing"),
-                ("0.1.0-preview..11", "11", "name is missing"),
-                ("0.1.0-" + "a" * 129, "11", "name is missing"),
-                ("0.1.0-preview.11", "", "code is missing"),
-                ("0.1.0-preview.11", "011", "code is missing"),
-                ("0.1.0-preview.10", "10", "greater than 10"),
-                ("0.1.0-preview.12", "11", "name does not match"),
-                ("0.1.0-preview.11", "12", "code does not match"),
+                ("", "12", "name is missing"),
+                ("0.1.0-preview.12\n0.1.0-preview.13", "12", "name is missing"),
+                ("0.1.0-preview..12", "12", "name is missing"),
+                ("0.1.0-" + "a" * 129, "12", "name is missing"),
+                ("0.1.0-preview.12", "", "code is missing"),
+                ("0.1.0-preview.12", "012", "code is missing"),
+                ("0.1.0-preview.10", "10", "greater than 11"),
+                ("0.1.0-preview.11", "11", "greater than 11"),
+                ("0.1.0-preview.13", "12", "name does not match"),
+                ("0.1.0-preview.12", "13", "code does not match"),
             )
             for version_name, version_code, message in cases:
                 with self.subTest(version_name=version_name, version_code=version_code):
@@ -74,7 +75,7 @@ class AndroidReleaseIntentTests(unittest.TestCase):
 
     def test_cli_emits_one_unambiguous_tab_delimited_pair(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            project = write_project(Path(temporary), "1.0.0", "11")
+            project = write_project(Path(temporary), "1.0.0", "12")
             completed = subprocess.run(
                 [
                     sys.executable,
@@ -84,13 +85,13 @@ class AndroidReleaseIntentTests(unittest.TestCase):
                     "--expected-version-name",
                     "1.0.0",
                     "--expected-version-code",
-                    "11",
+                    "12",
                 ],
                 check=True,
                 capture_output=True,
                 text=True,
             )
-            self.assertEqual("1.0.0\t11\n", completed.stdout)
+            self.assertEqual("1.0.0\t12\n", completed.stdout)
             self.assertEqual("", completed.stderr)
 
     def test_release_shell_requires_intent_before_workspace_or_signing_inputs(self) -> None:
@@ -107,25 +108,27 @@ class AndroidReleaseIntentTests(unittest.TestCase):
             completed.stderr,
         )
 
-    def test_historical_preview10_cannot_enter_the_new_release_lane(self) -> None:
-        completed = subprocess.run(
-            ["bash", str(REPO / "scripts" / "build-release.sh")],
-            check=False,
-            capture_output=True,
-            text=True,
-            env={
-                "PATH": "/usr/local/bin:/usr/bin:/bin",
-                "CHUMMER_ANDROID_EXPECTED_VERSION_NAME": "0.1.0-preview.10",
-                "CHUMMER_ANDROID_EXPECTED_VERSION_CODE": "10",
-            },
-        )
-        self.assertNotEqual(0, completed.returncode)
-        self.assertIn("expected version code must be greater than 10", completed.stderr)
-        self.assertTrue(
-            completed.stderr.endswith(
-                "android_release=failed stage=release-version-intent-invalid\n"
-            )
-        )
+    def test_published_preview10_and_preview11_cannot_enter_the_new_release_lane(self) -> None:
+        for version in (10, 11):
+            with self.subTest(version=version):
+                completed = subprocess.run(
+                    ["bash", str(REPO / "scripts" / "build-release.sh")],
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                    env={
+                        "PATH": "/usr/local/bin:/usr/bin:/bin",
+                        "CHUMMER_ANDROID_EXPECTED_VERSION_NAME": f"0.1.0-preview.{version}",
+                        "CHUMMER_ANDROID_EXPECTED_VERSION_CODE": str(version),
+                    },
+                )
+                self.assertNotEqual(0, completed.returncode)
+                self.assertIn("expected version code must be greater than 11", completed.stderr)
+                self.assertTrue(
+                    completed.stderr.endswith(
+                        "android_release=failed stage=release-version-intent-invalid\n"
+                    )
+                )
 
     def test_release_shell_has_no_google_play_mutation_transport(self) -> None:
         build = (REPO / "scripts" / "build-release.sh").read_text(encoding="utf-8")

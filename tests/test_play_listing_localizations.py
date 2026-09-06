@@ -52,7 +52,7 @@ class PlayListingLocalizationTests(unittest.TestCase):
         result = self.validate()
         self.assertEqual(["en-US", "de-DE", "es-ES"], result["locales"])
         self.assertEqual("com.myexternalbrain.chummer", result["packageId"])
-        self.assertEqual("0.1.0-preview.11", result["release"])
+        self.assertEqual("0.1.0-preview.12", result["release"])
         self.assertEqual("internal_testing_only", result["trackPosture"])
         self.assertEqual("sr5_phone_wizards_only", result["scope"])
         self.assertEqual(self.module.WIZARD_GATE_SHA256, result["wizardGateSha256"])
@@ -224,15 +224,15 @@ class PlayListingLocalizationTests(unittest.TestCase):
 
     def test_broad_wizard_inclusion_claims_fail_closed_in_every_locale(self) -> None:
         cases = (
-            ("en-US", " All SR5 Career wizards are included."),
-            ("de-DE", " Alle SR5-Karriere-Wizards sind enthalten."),
-            ("es-ES", " Todos los asistentes de Carrera están incluidos."),
+            ("en-US", " All SR5 wizards are included."),
+            ("de-DE", " Alle SR5-Wizards."),
+            ("es-ES", " Todos los asistentes de Carrera."),
         )
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             for index, (locale, claim) in enumerate(cases):
                 listing = self.copy_listing(root / str(index))
-                path = listing / locale / "release-notes-11.txt"
+                path = listing / locale / "release-notes-12.txt"
                 path.write_text(
                     path.read_text(encoding="utf-8").rstrip("\n") + claim + "\n",
                     encoding="utf-8",
@@ -261,8 +261,8 @@ class PlayListingLocalizationTests(unittest.TestCase):
             versioned_project = root / "Versioned.Chummer.Android.csproj"
             versioned_project.write_text(
                 PROJECT.read_text(encoding="utf-8").replace(
-                    "0.1.0-preview.11",
                     "0.1.0-preview.12",
+                    "0.1.0-preview.13",
                 ),
                 encoding="utf-8",
             )
@@ -297,6 +297,16 @@ class PlayListingLocalizationTests(unittest.TestCase):
             notes.write_bytes(notes.read_bytes() + b"\n")
             with self.assertRaisesRegex(ValueError, "Preview.10 historical release notes"):
                 self.validate(listing)
+
+            for locale in ("en-US", "de-DE", "es-ES"):
+                listing = self.copy_listing(root / f"notes-{locale}")
+                notes = listing / locale / "release-notes-11.txt"
+                notes.write_bytes(notes.read_bytes() + b"\n")
+                with self.subTest(locale=locale), self.assertRaisesRegex(
+                    ValueError,
+                    "Preview.11 historical release notes",
+                ):
+                    self.validate(listing)
 
 
 if __name__ == "__main__":
