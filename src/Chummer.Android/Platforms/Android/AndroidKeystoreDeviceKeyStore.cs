@@ -33,11 +33,13 @@ public sealed class AndroidKeystoreDeviceKeyStore : IAndroidDeviceKeyStore
                 .Build();
             generator.Initialize(specification);
             using KeyPair generated = generator.GenerateKeyPair()!;
+            IPrivateKey? generatedPrivateKey = generated.Private;
             IPublicKey? generatedPublicKey = generated.Public;
-            if (generatedPublicKey is null)
+            if (generatedPrivateKey is null || generatedPublicKey is null)
             {
-                throw new CryptographicException("Android Keystore returned no RSA public key.");
+                throw new CryptographicException("Android Keystore returned an incomplete RSA key pair.");
             }
+            RequireNonExportable(generatedPrivateKey);
             // Key generation is persistent. Once GenerateKeyPair succeeds this method must
             // return its public authority; observing cancellation here would orphan the alias.
             return Task.FromResult(new AndroidDevicePublicKey(
@@ -75,8 +77,20 @@ public sealed class AndroidKeystoreDeviceKeyStore : IAndroidDeviceKeyStore
             using Certificate? certificate = keyStore.GetCertificate(alias);
             if (certificate?.PublicKey is null)
             {
-                return Task.FromResult(new AndroidDevicePublicKey(AndroidDeviceKeyAvailability.Missing));
+                return Task.FromResult(new AndroidDevicePublicKey(AndroidDeviceKeyAvailability.Invalidated));
             }
+
+            using IKey? key = keyStore.GetKey(alias, null);
+            if (key is not IPrivateKey privateKey)
+            {
+                return Task.FromResult(new AndroidDevicePublicKey(AndroidDeviceKeyAvailability.Invalidated));
+            }
+            RequireNonExportable(privateKey);
+            // Initializing a signer is the earliest non-mutating probe Android exposes for a
+            // permanently invalidated private key. Detect it while resuming the explicit link,
+            // before a request body or packet proof is constructed.
+            using Signature signer = Signature.GetInstance("SHA256withRSA")!;
+            signer.InitSign(privateKey);
 
             return Task.FromResult(new AndroidDevicePublicKey(
                 AndroidDeviceKeyAvailability.Available,
@@ -87,6 +101,10 @@ public sealed class AndroidKeystoreDeviceKeyStore : IAndroidDeviceKeyStore
             return Task.FromResult(new AndroidDevicePublicKey(AndroidDeviceKeyAvailability.Invalidated));
         }
         catch (UnrecoverableKeyException)
+        {
+            return Task.FromResult(new AndroidDevicePublicKey(AndroidDeviceKeyAvailability.Invalidated));
+        }
+        catch (GeneralSecurityException)
         {
             return Task.FromResult(new AndroidDevicePublicKey(AndroidDeviceKeyAvailability.Invalidated));
         }
@@ -111,6 +129,7 @@ public sealed class AndroidKeystoreDeviceKeyStore : IAndroidDeviceKeyStore
             {
                 throw RelinkRequired(AndroidDeviceKeyAvailability.Missing);
             }
+            RequireNonExportable(privateKey);
 
             using Signature signer = Signature.GetInstance("SHA256withRSA")!;
             signer.InitSign(privateKey);
@@ -143,6 +162,10 @@ public sealed class AndroidKeystoreDeviceKeyStore : IAndroidDeviceKeyStore
             throw RelinkRequired(AndroidDeviceKeyAvailability.Invalidated, exception);
         }
         catch (GeneralSecurityException exception)
+        {
+            throw RelinkRequired(AndroidDeviceKeyAvailability.Invalidated, exception);
+        }
+        catch (CryptographicException exception)
         {
             throw RelinkRequired(AndroidDeviceKeyAvailability.Invalidated, exception);
         }
@@ -190,6 +213,27 @@ public sealed class AndroidKeystoreDeviceKeyStore : IAndroidDeviceKeyStore
         finally
         {
             CryptographicOperations.ZeroMemory(encoded);
+        }
+    }
+
+    private static void RequireNonExportable(IPrivateKey privateKey)
+    {
+        byte[]? encoded = null;
+        try
+        {
+            encoded = privateKey.GetEncoded();
+            if (encoded is { Length: > 0 })
+            {
+                throw new CryptographicException(
+                    "Android Keystore returned an exportable account-link private key.");
+            }
+        }
+        finally
+        {
+            if (encoded is not null)
+            {
+                CryptographicOperations.ZeroMemory(encoded);
+            }
         }
     }
 

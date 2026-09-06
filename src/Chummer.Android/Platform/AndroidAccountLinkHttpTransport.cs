@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -18,6 +19,9 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
         RespectNullableAnnotations = true,
         RespectRequiredConstructorParameters = true
     };
+    private static readonly ConditionalWeakTable<
+        HttpResponseMessage,
+        RedactedResponseAuthorization> ResponseAuthorizations = new();
 
     private readonly HttpClient _httpClient;
     private readonly TimeSpan _responseReadTimeout;
@@ -86,12 +90,20 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
             cancellationToken);
         if (!IsRedirect(response.StatusCode))
         {
+            CaptureResponseAuthorization(response);
             return response;
         }
 
-        bool crossOrigin = response.Headers.Location is Uri location
-            && !IsTrustedRedirect(requestUri, location);
-        response.Dispose();
+        bool crossOrigin;
+        try
+        {
+            crossOrigin = response.Headers.Location is Uri location
+                && !IsTrustedRedirect(requestUri, location);
+        }
+        finally
+        {
+            response.Dispose();
+        }
         throw new HttpRequestException(
             crossOrigin
                 ? "A cross-origin Chummer account redirect was rejected."
@@ -160,9 +172,27 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
         ArgumentNullException.ThrowIfNull(response);
         try
         {
+            IEnumerable<string> authorizationValues;
+            if (ResponseAuthorizations.TryGetValue(
+                    response,
+                    out RedactedResponseAuthorization? captured))
+            {
+                authorizationValues = captured.TakeValues()
+                    ?? throw InvalidGrantHeaders();
+            }
+            else if (response.Headers.TryGetValues(
+                         "Authorization",
+                         out IEnumerable<string>? headerValues))
+            {
+                authorizationValues = headerValues;
+            }
+            else
+            {
+                throw InvalidGrantHeaders();
+            }
+
             string authorization = ReadSingleResponseHeader(
-                response,
-                "Authorization",
+                authorizationValues,
                 1024,
                 allowSpaces: true);
             string grantId = ReadSingleResponseHeader(
@@ -181,9 +211,27 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
         finally
         {
             // A response object is frequently included wholesale in diagnostics. Once the rotated
-            // credential has crossed the explicit parsing boundary, keep it out of that surface.
+            // credential has crossed the explicit parsing boundary, keep it out of that surface
+            // and make the authority a one-shot value that cannot be replayed from this response.
+            // Keep the weak-table holder as a consumed latch; removing it would let a caller add
+            // a replacement public header after a failed parse and reuse the response boundary.
             response.Headers.Remove("Authorization");
         }
+    }
+
+    private static void CaptureResponseAuthorization(HttpResponseMessage response)
+    {
+        if (!response.Headers.TryGetValues(
+                "Authorization",
+                out IEnumerable<string>? values))
+        {
+            return;
+        }
+
+        string[] captured = values.ToArray();
+        response.Headers.Remove("Authorization");
+        ResponseAuthorizations.Remove(response);
+        ResponseAuthorizations.Add(response, new RedactedResponseAuthorization(captured));
     }
 
     private Uri ResolveTrustedRequestUri(string path)
@@ -250,6 +298,15 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
         {
             throw InvalidGrantHeaders();
         }
+
+        return ReadSingleResponseHeader(values, maxLength, allowSpaces);
+    }
+
+    private static string ReadSingleResponseHeader(
+        IEnumerable<string> values,
+        int maxLength,
+        bool allowSpaces)
+    {
         string[] materialized = values.ToArray();
         if (materialized.Length != 1)
         {
@@ -493,6 +550,21 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
     }
 
     private sealed class ResponseBodyTooLargeException : IOException;
+
+    private sealed class RedactedResponseAuthorization
+    {
+        private string[]? _values;
+
+        internal RedactedResponseAuthorization(string[] values)
+        {
+            _values = values;
+        }
+
+        internal IReadOnlyList<string>? TakeValues()
+            => Interlocked.Exchange(ref _values, null);
+
+        public override string ToString() => "[REDACTED]";
+    }
 }
 
 internal sealed class AndroidAccountLinkResponseGrantAuthority
