@@ -19,6 +19,7 @@ SCHEMA = "chummer.android.content-bundle/v1"
 CORE_REVISION = "c06f22c185c7b733637fdb76b3cf333f31716781"
 PACKAGED_ROOT = "assets/chummer-content"
 MANIFEST_ENTRY = f"{PACKAGED_ROOT}/manifest.json"
+AAB_PACKAGED_ROOT = f"base/{PACKAGED_ROOT}"
 CANONICAL_SEGMENTS = ("data", "lang")
 SHA256_PATTERN = re.compile(r"[0-9a-f]{64}")
 
@@ -312,63 +313,95 @@ def verify_project_contract(repo_root: Path) -> list[str]:
     return sorted(issues)
 
 
-def verify_apk(
-    apk_path: Path,
+def _verify_packaged_archive(
+    archive_path: Path,
     manifest: dict[str, Any],
     manifest_bytes: bytes,
+    *,
+    packaged_root: str,
+    label: str,
 ) -> tuple[int, list[str]]:
     issues: list[str] = []
     files = manifest.get("files", [])
     expected = {
-        f"{PACKAGED_ROOT}/{entry['path']}": (entry["size"], entry["sha256"])
+        f"{packaged_root}/{entry['path']}": (entry["size"], entry["sha256"])
         for entry in files
     }
-    expected_names = set(expected) | {MANIFEST_ENTRY}
+    manifest_entry = f"{packaged_root}/manifest.json"
+    expected_names = set(expected) | {manifest_entry}
     actual_canonical_count = 0
     try:
-        with zipfile.ZipFile(apk_path) as archive:
+        with zipfile.ZipFile(archive_path) as archive:
             names = archive.namelist()
             duplicate_names = sorted(
                 name for name, count in Counter(names).items() if count > 1
             )
             if duplicate_names:
-                issues.append(f"signed-apk-duplicate-members:{duplicate_names}")
+                issues.append(f"{label}-duplicate-members:{duplicate_names}")
             actual_names = {
                 name
                 for name in names
-                if name.startswith(f"{PACKAGED_ROOT}/") and not name.endswith("/")
+                if name.startswith(f"{packaged_root}/") and not name.endswith("/")
             }
             actual_canonical_count = len(set(expected) & actual_names)
             missing = sorted(expected_names - actual_names)
             unexpected = sorted(actual_names - expected_names)
             if missing:
-                issues.append(f"signed-apk-canonical-content-missing:{missing}")
+                issues.append(f"{label}-canonical-content-missing:{missing}")
             if unexpected:
-                issues.append(f"signed-apk-canonical-content-unexpected:{unexpected}")
-            if MANIFEST_ENTRY in actual_names:
-                packaged_manifest_bytes = archive.read(MANIFEST_ENTRY)
+                issues.append(f"{label}-canonical-content-unexpected:{unexpected}")
+            if manifest_entry in actual_names:
+                packaged_manifest_bytes = archive.read(manifest_entry)
                 try:
                     packaged_manifest = _strict_json_bytes(
                         packaged_manifest_bytes,
-                        "signed-apk-content-manifest-json",
+                        f"{label}-content-manifest-json",
                     )
                     if not isinstance(packaged_manifest, dict):
-                        issues.append("signed-apk-content-manifest-not-an-object")
+                        issues.append(f"{label}-content-manifest-not-an-object")
                 except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as error:
                     issues.append(str(error))
                 if packaged_manifest_bytes != manifest_bytes:
-                    issues.append("signed-apk-content-manifest-bytes-mismatch")
+                    issues.append(f"{label}-content-manifest-bytes-mismatch")
             for name, (expected_size, expected_digest) in sorted(expected.items()):
                 if name not in actual_names:
                     continue
                 value = archive.read(name)
                 if len(value) != expected_size:
-                    issues.append(f"signed-apk-content-size-mismatch:{name}")
+                    issues.append(f"{label}-content-size-mismatch:{name}")
                 if _sha256_bytes(value) != expected_digest:
-                    issues.append(f"signed-apk-content-sha256-mismatch:{name}")
+                    issues.append(f"{label}-content-sha256-mismatch:{name}")
     except (OSError, zipfile.BadZipFile) as error:
-        return 0, [f"signed-apk-unreadable:{apk_path}:{error}"]
+        return 0, [f"{label}-unreadable:{archive_path}:{error}"]
     return actual_canonical_count, sorted(issues)
+
+
+def verify_apk(
+    apk_path: Path,
+    manifest: dict[str, Any],
+    manifest_bytes: bytes,
+) -> tuple[int, list[str]]:
+    return _verify_packaged_archive(
+        apk_path,
+        manifest,
+        manifest_bytes,
+        packaged_root=PACKAGED_ROOT,
+        label="signed-apk",
+    )
+
+
+def verify_aab(
+    aab_path: Path,
+    manifest: dict[str, Any],
+    manifest_bytes: bytes,
+) -> tuple[int, list[str]]:
+    return _verify_packaged_archive(
+        aab_path,
+        manifest,
+        manifest_bytes,
+        packaged_root=AAB_PACKAGED_ROOT,
+        label="unsigned-aab",
+    )
 
 
 def main() -> int:
