@@ -142,6 +142,34 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         )
         self.assertIn("needs: build", self.text)
 
+    def test_native_refresh_regressions_gate_the_shared_candidate_build(self) -> None:
+        step_name = "Verify native page refresh concurrency regressions"
+        self.assertEqual(1, self.text.count(step_name))
+        step = self.text.split(f"      - name: {step_name}\n", 1)[1].split(
+            "      - name:", 1
+        )[0]
+        self.assertIn("working-directory: chummer-android", step)
+        self.assertIn("set -euo pipefail", step)
+        project = (
+            "tests/Chummer.Android.NativePageRefresh.Tests/"
+            "Chummer.Android.NativePageRefresh.Tests.csproj"
+        )
+        self.assertEqual(2, step.count(project))
+        self.assertIn('"$DOTNET_ROOT/dotnet" restore', step)
+        self.assertIn("--locked-mode --disable-parallel", step)
+        self.assertIn('"$DOTNET_ROOT/dotnet" run', step)
+        self.assertIn("--configuration Release --no-restore", step)
+        self.assertNotIn("continue-on-error", step)
+        self.assertNotIn("if:", step)
+        self.assertLess(
+            self.text.index("Verify the isolated governed .NET SDK"),
+            self.text.index(step_name),
+        )
+        self.assertLess(
+            self.text.index(step_name),
+            self.text.index("Build the emulator APK and native compile gate"),
+        )
+
     def test_local_compatibility_restore_preserves_tracked_package_locks(self) -> None:
         pre_build_clean_step = (
             "Verify clean Android source before local-compatibility restores"
