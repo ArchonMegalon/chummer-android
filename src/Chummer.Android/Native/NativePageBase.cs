@@ -282,9 +282,20 @@ public abstract class NativePageBase : ContentPage
             return;
         }
 
+        // Guard-release endpoints call this helper even when no Changed event occurred.
+        // Never dirty a page-specific gesture lease unless there is actual pending work.
+        if (!_coordinatorRefresh.TryGetPendingRequest(
+                appearanceGeneration,
+                out long pendingRequestId))
+        {
+            return;
+        }
+
         if (TryDeferCoordinatorRefresh())
         {
-            _coordinatorRefresh.DiscardPendingThrough(appearanceGeneration);
+            _coordinatorRefresh.DiscardPending(
+                appearanceGeneration,
+                pendingRequestId);
             return;
         }
 
@@ -328,9 +339,18 @@ public abstract class NativePageBase : ContentPage
                 return;
             }
 
+            if (!_coordinatorRefresh.TryGetPendingRequest(
+                    appearanceGeneration,
+                    out long pendingRequestId))
+            {
+                return;
+            }
+
             if (TryDeferCoordinatorRefresh())
             {
-                _coordinatorRefresh.DiscardPendingThrough(appearanceGeneration);
+                _coordinatorRefresh.DiscardPending(
+                    appearanceGeneration,
+                    pendingRequestId);
                 return;
             }
             if (!_coordinatorRefresh.TryTakePending(appearanceGeneration))

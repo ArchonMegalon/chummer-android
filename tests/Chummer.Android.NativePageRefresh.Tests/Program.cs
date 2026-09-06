@@ -13,6 +13,8 @@ internal static class Program
             (nameof(PreRenderBurstIsAbsorbedByExplicitAppearanceRefreshAsync), PreRenderBurstIsAbsorbedByExplicitAppearanceRefreshAsync),
             (nameof(HideAndReappearRejectsStaleGenerationCallbackAsync), HideAndReappearRejectsStaleGenerationCallbackAsync),
             (nameof(StaleActionReleaseSchedulesOnlyCurrentAppearanceAsync), StaleActionReleaseSchedulesOnlyCurrentAppearanceAsync),
+            (nameof(DeferredGestureHandoffRetainsNewerSameGenerationChangeAsync), DeferredGestureHandoffRetainsNewerSameGenerationChangeAsync),
+            (nameof(EventFreeGuardReleaseDoesNotDirtyGestureLeaseAsync), EventFreeGuardReleaseDoesNotDirtyGestureLeaseAsync),
             (nameof(RejectedDrainReleaseCannotLoseOrClearAnotherGeneration), RejectedDrainReleaseCannotLoseOrClearAnotherGeneration)
         ];
 
@@ -224,6 +226,73 @@ internal static class Program
         await ui.InvokeAsync(page.Disappear);
     }
 
+    private static async Task DeferredGestureHandoffRetainsNewerSameGenerationChangeAsync()
+    {
+        using var ui = new TestUiThread();
+        var refreshDispatcher = new ControlledRefreshDispatcher();
+        var account = new FakeAccountLinkService();
+        var page = new TestPage(
+            new RunnerSessionCoordinator(account),
+            refreshDispatcher,
+            ui.ThreadId);
+        using var deferRecorded = new ManualResetEventSlim();
+        using var releaseDeferredHandler = new ManualResetEventSlim();
+
+        await ui.InvokeAsync(page.Appear);
+        page.GestureLeaseActive = true;
+        page.DeferRecorded = deferRecorded;
+        page.ReleaseDeferredHandler = releaseDeferredHandler;
+
+        Task deferredEvent = Task.Run(() => account.Publish(isLoading: false));
+        Require(
+            deferRecorded.Wait(TimeSpan.FromSeconds(5)),
+            "The first event did not hand its refresh to the active gesture lease.");
+
+        page.GestureLeaseActive = false;
+        await ui.InvokeAsync(page.RenderNow);
+        Require(page.LinkEnabled, "The gesture-release render did not observe the first state.");
+
+        await Task.Run(() => account.Publish(isLoading: true));
+        Require(
+            refreshDispatcher.PendingCount == 1,
+            "The newer same-generation event did not schedule a dispatcher pass.");
+        releaseDeferredHandler.Set();
+        await deferredEvent;
+        await ui.InvokeAsync(refreshDispatcher.DrainAll);
+
+        Require(
+            page.RenderCount == 3,
+            "The earlier gesture handoff discarded the newer same-generation refresh.");
+        Require(
+            !page.LinkEnabled,
+            "The newer same-generation account state was not rendered after gesture release.");
+        Require(page.AllRendersOnUiThread, "The gesture handoff refresh left the UI thread.");
+        await ui.InvokeAsync(page.Disappear);
+    }
+
+    private static async Task EventFreeGuardReleaseDoesNotDirtyGestureLeaseAsync()
+    {
+        using var ui = new TestUiThread();
+        var refreshDispatcher = new ControlledRefreshDispatcher();
+        var account = new FakeAccountLinkService();
+        var page = new TestPage(
+            new RunnerSessionCoordinator(account),
+            refreshDispatcher,
+            ui.ThreadId);
+
+        await ui.InvokeAsync(page.Appear);
+        page.GestureLeaseActive = true;
+        await ui.InvokeAsync(() => page.ExecuteActionAsync(() => Task.CompletedTask));
+
+        Require(
+            page.DeferAttemptCount == 0,
+            "An event-free action release dirtied the active gesture lease.");
+        Require(
+            refreshDispatcher.PendingCount == 0,
+            "An event-free action release scheduled a coordinator refresh.");
+        await ui.InvokeAsync(page.Disappear);
+    }
+
     private static Task RejectedDrainReleaseCannotLoseOrClearAnotherGeneration()
     {
         var coalescer = new NativeRefreshCoalescer();
@@ -284,6 +353,14 @@ internal static class Program
 
         public ManualResetEventSlim? RenderObserved;
 
+        public ManualResetEventSlim? DeferRecorded;
+
+        public ManualResetEventSlim? ReleaseDeferredHandler;
+
+        public bool GestureLeaseActive;
+
+        public int DeferAttemptCount => Volatile.Read(ref _deferAttemptCount);
+
         public int RenderCount { get; private set; }
 
         public bool LinkEnabled { get; private set; }
@@ -295,6 +372,8 @@ internal static class Program
         public void Disappear() => OnDisappearing();
 
         public Task ExecuteActionAsync(Func<Task> action) => RunAsync(action);
+
+        public void RenderNow() => Refresh();
 
         protected override void Refresh()
         {
@@ -314,6 +393,26 @@ internal static class Program
 
         protected override bool TryDispatchCoordinatorRefresh(Action action)
             => _refreshDispatcher.Dispatch(action);
+
+        protected override bool TryDeferCoordinatorRefresh()
+        {
+            Interlocked.Increment(ref _deferAttemptCount);
+            if (!GestureLeaseActive)
+            {
+                return false;
+            }
+
+            DeferRecorded?.Set();
+            if (ReleaseDeferredHandler is not null
+                && !ReleaseDeferredHandler.Wait(TimeSpan.FromSeconds(5)))
+            {
+                throw new TimeoutException("The deterministic gesture handoff was not released.");
+            }
+
+            return true;
+        }
+
+        private int _deferAttemptCount;
     }
 
     private sealed class ControlledRefreshDispatcher

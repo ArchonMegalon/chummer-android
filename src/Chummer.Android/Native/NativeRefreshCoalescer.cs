@@ -8,34 +8,54 @@ namespace Chummer.Android.Native;
 public sealed class NativeRefreshCoalescer
 {
     private const long LegacyGeneration = 1;
-    private long _pendingGeneration;
+    private PendingRefresh? _pending;
+    private long _nextRequestId;
     private long _scheduledGeneration;
+
+    private sealed record PendingRefresh(long Generation, long RequestId);
 
     /// <summary>
     /// Retains the newest visible-page generation that observed a change. An older event
     /// callback can never replace work already recorded for a later appearance.
     /// </summary>
-    public void MarkPending(long generation)
+    public long MarkPending(long generation)
     {
         if (generation <= 0)
         {
             throw new ArgumentOutOfRangeException(nameof(generation));
         }
 
-        long observed = Volatile.Read(ref _pendingGeneration);
-        while (observed < generation)
+        long requestId = Interlocked.Increment(ref _nextRequestId);
+        var replacement = new PendingRefresh(generation, requestId);
+        PendingRefresh? observed = Volatile.Read(ref _pending);
+        while (observed is null || observed.Generation <= generation)
         {
-            long exchanged = Interlocked.CompareExchange(
-                ref _pendingGeneration,
-                generation,
+            PendingRefresh? exchanged = Interlocked.CompareExchange(
+                ref _pending,
+                replacement,
                 observed);
-            if (exchanged == observed)
+            if (ReferenceEquals(exchanged, observed))
             {
-                return;
+                return requestId;
             }
 
             observed = exchanged;
         }
+
+        return 0;
+    }
+
+    public bool TryGetPendingRequest(long generation, out long requestId)
+    {
+        PendingRefresh? pending = Volatile.Read(ref _pending);
+        if (pending?.Generation == generation)
+        {
+            requestId = pending.RequestId;
+            return true;
+        }
+
+        requestId = 0;
+        return false;
     }
 
     /// <summary>
@@ -45,19 +65,37 @@ public sealed class NativeRefreshCoalescer
     /// </summary>
     public bool TrySchedulePending(long generation)
         => generation > 0
-           && Volatile.Read(ref _pendingGeneration) == generation
+           && Volatile.Read(ref _pending)?.Generation == generation
            && Interlocked.CompareExchange(
                ref _scheduledGeneration,
                generation,
                0) == 0;
 
     public bool TryTakePending(long generation)
-        => generation > 0
-           && Volatile.Read(ref _scheduledGeneration) == generation
-           && Interlocked.CompareExchange(
-               ref _pendingGeneration,
-               0,
-               generation) == generation;
+    {
+        if (generation <= 0
+            || Volatile.Read(ref _scheduledGeneration) != generation)
+        {
+            return false;
+        }
+
+        PendingRefresh? observed = Volatile.Read(ref _pending);
+        while (observed?.Generation == generation)
+        {
+            PendingRefresh? exchanged = Interlocked.CompareExchange(
+                ref _pending,
+                null,
+                observed);
+            if (ReferenceEquals(exchanged, observed))
+            {
+                return true;
+            }
+
+            observed = exchanged;
+        }
+
+        return false;
+    }
 
     public void ReleaseSchedule(long generation)
     {
@@ -73,20 +111,50 @@ public sealed class NativeRefreshCoalescer
     /// </summary>
     public void DiscardPendingThrough(long generation)
     {
-        long observed = Volatile.Read(ref _pendingGeneration);
-        while (observed != 0 && observed <= generation)
+        PendingRefresh? observed = Volatile.Read(ref _pending);
+        while (observed is not null && observed.Generation <= generation)
         {
-            long exchanged = Interlocked.CompareExchange(
-                ref _pendingGeneration,
-                0,
+            PendingRefresh? exchanged = Interlocked.CompareExchange(
+                ref _pending,
+                null,
                 observed);
-            if (exchanged == observed)
+            if (ReferenceEquals(exchanged, observed))
             {
                 return;
             }
 
             observed = exchanged;
         }
+    }
+
+    /// <summary>
+    /// Consumes only the exact request handed to another refresh owner. A newer request in
+    /// the same appearance remains pending for its own dispatcher pass.
+    /// </summary>
+    public bool DiscardPending(long generation, long requestId)
+    {
+        if (generation <= 0 || requestId <= 0)
+        {
+            return false;
+        }
+
+        PendingRefresh? observed = Volatile.Read(ref _pending);
+        while (observed?.Generation == generation
+               && observed.RequestId == requestId)
+        {
+            PendingRefresh? exchanged = Interlocked.CompareExchange(
+                ref _pending,
+                null,
+                observed);
+            if (ReferenceEquals(exchanged, observed))
+            {
+                return true;
+            }
+
+            observed = exchanged;
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -144,5 +212,5 @@ public sealed class NativeRefreshCoalescer
     /// visual tree. Pending work can be discarded without disturbing an in-flight owner.
     /// </summary>
     public void DiscardPending()
-        => Interlocked.Exchange(ref _pendingGeneration, 0);
+        => Interlocked.Exchange(ref _pending, null);
 }
