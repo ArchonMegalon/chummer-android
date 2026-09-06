@@ -1313,8 +1313,21 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         if (string.IsNullOrWhiteSpace(pendingOperation)
             && string.IsNullOrWhiteSpace(refreshOperation))
         {
+            string? activeInstallationId = await _metadataStore.GetAsync(
+                InstallationIdKey,
+                CancellationToken.None);
+            if (!AndroidAccountLinkKeyAuthority.IsExpectedInstallationId(activeInstallationId))
+            {
+                // A missing or malformed active installation selector means this cannot be a
+                // harmless post-commit stage orphan. Treat the stage and dependent active fields
+                // as one torn credential generation and retain key-cleanup safety via RemoveAsync.
+                await ClearAllCredentialsCoreAsync(CancellationToken.None);
+                return true;
+            }
+
             // Operation cleanup precedes stage removal, so this is a post-commit orphan. Remove
-            // only the exact bad stage; the already-committed active generation is independent.
+            // only the exact bad stage when the active installation selector is independently
+            // well formed; the already-committed active generation may be newer and independent.
             await _metadataStore.RemoveAsync(StagedGrantCommitKey, CancellationToken.None);
             return true;
         }
@@ -1465,6 +1478,8 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             // explicit-null nested grant as hostile persisted data and route it through the same
             // fail-closed quarantine as every other unusable stage.
             && staged.Grant is not null
+            && AndroidAccountLinkKeyAuthority.IsExpectedInstallationId(
+                staged.Grant.InstallationId)
             && IsUsableGrant(staged.Grant, staged.Grant.InstallationId);
 
     private async Task<StoredGrant?> ReadStoredGrantAsync(CancellationToken cancellationToken)

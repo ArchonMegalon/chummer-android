@@ -21,6 +21,7 @@ internal static class Program
     private const string PendingStateKey = "chummer.account.pending-state.v1";
     private const string PendingStartedKey = "chummer.account.pending-started.v1";
     private const string PendingInstallationIdKey = "chummer.account.pending-installation-id.v2";
+    private const string InstallationIdKey = AndroidAccountLinkKeyAuthority.InstallationIdStorageKey;
 
     private static async Task Main()
     {
@@ -47,13 +48,14 @@ internal static class Program
         await StaleLinkedRejectionCannotClearConcurrentRefreshAsync();
         await RefreshOperationPublicationClosesPreVisibilityRaceAsync();
         await InvalidStagedCredentialIsQuarantinedWithoutDeletingNewerGrantAsync();
+        await InvalidStagedInstallationCannotReachKeyAuthorityAsync();
         await LostBootstrapResponseSurvivesProcessRestartAsync();
         await AlreadyRedeemedBootstrapConflictRetainsFreshCredentialsAsync();
         await SuccessfulUnlinkCannotLeaveAStaleLinkedSnapshotAsync();
         await SuccessfulErasureCannotLeaveAStaleLinkedSnapshotAsync();
         await LostRefreshResponseSurvivesProcessRestartAsync();
         await MismatchedOperationResponsesRetainRecoveryStateAsync();
-        Console.WriteLine("Account-link HTTP hardening tests passed: 29");
+        Console.WriteLine("Account-link HTTP hardening tests passed: 30");
     }
 
     private static async Task BearerTokenIsRequestBoundAndRedacted()
@@ -1247,6 +1249,66 @@ internal static class Program
         fixture.Metadata.SetRaw(StagedGrantCommitKey, staged.ToJsonString());
     }
 
+    private static async Task InvalidStagedInstallationCannotReachKeyAuthorityAsync()
+    {
+        foreach (string invalidInstallation in new[]
+                 {
+                     "missing",
+                     "null",
+                     "blank",
+                     "oversized"
+                 })
+        {
+            LinkFixture initializeFixture = await CreateNoOperationInvalidInstallationStageAsync(
+                invalidInstallation);
+            var initializeTerminal = new RecordingHandler(_ =>
+                throw new InvalidOperationException(
+                    "Invalid staged installation Initialize must not call Hub."));
+            using (AndroidAccountLinkHttpTransport transport = CreateTransport(initializeTerminal))
+            {
+                AndroidAccountLinkService service = CreateService(transport, initializeFixture);
+                await service.InitializeAsync();
+                Require(service.Snapshot.Status == AndroidAccountLinkStatus.Unlinked);
+            }
+            Require(initializeTerminal.Requests.Count == 0);
+            Require(!initializeFixture.Metadata.Contains(StagedGrantCommitKey));
+            Require(!initializeFixture.Metadata.Contains(StoredAccessTokenKey));
+            Require(!initializeFixture.Keys.Contains(initializeFixture.Identity.Alias));
+
+            LinkFixture beginFixture = await CreateNoOperationInvalidInstallationStageAsync(
+                invalidInstallation);
+            var beginTerminal = new RecordingHandler(_ =>
+                throw new InvalidOperationException(
+                    "Invalid staged installation Begin must not call Hub."));
+            using (AndroidAccountLinkHttpTransport transport = CreateTransport(beginTerminal))
+            {
+                AndroidAccountLinkService service = CreateService(transport, beginFixture);
+                await service.BeginLinkAsync();
+                Require(service.Snapshot.Status == AndroidAccountLinkStatus.Pending);
+            }
+            Require(beginTerminal.Requests.Count == 0);
+            Require(!beginFixture.Metadata.Contains(StagedGrantCommitKey));
+            Require(!beginFixture.Keys.Contains(beginFixture.Identity.Alias));
+            Require(beginFixture.Metadata.Contains(PendingPollOperationKey));
+
+            LinkFixture unlinkFixture = await CreateNoOperationInvalidInstallationStageAsync(
+                invalidInstallation);
+            var unlinkTerminal = new RecordingHandler(_ =>
+                throw new InvalidOperationException(
+                    "Invalid staged installation Unlink must not call Hub."));
+            using (AndroidAccountLinkHttpTransport transport = CreateTransport(unlinkTerminal))
+            {
+                AndroidAccountLinkService service = CreateService(transport, unlinkFixture);
+                await service.UnlinkAsync();
+                Require(service.Snapshot.Status == AndroidAccountLinkStatus.Unlinked);
+            }
+            Require(unlinkTerminal.Requests.Count == 0);
+            Require(!unlinkFixture.Metadata.Contains(StagedGrantCommitKey));
+            Require(!unlinkFixture.Metadata.Contains(StoredAccessTokenKey));
+            Require(!unlinkFixture.Keys.Contains(unlinkFixture.Identity.Alias));
+        }
+    }
+
     private static async Task LostBootstrapResponseSurvivesProcessRestartAsync()
     {
         LinkFixture fixture = await CreatePendingFixtureAsync();
@@ -1625,6 +1687,50 @@ internal static class Program
         Require(service.Snapshot.Status == AndroidAccountLinkStatus.Error);
         Require(fixture.Metadata.Contains(StagedGrantCommitKey));
         Require(fixture.Metadata.Contains(RefreshAttemptKey));
+        return fixture;
+    }
+
+    private static async Task<LinkFixture> CreateNoOperationInvalidInstallationStageAsync(
+        string invalidInstallation)
+    {
+        LinkFixture fixture = await CreateInterruptedRefreshStageAsync();
+        await fixture.Metadata.RemoveAsync(RefreshAttemptKey);
+
+        JsonObject staged = JsonNode.Parse(
+            fixture.Metadata.GetRaw(StagedGrantCommitKey)!)!.AsObject();
+        JsonObject grant = staged["grant"]!.AsObject();
+        string? storedInstallationId;
+        switch (invalidInstallation)
+        {
+            case "missing":
+                Require(grant.Remove("installationId"));
+                storedInstallationId = null;
+                break;
+            case "null":
+                grant["installationId"] = null;
+                storedInstallationId = null;
+                break;
+            case "blank":
+                grant["installationId"] = "   ";
+                storedInstallationId = "   ";
+                break;
+            case "oversized":
+                storedInstallationId = "android-" + new string('A', 4096);
+                grant["installationId"] = storedInstallationId;
+                break;
+            default:
+                throw new InvalidOperationException("Unknown invalid installation scenario.");
+        }
+
+        fixture.Metadata.SetRaw(StagedGrantCommitKey, staged.ToJsonString());
+        if (storedInstallationId is null)
+        {
+            await fixture.Metadata.RemoveAsync(InstallationIdKey);
+        }
+        else
+        {
+            fixture.Metadata.SetRaw(InstallationIdKey, storedInstallationId);
+        }
         return fixture;
     }
 

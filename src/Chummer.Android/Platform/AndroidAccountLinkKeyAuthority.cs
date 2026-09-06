@@ -575,7 +575,7 @@ public sealed class AndroidAccountLinkKeyAuthority
         }
     }
 
-    private static bool IsExpectedInstallationId(string? installationId)
+    internal static bool IsExpectedInstallationId(string? installationId)
     {
         const string prefix = "android-";
         if (installationId is null
