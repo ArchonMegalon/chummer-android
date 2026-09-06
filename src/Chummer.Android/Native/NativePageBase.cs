@@ -5,7 +5,7 @@ namespace Chummer.Android.Native;
 
 public abstract class NativePageBase : ContentPage
 {
-    private bool _subscribed;
+    private int _subscribed;
     private bool _dialogVisible;
     private int _appearanceRefreshActive;
     private long _appearanceGeneration;
@@ -25,16 +25,16 @@ public abstract class NativePageBase : ContentPage
     {
         base.OnAppearing();
         long appearanceGeneration = Interlocked.Increment(ref _appearanceGeneration);
+        _coordinatorRefresh.AbandonThrough(appearanceGeneration - 1);
         Interlocked.Exchange(ref _appearanceRefreshActive, 1);
         CancellationTokenSource appearanceLifetime = new();
         CancellationTokenSource? previousAppearance =
             Interlocked.Exchange(ref _appearanceLifetime, appearanceLifetime);
         previousAppearance?.Cancel();
         CancellationToken appearanceToken = appearanceLifetime.Token;
-        if (!_subscribed)
+        if (Interlocked.CompareExchange(ref _subscribed, 1, 0) == 0)
         {
             Coordinator.Changed += OnCoordinatorChanged;
-            _subscribed = true;
         }
 
         try
@@ -43,7 +43,7 @@ public abstract class NativePageBase : ContentPage
             ThrowIfAppearanceIsStale(appearanceGeneration, appearanceToken);
             await PrepareForAppearanceRefreshAsync(appearanceToken);
             ThrowIfAppearanceIsStale(appearanceGeneration, appearanceToken);
-            _coordinatorRefresh.DiscardPending();
+            _coordinatorRefresh.DiscardPendingThrough(appearanceGeneration);
             Refresh();
             ClearAppearanceRefreshIfCurrent(appearanceGeneration);
             ThrowIfAppearanceIsStale(appearanceGeneration, appearanceToken);
@@ -67,7 +67,7 @@ public abstract class NativePageBase : ContentPage
                 return;
             }
 
-            _coordinatorRefresh.DiscardPending();
+            _coordinatorRefresh.DiscardPendingThrough(appearanceGeneration);
             Refresh();
             ClearAppearanceRefreshIfCurrent(appearanceGeneration);
             await DisplayAlertAsync("Chummer", ex.Message, "OK");
@@ -85,17 +85,16 @@ public abstract class NativePageBase : ContentPage
 
     protected override void OnDisappearing()
     {
-        Interlocked.Increment(ref _appearanceGeneration);
+        long departedGeneration = Interlocked.Increment(ref _appearanceGeneration) - 1;
+        if (Interlocked.Exchange(ref _subscribed, 0) != 0)
+        {
+            Coordinator.Changed -= OnCoordinatorChanged;
+        }
         CancellationTokenSource? appearanceLifetime =
             Interlocked.Exchange(ref _appearanceLifetime, null);
         appearanceLifetime?.Cancel();
         Volatile.Write(ref _appearanceRefreshActive, 0);
-        _coordinatorRefresh.DiscardPending();
-        if (_subscribed)
-        {
-            Coordinator.Changed -= OnCoordinatorChanged;
-            _subscribed = false;
-        }
+        _coordinatorRefresh.AbandonThrough(departedGeneration);
 
         base.OnDisappearing();
     }
@@ -116,7 +115,7 @@ public abstract class NativePageBase : ContentPage
     private bool IsCurrentAppearance(
         long appearanceGeneration,
         CancellationTokenSource appearanceLifetime)
-        => _subscribed
+        => Volatile.Read(ref _subscribed) != 0
             && Volatile.Read(ref _appearanceGeneration) == appearanceGeneration
             && ReferenceEquals(
                 Interlocked.CompareExchange(
@@ -130,7 +129,7 @@ public abstract class NativePageBase : ContentPage
         CancellationToken appearanceToken)
     {
         appearanceToken.ThrowIfCancellationRequested();
-        if (!_subscribed
+        if (Volatile.Read(ref _subscribed) == 0
             || Volatile.Read(ref _appearanceGeneration) != appearanceGeneration)
         {
             throw new OperationCanceledException(appearanceToken);
@@ -142,6 +141,7 @@ public abstract class NativePageBase : ContentPage
         if (Volatile.Read(ref _appearanceGeneration) == appearanceGeneration)
         {
             Volatile.Write(ref _appearanceRefreshActive, 0);
+            TryScheduleCoordinatorRefresh(appearanceGeneration);
         }
     }
 
@@ -152,6 +152,7 @@ public abstract class NativePageBase : ContentPage
             return;
         }
 
+        long actionGeneration = Volatile.Read(ref _appearanceGeneration);
         PlayReviewMeaningfulState before = default;
         PlayReviewInteractionGuard.EnterAction();
         bool succeeded = false;
@@ -159,48 +160,9 @@ public abstract class NativePageBase : ContentPage
         {
             before = CapturePlayReviewMeaningfulState();
             await action();
-            _coordinatorRefresh.DiscardPending();
-            Refresh();
-            await ShowActiveDialogAsync();
-            succeeded = true;
-        }
-        catch (OperationCanceledException)
-        {
-            // Android pickers and page transitions use cancellation for a normal back action.
-        }
-        catch (Exception ex)
-        {
-            await DisplayAlertAsync("Chummer", ex.Message, "OK");
-        }
-        finally
-        {
-            PlayReviewInteractionGuard.ExitAction();
-            _actionGate.Release();
-        }
-
-        if (succeeded)
-        {
-            await NotifyPlayReviewSafeMomentAsync(
-                signalMeaningfulSuccess: before != CapturePlayReviewMeaningfulState());
-        }
-    }
-
-    protected async Task RunWithConditionalRefreshAsync(Func<Task<bool>> action)
-    {
-        if (!_actionGate.TryClaim())
-        {
-            return;
-        }
-
-        PlayReviewMeaningfulState before = default;
-        PlayReviewInteractionGuard.EnterAction();
-        bool succeeded = false;
-        try
-        {
-            before = CapturePlayReviewMeaningfulState();
-            if (await action())
+            if (IsCurrentAppearanceGeneration(actionGeneration))
             {
-                _coordinatorRefresh.DiscardPending();
+                _coordinatorRefresh.DiscardPendingThrough(actionGeneration);
                 Refresh();
             }
             await ShowActiveDialogAsync();
@@ -218,6 +180,51 @@ public abstract class NativePageBase : ContentPage
         {
             PlayReviewInteractionGuard.ExitAction();
             _actionGate.Release();
+            TryScheduleCoordinatorRefresh(Volatile.Read(ref _appearanceGeneration));
+        }
+
+        if (succeeded)
+        {
+            await NotifyPlayReviewSafeMomentAsync(
+                signalMeaningfulSuccess: before != CapturePlayReviewMeaningfulState());
+        }
+    }
+
+    protected async Task RunWithConditionalRefreshAsync(Func<Task<bool>> action)
+    {
+        if (!_actionGate.TryClaim())
+        {
+            return;
+        }
+
+        long actionGeneration = Volatile.Read(ref _appearanceGeneration);
+        PlayReviewMeaningfulState before = default;
+        PlayReviewInteractionGuard.EnterAction();
+        bool succeeded = false;
+        try
+        {
+            before = CapturePlayReviewMeaningfulState();
+            if (await action() && IsCurrentAppearanceGeneration(actionGeneration))
+            {
+                _coordinatorRefresh.DiscardPendingThrough(actionGeneration);
+                Refresh();
+            }
+            await ShowActiveDialogAsync();
+            succeeded = true;
+        }
+        catch (OperationCanceledException)
+        {
+            // Android pickers and page transitions use cancellation for a normal back action.
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("Chummer", ex.Message, "OK");
+        }
+        finally
+        {
+            PlayReviewInteractionGuard.ExitAction();
+            _actionGate.Release();
+            TryScheduleCoordinatorRefresh(Volatile.Read(ref _appearanceGeneration));
         }
 
         if (succeeded)
@@ -243,55 +250,78 @@ public abstract class NativePageBase : ContentPage
 
     private void OnCoordinatorChanged(object? sender, EventArgs args)
     {
-        if (_actionGate.IsClaimed)
+        if (Volatile.Read(ref _subscribed) == 0)
         {
             return;
         }
 
-        // Initialize/prepare owns one explicit render. Dispatching Changed while
-        // that pipeline is active can replace an already-proven button after the
-        // page reports settled, losing the user's next tap. The explicit render
-        // observes the newest coordinator state, so these requests are redundant.
-        if (Volatile.Read(ref _appearanceRefreshActive) > 0)
+        long appearanceGeneration = Volatile.Read(ref _appearanceGeneration);
+        if (appearanceGeneration <= 0)
+        {
+            return;
+        }
+
+        // Record the change before observing either suppression owner. An explicit render
+        // discards changes that preceded its state read; a change racing that read remains
+        // pending and receives one trailing dispatcher pass after the owner releases.
+        _coordinatorRefresh.MarkPending(appearanceGeneration);
+        TryScheduleCoordinatorRefresh(appearanceGeneration);
+    }
+
+    private bool IsCurrentAppearanceGeneration(long appearanceGeneration)
+        => appearanceGeneration > 0
+           && Volatile.Read(ref _subscribed) != 0
+           && Volatile.Read(ref _appearanceGeneration) == appearanceGeneration;
+
+    private void TryScheduleCoordinatorRefresh(long appearanceGeneration)
+    {
+        if (!IsCurrentAppearanceGeneration(appearanceGeneration)
+            || _actionGate.IsClaimed
+            || Volatile.Read(ref _appearanceRefreshActive) > 0)
         {
             return;
         }
 
         if (TryDeferCoordinatorRefresh())
         {
+            _coordinatorRefresh.DiscardPendingThrough(appearanceGeneration);
             return;
         }
 
-        if (_coordinatorRefresh.Request())
+        if (_coordinatorRefresh.TrySchedulePending(appearanceGeneration))
         {
-            DispatchCoordinatorRefresh();
+            DispatchCoordinatorRefresh(appearanceGeneration);
         }
     }
 
-    private void DispatchCoordinatorRefresh()
+    private void DispatchCoordinatorRefresh(long appearanceGeneration)
     {
         try
         {
-            if (!Dispatcher.Dispatch(() => _ = DrainCoordinatorRefreshAsync()))
+            if (!TryDispatchCoordinatorRefresh(
+                    () => _ = DrainCoordinatorRefreshAsync(appearanceGeneration)))
             {
                 // The page may have left its dispatcher between the Changed event and this
                 // post. Release scheduling ownership so a later appearance cannot inherit a
                 // permanently scheduled refresh that will never execute.
-                _coordinatorRefresh.Complete(allowReschedule: false);
+                _coordinatorRefresh.ReleaseSchedule(appearanceGeneration);
             }
         }
         catch
         {
-            _coordinatorRefresh.Complete(allowReschedule: false);
+            _coordinatorRefresh.ReleaseSchedule(appearanceGeneration);
             throw;
         }
     }
 
-    private async Task DrainCoordinatorRefreshAsync()
+    protected virtual bool TryDispatchCoordinatorRefresh(Action action)
+        => Dispatcher.Dispatch(action);
+
+    private async Task DrainCoordinatorRefreshAsync(long appearanceGeneration)
     {
         try
         {
-            if (!_subscribed
+            if (!IsCurrentAppearanceGeneration(appearanceGeneration)
                 || _actionGate.IsClaimed
                 || Volatile.Read(ref _appearanceRefreshActive) > 0)
             {
@@ -300,33 +330,34 @@ public abstract class NativePageBase : ContentPage
 
             if (TryDeferCoordinatorRefresh())
             {
-                _coordinatorRefresh.DiscardPending();
+                _coordinatorRefresh.DiscardPendingThrough(appearanceGeneration);
                 return;
             }
-            if (!_coordinatorRefresh.TryTakePending())
+            if (!_coordinatorRefresh.TryTakePending(appearanceGeneration))
             {
                 return;
             }
 
             Refresh();
-            await ShowActiveDialogAsync();
+            if (IsCurrentAppearanceGeneration(appearanceGeneration))
+            {
+                await ShowActiveDialogAsync();
+            }
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
-            if (_subscribed)
+            if (IsCurrentAppearanceGeneration(appearanceGeneration))
             {
                 await DisplayAlertAsync("Chummer", ex.Message, "OK");
             }
         }
         finally
         {
-            bool mayRender = _subscribed
-                && !_actionGate.IsClaimed
-                && Volatile.Read(ref _appearanceRefreshActive) == 0;
-            if (_coordinatorRefresh.Complete(mayRender))
-            {
-                DispatchCoordinatorRefresh();
-            }
+            // Release this exact generation before checking guards again. If an action or
+            // appearance endpoint raced the rejected drain while it still owned scheduling,
+            // this post-release check observes the retained dirty state and schedules it.
+            _coordinatorRefresh.ReleaseSchedule(appearanceGeneration);
+            TryScheduleCoordinatorRefresh(Volatile.Read(ref _appearanceGeneration));
         }
     }
 
