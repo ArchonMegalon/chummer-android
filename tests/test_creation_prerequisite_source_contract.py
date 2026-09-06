@@ -14954,7 +14954,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "catch (OperationCanceledException)",
         ):
             self.assertIn(marker, lease)
-        self.assertIn("return _post(callback);", lease)
+        self.assertIn("return _postDelayed(delay, callback);", lease)
+        self.assertIn("delay <= TimeSpan.Zero", lease)
 
         helpers = source[
             source.index("private Border CreationNavigationRow(") :
@@ -14963,13 +14964,21 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         for marker in (
             "pressed: () => pressGeneration = BeginCreationNavigationPress()",
             "released: () => ScheduleCreationNavigationPressCancellation(pressGeneration)",
-            "_creationNavigationReleaseScheduler.TrySchedule",
+            "_creationNavigationReleaseScheduler.TrySchedule(",
+            "CreationNavigationReleaseSettlementDelay",
             "_creationNavigationActionRunner.RunAsync",
             "_creationNavigationRefreshLease.TryDeferRefresh()",
         ):
             self.assertIn(marker, helpers)
         self.assertNotIn("MainThread.BeginInvokeOnMainThread(()", helpers)
-        self.assertIn("new(action => Dispatcher.Dispatch(action))", source)
+        self.assertIn("Dispatcher.DispatchDelayed(delay, action)", source)
+        self.assertIn('TraceCreationNavigation("pressed"', helpers)
+        self.assertIn('TraceCreationNavigation("released-scheduled"', helpers)
+        self.assertIn('claimed ? "click-claimed" : "click-rejected"', helpers)
+        self.assertIn('TraceCreationNavigation("cancel"', helpers)
+        self.assertIn('"refresh-deferred"', helpers)
+        self.assertIn('TraceCreationNavigation("departed"', helpers)
+        self.assertIn("CreationNavigationTraceMaximumPerAppearance", source)
 
         native_page_base = (NATIVE / "NativePageBase.cs").read_text(encoding="utf-8")
         self.assertIn("protected virtual bool TryDeferCoordinatorRefresh()", native_page_base)

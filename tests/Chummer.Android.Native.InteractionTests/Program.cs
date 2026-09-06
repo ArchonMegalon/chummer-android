@@ -1749,22 +1749,39 @@ internal static class Program
 
     private static async Task CreationReleasedCleanupIsDeferredAndClickedPromotionWinsAsync()
     {
-        var posted = new Queue<Action>();
-        var scheduler = new CreationNavigationReleaseScheduler(callback =>
+        var posted = new Queue<(TimeSpan Delay, Action Callback)>();
+        var scheduler = new CreationNavigationReleaseScheduler((delay, callback) =>
         {
-            posted.Enqueue(callback);
+            posted.Enqueue((delay, callback));
             return true;
         });
         var lease = new CreationNavigationRefreshLease();
         long pressGeneration = lease.BeginPress();
         Require(lease.TryDeferRefresh(), "Pressed did not retain the pending refresh.");
+        bool rejectedZeroDelay = false;
+        try
+        {
+            scheduler.TrySchedule(TimeSpan.Zero, static () => { });
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            rejectedZeroDelay = true;
+        }
+        Require(rejectedZeroDelay, "Released cleanup accepted a same-turn zero delay.");
         bool releaseFlush = false;
+        TimeSpan releaseDelay = TimeSpan.FromMilliseconds(100);
         Require(
-            scheduler.TrySchedule(() => releaseFlush = lease.CancelPress(pressGeneration)),
+            scheduler.TrySchedule(
+                releaseDelay,
+                () => releaseFlush = lease.CancelPress(pressGeneration)),
             "Released cleanup was not posted to the owning dispatcher.");
         Require(
-            posted.Count == 1 && !releaseFlush && lease.IsActive,
-            "Released cleanup executed inline before Clicked could be published.");
+            posted.Count == 1
+            && posted.Peek().Delay == releaseDelay
+            && posted.Peek().Delay > TimeSpan.Zero
+            && !releaseFlush
+            && lease.IsActive,
+            "Released cleanup did not retain its positive settlement delay before Clicked.");
 
         var runner = new CreationNavigationActionRunner(lease);
         TaskCompletionSource navigation = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -1772,7 +1789,7 @@ internal static class Program
             pressGeneration,
             () => navigation.Task,
             static () => false);
-        posted.Dequeue()();
+        posted.Dequeue().Callback();
         Require(
             !releaseFlush && lease.IsActive,
             "The deferred Released callback canceled a Clicked navigation claim.");
@@ -1785,12 +1802,14 @@ internal static class Program
 
     private static async Task RejectedCreationReleasePostRetainsLeaseForClickedAsync()
     {
-        var scheduler = new CreationNavigationReleaseScheduler(static _ => false);
+        var scheduler = new CreationNavigationReleaseScheduler(static (_, _) => false);
         var lease = new CreationNavigationRefreshLease();
         long pressGeneration = lease.BeginPress();
         Require(lease.TryDeferRefresh(), "The pressed route did not retain its refresh.");
         Require(
-            !scheduler.TrySchedule(() => lease.CancelPress(pressGeneration)),
+            !scheduler.TrySchedule(
+                TimeSpan.FromMilliseconds(100),
+                () => lease.CancelPress(pressGeneration)),
             "The rejecting dispatcher reported a scheduled Released cleanup.");
         Require(
             lease.IsActive && lease.HasPendingRefresh,
@@ -1809,7 +1828,7 @@ internal static class Program
     private static Task StaleCreationReleaseGenerationCannotCancelNewerPressAsync()
     {
         var posted = new Queue<Action>();
-        var scheduler = new CreationNavigationReleaseScheduler(callback =>
+        var scheduler = new CreationNavigationReleaseScheduler((_, callback) =>
         {
             posted.Enqueue(callback);
             return true;
@@ -1818,7 +1837,9 @@ internal static class Program
         long staleGeneration = lease.BeginPress();
         Require(lease.TryDeferRefresh(), "The first press did not retain its refresh.");
         Require(
-            scheduler.TrySchedule(() => lease.CancelPress(staleGeneration)),
+            scheduler.TrySchedule(
+                TimeSpan.FromMilliseconds(100),
+                () => lease.CancelPress(staleGeneration)),
             "The stale release callback was not scheduled.");
         long currentGeneration = lease.BeginPress();
         Require(

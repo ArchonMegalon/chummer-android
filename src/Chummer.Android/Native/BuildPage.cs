@@ -440,6 +440,15 @@ public sealed class CreationNavigationRefreshLease
         }
     }
 
+    public long ActiveGeneration
+    {
+        get
+        {
+            lock (_sync)
+                return _state == LeaseState.Idle ? 0 : _generation;
+        }
+    }
+
     public long BeginPress()
     {
         lock (_sync)
@@ -494,13 +503,18 @@ public sealed class CreationNavigationRefreshLease
     }
 
     public bool CancelPress(long pressGeneration)
+        => TryCancelPress(pressGeneration, out bool refresh) && refresh;
+
+    public bool TryCancelPress(long pressGeneration, out bool refreshRequired)
     {
         lock (_sync)
         {
+            refreshRequired = false;
             if (_state != LeaseState.Pressed || pressGeneration != _generation)
                 return false;
 
-            return Release(discardPending: false);
+            refreshRequired = Release(discardPending: false);
+            return true;
         }
     }
 
@@ -537,26 +551,29 @@ public sealed class CreationNavigationRefreshLease
 }
 
 /// <summary>
-/// Posts Released cleanup through the owning page dispatcher. Unlike
-/// MainThread.BeginInvokeOnMainThread, Dispatcher.Dispatch is a true post when
-/// invoked by the current UI event, so MAUI can publish Clicked first.
+/// Settles Released cleanup through a positive delayed post. Android queues its
+/// PerformClick after the Released listener returns, so a same-turn dispatcher
+/// post can still run before MAUI publishes Clicked.
 /// </summary>
 public sealed class CreationNavigationReleaseScheduler
 {
-    private readonly Func<Action, bool> _post;
+    private readonly Func<TimeSpan, Action, bool> _postDelayed;
 
-    public CreationNavigationReleaseScheduler(Func<Action, bool> post)
-        => _post = post ?? throw new ArgumentNullException(nameof(post));
+    public CreationNavigationReleaseScheduler(Func<TimeSpan, Action, bool> postDelayed)
+        => _postDelayed = postDelayed ?? throw new ArgumentNullException(nameof(postDelayed));
 
-    public bool TrySchedule(Action callback)
+    public bool TrySchedule(TimeSpan delay, Action callback)
     {
+        if (delay <= TimeSpan.Zero)
+            throw new ArgumentOutOfRangeException(nameof(delay), "Release settlement must use a positive delay.");
         ArgumentNullException.ThrowIfNull(callback);
-        return _post(callback);
+        return _postDelayed(delay, callback);
     }
 }
 
 public sealed record CreationNavigationActionResult(
     bool Claimed,
+    long Generation,
     bool Departed,
     bool Canceled,
     bool RefreshRequired,
@@ -576,19 +593,23 @@ public sealed class CreationNavigationActionRunner
     public async Task<CreationNavigationActionResult> RunAsync(
         long pressGeneration,
         Func<Task> selected,
-        Func<bool> hasDeparted)
+        Func<bool> hasDeparted,
+        Action<bool, long>? claimObserved = null)
     {
         ArgumentNullException.ThrowIfNull(selected);
         ArgumentNullException.ThrowIfNull(hasDeparted);
         if (!_lease.TryBeginNavigation(pressGeneration, out long navigationGeneration))
         {
+            claimObserved?.Invoke(false, pressGeneration);
             return new CreationNavigationActionResult(
                 Claimed: false,
+                Generation: pressGeneration,
                 Departed: false,
                 Canceled: false,
                 RefreshRequired: false,
                 Error: null);
         }
+        claimObserved?.Invoke(true, navigationGeneration);
 
         bool canceled = false;
         Exception? error = null;
@@ -619,6 +640,7 @@ public sealed class CreationNavigationActionRunner
         bool refresh = _lease.CompleteNavigation(navigationGeneration, departed);
         return new CreationNavigationActionResult(
             Claimed: true,
+            Generation: navigationGeneration,
             Departed: departed,
             Canceled: canceled,
             RefreshRequired: refresh,
@@ -629,6 +651,8 @@ public sealed class CreationNavigationActionRunner
 public sealed class BuildPage : NativePageBase
 {
     private const string CreationDashboardRouteReadyLogTag = "ChummerRoute";
+    private const string CreationNavigationTraceLogTag = "ChummerCreation";
+    private const int CreationNavigationTraceMaximumPerAppearance = 64;
     private const string CreationDashboardRouteReadyLogPrefix =
         "CHUMMER_CREATION_DASHBOARD_READY ";
     private static readonly JsonSerializerOptions CreationDashboardRouteReadyJson = new()
@@ -641,6 +665,8 @@ public sealed class BuildPage : NativePageBase
         TimeSpan.FromMilliseconds(250);
     private static readonly TimeSpan CreationDashboardRouteReadyMaximumWait =
         TimeSpan.FromSeconds(25);
+    private static readonly TimeSpan CreationNavigationReleaseSettlementDelay =
+        TimeSpan.FromMilliseconds(100);
     private readonly VerticalStackLayout _body = new()
     {
         Padding = new Thickness(20, 18, 20, 40),
@@ -680,6 +706,7 @@ public sealed class BuildPage : NativePageBase
     private readonly CreationNavigationRefreshLease _creationNavigationRefreshLease = new();
     private readonly CreationNavigationReleaseScheduler _creationNavigationReleaseScheduler;
     private readonly CreationNavigationActionRunner _creationNavigationActionRunner;
+    private int _creationNavigationTraceCount;
     private bool _resetScrollOnNextRefresh;
 
     public BuildPage(
@@ -691,7 +718,8 @@ public sealed class BuildPage : NativePageBase
         _resourcesPresenter = resourcesPresenter;
         _overviewPresenter = overviewPresenter;
         _gearPresenter = gearPresenter;
-        _creationNavigationReleaseScheduler = new(action => Dispatcher.Dispatch(action));
+        _creationNavigationReleaseScheduler = new(
+            (delay, action) => Dispatcher.DispatchDelayed(delay, action));
         _creationNavigationActionRunner = new(_creationNavigationRefreshLease);
         Title = "Runner";
         AutomationId = "phone-runner-page";
@@ -762,6 +790,7 @@ public sealed class BuildPage : NativePageBase
 
     protected override void OnAppearing()
     {
+        Interlocked.Exchange(ref _creationNavigationTraceCount, 0);
         _resetScrollOnNextRefresh = true;
         _creationDashboardRouteReadyLifetime?.Cancel();
         _creationDashboardRouteReadyLifetime?.Dispose();
@@ -1306,30 +1335,41 @@ public sealed class BuildPage : NativePageBase
     }
 
     private long BeginCreationNavigationPress()
-        => _creationNavigationRefreshLease.BeginPress();
+    {
+        long generation = _creationNavigationRefreshLease.BeginPress();
+        TraceCreationNavigation("pressed", generation);
+        return generation;
+    }
 
     private void ScheduleCreationNavigationPressCancellation(long pressGeneration)
     {
-        // Android publishes Released before Clicked. Dispatcher.Dispatch is used as a
-        // true post; MainThread.BeginInvokeOnMainThread can execute inline here.
+        // Android posts PerformClick after Released. A positive DispatchDelayed
+        // settlement lets that native click claim this generation first.
         try
         {
-            bool scheduled = _creationNavigationReleaseScheduler.TrySchedule(() =>
-            {
-                try
+            bool scheduled = _creationNavigationReleaseScheduler.TrySchedule(
+                CreationNavigationReleaseSettlementDelay,
+                () =>
                 {
-                    if (_creationNavigationRefreshLease.CancelPress(pressGeneration)
-                        && IsCurrentCreationDashboardPage())
+                    try
                     {
-                        Refresh();
+                        if (_creationNavigationRefreshLease.TryCancelPress(
+                                pressGeneration,
+                                out bool refreshRequired))
+                        {
+                            TraceCreationNavigation("cancel", pressGeneration);
+                            if (refreshRequired && IsCurrentCreationDashboardPage())
+                                Refresh();
+                        }
                     }
-                }
-                catch (Exception ex) when (ex is not OutOfMemoryException)
-                {
-                    if (IsCurrentCreationDashboardPage())
-                        _ = TryShowCreationNavigationErrorAsync(ex.Message);
-                }
-            });
+                    catch (Exception ex) when (ex is not OutOfMemoryException)
+                    {
+                        if (IsCurrentCreationDashboardPage())
+                            _ = TryShowCreationNavigationErrorAsync(ex.Message);
+                    }
+                });
+            if (scheduled)
+                TraceCreationNavigation("released-scheduled", pressGeneration);
             if (!scheduled && !IsCurrentCreationDashboardPage())
                 _creationNavigationRefreshLease.DiscardForDeparture();
             // If a still-visible page dispatcher rejects the post, retain the pressed
@@ -1356,9 +1396,15 @@ public sealed class BuildPage : NativePageBase
                 await _creationNavigationActionRunner.RunAsync(
                     pressGeneration,
                     selected,
-                    () => !IsCurrentCreationDashboardPage());
+                    () => !IsCurrentCreationDashboardPage(),
+                    (claimed, generation) => TraceCreationNavigation(
+                        claimed ? "click-claimed" : "click-rejected",
+                        generation));
             if (!result.Claimed)
                 return;
+
+            if (result.Departed)
+                TraceCreationNavigation("departed", result.Generation);
 
             if (result.Error is not null && IsCurrentCreationDashboardPage())
                 await TryShowCreationNavigationErrorAsync(result.Error.Message);
@@ -1393,14 +1439,49 @@ public sealed class BuildPage : NativePageBase
     private void RequestCreationAuthorityRefresh()
     {
         if (_creationNavigationRefreshLease.TryDeferRefresh())
+        {
+            TraceCreationNavigation(
+                "refresh-deferred",
+                _creationNavigationRefreshLease.ActiveGeneration);
             return;
+        }
         if (IsCurrentCreationDashboardPage())
             Refresh();
     }
 
     protected override bool TryDeferCoordinatorRefresh()
-        => Coordinator.State.Profile?.Created == false
-           && _creationNavigationRefreshLease.TryDeferRefresh();
+    {
+        bool deferred = Coordinator.State.Profile?.Created == false
+                        && _creationNavigationRefreshLease.TryDeferRefresh();
+        if (deferred)
+            TraceCreationNavigation(
+                "refresh-deferred",
+                _creationNavigationRefreshLease.ActiveGeneration);
+        return deferred;
+    }
+
+    private void TraceCreationNavigation(string eventName, long generation)
+    {
+        if (Interlocked.Increment(ref _creationNavigationTraceCount)
+            > CreationNavigationTraceMaximumPerAppearance)
+        {
+            return;
+        }
+
+        string message = $"navigation event={eventName} generation={generation}";
+        try
+        {
+#if ANDROID
+            global::Android.Util.Log.Info(CreationNavigationTraceLogTag, message);
+#else
+            Console.WriteLine($"{CreationNavigationTraceLogTag} {message}");
+#endif
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            // Diagnostic traces must never alter navigation behavior.
+        }
+    }
 
     private bool IsCurrentCreationDashboardPage()
         => _creationDashboardRouteReadyLifetime is not null
