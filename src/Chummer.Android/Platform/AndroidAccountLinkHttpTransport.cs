@@ -94,9 +94,16 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
             return response;
         }
 
-        bool crossOrigin = response.Headers.Location is Uri location
-            && !IsTrustedRedirect(requestUri, location);
-        response.Dispose();
+        bool crossOrigin;
+        try
+        {
+            crossOrigin = response.Headers.Location is Uri location
+                && !IsTrustedRedirect(requestUri, location);
+        }
+        finally
+        {
+            response.Dispose();
+        }
         throw new HttpRequestException(
             crossOrigin
                 ? "A cross-origin Chummer account redirect was rejected."
@@ -206,7 +213,8 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
             // A response object is frequently included wholesale in diagnostics. Once the rotated
             // credential has crossed the explicit parsing boundary, keep it out of that surface
             // and make the authority a one-shot value that cannot be replayed from this response.
-            ResponseAuthorizations.Remove(response);
+            // Keep the weak-table holder as a consumed latch; removing it would let a caller add
+            // a replacement public header after a failed parse and reuse the response boundary.
             response.Headers.Remove("Authorization");
         }
     }

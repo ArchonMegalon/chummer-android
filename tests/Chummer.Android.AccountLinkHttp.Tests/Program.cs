@@ -30,6 +30,8 @@ internal static class Program
         await BootstrapProofAndPollBodyMatchV2Contract();
         ResponseGrantHeadersAreSingleBoundedAndRedacted();
         await ResponseGrantAuthorityIsRedactedAndOneShot();
+        await TransportPathRejectsMalformedAndMultipleResponseAuthoritiesOnce();
+        await ConcurrentResponseAuthorityReadsHaveOneWinner();
         await BearerTokenCannotBeSerializedIntoRequestBody();
         ServiceRequestDtosCannotCarryAccessToken();
         BearerAuthorityRejectsHeaderInjectionWithoutEchoingCredential();
@@ -38,6 +40,7 @@ internal static class Program
         await MissingAndOversizedContentLengthAreHandledSafely();
         await ResponseBodyReadRetainsABoundedTimeout();
         await CrossOriginRedirectCannotReceiveBearerToken();
+        await MalformedRedirectLocationStillDisposesResponse();
         await SameOriginRedirectAndUnsafePathsFailClosed();
         await MalformedCollectionsFailClosedWithoutEchoingResponseData();
         await BrowserLaunchAndFirstPollShareOperationAcrossRestartAsync();
@@ -56,7 +59,7 @@ internal static class Program
         await SuccessfulErasureCannotLeaveAStaleLinkedSnapshotAsync();
         await LostRefreshResponseSurvivesProcessRestartAsync();
         await MismatchedOperationResponsesRetainRecoveryStateAsync();
-        Console.WriteLine("Account-link HTTP hardening tests passed: 31");
+        Console.WriteLine("Account-link HTTP hardening tests passed: 34");
     }
 
     private static async Task BearerTokenIsRequestBoundAndRedacted()
@@ -310,6 +313,84 @@ internal static class Program
         Require(!replay.ToString().Contains(RotatedAccessToken, StringComparison.Ordinal));
     }
 
+    private static async Task TransportPathRejectsMalformedAndMultipleResponseAuthoritiesOnce()
+    {
+        foreach (string[] authorizationValues in new[]
+                 {
+                     new[] { $"Basic {RotatedAccessToken}" },
+                     new[] { "Bearer" },
+                     new[] { $"Bearer {RotatedAccessToken}", $"Bearer {AccessToken}" }
+                 })
+        {
+            var terminal = new RecordingHandler(_ =>
+            {
+                HttpResponseMessage hostile = GrantResponse(null, "grant-next");
+                hostile.Headers.TryAddWithoutValidation("Authorization", authorizationValues);
+                return hostile;
+            });
+            using AndroidAccountLinkHttpTransport transport = CreateTransport(terminal);
+            using HttpResponseMessage response = await transport.PostJsonAsync(
+                "/api/v2/install-linking/grants/refresh",
+                new InstallationRequest("android-install"),
+                CreateAuthority(),
+                CancellationToken.None);
+
+            Require(!response.Headers.Contains("Authorization"));
+            Require(!response.ToString().Contains(RotatedAccessToken, StringComparison.Ordinal));
+            Require(!response.ToString().Contains(AccessToken, StringComparison.Ordinal));
+            InvalidDataException first = RequireThrows<InvalidDataException>(() =>
+                AndroidAccountLinkHttpTransport.ReadResponseGrantAuthority(response));
+            Require(!first.ToString().Contains(RotatedAccessToken, StringComparison.Ordinal));
+            Require(!first.ToString().Contains(AccessToken, StringComparison.Ordinal));
+
+            // Even replacing the public header collection after a failed extraction cannot turn
+            // the same response into a fresh credential-delivery boundary.
+            response.Headers.TryAddWithoutValidation(
+                "Authorization",
+                $"Bearer {RotatedAccessToken}");
+            InvalidDataException replay = RequireThrows<InvalidDataException>(() =>
+                AndroidAccountLinkHttpTransport.ReadResponseGrantAuthority(response));
+            Require(!replay.ToString().Contains(RotatedAccessToken, StringComparison.Ordinal));
+            Require(!replay.ToString().Contains(AccessToken, StringComparison.Ordinal));
+            Require(!response.Headers.Contains("Authorization"));
+        }
+    }
+
+    private static async Task ConcurrentResponseAuthorityReadsHaveOneWinner()
+    {
+        var terminal = new RecordingHandler(_ => GrantResponse(
+            "grant-next",
+            RotatedAccessToken,
+            "{\"ok\":true}"));
+        using AndroidAccountLinkHttpTransport transport = CreateTransport(terminal);
+        using HttpResponseMessage response = await transport.PostJsonAsync(
+            "/api/v2/install-linking/grants/refresh",
+            new InstallationRequest("android-install"),
+            CreateAuthority(),
+            CancellationToken.None);
+
+        static AndroidAccountLinkResponseGrantAuthority? TryRead(HttpResponseMessage response)
+        {
+            try
+            {
+                return AndroidAccountLinkHttpTransport.ReadResponseGrantAuthority(response);
+            }
+            catch (InvalidDataException error)
+            {
+                Require(!error.ToString().Contains(RotatedAccessToken, StringComparison.Ordinal));
+                return null;
+            }
+        }
+
+        AndroidAccountLinkResponseGrantAuthority?[] results = await Task.WhenAll(
+            Task.Run(() => TryRead(response)),
+            Task.Run(() => TryRead(response)));
+        AndroidAccountLinkResponseGrantAuthority winner = results.Single(result => result is not null)!;
+        Require(winner.GrantId == "grant-next");
+        Require(winner.AccessToken == RotatedAccessToken);
+        Require(results.Count(result => result is null) == 1);
+    }
+
     private static async Task BearerTokenCannotBeSerializedIntoRequestBody()
     {
         var terminal = new RecordingHandler(_ => JsonResponse("{\"ok\":true}"));
@@ -501,6 +582,28 @@ internal static class Program
                 CreateAuthority(),
                 CancellationToken.None));
         Require(terminal.Requests.Count == 1);
+    }
+
+    private static async Task MalformedRedirectLocationStillDisposesResponse()
+    {
+        var content = new DisposalTrackingContent();
+        var redirect = new HttpResponseMessage(HttpStatusCode.TemporaryRedirect)
+        {
+            Content = content
+        };
+        redirect.Headers.TryAddWithoutValidation("Location", "//[::1");
+        var terminal = new RecordingHandler(_ => redirect);
+        using AndroidAccountLinkHttpTransport transport = CreateTransport(terminal);
+
+        FormatException failure = await RequireThrowsAsync<FormatException>(() =>
+            transport.PostJsonAsync(
+                "/api/v2/install-linking/grants/status",
+                new InstallationRequest("android-install"),
+                CreateAuthority(),
+                CancellationToken.None));
+
+        Require(content.IsDisposed);
+        Require(!failure.ToString().Contains(AccessToken, StringComparison.Ordinal));
     }
 
     private static async Task SameOriginRedirectAndUnsafePathsFailClosed()
@@ -2302,6 +2405,28 @@ internal static class Program
 
         protected override Task<Stream> CreateContentReadStreamAsync()
             => Task.FromResult<Stream>(new NonSeekableReadStream(_payload));
+    }
+
+    private sealed class DisposalTrackingContent : HttpContent
+    {
+        internal bool IsDisposed { get; private set; }
+
+        protected override Task SerializeToStreamAsync(
+            Stream stream,
+            TransportContext? context)
+            => Task.CompletedTask;
+
+        protected override bool TryComputeLength(out long length)
+        {
+            length = 0;
+            return true;
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            IsDisposed = disposing;
+            base.Dispose(disposing);
+        }
     }
 
     private sealed class NonSeekableReadStream : Stream
