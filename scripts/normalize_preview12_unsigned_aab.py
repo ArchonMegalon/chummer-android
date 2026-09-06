@@ -12,6 +12,7 @@ import zipfile
 
 
 MAX_ENTRIES = 20_000
+MAX_SOURCE_BYTES = 512 * 1024 * 1024
 MAX_ENTRY_BYTES = 256 * 1024 * 1024
 MAX_EXPANDED_BYTES = 1024 * 1024 * 1024
 EXPECTED_OUTPUT = "chummer-android-0.1.0-preview.12-unsigned.aab"
@@ -26,7 +27,28 @@ def require(condition: bool, message: str) -> None:
 def canonical_name(name: str) -> bool:
     if not name or "\\" in name or name.startswith("/") or "\x00" in name:
         return False
-    return all(part not in ("", ".", "..") for part in PurePosixPath(name).parts)
+    raw = name[:-1] if name.endswith("/") else name
+    if not raw:
+        return False
+    parts = raw.split("/")
+    return (
+        all(part not in ("", ".", "..") for part in parts)
+        and PurePosixPath(raw).as_posix() == raw
+    )
+
+
+def file_identity(value: os.stat_result) -> tuple[int, ...]:
+    return (
+        value.st_dev,
+        value.st_ino,
+        value.st_mode,
+        value.st_uid,
+        value.st_gid,
+        value.st_nlink,
+        value.st_size,
+        value.st_mtime_ns,
+        value.st_ctime_ns,
+    )
 
 
 def normalize(source: Path, output: Path) -> None:
@@ -39,9 +61,23 @@ def normalize(source: Path, output: Path) -> None:
     require(output.parent.resolve(strict=True) == output.parent, "output parent must be canonical")
     temporary: str | None = None
     try:
-        descriptor, temporary = tempfile.mkstemp(prefix=".preview12-aab.", dir=output.parent)
-        os.close(descriptor)
-        with zipfile.ZipFile(source, "r") as incoming:
+        source_descriptor = os.open(source, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+        source_stream = os.fdopen(source_descriptor, "rb")
+        try:
+            source_before = os.fstat(source_stream.fileno())
+            require(
+                stat.S_ISREG(source_before.st_mode)
+                and 0 < source_before.st_size <= MAX_SOURCE_BYTES,
+                "source AAB is not one bounded regular file",
+            )
+            descriptor, temporary = tempfile.mkstemp(
+                prefix=".preview12-aab.", dir=output.parent
+            )
+            os.close(descriptor)
+        except BaseException:
+            source_stream.close()
+            raise
+        with source_stream, zipfile.ZipFile(source_stream, "r") as incoming:
             entries = incoming.infolist()
             require(0 < len(entries) <= MAX_ENTRIES, "source AAB entry count is invalid")
             names = [entry.filename for entry in entries]
@@ -53,6 +89,16 @@ def normalize(source: Path, output: Path) -> None:
                 require(
                     ((entry.external_attr >> 16) & 0o170000) != stat.S_IFLNK,
                     f"symlink AAB member: {entry.filename}",
+                )
+                member_type = (entry.external_attr >> 16) & 0o170000
+                require(
+                    member_type in (0, stat.S_IFREG, stat.S_IFDIR),
+                    f"special AAB member: {entry.filename}",
+                )
+                require(
+                    (entry.is_dir() and member_type in (0, stat.S_IFDIR))
+                    or (not entry.is_dir() and member_type in (0, stat.S_IFREG)),
+                    f"AAB member type/name mismatch: {entry.filename}",
                 )
                 require(entry.file_size <= MAX_ENTRY_BYTES, f"oversized AAB member: {entry.filename}")
                 expanded += entry.file_size
@@ -87,6 +133,13 @@ def normalize(source: Path, output: Path) -> None:
                             require(observed <= entry.file_size, f"AAB member grew: {entry.filename}")
                             writer.write(chunk)
                         require(observed == entry.file_size, f"AAB member size drifted: {entry.filename}")
+            source_after = os.fstat(source_stream.fileno())
+            require(
+                file_identity(source_before) == file_identity(source_after)
+                and file_identity(source_after)
+                == file_identity(os.stat(source, follow_symlinks=False)),
+                "source AAB changed during normalization",
+            )
         os.chmod(temporary, 0o600)
         os.replace(temporary, output)
         temporary = None

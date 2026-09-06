@@ -95,33 +95,53 @@ jobs:
             --argjson artifact "$PRODUCER_ARTIFACT_ID" \
             --arg digest "$PRODUCER_ARTIFACT_DIGEST" \
             '.id == $artifact and .workflow_run.id == $run and .expired == false and
+             (.size_in_bytes | type == "number" and . > 0 and . <= 603979776) and
              (.name | startswith("chummer-android-preview12-unsigned-candidate-")) and
              .digest == $digest' "$evidence/artifact.json" >/dev/null
           gh api -H 'Accept: application/vnd.github+json' \
             "repos/$GITHUB_REPOSITORY/actions/artifacts/$PRODUCER_ARTIFACT_ID/zip" \
             >"$evidence/artifact.zip"
+          test "$(sha256sum "$evidence/artifact.zip" | cut -d ' ' -f 1)" \
+            = "${PRODUCER_ARTIFACT_DIGEST#sha256:}"
           python3 -I -E -S - "$evidence/artifact.zip" "$evidence" <<'PY'
-          import pathlib, stat, sys, zipfile
+          import os, pathlib, stat, sys, zipfile
           source, output = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
-          expected = {
-              "chummer-android-0.1.0-preview.12-unsigned.aab",
-              "AndroidManifest.xml",
-              "PREVIEW12_TOOLCHAIN.generated.json",
-              "PREVIEW12_UNSIGNED_CANDIDATE.generated.json",
-              "ANDROID_API36_TWO_GREEN_ELIGIBILITY.generated.json",
-              "SHA256SUMS",
+          limits = {
+              "chummer-android-0.1.0-preview.12-unsigned.aab": 512 * 1024 * 1024,
+              "AndroidManifest.xml": 16 * 1024 * 1024,
+              "PREVIEW12_TOOLCHAIN.generated.json": 16 * 1024 * 1024,
+              "PREVIEW12_UNSIGNED_CANDIDATE.generated.json": 16 * 1024 * 1024,
+              "ANDROID_API36_TWO_GREEN_ELIGIBILITY.generated.json": 16 * 1024 * 1024,
+              "SHA256SUMS": 64 * 1024,
           }
           with zipfile.ZipFile(source) as archive:
               rows = archive.infolist()
-              if {row.filename for row in rows} != expected or len(rows) != len(expected):
+              if {row.filename for row in rows} != set(limits) or len(rows) != len(limits):
                   raise SystemExit("producer artifact member set differs")
+              total = 0
               for row in rows:
                   mode = (row.external_attr >> 16) & 0xffff
-                  if row.is_dir() or row.flag_bits & 1 or stat.S_IFMT(mode) == stat.S_IFLNK or row.file_size > 512 * 1024 * 1024:
+                  limit = limits[row.filename]
+                  if (row.is_dir() or row.flag_bits & 1 or stat.S_IFMT(mode) == stat.S_IFLNK
+                          or row.file_size <= 0 or row.file_size > limit
+                          or row.compress_size > limit):
                       raise SystemExit("producer artifact contains an unsafe member")
+                  total += row.file_size
+                  if total > sum(limits.values()):
+                      raise SystemExit("producer artifact expands beyond its aggregate bound")
                   target = output / row.filename
-                  target.write_bytes(archive.read(row))
-                  target.chmod(0o600)
+                  observed = 0
+                  descriptor = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                  with os.fdopen(descriptor, "wb") as destination, archive.open(row) as source_stream:
+                      while chunk := source_stream.read(1024 * 1024):
+                          observed += len(chunk)
+                          if observed > row.file_size or observed > limit:
+                              raise SystemExit("producer artifact member grew during extraction")
+                          destination.write(chunk)
+                      destination.flush()
+                      os.fsync(destination.fileno())
+                  if observed != row.file_size:
+                      raise SystemExit("producer artifact member size differs")
           PY
           test "$(sha256sum "$evidence/PREVIEW12_UNSIGNED_CANDIDATE.generated.json" | cut -d ' ' -f 1)" \
             = "$PRODUCER_RECEIPT_SHA256"
@@ -247,7 +267,8 @@ jobs:
           CHUMMER_COMPLETE_ROOT: ${{ github.workspace }}
           CHUMMER_PREVIEW12_OUTPUT_DIR: ${{ runner.temp }}/preview12-rebuild
           CHUMMER_PRESENTATION_ROOT: ${{ github.workspace }}/chummer-presentation
-          CHUMMER_CORE_ENGINE_ROOT: ${{ github.workspace }}/chummer-core-engine
+          CHUMMER_CORE_RUNTIME_ROOT: ${{ github.workspace }}/chummer-core-engine
+          CHUMMER_CORE_CONTENT_ROOT: ${{ github.workspace }}/chummer-core-content
           CHUMMER_RUN_SERVICES_ROOT: ${{ github.workspace }}/chummer.run-services
           CHUMMER_HUB_REGISTRY_ROOT: ${{ github.workspace }}/chummer-hub-registry
           CHUMMER_UI_KIT_ROOT: ${{ github.workspace }}/chummer-ui-kit
@@ -275,6 +296,12 @@ jobs:
           java -jar "$bundletool" validate --bundle="$producer/chummer-android-0.1.0-preview.12-unsigned.aab"
           java -jar "$bundletool" validate --bundle="$aab"
           java -jar "$bundletool" dump manifest --bundle="$aab" >"$rebuilt/AndroidManifest.xml"
+          cmp --silent \
+            "$producer/chummer-android-0.1.0-preview.12-unsigned.aab" \
+            "$aab"
+          cmp --silent "$producer/AndroidManifest.xml" "$rebuilt/AndroidManifest.xml"
+          test "$(sha256sum "$producer/chummer-android-0.1.0-preview.12-unsigned.aab" | cut -d ' ' -f 1)" \
+            = "$(sha256sum "$aab" | cut -d ' ' -f 1)"
           CHUMMER_EXPECTED_VERSION_NAME=0.1.0-preview.12 \
           CHUMMER_EXPECTED_VERSION_CODE=12 \
             python3 -I -E -S chummer-android/scripts/inspect_aab.py \

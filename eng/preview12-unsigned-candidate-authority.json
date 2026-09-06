@@ -75,6 +75,12 @@
     "required": true,
     "verifier": "scripts/verify_release_aab_excludes_api36_proof.py"
   },
+  "coreContent": {
+    "required": true,
+    "manifest": "src/Chummer.Android/Content/chummer-content-manifest.json",
+    "verifier": "scripts/verify_android_content_bundle.py",
+    "aabPackagedRoot": "base/assets/chummer-content"
+  },
   "signingAuthorized": false,
   "googlePlayUploadAuthorized": false,
   "publicationAuthorized": false,

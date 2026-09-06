@@ -30,6 +30,8 @@ REPO_ROOT = SCRIPT_DIRECTORY.parent
 POLICY_PATH = REPO_ROOT / "eng/preview12-unsigned-candidate-authority.json"
 TWO_GREEN_PATH = SCRIPT_DIRECTORY / "materialize-api36-two-green-eligibility.py"
 PROOF_VERIFIER_PATH = SCRIPT_DIRECTORY / "verify_release_aab_excludes_api36_proof.py"
+CONTENT_VERIFIER_PATH = SCRIPT_DIRECTORY / "verify_android_content_bundle.py"
+CONTENT_MANIFEST_PATH = "src/Chummer.Android/Content/chummer-content-manifest.json"
 PROJECT_PATH = "src/Chummer.Android/Chummer.Android.csproj"
 PRODUCER_WORKFLOW = ".github/workflows/preview12-unsigned-candidate-producer.yml"
 VERIFIER_WORKFLOW = ".github/workflows/preview12-independent-candidate-verifier.yml"
@@ -81,6 +83,7 @@ def _load_module(path: Path, name: str) -> Any:
 
 TWO_GREEN = _load_module(TWO_GREEN_PATH, "preview12_two_green_contract")
 PROOF = _load_module(PROOF_VERIFIER_PATH, "preview12_proof_exclusion")
+CONTENT = _load_module(CONTENT_VERIFIER_PATH, "preview12_content_authority")
 
 
 def canonical_bytes(value: object) -> bytes:
@@ -105,7 +108,9 @@ def _duplicates(pairs: list[tuple[str, object]]) -> dict[str, object]:
 
 
 class StableFile:
-    def __init__(self, path: Path, label: str, limit: int) -> None:
+    def __init__(
+        self, path: Path, label: str, limit: int, *, retain_data: bool = True
+    ) -> None:
         if not path.is_absolute() or path.is_symlink() or path.resolve(strict=True) != path:
             raise ValueError(f"{label} must be an absolute canonical non-symlink file")
         descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
@@ -114,20 +119,23 @@ class StableFile:
             if not stat.S_ISREG(before.st_mode) or before.st_size <= 0 or before.st_size > limit:
                 raise ValueError(f"{label} is not one bounded regular file")
             chunks: list[bytes] = []
+            digest = hashlib.sha256()
             observed = 0
             while chunk := os.read(descriptor, min(1024 * 1024, limit + 1 - observed)):
                 observed += len(chunk)
                 if observed > limit:
                     raise ValueError(f"{label} exceeds its size bound")
-                chunks.append(chunk)
+                digest.update(chunk)
+                if retain_data:
+                    chunks.append(chunk)
             after = os.fstat(descriptor)
         finally:
             os.close(descriptor)
         self.path = path
         self.label = label
-        self.data = b"".join(chunks)
-        self.size = len(self.data)
-        self.sha256 = hashlib.sha256(self.data).hexdigest()
+        self.data = b"".join(chunks) if retain_data else b""
+        self.size = observed
+        self.sha256 = digest.hexdigest()
         self._identity = _identity(before)
         if self._identity != _identity(after) or self.size != before.st_size:
             raise ValueError(f"{label} changed during capture")
@@ -137,6 +145,8 @@ class StableFile:
             raise ValueError(f"{self.label} changed after capture")
 
     def json(self) -> dict[str, object]:
+        if not self.data:
+            raise ValueError(f"{self.label} was captured without retained bytes")
         try:
             value = json.loads(
                 self.data.decode("utf-8", errors="strict"),
@@ -265,6 +275,12 @@ def expected_policy() -> dict[str, object]:
         "proofExclusion": {
             "required": True,
             "verifier": "scripts/verify_release_aab_excludes_api36_proof.py",
+        },
+        "coreContent": {
+            "required": True,
+            "manifest": CONTENT_MANIFEST_PATH,
+            "verifier": "scripts/verify_android_content_bundle.py",
+            "aabPackagedRoot": "base/assets/chummer-content",
         },
         "signingAuthorized": False,
         "googlePlayUploadAuthorized": False,
@@ -621,7 +637,7 @@ def _manifest_identity(manifest: StableFile) -> dict[str, object]:
 
 def artifact_authority(
     aab: StableFile, manifest: StableFile, android_root: Path
-) -> tuple[dict[str, object], dict[str, object]]:
+) -> tuple[dict[str, object], dict[str, object], dict[str, object]]:
     if aab.path.name != "chummer-android-0.1.0-preview.12-unsigned.aab":
         raise ValueError("unsigned Preview.12 AAB filename differs")
     manifest_identity = _manifest_identity(manifest)
@@ -630,6 +646,24 @@ def artifact_authority(
     except PROOF.VerificationError as error:
         raise ValueError(f"Preview.12 proof exclusion failed: {error}") from error
     verifier = StableFile(PROOF_VERIFIER_PATH, "proof-exclusion verifier", MAX_JSON_BYTES)
+    content_verifier = StableFile(
+        CONTENT_VERIFIER_PATH, "content-authority verifier", MAX_JSON_BYTES
+    )
+    content_manifest = StableFile(
+        android_root / CONTENT_MANIFEST_PATH,
+        "canonical Android content manifest",
+        MAX_JSON_BYTES,
+    )
+    content_value = content_manifest.json()
+    content_issues = CONTENT.validate_manifest(content_value)
+    packaged_count, packaged_issues = CONTENT.verify_aab(
+        aab.path, content_value, content_manifest.data
+    )
+    content_issues.extend(packaged_issues)
+    if content_issues:
+        raise ValueError(
+            "Preview.12 Core-content authority failed: " + ";".join(sorted(content_issues))
+        )
     artifact = {
         "fileName": aab.path.name,
         "sha256": aab.sha256,
@@ -646,6 +680,112 @@ def artifact_authority(
         "expandedManagedBytes": expanded,
         "aabSha256": aab.sha256,
     }
+    files = content_value.get("files")
+    assert isinstance(files, list)
+    content = {
+        "status": "pass",
+        "verifier": _binding(
+            content_verifier, "scripts/verify_android_content_bundle.py"
+        ),
+        "manifest": _binding(content_manifest, CONTENT_MANIFEST_PATH),
+        "coreRevision": content_value["coreRevision"],
+        "bundleDigest": content_value["bundleDigest"],
+        "canonicalFileCount": len(files),
+        "canonicalByteCount": sum(entry["size"] for entry in files),
+        "aabCanonicalFileCount": packaged_count,
+        "aabSha256": aab.sha256,
+    }
+    return artifact, proof, content
+
+
+def validate_content_authority(
+    value: object, *, aab_sha256: object
+) -> dict[str, object]:
+    if not isinstance(value, dict) or set(value) != {
+        "status", "verifier", "manifest", "coreRevision", "bundleDigest",
+        "canonicalFileCount", "canonicalByteCount", "aabCanonicalFileCount",
+        "aabSha256",
+    }:
+        raise ValueError("Preview.12 Core-content authority differs")
+    verifier_snapshot = StableFile(
+        CONTENT_VERIFIER_PATH, "content-authority verifier", MAX_JSON_BYTES
+    )
+    manifest_snapshot = StableFile(
+        REPO_ROOT / CONTENT_MANIFEST_PATH,
+        "canonical Android content manifest",
+        MAX_JSON_BYTES,
+    )
+    canonical_manifest = manifest_snapshot.json()
+    manifest_issues = CONTENT.validate_manifest(canonical_manifest)
+    files = canonical_manifest.get("files")
+    if manifest_issues or not isinstance(files, list):
+        raise ValueError("canonical Android content manifest is invalid")
+    if (
+        value.get("status") != "pass"
+        or value.get("verifier")
+        != _binding(verifier_snapshot, "scripts/verify_android_content_bundle.py")
+        or value.get("manifest") != _binding(manifest_snapshot, CONTENT_MANIFEST_PATH)
+        or value.get("coreRevision") != canonical_manifest.get("coreRevision")
+        or value.get("coreRevision")
+        != expected_policy()["dependencies"]["core-content"]["commit"]
+        or value.get("bundleDigest") != canonical_manifest.get("bundleDigest")
+        or type(value.get("canonicalFileCount")) is not int
+        or value["canonicalFileCount"] != len(files)
+        or value.get("aabCanonicalFileCount") != value.get("canonicalFileCount")
+        or type(value.get("canonicalByteCount")) is not int
+        or value["canonicalByteCount"]
+        != sum(entry["size"] for entry in files)
+        or value.get("aabSha256") != aab_sha256
+    ):
+        raise ValueError("Preview.12 Core-content authority differs")
+    return value
+
+
+def validate_artifact_and_proof(
+    artifact: object, proof: object
+) -> tuple[dict[str, object], dict[str, object]]:
+    if (
+        not isinstance(artifact, dict)
+        or set(artifact)
+        != {
+            "fileName", "sha256", "sizeBytes", "manifestSha256",
+            "manifestSizeBytes", "manifest",
+        }
+        or artifact.get("fileName")
+        != "chummer-android-0.1.0-preview.12-unsigned.aab"
+        or SHA256.fullmatch(str(artifact.get("sha256"))) is None
+        or type(artifact.get("sizeBytes")) is not int
+        or artifact["sizeBytes"] <= 0
+        or artifact["sizeBytes"] > MAX_AAB_BYTES
+        or SHA256.fullmatch(str(artifact.get("manifestSha256"))) is None
+        or type(artifact.get("manifestSizeBytes")) is not int
+        or artifact["manifestSizeBytes"] <= 0
+        or artifact["manifestSizeBytes"] > MAX_JSON_BYTES
+        or artifact.get("manifest") != expected_policy()["releaseIdentity"]
+    ):
+        raise ValueError("Preview.12 artifact authority differs")
+    verifier = StableFile(
+        PROOF_VERIFIER_PATH, "proof-exclusion verifier", MAX_JSON_BYTES
+    )
+    if (
+        not isinstance(proof, dict)
+        or set(proof)
+        != {
+            "status", "verifier", "managedAssemblyStores", "managedAssemblies",
+            "expandedManagedBytes", "aabSha256",
+        }
+        or proof.get("status") != "pass"
+        or proof.get("verifier")
+        != _binding(verifier, "scripts/verify_release_aab_excludes_api36_proof.py")
+        or type(proof.get("managedAssemblyStores")) is not int
+        or proof["managedAssemblyStores"] <= 0
+        or type(proof.get("managedAssemblies")) is not int
+        or proof["managedAssemblies"] <= 0
+        or type(proof.get("expandedManagedBytes")) is not int
+        or proof["expandedManagedBytes"] <= 0
+        or proof.get("aabSha256") != artifact["sha256"]
+    ):
+        raise ValueError("Preview.12 proof-exclusion authority differs")
     return artifact, proof
 
 
@@ -687,7 +827,9 @@ def create_producer(
         "policy": StableFile(policy_path, "Preview.12 policy", MAX_JSON_BYTES),
         "twoGreen": StableFile(two_green_path, "two-green receipt", MAX_JSON_BYTES),
         "toolchain": StableFile(toolchain_path, "producer toolchain", MAX_JSON_BYTES),
-        "aab": StableFile(aab_path, "producer unsigned AAB", MAX_AAB_BYTES),
+        "aab": StableFile(
+            aab_path, "producer unsigned AAB", MAX_AAB_BYTES, retain_data=False
+        ),
         "manifest": StableFile(manifest_path, "producer bundletool manifest", MAX_JSON_BYTES),
         "workflow": StableFile(workflow_path, "producer workflow", MAX_JSON_BYTES),
     }
@@ -699,7 +841,9 @@ def create_producer(
     two_green = snapshots["twoGreen"].json()
     dependency_graph = validate_two_green(two_green, source, policy)
     toolchain = validate_toolchain(snapshots["toolchain"].json(), policy_binding)
-    artifact, proof = artifact_authority(snapshots["aab"], snapshots["manifest"], android_root)
+    artifact, proof, content = artifact_authority(
+        snapshots["aab"], snapshots["manifest"], android_root
+    )
     if artifact["manifest"] != project:
         raise ValueError("producer AAB and project release identities differ")
     if not ARTIFACT_DIGEST.fullmatch(two_green_artifact_digest):
@@ -730,6 +874,7 @@ def create_producer(
         "toolchain": toolchain,
         "artifact": artifact,
         "proofExclusion": proof,
+        "contentAuthority": content,
         "reviewedInputs": reviewed_inputs,
         "githubRun": run,
         "signerEligible": False,
@@ -749,6 +894,7 @@ def validate_producer(value: dict[str, object]) -> dict[str, object]:
     required = {
         "schema", "status", "candidateLane", "source", "releaseIdentity",
         "dependencyGraph", "twoGreen", "toolchain", "artifact", "proofExclusion",
+        "contentAuthority",
         "reviewedInputs", "githubRun", "signerEligible", "signingAuthorized",
         "googlePlayUploadAuthorized", "publicationAuthorized", "doesNotAssert",
         "candidateSha256",
@@ -771,10 +917,16 @@ def validate_producer(value: dict[str, object]) -> dict[str, object]:
     run = value.get("githubRun")
     if (
         not isinstance(source, dict)
+        or set(source) != {"repository", "commit", "tree"}
         or source.get("repository") != SOURCE_REPOSITORY
         or SHA40.fullmatch(str(source.get("commit"))) is None
         or SHA40.fullmatch(str(source.get("tree"))) is None
         or not isinstance(run, dict)
+        or set(run) != {"id", "attempt", "event", "ref", "sha", "workflow"}
+        or type(run.get("id")) is not int
+        or run["id"] <= 0
+        or type(run.get("attempt")) is not int
+        or run["attempt"] <= 0
         or run.get("sha") != source.get("commit")
         or run.get("ref") != MAIN_REF
         or run.get("event") != "workflow_dispatch"
@@ -810,26 +962,15 @@ def validate_producer(value: dict[str, object]) -> dict[str, object]:
         or SHA256.fullmatch(str(two_green.get("receiptSha256"))) is None
         or type(two_green.get("receiptSizeBytes")) is not int
         or two_green["receiptSizeBytes"] <= 0
+        or two_green["receiptSizeBytes"] > MAX_JSON_BYTES
         or SHA256.fullmatch(str(two_green.get("eligibilitySha256"))) is None
     ):
         raise ValueError("producer Two-Green binding differs")
-    artifact = value.get("artifact")
-    proof = value.get("proofExclusion")
-    if (
-        not isinstance(artifact, dict)
-        or artifact.get("fileName") != "chummer-android-0.1.0-preview.12-unsigned.aab"
-        or SHA256.fullmatch(str(artifact.get("sha256"))) is None
-        or type(artifact.get("sizeBytes")) is not int
-        or artifact["sizeBytes"] <= 0
-        or SHA256.fullmatch(str(artifact.get("manifestSha256"))) is None
-        or type(artifact.get("manifestSizeBytes")) is not int
-        or artifact["manifestSizeBytes"] <= 0
-        or artifact.get("manifest") != expected_policy()["releaseIdentity"]
-        or not isinstance(proof, dict)
-        or proof.get("status") != "pass"
-        or proof.get("aabSha256") != artifact.get("sha256")
-    ):
-        raise ValueError("producer artifact or proof-exclusion authority differs")
+    artifact, _ = validate_artifact_and_proof(
+        value.get("artifact"), value.get("proofExclusion")
+    )
+    content = value.get("contentAuthority")
+    validate_content_authority(content, aab_sha256=artifact["sha256"])
     unsigned = {key: member for key, member in value.items() if key != "candidateSha256"}
     if value.get("candidateSha256") != digest_object(unsigned):
         raise ValueError("producer candidate digest differs")
@@ -862,10 +1003,17 @@ def create_rebuild(
         "policy": StableFile(policy_path, "Preview.12 policy", MAX_JSON_BYTES),
         "twoGreen": StableFile(two_green_path, "two-green receipt", MAX_JSON_BYTES),
         "producer": StableFile(producer_path, "producer receipt", MAX_JSON_BYTES),
-        "producerAab": StableFile(producer_aab_path, "producer AAB", MAX_AAB_BYTES),
+        "producerAab": StableFile(
+            producer_aab_path, "producer AAB", MAX_AAB_BYTES, retain_data=False
+        ),
         "producerManifest": StableFile(producer_manifest_path, "producer manifest", MAX_JSON_BYTES),
         "toolchain": StableFile(toolchain_path, "verifier toolchain", MAX_JSON_BYTES),
-        "rebuiltAab": StableFile(rebuilt_aab_path, "independent rebuilt AAB", MAX_AAB_BYTES),
+        "rebuiltAab": StableFile(
+            rebuilt_aab_path,
+            "independent rebuilt AAB",
+            MAX_AAB_BYTES,
+            retain_data=False,
+        ),
         "rebuiltManifest": StableFile(rebuilt_manifest_path, "rebuilt manifest", MAX_JSON_BYTES),
         "workflow": StableFile(workflow_path, "verifier workflow", MAX_JSON_BYTES),
     }
@@ -891,19 +1039,25 @@ def create_rebuild(
         raise ValueError("independent verifier must use a distinct workflow run")
     if not ARTIFACT_DIGEST.fullmatch(producer_artifact_digest):
         raise ValueError("producer artifact digest is not canonical")
-    producer_artifact, producer_proof = artifact_authority(
+    producer_artifact, producer_proof, producer_content = artifact_authority(
         snapshots["producerAab"], snapshots["producerManifest"], android_root
     )
-    if producer_artifact != producer["artifact"] or producer_proof != producer["proofExclusion"]:
+    if (
+        producer_artifact != producer["artifact"]
+        or producer_proof != producer["proofExclusion"]
+        or producer_content != producer["contentAuthority"]
+    ):
         raise ValueError("downloaded producer AAB differs from producer receipt")
     verifier_toolchain = validate_toolchain(snapshots["toolchain"].json(), policy_binding)
-    rebuilt_artifact, rebuilt_proof = artifact_authority(
+    rebuilt_artifact, rebuilt_proof, rebuilt_content = artifact_authority(
         snapshots["rebuiltAab"], snapshots["rebuiltManifest"], android_root
     )
     if rebuilt_artifact != producer_artifact:
         raise ValueError("independent rebuilt AAB bytes or manifest differ from producer")
     if rebuilt_proof != producer_proof:
         raise ValueError("independent proof-exclusion observation differs from producer")
+    if rebuilt_content != producer_content:
+        raise ValueError("independent Core-content observation differs from producer")
     if verifier_toolchain["compatibilitySha256"] != producer["toolchain"]["compatibilitySha256"]:
         raise ValueError("producer and verifier toolchain compatibility differs")
     run = _github_run(
@@ -920,6 +1074,7 @@ def create_rebuild(
         "aabSizeBytes": producer_artifact["sizeBytes"],
         "toolchainCompatibilitySha256": verifier_toolchain["compatibilitySha256"],
         "proofExclusion": "pass",
+        "contentBundleDigest": producer_content["bundleDigest"],
     }
     unsigned = {
         "schema": REBUILD_SCHEMA,
@@ -937,6 +1092,7 @@ def create_rebuild(
         "verifierToolchain": verifier_toolchain,
         "rebuiltArtifact": rebuilt_artifact,
         "proofExclusion": rebuilt_proof,
+        "contentAuthority": rebuilt_content,
         "reviewedInputs": {
             "workflow": _binding(snapshots["workflow"], VERIFIER_WORKFLOW),
             "policy": policy_binding,
@@ -958,7 +1114,7 @@ def create_rebuild(
 def validate_rebuild(value: dict[str, object]) -> dict[str, object]:
     required = {
         "schema", "status", "candidateLane", "source", "producer", "verifierRun",
-        "verifierToolchain", "rebuiltArtifact", "proofExclusion", "reviewedInputs",
+        "verifierToolchain", "rebuiltArtifact", "proofExclusion", "contentAuthority", "reviewedInputs",
         "agreement", "signerEligible", "signingAuthorized", "googlePlayUploadAuthorized",
         "publicationAuthorized", "doesNotAssert", "verificationSha256",
     }
@@ -978,28 +1134,62 @@ def validate_rebuild(value: dict[str, object]) -> dict[str, object]:
     producer = value.get("producer")
     run = value.get("verifierRun")
     source = value.get("source")
-    artifact = value.get("rebuiltArtifact")
+    artifact, _ = validate_artifact_and_proof(
+        value.get("rebuiltArtifact"), value.get("proofExclusion")
+    )
+    content = value.get("contentAuthority")
     agreement = value.get("agreement")
+    expected_agreement_fields = {
+        "sourceCommit", "sourceTree", "releaseIdentity", "dependencyGraphSha256",
+        "twoGreenEligibilitySha256", "producerCandidateSha256", "aabSha256",
+        "aabSizeBytes", "toolchainCompatibilitySha256", "proofExclusion",
+        "contentBundleDigest",
+    }
     if (
         not isinstance(producer, dict)
+        or set(producer)
+        != {"runId", "artifactId", "artifactDigest", "receiptSha256", "candidateSha256"}
+        or type(producer.get("runId")) is not int
+        or producer["runId"] <= 0
+        or type(producer.get("artifactId")) is not int
+        or producer["artifactId"] <= 0
+        or ARTIFACT_DIGEST.fullmatch(str(producer.get("artifactDigest"))) is None
+        or SHA256.fullmatch(str(producer.get("receiptSha256"))) is None
+        or SHA256.fullmatch(str(producer.get("candidateSha256"))) is None
         or not isinstance(run, dict)
+        or set(run) != {"id", "attempt", "event", "ref", "sha", "workflow"}
+        or type(run.get("id")) is not int
+        or run["id"] <= 0
+        or type(run.get("attempt")) is not int
+        or run["attempt"] <= 0
+        or run.get("event") != "workflow_dispatch"
         or run.get("workflow") != VERIFIER_WORKFLOW
         or run.get("ref") != MAIN_REF
         or run.get("id") == producer.get("runId")
         or not isinstance(source, dict)
+        or set(source) != {"repository", "commit", "tree"}
+        or source.get("repository") != SOURCE_REPOSITORY
+        or SHA40.fullmatch(str(source.get("commit"))) is None
+        or SHA40.fullmatch(str(source.get("tree"))) is None
         or run.get("sha") != source.get("commit")
-        or not isinstance(artifact, dict)
-        or artifact.get("manifest") != expected_policy()["releaseIdentity"]
         or not isinstance(agreement, dict)
+        or set(agreement) != expected_agreement_fields
         or agreement.get("aabSha256") != artifact.get("sha256")
         or agreement.get("aabSizeBytes") != artifact.get("sizeBytes")
         or agreement.get("proofExclusion") != "pass"
+        or not isinstance(content, dict)
+        or SHA256.fullmatch(str(agreement.get("contentBundleDigest"))) is None
+        or agreement.get("contentBundleDigest") != content.get("bundleDigest")
+        or content.get("status") != "pass"
+        or content.get("aabSha256") != artifact.get("sha256")
+        or content.get("aabCanonicalFileCount") != content.get("canonicalFileCount")
     ):
         raise ValueError("independent rebuild agreement is invalid")
     verifier_toolchain = value.get("verifierToolchain")
     if not isinstance(verifier_toolchain, dict):
         raise ValueError("verifier toolchain is invalid")
     validate_toolchain(verifier_toolchain, policy_binding)
+    validate_content_authority(content, aab_sha256=artifact["sha256"])
     workflow_snapshot = StableFile(REPO_ROOT / VERIFIER_WORKFLOW, "verifier workflow", MAX_JSON_BYTES)
     if value.get("reviewedInputs") != {
         "workflow": _binding(workflow_snapshot, VERIFIER_WORKFLOW),
@@ -1032,6 +1222,8 @@ def create_signer_eligibility(producer: dict[str, object], rebuild: dict[str, ob
         or rebuild["agreement"]["twoGreenEligibilitySha256"] != producer["twoGreen"]["eligibilitySha256"]
         or rebuild["agreement"]["toolchainCompatibilitySha256"]
         != producer["toolchain"]["compatibilitySha256"]
+        or rebuild["agreement"]["contentBundleDigest"]
+        != producer["contentAuthority"]["bundleDigest"]
     ):
         raise ValueError("producer and independent verifier do not agree")
     agreement = rebuild["agreement"]
@@ -1053,6 +1245,7 @@ def create_signer_eligibility(producer: dict[str, object], rebuild: dict[str, ob
         },
         "toolchainCompatibilitySha256": agreement["toolchainCompatibilitySha256"],
         "proofExclusion": "pass",
+        "contentBundleDigest": agreement["contentBundleDigest"],
         "signingAuthorized": False,
         "googlePlayUploadAuthorized": False,
         "publicationAuthorized": False,
@@ -1067,6 +1260,7 @@ def validate_signer_eligibility(value: dict[str, object]) -> dict[str, object]:
         "releaseIdentity", "dependencyGraphSha256", "twoGreenEligibilitySha256",
         "producerCandidateSha256", "independentVerificationSha256", "unsignedAab",
         "toolchainCompatibilitySha256", "proofExclusion", "signingAuthorized",
+        "contentBundleDigest",
         "googlePlayUploadAuthorized", "publicationAuthorized", "doesNotAssert",
         "eligibilitySha256",
     }
@@ -1080,6 +1274,7 @@ def validate_signer_eligibility(value: dict[str, object]) -> dict[str, object]:
         or value.get("googlePlayUploadAuthorized") is not False
         or value.get("publicationAuthorized") is not False
         or value.get("doesNotAssert") != list(DOES_NOT_ASSERT)
+        or SHA256.fullmatch(str(value.get("contentBundleDigest"))) is None
     ):
         raise ValueError("signer-eligibility authority posture differs")
     for field in (
@@ -1091,6 +1286,7 @@ def validate_signer_eligibility(value: dict[str, object]) -> dict[str, object]:
     artifact = value.get("unsignedAab")
     if (
         not isinstance(source, dict)
+        or set(source) != {"repository", "commit", "tree"}
         or source.get("repository") != SOURCE_REPOSITORY
         or SHA40.fullmatch(str(source.get("commit"))) is None
         or SHA40.fullmatch(str(source.get("tree"))) is None
@@ -1101,6 +1297,7 @@ def validate_signer_eligibility(value: dict[str, object]) -> dict[str, object]:
         or SHA256.fullmatch(str(artifact.get("sha256"))) is None
         or type(artifact.get("sizeBytes")) is not int
         or artifact["sizeBytes"] <= 0
+        or artifact["sizeBytes"] > MAX_AAB_BYTES
     ):
         raise ValueError("signer-eligibility source or artifact identity differs")
     unsigned = {key: member for key, member in value.items() if key != "eligibilitySha256"}

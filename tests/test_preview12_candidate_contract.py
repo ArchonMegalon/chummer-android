@@ -36,6 +36,24 @@ def sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+def content_fixture() -> tuple[bytes, dict[str, bytes]]:
+    payloads = {
+        "data/lifemodules.xml": b"<chummer />\n",
+        "lang/en-us.xml": b"<chummer />\n",
+    }
+    files = [
+        {"path": name, "size": len(data), "sha256": sha256(data)}
+        for name, data in sorted(payloads.items())
+    ]
+    manifest = {
+        "schema": candidate.CONTENT.SCHEMA,
+        "coreRevision": candidate.CONTENT.CORE_REVISION,
+        "bundleDigest": candidate.CONTENT._bundle_digest(files),
+        "files": files,
+    }
+    return (json.dumps(manifest, indent=2) + "\n").encode(), payloads
+
+
 def lz4_literals(data: bytes) -> bytes:
     literal_length = len(data)
     token_length = min(literal_length, 15)
@@ -116,12 +134,16 @@ def elf(payload: bytes) -> bytes:
 
 
 def write_aab(path: Path, extra: bytes = b"") -> None:
+    content_manifest, content_files = content_fixture()
     with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         archive.writestr(
             "base/lib/arm64-v8a/libassembly-store.so",
             elf(assembly_store_payload(b"MZ\x00ordinary-release-assembly")),
         )
         archive.writestr("base/assets/fixture.bin", b"fixture" + extra)
+        archive.writestr("base/assets/chummer-content/manifest.json", content_manifest)
+        for name, data in content_files.items():
+            archive.writestr(f"base/assets/chummer-content/{name}", data)
 
 
 def write_manifest(path: Path) -> None:
@@ -141,6 +163,8 @@ class Preview12CandidateContractTests(unittest.TestCase):
         self.root = Path(self.temporary.name).resolve()
         self.android = self.root / "android"
         self.android.mkdir()
+        self.original_candidate_repo_root = candidate.REPO_ROOT
+        candidate.REPO_ROOT = self.android
         subprocess.run(["git", "init", "-q", str(self.android)], check=True)
         subprocess.run(
             ["git", "-C", str(self.android), "remote", "add", "origin", candidate.SOURCE_REPOSITORY],
@@ -184,6 +208,20 @@ class Preview12CandidateContractTests(unittest.TestCase):
             candidate.StableFile(self.policy, "policy", candidate.MAX_JSON_BYTES),
             "eng/preview12-unsigned-candidate-authority.json",
         )
+        content_manifest, _ = content_fixture()
+        content_path = self.android / candidate.CONTENT_MANIFEST_PATH
+        content_path.parent.mkdir(parents=True, exist_ok=True)
+        content_path.write_bytes(content_manifest)
+        subprocess.run(["git", "-C", str(self.android), "add", "."], check=True)
+        subprocess.run(
+            [
+                "git", "-C", str(self.android), "-c", "user.name=Candidate Test",
+                "-c", "user.email=test@example.invalid", "commit", "-qm", "content fixture",
+            ],
+            check=True,
+        )
+        self.commit = self.git("rev-parse", "HEAD")
+        self.tree = self.git("rev-parse", "HEAD^{tree}")
         self.two_green = self.root / "two-green.json"
         self.two_green.write_bytes(candidate.pretty_bytes(self.two_green_value()))
         self.producer_toolchain = self.root / "producer-toolchain.json"
@@ -198,6 +236,7 @@ class Preview12CandidateContractTests(unittest.TestCase):
         write_manifest(self.producer_manifest)
 
     def tearDown(self) -> None:
+        candidate.REPO_ROOT = self.original_candidate_repo_root
         self.temporary.cleanup()
 
     def git(self, *args: str) -> str:
@@ -401,8 +440,60 @@ class Preview12CandidateContractTests(unittest.TestCase):
     def test_receipt_digest_tampering_fails_closed(self) -> None:
         producer, _ = self.materialize_producer()
         producer["artifact"]["sha256"] = "e" * 64
-        with self.assertRaisesRegex(ValueError, "artifact or proof-exclusion|candidate digest differs"):
+        with self.assertRaisesRegex(
+            ValueError, "artifact authority differs|proof-exclusion authority differs|candidate digest differs"
+        ):
             candidate.validate_producer(producer)
+
+    def test_producer_rejects_rehashed_content_authority_tampering(self) -> None:
+        producer, _ = self.materialize_producer()
+        producer["contentAuthority"]["verifier"]["sha256"] = "e" * 64
+        unsigned = {
+            key: value
+            for key, value in producer.items()
+            if key != "candidateSha256"
+        }
+        producer["candidateSha256"] = candidate.digest_object(unsigned)
+        with self.assertRaisesRegex(ValueError, "Core-content authority differs"):
+            candidate.validate_producer(producer)
+
+    def test_producer_rejects_aab_without_canonical_core_content(self) -> None:
+        with zipfile.ZipFile(self.producer_aab, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+            archive.writestr(
+                "base/lib/arm64-v8a/libassembly-store.so",
+                elf(assembly_store_payload(b"MZ\x00ordinary-release-assembly")),
+            )
+        with self.assertRaisesRegex(ValueError, "Core-content authority failed"):
+            candidate.create_producer(**self.producer_inputs())
+
+    def test_signer_eligibility_cannot_escalate_signing_or_publication(self) -> None:
+        producer, producer_path = self.materialize_producer()
+        rebuilt_dir = self.root / "authorization-rebuild"
+        rebuilt_dir.mkdir()
+        rebuilt_aab = rebuilt_dir / normalizer.EXPECTED_OUTPUT
+        shutil.copyfile(self.producer_aab, rebuilt_aab)
+        rebuilt_manifest = rebuilt_dir / "AndroidManifest.xml"
+        shutil.copyfile(self.producer_manifest, rebuilt_manifest)
+        rebuild = candidate.create_rebuild(
+            **self.rebuild_inputs(producer_path, rebuilt_aab, rebuilt_manifest)
+        )
+        eligibility = candidate.create_signer_eligibility(producer, rebuild)
+        for field in (
+            "signingAuthorized",
+            "googlePlayUploadAuthorized",
+            "publicationAuthorized",
+        ):
+            with self.subTest(field=field):
+                tampered = copy.deepcopy(eligibility)
+                tampered[field] = True
+                unsigned = {
+                    key: value
+                    for key, value in tampered.items()
+                    if key != "eligibilitySha256"
+                }
+                tampered["eligibilitySha256"] = candidate.digest_object(unsigned)
+                with self.assertRaisesRegex(ValueError, "authority posture differs"):
+                    candidate.validate_signer_eligibility(tampered)
 
 
 class Preview12NormalizerAndWorkflowTests(unittest.TestCase):
@@ -436,6 +527,27 @@ class Preview12NormalizerAndWorkflowTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "already contains a JAR signature"):
                 normalizer.normalize(source, output)
 
+    def test_normalizer_rejects_noncanonical_and_special_members(self) -> None:
+        for member in ("base//assets/value", "base/./assets/value"):
+            with self.subTest(member=member), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary).resolve()
+                source = root / "unsafe.aab"
+                with zipfile.ZipFile(source, "w") as archive:
+                    archive.writestr(member, b"value")
+                with self.assertRaisesRegex(ValueError, "unsafe AAB member"):
+                    normalizer.normalize(source, root / normalizer.EXPECTED_OUTPUT)
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            source = root / "type-mismatch.aab"
+            with zipfile.ZipFile(source, "w") as archive:
+                member = zipfile.ZipInfo("base/assets/value/")
+                member.create_system = 3
+                member.external_attr = 0o100644 << 16
+                archive.writestr(member, b"")
+            with self.assertRaisesRegex(ValueError, "type/name mismatch"):
+                normalizer.normalize(source, root / normalizer.EXPECTED_OUTPUT)
+
     def test_both_workflows_are_manual_read_only_and_non_promoting(self) -> None:
         producer = (REPO / candidate.PRODUCER_WORKFLOW).read_text(encoding="utf-8")
         verifier = (REPO / candidate.VERIFIER_WORKFLOW).read_text(encoding="utf-8")
@@ -451,12 +563,21 @@ class Preview12NormalizerAndWorkflowTests(unittest.TestCase):
             self.assertIn("contents: read", workflow)
             self.assertNotIn("google-github-actions", workflow)
             self.assertIn("verify_android_content_bundle.py", workflow)
+            self.assertIn("CHUMMER_CORE_RUNTIME_ROOT:", workflow)
+            self.assertIn("CHUMMER_CORE_CONTENT_ROOT:", workflow)
             policy = json.loads(candidate.POLICY_PATH.read_text(encoding="utf-8"))
             for dependency in policy["dependencies"].values():
                 self.assertIn(f"ref: {dependency['commit']}", workflow)
         self.assertNotIn("signer-eligibility", producer)
         self.assertIn("signer-eligibility", verifier)
         self.assertNotIn("play.google.com", verifier)
+        self.assertIn(".size_in_bytes", producer)
+        self.assertIn("artifact_digest#sha256:", producer)
+        self.assertIn(".size_in_bytes", verifier)
+        self.assertIn("PRODUCER_ARTIFACT_DIGEST#sha256:", verifier)
+        self.assertIn("os.O_EXCL", verifier)
+        self.assertIn("cmp --silent", verifier)
+        self.assertNotIn("target.write_bytes(archive.read(row))", verifier)
 
     def test_build_script_explicitly_disables_signing(self) -> None:
         build = (REPO / "scripts/build-preview12-unsigned-candidate.sh").read_text(encoding="utf-8")
@@ -464,6 +585,13 @@ class Preview12NormalizerAndWorkflowTests(unittest.TestCase):
         self.assertIn("signing-or-publication-input-present", build)
         self.assertNotIn("jarsigner", build)
         self.assertNotIn("PlayPublisher", build)
+        self.assertIn("CHUMMER_CORE_RUNTIME_ROOT", build)
+        self.assertIn("CHUMMER_CORE_CONTENT_ROOT", build)
+        self.assertIn("-p:ChummerCoreEngineRoot=$core_content_root", build)
+        self.assertIn(
+            "-p:ChummerLocalContractsProject=$core_runtime_root/Chummer.Contracts/Chummer.Contracts.csproj",
+            build,
+        )
 
 
 if __name__ == "__main__":

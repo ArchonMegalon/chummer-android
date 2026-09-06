@@ -86,6 +86,7 @@ jobs:
           artifact_digest="$(jq -er --argjson run "$TWO_GREEN_RUN_ID" \
             --argjson artifact "$TWO_GREEN_ARTIFACT_ID" \
             'select(.id == $artifact and .workflow_run.id == $run and .expired == false and
+             (.size_in_bytes | type == "number" and . > 0 and . <= 33554432) and
              (.name | startswith("chummer-android-api36-two-green-eligibility-"))) |
              .digest | select(type == "string" and test("^sha256:[0-9a-f]{64}$"))' \
             "$evidence/artifact.json")"
@@ -93,6 +94,8 @@ jobs:
           gh api -H 'Accept: application/vnd.github+json' \
             "repos/$GITHUB_REPOSITORY/actions/artifacts/$TWO_GREEN_ARTIFACT_ID/zip" \
             >"$evidence/artifact.zip"
+          test "$(sha256sum "$evidence/artifact.zip" | cut -d ' ' -f 1)" \
+            = "${artifact_digest#sha256:}"
           python3 -I -E -S - "$evidence/artifact.zip" "$evidence" <<'PY'
           import pathlib, stat, sys, zipfile
           source, output = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
@@ -103,9 +106,14 @@ jobs:
                   raise SystemExit("Two-Green artifact member set differs")
               row = rows[0]
               mode = (row.external_attr >> 16) & 0xffff
-              if row.is_dir() or row.flag_bits & 1 or stat.S_IFMT(mode) == stat.S_IFLNK or row.file_size > 16 * 1024 * 1024:
+              if (row.is_dir() or row.flag_bits & 1 or stat.S_IFMT(mode) == stat.S_IFLNK
+                      or row.file_size <= 0 or row.file_size > 16 * 1024 * 1024
+                      or row.compress_size > 16 * 1024 * 1024):
                   raise SystemExit("Two-Green artifact member is unsafe")
-              data = archive.read(row)
+              with archive.open(row) as stream:
+                  data = stream.read(16 * 1024 * 1024 + 1)
+              if len(data) != row.file_size:
+                  raise SystemExit("Two-Green artifact member size differs")
           target = output / expected
           target.write_bytes(data)
           target.chmod(0o600)
@@ -234,7 +242,8 @@ jobs:
           CHUMMER_COMPLETE_ROOT: ${{ github.workspace }}
           CHUMMER_PREVIEW12_OUTPUT_DIR: ${{ runner.temp }}/preview12-producer
           CHUMMER_PRESENTATION_ROOT: ${{ github.workspace }}/chummer-presentation
-          CHUMMER_CORE_ENGINE_ROOT: ${{ github.workspace }}/chummer-core-engine
+          CHUMMER_CORE_RUNTIME_ROOT: ${{ github.workspace }}/chummer-core-engine
+          CHUMMER_CORE_CONTENT_ROOT: ${{ github.workspace }}/chummer-core-content
           CHUMMER_RUN_SERVICES_ROOT: ${{ github.workspace }}/chummer.run-services
           CHUMMER_HUB_REGISTRY_ROOT: ${{ github.workspace }}/chummer-hub-registry
           CHUMMER_UI_KIT_ROOT: ${{ github.workspace }}/chummer-ui-kit

@@ -8,7 +8,8 @@ dotnet_command="${CHUMMER_DOTNET:?CHUMMER_DOTNET is required}"
 workspace_root="${CHUMMER_COMPLETE_ROOT:?CHUMMER_COMPLETE_ROOT is required}"
 output_dir="${CHUMMER_PREVIEW12_OUTPUT_DIR:?CHUMMER_PREVIEW12_OUTPUT_DIR is required}"
 presentation_root="${CHUMMER_PRESENTATION_ROOT:?CHUMMER_PRESENTATION_ROOT is required}"
-core_root="${CHUMMER_CORE_ENGINE_ROOT:?CHUMMER_CORE_ENGINE_ROOT is required}"
+core_runtime_root="${CHUMMER_CORE_RUNTIME_ROOT:?CHUMMER_CORE_RUNTIME_ROOT is required}"
+core_content_root="${CHUMMER_CORE_CONTENT_ROOT:?CHUMMER_CORE_CONTENT_ROOT is required}"
 run_services_root="${CHUMMER_RUN_SERVICES_ROOT:?CHUMMER_RUN_SERVICES_ROOT is required}"
 registry_root="${CHUMMER_HUB_REGISTRY_ROOT:?CHUMMER_HUB_REGISTRY_ROOT is required}"
 ui_kit_root="${CHUMMER_UI_KIT_ROOT:?CHUMMER_UI_KIT_ROOT is required}"
@@ -30,7 +31,7 @@ for forbidden in \
 done
 unset forbidden
 
-for root_name in workspace_root output_dir presentation_root core_root \
+for root_name in workspace_root output_dir presentation_root core_runtime_root core_content_root \
   run_services_root registry_root ui_kit_root media_root; do
   root_value="${!root_name}"
   [[ "$root_value" == /* && ! -L "$root_value" && -d "$root_value" ]] \
@@ -39,6 +40,14 @@ for root_name in workspace_root output_dir presentation_root core_root \
 done
 unset root_name root_value
 [[ "$repo_dir" == "$workspace_root/chummer-android" ]] || fail "android-root-outside-coherent-workspace"
+[[ "$presentation_root" == "$workspace_root/chummer-presentation" \
+  && "$core_runtime_root" == "$workspace_root/chummer-core-engine" \
+  && "$core_content_root" == "$workspace_root/chummer-core-content" \
+  && "$run_services_root" == "$workspace_root/chummer.run-services" \
+  && "$registry_root" == "$workspace_root/chummer-hub-registry" \
+  && "$ui_kit_root" == "$workspace_root/chummer-ui-kit" \
+  && "$media_root" == "$workspace_root/fleet/repos/chummer-media-factory" ]] \
+  || fail "dependency-root-outside-coherent-workspace"
 [[ -x "$dotnet_command" && ! -L "$dotnet_command" ]] || fail "dotnet-unavailable"
 [[ -z "$(find "$output_dir" -mindepth 1 -maxdepth 1 -print -quit)" ]] || fail "output-not-empty"
 [[ -z "$(git -C "$repo_dir" status --porcelain=v1 --untracked-files=all)" ]] || fail "source-dirty"
@@ -56,8 +65,8 @@ local_tree_args=(
   "-p:RestorePackagesWithLockFile=true"
   "-p:NuGetLockFilePath=obj/preview12.${source_commit}.packages.lock.json"
   "-p:ChummerPresentationRoot=$presentation_root"
-  "-p:ChummerCoreEngineRoot=$core_root"
-  "-p:ChummerLocalContractsProject=$core_root/Chummer.Contracts/Chummer.Contracts.csproj"
+  "-p:ChummerCoreEngineRoot=$core_content_root"
+  "-p:ChummerLocalContractsProject=$core_runtime_root/Chummer.Contracts/Chummer.Contracts.csproj"
   "-p:ChummerLocalCampaignContractsProject=$run_services_root/Chummer.Campaign.Contracts/Chummer.Campaign.Contracts.csproj"
   "-p:ChummerLocalHubRegistryContractsProject=$registry_root/Chummer.Hub.Registry.Contracts/Chummer.Hub.Registry.Contracts.csproj"
   "-p:ChummerLocalRunContractsProject=$run_services_root/Chummer.Run.Contracts/Chummer.Run.Contracts.csproj"

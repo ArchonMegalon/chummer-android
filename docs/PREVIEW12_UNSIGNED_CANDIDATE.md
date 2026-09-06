@@ -32,6 +32,8 @@ The closed policy is
 - exact non-Android dependency commits from the Two-Green graph;
 - .NET SDK 10.0.110, Java 17, Microsoft Android SDK 36.1.69,
   MAUI 10.0.20, and pinned bundletool 1.18.3 bytes;
+- canonical Core content from `c06f22c…`, embedded from the separate content
+  checkout and verified byte-for-byte inside `base/assets/chummer-content`;
 - binary exclusion of every API-36 proof-only source/type/contract marker.
 
 Both workflows require explicit numeric run/artifact IDs and explicit SHA
