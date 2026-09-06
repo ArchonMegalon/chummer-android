@@ -27,6 +27,11 @@ PRIVATE_MARKERS = (
     b"-----BEGIN EC " + b"PRIVATE KEY-----",
     b"-----BEGIN OPENSSH " + b"PRIVATE KEY-----",
 )
+PRIVATE_HEADER_LINES = tuple(
+    ending
+    for marker in PRIVATE_MARKERS
+    for ending in (marker + b"\n", marker + b"\r\n")
+)
 REQUIRED_IGNORES = (
     "*.private.pem",
     "*.key",
@@ -39,6 +44,8 @@ REQUIRED_IGNORES = (
     "service-account*.json",
 )
 SCAN_CHUNK_BYTES = 1024 * 1024
+MAX_SCAN_FILE_BYTES = 512 * 1024 * 1024
+MAX_SCAN_TOTAL_BYTES = 4 * 1024 * 1024 * 1024
 
 
 def _git_paths(root: Path, *arguments: str) -> tuple[str, ...]:
@@ -69,6 +76,66 @@ def _safe_file(root: Path, relative: str) -> Path:
     return resolved
 
 
+def _scan_content(path: Path, relative: str, remaining: int) -> int:
+    descriptor = os.open(
+        path,
+        os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0),
+    )
+    try:
+        before = os.fstat(descriptor)
+        if (
+            not stat.S_ISREG(before.st_mode)
+            or before.st_size > MAX_SCAN_FILE_BYTES
+            or before.st_size > remaining
+        ):
+            raise ValueError(f"repository key scan bound exceeded: {relative}")
+        overlap = max(map(len, PRIVATE_HEADER_LINES)) - 1
+        tail = b""
+        observed = 0
+        while chunk := os.read(descriptor, SCAN_CHUNK_BYTES):
+            chunk_start = observed
+            observed += len(chunk)
+            if observed > before.st_size:
+                raise ValueError(f"repository key scan file changed: {relative}")
+            window = tail + chunk
+            window_start = chunk_start - len(tail)
+            for marker in PRIVATE_HEADER_LINES:
+                offset = window.find(marker)
+                while offset >= 0:
+                    absolute_offset = window_start + offset
+                    if absolute_offset == 0 or (
+                        offset > 0 and window[offset - 1] in (10, 13)
+                    ):
+                        raise ValueError(
+                            f"repository contains a private key marker: {relative}"
+                        )
+                    offset = window.find(marker, offset + 1)
+            tail = window[-overlap:]
+        after = os.fstat(descriptor)
+    finally:
+        os.close(descriptor)
+    identity = lambda value: (
+        value.st_dev,
+        value.st_ino,
+        value.st_mode,
+        value.st_uid,
+        value.st_size,
+        value.st_mtime_ns,
+        value.st_ctime_ns,
+    )
+    try:
+        path_after = os.stat(path, follow_symlinks=False)
+    except OSError as error:
+        raise ValueError(f"repository key scan file changed: {relative}") from error
+    if (
+        identity(before) != identity(after)
+        or identity(after) != identity(path_after)
+        or observed != before.st_size
+    ):
+        raise ValueError(f"repository key scan file changed: {relative}")
+    return observed
+
+
 def verify(root: Path) -> None:
     if not root.is_absolute() or root.is_symlink() or not root.is_dir():
         raise ValueError("repository key scan root must be one canonical directory")
@@ -89,6 +156,8 @@ def verify(root: Path) -> None:
             "service-account"
         ):
             raise ValueError(f"repository contains ignored private-key-shaped material: {relative}")
+    paths.update(ignored_paths)
+    scanned = 0
     for relative in sorted(paths):
         lower = relative.lower()
         if lower.endswith(PRIVATE_SUFFIXES) or PurePosixPath(lower).name.startswith(
@@ -99,16 +168,7 @@ def verify(root: Path) -> None:
         metadata = path.stat()
         if not stat.S_ISREG(metadata.st_mode):
             raise ValueError(f"repository key scan encountered non-regular file: {relative}")
-        overlap = max(map(len, PRIVATE_MARKERS)) - 1
-        tail = b""
-        with path.open("rb") as stream:
-            while chunk := stream.read(SCAN_CHUNK_BYTES):
-                window = tail + chunk
-                if any(marker in window for marker in PRIVATE_MARKERS):
-                    raise ValueError(
-                        f"repository contains a private key marker: {relative}"
-                    )
-                tail = window[-overlap:]
+        scanned += _scan_content(path, relative, MAX_SCAN_TOTAL_BYTES - scanned)
 
 
 def private_key(path: Path, root: Path, label: str) -> Path:

@@ -21,11 +21,15 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 VERIFY_PATH = ROOT / "scripts/verify_api36_two_green_release_eligibility.py"
 KEY_HYGIENE_PATH = ROOT / "scripts/verify_release_private_key_hygiene.py"
+APPROVAL_SIGNER_PATH = ROOT / "scripts/sign_api36_two_green_release_approval.py"
 CONTRACT = "chummer.android.release-build-attestation/v2"
 SCOPE = "android_internal_release_artifact_binding"
 ROLE = "android_internal_release_builder"
 SOURCE_GRAPH_CONTRACT = "chummer.android.release-source-graph/v3"
 VALIDATION_CONTRACT = "chummer.android.protected-release-build-validation/v1"
+JAVA_TOOLCHAIN_CONTRACT = "chummer.android.trusted-release-toolchain/v1"
+JAVA_TOOLCHAIN_ROLE = "android_release_toolchain_approver"
+JAVA_TOOLCHAIN_SCOPE = "android_release_toolchain"
 MAX_AAB_BYTES = 512 * 1024 * 1024
 EXPECTED_BUNDLETOOL_SHA256 = "a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29"
 EXPECTED_UPLOAD_CERTIFICATE_SHA256 = "D9:C4:B6:35:12:15:44:D5:52:2A:BF:1E:C2:DF:DA:3C:19:38:AA:B9:3D:67:26:BB:93:C9:87:1E:C9:ED:1D:15"
@@ -52,6 +56,9 @@ def _load(path: Path, name: str) -> Any:
 
 VERIFY = _load(VERIFY_PATH, "android_release_build_attestation_verifier")
 KEY_HYGIENE = _load(KEY_HYGIENE_PATH, "android_release_private_key_hygiene")
+APPROVAL_SIGNER = _load(
+    APPROVAL_SIGNER_PATH, "android_release_build_authenticated_provenance"
+)
 
 
 def _pretty(value: object) -> bytes:
@@ -107,8 +114,332 @@ def _canonical_directory(path: Path, label: str, *, owner_only: bool) -> Path:
     return resolved
 
 
+def _trusted_tool(path: Path, root: Path, label: str) -> Path:
+    if (
+        not path.is_absolute()
+        or path.is_symlink()
+        or not path.is_file()
+        or path.resolve(strict=True) != path
+        or not path.is_relative_to(root)
+    ):
+        raise ValueError(f"{label} is not one canonical tool below the trusted Java root")
+    metadata = path.stat()
+    if metadata.st_uid != 0 or stat.S_IMODE(metadata.st_mode) & 0o022:
+        raise ValueError(f"{label} must be root-owned and not writable by another account")
+    if not os.access(path, os.X_OK):
+        raise ValueError(f"{label} is not executable")
+    return path
+
+
+def _trusted_tool_root(path: Path, label: str) -> Path:
+    if not path.is_absolute() or path.is_symlink() or not path.is_dir():
+        raise ValueError(f"{label} must be one absolute canonical directory")
+    resolved = path.resolve(strict=True)
+    metadata = resolved.stat()
+    if (
+        resolved != path
+        or resolved.is_relative_to(ROOT)
+        or metadata.st_uid != 0
+        or stat.S_IMODE(metadata.st_mode) & 0o022
+    ):
+        raise ValueError(
+            f"{label} must be root-owned, outside the repository, and not writable by another account"
+        )
+    return resolved
+
+
+def _java_version_digest(java: Path) -> str:
+    completed = subprocess.run(
+        [os.fspath(java), "-version"],
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        timeout=20,
+        env={"PATH": "/usr/bin:/bin", "LANG": "C", "LC_ALL": "C"},
+    )
+    if completed.returncode != 0 or not completed.stdout or len(completed.stdout) > 64 * 1024:
+        raise ValueError("trusted Java version probe failed")
+    return hashlib.sha256(completed.stdout).hexdigest()
+
+
+def _dotnet_version_digest(dotnet: Path) -> str:
+    completed = subprocess.run(
+        [os.fspath(dotnet), "--info"],
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        timeout=30,
+        env={
+            "PATH": "/usr/bin:/bin",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "DOTNET_CLI_HOME": "/tmp",
+            "DOTNET_NOLOGO": "1",
+            "DOTNET_SKIP_FIRST_TIME_EXPERIENCE": "1",
+        },
+    )
+    if completed.returncode != 0 or not completed.stdout or len(completed.stdout) > 256 * 1024:
+        raise ValueError("trusted dotnet version probe failed")
+    return hashlib.sha256(completed.stdout).hexdigest()
+
+
+def _java_toolchain_unsigned(java_sdk: Path, dotnet: Path) -> dict[str, Any]:
+    java_sdk = _trusted_tool_root(java_sdk, "trusted Java SDK")
+    _trusted_tool_root(java_sdk / "bin", "trusted Java binary directory")
+    tools = {
+        name: _trusted_tool(java_sdk / "bin" / name, java_sdk, f"trusted Java {name}")
+        for name in ("java", "javac", "jarsigner", "keytool")
+    }
+    dotnet_root = _trusted_tool_root(dotnet.parent, "trusted dotnet root")
+    dotnet = _trusted_tool(dotnet, dotnet_root, "trusted dotnet")
+    dotnet_claim = {
+        "absolutePath": os.fspath(dotnet),
+        "sha256": _sha256_file(dotnet, "trusted dotnet", 256 * 1024 * 1024),
+        "sizeBytes": dotnet.stat().st_size,
+        "versionOutputSha256": _dotnet_version_digest(dotnet),
+    }
+    return {
+        "contractName": JAVA_TOOLCHAIN_CONTRACT,
+        "algorithm": "ed25519",
+        "keyId": VERIFY.RELEASE_APPROVER_KEY_ID,
+        "role": JAVA_TOOLCHAIN_ROLE,
+        "authorityScope": JAVA_TOOLCHAIN_SCOPE,
+        "javaSdkRoot": os.fspath(java_sdk),
+        "javaVersionOutputSha256": _java_version_digest(tools["java"]),
+        "tools": {
+            name: {
+                "relativePath": f"bin/{name}",
+                "sha256": _sha256_file(path, f"trusted Java {name}", 128 * 1024 * 1024),
+                "sizeBytes": path.stat().st_size,
+            }
+            for name, path in tools.items()
+        },
+        "dotnet": dotnet_claim,
+        "publicationAuthorized": False,
+    }
+
+
+def sign_java_toolchain_authority(
+    java_sdk: Path,
+    dotnet: Path,
+    private_key: Path,
+    output: Path,
+) -> dict[str, Any]:
+    unsigned = _java_toolchain_unsigned(java_sdk, dotnet)
+    with tempfile.TemporaryDirectory(prefix="chummer-android-java-toolchain-authority-") as directory:
+        payload = Path(directory) / "payload.json"
+        payload.write_bytes(VERIFY._canonical_json_bytes(unsigned))
+        completed = subprocess.run(
+            [
+                "/usr/bin/openssl", "pkeyutl", "-sign",
+                "-inkey", os.fspath(_private_key(private_key)), "-rawin",
+                "-in", os.fspath(payload),
+            ],
+            check=False,
+            capture_output=True,
+            timeout=20,
+            env={"PATH": "/usr/bin:/bin", "LANG": "C", "LC_ALL": "C"},
+        )
+    if completed.returncode != 0 or len(completed.stdout) != 64:
+        raise ValueError("trusted Java toolchain authority signing failed")
+    authority = {
+        **unsigned,
+        "signatureBase64": base64.b64encode(completed.stdout).decode("ascii"),
+    }
+    _write_exclusive(output, _pretty(authority))
+    try:
+        _load_trusted_java_toolchain(output)
+    except Exception:
+        output.unlink(missing_ok=True)
+        raise
+    return authority
+
+
+def _load_trusted_java_toolchain(authority_path: Path) -> dict[str, Any]:
+    authority_path = _canonical_file(
+        authority_path, "trusted Java toolchain authority", owner_only=True
+    )
+    if authority_path.is_relative_to(ROOT):
+        raise ValueError("trusted Java toolchain authority must be outside the repository")
+    raw = _read(
+        authority_path,
+        "trusted Java toolchain authority",
+        VERIFY.MAX_APPROVAL_BYTES,
+        True,
+    )
+    value = VERIFY._strict_json(raw, label="trusted Java toolchain authority")
+    signature = value.pop("signatureBase64", None)
+    expected_fields = {
+        "contractName", "algorithm", "keyId", "role", "authorityScope",
+        "javaSdkRoot", "javaVersionOutputSha256", "tools", "dotnet",
+        "publicationAuthorized",
+    }
+    if set(value) != expected_fields or (
+        value.get("contractName") != JAVA_TOOLCHAIN_CONTRACT
+        or value.get("algorithm") != "ed25519"
+        or value.get("keyId") != VERIFY.RELEASE_APPROVER_KEY_ID
+        or value.get("role") != JAVA_TOOLCHAIN_ROLE
+        or value.get("authorityScope") != JAVA_TOOLCHAIN_SCOPE
+        or value.get("publicationAuthorized") is not False
+    ):
+        raise ValueError("trusted Java toolchain authority fields are not exact")
+    VERIFY._sha256(
+        value.get("javaVersionOutputSha256"), "trusted Java version output digest"
+    )
+    VERIFY._verify_ed25519_signature(value, signature, label="trusted Java toolchain authority")
+    if raw != _pretty({**value, "signatureBase64": signature}):
+        raise ValueError("trusted Java toolchain authority is not canonical")
+
+    java_sdk_value = value.get("javaSdkRoot")
+    if not isinstance(java_sdk_value, str):
+        raise ValueError("trusted Java SDK root is absent")
+    java_sdk = _trusted_tool_root(Path(java_sdk_value), "trusted Java SDK")
+    _trusted_tool_root(java_sdk / "bin", "trusted Java binary directory")
+    tool_claims = value.get("tools")
+    if not isinstance(tool_claims, dict) or set(tool_claims) != {
+        "java", "javac", "jarsigner", "keytool"
+    }:
+        raise ValueError("trusted Java tool inventory is not exact")
+    tools: dict[str, Path] = {}
+    for name, claim in tool_claims.items():
+        if not isinstance(claim, dict) or set(claim) != {"relativePath", "sha256", "sizeBytes"}:
+            raise ValueError("trusted Java tool claim is not exact")
+        if claim.get("relativePath") != f"bin/{name}":
+            raise ValueError("trusted Java tool path differs")
+        tool = _trusted_tool(java_sdk / "bin" / name, java_sdk, f"trusted Java {name}")
+        if (
+            not isinstance(claim.get("sizeBytes"), int)
+            or isinstance(claim.get("sizeBytes"), bool)
+            or claim["sizeBytes"] <= 0
+            or tool.stat().st_size != claim["sizeBytes"]
+            or _sha256_file(tool, f"trusted Java {name}", 128 * 1024 * 1024)
+            != VERIFY._sha256(claim.get("sha256"), f"trusted Java {name} digest")
+        ):
+            raise ValueError("trusted Java tool bytes differ")
+        tools[name] = tool
+    if _java_version_digest(tools["java"]) != value["javaVersionOutputSha256"]:
+        raise ValueError("trusted Java version output differs")
+    dotnet_claim = value.get("dotnet")
+    if not isinstance(dotnet_claim, dict) or set(dotnet_claim) != {
+        "absolutePath", "sha256", "sizeBytes", "versionOutputSha256"
+    }:
+        raise ValueError("trusted dotnet claim is not exact")
+    dotnet_value = dotnet_claim.get("absolutePath")
+    if not isinstance(dotnet_value, str):
+        raise ValueError("trusted dotnet path is absent")
+    dotnet_root = _trusted_tool_root(Path(dotnet_value).parent, "trusted dotnet root")
+    dotnet = _trusted_tool(Path(dotnet_value), dotnet_root, "trusted dotnet")
+    if (
+        not isinstance(dotnet_claim.get("sizeBytes"), int)
+        or isinstance(dotnet_claim.get("sizeBytes"), bool)
+        or dotnet_claim["sizeBytes"] <= 0
+        or dotnet.stat().st_size != dotnet_claim["sizeBytes"]
+        or _sha256_file(dotnet, "trusted dotnet", 256 * 1024 * 1024)
+        != VERIFY._sha256(dotnet_claim.get("sha256"), "trusted dotnet digest")
+        or _dotnet_version_digest(dotnet)
+        != VERIFY._sha256(
+            dotnet_claim.get("versionOutputSha256"), "trusted dotnet version digest"
+        )
+    ):
+        raise ValueError("trusted dotnet bytes or version differ")
+    return {
+        "authoritySha256": hashlib.sha256(raw).hexdigest(),
+        "javaSdkRoot": java_sdk,
+        "javaVersionOutputSha256": value["javaVersionOutputSha256"],
+        "toolSha256": {name: tool_claims[name]["sha256"] for name in sorted(tool_claims)},
+        "tools": tools,
+        "dotnet": dotnet,
+        "dotnetSha256": dotnet_claim["sha256"],
+        "dotnetVersionOutputSha256": dotnet_claim["versionOutputSha256"],
+    }
+
+
 def _sha256_file(path: Path, label: str, limit: int) -> str:
     return hashlib.sha256(_read(path, label, limit, False)).hexdigest()
+
+
+def _lease_identity(metadata: os.stat_result) -> tuple[int, ...]:
+    return (
+        metadata.st_dev,
+        metadata.st_ino,
+        metadata.st_mode,
+        metadata.st_uid,
+        metadata.st_gid,
+        metadata.st_nlink,
+        metadata.st_size,
+        metadata.st_mtime_ns,
+        metadata.st_ctime_ns,
+    )
+
+
+def _lease(path: Path, expected_sha256: str, limit: int, label: str) -> dict[str, Any]:
+    descriptor = os.open(
+        path,
+        os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0),
+    )
+    try:
+        before = os.fstat(descriptor)
+        path_before = os.stat(path, follow_symlinks=False)
+        if (
+            not stat.S_ISREG(before.st_mode)
+            or before.st_size <= 0
+            or before.st_size > limit
+            or _lease_identity(before) != _lease_identity(path_before)
+        ):
+            raise ValueError(f"{label} cannot be held as one trusted file")
+        digest = hashlib.sha256()
+        observed = 0
+        while chunk := os.read(descriptor, 1024 * 1024):
+            observed += len(chunk)
+            if observed > limit:
+                raise ValueError(f"{label} exceeds its trusted bound")
+            digest.update(chunk)
+        if observed != before.st_size or digest.hexdigest() != expected_sha256:
+            raise ValueError(f"{label} bytes differ before protected validation")
+        os.lseek(descriptor, 0, os.SEEK_SET)
+        return {
+            "descriptor": descriptor,
+            "path": path,
+            "identity": _lease_identity(before),
+            "sha256": expected_sha256,
+            "limit": limit,
+            "label": label,
+        }
+    except Exception:
+        os.close(descriptor)
+        raise
+
+
+def _close_leases(leases: list[dict[str, Any]], *, verify: bool) -> None:
+    failure: ValueError | None = None
+    for lease in reversed(leases):
+        descriptor = lease["descriptor"]
+        try:
+            if verify:
+                metadata = os.fstat(descriptor)
+                path_metadata = os.stat(lease["path"], follow_symlinks=False)
+                os.lseek(descriptor, 0, os.SEEK_SET)
+                digest = hashlib.sha256()
+                observed = 0
+                while chunk := os.read(descriptor, 1024 * 1024):
+                    observed += len(chunk)
+                    if observed > lease["limit"]:
+                        raise ValueError(f"{lease['label']} changed during protected validation")
+                    digest.update(chunk)
+                if (
+                    _lease_identity(metadata) != lease["identity"]
+                    or _lease_identity(path_metadata) != lease["identity"]
+                    or observed != metadata.st_size
+                    or digest.hexdigest() != lease["sha256"]
+                ):
+                    raise ValueError(f"{lease['label']} changed during protected validation")
+        except (OSError, ValueError) as error:
+            if failure is None:
+                failure = ValueError(str(error))
+        finally:
+            os.close(descriptor)
+    if failure is not None:
+        raise failure
 
 
 def _run_validator(arguments: list[str], environment: dict[str, str], label: str, timeout: int) -> str:
@@ -137,7 +468,7 @@ def _protected_validation_inputs(
     authority_root: Path,
     bundletool: Path,
     upload_certificate: Path,
-    java_sdk: Path,
+    java_tool_authority: Path,
 ) -> dict[str, Any]:
     workspace_root = _canonical_directory(workspace_root, "release workspace", owner_only=False)
     if ROOT.resolve(strict=True) != (workspace_root / "chummer-android").resolve(strict=True):
@@ -146,14 +477,38 @@ def _protected_validation_inputs(
     package_authority = _canonical_file(package_authority, "release package authority", owner_only=True)
     bundletool = _canonical_file(bundletool, "bundletool", owner_only=True)
     upload_certificate = _canonical_file(upload_certificate, "upload certificate", owner_only=True)
-    java_sdk = _canonical_directory(java_sdk, "Java SDK", owner_only=False)
-    tools = {
-        name: _canonical_file(java_sdk / "bin" / name, f"Java {name}", owner_only=False)
-        for name in ("java", "jarsigner", "keytool")
-    }
+    trusted_java = _load_trusted_java_toolchain(java_tool_authority)
+    tools = trusted_java["tools"]
     bundletool_sha = _sha256_file(bundletool, "bundletool", 64 * 1024 * 1024)
     if bundletool_sha != EXPECTED_BUNDLETOOL_SHA256:
         raise ValueError("protected build attester bundletool digest differs")
+    upload_certificate_file_sha = _sha256_file(
+        upload_certificate, "upload certificate", 1024 * 1024
+    )
+    leases = [
+        _lease(bundletool, bundletool_sha, 64 * 1024 * 1024, "bundletool"),
+        _lease(
+            upload_certificate,
+            upload_certificate_file_sha,
+            1024 * 1024,
+            "upload certificate",
+        ),
+        *(
+            _lease(
+                tools[name],
+                trusted_java["toolSha256"][name],
+                128 * 1024 * 1024,
+                f"trusted Java {name}",
+            )
+            for name in ("java", "javac", "jarsigner", "keytool")
+        ),
+        _lease(
+            trusted_java["dotnet"],
+            trusted_java["dotnetSha256"],
+            256 * 1024 * 1024,
+            "trusted dotnet",
+        ),
+    ]
     certificate_result = subprocess.run(
         ["/usr/bin/openssl", "x509", "-in", os.fspath(upload_certificate), "-noout", "-fingerprint", "-sha256"],
         check=False,
@@ -240,11 +595,17 @@ def _protected_validation_inputs(
         ROOT / "scripts/verify_release_artifact_hygiene.py",
         ROOT / "scripts/verify_release_source_graph.py",
     )
-    return {
+    result = {
         "contractName": VALIDATION_CONTRACT,
         "status": "pass",
         "bundletoolSha256": bundletool_sha,
         "uploadCertificateSha256": certificate_sha,
+        "uploadCertificateFileSha256": upload_certificate_file_sha,
+        "javaToolAuthoritySha256": trusted_java["authoritySha256"],
+        "javaVersionOutputSha256": trusted_java["javaVersionOutputSha256"],
+        "javaToolSha256": trusted_java["toolSha256"],
+        "dotnetSha256": trusted_java["dotnetSha256"],
+        "dotnetVersionOutputSha256": trusted_java["dotnetVersionOutputSha256"],
         "aabValidationOutputSha256": aab_validation,
         "artifactHygieneOutputSha256": hygiene_validation,
         "sourceGraphValidationOutputSha256": source_validation,
@@ -254,6 +615,8 @@ def _protected_validation_inputs(
         },
         "publicationAuthorized": False,
     }
+    _close_leases(leases, verify=True)
+    return result
 
 
 def _protected_validation(
@@ -383,6 +746,9 @@ def _validate_validation_claims(value: object) -> dict[str, Any]:
     }
     expected = {
         "contractName", "status", "bundletoolSha256", "uploadCertificateSha256",
+        "uploadCertificateFileSha256",
+        "javaToolAuthoritySha256", "javaVersionOutputSha256", "javaToolSha256",
+        "dotnetSha256", "dotnetVersionOutputSha256",
         "aabValidationOutputSha256", "artifactHygieneOutputSha256",
         "sourceGraphValidationOutputSha256", "validatorSha256",
         "publicationAuthorized",
@@ -397,6 +763,20 @@ def _validate_validation_claims(value: object) -> dict[str, Any]:
         or value.get("uploadCertificateSha256") != EXPECTED_UPLOAD_CERTIFICATE_SHA256
     ):
         raise ValueError("protected build validation authority is invalid")
+    VERIFY._sha256(value.get("javaToolAuthoritySha256"), "trusted Java authority digest")
+    VERIFY._sha256(
+        value.get("uploadCertificateFileSha256"), "upload certificate file digest"
+    )
+    VERIFY._sha256(value.get("javaVersionOutputSha256"), "trusted Java version digest")
+    VERIFY._sha256(value.get("dotnetSha256"), "trusted dotnet digest")
+    VERIFY._sha256(value.get("dotnetVersionOutputSha256"), "trusted dotnet version digest")
+    java_tools = value.get("javaToolSha256")
+    if not isinstance(java_tools, dict) or set(java_tools) != {
+        "java", "javac", "jarsigner", "keytool"
+    }:
+        raise ValueError("protected build Java tool inventory is not exact")
+    for name, digest in java_tools.items():
+        VERIFY._sha256(digest, f"protected build Java {name} digest")
     for name in (
         "aabValidationOutputSha256",
         "artifactHygieneOutputSha256",
@@ -463,13 +843,14 @@ def sign(
     approval: Path,
     private_key: Path,
     output: Path,
+    github_token_file: Path,
     *,
     workspace_root: Path | None = None,
     package_authority: Path | None = None,
     authority_root: Path | None = None,
     bundletool: Path | None = None,
     upload_certificate: Path | None = None,
-    java_sdk: Path | None = None,
+    java_tool_authority: Path | None = None,
 ) -> dict[str, Any]:
     claims = _artifact_claims(aab, graph, sidecar, receipt, approval)
     identity = claims["graph"]["releaseIdentity"]
@@ -478,13 +859,33 @@ def sign(
         expected_version_name=identity["versionName"],
         expected_version_code=identity["versionCode"], source_graph_path=graph,
     )
+    receipt_raw = _read(
+        receipt, "two-green eligibility receipt", VERIFY.MAX_RECEIPT_BYTES, True
+    )
+    receipt_value = VERIFY._strict_json(
+        receipt_raw, label="two-green eligibility receipt"
+    )
+    provenance_validator_sha256, provenance_replay_sha256 = (
+        APPROVAL_SIGNER._authenticated_github_replay(
+            receipt_raw, receipt_value, github_token_file
+        )
+    )
+    protected_approval = qualification.get("protectedApproval")
+    if (
+        not isinstance(protected_approval, dict)
+        or protected_approval.get("provenanceValidatorSha256")
+        != provenance_validator_sha256
+        or protected_approval.get("provenanceReplaySha256")
+        != provenance_replay_sha256
+    ):
+        raise ValueError("build attestation authenticated provenance differs from protected approval")
     required = {
         "workspace_root": workspace_root,
         "package_authority": package_authority,
         "authority_root": authority_root,
         "bundletool": bundletool,
         "upload_certificate": upload_certificate,
-        "java_sdk": java_sdk,
+        "java_tool_authority": java_tool_authority,
     }
     if any(value is None for value in required.values()):
         raise ValueError("protected build validation inputs are incomplete")
@@ -540,6 +941,17 @@ def verify(attestation: Path, aab: Path, graph: Path, sidecar: Path, receipt: Pa
             "status": "pass",
             "bundletoolSha256": EXPECTED_BUNDLETOOL_SHA256,
             "uploadCertificateSha256": EXPECTED_UPLOAD_CERTIFICATE_SHA256,
+            "uploadCertificateFileSha256": "0" * 64,
+            "javaToolAuthoritySha256": "0" * 64,
+            "javaVersionOutputSha256": "0" * 64,
+            "javaToolSha256": {
+                "java": "0" * 64,
+                "javac": "0" * 64,
+                "jarsigner": "0" * 64,
+                "keytool": "0" * 64,
+            },
+            "dotnetSha256": "0" * 64,
+            "dotnetVersionOutputSha256": "0" * 64,
             "aabValidationOutputSha256": "0" * 64,
             "artifactHygieneOutputSha256": "0" * 64,
             "sourceGraphValidationOutputSha256": "0" * 64,
@@ -601,26 +1013,57 @@ def main() -> int:
         child.add_argument("--attestation" if action == "verify" else "--output", required=True, type=Path)
         if action == "sign":
             child.add_argument("--private-key", required=True, type=Path)
+            child.add_argument("--github-token-file", required=True, type=Path)
             child.add_argument("--workspace-root", required=True, type=Path)
             child.add_argument("--package-authority", required=True, type=Path)
             child.add_argument("--authority-root", required=True, type=Path)
             child.add_argument("--bundletool", required=True, type=Path)
             child.add_argument("--upload-certificate", required=True, type=Path)
-            child.add_argument("--java-sdk", required=True, type=Path)
+            child.add_argument("--java-tool-authority", required=True, type=Path)
+    java_authority = actions.add_parser("sign-java-toolchain")
+    java_authority.add_argument("--java-sdk", required=True, type=Path)
+    java_authority.add_argument("--dotnet", required=True, type=Path)
+    java_authority.add_argument("--private-key", required=True, type=Path)
+    java_authority.add_argument("--output", required=True, type=Path)
+    verify_toolchain = actions.add_parser("verify-toolchain")
+    verify_toolchain.add_argument("--authority", required=True, type=Path)
     args = parser.parse_args()
     try:
+        if args.action == "sign-java-toolchain":
+            result = sign_java_toolchain_authority(
+                args.java_sdk, args.dotnet, args.private_key, args.output
+            )
+            print(json.dumps({
+                "status": "pass",
+                "publicationAuthorized": False,
+                "javaToolAuthoritySha256": hashlib.sha256(
+                    _read(args.output, "trusted Java toolchain authority", VERIFY.MAX_APPROVAL_BYTES, True)
+                ).hexdigest(),
+            }, sort_keys=True))
+            return 0
+        if args.action == "verify-toolchain":
+            trusted = _load_trusted_java_toolchain(args.authority)
+            print(json.dumps({
+                "status": "pass",
+                "publicationAuthorized": False,
+                "authoritySha256": trusted["authoritySha256"],
+                "javaSdkRoot": os.fspath(trusted["javaSdkRoot"]),
+                "dotnetPath": os.fspath(trusted["dotnet"]),
+            }, sort_keys=True))
+            return 0
         common = (args.aab, args.source_graph, args.build_sidecar, args.two_green_receipt, args.two_green_approval)
         result = (
             sign(
                 *common,
                 args.private_key,
                 args.output,
+                args.github_token_file,
                 workspace_root=args.workspace_root,
                 package_authority=args.package_authority,
                 authority_root=args.authority_root,
                 bundletool=args.bundletool,
                 upload_certificate=args.upload_certificate,
-                java_sdk=args.java_sdk,
+                java_tool_authority=args.java_tool_authority,
             )
             if args.action == "sign"
             else verify(args.attestation, *common)

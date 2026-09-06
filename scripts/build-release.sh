@@ -16,6 +16,10 @@ release_test_environment=(
   -u CHUMMER_RECOVERY_STORE_PASSWORD
   -u CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT
   -u CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL
+  -u CHUMMER_ANDROID_RELEASE_APPROVER_PRIVATE_KEY
+  -u CHUMMER_ANDROID_BUILD_ATTESTATION_PRIVATE_KEY
+  -u CHUMMER_ANDROID_GITHUB_PROVENANCE_TOKEN_FILE
+  -u CHUMMER_DOTNET
 )
 for release_secret_variable in \
   AndroidSigningKeyStore \
@@ -33,11 +37,17 @@ for release_secret_variable in \
 done
 unset CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT
 unset CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL
+unset CHUMMER_ANDROID_RELEASE_APPROVER_PRIVATE_KEY
+unset CHUMMER_ANDROID_BUILD_ATTESTATION_PRIVATE_KEY
+unset CHUMMER_ANDROID_GITHUB_PROVENANCE_TOKEN_FILE
 unset release_secret_variable
+caller_dotnet="${CHUMMER_DOTNET:-}"
+export -n caller_dotnet 2>/dev/null || true
+unset CHUMMER_DOTNET
 
 repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 project_path="$repo_dir/src/Chummer.Android/Chummer.Android.csproj"
-dotnet_command="${CHUMMER_DOTNET:-dotnet}"
+dotnet_command=""
 configuration="Release"
 framework="net10.0-android36.0"
 runtime_id="android-arm64"
@@ -122,8 +132,6 @@ trap 'exit 143' TERM
 for required in basename chmod cmp cut dirname env git id install jq mkdir mktemp openssl python3 realpath rm sha256sum stat; do
   require_command "$required"
 done
-require_command "$dotnet_command"
-
 expected_version_name="${CHUMMER_ANDROID_EXPECTED_VERSION_NAME:-}"
 expected_version_code="${CHUMMER_ANDROID_EXPECTED_VERSION_CODE:-}"
 [[ -n "$expected_version_name" && -n "$expected_version_code" ]] \
@@ -139,6 +147,24 @@ IFS=$'\t' read -r version_name version_code version_extra <<< "$release_version_
   || fail "release-version-intent-ambiguous"
 unset release_version_pair expected_version_name expected_version_code version_extra
 unset CHUMMER_ANDROID_EXPECTED_VERSION_NAME CHUMMER_ANDROID_EXPECTED_VERSION_CODE
+
+require_private_regular_file CHUMMER_ANDROID_RELEASE_TOOLCHAIN_AUTHORITY
+toolchain_identity="$(python3 "$repo_dir/scripts/sign_android_release_build_attestation.py" \
+  verify-toolchain \
+  --authority "$CHUMMER_ANDROID_RELEASE_TOOLCHAIN_AUTHORITY")" \
+  || fail "trusted-release-toolchain-invalid"
+trusted_dotnet="$(jq -er '.dotnetPath' <<<"$toolchain_identity")" \
+  || fail "trusted-dotnet-path-absent"
+trusted_java_sdk="$(jq -er '.javaSdkRoot' <<<"$toolchain_identity")" \
+  || fail "trusted-java-sdk-path-absent"
+[[ -z "$caller_dotnet" || "$caller_dotnet" == "$trusted_dotnet" ]] \
+  || fail "caller-dotnet-differs-from-trusted-toolchain"
+[[ -n "${JavaSdkDirectory:-}" && "$(realpath -e -- "$JavaSdkDirectory")" == "$trusted_java_sdk" ]] \
+  || fail "caller-java-sdk-differs-from-trusted-toolchain"
+dotnet_command="$trusted_dotnet"
+JavaSdkDirectory="$trusted_java_sdk"
+unset toolchain_identity trusted_dotnet trusted_java_sdk caller_dotnet
+unset CHUMMER_ANDROID_RELEASE_TOOLCHAIN_AUTHORITY
 
 workspace_root="${CHUMMER_COMPLETE_ROOT:-}"
 [[ -n "$workspace_root" && "$workspace_root" == /* ]] || fail "coherent-workspace-root-missing"
@@ -486,15 +512,25 @@ source_aab="$(python3 "$repo_dir/scripts/verify_release_publish_output.py" \
   --resolve-exact-signed-aab)" || fail "fresh-signed-release-bundle-invalid"
 
 # Capture both outputs exactly once through stable descriptors onto the final
-# artifact filesystem.  Every validator below reads those immutable captured
-# inodes; promotion hard-links those same inodes rather than reopening mutable
-# publish or source-graph paths after verification.
+# artifact filesystem. Every validator below reads the authenticated captured
+# files; promotion copies and hashes from opened capture descriptors directly
+# into exclusive final outputs, so no validator-to-path-reopen race is trusted.
 capture_tmp="$(mktemp -d "$artifact_dir/.chummer-android-$version_name.capture.XXXXXX")"
 chmod 0700 "$capture_tmp"
+capture_authentication_key="$release_tmp/release-output-capture-authentication.key"
+openssl rand -out "$capture_authentication_key" 32
+chmod 0600 "$capture_authentication_key"
+capture_authentication_key_sha256="$(sha256sum "$capture_authentication_key" | cut -d' ' -f1)"
+[[ ! -L "$capture_authentication_key" \
+  && "$(stat -c '%s' -- "$capture_authentication_key")" == 32 \
+  && "$(stat -c '%u' -- "$capture_authentication_key")" == "$(id -u)" ]] \
+  || fail "stable-release-output-authentication-key"
 python3 "$repo_dir/scripts/capture_android_release_outputs.py" capture \
   --aab "$source_aab" \
   --source-graph "$staged_graph" \
   --capture-dir "$capture_tmp" \
+  --authentication-key "$capture_authentication_key" \
+  --expected-authentication-key-sha256 "$capture_authentication_key_sha256" \
   --final-aab-name "$(basename "$output_aab")" \
   --final-graph-name "$(basename "$output_graph")" \
   || fail "stable-release-output-capture"
@@ -525,8 +561,13 @@ python3 "$repo_dir/scripts/materialize_release_package_authority.py" \
 
 source_sha256="$(sha256sum "$captured_aab" | cut -d' ' -f1)"
 graph_sha256="$(sha256sum "$captured_graph" | cut -d' ' -f1)"
+[[ "$(sha256sum "$capture_authentication_key" | cut -d' ' -f1)" \
+  == "$capture_authentication_key_sha256" ]] \
+  || fail "stable-release-output-authentication-key-drift"
 python3 "$repo_dir/scripts/capture_android_release_outputs.py" promote \
   --capture-dir "$capture_tmp" \
+  --authentication-key "$capture_authentication_key" \
+  --expected-authentication-key-sha256 "$capture_authentication_key_sha256" \
   --output-aab "$output_aab" \
   --output-source-graph "$output_graph" \
   --output-sidecar "$output_hash" \

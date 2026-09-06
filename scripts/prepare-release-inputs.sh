@@ -5,7 +5,7 @@ umask 077
 
 repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 project_path="$repo_dir/src/Chummer.Android/Chummer.Android.csproj"
-dotnet_command="${CHUMMER_DOTNET:-dotnet}"
+dotnet_command=""
 nuget_org_source="https://api.nuget.org/v3/index.json"
 two_green_receipt_input="${CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT:-}"
 two_green_approval_input="${CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL:-}"
@@ -32,6 +32,9 @@ for protected_release_variable in \
   unset "$protected_release_variable"
 done
 unset protected_release_variable
+caller_dotnet="${CHUMMER_DOTNET:-}"
+export -n caller_dotnet 2>/dev/null || true
+unset CHUMMER_DOTNET
 
 fail() {
   printf 'android_release_inputs=failed stage=%s publication_authorized=false\n' "$1" >&2
@@ -73,7 +76,23 @@ require_private_regular_file() {
 for required in cmp cut dirname find git id install jq mkdir python3 realpath sha256sum stat; do
   require_command "$required"
 done
-require_command "$dotnet_command"
+require_private_regular_file CHUMMER_ANDROID_RELEASE_TOOLCHAIN_AUTHORITY
+toolchain_identity="$(python3 "$repo_dir/scripts/sign_android_release_build_attestation.py" \
+  verify-toolchain \
+  --authority "$CHUMMER_ANDROID_RELEASE_TOOLCHAIN_AUTHORITY")" \
+  || fail "trusted-release-toolchain-invalid"
+trusted_dotnet="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["dotnetPath"])' <<<"$toolchain_identity")" \
+  || fail "trusted-dotnet-path-absent"
+trusted_java_sdk="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["javaSdkRoot"])' <<<"$toolchain_identity")" \
+  || fail "trusted-java-sdk-path-absent"
+[[ -z "$caller_dotnet" || "$caller_dotnet" == "$trusted_dotnet" ]] \
+  || fail "caller-dotnet-differs-from-trusted-toolchain"
+[[ -n "${JavaSdkDirectory:-}" && "$(realpath -e -- "$JavaSdkDirectory")" == "$trusted_java_sdk" ]] \
+  || fail "caller-java-sdk-differs-from-trusted-toolchain"
+dotnet_command="$trusted_dotnet"
+JavaSdkDirectory="$trusted_java_sdk"
+unset toolchain_identity trusted_dotnet trusted_java_sdk caller_dotnet
+export -n CHUMMER_ANDROID_RELEASE_TOOLCHAIN_AUTHORITY 2>/dev/null || true
 
 workspace_root="${CHUMMER_COMPLETE_ROOT:-}"
 [[ -n "$workspace_root" && "$workspace_root" == /* ]] \
@@ -262,6 +281,8 @@ python3 "$repo_dir/scripts/verify_api36_two_green_release_eligibility.py" \
   printf 'export NUGET_PACKAGES=%q\n' "$nuget_packages"
   printf 'export CHUMMER_ANDROID_EXPECTED_VERSION_NAME=%q\n' "$version_name"
   printf 'export CHUMMER_ANDROID_EXPECTED_VERSION_CODE=%q\n' "$version_code"
+  printf 'export CHUMMER_ANDROID_RELEASE_TOOLCHAIN_AUTHORITY=%q\n' \
+    "$CHUMMER_ANDROID_RELEASE_TOOLCHAIN_AUTHORITY"
 } > "$environment_file"
 chmod 0600 "$environment_file"
 

@@ -60,6 +60,9 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
         self.two_green_approval = self.root / "two-green-release-approval.json"
         self.build_sidecar = self.root / f"{self.aab.name}.sha256"
         self.build_attestation = self.root / "release-build-attestation.json"
+        self.github_token = self.root / "github-provenance.token"
+        self.github_token.write_text("a" * 32, encoding="ascii")
+        self.github_token.chmod(0o600)
         self.attester_private_key = self.root / "release-attester.private.pem"
         self.attester_public_key = self.root / "release-attester.public.pem"
         subprocess.run(
@@ -329,6 +332,17 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
             "status": "pass",
             "bundletoolSha256": build.EXPECTED_BUNDLETOOL_SHA256,
             "uploadCertificateSha256": build.EXPECTED_UPLOAD_CERTIFICATE_SHA256,
+            "uploadCertificateFileSha256": "0" * 64,
+            "javaToolAuthoritySha256": "4" * 64,
+            "javaVersionOutputSha256": "5" * 64,
+            "javaToolSha256": {
+                "java": "6" * 64,
+                "javac": "b" * 64,
+                "jarsigner": "7" * 64,
+                "keytool": "8" * 64,
+            },
+            "dotnetSha256": "9" * 64,
+            "dotnetVersionOutputSha256": "a" * 64,
             "aabValidationOutputSha256": "1" * 64,
             "artifactHygieneOutputSha256": "2" * 64,
             "sourceGraphValidationOutputSha256": "3" * 64,
@@ -394,17 +408,22 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
             build,
             "_protected_validation",
             return_value=self.protected_build_validation(),
+        ), mock.patch.object(
+            build.APPROVAL_SIGNER,
+            "_authenticated_github_replay",
+            return_value=("8" * 64, "7" * 64),
         ):
             attestation = build.sign(
                 self.aab, self.graph, self.build_sidecar,
                 self.two_green_receipt, self.two_green_approval,
                 self.attester_private_key, self.build_attestation,
+                self.github_token,
                 workspace_root=self.root,
                 package_authority=self.graph,
                 authority_root=self.root,
                 bundletool=self.graph,
                 upload_certificate=self.graph,
-                java_sdk=self.root,
+                java_tool_authority=self.graph,
             )
         self.assertFalse(attestation["publicationAuthorized"])
         self.assertEqual(
@@ -418,17 +437,42 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
         self.assertEqual(self.expected_source_graph_sha256, verified["sourceGraph"]["sha256"])
 
         unvalidated_output = self.root / "unvalidated-build-attestation.json"
-        with self.assertRaisesRegex(ValueError, "validation inputs are incomplete"):
-            build.sign(
-                self.aab,
-                self.graph,
-                self.build_sidecar,
-                self.two_green_receipt,
-                self.two_green_approval,
-                self.attester_private_key,
-                unvalidated_output,
-            )
+        with mock.patch.object(
+            build.APPROVAL_SIGNER,
+            "_authenticated_github_replay",
+            return_value=("8" * 64, "7" * 64),
+        ):
+            with self.assertRaisesRegex(ValueError, "validation inputs are incomplete"):
+                build.sign(
+                    self.aab,
+                    self.graph,
+                    self.build_sidecar,
+                    self.two_green_receipt,
+                    self.two_green_approval,
+                    self.attester_private_key,
+                    unvalidated_output,
+                    self.github_token,
+                )
         self.assertFalse(unvalidated_output.exists())
+
+        mismatched_provenance_output = self.root / "mismatched-provenance-attestation.json"
+        with mock.patch.object(
+            build.APPROVAL_SIGNER,
+            "_authenticated_github_replay",
+            return_value=("0" * 64, "7" * 64),
+        ):
+            with self.assertRaisesRegex(ValueError, "authenticated provenance differs"):
+                build.sign(
+                    self.aab,
+                    self.graph,
+                    self.build_sidecar,
+                    self.two_green_receipt,
+                    self.two_green_approval,
+                    self.attester_private_key,
+                    mismatched_provenance_output,
+                    self.github_token,
+                )
+        self.assertFalse(mismatched_provenance_output.exists())
 
         fabricated_validation = self.protected_build_validation()
         fabricated_validation["validatorSha256"]["validate-aab.sh"] = "0" * 64

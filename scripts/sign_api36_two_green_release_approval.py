@@ -18,13 +18,14 @@ import json
 import os
 from pathlib import Path
 import secrets
+import ssl
 import stat
 import subprocess
 import tempfile
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import urljoin, urlsplit
-from urllib.request import HTTPRedirectHandler, Request, build_opener
+from urllib.request import HTTPRedirectHandler, HTTPSHandler, ProxyHandler, Request, build_opener
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -72,17 +73,37 @@ AUTHENTICATED_GITHUB_FILE_INPUTS = {
     "main_p0_archive",
     "main_commit",
 }
+SYSTEM_CA_BUNDLE = Path("/etc/ssl/certs/ca-certificates.crt")
+
+
+def _https_origin(url: str) -> tuple[str, str, int]:
+    parsed = urlsplit(url)
+    try:
+        port = parsed.port
+    except ValueError as error:
+        raise ValueError("GitHub provenance URL port is invalid") from error
+    if (
+        parsed.scheme != "https"
+        or not parsed.hostname
+        or parsed.username
+        or parsed.password
+        or port not in (None, 443)
+    ):
+        raise ValueError("GitHub provenance URL is not canonical HTTPS")
+    return parsed.scheme, parsed.hostname.lower(), port or 443
 
 
 class _SafeRedirect(HTTPRedirectHandler):
+    max_repeats = 2
+    max_redirections = 5
+
     def redirect_request(self, request, fp, code, msg, headers, new_url):
         redirected = super().redirect_request(request, fp, code, msg, headers, new_url)
         if redirected is None:
             return None
-        parsed = urlsplit(new_url)
-        if parsed.scheme != "https" or parsed.username or parsed.password:
-            raise ValueError("GitHub provenance redirect is not safe HTTPS")
-        if urlsplit(request.full_url).hostname != parsed.hostname:
+        new_origin = _https_origin(new_url)
+        previous_origin = _https_origin(request.full_url)
+        if new_origin != previous_origin:
             redirected.remove_header("Authorization")
         return redirected
 
@@ -102,13 +123,25 @@ class GitHubApiClient:
         if not 20 <= len(token) <= 512 or any(character.isspace() for character in token):
             raise ValueError("GitHub provenance token format is invalid")
         self._token = token
-        self._opener = build_opener(_SafeRedirect())
+        if (
+            SYSTEM_CA_BUNDLE.is_symlink()
+            or not SYSTEM_CA_BUNDLE.is_file()
+            or SYSTEM_CA_BUNDLE.stat().st_uid != 0
+            or stat.S_IMODE(SYSTEM_CA_BUNDLE.stat().st_mode) & 0o022
+        ):
+            raise ValueError("system GitHub provenance CA bundle is not trusted")
+        context = ssl.create_default_context(cafile=os.fspath(SYSTEM_CA_BUNDLE))
+        self._opener = build_opener(
+            ProxyHandler({}),
+            HTTPSHandler(context=context),
+            _SafeRedirect(),
+        )
 
     def fetch(self, endpoint: str, *, artifact: bool = False) -> bytes:
         if endpoint.startswith(("http:", "https:", "//")) or ".." in endpoint.split("/"):
             raise ValueError("GitHub provenance endpoint is not repository-relative")
         url = urljoin(GITHUB_API_ROOT, endpoint.lstrip("/"))
-        if urlsplit(url).hostname != "api.github.com":
+        if _https_origin(url) != ("https", "api.github.com", 443):
             raise ValueError("GitHub provenance endpoint escaped the canonical API")
         request = Request(
             url,
@@ -122,9 +155,7 @@ class GitHubApiClient:
         limit = MAX_GITHUB_ARTIFACT_BYTES if artifact else MAX_GITHUB_JSON_BYTES
         try:
             with self._opener.open(request, timeout=30) as response:
-                final = urlsplit(response.geturl())
-                if final.scheme != "https" or final.username or final.password:
-                    raise ValueError("GitHub provenance response URL is not safe HTTPS")
+                _https_origin(response.geturl())
                 chunks: list[bytes] = []
                 total = 0
                 while total <= limit:

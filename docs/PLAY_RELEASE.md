@@ -96,6 +96,7 @@ CHUMMER_ANDROID_EXPECTED_VERSION_NAME=0.1.0-preview.11 \
 CHUMMER_ANDROID_EXPECTED_VERSION_CODE=11 \
 CHUMMER_ANDROID_TWO_GREEN_ELIGIBILITY_RECEIPT=/absolute/private/ANDROID_API36_TWO_GREEN_ELIGIBILITY.generated.json \
 CHUMMER_ANDROID_TWO_GREEN_RELEASE_APPROVAL=/absolute/private/ANDROID_API36_TWO_GREEN_RELEASE_APPROVAL.generated.json \
+CHUMMER_ANDROID_RELEASE_TOOLCHAIN_AUTHORITY=/absolute/protected/ANDROID_RELEASE_TOOLCHAIN_AUTHORITY.generated.json \
 CHUMMER_CURRENT_UI_PACKAGE_AUTHORITY_RECEIPT=/absolute/private/UI_CURRENT_MAIN_PACKAGE_PLANE.generated.json \
 CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED=/absolute/private/ui-package-cache/packages \
   scripts/prepare-release-inputs.sh
@@ -123,6 +124,18 @@ python3 scripts/sign_api36_two_green_release_approval.py \
   --github-token-file /absolute/protected/github-release-provenance.token \
   --private-key /absolute/protected/local-release-builder-2026.private.pem \
   --output /absolute/private/ANDROID_API36_TWO_GREEN_RELEASE_APPROVAL.generated.json
+```
+
+The same protected key approves one exact root-owned, non-writable Java/.NET
+toolchain. Caller-owned SDK shims are never accepted by either release
+preparation or protected build attestation:
+
+```sh
+python3 scripts/sign_android_release_build_attestation.py sign-java-toolchain \
+  --java-sdk /usr/lib/jvm/exact-approved-jdk \
+  --dotnet /usr/share/dotnet/dotnet \
+  --private-key /absolute/protected/local-release-builder-2026.private.pem \
+  --output /absolute/protected/ANDROID_RELEASE_TOOLCHAIN_AUTHORITY.generated.json
 ```
 
 The preparer copies both owner-only inputs into fixed release-input paths and
@@ -313,12 +326,13 @@ python3 scripts/sign_android_release_build_attestation.py sign \
   --build-sidecar /absolute/path/chummer-android-VERSION-upload.aab.sha256 \
   --two-green-receipt /absolute/private/ANDROID_API36_TWO_GREEN_ELIGIBILITY.generated.json \
   --two-green-approval /absolute/private/ANDROID_API36_TWO_GREEN_RELEASE_APPROVAL.generated.json \
+  --github-token-file /absolute/protected/github-release-provenance.token \
   --workspace-root /absolute/coherent/chummer-workspace \
   --package-authority /absolute/private/chummer.android.release-package-authority.v2.json \
   --authority-root /absolute/private/retained-package-authority \
   --bundletool /absolute/private/bundletool-all-1.18.2.jar \
   --upload-certificate /absolute/private/chummer-upload-certificate.pem \
-  --java-sdk /absolute/pinned/jdk \
+  --java-tool-authority /absolute/protected/ANDROID_RELEASE_TOOLCHAIN_AUTHORITY.generated.json \
   --private-key /absolute/protected/local-release-builder-2026.private.pem \
   --output /absolute/private/ANDROID_RELEASE_BUILD_ATTESTATION.generated.json
 ```

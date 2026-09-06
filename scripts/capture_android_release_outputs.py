@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import hmac
 import json
 import os
 from pathlib import Path
@@ -12,6 +13,8 @@ import stat
 
 
 CONTRACT = "chummer.android.stable-release-output-capture/v1"
+AUTHENTICATION_ALGORITHM = "hmac-sha256"
+AUTHENTICATION_KEY_BYTES = 32
 MAX_AAB_BYTES = 512 * 1024 * 1024
 MAX_GRAPH_BYTES = 16 * 1024 * 1024
 CHUNK = 1024 * 1024
@@ -19,6 +22,60 @@ CHUNK = 1024 * 1024
 
 def _canonical_json(value: object) -> bytes:
     return (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
+
+
+def _authentication_key(
+    path: Path, capture_dir: Path, expected_sha256: str
+) -> bytes:
+    if not path.is_absolute() or path.is_symlink() or not path.is_file():
+        raise ValueError("release capture authentication key must be an absolute regular file")
+    resolved = path.resolve(strict=True)
+    metadata = resolved.stat()
+    if (
+        resolved != path
+        or metadata.st_uid != os.getuid()
+        or stat.S_IMODE(metadata.st_mode) & 0o077
+        or resolved.is_relative_to(capture_dir)
+    ):
+        raise ValueError(
+            "release capture authentication key must be canonical, owner-only, and outside the capture directory"
+        )
+    descriptor = os.open(
+        resolved,
+        os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0),
+    )
+    try:
+        before = os.fstat(descriptor)
+        chunks: list[bytes] = []
+        observed = 0
+        while observed <= AUTHENTICATION_KEY_BYTES:
+            chunk = os.read(descriptor, AUTHENTICATION_KEY_BYTES + 1 - observed)
+            if not chunk:
+                break
+            chunks.append(chunk)
+            observed += len(chunk)
+        raw = b"".join(chunks)
+        after = os.fstat(descriptor)
+    finally:
+        os.close(descriptor)
+    if (
+        _identity(before) != _identity(after)
+        or len(raw) != AUTHENTICATION_KEY_BYTES
+        or before.st_size != AUTHENTICATION_KEY_BYTES
+        or len(expected_sha256) != 64
+        or any(character not in "0123456789abcdef" for character in expected_sha256)
+        or not hmac.compare_digest(hashlib.sha256(raw).hexdigest(), expected_sha256)
+    ):
+        raise ValueError("release capture authentication key is not one stable 256-bit key")
+    return raw
+
+
+def _authentication(unsigned: dict[str, object], key: bytes) -> dict[str, str]:
+    return {
+        "algorithm": AUTHENTICATION_ALGORITHM,
+        "keyId": hashlib.sha256(key).hexdigest(),
+        "tagHex": hmac.new(key, _canonical_json(unsigned), hashlib.sha256).hexdigest(),
+    }
 
 
 def _directory(path: Path, label: str, *, private: bool) -> Path:
@@ -37,6 +94,10 @@ def _identity(metadata: os.stat_result) -> dict[str, int]:
     return {
         "device": metadata.st_dev,
         "inode": metadata.st_ino,
+        "mode": metadata.st_mode,
+        "uid": metadata.st_uid,
+        "gid": metadata.st_gid,
+        "linkCount": metadata.st_nlink,
         "sizeBytes": metadata.st_size,
         "mtimeNs": metadata.st_mtime_ns,
         "ctimeNs": metadata.st_ctime_ns,
@@ -128,8 +189,13 @@ def capture(
     capture_dir: Path,
     final_aab_name: str,
     final_graph_name: str,
+    authentication_key: Path,
+    expected_authentication_key_sha256: str,
 ) -> dict[str, object]:
     capture_dir = _directory(capture_dir, "release capture directory", private=True)
+    key = _authentication_key(
+        authentication_key, capture_dir, expected_authentication_key_sha256
+    )
     if any(capture_dir.iterdir()):
         raise ValueError("release capture directory must be empty")
     if (
@@ -150,7 +216,7 @@ def capture(
     ).encode("ascii")
     _write_new(sidecar, sidecar_raw, 0o400)
     sidecar_metadata = sidecar.stat()
-    receipt = {
+    unsigned_receipt = {
         "contractName": CONTRACT,
         "publicationAuthorized": False,
         "outputs": {
@@ -173,54 +239,143 @@ def capture(
             },
         },
     }
+    receipt = {
+        **unsigned_receipt,
+        "authentication": _authentication(unsigned_receipt, key),
+    }
     receipt_path = capture_dir / "capture-receipt.json"
     _write_new(receipt_path, _canonical_json(receipt), 0o400)
     return receipt
 
 
-def _load_receipt(capture_dir: Path) -> dict[str, object]:
-    raw = (capture_dir / "capture-receipt.json").read_bytes()
+def _load_receipt(
+    capture_dir: Path,
+    authentication_key: Path,
+    expected_authentication_key_sha256: str,
+) -> dict[str, object]:
+    key = _authentication_key(
+        authentication_key, capture_dir, expected_authentication_key_sha256
+    )
+    receipt_path = capture_dir / "capture-receipt.json"
+    descriptor = os.open(
+        receipt_path,
+        os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0),
+    )
+    try:
+        before = os.fstat(descriptor)
+        if (
+            not stat.S_ISREG(before.st_mode)
+            or before.st_uid != os.getuid()
+            or stat.S_IMODE(before.st_mode) != 0o400
+            or before.st_size <= 0
+            or before.st_size > 1024 * 1024
+        ):
+            raise ValueError("release capture receipt is not one bounded regular file")
+        raw = b""
+        while chunk := os.read(descriptor, min(CHUNK, 1024 * 1024 + 1 - len(raw))):
+            raw += chunk
+        after = os.fstat(descriptor)
+    finally:
+        os.close(descriptor)
+    path_metadata = os.stat(receipt_path, follow_symlinks=False)
+    if (
+        _identity(before) != _identity(after)
+        or _identity(after) != _identity(path_metadata)
+        or len(raw) != before.st_size
+        or len(raw) > 1024 * 1024
+    ):
+        raise ValueError("release capture receipt changed during bounded capture")
     try:
         value = json.loads(raw.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as error:
         raise ValueError("release capture receipt is invalid") from error
-    if _canonical_json(value) != raw or value.get("contractName") != CONTRACT:
+    if (
+        _canonical_json(value) != raw
+        or value.get("contractName") != CONTRACT
+        or set(value) != {"contractName", "publicationAuthorized", "outputs", "authentication"}
+    ):
         raise ValueError("release capture receipt is not canonical")
     if value.get("publicationAuthorized") is not False:
         raise ValueError("release capture receipt escalates publication authority")
+    authentication = value.pop("authentication", None)
+    expected_authentication = _authentication(value, key)
+    if (
+        not isinstance(authentication, dict)
+        or set(authentication) != {"algorithm", "keyId", "tagHex"}
+        or authentication.get("algorithm") != AUTHENTICATION_ALGORITHM
+        or not hmac.compare_digest(
+            str(authentication.get("keyId", "")), expected_authentication["keyId"]
+        )
+        or not hmac.compare_digest(
+            str(authentication.get("tagHex", "")), expected_authentication["tagHex"]
+        )
+    ):
+        raise ValueError("release capture receipt authentication failed")
     return value
 
 
-def _verify_captured(
-    path: Path,
-    claim: dict[str, object],
-    *,
-    allow_link_ctime_change: bool = False,
-) -> os.stat_result:
-    metadata = os.stat(path, follow_symlinks=False)
-    expected = claim.get("capturedIdentity")
-    actual = _identity(metadata)
-    if allow_link_ctime_change and isinstance(expected, dict):
-        identity_matches = all(
-            actual.get(name) == expected.get(name)
-            for name in ("device", "inode", "sizeBytes", "mtimeNs")
-        ) and actual["ctimeNs"] >= expected.get("ctimeNs", actual["ctimeNs"] + 1)
-    else:
-        identity_matches = actual == expected
-    if not stat.S_ISREG(metadata.st_mode) or not identity_matches:
-        raise ValueError("captured release output identity changed")
-    digest = hashlib.sha256()
-    descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+def _promote_from_descriptor(source: Path, destination: Path, claim: dict[str, object]) -> None:
+    source_descriptor = os.open(
+        source,
+        os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0),
+    )
+    destination_descriptor = -1
     try:
-        while chunk := os.read(descriptor, CHUNK):
+        source_before = os.fstat(source_descriptor)
+        path_before = os.stat(source, follow_symlinks=False)
+        if (
+            not stat.S_ISREG(source_before.st_mode)
+            or _identity(source_before) != claim.get("capturedIdentity")
+            or _identity(source_before) != _identity(path_before)
+        ):
+            raise ValueError("captured release output identity changed")
+        captured_identity = claim.get("capturedIdentity")
+        if not isinstance(captured_identity, dict) or not isinstance(
+            captured_identity.get("mode"), int
+        ):
+            raise ValueError("captured release output mode claim is invalid")
+        expected_mode = stat.S_IMODE(captured_identity["mode"])
+        if expected_mode not in (0o400, 0o444):
+            raise ValueError("captured release output mode is not immutable")
+        destination_descriptor = os.open(
+            destination,
+            os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_CLOEXEC", 0)
+            | getattr(os, "O_NOFOLLOW", 0),
+            expected_mode,
+        )
+        digest = hashlib.sha256()
+        copied = 0
+        while chunk := os.read(source_descriptor, CHUNK):
             digest.update(chunk)
-        if _identity(os.fstat(descriptor)) != _identity(metadata):
-            raise ValueError("captured release output changed while verified")
+            copied += len(chunk)
+            view = memoryview(chunk)
+            while view:
+                written = os.write(destination_descriptor, view)
+                if written <= 0:
+                    raise OSError("release artifact promotion write made no progress")
+                view = view[written:]
+        os.fsync(destination_descriptor)
+        source_after = os.fstat(source_descriptor)
+        path_after = os.stat(source, follow_symlinks=False)
+        destination_after = os.fstat(destination_descriptor)
+        destination_path_after = os.stat(destination, follow_symlinks=False)
+        if (
+            _identity(source_before) != _identity(source_after)
+            or _identity(source_after) != _identity(path_after)
+            or copied != claim.get("sizeBytes")
+            or destination_after.st_size != copied
+            or stat.S_IMODE(destination_after.st_mode) != expected_mode
+            or _identity(destination_after) != _identity(destination_path_after)
+            or digest.hexdigest() != claim.get("sha256")
+        ):
+            raise ValueError("captured release output changed during descriptor-bound promotion")
+    except Exception:
+        destination.unlink(missing_ok=True)
+        raise
     finally:
-        os.close(descriptor)
-    if digest.hexdigest() != claim.get("sha256") or metadata.st_size != claim.get("sizeBytes"):
-        raise ValueError("captured release output bytes changed")
-    return metadata
+        if destination_descriptor >= 0:
+            os.close(destination_descriptor)
+        os.close(source_descriptor)
 
 
 def promote(
@@ -228,9 +383,13 @@ def promote(
     output_aab: Path,
     output_graph: Path,
     output_sidecar: Path,
+    authentication_key: Path,
+    expected_authentication_key_sha256: str,
 ) -> None:
     capture_dir = _directory(capture_dir, "release capture directory", private=True)
-    receipt = _load_receipt(capture_dir)
+    receipt = _load_receipt(
+        capture_dir, authentication_key, expected_authentication_key_sha256
+    )
     outputs = receipt.get("outputs")
     if not isinstance(outputs, dict) or set(outputs) != {"aab", "sourceGraph", "buildSidecar"}:
         raise ValueError("release capture output inventory is invalid")
@@ -239,7 +398,7 @@ def promote(
         "sourceGraph": output_graph,
         "buildSidecar": output_sidecar,
     }
-    linked: list[tuple[Path, tuple[int, int]]] = []
+    promoted: list[Path] = []
     try:
         for name, destination in destinations.items():
             claim = outputs[name]
@@ -248,29 +407,14 @@ def promote(
             source = capture_dir / str(claim.get("capturedName"))
             if source.parent != capture_dir or destination.name != claim.get("finalName"):
                 raise ValueError("release capture output naming changed")
-            source_metadata = _verify_captured(source, claim)
-            parent = _directory(destination.parent, "release artifact directory", private=False)
-            if source_metadata.st_dev != parent.stat().st_dev:
-                raise ValueError("release capture and artifact directory are not on one filesystem")
+            _directory(destination.parent, "release artifact directory", private=False)
             if destination.exists() or destination.is_symlink():
                 raise ValueError("release artifact output already exists")
-            os.link(source, destination, follow_symlinks=False)
-            target_metadata = os.stat(destination, follow_symlinks=False)
-            if (target_metadata.st_dev, target_metadata.st_ino) != (
-                source_metadata.st_dev,
-                source_metadata.st_ino,
-            ):
-                raise ValueError("release artifact promotion did not retain the captured inode")
-            linked.append((destination, (target_metadata.st_dev, target_metadata.st_ino)))
-            _verify_captured(destination, claim, allow_link_ctime_change=True)
+            _promote_from_descriptor(source, destination, claim)
+            promoted.append(destination)
     except Exception:
-        for path, identity in reversed(linked):
-            try:
-                metadata = os.stat(path, follow_symlinks=False)
-                if (metadata.st_dev, metadata.st_ino) == identity:
-                    path.unlink()
-            except FileNotFoundError:
-                pass
+        for path in reversed(promoted):
+            path.unlink(missing_ok=True)
         raise
 
 
@@ -281,10 +425,14 @@ def main() -> int:
     capture_parser.add_argument("--aab", required=True, type=Path)
     capture_parser.add_argument("--source-graph", required=True, type=Path)
     capture_parser.add_argument("--capture-dir", required=True, type=Path)
+    capture_parser.add_argument("--authentication-key", required=True, type=Path)
+    capture_parser.add_argument("--expected-authentication-key-sha256", required=True)
     capture_parser.add_argument("--final-aab-name", required=True)
     capture_parser.add_argument("--final-graph-name", required=True)
     promote_parser = actions.add_parser("promote")
     promote_parser.add_argument("--capture-dir", required=True, type=Path)
+    promote_parser.add_argument("--authentication-key", required=True, type=Path)
+    promote_parser.add_argument("--expected-authentication-key-sha256", required=True)
     promote_parser.add_argument("--output-aab", required=True, type=Path)
     promote_parser.add_argument("--output-source-graph", required=True, type=Path)
     promote_parser.add_argument("--output-sidecar", required=True, type=Path)
@@ -297,6 +445,8 @@ def main() -> int:
                 args.capture_dir,
                 args.final_aab_name,
                 args.final_graph_name,
+                args.authentication_key,
+                args.expected_authentication_key_sha256,
             )
             print(json.dumps({"status": "pass", "publicationAuthorized": False, "outputs": result["outputs"]}, sort_keys=True))
         else:
@@ -305,6 +455,8 @@ def main() -> int:
                 args.output_aab,
                 args.output_source_graph,
                 args.output_sidecar,
+                args.authentication_key,
+                args.expected_authentication_key_sha256,
             )
             print("android_release_output_promotion=passed publication_authorized=false")
     except (OSError, ValueError) as error:
