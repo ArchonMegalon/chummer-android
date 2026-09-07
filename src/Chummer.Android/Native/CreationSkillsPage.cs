@@ -74,7 +74,7 @@ public sealed class CreationSkillsPage : NativePageBase
         }
         AddCatalog(
             state,
-            state.Authority.ActiveSkills,
+            CreationSkillsPhoneAuthority.AvailableActiveSkills(state),
             CreationAllocationStrings.Get("Skills.ActiveSkills", "Active skills"),
             "active");
         AddGroups(state);
@@ -271,7 +271,7 @@ public sealed class CreationSkillsPage : NativePageBase
         _body.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
             "Skills.SkillGroups",
             "Skill groups")));
-        foreach (CharacterCreationSkillGroupCatalogEntry source in state.Authority.SkillGroups)
+        foreach (CharacterCreationSkillGroupCatalogEntry source in CreationSkillsPhoneAuthority.AvailableGroups(state))
         {
             CharacterCreationSkillGroupAllocation? selected = _draft.Groups.SingleOrDefault(item => item.GroupId == source.GroupId);
             VerticalStackLayout card = new() { Spacing = 6 };

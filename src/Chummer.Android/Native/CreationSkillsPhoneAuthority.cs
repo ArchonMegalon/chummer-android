@@ -7,6 +7,14 @@ namespace Chummer.Android.Native;
 /// <summary>Validates Core's Skills packets; Android never derives budgets, costs, or legality.</summary>
 internal static class CreationSkillsPhoneAuthority
 {
+    public static IReadOnlyList<CharacterCreationSkillCatalogEntry> AvailableActiveSkills(CharacterCreationSkillsState state) =>
+        state.Authority.ActiveSkills.Where(item =>
+            CharacterCreationSkillsAccessRules.IsSkillAvailable(state.Authority, item.SourceSkillId)).ToArray();
+
+    public static IReadOnlyList<CharacterCreationSkillGroupCatalogEntry> AvailableGroups(CharacterCreationSkillsState state) =>
+        state.Authority.SkillGroups.Where(item =>
+            CharacterCreationSkillsAccessRules.IsGroupAvailable(state.Authority, item.GroupId)).ToArray();
+
     public static bool MatchesOverview(CharacterCreationSkillsState state, CharacterOverviewState overview) =>
         HasValidCoreIntegrity(state)
         && overview.Profile?.Created == false
@@ -93,6 +101,11 @@ internal static class CreationSkillsPhoneAuthority
         && preview.RequiresExplicitConfirmation
         && preview.CanConfirm
         && preview.Blockers.Count == 0
+        && preview.Skills.All(item => item.IsEnabled && item.Blockers.Count == 0
+            && (item.Kind != CharacterCreationSkillKinds.Active
+                || CharacterCreationSkillsAccessRules.IsSkillAvailable(state.Authority, item.SourceSkillId)))
+        && preview.SkillGroups.All(item => item.IsEnabled && item.Blockers.Count == 0
+            && CharacterCreationSkillsAccessRules.IsGroupAvailable(state.Authority, item.GroupId))
         && Exact(preview.ActiveSkillPointBudget)
         && Exact(preview.SkillGroupPointBudget)
         && Exact(preview.KnowledgeSkillPointBudget)

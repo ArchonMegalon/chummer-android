@@ -137,6 +137,7 @@ internal static class CreationMagicNativeRuntimeTests
             Require(attributeReview.CanConfirm, string.Join(",", attributeReview.Blockers));
             var assigned = attributes.Confirm(new(attributeReview.Binding, allocations, attributeReview.PreviewDigest, true));
             Require(assigned.Outcome == CharacterCreationFoundationOutcomes.Success, string.Join(",", assigned.Blockers));
+            RunSkillAccess(store, resolver, id, directory, technomancer, aspectedGroup);
             var service = new CharacterCreationMagicResonanceService(store, resolver);
             var state = service.Load(new(id)).Value!;
             Require(state.CanEdit, string.Join(",", state.Blockers));
@@ -224,6 +225,77 @@ internal static class CreationMagicNativeRuntimeTests
             Console.WriteLine("PASS actual Adept source/raised MAG → Presentation caps → phone review/confirm → cold file-store reopen/replay");
         }
         finally { Directory.Delete(directory, recursive: true); }
+    }
+
+    private static void RunSkillAccess(FileWorkspaceStore store, FileSystemCharacterSourceDataResolver resolver,
+        CharacterWorkspaceId id, string directory, bool technomancer, string? aspect)
+    {
+        var service = new CharacterCreationSkillsService(store, resolver);
+        var state = service.Load(new(id)).Value!;
+        var overview = Program.NewCreationOverview(id, state.Binding.ContentRevision, state.Binding.SavedRevision);
+        Require(CreationSkillsPhoneAuthority.IsReady(state, overview), "Source-bound Skills unavailable: " + string.Join(",", state.Blockers));
+        var phone = new CreationSkillsPhoneDraft();
+        phone.Bind(state, overview);
+        var forbidden = state.Authority.ActiveSkills.First(item => item.Category == (technomancer ? "Magical Active" : "Resonance Active"));
+        var forbiddenGroup = state.Authority.SkillGroups.Single(item => item.Name == (technomancer ? "Sorcery" : "Tasking"));
+        Require(!CreationSkillsPhoneAuthority.AvailableActiveSkills(state).Any(item => item.SourceSkillId == forbidden.SourceSkillId)
+            && !CreationSkillsPhoneAuthority.AvailableGroups(state).Any(item => item.GroupId == forbiddenGroup.GroupId),
+            "The native picker exposed a skill/group outside Core's source permissions.");
+        Require(phone.WithSkill(forbidden, 1).SequenceEqual(phone.Skills)
+            && phone.WithGroup(forbiddenGroup, 1).SequenceEqual(phone.Groups),
+            "The native draft accepted a hidden, unauthorized catalog entry.");
+        if (aspect is not null)
+        {
+            foreach (var group in state.Authority.SkillGroups.Where(item => item.Name is "Sorcery" or "Conjuring" or "Enchanting"))
+                Require(CreationSkillsPhoneAuthority.AvailableGroups(state).Any(item => item.GroupId == group.GroupId) == (group.Name == aspect),
+                    "The Skills picker did not preserve the selected Aspected Priority D group.");
+        }
+        var language = state.Authority.KnowledgeSkills.First(item => item.CanBeNativeLanguage);
+        var allowed = state.Authority.ActiveSkills.Single(item => item.Name == (technomancer ? "Compiling" : "Arcana"));
+        CharacterCreationSkillAllocation[] illegal =
+            [new(language.SourceSkillId, CharacterCreationSkillKinds.Knowledge, null, null, true),
+                new(forbidden.SourceSkillId, CharacterCreationSkillKinds.Active, 1, null, false)];
+        var rejected = service.Preview(new(state.Binding, illegal, phone.Groups));
+        Require(!phone.TryAdopt(state, overview, rejected, illegal, phone.Groups),
+            "The phone adopted a rejected Core skill purchase.");
+        var access = state.Authority.TalentAccess!;
+        var forgedAccess = access with { AllowedActiveSkillSourceIds = access.AllowedActiveSkillSourceIds.Append(forbidden.SourceSkillId)
+            .OrderBy(item => item, StringComparer.Ordinal).ToArray(), AccessDigest = string.Empty };
+        forgedAccess = forgedAccess with { AccessDigest = CharacterCreationSkillsDigest.Compute(forgedAccess) };
+        var forgedAuthority = state.Authority with { TalentAccess = forgedAccess, AuthorityDigest = string.Empty };
+        forgedAuthority = forgedAuthority with { AuthorityDigest = CharacterCreationSkillsDigest.Compute(forgedAuthority) };
+        var forgedState = state with { Authority = forgedAuthority,
+            Binding = state.Binding with { SkillsAuthorityDigest = forgedAuthority.AuthorityDigest }, SnapshotDigest = string.Empty };
+        forgedState = forgedState with { SnapshotDigest = CharacterCreationSkillsDigest.Compute(forgedState) };
+        Require(!CreationSkillsPhoneAuthority.IsReady(forgedState, overview),
+            "The phone accepted a rehashed skill-permission list inconsistent with source effects.");
+        void Adopt(IReadOnlyList<CharacterCreationSkillAllocation> skills, IReadOnlyList<CharacterCreationSkillGroupAllocation> groups)
+        {
+            var preview = service.Preview(new(state.Binding, skills, groups));
+            Require(phone.TryAdopt(state, overview, preview, skills, groups), "Native rejected legal Core Skills preview: " + string.Join(",", preview.Blockers));
+        }
+        Adopt(phone.WithSkill(language, 0, native: true), phone.Groups);
+        Adopt(phone.WithSkill(allowed, 1), phone.Groups);
+        if (aspect is not null)
+            Adopt(phone.Skills, phone.WithGroup(state.Authority.SkillGroups.Single(item => item.Name == aspect), 1));
+        var review = phone.Preview!;
+        var command = new CharacterCreationSkillsConfirmRequest(review.Binding, phone.Skills, phone.Groups,
+            review.PreviewDigest, "native-talent-skill-access", ExplicitlyConfirmed: true);
+        var saved = service.Confirm(command);
+        Require(saved.Outcome == CharacterCreationFoundationOutcomes.Success, string.Join(",", saved.Blockers));
+        var coldStore = new FileWorkspaceStore(directory);
+        var coldService = new CharacterCreationSkillsService(coldStore, resolver);
+        var cold = coldService.Load(new(id)).Value!;
+        var coldOverview = Program.NewCreationOverview(id, cold.Binding.ContentRevision, cold.Binding.SavedRevision);
+        var coldPhone = new CreationSkillsPhoneDraft();
+        coldPhone.Bind(cold, coldOverview);
+        Require(coldPhone.Matches(cold, coldOverview) && coldPhone.Skills.SequenceEqual(phone.Skills)
+            && coldPhone.Groups.SequenceEqual(phone.Groups), "Cold phone lost legal skill purchases or source access.");
+        long revision = coldStore.Get(id).Value!.ContentRevision;
+        Require(coldService.Confirm(command).Value!.ReceiptDigest == saved.Value!.ReceiptDigest
+            && coldStore.Get(id).Value!.ContentRevision == revision, "Skill replay wrote a second mutation.");
+        Require(!CreationSkillsPhoneAuthority.IsReady(cold, overview), "Phone accepted a previous workspace revision.");
+        Console.WriteLine("PASS actual source skill access → native picker/review → confirmed save → cold reopen/replay");
     }
 
     private static void RunAspected(FileWorkspaceStore store, FileSystemCharacterSourceDataResolver resolver,

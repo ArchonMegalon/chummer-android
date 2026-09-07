@@ -9,6 +9,8 @@ internal sealed class CreationSkillsPhoneDraft
     private readonly Dictionary<string, CharacterCreationSkillGroupAllocation> _groups = new(StringComparer.Ordinal);
     private readonly Dictionary<(string Kind, string Id), int> _skillMinimums = [];
     private readonly Dictionary<string, int> _groupMinimums = new(StringComparer.Ordinal);
+    private readonly HashSet<(string Kind, string Id)> _availableSkills = [];
+    private readonly HashSet<string> _availableGroups = new(StringComparer.Ordinal);
     private CharacterCreationSkillsBinding? _binding;
     private string? _snapshotDigest;
     private CharacterCreationSkillsPreview? _preview;
@@ -18,8 +20,13 @@ internal sealed class CreationSkillsPhoneDraft
         if (Matches(state, overview)) return;
         _skills.Clear(); _groups.Clear(); _binding = null; _snapshotDigest = null; _preview = null;
         _skillMinimums.Clear(); _groupMinimums.Clear();
+        _availableSkills.Clear(); _availableGroups.Clear();
         if (!CreationSkillsPhoneAuthority.IsReady(state, overview)) return;
         _binding = state.Binding; _snapshotDigest = state.SnapshotDigest;
+        foreach (var skill in CreationSkillsPhoneAuthority.AvailableActiveSkills(state).Concat(state.Authority.KnowledgeSkills))
+            _availableSkills.Add((skill.Kind, skill.SourceSkillId));
+        foreach (var group in CreationSkillsPhoneAuthority.AvailableGroups(state))
+            _availableGroups.Add(group.GroupId);
         // The initial Core snapshot already contains free Priority talent rows.
         // A previously saved Skills draft is not required to display them.
         foreach (CharacterCreationSkillProjection item in state.Skills)
@@ -53,6 +60,7 @@ internal sealed class CreationSkillsPhoneDraft
     public IReadOnlyList<CharacterCreationSkillAllocation> WithSkill(
         CharacterCreationSkillCatalogEntry source, int delta, bool native = false)
     {
+        if (!_availableSkills.Contains((source.Kind, source.SourceSkillId))) return Skills;
         _skills.TryGetValue((source.Kind, source.SourceSkillId), out CharacterCreationSkillAllocation? current);
         if (native)
         {
@@ -78,6 +86,7 @@ internal sealed class CreationSkillsPhoneDraft
     public IReadOnlyList<CharacterCreationSkillGroupAllocation> WithGroup(
         CharacterCreationSkillGroupCatalogEntry source, int delta)
     {
+        if (!_availableGroups.Contains(source.GroupId)) return Groups;
         _groups.TryGetValue(source.GroupId, out CharacterCreationSkillGroupAllocation? current);
         int next = Math.Max(MinimumRating(source), (current?.Rating ?? 0) + delta);
         return Groups.Where(item => item.GroupId != source.GroupId)
@@ -88,6 +97,7 @@ internal sealed class CreationSkillsPhoneDraft
         CharacterCreationSkillCatalogEntry source,
         string optionId)
     {
+        if (!_availableSkills.Contains((source.Kind, source.SourceSkillId))) return Skills;
         _skills.TryGetValue((source.Kind, source.SourceSkillId), out CharacterCreationSkillAllocation? current);
         if (current is null
             || current.IsNativeLanguage
