@@ -15,6 +15,7 @@ internal static class Program
     {
         (string Name, Func<Task> Run)[] tests =
         [
+            (nameof(SettlementRecoveryUsesActualNativeAndCoreAssembliesAsync), SettlementRecoveryUsesActualNativeAndCoreAssembliesAsync),
             (nameof(QueuedOlderUnfocusedCannotOverwriteActionInputAsync), QueuedOlderUnfocusedCannotOverwriteActionInputAsync),
             (nameof(StaleGenerationAndSameIdShapeChangesFailClosedAsync), StaleGenerationAndSameIdShapeChangesFailClosedAsync),
             (nameof(ReadOnlyTransitionFailsClosedAsync), ReadOnlyTransitionFailsClosedAsync),
@@ -84,6 +85,16 @@ internal static class Program
         }
 
         Console.WriteLine($"Native dialog interaction tests passed: {tests.Length}");
+    }
+
+    private static async Task SettlementRecoveryUsesActualNativeAndCoreAssembliesAsync()
+    {
+        Require(typeof(Sr5AfterRunSettlementCheckpointStore).Assembly != typeof(Program).Assembly,
+            "Settlement implementation was substituted by test source.");
+        Require(typeof(CharacterAfterRunSettlementRules).Assembly != typeof(Program).Assembly,
+            "Core settlement rules were substituted by test source.");
+        Require(await AfterRunAuthorityHarness.RunAsync() == 0,
+            "Settlement recovery cases failed against the actual native/Core assemblies.");
     }
 
     private static Task CoordinatorRefreshBurstsRenderOnlyLatestStateAsync()

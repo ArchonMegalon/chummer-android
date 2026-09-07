@@ -175,4 +175,7 @@
   <data name="AfterRunRewardRunnerChanged" xml:space="preserve"><value>The selected runner changed. Reopen After Run for the current saved runner.</value></data>
   <data name="AfterRunRewardJournalUnavailable" xml:space="preserve"><value>A pending Career operation or unreadable journal prevents a new reward. Resolve that operation first; nothing has been cleared.</value></data>
   <data name="AfterRunEntryDetail" xml:space="preserve"><value>Record local rewards or review a governed run settlement. Resolve any pending transaction first.</value></data>
+  <data name="AfterRunSettlementRecordedTitle" xml:space="preserve"><value>Recorded settlement</value></data>
+  <data name="AfterRunSettlementRecordedDetail" xml:space="preserve"><value>This receipt records a saved settlement, not the runner's current values or permission to apply it again. Acknowledging removes only this local checkpoint; the saved runner and Core ledger remain unchanged.</value></data>
+  <data name="AfterRunSettlementRecordedRevisions" xml:space="preserve"><value>Recorded revision: {0}. Current saved runner revision: {1}.</value></data>
 </root>

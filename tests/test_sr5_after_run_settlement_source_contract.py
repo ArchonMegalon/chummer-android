@@ -222,6 +222,23 @@ def test_entry_routing_prefers_owned_recovery_and_uses_local_rewards_not_manual_
     assert "replay-blocking" in owned
 
 
+def test_historical_receipt_route_cannot_resume_or_replay_and_ack_requires_unowned_gate() -> None:
+    page = read("Sr5AfterRunSettlementWizardPage.cs")
+    store = read("Sr5AfterRunSettlementCheckpointStore.cs")
+    history = store.split("internal bool TryReadOwnedRecordedReceipt", 1)[1].split("public bool TryCreate", 1)[0]
+    assert "TryReadLocked" in history
+    assert "TryReconcileResolvedOwner" not in history
+    delete = store.split("private bool TryDelete(", 1)[1].split("private bool TryRequireCasLocked", 1)[0]
+    assert delete.index("TryRunWhenUnowned") < delete.index("lock (Gate)")
+    assert "OwnsRecordedReceipt" in delete
+    assert "TryRequireCasLocked" in delete
+    receipt = page.split("public sealed class Sr5AfterRunSettlementReceiptPage", 1)[1]
+    for forbidden in ("SettleAsync", "ApplyAsync", "ResolveAsync", "RetryAsync", "SaveAsync"):
+        assert forbidden not in receipt
+    assert "IsRecordedReceiptForCurrentRunner" in receipt
+    assert "AfterRunSettlementRecordedRevisions" in receipt
+
+
 def test_default_runtime_composition_is_explicitly_unavailable() -> None:
     runner = read("RunnerSessionCoordinator.cs")
     assert "ICharacterAfterRunSettlementService? afterRunSettlementService = null" in runner

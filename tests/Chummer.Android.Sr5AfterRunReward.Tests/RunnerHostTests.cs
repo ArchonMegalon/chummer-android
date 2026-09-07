@@ -265,6 +265,13 @@ internal static partial class RewardPhoneTests
         Equal(lookups, host.Service.LookupCalls);
         Equal(writes, host.Journal.Writes);
         Equal(sharedOwner, host.OwnerBackend.Read());
+        var besideReceipt = await session.PrepareAfterRunRewardEntryAsync(false, owner: owner,
+            allowRecordedReceiptFallback: true);
+        Require(besideReceipt?.OperationId == original.OperationId && besideReceipt.HasRetainedIntent,
+            "A previously recorded settlement hid the local recovery owner.");
+        Equal(commits, host.Service.CommitCalls);
+        Equal(lookups, host.Service.LookupCalls);
+        Equal(writes, host.Journal.Writes);
     }
 
     private static async Task EntryReleasedHistoryDoesNotReplaceAnAvailableCatalog()
@@ -306,6 +313,10 @@ internal static partial class RewardPhoneTests
         using var session = RewardSession(host, out _, out var owner);
         host.OwnerBackend.Write("{}");
         await MustReject(() => session.PrepareAfterRunRewardEntryAsync(false, owner: owner));
+        Equal("{}", host.OwnerBackend.Read());
+        Require(await session.PrepareAfterRunRewardEntryAsync(false, owner: owner,
+                allowRecordedReceiptFallback: true) is null,
+            "An unavailable reward journal enabled an editable page beside a historical receipt.");
         Equal("{}", host.OwnerBackend.Read());
         var blocked = await session.PrepareAfterRunRewardEntryAsync(true, owner: owner);
         Require(blocked is not null && !blocked.CanEdit && !blocked.CanRecover

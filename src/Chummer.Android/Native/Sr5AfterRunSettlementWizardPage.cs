@@ -150,23 +150,34 @@ public sealed class Sr5AfterRunSettlementWizardPage : NativePageBase
         Sr5AfterRunSettlementWizardDependencies dependencies =
             CreateDependencies(coordinator, editor);
         bool ownsRecovery = dependencies.Store.TryReadOwnedRecovery(
-            out _,
+            out var owningCheckpoint,
             out string recoveryBlocker);
-        if (!ownsRecovery
-            && string.IsNullOrWhiteSpace(recoveryBlocker)
-            && coordinator.SupportsAfterRunRewardEntry)
+        Sr5AfterRunSettlementCheckpoint? recorded = ownsRecovery
+            && owningCheckpoint.Phase == Sr5CareerCheckpointPhase.Applied ? owningCheckpoint : null;
+        if (!ownsRecovery && dependencies.Store.TryReadOwnedRecordedReceipt(
+                out var historical, out _)) recorded = historical;
+        bool canObserveLocalRecovery = recorded is not null
+            || ownsRecovery && owningCheckpoint.Phase == Sr5CareerCheckpointPhase.Reviewed
+            || !ownsRecovery && string.IsNullOrWhiteSpace(recoveryBlocker);
+        if (canObserveLocalRecovery && coordinator.SupportsAfterRunRewardEntry)
         {
             // Recovery takes priority even when a catalog has appeared since
-            // the local reward was confirmed. A missing catalog alone permits
-            // NEW rewards; corrupt/unavailable catalogs never do.
+            // the local reward was confirmed. An old settled receipt or a
+            // not-yet-applying review must not hide an active local reward.
             var reward = await coordinator.PrepareAfterRunRewardEntryAsync(
-                allowNewReward: editor.Status == Sr5AfterRunCatalogStatus.Missing,
-                cancellationToken);
+                allowNewReward: !ownsRecovery && recorded is null
+                    && editor.Status == Sr5AfterRunCatalogStatus.Missing,
+                cancellationToken,
+                allowRecordedReceiptFallback: recorded is not null);
             cancellationToken.ThrowIfCancellationRequested();
             RequireCurrentEntry();
             if (reward is not null)
                 return new Sr5AfterRunRewardWizardPage(coordinator, reward);
         }
+
+        if (!ownsRecovery && recorded is not null)
+            return new Sr5AfterRunSettlementReceiptPage(coordinator, recorded,
+                recorded.Receipt!, dependencies.Store);
 
         return new Sr5AfterRunSettlementWizardPage(
             coordinator,
@@ -828,6 +839,7 @@ public sealed class Sr5AfterRunSettlementReceiptPage : NativePageBase
     private readonly Sr5AfterRunSettlementCheckpointStore _store;
     private readonly Button _acknowledge;
     private readonly Label _status;
+    private readonly Label _revision;
 
     internal Sr5AfterRunSettlementReceiptPage(
         RunnerSessionCoordinator coordinator,
@@ -850,10 +862,14 @@ public sealed class Sr5AfterRunSettlementReceiptPage : NativePageBase
         AutomationId = Sr5CareerWizardRoutes.AfterRunReceipt;
         VerticalStackLayout body = Sr5AfterRunSettlementWizardPage.Body();
         body.Add(NativeTheme.Eyebrow(Text("SR5 Career · After Run")));
-        body.Add(NativeTheme.Title(Text("Settlement saved")));
+        body.Add(NativeTheme.Title(PhoneStrings.Get("AfterRunSettlementRecordedTitle", "Recorded settlement")));
         body.Add(NativeTheme.Body(
-            Text("Core verified the exact post-save runner revision, transaction ledger and receipt. Acknowledging removes only this local recovery checkpoint."),
+            PhoneStrings.Get("AfterRunSettlementRecordedDetail",
+                "This receipt records a saved settlement, not the runner's current values or permission to apply it again. Acknowledging removes only this local checkpoint; the saved runner and Core ledger remain unchanged."),
             NativeTheme.Muted));
+        _revision = NativeTheme.Body(string.Empty, NativeTheme.Muted);
+        _revision.AutomationId = "sr5-after-run-receipt-revisions";
+        body.Add(_revision);
         body.Add(NativeTheme.Card(new VerticalStackLayout
         {
             Spacing = 7,
@@ -881,12 +897,15 @@ public sealed class Sr5AfterRunSettlementReceiptPage : NativePageBase
 
     protected override void Refresh()
     {
-        _acknowledge.IsEnabled = Coordinator.State.WorkspaceId
-                == _checkpoint.Draft.WorkspaceId
-            && Coordinator.State.ContentRevision
-                == _checkpoint.Draft.ExpectedWorkspaceRevision + 1
-            && Coordinator.State.SavedRevision == Coordinator.State.ContentRevision
-            && !Coordinator.State.IsDirty;
+        bool owned = _store.IsRecordedReceiptForCurrentRunner(_checkpoint);
+        _acknowledge.IsEnabled = owned && !Coordinator.State.IsBusy;
+        _revision.Text = owned
+            ? PhoneStrings.Format("AfterRunSettlementRecordedRevisions",
+                "Recorded revision: {0}. Current saved runner revision: {1}.",
+                _checkpoint.Draft.ExpectedWorkspaceRevision + 1,
+                Coordinator.State.SavedRevision)
+            : PhoneStrings.Get("AfterRunRewardRunnerChanged",
+                "The selected runner changed. Reopen After Run for the current saved runner.");
     }
 
     private async Task AcknowledgeAsync()

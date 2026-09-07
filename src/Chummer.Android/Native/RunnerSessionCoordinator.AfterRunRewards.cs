@@ -42,7 +42,8 @@ public sealed partial class RunnerSessionCoordinator
     /// </summary>
     internal async Task<Sr5AfterRunRewardPhoneModel?> PrepareAfterRunRewardEntryAsync(
         bool allowNewReward, CancellationToken cancellationToken = default,
-        ISr5CareerCheckpointOwnerAuthority? owner = null)
+        ISr5CareerCheckpointOwnerAuthority? owner = null,
+        bool allowRecordedReceiptFallback = false)
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (!SupportsAfterRunRewardEntry) return null;
@@ -52,7 +53,11 @@ public sealed partial class RunnerSessionCoordinator
         if (!model.HasCurrentSelection)
             throw new InvalidOperationException(PhoneStrings.Get("AfterRunRewardRunnerChanged",
                 "The selected runner changed. Reopen After Run for the current saved runner."));
-        if (!allowNewReward && model.Status == Sr5AfterRunRewardPhoneStatus.JournalUnavailable)
+        // Only an independently owned, read-only historical receipt may remain
+        // visible when this observation is blocked. It grants no write access;
+        // its acknowledgment still requires the shared unowned gate.
+        if (!allowNewReward && !allowRecordedReceiptFallback
+            && model.Status == Sr5AfterRunRewardPhoneStatus.JournalUnavailable)
             throw new InvalidOperationException(PhoneStrings.Get("AfterRunRewardJournalUnavailable",
                 "A pending Career operation or unreadable journal prevents a new reward. Resolve that operation first; nothing has been cleared."));
         return allowNewReward || model.HasRetainedIntent ? model : null;

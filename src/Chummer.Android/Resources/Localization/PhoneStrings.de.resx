@@ -175,4 +175,7 @@
   <data name="AfterRunRewardRunnerChanged" xml:space="preserve"><value>Der ausgewählte Runner wurde gewechselt. Öffne Nach dem Run für den aktuell gespeicherten Runner erneut.</value></data>
   <data name="AfterRunRewardJournalUnavailable" xml:space="preserve"><value>Ein offener Karrierevorgang oder ein nicht lesbares Buchungsjournal verhindert eine neue Belohnung. Kläre zuerst diesen Vorgang; nichts wurde gelöscht.</value></data>
   <data name="AfterRunEntryDetail" xml:space="preserve"><value>Erfasse lokale Belohnungen oder prüfe eine freigegebene Run-Abrechnung. Kläre zuerst jeden noch offenen Vorgang.</value></data>
+  <data name="AfterRunSettlementRecordedTitle" xml:space="preserve"><value>Erfasste Abrechnung</value></data>
+  <data name="AfterRunSettlementRecordedDetail" xml:space="preserve"><value>Dieser Beleg dokumentiert eine gespeicherte Abrechnung, nicht die aktuellen Runner-Werte oder eine Freigabe zur erneuten Buchung. Bestätigen entfernt nur diesen lokalen Checkpoint; der gespeicherte Runner und das Core-Buchungsjournal bleiben unverändert.</value></data>
+  <data name="AfterRunSettlementRecordedRevisions" xml:space="preserve"><value>Belegstand: {0}. Aktueller gespeicherter Runner-Stand: {1}.</value></data>
 </root>
