@@ -67,6 +67,13 @@ internal static partial class AfterRunAuthorityHarness
         await action;
         Require(fixture.Backend.Payload == retained,
             "A confirmation arriving after page departure deleted the review.");
+        fixture.Answer = NewAnswer();
+        int priorDialogs = fixture.DialogCalls;
+        Task queued = fixture.Page.AbandonReviewedAsync();
+        fixture.Answer.TrySetResult(false);
+        await queued;
+        Require(fixture.DialogCalls == priorDialogs && fixture.Backend.Payload == retained,
+            "A queued old-page click opened a new dialog after departure.");
     }
 
     private static TaskCompletionSource<bool> NewAnswer()

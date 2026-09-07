@@ -26,6 +26,7 @@ public sealed class Sr5AfterRunSettlementWizardPage : NativePageBase
     private readonly Button _abandon;
     private readonly Func<string, string, string, string, Task<bool>> _confirmAbandon;
     private long _discardAppearanceGeneration;
+    private bool _discardPageDeparted;
     private Sr5AfterRunSettlementCandidate? _selected;
     private Sr5AfterRunSettlementCheckpoint? _checkpoint;
 
@@ -212,11 +213,13 @@ public sealed class Sr5AfterRunSettlementWizardPage : NativePageBase
     protected override void OnAppearing()
     {
         Interlocked.Increment(ref _discardAppearanceGeneration);
+        _discardPageDeparted = false;
         base.OnAppearing();
     }
 
     protected override void OnDisappearing()
     {
+        _discardPageDeparted = true;
         Interlocked.Increment(ref _discardAppearanceGeneration);
         base.OnDisappearing();
     }
@@ -400,7 +403,8 @@ public sealed class Sr5AfterRunSettlementWizardPage : NativePageBase
 
     private async Task AbandonAsync()
     {
-        if (_checkpoint is null || !_store.IsDiscardableReviewForCurrentRunner(_checkpoint))
+        if (_discardPageDeparted || _checkpoint is null
+            || !_store.IsDiscardableReviewForCurrentRunner(_checkpoint))
         {
             return;
         }
