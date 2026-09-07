@@ -128,7 +128,13 @@ The chosen powers retain their undiscounted source costs and save only the wizar
 ledger. A reconstructed file store and service must reproduce the same budget,
 selections, source identity and idempotent receipt without modifying runner XML.
 
-This adds a managed native/Core integration case, not an APK, Android Activity
+A second actual-source case selects Human/Technomancer C, raises RES, chooses the
+default stream and source-allowed Complex Forms through ordinary phone controls,
+and confirms/reopens/replays the wizard receipt. The nested Living Persona source
+and original Talent identity must survive unchanged; character effects are still
+reserved for separate whole-character finalization.
+
+These are managed native/Core integration cases, not an APK, Android Activity
 lifecycle, physical-device, whole-character finalization or Play proof. Overview
 selection is supplied by the existing explicit test adapter; the source catalog,
 bootstrap, attribute/magic services, file store and phone interaction logic are

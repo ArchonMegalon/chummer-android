@@ -2,6 +2,7 @@ using Chummer.Android.Native;
 using Chummer.Application.Characters;
 using Chummer.Contracts.Characters;
 using Chummer.Contracts.Rulesets;
+using Chummer.Contracts.Workspaces;
 using Chummer.Infrastructure.Files;
 using Chummer.Infrastructure.Workspaces;
 using Chummer.Infrastructure.Xml;
@@ -14,6 +15,12 @@ using Chummer.Rulesets.Sr5;
 internal static class CreationMagicNativeRuntimeTests
 {
     public static void Run(string contentRoot)
+    {
+        RunTalent(contentRoot, technomancer: false);
+        RunTalent(contentRoot, technomancer: true);
+    }
+
+    private static void RunTalent(string contentRoot, bool technomancer)
     {
         Require(Path.IsPathFullyQualified(contentRoot) && Directory.Exists(Path.Combine(contentRoot, "data")),
             "Supply the explicit Core content directory.");
@@ -31,7 +38,7 @@ internal static class CreationMagicNativeRuntimeTests
                 new RulesetWorkspaceCodecResolver([codec]), queries, resolver);
             var created = bootstrap.Create(new(CharacterCreationBootstrapSchemas.RequestV1,
                 CharacterCreationBootstrapStages.AwaitingFoundationSelection, RulesetDefaults.Sr5,
-                "Adept phone projection", "Adept", CharacterCreationBuildMethods.Priority,
+                "Awakened phone projection", technomancer ? "Technomancer" : "Adept", CharacterCreationBuildMethods.Priority,
                 CharacterCreationBootstrapProfiles.PrioritySettingsProfileId));
             Require(created.Outcome == CharacterCreationBootstrapOutcomes.Success, string.Join(",", created.Blockers));
             var id = created.Value!.WorkspaceId;
@@ -48,7 +55,8 @@ internal static class CreationMagicNativeRuntimeTests
             var heritage = initial.Authority.Options.Single(item => item.CategoryId == CharacterCreationPriorityCategoryIds.Heritage
                 && item.Rank == "E").HeritageOptions.First(item => item.IsEnabled && item.MetatypeName == "Human" && item.MetavariantSourceId is null);
             var talent = initial.Authority.Options.Single(item => item.CategoryId == CharacterCreationPriorityCategoryIds.Talent
-                && item.Rank == "C").TalentOptions.First(item => item.IsEnabled && item.Value == "Adept" && item.Magic == 4);
+                && item.Rank == "C").TalentOptions.First(item => item.IsEnabled
+                    && (technomancer ? item.Value == "Technomancer" : item.Value == "Adept" && item.Magic == 4));
             string[] skills = talent.ActiveSkillGrant?.Options.Where(item => item.IsEnabled)
                 .Take(talent.ActiveSkillGrant.Quantity).Select(item => item.SelectionId).ToArray() ?? [];
             var priority = prerequisites.Preview(new(initial.Binding, ranks)
@@ -61,7 +69,7 @@ internal static class CreationMagicNativeRuntimeTests
             Require(selected.Outcome == CharacterCreationFoundationOutcomes.Success, string.Join(",", selected.Blockers));
             var attributes = new CharacterCreationAttributesService(store, resolver);
             var attributeState = attributes.Load(new(id)).Value!;
-            CharacterCreationAttributeAllocation[] allocations = [new("MAG", 1, 0)];
+            CharacterCreationAttributeAllocation[] allocations = [new(technomancer ? "RES" : "MAG", 1, 0)];
             var attributeReview = attributes.Preview(new(attributeState.Binding, allocations)).Value!;
             Require(attributeReview.CanConfirm, string.Join(",", attributeReview.Blockers));
             var assigned = attributes.Confirm(new(attributeReview.Binding, allocations, attributeReview.PreviewDigest, true));
@@ -69,6 +77,11 @@ internal static class CreationMagicNativeRuntimeTests
             var service = new CharacterCreationMagicResonanceService(store, resolver);
             var state = service.Load(new(id)).Value!;
             Require(state.CanEdit, string.Join(",", state.Blockers));
+            if (technomancer)
+            {
+                RunTechnomancer(store, resolver, service, state, id, directory);
+                return;
+            }
             Require(state.SelectedTalent!.Magic == 4 && state.AdeptPowerPointBudget.Total == 5,
                 "Canonical C Adept source MAG must remain 4; confirmed MAG and spend budget must be 5.");
             string sourceTalentDigest = CharacterCreationMagicResonanceDigest.Compute(state.SelectedTalent);
@@ -138,6 +151,60 @@ internal static class CreationMagicNativeRuntimeTests
             Console.WriteLine("PASS actual Adept source/raised MAG → Presentation caps → phone review/confirm → cold file-store reopen/replay");
         }
         finally { Directory.Delete(directory, recursive: true); }
+    }
+
+    private static void RunTechnomancer(FileWorkspaceStore store, FileSystemCharacterSourceDataResolver resolver,
+        CharacterCreationMagicResonanceService service, CharacterCreationMagicResonanceState state,
+        CharacterWorkspaceId id, string directory)
+    {
+        Require(CharacterCreationMagicResonanceWorkflow.TryProject(state, out var projection),
+            "Technomancer Core state rejected: " + ProjectionDiagnostics(state));
+        var editor = projection!;
+        var overview = Program.NewCreationOverview(id, state.Binding.ContentRevision, state.Binding.SavedRevision) with
+            { CreationMagicResonance = state, CreationMagicResonanceEditor = editor };
+        var phone = new CreationMagicResonancePhoneDraft();
+        phone.Bind(editor, overview);
+        var stream = editor.Streams.Single(item => item.Name == "Default");
+        var review = CharacterCreationMagicResonanceWorkflow.Review(service, editor, phone.CreateSingleCandidate(stream));
+        Require(phone.TryAdopt(editor, overview, review), "Phone lost the user-selected stream.");
+        var forms = editor.ComplexForms.Where(item => item.IsEnabled).Take(state.SelectedTalent!.ComplexFormBudget).ToArray();
+        foreach (var form in forms)
+        {
+            review = CharacterCreationMagicResonanceWorkflow.Review(service, editor, phone.CreateToggleCandidate(form));
+            Require(phone.TryAdopt(editor, overview, review), "Phone lost the selected Complex Form.");
+        }
+        Require(review.Preview.CanConfirm, string.Join(",", review.Preview.Blockers));
+        string beforeXml = store.Get(id).Value!.Document.Content;
+        string key = CreationMagicResonancePhoneAuthority.ComputeIdempotencyKey(review);
+        var confirmed = CharacterCreationMagicResonanceWorkflow.Confirm(service, review, key, explicitlyConfirmed: true);
+        var coldStore = new FileWorkspaceStore(directory);
+        var coldService = new CharacterCreationMagicResonanceService(coldStore, resolver);
+        var cold = coldService.Load(new(id)).Value!;
+        var reopened = CharacterCreationMagicResonanceWorkflow.Project(cold);
+        Require(reopened.CanEdit && reopened.Selections.Stream == stream.Identity
+            && reopened.Selections.ComplexForms.SequenceEqual(forms.Select(item => item.Identity)),
+            "Cold phone projection lost the user's stream/forms.");
+        var contribution = coldStore.Get(id).Value!.Document.AuxiliaryState.CharacterCreationMagicResonanceDraft!.FinalizationContribution!;
+        var quality = contribution.Talent.GrantedQualitySources!.Single();
+        Require(quality.GrantedGearSources!.Single().Name == "Living Persona"
+            && contribution.EffectiveAttributes!.Resonance == state.SelectedTalent.Resonance + 1,
+            "Source-defined gear or confirmed RES was lost in the actual phone confirmation.");
+        Require(CharacterCreationMagicResonanceDigest.Compute(cold.SelectedTalent!)
+                == CharacterCreationMagicResonanceDigest.Compute(state.SelectedTalent)
+            && coldStore.Get(id).Value!.Document.Content == beforeXml,
+            "Phone step changed source grants or applied effects before finalization.");
+        var replay = CharacterCreationMagicResonanceWorkflow.Confirm(coldService, review, key, explicitlyConfirmed: true);
+        Require(replay.Receipt.ReceiptDigest == confirmed.Receipt.ReceiptDigest
+            && coldStore.Get(id).Value!.ContentRevision == confirmed.Receipt.ContentRevision,
+            "Retry applied the Technomancer choices twice.");
+        // Display labels are not command authority; only the source identity is
+        // carried into the draft. Replacing a label must not rename a stream.
+        Require(CharacterCreationMagicResonanceDigest.Compute(phone.CreateSingleCandidate(stream))
+                == CharacterCreationMagicResonanceDigest.Compute(phone.CreateSingleCandidate(stream with { Name = "invented stream" })),
+            "Display-only input changed the typed source selection.");
+        ExpectRejected(() => phone.CreateSingleCandidate(stream with
+            { Identity = stream.Identity with { SourceId = Guid.NewGuid().ToString("D") } }));
+        Console.WriteLine("PASS actual Technomancer source/raised RES → native stream/forms choices → cold file-store reopen/replay");
     }
 
     private static void Require(bool condition, string message)
