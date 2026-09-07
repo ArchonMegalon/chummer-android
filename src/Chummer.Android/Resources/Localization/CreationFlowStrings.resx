@@ -233,4 +233,5 @@
   <data name="Magic.Mystic.Boundary" xml:space="preserve"><value>Karma is reserved in the final build review. Exchanged spell slots reduce your spell choices.</value></data>
   <data name="Magic.Mystic.Decrease" xml:space="preserve"><value>Remove one power point</value></data>
   <data name="Magic.Mystic.Increase" xml:space="preserve"><value>Add one power point</value></data>
+  <data name="Magic.Mystic.SeparateAttributeUnsupported" xml:space="preserve"><value>This rules profile uses a separate MAGAdept attribute. Its allocation is not supported by this wizard yet. Your draft and rules profile remain unchanged.</value></data>
 </root>

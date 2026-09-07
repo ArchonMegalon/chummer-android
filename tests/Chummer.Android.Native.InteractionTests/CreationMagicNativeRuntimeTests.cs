@@ -227,11 +227,29 @@ internal static class CreationMagicNativeRuntimeTests
             var culture = System.Globalization.CultureInfo.GetCultureInfo(language);
             Require(CreationFlowStrings.Get("Magic.Mystic.Title", "missing", culture) == title,
                 "Real Creation resources did not resolve the phone region's language: " + language);
-            foreach (string resourceKey in new[] { "Summary", "Boundary", "Decrease", "Increase" })
+            foreach (string resourceKey in new[] { "Summary", "Boundary", "Decrease", "Increase", "SeparateAttributeUnsupported" })
                 Require(CreationFlowStrings.Get("Magic.Mystic." + resourceKey, "missing", culture) != "missing", resourceKey);
             Require(CreationFlowStrings.Format(culture, "Magic.Mystic.Summary", "missing", 2, 4, 10, 0, 5).Contains("10", StringComparison.Ordinal),
                 "The translated Core quote did not render.");
         }
+        Require(!CreationMagicResonancePage.HasUnsupportedSeparateMagicProfile(state),
+            "An ordinary Mystic Adept purchase must not show the separate-attribute notice.");
+        var unsupportedProfile = state with
+        {
+            Authority = state.Authority with
+            {
+                MysticAdeptPowerPointPolicy = state.Authority.MysticAdeptPowerPointPolicy! with { UsesSeparateMagicAttribute = true }
+            },
+            SelectedTalent = state.SelectedTalent! with { IsEnabled = false },
+            Blockers = [CharacterCreationMagicResonanceBlockers.PowerBudgetUnsupported]
+        };
+        // Display-only predicate: the forged fixture is never offered to Core or persisted.
+        Require(CreationMagicResonancePage.HasUnsupportedSeparateMagicProfile(unsupportedProfile),
+            "A blocked separate-attribute profile needs an explanatory notice.");
+        Require(!CreationMagicResonancePage.HasUnsupportedSeparateMagicProfile(unsupportedProfile with { Blockers = [] })
+            && !CreationMagicResonancePage.HasUnsupportedSeparateMagicProfile(unsupportedProfile with
+            { SelectedTalent = state.SelectedTalent! with { Kind = CharacterCreationMagicResonanceKinds.Adept, IsEnabled = false } }),
+            "Unrelated blocked talents must not be described as unsupported separate Magic.");
         Require(CharacterCreationMagicResonanceWorkflow.TryProject(state, out var projected),
             "Mystic Adept Core state rejected: " + ProjectionDiagnostics(state));
         var editor = projected!;

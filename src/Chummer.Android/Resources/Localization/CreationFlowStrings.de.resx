@@ -233,4 +233,5 @@
   <data name="Magic.Mystic.Boundary" xml:space="preserve"><value>Karma wird in der abschließenden Charakterprüfung verrechnet. Getauschte Zauberplätze verringern deine Zauberauswahl.</value></data>
   <data name="Magic.Mystic.Decrease" xml:space="preserve"><value>Einen Kraftpunkt entfernen</value></data>
   <data name="Magic.Mystic.Increase" xml:space="preserve"><value>Einen Kraftpunkt hinzufügen</value></data>
+  <data name="Magic.Mystic.SeparateAttributeUnsupported" xml:space="preserve"><value>Dieses Regelprofil verwendet das getrennte Attribut MAGAdept. Dessen Verteilung wird von diesem Wizard noch nicht unterstützt. Dein Entwurf und das Regelprofil bleiben unverändert.</value></data>
 </root>

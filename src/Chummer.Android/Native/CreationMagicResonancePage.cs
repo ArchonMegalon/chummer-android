@@ -49,6 +49,13 @@ public sealed class CreationMagicResonancePage : NativePageBase
 
         CharacterCreationFoundationResult<CharacterCreationMagicResonanceState> load =
             Coordinator.LoadCreationMagicResonance();
+        if (load.Value is { } profileState && HasUnsupportedSeparateMagicProfile(profileState))
+        {
+            var notice = NativeTheme.Body(CreationFlowStrings.Get("Magic.Mystic.SeparateAttributeUnsupported",
+                "This rules profile uses a separate MAGAdept attribute. Its allocation is not supported by this wizard yet. Your draft and rules profile remain unchanged."), NativeTheme.Danger);
+            notice.AutomationId = "creation-magic-resonance-separate-attribute-unavailable";
+            _body.Add(notice);
+        }
         if (load.Value is not { } core
             || !CharacterCreationMagicResonanceWorkflow.TryProject(
                 core,
@@ -86,6 +93,12 @@ public sealed class CreationMagicResonancePage : NativePageBase
             .Concat(review?.Preview.Blockers ?? [])
             .Concat(_localBlockers));
     }
+
+    internal static bool HasUnsupportedSeparateMagicProfile(CharacterCreationMagicResonanceState state) =>
+        state.Authority.IsAuthoritative
+        && state.SelectedTalent is { Kind: CharacterCreationMagicResonanceKinds.MysticAdept, IsEnabled: false }
+        && state.Authority.MysticAdeptPowerPointPolicy?.UsesSeparateMagicAttribute == true
+        && state.Blockers.Contains(CharacterCreationMagicResonanceBlockers.PowerBudgetUnsupported, StringComparer.Ordinal);
 
     private void AddMysticPowerPoints(CharacterCreationMagicResonanceEditorState editor, bool laneLocked)
     {
