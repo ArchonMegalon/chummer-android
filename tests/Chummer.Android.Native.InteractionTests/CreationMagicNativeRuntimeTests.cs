@@ -227,8 +227,8 @@ internal static class CreationMagicNativeRuntimeTests
             var culture = System.Globalization.CultureInfo.GetCultureInfo(language);
             Require(CreationFlowStrings.Get("Magic.Mystic.Title", "missing", culture) == title,
                 "Real Creation resources did not resolve the phone region's language: " + language);
-            foreach (string key in new[] { "Summary", "Boundary", "Decrease", "Increase" })
-                Require(CreationFlowStrings.Get("Magic.Mystic." + key, "missing", culture) != "missing", key);
+            foreach (string resourceKey in new[] { "Summary", "Boundary", "Decrease", "Increase" })
+                Require(CreationFlowStrings.Get("Magic.Mystic." + resourceKey, "missing", culture) != "missing", resourceKey);
             Require(CreationFlowStrings.Format(culture, "Magic.Mystic.Summary", "missing", 2, 4, 10, 0, 5).Contains("10", StringComparison.Ordinal),
                 "The translated Core quote did not render.");
         }
