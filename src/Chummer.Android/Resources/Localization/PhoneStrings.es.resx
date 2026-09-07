@@ -152,6 +152,8 @@
   <data name="AfterRunRewardRecover" xml:space="preserve"><value>Comprobar resultado guardado</value></data>
   <data name="AfterRunRewardRetry" xml:space="preserve"><value>Reintentar la misma recompensa confirmada</value></data>
   <data name="AfterRunRewardDone" xml:space="preserve"><value>Listo · volver a Carrera</value></data>
+  <data name="AfterRunRewardDowntime" xml:space="preserve"><value>Planificar el tiempo libre</value></data>
+  <data name="AfterRunRewardDowntimeBoundary" xml:space="preserve"><value>Planifica tu calendario localmente. Cada cambio requiere su propia revisión y confirmación; no gasta Karma, concede recompensas ni aprueba consecuencias de la misión.</value></data>
   <data name="AfterRunRewardConsequences" xml:space="preserve"><value>Revisar consecuencias de la misión</value></data>
   <data name="AfterRunRewardConsequencesChanged" xml:space="preserve"><value>El runner guardado o la propuesta de misión ha cambiado. Vuelve a comprobar la recompensa guardada antes de continuar.</value></data>
   <data name="AfterRunRewardConsequencesBoundary" xml:space="preserve"><value>Heat, reputación y contactos requieren una propuesta de misión revisada por separado. Consultarla no concede otra recompensa ni aprueba las consecuencias.</value></data>

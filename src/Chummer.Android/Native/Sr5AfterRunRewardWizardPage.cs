@@ -24,8 +24,22 @@ public sealed class Sr5AfterRunRewardWizardPage : NativePageBase
         _view = new(_model, RunAsync, async () =>
         {
             if (_model.CanContinue) await Navigation.PopAsync();
-        }, OpenConsequencesAsync);
+        }, OpenConsequencesAsync, OpenDowntimeAsync);
         Content = new ScrollView { Content = _view };
+    }
+
+    internal async Task OpenDowntimeAsync(CancellationToken cancellationToken)
+    {
+        var saved = _model.Handoff;
+        RequireCurrentReward(saved, cancellationToken);
+        // Local planning has its own typed preview and confirmation. A saved
+        // reward is an entry context, never a run proposal or GM approval.
+        var destination = new Sr5DowntimeCalendarWizardPage(Coordinator,
+            new RunnerSessionSr5DowntimeCalendarAuthority(Coordinator),
+            Sr5DowntimeCalendarJournalStore.CreateDefault(),
+            entryStillCurrent: () => _model.CanContinue && ReferenceEquals(saved, _model.Handoff));
+        RequireCurrentReward(saved, cancellationToken);
+        await Navigation.PushAsync(destination);
     }
 
     internal async Task OpenConsequencesAsync(CancellationToken cancellationToken)

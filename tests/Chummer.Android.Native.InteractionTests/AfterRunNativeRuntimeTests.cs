@@ -27,7 +27,159 @@ internal static partial class AfterRunAuthorityHarness
         await NativeRewardRefreshFailureRecoversWithoutCreditAsync(contentRoot, cancel: true);
         await NativeRewardConsequencesContinuationIsReadOnlyAsync(contentRoot);
         await NativeRewardGovernedConsequencesPersistOnceAsync(contentRoot);
-        Console.WriteLine("PASS 5 actual native/runtime/file-store integration cases");
+        await NativeRewardDowntimePlansWithoutRecreditAsync(contentRoot);
+        Console.WriteLine("PASS 6 actual native/runtime/file-store integration cases");
+    }
+
+    private static async Task NativeRewardDowntimePlansWithoutRecreditAsync(string contentRoot)
+    {
+        await using var runtime = new NativeRewardRuntime(contentRoot);
+        await runtime.LoadRunnerAsync();
+        var reward = await runtime.PrepareRewardAsync();
+        var page = new Sr5AfterRunRewardWizardPage(runtime.Coordinator, reward);
+        var navigation = new NavigationPage(page);
+        var view = (Sr5AfterRunRewardView)((ScrollView)page.Content!).Content;
+        var button = ((VerticalStackLayout)view.Content!).Children.OfType<Button>()
+            .SingleOrDefault(control => control.AutomationId == "sr5-reward-downtime");
+        Require(button is not null, "Saved rewards have no ordinary local Downtime planning continuation.");
+        Require(!button!.IsEnabled && !button.IsVisible, "An uncommitted reward enabled Downtime continuation.");
+        await ExpectConsequencesRejectedAsync(() => InvokeTokenPageActionAsync(page, "OpenDowntimeAsync", default));
+        Require(navigation.Navigation.NavigationStack.Count == 1, "Unconfirmed continuation changed navigation.");
+        await reward.ConfirmAsync();
+        view.Refresh();
+        Require(button.IsEnabled && button.IsVisible && reward.CanContinue, "Saved reward did not enable local planning.");
+        var store = new FileWorkspaceStore(runtime.StateDirectory);
+        var rewarded = store.Get(runtime.Id).Value!;
+        using (var canceled = new CancellationTokenSource())
+        {
+            canceled.Cancel();
+            await ExpectConsequencesRejectedAsync(() => InvokeTokenPageActionAsync(page, "OpenDowntimeAsync", canceled.Token), canceled: true);
+            Require(navigation.Navigation.NavigationStack.Count == 1, "Canceled continuation pushed a calendar.");
+        }
+        await NativeRewardDowntimeClickGateAsync(reward);
+        var expiredEntry = new Sr5AfterRunRewardWizardPage(runtime.Coordinator, reward);
+        var expiredNavigation = new NavigationPage(expiredEntry);
+        await InvokeTokenPageActionAsync(expiredEntry, "OpenDowntimeAsync", default);
+        var expiredCalendar = (Sr5DowntimeCalendarWizardPage)expiredNavigation.CurrentPage;
+        await reward.RecoverAsync(); // Same revision, a separately verified handoff.
+        await InvokeTokenPageActionAsync(expiredCalendar, "PrepareForAppearanceRefreshAsync", default);
+        RefreshCalendar(expiredCalendar);
+        Require(CalendarField<Sr5DowntimeCalendarPhoneLoadResult?>(expiredCalendar, "_load") is null
+                && !PageButton(expiredCalendar, "sr5-downtime-calendar-review").IsEnabled,
+            "A replaced reward handoff was silently renewed while Calendar attached.");
+        int entryChecks = 0;
+        var changedDuringProjection = new Sr5DowntimeCalendarWizardPage(runtime.Coordinator,
+            new RunnerSessionSr5DowntimeCalendarAuthority(runtime.Coordinator),
+            Sr5DowntimeCalendarJournalStore.CreateDefault(), entryStillCurrent: () => ++entryChecks == 1);
+        await InvokeTokenPageActionAsync(changedDuringProjection, "PrepareForAppearanceRefreshAsync", default);
+        RefreshCalendar(changedDuringProjection);
+        Require(entryChecks == 2 && CalendarField<Sr5DowntimeCalendarPhoneLoadResult?>(changedDuringProjection, "_load") is null
+                && !PageButton(changedDuringProjection, "sr5-downtime-calendar-review").IsEnabled,
+            "A Calendar projection was accepted after its entry context expired.");
+        RequireSameRewardDocument(rewarded, store.Get(runtime.Id).Value!);
+        await InvokeTokenPageActionAsync(page, "OpenDowntimeAsync", default);
+        Require(navigation.CurrentPage is Sr5DowntimeCalendarWizardPage, "Local continuation did not reuse the governed Calendar wizard.");
+        var calendar = (Sr5DowntimeCalendarWizardPage)navigation.CurrentPage;
+        await InvokeTokenPageActionAsync(calendar, "PrepareForAppearanceRefreshAsync", default);
+        RefreshCalendar(calendar);
+        Require(PageButton(calendar, "sr5-downtime-calendar-review").IsEnabled,
+            "Real Calendar authority is unavailable for the freshly rewarded runner: "
+            + CalendarField<Label>(calendar, "_binding").Text + " / " + CalendarField<Label>(calendar, "_status").Text);
+        var load = CalendarField<Sr5DowntimeCalendarPhoneLoadResult>(calendar, "_load");
+        Require(load.IsReady && load.Binding!.WorkspaceId == runtime.Id.Value
+                && load.Binding.WorkspaceRevision == rewarded.SavedRevision && load.Editor!.Weeks.Count == 0,
+            "Calendar did not bind the exact saved reward revision.");
+        CalendarField<Entry>(calendar, "_year").Text = "2078";
+        CalendarField<Entry>(calendar, "_week").Text = "12";
+        await InvokePageActionAsync(calendar, "ReviewAsync");
+        RefreshCalendar(calendar);
+        var session = CalendarField<Sr5DowntimeCalendarDesktopSession>(calendar, "_session");
+        Require(session.State.Preview is not null && !session.State.CanApply,
+            "Calendar preview is missing or implicitly confirmed.");
+        RequireSameRewardDocument(rewarded, store.Get(runtime.Id).Value!);
+        await ExpectConsequencesRejectedAsync(() => InvokePageActionAsync(calendar, "ApplyAsync"));
+        RequireSameRewardDocument(rewarded, store.Get(runtime.Id).Value!);
+        // Managed test supplies the explicit user decision to the real session.
+        // This does not exercise the native Android confirmation dialog.
+        Require(session.TryConfirm(session.State.Preview!.PreviewDigest), "Exact Calendar preview could not be confirmed.");
+        RefreshCalendar(calendar);
+        Require(PageButton(calendar, "sr5-downtime-calendar-apply").IsEnabled, "Confirmed Calendar save is disabled.");
+        await InvokePageActionAsync(calendar, "ApplyAsync");
+        RefreshCalendar(calendar);
+        var planned = store.Get(runtime.Id).Value!;
+        var projected = await runtime.Coordinator.PrepareCareerCalendarEditAsync();
+        Require(planned.ContentRevision == rewarded.ContentRevision + 1 && planned.SavedRevision == planned.ContentRevision
+                && projected?.Weeks.Count == 1 && projected.Weeks[0].Year == 2078 && projected.Weeks[0].Week == 12,
+            "Calendar did not save the user's chosen week exactly once.");
+        var document = System.Xml.Linq.XDocument.Parse(planned.Document.Content).Root!;
+        Require(document.Element("karma")?.Value == "38" && document.Element("nuyen")?.Value == "13500"
+                && document.Element("contacts")?.Elements("contact").Count() == 0
+                && planned.Document.AuxiliaryState.CharacterAfterRunRewardReceipts?.Count == 1
+                && (planned.Document.AuxiliaryState.CharacterAfterRunSettlementReceipts?.Count ?? 0) == 0,
+            "Local Downtime re-credited a reward or invented governed run consequences.");
+        Require(PageButton(calendar, "sr5-downtime-calendar-clear-applied").IsVisible,
+            "Successful Calendar save did not retain its verified receipt.");
+        await ExpectConsequencesRejectedAsync(() => InvokePageActionAsync(calendar, "ApplyAsync"));
+        RequireSameRewardDocument(planned, store.Get(runtime.Id).Value!);
+        var reopened = new Sr5DowntimeCalendarWizardPage(runtime.Coordinator);
+        await InvokeTokenPageActionAsync(reopened, "PrepareForAppearanceRefreshAsync", default);
+        RefreshCalendar(reopened);
+        Require(PageButton(reopened, "sr5-downtime-calendar-clear-applied").IsVisible
+                && !PageButton(reopened, "sr5-downtime-calendar-apply").IsEnabled,
+            "Reconstructed Calendar lost its receipt or restored save permission.");
+        Require(!reward.CanContinue, "Calendar mutation left an old reward handoff current.");
+        await ExpectConsequencesRejectedAsync(() => InvokeTokenPageActionAsync(page, "OpenDowntimeAsync", default));
+        await reward.RecoverAsync();
+        Require(reward.CanContinue && reward.Handoff?.Snapshot.AvailableKarma == 38
+                && reward.Handoff.Snapshot.AvailableNuyen == 13500,
+            "Reward recovery after Calendar save lost the current balance.");
+        RequireSameRewardDocument(planned, store.Get(runtime.Id).Value!);
+        Console.WriteLine("PASS actual saved reward → local Calendar review/confirmed save/reopen without a proposal or duplicate reward");
+    }
+
+    private static async Task NativeRewardDowntimeClickGateAsync(Sr5AfterRunRewardPhoneModel model)
+    {
+        Task pending = Task.CompletedTask;
+        int plans = 0, proposals = 0;
+        var response = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var view = new Sr5AfterRunRewardView(model, action => pending = action(),
+            () => throw new InvalidOperationException("Planning invoked Done."),
+            _ => { proposals++; return Task.CompletedTask; },
+            _ => { plans++; return response.Task; });
+        var buttons = ((VerticalStackLayout)view.Content!).Children.OfType<Button>().ToArray();
+        var plan = buttons.Single(button => button.AutomationId == "sr5-reward-downtime");
+        var consequences = buttons.Single(button => button.AutomationId == "sr5-reward-consequences");
+        ((IButtonController)plan).SendClicked();
+        Task first = pending;
+        Require(plans == 1 && !first.IsCompleted && !plan.IsEnabled && !consequences.IsEnabled,
+            "Local planning did not retain the shared action gate while navigating.");
+        ((IButtonController)plan).SendClicked();
+        ((IButtonController)consequences).SendClicked();
+        Require(plans == 1 && proposals == 0, "Overlapping clicks entered another After Run destination.");
+        response.SetResult();
+        await first;
+        Require(plan.IsEnabled, "Planning remained disabled after navigation drained.");
+        using var lifetime = new CancellationTokenSource();
+        view.SetLifetime(lifetime.Token);
+        lifetime.Cancel();
+        ((IButtonController)plan).SendClicked();
+        await pending;
+        Require(plans == 1, "A departed reward page issued a Calendar navigation.");
+    }
+
+    private static T CalendarField<T>(Sr5DowntimeCalendarWizardPage page, string field)
+        => (T)typeof(Sr5DowntimeCalendarWizardPage).GetField(field, BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)!;
+
+    private static void RefreshCalendar(Sr5DowntimeCalendarWizardPage page)
+        => typeof(Sr5DowntimeCalendarWizardPage).GetMethod("Refresh", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(page, null);
+
+    private static Task InvokeTokenPageActionAsync(Page page, string name, CancellationToken token)
+    {
+        var method = page.GetType().GetMethod(name, BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("Missing actual page action: " + name);
+        try { return ((Task)method.Invoke(page, [token])!).WaitAsync(TimeSpan.FromSeconds(20)); }
+        catch (TargetInvocationException exception) when (exception.InnerException is not null)
+        { return Task.FromException(exception.InnerException); }
     }
 
     private static async Task NativeRewardGovernedConsequencesPersistOnceAsync(string contentRoot)
@@ -401,17 +553,23 @@ internal static partial class AfterRunAuthorityHarness
                 }
                 services.AddSingleton<ICommandAvailabilityEvaluator, DefaultCommandAvailabilityEvaluator>();
                 services.AddSingleton<IShellSurfaceResolver, ShellSurfaceResolver>();
+                // Match MauiProgram: presenter and native host share one real
+                // session coordinator. Separate instances leave native reads
+                // without an active workspace and must fail closed.
+                services.AddSingleton<IWorkspaceOperationCoordinator, WorkspaceOperationCoordinator>();
                 _provider = services.BuildServiceProvider();
                 Client = _provider.GetRequiredService<IChummerClient>();
                 Require(Client is InProcessChummerClient, "Runtime integration must never use a network client.");
                 Shell = new ShellPresenter(Client);
-                Presenter = new CharacterOverviewPresenter(Client, shellPresenter: Shell);
+                var operations = _provider.GetRequiredService<IWorkspaceOperationCoordinator>();
+                Presenter = new CharacterOverviewPresenter(Client, shellPresenter: Shell,
+                    workspaceOperationCoordinator: operations);
                 var store = _provider.GetRequiredService<IWorkspaceStore>();
                 var checkpoints = governedConsequences ? Sr5AfterRunRewardCheckpointStore.CreateDefault(StateDirectory)
                     : new Sr5AfterRunRewardCheckpointStore(
                     new FileSr5AfterRunRewardJournalBackend(StateDirectory),
                     new Sr5CareerMutationOwnerStore(new MemoryBackend()));
-                Coordinator = new RunnerSessionCoordinator(Presenter, Client, new WorkspaceOperationCoordinator(),
+                Coordinator = new RunnerSessionCoordinator(Presenter, Client, operations,
                     null!, null!, null!, null!, Shell,
                     _provider.GetRequiredService<IShellSurfaceResolver>(),
                     _provider.GetRequiredService<ICommandAvailabilityEvaluator>(),

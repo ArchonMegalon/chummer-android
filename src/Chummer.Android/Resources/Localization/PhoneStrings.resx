@@ -152,6 +152,8 @@
   <data name="AfterRunRewardRecover" xml:space="preserve"><value>Check saved result</value></data>
   <data name="AfterRunRewardRetry" xml:space="preserve"><value>Retry the same confirmed reward</value></data>
   <data name="AfterRunRewardDone" xml:space="preserve"><value>Done · return to Career</value></data>
+  <data name="AfterRunRewardDowntime" xml:space="preserve"><value>Plan downtime</value></data>
+  <data name="AfterRunRewardDowntimeBoundary" xml:space="preserve"><value>Plan your calendar locally. Each calendar change needs its own review and confirmation; it does not spend Karma, grant rewards or approve run consequences.</value></data>
   <data name="AfterRunRewardConsequences" xml:space="preserve"><value>Review run consequences</value></data>
   <data name="AfterRunRewardConsequencesChanged" xml:space="preserve"><value>The saved runner or run proposal changed. Recheck the saved reward before continuing.</value></data>
   <data name="AfterRunRewardConsequencesBoundary" xml:space="preserve"><value>Heat, reputation and contacts require a separate reviewed run proposal. Checking it does not grant rewards again or approve consequences.</value></data>

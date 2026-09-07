@@ -38,7 +38,7 @@ publication remain separate gates.
 ## Local runtime/file-store integration
 
 Pass `--after-run-runtime-content-root /absolute/core/Chummer` to the compiled
-DLL to run five additional integration cases after the 60 default cases. The
+DLL to run six additional integration cases after the 60 default cases. The
 path must contain `data/`; there is no implicit sibling lookup. Without that
 argument the executable explicitly reports that these cases were not run.
 
@@ -79,6 +79,26 @@ mutation. File-service reconstruction is not an OS-process restart. Review copy
 must not claim that a manually entered proposal has a cryptographic signature.
 Returning to the original reward requires a fresh read after settlement; the
 unchanged historical receipt must coexist with the new post-contact balances.
+
+The sixth case follows saved rewards into the existing local Downtime Calendar
+without submitting any run proposal. It verifies a user-chosen first year/week,
+an explicit typed preview, rejection of unconfirmed save, a confirmed save at
+exactly one later revision, and receipt recovery by a reconstructed page. The
+test supplies confirmation to the real Calendar session; the Android alert UI
+is not exercised. Character data uses the actual file store; Calendar checkpoints
+and shared mutation ownership use the production adapters over test Preferences,
+not durable Android storage. The Calendar path uses the existing typed mutation
+followed by save; this does not claim a new Core atomic settlement service.
+Karma, Nuyen, reward receipt count and run-consequence receipt count remain
+unchanged. Reward recovery after planning must not credit currency again.
+Nested entry tests reject cancellation, double/overlapping clicks, departure,
+handoff replacement before attachment, and entry expiry across a real Calendar
+projection. They are not independent top-level cases or OS-process proof.
+
+The fixture shares one DI-owned `IWorkspaceOperationCoordinator` between the
+actual presenter and native host, as `MauiProgram` does. Separate coordinators
+incorrectly left native read-only Calendar capture without an active workspace;
+that fixture error was corrected without bypassing the product's read checks.
 
 This is the local, non-account-linked runtime composition. Environment settings
 and an in-memory platform Preferences adapter are scoped to each temporary

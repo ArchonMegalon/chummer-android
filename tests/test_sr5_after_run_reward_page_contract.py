@@ -36,6 +36,26 @@ def test_appearance_does_not_replay_and_controls_do_not_rebuild_on_refresh():
     assert "_model.CanContinue" in refresh
 
 
+def test_saved_reward_planning_reuses_calendar_and_revalidates_destination_entry():
+    page = (NATIVE / "Sr5AfterRunRewardWizardPage.cs").read_text()
+    view = (NATIVE / "Sr5AfterRunRewardView.cs").read_text()
+    calendar = (NATIVE / "Sr5DowntimeCalendarWizardPage.cs").read_text()
+    route = page.split("internal async Task OpenDowntimeAsync", 1)[1].split("internal async Task OpenConsequencesAsync", 1)[0]
+    assert "new Sr5DowntimeCalendarWizardPage" in route
+    assert "Sr5DowntimeCalendarJournalStore.CreateDefault()" in route
+    assert route.count("RequireCurrentReward(saved, cancellationToken)") == 2
+    assert "entryStillCurrent:" in route
+    assert "ReferenceEquals(saved, _model.Handoff)" in route
+    assert "sr5-reward-downtime" in view
+    assert "_downtime.IsEnabled = !busy && _downtime.IsVisible" in view
+    load = calendar.split("private async Task LoadAndRecoverAsync", 1)[1].split("private void RequireCurrentEntry", 1)[0]
+    assert load.count("RequireCurrentEntry(cancellationToken)") == 2
+    assert load.index("var load = await _authority.LoadAsync") < load.rindex("RequireCurrentEntry(cancellationToken)") < load.index("_load = load")
+    assert "entryStillCurrent?.Invoke() == false" in calendar
+    for mutation in ("ApplyAsync", "SettleAfterRun", "PublishManual", "TryConfirm", "TryWriteReview"):
+        assert mutation not in route
+
+
 def test_every_reward_resource_has_nonempty_exact_locale_and_placeholder_parity():
     catalogs = []
     for suffix in ("", ".de", ".es"):
