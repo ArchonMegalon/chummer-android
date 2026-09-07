@@ -66,8 +66,9 @@ public sealed class Sr5AfterRunRewardPhoneModel
         && Status != Sr5AfterRunRewardPhoneStatus.JournalUnavailable;
     public bool CanConfirm => CanEdit && Review is { } review
         && review.Runner == _authority.Current && Status == Sr5AfterRunRewardPhoneStatus.Review;
-    public bool CanRecover => !_busy && HasRetainedIntent && OwnsSelection();
-    public bool CanRetry => CanRecover && Checkpoint?.Phase != Sr5AfterRunRewardCheckpointPhase.Applied;
+    public bool CanRecover => !_busy && HasRetainedIntent && OwnsReloadableSelection();
+    public bool CanRetry => CanRecover && OwnsSelection()
+        && Checkpoint?.Phase != Sr5AfterRunRewardCheckpointPhase.Applied;
     public bool CanContinue => !_busy && Handoff?.IsCurrent(_authority) == true;
 
     public bool UpdateDraft(Sr5AfterRunRewardPhoneDraft draft)
@@ -220,6 +221,16 @@ public sealed class Sr5AfterRunRewardPhoneModel
         Handoff = null;
         try
         {
+            if (!OwnsSelection())
+            {
+                // A failed presenter reload may leave Error set even though the
+                // committed file is intact. First clear that view error through
+                // a read-only reload; no retry/Commit is allowed in this state.
+                Status = Sr5AfterRunRewardPhoneStatus.RefreshRequired;
+                try { await _refresh.ReloadAsync(_selection.WorkspaceId, cancellationToken); }
+                catch (Exception) { return; }
+                if (!OwnsSelection()) { ChangedRunner(); return; }
+            }
             var result = retry
                 ? await _coordinator.RetryAsync(OperationId, cancellationToken)
                 : await _coordinator.RecoverAsync(OperationId, cancellationToken);
@@ -302,6 +313,12 @@ public sealed class Sr5AfterRunRewardPhoneModel
     {
         var current = _authority.Current;
         return current.IsCleanSavedSr5() && current.SameSelection(_selection);
+    }
+
+    private bool OwnsReloadableSelection()
+    {
+        var current = _authority.Current;
+        return current.CanReloadSavedSr5() && current.SameSelection(_selection);
     }
 
     private void ChangedRunner()

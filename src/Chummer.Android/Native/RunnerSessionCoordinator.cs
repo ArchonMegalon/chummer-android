@@ -248,7 +248,7 @@ public static class CreationMagicResonancePhoneBlockers
         "creation-magic-resonance-commit-outcome-unknown";
 }
 
-public sealed class RunnerSessionCoordinator : IDisposable
+public sealed partial class RunnerSessionCoordinator : IDisposable
 {
     private const string CreateCharacterActionId = "create_character";
     private const string CreationBootstrapTimingLogTag = "ChummerBootstrap";
@@ -355,7 +355,9 @@ public sealed class RunnerSessionCoordinator : IDisposable
         ICharacterCreationFinalizationService? creationFinalizationService = null,
         Sr5CareerCyberwarePurchaseService? careerCyberwarePurchaseService = null,
         Sr5CareerCustomDrugRecipeService? careerCustomDrugRecipeService = null,
-        Sr5CareerVehicleWorkshopService? careerVehicleWorkshopService = null)
+        Sr5CareerVehicleWorkshopService? careerVehicleWorkshopService = null,
+        ICharacterAfterRunRewardService? afterRunRewardService = null,
+        Sr5AfterRunRewardCheckpointStore? afterRunRewardCheckpoints = null)
     {
         _presenter = presenter;
         _client = client;
@@ -388,6 +390,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
         _account = account;
         _rosterFavoritePresenter = rosterFavoritePresenter;
         _applicationSettingsPresenter = applicationSettingsPresenter;
+        InitializeAfterRunRewardHost(afterRunRewardService, afterRunRewardCheckpoints);
         _presenter.StateChanged += OnPresenterStateChanged;
         _shellPresenter.StateChanged += OnShellStateChanged;
         _account.Changed += OnAccountChanged;
@@ -2705,6 +2708,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
             }
             string expectedPayloadSha256 = ComputeExactImportPayloadSha256(document.Content);
             _notice = null;
+            AdvanceAfterRunRewardSelection();
             await _presenter.ImportAsync(
                 WorkspaceImportDocument.FromUtf8Bytes(document.Content, string.Empty, WorkspaceDocumentFormat.NativeXml),
                 cancellationToken);
@@ -2797,6 +2801,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
             payload = StrictUtf8.GetBytes(character.Payload);
             string expectedPayloadSha256 = Sha256Hex(payload);
             _notice = null;
+            AdvanceAfterRunRewardSelection();
             await _presenter.ImportAsync(
                 WorkspaceImportDocument.FromUtf8Bytes(payload, character.RulesetId, ParseFormat(character.Format)),
                 cancellationToken);
@@ -2853,6 +2858,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
         => await WithWorkspaceActivationGateAsync(
             async () =>
             {
+                AdvanceAfterRunRewardSelection();
                 await _presenter.SwitchWorkspaceAsync(workspace.Id, cancellationToken);
                 await SyncShellAsync(cancellationToken);
                 NativeWorkspaceAuthoritySnapshot? authority = await TryRefreshWorkspaceAuthorityAsync(
@@ -2876,6 +2882,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
         await WithWorkspaceActivationGateAsync(
             async () =>
             {
+                if (State.WorkspaceId == workspace.Id) AdvanceAfterRunRewardSelection();
                 await _presenter.CloseWorkspaceAsync(workspace.Id, cancellationToken);
                 await SyncShellAsync(cancellationToken);
                 _ = await TryRefreshWorkspaceAuthorityAsync(
@@ -6885,6 +6892,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
 
     private void OnPresenterStateChanged(object? sender, EventArgs e)
     {
+        ObserveAfterRunRewardSelection();
         lock (_workspaceAuthoritySync)
         {
             unchecked
@@ -6987,6 +6995,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
         }
 
         _disposed = true;
+        AdvanceAfterRunRewardSelection();
         _lifetime.Cancel();
         lock (_workspaceAuthoritySync)
         {

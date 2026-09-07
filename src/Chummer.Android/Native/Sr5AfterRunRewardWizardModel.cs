@@ -17,9 +17,18 @@ public sealed record Sr5AfterRunRewardRunnerBinding(
     long ContentRevision,
     long SavedRevision,
     bool IsDirty,
-    string? Error)
+    string? Error,
+    bool IsBusy = false)
 {
     public bool IsCleanSavedSr5()
+        => CanReloadSavedSr5() && string.IsNullOrWhiteSpace(Error);
+
+    /// <summary>
+    /// A presenter error may be cleared by re-reading the same saved runner.
+    /// This permits only refresh, not a rule read/preview/commit. Busy or dirty
+    /// state, another lifecycle/edition and missing selection remain blocked.
+    /// </summary>
+    public bool CanReloadSavedSr5()
         => OwnerId != Guid.Empty
             && ActivationGeneration > 0
             && CharacterAfterRunRewardProjector.IsValidWorkspaceId(WorkspaceId)
@@ -28,7 +37,7 @@ public sealed record Sr5AfterRunRewardRunnerBinding(
             && ContentRevision > 0
             && SavedRevision == ContentRevision
             && !IsDirty
-            && string.IsNullOrWhiteSpace(Error);
+            && !IsBusy;
 
     public bool SameSelection(Sr5AfterRunRewardRunnerBinding other)
         => OwnerId == other.OwnerId && WorkspaceId == other.WorkspaceId
