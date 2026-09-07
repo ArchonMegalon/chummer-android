@@ -134,6 +134,14 @@ and confirms/reopens/replays the wizard receipt. The nested Living Persona sourc
 and original Talent identity must survive unchanged; character effects are still
 reserved for separate whole-character finalization.
 
+A third case selects Human/Mystic Adept C and raises MAG. The ordinary phone
+purchase control retains two explicitly selected PP through tradition, power
+and spell choices. Its source-profile Karma cost remains visible in incomplete
+previews and survives confirmation, cold reopen and command replay. Rehashed
+invented prices are rejected by both Presentation and native draft adoption.
+Actual embedded CreationFlow resource satellites are checked for en-GB, de-AT
+and es-MX; display translations never become rule or command identity.
+
 These are managed native/Core integration cases, not an APK, Android Activity
 lifecycle, physical-device, whole-character finalization or Play proof. Overview
 selection is supplied by the existing explicit test adapter; the source catalog,

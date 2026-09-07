@@ -18,9 +18,10 @@ internal static class CreationMagicNativeRuntimeTests
     {
         RunTalent(contentRoot, technomancer: false);
         RunTalent(contentRoot, technomancer: true);
+        RunTalent(contentRoot, technomancer: false, mysticAdept: true);
     }
 
-    private static void RunTalent(string contentRoot, bool technomancer)
+    private static void RunTalent(string contentRoot, bool technomancer, bool mysticAdept = false)
     {
         Require(Path.IsPathFullyQualified(contentRoot) && Directory.Exists(Path.Combine(contentRoot, "data")),
             "Supply the explicit Core content directory.");
@@ -56,7 +57,8 @@ internal static class CreationMagicNativeRuntimeTests
                 && item.Rank == "E").HeritageOptions.First(item => item.IsEnabled && item.MetatypeName == "Human" && item.MetavariantSourceId is null);
             var talent = initial.Authority.Options.Single(item => item.CategoryId == CharacterCreationPriorityCategoryIds.Talent
                 && item.Rank == "C").TalentOptions.First(item => item.IsEnabled
-                    && (technomancer ? item.Value == "Technomancer" : item.Value == "Adept" && item.Magic == 4));
+                    && (technomancer ? item.Value == "Technomancer" : mysticAdept ? item.Value == "Mystic Adept"
+                        : item.Value == "Adept" && item.Magic == 4));
             string[] skills = talent.ActiveSkillGrant?.Options.Where(item => item.IsEnabled)
                 .Take(talent.ActiveSkillGrant.Quantity).Select(item => item.SelectionId).ToArray() ?? [];
             var priority = prerequisites.Preview(new(initial.Binding, ranks)
@@ -80,6 +82,11 @@ internal static class CreationMagicNativeRuntimeTests
             if (technomancer)
             {
                 RunTechnomancer(store, resolver, service, state, id, directory);
+                return;
+            }
+            if (mysticAdept)
+            {
+                RunMysticAdept(store, resolver, service, state, id, directory);
                 return;
             }
             Require(state.SelectedTalent!.Magic == 4 && state.AdeptPowerPointBudget.Total == 5,
@@ -205,6 +212,92 @@ internal static class CreationMagicNativeRuntimeTests
         ExpectRejected(() => phone.CreateSingleCandidate(stream with
             { Identity = stream.Identity with { SourceId = Guid.NewGuid().ToString("D") } }));
         Console.WriteLine("PASS actual Technomancer source/raised RES → native stream/forms choices → cold file-store reopen/replay");
+    }
+
+    private static void RunMysticAdept(FileWorkspaceStore store, FileSystemCharacterSourceDataResolver resolver,
+        CharacterCreationMagicResonanceService service, CharacterCreationMagicResonanceState state,
+        CharacterWorkspaceId id, string directory)
+    {
+        foreach (var (language, title) in new[]
+        {
+            ("en-GB", "Mystic Adept power points"), ("de-AT", "Kraftpunkte für Mystische Adepten"),
+            ("es-MX", "Puntos de poder del adepto místico")
+        })
+        {
+            var culture = System.Globalization.CultureInfo.GetCultureInfo(language);
+            Require(CreationFlowStrings.Get("Magic.Mystic.Title", "missing", culture) == title,
+                "Real Creation resources did not resolve the phone region's language: " + language);
+            foreach (string key in new[] { "Summary", "Boundary", "Decrease", "Increase" })
+                Require(CreationFlowStrings.Get("Magic.Mystic." + key, "missing", culture) != "missing", key);
+            Require(CreationFlowStrings.Format(culture, "Magic.Mystic.Summary", "missing", 2, 4, 10, 0, 5).Contains("10", StringComparison.Ordinal),
+                "The translated Core quote did not render.");
+        }
+        Require(CharacterCreationMagicResonanceWorkflow.TryProject(state, out var projected),
+            "Mystic Adept Core state rejected: " + ProjectionDiagnostics(state));
+        var editor = projected!;
+        Require(editor.MysticAdeptPowerPoints is { PowerPoints: 0, KarmaCost: 0 }
+            && editor.MysticAdeptPowerPoints.MaximumPowerPoints == state.SelectedTalent!.Magic + 1,
+            "Mystic Adept PP became free MAG or failed to use confirmed MAG as the purchase cap.");
+        var overview = Program.NewCreationOverview(id, state.Binding.ContentRevision, state.Binding.SavedRevision) with
+            { CreationMagicResonance = state, CreationMagicResonanceEditor = editor };
+        var phone = new CreationMagicResonancePhoneDraft();
+        phone.Bind(editor, overview);
+        ExpectRejected(() => phone.CreateMysticPowerPointCandidate(-1));
+        ExpectRejected(() => phone.CreateMysticPowerPointCandidate(editor.MysticAdeptPowerPoints!.MaximumPowerPoints + 1));
+        var review = CharacterCreationMagicResonanceWorkflow.Review(service, editor, phone.CreateMysticPowerPointCandidate(2));
+        Require(phone.TryAdopt(editor, overview, review), "Phone did not adopt the explicit PP purchase.");
+        Require(review.Preview.MysticAdeptPowerPoints is { PowerPoints: 2, KarmaCost: 10 }
+            && review.Preview.AdeptPowerPointBudget.Total == 2 && !review.Preview.CanConfirm,
+            "Incomplete preview lost the profile-backed purchase quote or allowed missing spells/powers.");
+        review = CharacterCreationMagicResonanceWorkflow.Review(service, editor,
+            phone.CreateSingleCandidate(editor.Traditions.Single(item => item.Name == "Hermetic")));
+        Require(phone.TryAdopt(editor, overview, review), "Tradition selection dropped the PP purchase.");
+        decimal remaining = 2;
+        foreach (var power in editor.AdeptPowers.Where(item => item.IsEnabled && item.PointCost > 0)
+            .OrderByDescending(item => item.PointCost))
+        {
+            int levels = (int)Math.Min(power.MaximumLevels, decimal.Floor(remaining / power.PointCost));
+            if (levels == 0) continue;
+            review = CharacterCreationMagicResonanceWorkflow.Review(service, editor, phone.CreatePowerLevelCandidate(power, levels));
+            Require(phone.TryAdopt(editor, overview, review), "Power selection dropped the PP purchase.");
+            remaining -= levels * power.PointCost;
+        }
+        Require(remaining == 0, "Source power selection did not fill the reviewed PP budget.");
+        foreach (var spell in editor.Spells.Where(item => item.IsEnabled).Take(state.SelectedTalent!.SpellBudget))
+        {
+            review = CharacterCreationMagicResonanceWorkflow.Review(service, editor, phone.CreateToggleCandidate(spell));
+            Require(phone.TryAdopt(editor, overview, review), "Spell selection dropped the PP purchase.");
+        }
+        Require(review.Preview.CanConfirm && review.Draft.Selections.MysticAdeptPowerPoints == 2,
+            string.Join(",", review.Preview.Blockers));
+        var forgedPreview = review.Preview with
+        {
+            MysticAdeptPowerPoints = review.Preview.MysticAdeptPowerPoints! with { KarmaCost = 0 },
+            PreviewDigest = string.Empty
+        };
+        forgedPreview = forgedPreview with { PreviewDigest = CharacterCreationMagicResonanceDigest.Compute(forgedPreview) };
+        Require(!phone.TryAdopt(editor, overview, review with { Preview = forgedPreview }),
+            "Native draft accepted a rehashed free-PP price despite the current source-owned quote.");
+        var forgedState = state with { MysticAdeptPowerPoints = state.MysticAdeptPowerPoints! with { KarmaCost = 10 }, SnapshotDigest = string.Empty };
+        forgedState = forgedState with { SnapshotDigest = CharacterCreationMagicResonanceDigest.Compute(forgedState) };
+        Require(!CharacterCreationMagicResonanceWorkflow.TryProject(forgedState, out _), "Rehashed invented quote survived Presentation validation.");
+        string key = CreationMagicResonancePhoneAuthority.ComputeIdempotencyKey(review);
+        string beforeXml = store.Get(id).Value!.Document.Content;
+        var confirmed = CharacterCreationMagicResonanceWorkflow.Confirm(service, review, key, explicitlyConfirmed: true);
+        var coldStore = new FileWorkspaceStore(directory);
+        var coldService = new CharacterCreationMagicResonanceService(coldStore, resolver);
+        var cold = coldService.Load(new(id)).Value!;
+        var reopened = CharacterCreationMagicResonanceWorkflow.Project(cold);
+        Require(reopened.Selections.MysticAdeptPowerPoints == 2
+            && reopened.MysticAdeptPowerPoints is { PowerPoints: 2, KarmaCost: 10 }
+            && reopened.Budgets.Single(item => item.Kind == CharacterCreationMagicResonanceKinds.AdeptPower).Total == 2,
+            "Cold phone draft lost the purchased PP or its Karma cost.");
+        var replay = CharacterCreationMagicResonanceWorkflow.Confirm(coldService, review, key, explicitlyConfirmed: true);
+        Require(replay.Receipt.ReceiptDigest == confirmed.Receipt.ReceiptDigest
+            && coldStore.Get(id).Value!.ContentRevision == confirmed.Receipt.ContentRevision
+            && coldStore.Get(id).Value!.Document.Content == beforeXml,
+            "Phone purchase mutated character XML before finalization or replayed a write.");
+        Console.WriteLine("PASS actual Mystic Adept profile/raised MAG → native PP purchase/powers/spells → cold file-store reopen/replay");
     }
 
     private static void Require(bool condition, string message)

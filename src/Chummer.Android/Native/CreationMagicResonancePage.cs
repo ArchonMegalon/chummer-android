@@ -79,11 +79,55 @@ public sealed class CreationMagicResonancePage : NativePageBase
         AddBudgets(review?.Preview, editor.Budgets);
         CharacterCreationMagicResonanceCheckpoint? checkpoint = AddRecovery(editor);
         bool laneLocked = checkpoint is not null || HasMalformedCheckpoint();
+        AddMysticPowerPoints(editor, laneLocked);
         AddCatalogRoutes(editor, laneLocked);
         AddReview(editor, laneLocked);
         AddBlockers(editor.Blockers
             .Concat(review?.Preview.Blockers ?? [])
             .Concat(_localBlockers));
+    }
+
+    private void AddMysticPowerPoints(CharacterCreationMagicResonanceEditorState editor, bool laneLocked)
+    {
+        var purchase = _draft.Review?.Preview.MysticAdeptPowerPoints ?? editor.MysticAdeptPowerPoints;
+        if (purchase is null) return;
+        var card = new VerticalStackLayout { Spacing = 6 };
+        card.AutomationId = "creation-magic-resonance-mystic-purchase";
+        card.Add(NativeTheme.Title(CreationFlowStrings.Get("Magic.Mystic.Title", "Mystic Adept power points"), 22));
+        card.Add(NativeTheme.Body(MysticPowerPointSummary(purchase), NativeTheme.Muted));
+        card.Add(NativeTheme.Body(CreationFlowStrings.Get("Magic.Mystic.Boundary",
+            "Karma is reserved in the final build review. Exchanged spell slots reduce your spell choices."), NativeTheme.Muted));
+        int selected = _draft.Selections.MysticAdeptPowerPoints;
+        var decrease = NativeTheme.SecondaryButton(CreationFlowStrings.Get("Magic.Mystic.Decrease", "Remove one power point"));
+        decrease.AutomationId = "creation-magic-resonance-mystic-decrease";
+        decrease.IsEnabled = !laneLocked && editor.CanEdit && selected > 0;
+        decrease.Clicked += async (_, _) => await RunAsync(() => ChangeMysticPowerPointsAsync(editor, selected - 1));
+        card.Add(decrease);
+        var increase = NativeTheme.PrimaryButton(CreationFlowStrings.Get("Magic.Mystic.Increase", "Add one power point"));
+        increase.AutomationId = "creation-magic-resonance-mystic-increase";
+        increase.IsEnabled = !laneLocked && editor.CanEdit && selected < purchase.MaximumPowerPoints;
+        increase.Clicked += async (_, _) => await RunAsync(() => ChangeMysticPowerPointsAsync(editor, selected + 1));
+        card.Add(increase);
+        AddSources(card, purchase.Policy.SourceAnchorIds);
+        _body.Add(NativeTheme.Card(card));
+    }
+
+    internal static string MysticPowerPointSummary(CharacterCreationMysticAdeptPowerPointAllocation purchase) =>
+        CreationFlowStrings.Format("Magic.Mystic.Summary",
+            "{0} / {1} power points · {2} Karma · {3} exchanged spell slots · {4} spell choices left",
+            purchase.PowerPoints, purchase.MaximumPowerPoints, purchase.KarmaCost, purchase.ExchangedSpellSlots, purchase.SpellBudget);
+
+    private async Task ChangeMysticPowerPointsAsync(CharacterCreationMagicResonanceEditorState editor, int powerPoints)
+    {
+        try
+        {
+            var candidate = _draft.CreateMysticPowerPointCandidate(powerPoints);
+            var review = await Task.Run(() => Coordinator.ReviewCreationMagicResonance(editor, candidate));
+            _localBlockers = _draft.TryAdopt(editor, Coordinator.State, review)
+                ? review.Preview.Blockers : [CharacterCreationMagicResonanceBlockers.DraftConflict];
+        }
+        catch (InvalidOperationException exception) { _localBlockers = [exception.Message]; }
+        Refresh();
     }
 
     private void AddBinding(CharacterCreationMagicResonanceEditorState editor)
@@ -980,6 +1024,8 @@ public sealed class CreationMagicResonanceReviewPage : NativePageBase
         AddBudget(preview.AdeptPowerPointBudget);
         AddBudget(preview.SpellBudget);
         AddBudget(preview.ComplexFormBudget);
+        if (preview.MysticAdeptPowerPoints is { } purchase)
+            _body.Add(NativeTheme.Body(CreationMagicResonancePage.MysticPowerPointSummary(purchase), NativeTheme.Muted));
         AddSelections(preview.Selections);
         VerticalStackLayout sources = new() { Spacing = 5 };
         CreationMagicResonancePage.AddSources(sources, preview.SourceAnchorIds);

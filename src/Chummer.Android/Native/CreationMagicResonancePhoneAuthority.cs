@@ -116,7 +116,8 @@ internal static class CreationMagicResonancePhoneAuthority
             selections.Stream,
             selections.AdeptPowers,
             selections.Spells,
-            selections.ComplexForms);
+            selections.ComplexForms,
+            selections.MysticAdeptPowerPoints);
 
     public static bool ReviewMatches(
         CharacterCreationMagicResonanceEditorState editor,
@@ -143,6 +144,7 @@ internal static class CreationMagicResonancePhoneAuthority
                          CharacterCreationMagicResonanceDigest.Compute(
                              preview with { PreviewDigest = string.Empty }))
                      && preview.RequiresExplicitConfirmation
+                     && CharacterCreationMagicResonanceWorkflow.IsValidPowerPointQuote(editor, preview)
                      && preview.CanConfirm == (preview.Blockers.Count == 0)
                      && BudgetsAreExact(preview)
                      && preview.SourceAnchorIds.Count > 0

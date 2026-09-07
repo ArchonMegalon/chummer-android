@@ -228,4 +228,9 @@
   <data name="Qualities.Step2" xml:space="preserve"><value>SR5-Priorität · 2 von 4</value></data>
   <data name="Qualities.Step3" xml:space="preserve"><value>SR5-Priorität · 3 von 4</value></data>
   <data name="Qualities.Step4" xml:space="preserve"><value>SR5-Priorität · 4 von 4</value></data>
+  <data name="Magic.Mystic.Title" xml:space="preserve"><value>Kraftpunkte für Mystische Adepten</value></data>
+  <data name="Magic.Mystic.Summary" xml:space="preserve"><value>{0} / {1} Kraftpunkte · {2} Karma · {3} getauschte Zauberplätze · {4} verbleibende Zauberwahlen</value></data>
+  <data name="Magic.Mystic.Boundary" xml:space="preserve"><value>Karma wird in der abschließenden Charakterprüfung verrechnet. Getauschte Zauberplätze verringern deine Zauberauswahl.</value></data>
+  <data name="Magic.Mystic.Decrease" xml:space="preserve"><value>Einen Kraftpunkt entfernen</value></data>
+  <data name="Magic.Mystic.Increase" xml:space="preserve"><value>Einen Kraftpunkt hinzufügen</value></data>
 </root>
