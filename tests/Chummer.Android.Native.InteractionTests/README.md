@@ -34,3 +34,34 @@ Boundaries remain explicit:
 
 Full API-36 and device qualification, governed package receipts and Play
 publication remain separate gates.
+
+## Local runtime/file-store integration
+
+Pass `--after-run-runtime-content-root /absolute/core/Chummer` to the compiled
+DLL to run three additional integration cases after the 60 default cases. The
+path must contain `data/`; there is no implicit sibling lookup. Without that
+argument the executable explicitly reports that these cases were not run.
+
+`AfterRunNativeRuntimeTests.cs` uses the actual in-process client, canonical
+import/save/validation, `CharacterOverviewPresenter`, `ShellPresenter`, native
+coordinator, Core reward service and `FileWorkspaceStore`. It verifies a real
+SR5 codec-produced document through reward preview/commit, saved-state reload,
+explicit recorded-history resume, cancellation on presenter reload, and a
+selected-workspace preference failure during native shell synchronization.
+Recovery must preserve the original operation, exact character bytes, auxiliary
+digest and revision; no second reward is allowed.
+
+This is the local, non-account-linked runtime composition. Environment settings
+and an in-memory platform Preferences adapter are scoped to each temporary
+runtime and restored afterwards. The reward journal is file-backed; the shared
+Career mutation-owner store still uses a memory adapter. The real presenters
+are initialized through import/save/load, but unrelated coordinator startup
+dependencies are not initialized. These tests are not Android process-death,
+Keystore, account-linking, rendered-page, or full `MauiProgram` startup proof.
+
+Run against a coherent Core build containing the canonical SR5 import-envelope
+reward fix. The earlier `b7297a346fe81` package rejects the real imported payload
+kind (`sr5/chum5-xml`); do not change the fixture to the legacy `workspace` kind
+to make it pass. Any temporary application-assembly overlay used for development
+must be explicitly recorded and must not overwrite a sealed feed or claim
+package/APK qualification. Hosted qualification needs a newly sealed Core graph.

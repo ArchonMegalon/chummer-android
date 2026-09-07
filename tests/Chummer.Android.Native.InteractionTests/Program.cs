@@ -11,8 +11,10 @@ using Microsoft.Maui.Controls;
 
 internal static class Program
 {
-    private static async Task Main()
+    private static async Task Main(string[] args)
     {
+        if (args.Length != 0 && (args.Length != 2 || args[0] != "--after-run-runtime-content-root"))
+            throw new ArgumentException("Expected --after-run-runtime-content-root followed by an explicit Core content directory.");
         (string Name, Func<Task> Run)[] tests =
         [
             (nameof(SettlementRecoveryUsesActualNativeAndCoreAssembliesAsync), SettlementRecoveryUsesActualNativeAndCoreAssembliesAsync),
@@ -86,6 +88,10 @@ internal static class Program
         }
 
         Console.WriteLine($"Native dialog interaction tests passed: {tests.Length}");
+        if (args.Length == 2)
+            await AfterRunAuthorityHarness.RunNativeRuntimeCasesAsync(args[1]);
+        else
+            Console.WriteLine("Native runtime/file-store integration not run: supply --after-run-runtime-content-root explicitly.");
     }
 
     private static async Task SettlementRecoveryUsesActualNativeAndCoreAssembliesAsync()
