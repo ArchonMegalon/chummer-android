@@ -252,6 +252,36 @@ internal static class CreationMagicNativeRuntimeTests
             "Unrelated blocked talents must not be described as unsupported separate Magic.");
         Require(CharacterCreationMagicResonanceWorkflow.TryProject(state, out var projected),
             "Mystic Adept Core state rejected: " + ProjectionDiagnostics(state));
+        foreach (var anchors in new[]
+        {
+            state.SelectedTalent!.SourceAnchorIds.Append("settings.xml#invented-free-power-points").ToArray(),
+            state.SelectedTalent!.SourceAnchorIds.Except(state.Authority.MysticAdeptPowerPointPolicy!.SourceAnchorIds,
+                StringComparer.Ordinal).ToArray()
+        })
+        {
+            var hostileTalent = state.SelectedTalent! with
+            {
+                SourceAnchorIds = anchors.Distinct(StringComparer.Ordinal).OrderBy(anchor => anchor, StringComparer.Ordinal).ToArray()
+            };
+            var hostileAuthority = state.Authority with
+            {
+                Talents = state.Authority.Talents.Select(item => item.Identity == hostileTalent.Identity ? hostileTalent : item).ToArray(),
+                AuthorityDigest = string.Empty
+            };
+            hostileAuthority = hostileAuthority with { AuthorityDigest = CharacterCreationMagicResonanceDigest.Compute(hostileAuthority) };
+            var hostile = state with
+            {
+                SelectedTalent = hostileTalent,
+                Authority = hostileAuthority,
+                Binding = state.Binding with { AuthorityDigest = hostileAuthority.AuthorityDigest },
+                SnapshotDigest = string.Empty
+            };
+            hostile = hostile with { SnapshotDigest = CharacterCreationMagicResonanceDigest.Compute(hostile) };
+            Require(CharacterCreationMagicResonanceDraftIntegrity.IsValidAuthority(hostileAuthority),
+                "The hostile fixture must reach the Priority-versus-Magic source join, not fail only an outer digest.");
+            Require(!CharacterCreationMagicResonanceWorkflow.TryProject(hostile, out _),
+                "Missing or invented Mystic policy anchors survived the exact source join.");
+        }
         var editor = projected!;
         Require(editor.MysticAdeptPowerPoints is { PowerPoints: 0, KarmaCost: 0 }
             && editor.MysticAdeptPowerPoints.MaximumPowerPoints == state.SelectedTalent!.Magic + 1,
@@ -327,7 +357,7 @@ internal static class CreationMagicNativeRuntimeTests
         bool Probe(string name, params object[] args) => (bool)typeof(CharacterCreationMagicResonanceWorkflow)
             .GetMethod(name, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!.Invoke(null, args)!;
         return $"binding={Probe("BindingDigestsAreCanonical", state.Binding)}; "
-            + $"priority={Probe("PrerequisiteSelectsExactTalent", state.PrerequisiteDraft!, state.SelectedTalent!)}; "
+            + $"priority={Probe("PrerequisiteSelectsExactTalent", state.PrerequisiteDraft!, state.SelectedTalent!, state.Authority.MysticAdeptPowerPointPolicy!)}; "
             + $"budgets={Probe("BudgetsAreValid", state)}; "
             + $"authority={CharacterCreationMagicResonanceDraftIntegrity.IsValidAuthority(state.Authority)}; "
             + $"revision={state.Binding.ContentRevision}/{state.Binding.SavedRevision}; "
