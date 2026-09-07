@@ -137,23 +137,26 @@ internal static class CreationMagicNativeRuntimeTests
             Require(attributeReview.CanConfirm, string.Join(",", attributeReview.Blockers));
             var assigned = attributes.Confirm(new(attributeReview.Binding, allocations, attributeReview.PreviewDigest, true));
             Require(assigned.Outcome == CharacterCreationFoundationOutcomes.Success, string.Join(",", assigned.Blockers));
-            RunSkillAccess(store, resolver, id, directory, technomancer, aspectedGroup);
+            var firstSkillsCommand = RunSkillAccess(store, resolver, id, directory, technomancer, aspectedGroup);
             var service = new CharacterCreationMagicResonanceService(store, resolver);
             var state = service.Load(new(id)).Value!;
             Require(state.CanEdit, string.Join(",", state.Blockers));
             if (aspectedGroup is not null)
             {
                 RunAspected(store, resolver, service, state, id, directory, aspectedGroup);
+                RunSkillsRevisit(resolver, id, directory, firstSkillsCommand, technomancer);
                 return;
             }
             if (technomancer)
             {
                 RunTechnomancer(store, resolver, service, state, id, directory);
+                RunSkillsRevisit(resolver, id, directory, firstSkillsCommand, technomancer);
                 return;
             }
             if (mysticAdept)
             {
                 RunMysticAdept(store, resolver, service, state, id, directory);
+                RunSkillsRevisit(resolver, id, directory, firstSkillsCommand, technomancer);
                 return;
             }
             Require(state.SelectedTalent!.Magic == 4 && state.AdeptPowerPointBudget.Total == 5,
@@ -223,11 +226,12 @@ internal static class CreationMagicNativeRuntimeTests
                 { CreationMagicResonance = state, CreationMagicResonanceEditor = editor });
             ExpectRejected(() => phone.CreatePowerLevelCandidate(light, 4));
             Console.WriteLine("PASS actual Adept source/raised MAG → Presentation caps → phone review/confirm → cold file-store reopen/replay");
+            RunSkillsRevisit(resolver, id, directory, firstSkillsCommand, technomancer);
         }
         finally { Directory.Delete(directory, recursive: true); }
     }
 
-    private static void RunSkillAccess(FileWorkspaceStore store, FileSystemCharacterSourceDataResolver resolver,
+    private static CharacterCreationSkillsConfirmRequest RunSkillAccess(FileWorkspaceStore store, FileSystemCharacterSourceDataResolver resolver,
         CharacterWorkspaceId id, string directory, bool technomancer, string? aspect)
     {
         var service = new CharacterCreationSkillsService(store, resolver);
@@ -296,6 +300,87 @@ internal static class CreationMagicNativeRuntimeTests
             && coldStore.Get(id).Value!.ContentRevision == revision, "Skill replay wrote a second mutation.");
         Require(!CreationSkillsPhoneAuthority.IsReady(cold, overview), "Phone accepted a previous workspace revision.");
         Console.WriteLine("PASS actual source skill access → native picker/review → confirmed save → cold reopen/replay");
+        return command;
+    }
+
+    private static void RunSkillsRevisit(FileSystemCharacterSourceDataResolver resolver, CharacterWorkspaceId id,
+        string directory, CharacterCreationSkillsConfirmRequest firstCommand, bool technomancer)
+    {
+        var store = new FileWorkspaceStore(directory);
+        var before = store.Get(id).Value!;
+        var firstReceipt = before.Document.AuxiliaryState.CharacterCreationSkillsReceipts!.Single();
+        var magicDraft = before.Document.AuxiliaryState.CharacterCreationMagicResonanceDraft!;
+        var magicReceipts = before.Document.AuxiliaryState.CharacterCreationMagicResonanceReceipts!;
+        Require(before.ContentRevision > firstReceipt.ContentRevision && magicReceipts.Count > 0,
+            "The actual Magic wizard must have saved between Skills visits.");
+        var service = new CharacterCreationSkillsService(store, resolver);
+        var state = service.Load(new(id)).Value!;
+        var overview = Program.NewCreationOverview(id, state.Binding.ContentRevision, state.Binding.SavedRevision);
+        var phone = new CreationSkillsPhoneDraft();
+        phone.Bind(state, overview);
+        Require(phone.Matches(state, overview), "Skills became unavailable after Magic: " + string.Join(",", state.Blockers));
+        Require(!CreationSkillsPhoneAuthority.IsReady(state,
+            Program.NewCreationOverview(id, firstCommand.Binding.ContentRevision, firstCommand.Binding.SavedRevision)),
+            "Returning to Skills accepted the old host revision.");
+        var source = CreationSkillsPhoneAuthority.AvailableActiveSkills(state)
+            .Single(item => item.Name == (technomancer ? "Compiling" : "Arcana"));
+        var choices = phone.WithSkill(source, 1);
+        var preview = service.Preview(new(state.Binding, choices, phone.Groups));
+        Require(phone.TryAdopt(state, overview, preview, choices, phone.Groups),
+            "The revisited phone rejected a legal Skills increase: " + string.Join(",", preview.Blockers));
+        var review = phone.Preview!;
+        var command = new CharacterCreationSkillsConfirmRequest(review.Binding, phone.Skills, phone.Groups,
+            review.PreviewDigest, "native-skills-after-magic", ExplicitlyConfirmed: true);
+        Require(service.Confirm(command with { ExplicitlyConfirmed = false }).Outcome != CharacterCreationFoundationOutcomes.Success,
+            "Revisiting Skills bypassed explicit review.");
+        Require(store.Get(id).Value!.Document.AuxiliaryStateDigest == before.Document.AuxiliaryStateDigest,
+            "Preview or rejected confirmation changed the saved wizard data.");
+        var result = service.Confirm(command);
+        Require(result.Outcome == CharacterCreationFoundationOutcomes.Success,
+            "Skills confirmation rejected a legitimate inter-wizard revision gap: " + string.Join(",", result.Blockers));
+        var receipt = result.Value!;
+        Require(receipt.PreviousContentRevision == before.ContentRevision
+            && receipt.ContentRevision == before.ContentRevision + 1
+            && receipt.DraftRevision == firstReceipt.DraftRevision + 1
+            && receipt.PreviousReceiptDigest == firstReceipt.ReceiptDigest,
+            "The new Skills save did not extend its own receipt chain at the current workspace revision.");
+
+        var coldStore = new FileWorkspaceStore(directory);
+        var coldService = new CharacterCreationSkillsService(coldStore, resolver);
+        var cold = coldService.Load(new(id)).Value!;
+        var coldOverview = Program.NewCreationOverview(id, cold.Binding.ContentRevision, cold.Binding.SavedRevision);
+        var coldPhone = new CreationSkillsPhoneDraft();
+        coldPhone.Bind(cold, coldOverview);
+        Require(coldPhone.Matches(cold, coldOverview) && coldPhone.Skills.SequenceEqual(phone.Skills)
+            && coldPhone.Groups.SequenceEqual(phone.Groups), "Cold phone lost revisited Skills choices.");
+        Require(coldService.Confirm(firstCommand).Value!.ReceiptDigest == firstReceipt.ReceiptDigest
+            && coldService.Confirm(command).Value!.ReceiptDigest == receipt.ReceiptDigest,
+            "Exact replay did not preserve the old and new Skills receipts.");
+        Require(coldService.Confirm(firstCommand with { Allocations = command.Allocations }).Outcome
+            == CharacterCreationFoundationOutcomes.Conflict, "An old command key accepted changed choices.");
+        Require(coldService.Confirm(firstCommand with { IdempotencyKey = "native-stale-revisit" }).Outcome
+            != CharacterCreationFoundationOutcomes.Success, "A new command accepted the stale pre-Magic binding.");
+        var after = coldStore.Get(id).Value!;
+        Require(after.ContentRevision == receipt.ContentRevision && after.SavedRevision == receipt.SavedRevision
+            && after.Document.Content == before.Document.Content
+            && after.Document.AuxiliaryState.CharacterCreationSkillsReceipts is { Count: 2 }
+            && after.Document.AuxiliaryState.CharacterCreationMagicResonanceDraft!.DraftDigest == magicDraft.DraftDigest
+            && after.Document.AuxiliaryState.CharacterCreationMagicResonanceReceipts!.Select(item => item.ReceiptDigest)
+                .SequenceEqual(magicReceipts.Select(item => item.ReceiptDigest)),
+            "Skills revisit or replay rewrote Magic, applied character effects or saved another revision.");
+        var magic = new CharacterCreationMagicResonanceService(coldStore, resolver).Load(new(id)).Value!;
+        Require(CharacterCreationMagicResonanceWorkflow.TryProject(magic, out var editor) && editor!.CanEdit,
+            "Returning to Skills invalidated the saved Magic projection.");
+        var magicPhone = new CreationMagicResonancePhoneDraft();
+        var magicOverview = coldOverview with { CreationMagicResonance = magic, CreationMagicResonanceEditor = editor };
+        magicPhone.Bind(editor!, magicOverview);
+        Require(magicPhone.Matches(editor!, magicOverview)
+            && CharacterCreationMagicResonanceDigest.Compute(magicPhone.Selections)
+                == CharacterCreationMagicResonanceDigest.Compute(editor!.Selections),
+            "The cold Magic phone did not retain its saved choices after the Skills revisit.");
+        Require(after.Document.AuxiliaryStateDigest == coldStore.Get(id).Value!.Document.AuxiliaryStateDigest,
+            "Cold projection or phone binding persisted data.");
+        Console.WriteLine("PASS actual Skills → Magic → Skills phone revisit → cold reopen → both receipts replay without another write");
     }
 
     private static void RunAspected(FileWorkspaceStore store, FileSystemCharacterSourceDataResolver resolver,
