@@ -25,6 +25,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
+    <Compile Include="PhoneModelTests.cs" />
     <Compile Include="HostStorageCompileSeams.cs" />
     <Compile Include="RealAfterRunRewardFixture.cs" />
     <Compile Include="JournalOwnershipTests.cs" />
@@ -34,6 +35,10 @@
              Link="Native/Sr5AfterRunRewardCheckpointStore.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5AfterRunRewardCoordinator.cs"
              Link="Native/Sr5AfterRunRewardCoordinator.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5AfterRunRewardPhoneModel.cs"
+             Link="Native/Sr5AfterRunRewardPhoneModel.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5AfterRunRewardConsequencesHandoff.cs"
+             Link="Native/Sr5AfterRunRewardConsequencesHandoff.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5CareerMutationOwnerStore.cs"
              Link="Native/Sr5CareerMutationOwnerStore.cs" />
   </ItemGroup>

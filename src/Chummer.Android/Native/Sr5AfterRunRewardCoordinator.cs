@@ -95,7 +95,6 @@ public sealed class Sr5AfterRunRewardCoordinator(
         CharacterAfterRunRewardCommand command = review.Preview.Command with { ExplicitlyConfirmed = true };
         return await Task.Run(async () =>
         {
-            cancellationToken.ThrowIfCancellationRequested();
             if (!_store.TryGet(before.OwnerId, before.WorkspaceId, command.OperationId,
                     out var existing, out string blocker)) return Blocked(blocker);
             if (existing is not null)
@@ -103,11 +102,20 @@ public sealed class Sr5AfterRunRewardCoordinator(
                 if (existing.CommandDigest != command.CommandDigest()
                     || !CharacterAfterRunRewardProjector.CanonicalEquals(existing.Command, command))
                     return Blocked("The original operation owns a different confirmed command.", existing);
+                // Cancellation is not proof that an earlier invocation did not
+                // persist. Keep its exact journal identity for later lookup.
+                if (cancellationToken.IsCancellationRequested)
+                    return Blocked("Confirmation was canceled; retain the existing reward for recovery.", existing);
                 return await ExecuteAsync(existing, before, mayCommit: true, cancellationToken).ConfigureAwait(false);
             }
+            if (cancellationToken.IsCancellationRequested)
+                return Blocked("Confirmation was canceled before a reward intent was prepared.");
             if (!OwnsExact(review.Runner)) return Blocked("The previewed saved runner changed. Review it again.");
             CharacterAfterRunRewardReadResult saved = _service.Read(before.WorkspaceId);
-            cancellationToken.ThrowIfCancellationRequested();
+            // Still before TryPrepare or Commit: this cancellation has a known
+            // outcome, unlike cancellation after either durable boundary.
+            if (cancellationToken.IsCancellationRequested)
+                return Blocked("Confirmation was canceled before a reward intent was prepared.");
             if (!OwnsExact(review.Runner) || saved.Outcome != CharacterAfterRunRewardOutcome.Available
                 || !CharacterAfterRunRewardProjector.IsValidSnapshot(saved.Snapshot)
                 || !CharacterAfterRunRewardProjector.Matches(command, saved.Snapshot!))

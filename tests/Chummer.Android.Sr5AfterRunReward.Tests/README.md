@@ -13,7 +13,8 @@ that Core service, not by Android test contracts.
 
 ```sh
 dotnet restore tests/Chummer.Android.Sr5AfterRunReward.Tests/Chummer.Android.Sr5AfterRunReward.Tests.csproj --disable-parallel -p:ChummerCoreRoot=/absolute/path/to/reviewed-core
-dotnet run --project tests/Chummer.Android.Sr5AfterRunReward.Tests/Chummer.Android.Sr5AfterRunReward.Tests.csproj --no-restore -p:ChummerCoreRoot=/absolute/path/to/reviewed-core -p:BuildInParallel=false -p:UseSharedCompilation=false
+dotnet build tests/Chummer.Android.Sr5AfterRunReward.Tests/Chummer.Android.Sr5AfterRunReward.Tests.csproj --no-restore -m:1 -p:ChummerCoreRoot=/absolute/path/to/reviewed-core -p:BuildInParallel=false -p:UseSharedCompilation=false
+dotnet tests/Chummer.Android.Sr5AfterRunReward.Tests/bin/Debug/net10.0/Chummer.Android.Sr5AfterRunReward.Tests.dll
 ```
 
 Use the repository's qualified SDK and configured package feeds/cache; coordinate
@@ -35,6 +36,21 @@ one compiler slot. The console harness exits nonzero on any failed case.
   to test CAS/ownership transitions. Neither establishes physical-phone or MAUI
   Preferences crash durability. The Preferences compile seam intentionally throws
   if accidentally used; no shadow Core DTO or service is compiled.
+- `PhoneModelTests.cs` adds 17 model/recovery checks to the 49 coordinator and
+  journal cases. It compiles the actual pending phone model and consequences
+  handoff. A presenter-reload adapter is substituted; all currency previews,
+  writes, lookups and receipt validation still execute real Core. This is not a
+  rendered MAUI page, Android lifecycle or device qualification.
+- A pre-canceled confirmation leaves the displayed review intact. Cancellation
+  during the last read before any journal preparation returns a definite
+  rejection rather than stranding an unstarted operation. An existing journal,
+  cancellation after preparation, or a lost commit acknowledgement retains its
+  original identity for lookup and explicit retry. The tests cover both sides of
+  these boundaries and never equate cancellation with rollback.
+- A recorded reward cannot enable continuation until the exact saved runner is
+  reloaded and Core facts are read again. A refresh failure keeps the receipt;
+  recovery does not credit again. Later edits use a fresh snapshot alongside the
+  historical receipt, and owner/activation/revision changes invalidate handoff.
 
 ## Intentionally unfinished integration
 
@@ -60,3 +76,10 @@ quote/confirm consequences without inferring GM/run authority. Release consumpti
 still requires Core owner packaging, UI/runtime resealing, authorized Android
 repinning, native compilation and fresh device proof. Local managed green tests
 do not advance the current published graph.
+
+The model currently restores non-Applied pending entries on appearance. Before
+page activation, add a recovery path for an Applied receipt whose shared-owner
+release failed, and an explicit way to resume consequences from recorded history.
+Do not treat the absence of a non-Applied entry as proof that shared ownership is
+clear. This slice's underlying coordinator can reconcile such a receipt by Lookup;
+the ordinary cold-entry UI selection is not yet wired.

@@ -13,7 +13,7 @@ using Chummer.Infrastructure.Workspaces;
 if (args.Length == 6 && args[0] == "--recover-process")
     return await RewardPhoneTests.RunRecoveryChild(args);
 
-var cases = RewardPhoneTests.Cases.Concat(JournalOwnershipTests.Cases).ToArray();
+var cases = RewardPhoneTests.Cases.Concat(RewardPhoneTests.PhoneModelCases).Concat(JournalOwnershipTests.Cases).ToArray();
 int failed = 0;
 foreach ((string name, Func<Task> run) in cases)
 {
@@ -23,7 +23,7 @@ foreach ((string name, Func<Task> run) in cases)
 Console.WriteLine($"{cases.Length - failed}/{cases.Length} real-Core Android reward tests passed.");
 return failed == 0 ? 0 : 1;
 
-internal static class RewardPhoneTests
+internal static partial class RewardPhoneTests
 {
     internal static IEnumerable<(string Name, Func<Task> Run)> Cases =>
     [
@@ -690,12 +690,13 @@ internal static class RewardPhoneTests
     {
         internal int CommitCalls;
         internal int LookupCalls;
+        internal Action? AfterRead;
         internal Action<CharacterAfterRunRewardCommand>? BeforeCommit;
         internal Func<CharacterAfterRunRewardResult, CharacterAfterRunRewardResult>? AfterCommit;
         internal readonly ConcurrentBag<int> Threads = [];
         internal readonly ConcurrentQueue<CharacterAfterRunRewardCommand> Commands = [];
         public CharacterAfterRunRewardReadResult Read(CharacterWorkspaceId id)
-        { Threads.Add(Environment.CurrentManagedThreadId); return inner.Read(id); }
+        { Threads.Add(Environment.CurrentManagedThreadId); var result = inner.Read(id); AfterRead?.Invoke(); return result; }
         public CharacterAfterRunRewardPreviewResult Preview(CharacterAfterRunRewardPreviewRequest request)
         { Threads.Add(Environment.CurrentManagedThreadId); return inner.Preview(request); }
         public CharacterAfterRunRewardResult Lookup(CharacterWorkspaceId id, Guid operationId, string digest)
