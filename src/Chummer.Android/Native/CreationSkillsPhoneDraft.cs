@@ -7,6 +7,8 @@ internal sealed class CreationSkillsPhoneDraft
 {
     private readonly Dictionary<(string Kind, string Id), CharacterCreationSkillAllocation> _skills = [];
     private readonly Dictionary<string, CharacterCreationSkillGroupAllocation> _groups = new(StringComparer.Ordinal);
+    private readonly Dictionary<(string Kind, string Id), int> _skillMinimums = [];
+    private readonly Dictionary<string, int> _groupMinimums = new(StringComparer.Ordinal);
     private CharacterCreationSkillsBinding? _binding;
     private string? _snapshotDigest;
     private CharacterCreationSkillsPreview? _preview;
@@ -15,12 +17,22 @@ internal sealed class CreationSkillsPhoneDraft
     {
         if (Matches(state, overview)) return;
         _skills.Clear(); _groups.Clear(); _binding = null; _snapshotDigest = null; _preview = null;
+        _skillMinimums.Clear(); _groupMinimums.Clear();
         if (!CreationSkillsPhoneAuthority.IsReady(state, overview)) return;
         _binding = state.Binding; _snapshotDigest = state.SnapshotDigest;
-        foreach (CharacterCreationSkillAllocation item in state.PendingDraft?.Allocations ?? [])
-            _skills[(item.Kind, item.SourceSkillId)] = item;
-        foreach (CharacterCreationSkillGroupAllocation item in state.PendingDraft?.GroupAllocations ?? [])
-            _groups[item.GroupId] = item;
+        // The initial Core snapshot already contains free Priority talent rows.
+        // A previously saved Skills draft is not required to display them.
+        foreach (CharacterCreationSkillProjection item in state.Skills)
+        {
+            _skills[(item.Kind, item.SourceSkillId)] = new(item.SourceSkillId, item.Kind,
+                item.Rating, item.SpecializationOptionId, item.IsNativeLanguage);
+            _skillMinimums[(item.Kind, item.SourceSkillId)] = item.GrantedRating;
+        }
+        foreach (CharacterCreationSkillGroupProjection item in state.SkillGroups)
+        {
+            _groups[item.GroupId] = new(item.GroupId, item.Rating);
+            _groupMinimums[item.GroupId] = item.GrantedRating;
+        }
     }
 
     public bool Matches(CharacterCreationSkillsState state, CharacterOverviewState overview) =>
@@ -32,6 +44,11 @@ internal sealed class CreationSkillsPhoneDraft
     public IReadOnlyList<CharacterCreationSkillGroupAllocation> Groups => _groups.Values
         .OrderBy(item => item.GroupId, StringComparer.Ordinal).ToArray();
     public CharacterCreationSkillsPreview? Preview => _preview;
+
+    public int MinimumRating(CharacterCreationSkillCatalogEntry source) =>
+        _skillMinimums.GetValueOrDefault((source.Kind, source.SourceSkillId));
+    public int MinimumRating(CharacterCreationSkillGroupCatalogEntry source) =>
+        _groupMinimums.GetValueOrDefault(source.GroupId);
 
     public IReadOnlyList<CharacterCreationSkillAllocation> WithSkill(
         CharacterCreationSkillCatalogEntry source, int delta, bool native = false)
@@ -46,14 +63,15 @@ internal sealed class CreationSkillsPhoneDraft
                 .ToArray();
         }
 
-        int next = Math.Max(0, (current is { IsNativeLanguage: false }
+        int next = Math.Max(MinimumRating(source), (current is { IsNativeLanguage: false }
             ? current.Rating.GetValueOrDefault()
             : 0) + delta);
-        return Skills.Where(item => item.Kind != source.Kind || item.SourceSkillId != source.SourceSkillId)
-            .Append(new(source.SourceSkillId, source.Kind, next,
+        var retained = Skills.Where(item => item.Kind != source.Kind || item.SourceSkillId != source.SourceSkillId);
+        // Native languages intentionally have a null rating. Filtering the whole
+        // collection by Rating > 0 would erase them when any other row changes.
+        return next == 0 ? retained.ToArray() : retained.Append(new(source.SourceSkillId, source.Kind, next,
                 next > 0 && current is { IsNativeLanguage: false } ? current.SpecializationOptionId : null,
                 false))
-            .Where(item => item.Rating > 0)
             .ToArray();
     }
 
@@ -61,7 +79,7 @@ internal sealed class CreationSkillsPhoneDraft
         CharacterCreationSkillGroupCatalogEntry source, int delta)
     {
         _groups.TryGetValue(source.GroupId, out CharacterCreationSkillGroupAllocation? current);
-        int next = Math.Max(0, (current?.Rating ?? 0) + delta);
+        int next = Math.Max(MinimumRating(source), (current?.Rating ?? 0) + delta);
         return Groups.Where(item => item.GroupId != source.GroupId)
             .Append(new(source.GroupId, next)).Where(item => item.Rating > 0).ToArray();
     }

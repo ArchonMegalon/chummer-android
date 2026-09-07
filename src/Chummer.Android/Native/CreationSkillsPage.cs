@@ -167,11 +167,13 @@ public sealed class CreationSkillsPage : NativePageBase
                         ? CreationAllocationStrings.Get("Skills.NativeValue", "native")
                         : (selected?.Rating ?? 0).ToString(CultureInfo.InvariantCulture)),
                 NativeTheme.Muted));
+            AddTalentGrant(card, _draft.MinimumRating(source));
             HorizontalStackLayout controls = new() { Spacing = 8 };
             Button minus = NativeTheme.SecondaryButton(CreationAllocationStrings.Get(
                 "Common.Decrease",
                 "−"));
-            minus.IsEnabled = selected is { IsNativeLanguage: false, Rating: > 0 };
+            minus.IsEnabled = selected is { IsNativeLanguage: false }
+                && selected.Rating > _draft.MinimumRating(source);
             minus.Clicked += async (_, _) => await PreviewAsync(
                 state,
                 _draft.WithSkill(source, -1),
@@ -279,11 +281,12 @@ public sealed class CreationSkillsPage : NativePageBase
                 "Rating {0} · {1} skills",
                 selected?.Rating ?? 0,
                 source.MemberSkillSourceIds.Count), NativeTheme.Muted));
+            AddTalentGrant(card, _draft.MinimumRating(source));
             HorizontalStackLayout controls = new() { Spacing = 8 };
             Button minus = NativeTheme.SecondaryButton(CreationAllocationStrings.Get(
                 "Common.Decrease",
                 "−"));
-            minus.IsEnabled = selected?.Rating > 0;
+            minus.IsEnabled = selected?.Rating > _draft.MinimumRating(source);
             minus.Clicked += async (_, _) => await PreviewAsync(
                 state,
                 _draft.Skills,
@@ -298,6 +301,15 @@ public sealed class CreationSkillsPage : NativePageBase
             controls.Add(minus); controls.Add(plus); card.Add(controls);
             _body.Add(NativeTheme.Card(card));
         }
+    }
+
+    private static void AddTalentGrant(VerticalStackLayout card, int minimumRating)
+    {
+        if (minimumRating > 0)
+            card.Add(NativeTheme.Body(CreationAllocationStrings.Format(
+                "Skills.TalentGrant",
+                "Free starting rating {0} from Talent Priority.",
+                minimumRating), NativeTheme.Muted));
     }
 
     private async Task PreviewAsync(
