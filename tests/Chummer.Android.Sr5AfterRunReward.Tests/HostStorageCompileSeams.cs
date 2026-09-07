@@ -12,27 +12,6 @@ namespace Chummer.Android.Native
     }
 }
 
-namespace Microsoft.Maui.Storage
-{
-    // Tests must inject their host storage backend explicitly. Simulated MAUI
-    // preferences must never stand in for durable checkpoint/reopen evidence.
-    internal static class Preferences
-    {
-        public static UnavailablePreferences Default { get; } = new();
-    }
-
-    internal sealed class UnavailablePreferences
-    {
-        public string Get(string key, string fallback)
-            => throw MissingHostStorage();
-
-        public void Set(string key, string value)
-            => throw MissingHostStorage();
-
-        public void Remove(string key)
-            => throw MissingHostStorage();
-
-        private static NotSupportedException MissingHostStorage()
-            => new("Managed reward tests must inject an explicit checkpoint backend; MAUI preferences are unavailable.");
-    }
-}
+// Native view tests now use actual MAUI Controls/Essentials assemblies. Every
+// journal test still injects its own backend; Android Preferences are neither
+// simulated nor invoked as evidence of durable physical-device storage.

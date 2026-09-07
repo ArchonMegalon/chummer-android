@@ -18,6 +18,12 @@
     <Error Condition="'$(ChummerCoreRoot)' != '' and !Exists('$(ChummerCoreRoot)/Chummer.Infrastructure/Chummer.Infrastructure.csproj')"
            Text="ChummerCoreRoot must contain the real Chummer.Infrastructure project." />
   </Target>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Maui.Controls" Version="10.0.20" />
+    <EmbeddedResource Include="../../src/Chummer.Android/Resources/Localization/PhoneStrings.resx" LogicalName="Chummer.Android.Resources.Localization.PhoneStrings.resources" />
+    <EmbeddedResource Include="../../src/Chummer.Android/Resources/Localization/PhoneStrings.de.resx" LogicalName="Chummer.Android.Resources.Localization.PhoneStrings.de.resources" />
+    <EmbeddedResource Include="../../src/Chummer.Android/Resources/Localization/PhoneStrings.es.resx" LogicalName="Chummer.Android.Resources.Localization.PhoneStrings.es.resources" />
+  </ItemGroup>
   <ItemGroup Condition="'$(ChummerCoreRoot)' != ''">
     <ProjectReference Include="$(ChummerCoreRoot)/Chummer.Contracts/Chummer.Contracts.csproj" />
     <ProjectReference Include="$(ChummerCoreRoot)/Chummer.Application/Chummer.Application.csproj" />
@@ -28,6 +34,10 @@
     <Compile Include="PhoneModelTests.cs" />
     <Compile Include="ColdEntryTests.cs" />
     <Compile Include="RunnerHostTests.cs" />
+    <Compile Include="NativeViewTests.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5AfterRunRewardView.cs" Link="Native/Sr5AfterRunRewardView.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/NativeTheme.cs" Link="Native/NativeTheme.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/PhoneStrings.cs" Link="Native/PhoneStrings.cs" />
     <Compile Include="RunnerHostTestSeams.cs" />
     <Compile Include="HostStorageCompileSeams.cs" />
     <Compile Include="RealAfterRunRewardFixture.cs" />

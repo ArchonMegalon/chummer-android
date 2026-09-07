@@ -8,7 +8,8 @@ namespace Chummer.Android.Native;
 /// Explicit host reload seam. An implementation reloads the exact saved workspace
 /// into the presenter and publishes the corresponding immutable runner binding.
 /// This is not a general command, a save, or permission to switch the selected runner.
-/// No production implementation is registered until the new Core graph is sealed.
+/// The local next-wave runner host implements this seam; release consumption
+/// still requires the new Core/UI/Android graph to be sealed and qualified.
 /// </summary>
 public interface ISr5AfterRunRewardSavedRunnerRefresh
 {

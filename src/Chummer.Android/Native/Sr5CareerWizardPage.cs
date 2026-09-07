@@ -192,8 +192,7 @@ public sealed class Sr5CareerWizardPage : NativePageBase
         _afterRunEntryBlocker = canOpenAfterRun ? null : afterRunBlocker;
         _body.Add(NativeTheme.NavigationRow(
             Sr5CareerFlowStrings.Text("After the run"),
-            Sr5CareerFlowStrings.Text(
-                "Only governed proposal, run, and character IDs are selectable. This page never invents a run from the current character file."),
+            PhoneStrings.Get("AfterRunEntryDetail", "Record local rewards or review a governed run settlement. Resolve any pending transaction first."),
             () => RunAsync(OpenAfterRunSettlementAsync),
             enabled: canOpenAfterRun,
             automationId: "sr5-career-action-after-run"));

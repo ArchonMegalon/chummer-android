@@ -3092,7 +3092,7 @@ public sealed class BuildPage : NativePageBase
                 automationId: "build-career-specialization-editor"));
             _body.Add(NativeTheme.NavigationRow(
                 "Settle completed run",
-                "Review governed rewards, Heat/reputation, contacts and both approvals before one atomic Core receipt",
+                PhoneStrings.Get("AfterRunEntryDetail", "Record local rewards or review a governed run settlement. Resolve any pending transaction first."),
                 async () =>
                 {
                     Sr5AfterRunSettlementCoordinator authority = new(

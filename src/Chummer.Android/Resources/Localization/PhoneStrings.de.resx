@@ -138,4 +138,41 @@
   <data name="CharacterSettingMaxSkillRating" xml:space="preserve"><value>Maximalwert für Aktionsfertigkeiten in der Karriere</value></data>
   <data name="CharacterSettingMaxKnowledgeSkillRating" xml:space="preserve"><value>Maximalwert für Wissensfertigkeiten in der Karriere</value></data>
   <data name="CharacterSettingUsePointsOnBrokenGroups" xml:space="preserve"><value>Punkte auf aufgebrochene Fertigkeitsgruppen anwenden</value></data>
+  <data name="AfterRunRewardTitle" xml:space="preserve"><value>Nach dem Run · Belohnungen</value></data>
+  <data name="AfterRunRewardIntro" xml:space="preserve"><value>Erfasse eine lokale Belohnung für diesen Runner. Prüfe die Änderungen vor dem Speichern. Damit werden keine Run-Folgen freigegeben.</value></data>
+  <data name="AfterRunRewardExperimental" xml:space="preserve"><value>Experimenteller Ablauf — noch nicht durch die Gerätetests der aktuellen Telefonversion abgedeckt.</value></data>
+  <data name="AfterRunRewardKarma" xml:space="preserve"><value>Erhaltenes Karma</value></data>
+  <data name="AfterRunRewardNuyen" xml:space="preserve"><value>Erhaltene Nuyen</value></data>
+  <data name="AfterRunRewardReason" xml:space="preserve"><value>Begründung / Name des Runs (optional)</value></data>
+  <data name="AfterRunRewardDate" xml:space="preserve"><value>Buchungsdatum</value></data>
+  <data name="AfterRunRewardTime" xml:space="preserve"><value>Ortszeit</value></data>
+  <data name="AfterRunRewardNoAward" xml:space="preserve"><value>Ausdrücklich keine Belohnung erfassen (0 Karma / 0 Nuyen)</value></data>
+  <data name="AfterRunRewardPreview" xml:space="preserve"><value>Belohnung prüfen</value></data>
+  <data name="AfterRunRewardConfirm" xml:space="preserve"><value>Diese Belohnung bestätigen und speichern</value></data>
+  <data name="AfterRunRewardRecover" xml:space="preserve"><value>Gespeichertes Ergebnis prüfen</value></data>
+  <data name="AfterRunRewardRetry" xml:space="preserve"><value>Dieselbe bestätigte Belohnung erneut versuchen</value></data>
+  <data name="AfterRunRewardDone" xml:space="preserve"><value>Fertig · zurück zur Karriere</value></data>
+  <data name="AfterRunRewardConsequencesBoundary" xml:space="preserve"><value>Heat, Ruf und Kontakte sind eigene Entscheidungen. Eine lokale Belohnung ist keine SL-Freigabe; dieser Einstieg kann diese Folgen noch nicht bearbeiten.</value></data>
+  <data name="AfterRunRewardHistory" xml:space="preserve"><value>Bereits erfasste Belohnungen</value></data>
+  <data name="AfterRunRewardHistoryChoose" xml:space="preserve"><value>Erfasste Belohnung auswählen</value></data>
+  <data name="AfterRunRewardHistoryPrevious" xml:space="preserve"><value>Vorherige Belohnungen</value></data>
+  <data name="AfterRunRewardHistoryNext" xml:space="preserve"><value>Weitere Belohnungen</value></data>
+  <data name="AfterRunRewardHistoryResume" xml:space="preserve"><value>Gewählte gespeicherte Belohnung prüfen</value></data>
+  <data name="AfterRunRewardSaved" xml:space="preserve"><value>Gespeichert. Aktueller Stand: {0} Karma · {1} Nuyen.</value></data>
+  <data name="AfterRunRewardHistoryItem" xml:space="preserve"><value>{0} · {1} · {2} Karma / {3} Nuyen</value></data>
+  <data name="AfterRunRewardHistoryPosition" xml:space="preserve"><value>Seite {0} von {1}</value></data>
+  <data name="AfterRunRewardPreviewSummary" xml:space="preserve"><value>Karma: {0} → {1}&#10;Nuyen: {2} → {3}&#10;{4} · {5}</value></data>
+  <data name="AfterRunRewardWorking" xml:space="preserve"><value>Wird bearbeitet… Bitte warten.</value></data>
+  <data name="AfterRunRewardLoading" xml:space="preserve"><value>Gespeicherte Belohnungen werden geprüft…</value></data>
+  <data name="AfterRunRewardEditing" xml:space="preserve"><value>Belohnung eingeben und anschließend prüfen.</value></data>
+  <data name="AfterRunRewardReviewReady" xml:space="preserve"><value>Prüfe die folgenden Änderungen vor dem Bestätigen.</value></data>
+  <data name="AfterRunRewardInvalid" xml:space="preserve"><value>Prüfe die nicht negativen ganzen Beträge, das Datum und die Notiz. Wähle bei 0 / 0 ausdrücklich keine Belohnung.</value></data>
+  <data name="AfterRunRewardReviewUnavailable" xml:space="preserve"><value>Eine aktuelle Belohnungsvorschau ist nicht verfügbar. Prüfe den gespeicherten Runner und fordere die Vorschau erneut an.</value></data>
+  <data name="AfterRunRewardPending" xml:space="preserve"><value>Eine frühere Belohnung ist noch offen. Prüfe zuerst ihr gespeichertes Ergebnis.</value></data>
+  <data name="AfterRunRewardUnknown" xml:space="preserve"><value>Das Ergebnis ist unklar. Erfasse es nicht erneut als neue Belohnung. Prüfe das Ergebnis oder versuche ausdrücklich denselben Vorgang erneut.</value></data>
+  <data name="AfterRunRewardRecorded" xml:space="preserve"><value>Belohnung erfasst und gespeicherten Runner neu geladen.</value></data>
+  <data name="AfterRunRewardRefreshRequired" xml:space="preserve"><value>Die Belohnung bleibt erhalten, aber das aktuelle Ergebnis konnte nicht geladen werden. Prüfe das gespeicherte Ergebnis; vergib sie nicht erneut.</value></data>
+  <data name="AfterRunRewardRunnerChanged" xml:space="preserve"><value>Der ausgewählte Runner wurde gewechselt. Öffne Nach dem Run für den aktuell gespeicherten Runner erneut.</value></data>
+  <data name="AfterRunRewardJournalUnavailable" xml:space="preserve"><value>Ein offener Karrierevorgang oder ein nicht lesbares Buchungsjournal verhindert eine neue Belohnung. Kläre zuerst diesen Vorgang; nichts wurde gelöscht.</value></data>
+  <data name="AfterRunEntryDetail" xml:space="preserve"><value>Erfasse lokale Belohnungen oder prüfe eine freigegebene Run-Abrechnung. Kläre zuerst jeden noch offenen Vorgang.</value></data>
 </root>

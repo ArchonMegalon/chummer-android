@@ -192,7 +192,7 @@ def test_shared_owner_cas_receipt_and_unknown_recovery_fail_closed() -> None:
     assert "Do not replay, clear, or claim success" in coordinator
 
 
-def test_entry_routing_prefers_only_exact_owned_recovery_over_manual_intake() -> None:
+def test_entry_routing_prefers_owned_recovery_and_uses_local_rewards_not_manual_ids() -> None:
     page = read("Sr5AfterRunSettlementWizardPage.cs")
     store = read("Sr5AfterRunSettlementCheckpointStore.cs")
     route = page.split("internal static Page CreateEntryDestination", 1)[1]
@@ -203,9 +203,13 @@ def test_entry_routing_prefers_only_exact_owned_recovery_over_manual_intake() ->
     assert route.index("TryReadOwnedRecovery") < route.index(
         "Sr5AfterRunCatalogStatus.Missing"
     )
+    assert route.index("current.WorkspaceId != editor.WorkspaceId") < route.index("CreateDependencies")
+    assert "current.ContentRevision != editor.WorkspaceRevision" in route
+    assert "current.IsDirty || current.IsBusy" in route
     assert "string.IsNullOrWhiteSpace(recoveryBlocker)" in route
-    assert "SupportsManualAfterRunProposalEntry" in route
-    assert "Sr5AfterRunManualProposalPage" in route
+    assert "SupportsAfterRunRewardEntry" in route
+    assert "Sr5AfterRunRewardWizardPage" in route
+    assert "Sr5AfterRunManualProposalPage" not in route
     assert "Sr5AfterRunSettlementWizardPage" in route
     assert "checkpoint.Phase == Sr5CareerCheckpointPhase.Reviewed" in owned
     assert "_authority.OwnsReviewed(checkpoint)" in owned

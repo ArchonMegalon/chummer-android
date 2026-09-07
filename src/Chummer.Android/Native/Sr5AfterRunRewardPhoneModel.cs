@@ -1,4 +1,5 @@
 using System.Globalization;
+using Chummer.Application.Characters;
 using Chummer.Contracts.Characters;
 
 namespace Chummer.Android.Native;
@@ -61,6 +62,7 @@ public sealed class Sr5AfterRunRewardPhoneModel
     public Sr5AfterRunRewardConsequencesHandoff? Handoff { get; private set; }
     public IReadOnlyList<Sr5AfterRunRewardCheckpoint> RecordedRewards { get; private set; } = [];
     public bool IsBusy => _busy;
+    public bool HasCurrentSelection => OwnsReloadableSelection();
     public bool HasRetainedIntent => _confirmedIntent is not null;
     public bool CanEdit => _initialized && !_busy && !HasRetainedIntent && OwnsSelection()
         && Status != Sr5AfterRunRewardPhoneStatus.JournalUnavailable;
@@ -306,7 +308,7 @@ public sealed class Sr5AfterRunRewardPhoneModel
             .AddSeconds(Math.Truncate(Draft.Time.TotalSeconds));
         request = new(_selection.WorkspaceId, OperationId, RewardId, karma, nuyen, date, Draft.Reason,
             Kind: Draft.NoAward ? CharacterAfterRunRewardKind.NoAward : CharacterAfterRunRewardKind.Award);
-        return true;
+        return CharacterAfterRunRewardProjector.IsValidPreviewRequest(request);
     }
 
     private bool OwnsSelection()

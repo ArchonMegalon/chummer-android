@@ -34,8 +34,10 @@ one compiler slot. The console harness exits nonzero on any failed case.
 - The shared owner backend in these file tests is an explicit test adapter, not
   Android Preferences. `JournalOwnershipTests.cs` uses memory-only fault storage
   to test CAS/ownership transitions. Neither establishes physical-phone or MAUI
-  Preferences crash durability. The Preferences compile seam intentionally throws
-  if accidentally used; no shadow Core DTO or service is compiled.
+  Preferences crash durability. The tests now reference actual MAUI assemblies
+  for the native view; journal tests still inject explicit storage backends and
+  the host owner seam throws unless an owner is injected. No shadow Core DTO or
+  service is compiled.
 - `PhoneModelTests.cs` adds 17 model/recovery checks to the 49 coordinator and
   journal cases. It compiles the actual pending phone model and consequences
   handoff. A presenter-reload adapter is substituted; all currency previews,
@@ -63,7 +65,7 @@ one compiler slot. The console harness exits nonzero on any failed case.
   Appearance alone performs neither Lookup nor owner release. This observation
   is not a lease authorizing a later mutation; existing CAS/ownership checks still
   govern every confirm, recovery and handoff.
-- `RunnerHostTests.cs` adds 13 checks (93 total) over the actual new
+- `RunnerHostTests.cs` adds 13 checks over the actual new
   `RunnerSessionCoordinator.AfterRunRewards.cs` partial and
   `RunnerSessionSr5AfterRunRewardHost.cs` adapter. Only the existing presenter,
   owner and surrounding session scaffolding are substituted. These tests use
@@ -76,13 +78,27 @@ one compiler slot. The console harness exits nonzero on any failed case.
   dirty, busy, closed, wrong-edition and changed-selection frames still block
   reload. Recovery then uses Core Lookup and fresh facts. Post-save shell sync
   must also preserve selection before continuation is exposed.
+- `NativeViewTests.cs` adds 11 executable native-control checks (104 total).
+  Actual MAUI Entry, Editor, DatePicker, TimePicker, CheckBox, Picker and Button
+  instances drive the actual view/model and real Core persistence. The page
+  action/navigation callbacks are test adapters; this does not execute Android
+  handlers, render pixels, verify TalkBack, or prove NativePageBase lifecycle.
+  Cases cover stable editors, review invalidation, real confirm/save, explicit
+  NoAward, lost acknowledgement, history Lookup, 25-row paging, DE/EN/ES resource
+  satellites, changed selection, duplicate clicks and canceled old appearances.
+- The controls exposed two defects: default 0/0 was shown as a generic unavailable
+  preview instead of invalid intent, and returning before a canceled action
+  finished could strand the busy indicator. Input validation now calls the
+  existing pure Core preview-request validator; no rules are copied. Completion
+  renders current state for a live returning appearance without renewing the old
+  click's captured cancellation token.
 
 ## Native compile check
 
 The ordinary `Chummer.Android.Native.CompileCheck` project was also compiled
-locally with its unmodified source/generated-assets verifier: 237 owned sources,
+locally with its unmodified source/generated-assets verifier: 239 owned sources,
 three project references, zero warnings/errors. That check includes the actual
-main coordinator, new partial/adapter and `MauiProgram` composition, not the host
+main coordinator, new page/view/adapter and `MauiProgram` composition, not the host
 test seams. It caught a missing Infrastructure namespace import which has been
 corrected. It is still a neutral dependency compile check, not a full MAUI APK,
 Android lifecycle execution or the governed internal-beta build script.
@@ -96,8 +112,13 @@ not a new sealed cross-repository authority or a substitute for its locked build
 
 ## Intentionally unfinished integration
 
-No existing page, entry point, package pin or sealed proof graph is changed in
-this slice. The reward service is registered against the runtime's existing
+The shared After Run entry factory now opens the local reward page when no
+governed proposal exists and no prior settlement recovery/blocker takes priority.
+All three existing entry points still use that factory. Available governed
+proposals retain their own settlement route, which does not credit rewards.
+There is no ordinary fallback to manual UUID/hash intake. New copy is localized
+in DE/EN/ES and marks this workflow experimental pending device qualification.
+No package pin or sealed proof graph is changed. The reward service is registered against the runtime's existing
 workspace store, and the real runner host now captures one immutable state with
 a guarded selection generation. Actual selection/import/close intents fence old
 reviews; ordinary same-runner presenter reloads preserve the generation. The
@@ -114,17 +135,16 @@ invent an abandon/rebase authority. The native UI must expose that limitation,
 not label it complete or allocate replacement identities. A safe explicit
 abandon/review path for such terminal conflicts is follow-up authority work.
 
-Future wiring must recover outstanding reward ownership before other participating
-Career routes, re-read the current clean runner after a receipt, then separately
-quote/confirm consequences without inferring GM/run authority. Release consumption
+Future integration must recover outstanding reward ownership before other
+participating Career routes and separately quote/confirm consequences without
+inferring GM/run authority. Release consumption
 still requires Core owner packaging, UI/runtime resealing, authorized Android
 repinning, native compilation and fresh device proof. Local managed green tests
 do not advance the current published graph.
 
 The model now supports recovery-first selection for Applied/unreleased entries
-and explicit recorded-history resumption. The real presenter/selection adapter
-is composed; the rendered native page and entry routing are still not wired.
-Every new ordinary entry point
-must use this observation, not infer clear ownership from non-Applied history
-alone. A receipt-backed handoff still does not supply the independent run/GM
+and explicit recorded-history resumption. The native page uses those operations,
+retains its model through appearance changes, and never retries on appearance.
+The explicit Done action returns to the caller only after saved-runner reload.
+A receipt-backed handoff still does not supply the independent run/GM
 approval, policy or Core consequences quote needed for the second transaction.

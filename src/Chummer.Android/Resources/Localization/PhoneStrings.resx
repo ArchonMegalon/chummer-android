@@ -138,4 +138,41 @@
   <data name="CharacterSettingMaxSkillRating" xml:space="preserve"><value>Maximum career active-skill rating</value></data>
   <data name="CharacterSettingMaxKnowledgeSkillRating" xml:space="preserve"><value>Maximum career knowledge-skill rating</value></data>
   <data name="CharacterSettingUsePointsOnBrokenGroups" xml:space="preserve"><value>Allow points on broken skill groups</value></data>
+  <data name="AfterRunRewardTitle" xml:space="preserve"><value>After Run · Rewards</value></data>
+  <data name="AfterRunRewardIntro" xml:space="preserve"><value>Record a local reward for this runner. Review the changes before saving. This does not approve run consequences.</value></data>
+  <data name="AfterRunRewardExperimental" xml:space="preserve"><value>Experimental workflow — not yet covered by the current phone release's device tests.</value></data>
+  <data name="AfterRunRewardKarma" xml:space="preserve"><value>Karma gained</value></data>
+  <data name="AfterRunRewardNuyen" xml:space="preserve"><value>Nuyen gained</value></data>
+  <data name="AfterRunRewardReason" xml:space="preserve"><value>Reason / run name (optional)</value></data>
+  <data name="AfterRunRewardDate" xml:space="preserve"><value>Entry date</value></data>
+  <data name="AfterRunRewardTime" xml:space="preserve"><value>Local time</value></data>
+  <data name="AfterRunRewardNoAward" xml:space="preserve"><value>Explicitly record no reward (0 Karma / 0 Nuyen)</value></data>
+  <data name="AfterRunRewardPreview" xml:space="preserve"><value>Review reward</value></data>
+  <data name="AfterRunRewardConfirm" xml:space="preserve"><value>Confirm and save this reward</value></data>
+  <data name="AfterRunRewardRecover" xml:space="preserve"><value>Check saved result</value></data>
+  <data name="AfterRunRewardRetry" xml:space="preserve"><value>Retry the same confirmed reward</value></data>
+  <data name="AfterRunRewardDone" xml:space="preserve"><value>Done · return to Career</value></data>
+  <data name="AfterRunRewardConsequencesBoundary" xml:space="preserve"><value>Heat, reputation and contacts are separate decisions. A local reward is not GM approval; this entry cannot yet start those consequences.</value></data>
+  <data name="AfterRunRewardHistory" xml:space="preserve"><value>Previously recorded rewards</value></data>
+  <data name="AfterRunRewardHistoryChoose" xml:space="preserve"><value>Choose a recorded reward</value></data>
+  <data name="AfterRunRewardHistoryPrevious" xml:space="preserve"><value>Previous rewards</value></data>
+  <data name="AfterRunRewardHistoryNext" xml:space="preserve"><value>More rewards</value></data>
+  <data name="AfterRunRewardHistoryResume" xml:space="preserve"><value>Verify selected saved reward</value></data>
+  <data name="AfterRunRewardSaved" xml:space="preserve"><value>Saved. Current balance: {0} Karma · {1} Nuyen.</value></data>
+  <data name="AfterRunRewardHistoryItem" xml:space="preserve"><value>{0} · {1} · {2} Karma / {3} Nuyen</value></data>
+  <data name="AfterRunRewardHistoryPosition" xml:space="preserve"><value>Page {0} of {1}</value></data>
+  <data name="AfterRunRewardPreviewSummary" xml:space="preserve"><value>Karma: {0} → {1}&#10;Nuyen: {2} → {3}&#10;{4} · {5}</value></data>
+  <data name="AfterRunRewardWorking" xml:space="preserve"><value>Working… Please wait.</value></data>
+  <data name="AfterRunRewardLoading" xml:space="preserve"><value>Checking saved rewards…</value></data>
+  <data name="AfterRunRewardEditing" xml:space="preserve"><value>Enter the reward, then review it.</value></data>
+  <data name="AfterRunRewardReviewReady" xml:space="preserve"><value>Check the exact changes below before confirming.</value></data>
+  <data name="AfterRunRewardInvalid" xml:space="preserve"><value>Check the non-negative whole amounts, date and note. For 0 / 0, explicitly select no reward.</value></data>
+  <data name="AfterRunRewardReviewUnavailable" xml:space="preserve"><value>A current reward preview is unavailable. Recheck the saved runner and try reviewing again.</value></data>
+  <data name="AfterRunRewardPending" xml:space="preserve"><value>An earlier reward is unfinished. Check its saved result before doing anything else.</value></data>
+  <data name="AfterRunRewardUnknown" xml:space="preserve"><value>The result is uncertain. Do not enter it again as a new reward. Check the result or explicitly retry this same operation.</value></data>
+  <data name="AfterRunRewardRecorded" xml:space="preserve"><value>Reward recorded and saved runner reloaded.</value></data>
+  <data name="AfterRunRewardRefreshRequired" xml:space="preserve"><value>The reward is retained, but the current result could not be loaded. Check the saved result; do not award it again.</value></data>
+  <data name="AfterRunRewardRunnerChanged" xml:space="preserve"><value>The selected runner changed. Reopen After Run for the current saved runner.</value></data>
+  <data name="AfterRunRewardJournalUnavailable" xml:space="preserve"><value>A pending Career operation or unreadable journal prevents a new reward. Resolve that operation first; nothing has been cleared.</value></data>
+  <data name="AfterRunEntryDetail" xml:space="preserve"><value>Record local rewards or review a governed run settlement. Resolve any pending transaction first.</value></data>
 </root>
