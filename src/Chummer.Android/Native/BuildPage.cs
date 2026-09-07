@@ -3099,8 +3099,8 @@ public sealed class BuildPage : NativePageBase
                         new RunnerSessionSr5AfterRunSettlementPresenter(Coordinator),
                         new PreferencesSr5CareerCheckpointOwnerAuthority());
                     Sr5AfterRunSettlementEditorState editor = await authority.PrepareAsync();
-                    Page destination = Sr5AfterRunSettlementWizardPage
-                        .CreateEntryDestination(Coordinator, editor);
+                    Page destination = await Sr5AfterRunSettlementWizardPage
+                        .CreateEntryDestinationAsync(Coordinator, editor);
                     await Navigation.PushAsync(destination);
                 },
                 automationId: "build-career-after-run-settlement"));

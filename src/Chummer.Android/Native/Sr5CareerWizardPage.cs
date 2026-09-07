@@ -271,8 +271,8 @@ public sealed class Sr5CareerWizardPage : NativePageBase
         }
 
         _afterRunEntryBlocker = null;
-        Page destination = Sr5AfterRunSettlementWizardPage
-            .CreateEntryDestination(Coordinator, editor);
+        Page destination = await Sr5AfterRunSettlementWizardPage
+            .CreateEntryDestinationAsync(Coordinator, editor);
         await Navigation.PushAsync(destination);
     }
 

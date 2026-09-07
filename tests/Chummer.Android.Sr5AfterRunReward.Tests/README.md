@@ -65,7 +65,7 @@ one compiler slot. The console harness exits nonzero on any failed case.
   Appearance alone performs neither Lookup nor owner release. This observation
   is not a lease authorizing a later mutation; existing CAS/ownership checks still
   govern every confirm, recovery and handoff.
-- `RunnerHostTests.cs` adds 13 checks over the actual new
+- `RunnerHostTests.cs` adds 20 checks over the actual new
   `RunnerSessionCoordinator.AfterRunRewards.cs` partial and
   `RunnerSessionSr5AfterRunRewardHost.cs` adapter. Only the existing presenter,
   owner and surrounding session scaffolding are substituted. These tests use
@@ -73,12 +73,19 @@ one compiler slot. The console harness exits nonzero on any failed case.
   presenter or the main coordinator's existing navigation methods. They cover
   explicit reactivation, A-to-B-to-A selection, activation-gate races, owner
   changes, cancellation, failed reload and disposal.
+- Seven entry-selection checks observe the real journal before deciding whether
+  local recovery or a catalog route should open. A pending reward or Applied
+  receipt with unreleased ownership remains recoverable even if a run catalog
+  appears later. Released history does not displace the catalog. Corrupt journal
+  or shared ownership cannot silently fall through to another settlement;
+  cancellation and changed activation reject navigation. These are real host
+  partial/model/Core checks, not rendered entry-factory or Android route tests.
 - A failed presenter reload does not authorize another Commit or discard the
   receipt. Read-only recovery may clear that error on the same saved selection;
   dirty, busy, closed, wrong-edition and changed-selection frames still block
   reload. Recovery then uses Core Lookup and fresh facts. Post-save shell sync
   must also preserve selection before continuation is exposed.
-- `NativeViewTests.cs` adds 11 executable native-control checks (104 total).
+- `NativeViewTests.cs` adds 11 executable native-control checks (111 total).
   Actual MAUI Entry, Editor, DatePicker, TimePicker, CheckBox, Picker and Button
   instances drive the actual view/model and real Core persistence. The page
   action/navigation callbacks are test adapters; this does not execute Android
@@ -112,10 +119,16 @@ not a new sealed cross-repository authority or a substitute for its locked build
 
 ## Intentionally unfinished integration
 
-The shared After Run entry factory now opens the local reward page when no
-governed proposal exists and no prior settlement recovery/blocker takes priority.
-All three existing entry points still use that factory. Available governed
-proposals retain their own settlement route, which does not credit rewards.
+The shared asynchronous After Run entry factory first respects existing exact
+settlement recovery/blockers, then reads local reward recovery off the UI thread.
+It passes the retained model into the reward page when recovery is pending,
+even when the catalog is Available, Corrupt or Unavailable. New local rewards
+remain limited to a Missing catalog. Without local recovery, available governed
+proposals retain their settlement route, which does not credit rewards.
+All three callers await this same factory, which revalidates the exact saved
+runner after the read. No entry read commits, looks up, retries or releases an
+owner. Existing settlement-history/cross-lane interaction and actual native
+navigation still require runtime qualification.
 There is no ordinary fallback to manual UUID/hash intake. New copy is localized
 in DE/EN/ES and marks this workflow experimental pending device qualification.
 No package pin or sealed proof graph is changed. The reward service is registered against the runtime's existing

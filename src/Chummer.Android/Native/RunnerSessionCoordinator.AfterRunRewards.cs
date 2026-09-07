@@ -35,6 +35,29 @@ public sealed partial class RunnerSessionCoordinator
             _afterRunRewardCheckpoints!), host, host, localNow);
     }
 
+    /// <summary>
+    /// Observe local recovery before choosing a catalog route. A newly available
+    /// run proposal must not strand an older local reward. No lookup, retry,
+    /// confirmation, journal write or owner release happens during this read.
+    /// </summary>
+    internal async Task<Sr5AfterRunRewardPhoneModel?> PrepareAfterRunRewardEntryAsync(
+        bool allowNewReward, CancellationToken cancellationToken = default,
+        ISr5CareerCheckpointOwnerAuthority? owner = null)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!SupportsAfterRunRewardEntry) return null;
+        var model = CreateAfterRunRewardModel(DateTime.Now, owner);
+        await model.InitializeAsync(cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!model.HasCurrentSelection)
+            throw new InvalidOperationException(PhoneStrings.Get("AfterRunRewardRunnerChanged",
+                "The selected runner changed. Reopen After Run for the current saved runner."));
+        if (!allowNewReward && model.Status == Sr5AfterRunRewardPhoneStatus.JournalUnavailable)
+            throw new InvalidOperationException(PhoneStrings.Get("AfterRunRewardJournalUnavailable",
+                "A pending Career operation or unreadable journal prevents a new reward. Resolve that operation first; nothing has been cleared."));
+        return allowNewReward || model.HasRetainedIntent ? model : null;
+    }
+
     // These reads contain no Preferences, controls, XML parsing or file I/O.
     // One immutable presenter state and one selection generation form the frame.
     internal Sr5AfterRunRewardRunnerBinding CaptureAfterRunRewardBinding(Guid ownerId)

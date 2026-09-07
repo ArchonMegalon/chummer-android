@@ -19,7 +19,14 @@ internal static partial class RewardPhoneTests
         (nameof(RealHostReloadRevalidatesAfterActivationGate), RealHostReloadRevalidatesAfterActivationGate),
         (nameof(RealHostOwnerSwitchDuringReloadPreventsHandoff), RealHostOwnerSwitchDuringReloadPreventsHandoff),
         (nameof(RealHostBusyAndDirtyFramesCannotOverwriteUnsavedState), RealHostBusyAndDirtyFramesCannotOverwriteUnsavedState),
-        (nameof(RealHostUncomposedAndDisposedSessionsStayUnavailable), RealHostUncomposedAndDisposedSessionsStayUnavailable)
+        (nameof(RealHostUncomposedAndDisposedSessionsStayUnavailable), RealHostUncomposedAndDisposedSessionsStayUnavailable),
+        (nameof(EntryRecoveryCannotBeHiddenByAnAvailableCatalog), EntryRecoveryCannotBeHiddenByAnAvailableCatalog),
+        (nameof(EntryReleasedHistoryDoesNotReplaceAnAvailableCatalog), EntryReleasedHistoryDoesNotReplaceAnAvailableCatalog),
+        (nameof(EntryMissingCatalogAllowsOrdinaryLocalReward), EntryMissingCatalogAllowsOrdinaryLocalReward),
+        (nameof(EntryCorruptJournalCannotFallThroughToAnotherSettlement), EntryCorruptJournalCannotFallThroughToAnotherSettlement),
+        (nameof(EntryReadRejectsAwayAndBackSelection), EntryReadRejectsAwayAndBackSelection),
+        (nameof(EntryReadCancellationCannotChooseADestination), EntryReadCancellationCannotChooseADestination),
+        (nameof(EntryRecoveryPreservesAppliedButUnreleasedOwner), EntryRecoveryPreservesAppliedButUnreleasedOwner)
     ];
 
     private static async Task RealHostPartialReloadsCommittedRewardWithoutChangingSelection()
@@ -235,6 +242,124 @@ internal static partial class RewardPhoneTests
         presenter = new(ReadSaved(host.Fixture.WorkspaceId), ReadSaved);
         owner = new() { CurrentOwnerId = host.Authority.Current.OwnerId };
         return new(presenter, host.Service, host.Store);
+    }
+
+    private static async Task EntryRecoveryCannotBeHiddenByAnAvailableCatalog()
+    {
+        using var fixture = new RealAfterRunRewardFixture();
+        using var host = new Host(fixture);
+        using var session = RewardSession(host, out _, out var owner);
+        var original = await SessionReview(session, owner);
+        host.Service.BeforeCommit = _ => throw new IOException("Interrupted before Core Commit.");
+        await original.ConfirmAsync();
+        int commits = host.Service.CommitCalls;
+        int lookups = host.Service.LookupCalls;
+        int writes = host.Journal.Writes;
+        string sharedOwner = host.OwnerBackend.Read();
+        var entry = await session.PrepareAfterRunRewardEntryAsync(allowNewReward: false, owner: owner);
+        Require(entry is not null && entry.HasRetainedIntent && !entry.CanEdit && entry.CanRecover,
+            "An available or unavailable catalog stranded the original pending local reward.");
+        Equal(original.OperationId, entry!.OperationId);
+        Equal(original.RewardId, entry.RewardId);
+        Equal(commits, host.Service.CommitCalls);
+        Equal(lookups, host.Service.LookupCalls);
+        Equal(writes, host.Journal.Writes);
+        Equal(sharedOwner, host.OwnerBackend.Read());
+    }
+
+    private static async Task EntryReleasedHistoryDoesNotReplaceAnAvailableCatalog()
+    {
+        using var fixture = new RealAfterRunRewardFixture();
+        using var host = new Host(fixture);
+        using var session = RewardSession(host, out _, out var owner);
+        Require(await session.PrepareAfterRunRewardEntryAsync(false, owner: owner) is null,
+            "An empty journal displaced the governed catalog.");
+        var original = await SessionReview(session, owner);
+        await original.ConfirmAsync();
+        Require(original.CanContinue, "Fixture reward was not recorded and reloaded.");
+        int lookups = host.Service.LookupCalls;
+        int writes = host.Journal.Writes;
+        Require(await session.PrepareAfterRunRewardEntryAsync(false, owner: owner) is null,
+            "Released historical receipts were mistaken for unfinished recovery.");
+        Equal(1, host.Service.CommitCalls);
+        Equal(lookups, host.Service.LookupCalls);
+        Equal(writes, host.Journal.Writes);
+    }
+
+    private static async Task EntryMissingCatalogAllowsOrdinaryLocalReward()
+    {
+        using var fixture = new RealAfterRunRewardFixture();
+        using var host = new Host(fixture);
+        using var session = RewardSession(host, out _, out var owner);
+        var entry = await session.PrepareAfterRunRewardEntryAsync(true, owner: owner);
+        Require(entry is not null && entry.CanEdit && !entry.HasRetainedIntent,
+            "A missing catalog blocked ordinary local rewards.");
+        Equal(0, host.Service.CommitCalls);
+        Equal(0, host.Service.LookupCalls);
+        Equal(0, host.Journal.Writes);
+    }
+
+    private static async Task EntryCorruptJournalCannotFallThroughToAnotherSettlement()
+    {
+        using var fixture = new RealAfterRunRewardFixture();
+        using var host = new Host(fixture);
+        using var session = RewardSession(host, out _, out var owner);
+        host.OwnerBackend.Write("{}");
+        await MustReject(() => session.PrepareAfterRunRewardEntryAsync(false, owner: owner));
+        Equal("{}", host.OwnerBackend.Read());
+        var blocked = await session.PrepareAfterRunRewardEntryAsync(true, owner: owner);
+        Require(blocked is not null && !blocked.CanEdit && !blocked.CanRecover
+            && blocked.Status == Sr5AfterRunRewardPhoneStatus.JournalUnavailable,
+            "A corrupt owner admitted a new local award.");
+        Equal(0, host.Service.CommitCalls);
+        Equal(0, host.Journal.Writes);
+    }
+
+    private static async Task EntryReadRejectsAwayAndBackSelection()
+    {
+        using var fixture = new RealAfterRunRewardFixture();
+        using var host = new Host(fixture);
+        using var session = RewardSession(host, out _, out var owner);
+        host.Journal.BeforeRead = () => session.AdvanceSelectionForTest();
+        await MustReject(() => session.PrepareAfterRunRewardEntryAsync(true, owner: owner));
+        Equal(0, host.Service.CommitCalls);
+        Equal(0, host.Journal.Writes);
+    }
+
+    private static async Task EntryReadCancellationCannotChooseADestination()
+    {
+        using var fixture = new RealAfterRunRewardFixture();
+        using var host = new Host(fixture);
+        using var session = RewardSession(host, out _, out var owner);
+        using var cancellation = new CancellationTokenSource();
+        host.Journal.BeforeRead = cancellation.Cancel;
+        try
+        {
+            await session.PrepareAfterRunRewardEntryAsync(true, cancellation.Token, owner);
+            throw new InvalidOperationException("Canceled route preparation selected a destination.");
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
+        Equal(0, host.Service.CommitCalls);
+        Equal(0, host.Journal.Writes);
+    }
+
+    private static async Task EntryRecoveryPreservesAppliedButUnreleasedOwner()
+    {
+        using var fixture = new RealAfterRunRewardFixture();
+        using var host = new Host(fixture);
+        using var session = RewardSession(host, out _, out var owner);
+        var original = await SessionReview(session, owner);
+        host.OwnerBackend.FailRemove = true;
+        await original.ConfirmAsync();
+        int writes = host.Journal.Writes;
+        string sharedOwner = host.OwnerBackend.Read();
+        var entry = await session.PrepareAfterRunRewardEntryAsync(false, owner: owner);
+        Require(entry is not null && entry.HasRetainedIntent && entry.CanRecover && !entry.CanRetry,
+            "An Applied receipt with unresolved shared ownership fell through to another settlement.");
+        Equal(original.OperationId, entry!.OperationId);
+        Equal(sharedOwner, host.OwnerBackend.Read());
+        Equal(writes, host.Journal.Writes);
+        Equal(1, host.Service.CommitCalls);
     }
 
     private static async Task<Sr5AfterRunRewardPhoneModel> SessionReview(

@@ -138,19 +138,15 @@ public sealed class Sr5AfterRunSettlementWizardPage : NativePageBase
             checkpointAuthority);
     }
 
-    internal static Page CreateEntryDestination(
+    internal static async Task<Page> CreateEntryDestinationAsync(
         RunnerSessionCoordinator coordinator,
-        Sr5AfterRunSettlementEditorState editor)
+        Sr5AfterRunSettlementEditorState editor,
+        CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         // Catalog preparation awaited work. Bind the destination to that same
         // saved runner, not whichever runner happens to be selected afterward.
-        var current = coordinator.State;
-        if (!editor.IsExact() || current.WorkspaceId != editor.WorkspaceId
-            || current.ContentRevision != editor.WorkspaceRevision
-            || current.SavedRevision != editor.WorkspaceRevision
-            || current.IsDirty || current.IsBusy || !string.IsNullOrWhiteSpace(current.Error))
-            throw new InvalidOperationException(
-                Text("The SR5 After Run route requires the exact current clean saved runner revision."));
+        RequireCurrentEntry();
         Sr5AfterRunSettlementWizardDependencies dependencies =
             CreateDependencies(coordinator, editor);
         bool ownsRecovery = dependencies.Store.TryReadOwnedRecovery(
@@ -158,20 +154,35 @@ public sealed class Sr5AfterRunSettlementWizardPage : NativePageBase
             out string recoveryBlocker);
         if (!ownsRecovery
             && string.IsNullOrWhiteSpace(recoveryBlocker)
-            && editor.Status == Sr5AfterRunCatalogStatus.Missing
             && coordinator.SupportsAfterRunRewardEntry)
         {
-            // Ordinary offline entry records a real local reward. It must not
-            // require invented proposal/run/actor IDs or manual digest input.
-            // Existing governed proposals and exact settlement recovery keep
-            // their own route and must never award the same reward again here.
-            return new Sr5AfterRunRewardWizardPage(coordinator);
+            // Recovery takes priority even when a catalog has appeared since
+            // the local reward was confirmed. A missing catalog alone permits
+            // NEW rewards; corrupt/unavailable catalogs never do.
+            var reward = await coordinator.PrepareAfterRunRewardEntryAsync(
+                allowNewReward: editor.Status == Sr5AfterRunCatalogStatus.Missing,
+                cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            RequireCurrentEntry();
+            if (reward is not null)
+                return new Sr5AfterRunRewardWizardPage(coordinator, reward);
         }
 
         return new Sr5AfterRunSettlementWizardPage(
             coordinator,
             editor,
             dependencies);
+
+        void RequireCurrentEntry()
+        {
+            var current = coordinator.State;
+            if (!editor.IsExact() || current.WorkspaceId != editor.WorkspaceId
+                || current.ContentRevision != editor.WorkspaceRevision
+                || current.SavedRevision != editor.WorkspaceRevision
+                || current.IsDirty || current.IsBusy || !string.IsNullOrWhiteSpace(current.Error))
+                throw new InvalidOperationException(
+                    Text("The SR5 After Run route requires the exact current clean saved runner revision."));
+        }
     }
 
     protected override void Refresh() => RefreshEnabledState();

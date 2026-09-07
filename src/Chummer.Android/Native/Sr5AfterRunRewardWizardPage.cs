@@ -7,9 +7,15 @@ public sealed class Sr5AfterRunRewardWizardPage : NativePageBase
     private readonly Sr5AfterRunRewardView _view;
     private CancellationTokenSource? _lifetime;
 
-    public Sr5AfterRunRewardWizardPage(RunnerSessionCoordinator coordinator) : base(coordinator)
+    public Sr5AfterRunRewardWizardPage(RunnerSessionCoordinator coordinator)
+        : this(coordinator, coordinator.CreateAfterRunRewardModel(DateTime.Now))
     {
-        _model = coordinator.CreateAfterRunRewardModel(DateTime.Now);
+    }
+
+    internal Sr5AfterRunRewardWizardPage(RunnerSessionCoordinator coordinator,
+        Sr5AfterRunRewardPhoneModel model) : base(coordinator)
+    {
+        _model = model ?? throw new ArgumentNullException(nameof(model));
         Title = PhoneStrings.Get("AfterRunRewardTitle", "After Run · Rewards");
         AutomationId = "sr5-after-run-local-reward-page";
         _view = new(_model, RunAsync, async () =>

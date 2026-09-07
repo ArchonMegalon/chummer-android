@@ -36,7 +36,8 @@ def test_phone_surface_has_every_governed_stage_and_two_entry_points() -> None:
     assert 'automationId: "phone-table-after-run"' in table
     assert "Sr5AfterRunSettlementWizardPage" in table
     for surface in (career, table, read("BuildPage.cs")):
-        assert "CreateEntryDestination(Coordinator, editor)" in surface
+        assert "CreateEntryDestinationAsync(Coordinator, editor)" in surface
+        assert "Page destination = await Sr5AfterRunSettlementWizardPage" in surface
         assert "editor.Status == Sr5AfterRunCatalogStatus.Missing" not in surface
     assert "TryReadOwnedRecovery" in page
     assert "GenericQuickEdit" not in career + table
@@ -195,7 +196,7 @@ def test_shared_owner_cas_receipt_and_unknown_recovery_fail_closed() -> None:
 def test_entry_routing_prefers_owned_recovery_and_uses_local_rewards_not_manual_ids() -> None:
     page = read("Sr5AfterRunSettlementWizardPage.cs")
     store = read("Sr5AfterRunSettlementCheckpointStore.cs")
-    route = page.split("internal static Page CreateEntryDestination", 1)[1]
+    route = page.split("internal static async Task<Page> CreateEntryDestinationAsync", 1)[1]
     route = route.split("protected override void Refresh", 1)[0]
     owned = store.split("internal bool TryReadOwnedRecovery", 1)[1]
     owned = owned.split("public bool TryCreate", 1)[0]
@@ -203,7 +204,11 @@ def test_entry_routing_prefers_owned_recovery_and_uses_local_rewards_not_manual_
     assert route.index("TryReadOwnedRecovery") < route.index(
         "Sr5AfterRunCatalogStatus.Missing"
     )
-    assert route.index("current.WorkspaceId != editor.WorkspaceId") < route.index("CreateDependencies")
+    assert route.index("RequireCurrentEntry();") < route.index("CreateDependencies")
+    assert "current.WorkspaceId != editor.WorkspaceId" in route
+    assert route.count("RequireCurrentEntry();") == 2
+    assert "await coordinator.PrepareAfterRunRewardEntryAsync" in route
+    assert "new Sr5AfterRunRewardWizardPage(coordinator, reward)" in route
     assert "current.ContentRevision != editor.WorkspaceRevision" in route
     assert "current.IsDirty || current.IsBusy" in route
     assert "string.IsNullOrWhiteSpace(recoveryBlocker)" in route
