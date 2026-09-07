@@ -16,7 +16,6 @@
   <data name="Resume reviewed advancement" xml:space="preserve"><value>Geprüfte Steigerung fortsetzen</value></data>
   <data name="Resolve interrupted apply" xml:space="preserve"><value>Unterbrochenes Anwenden auflösen</value></data>
   <data name="Abandon reviewed draft" xml:space="preserve"><value>Geprüften Entwurf verwerfen</value></data>
-  <data name="Attribute recovery unavailable" xml:space="preserve"><value>Attribut-Wiederherstellung nicht verfügbar</value></data>
   <data name="OK" xml:space="preserve"><value>OK</value></data>
   <data name="{0} · {1} → {2} · {3} Karma" xml:space="preserve"><value>{0} · {1} → {2} · {3} Karma</value></data>
   <data name="{0} · {1} → {2} · blocked" xml:space="preserve"><value>{0} · {1} → {2} · blockiert</value></data>
@@ -92,7 +91,6 @@
   <data name="Saved active skill" xml:space="preserve"><value>Gespeicherte aktive Fertigkeit</value></data>
   <data name="{0} skill(s) are omitted because their exact authority cannot be reproduced safely." xml:space="preserve"><value>{0} Fertigkeit(en) werden ausgelassen, weil ihre exakte Instanz nicht sicher reproduziert werden kann.</value></data>
   <data name="Review advancement" xml:space="preserve"><value>Steigerung prüfen</value></data>
-  <data name="Recovery unavailable" xml:space="preserve"><value>Wiederherstellung nicht verfügbar</value></data>
   <data name="No exact active-skill quote is available." xml:space="preserve"><value>Es ist kein exaktes Angebot für eine aktive Fertigkeit verfügbar.</value></data>
   <data name="Current {0} · after {1} · maximum {2}" xml:space="preserve"><value>Aktuell {0} · danach {1} · Maximum {2}</value></data>
   <data name="This public action is available only to a created SR5 runner." xml:space="preserve"><value>Diese öffentliche Aktion ist nur für einen erschaffenen SR5-Runner verfügbar.</value></data>
@@ -150,7 +148,6 @@
   <data name="Skill group" xml:space="preserve"><value>Fertigkeitsgruppe</value></data>
   <data name="Saved skill group" xml:space="preserve"><value>Gespeicherte Fertigkeitsgruppe</value></data>
   <data name="{0} skill-group quote(s) were omitted because exact authority could not be reproduced." xml:space="preserve"><value>{0} Fertigkeitsgruppenangebot(e) wurden ausgelassen, weil die exakte Instanz nicht reproduziert werden konnte.</value></data>
-  <data name="SkillGroup recovery unavailable" xml:space="preserve"><value>Wiederherstellung der Fertigkeitsgruppe nicht verfügbar</value></data>
   <data name="No exact skill-group quote is available." xml:space="preserve"><value>Es ist kein exaktes Fertigkeitsgruppenangebot verfügbar.</value></data>
   <data name="Group {0} → {1} · cost rating {2} → {3} · {4} enabled member(s) · maximum {5}" xml:space="preserve"><value>Gruppe {0} → {1} · Kostenstufe {2} → {3} · {4} aktivierte(s) Mitglied(er) · Maximum {5}</value></data>
   <data name="This runner changed. Reopen skill-group advancement." xml:space="preserve"><value>Dieser Runner hat sich geändert. Fertigkeitsgruppensteigerung erneut öffnen.</value></data>
@@ -204,7 +201,6 @@
   <data name="Knowledge / Language skill" xml:space="preserve"><value>Wissens-/Sprachfertigkeit</value></data>
   <data name="Saved knowledge skill" xml:space="preserve"><value>Gespeicherte Wissensfertigkeit</value></data>
   <data name="{0} knowledge skill quote(s) and {1} receipt(s) were omitted because exact authority could not be reproduced." xml:space="preserve"><value>{0} Wissensfertigkeitsangebot(e) und {1} Beleg(e) wurden ausgelassen, weil die exakte Instanz nicht reproduziert werden konnte.</value></data>
-  <data name="Knowledge/Language recovery unavailable" xml:space="preserve"><value>Wiederherstellung von Wissen/Sprache nicht verfügbar</value></data>
   <data name="{0} · {1} · {2} → {3} · {4} Karma" xml:space="preserve"><value>{0} · {1} · {2} → {3} · {4} Karma</value></data>
   <data name="{0} · {1} · {2} → {3} · blocked" xml:space="preserve"><value>{0} · {1} · {2} → {3} · blockiert</value></data>
   <data name="No exact knowledge skill quote is available." xml:space="preserve"><value>Es ist kein exaktes Wissensfertigkeitsangebot verfügbar.</value></data>
@@ -237,7 +233,6 @@
   <data name="Choose specialization" xml:space="preserve"><value>Spezialisierung wählen</value></data>
   <data name="Resume reviewed purchase" xml:space="preserve"><value>Geprüften Kauf fortsetzen</value></data>
   <data name="Abandon reviewed purchase" xml:space="preserve"><value>Geprüften Kauf verwerfen</value></data>
-  <data name="Specialization recovery unavailable" xml:space="preserve"><value>Spezialisierungs-Wiederherstellung nicht verfügbar</value></data>
   <data name="{0} · {1} · rating {2} · {3} existing" xml:space="preserve"><value>{0} · {1} · Stufe {2} · {3} vorhanden</value></data>
   <data name="No exact specialization candidate is available." xml:space="preserve"><value>Es ist kein exakter Spezialisierungskandidat verfügbar.</value></data>
   <data name="{0} · group {1} · {2} governed option(s) plus custom text" xml:space="preserve"><value>{0} · Gruppe {1} · {2} geregelte Option(en) plus eigener Text</value></data>
@@ -291,7 +286,6 @@ Karma: {6} → {7} (Kosten {8})</value></data>
   <data name="Review exact quality diff" xml:space="preserve"><value>Exakte Vor-/Nachteildifferenz prüfen</value></data>
   <data name="Resume reviewed quality change" xml:space="preserve"><value>Geprüfte Vor-/Nachteiländerung fortsetzen</value></data>
   <data name="Resolve interrupted atomic commit" xml:space="preserve"><value>Unterbrochene atomare Speicherung auflösen</value></data>
-  <data name="Quality recovery unavailable" xml:space="preserve"><value>Vor-/Nachteil-Wiederherstellung nicht verfügbar</value></data>
   <data name="{0} · {1} · level {2} → {3} · {4}" xml:space="preserve"><value>{0} · {1} · Stufe {2} → {3} · {4}</value></data>
   <data name="{0} Karma" xml:space="preserve"><value>{0} Karma</value></data>
   <data name="Acquire level" xml:space="preserve"><value>Stufe erwerben</value></data>
@@ -372,7 +366,6 @@ Karma: {6} → {7} (Kosten {8})</value></data>
   <data name="Resume reviewed settlement" xml:space="preserve"><value>Geprüfte Abrechnung fortsetzen</value></data>
   <data name="Resolve interrupted settlement" xml:space="preserve"><value>Unterbrochene Abrechnung auflösen</value></data>
   <data name="Abandon reviewed settlement" xml:space="preserve"><value>Geprüfte Abrechnung verwerfen</value></data>
-  <data name="After Run recovery unavailable" xml:space="preserve"><value>After-Run-Wiederherstellung nicht verfügbar</value></data>
   <data name="A reviewed settlement is durable and can be resumed or abandoned." xml:space="preserve"><value>Eine geprüfte Abrechnung ist dauerhaft und kann fortgesetzt oder verworfen werden.</value></data>
   <data name="An interrupted settlement owns the runner. Resolve the exact command before any other Career mutation." xml:space="preserve"><value>Eine unterbrochene Abrechnung besitzt den Runner. Den exakten Befehl auflösen, bevor eine andere Karrieremutation erfolgt.</value></data>
   <data name="A verified Core receipt is durable and ready to inspect." xml:space="preserve"><value>Ein geprüfter Core-Beleg ist dauerhaft und bereit zur Einsicht.</value></data>
@@ -384,11 +377,10 @@ Run {3}
 Status: {4}</value></data>
   <data name="all Core prerequisites satisfied" xml:space="preserve"><value>alle Core-Voraussetzungen erfüllt</value></data>
   <data name="Abandon reviewed settlement?" xml:space="preserve"><value>Geprüfte Abrechnung verwerfen?</value></data>
-  <data name="This removes only the durable review. It does not change the runner or approve the proposal." xml:space="preserve"><value>Dies entfernt nur die dauerhafte Prüfung. Der Runner wird nicht geändert und der Vorschlag nicht genehmigt.</value></data>
   <data name="Reviewed settlement abandoned; no runner mutation occurred." xml:space="preserve"><value>Geprüfte Abrechnung verworfen; es erfolgte keine Runner-Mutation.</value></data>
   <data name="{0} · {1}" xml:space="preserve"><value>{0} · {1}</value></data>
   <data name="SR5 Career · After Run · {0} of 7" xml:space="preserve"><value>SR5-Karriere · After Run · {0} von 7</value></data>
-  <data name="These rewards come from the signed run context. This settlement only applies Heat, reputation, contacts and their Karma cost; it does not duplicate the reward ledger." xml:space="preserve"><value>Diese Belohnungen stammen aus dem signierten Run-Kontext. Diese Abrechnung wendet nur Heat, Reputation, Kontakte und deren Karma-Kosten an; sie dupliziert das Belohnungsjournal nicht.</value></data>
+  <data name="These rewards come from the reviewed run context. This settlement only applies Heat, reputation, contacts and their Karma cost; it does not duplicate the reward ledger." xml:space="preserve"><value>Diese Belohnungen stammen aus dem geprüften Run-Kontext. Diese Abrechnung wendet nur Heat, Reputation, Kontakte und deren Karma-Kosten an; sie dupliziert das Belohnungsjournal nicht.</value></data>
   <data name="Run" xml:space="preserve"><value>Run</value></data>
   <data name="Karma award" xml:space="preserve"><value>Karma-Auszeichnung</value></data>
   <data name="Nuyen award" xml:space="preserve"><value>Nuyen-Auszeichnung</value></data>
@@ -431,8 +423,6 @@ Status: {4}</value></data>
   <data name="The After Run receipt page requires the exact durable Applied checkpoint." xml:space="preserve"><value>Die After-Run-Belegseite erfordert den exakten dauerhaften Applied-Checkpoint.</value></data>
   <data name="Settlement receipt" xml:space="preserve"><value>Abrechnungsbeleg</value></data>
   <data name="SR5 Career · After Run" xml:space="preserve"><value>SR5-Karriere · After Run</value></data>
-  <data name="Settlement saved" xml:space="preserve"><value>Abrechnung gespeichert</value></data>
-  <data name="Core verified the exact post-save runner revision, transaction ledger and receipt. Acknowledging removes only this local recovery checkpoint." xml:space="preserve"><value>Core hat die exakte Runner-Revision nach dem Speichern, das Transaktionsjournal und den Beleg geprüft. Die Bestätigung entfernt nur diesen lokalen Wiederherstellungs-Checkpoint.</value></data>
   <data name="Contacts added" xml:space="preserve"><value>Kontakte hinzugefügt</value></data>
   <data name="Receipt" xml:space="preserve"><value>Beleg</value></data>
   <data name="Receipt acknowledged. The saved runner and Core transaction ledger remain unchanged." xml:space="preserve"><value>Beleg bestätigt. Der gespeicherte Runner und das Core-Transaktionsjournal bleiben unverändert.</value></data>
@@ -677,7 +667,6 @@ Vorschau: {3}…</value></data>
   <data name="Choose a governed table flow" xml:space="preserve"><value>Geregelten Spieltischablauf wählen</value></data>
   <data name="Each enabled route is backed by a typed Core/Presentation authority and exact saved-runner revision." xml:space="preserve"><value>Jede aktivierte Route wird durch eine typisierte Core-/Presentation-Instanz und eine exakte gespeicherte Runner-Revision abgesichert.</value></data>
   <data name="After Run" xml:space="preserve"><value>Nach dem Run</value></data>
-  <data name="Settle governed rewards, Heat/reputation, contacts, approvals and the atomic Core receipt" xml:space="preserve"><value>Geregelte Belohnungen, Heat/Ruf, Kontakte, Genehmigungen und den atomaren Core-Beleg abrechnen</value></data>
   <data name="Review, confirm and persist one exact SR5 Calendar add, edit or delete with restart recovery" xml:space="preserve"><value>Ein exaktes Hinzufügen, Bearbeiten oder Löschen im SR5-Kalender prüfen, bestätigen und mit Neustartwiederherstellung dauerhaft speichern</value></data>
   <data name="Playtime" xml:space="preserve"><value>Spielzeit</value></data>
   <data name="Quote, review and confirm exact Edge, direct-weapon ammunition, or Physical/Stun damage changes with a restart-safe receipt" xml:space="preserve"><value>Exakte Änderungen an Edge, direkter Waffenmunition oder körperlichem/Betäubungsschaden mit einem neustartsicheren Beleg anbieten, prüfen und bestätigen</value></data>
@@ -1029,4 +1018,11 @@ Vorschau: {3}…</value></data>
   <data name="Selected" xml:space="preserve"><value>Ausgewählt</value></data>
   <data name="Choose component" xml:space="preserve"><value>Komponente wählen</value></data>
   <data name="Exact chassis → modifications and weapon mounts → Core quote → durable purchase receipt" xml:space="preserve"><value>Exaktes Chassis → Modifikationen und Waffenhalterungen → Core-Angebot → dauerhafter Kaufbeleg</value></data>
+  <data name="Recorded settlement" xml:space="preserve"><value>Erfasste Abrechnung</value></data>
+  <data name="This receipt records a saved settlement, not the runner's current values or permission to apply it again. Acknowledging removes only this local checkpoint; the saved runner and Core ledger remain unchanged." xml:space="preserve"><value>Dieser Beleg dokumentiert eine gespeicherte Abrechnung, nicht die aktuellen Runner-Werte oder eine Freigabe zur erneuten Buchung. Bestätigen entfernt nur diesen lokalen Checkpoint; der gespeicherte Runner und das Core-Buchungsjournal bleiben unverändert.</value></data>
+  <data name="Recorded revision: {0}. Current saved runner revision: {1}." xml:space="preserve"><value>Belegstand: {0}. Aktueller gespeicherter Runner-Stand: {1}.</value></data>
+  <data name="This saved review no longer matches the current catalog or runner. You can discard it, but cannot resume or apply it." xml:space="preserve"><value>Diese gespeicherte Prüfung passt nicht mehr zum aktuellen Vorschlagskatalog oder Runner. Du kannst sie verwerfen, aber nicht fortsetzen oder anwenden.</value></data>
+  <data name="Discard the saved review for {0} (runner revision {1})? This removes only the local review, not runner data or proposal approvals." xml:space="preserve"><value>Gespeicherte Prüfung für {0} (Runner-Stand {1}) verwerfen? Das entfernt nur die lokale Prüfung, keine Runner-Daten oder Vorschlagsfreigaben.</value></data>
+  <data name="The selected runner changed. Reopen After Run for the current saved runner." xml:space="preserve"><value>Der ausgewählte Runner wurde gewechselt. Öffne Nach dem Run für den aktuell gespeicherten Runner erneut.</value></data>
+  <data name="Record local rewards or review a governed run settlement. Resolve any pending transaction first." xml:space="preserve"><value>Erfasse lokale Belohnungen oder prüfe eine freigegebene Run-Abrechnung. Kläre zuerst jeden noch offenen Vorgang.</value></data>
 </root>

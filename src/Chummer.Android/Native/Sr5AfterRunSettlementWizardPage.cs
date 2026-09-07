@@ -266,7 +266,7 @@ public sealed class Sr5AfterRunSettlementWizardPage : NativePageBase
         else if (_store.TryReadOwnedDiscardableReview(out var discardedReview, out _))
         {
             _checkpoint = discardedReview;
-            _recovery.Text = PhoneStrings.Get("AfterRunSettlementDiscardOnly",
+            _recovery.Text = Text(
                 "This saved review no longer matches the current catalog or runner. You can discard it, but cannot resume or apply it.");
             _recovery.TextColor = NativeTheme.Muted;
         }
@@ -418,7 +418,7 @@ public sealed class Sr5AfterRunSettlementWizardPage : NativePageBase
         if (!runner.IsCleanSavedSr5()) return;
         bool confirmed = await _confirmAbandon(
             Text("Abandon reviewed settlement?"),
-            PhoneStrings.Format("AfterRunSettlementDiscardPrompt",
+            Format(
                 "Discard the saved review for {0} (runner revision {1})? This removes only the local review, not runner data or proposal approvals.",
                 _checkpoint.Draft.Candidate.RewardContext.RunTitle,
                 _checkpoint.Draft.ExpectedWorkspaceRevision),
@@ -527,7 +527,7 @@ internal sealed class Sr5AfterRunSettlementStagePage : NativePageBase
         {
             case Sr5AfterRunSettlementStage.Rewards:
                 body.Add(NativeTheme.Body(
-                    Text("These rewards come from the signed run context. This settlement only applies Heat, reputation, contacts and their Karma cost; it does not duplicate the reward ledger."),
+                    Text("These rewards come from the reviewed run context. This settlement only applies Heat, reputation, contacts and their Karma cost; it does not duplicate the reward ledger."),
                     NativeTheme.Muted));
                 body.Add(NativeTheme.Card(new VerticalStackLayout
                 {
@@ -917,9 +917,9 @@ public sealed class Sr5AfterRunSettlementReceiptPage : NativePageBase
         AutomationId = Sr5CareerWizardRoutes.AfterRunReceipt;
         VerticalStackLayout body = Sr5AfterRunSettlementWizardPage.Body();
         body.Add(NativeTheme.Eyebrow(Text("SR5 Career · After Run")));
-        body.Add(NativeTheme.Title(PhoneStrings.Get("AfterRunSettlementRecordedTitle", "Recorded settlement")));
+        body.Add(NativeTheme.Title(Text("Recorded settlement")));
         body.Add(NativeTheme.Body(
-            PhoneStrings.Get("AfterRunSettlementRecordedDetail",
+            Text(
                 "This receipt records a saved settlement, not the runner's current values or permission to apply it again. Acknowledging removes only this local checkpoint; the saved runner and Core ledger remain unchanged."),
             NativeTheme.Muted));
         _revision = NativeTheme.Body(string.Empty, NativeTheme.Muted);
@@ -955,11 +955,11 @@ public sealed class Sr5AfterRunSettlementReceiptPage : NativePageBase
         bool owned = _store.IsRecordedReceiptForCurrentRunner(_checkpoint);
         _acknowledge.IsEnabled = owned && !Coordinator.State.IsBusy;
         _revision.Text = owned
-            ? PhoneStrings.Format("AfterRunSettlementRecordedRevisions",
+            ? Format(
                 "Recorded revision: {0}. Current saved runner revision: {1}.",
                 _checkpoint.Draft.ExpectedWorkspaceRevision + 1,
                 Coordinator.State.SavedRevision)
-            : PhoneStrings.Get("AfterRunRewardRunnerChanged",
+            : Text(
                 "The selected runner changed. Reopen After Run for the current saved runner.");
     }
 

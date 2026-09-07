@@ -26,7 +26,121 @@ internal static partial class AfterRunAuthorityHarness
         await NativeRewardRefreshFailureRecoversWithoutCreditAsync(contentRoot, cancel: false);
         await NativeRewardRefreshFailureRecoversWithoutCreditAsync(contentRoot, cancel: true);
         await NativeRewardConsequencesContinuationIsReadOnlyAsync(contentRoot);
-        Console.WriteLine("PASS 4 actual native/runtime/file-store integration cases");
+        await NativeRewardGovernedConsequencesPersistOnceAsync(contentRoot);
+        Console.WriteLine("PASS 5 actual native/runtime/file-store integration cases");
+    }
+
+    private static async Task NativeRewardGovernedConsequencesPersistOnceAsync(string contentRoot)
+    {
+        await using var runtime = new NativeRewardRuntime(contentRoot, governedConsequences: true);
+        await runtime.LoadRunnerAsync();
+        var reward = await runtime.PrepareRewardAsync();
+        await reward.ConfirmAsync();
+        Require(reward.CanContinue, "Real reward did not reach the saved handoff.");
+        var store = new FileWorkspaceStore(runtime.StateDirectory);
+        var rewarded = store.Get(runtime.Id).Value!;
+        // Explicit synthetic actor/review fixtures, not an authenticated live GM.
+        // The production publisher and Core still validate every submitted field.
+        var submission = ManualSubmission() with
+        {
+            WorkspaceId = runtime.Id,
+            ExpectedWorkspaceRevision = rewarded.SavedRevision,
+            RewardReceiptDigest = reward.Checkpoint!.Receipt!.ReceiptDigest
+        };
+        var rejected = await runtime.Coordinator.PublishManualAfterRunProposalAsync(submission with { GmApproved = false });
+        Require(!rejected.Published, "A manual proposal without the separate GM review was accepted.");
+        var published = await runtime.Coordinator.PublishManualAfterRunProposalAsync(submission);
+        Require(published.Published && published.Proposal?.IsExact() == true, published.Blocker);
+        var coldSource = new Sr5AfterRunManualProposalSource(new AndroidAfterRunWorkspaceSnapshotSource(store),
+            new FileSr5AfterRunManualProposalBackend(runtime.StateDirectory));
+        Require(coldSource.Load(runtime.Id).Entries.Single().Identity == submission.Identity,
+            "The file-backed proposal did not survive reconstruction.");
+        RequireSameRewardDocument(rewarded, store.Get(runtime.Id).Value!);
+
+        var rewardPage = new Sr5AfterRunRewardWizardPage(runtime.Coordinator, reward);
+        var editor = await rewardPage.PrepareConsequencesAsync(default);
+        Require(editor.Status == Sr5AfterRunCatalogStatus.Available && editor.Candidates.Count == 1
+                && editor.Candidates[0].Quote.CanSettle && editor.Candidates[0].Quote.KarmaBefore == 38,
+            "The real Core service did not quote the registered proposal against the rewarded character.");
+        var navigation = new NavigationPage(rewardPage);
+        await rewardPage.OpenConsequencesAsync(default);
+        Require(navigation.CurrentPage is Sr5AfterRunSettlementWizardPage, "No governed proposal page.");
+        Require(PageButton(navigation.CurrentPage, "sr5-after-run-open-rewards").IsEnabled,
+            "The exact available proposal cannot be selected.");
+        await InvokePageActionAsync(navigation.CurrentPage, "OpenRewardsAsync");
+        bool claimedSigned = DescendantLabels(((ScrollView)((ContentPage)navigation.CurrentPage).Content!).Content)
+            .Any(label => label.Text?.Contains("signed run context", StringComparison.Ordinal) == true);
+        foreach (string stage in new[] { "rewards", "consequences", "contacts", "gm", "owner" })
+        {
+            Require(navigation.CurrentPage is Sr5AfterRunSettlementStagePage,
+                "Missing native review stage: " + stage);
+            var button = ((VerticalStackLayout)((ScrollView)((ContentPage)navigation.CurrentPage).Content!).Content).Children
+                .OfType<Button>().Single(control => control.AutomationId?.StartsWith("sr5-after-run-acknowledge-", StringComparison.Ordinal) == true);
+            Require(button.IsEnabled, "Exact governed review is disabled: " + stage);
+            RequireSameRewardDocument(rewarded, store.Get(runtime.Id).Value!);
+            await InvokePageActionAsync(navigation.CurrentPage, "ContinueAsync");
+        }
+        Require(navigation.CurrentPage is Sr5AfterRunSettlementReviewPage, "The six acknowledgements did not lead to final review.");
+        var reviewPage = navigation.CurrentPage;
+        var draft = (Sr5AfterRunSettlementDraft)typeof(Sr5AfterRunSettlementReviewPage)
+            .GetField("_draft", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(reviewPage)!;
+        Require(draft.Acknowledgements.AllReviewed && draft.IsExact(), "Final review lost typed acknowledgements or plan identity.");
+        Require(PageButton(reviewPage, "sr5-after-run-confirm").IsEnabled, "Exact final review is not confirmable.");
+        RequireSameRewardDocument(rewarded, store.Get(runtime.Id).Value!);
+        await InvokePageActionAsync(reviewPage, "ApplyAsync");
+        Require(navigation.CurrentPage is Sr5AfterRunSettlementReceiptPage, "Atomic settlement did not reach its receipt page.");
+        var settled = store.Get(runtime.Id).Value!;
+        Require(settled.ContentRevision == rewarded.ContentRevision + 1 && settled.SavedRevision == settled.ContentRevision
+                && runtime.Presenter.State.SavedRevision == settled.SavedRevision,
+            "Settlement and native reload did not agree on one saved revision.");
+        var document = System.Xml.Linq.XDocument.Parse(settled.Document.Content).Root!;
+        Require(document.Element("nuyen")?.Value == "13500"
+                && document.Element("karma")?.Value == draft.Plan.TargetKarma.ToString(CultureInfo.InvariantCulture)
+                && draft.Plan.ContactKarmaCost == 11 && draft.Plan.TargetKarma == 27,
+            "Consequences credited the reward again or lost the real Core contact cost.");
+        Require(document.Element("contacts")?.Elements("contact").Count() == 2
+                && settled.Document.AuxiliaryState.CharacterAfterRunRewardReceipts?.Count == 1
+                && settled.Document.AuxiliaryState.CharacterAfterRunSettlementReceipts?.Count == 1,
+            "Atomic settlement duplicated contacts or changed the independent reward receipt count.");
+        var command = draft.ToCommand();
+        var replay = await runtime.Coordinator.SettleAfterRunAsync(command);
+        Require(replay?.Outcome == CharacterAfterRunSettlementServiceOutcome.Replayed,
+            "The actual native/Core duplicate did not resolve to its original receipt.");
+        var coldService = new CharacterAfterRunSettlementService(new WorkspaceCharacterAfterRunSettlementWorkspace(
+            new FileWorkspaceStore(runtime.StateDirectory), coldSource));
+        Require(coldService.Settle(command).Outcome == CharacterAfterRunSettlementServiceOutcome.Replayed,
+            "Cold Core lookup did not recover the exact recorded settlement.");
+        RequireSameRewardDocument(settled, store.Get(runtime.Id).Value!);
+        Require(!reward.CanContinue, "The old reward handoff survived a later settlement revision.");
+        await reward.RecoverAsync();
+        Require(reward.CanContinue && reward.Handoff?.Snapshot.AvailableKarma == 27
+                && reward.Handoff.Snapshot.AvailableNuyen == 13500
+                && reward.Checkpoint?.Receipt?.ReceiptDigest == submission.RewardReceiptDigest,
+            "Returning to the reward confused its historical receipt with current post-settlement balances.");
+        RequireSameRewardDocument(settled, store.Get(runtime.Id).Value!);
+        Require(!claimedSigned, "A manually entered proposal was presented as a signed run context.");
+        Console.WriteLine("PASS actual manual proposal, Core quote, native review stages, atomic settlement and duplicate/cold receipt recovery");
+    }
+
+    private static Button PageButton(Page page, string automationId)
+        => ((VerticalStackLayout)((ScrollView)((ContentPage)page).Content!).Content).Children
+            .OfType<Button>().Single(button => button.AutomationId == automationId);
+
+    private static async Task InvokePageActionAsync(Page page, string name)
+    {
+        var method = page.GetType().GetMethod(name, BindingFlags.NonPublic | BindingFlags.Instance)
+            ?? throw new InvalidOperationException("Missing actual page action: " + name);
+        await ((Task)method.Invoke(page, null)!).WaitAsync(TimeSpan.FromSeconds(20));
+    }
+
+    private static IEnumerable<Label> DescendantLabels(IView view)
+    {
+        if (view is Label label) yield return label;
+        if (view is Layout layout)
+            foreach (var child in layout.Children)
+                foreach (var nested in DescendantLabels(child)) yield return nested;
+        if (view is ContentView { Content: { } content })
+            foreach (var nested in DescendantLabels(content)) yield return nested;
     }
 
     private static async Task NativeRewardConsequencesContinuationIsReadOnlyAsync(string contentRoot)
@@ -259,7 +373,7 @@ internal static partial class AfterRunAuthorityHarness
         public readonly RunnerSessionCoordinator Coordinator;
         public CharacterWorkspaceId Id;
 
-        public NativeRewardRuntime(string contentRoot)
+        public NativeRewardRuntime(string contentRoot, bool governedConsequences = false)
         {
             _priorPreferences = Preferences.Default;
             _setPreferences = typeof(Preferences).GetMethod("SetDefault",
@@ -276,6 +390,15 @@ internal static partial class AfterRunAuthorityHarness
                 var services = new ServiceCollection();
                 services.AddChummerLocalRuntimeClient(contentRoot, contentRoot);
                 services.Replace(ServiceDescriptor.Singleton<IWorkspaceStore>(new FileWorkspaceStore(StateDirectory)));
+                if (governedConsequences)
+                {
+                    Settings.Set("sr5.career.owner.v1", OwnerId.ToString("D"));
+                    services.AddSingleton(provider => new Sr5AfterRunManualProposalSource(
+                        new AndroidAfterRunWorkspaceSnapshotSource(provider.GetRequiredService<IWorkspaceStore>()),
+                        new FileSr5AfterRunManualProposalBackend(StateDirectory)));
+                    services.Replace(ServiceDescriptor.Singleton<ICharacterAfterRunSettlementProposalProjectionSource>(
+                        provider => provider.GetRequiredService<Sr5AfterRunManualProposalSource>()));
+                }
                 services.AddSingleton<ICommandAvailabilityEvaluator, DefaultCommandAvailabilityEvaluator>();
                 services.AddSingleton<IShellSurfaceResolver, ShellSurfaceResolver>();
                 _provider = services.BuildServiceProvider();
@@ -284,7 +407,8 @@ internal static partial class AfterRunAuthorityHarness
                 Shell = new ShellPresenter(Client);
                 Presenter = new CharacterOverviewPresenter(Client, shellPresenter: Shell);
                 var store = _provider.GetRequiredService<IWorkspaceStore>();
-                var checkpoints = new Sr5AfterRunRewardCheckpointStore(
+                var checkpoints = governedConsequences ? Sr5AfterRunRewardCheckpointStore.CreateDefault(StateDirectory)
+                    : new Sr5AfterRunRewardCheckpointStore(
                     new FileSr5AfterRunRewardJournalBackend(StateDirectory),
                     new Sr5CareerMutationOwnerStore(new MemoryBackend()));
                 Coordinator = new RunnerSessionCoordinator(Presenter, Client, new WorkspaceOperationCoordinator(),
@@ -292,6 +416,8 @@ internal static partial class AfterRunAuthorityHarness
                     _provider.GetRequiredService<IShellSurfaceResolver>(),
                     _provider.GetRequiredService<ICommandAvailabilityEvaluator>(),
                     null!, null!, null!, StrictPageProxy.Create<IAndroidAccountLinkService>(), null!, null!,
+                    afterRunSettlementService: governedConsequences ? _provider.GetRequiredService<ICharacterAfterRunSettlementService>() : null,
+                    afterRunProposalCatalog: governedConsequences ? _provider.GetRequiredService<Sr5AfterRunManualProposalSource>() : null,
                     afterRunRewardService: new WorkspaceCharacterAfterRunRewardService(store),
                     afterRunRewardCheckpoints: checkpoints);
             }

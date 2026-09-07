@@ -38,7 +38,7 @@ publication remain separate gates.
 ## Local runtime/file-store integration
 
 Pass `--after-run-runtime-content-root /absolute/core/Chummer` to the compiled
-DLL to run four additional integration cases after the 60 default cases. The
+DLL to run five additional integration cases after the 60 default cases. The
 path must contain `data/`; there is no implicit sibling lookup. Without that
 argument the executable explicitly reports that these cases were not run.
 
@@ -61,6 +61,24 @@ selection changes while a proposal read is pending. Rejected responses must not
 push a page. Actual view button events also reject duplicate and departed-page
 clicks; their action/query callbacks are explicit controlled test adapters.
 These nested checks are not additional independent top-level case counts.
+
+The fifth case composes the production manual-proposal source and file backend,
+actual Android saved-workspace projection, and the real Core settlement service
+and atomic workspace adapter through DI. Explicit synthetic review/actor inputs
+are test fixtures, not proof of a remotely authenticated GM or provider. The
+publisher rejects a missing GM approval and persists an exact reviewed proposal.
+The actual native reward continuation, proposal chooser, five review stages and
+final confirmation run on a managed MAUI navigation stack. Private page action
+bodies are invoked through reflection after inspecting enabled controls; this
+does not exercise native Android button dispatch or the outer page action gate.
+No character bytes change before final confirmation. Core then commits both
+contacts, the contact Karma cost and a separate settlement receipt at one new
+revision, without crediting the previous reward again. Native replay and a newly
+constructed Core/file-store service recover the original receipt without another
+mutation. File-service reconstruction is not an OS-process restart. Review copy
+must not claim that a manually entered proposal has a cryptographic signature.
+Returning to the original reward requires a fresh read after settlement; the
+unchanged historical receipt must coexist with the new post-contact balances.
 
 This is the local, non-account-linked runtime composition. Environment settings
 and an in-memory platform Preferences adapter are scoped to each temporary

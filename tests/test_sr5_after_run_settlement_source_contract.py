@@ -238,7 +238,7 @@ def test_historical_receipt_route_cannot_resume_or_replay_and_ack_requires_unown
     for forbidden in ("SettleAsync", "ApplyAsync", "ResolveAsync", "RetryAsync", "SaveAsync"):
         assert forbidden not in receipt
     assert "IsRecordedReceiptForCurrentRunner" in receipt
-    assert "AfterRunSettlementRecordedRevisions" in receipt
+    assert "Recorded revision: {0}. Current saved runner revision: {1}." in receipt
 
 
 def test_default_runtime_composition_is_explicitly_unavailable() -> None:
@@ -262,7 +262,7 @@ def test_discard_is_separate_from_resume_and_captures_the_confirmed_checkpoint()
     assert "DisplayAlertAsync(title, message, accept, cancel)" in page
     assert action.index("if (!confirmed)") < action.index("_store.TryDeleteReviewed")
     assert "TryDeleteReviewed(\n                expected," in action
-    assert "AfterRunSettlementDiscardPrompt" in action
+    assert "Discard the saved review for {0} (runner revision {1})?" in action
     assert "TryReadOwnedDiscardableReview" in page
     assert "&& !ownsDiscardableReview" in page  # never a new-reward bypass
     assert "_resume.IsVisible = reviewed" in page
@@ -275,10 +275,13 @@ def test_discard_is_separate_from_resume_and_captures_the_confirmed_checkpoint()
 def test_discard_copy_has_exact_supported_language_and_placeholder_parity() -> None:
     directory = ROOT / "src/Chummer.Android/Resources/Localization"
     catalogs = [
-        {node.attrib["name"]: node.findtext("value") for node in ET.parse(directory / f"PhoneStrings{suffix}.resx").getroot().findall("data")}
+        {node.attrib["name"]: node.findtext("value") for node in ET.parse(directory / f"Sr5CareerFlowStrings{suffix}.resx").getroot().findall("data")}
         for suffix in ("", ".de", ".es")
     ]
-    for key in ("AfterRunSettlementDiscardOnly", "AfterRunSettlementDiscardPrompt"):
+    for key in (
+        "This saved review no longer matches the current catalog or runner. You can discard it, but cannot resume or apply it.",
+        "Discard the saved review for {0} (runner revision {1})? This removes only the local review, not runner data or proposal approvals.",
+    ):
         placeholders = set(re.findall(r"\{\d+\}", catalogs[0][key]))
         for catalog in catalogs:
             assert catalog[key].strip()
