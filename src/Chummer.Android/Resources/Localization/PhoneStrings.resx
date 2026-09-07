@@ -152,7 +152,9 @@
   <data name="AfterRunRewardRecover" xml:space="preserve"><value>Check saved result</value></data>
   <data name="AfterRunRewardRetry" xml:space="preserve"><value>Retry the same confirmed reward</value></data>
   <data name="AfterRunRewardDone" xml:space="preserve"><value>Done · return to Career</value></data>
-  <data name="AfterRunRewardConsequencesBoundary" xml:space="preserve"><value>Heat, reputation and contacts are separate decisions. A local reward is not GM approval; this entry cannot yet start those consequences.</value></data>
+  <data name="AfterRunRewardConsequences" xml:space="preserve"><value>Review run consequences</value></data>
+  <data name="AfterRunRewardConsequencesChanged" xml:space="preserve"><value>The saved runner or run proposal changed. Recheck the saved reward before continuing.</value></data>
+  <data name="AfterRunRewardConsequencesBoundary" xml:space="preserve"><value>Heat, reputation and contacts require a separate reviewed run proposal. Checking it does not grant rewards again or approve consequences.</value></data>
   <data name="AfterRunRewardHistory" xml:space="preserve"><value>Previously recorded rewards</value></data>
   <data name="AfterRunRewardHistoryChoose" xml:space="preserve"><value>Choose a recorded reward</value></data>
   <data name="AfterRunRewardHistoryPrevious" xml:space="preserve"><value>Previous rewards</value></data>

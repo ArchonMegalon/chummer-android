@@ -152,7 +152,9 @@
   <data name="AfterRunRewardRecover" xml:space="preserve"><value>Comprobar resultado guardado</value></data>
   <data name="AfterRunRewardRetry" xml:space="preserve"><value>Reintentar la misma recompensa confirmada</value></data>
   <data name="AfterRunRewardDone" xml:space="preserve"><value>Listo · volver a Carrera</value></data>
-  <data name="AfterRunRewardConsequencesBoundary" xml:space="preserve"><value>Heat, reputación y contactos son decisiones separadas. Una recompensa local no es una aprobación del director de juego; este flujo aún no permite gestionar esas consecuencias.</value></data>
+  <data name="AfterRunRewardConsequences" xml:space="preserve"><value>Revisar consecuencias de la misión</value></data>
+  <data name="AfterRunRewardConsequencesChanged" xml:space="preserve"><value>El runner guardado o la propuesta de misión ha cambiado. Vuelve a comprobar la recompensa guardada antes de continuar.</value></data>
+  <data name="AfterRunRewardConsequencesBoundary" xml:space="preserve"><value>Heat, reputación y contactos requieren una propuesta de misión revisada por separado. Consultarla no concede otra recompensa ni aprueba las consecuencias.</value></data>
   <data name="AfterRunRewardHistory" xml:space="preserve"><value>Recompensas registradas</value></data>
   <data name="AfterRunRewardHistoryChoose" xml:space="preserve"><value>Elegir una recompensa registrada</value></data>
   <data name="AfterRunRewardHistoryPrevious" xml:space="preserve"><value>Recompensas anteriores</value></data>

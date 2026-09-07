@@ -5,6 +5,7 @@ public sealed class Sr5AfterRunRewardWizardPage : NativePageBase
 {
     private readonly Sr5AfterRunRewardPhoneModel _model;
     private readonly Sr5AfterRunRewardView _view;
+    private readonly Func<CancellationToken, Task<Sr5AfterRunSettlementEditorState>> _prepareConsequences;
     private CancellationTokenSource? _lifetime;
 
     public Sr5AfterRunRewardWizardPage(RunnerSessionCoordinator coordinator)
@@ -13,17 +14,62 @@ public sealed class Sr5AfterRunRewardWizardPage : NativePageBase
     }
 
     internal Sr5AfterRunRewardWizardPage(RunnerSessionCoordinator coordinator,
-        Sr5AfterRunRewardPhoneModel model) : base(coordinator)
+        Sr5AfterRunRewardPhoneModel model,
+        Func<CancellationToken, Task<Sr5AfterRunSettlementEditorState>>? prepareConsequences = null) : base(coordinator)
     {
         _model = model ?? throw new ArgumentNullException(nameof(model));
+        _prepareConsequences = prepareConsequences ?? coordinator.PrepareAfterRunSettlementAsync;
         Title = PhoneStrings.Get("AfterRunRewardTitle", "After Run · Rewards");
         AutomationId = "sr5-after-run-local-reward-page";
         _view = new(_model, RunAsync, async () =>
         {
             if (_model.CanContinue) await Navigation.PopAsync();
-        });
+        }, OpenConsequencesAsync);
         Content = new ScrollView { Content = _view };
     }
+
+    internal async Task OpenConsequencesAsync(CancellationToken cancellationToken)
+    {
+        var saved = _model.Handoff;
+        var editor = await PrepareConsequencesAsync(cancellationToken);
+        RequireCurrentConsequences(editor, saved, cancellationToken);
+        // This is the governed proposal route, not the general entry factory:
+        // missing proposals must never loop back into another reward entry.
+        var destination = new Sr5AfterRunSettlementWizardPage(Coordinator, editor);
+        RequireCurrentConsequences(editor, saved, cancellationToken);
+        await Navigation.PushAsync(destination);
+    }
+
+    internal async Task<Sr5AfterRunSettlementEditorState> PrepareConsequencesAsync(CancellationToken cancellationToken)
+    {
+        var saved = _model.Handoff;
+        RequireCurrentReward(saved, cancellationToken);
+        var editor = await _prepareConsequences(cancellationToken);
+        RequireCurrentConsequences(editor, saved, cancellationToken);
+        return editor;
+    }
+
+    private void RequireCurrentConsequences(Sr5AfterRunSettlementEditorState editor,
+        Sr5AfterRunRewardConsequencesHandoff? saved, CancellationToken cancellationToken)
+    {
+        RequireCurrentReward(saved, cancellationToken);
+        if (editor is null || !editor.IsExact()
+            || editor.WorkspaceId != saved!.Runner.WorkspaceId
+            || editor.WorkspaceRevision != saved.Runner.SavedRevision)
+            throw ChangedConsequences();
+    }
+
+    private void RequireCurrentReward(Sr5AfterRunRewardConsequencesHandoff? saved,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (saved is null || !_model.CanContinue || !ReferenceEquals(saved, _model.Handoff))
+            throw ChangedConsequences();
+    }
+
+    private static InvalidOperationException ChangedConsequences() => new(PhoneStrings.Get(
+        "AfterRunRewardConsequencesChanged",
+        "The saved runner or run proposal changed. Recheck the saved reward before continuing."));
 
     protected override void OnAppearing()
     {

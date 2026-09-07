@@ -152,7 +152,9 @@
   <data name="AfterRunRewardRecover" xml:space="preserve"><value>Gespeichertes Ergebnis prüfen</value></data>
   <data name="AfterRunRewardRetry" xml:space="preserve"><value>Dieselbe bestätigte Belohnung erneut versuchen</value></data>
   <data name="AfterRunRewardDone" xml:space="preserve"><value>Fertig · zurück zur Karriere</value></data>
-  <data name="AfterRunRewardConsequencesBoundary" xml:space="preserve"><value>Heat, Ruf und Kontakte sind eigene Entscheidungen. Eine lokale Belohnung ist keine SL-Freigabe; dieser Einstieg kann diese Folgen noch nicht bearbeiten.</value></data>
+  <data name="AfterRunRewardConsequences" xml:space="preserve"><value>Run-Folgen prüfen</value></data>
+  <data name="AfterRunRewardConsequencesChanged" xml:space="preserve"><value>Der gespeicherte Runner oder Run-Vorschlag wurde geändert. Prüfe die gespeicherte Belohnung erneut, bevor du fortfährst.</value></data>
+  <data name="AfterRunRewardConsequencesBoundary" xml:space="preserve"><value>Heat, Ruf und Kontakte benötigen einen eigenen geprüften Run-Vorschlag. Das Prüfen vergibt keine weitere Belohnung und gibt keine Folgen frei.</value></data>
   <data name="AfterRunRewardHistory" xml:space="preserve"><value>Bereits erfasste Belohnungen</value></data>
   <data name="AfterRunRewardHistoryChoose" xml:space="preserve"><value>Erfasste Belohnung auswählen</value></data>
   <data name="AfterRunRewardHistoryPrevious" xml:space="preserve"><value>Vorherige Belohnungen</value></data>

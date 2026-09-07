@@ -38,7 +38,7 @@ publication remain separate gates.
 ## Local runtime/file-store integration
 
 Pass `--after-run-runtime-content-root /absolute/core/Chummer` to the compiled
-DLL to run three additional integration cases after the 60 default cases. The
+DLL to run four additional integration cases after the 60 default cases. The
 path must contain `data/`; there is no implicit sibling lookup. Without that
 argument the executable explicitly reports that these cases were not run.
 
@@ -50,6 +50,17 @@ explicit recorded-history resume, cancellation on presenter reload, and a
 selected-workspace preference failure during native shell synchronization.
 Recovery must preserve the original operation, exact character bytes, auxiliary
 digest and revision; no second reward is allowed.
+
+The fourth case verifies the explicit saved-reward continuation into the existing
+governed consequences page using a real managed MAUI `NavigationPage`. With no
+proposal provider composed, it must display an unavailable catalog, not create a
+run, approve consequences, reopen a new reward form or credit currency again.
+Nested hostile cases reject an unconfirmed reward, foreign/stale/malformed
+editors, cancellation, replacement of the verified handoff and A-to-B-to-A
+selection changes while a proposal read is pending. Rejected responses must not
+push a page. Actual view button events also reject duplicate and departed-page
+clicks; their action/query callbacks are explicit controlled test adapters.
+These nested checks are not additional independent top-level case counts.
 
 This is the local, non-account-linked runtime composition. Environment settings
 and an in-memory platform Preferences adapter are scoped to each temporary

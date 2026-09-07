@@ -14,6 +14,7 @@ using Chummer.Presentation.Shell;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Maui.Storage;
+using Microsoft.Maui.Controls;
 
 internal static partial class AfterRunAuthorityHarness
 {
@@ -24,7 +25,133 @@ internal static partial class AfterRunAuthorityHarness
         await NativeRewardCommitReloadsRealPresenterAndShellAsync(contentRoot);
         await NativeRewardRefreshFailureRecoversWithoutCreditAsync(contentRoot, cancel: false);
         await NativeRewardRefreshFailureRecoversWithoutCreditAsync(contentRoot, cancel: true);
-        Console.WriteLine("PASS 3 actual native/runtime/file-store integration cases");
+        await NativeRewardConsequencesContinuationIsReadOnlyAsync(contentRoot);
+        Console.WriteLine("PASS 4 actual native/runtime/file-store integration cases");
+    }
+
+    private static async Task NativeRewardConsequencesContinuationIsReadOnlyAsync(string contentRoot)
+    {
+        await using var runtime = new NativeRewardRuntime(contentRoot);
+        await runtime.LoadRunnerAsync();
+        var model = await runtime.PrepareRewardAsync();
+        var page = new Sr5AfterRunRewardWizardPage(runtime.Coordinator, model);
+        var view = (Sr5AfterRunRewardView)((ScrollView)page.Content!).Content;
+        var button = ((VerticalStackLayout)view.Content!).Children.OfType<Button>()
+            .SingleOrDefault(control => control.AutomationId == "sr5-reward-consequences");
+        Require(button is not null, "The saved local reward has no continuation to independently reviewed run consequences.");
+        Require(!button!.IsEnabled, "Uncommitted reward enabled run-consequence navigation.");
+        int queries = 0;
+        var unconfirmed = new Sr5AfterRunRewardWizardPage(runtime.Coordinator, model, token =>
+        {
+            queries++;
+            return runtime.Coordinator.PrepareAfterRunSettlementAsync(token);
+        });
+        await ExpectConsequencesRejectedAsync(() => unconfirmed.PrepareConsequencesAsync(default));
+        Require(queries == 0, "Unconfirmed reward queried governed proposals.");
+        await model.ConfirmAsync();
+        view.Refresh();
+        Require(model.CanContinue && button.IsEnabled && button.IsVisible,
+            "Fresh saved reward did not enable the explicit read-only consequence query.");
+        var stored = new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
+        var editor = await page.PrepareConsequencesAsync(default);
+        Require(editor.WorkspaceId == runtime.Id && editor.WorkspaceRevision == stored.SavedRevision
+                && editor.Status == Sr5AfterRunCatalogStatus.Unavailable && editor.Candidates.Count == 0,
+            "Missing governed proposal authority was replaced by a fabricated run or consequence quote.");
+        var navigation = new NavigationPage(page);
+        await page.OpenConsequencesAsync(default).WaitAsync(TimeSpan.FromSeconds(10));
+        Require(navigation.Navigation.NavigationStack.Count == 2
+                && navigation.CurrentPage is Sr5AfterRunSettlementWizardPage,
+            "Read-only continuation did not reach the existing governed proposal page.");
+        RequireSameRewardDocument(stored, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
+        await NativeRewardConsequenceClickGateAsync(model);
+        foreach (var invalid in new[]
+        {
+            editor with { WorkspaceId = new("another-runner") },
+            editor with { WorkspaceRevision = stored.SavedRevision - 1 },
+            editor with { Status = Sr5AfterRunCatalogStatus.Available },
+            editor with { Blockers = null! },
+            null!
+        })
+        {
+            var hostile = new Sr5AfterRunRewardWizardPage(runtime.Coordinator, model,
+                _ => Task.FromResult(invalid));
+            await ExpectConsequencesRejectedAsync(() => hostile.PrepareConsequencesAsync(default));
+        }
+
+        using (var canceled = new CancellationTokenSource())
+        {
+            canceled.Cancel();
+            await ExpectConsequencesRejectedAsync(() => unconfirmed.PrepareConsequencesAsync(canceled.Token), canceled: true);
+            Require(queries == 0, "Canceled entry queried governed proposals.");
+        }
+
+        foreach (string change in new[] { "cancellation", "handoff-replaced", "selection-roundtrip" })
+        {
+            var response = new TaskCompletionSource<Sr5AfterRunSettlementEditorState>(TaskCreationOptions.RunContinuationsAsynchronously);
+            using var lifetime = new CancellationTokenSource();
+            var delayed = new Sr5AfterRunRewardWizardPage(runtime.Coordinator, model, _ => response.Task);
+            var delayedNavigation = new NavigationPage(delayed);
+            var originalHandoff = model.Handoff;
+            Task pending = delayed.OpenConsequencesAsync(lifetime.Token);
+            Require(!pending.IsCompleted, "Consequence query did not reach its controlled read boundary.");
+            if (change == "cancellation") lifetime.Cancel();
+            else if (change == "handoff-replaced")
+            {
+                await model.RecoverAsync();
+                Require(model.CanContinue && !ReferenceEquals(originalHandoff, model.Handoff),
+                    "Fixture failed to replace a handoff via real read-only recovery.");
+            }
+            else
+            {
+                var originalId = runtime.Id;
+                await runtime.LoadRunnerAsync();
+                await runtime.Presenter.LoadAsync(originalId, default);
+                runtime.Id = originalId;
+                Require(!model.CanContinue, "A→B→A did not invalidate the original reward selection generation.");
+            }
+            response.SetResult(editor);
+            await ExpectConsequencesRejectedAsync(() => pending, canceled: change == "cancellation");
+            Require(delayedNavigation.Navigation.NavigationStack.Count == 1
+                    && ReferenceEquals(delayedNavigation.CurrentPage, delayed),
+                "Rejected consequence response still pushed a destination page.");
+            RequireSameRewardDocument(stored, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
+        }
+        Console.WriteLine("PASS native reward consequence entry preserves saved reward and reports missing proposal authority");
+    }
+
+    private static async Task NativeRewardConsequenceClickGateAsync(Sr5AfterRunRewardPhoneModel model)
+    {
+        Task pending = Task.CompletedTask;
+        int queries = 0;
+        var response = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var view = new Sr5AfterRunRewardView(model, action => pending = action(),
+            () => throw new InvalidOperationException("Consequence click invoked Done."),
+            _ => { queries++; return response.Task; });
+        var button = ((VerticalStackLayout)view.Content!).Children.OfType<Button>()
+            .Single(control => control.AutomationId == "sr5-reward-consequences");
+        ((IButtonController)button).SendClicked();
+        Task first = pending;
+        Require(!first.IsCompleted && queries == 1 && !button.IsEnabled,
+            "Consequence button did not disable during its awaited query.");
+        ((IButtonController)button).SendClicked();
+        Require(queries == 1, "A double tap issued another consequence query.");
+        response.SetResult();
+        await first;
+        Require(button.IsEnabled, "Consequence button remained busy after query completion.");
+        using var lifetime = new CancellationTokenSource();
+        view.SetLifetime(lifetime.Token);
+        lifetime.Cancel();
+        ((IButtonController)button).SendClicked();
+        await pending;
+        Require(queries == 1, "A departed page click issued a consequence query.");
+    }
+
+    private static async Task ExpectConsequencesRejectedAsync(Func<Task> action, bool canceled = false)
+    {
+        try { await action(); }
+        catch (OperationCanceledException) when (canceled) { return; }
+        catch (InvalidOperationException) when (!canceled) { return; }
+        throw new InvalidOperationException("Stale, unconfirmed or canceled reward accepted consequence navigation.");
     }
 
     private static async Task NativeRewardCommitReloadsRealPresenterAndShellAsync(string contentRoot)
