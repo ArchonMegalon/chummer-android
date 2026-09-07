@@ -68,7 +68,7 @@ public sealed class Sr5CareerReputationView : ContentView
         Refresh();
     }
 
-    public void SetLifetime(CancellationToken token) => _lifetime = token;
+    public void SetLifetime(CancellationToken token) { _lifetime = token; Refresh(); }
     private static string T(string key) => PhoneStrings.Get("ReputationWizard" + key, key);
     private static string Format(string key, params object[] args) => string.Format(CultureInfo.CurrentCulture, T(key), args);
     private int HistoryCount => _model.History.Count + _model.SupersededHistory.Count;
@@ -98,7 +98,7 @@ public sealed class Sr5CareerReputationView : ContentView
     }
     private void DraftChanged()
     {
-        if (_rendering || _actionActive) return;
+        if (_rendering || _actionActive || _lifetime.IsCancellationRequested) return;
         _model.UpdateDraft(new(_streetCred.Text ?? "", _notoriety.Text ?? "", _awareness.Text ?? "", _reason.Text ?? ""));
         Refresh();
     }
@@ -121,7 +121,8 @@ public sealed class Sr5CareerReputationView : ContentView
         try
         {
             bool busy = _actionActive || _model.IsBusy;
-            bool edit = !busy && _model.CanEdit;
+            bool active = !_lifetime.IsCancellationRequested;
+            bool edit = active && !busy && _model.CanEdit;
             _working.IsVisible = _working.IsRunning = busy || _model.Status == Sr5CareerReputationPhoneStatus.Loading;
             _status.Text = !_model.HasCurrentSelection ? T("RunnerChanged") : busy ? T("Working") : T(_model.Status.ToString());
             if (_streetCred.Text != _model.Draft.StreetCred) _streetCred.Text = _model.Draft.StreetCred;
@@ -132,17 +133,17 @@ public sealed class Sr5CareerReputationView : ContentView
             _preview.IsEnabled = edit;
             _burn.IsEnabled = edit && _model.Snapshot?.Reputation.CanBurnStreetCred == true;
             _confirm.IsVisible = _review.IsVisible = _model.CanConfirm;
-            _confirm.IsEnabled = !busy && _model.CanConfirm;
+            _confirm.IsEnabled = active && !busy && _model.CanConfirm;
             _review.Text = _model.Review is { } review ? Format("Comparison",
                 T(review.Preview.Quote.Operation == CharacterCareerReputationOperation.BurnStreetCred ? "Burn" : "Preview"),
                 Facts(review.Preview.Quote.Before), Facts(review.Preview.Quote.After)) : "";
             _facts.Text = _model.HasCurrentSelection && _model.Snapshot is { } snapshot ? Facts(snapshot.Reputation) : "";
             _recover.IsVisible = _model.HasRetainedIntent && !_model.CanFinish;
             _retry.IsVisible = _close.IsVisible = _model.HasRetainedIntent && _model.Checkpoint?.IsTerminal != true;
-            _recover.IsEnabled = !busy && _model.CanRecover;
-            _retry.IsEnabled = _close.IsEnabled = !busy && _model.CanRetry;
-            _reload.IsVisible = !_model.HasRetainedIntent; _reload.IsEnabled = !busy && _model.HasCurrentSelection;
-            _done.IsVisible = _model.CanFinish; _done.IsEnabled = !busy && _model.CanFinish;
+            _recover.IsEnabled = active && !busy && _model.CanRecover;
+            _retry.IsEnabled = _close.IsEnabled = active && !busy && _model.CanRetry;
+            _reload.IsVisible = !_model.HasRetainedIntent; _reload.IsEnabled = active && !busy && _model.HasCurrentSelection;
+            _done.IsVisible = _model.CanFinish; _done.IsEnabled = active && !busy && _model.CanFinish;
             _receipt.Text = _model.HasCurrentSelection && _model.Checkpoint is { IsTerminal: true } checkpoint
                 ? checkpoint.Receipt is { } receipt ? Format("SavedReceipt", receipt.CommittedWorkspaceRevision, Facts(receipt.Quote.After))
                     : Format("ClosedReceipt", checkpoint.SupersededAtRevision!) : "";

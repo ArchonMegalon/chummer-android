@@ -24,7 +24,8 @@ public sealed class Sr5AfterRunRewardWizardPage : NativePageBase
         _view = new(_model, RunAsync, async () =>
         {
             if (_model.CanContinue) await Navigation.PopAsync();
-        }, OpenConsequencesAsync, OpenDowntimeAsync);
+        }, OpenConsequencesAsync, OpenDowntimeAsync,
+            coordinator.SupportsCareerReputationEntry ? OpenReputationAsync : null);
         Content = new ScrollView { Content = _view };
     }
 
@@ -39,6 +40,18 @@ public sealed class Sr5AfterRunRewardWizardPage : NativePageBase
             Sr5DowntimeCalendarJournalStore.CreateDefault(),
             entryStillCurrent: () => _model.CanContinue && ReferenceEquals(saved, _model.Handoff));
         RequireCurrentReward(saved, cancellationToken);
+        await Navigation.PushAsync(destination);
+    }
+
+    internal async Task OpenReputationAsync(CancellationToken cancellationToken)
+    {
+        var saved = _model.Handoff;
+        RequireCurrentReward(saved, cancellationToken);
+        var model = await Coordinator.PrepareCareerReputationEntryAsync(cancellationToken);
+        RequireCurrentReward(saved, cancellationToken);
+        var destination = new Sr5CareerReputationWizardPage(Coordinator, model,
+            entryStillCurrent: () => _model.CanContinue && ReferenceEquals(saved, _model.Handoff));
+        destination.RequireCurrentEntry(cancellationToken);
         await Navigation.PushAsync(destination);
     }
 
@@ -106,7 +119,14 @@ public sealed class Sr5AfterRunRewardWizardPage : NativePageBase
 
     protected override Task PrepareForAppearanceRefreshAsync(CancellationToken cancellationToken)
     {
-        Task preparation = _model.InitializeAsync(cancellationToken);
+        // A child wizard may have saved a newer revision. Re-establish the
+        // existing Applied receipt's handoff through lookup and reload only.
+        // Pending/unknown operations still require explicit user recovery;
+        // appearing never confirms, retries or creates a new reward.
+        Task preparation = _model.Checkpoint?.Phase == Sr5AfterRunRewardCheckpointPhase.Applied
+            && !_model.CanContinue && _model.CanRecover
+            ? _model.RecoverAsync(cancellationToken)
+            : _model.InitializeAsync(cancellationToken);
         _view.Refresh(); // Disable editors as soon as the journal read starts.
         return preparation;
     }

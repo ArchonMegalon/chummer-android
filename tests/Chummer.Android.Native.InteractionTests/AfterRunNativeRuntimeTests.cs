@@ -29,6 +29,12 @@ internal static partial class AfterRunAuthorityHarness
         await NativeRewardGovernedConsequencesPersistOnceAsync(contentRoot);
         await NativeRewardDowntimePlansWithoutRecreditAsync(contentRoot);
         Console.WriteLine("PASS 6 actual native/runtime/file-store integration cases");
+        await NativeReputationContinuationPersistsAndReturnsAsync(contentRoot);
+        await NativeReputationEntryLifecycleFencesAsync(contentRoot);
+        await NativeReputationRefreshInterruptionRecoversAsync(contentRoot, cancel: false);
+        await NativeReputationRefreshInterruptionRecoversAsync(contentRoot, cancel: true);
+        await NativeReputationOverlappingAppearancesAsync(contentRoot);
+        Console.WriteLine("PASS 5 actual reputation/native/runtime/file-store integration cases");
     }
 
     private static async Task NativeRewardDowntimePlansWithoutRecreditAsync(string contentRoot)
@@ -523,9 +529,11 @@ internal static partial class AfterRunAuthorityHarness
         public readonly CharacterOverviewPresenter Presenter;
         public readonly ShellPresenter Shell;
         public readonly RunnerSessionCoordinator Coordinator;
+        public ICharacterCareerReputationService ReputationService => _provider.GetRequiredService<ICharacterCareerReputationService>();
         public CharacterWorkspaceId Id;
 
-        public NativeRewardRuntime(string contentRoot, bool governedConsequences = false)
+        public NativeRewardRuntime(string contentRoot, bool governedConsequences = false, bool reputation = false,
+            Func<ICharacterCareerReputationService, ICharacterCareerReputationService>? reputationDecorator = null)
         {
             _priorPreferences = Preferences.Default;
             _setPreferences = typeof(Preferences).GetMethod("SetDefault",
@@ -542,6 +550,12 @@ internal static partial class AfterRunAuthorityHarness
                 var services = new ServiceCollection();
                 services.AddChummerLocalRuntimeClient(contentRoot, contentRoot);
                 services.Replace(ServiceDescriptor.Singleton<IWorkspaceStore>(new FileWorkspaceStore(StateDirectory)));
+                if (reputation)
+                {
+                    Settings.Set("sr5.career.owner.v1", OwnerId.ToString("D"));
+                    services.AddSingleton(provider => Sr5CareerReputationJournal.CreateDefault(StateDirectory,
+                        provider.GetRequiredService<ICharacterCareerReputationService>()));
+                }
                 if (governedConsequences)
                 {
                     Settings.Set("sr5.career.owner.v1", OwnerId.ToString("D"));
@@ -565,7 +579,10 @@ internal static partial class AfterRunAuthorityHarness
                 Presenter = new CharacterOverviewPresenter(Client, shellPresenter: Shell,
                     workspaceOperationCoordinator: operations);
                 var store = _provider.GetRequiredService<IWorkspaceStore>();
-                var checkpoints = governedConsequences ? Sr5AfterRunRewardCheckpointStore.CreateDefault(StateDirectory)
+                var reputationService = reputation ? _provider.GetRequiredService<ICharacterCareerReputationService>() : null;
+                if (reputationService is not null && reputationDecorator is not null)
+                    reputationService = reputationDecorator(reputationService);
+                var checkpoints = governedConsequences || reputation ? Sr5AfterRunRewardCheckpointStore.CreateDefault(StateDirectory)
                     : new Sr5AfterRunRewardCheckpointStore(
                     new FileSr5AfterRunRewardJournalBackend(StateDirectory),
                     new Sr5CareerMutationOwnerStore(new MemoryBackend()));
@@ -577,7 +594,9 @@ internal static partial class AfterRunAuthorityHarness
                     afterRunSettlementService: governedConsequences ? _provider.GetRequiredService<ICharacterAfterRunSettlementService>() : null,
                     afterRunProposalCatalog: governedConsequences ? _provider.GetRequiredService<Sr5AfterRunManualProposalSource>() : null,
                     afterRunRewardService: new WorkspaceCharacterAfterRunRewardService(store),
-                    afterRunRewardCheckpoints: checkpoints);
+                    afterRunRewardCheckpoints: checkpoints,
+                    careerReputationService: reputationService,
+                    careerReputationJournal: reputation ? _provider.GetRequiredService<Sr5CareerReputationJournal>() : null);
             }
             catch
             {
@@ -592,10 +611,12 @@ internal static partial class AfterRunAuthorityHarness
             var imported = await Client.ImportAsync(new WorkspaceImportDocument(
                 """
                 <character><name>Native reward runner</name><gameedition>SR5</gameedition>
+                <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
                 <metatype>Human</metatype><buildmethod>Priority</buildmethod>
                 <createdversion>5.225.0</createdversion><appversion>5.225.0</appversion>
                 <created>True</created><karma>30</karma><nuyen>1000</nuyen>
                 <streetcred>10</streetcred><notoriety>4</notoriety><publicawareness>6</publicawareness>
+                <burntstreetcred>0</burntstreetcred><improvements/>
                 <contacts/><expenses/><notes>Retain unrelated data</notes></character>
                 """, "sr5"), default);
             Id = imported.Id;

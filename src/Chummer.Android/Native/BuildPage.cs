@@ -3112,18 +3112,20 @@ public sealed class BuildPage : NativePageBase
                     await Navigation.PushAsync(new Sr5DowntimeCalendarWizardPage(Coordinator));
                 },
                 automationId: "build-career-calendar"));
-            _body.Add(NativeTheme.NavigationRow(
-                "Reputation",
-                "Street Cred, notoriety and source-aware reputation",
-                async () =>
-                {
-                    CareerReputationEditorState? editor = await Coordinator.PrepareCareerReputationEditAsync();
-                    if (editor is not null)
+            if (Coordinator.SupportsCareerReputationEntry)
+            {
+                _body.Add(NativeTheme.NavigationRow(
+                    PhoneStrings.Get("ReputationWizardTitle", "Career · Reputation"),
+                    PhoneStrings.Get("ReputationWizardIntro", "Review local reputation changes before saving."),
+                    async () =>
                     {
-                        await Navigation.PushAsync(new CareerReputationPage(Coordinator, editor));
-                    }
-                },
-                automationId: "build-career-reputation"));
+                        var model = await Coordinator.PrepareCareerReputationEntryAsync();
+                        var destination = new Sr5CareerReputationWizardPage(Coordinator, model);
+                        destination.RequireCurrentEntry(default);
+                        await Navigation.PushAsync(destination);
+                    },
+                    automationId: "build-career-reputation"));
+            }
         }
     }
 

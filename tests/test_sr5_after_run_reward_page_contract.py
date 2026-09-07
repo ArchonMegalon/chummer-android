@@ -40,7 +40,7 @@ def test_saved_reward_planning_reuses_calendar_and_revalidates_destination_entry
     page = (NATIVE / "Sr5AfterRunRewardWizardPage.cs").read_text()
     view = (NATIVE / "Sr5AfterRunRewardView.cs").read_text()
     calendar = (NATIVE / "Sr5DowntimeCalendarWizardPage.cs").read_text()
-    route = page.split("internal async Task OpenDowntimeAsync", 1)[1].split("internal async Task OpenConsequencesAsync", 1)[0]
+    route = page.split("internal async Task OpenDowntimeAsync", 1)[1].split("internal async Task OpenReputationAsync", 1)[0]
     assert "new Sr5DowntimeCalendarWizardPage" in route
     assert "Sr5DowntimeCalendarJournalStore.CreateDefault()" in route
     assert route.count("RequireCurrentReward(saved, cancellationToken)") == 2
@@ -54,6 +54,27 @@ def test_saved_reward_planning_reuses_calendar_and_revalidates_destination_entry
     assert "entryStillCurrent?.Invoke() == false" in calendar
     for mutation in ("ApplyAsync", "SettleAfterRun", "PublishManual", "TryConfirm", "TryWriteReview"):
         assert mutation not in route
+
+
+def test_local_reputation_uses_real_core_di_and_contextual_read_only_navigation():
+    page = (NATIVE / "Sr5AfterRunRewardWizardPage.cs").read_text()
+    route = page.split("internal async Task OpenReputationAsync", 1)[1].split("internal async Task OpenConsequencesAsync", 1)[0]
+    assert route.count("RequireCurrentReward(saved, cancellationToken)") == 2
+    assert "await Coordinator.PrepareCareerReputationEntryAsync(cancellationToken)" in route
+    assert "destination.RequireCurrentEntry(cancellationToken)" in route
+    assert "ReferenceEquals(saved, _model.Handoff)" in route
+    for mutation in ("ConfirmAsync", "Commit(", "RetryAsync", "Guid.NewGuid", "QuickEdit", "PublishManual"):
+        assert mutation not in route
+    startup = (ROOT / "src/Chummer.Android/MauiProgram.cs").read_text()
+    assert "Sr5CareerReputationJournal.CreateDefault" in startup
+    assert "provider.GetRequiredService<ICharacterCareerReputationService>()" in startup
+    coordinator = (NATIVE / "RunnerSessionCoordinator.Reputation.cs").read_text()
+    assert "RunnerSessionSr5AfterRunRewardHost(this" in coordinator
+    assert "_careerReputationService!, host, _careerReputationJournal!" in coordinator
+    assert "new FileWorkspaceStore" not in coordinator
+    build = (NATIVE / "BuildPage.cs").read_text()
+    assert "new Sr5CareerReputationWizardPage" in build
+    assert "new CareerReputationPage" not in build
 
 
 def test_every_reward_resource_has_nonempty_exact_locale_and_placeholder_parity():

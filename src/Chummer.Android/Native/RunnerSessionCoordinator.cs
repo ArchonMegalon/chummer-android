@@ -357,7 +357,9 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         Sr5CareerCustomDrugRecipeService? careerCustomDrugRecipeService = null,
         Sr5CareerVehicleWorkshopService? careerVehicleWorkshopService = null,
         ICharacterAfterRunRewardService? afterRunRewardService = null,
-        Sr5AfterRunRewardCheckpointStore? afterRunRewardCheckpoints = null)
+        Sr5AfterRunRewardCheckpointStore? afterRunRewardCheckpoints = null,
+        ICharacterCareerReputationService? careerReputationService = null,
+        Sr5CareerReputationJournal? careerReputationJournal = null)
     {
         _presenter = presenter;
         _client = client;
@@ -391,6 +393,7 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         _rosterFavoritePresenter = rosterFavoritePresenter;
         _applicationSettingsPresenter = applicationSettingsPresenter;
         InitializeAfterRunRewardHost(afterRunRewardService, afterRunRewardCheckpoints);
+        InitializeCareerReputationHost(careerReputationService, careerReputationJournal);
         _presenter.StateChanged += OnPresenterStateChanged;
         _shellPresenter.StateChanged += OnShellStateChanged;
         _account.Changed += OnAccountChanged;

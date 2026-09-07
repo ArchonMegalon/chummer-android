@@ -1,6 +1,6 @@
 # Local SR5 reputation wizard — implementation handoff
 
-Status: local native components, not a registered application route or release authority.
+Status: local native application integration; not a packaged candidate or release authority.
 
 This slice consumes the real Core reputation capability from semantic development
 commit `2528bca16315b85b085648e0610991922aa233c7`. It does not change frozen
@@ -31,6 +31,18 @@ package pins, the qualified beta, signing trust, or Play publication evidence.
 - Actual native MAUI controls with stable editors, before/after display, bounded
   20-row history pages, no implicit selection, and canceled-appearance click fences.
   All 39 strings have EN/DE/ES resources, including regional fallback tests.
+- MauiProgram registers the app-private journal against the Core runtime's
+  configured reputation service. RunnerSessionCoordinator reuses the existing
+  owner, immutable Career selection generation and real presenter/shell reload.
+- The Career reputation card and saved-reward continuation open the dedicated
+  wizard. Context is checked before/after preparation and at destination entry.
+  No generic XML editor fallback or fabricated proposal/GM identity is used.
+- NativePageBase wrapper keeps actions disabled until the current appearance's
+  observation completes. Overlapping appearance reads drain asynchronously;
+  canceled old reads cannot mark a returning page ready or strand its busy view.
+  Late departed input callbacks cannot change retained intent.
+- Returning from a saved child refreshes an already Applied reward's handoff by
+  lookup/reload only. Pending or unknown commands still require explicit recovery.
 
 ## Verification and limits
 
@@ -41,6 +53,26 @@ presenter-refresh adapters are explicit; they are **not** Android Preferences,
 MAUI Activity lifecycle, full RunnerSessionCoordinator startup, or device proof.
 The existing reward subprocess recovery test remains in the regression suite;
 there is not yet a reputation-specific OS-process-death test.
+
+The separate Native.InteractionTests project now compiles the whole native
+source graph, including MauiProgram and the real page/coordinator. Its runtime
+cases use the actual Core DI service, file store, native coordinator, shared
+operation coordinator, presenter and Shell. Preferences are backed by explicit
+test memory; appearance lifetimes and final confirmation are driven by managed
+test calls, not an Android Activity or physical touch.
+
+New integration assertions cover saved reward → reputation → saved receipt →
+fresh After Run return, history-only reopen, canceled/expired destination entry,
+depart/reappear, and actual post-commit presenter reload cancellation/failure.
+A controlled decorator blocks only the first real Core Read to reproduce rapid
+leave/return; all rule, preview, write and lookup operations remain Core-owned.
+
+Local source composition uses UI `485c1e07c8b43ba1b4e71bc308a025fad34bb8d4`
+(based on `80f72ba18e5587679ec2e8838906b97fc99cda63`). The narrow UI fix makes its
+Application reference honor ChummerCoreEngineRoot, like its other Core projects,
+instead of silently adding an ambient sibling. Neither commit is a package seal.
+The complete development graph uses explicit owner project roots, not replacement
+DLLs or new claims about the existing frozen package feed.
 
 Run with the repository's SDK 10.0.110 and an explicit Core checkout:
 
@@ -57,25 +89,26 @@ Restore again when the Core root changes: old project assets can retain a former
 source closure even when direct references now identify another checkout.
 Do not accept mixed source roots or copy replacement DLLs into a sealed feed.
 
-## Remaining application integration
+## Remaining qualification and product work
 
-1. Compose the service over the existing configured IWorkspaceStore/source
-   resolver and register the journal with the app-private state directory.
-2. Reuse the existing owner/immutable runner-selection and saved-reload host.
-   The currently shared types have AfterRunReward names but contain common
-   Career selection state; do not invent a second owner or generation counter.
-3. Add a lifecycle-bound NativePageBase wrapper and the genuine Career/After Run
-   entry routes. Recheck entry identity before and after navigation. The old
-   CareerReputationPage and generic edit route are still unchanged; this slice
-   must not be reported as already replacing them.
-4. Wire full native/page startup and real presenter refresh tests, regenerate
-   source inventories in dependency order, and qualify the new Core/UI/Android
-   graph. The scoped harness is not a complete Native.CompileCheck or APK build.
-5. Add reputation-specific new-process and Android handler/device evidence,
+1. Regenerate source inventories in dependency order, review/seal the new
+   Core/UI/Android graph, and qualify the actual APK. This local source build
+   does not update the checked-in package pins or current candidate authority.
+2. Test full MauiProgram startup and Android handler attachment. Managed page
+   method calls and in-memory Preferences are not a physical-device lifecycle.
+3. Add reputation-specific new-process and Android handler/device evidence,
    including shared-owner durability, interrupted saves and restored navigation.
-6. Keep Astral/Wild reputation explicitly out of this component until their real
+4. Verify actual Creation → Career output supplies the canonical profile and
+   persisted reputation/effect inputs. The old minimal imported test runner
+   omitted burntstreetcred/improvements and was correctly unresolved; the full
+   integration fixture now includes them. That repair is not proof of the real
+   creation output or a reason to fabricate missing inputs during mutation.
+5. Keep Astral/Wild reputation explicitly out of this component until their real
    Core capabilities exist. Local contacts, Heat and changed-definition effect
    reactivation remain separate unfinished work, not satisfied by this wizard.
+   The old generic page's source remains preserved, but the ordinary Career card
+   no longer opens it. Broader parity and existing API-36 scripts need explicit
+   reconciliation with the new wizard rather than inheriting old route evidence.
 
 Nothing here grants GM authority, settles a campaign run, enables Rook, or
 authorizes signing/upload. The old Play RSA upload key and the separate missing

@@ -16,6 +16,7 @@ public sealed class Sr5AfterRunRewardView : ContentView
     private readonly Func<Task> _finish;
     private readonly Func<CancellationToken, Task>? _reviewConsequences;
     private readonly Func<CancellationToken, Task>? _planDowntime;
+    private readonly Func<CancellationToken, Task>? _reviewReputation;
     private readonly Entry _karma, _nuyen;
     private readonly Editor _reason;
     private readonly DatePicker _date;
@@ -23,7 +24,7 @@ public sealed class Sr5AfterRunRewardView : ContentView
     private readonly CheckBox _noAward;
     private readonly Label _status, _review, _receipt, _historyPosition;
     private readonly ActivityIndicator _working;
-    private readonly Button _preview, _confirm, _recover, _retry, _done, _consequences, _downtime, _resume, _previous, _next;
+    private readonly Button _preview, _confirm, _recover, _retry, _done, _consequences, _downtime, _reputation, _resume, _previous, _next;
     private readonly Picker _history;
     private readonly VerticalStackLayout _historySection;
     private IReadOnlyList<Sr5AfterRunRewardCheckpoint> _historySource = [];
@@ -35,13 +36,15 @@ public sealed class Sr5AfterRunRewardView : ContentView
     public Sr5AfterRunRewardView(Sr5AfterRunRewardPhoneModel model,
         Func<Func<Task>, Task> runAction, Func<Task> finish,
         Func<CancellationToken, Task>? reviewConsequences = null,
-        Func<CancellationToken, Task>? planDowntime = null)
+        Func<CancellationToken, Task>? planDowntime = null,
+        Func<CancellationToken, Task>? reviewReputation = null)
     {
         _model = model ?? throw new ArgumentNullException(nameof(model));
         _runAction = runAction ?? throw new ArgumentNullException(nameof(runAction));
         _finish = finish ?? throw new ArgumentNullException(nameof(finish));
         _reviewConsequences = reviewConsequences;
         _planDowntime = planDowntime;
+        _reviewReputation = reviewReputation;
         VerticalStackLayout body = new() { Padding = new Thickness(20, 18, 20, 40), Spacing = 14 };
         body.Add(NativeTheme.Title(T("AfterRunRewardTitle", "After Run · Rewards")));
         body.Add(NativeTheme.Body(T("AfterRunRewardIntro",
@@ -96,6 +99,11 @@ public sealed class Sr5AfterRunRewardView : ContentView
             if (_model.CanContinue && _planDowntime is not null) await _planDowntime(token);
         });
         body.Add(_downtime);
+        _reputation = Button("sr5-reward-reputation", T("ReputationWizardTitle", "Career · Reputation"), async token =>
+        {
+            if (_model.CanContinue && _reviewReputation is not null) await _reviewReputation(token);
+        });
+        body.Add(_reputation);
         body.Add(NativeTheme.Body(T("AfterRunRewardDowntimeBoundary",
             "Plan your calendar locally. Each calendar change needs its own review and confirmation; it does not spend Karma, grant rewards or approve run consequences."), NativeTheme.Muted));
         _done = Button("sr5-reward-done", T("AfterRunRewardDone", "Done · return to Career"), async _ =>
@@ -227,6 +235,8 @@ public sealed class Sr5AfterRunRewardView : ContentView
             _consequences.IsEnabled = !busy && _consequences.IsVisible;
             _downtime.IsVisible = _planDowntime is not null && _model.CanContinue;
             _downtime.IsEnabled = !busy && _downtime.IsVisible;
+            _reputation.IsVisible = _reviewReputation is not null && _model.CanContinue;
+            _reputation.IsEnabled = !busy && _reputation.IsVisible;
             _receipt.IsVisible = _model.CanContinue;
             _receipt.Text = _model.Handoff is { } saved
                 ? PhoneStrings.Format("AfterRunRewardSaved", "Saved. Current balance: {0} Karma · {1} Nuyen.",

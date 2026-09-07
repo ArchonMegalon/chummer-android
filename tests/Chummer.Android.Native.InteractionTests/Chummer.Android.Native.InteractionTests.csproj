@@ -10,6 +10,7 @@
     <Compile Include="Program.cs" />
     <Compile Include="AfterRunPageInteractionTests.cs" />
     <Compile Include="AfterRunNativeRuntimeTests.cs" />
+    <Compile Include="ReputationNativeRuntimeTests.cs" />
     <Compile Include="../Chummer.Android.Sr5AfterRunReward.Tests/RealAfterRunRewardFixture.cs" Link="RealAfterRunRewardFixture.cs" />
     <!-- Use actual native/Core assemblies, not the standalone harness's stubs. -->
     <Compile Include="../Chummer.Android.Sr5AfterRunSettlement.Tests/AfterRunAuthorityHarness.cs" Link="AfterRunAuthorityHarness.cs" />
