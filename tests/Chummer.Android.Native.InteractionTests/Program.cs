@@ -13,6 +13,11 @@ internal static class Program
 {
     private static async Task Main(string[] args)
     {
+        if (args.Length == 2 && args[0] == "--creation-magic-runtime-content-root")
+        {
+            CreationMagicNativeRuntimeTests.Run(args[1]);
+            return;
+        }
         if (args.Length != 0 && (args.Length != 2 || args[0] != "--after-run-runtime-content-root"))
             throw new ArgumentException("Expected --after-run-runtime-content-root followed by an explicit Core content directory.");
         (string Name, Func<Task> Run)[] tests =
@@ -90,7 +95,10 @@ internal static class Program
 
         Console.WriteLine($"Native dialog interaction tests passed: {tests.Length}");
         if (args.Length == 2)
+        {
             await AfterRunAuthorityHarness.RunNativeRuntimeCasesAsync(args[1]);
+            CreationMagicNativeRuntimeTests.Run(args[1]);
+        }
         else
             Console.WriteLine("Native runtime/file-store integration not run: supply --after-run-runtime-content-root explicitly.");
     }

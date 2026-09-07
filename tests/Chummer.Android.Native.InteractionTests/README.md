@@ -115,6 +115,25 @@ to make it pass. Any temporary application-assembly overlay used for development
 must be explicitly recorded and must not overwrite a sealed feed or claim
 package/APK qualification. Hosted qualification needs a newly sealed Core graph.
 
+## Creation Magic/Resonance source integration
+
+The explicit content-root run also exercises `CreationMagicNativeRuntimeTests`.
+It bootstraps a real SR5 Priority workspace, selects an enabled Human/Adept C
+source choice, raises the granted MAG from 4 to 5 through the Attributes service,
+and uses the actual Presentation projection and phone draft/review/confirmation.
+Source Talent values remain unchanged; the effective power budget/rating cap
+uses the confirmed MAG. Non-levelled and explicitly source-capped powers keep
+their lower caps. Forged budgets/options and stale overview revisions are rejected.
+The chosen powers retain their undiscounted source costs and save only the wizard
+ledger. A reconstructed file store and service must reproduce the same budget,
+selections, source identity and idempotent receipt without modifying runner XML.
+
+This adds a managed native/Core integration case, not an APK, Android Activity
+lifecycle, physical-device, whole-character finalization or Play proof. Overview
+selection is supplied by the existing explicit test adapter; the source catalog,
+bootstrap, attribute/magic services, file store and phone interaction logic are
+the actual owner implementations. No copied/fake rules service is used.
+
 ## Changing the package graph
 
 Changing only the Core version properties is insufficient: both
