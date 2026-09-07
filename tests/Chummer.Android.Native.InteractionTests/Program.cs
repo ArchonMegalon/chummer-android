@@ -16,6 +16,7 @@ internal static class Program
         (string Name, Func<Task> Run)[] tests =
         [
             (nameof(SettlementRecoveryUsesActualNativeAndCoreAssembliesAsync), SettlementRecoveryUsesActualNativeAndCoreAssembliesAsync),
+            (nameof(AfterRunAuthorityHarness.RunNativePageCasesAsync), AfterRunAuthorityHarness.RunNativePageCasesAsync),
             (nameof(QueuedOlderUnfocusedCannotOverwriteActionInputAsync), QueuedOlderUnfocusedCannotOverwriteActionInputAsync),
             (nameof(StaleGenerationAndSameIdShapeChangesFailClosedAsync), StaleGenerationAndSameIdShapeChangesFailClosedAsync),
             (nameof(ReadOnlyTransitionFailsClosedAsync), ReadOnlyTransitionFailsClosedAsync),
@@ -3416,7 +3417,7 @@ internal static class Program
                 []));
     }
 
-    private static CharacterOverviewState NewCreationOverview(
+    internal static CharacterOverviewState NewCreationOverview(
         CharacterWorkspaceId workspaceId,
         long contentRevision,
         long savedRevision)

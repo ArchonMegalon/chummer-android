@@ -4,7 +4,7 @@ using Chummer.Contracts.Characters;
 using Chummer.Contracts.Workspaces;
 using System.Text.Json;
 
-internal static class AfterRunAuthorityHarness
+internal static partial class AfterRunAuthorityHarness
 {
     private static readonly CharacterWorkspaceId WorkspaceId = new("workspace-41");
     private static readonly CharacterAfterRunSettlementIdentity Identity = new(

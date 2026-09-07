@@ -256,7 +256,10 @@ def test_discard_is_separate_from_resume_and_captures_the_confirmed_checkpoint()
     store = read("Sr5AfterRunSettlementCheckpointStore.cs")
     action = page.split("private async Task AbandonAsync()", 1)[1].split("private static string CandidateLabel", 1)[0]
     assert "IsDiscardableReviewForCurrentRunner" in action
-    assert action.index("var expected = Sr5AfterRunSettlementCheckpointCas.From(_checkpoint)") < action.index("await DisplayAlertAsync")
+    assert action.index("var expected = Sr5AfterRunSettlementCheckpointCas.From(_checkpoint)") < action.index("await _confirmAbandon")
+    assert action.index("appearance != Volatile.Read(ref _discardAppearanceGeneration)") < action.index("_store.TryDeleteReviewed")
+    assert action.index("runner != Coordinator.CaptureAfterRunRewardBinding(expected.OwnerId)") < action.index("_store.TryDeleteReviewed")
+    assert "DisplayAlertAsync(title, message, accept, cancel)" in page
     assert action.index("if (!confirmed)") < action.index("_store.TryDeleteReviewed")
     assert "TryDeleteReviewed(\n                expected," in action
     assert "AfterRunSettlementDiscardPrompt" in action
