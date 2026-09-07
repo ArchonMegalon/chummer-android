@@ -65,3 +65,24 @@ kind (`sr5/chum5-xml`); do not change the fixture to the legacy `workspace` kind
 to make it pass. Any temporary application-assembly overlay used for development
 must be explicitly recorded and must not overwrite a sealed feed or claim
 package/APK qualification. Hosted qualification needs a newly sealed Core graph.
+
+## Changing the package graph
+
+Changing only the Core version properties is insufficient: both
+`Chummer.Campaign.Contracts` and `Chummer.Run.Contracts` carry their own Core
+dependencies. Rebuild the affected owner packages from their exact source
+revisions against the chosen Core packages. Use distinct development versions
+and isolated feeds/caches; never overwrite the bytes of a sealed package or
+suppress a NuGet downgrade to make a mixed graph restore.
+
+Check restore success for every referenced project, not only the outer test
+project's assets file. After a package-graph change, clean and rebuild the actual
+project references, then compare every copied Core runtime DLL with its entry
+in the chosen nupkg before running this executable. Normalized package timestamps
+can otherwise leave a previous DLL in an incremental output directory even
+when restore selects the intended version. Passing tests against that stale
+output do not prove the new package graph.
+
+Locally rebuilt owner packages and source-built Presentation still require
+their normal package seals and hosted verification. This executable is neither
+an APK build nor an API-36/process-death or Play-publication proof.
