@@ -1,5 +1,3 @@
-using System.ComponentModel;
-using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -9,94 +7,14 @@ using Chummer.Contracts.Workspaces;
 
 namespace Chummer.Android.Native;
 
-public interface ISr5AfterRunRewardJournalBackend
+public interface ISr5AfterRunRewardJournalBackend : ISr5CareerCommandJournalBackend { }
+
+/// <summary>Compatibility adapter retaining the existing reward filename and bytes.</summary>
+public sealed class FileSr5AfterRunRewardJournalBackend(string stateDirectory) : ISr5AfterRunRewardJournalBackend
 {
-    string Read();
-    void Write(string payload);
-}
-
-/// <summary>
-/// Android/Linux durable host journal, outside the Core workspace. The supplied
-/// state directory must already exist. Failed rename/fsync acknowledgements do
-/// not remove the possibly published journal.
-/// </summary>
-public sealed class FileSr5AfterRunRewardJournalBackend : ISr5AfterRunRewardJournalBackend
-{
-    private readonly string _directory;
-    private readonly string _path;
-
-    public FileSr5AfterRunRewardJournalBackend(string stateDirectory)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(stateDirectory);
-        _directory = Path.GetFullPath(stateDirectory);
-        if (!Directory.Exists(_directory))
-            throw new DirectoryNotFoundException("The reward journal state directory must already exist.");
-        _path = Path.Combine(_directory, "sr5-after-run-rewards.v1.json");
-    }
-
-    public string Read()
-    {
-        FileStream opened;
-        try { opened = new FileStream(_path, FileMode.Open, FileAccess.Read, FileShare.Read); }
-        catch (FileNotFoundException) { return string.Empty; }
-        using var stream = opened;
-        if (stream.Length == 0)
-            throw new InvalidDataException("An existing empty reward journal is corrupt, not absent.");
-        if (stream.Length > Sr5AfterRunRewardCheckpointStore.MaximumJournalBytes)
-            throw new InvalidDataException("Reward journal capacity exceeded; history must be retained.");
-        using var reader = new StreamReader(stream, new UTF8Encoding(false, true));
-        string payload = reader.ReadToEnd();
-        return payload.Length > 0 ? payload
-            : throw new InvalidDataException("An existing empty reward journal is corrupt, not absent.");
-    }
-
-    public void Write(string payload)
-    {
-        if (!OperatingSystem.IsAndroid() && !OperatingSystem.IsLinux())
-            throw new PlatformNotSupportedException("Durable reward journal directory sync requires Android/Linux.");
-        if (Encoding.UTF8.GetByteCount(payload) > Sr5AfterRunRewardCheckpointStore.MaximumJournalBytes)
-            throw new InvalidDataException("Reward journal capacity exceeded; history must be retained.");
-        string temporary = Path.Combine(_directory, $".sr5-after-run-rewards.{Guid.NewGuid():N}.tmp");
-        try
-        {
-            using (var stream = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write,
-                       FileShare.None, 4096, FileOptions.WriteThrough))
-            {
-                using var writer = new StreamWriter(stream, new UTF8Encoding(false), leaveOpen: true);
-                writer.Write(payload);
-                writer.Flush();
-                stream.Flush(flushToDisk: true);
-            }
-            File.Move(temporary, _path, overwrite: true);
-            SyncDirectory(_directory);
-        }
-        finally
-        {
-            // Only an unpublished temporary file is eligible for cleanup.
-            if (File.Exists(temporary)) File.Delete(temporary);
-        }
-    }
-
-    private static void SyncDirectory(string directory)
-    {
-        int descriptor = Open(directory, 0x10000 | 0x80000); // O_RDONLY | O_DIRECTORY | O_CLOEXEC
-        if (descriptor < 0) throw new IOException("Cannot open reward journal directory for sync.",
-            new Win32Exception(Marshal.GetLastPInvokeError()));
-        try
-        {
-            if (Fsync(descriptor) != 0)
-                throw new IOException("Reward journal directory sync acknowledgement is unavailable.",
-                    new Win32Exception(Marshal.GetLastPInvokeError()));
-        }
-        finally { Close(descriptor); }
-    }
-
-    [DllImport("libc", EntryPoint = "open", SetLastError = true)]
-    private static extern int Open(string path, int flags);
-    [DllImport("libc", EntryPoint = "fsync", SetLastError = true)]
-    private static extern int Fsync(int descriptor);
-    [DllImport("libc", EntryPoint = "close", SetLastError = true)]
-    private static extern int Close(int descriptor);
+    private readonly FileSr5CareerCommandJournalBackend _backend = new(stateDirectory, Sr5CareerCommandJournalDomain.AfterRunReward);
+    public string Read() => _backend.Read();
+    public void Write(string payload) => _backend.Write(payload);
 }
 
 /// <summary>
@@ -105,7 +23,7 @@ public sealed class FileSr5AfterRunRewardJournalBackend : ISr5AfterRunRewardJour
 /// </summary>
 public sealed class Sr5AfterRunRewardCheckpointStore
 {
-    public const int MaximumJournalBytes = 16 * 1024 * 1024;
+    public const int MaximumJournalBytes = FileSr5CareerCommandJournalBackend.MaximumBytes;
     private const int MaximumEntries = 4096;
     private static readonly object Gate = new();
     private static readonly JsonSerializerOptions JsonOptions = new()

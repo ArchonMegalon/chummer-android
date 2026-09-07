@@ -15,7 +15,7 @@ if (args.Length == 6 && args[0] == "--recover-process")
 
 var cases = RewardPhoneTests.Cases.Concat(RewardPhoneTests.PhoneModelCases)
     .Concat(RewardPhoneTests.ColdEntryCases).Concat(RewardPhoneTests.RunnerHostCases).Concat(RewardPhoneTests.NativeViewCases)
-    .Concat(JournalOwnershipTests.Cases).ToArray();
+    .Concat(JournalOwnershipTests.Cases).Concat(ReputationTests.Cases).Concat(ReputationTests.ViewCases).ToArray();
 int failed = 0;
 foreach ((string name, Func<Task> run) in cases)
 {

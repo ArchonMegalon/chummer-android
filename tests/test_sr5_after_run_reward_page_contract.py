@@ -73,3 +73,20 @@ def test_every_reward_resource_has_nonempty_exact_locale_and_placeholder_parity(
             assert set(re.findall(r"\{\d+\}", catalog[key])) == placeholders, key
     assert "Experimenteller" in catalogs[1]["AfterRunRewardExperimental"]
     assert "experimental" in catalogs[2]["AfterRunRewardExperimental"]
+
+
+def test_reputation_resources_preserve_locale_and_placeholder_parity():
+    catalogs = []
+    for suffix in ("", ".de", ".es"):
+        nodes = ET.parse(RESOURCES / f"PhoneStrings{suffix}.resx").getroot().findall("data")
+        catalogs.append({node.attrib["name"]: node.findtext("value") for node in nodes})
+    keys = {key for key in catalogs[0] if key.startswith("ReputationWizard")}
+    assert len(keys) == 39
+    for catalog in catalogs:
+        assert {key for key in catalog if key.startswith("ReputationWizard")} == keys
+        for key in keys:
+            assert catalog[key].strip()
+            assert set(re.findall(r"\{\d+\}", catalog[key])) == set(re.findall(r"\{\d+\}", catalogs[0][key]))
+    view = (NATIVE / "Sr5CareerReputationView.cs").read_text()
+    for forbidden in ("XElement", "ReplaceWorkspaceDocument", "Guid.Parse", "Guid.NewGuid", "SHA256"):
+        assert forbidden not in view

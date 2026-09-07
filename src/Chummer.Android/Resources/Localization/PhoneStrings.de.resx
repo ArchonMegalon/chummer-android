@@ -179,4 +179,52 @@
   <data name="AfterRunRewardRunnerChanged" xml:space="preserve"><value>Der ausgewählte Runner wurde gewechselt. Öffne Nach dem Run für den aktuell gespeicherten Runner erneut.</value></data>
   <data name="AfterRunRewardJournalUnavailable" xml:space="preserve"><value>Ein offener Karrierevorgang oder ein nicht lesbares Buchungsjournal verhindert eine neue Belohnung. Kläre zuerst diesen Vorgang; nichts wurde gelöscht.</value></data>
   <data name="AfterRunEntryDetail" xml:space="preserve"><value>Erfasse lokale Belohnungen oder prüfe eine freigegebene Run-Abrechnung. Kläre zuerst jeden noch offenen Vorgang.</value></data>
+  <data name="ReputationWizardTitle" xml:space="preserve"><value>Karriere · Ruf</value></data>
+  <data name="ReputationWizardIntro" xml:space="preserve"><value>Manuelle Rufänderungen erfassen oder das Verbrennen von Straßenruf prüfen. Core berechnet die Gesamtwerte; erst deine Bestätigung speichert.</value></data>
+  <data name="ReputationWizardScope" xml:space="preserve"><value>Experimenteller lokaler Wizard: noch nicht auf einem Android-Gerät qualifiziert. Astraler und Wilder Ruf bleiben unverändert. Dies ist keine SL-Freigabe oder Run-Abrechnung.</value></data>
+  <data name="ReputationWizardInputHelp" xml:space="preserve"><value>Änderungen mit Vorzeichen eingeben, z. B. +1 oder -1. Leere Felder lassen den manuellen Wert unverändert. Berechnete Gesamtwerte stehen separat.</value></data>
+  <data name="ReputationWizardStreetCred" xml:space="preserve"><value>Straßenruf ändern</value></data>
+  <data name="ReputationWizardNotoriety" xml:space="preserve"><value>Schlechten Ruf ändern</value></data>
+  <data name="ReputationWizardAwareness" xml:space="preserve"><value>Prominenz ändern</value></data>
+  <data name="ReputationWizardReason" xml:space="preserve"><value>Grund / Run-Name (optional)</value></data>
+  <data name="ReputationWizardPreview" xml:space="preserve"><value>Manuelle Änderungen prüfen</value></data>
+  <data name="ReputationWizardBurn" xml:space="preserve"><value>Straßenruf verbrennen · Vorschau</value></data>
+  <data name="ReputationWizardConfirm" xml:space="preserve"><value>Diese Änderung bestätigen und speichern</value></data>
+  <data name="ReputationWizardRecover" xml:space="preserve"><value>Gespeichertes Ergebnis prüfen</value></data>
+  <data name="ReputationWizardRetry" xml:space="preserve"><value>Dieselbe bestätigte Änderung erneut versuchen</value></data>
+  <data name="ReputationWizardCloseSuperseded" xml:space="preserve"><value>Ursprünglichen Auftrag nur bei veralteter Revision abschließen</value></data>
+  <data name="ReputationWizardReload" xml:space="preserve"><value>Gespeicherten Kontext neu laden</value></data>
+  <data name="ReputationWizardDone" xml:space="preserve"><value>Fertig · zurück zur Karriere</value></data>
+  <data name="ReputationWizardHistory" xml:space="preserve"><value>Ruf-Verlauf</value></data>
+  <data name="ReputationWizardChooseHistory" xml:space="preserve"><value>Gespeicherten Eintrag wählen</value></data>
+  <data name="ReputationWizardNewer" xml:space="preserve"><value>Neuere Einträge</value></data>
+  <data name="ReputationWizardOlder" xml:space="preserve"><value>Ältere Einträge</value></data>
+  <data name="ReputationWizardResume" xml:space="preserve"><value>Gewählten Eintrag prüfen</value></data>
+  <data name="ReputationWizardValues" xml:space="preserve"><value>Straßenruf: manuell {0}, gesamt {1}
+Schlechter Ruf: manuell {2}, gesamt {3}
+Prominenz: manuell {4}, gesamt {5}
+Bereits verbrannter Straßenruf: {6}</value></data>
+  <data name="ReputationWizardComparison" xml:space="preserve"><value>{0}
+Vorher:
+{1}
+Nachher:
+{2}
+Noch wurde nichts gespeichert.</value></data>
+  <data name="ReputationWizardHistoryRow" xml:space="preserve"><value>Revision {0} · {1} · {2}</value></data>
+  <data name="ReputationWizardSavedReceipt" xml:space="preserve"><value>Gespeichert in Revision {0}:
+{1}</value></data>
+  <data name="ReputationWizardClosedReceipt" xml:space="preserve"><value>Nicht angewendet. Revision {0} hat den ursprünglichen Auftrag überholt. Er bleibt im Verlauf; keine gespeicherte Änderung wurde rückgängig gemacht.</value></data>
+  <data name="ReputationWizardLoading" xml:space="preserve"><value>Gespeicherten Ruf laden…</value></data>
+  <data name="ReputationWizardWorking" xml:space="preserve"><value>In Arbeit… Bitte das Ergebnis abwarten.</value></data>
+  <data name="ReputationWizardEditing" xml:space="preserve"><value>Wähle die Änderung für die Vorschau.</value></data>
+  <data name="ReputationWizardReview" xml:space="preserve"><value>Prüfe die genauen Vorher-/Nachher-Werte und bestätige danach.</value></data>
+  <data name="ReputationWizardInvalidInput" xml:space="preserve"><value>Ganze Zahlen mit Vorzeichen und mindestens eine Änderung eingeben. Leere Felder bleiben unverändert.</value></data>
+  <data name="ReputationWizardReviewUnavailable" xml:space="preserve"><value>Diese Auswahl lässt sich derzeit nicht bestätigen. Passe sie an oder lade den gespeicherten Kontext neu.</value></data>
+  <data name="ReputationWizardUnavailable" xml:space="preserve"><value>Der gespeicherte Kontext oder das Karriere-Journal ist nicht verfügbar. Neu laden oder den ursprünglichen offenen Auftrag klären; nichts wurde gelöscht.</value></data>
+  <data name="ReputationWizardPending" xml:space="preserve"><value>Ein ursprünglicher bestätigter Auftrag muss wiederhergestellt werden. Prüfe zuerst das gespeicherte Ergebnis.</value></data>
+  <data name="ReputationWizardOutcomeUnknown" xml:space="preserve"><value>Das Ergebnis ist unbekannt. Behalte den ursprünglichen Auftrag und prüfe vor einem erneuten Versuch sein Ergebnis. Ein Abschluss ist nur möglich, wenn Core Nichtanwendung und eine veraltete Revision bestätigt.</value></data>
+  <data name="ReputationWizardRecorded" xml:space="preserve"><value>Gespeichert; der gespeicherte Runner wurde neu geladen.</value></data>
+  <data name="ReputationWizardSuperseded" xml:space="preserve"><value>Nicht angewendet · ursprüngliche Revision überholt.</value></data>
+  <data name="ReputationWizardRefreshRequired" xml:space="preserve"><value>Das ursprüngliche Ergebnis bleibt erhalten, aber der aktuelle Runner konnte nicht neu geladen werden. Prüfe das gespeicherte Ergebnis; lege keinen Ersatzauftrag an.</value></data>
+  <data name="ReputationWizardRunnerChanged" xml:space="preserve"><value>Der gewählte Runner hat sich geändert. Öffne Ruf für den aktuellen gespeicherten Runner erneut.</value></data>
 </root>

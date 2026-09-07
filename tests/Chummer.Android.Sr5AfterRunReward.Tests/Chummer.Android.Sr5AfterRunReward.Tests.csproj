@@ -31,6 +31,15 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
+    <Compile Include="ReputationTests.cs" />
+    <Compile Include="ReputationViewTests.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/FileSr5CareerCommandJournalBackend.cs" Link="Native/FileSr5CareerCommandJournalBackend.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5CareerReputationJournal.cs" Link="Native/Sr5CareerReputationJournal.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5CareerReputationCoordinator.cs" Link="Native/Sr5CareerReputationCoordinator.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5CareerReputationPhoneModel.cs" Link="Native/Sr5CareerReputationPhoneModel.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5CareerReputationView.cs" Link="Native/Sr5CareerReputationView.cs" />
+    <None Include="$(ChummerCoreRoot)/Chummer/data/settings.xml" Link="core-data/settings.xml" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="$(ChummerCoreRoot)/Chummer/data/books.xml" Link="core-data/books.xml" CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="PhoneModelTests.cs" />
     <Compile Include="ColdEntryTests.cs" />
     <Compile Include="RunnerHostTests.cs" />
