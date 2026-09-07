@@ -178,4 +178,6 @@
   <data name="AfterRunSettlementRecordedTitle" xml:space="preserve"><value>Liquidación registrada</value></data>
   <data name="AfterRunSettlementRecordedDetail" xml:space="preserve"><value>Este recibo documenta una liquidación guardada, no los valores actuales del runner ni un permiso para aplicarla de nuevo. Confirmarlo solo elimina este punto de recuperación local; el runner guardado y el registro de Core no cambian.</value></data>
   <data name="AfterRunSettlementRecordedRevisions" xml:space="preserve"><value>Revisión del recibo: {0}. Revisión actual guardada del runner: {1}.</value></data>
+  <data name="AfterRunSettlementDiscardOnly" xml:space="preserve"><value>Esta revisión guardada ya no coincide con el catálogo o el runner actual. Puedes descartarla, pero no reanudarla ni aplicarla.</value></data>
+  <data name="AfterRunSettlementDiscardPrompt" xml:space="preserve"><value>¿Descartar la revisión guardada de {0} (revisión del runner {1})? Esto solo elimina la revisión local, no los datos del runner ni las aprobaciones de la propuesta.</value></data>
 </root>

@@ -156,7 +156,9 @@ public sealed class Sr5AfterRunSettlementWizardPage : NativePageBase
             && owningCheckpoint.Phase == Sr5CareerCheckpointPhase.Applied ? owningCheckpoint : null;
         if (!ownsRecovery && dependencies.Store.TryReadOwnedRecordedReceipt(
                 out var historical, out _)) recorded = historical;
+        bool ownsDiscardableReview = dependencies.Store.TryReadOwnedDiscardableReview(out _, out _);
         bool canObserveLocalRecovery = recorded is not null
+            || ownsDiscardableReview
             || ownsRecovery && owningCheckpoint.Phase == Sr5CareerCheckpointPhase.Reviewed
             || !ownsRecovery && string.IsNullOrWhiteSpace(recoveryBlocker);
         if (canObserveLocalRecovery && coordinator.SupportsAfterRunRewardEntry)
@@ -165,7 +167,7 @@ public sealed class Sr5AfterRunSettlementWizardPage : NativePageBase
             // the local reward was confirmed. An old settled receipt or a
             // not-yet-applying review must not hide an active local reward.
             var reward = await coordinator.PrepareAfterRunRewardEntryAsync(
-                allowNewReward: !ownsRecovery && recorded is null
+                allowNewReward: !ownsRecovery && recorded is null && !ownsDiscardableReview
                     && editor.Status == Sr5AfterRunCatalogStatus.Missing,
                 cancellationToken,
                 allowRecordedReceiptFallback: recorded is not null);
@@ -237,6 +239,13 @@ public sealed class Sr5AfterRunSettlementWizardPage : NativePageBase
                 ? NativeTheme.Danger
                 : NativeTheme.Muted;
         }
+        else if (_store.TryReadOwnedDiscardableReview(out var discardedReview, out _))
+        {
+            _checkpoint = discardedReview;
+            _recovery.Text = PhoneStrings.Get("AfterRunSettlementDiscardOnly",
+                "This saved review no longer matches the current catalog or runner. You can discard it, but cannot resume or apply it.");
+            _recovery.TextColor = NativeTheme.Muted;
+        }
         else
         {
             _checkpoint = null;
@@ -274,8 +283,10 @@ public sealed class Sr5AfterRunSettlementWizardPage : NativePageBase
             && _checkpointAuthority.OwnsReviewed(_checkpoint);
         _resume.IsVisible = reviewed;
         _resume.IsEnabled = reviewed;
-        _abandon.IsVisible = reviewed;
-        _abandon.IsEnabled = reviewed;
+        bool discardable = _checkpoint is not null
+            && _store.IsDiscardableReviewForCurrentRunner(_checkpoint);
+        _abandon.IsVisible = discardable;
+        _abandon.IsEnabled = discardable && !Coordinator.State.IsBusy;
         bool interrupted = _checkpoint?.Phase is Sr5CareerCheckpointPhase.Applying
             or Sr5CareerCheckpointPhase.Applied;
         _resolve.IsVisible = interrupted;
@@ -366,13 +377,19 @@ public sealed class Sr5AfterRunSettlementWizardPage : NativePageBase
 
     private async Task AbandonAsync()
     {
-        if (_checkpoint is null || !_checkpointAuthority.OwnsReviewed(_checkpoint))
+        if (_checkpoint is null || !_store.IsDiscardableReviewForCurrentRunner(_checkpoint))
         {
             return;
         }
+        // The dialog confirms this exact checkpoint, not whichever review an
+        // appearance refresh might load while the user is deciding.
+        var expected = Sr5AfterRunSettlementCheckpointCas.From(_checkpoint);
         bool confirmed = await DisplayAlertAsync(
             Text("Abandon reviewed settlement?"),
-            Text("This removes only the durable review. It does not change the runner or approve the proposal."),
+            PhoneStrings.Format("AfterRunSettlementDiscardPrompt",
+                "Discard the saved review for {0} (runner revision {1})? This removes only the local review, not runner data or proposal approvals.",
+                _checkpoint.Draft.Candidate.RewardContext.RunTitle,
+                _checkpoint.Draft.ExpectedWorkspaceRevision),
             Text("Abandon"),
             Text("Keep"));
         if (!confirmed)
@@ -381,7 +398,7 @@ public sealed class Sr5AfterRunSettlementWizardPage : NativePageBase
             return;
         }
         if (_store.TryDeleteReviewed(
-                Sr5AfterRunSettlementCheckpointCas.From(_checkpoint),
+                expected,
                 out string blocker))
         {
             _checkpoint = null;

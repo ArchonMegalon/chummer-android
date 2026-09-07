@@ -1,4 +1,6 @@
 from pathlib import Path
+import re
+import xml.etree.ElementTree as ET
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -247,6 +249,37 @@ def test_default_runtime_composition_is_explicitly_unavailable() -> None:
     assert "Sr5AfterRunSettlementEditorState.Unavailable" in runner
     assert "No fallback mutation is available" in runner
     assert "service.Settle(command)" in runner
+
+
+def test_discard_is_separate_from_resume_and_captures_the_confirmed_checkpoint() -> None:
+    page = read("Sr5AfterRunSettlementWizardPage.cs")
+    store = read("Sr5AfterRunSettlementCheckpointStore.cs")
+    action = page.split("private async Task AbandonAsync()", 1)[1].split("private static string CandidateLabel", 1)[0]
+    assert "IsDiscardableReviewForCurrentRunner" in action
+    assert action.index("var expected = Sr5AfterRunSettlementCheckpointCas.From(_checkpoint)") < action.index("await DisplayAlertAsync")
+    assert action.index("if (!confirmed)") < action.index("_store.TryDeleteReviewed")
+    assert "TryDeleteReviewed(\n                expected," in action
+    assert "AfterRunSettlementDiscardPrompt" in action
+    assert "TryReadOwnedDiscardableReview" in page
+    assert "&& !ownsDiscardableReview" in page  # never a new-reward bypass
+    assert "_resume.IsVisible = reviewed" in page
+    assert "_abandon.IsVisible = discardable" in page
+    discard = store.split("internal bool TryReadOwnedDiscardableReview", 1)[1].split("public bool TryCreate", 1)[0]
+    assert "TryReadLocked" in discard
+    assert "TryReconcileResolvedOwner" not in discard
+
+
+def test_discard_copy_has_exact_supported_language_and_placeholder_parity() -> None:
+    directory = ROOT / "src/Chummer.Android/Resources/Localization"
+    catalogs = [
+        {node.attrib["name"]: node.findtext("value") for node in ET.parse(directory / f"PhoneStrings{suffix}.resx").getroot().findall("data")}
+        for suffix in ("", ".de", ".es")
+    ]
+    for key in ("AfterRunSettlementDiscardOnly", "AfterRunSettlementDiscardPrompt"):
+        placeholders = set(re.findall(r"\{\d+\}", catalogs[0][key]))
+        for catalog in catalogs:
+            assert catalog[key].strip()
+            assert set(re.findall(r"\{\d+\}", catalog[key])) == placeholders
 
 
 def test_physical_contract_and_driver_require_the_exact_governed_fixture_and_remain_non_release() -> None:

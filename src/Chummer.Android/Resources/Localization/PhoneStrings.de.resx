@@ -178,4 +178,6 @@
   <data name="AfterRunSettlementRecordedTitle" xml:space="preserve"><value>Erfasste Abrechnung</value></data>
   <data name="AfterRunSettlementRecordedDetail" xml:space="preserve"><value>Dieser Beleg dokumentiert eine gespeicherte Abrechnung, nicht die aktuellen Runner-Werte oder eine Freigabe zur erneuten Buchung. Bestätigen entfernt nur diesen lokalen Checkpoint; der gespeicherte Runner und das Core-Buchungsjournal bleiben unverändert.</value></data>
   <data name="AfterRunSettlementRecordedRevisions" xml:space="preserve"><value>Belegstand: {0}. Aktueller gespeicherter Runner-Stand: {1}.</value></data>
+  <data name="AfterRunSettlementDiscardOnly" xml:space="preserve"><value>Diese gespeicherte Prüfung passt nicht mehr zum aktuellen Vorschlagskatalog oder Runner. Du kannst sie verwerfen, aber nicht fortsetzen oder anwenden.</value></data>
+  <data name="AfterRunSettlementDiscardPrompt" xml:space="preserve"><value>Gespeicherte Prüfung für {0} (Runner-Stand {1}) verwerfen? Das entfernt nur die lokale Prüfung, keine Runner-Daten oder Vorschlagsfreigaben.</value></data>
 </root>

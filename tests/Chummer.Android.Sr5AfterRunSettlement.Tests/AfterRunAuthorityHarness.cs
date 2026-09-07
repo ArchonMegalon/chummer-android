@@ -38,6 +38,10 @@ internal static class AfterRunAuthorityHarness
                 OwnedAppliedRecoverySurvivesSettledCatalogRevisionAsync),
             (nameof(AppliedAcknowledgementCannotOrphanUnreleasedOwnershipAsync),
                 AppliedAcknowledgementCannotOrphanUnreleasedOwnershipAsync),
+            (nameof(ReviewedCheckpointCanBeDiscardedAfterCatalogAndRevisionChange),
+                () => Sync(ReviewedCheckpointCanBeDiscardedAfterCatalogAndRevisionChange)),
+            (nameof(DiscardReviewRetainsOwnerPhaseAndCasBoundaries),
+                () => Sync(DiscardReviewRetainsOwnerPhaseAndCasBoundaries)),
             (nameof(RestartReplaysOnlyExactCommandAndRecoversReceiptAsync),
                 RestartReplaysOnlyExactCommandAndRecoversReceiptAsync),
             (nameof(ManualProposalPublishesToBothSeamsAndSurvivesRestart),
@@ -903,6 +907,109 @@ internal static class AfterRunAuthorityHarness
         {
             throw new InvalidOperationException(message);
         }
+    }
+
+    private static void ReviewedCheckpointCanBeDiscardedAfterCatalogAndRevisionChange()
+    {
+        var editor = Editor(Input());
+        var draft = Draft(editor);
+        var owner = new TestOwner(OwnerId);
+        var backend = new MemoryBackend();
+        var ownerBackend = new MemoryBackend();
+        var originalAuthority = new Sr5AfterRunSettlementLiveCheckpointAuthority(owner, editor, () => Binding(41));
+        var originalStore = new Sr5AfterRunSettlementCheckpointStore(backend, originalAuthority,
+            new Sr5CareerMutationOwnerStore(ownerBackend));
+        Require(originalStore.TryCreate(Sr5AfterRunSettlementCheckpoint.FromDraft(draft),
+            out var reviewed, out var blocker), blocker);
+        string retained = backend.Payload;
+        var missingCatalog = Sr5AfterRunSettlementEditorState.Unavailable(WorkspaceId, 42, "Catalog changed.");
+        var authority = new Sr5AfterRunSettlementLiveCheckpointAuthority(owner, missingCatalog, () => Binding(42));
+        var store = new Sr5AfterRunSettlementCheckpointStore(backend, authority,
+            new Sr5CareerMutationOwnerStore(ownerBackend));
+        Require(!authority.OwnsReviewed(reviewed) && !authority.OwnsCurrentRunner(reviewed),
+            "An old review became current apply authority.");
+        Require(!store.TryReadOwnedRecovery(out _, out _), "A stale review became resumable.");
+        Require(!store.TryBeginApply(Sr5AfterRunSettlementCheckpointCas.From(reviewed), out _, out _),
+            "A changed catalog admitted the old command for application.");
+        Require(backend.Payload == retained && ownerBackend.Payload.Length == 0,
+            "Rejected stale apply changed the journal or reserved ownership.");
+        Require(store.TryReadOwnedDiscardableReview(out var discardable, out blocker), blocker);
+        Require(discardable.Draft.SemanticallyEquals(reviewed.Draft) && backend.Payload == retained,
+            "Discard projection changed the durable review.");
+        Require(store.TryDeleteReviewed(Sr5AfterRunSettlementCheckpointCas.From(reviewed), out blocker),
+            "An unapplied owned review became impossible to discard after a later saved revision: " + blocker);
+        Require(backend.Payload.Length == 0 && ownerBackend.Payload.Length == 0,
+            "Discard did not remove only the local review.");
+    }
+
+    private static void DiscardReviewRetainsOwnerPhaseAndCasBoundaries()
+    {
+        var editor = Editor(Input());
+        var owner = new TestOwner(OwnerId);
+        var backend = new MemoryBackend();
+        var ownerBackend = new MemoryBackend();
+        Sr5CareerRunnerBinding current = Binding(41);
+        var authority = new Sr5AfterRunSettlementLiveCheckpointAuthority(owner, editor, () => current);
+        var store = new Sr5AfterRunSettlementCheckpointStore(backend, authority,
+            new Sr5CareerMutationOwnerStore(ownerBackend));
+        Require(store.TryCreate(Sr5AfterRunSettlementCheckpoint.FromDraft(Draft(editor)),
+            out var reviewed, out var blocker), blocker);
+        var expected = Sr5AfterRunSettlementCheckpointCas.From(reviewed);
+        string retained = backend.Payload;
+        foreach (var invalid in new[]
+        {
+            Binding(40),
+            Binding(42) with { IsDirty = true },
+            Binding(42) with { SavedRevision = 41 },
+            Binding(42) with { Error = "Reload failed" },
+            Binding(42) with { WorkspaceId = new CharacterWorkspaceId("another-runner") },
+            Binding(42) with { Created = false },
+            Binding(42) with { GameEdition = "SR6" }
+        })
+        {
+            current = invalid;
+            Require(!store.TryReadOwnedDiscardableReview(out _, out _)
+                && !store.TryDeleteReviewed(expected, out _),
+                "An invalid runner admitted review discard.");
+            Require(backend.Payload == retained, "Rejected discard changed the review.");
+        }
+        current = Binding(42);
+        foreach (Guid foreign in new[] { Guid.Empty, Guid.NewGuid() })
+        {
+            var foreignStore = new Sr5AfterRunSettlementCheckpointStore(backend,
+                new Sr5AfterRunSettlementLiveCheckpointAuthority(new TestOwner(foreign), editor, () => current),
+                new Sr5CareerMutationOwnerStore(ownerBackend));
+            Require(!foreignStore.TryReadOwnedDiscardableReview(out _, out _)
+                && !foreignStore.TryDeleteReviewed(expected, out _),
+                "A foreign owner could discard another owner's review.");
+        }
+        foreach (string active in new[]
+        {
+            "{}",
+            JsonSerializer.Serialize(new Sr5CareerMutationOwner(1, "after-run-reward", WorkspaceId.Value,
+                OwnerId, Guid.NewGuid(), 2, 42, new string('a', 64)))
+        })
+        {
+            ownerBackend.Payload = active;
+            Require(store.TryReadOwnedDiscardableReview(out _, out blocker), blocker);
+            Require(ownerBackend.Payload == active, "Discard observation released another lane's owner.");
+            Require(!store.TryDeleteReviewed(expected, out _), "Active or corrupt ownership admitted discard.");
+            Require(backend.Payload == retained && ownerBackend.Payload == active,
+                "Blocked discard changed either journal.");
+        }
+        ownerBackend.Payload = string.Empty;
+        Require(!store.TryDeleteReviewed(expected with { Version = expected.Version + 1 }, out _),
+            "A stale confirmation bypassed checkpoint CAS.");
+        current = Binding(41);
+        Require(store.TryBeginApply(expected, out var applying, out blocker), blocker);
+        string applyingPayload = backend.Payload;
+        string applyingOwner = ownerBackend.Payload;
+        Require(!authority.OwnsDiscardableReview(applying)
+            && !store.TryReadOwnedDiscardableReview(out _, out _)
+            && !store.TryDeleteReviewed(expected, out _),
+            "A review that began applying while confirmation was open could be discarded.");
+        Require(backend.Payload == applyingPayload && ownerBackend.Payload == applyingOwner,
+            "The stale confirmation erased an Applying checkpoint or owner.");
     }
 
     private static async Task AppliedAcknowledgementCannotOrphanUnreleasedOwnershipAsync()
