@@ -147,6 +147,48 @@ public sealed class Sr5AfterRunRewardCheckpointStore
         }
     }
 
+    internal bool TryReadEntryState(Guid ownerId, CharacterWorkspaceId workspaceId,
+        out Sr5AfterRunRewardEntryState? state, out string blocker)
+    {
+        state = null;
+        if (ownerId == Guid.Empty || !CharacterAfterRunRewardProjector.IsValidWorkspaceId(workspaceId))
+        {
+            blocker = "An exact local owner and workspace are required.";
+            return false;
+        }
+        Sr5AfterRunRewardEntryState? observed = null;
+        // Preserve transition lock order: shared process gate, then reward
+        // journal gate. Reading the two independently would admit torn state.
+        bool read = _owners.TryInspectCurrent(active =>
+        {
+            lock (Gate)
+            {
+                if (!TryReadLedger(out var ledger, out string readBlocker)) return (false, readBlocker);
+                bool IsSelected(Sr5AfterRunRewardCheckpoint entry)
+                    => entry.OwnerId == ownerId && entry.Command.WorkspaceId == workspaceId;
+                var pending = ledger.Entries.SingleOrDefault(entry =>
+                    entry.Phase != Sr5AfterRunRewardCheckpointPhase.Applied);
+                if (pending is not null && !IsSelected(pending))
+                    return (false, "Another runner has an unresolved reward. Resolve its original operation first.");
+
+                Sr5AfterRunRewardCheckpoint? recovery = pending;
+                if (active is not null)
+                {
+                    var owning = ledger.Entries.SingleOrDefault(entry => entry.MutationOwner() == active);
+                    if (owning is null || !IsSelected(owning)
+                        || pending is not null && pending.Command.OperationId != owning.Command.OperationId)
+                        return (false, "The active Career owner cannot be reconciled with this runner's reward journal.");
+                    recovery = owning;
+                }
+                observed = new(Array.AsReadOnly(ledger.Entries.Where(entry => IsSelected(entry)
+                    && entry.Phase == Sr5AfterRunRewardCheckpointPhase.Applied).ToArray()), recovery);
+                return (true, string.Empty);
+            }
+        }, out blocker);
+        if (read) state = observed;
+        return read && state is not null;
+    }
+
     internal bool TryGet(Guid ownerId, CharacterWorkspaceId workspaceId, Guid operationId,
         out Sr5AfterRunRewardCheckpoint? checkpoint, out string blocker)
     {

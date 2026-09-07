@@ -20,6 +20,7 @@
     <Compile Include="AuthorityCompileStubs.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5CareerActiveSkillCoordinator.cs" Link="Native/Sr5CareerActiveSkillCoordinator.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5CareerActiveSkillWizardPage.cs" Link="Native/Sr5CareerActiveSkillWizardPage.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5CareerFlowStrings.cs" Link="Native/Sr5CareerFlowStrings.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5CareerDraftCheckpointStore.cs" Link="Native/Sr5CareerDraftCheckpointStore.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5CareerMutationOwnerStore.cs" Link="Native/Sr5CareerMutationOwnerStore.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5CareerWizardModel.cs" Link="Native/Sr5CareerWizardModel.cs" />

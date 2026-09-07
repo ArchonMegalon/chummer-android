@@ -26,6 +26,7 @@
   <ItemGroup>
     <Compile Include="Program.cs" />
     <Compile Include="PhoneModelTests.cs" />
+    <Compile Include="ColdEntryTests.cs" />
     <Compile Include="HostStorageCompileSeams.cs" />
     <Compile Include="RealAfterRunRewardFixture.cs" />
     <Compile Include="JournalOwnershipTests.cs" />

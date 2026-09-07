@@ -13,7 +13,8 @@ using Chummer.Infrastructure.Workspaces;
 if (args.Length == 6 && args[0] == "--recover-process")
     return await RewardPhoneTests.RunRecoveryChild(args);
 
-var cases = RewardPhoneTests.Cases.Concat(RewardPhoneTests.PhoneModelCases).Concat(JournalOwnershipTests.Cases).ToArray();
+var cases = RewardPhoneTests.Cases.Concat(RewardPhoneTests.PhoneModelCases)
+    .Concat(RewardPhoneTests.ColdEntryCases).Concat(JournalOwnershipTests.Cases).ToArray();
 int failed = 0;
 foreach ((string name, Func<Task> run) in cases)
 {
@@ -651,8 +652,9 @@ internal static partial class RewardPhoneTests
         internal int Writes;
         internal Action<string>? BeforeWrite;
         internal Action<int>? AfterWrite;
+        internal Action? BeforeRead;
         internal readonly ConcurrentBag<int> WriteThreads = [];
-        public string Read() => inner.Read();
+        public string Read() { BeforeRead?.Invoke(); return inner.Read(); }
         public void Write(string payload)
         {
             int number = Interlocked.Increment(ref Writes);
@@ -691,6 +693,7 @@ internal static partial class RewardPhoneTests
         internal int CommitCalls;
         internal int LookupCalls;
         internal Action? AfterRead;
+        internal Action? AfterLookup;
         internal Action<CharacterAfterRunRewardCommand>? BeforeCommit;
         internal Func<CharacterAfterRunRewardResult, CharacterAfterRunRewardResult>? AfterCommit;
         internal readonly ConcurrentBag<int> Threads = [];
@@ -700,7 +703,7 @@ internal static partial class RewardPhoneTests
         public CharacterAfterRunRewardPreviewResult Preview(CharacterAfterRunRewardPreviewRequest request)
         { Threads.Add(Environment.CurrentManagedThreadId); return inner.Preview(request); }
         public CharacterAfterRunRewardResult Lookup(CharacterWorkspaceId id, Guid operationId, string digest)
-        { Interlocked.Increment(ref LookupCalls); Threads.Add(Environment.CurrentManagedThreadId); return inner.Lookup(id, operationId, digest); }
+        { Interlocked.Increment(ref LookupCalls); Threads.Add(Environment.CurrentManagedThreadId); var result = inner.Lookup(id, operationId, digest); AfterLookup?.Invoke(); return result; }
         public CharacterAfterRunRewardResult Commit(CharacterAfterRunRewardCommand command, CancellationToken token = default)
         {
             Interlocked.Increment(ref CommitCalls);

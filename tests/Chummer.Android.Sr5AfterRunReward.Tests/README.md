@@ -51,6 +51,18 @@ one compiler slot. The console harness exits nonzero on any failed case.
   reloaded and Core facts are read again. A refresh failure keeps the receipt;
   recovery does not credit again. Later edits use a fresh snapshot alongside the
   historical receipt, and owner/activation/revision changes invalidate handoff.
+- `ColdEntryTests.cs` adds 14 entry/history cases (80 cases in this harness in
+  total). Journal and shared Career owner are inspected under one process gate,
+  in the same lock order as transitions. An Applied receipt with an unreleased
+  owner is selected for recovery, never as permission for a new reward. Foreign,
+  corrupt or mismatched ownership blocks entry without releasing it or exposing
+  another owner's history. A read racing a live execution lease fails closed.
+- `ResumeRecordedRewardAsync` re-reads entry state before honoring a history
+  selection. A newly pending operation takes priority. A recorded selection then
+  uses actual Core Lookup and fresh saved facts, never Commit or a new operation.
+  Appearance alone performs neither Lookup nor owner release. This observation
+  is not a lease authorizing a later mutation; existing CAS/ownership checks still
+  govern every confirm, recovery and handoff.
 
 ## Intentionally unfinished integration
 
@@ -77,9 +89,9 @@ still requires Core owner packaging, UI/runtime resealing, authorized Android
 repinning, native compilation and fresh device proof. Local managed green tests
 do not advance the current published graph.
 
-The model currently restores non-Applied pending entries on appearance. Before
-page activation, add a recovery path for an Applied receipt whose shared-owner
-release failed, and an explicit way to resume consequences from recorded history.
-Do not treat the absence of a non-Applied entry as proof that shared ownership is
-clear. This slice's underlying coordinator can reconcile such a receipt by Lookup;
-the ordinary cold-entry UI selection is not yet wired.
+The model now supports recovery-first selection for Applied/unreleased entries
+and explicit recorded-history resumption. The rendered native page and its real
+presenter/selection adapters are still not wired. Every new ordinary entry point
+must use this observation, not infer clear ownership from non-Applied history
+alone. A receipt-backed handoff still does not supply the independent run/GM
+approval, policy or Core consequences quote needed for the second transaction.

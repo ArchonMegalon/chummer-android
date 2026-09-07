@@ -118,6 +118,15 @@ public enum Sr5AfterRunRewardResolutionStatus
     OutcomeUnknown
 }
 
+/// <summary>
+/// Journal/ownership observation for one local runner. Recorded entries still
+/// need a live Core Lookup before handoff; their presence is not current proof.
+/// RecoveryRequired also includes an Applied receipt with an unreleased owner.
+/// </summary>
+public sealed record Sr5AfterRunRewardEntryState(
+    IReadOnlyList<Sr5AfterRunRewardCheckpoint> Recorded,
+    Sr5AfterRunRewardCheckpoint? RecoveryRequired);
+
 public sealed record Sr5AfterRunRewardResolution(
     Sr5AfterRunRewardResolutionStatus Status,
     Sr5AfterRunRewardCheckpoint? Checkpoint,

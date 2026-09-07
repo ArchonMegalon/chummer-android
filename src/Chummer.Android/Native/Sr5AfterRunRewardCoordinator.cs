@@ -53,6 +53,22 @@ public sealed class Sr5AfterRunRewardCoordinator(
         }, cancellationToken);
     }
 
+    /// <summary>Read-only entry observation; never releases ownership or looks up/commits a reward.</summary>
+    public async Task<Sr5AfterRunRewardEntryState> ReadEntryStateAsync(
+        CancellationToken cancellationToken = default)
+    {
+        Sr5AfterRunRewardRunnerBinding before = Capture();
+        return await Task.Run(() =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!_store.TryReadEntryState(before.OwnerId, before.WorkspaceId, out var state, out string blocker)
+                || !OwnsSelection(before))
+                throw new InvalidOperationException(string.IsNullOrWhiteSpace(blocker)
+                    ? "The selected reward owner changed." : blocker);
+            return state!;
+        }, cancellationToken);
+    }
+
     public async Task<Sr5AfterRunRewardPreparation> PreviewAsync(CharacterAfterRunRewardPreviewRequest request,
         CancellationToken cancellationToken = default)
     {

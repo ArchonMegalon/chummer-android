@@ -59,6 +59,7 @@ public sealed class Sr5AfterRunRewardPhoneModel
     public Sr5AfterRunRewardReview? Review { get; private set; }
     public Sr5AfterRunRewardCheckpoint? Checkpoint { get; private set; }
     public Sr5AfterRunRewardConsequencesHandoff? Handoff { get; private set; }
+    public IReadOnlyList<Sr5AfterRunRewardCheckpoint> RecordedRewards { get; private set; } = [];
     public bool IsBusy => _busy;
     public bool HasRetainedIntent => _confirmedIntent is not null;
     public bool CanEdit => _initialized && !_busy && !HasRetainedIntent && OwnsSelection()
@@ -90,25 +91,65 @@ public sealed class Sr5AfterRunRewardPhoneModel
         _busy = true;
         try
         {
-            var entries = await _coordinator.ReadHistoryAsync(cancellationToken);
+            var state = await _coordinator.ReadEntryStateAsync(cancellationToken);
             if (!OwnsSelection()) { ChangedRunner(); return; }
-            var pending = entries.Where(entry => entry.Phase != Sr5AfterRunRewardCheckpointPhase.Applied).ToArray();
-            if (pending.Length > 1)
-            {
-                Status = Sr5AfterRunRewardPhoneStatus.JournalUnavailable;
-                return;
-            }
+            RecordedRewards = state.Recorded;
             _initialized = true;
-            if (pending.Length == 1)
+            if (state.RecoveryRequired is { } pending)
             {
-                Retain(pending[0]);
+                Retain(pending);
                 Status = Sr5AfterRunRewardPhoneStatus.Pending;
             }
             else if (!HasRetainedIntent)
                 Status = Review is null ? Sr5AfterRunRewardPhoneStatus.Editing : Sr5AfterRunRewardPhoneStatus.Review;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
-        catch (Exception) { Status = Sr5AfterRunRewardPhoneStatus.JournalUnavailable; }
+        catch (Exception) { EntryUnavailable(); }
+        finally { _busy = false; }
+    }
+
+    /// <summary>
+    /// Explicitly resume a recorded reward by identity. Re-read ownership first,
+    /// then verify through Core Lookup and refresh. No Commit or new IDs. A
+    /// different pending operation always takes priority over history selection.
+    /// </summary>
+    public async Task ResumeRecordedRewardAsync(Guid operationId, CancellationToken cancellationToken = default)
+    {
+        if (!CanEdit || cancellationToken.IsCancellationRequested) return;
+        _busy = true;
+        Review = null;
+        Handoff = null;
+        try
+        {
+            var state = await _coordinator.ReadEntryStateAsync(cancellationToken);
+            if (!OwnsSelection()) { ChangedRunner(); return; }
+            RecordedRewards = state.Recorded;
+            if (state.RecoveryRequired is { } pending)
+            {
+                Retain(pending);
+                Status = Sr5AfterRunRewardPhoneStatus.Pending;
+                return;
+            }
+            var selected = state.Recorded.SingleOrDefault(entry => entry.Command.OperationId == operationId);
+            if (selected is null)
+            {
+                Status = Sr5AfterRunRewardPhoneStatus.Editing;
+                return;
+            }
+            Retain(selected);
+            Status = Sr5AfterRunRewardPhoneStatus.Pending;
+            var result = await _coordinator.RecoverAsync(operationId, cancellationToken);
+            await AcceptAsync(result, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            Status = HasRetainedIntent ? Sr5AfterRunRewardPhoneStatus.Pending : Sr5AfterRunRewardPhoneStatus.Editing;
+        }
+        catch (Exception)
+        {
+            if (HasRetainedIntent) Status = Sr5AfterRunRewardPhoneStatus.OutcomeUnknown;
+            else EntryUnavailable();
+        }
         finally { _busy = false; }
     }
 
@@ -267,6 +308,15 @@ public sealed class Sr5AfterRunRewardPhoneModel
     {
         Review = null;
         Handoff = null;
+        RecordedRewards = [];
         Status = Sr5AfterRunRewardPhoneStatus.RunnerChanged;
+    }
+
+    private void EntryUnavailable()
+    {
+        Review = null;
+        Handoff = null;
+        RecordedRewards = [];
+        Status = Sr5AfterRunRewardPhoneStatus.JournalUnavailable;
     }
 }

@@ -220,6 +220,38 @@ internal sealed class Sr5CareerMutationOwnerStore
         }
     }
 
+    /// <summary>
+    /// Observe a domain journal together with the shared owner under the same
+    /// process gate used by transitions. The callback must only read state and
+    /// must not re-enter this store. No owner is reserved, resolved or released.
+    /// This is a point-in-time observation, not permission for a later mutation.
+    /// </summary>
+    public bool TryInspectCurrent(
+        Func<Sr5CareerMutationOwner?, (bool Success, string Blocker)> inspect,
+        out string blocker)
+    {
+        ArgumentNullException.ThrowIfNull(inspect);
+        blocker = string.Empty;
+        if (!ProcessGate.Wait(0))
+        {
+            blocker = "Another Career mutation transition is running.";
+            return false;
+        }
+        try
+        {
+            bool present = TryReadLocked(out var owner, out string readBlocker);
+            if (!present && !string.IsNullOrWhiteSpace(readBlocker))
+            {
+                blocker = readBlocker;
+                return false;
+            }
+            (bool success, string inspectionBlocker) = inspect(present ? owner : null);
+            blocker = inspectionBlocker;
+            return success;
+        }
+        finally { ProcessGate.Release(); }
+    }
+
     public bool TryRunWhenUnowned(
         Func<(bool Success, string Blocker)> action,
         out string blocker)
