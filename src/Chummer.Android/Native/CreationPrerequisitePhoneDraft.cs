@@ -1381,7 +1381,7 @@ internal static class CreationPrerequisitePhoneAuthority
         if (!grant.IsSupported
             || grant.Blockers.Count != 0
             || grant.Quantity is < 1 or > CharacterCreationTalentSkillGrantTypes.MaximumPromptSlots
-            || grant.BaseRating <= 0
+            || grant.BaseRating < 0
             || !IsKnownImprovementKind(grant.ImprovementKind)
             || !choicesExact
             || !digestExact

@@ -234,4 +234,9 @@
   <data name="Magic.Mystic.Decrease" xml:space="preserve"><value>Remove one power point</value></data>
   <data name="Magic.Mystic.Increase" xml:space="preserve"><value>Add one power point</value></data>
   <data name="Magic.Mystic.SeparateAttributeUnsupported" xml:space="preserve"><value>This rules profile uses a separate MAGAdept attribute. Its allocation is not supported by this wizard yet. Your draft and rules profile remain unchanged.</value></data>
+  <data name="TalentChoices.Title" xml:space="preserve"><value>Talent choices</value></data>
+  <data name="TalentChoices.SelectionOnly" xml:space="preserve"><value>This choice is required, but grants no free skill levels.</value></data>
+  <data name="TalentChoices.Continue" xml:space="preserve"><value>Continue with these choices</value></data>
+  <data name="TalentChoices.ChooseMore" xml:space="preserve"><value>Choose {0} more</value></data>
+  <data name="TalentChoices.SelectionSlot" xml:space="preserve"><value>Choice {0} · {1} · no free skill levels</value></data>
 </root>

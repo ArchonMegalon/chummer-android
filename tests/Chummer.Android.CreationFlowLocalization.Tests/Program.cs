@@ -138,7 +138,9 @@ static HashSet<string> ReadSourceKeys(string workspace)
         "CreationContactsPage.cs",
         "CreationLifestylesPage.cs",
         "CreationQualitiesPage.cs",
-        "CreationMagicResonancePage.cs"
+        "CreationMagicResonancePage.cs",
+        "CreationTalentSkillGrantPage.cs",
+        "CreationPrerequisitePreviewPage.cs"
     ];
     var result = new HashSet<string>(StringComparer.Ordinal);
     var pattern = new Regex(@"CreationFlowStrings\.(?:Get|Format)\(\s*""([^""]+)""");

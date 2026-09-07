@@ -234,4 +234,9 @@
   <data name="Magic.Mystic.Decrease" xml:space="preserve"><value>Quitar un punto de poder</value></data>
   <data name="Magic.Mystic.Increase" xml:space="preserve"><value>Añadir un punto de poder</value></data>
   <data name="Magic.Mystic.SeparateAttributeUnsupported" xml:space="preserve"><value>Este perfil de reglas utiliza un atributo MAGAdept separado. Este asistente aún no admite su asignación. Tu borrador y el perfil de reglas no se modifican.</value></data>
+  <data name="TalentChoices.Title" xml:space="preserve"><value>Opciones del talento</value></data>
+  <data name="TalentChoices.SelectionOnly" xml:space="preserve"><value>Esta elección es obligatoria, pero no otorga niveles de habilidad gratuitos.</value></data>
+  <data name="TalentChoices.Continue" xml:space="preserve"><value>Continuar con estas opciones</value></data>
+  <data name="TalentChoices.ChooseMore" xml:space="preserve"><value>Elige {0} más</value></data>
+  <data name="TalentChoices.SelectionSlot" xml:space="preserve"><value>Elección {0} · {1} · sin niveles de habilidad gratuitos</value></data>
 </root>

@@ -16,12 +16,27 @@ internal static class CreationMagicNativeRuntimeTests
 {
     public static void Run(string contentRoot)
     {
+        foreach ((string locale, string title) in new[]
+                 { ("de-AT", "Talentauswahl"), ("en-GB", "Talent choices"), ("es-MX", "Opciones del talento") })
+        {
+            var culture = System.Globalization.CultureInfo.GetCultureInfo(locale);
+            Require(CreationFlowStrings.Get("TalentChoices.Title", "missing", culture) == title,
+                "Talent choice title did not use the actual satellite resource.");
+            foreach (string key in new[] { "SelectionOnly", "Continue", "ChooseMore", "SelectionSlot" })
+                Require(CreationFlowStrings.Get("TalentChoices." + key, "missing", culture) != "missing", key);
+            Require(CreationFlowStrings.Format(culture, "TalentChoices.SelectionSlot", "missing", 1, "Sorcery")
+                    .Contains("Sorcery", StringComparison.Ordinal),
+                "Translated copy must preserve the Core-provided selected group.");
+        }
+        foreach (string aspect in new[] { "Conjuring", "Enchanting", "Sorcery" })
+            RunTalent(contentRoot, technomancer: false, aspectedGroup: aspect);
         RunTalent(contentRoot, technomancer: false);
         RunTalent(contentRoot, technomancer: true);
         RunTalent(contentRoot, technomancer: false, mysticAdept: true);
     }
 
-    private static void RunTalent(string contentRoot, bool technomancer, bool mysticAdept = false)
+    private static void RunTalent(string contentRoot, bool technomancer, bool mysticAdept = false,
+        string? aspectedGroup = null)
     {
         Require(Path.IsPathFullyQualified(contentRoot) && Directory.Exists(Path.Combine(contentRoot, "data")),
             "Supply the explicit Core content directory.");
@@ -48,27 +63,73 @@ internal static class CreationMagicNativeRuntimeTests
             var ranks = new Dictionary<string, string>(StringComparer.Ordinal)
             {
                 [CharacterCreationPriorityCategoryIds.Heritage] = "E",
-                [CharacterCreationPriorityCategoryIds.Talent] = "C",
+                [CharacterCreationPriorityCategoryIds.Talent] = aspectedGroup is null ? "C" : "D",
                 [CharacterCreationPriorityCategoryIds.Attributes] = "A",
                 [CharacterCreationPriorityCategoryIds.Skills] = "B",
-                [CharacterCreationPriorityCategoryIds.Resources] = "D"
+                [CharacterCreationPriorityCategoryIds.Resources] = aspectedGroup is null ? "D" : "C"
             };
             var heritage = initial.Authority.Options.Single(item => item.CategoryId == CharacterCreationPriorityCategoryIds.Heritage
                 && item.Rank == "E").HeritageOptions.First(item => item.IsEnabled && item.MetatypeName == "Human" && item.MetavariantSourceId is null);
             var talent = initial.Authority.Options.Single(item => item.CategoryId == CharacterCreationPriorityCategoryIds.Talent
-                && item.Rank == "C").TalentOptions.First(item => item.IsEnabled
-                    && (technomancer ? item.Value == "Technomancer" : mysticAdept ? item.Value == "Mystic Adept"
+                && item.Rank == ranks[CharacterCreationPriorityCategoryIds.Talent]).TalentOptions.First(item => item.IsEnabled
+                    && (aspectedGroup is not null ? item.Value == "Aspected Magician"
+                        : technomancer ? item.Value == "Technomancer" : mysticAdept ? item.Value == "Mystic Adept"
                         : item.Value == "Adept" && item.Magic == 4));
             string[] skills = talent.ActiveSkillGrant?.Options.Where(item => item.IsEnabled)
                 .Take(talent.ActiveSkillGrant.Quantity).Select(item => item.SelectionId).ToArray() ?? [];
+            string[] groups = [];
+            if (aspectedGroup is not null)
+            {
+                var priorityOverview = PriorityOverview(initial);
+                var priorityPhone = new CreationPrerequisitePhoneDraft();
+                priorityPhone.Bind(initial, priorityOverview);
+                foreach (var rank in ranks)
+                    Require(priorityPhone.TrySelect(initial, priorityOverview, rank.Key, rank.Value),
+                        $"Phone rejected source Priority {rank.Key}/{rank.Value}; ready={CreationPrerequisitePhoneAuthority.IsReady(initial, priorityOverview)}.");
+                Require(priorityPhone.TrySelectHeritage(initial, priorityOverview, heritage.SelectionId), "Phone rejected Human.");
+                Require(priorityPhone.TrySelectTalent(initial, priorityOverview, talent.SelectionId),
+                    "Phone rejected a mandatory source choice merely because it grants zero skill levels.");
+                Require(!priorityPhone.CanPrepare(initial, priorityOverview) && priorityPhone.Selections(initial, priorityOverview) is null,
+                    "The phone silently chose an aspect or skipped the mandatory zero-rating prompt.");
+                Require(!priorityPhone.TryToggleTalentSkillGroup(initial, priorityOverview, "invented-group"), "Phone accepted an invented aspect.");
+                var group = talent.SkillGroupGrant!.Options.Single(item => item.CanonicalName == aspectedGroup);
+                Require(talent.SkillGroupGrant.BaseRating == 0 && talent.SkillGroupGrant.Quantity == 1,
+                    "The canonical Priority D source must require one choice without free levels.");
+                Require(priorityPhone.TryToggleTalentSkillGroup(initial, priorityOverview, group.SelectionId), "Phone rejected the explicit aspect.");
+                Require(!priorityPhone.TryToggleTalentSkillGroup(initial, priorityOverview,
+                    talent.SkillGroupGrant.Options.First(item => item.SelectionId != group.SelectionId).SelectionId),
+                    "The phone accepted more than the source-owned choice quantity.");
+                Require(priorityPhone.CanPrepare(initial, priorityOverview), "An explicit zero-rating choice did not complete Priority.");
+                groups = priorityPhone.Selections(initial, priorityOverview)!.TalentSkillGroupSelectionIds.ToArray();
+                Require(groups.SequenceEqual(new[] { group.SelectionId }), "Phone selection was not source-bound.");
+                var omitted = prerequisites.Preview(new(initial.Binding, ranks)
+                    { HeritageSelectionId = heritage.SelectionId, TalentSelectionId = talent.SelectionId });
+                Require(omitted.Value is not { CanConfirm: true }, "Core skipped a required zero-rating choice.");
+                var duplicated = prerequisites.Preview(new(initial.Binding, ranks)
+                    { HeritageSelectionId = heritage.SelectionId, TalentSelectionId = talent.SelectionId,
+                        TalentSkillGroupSelectionIds = [group.SelectionId, group.SelectionId] });
+                Require(duplicated.Value is not { CanConfirm: true }, "Core accepted a repeated source choice.");
+            }
             var priority = prerequisites.Preview(new(initial.Binding, ranks)
             { HeritageSelectionId = heritage.SelectionId, TalentSelectionId = talent.SelectionId,
-                TalentActiveSkillSelectionIds = skills }).Value!;
+                TalentActiveSkillSelectionIds = skills, TalentSkillGroupSelectionIds = groups }).Value!;
             Require(priority.CanConfirm, string.Join(",", priority.Blockers));
             var selected = prerequisites.Confirm(new(priority.Binding, ranks, priority.PreviewDigest, true)
             { HeritageSelectionId = heritage.SelectionId, TalentSelectionId = talent.SelectionId,
-                TalentActiveSkillSelectionIds = skills });
+                TalentActiveSkillSelectionIds = skills, TalentSkillGroupSelectionIds = groups });
             Require(selected.Outcome == CharacterCreationFoundationOutcomes.Success, string.Join(",", selected.Blockers));
+            if (aspectedGroup is not null)
+            {
+                var reloadedPriority = new CharacterCreationPrerequisiteService(new FileWorkspaceStore(directory), queries, resolver)
+                    .Load(new(id)).Value!;
+                var reloadedOverview = PriorityOverview(reloadedPriority);
+                var reloadedPhone = new CreationPrerequisitePhoneDraft();
+                reloadedPhone.Bind(reloadedPriority, reloadedOverview);
+                Require(reloadedPhone.CanPrepare(reloadedPriority, reloadedOverview)
+                    && reloadedPhone.TalentSkillGroupSelectionIds(reloadedPriority, reloadedOverview).SequenceEqual(groups),
+                    "Cold Priority phone lost the explicit zero-rating selection before dependent drafts exist: "
+                    + PriorityDiagnostics(reloadedPriority, reloadedOverview, reloadedPhone));
+            }
             var attributes = new CharacterCreationAttributesService(store, resolver);
             var attributeState = attributes.Load(new(id)).Value!;
             CharacterCreationAttributeAllocation[] allocations = [new(technomancer ? "RES" : "MAG", 1, 0)];
@@ -79,6 +140,11 @@ internal static class CreationMagicNativeRuntimeTests
             var service = new CharacterCreationMagicResonanceService(store, resolver);
             var state = service.Load(new(id)).Value!;
             Require(state.CanEdit, string.Join(",", state.Blockers));
+            if (aspectedGroup is not null)
+            {
+                RunAspected(store, resolver, service, state, id, directory, aspectedGroup);
+                return;
+            }
             if (technomancer)
             {
                 RunTechnomancer(store, resolver, service, state, id, directory);
@@ -158,6 +224,84 @@ internal static class CreationMagicNativeRuntimeTests
             Console.WriteLine("PASS actual Adept source/raised MAG → Presentation caps → phone review/confirm → cold file-store reopen/replay");
         }
         finally { Directory.Delete(directory, recursive: true); }
+    }
+
+    private static void RunAspected(FileWorkspaceStore store, FileSystemCharacterSourceDataResolver resolver,
+        CharacterCreationMagicResonanceService service, CharacterCreationMagicResonanceState state,
+        CharacterWorkspaceId id, string directory, string aspect)
+    {
+        Require(CharacterCreationMagicResonanceWorkflow.TryProject(state, out var projection),
+            "Aspected Core state rejected: " + ProjectionDiagnostics(state));
+        var editor = projection!;
+        var overview = Program.NewCreationOverview(id, state.Binding.ContentRevision, state.Binding.SavedRevision) with
+            { CreationMagicResonance = state, CreationMagicResonanceEditor = editor };
+        var phone = new CreationMagicResonancePhoneDraft();
+        phone.Bind(editor, overview);
+        var tradition = editor.Traditions.First(item => item.IsEnabled);
+        var review = CharacterCreationMagicResonanceWorkflow.Review(service, editor, phone.CreateSingleCandidate(tradition));
+        Require(review.Preview.CanConfirm && phone.TryAdopt(editor, overview, review),
+            "Phone lost the Aspected tradition or required an unrelated selection: " + string.Join(",", review.Preview.Blockers));
+        string beforeXml = store.Get(id).Value!.Document.Content;
+        string key = CreationMagicResonancePhoneAuthority.ComputeIdempotencyKey(review);
+        var confirmed = CharacterCreationMagicResonanceWorkflow.Confirm(service, review, key, explicitlyConfirmed: true);
+        var coldStore = new FileWorkspaceStore(directory);
+        var coldService = new CharacterCreationMagicResonanceService(coldStore, resolver);
+        var cold = coldService.Load(new(id)).Value!;
+        var reopened = CharacterCreationMagicResonanceWorkflow.Project(cold);
+        Require(reopened.CanEdit && reopened.Selections.Tradition == tradition.Identity,
+            "Cold native projection lost the user's tradition.");
+        var coldPrerequisites = new CharacterCreationPrerequisiteService(coldStore,
+            new XmlCharacterFileQueries(new CharacterFileService()), resolver).Load(new(id)).Value!;
+        var coldOverview = PriorityOverview(coldPrerequisites);
+        var coldPhone = new CreationPrerequisitePhoneDraft();
+        coldPhone.Bind(coldPrerequisites, coldOverview);
+        var chosen = coldPrerequisites.PendingDraft!.TalentSelection!.GrantPlan!.SkillGroups.Single();
+        // After Attributes is confirmed, Core intentionally locks Priority edits.
+        // Keep the saved choice and the lock; never forge an editable snapshot.
+        Require(chosen.CanonicalName == aspect && chosen.BaseRating == 0
+            && coldPrerequisites.Blockers.Contains(CharacterCreationPrerequisiteBlockers.DependentAttributesDraftExists)
+            && !coldPhone.CanPrepare(coldPrerequisites, coldOverview),
+            "Cold Priority lost the saved aspect or its dependent-draft lock: " + PriorityDiagnostics(coldPrerequisites, coldOverview, coldPhone));
+        Require(coldStore.Get(id).Value!.Document.Content == beforeXml,
+            "A wizard step applied character effects before finalization.");
+        var replay = CharacterCreationMagicResonanceWorkflow.Confirm(coldService, review, key, explicitlyConfirmed: true);
+        Require(replay.Receipt.ReceiptDigest == confirmed.Receipt.ReceiptDigest
+            && coldStore.Get(id).Value!.ContentRevision == confirmed.Receipt.ContentRevision,
+            "Retry applied the Aspected draft twice.");
+        Console.WriteLine($"PASS actual Aspected Priority D/{aspect} → mandatory selection-only phone choice → tradition → cold reopen/replay");
+    }
+
+    // The test supplies host navigation context, not a second rule authority.
+    // Every revision/source/selection below comes from the actual Core load.
+    private static CharacterOverviewState PriorityOverview(CharacterCreationPrerequisiteState state)
+        => Program.NewCreationOverview(state.Binding.WorkspaceId, state.Binding.ContentRevision, state.Binding.SavedRevision) with
+        {
+            CreationWizard = new CharacterCreationWizardSnapshot(
+                CharacterCreationWizardSchemas.SnapshotV1, state.Binding.WorkspaceId.Value,
+                state.Binding.ContentRevision, state.Binding.RawCharacterXmlDigest, state.Binding.AuthorityDigest,
+                state.RulesetId, string.Empty, state.BuildMethod, state.CharacterCreated,
+                CharacterCreationWizardStepIds.Foundation, [], [],
+                new Dictionary<string, IReadOnlyList<CharacterCreationLegalOption>>(), [], [], false, state.SnapshotDigest)
+        };
+
+    private static string PriorityDiagnostics(CharacterCreationPrerequisiteState state, CharacterOverviewState overview,
+        CreationPrerequisitePhoneDraft phone)
+    {
+        var pending = state.PendingDraft!;
+        var talentRank = state.Authority.Options.Single(item => item.CategoryId == CharacterCreationPriorityCategoryIds.Talent
+            && item.Rank == pending.Assignments.Single(assignment => assignment.CategoryId == CharacterCreationPriorityCategoryIds.Talent).Rank);
+        var talent = talentRank.TalentOptions.Single(item => item.SelectionId == pending.TalentSelection!.SelectionId);
+        var heritageRank = state.Authority.Options.Single(item => item.CategoryId == CharacterCreationPriorityCategoryIds.Heritage
+            && item.Rank == pending.Assignments.Single(assignment => assignment.CategoryId == CharacterCreationPriorityCategoryIds.Heritage).Rank);
+        var heritage = heritageRank.HeritageOptions.Single(item => item.SelectionId == pending.HeritageSelection!.SelectionId);
+        return $"ready={CreationPrerequisitePhoneAuthority.IsReady(state, overview)}; "
+            + $"assignments={phone.Assignments(state, overview).Count}; "
+            + $"talent={CreationPrerequisitePhoneAuthority.TalentSelectionMatchesOption(pending.TalentSelection!, talent, talentRank.SourceId)}; "
+            + $"heritage={CreationPrerequisitePhoneAuthority.HeritageSelectionMatchesOption(pending.HeritageSelection!, heritage, heritageRank.SourceId)}; "
+            + $"karma={pending.CreationKarmaUsed}/{state.CreationKarmaBudget.Used}; "
+            + $"attributes={pending.EffectiveNormalAttributePoints}/{state.EffectiveNormalAttributePoints}; "
+            + $"special={pending.TotalSpecialAttributePoints}/{state.TotalSpecialAttributePoints}; "
+            + $"draftAuthority={pending.AuthorityDigest == state.Binding.AuthorityDigest}; blockers={string.Join(',', state.Blockers)}";
     }
 
     private static void RunTechnomancer(FileWorkspaceStore store, FileSystemCharacterSourceDataResolver resolver,
