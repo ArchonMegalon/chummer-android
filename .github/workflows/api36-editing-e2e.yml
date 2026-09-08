@@ -250,6 +250,29 @@ jobs:
       - name: Restore the pinned MAUI Android workload
         run: '"$DOTNET_ROOT/dotnet" workload restore chummer-android/Chummer.Android.slnx'
 
+      - name: Verify canonical source and account-link regressions
+        working-directory: chummer-android
+        shell: bash
+        run: |
+          set -euo pipefail
+          run_clean() {
+            env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8 LC_ALL=C.UTF-8 \
+              DOTNET_ROOT="$DOTNET_ROOT" DOTNET_MULTILEVEL_LOOKUP=0 \
+              DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_CLI_USE_MSBUILD_SERVER=0 \
+              MSBUILDDISABLENODEREUSE=1 PYTHONDONTWRITEBYTECODE=1 \
+              CHUMMER_COMPLETE_ROOT="$GITHUB_WORKSPACE" \
+              CHUMMER5A_ROOT="$GITHUB_WORKSPACE/chummer5a" "$@"
+          }
+          run_clean python3 -B -m unittest discover -s tests -v
+          for project in \
+            tests/Chummer.Android.AccountLinkKey.Tests/Chummer.Android.AccountLinkKey.Tests.csproj \
+            tests/Chummer.Android.AccountLinkHttp.Tests/Chummer.Android.AccountLinkHttp.Tests.csproj; do
+            run_clean "$DOTNET_ROOT/dotnet" restore "$project" --locked-mode --disable-parallel
+            run_clean "$DOTNET_ROOT/dotnet" run --project "$project" \
+              --configuration Release --no-restore \
+              -p:BuildInParallel=false -p:UseSharedCompilation=false
+          done
+
       - name: Verify clean Android source before local-compatibility restores
         shell: bash
         run: |

@@ -170,6 +170,40 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
             self.text.index("Build the emulator APK and native compile gate"),
         )
 
+    def test_canonical_and_account_security_suites_gate_candidate_artifacts(self) -> None:
+        step_name = "Verify canonical source and account-link regressions"
+        self.assertEqual(1, self.text.count(step_name))
+        step = self.text.split(f"      - name: {step_name}\n", 1)[1].split(
+            "      - name:", 1
+        )[0]
+        self.assertIn("working-directory: chummer-android", step)
+        self.assertIn("set -euo pipefail", step)
+        self.assertIn('env -i PATH="$PATH" HOME="$HOME"', step)
+        self.assertIn('DOTNET_ROOT="$DOTNET_ROOT" DOTNET_MULTILEVEL_LOOKUP=0', step)
+        self.assertIn('CHUMMER_COMPLETE_ROOT="$GITHUB_WORKSPACE"', step)
+        self.assertIn('CHUMMER5A_ROOT="$GITHUB_WORKSPACE/chummer5a"', step)
+        self.assertIn("run_clean python3 -B -m unittest discover -s tests -v", step)
+        for lane in ("Key", "Http"):
+            project = (
+                f"tests/Chummer.Android.AccountLink{lane}.Tests/"
+                f"Chummer.Android.AccountLink{lane}.Tests.csproj"
+            )
+            self.assertIn(project, step)
+            self.assertIn("<RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>",
+                          (REPO_ROOT / project).read_text(encoding="utf-8"))
+            self.assertTrue((REPO_ROOT / project).with_name("packages.lock.json").is_file())
+        self.assertIn('run_clean "$DOTNET_ROOT/dotnet" restore "$project" --locked-mode --disable-parallel', step)
+        self.assertIn('run_clean "$DOTNET_ROOT/dotnet" run --project "$project"', step)
+        self.assertIn("--configuration Release --no-restore", step)
+        self.assertNotIn("continue-on-error", step)
+        self.assertNotIn("if:", step)
+        self.assertLess(self.text.index("Restore the pinned MAUI Android workload"),
+                        self.text.index(step_name))
+        self.assertLess(self.text.index(step_name),
+                        self.text.index("Verify clean Android source before local-compatibility restores"))
+        self.assertLess(self.text.index(step_name),
+                        self.text.index("Build the emulator APK and native compile gate"))
+
     def test_local_compatibility_restore_preserves_tracked_package_locks(self) -> None:
         pre_build_clean_step = (
             "Verify clean Android source before local-compatibility restores"
