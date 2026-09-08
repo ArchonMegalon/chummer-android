@@ -1012,7 +1012,7 @@
       {
         "path": "tests/test_chummer5_editability_inventory.py",
         "exists": true,
-        "sha256": "c189d968c6d6c2838d1f937fb4cfb15032c2c0a9740ddbd72ecb9df182ab37ae"
+        "sha256": "1cb46f807cc7b123ee869f1238c6112cccf04ccd45800a875c94744f95ec69cf"
       },
       {
         "path": "tests/test_sr5_contextual_wizard_scope.py",
