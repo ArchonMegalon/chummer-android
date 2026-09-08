@@ -234,4 +234,5 @@ No change has been saved yet.</value></data>
   <data name="TabletDraftDiscard" xml:space="preserve"><value>Discard this draft</value></data>
   <data name="TabletDraftDiscardTitle" xml:space="preserve"><value>Discard unapplied changes?</value></data>
   <data name="TabletDraftDiscardPrompt" xml:space="preserve"><value>Only this item's retained input will be removed. The saved runner and other drafts will not change.</value></data>
+  <data name="LinkedRunnerOutcomeUnconfirmed" xml:space="preserve"><value>The link outcome could not be confirmed. Reopen this runner before trying again; local files were retained.</value></data>
 </root>

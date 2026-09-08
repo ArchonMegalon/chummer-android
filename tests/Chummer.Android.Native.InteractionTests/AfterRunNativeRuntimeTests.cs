@@ -535,7 +535,8 @@ internal static partial class AfterRunAuthorityHarness
         public NativeRewardRuntime(string contentRoot, bool governedConsequences = false, bool reputation = false,
             Func<ICharacterCareerReputationService, ICharacterCareerReputationService>? reputationDecorator = null,
             Action<string>? creationSkillsSeed = null,
-            Func<ICharacterCreationSkillsService, ICharacterCreationSkillsService>? skillsDecorator = null)
+            Func<ICharacterCreationSkillsService, ICharacterCreationSkillsService>? skillsDecorator = null,
+            IAndroidLinkedCharacterFileService? linkedCharacters = null)
         {
             _priorPreferences = Preferences.Default;
             _setPreferences = typeof(Preferences).GetMethod("SetDefault",
@@ -593,7 +594,7 @@ internal static partial class AfterRunAuthorityHarness
                     null!, null!, null!, null!, Shell,
                     _provider.GetRequiredService<IShellSurfaceResolver>(),
                     _provider.GetRequiredService<ICommandAvailabilityEvaluator>(),
-                    null!, null!, null!, StrictPageProxy.Create<IAndroidAccountLinkService>(), null!, null!,
+                    null!, linkedCharacters!, null!, StrictPageProxy.Create<IAndroidAccountLinkService>(), null!, null!,
                     afterRunSettlementService: governedConsequences ? _provider.GetRequiredService<ICharacterAfterRunSettlementService>() : null,
                     afterRunProposalCatalog: governedConsequences ? _provider.GetRequiredService<Sr5AfterRunManualProposalSource>() : null,
                     afterRunRewardService: new WorkspaceCharacterAfterRunRewardService(store),
@@ -612,10 +613,10 @@ internal static partial class AfterRunAuthorityHarness
             }
         }
 
-        public async Task LoadRunnerAsync()
+        public async Task LoadRunnerAsync(string? runnerXml = null)
         {
             var imported = await Client.ImportAsync(new WorkspaceImportDocument(
-                """
+                runnerXml ?? """
                 <character><name>Native reward runner</name><gameedition>SR5</gameedition>
                 <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
                 <metatype>Human</metatype><buildmethod>Priority</buildmethod>

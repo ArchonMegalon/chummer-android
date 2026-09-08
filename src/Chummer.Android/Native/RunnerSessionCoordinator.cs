@@ -3218,103 +3218,12 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
     public async Task AttachLinkedCharacterAsync(
         WorkspaceCollectionItemTarget target,
         CancellationToken cancellationToken = default)
-    {
-        WorkspaceCollectionItemEditorState item = ResolveCollectionItem(target);
-        WorkspaceLinkedCharacterState linked = item.LinkedCharacter
-            ?? throw new InvalidOperationException("This runner item does not support linked characters.");
-        if (!linked.CanAttach)
-        {
-            throw new InvalidOperationException("This runner's exact Chummer5 link rules are unavailable.");
-        }
-
-        AndroidStagedLinkedCharacter? staged = await _linkedCharacters.StageAsync(target, cancellationToken);
-        if (staged is null)
-        {
-            return;
-        }
-
-        bool sameAsPrior = PathsEqual(staged.FileName, linked.FileName);
-        try
-        {
-            await ApplyCollectionMutationAsync(
-                new WorkspaceSetLinkedCharacterRequest(
-                    target,
-                    staged.FileName,
-                    staged.RelativeFileName,
-                    staged.DisplayName,
-                    staged.Identity),
-                cancellationToken);
-            if (State.Error is not null)
-            {
-                if (!sameAsPrior)
-                {
-                    await _linkedCharacters.DeleteOwnedAsync(target, staged.FileName, CancellationToken.None);
-                }
-                return;
-            }
-
-            if (!sameAsPrior)
-            {
-                await _linkedCharacters.DeleteOwnedAsync(target, linked.FileName, CancellationToken.None);
-            }
-            _notice = $"Linked {staged.Identity.CharacterName}.";
-            NotifyChanged();
-        }
-        catch
-        {
-            if (!sameAsPrior)
-            {
-                await _linkedCharacters.DeleteOwnedAsync(target, staged.FileName, CancellationToken.None);
-            }
-            throw;
-        }
-    }
+        => _ = await TryAttachBoundLinkedCharacterAsync(target, State, () => true, cancellationToken);
 
     public async Task RemoveLinkedCharacterAsync(
         WorkspaceCollectionItemTarget target,
         CancellationToken cancellationToken = default)
-    {
-        WorkspaceCollectionItemEditorState item = ResolveCollectionItem(target);
-        WorkspaceLinkedCharacterState linked = item.LinkedCharacter
-            ?? throw new InvalidOperationException("This runner item does not support linked characters.");
-        if (!linked.CanRemove)
-        {
-            throw new InvalidOperationException("This runner item is not linked to another character.");
-        }
-
-        await ApplyCollectionMutationAsync(new WorkspaceRemoveLinkedCharacterRequest(target), cancellationToken);
-        if (State.Error is not null)
-        {
-            return;
-        }
-
-        await _linkedCharacters.DeleteOwnedAsync(target, linked.FileName, CancellationToken.None);
-        _notice = "Linked runner removed.";
-        NotifyChanged();
-    }
-
-    private WorkspaceCollectionItemEditorState ResolveCollectionItem(WorkspaceCollectionItemTarget target)
-        => State.ActiveCollectionEditor?.Items.FirstOrDefault(item =>
-                CollectionItemEditorPage.TargetsMatch(item.Target, target))
-            ?? throw new InvalidOperationException(
-                "This runner item no longer has a unique stable identity. Reload the section before editing.");
-
-    private static bool PathsEqual(string left, string right)
-    {
-        if (string.IsNullOrWhiteSpace(left) || string.IsNullOrWhiteSpace(right))
-        {
-            return false;
-        }
-
-        try
-        {
-            return string.Equals(Path.GetFullPath(left), Path.GetFullPath(right), StringComparison.Ordinal);
-        }
-        catch (Exception exception) when (exception is ArgumentException or NotSupportedException or PathTooLongException)
-        {
-            return false;
-        }
-    }
+        => _ = await TryRemoveBoundLinkedCharacterAsync(target, State, () => true, cancellationToken);
 
     public async Task ApplyConditionMonitorEditAsync(
         ConditionMonitorEditRequest request,

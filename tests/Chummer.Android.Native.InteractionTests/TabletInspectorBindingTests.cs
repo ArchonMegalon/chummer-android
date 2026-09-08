@@ -34,6 +34,8 @@ internal static class TabletInspectorBindingTests
         await DeleteConfirmationStaysBoundToTheReviewedItemAsync();
         await DeleteWaitRechecksAuthorityAfterConfirmationAsync();
         NestedChooserKeepsTheCurrentParent();
+        await LinkedPickerAndUnknownOutcomeRemainSafeAsync();
+        await LinkedCharacterBindingTests.RunAsync();
         Console.WriteLine("PASS tablet inspector action binding (managed native page/coordinator, not device persistence)");
     }
 
@@ -713,7 +715,42 @@ internal static class TabletInspectorBindingTests
         if (!condition) throw new InvalidOperationException(message);
     }
 
-    private sealed class Fixture : IDisposable
+    private static async Task LinkedPickerAndUnknownOutcomeRemainSafeAsync()
+    {
+        List<string> failures = [];
+        foreach (string change in new[] { "workspace", "revision", "same-context" })
+        {
+            var files = new LinkedFiles();
+            using var fixture = new Fixture(linkedFiles: files);
+            Task action = fixture.Coordinator.AttachLinkedCharacterAsync(fixture.State.ActiveCollectionEditor!.Items[0].Target);
+            Require(files.StageCalls == 1 && !action.IsCompleted, "Attachment did not await the controlled picker.");
+            if (change == "workspace") fixture.State = fixture.State with { WorkspaceId = new("other-runner") };
+            if (change == "revision") fixture.AdvanceRevision();
+            files.Picker.SetResult(files.Staged);
+            bool unknown = false;
+            try { await action; } catch (OperationCanceledException) { unknown = true; }
+            if (change != "same-context" && fixture.Requests.Count != 0)
+                failures.Add($"Picker {change} drift dispatched into the wrong authority.");
+            if (change == "same-context" && (!unknown || fixture.Requests.Count != 1 || files.Deleted.Count != 0))
+                failures.Add("An uncertain dispatched link deleted a file that may already be referenced.");
+        }
+        Require(failures.Count == 0, string.Join(" ", failures));
+    }
+
+    private sealed class LinkedFiles : IAndroidLinkedCharacterFileService
+    {
+        public readonly TaskCompletionSource<AndroidStagedLinkedCharacter?> Picker = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public readonly AndroidStagedLinkedCharacter Staged = new("/test-private/new-link.chum5", "linked-characters/new-link.chum5",
+            "new-link.chum5", new("Linked runner", "Runner", "Alias", "Human", "", "", ""));
+        public readonly List<string?> Deleted = [];
+        public int StageCalls;
+        public Task<AndroidStagedLinkedCharacter?> StageAsync(WorkspaceCollectionItemTarget target, CancellationToken token)
+        { StageCalls++; return Picker.Task; }
+        public Task DeleteOwnedAsync(WorkspaceCollectionItemTarget target, string? path, CancellationToken token)
+        { Deleted.Add(path); return Task.CompletedTask; }
+    }
+
+    internal sealed class Fixture : IDisposable
     {
         public CharacterOverviewState State = Program.NewCreationOverview(new("tablet-runner"), 5, 5) with
         {
@@ -727,9 +764,17 @@ internal static class TabletInspectorBindingTests
         public Task<bool> Confirmation = Task.FromResult(false);
         public int DialogCalls;
         public string Prompt = string.Empty;
+        public Func<WorkspaceCollectionMutationRequest, Task>? CollectionResult;
 
-        public Fixture(bool condition = false, bool mutable = false, bool nested = false, bool rich = false)
+        public Fixture(bool condition = false, bool mutable = false, bool nested = false, bool rich = false,
+            IAndroidLinkedCharacterFileService? linkedFiles = null)
         {
+            if (linkedFiles is not null)
+                State = State with { ActiveSectionId = "contacts", ActiveCollectionEditor = new("contacts", WorkspaceCollectionKind.Contact, null,
+                    State.ActiveCollectionEditor!.Items.Select(item => item with
+                    { Target = new(WorkspaceCollectionKind.Contact, item.Target.ItemId),
+                        LinkedCharacter = new(true, true, "/test-private/prior.chum5", "linked-characters/prior.chum5", "prior.chum5", true, true)
+                    }).ToArray()) };
             if (condition)
                 State = State with
                 {
@@ -763,10 +808,11 @@ internal static class TabletInspectorBindingTests
                         MatrixConditionMonitor = new("Matrix", 2, 10, true, true)
                     }).ToArray()
                 }};
-            var presenter = TabletMutationProxy.Create(() => State, Requests.Add, ConditionRequests.Add);
+            var presenter = TabletMutationProxy.Create(() => State, Requests.Add, ConditionRequests.Add,
+                request => CollectionResult?.Invoke(request) ?? Task.FromCanceled(new CancellationToken(true)));
             Coordinator = new RunnerSessionCoordinator(presenter,
                 null!, null!, null!, null!, null!, null!, StrictPageProxy.Create<IShellPresenter>(),
-                null!, null!, null!, null!, null!, StrictPageProxy.Create<IAndroidAccountLinkService>(),
+                null!, null!, null!, linkedFiles!, null!, StrictPageProxy.Create<IAndroidAccountLinkService>(),
                 null!, null!);
             Page = NewPage();
             Refresh();
@@ -841,16 +887,19 @@ public class TabletMutationProxy : DispatchProxy
     private Func<CharacterOverviewState> _state = null!;
     private Action<WorkspaceCollectionMutationRequest> _observe = null!;
     private Action<ConditionMonitorEditRequest> _condition = null!;
+    private Func<WorkspaceCollectionMutationRequest, Task>? _collectionResult;
 
     public static ICharacterOverviewPresenter Create(Func<CharacterOverviewState> state,
         Action<WorkspaceCollectionMutationRequest> observe,
-        Action<ConditionMonitorEditRequest> condition)
+        Action<ConditionMonitorEditRequest> condition,
+        Func<WorkspaceCollectionMutationRequest, Task>? collectionResult = null)
     {
         var instance = Create<ICharacterOverviewPresenter, TabletMutationProxy>();
         var proxy = (TabletMutationProxy)(object)instance;
         proxy._state = state;
         proxy._observe = observe;
         proxy._condition = condition;
+        proxy._collectionResult = collectionResult;
         return instance;
     }
 
@@ -868,6 +917,8 @@ public class TabletMutationProxy : DispatchProxy
         if (name == "ApplyCollectionMutationAsync")
         {
             _observe((WorkspaceCollectionMutationRequest)args![0]!);
+            if (_collectionResult is not null)
+                return _collectionResult((WorkspaceCollectionMutationRequest)args[0]!);
             // Observe the real coordinator's typed boundary; do not fabricate Core writes,
             // receipts, or persistence. Cancellation prevents unrelated shell side effects.
             return Task.FromCanceled(new CancellationToken(canceled: true));

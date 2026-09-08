@@ -21,12 +21,19 @@ public sealed class CollectionItemEditorPage : NativePageBase
     private Entry? _contactLoyaltyInput;
     private Picker? _vehiclePhysicalDamagePicker;
     private Picker? _matrixDamagePicker;
+    private long _linkRenderGeneration;
+    private bool _linkDeparted;
+    private readonly Func<string, string, string, string, Task<bool>> _confirmLink;
 
     public CollectionItemEditorPage(
         RunnerSessionCoordinator coordinator,
-        WorkspaceCollectionItemTarget target) : base(coordinator)
+        WorkspaceCollectionItemTarget target) : this(coordinator, target, null) { }
+
+    internal CollectionItemEditorPage(RunnerSessionCoordinator coordinator, WorkspaceCollectionItemTarget target,
+        Func<string, string, string, string, Task<bool>>? confirmLink) : base(coordinator)
     {
         _target = target;
+        _confirmLink = confirmLink ?? ((title, message, accept, cancel) => DisplayAlertAsync(title, message, accept, cancel));
         Title = RunnerSessionCoordinator.HumanizeId(target.NestedKind?.ToString() ?? target.Kind.ToString());
         AutomationId = $"collection-editor-{Token(target.Kind.ToString())}-{Token(target.NestedItemId ?? target.ItemId)}";
         Content = new ScrollView { Content = _body };
@@ -34,6 +41,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
 
     protected override void Refresh()
     {
+        _linkRenderGeneration++;
         WorkspaceCollectionItemEditorState? item = FindCurrentItem();
         _body.Clear();
         _textInputs.Clear();
@@ -165,7 +173,25 @@ public sealed class CollectionItemEditorPage : NativePageBase
     }
 
     private WorkspaceCollectionItemEditorState? FindCurrentItem()
-        => Coordinator.State.ActiveCollectionEditor?.Items.FirstOrDefault(item => TargetsMatch(item.Target, _target));
+    {
+        WorkspaceCollectionItemEditorState[] matches = Coordinator.State.ActiveCollectionEditor?.Items
+            .Where(item => TargetsMatch(item.Target, _target)).ToArray() ?? [];
+        return matches.Length == 1 ? matches[0] : null;
+    }
+
+    protected override void OnAppearing()
+    {
+        _linkDeparted = false;
+        _linkRenderGeneration++;
+        base.OnAppearing();
+    }
+
+    protected override void OnDisappearing()
+    {
+        _linkDeparted = true;
+        _linkRenderGeneration++;
+        base.OnDisappearing();
+    }
 
     private void AddTextField(WorkspaceCollectionTextValueState value)
     {
@@ -663,6 +689,12 @@ public sealed class CollectionItemEditorPage : NativePageBase
         {
             return;
         }
+        CharacterOverviewState expected = Coordinator.State;
+        long generation = _linkRenderGeneration;
+        string authority = RunnerSessionCoordinator.LinkedEditorAuthority(expected, item);
+        bool IsCurrent() => !_linkDeparted && generation == _linkRenderGeneration
+            && FindCurrentItem() is { } current
+            && RunnerSessionCoordinator.LinkedEditorAuthority(Coordinator.State, current) == authority;
 
         _body.Add(NativeTheme.Eyebrow("Linked runner"));
         Label status = NativeTheme.Body(
@@ -678,7 +710,11 @@ public sealed class CollectionItemEditorPage : NativePageBase
         Button attach = NativeTheme.SecondaryButton(linked.IsLinked ? "Replace linked runner" : "Attach linked runner");
         attach.AutomationId = $"collection-linked-attach-{TargetToken()}";
         attach.IsEnabled = linked.CanAttach;
-        attach.Clicked += async (_, _) => await RunAsync(() => Coordinator.AttachLinkedCharacterAsync(_target));
+        attach.Clicked += async (_, _) =>
+        {
+            if (!attach.IsEnabled || !ReferenceEquals(attach.Parent, _body) || !IsCurrent()) return;
+            await RunWithConditionalRefreshAsync(() => Coordinator.TryAttachBoundLinkedCharacterAsync(_target, expected, IsCurrent));
+        };
         _body.Add(attach);
 
         Button remove = NativeTheme.SecondaryButton("Remove linked runner");
@@ -687,15 +723,14 @@ public sealed class CollectionItemEditorPage : NativePageBase
         remove.TextColor = NativeTheme.Danger;
         remove.Clicked += async (_, _) =>
         {
-            bool confirmed = await DisplayAlertAsync(
-                "Remove linked runner?",
-                "The original saved contact or pet identity will be shown again.",
-                "Remove link",
-                "Cancel");
-            if (confirmed)
+            if (!remove.IsEnabled || !ReferenceEquals(remove.Parent, _body) || !IsCurrent()) return;
+            await RunWithConditionalRefreshAsync(async () =>
             {
-                await RunAsync(() => Coordinator.RemoveLinkedCharacterAsync(_target));
-            }
+                if (!IsCurrent()) return false;
+                if (!await _confirmLink("Remove linked runner?",
+                    "The original saved contact or pet identity will be shown again.", "Remove link", "Cancel")) return false;
+                return await Coordinator.TryRemoveBoundLinkedCharacterAsync(_target, expected, IsCurrent);
+            });
         };
         _body.Add(remove);
     }

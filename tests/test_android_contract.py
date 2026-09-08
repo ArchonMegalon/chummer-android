@@ -1676,6 +1676,7 @@ class AndroidContractTests(unittest.TestCase):
         tablet = (PROJECT / "Native" / "TabletBuildPage.cs").read_text(encoding="utf-8")
         coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
         staging = (PROJECT / "Platform" / "IAndroidLinkedCharacterFileService.cs").read_text(encoding="utf-8")
+        coordinator += (PROJECT / "Native" / "RunnerSessionCoordinator.LinkedCharacters.cs").read_text(encoding="utf-8")
         program = (PROJECT / "MauiProgram.cs").read_text(encoding="utf-8")
         e2e = (REPO / "tests" / "run_api36_editing_e2e.py").read_text(encoding="utf-8")
         state = (
@@ -1706,7 +1707,8 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("ICharacterLinkedDocumentCodec", staging)
         self.assertIn('DirectoryName = "linked-characters"', staging)
         self.assertIn("SHA256.HashData(selected.Content)", staging)
-        self.assertIn("File.Move(temporaryPath, finalPath, overwrite: true)", staging)
+        self.assertIn("File.Move(temporaryPath, finalPath, overwrite: false)", staging)
+        self.assertIn("Guid.NewGuid():N", staging)
         self.assertIn("CryptographicOperations.ZeroMemory(selected.Content)", staging)
         self.assertIn("BuildTargetPrefix(target)", staging)
         self.assertIn("AddSingleton<IAndroidLinkedCharacterFileService, AndroidLinkedCharacterFileService>", program)

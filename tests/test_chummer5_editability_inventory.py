@@ -2603,6 +2603,11 @@ namespace Chummer
             and row["legacy"]["controlName"] in {"tsAttachCharacter", "tsRemoveCharacter"}
         ]
         self.assertEqual(4, len(linked_character_rows))
+        for row in linked_character_rows:
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual("implemented_pending_emulator", row["tablet"]["status"])
+            self.assertIn("src/Chummer.Android/Native/RunnerSessionCoordinator.LinkedCharacters.cs",
+                          row["phone"]["sourceRefs"])
         spirit_linked_runner_rows = [
             row for row in rows
             if row["legacy"]["formOrControl"] == "SpiritControl"
@@ -2613,7 +2618,10 @@ namespace Chummer
             {row["legacy"]["controlName"] for row in spirit_linked_runner_rows},
         )
         for row in spirit_linked_runner_rows:
-            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            # Current canonical target validation/projection and native staging
+            # support Contact/Pet only. Other Spirit symbols elsewhere in those
+            # files are not evidence that the link path supports Spirits.
+            self.assertEqual("missing", row["phone"]["status"])
             self.assertEqual("missing", row["tablet"]["status"])
             self.assertEqual("missing", row["e2e"]["phone"]["status"])
             self.assertIn("Spirits and sprites", row["phone"]["route"])
@@ -3069,8 +3077,10 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 381,
-                "missing": 946,
+                # Three Spirit link controls were previously false positives:
+                # current owner projection/target validation supports Contact/Pet only.
+                "implemented_pending_emulator": 378,
+                "missing": 949,
                 "not_applicable_non_mutating": 478,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 318,
@@ -4790,6 +4800,7 @@ public sealed class Demo
             "sharedDriverSha256": REPO / "tests" / "run_api36_editing_e2e.py",
             "collectionEditorPagesSha256": native_root / "Native" / "CollectionEditorPages.cs",
             "runnerSessionCoordinatorSha256": native_root / "Native" / "RunnerSessionCoordinator.cs",
+            "linkedCharacterCoordinatorSha256": native_root / "Native" / "RunnerSessionCoordinator.LinkedCharacters.cs",
             "linkedCharacterFileServiceSha256": native_root / "Platform" / "IAndroidLinkedCharacterFileService.cs",
             "linkedDocumentCodecSha256": inventory.WORKSPACE_ROOT / "chummer-core-engine" / "Chummer.Infrastructure" / "Xml" / "Chummer5LinkedDocumentCodec.cs",
             "workspaceCollectionEditorProjectorSha256": overview / "WorkspaceCollectionEditorProjector.cs",
@@ -4839,6 +4850,7 @@ public sealed class Demo
                 for stale_hash in (
                     "driverSha256",
                     "linkedDocumentCodecSha256",
+                    "linkedCharacterCoordinatorSha256",
                     "invalidLinkedFixtureSha256",
                 ):
                     stale_receipt = {**receipt, stale_hash: "0" * 64}
@@ -4847,6 +4859,10 @@ public sealed class Demo
                         inventory._validated_linked_runner_phone_e2e_receipt(),
                         stale_hash,
                     )
+                missing_binding = {key: value for key, value in receipt.items()
+                                   if key != "linkedCharacterCoordinatorSha256"}
+                receipt_path.write_text(json.dumps(missing_binding), encoding="utf-8")
+                self.assertIsNone(inventory._validated_linked_runner_phone_e2e_receipt())
 
     def test_new_character_priority_receipt_is_source_hash_bound(self) -> None:
         self.assertIsNone(
@@ -6714,8 +6730,8 @@ public sealed class Demo
         self.assertEqual(0, recognition["completionCountContribution"])
         self.assertEqual(
             {
-                "implemented_pending_emulator": 381,
-                "missing": 946,
+                "implemented_pending_emulator": 378,
+                "missing": 949,
                 "not_applicable_non_mutating": 478,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 318,

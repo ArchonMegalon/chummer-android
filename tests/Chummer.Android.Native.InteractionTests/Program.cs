@@ -18,6 +18,11 @@ internal static class Program
             await TabletInspectorBindingTests.RunAsync();
             return;
         }
+        if (args.Length == 2 && args[0] == "--linked-character-runtime-content-root")
+        {
+            await AfterRunAuthorityHarness.RunLinkedCharacterNativeRuntimeCasesAsync(args[1]);
+            return;
+        }
         if (args.Length == 2 && args[0] == "--skills-rereview-runtime-content-root")
         {
             CreationMagicNativeRuntimeTests.RunSkillsReReview(args[1]);

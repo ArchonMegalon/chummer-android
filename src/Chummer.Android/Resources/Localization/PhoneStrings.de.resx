@@ -234,4 +234,5 @@ Noch wurde nichts gespeichert.</value></data>
   <data name="TabletDraftDiscard" xml:space="preserve"><value>Diesen Entwurf verwerfen</value></data>
   <data name="TabletDraftDiscardTitle" xml:space="preserve"><value>Nicht übernommene Eingaben verwerfen?</value></data>
   <data name="TabletDraftDiscardPrompt" xml:space="preserve"><value>Nur die Eingaben dieses Eintrags werden verworfen. Der gespeicherte Runner und andere Entwürfe bleiben unverändert.</value></data>
+  <data name="LinkedRunnerOutcomeUnconfirmed" xml:space="preserve"><value>Das Ergebnis der Verknüpfung konnte nicht bestätigt werden. Öffne diesen Runner vor einem weiteren Versuch erneut; lokale Dateien bleiben erhalten.</value></data>
 </root>

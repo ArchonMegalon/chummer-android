@@ -1131,7 +1131,8 @@ public sealed partial class TabletBuildPage : NativePageBase
         attach.Clicked += async (_, _) =>
         {
             if (!attach.IsEnabled || !IsCurrentInspector(generation, expected, item.Target)) return;
-            await RunAsync(() => Coordinator.AttachLinkedCharacterAsync(item.Target));
+            await RunWithConditionalRefreshAsync(() => Coordinator.TryAttachBoundLinkedCharacterAsync(
+                item.Target, expected, () => IsCurrentInspector(generation, expected, item.Target)));
         };
         actions.Add(attach);
 
@@ -1142,15 +1143,14 @@ public sealed partial class TabletBuildPage : NativePageBase
         remove.Clicked += async (_, _) =>
         {
             if (!remove.IsEnabled || !IsCurrentInspector(generation, expected, item.Target)) return;
-            bool confirmed = await DisplayAlertAsync(
-                "Remove linked runner?",
-                "The original saved contact or pet identity will be shown again.",
-                "Remove link",
-                "Cancel");
-            if (confirmed && IsCurrentInspector(generation, expected, item.Target))
+            await RunWithConditionalRefreshAsync(async () =>
             {
-                await RunAsync(() => Coordinator.RemoveLinkedCharacterAsync(item.Target));
-            }
+                if (!IsCurrentInspector(generation, expected, item.Target)) return false;
+                if (!await _confirm("Remove linked runner?",
+                    "The original saved contact or pet identity will be shown again.", "Remove link", "Cancel")) return false;
+                return await Coordinator.TryRemoveBoundLinkedCharacterAsync(item.Target, expected,
+                    () => IsCurrentInspector(generation, expected, item.Target));
+            });
         };
         actions.Add(remove);
         _inspector.Add(actions);

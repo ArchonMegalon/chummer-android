@@ -6514,6 +6514,7 @@ def _validated_linked_runner_phone_e2e_receipt() -> dict[str, Any] | None:
         "sharedDriverSha256": shared_driver,
         "collectionEditorPagesSha256": native_root / "Native" / "CollectionEditorPages.cs",
         "runnerSessionCoordinatorSha256": native_root / "Native" / "RunnerSessionCoordinator.cs",
+        "linkedCharacterCoordinatorSha256": native_root / "Native" / "RunnerSessionCoordinator.LinkedCharacters.cs",
         "linkedCharacterFileServiceSha256": native_root / "Platform" / "IAndroidLinkedCharacterFileService.cs",
         "linkedDocumentCodecSha256": WORKSPACE_ROOT / "chummer-core-engine" / "Chummer.Infrastructure" / "Xml" / "Chummer5LinkedDocumentCodec.cs",
         "workspaceCollectionEditorProjectorSha256": overview / "WorkspaceCollectionEditorProjector.cs",
@@ -8531,6 +8532,7 @@ def _known_phone_mapping(
     if class_name == "SpiritControl" and control in SPIRIT_LINKED_RUNNER_CONTROLS:
         phone_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs"
         coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        linked_coordinator = coordinator.with_name("RunnerSessionCoordinator.LinkedCharacters.cs")
         staging = REPO_ROOT / "src" / "Chummer.Android" / "Platform" / "IAndroidLinkedCharacterFileService.cs"
         state = presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceCollectionEditorState.cs"
         request = presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceCollectionMutationRequest.cs"
@@ -8541,7 +8543,8 @@ def _known_phone_mapping(
         core_parser = WORKSPACE_ROOT / "chummer-core-engine" / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs"
         action = SPIRIT_LINKED_RUNNER_CONTROLS[control]
         shared = (
-            _contains(staging, "ICharacterLinkedDocumentCodec", 'DirectoryName = "linked-characters"', "File.Move")
+            _contains(staging, "ICharacterLinkedDocumentCodec", 'DirectoryName = "linked-characters"', "File.Move",
+                      "WorkspaceCollectionKind.Spirit")
             and _contains(state, "WorkspaceLinkedCharacterState", "LinkedCharacter")
             and _contains(
                 request,
@@ -8570,18 +8573,19 @@ def _known_phone_mapping(
                 coordinator,
                 "AttachLinkedCharacterAsync",
                 "RemoveLinkedCharacterAsync",
-                "_linkedCharacters.DeleteOwnedAsync",
             )
+            and _contains(linked_coordinator, "TryAttachBoundLinkedCharacterAsync",
+                          "TryRemoveBoundLinkedCharacterAsync", "_linkedCharacters.DeleteOwnedAsync")
         )
         attach_available = _contains(
             phone_page,
             "collection-linked-attach-",
-            "Coordinator.AttachLinkedCharacterAsync",
+            "Coordinator.TryAttachBoundLinkedCharacterAsync",
         )
         remove_available = _contains(
             phone_page,
             "collection-linked-remove-",
-            "Coordinator.RemoveLinkedCharacterAsync",
+            "Coordinator.TryRemoveBoundLinkedCharacterAsync",
         )
         phone_implemented = shared and (
             attach_available
@@ -8608,6 +8612,7 @@ def _known_phone_mapping(
             "sourceRefs": [
                 "src/Chummer.Android/Native/CollectionEditorPages.cs",
                 "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.LinkedCharacters.cs",
                 "src/Chummer.Android/Platform/IAndroidLinkedCharacterFileService.cs",
                 "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
                 "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
@@ -8640,6 +8645,7 @@ def _known_phone_mapping(
         phone_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs"
         tablet_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "TabletBuildPage.cs"
         coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        linked_coordinator = coordinator.with_name("RunnerSessionCoordinator.LinkedCharacters.cs")
         staging = REPO_ROOT / "src" / "Chummer.Android" / "Platform" / "IAndroidLinkedCharacterFileService.cs"
         e2e_driver = REPO_ROOT / "tests" / "run_api36_linked_runner_e2e.py"
         tablet_e2e_driver = REPO_ROOT / "tests" / "run_api36_editing_e2e.py"
@@ -8680,18 +8686,20 @@ def _known_phone_mapping(
                 coordinator,
                 "AttachLinkedCharacterAsync",
                 "RemoveLinkedCharacterAsync",
-                "_linkedCharacters.DeleteOwnedAsync",
             )
+            and _contains(linked_coordinator, "TryAttachBoundLinkedCharacterAsync",
+                          "TryRemoveBoundLinkedCharacterAsync", "_linkedCharacters.DeleteOwnedAsync",
+                          "LinkedEditorIsCurrent")
         )
         phone_implemented = shared and _contains(
             phone_page,
             f"collection-linked-{phone_token}-",
-            f"Coordinator.{operation}LinkedCharacterAsync",
+            f"Coordinator.Try{operation}BoundLinkedCharacterAsync",
         )
         tablet_implemented = shared and _contains(
             tablet_page,
             f'"tablet-linked-{phone_token}"',
-            f"Coordinator.{operation}LinkedCharacterAsync",
+            f"Coordinator.Try{operation}BoundLinkedCharacterAsync",
         )
         e2e_marker = (
             f'"{kind.lower()}LinkedRunnerAttachPersisted": "pass"'
@@ -8729,6 +8737,7 @@ def _known_phone_mapping(
             "src/Chummer.Android/Native/CollectionEditorPages.cs",
             "src/Chummer.Android/Native/TabletBuildPage.cs",
             "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+            "src/Chummer.Android/Native/RunnerSessionCoordinator.LinkedCharacters.cs",
             "src/Chummer.Android/Platform/IAndroidLinkedCharacterFileService.cs",
             "chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
             "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
@@ -24043,6 +24052,7 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CreationPrerequisitePreviewPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CreationPrerequisitePhoneDraft.cs",
         *_sr5_table_wizard_authority_paths(presentation_root),
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.LinkedCharacters.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "TabletBuildPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Platform" / "IAndroidLinkedCharacterFileService.cs",
         REPO_ROOT / "tests" / "run_api36_editing_e2e.py",

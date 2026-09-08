@@ -83,6 +83,7 @@ def main() -> int:
         "sharedDriverSha256": Path(shared.__file__).resolve(),
         "collectionEditorPagesSha256": android_root / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs",
         "runnerSessionCoordinatorSha256": android_root / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs",
+        "linkedCharacterCoordinatorSha256": android_root / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.LinkedCharacters.cs",
         "linkedCharacterFileServiceSha256": android_root / "src" / "Chummer.Android" / "Platform" / "IAndroidLinkedCharacterFileService.cs",
         "linkedDocumentCodecSha256": workspace_root / "chummer-core-engine" / "Chummer.Infrastructure" / "Xml" / "Chummer5LinkedDocumentCodec.cs",
         "workspaceCollectionEditorProjectorSha256": presentation_root / "WorkspaceCollectionEditorProjector.cs",

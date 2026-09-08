@@ -14,6 +14,8 @@ public sealed record AndroidStagedLinkedCharacter(
 
 public interface IAndroidLinkedCharacterFileService
 {
+    // A returned file belongs exclusively to this staging invocation until
+    // dispatched. Returning an existing content-addressed/shared path is forbidden.
     Task<AndroidStagedLinkedCharacter?> StageAsync(
         WorkspaceCollectionItemTarget target,
         CancellationToken cancellationToken);
@@ -29,13 +31,21 @@ public sealed class AndroidLinkedCharacterFileService : IAndroidLinkedCharacterF
     private const string DirectoryName = "linked-characters";
     private readonly IAndroidDocumentService _documents;
     private readonly ICharacterLinkedDocumentCodec _codec;
+    private readonly Func<string> _appDataDirectory;
+    private readonly Func<Guid> _newFileId;
 
     public AndroidLinkedCharacterFileService(
         IAndroidDocumentService documents,
         ICharacterLinkedDocumentCodec codec)
+        : this(documents, codec, () => FileSystem.AppDataDirectory, Guid.NewGuid) { }
+
+    internal AndroidLinkedCharacterFileService(IAndroidDocumentService documents,
+        ICharacterLinkedDocumentCodec codec, Func<string> appDataDirectory, Func<Guid> newFileId)
     {
         _documents = documents;
         _codec = codec;
+        _appDataDirectory = appDataDirectory;
+        _newFileId = newFileId;
     }
 
     public async Task<AndroidStagedLinkedCharacter?> StageAsync(
@@ -62,7 +72,7 @@ public sealed class AndroidLinkedCharacterFileService : IAndroidLinkedCharacterF
             string targetPrefix = BuildTargetPrefix(target);
             string contentHash = Convert.ToHexString(SHA256.HashData(selected.Content))
                 .ToLowerInvariant()[..16];
-            string stagedFileName = $"{targetPrefix}-{contentHash}{extension}";
+            string stagedFileName = $"{targetPrefix}-{contentHash}-{_newFileId():N}{extension}";
             string root = ResolveRoot();
             Directory.CreateDirectory(root);
             string finalPath = Path.Combine(root, stagedFileName);
@@ -70,7 +80,8 @@ public sealed class AndroidLinkedCharacterFileService : IAndroidLinkedCharacterF
             try
             {
                 await File.WriteAllBytesAsync(temporaryPath, selected.Content, cancellationToken);
-                File.Move(temporaryPath, finalPath, overwrite: true);
+                cancellationToken.ThrowIfCancellationRequested();
+                File.Move(temporaryPath, finalPath, overwrite: false);
             }
             finally
             {
@@ -108,7 +119,7 @@ public sealed class AndroidLinkedCharacterFileService : IAndroidLinkedCharacterF
         return Task.CompletedTask;
     }
 
-    private static bool TryResolveOwnedPath(
+    private bool TryResolveOwnedPath(
         WorkspaceCollectionItemTarget target,
         string? fileName,
         out string ownedPath)
@@ -144,8 +155,8 @@ public sealed class AndroidLinkedCharacterFileService : IAndroidLinkedCharacterF
         return true;
     }
 
-    private static string ResolveRoot()
-        => Path.GetFullPath(Path.Combine(FileSystem.AppDataDirectory, DirectoryName));
+    private string ResolveRoot()
+        => Path.GetFullPath(Path.Combine(_appDataDirectory(), DirectoryName));
 
     private static string BuildTargetPrefix(WorkspaceCollectionItemTarget target)
     {

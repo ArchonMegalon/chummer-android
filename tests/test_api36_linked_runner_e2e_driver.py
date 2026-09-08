@@ -57,6 +57,7 @@ class Api36LinkedRunnerE2EDriverTests(unittest.TestCase):
         source = DRIVER.read_text(encoding="utf-8")
         for marker in (
             "linkedCharacterFileServiceSha256",
+            "linkedCharacterCoordinatorSha256",
             "linkedDocumentCodecSha256",
             "workspaceCollectionEditorProjectorSha256",
             "workspaceCollectionMutationRequestSha256",
