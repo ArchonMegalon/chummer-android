@@ -620,6 +620,7 @@ jobs:
 
       - name: Require one shared authority and every required wizard journey
         env:
+          GH_TOKEN: ${{ github.token }}
           CHUMMER_BUILD_RESULT: ${{ needs.build.result }}
           CHUMMER_MATRIX_RESULT: ${{ needs.phone-wizard-e2e.result }}
           CHUMMER_E2E_APK_ARTIFACT_ID: ${{ needs.build.outputs.apk-artifact-id }}
@@ -640,6 +641,8 @@ jobs:
           --workflow chummer-android/.github/workflows/api36-editing-e2e.yml
           --run-id "${{ github.run_id }}"
           --run-attempt "$GITHUB_RUN_ATTEMPT"
+          --repository "$GITHUB_REPOSITORY"
+          --head-sha "${{ github.event.pull_request.head.sha || github.sha }}"
           --build-result "$CHUMMER_BUILD_RESULT"
           --matrix-result "$CHUMMER_MATRIX_RESULT"
           --artifact-id "$CHUMMER_E2E_APK_ARTIFACT_ID"

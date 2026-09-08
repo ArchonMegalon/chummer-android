@@ -37,6 +37,7 @@ ENVIRONMENT = load_script(
     "api36_proof_environment_authority",
     "scripts/api36_proof_environment_authority.py",
 )
+from api36_journey_producer_fixture import ProducerFixture
 
 RUN_ID = "424242"
 ARTIFACT_ID = "987654"
@@ -733,6 +734,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
         journey: str,
         *,
         attempt: str = "1",
+        producer_attempt: int | None = None,
         authority_overrides: dict[str, str] | None = None,
     ) -> Path:
         authority = self.authority(attempt, **(authority_overrides or {}))
@@ -777,7 +779,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             json.dumps(
                 self.emulator_live_sidecar(
                     journey,
-                    run_attempt=int(attempt),
+                    run_attempt=int(attempt) if producer_attempt is None else producer_attempt,
                 ),
                 indent=2,
             )
@@ -828,7 +830,10 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
         for journey in JOURNEYS:
             self.materialize_journey(root, journey, attempt=attempt)
 
-    def validate(self, root: Path, *, attempt: str = "1", **overrides: str):
+    def validate(
+        self, root: Path, *, attempt: str = "1",
+        aggregate_attempt: str | None = None, producer_authority=None, **overrides: str,
+    ):
         policy_snapshot, policy = self.environment_policy()
         input_prefix = root.parent / root.name
         x64_apk = Path(f"{input_prefix}-x64.apk")
@@ -890,9 +895,10 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             arm64_apk_path=arm64_apk,
             hosted_candidate_path=hosted_candidate,
             workflow_path=workflow,
-            run_attempt=attempt,
+            run_attempt=attempt if aggregate_attempt is None else aggregate_attempt,
             build_result="success",
             matrix_result="success",
+            journey_producer_authority=producer_authority,
             **self.authority(attempt, **overrides),
         )
 
@@ -988,6 +994,35 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                     "run attempt must be one positive integer",
                 ):
                     self.validate(root, attempt=invalid)
+
+    def test_failed_job_rerun_keeps_original_successful_journey_producers(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self.materialize_all(root, attempt="1")
+            self.materialize_journey(
+                root, "downtime-calendar", attempt="1", producer_attempt=2,
+            )
+            fixture = ProducerFixture(
+                root, run_id=int(RUN_ID), aggregate_attempt=2,
+                producers={journey: 2 if journey == "downtime-calendar" else 1 for journey in JOURNEYS},
+            )
+            producer_authority = fixture.authority()
+            aggregate = self.validate(
+                root, attempt="1", aggregate_attempt="2", producer_authority=producer_authority,
+            )
+            self.assertEqual("pass", aggregate["status"])
+            self.assertEqual(1, aggregate["artifactAuthority"]["artifactAttempt"])
+            self.assertEqual(7, aggregate["journeyCount"])
+            self.assertEqual(2, producer_authority.aggregate_attempt)
+            self.assertEqual({1, 2}, set(producer_authority.jobs))
+            self.assertEqual(7, sum(artifact for _, artifact in fixture.calls))
+
+    def test_older_producer_without_independent_authority_still_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self.materialize_all(root, attempt="1")
+            with self.assertRaisesRegex(ValueError, "emulator live observation differs"):
+                self.validate(root, attempt="1", aggregate_attempt="2")
 
     def test_journey_and_environment_receipt_toctou_fail_closed(self) -> None:
         for target_name in (

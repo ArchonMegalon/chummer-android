@@ -818,6 +818,13 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         )
         self.assertIn("merge-multiple: false", aggregate)
         self.assertIn("verify-api36-editing-e2e-aggregate.py", aggregate)
+        self.assertIn("GH_TOKEN: ${{ github.token }}", aggregate)
+        self.assertIn('--repository "$GITHUB_REPOSITORY"', aggregate)
+        self.assertIn('--run-attempt "$GITHUB_RUN_ATTEMPT"', aggregate)
+        self.assertIn(
+            '--head-sha "${{ github.event.pull_request.head.sha || github.sha }}"',
+            aggregate,
+        )
         self.assertIn(
             "--gate-contract chummer-android/eng/api36-sr5-wizard-gate-authority.json",
             aggregate,
