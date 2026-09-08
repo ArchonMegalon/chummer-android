@@ -1571,10 +1571,41 @@ internal static class Program
                 attributesReady),
             "Priority Creation rebuilt the dashboard before its allocation batch was terminal.");
         Require(
-            !CreationDashboardProjectionScheduler.ShouldAdvanceWithoutRenderAfterCompletion(
+            CreationDashboardProjectionScheduler.ShouldAdvanceWithoutRenderAfterCompletion(
                 CreationDashboardAuthorityPhase.Attributes,
                 attributesReady),
-            "Priority Creation advanced before its allocation batch was terminal.");
+            "Priority Creation left a loader slot idle while Skills was still running.");
+        Require(
+            CreationDashboardProjectionScheduler.NextBatch(attributesReady).SequenceEqual(
+                [CreationDashboardAuthorityPhase.Skills, CreationDashboardAuthorityPhase.Contacts]),
+            "A completed Attributes load did not admit Contacts alongside the existing Skills load.");
+        CreationDashboardAuthorityPhaseProgress contactsAheadOfSkills = attributesReady
+            .WithTerminal(CreationDashboardAuthorityPhase.Contacts, failed: false);
+        Require(
+            CreationDashboardProjectionScheduler.NextBatch(contactsAheadOfSkills).SequenceEqual(
+                [CreationDashboardAuthorityPhase.Skills, CreationDashboardAuthorityPhase.Resources]),
+            "Resources unnecessarily waited for the slower Skills load after Contacts completed.");
+        Require(
+            CreationDashboardProjectionScheduler.ShouldAdvanceWithoutRenderAfterCompletion(
+                CreationDashboardAuthorityPhase.Contacts, contactsAheadOfSkills),
+            "Contacts completion did not refill its free loader slot.");
+        CreationDashboardAuthorityPhaseProgress resourcesAheadOfSkills = contactsAheadOfSkills
+            .WithTerminal(CreationDashboardAuthorityPhase.Resources, failed: false);
+        Require(
+            !CreationDashboardProjectionScheduler.ShouldRenderAfterCompletion(
+                CreationDashboardAuthorityPhase.Resources, resourcesAheadOfSkills),
+            "Resources completion prematurely rendered a terminal dashboard while Skills was loading.");
+        Require(
+            CreationDashboardProjectionScheduler.ShouldRenderAfterCompletion(
+                CreationDashboardAuthorityPhase.Skills,
+                resourcesAheadOfSkills.WithTerminal(CreationDashboardAuthorityPhase.Skills, failed: false)),
+            "A last-finishing Skills load did not render the completed dashboard.");
+        CreationDashboardAuthorityPhaseProgress skillsReady = prerequisiteReady
+            .WithTerminal(CreationDashboardAuthorityPhase.Skills, failed: false);
+        Require(
+            CreationDashboardProjectionScheduler.NextBatch(skillsReady).SequenceEqual(
+                [CreationDashboardAuthorityPhase.Attributes, CreationDashboardAuthorityPhase.Contacts]),
+            "A completed Skills load left a free loader slot idle behind slower Attributes.");
 
         CreationDashboardAuthorityPhaseProgress allocationReady = prerequisiteReady
             .WithTerminal(CreationDashboardAuthorityPhase.Attributes, failed: false)
@@ -1582,7 +1613,7 @@ internal static class Program
         Require(
             CreationDashboardProjectionScheduler.NextBatch(allocationReady).SequenceEqual(
                 [CreationDashboardAuthorityPhase.Contacts, CreationDashboardAuthorityPhase.Resources]),
-            "Contacts and Resources did not wait for the allocation projections to become terminal.");
+            "Terminal allocation projections did not leave both remaining loader slots available.");
         Require(
             !CreationDashboardProjectionScheduler.ShouldRenderAfterCompletion(
                 CreationDashboardAuthorityPhase.Skills,
@@ -1618,6 +1649,46 @@ internal static class Program
             CreationDashboardProjectionScheduler.NextBatch(lifeModules).SequenceEqual(
                 [CreationDashboardAuthorityPhase.Contacts]),
             "A build method without prerequisite allocation authority did not proceed directly to Contacts.");
+
+        // Exhaust every completion order, including failed domain loads. Pending
+        // requests must keep their place, no terminal result may be reloaded,
+        // and at most two independent domain loaders may be active at once.
+        CreationDashboardAuthorityPhase[] domains =
+        [CreationDashboardAuthorityPhase.Attributes, CreationDashboardAuthorityPhase.Skills,
+            CreationDashboardAuthorityPhase.Contacts, CreationDashboardAuthorityPhase.Resources];
+        void CompleteEveryOrder(CreationDashboardAuthorityPhaseProgress progress)
+        {
+            CreationDashboardAuthorityPhase[] batch =
+                CreationDashboardProjectionScheduler.NextBatch(progress).ToArray();
+            Require(batch.Length <= 2 && batch.Distinct().Count() == batch.Length,
+                "Creation exceeded its two distinct background loader slots.");
+            if (batch.Length == 0)
+            {
+                Require(!progress.HasLoading, "Creation stranded a pending domain load.");
+                return;
+            }
+            foreach (CreationDashboardAuthorityPhase phase in batch)
+            foreach (bool failed in new[] { false, true })
+            {
+                CreationDashboardAuthorityPhaseProgress next = progress.WithTerminal(phase, failed);
+                CreationDashboardAuthorityPhase[] nextBatch =
+                    CreationDashboardProjectionScheduler.NextBatch(next).ToArray();
+                Require(!nextBatch.Contains(phase), "Creation replayed a completed loader.");
+                Require(batch.Where(candidate => candidate != phase).All(nextBatch.Contains),
+                    "Creation evicted a still-running loader to admit a third concurrent operation.");
+                Require(CreationDashboardProjectionScheduler.ShouldRenderAfterCompletion(phase, next)
+                        == !next.HasLoading,
+                    "Creation terminal rendering depended on the completion order.");
+                Require(CreationDashboardProjectionScheduler.ShouldAdvanceWithoutRenderAfterCompletion(phase, next)
+                        == next.HasLoading,
+                    "Creation left a free loader slot idle or rescheduled a terminal dashboard.");
+                CompleteEveryOrder(next);
+            }
+        }
+        CompleteEveryOrder(prerequisiteReady);
+        foreach (CreationDashboardAuthorityPhase phase in domains)
+            Require(!CreationDashboardProjectionScheduler.NextBatch(initial).Contains(phase),
+                "A lower-priority domain started before the prerequisite authority completed.");
 
         return Task.CompletedTask;
     }

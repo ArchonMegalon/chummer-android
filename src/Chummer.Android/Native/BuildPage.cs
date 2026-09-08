@@ -101,6 +101,12 @@ public enum CreationDashboardAuthorityPhase
 
 public static class CreationDashboardProjectionScheduler
 {
+    // Loading includes both queued and running work. Keeping the first two
+    // pending phases in a fixed order retains every running request (the
+    // per-domain queues share it) and fills a vacated slot immediately. A
+    // whole-batch barrier needlessly delayed Resources behind slower Skills
+    // even after Attributes had completed. This never admits a third loader
+    // or weakens the all-domain, revision-bound route-ready check.
     public static IReadOnlyList<CreationDashboardAuthorityPhase> NextBatch(
         CreationDashboardAuthorityPhaseProgress progress)
     {
@@ -111,15 +117,14 @@ public static class CreationDashboardProjectionScheduler
 
         if (progress.Prerequisite == CreationDashboardAuthorityPhaseState.Ready)
         {
-            CreationDashboardAuthorityPhase[] allocation =
+            CreationDashboardAuthorityPhase[] pending =
             [
                 .. PhaseWhenLoading(progress.Attributes, CreationDashboardAuthorityPhase.Attributes),
-                .. PhaseWhenLoading(progress.Skills, CreationDashboardAuthorityPhase.Skills)
+                .. PhaseWhenLoading(progress.Skills, CreationDashboardAuthorityPhase.Skills),
+                .. PhaseWhenLoading(progress.Contacts, CreationDashboardAuthorityPhase.Contacts),
+                .. PhaseWhenLoading(progress.Resources, CreationDashboardAuthorityPhase.Resources)
             ];
-            if (allocation.Length > 0)
-            {
-                return allocation;
-            }
+            return pending.Take(2).ToArray();
         }
 
         return
@@ -136,22 +141,22 @@ public static class CreationDashboardProjectionScheduler
         {
             CreationDashboardAuthorityPhase.Prerequisite => true,
             CreationDashboardAuthorityPhase.Attributes or CreationDashboardAuthorityPhase.Skills
-                => false,
-            CreationDashboardAuthorityPhase.Contacts or CreationDashboardAuthorityPhase.Resources
-                => IsTerminal(progress.Contacts) && IsTerminal(progress.Resources),
+                or CreationDashboardAuthorityPhase.Contacts or CreationDashboardAuthorityPhase.Resources
+                => NextBatch(progress).Count == 0,
             _ => throw new ArgumentOutOfRangeException(nameof(phase), phase, null)
         };
 
     public static bool ShouldAdvanceWithoutRenderAfterCompletion(
         CreationDashboardAuthorityPhase phase,
         CreationDashboardAuthorityPhaseProgress progress)
-        => phase is CreationDashboardAuthorityPhase.Attributes
-                or CreationDashboardAuthorityPhase.Skills
-           && IsTerminal(progress.Attributes)
-           && IsTerminal(progress.Skills);
-
-    private static bool IsTerminal(CreationDashboardAuthorityPhaseState state)
-        => state != CreationDashboardAuthorityPhaseState.Loading;
+        => phase switch
+        {
+            CreationDashboardAuthorityPhase.Prerequisite => false,
+            CreationDashboardAuthorityPhase.Attributes or CreationDashboardAuthorityPhase.Skills
+                or CreationDashboardAuthorityPhase.Contacts or CreationDashboardAuthorityPhase.Resources
+                => NextBatch(progress).Count > 0,
+            _ => throw new ArgumentOutOfRangeException(nameof(phase), phase, null)
+        };
 
     private static IEnumerable<CreationDashboardAuthorityPhase> PhaseWhenLoading(
         CreationDashboardAuthorityPhaseState state,
@@ -1685,70 +1690,82 @@ public sealed class BuildPage : NativePageBase
             _creationProjection = CreationDashboardAuthorityProjection.Loading(binding);
         }
 
-        CreationDashboardAuthorityProjection projection = _creationProjection!;
-        IReadOnlyList<CreationDashboardAuthorityPhase> batch =
-            CreationDashboardProjectionScheduler.NextBatch(projection.Progress);
-        foreach (CreationDashboardAuthorityPhase phase in batch)
+        CreationDashboardAuthorityPhaseProgress observedProgress;
+        do
         {
-            switch (phase)
+            CreationDashboardAuthorityProjection projection = _creationProjection!;
+            observedProgress = projection.Progress;
+            IReadOnlyList<CreationDashboardAuthorityPhase> batch =
+                CreationDashboardProjectionScheduler.NextBatch(observedProgress);
+            foreach (CreationDashboardAuthorityPhase phase in batch)
             {
-                case CreationDashboardAuthorityPhase.Prerequisite:
-                    ResolveCreationPhase(
-                        binding,
-                        projection.Progress.Prerequisite,
-                        phase,
-                        _creationPrerequisiteQueue,
-                        Coordinator.LoadCreationPrerequisite,
-                        AcceptCreationPrerequisite);
-                    break;
-                case CreationDashboardAuthorityPhase.Attributes:
-                    ResolveCreationPhase(
-                        binding,
-                        projection.Progress.Attributes,
-                        phase,
-                        _creationAttributesQueue,
-                        Coordinator.LoadCreationAttributes,
-                        AcceptCreationAttributes);
-                    break;
-                case CreationDashboardAuthorityPhase.Skills:
-                    ResolveCreationPhase(
-                        binding,
-                        projection.Progress.Skills,
-                        phase,
-                        _creationSkillsQueue,
-                        Coordinator.LoadCreationSkills,
-                        AcceptCreationSkills);
-                    break;
-                case CreationDashboardAuthorityPhase.Contacts:
-                    ResolveCreationPhase(
-                        binding,
-                        projection.Progress.Contacts,
-                        phase,
-                        _creationContactsQueue,
-                        Coordinator.LoadCreationContacts,
-                        AcceptCreationContacts);
-                    break;
-                case CreationDashboardAuthorityPhase.Resources when _resourcesPresenter is not null:
-                    CharacterOverviewState resourcesOverview = Coordinator.State;
-                    ResolveCreationPhase(
-                        binding,
-                        projection.Progress.Resources,
-                        phase,
-                        _creationResourcesQueue,
-                        () => _resourcesPresenter.Load(resourcesOverview),
-                        AcceptCreationResources);
-                    break;
-                case CreationDashboardAuthorityPhase.Resources:
-                    _creationProjection = projection with
-                    {
-                        Progress = projection.Progress.WithTerminal(phase, failed: true),
-                        ResourcesFailureReason = "creation-resources-presenter-unavailable"
-                    };
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(phase), phase, null);
+                switch (phase)
+                {
+                    case CreationDashboardAuthorityPhase.Prerequisite:
+                        ResolveCreationPhase(
+                            binding,
+                            projection.Progress.Prerequisite,
+                            phase,
+                            _creationPrerequisiteQueue,
+                            Coordinator.LoadCreationPrerequisite,
+                            AcceptCreationPrerequisite);
+                        break;
+                    case CreationDashboardAuthorityPhase.Attributes:
+                        ResolveCreationPhase(
+                            binding,
+                            projection.Progress.Attributes,
+                            phase,
+                            _creationAttributesQueue,
+                            Coordinator.LoadCreationAttributes,
+                            AcceptCreationAttributes);
+                        break;
+                    case CreationDashboardAuthorityPhase.Skills:
+                        ResolveCreationPhase(
+                            binding,
+                            projection.Progress.Skills,
+                            phase,
+                            _creationSkillsQueue,
+                            Coordinator.LoadCreationSkills,
+                            AcceptCreationSkills);
+                        break;
+                    case CreationDashboardAuthorityPhase.Contacts:
+                        ResolveCreationPhase(
+                            binding,
+                            projection.Progress.Contacts,
+                            phase,
+                            _creationContactsQueue,
+                            Coordinator.LoadCreationContacts,
+                            AcceptCreationContacts);
+                        break;
+                    case CreationDashboardAuthorityPhase.Resources when _resourcesPresenter is not null:
+                        CharacterOverviewState resourcesOverview = Coordinator.State;
+                        ResolveCreationPhase(
+                            binding,
+                            projection.Progress.Resources,
+                            phase,
+                            _creationResourcesQueue,
+                            () => _resourcesPresenter.Load(resourcesOverview),
+                            AcceptCreationResources);
+                        break;
+                    case CreationDashboardAuthorityPhase.Resources:
+                        _creationProjection = _creationProjection! with
+                        {
+                            Progress = _creationProjection!.Progress.WithTerminal(phase, failed: true),
+                            ResourcesFailureReason = "creation-resources-presenter-unavailable"
+                        };
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(phase), phase, null);
+                }
             }
         }
+        // A cached/fast completion may be consumed by TryTake before its
+        // posted callback runs. Drain those terminal results here, otherwise
+        // that callback sees an already-consumed request and no one refills
+        // the vacated slot. Progress only moves Loading -> terminal for this
+        // binding, so at most five domain completions can advance this loop.
+        while (_creationProjection is { } updated
+               && !updated.Progress.Equals(observedProgress));
         return _creationProjection;
     }
 
@@ -1820,12 +1837,15 @@ public sealed class BuildPage : NativePageBase
             {
                 if (Coordinator.State.CreationWizard is { } snapshot)
                     ResolveCreationProjection(snapshot);
-                return;
             }
 
-            if (CreationDashboardProjectionScheduler.ShouldRenderAfterCompletion(
+            // Resolve can synchronously consume the last pending result.
+            // Render from the resulting progress, not the earlier snapshot;
+            // the later queued completion callback cannot consume it again.
+            if (_creationProjection is { } refreshed
+                && CreationDashboardProjectionScheduler.ShouldRenderAfterCompletion(
                     phase,
-                    projection.Progress))
+                    refreshed.Progress))
             {
                 RequestCreationAuthorityRefresh();
             }
