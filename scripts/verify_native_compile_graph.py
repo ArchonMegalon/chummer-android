@@ -26,6 +26,16 @@ def _is_within(path: Path, root: Path) -> bool:
         return False
 
 
+def _first_symlink(path: Path) -> Path | None:
+    # Inspect lexical components before resolve() erases link identity. Walk from
+    # the root so a looping/linking parent is rejected before touching its child.
+    absolute = path.absolute()
+    for component in (*reversed(absolute.parents), absolute):
+        if component.is_symlink():
+            return component
+    return None
+
+
 def _default_workspace_root(repo_root: Path) -> Path:
     """Resolve the owning workspace, including its validated integration shelves."""
     for candidate in (repo_root, *repo_root.parents):
@@ -51,6 +61,10 @@ def _compile_includes(inputs_path: Path) -> list[str]:
 
 
 def verify_source_graph(repo_root: Path, project_path: Path) -> tuple[list[Path], list[str]]:
+    for label, path in (("source-root", repo_root), ("compile-project", project_path)):
+        symlink = _first_symlink(path)
+        if symlink is not None:
+            return [], [f"{label}-symlink:{symlink}"]
     repo_root = repo_root.resolve()
     project_path = project_path.resolve()
     issues: list[str] = []
@@ -78,20 +92,28 @@ def verify_source_graph(repo_root: Path, project_path: Path) -> tuple[list[Path]
         if Path(include).is_absolute() or "**" in include:
             issues.append(f"unsafe-compile-input:{include}")
             continue
-        matches = sorted(Path(value).resolve() for value in glob.glob(str(project_path.parent / include)))
+        matches = sorted(Path(value) for value in glob.glob(str(project_path.parent / include)))
         if not matches:
             issues.append(f"compile-input-unavailable:{include}")
             continue
         for match in matches:
-            if not match.is_file() or match.is_symlink() or not _is_within(match, repo_root):
+            symlink = _first_symlink(match)
+            if symlink is not None:
+                issues.append(f"compile-input-symlink:{include}:{symlink}")
+                continue
+            match = match.resolve()
+            if not match.is_file() or not _is_within(match, repo_root):
                 issues.append(f"compile-input-outside-owned-source:{include}:{match}")
                 continue
             compiled.append(match)
 
+    if issues:
+        return sorted(set(compiled)), sorted(set(issues))
+
     if len(compiled) != len(set(compiled)):
         issues.append("compile-input-resolves-more-than-once")
     compiled_set = set(compiled)
-    native_root = (repo_root / "src/Chummer.Android/Native").resolve()
+    native_root = repo_root / "src/Chummer.Android/Native"
     expected_native = set(native_root.glob("*.cs"))
     actual_native = {path for path in compiled_set if path.parent == native_root}
     if actual_native != expected_native:
@@ -100,18 +122,21 @@ def verify_source_graph(repo_root: Path, project_path: Path) -> tuple[list[Path]
         issues.append(f"native-input-set-mismatch:missing={missing}:unexpected={unexpected}")
 
     required_owned = {
-        (repo_root / "src/Chummer.Android/MainShell.cs").resolve(),
-        (repo_root / "src/Chummer.Android/MauiProgram.cs").resolve(),
-        (repo_root / "src/Chummer.Android/Platform/IAndroidImageDocumentService.cs").resolve(),
-        (project_path.parent / "CompileStubs.cs").resolve(),
+        repo_root / "src/Chummer.Android/MainShell.cs",
+        repo_root / "src/Chummer.Android/MauiProgram.cs",
+        repo_root / "src/Chummer.Android/Platform/IAndroidImageDocumentService.cs",
+        project_path.parent / "CompileStubs.cs",
     }
     for required in sorted(required_owned):
         if required not in compiled_set:
             issues.append(f"required-owned-input-missing:{required.relative_to(repo_root)}")
-    platform_android = (repo_root / "src/Chummer.Android/Platforms/Android").resolve()
+    platform_android = repo_root / "src/Chummer.Android/Platforms/Android"
     for path in compiled_set:
         if _is_within(path, platform_android):
             issues.append(f"android-framework-source-in-neutral-gate:{path.relative_to(repo_root)}")
+
+    if issues:
+        return sorted(compiled_set), sorted(set(issues))
 
     combined = "\n".join(path.read_text(encoding="utf-8") for path in compiled)
     maui_program = (repo_root / "src/Chummer.Android/MauiProgram.cs").read_text(encoding="utf-8")
@@ -172,10 +197,18 @@ def verify_asset_graph(
     workspace_root: Path,
     assets_root: Path | None = None,
 ) -> tuple[list[Path], list[str]]:
+    for label, path in (("compile-project", project_path), ("workspace-root", workspace_root)):
+        symlink = _first_symlink(path)
+        if symlink is not None:
+            return [], [f"{label}-symlink:{symlink}"]
     project_path = project_path.resolve()
     workspace_root = workspace_root.resolve()
     project_dir = project_path.parent
-    obj_dir = (assets_root or project_dir / "obj").resolve()
+    obj_input = assets_root or project_dir / "obj"
+    symlink = _first_symlink(obj_input)
+    if symlink is not None:
+        return [], [f"generated-assets-root-symlink:{symlink}"]
+    obj_dir = obj_input.resolve()
     assets_path = obj_dir / "project.assets.json"
     issues: list[str] = []
     referenced: list[Path] = []
@@ -201,6 +234,10 @@ def verify_asset_graph(
 
     for origin, raw_path in references:
         candidate = raw_path if raw_path.is_absolute() else project_dir / raw_path
+        symlink = _first_symlink(candidate)
+        if symlink is not None:
+            issues.append(f"project-reference-symlink:{origin}:{symlink}")
+            continue
         resolved = candidate.resolve()
         referenced.append(resolved)
         if origin in {"assets:restore-project", "dgspec:project"}:
@@ -226,9 +263,11 @@ def main() -> int:
     parser.add_argument("--assets-root", type=Path)
     args = parser.parse_args()
 
-    repo_root = args.repo_root.resolve()
-    project_path = (args.project or repo_root / DEFAULT_PROJECT).resolve()
-    workspace_root = (args.workspace_root or _default_workspace_root(repo_root)).resolve()
+    # Preserve lexical roots for the source guard; normalizing here would hide
+    # symlinked checkouts/projects before they reach the validator.
+    repo_root = args.repo_root.absolute()
+    project_path = (args.project or repo_root / DEFAULT_PROJECT).absolute()
+    workspace_root = (args.workspace_root or _default_workspace_root(repo_root)).absolute()
     compiled: list[Path] = []
     issues: list[str] = []
     if not args.assets_only:
