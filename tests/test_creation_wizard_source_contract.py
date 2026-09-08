@@ -10,6 +10,21 @@ DRIVER = REPO / "tests" / "run_api36_creation_wizard_foundation_e2e.py"
 
 
 class CreationWizardSourceContractTests(unittest.TestCase):
+    def test_synchronous_creation_completions_drain_and_render_current_progress(self) -> None:
+        source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
+        resolver = source.split("private CreationDashboardAuthorityProjection? ResolveCreationProjection(", 1)[1].split(
+            "private static void ResolveCreationPhase", 1)[0]
+        self.assertIn("observedProgress = projection.Progress;", resolver)
+        self.assertIn("!updated.Progress.Equals(observedProgress)", resolver)
+        self.assertIn("_creationProjection = _creationProjection! with", resolver)
+        self.assertIn("Progress = _creationProjection!.Progress.WithTerminal(phase, failed: true)", resolver)
+        completion = source.split("private void ScheduleCreationPhaseAcceptance<TResult>(", 1)[1].split(
+            "private static void TraceCreationPhase", 1)[0]
+        after_refill = completion.split("ResolveCreationProjection(snapshot);", 1)[1]
+        self.assertNotIn("return;", after_refill)
+        self.assertIn("_creationProjection is { } refreshed", after_refill)
+        self.assertIn("refreshed.Progress", after_refill)
+
     def test_android_injects_authoritative_foundation_into_overview_state_factory(self) -> None:
         source = MAUI_PROGRAM.read_text(encoding="utf-8")
         runtime_registration = source.index("builder.Services.AddChummerLocalRuntimeClient(")
