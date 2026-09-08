@@ -7,7 +7,7 @@ roots, package feeds and versions as `Native.CompileCheck`, then execute its
 `net10.0` DLL. Passing this development harness does not seal those dependencies.
 
 The current 60 top-level cases contain 58 existing interaction cases and two
-wrappers: 14 settlement authority cases and 9 native After Run page/entry cases.
+wrappers: 14 settlement authority cases and 10 native After Run page/entry cases.
 Do not add the wrapper and nested counts as separate independent tests.
 
 `AfterRunPageInteractionTests.cs` instantiates the actual settlement page,
@@ -17,6 +17,13 @@ selection/revision changes, replaced/applying checkpoints, and factory routing
 for missing/available/corrupt catalogs and mixed reward/settlement recovery.
 The pending reward command is prepared by the real Core file-store service;
 entering its page must not call the injected runtime service or commit it.
+
+Explicit governed intake is tested separately from the ordinary local-reward
+entry. Manual intake requires a missing (not unavailable) catalog, the composed
+manual host authority, and no retained settlement/reward recovery or discard-only
+review. Existing proposals remain selectable. Corrupt journals, changed runner
+selection, cancellation and Applying ownership cannot be bypassed by the explicit
+entry preference. These are actual page/factory tests, not accessibility proof.
 
 Boundaries remain explicit:
 

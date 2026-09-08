@@ -179,6 +179,8 @@
   <data name="AfterRunRewardRunnerChanged" xml:space="preserve"><value>The selected runner changed. Reopen After Run for the current saved runner.</value></data>
   <data name="AfterRunRewardJournalUnavailable" xml:space="preserve"><value>A pending Career operation or unreadable journal prevents a new reward. Resolve that operation first; nothing has been cleared.</value></data>
   <data name="AfterRunEntryDetail" xml:space="preserve"><value>Record local rewards or review a governed run settlement. Resolve any pending transaction first.</value></data>
+  <data name="AfterRunGovernedEntryTitle" xml:space="preserve"><value>Recorded run result</value></data>
+  <data name="AfterRunGovernedEntryDetail" xml:space="preserve"><value>Advanced: review an existing run proposal or enter its exact recorded IDs and approvals. Pending transactions take priority; this does not grant rewards again.</value></data>
   <data name="ReputationWizardTitle" xml:space="preserve"><value>Career · Reputation</value></data>
   <data name="ReputationWizardIntro" xml:space="preserve"><value>Record manual reputation changes or review burning Street Cred. Core calculates the totals; nothing is saved before your confirmation.</value></data>
   <data name="ReputationWizardScope" xml:space="preserve"><value>Experimental local wizard: not yet qualified on an Android device. Astral and Wild reputation are not changed here. This is not GM approval or a run settlement.</value></data>

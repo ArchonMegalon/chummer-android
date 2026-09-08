@@ -179,6 +179,8 @@
   <data name="AfterRunRewardRunnerChanged" xml:space="preserve"><value>El runner seleccionado ha cambiado. Vuelve a abrir Después de la misión para el runner guardado actual.</value></data>
   <data name="AfterRunRewardJournalUnavailable" xml:space="preserve"><value>Una operación de Carrera pendiente o un registro ilegible impide crear otra recompensa. Resuelve primero esa operación; no se ha borrado nada.</value></data>
   <data name="AfterRunEntryDetail" xml:space="preserve"><value>Registra recompensas locales o revisa una liquidación autorizada de misión. Resuelve primero cualquier operación pendiente.</value></data>
+  <data name="AfterRunGovernedEntryTitle" xml:space="preserve"><value>Resultado registrado de la misión</value></data>
+  <data name="AfterRunGovernedEntryDetail" xml:space="preserve"><value>Avanzado: revisa una propuesta de misión existente o introduce sus identificadores y aprobaciones exactos. Las operaciones pendientes tienen prioridad; no se vuelven a otorgar recompensas.</value></data>
   <data name="ReputationWizardTitle" xml:space="preserve"><value>Carrera · Reputación</value></data>
   <data name="ReputationWizardIntro" xml:space="preserve"><value>Registra cambios manuales de reputación o revisa la quema de reputación callejera. Core calcula los totales; nada se guarda sin tu confirmación.</value></data>
   <data name="ReputationWizardScope" xml:space="preserve"><value>Asistente local experimental: aún no verificado en un dispositivo Android. No modifica la reputación astral ni salvaje. No constituye aprobación del DJ ni liquidación de una misión.</value></data>

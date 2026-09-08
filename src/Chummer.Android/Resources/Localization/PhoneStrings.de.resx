@@ -179,6 +179,8 @@
   <data name="AfterRunRewardRunnerChanged" xml:space="preserve"><value>Der ausgewählte Runner wurde gewechselt. Öffne Nach dem Run für den aktuell gespeicherten Runner erneut.</value></data>
   <data name="AfterRunRewardJournalUnavailable" xml:space="preserve"><value>Ein offener Karrierevorgang oder ein nicht lesbares Buchungsjournal verhindert eine neue Belohnung. Kläre zuerst diesen Vorgang; nichts wurde gelöscht.</value></data>
   <data name="AfterRunEntryDetail" xml:space="preserve"><value>Erfasse lokale Belohnungen oder prüfe eine freigegebene Run-Abrechnung. Kläre zuerst jeden noch offenen Vorgang.</value></data>
+  <data name="AfterRunGovernedEntryTitle" xml:space="preserve"><value>Erfasstes Run-Ergebnis</value></data>
+  <data name="AfterRunGovernedEntryDetail" xml:space="preserve"><value>Erweitert: Prüfe einen vorhandenen Run-Vorschlag oder gib seine exakt erfassten IDs und Freigaben ein. Offene Vorgänge haben Vorrang; Belohnungen werden nicht erneut vergeben.</value></data>
   <data name="ReputationWizardTitle" xml:space="preserve"><value>Karriere · Ruf</value></data>
   <data name="ReputationWizardIntro" xml:space="preserve"><value>Manuelle Rufänderungen erfassen oder das Verbrennen von Straßenruf prüfen. Core berechnet die Gesamtwerte; erst deine Bestätigung speichert.</value></data>
   <data name="ReputationWizardScope" xml:space="preserve"><value>Experimenteller lokaler Wizard: noch nicht auf einem Android-Gerät qualifiziert. Astraler und Wilder Ruf bleiben unverändert. Dies ist keine SL-Freigabe oder Run-Abrechnung.</value></data>

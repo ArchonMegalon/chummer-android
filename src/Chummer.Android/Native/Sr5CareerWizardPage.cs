@@ -196,6 +196,12 @@ public sealed class Sr5CareerWizardPage : NativePageBase
             () => RunAsync(OpenAfterRunSettlementAsync),
             enabled: canOpenAfterRun,
             automationId: "sr5-career-action-after-run"));
+        _body.Add(NativeTheme.NavigationRow(
+            PhoneStrings.Get("AfterRunGovernedEntryTitle", "Recorded run result"),
+            PhoneStrings.Get("AfterRunGovernedEntryDetail", "Advanced: review an existing run proposal or enter its exact recorded IDs and approvals. Pending transactions take priority; this does not grant rewards again."),
+            () => RunAsync(() => OpenAfterRunSettlementAsync(requestGovernedProposal: true)),
+            enabled: canOpenAfterRun,
+            automationId: "sr5-career-action-after-run-governed"));
         if (!string.IsNullOrWhiteSpace(_afterRunEntryBlocker))
         {
             Label blocker = NativeTheme.Body(
@@ -238,7 +244,9 @@ public sealed class Sr5CareerWizardPage : NativePageBase
         _body.Add(NativeTheme.Card(boundary));
     }
 
-    private async Task OpenAfterRunSettlementAsync()
+    private Task OpenAfterRunSettlementAsync() => OpenAfterRunSettlementAsync(requestGovernedProposal: false);
+
+    private async Task OpenAfterRunSettlementAsync(bool requestGovernedProposal)
     {
         RunnerSessionSr5AfterRunSettlementPresenter presenter = new(Coordinator);
         if (!Sr5AfterRunSettlementEntryGuard.TryValidate(
@@ -272,7 +280,8 @@ public sealed class Sr5CareerWizardPage : NativePageBase
 
         _afterRunEntryBlocker = null;
         Page destination = await Sr5AfterRunSettlementWizardPage
-            .CreateEntryDestinationAsync(Coordinator, editor);
+            .CreateEntryDestinationAsync(Coordinator, editor,
+                requestGovernedProposal: requestGovernedProposal);
         await Navigation.PushAsync(destination);
     }
 

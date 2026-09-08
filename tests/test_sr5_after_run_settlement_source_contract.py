@@ -31,6 +31,9 @@ def test_phone_surface_has_every_governed_stage_and_two_entry_points() -> None:
     assert "OpenAfterRunSettlementAsync" in career
     assert "RunnerSessionSr5AfterRunSettlementPresenter" in career
     assert 'automationId: "sr5-career-action-after-run"' in career
+    assert 'automationId: "sr5-career-action-after-run-governed"' in career
+    assert "OpenAfterRunSettlementAsync(requestGovernedProposal: true)" in career
+    assert "OpenAfterRunSettlementAsync(requestGovernedProposal: false)" in career
     assert "() => RunAsync(OpenAfterRunSettlementAsync)" in career
     assert "enabled: canOpenAfterRun" in career
     assert 'blocker.AutomationId = "sr5-career-after-run-unavailable"' in career
@@ -38,7 +41,7 @@ def test_phone_surface_has_every_governed_stage_and_two_entry_points() -> None:
     assert 'automationId: "phone-table-after-run"' in table
     assert "Sr5AfterRunSettlementWizardPage" in table
     for surface in (career, table, read("BuildPage.cs")):
-        assert "CreateEntryDestinationAsync(Coordinator, editor)" in surface
+        assert "CreateEntryDestinationAsync(Coordinator, editor" in surface
         assert "Page destination = await Sr5AfterRunSettlementWizardPage" in surface
         assert "editor.Status == Sr5AfterRunCatalogStatus.Missing" not in surface
     assert "TryReadOwnedRecovery" in page
@@ -216,7 +219,14 @@ def test_entry_routing_prefers_owned_recovery_and_uses_local_rewards_not_manual_
     assert "string.IsNullOrWhiteSpace(recoveryBlocker)" in route
     assert "SupportsAfterRunRewardEntry" in route
     assert "Sr5AfterRunRewardWizardPage" in route
-    assert "Sr5AfterRunManualProposalPage" not in route
+    manual = route.index("return new Sr5AfterRunManualProposalPage")
+    assert route.index("bool requestGovernedProposal = false") < manual
+    assert route.index("new Sr5AfterRunRewardWizardPage") < manual
+    assert route.index("return new Sr5AfterRunSettlementReceiptPage") < manual
+    assert "if (requestGovernedProposal && !ownsRecovery && recorded is null" in route
+    assert "&& !ownsDiscardableReview && string.IsNullOrWhiteSpace(recoveryBlocker)" in route
+    assert "&& coordinator.SupportsManualAfterRunProposalEntry" in route
+    assert "Sr5AfterRunCatalogStatus.Missing && !requestGovernedProposal" in route
     assert "Sr5AfterRunSettlementWizardPage" in route
     assert "checkpoint.Phase == Sr5CareerCheckpointPhase.Reviewed" in owned
     assert "_authority.OwnsReviewed(checkpoint)" in owned

@@ -150,7 +150,8 @@ public sealed class Sr5AfterRunSettlementWizardPage : NativePageBase
         RunnerSessionCoordinator coordinator,
         Sr5AfterRunSettlementEditorState editor,
         CancellationToken cancellationToken = default,
-        Func<Sr5AfterRunSettlementWizardDependencies>? createDependencies = null)
+        Func<Sr5AfterRunSettlementWizardDependencies>? createDependencies = null,
+        bool requestGovernedProposal = false)
     {
         cancellationToken.ThrowIfCancellationRequested();
         // Catalog preparation awaited work. Bind the destination to that same
@@ -177,7 +178,7 @@ public sealed class Sr5AfterRunSettlementWizardPage : NativePageBase
             // not-yet-applying review must not hide an active local reward.
             var reward = await coordinator.PrepareAfterRunRewardEntryAsync(
                 allowNewReward: !ownsRecovery && recorded is null && !ownsDiscardableReview
-                    && editor.Status == Sr5AfterRunCatalogStatus.Missing,
+                    && editor.Status == Sr5AfterRunCatalogStatus.Missing && !requestGovernedProposal,
                 cancellationToken,
                 owner: dependencies.Owner,
                 allowRecordedReceiptFallback: recorded is not null);
@@ -190,6 +191,16 @@ public sealed class Sr5AfterRunSettlementWizardPage : NativePageBase
         if (!ownsRecovery && recorded is not null)
             return new Sr5AfterRunSettlementReceiptPage(coordinator, recorded,
                 recorded.Receipt!, dependencies.Store);
+
+        // Advanced, explicit intake is separate from ordinary local rewards.
+        // Neither this preference nor missing catalog data can bypass retained
+        // recovery, a discard-only review, or an unreadable ownership journal.
+        if (requestGovernedProposal && !ownsRecovery && recorded is null
+            && !ownsDiscardableReview && string.IsNullOrWhiteSpace(recoveryBlocker)
+            && editor.Status == Sr5AfterRunCatalogStatus.Missing
+            && coordinator.SupportsManualAfterRunProposalEntry)
+            return new Sr5AfterRunManualProposalPage(coordinator,
+                editor.WorkspaceId, editor.WorkspaceRevision);
 
         return new Sr5AfterRunSettlementWizardPage(
             coordinator,

@@ -19,10 +19,11 @@ internal static partial class AfterRunAuthorityHarness
         await ReplacedCheckpointDialogCannotDeleteNewReviewAsync();
         await ApplyingCheckpointDialogCannotDeleteRecoveryAsync();
         await NativeEntryFactorySelectsOnlyAllowedPagesAsync();
+        await NativeExplicitGovernedEntryRequiresIntentAndPreservesRecoveryAsync();
         await NativeEntryFactoryRejectsChangedOrCanceledObservationAsync();
         await NativeEntryFactoryPreservesPendingRewardBesideSettlementAsync();
         await NativeEntryFactoryKeepsApplyingSettlementPriorityAsync();
-        Console.WriteLine("PASS 9 native After Run page/dialog/entry cases");
+        Console.WriteLine("PASS 10 native After Run page/dialog/entry cases");
     }
 
     private static async Task DiscardDialogKeepsOrDeletesOnlyTheReviewedJournalAsync()
@@ -192,9 +193,46 @@ internal static partial class AfterRunAuthorityHarness
             "Corrupt local journal was cleared or bypassed on entry.");
     }
 
+    private static async Task NativeExplicitGovernedEntryRequiresIntentAndPreservesRecoveryAsync()
+    {
+        using var fixture = new PageFixture(manualEntry: true);
+        var missing = fixture.EditorState with { Status = Sr5AfterRunCatalogStatus.Missing };
+        Require(await fixture.EnterAsync(missing, requestGovernedProposal: true) is Sr5AfterRunSettlementWizardPage,
+            "Explicit manual entry bypassed a discard-only review.");
+        Require(fixture.Store.TryDeleteReviewed(Sr5AfterRunSettlementCheckpointCas.From(fixture.Checkpoint),
+            out var blocker), blocker);
+        Require(await fixture.EnterAsync(missing) is Sr5AfterRunRewardWizardPage,
+            "Manual authority availability changed the ordinary local reward default.");
+        Page manual = await fixture.EnterAsync(missing, requestGovernedProposal: true);
+        Require(manual is Sr5AfterRunManualProposalPage && manual.AutomationId == Sr5CareerWizardRoutes.AfterRunEnter,
+            "Explicit governed entry cannot reach the actual manual proposal page.");
+        Require(fixture.Backend.Payload.Length == 0 && fixture.OwnerBackend.Payload.Length == 0
+                && fixture.RewardBackend.Writes == 0 && fixture.ServiceCalls == 0,
+            "Selecting governed intake wrote a journal, fabricated a proposal, or called Core.");
+        Require(await fixture.EnterAsync(fixture.EditorState, requestGovernedProposal: true) is Sr5AfterRunSettlementWizardPage,
+            "Unavailable catalog was treated as permission for manual intake.");
+        fixture.RewardBackend.Payload = "{}";
+        await ExpectEntryRejectedAsync(() => fixture.EnterAsync(missing, requestGovernedProposal: true));
+        Require(fixture.RewardBackend.Payload == "{}" && fixture.RewardBackend.Writes == 0,
+            "Explicit intake cleared a corrupt local recovery journal.");
+
+        using var unavailable = new PageFixture();
+        Require(unavailable.Store.TryDeleteReviewed(Sr5AfterRunSettlementCheckpointCas.From(unavailable.Checkpoint),
+            out blocker), blocker);
+        Require(await unavailable.EnterAsync(missing, requestGovernedProposal: true) is Sr5AfterRunSettlementWizardPage,
+            "Missing manual host authority permitted intake or silently substituted local rewards.");
+
+        using var available = new PageFixture(staleCatalog: false, manualEntry: true);
+        Require(available.Store.TryDeleteReviewed(Sr5AfterRunSettlementCheckpointCas.From(available.Checkpoint),
+            out blocker), blocker);
+        Require(await available.EnterAsync(available.EditorState, requestGovernedProposal: true) is Sr5AfterRunSettlementWizardPage,
+            "An existing governed catalog was replaced by manual intake.");
+    }
+
     private static async Task NativeEntryFactoryRejectsChangedOrCanceledObservationAsync()
     {
         foreach (string change in new[] { "canceled-before", "canceled-during", "busy", "selection" })
+        foreach (bool requestGovernedProposal in new[] { false, true })
         {
             using var fixture = new PageFixture();
             using var cancellation = new CancellationTokenSource();
@@ -207,7 +245,7 @@ internal static partial class AfterRunAuthorityHarness
             };
             string retained = fixture.Backend.Payload;
             if (change == "canceled-before") cancellation.Cancel();
-            Task<Page> entry = fixture.EnterAsync(fixture.EditorState, cancellation.Token);
+            Task<Page> entry = fixture.EnterAsync(fixture.EditorState, cancellation.Token, requestGovernedProposal);
             try
             {
                 if (change != "canceled-before")
@@ -260,6 +298,8 @@ internal static partial class AfterRunAuthorityHarness
         Page route = await fixture.EnterAsync(fixture.EditorState);
         Require(route is Sr5AfterRunRewardWizardPage,
             "An available catalog/review hid the original pending reward.");
+        Require(await fixture.EnterAsync(fixture.EditorState, requestGovernedProposal: true) is Sr5AfterRunRewardWizardPage,
+            "Explicit governed entry bypassed the pending local reward.");
         Require(fixture.RewardBackend.Payload == retainedReward && fixture.Backend.Payload == retainedSettlement,
             "Entry rebased or retired either retained intent.");
 
@@ -284,6 +324,8 @@ internal static partial class AfterRunAuthorityHarness
                 && fixture.Backend.Payload == receiptPayload && fixture.OwnerBackend.Payload.Length == 0
                 && fixture.ServiceCalls == 0,
             "Read-only receipt fallback changed journals or invoked mutation/lookup authority.");
+        Require(await fixture.EnterAsync(current, requestGovernedProposal: true) is Sr5AfterRunSettlementReceiptPage,
+            "Explicit governed entry hid the read-only historical receipt.");
         Require(source.Service.Read(WorkspaceId).Snapshot!.AvailableKarma == 30,
             "Read-only entry committed the earlier reward.");
     }
@@ -301,6 +343,10 @@ internal static partial class AfterRunAuthorityHarness
                 && fixture.Backend.Payload == settlement && fixture.OwnerBackend.Payload == owner
                 && fixture.ServiceCalls == 0,
             "Entry failed to retain existing Applying settlement recovery priority.");
+        Require(await fixture.EnterAsync(fixture.EditorState, requestGovernedProposal: true) is Sr5AfterRunSettlementWizardPage
+                && fixture.RewardBackend.Reads == 0 && fixture.Backend.Payload == settlement
+                && fixture.OwnerBackend.Payload == owner && fixture.ServiceCalls == 0,
+            "Explicit governed entry bypassed Applying settlement ownership.");
     }
 
     private sealed class PageFixture : IDisposable
@@ -322,7 +368,7 @@ internal static partial class AfterRunAuthorityHarness
         public int ServiceCalls;
         public string Prompt = string.Empty;
 
-        public PageFixture(bool staleCatalog = true)
+        public PageFixture(bool staleCatalog = true, bool manualEntry = false)
         {
             long revision = staleCatalog ? 42 : 41;
             var baseState = Program.NewCreationOverview(WorkspaceId, revision, revision);
@@ -338,6 +384,8 @@ internal static partial class AfterRunAuthorityHarness
                 null!, null!, null!, null!, null!, null!,
                 StrictPageProxy.Create<IShellPresenter>(), null!, null!, null!, null!, null!,
                 StrictPageProxy.Create<IAndroidAccountLinkService>(), null!, null!,
+                afterRunProposalCatalog: manualEntry ? StrictPageProxy.Create<IManualEntryCatalog>(
+                    unexpected: () => ServiceCalls++) : null,
                 afterRunRewardService: StrictPageProxy.Create<ICharacterAfterRunRewardService>(
                     unexpected: () => ServiceCalls++),
                 afterRunRewardCheckpoints: RewardStore);
@@ -368,9 +416,10 @@ internal static partial class AfterRunAuthorityHarness
 
         public void Dispose() => Coordinator.Dispose();
 
-        public Task<Page> EnterAsync(Sr5AfterRunSettlementEditorState editor, CancellationToken token = default)
+        public Task<Page> EnterAsync(Sr5AfterRunSettlementEditorState editor, CancellationToken token = default,
+            bool requestGovernedProposal = false)
             => Sr5AfterRunSettlementWizardPage.CreateEntryDestinationAsync(Coordinator, editor, token,
-                () => { DependencyReads++; return Dependencies; });
+                () => { DependencyReads++; return Dependencies; }, requestGovernedProposal);
     }
 
     private sealed class PageRewardBackend : ISr5AfterRunRewardJournalBackend
@@ -386,6 +435,8 @@ internal static partial class AfterRunAuthorityHarness
 
 // Test-only outer presenter/event adapters. Unexpected runtime calls throw;
 // the actual native coordinator, page, action gate and journal are not replaced.
+public interface IManualEntryCatalog : IAndroidAfterRunProposalCatalog, ISr5AfterRunManualProposalAuthority { }
+
 public class StrictPageProxy : DispatchProxy
 {
     private Func<object?>? _state;

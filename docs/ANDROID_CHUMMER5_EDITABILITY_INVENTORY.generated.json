@@ -677,7 +677,7 @@
       {
         "path": "src/Chummer.Android/Native/Sr5CareerWizardPage.cs",
         "exists": true,
-        "sha256": "ca139889ce489be48e727623bfc70faa5ce1c82915d3c9057f2748da5dc66665"
+        "sha256": "c712d33c4b052e6f24591cf7d677d13ff44598cab0efbb4f5f48aa5799fbf48a"
       },
       {
         "path": "src/Chummer.Android/Native/Sr5CareerWizardPhoneModel.cs",
@@ -707,7 +707,7 @@
       {
         "path": "src/Chummer.Android/Native/Sr5AfterRunSettlementWizardPage.cs",
         "exists": true,
-        "sha256": "95d595c5373c9a7ddfce114bf00ae25def0998c38a33541b3a6e9ed1ccfe61c4"
+        "sha256": "b3d41117600203819072e5a631a50adc2bae134364cc2abc69ef4024718b1891"
       },
       {
         "path": "src/Chummer.Android/Native/Sr5AfterRunWizardModel.cs",
@@ -992,7 +992,7 @@
       {
         "path": "tests/run_api36_sr5_after_run_settlement_e2e.py",
         "exists": true,
-        "sha256": "be88a047e01ab44cfc823ffe506b200a73cf4a9ab15589f41081df43dec80a23"
+        "sha256": "033ab8016d006304929a594417d8e92724c41a772f2ea4da344fb9f560326c16"
       },
       {
         "path": "tests/run_api36_sr5_after_run_settlement_hosted_e2e.py",
