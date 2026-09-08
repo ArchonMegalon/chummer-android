@@ -23,7 +23,7 @@ DEVICE_SCHEMA = "chummer.android.api36-arm64-physical-device/v1"
 SEAL_SCHEMA = "chummer.android.api36-arm64-physical-journey-seal/v1"
 AGGREGATE_SCHEMA = "chummer.android.api36-arm64-physical-six-journey/v1"
 BUILD_PROVENANCE_SCHEMA = "chummer.android.api36-arm64-physical-build-provenance/v3"
-SOURCE_GRAPH_SCHEMA = "chummer.android.release-source-graph/v2"
+SOURCE_GRAPH_SCHEMA = "chummer.android.release-source-graph/v3"
 PACKAGE = "com.myexternalbrain.chummer"
 TARGET_FRAMEWORK = "net10.0-android36.0"
 RUNTIME_IDENTIFIER = "android-arm64"
@@ -1157,12 +1157,12 @@ def write_json_exclusive(path: Path, payload: Mapping[str, object], repository_r
 
 
 def validate_source_graph(bound: BoundBytes) -> dict[str, object]:
-    graph = strict_json_bytes(bound.data, "v2 release source graph")
+    graph = strict_json_bytes(bound.data, "v3 release source graph")
     require_exact_keys(graph, {
         "contractName", "generatedAtUtc", "authorityState", "publicationAuthorized",
         "generator", "repositories", "packagePins", "ownerPackagePins",
-        "dependencyClosure", "presentationSource", "doesNotAssert",
-    }, "v2 release source graph")
+        "dependencyClosure", "presentationSource", "releaseIdentity", "doesNotAssert",
+    }, "v3 release source graph")
     if (
         graph.get("contractName") != SOURCE_GRAPH_SCHEMA
         or graph.get("authorityState") != "local_review_required"
@@ -1170,6 +1170,24 @@ def validate_source_graph(bound: BoundBytes) -> dict[str, object]:
         or graph.get("doesNotAssert") != list(SOURCE_GRAPH_DOES_NOT_ASSERT)
     ):
         raise ValueError("source graph contract/publication posture is not exact")
+    identity = require_exact_keys(graph.get("releaseIdentity"), {
+        "packageId", "versionName", "versionCode", "intentAuthority",
+        "minimumExclusiveVersionCode",
+    }, "source graph release identity")
+    if (
+        identity.get("packageId") != PACKAGE
+        or identity.get("intentAuthority") != "explicit_build_input"
+        or type(identity.get("minimumExclusiveVersionCode")) is not int
+        or identity.get("minimumExclusiveVersionCode") != 11
+    ):
+        raise ValueError("source graph release identity package/intent/floor is not exact")
+    version_name = require_string(identity.get("versionName"), "source graph version name")
+    if len(version_name) > 128 or re.fullmatch(
+        r"[0-9]+(?:\.[0-9]+){2}(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?",
+        version_name,
+    ) is None:
+        raise ValueError("source graph version name is not canonical")
+    require_integer(identity.get("versionCode"), "source graph version code", minimum=12)
     require_utc_timestamp(graph.get("generatedAtUtc"), "source graph generatedAtUtc", canonical_z=True)
     generator = require_exact_keys(
         graph.get("generator"), {"path", "sha256", "size_bytes"}, "source graph generator",
@@ -1691,6 +1709,12 @@ def validate_build_provenance(
         package_authority, presentation_source, references,
         repository_root or Path(__file__).resolve().parents[1], android_row,
     )
+    # The existing package-authority check above binds this checkout to the
+    # graph's exact clean Android commit/tree. Bind the v3 build intent to those
+    # project bytes, not to additional unauthenticated provenance claims.
+    release_project = _bind_physical_release_intent(
+        graph_payload, repository_root or Path(__file__).resolve().parents[1],
+    )
 
     content = require_exact_keys(
         value.get("content"), WP1_CONTENT_FIELDS, f"{WP1_COMMITTED_ADAPTER} content",
@@ -1757,7 +1781,32 @@ def validate_build_provenance(
     _validate_wp1_binding(restore.get("projectAssets"), "WP1 project assets")
     for captured, label in _all_build_provenance_references(references):
         require_unchanged(captured, label)
+    require_unchanged(release_project, "physical release intent project")
     return value
+
+
+def _bind_physical_release_intent(
+    graph: Mapping[str, object], repository_root: Path,
+) -> BoundBytes:
+    project = bind_regular(
+        repository_root / "src/Chummer.Android/Chummer.Android.csproj",
+        "physical release intent project",
+    )
+    try:
+        root = ET.fromstring(project.data)
+    except ET.ParseError as error:
+        raise ValueError("physical release intent project is not well-formed XML") from error
+    identity = graph["releaseIdentity"]
+    expected = {
+        "ApplicationId": identity["packageId"],
+        "ApplicationDisplayVersion": identity["versionName"],
+        "ApplicationVersion": str(identity["versionCode"]),
+    }
+    for name, value in expected.items():
+        matches = [element for element in root.iter() if element.tag.rsplit("}", 1)[-1] == name]
+        if len(matches) != 1 or (matches[0].text or "").strip() != value:
+            raise ValueError(f"source graph release identity differs from the Android project: {name}")
+    return project
 
 
 def validate_apk(bound: BoundBytes) -> None:
@@ -3349,7 +3398,7 @@ def capture_build_inputs(
 ) -> tuple[BoundBytes, BoundBytes, BoundBytes, dict[str, object]]:
     apk = bind_regular(apk_path, "ARM64 APK")
     validate_apk(apk)
-    graph = bind_regular(source_graph_path, "v2 source graph")
+    graph = bind_regular(source_graph_path, "v3 source graph")
     validate_source_graph(graph)
     provenance = bind_regular(build_provenance_path, "WP1 build provenance")
     provenance_payload = validate_build_provenance(
@@ -3412,7 +3461,7 @@ def create_journey_seal(
         or datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
     }
     for captured, label in (
-        (apk, "ARM64 APK"), (graph, "v2 source graph"),
+        (apk, "ARM64 APK"), (graph, "v3 source graph"),
         (provenance, "WP1 build provenance"), (device, "physical device observation"),
         (raw, f"{journey_id} raw receipt"),
         (restart_file, f"{journey_id} restart evidence"),
@@ -3520,7 +3569,7 @@ def create_aggregate(
         or datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
     }
     for captured, label in (
-        (apk, "ARM64 APK"), (graph, "v2 source graph"),
+        (apk, "ARM64 APK"), (graph, "v3 source graph"),
         (provenance, "WP1 build provenance"), (device, "physical device observation"),
         *captured_journey_files,
     ):
