@@ -459,7 +459,22 @@ public sealed class AndroidAccountLinkKeyAuthority
                 : current.Availability);
         }
 
+        // A Keystore probe is not atomic with metadata revocation. It can return its
+        // captured public key after unlink has removed every selector (including the
+        // cleanup tombstone), or after a newer grant has replaced the old binding.
+        // Require the exact selectors observed before that await to remain current.
+        string? observedInstallationId = await _metadataStore.GetAsync(
+            InstallationIdStorageKey, cancellationToken);
+        string? observedBinding = await _metadataStore.GetAsync(
+            BindingStorageKey, cancellationToken);
         await RequireCleanupCompletedAsync(cancellationToken);
+        if (!string.Equals(observedInstallationId, installationId, StringComparison.Ordinal)
+            || !string.Equals(observedBinding, serialized, StringComparison.Ordinal))
+        {
+            throw new AndroidDeviceRelinkRequiredException(
+                AndroidDeviceKeyAvailability.Invalidated,
+                "The stored account-link key binding changed during validation.");
+        }
         return identity;
     }
 

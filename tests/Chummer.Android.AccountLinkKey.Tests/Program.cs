@@ -30,10 +30,12 @@ internal static class Program
         await UnlinkFailureRemovesMetadataAndSurfacesTheCleanupFailureAsync();
         await PendingCleanupCannotAuthorizeOrRebindAfterRestartAsync();
         await InFlightSignatureCannotEscapeUnlinkOrGrantReplacementAsync();
+        await FinalPublicKeyProbeCannotReleaseRevokedSignatureAsync();
+        await BindingChangesDuringPublicKeyProbeFailClosedAsync();
         await SelectorReadCancellationPreservesTheOnlyCleanupRouteAsync();
         await SelectorReadFailurePreservesTheOnlyCleanupRouteAsync();
         await SelectorDeleteCancellationRetainsARecoverableOutcomeAsync();
-        Console.WriteLine("Android account-link key authority tests passed: 27");
+        Console.WriteLine("Android account-link key authority tests passed: 29");
     }
 
     private static async Task PersistedBindingNeverContainsPrivateKeyMaterialAsync()
@@ -642,6 +644,111 @@ internal static class Program
         }
     }
 
+    private static async Task BindingChangesDuringPublicKeyProbeFailClosedAsync()
+    {
+        foreach (string operation in new[] { "linked-read", "pending-read", "bind-grant" })
+        foreach (string transition in new[] { "unlink", "grant-replacement" })
+        {
+            MemoryMetadataStore metadata = new();
+            using MemoryDeviceKeyStore keys = new();
+            AndroidAccountLinkKeyAuthority authority = new(keys, metadata);
+            AndroidAccountLinkKeyIdentity pending = await authority.StartOrResumeExplicitLinkAsync();
+            if (operation == "linked-read")
+            {
+                await authority.BindGrantAsync(pending.InstallationId, "grant-one");
+            }
+            keys.BeforeReturningPublicKeyOnce = async () =>
+            {
+                if (transition == "unlink")
+                {
+                    await authority.RemoveAsync();
+                }
+                else
+                {
+                    await authority.BindGrantAsync(pending.InstallationId, "replacement-grant");
+                }
+            };
+            Func<Task> read = operation switch
+            {
+                "linked-read" => () => authority.RequireLinkedIdentityAsync(pending.InstallationId),
+                "pending-read" => () => authority.RequirePendingIdentityAsync(pending.InstallationId),
+                _ => () => authority.BindGrantAsync(pending.InstallationId, "stale-grant")
+            };
+            await RequireThrowsAsync<AndroidDeviceRelinkRequiredException>(read,
+                $"{operation} accepted a stale public-key snapshot across {transition}.");
+            if (transition == "unlink")
+            {
+                Require(metadata.Values.Count == 0 && keys.KeyCount == 0,
+                    "A stale lookup or grant bind revived authority after completed unlink.");
+            }
+            else
+            {
+                AndroidAccountLinkKeyIdentity current =
+                    await authority.RequireLinkedIdentityAsync(pending.InstallationId);
+                Require(current.GrantId == "replacement-grant", "The stale operation overwrote the new grant.");
+            }
+        }
+    }
+
+    private static async Task FinalPublicKeyProbeCannotReleaseRevokedSignatureAsync()
+    {
+        foreach (string transition in new[]
+                 { "unlink", "grant-replacement", "binding-read-failure", "binding-read-cancellation" })
+        {
+            MemoryMetadataStore metadata = new();
+            using MemoryDeviceKeyStore keys = new();
+            AndroidAccountLinkKeyAuthority authority = new(keys, metadata);
+            AndroidAccountLinkKeyIdentity pending = await authority.StartOrResumeExplicitLinkAsync();
+            await authority.BindGrantAsync(pending.InstallationId, "grant-one");
+            AndroidAccountLinkKeyIdentity identity =
+                await authority.RequireLinkedIdentityAsync(pending.InstallationId);
+            byte[]? captured = null;
+            keys.BeforeReturningSignature = signature =>
+            {
+                captured = signature;
+                keys.BeforeReturningPublicKeyOnce = async () =>
+                {
+                    if (transition == "binding-read-failure")
+                    {
+                        metadata.FailAfterGetKey = AndroidAccountLinkKeyAuthority.BindingStorageKey;
+                    }
+                    else if (transition == "binding-read-cancellation")
+                    {
+                        metadata.CancelAfterGetKey = AndroidAccountLinkKeyAuthority.BindingStorageKey;
+                    }
+                    else if (transition == "unlink")
+                    {
+                        await authority.RemoveAsync();
+                    }
+                    else
+                    {
+                        await authority.BindGrantAsync(identity.InstallationId, "grant-two");
+                    }
+                };
+                return Task.CompletedTask;
+            };
+            Func<Task> sign = () => authority.SignAsync(identity, "late-probe-proof"u8.ToArray());
+            if (transition == "binding-read-failure")
+            {
+                await RequireThrowsAsync<IOException>(sign, "An unread post-probe binding released a signature.");
+            }
+            else if (transition == "binding-read-cancellation")
+            {
+                await RequireThrowsAsync<OperationCanceledException>(sign,
+                    "Canceled post-probe binding verification released a signature.");
+            }
+            else
+            {
+                await RequireThrowsAsync<AndroidDeviceRelinkRequiredException>(sign,
+                    $"The final public-key probe released a stale signature across {transition}.");
+            }
+            Require(keys.SignCount == 1 && captured is { Length: > 0 },
+                "The fixture must compute one signature before its final public-key probe.");
+            Require(captured!.All(static value => value == 0),
+                "A signature rejected after the final key probe must be cleared.");
+        }
+    }
+
     private static async Task SelectorReadCancellationPreservesTheOnlyCleanupRouteAsync()
     {
         foreach (string selector in CleanupSelectorKeys())
@@ -894,6 +1001,8 @@ internal static class Program
 
         public Func<byte[], Task>? BeforeReturningSignature { get; set; }
 
+        public Func<Task>? BeforeReturningPublicKeyOnce { get; set; }
+
         public Task<AndroidDevicePublicKey> CreateAsync(
             string alias,
             CancellationToken cancellationToken = default)
@@ -913,21 +1022,28 @@ internal static class Program
                 Convert.ToBase64String(key.ExportSubjectPublicKeyInfo())));
         }
 
-        public Task<AndroidDevicePublicKey> GetPublicKeyAsync(
+        public async Task<AndroidDevicePublicKey> GetPublicKeyAsync(
             string alias,
             CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (_invalidated.Contains(alias))
             {
-                return Task.FromResult(new AndroidDevicePublicKey(AndroidDeviceKeyAvailability.Invalidated));
+                return new AndroidDevicePublicKey(AndroidDeviceKeyAvailability.Invalidated);
             }
 
-            return Task.FromResult(_keys.TryGetValue(alias, out RSA? key)
+            AndroidDevicePublicKey observed = _keys.TryGetValue(alias, out RSA? key)
                 ? new AndroidDevicePublicKey(
                     AndroidDeviceKeyAvailability.Available,
                     Convert.ToBase64String(key.ExportSubjectPublicKeyInfo()))
-                : new AndroidDevicePublicKey(AndroidDeviceKeyAvailability.Missing));
+                : new AndroidDevicePublicKey(AndroidDeviceKeyAvailability.Missing);
+            Func<Task>? beforeReturn = BeforeReturningPublicKeyOnce;
+            BeforeReturningPublicKeyOnce = null;
+            if (beforeReturn is not null)
+            {
+                await beforeReturn();
+            }
+            return observed;
         }
 
         public async Task<byte[]> SignAsync(
