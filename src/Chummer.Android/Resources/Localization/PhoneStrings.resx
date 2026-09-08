@@ -229,4 +229,9 @@ No change has been saved yet.</value></data>
   <data name="ReputationWizardSuperseded" xml:space="preserve"><value>Not applied · original revision superseded.</value></data>
   <data name="ReputationWizardRefreshRequired" xml:space="preserve"><value>The original result is retained, but the current runner could not be reloaded. Check the saved result; do not create a replacement request.</value></data>
   <data name="ReputationWizardRunnerChanged" xml:space="preserve"><value>The selected runner changed. Reopen Reputation for the current saved runner.</value></data>
+  <data name="TabletDraftPending" xml:space="preserve"><value>Unapplied changes retained in this session.</value></data>
+  <data name="TabletDraftConflict" xml:space="preserve"><value>This runner or its rules changed. Your previous input is retained below and has not been applied. Discard it explicitly before editing the current values.</value></data>
+  <data name="TabletDraftDiscard" xml:space="preserve"><value>Discard this draft</value></data>
+  <data name="TabletDraftDiscardTitle" xml:space="preserve"><value>Discard unapplied changes?</value></data>
+  <data name="TabletDraftDiscardPrompt" xml:space="preserve"><value>Only this item's retained input will be removed. The saved runner and other drafts will not change.</value></data>
 </root>

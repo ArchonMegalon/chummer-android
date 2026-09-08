@@ -11,6 +11,19 @@ internal static class TabletInspectorBindingTests
     private const string ItemBId = "22222222-2222-4222-8222-222222222222";
     public static async Task RunAsync()
     {
+        UnsavedCollectionDraftSurvivesSelectionAndRefresh();
+        UnsavedConditionDraftSurvivesTrackSelectionAndRefresh();
+        EquivalentProjectionAndRecreatedPagePreserveSelection();
+        IncompleteTypedFieldsSurviveSelectionAndRefresh();
+        RevisionAndFieldDriftRetainButNeverApplyDraft();
+        InPlaceFieldAuthorityDriftCannotApplyRetainedInput();
+        WorkspaceSwitchCannotLeakDrafts();
+        RetiredPageCannotOverwriteOrDeleteNewerDraft();
+        CompleteNestedIdentityAndCaseRemainBound();
+        ObservedSuccessCleanupRequiresExactSuccessorProjection();
+        AmbiguousCollectionReadbackCannotClearDraft();
+        await ExplicitDiscardIsScopedAndCancelSafeAsync();
+        await DelayedDiscardCannotEraseNewerInputAsync();
         DelayedDamageActionCannotMixTracksAndPickers();
         DetachedMoveCannotReorderThePreviousItem();
         DelayedApplyCannotMixTargetsAndControls();
@@ -22,6 +35,361 @@ internal static class TabletInspectorBindingTests
         await DeleteWaitRechecksAuthorityAfterConfirmationAsync();
         NestedChooserKeepsTheCurrentParent();
         Console.WriteLine("PASS tablet inspector action binding (managed native page/coordinator, not device persistence)");
+    }
+
+    private static void UnsavedCollectionDraftSurvivesSelectionAndRefresh()
+    {
+        using var fixture = new Fixture();
+        fixture.Notes.Text = "unsaved A notes";
+        fixture.Click($"tablet-collection-item-{ItemBId}");
+        fixture.Notes.Text = "unsaved B notes";
+        fixture.Click($"tablet-collection-item-{ItemAId}");
+        Require(fixture.Notes.Text == "unsaved A notes", "Switching back to A discarded its unsaved notes.");
+        fixture.Refresh();
+        Require(fixture.Notes.Text == "unsaved A notes", "Unchanged coordinator refresh discarded A's unsaved notes.");
+        fixture.Click($"tablet-collection-item-{ItemBId}");
+        Require(fixture.Notes.Text == "unsaved B notes", "Selecting A overwrote B's separate draft.");
+        Require(fixture.Requests.Count == 0, "Draft preservation changed the runner without Apply.");
+    }
+
+    private static void UnsavedConditionDraftSurvivesTrackSelectionAndRefresh()
+    {
+        using var fixture = new Fixture(condition: true);
+        fixture.Picker("tablet-condition-filled-physical").SelectedIndex = 7;
+        fixture.Click("tablet-condition-track-stun");
+        fixture.Picker("tablet-condition-filled-stun").SelectedIndex = 6;
+        fixture.Click("tablet-condition-track-physical");
+        Require(fixture.Picker("tablet-condition-filled-physical").SelectedIndex == 7,
+            "Track selection discarded unsubmitted Physical damage.");
+        fixture.Refresh();
+        Require(fixture.Picker("tablet-condition-filled-physical").SelectedIndex == 7,
+            "Unchanged refresh discarded the Physical draft.");
+        fixture.Click("tablet-condition-track-stun");
+        Require(fixture.Picker("tablet-condition-filled-stun").SelectedIndex == 6,
+            "Physical selection overwrote the separate Stun draft.");
+        Require(fixture.ConditionRequests.Count == 0, "Draft preservation applied damage without confirmation.");
+    }
+
+    private static void EquivalentProjectionAndRecreatedPagePreserveSelection()
+    {
+        using var fixture = new Fixture();
+        fixture.Click($"tablet-collection-item-{ItemBId}");
+        fixture.Notes.Text = "B across new page";
+        fixture.State = fixture.State with { ActiveCollectionEditor = Editor("saved A", "saved B") };
+        fixture.Refresh();
+        Require(fixture.Notes.Text == "B across new page", "Equivalent projection objects invalidated the draft.");
+        fixture.Recreate();
+        Require(fixture.Notes.Text == "B across new page", "Page recreation lost B's selection/input.");
+        Require(!fixture.Has("tablet-inspector-draft-conflict"), "Equivalent authority falsely conflicted.");
+        fixture.Click("tablet-inspector-save");
+        Require(fixture.Requests.Single() is WorkspacePatchCollectionItemRequest
+            { Target.ItemId: ItemBId, TextValues: { } values }
+            && values[WorkspaceCollectionTextField.Notes] == "B across new page",
+            "Restored current input did not use B's typed mutation boundary.");
+        fixture.Recreate();
+        Require(fixture.Notes.Text == "B across new page", "Canceled mutation erased B's retained input.");
+    }
+
+    private static void IncompleteTypedFieldsSurviveSelectionAndRefresh()
+    {
+        using var fixture = new Fixture(rich: true);
+        fixture.Input("tablet-rating").Text = "-";
+        fixture.Input("tablet-quantity").Text = "0.";
+        fixture.Input("tablet-contact-connection").Text = "";
+        fixture.Input("tablet-contact-loyalty").Text = "7x";
+        fixture.Toggle("tablet-toggle-equipped").IsToggled = true;
+        fixture.Picker("tablet-vehicle-physical-damage").SelectedIndex = 4;
+        fixture.Picker("tablet-gear-matrix-damage").SelectedIndex = -1;
+        fixture.Click($"tablet-collection-item-{ItemBId}");
+        fixture.Click($"tablet-collection-item-{ItemAId}");
+        fixture.Refresh();
+        fixture.Recreate();
+        Require(fixture.Input("tablet-rating").Text == "-" && fixture.Input("tablet-quantity").Text == "0."
+            && fixture.Input("tablet-contact-connection").Text == ""
+            && fixture.Input("tablet-contact-loyalty").Text == "7x",
+            "Unfinished numeric input was parsed, normalized, or lost before Apply.");
+        Require(fixture.Toggle("tablet-toggle-equipped").IsToggled
+            && fixture.Picker("tablet-vehicle-physical-damage").SelectedIndex == 4
+            && fixture.Picker("tablet-gear-matrix-damage").SelectedIndex == -1,
+            "Toggle/damage choices were lost or silently defaulted.");
+        Require(fixture.Requests.Count == 0, "Restoring raw input changed the runner.");
+    }
+
+    private static void RevisionAndFieldDriftRetainButNeverApplyDraft()
+    {
+        foreach (bool revision in new[] { true, false })
+        {
+            using var fixture = new Fixture();
+            fixture.Notes.Text = "retain the entire old note";
+            if (revision) fixture.AdvanceRevision();
+            else fixture.State = fixture.State with { ActiveCollectionEditor = fixture.State.ActiveCollectionEditor! with
+            {
+                Items = fixture.State.ActiveCollectionEditor!.Items.Select(item => item with
+                { TextValues = [new(WorkspaceCollectionTextField.Notes, "new", MaximumLength: 3)] }).ToArray()
+            }};
+            fixture.Refresh();
+            Require(fixture.Has("tablet-inspector-draft-conflict"), "Changed authority silently rebased retained input.");
+            Require(fixture.Label("tablet-retained-tablet-field-notes").Text.Contains("retain the entire old note",
+                StringComparison.Ordinal), "Conflicted input was truncated or lost.");
+            fixture.Click("tablet-inspector-save");
+            Require(fixture.Requests.Count == 0, "Conflicted draft was applied through a disabled button callback.");
+            fixture.Recreate();
+            Require(fixture.Has("tablet-inspector-draft-conflict")
+                && fixture.Label("tablet-retained-tablet-field-notes").Text.Contains("retain the entire old note",
+                    StringComparison.Ordinal), "Conflict was lost when the page was recreated.");
+        }
+        using var condition = new Fixture(condition: true);
+        condition.Picker("tablet-condition-filled-physical").SelectedIndex = 7;
+        condition.AdvanceRevision();
+        condition.Refresh();
+        condition.Click("tablet-condition-save-physical");
+        condition.Click("tablet-condition-clear-physical");
+        Require(condition.ConditionRequests.Count == 0 && condition.Has("tablet-inspector-draft-conflict"),
+            "Revision-conflicted damage draft was silently applied or cleared.");
+    }
+
+    private static void WorkspaceSwitchCannotLeakDrafts()
+    {
+        using var fixture = new Fixture();
+        CharacterOverviewState first = fixture.State;
+        fixture.Click($"tablet-collection-item-{ItemBId}");
+        fixture.Notes.Text = "private workspace B draft";
+        fixture.State = Program.NewCreationOverview(new("another-tablet-runner"), 5, 5) with
+        {
+            ActiveSectionId = "gear", ActiveCollectionEditor = Editor("other A", "other B")
+        };
+        fixture.Refresh();
+        Require(fixture.Notes.Text == "other A" && !fixture.Has("tablet-inspector-draft-conflict"),
+            "Same item IDs leaked a draft into another workspace.");
+        fixture.State = first;
+        fixture.Refresh();
+        Require(fixture.Notes.Text == "private workspace B draft",
+            "Returning to the original workspace lost its selected draft.");
+    }
+
+    private static void InPlaceFieldAuthorityDriftCannotApplyRetainedInput()
+    {
+        using var fixture = new Fixture();
+        WorkspaceCollectionTextValueState[] values = fixture.State.ActiveCollectionEditor!.Items[0].TextValues.ToArray();
+        fixture.State = fixture.State with { ActiveCollectionEditor = fixture.State.ActiveCollectionEditor with
+        {
+            Items = fixture.State.ActiveCollectionEditor.Items.Select((item, index) =>
+                index == 0 ? item with { TextValues = values } : item).ToArray()
+        }};
+        fixture.Refresh();
+        fixture.Notes.Text = "not allowed after in-place authority drift";
+        values[0] = values[0] with { IsEnabled = false };
+        fixture.Click("tablet-inspector-save");
+        Require(fixture.Requests.Count == 0 && fixture.Notes.Text == "not allowed after in-place authority drift",
+            "Reference-equal editor mutation bypassed the captured field authority or erased input.");
+    }
+
+    private static async Task ExplicitDiscardIsScopedAndCancelSafeAsync()
+    {
+        using var fixture = new Fixture();
+        fixture.Notes.Text = "keep A until confirmed";
+        fixture.Click($"tablet-collection-item-{ItemBId}");
+        fixture.Notes.Text = "always keep B";
+        fixture.Click($"tablet-collection-item-{ItemAId}");
+        await fixture.DiscardAsync();
+        Require(fixture.Notes.Text == "keep A until confirmed", "Canceled discard destroyed input.");
+        fixture.Confirmation = Task.FromResult(true);
+        await fixture.DiscardAsync();
+        fixture.Refresh();
+        Require(fixture.Notes.Text == "saved A", "Confirmed discard did not restore A's current values.");
+        fixture.Click($"tablet-collection-item-{ItemBId}");
+        Require(fixture.Notes.Text == "always keep B" && fixture.Requests.Count == 0,
+            "Discarding A altered B or the saved runner.");
+        var pending = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        fixture.Confirmation = pending.Task;
+        Task discard = fixture.DiscardAsync();
+        fixture.Click($"tablet-collection-item-{ItemAId}");
+        pending.SetResult(true);
+        await discard;
+        fixture.Click($"tablet-collection-item-{ItemBId}");
+        Require(fixture.Notes.Text == "always keep B", "Delayed confirmation discarded a different render's draft.");
+    }
+
+    private static async Task DelayedDiscardCannotEraseNewerInputAsync()
+    {
+        using var fixture = new Fixture();
+        fixture.Notes.Text = "reviewed for discard";
+        var pending = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        fixture.Confirmation = pending.Task;
+        Task discard = fixture.DiscardAsync();
+        fixture.Notes.Text = "typed after discard review";
+        pending.SetResult(true);
+        await discard;
+        fixture.Recreate();
+        Require(fixture.Notes.Text == "typed after discard review",
+            "Delayed discard erased newer input from the same render.");
+    }
+
+    private static void RetiredPageCannotOverwriteOrDeleteNewerDraft()
+    {
+        using var fixture = new Fixture();
+        TabletBuildPage retired = fixture.Page;
+        InputView retiredNotes = fixture.Notes;
+        fixture.Recreate();
+        fixture.Notes.Text = "new page owns this draft";
+        retiredNotes.Text = "late callback on detached control";
+        typeof(TabletBuildPage).GetMethod("OnDisappearing", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .Invoke(retired, null);
+        fixture.Recreate();
+        Require(fixture.Notes.Text == "new page owns this draft",
+            "A departed page's later capture overwrote the current page's input.");
+
+        TabletBuildPage pristine = new(fixture.Coordinator);
+        typeof(TabletBuildPage).GetMethod("Refresh", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .Invoke(pristine, null);
+        fixture.Refresh(); // reclaims the writer lease
+        fixture.Notes.Text = "newer than the other page's binding";
+        typeof(TabletBuildPage).GetMethod("Refresh", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .Invoke(pristine, null);
+        InputView restored = Elements(pristine).OfType<InputView>()
+            .Single(input => input.AutomationId == "tablet-field-notes");
+        Require(restored.Text == "newer than the other page's binding",
+            "An older page recaptured its pristine/stale controls over a newer same-key draft.");
+    }
+
+    private static void CompleteNestedIdentityAndCaseRemainBound()
+    {
+        using var fixture = new Fixture();
+        const string childId = "abcdefab-1234-4234-8234-123456789abc";
+        WorkspaceCollectionItemEditorState first = Item(ItemAId, 0, "parent A saved") with
+        { Target = new(WorkspaceCollectionKind.Gear, ItemAId, WorkspaceNestedCollectionKind.Gear, childId) };
+        fixture.State = fixture.State with { ActiveCollectionEditor = new("gear", WorkspaceCollectionKind.Gear,
+            WorkspaceNestedCollectionKind.Gear, [first]) };
+        fixture.Refresh();
+        fixture.Notes.Text = "parent A retained";
+        CharacterOverviewState original = fixture.State;
+        fixture.State = fixture.State with { ActiveCollectionEditor = fixture.State.ActiveCollectionEditor with
+        { Items = [first with { Target = first.Target with { ItemId = ItemBId }, TextValues =
+            [new(WorkspaceCollectionTextField.Notes, "parent B saved")] }] }};
+        fixture.Refresh();
+        Require(fixture.Notes.Text == "parent B saved", "A child ID alone selected another parent's draft.");
+        fixture.Notes.Text = "parent B retained";
+        fixture.State = original with { ActiveCollectionEditor = original.ActiveCollectionEditor! with
+        { Items = [first with { Target = first.Target with { NestedItemId = childId.ToUpperInvariant() } }] }};
+        fixture.Refresh();
+        Require(fixture.Notes.Text == "parent A retained" && !fixture.Has("tablet-inspector-draft-conflict"),
+            "Case-only typed ID formatting lost or invalidated the same nested target.");
+        fixture.State = fixture.State with { ActiveSectionId = "other-gear-section" };
+        fixture.Refresh();
+        Require(fixture.Notes.Text == "parent A saved", "A draft escaped its section boundary.");
+    }
+
+    private static void ObservedSuccessCleanupRequiresExactSuccessorProjection()
+    {
+        foreach (string family in new[] { "collection", "condition", "attribute" })
+        foreach (bool exact in new[] { false, true })
+        foreach (string lifetime in new[] { "same-page", "refresh", "departure", "recreated", "newer-input-aba" })
+        {
+            using var fixture = new Fixture(condition: family == "condition");
+            if (family == "attribute")
+            {
+                fixture.State = fixture.State with { ActiveCollectionEditor = null, ActiveSectionId = "attributes",
+                    ActiveSectionJson = AttributeJson(2, 0) };
+                fixture.Refresh();
+                fixture.Picker("tablet-attribute-base-body").SelectedIndex = 3; // value 4, minimum 1
+                fixture.Picker("tablet-attribute-karma-body").SelectedIndex = 1;
+            }
+            else if (family == "condition") fixture.Picker("tablet-condition-filled-physical").SelectedIndex = 7;
+            else fixture.Notes.Text = "applied note";
+            CharacterOverviewState expected = fixture.State;
+            object? draft = typeof(TabletBuildPage).GetField("_renderedDraft",
+                BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(fixture.Page);
+            TabletBuildPage operationPage = fixture.Page;
+            if (lifetime == "newer-input-aba")
+            {
+                // Even equal final text must not authorize an older completion
+                // to clear a newly edited draft incarnation.
+                if (family == "attribute")
+                {
+                    fixture.Picker("tablet-attribute-base-body").SelectedIndex = 2;
+                    fixture.Picker("tablet-attribute-base-body").SelectedIndex = 3;
+                }
+                else if (family == "condition")
+                {
+                    fixture.Picker("tablet-condition-filled-physical").SelectedIndex = 6;
+                    fixture.Picker("tablet-condition-filled-physical").SelectedIndex = 7;
+                }
+                else
+                {
+                    fixture.Notes.Text = "new input";
+                    fixture.Notes.Text = "applied note";
+                }
+                fixture.Recreate();
+            }
+            else if (lifetime == "refresh") fixture.Refresh();
+            else if (lifetime == "departure") fixture.Depart();
+            else if (lifetime == "recreated") fixture.Recreate();
+            fixture.AdvanceRevision();
+            string matcher;
+            object[] arguments;
+            if (family == "attribute")
+            {
+                fixture.State = fixture.State with { ActiveSectionJson = AttributeJson(4, exact ? 1 : 0) };
+                matcher = "AttributeEditObserved";
+                arguments = ["body", 4, 1];
+            }
+            else if (family == "condition")
+            {
+                fixture.State = fixture.State with { ActiveConditionMonitor = fixture.State.ActiveConditionMonitor! with
+                { Tracks = fixture.State.ActiveConditionMonitor!.Tracks.Select(track => track with
+                    { Filled = track.Track == WorkspaceConditionMonitorTrack.Physical && exact ? 7 : track.Filled }).ToArray() }};
+                matcher = "ConditionEditObserved";
+                arguments = [new ConditionMonitorEditRequest(WorkspaceConditionMonitorTrack.Physical, 7)];
+            }
+            else
+            {
+                fixture.State = fixture.State with { ActiveCollectionEditor = Editor(exact ? "applied note" : "different", "saved B") };
+                matcher = "CollectionPatchObserved";
+                arguments = [new WorkspacePatchCollectionItemRequest(new(WorkspaceCollectionKind.Gear, ItemAId),
+                    TextValues: new Dictionary<WorkspaceCollectionTextField, string?>
+                    { [WorkspaceCollectionTextField.Notes] = "applied note" })];
+            }
+            Func<CharacterOverviewState, bool> matches = current => (bool)typeof(TabletBuildPage)
+                .GetMethod(matcher, BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null, [current, ..arguments])!;
+            typeof(TabletBuildPage).GetMethod("ForgetObservedAppliedDraft", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .Invoke(operationPage, [expected, draft, matches]);
+            fixture.Refresh();
+            fixture.Recreate();
+            Require(fixture.Has("tablet-inspector-draft-conflict") == (!exact || lifetime == "newer-input-aba"),
+                $"{family}/{lifetime}: cleanup lost newer input or retained an exactly applied unchanged draft.");
+        }
+        // These are synthetic typed readback tests of the real cleanup logic.
+        // They do not assert that Core writes, save receipts or process restart occurred.
+    }
+
+    private static string AttributeJson(int baseValue, int karma)
+        => System.Text.Json.JsonSerializer.Serialize(new { attributes = new[]
+        {
+            new { name = "body", baseValue, karmaValue = karma, totalValue = baseValue + karma,
+                metatypeMin = 1, metatypeMax = 6, metatypeAugMax = 9, priorityMaximum = 6,
+                karmaMaximum = 6, baseUnlocked = true, created = false }
+        }});
+
+    private static void AmbiguousCollectionReadbackCannotClearDraft()
+    {
+        using var fixture = new Fixture();
+        var target = new WorkspaceCollectionItemTarget(WorkspaceCollectionKind.Gear, ItemAId);
+        WorkspaceCollectionItemEditorState item = fixture.State.ActiveCollectionEditor!.Items[0];
+        var method = typeof(TabletBuildPage).GetMethod("CollectionPatchObserved", BindingFlags.Static | BindingFlags.NonPublic)!;
+        foreach (bool toggle in new[] { false, true })
+        {
+            var request = toggle
+                ? new WorkspacePatchCollectionItemRequest(target,
+                    ToggleValues: new Dictionary<WorkspaceCollectionToggleField, bool> { [WorkspaceCollectionToggleField.Equipped] = true })
+                : new WorkspacePatchCollectionItemRequest(target,
+                    TextValues: new Dictionary<WorkspaceCollectionTextField, string?> { [WorkspaceCollectionTextField.Notes] = "wanted" });
+            WorkspaceCollectionItemEditorState ambiguous = toggle
+                ? item with { ToggleValues = [new(WorkspaceCollectionToggleField.Equipped, true), new(WorkspaceCollectionToggleField.Equipped, false)] }
+                : item with { TextValues = [new(WorkspaceCollectionTextField.Notes, "wanted"), new(WorkspaceCollectionTextField.Notes, "other")] };
+            CharacterOverviewState state = fixture.State with { ActiveCollectionEditor = fixture.State.ActiveCollectionEditor with
+                { Items = [ambiguous] } };
+            Require(!(bool)method.Invoke(null, [state, request])!, "Ambiguous duplicate-field readback was accepted as exact.");
+        }
     }
 
     private static void DelayedDamageActionCannotMixTracksAndPickers()
@@ -355,12 +723,12 @@ internal static class TabletInspectorBindingTests
         public readonly List<WorkspaceCollectionMutationRequest> Requests = [];
         public readonly List<ConditionMonitorEditRequest> ConditionRequests = [];
         public readonly RunnerSessionCoordinator Coordinator;
-        public readonly TabletBuildPage Page;
+        public TabletBuildPage Page;
         public Task<bool> Confirmation = Task.FromResult(false);
         public int DialogCalls;
         public string Prompt = string.Empty;
 
-        public Fixture(bool condition = false, bool mutable = false, bool nested = false)
+        public Fixture(bool condition = false, bool mutable = false, bool nested = false, bool rich = false)
         {
             if (condition)
                 State = State with
@@ -383,19 +751,33 @@ internal static class TabletInspectorBindingTests
                     Items = State.ActiveCollectionEditor!.Items.Select(item => item with
                     { AddableNestedKinds = [WorkspaceNestedCollectionKind.Gear] }).ToArray()
                 }};
+            if (rich)
+                State = State with { ActiveCollectionEditor = State.ActiveCollectionEditor! with
+                {
+                    Items = State.ActiveCollectionEditor!.Items.Select(item => item with
+                    {
+                        Rating = new(1, 0, 6), Quantity = new(1),
+                        Contact = new(2, 6, true, 2, 6, true, true),
+                        ToggleValues = [new(WorkspaceCollectionToggleField.Equipped, false)],
+                        PhysicalConditionMonitor = new("Physical", 1, 10, true, true),
+                        MatrixConditionMonitor = new("Matrix", 2, 10, true, true)
+                    }).ToArray()
+                }};
             var presenter = TabletMutationProxy.Create(() => State, Requests.Add, ConditionRequests.Add);
             Coordinator = new RunnerSessionCoordinator(presenter,
                 null!, null!, null!, null!, null!, null!, StrictPageProxy.Create<IShellPresenter>(),
                 null!, null!, null!, null!, null!, StrictPageProxy.Create<IAndroidAccountLinkService>(),
                 null!, null!);
-            Page = new(Coordinator, (_, message, _, _) =>
+            Page = NewPage();
+            Refresh();
+        }
+
+        private TabletBuildPage NewPage() => new(Coordinator, (_, message, _, _) =>
             {
                 DialogCalls++;
                 Prompt = message;
                 return Confirmation;
             });
-            Refresh();
-        }
 
         public InputView Notes => Elements(Page).OfType<InputView>()
             .Single(input => input.AutomationId == "tablet-field-notes");
@@ -403,6 +785,21 @@ internal static class TabletInspectorBindingTests
             .Single(button => button.AutomationId == id);
         public Picker Picker(string id) => Elements(Page).OfType<Picker>()
             .Single(picker => picker.AutomationId == id);
+        public InputView Input(string id) => Elements(Page).OfType<InputView>()
+            .Single(input => input.AutomationId == id);
+        public Switch Toggle(string id) => Elements(Page).OfType<Switch>()
+            .Single(input => input.AutomationId == id);
+        public Label Label(string id) => Elements(Page).OfType<Label>()
+            .Single(input => input.AutomationId == id);
+        public bool Has(string id) => Elements(Page).Any(element => element.AutomationId == id);
+        public void Recreate()
+        {
+            Depart();
+            Page = NewPage();
+            Refresh();
+        }
+        public Task DiscardAsync() => (Task)typeof(TabletBuildPage).GetMethod("DiscardInspectorDraftAsync",
+            BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(Page, [State, Generation])!;
         public long Generation => (long)typeof(TabletBuildPage).GetField("_inspectorGeneration",
             BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(Page)!;
         public SemaphoreSlim ActivationGate => (SemaphoreSlim)typeof(RunnerSessionCoordinator)

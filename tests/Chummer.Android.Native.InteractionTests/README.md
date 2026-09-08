@@ -20,6 +20,26 @@ actions forward exactly once. The nested-add row uses a real managed MAUI
 The managed stack changes without an Android handler; its later animation event
 is not required or claimed as device navigation proof.
 
+The same wrapper exercises unsubmitted tablet drafts through A/B/A selection,
+fresh equivalent projections, same-process page recreation, workspace isolation,
+incomplete numeric text, toggle/picker values and missing picker choices. Revision
+or field-authority drift retains the old input visibly without enabling Apply.
+Explicit discard tests cover cancel, another item's retained draft and a delayed
+confirmation after selection or input changes. A mutable-projection hostile test
+verifies that reference equality alone cannot authorize retained input. Writer
+leases prevent older page captures from overwriting newer drafts. Full nested
+parent identity, case-only IDs and section isolation are exercised separately.
+
+Synthetic successor readbacks exercise the real collection, condition and
+attribute cleanup predicates. Exact completion can retire an unchanged draft
+after refresh, departure or same-process page replacement; partial or ambiguous
+readback cannot. Newer edits, including A-to-B-to-A input, survive an old operation's
+completion. These controlled projections are not successful Core mutation proof.
+
+Drafts are coordinator-session memory, not saved runner state or durable recovery.
+The tests do not prove process-death recovery, successful attribute atomicity,
+complete tablet input coverage, or API-36 persistence.
+
 The tablet presenter spy records typed requests and cancels before Core mutation
 and shell synchronization. These checks prove native routing and stale-action
 rejection, not successful Core writes, durable persistence, rotation, or Android

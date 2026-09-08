@@ -295,6 +295,7 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
     private readonly CharacterRosterFavoritePresenter _rosterFavoritePresenter;
     private readonly ApplicationDeleteConfirmationPresenter _applicationSettingsPresenter;
     private readonly RookConversationStore _rookConversations = new();
+    internal TabletInspectorDraftStore TabletInspectorDrafts { get; } = new();
     private readonly SemaphoreSlim _initializeGate = new(1, 1);
     private readonly SemaphoreSlim _workspaceActivationGate = new(1, 1);
     private readonly SemaphoreSlim _outputGate = new(1, 1);
@@ -7070,6 +7071,7 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         }
 
         _disposed = true;
+        TabletInspectorDrafts.Clear();
         AdvanceAfterRunRewardSelection();
         _lifetime.Cancel();
         lock (_workspaceAuthoritySync)

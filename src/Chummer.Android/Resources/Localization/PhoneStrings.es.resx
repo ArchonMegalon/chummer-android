@@ -229,4 +229,9 @@ Todavía no se ha guardado ningún cambio.</value></data>
   <data name="ReputationWizardSuperseded" xml:space="preserve"><value>No aplicado · revisión original obsoleta.</value></data>
   <data name="ReputationWizardRefreshRequired" xml:space="preserve"><value>Se conserva el resultado original, pero no se pudo recargar el personaje. Comprueba el resultado guardado; no crees una solicitud de reemplazo.</value></data>
   <data name="ReputationWizardRunnerChanged" xml:space="preserve"><value>El personaje seleccionado cambió. Vuelve a abrir Reputación para el personaje actual.</value></data>
+  <data name="TabletDraftPending" xml:space="preserve"><value>Los cambios sin aplicar se conservan durante esta sesión.</value></data>
+  <data name="TabletDraftConflict" xml:space="preserve"><value>El runner o sus reglas han cambiado. Tus datos anteriores se conservan abajo y no se han aplicado. Descártalos explícitamente antes de editar los valores actuales.</value></data>
+  <data name="TabletDraftDiscard" xml:space="preserve"><value>Descartar este borrador</value></data>
+  <data name="TabletDraftDiscardTitle" xml:space="preserve"><value>¿Descartar los cambios sin aplicar?</value></data>
+  <data name="TabletDraftDiscardPrompt" xml:space="preserve"><value>Solo se descartarán los datos de este elemento. El runner guardado y los demás borradores no cambiarán.</value></data>
 </root>

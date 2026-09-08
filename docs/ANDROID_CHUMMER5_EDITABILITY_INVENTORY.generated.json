@@ -652,7 +652,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "cd045067197c046949bcd066dd47447c377188f05516dec0f8ad48d5c566fe2d"
+        "sha256": "2b8f5206bc1242f9e218a674748d0ec0896c3f9b842d7f475a62e21e03424b5c"
       },
       {
         "path": "src/Chummer.Android/Native/RunnerSessionSr5CareerWizardPhoneAuthority.cs",
@@ -1022,7 +1022,7 @@
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
         "exists": true,
-        "sha256": "924503aac5d53369e67992ce134f2a094a6e093e99832ecc7ee96f8a2cf0fdc3"
+        "sha256": "8f1fba3612d77a947cf047387f7d494ba5b2359407b003295a257828e73dae07"
       },
       {
         "path": "src/Chummer.Android/Platform/IAndroidLinkedCharacterFileService.cs",

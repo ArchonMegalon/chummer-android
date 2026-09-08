@@ -229,4 +229,9 @@ Noch wurde nichts gespeichert.</value></data>
   <data name="ReputationWizardSuperseded" xml:space="preserve"><value>Nicht angewendet · ursprüngliche Revision überholt.</value></data>
   <data name="ReputationWizardRefreshRequired" xml:space="preserve"><value>Das ursprüngliche Ergebnis bleibt erhalten, aber der aktuelle Runner konnte nicht neu geladen werden. Prüfe das gespeicherte Ergebnis; lege keinen Ersatzauftrag an.</value></data>
   <data name="ReputationWizardRunnerChanged" xml:space="preserve"><value>Der gewählte Runner hat sich geändert. Öffne Ruf für den aktuellen gespeicherten Runner erneut.</value></data>
+  <data name="TabletDraftPending" xml:space="preserve"><value>Noch nicht übernommene Eingaben bleiben in dieser Sitzung erhalten.</value></data>
+  <data name="TabletDraftConflict" xml:space="preserve"><value>Der Runner oder seine Regeln wurden geändert. Deine bisherigen Eingaben bleiben unten sichtbar und wurden nicht übernommen. Verwirf sie ausdrücklich, bevor du die aktuellen Werte bearbeitest.</value></data>
+  <data name="TabletDraftDiscard" xml:space="preserve"><value>Diesen Entwurf verwerfen</value></data>
+  <data name="TabletDraftDiscardTitle" xml:space="preserve"><value>Nicht übernommene Eingaben verwerfen?</value></data>
+  <data name="TabletDraftDiscardPrompt" xml:space="preserve"><value>Nur die Eingaben dieses Eintrags werden verworfen. Der gespeicherte Runner und andere Entwürfe bleiben unverändert.</value></data>
 </root>
