@@ -707,7 +707,7 @@
       {
         "path": "src/Chummer.Android/Native/Sr5AfterRunSettlementWizardPage.cs",
         "exists": true,
-        "sha256": "b3d41117600203819072e5a631a50adc2bae134364cc2abc69ef4024718b1891"
+        "sha256": "ff6ae7a7c16d14c5a0952b637d104e7538d7ad6f4b25a64330c26b14ff9c79f8"
       },
       {
         "path": "src/Chummer.Android/Native/Sr5AfterRunWizardModel.cs",
@@ -812,7 +812,7 @@
       {
         "path": ".github/workflows/api36-editing-e2e.yml",
         "exists": true,
-        "sha256": "0c177583cca0ab918029e79bb168d1057b8a763d1c98ce0493c93cbd01b4bd5d"
+        "sha256": "819e4b726581abc1680b336793f2ee921afff390dcc0f7d6783014328a5a1c86"
       },
       {
         "path": ".github/workflows/api36-two-consecutive-green.yml",
@@ -887,7 +887,7 @@
       {
         "path": "scripts/verify-api36-editing-e2e-aggregate.py",
         "exists": true,
-        "sha256": "ab94b7d1835550b982fd457546474b45f362766ad0797753ef46c728a35b6124"
+        "sha256": "3a94f7c3547c71a2bc70454b74fe823d9bf126e2b238614bc3e53797c58a00e1"
       },
       {
         "path": "src/Chummer.Android/Chummer.Android.csproj",
@@ -912,12 +912,12 @@
       {
         "path": "tests/test_api36_e2e_workflow.py",
         "exists": true,
-        "sha256": "d9df8aa0d22c832ef6aed70842dcc9ea6323a248abea784908503698560f1874"
+        "sha256": "89c23986fa14a1663d7932ae3531e3b065a233fa5349f4ec06517246a2f26e28"
       },
       {
         "path": "tests/test_api36_e2e_artifact_authority.py",
         "exists": true,
-        "sha256": "99d879ab64fe9136b9a43eadc8a0c4513ddc2da5faba5d4cbce5e10d7a82bc3a"
+        "sha256": "c0ea4111ee38ec183e27f7be782fb68e2a782c487d67ae28e428ed14f597c6e4"
       },
       {
         "path": "tests/test_api36_proof_environment_receipt.py",
@@ -1452,7 +1452,7 @@
       {
         "path": "tests/run_api36_creation_prerequisite_e2e.py",
         "exists": true,
-        "sha256": "89df17fc8f6c199bb381ff3a7254089e458fcf3f72b60a2063b52d9ae1a44f9b"
+        "sha256": "8e8b8fd5ff33a7af59de28b316249fda7baa7528e5b37b32719b9ac67d1e3683"
       },
       {
         "path": "tests/fixtures/career-condition-monitor-e2e.chum5",
