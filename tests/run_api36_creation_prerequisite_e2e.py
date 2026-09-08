@@ -10318,6 +10318,79 @@ RESOURCES_BINDING_AUTHORITY_SELECTORS = (
 RESOURCES_ZERO_CONVERSION_OPTION_ID = "creation-resources-option-karma-0"
 
 
+def open_resources_technical_details(
+    device: shared.Device,
+    *,
+    deadline: float | None = None,
+) -> None:
+    """Open the real read-only disclosure once; never substitute missing proof.
+
+    A prior reader may have left it open. Only the exact localized show state
+    permits a tap; the existing full-value authority scan still owns proof.
+    """
+    operation_deadline = time.monotonic() + 60
+    if deadline is not None:
+        operation_deadline = min(operation_deadline, deadline)
+    shared._remaining_operation_timeout(deadline=operation_deadline, maximum=60)
+    selector = "creation-resources-technical-details-toggle"
+    states = {
+        "show technical details": "hide technical details",
+        "technische details anzeigen": "technische details ausblenden",
+        "mostrar detalles técnicos": "ocultar detalles técnicos",
+    }
+    toggle = device.wait_exact_resource_id_bidirectional(
+        selector,
+        timeout=60,
+        backward_scrolls=22,
+        forward_scrolls=22,
+        scroll_distance_ratio=0.22,
+        evidence_prefix="creation-resources-technical-details",
+        surface_name="Resources technical details disclosure",
+        deadline=operation_deadline,
+    )
+
+    def state(node: shared.UiNode) -> str:
+        _require_canonical_chummer_resource_id(
+            device,
+            node,
+            selector,
+            evidence_prefix="creation-resources-technical-details",
+            surface_name="Resources technical details disclosure",
+            deadline=operation_deadline,
+        )
+        value = node.attributes.get("text", "").strip().casefold()
+        if value not in states and value not in states.values():
+            raise RuntimeError("Resources technical details disclosure state was not recognized")
+        return value
+
+    initial = state(toggle)
+    if initial in states.values():
+        return
+    if (
+        toggle.attributes.get("enabled") != "true"
+        or toggle.attributes.get("clickable") != "true"
+        or not device.node_has_tappable_bounds(toggle, deadline=operation_deadline)
+    ):
+        raise RuntimeError("Resources technical details disclosure was not tappable")
+    device.shell(
+        "input", "tap", *(str(value) for value in toggle.center),
+        timeout=shared._remaining_operation_timeout(deadline=operation_deadline, maximum=15),
+        deadline=operation_deadline,
+    )
+    while time.monotonic() < operation_deadline:
+        observed = device.wait_for_single_exact_resource_id(
+            selector,
+            timeout=15,
+            evidence_prefix="creation-resources-technical-details-open",
+            surface_name="Opened Resources technical details disclosure",
+            deadline=operation_deadline,
+        )
+        if state(observed) == states[initial]:
+            return
+        shared._sleep_before_operation_deadline(0.2, deadline=operation_deadline)
+    raise RuntimeError("Resources technical details disclosure did not open after one tap")
+
+
 def resources_authority_from_nodes(
     nodes: dict[str, shared.UiNode],
 ) -> dict[str, object]:
@@ -10384,6 +10457,7 @@ def read_resources_binding_with_zero_option(
     by the measured topology and cannot fall back to a second bidirectional
     whole-page search or replay any mutation.
     """
+    open_resources_technical_details(device, deadline=deadline)
     scan = scan_deadline_bound_resources_surface(
         device,
         (*RESOURCES_BINDING_AUTHORITY_SELECTORS, RESOURCES_ZERO_CONVERSION_OPTION_ID),
@@ -10457,6 +10531,7 @@ def read_resources_binding(
     scan_observer: Callable[[dict[str, object]], None] | None = None,
     scan_id: str = "creation-resources-binding-authority",
 ) -> dict[str, object]:
+    open_resources_technical_details(device, deadline=deadline)
     if deadline is not None:
         nodes = scan_deadline_bound_resources_surface(
             device,
@@ -10841,6 +10916,7 @@ def read_persisted_resources_authority(
     scan_id: str = "creation-resources-persisted-authority",
 ) -> dict[str, object]:
     if deadline is not None:
+        open_resources_technical_details(device, deadline=deadline)
         nodes = scan_deadline_bound_resources_surface(
             device,
             (

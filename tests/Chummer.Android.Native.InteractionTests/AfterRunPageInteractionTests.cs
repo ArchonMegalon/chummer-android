@@ -434,6 +434,21 @@ internal static partial class AfterRunAuthorityHarness
                 && fixture.Backend.Payload == receiptPayload && fixture.OwnerBackend.Payload.Length == 0
                 && fixture.ServiceCalls == 0,
             "Read-only receipt fallback changed journals or invoked mutation/lookup authority.");
+        var receiptBody = (VerticalStackLayout)((ScrollView)((ContentPage)route).Content!).Content;
+        var receiptCard = (VerticalStackLayout)receiptBody.Children.OfType<Border>().Single().Content!;
+        foreach ((string id, string expected) in new[]
+        {
+            ("sr5-after-run-receipt-transaction-id", applied.Receipt!.TransactionId.ToString("D")),
+            ("sr5-after-run-receipt-digest", applied.Receipt.ReceiptDigest)
+        })
+        {
+            var row = receiptCard.Children.OfType<VerticalStackLayout>().Single(item =>
+                item.Children.OfType<Label>().Any(label => label.AutomationId == id));
+            Require(row.Children.Count == 2 && row.Children[0] is Label { Text.Length: > 0 }
+                    && row.Children[1] is Label value && value.Text == expected
+                    && value.LineBreakMode == LineBreakMode.CharacterWrap,
+                "Receipt identity must retain its full value beneath a separate label with character wrapping.");
+        }
         Require(await fixture.EnterAsync(current, requestGovernedProposal: true) is Sr5AfterRunSettlementReceiptPage,
             "Explicit governed entry hid the read-only historical receipt.");
         Require(source.Service.Read(WorkspaceId).Snapshot!.AvailableKarma == 30,

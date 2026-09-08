@@ -941,14 +941,16 @@ public sealed class Sr5AfterRunSettlementReceiptPage : NativePageBase
             Spacing = 7,
             Children =
             {
-                NativeTheme.Metric(Text("Transaction"), receipt.TransactionId.ToString("D")),
                 NativeTheme.Metric(Text("Heat"), $"{receipt.HeatBefore} → {receipt.HeatAfter}"),
                 NativeTheme.Metric(Text("Street Cred"), $"{receipt.StreetCredBefore} → {receipt.StreetCredAfter}"),
                 NativeTheme.Metric(Text("Notoriety"), $"{receipt.NotorietyBefore} → {receipt.NotorietyAfter}"),
                 NativeTheme.Metric(Text("Public Awareness"), $"{receipt.PublicAwarenessBefore} → {receipt.PublicAwarenessAfter}"),
                 NativeTheme.Metric(Text("Karma"), $"{receipt.KarmaBefore} → {receipt.KarmaAfter}"),
                 NativeTheme.Metric(Text("Contacts added"), receipt.AddedContacts.Count.ToString(CultureInfo.InvariantCulture)),
-                NativeTheme.Metric(Text("Receipt"), receipt.ReceiptDigest)
+                ReceiptIdentity(Text("Transaction"), receipt.TransactionId.ToString("D"),
+                    "sr5-after-run-receipt-transaction-id"),
+                ReceiptIdentity(Text("Receipt"), receipt.ReceiptDigest,
+                    "sr5-after-run-receipt-digest")
             }
         }));
         _status = NativeTheme.Body(string.Empty, NativeTheme.Muted);
@@ -959,6 +961,18 @@ public sealed class Sr5AfterRunSettlementReceiptPage : NativePageBase
         _acknowledge.Clicked += async (_, _) => await RunAsync(AcknowledgeAsync);
         body.Add(_acknowledge);
         Content = new ScrollView { Content = body };
+    }
+
+    private static View ReceiptIdentity(string title, string value, string automationId)
+    {
+        Label identity = NativeTheme.Body(value);
+        identity.AutomationId = automationId;
+        identity.LineBreakMode = LineBreakMode.CharacterWrap;
+        return new VerticalStackLayout
+        {
+            Spacing = 2,
+            Children = { NativeTheme.FieldLabel(title), identity }
+        };
     }
 
     protected override void Refresh()

@@ -92,6 +92,21 @@ class CreationResourcesSourceContractTests(unittest.TestCase):
         self.assertIn("await _overview.LoadAsync(receipt.WorkspaceId", text)
         self.assertIn("CharacterCreationResourcesInteractionLoadResult reopened = _resources.Load(_overview.State)", text)
 
+    def test_blocked_resources_keeps_full_diagnostics_after_budget_and_blockers(self) -> None:
+        text = source(PAGE)
+        refresh = text.split("protected override void Refresh()", 1)[1].split(
+            "private void AddGearRoute", 1
+        )[0]
+        blocked = refresh.split(
+            "if (!CreationResourcesPhoneAuthority.IsReady(state, Coordinator.State))", 1
+        )[1].split("return;", 1)[0]
+        self.assertLess(refresh.index("AddBudget("), refresh.index("AddBinding(state)"))
+        self.assertLess(refresh.index("AddBinding(state)"), refresh.index("if (!CreationResourcesPhoneAuthority.IsReady"))
+        self.assertLess(blocked.index("AddBlockers("), blocked.index("AddTechnicalDetailsDisclosure()"))
+        self.assertIn("_technicalDetails.IsVisible = false", refresh)
+        self.assertIn("_body.Add(_technicalDetails)", text)
+        self.assertIn("_technicalDetails.IsVisible = !_technicalDetails.IsVisible", text)
+
     def test_phone_flow_exposes_full_values_needed_for_physical_receipts(self) -> None:
         text = source(PAGE)
         for automation_id in (
