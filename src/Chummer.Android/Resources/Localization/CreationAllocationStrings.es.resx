@@ -173,4 +173,34 @@
   <data name="Skills.CatalogRange" xml:space="preserve"><value>Mostrando {0}–{1} de {2}</value></data>
   <data name="Skills.NoCatalogEntries" xml:space="preserve"><value>No hay entradas disponibles</value></data>
   <data name="Skills.TalentGrant" xml:space="preserve"><value>Nivel inicial gratuito {0} de la prioridad de Talento.</value></data>
+  <data name="SkillsReReview.Title" xml:space="preserve"><value>Revisar decisiones anteriores de habilidades</value></data>
+  <data name="SkillsReReview.Intro" xml:space="preserve"><value>Tus decisiones guardadas no cambian. Compáralas con las reglas actuales, corrige los conflictos y confirma explícitamente la propuesta completa.</value></data>
+  <data name="SkillsReReview.Saved" xml:space="preserve"><value>Revisión guardada. Los comprobantes anteriores permanecen en el historial.</value></data>
+  <data name="SkillsReReview.SavedRefresh" xml:space="preserve"><value>El guardado tiene un comprobante. Vuelve a abrir el runner para actualizar; no lo apliques otra vez.</value></data>
+  <data name="SkillsReReview.Stale" xml:space="preserve"><value>El contexto del runner ha cambiado. Abre de nuevo la revisión; no se ha aplicado nada.</value></data>
+  <data name="SkillsReReview.Binding" xml:space="preserve"><value>Revisión {0} · borrador anterior {1}</value></data>
+  <data name="SkillsReReview.Budget" xml:space="preserve"><value>{0}: {1} / {2} puntos; quedan {3}</value></data>
+  <data name="SkillsReReview.Confirm" xml:space="preserve"><value>Revisar y confirmar estos cambios</value></data>
+  <data name="SkillsReReview.ConfirmBody" xml:space="preserve"><value>¿Aplicar exactamente la comparación mostrada? Las decisiones eliminadas no estarán en el nuevo borrador, pero las decisiones y los comprobantes anteriores permanecerán en el historial.</value></data>
+  <data name="SkillsReReview.Apply" xml:space="preserve"><value>Aplicar decisiones revisadas</value></data>
+  <data name="SkillsReReview.Cancel" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="SkillsReReview.Comparison" xml:space="preserve"><value>Guardado: {0} ({1} puntos) → propuesta: {2} ({3} puntos)</value></data>
+  <data name="SkillsReReview.Removed" xml:space="preserve"><value>eliminado</value></data>
+  <data name="SkillsReReview.Specialization" xml:space="preserve"><value>Especialización: {0} → {1}</value></data>
+  <data name="SkillsReReview.Sources" xml:space="preserve"><value>Referencias de fuentes: {0}</value></data>
+  <data name="SkillsReReview.Remove" xml:space="preserve"><value>Eliminar de la propuesta</value></data>
+  <data name="SkillsReReview.Restore" xml:space="preserve"><value>Restaurar decisión guardada en la propuesta</value></data>
+  <data name="SkillsReReview.RatedLanguage" xml:space="preserve"><value>Usar idioma con nivel</value></data>
+  <data name="SkillsReReview.NativeLanguage" xml:space="preserve"><value>Usar idioma nativo</value></data>
+  <data name="SkillsReReview.NoSpecialization" xml:space="preserve"><value>Sin especialización</value></data>
+  <data name="SkillsReReview.ChooseSpecialization" xml:space="preserve"><value>Elegir especialización</value></data>
+  <data name="SkillsReReview.SetSpecialization" xml:space="preserve"><value>Previsualizar especialización</value></data>
+  <data name="SkillsReReview.Group" xml:space="preserve"><value>grupo de habilidades</value></data>
+  <data name="SkillsReReview.AddChoice" xml:space="preserve"><value>Añadir una opción del catálogo actual</value></data>
+  <data name="SkillsReReview.AddPreview" xml:space="preserve"><value>Previsualizar opción añadida</value></data>
+  <data name="SkillsReReview.Back" xml:space="preserve"><value>Volver sin más cambios</value></data>
+  <data name="SkillsReReview.None" xml:space="preserve"><value>ninguna</value></data>
+  <data name="SkillsReReview.Native" xml:space="preserve"><value>nativo</value></data>
+  <data name="SkillsReReview.Check" xml:space="preserve"><value>Comprobar decisiones anteriores de habilidades</value></data>
+  <data name="SkillsReReview.Unavailable" xml:space="preserve"><value>No hay ningún borrador anterior de habilidades compatible para este runner. No se ha cambiado nada.</value></data>
 </root>

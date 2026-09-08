@@ -14,6 +14,8 @@ using Chummer.Rulesets.Sr5;
 /// phone draft and Presentation projection. This is not an Android handler or device proof.</summary>
 internal static class CreationMagicNativeRuntimeTests
 {
+    public static void RunSkillsReReview(string contentRoot) => RunTalent(contentRoot, technomancer: false, aspectedGroup: "Sorcery");
+
     public static void Run(string contentRoot)
     {
         foreach ((string locale, string title) in new[]
@@ -137,7 +139,7 @@ internal static class CreationMagicNativeRuntimeTests
             Require(attributeReview.CanConfirm, string.Join(",", attributeReview.Blockers));
             var assigned = attributes.Confirm(new(attributeReview.Binding, allocations, attributeReview.PreviewDigest, true));
             Require(assigned.Outcome == CharacterCreationFoundationOutcomes.Success, string.Join(",", assigned.Blockers));
-            var firstSkillsCommand = RunSkillAccess(store, resolver, id, directory, technomancer, aspectedGroup);
+            var firstSkillsCommand = RunSkillAccess(store, resolver, id, directory, technomancer, aspectedGroup, contentRoot);
             var service = new CharacterCreationMagicResonanceService(store, resolver);
             var state = service.Load(new(id)).Value!;
             Require(state.CanEdit, string.Join(",", state.Blockers));
@@ -232,7 +234,7 @@ internal static class CreationMagicNativeRuntimeTests
     }
 
     private static CharacterCreationSkillsConfirmRequest RunSkillAccess(FileWorkspaceStore store, FileSystemCharacterSourceDataResolver resolver,
-        CharacterWorkspaceId id, string directory, bool technomancer, string? aspect)
+        CharacterWorkspaceId id, string directory, bool technomancer, string? aspect, string contentRoot)
     {
         var service = new CharacterCreationSkillsService(store, resolver);
         var state = service.Load(new(id)).Value!;
@@ -287,6 +289,9 @@ internal static class CreationMagicNativeRuntimeTests
             review.PreviewDigest, "native-talent-skill-access", ExplicitlyConfirmed: true);
         var saved = service.Confirm(command);
         Require(saved.Outcome == CharacterCreationFoundationOutcomes.Success, string.Join(",", saved.Blockers));
+        if (aspect == "Sorcery")
+            AfterRunAuthorityHarness.RunSkillsReReviewCasesAsync(contentRoot, directory, resolver, id, state, review, saved.Value!)
+                .GetAwaiter().GetResult();
         var coldStore = new FileWorkspaceStore(directory);
         var coldService = new CharacterCreationSkillsService(coldStore, resolver);
         var cold = coldService.Load(new(id)).Value!;

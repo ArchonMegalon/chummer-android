@@ -173,4 +173,34 @@
   <data name="Skills.CatalogRange" xml:space="preserve"><value>Showing {0}–{1} of {2}</value></data>
   <data name="Skills.NoCatalogEntries" xml:space="preserve"><value>No available entries</value></data>
   <data name="Skills.TalentGrant" xml:space="preserve"><value>Free starting rating {0} from Talent Priority.</value></data>
+  <data name="SkillsReReview.Title" xml:space="preserve"><value>Review older Skills choices</value></data>
+  <data name="SkillsReReview.Intro" xml:space="preserve"><value>Your saved choices remain unchanged. Compare them with current rules, correct any conflicts, then explicitly confirm the complete proposal.</value></data>
+  <data name="SkillsReReview.Saved" xml:space="preserve"><value>Review saved. Previous receipts remain in history.</value></data>
+  <data name="SkillsReReview.SavedRefresh" xml:space="preserve"><value>The save has a receipt. Reopen the runner to refresh; do not apply it again.</value></data>
+  <data name="SkillsReReview.Stale" xml:space="preserve"><value>The runner context changed. Reopen this review; nothing was applied.</value></data>
+  <data name="SkillsReReview.Binding" xml:space="preserve"><value>Revision {0} · historical draft {1}</value></data>
+  <data name="SkillsReReview.Budget" xml:space="preserve"><value>{0}: {1} / {2} points; {3} left</value></data>
+  <data name="SkillsReReview.Confirm" xml:space="preserve"><value>Review and confirm these changes</value></data>
+  <data name="SkillsReReview.ConfirmBody" xml:space="preserve"><value>Apply exactly the comparison shown? Removed choices will leave the new draft, but previous decisions and receipts remain in history.</value></data>
+  <data name="SkillsReReview.Apply" xml:space="preserve"><value>Apply reviewed choices</value></data>
+  <data name="SkillsReReview.Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="SkillsReReview.Comparison" xml:space="preserve"><value>Saved: {0} ({1} points) → proposal: {2} ({3} points)</value></data>
+  <data name="SkillsReReview.Removed" xml:space="preserve"><value>removed</value></data>
+  <data name="SkillsReReview.Specialization" xml:space="preserve"><value>Specialization: {0} → {1}</value></data>
+  <data name="SkillsReReview.Sources" xml:space="preserve"><value>Source anchors: {0}</value></data>
+  <data name="SkillsReReview.Remove" xml:space="preserve"><value>Remove from proposal</value></data>
+  <data name="SkillsReReview.Restore" xml:space="preserve"><value>Restore saved choice to proposal</value></data>
+  <data name="SkillsReReview.RatedLanguage" xml:space="preserve"><value>Use rated language</value></data>
+  <data name="SkillsReReview.NativeLanguage" xml:space="preserve"><value>Use native language</value></data>
+  <data name="SkillsReReview.NoSpecialization" xml:space="preserve"><value>No specialization</value></data>
+  <data name="SkillsReReview.ChooseSpecialization" xml:space="preserve"><value>Choose specialization</value></data>
+  <data name="SkillsReReview.SetSpecialization" xml:space="preserve"><value>Preview specialization</value></data>
+  <data name="SkillsReReview.Group" xml:space="preserve"><value>skill group</value></data>
+  <data name="SkillsReReview.AddChoice" xml:space="preserve"><value>Add a current catalog choice</value></data>
+  <data name="SkillsReReview.AddPreview" xml:space="preserve"><value>Preview added choice</value></data>
+  <data name="SkillsReReview.Back" xml:space="preserve"><value>Back without further changes</value></data>
+  <data name="SkillsReReview.None" xml:space="preserve"><value>none</value></data>
+  <data name="SkillsReReview.Native" xml:space="preserve"><value>native</value></data>
+  <data name="SkillsReReview.Check" xml:space="preserve"><value>Check older Skills choices for re-review</value></data>
+  <data name="SkillsReReview.Unavailable" xml:space="preserve"><value>No supported historical Skills draft is available for this runner. Nothing was changed.</value></data>
 </root>

@@ -13,6 +13,11 @@ internal static class Program
 {
     private static async Task Main(string[] args)
     {
+        if (args.Length == 2 && args[0] == "--skills-rereview-runtime-content-root")
+        {
+            CreationMagicNativeRuntimeTests.RunSkillsReReview(args[1]);
+            return;
+        }
         if (args.Length == 2 && args[0] == "--creation-magic-runtime-content-root")
         {
             CreationMagicNativeRuntimeTests.Run(args[1]);

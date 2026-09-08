@@ -36,6 +36,11 @@
     <EmbeddedResource Include="../../src/Chummer.Android/Resources/Localization/CreationFlowStrings.es.resx"
                       Link="Resources/Localization/CreationFlowStrings.es.resx" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="../../src/Chummer.Android/Resources/Localization/CreationAllocationStrings.resx" Link="Resources/Localization/CreationAllocationStrings.resx" />
+    <EmbeddedResource Include="../../src/Chummer.Android/Resources/Localization/CreationAllocationStrings.de.resx" Link="Resources/Localization/CreationAllocationStrings.de.resx" />
+    <EmbeddedResource Include="../../src/Chummer.Android/Resources/Localization/CreationAllocationStrings.es.resx" Link="Resources/Localization/CreationAllocationStrings.es.resx" />
+  </ItemGroup>
   <Import Project="NativeCompileInputs.props" />
   <Target Name="VerifyNativeCompileGraph" BeforeTargets="PrepareForBuild">
     <Exec Command="python3 &quot;$(MSBuildProjectDirectory)/../../scripts/verify_native_compile_graph.py&quot; --repo-root &quot;$(MSBuildProjectDirectory)/../..&quot; --project &quot;$(MSBuildProjectFullPath)&quot; --require-assets" />

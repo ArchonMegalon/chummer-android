@@ -2231,6 +2231,25 @@ public sealed class BuildPage : NativePageBase
         CharacterCreationContactsInteractionLoadResult? creationContacts,
         CharacterCreationResourcesInteractionLoadResult? creationResources)
     {
+        if (!HasAuthoritativeSkills(skillsResult)
+            && snapshot.Steps.Any(stage => stage.StepId == CharacterCreationWizardStepIds.Skills))
+        {
+            // This opens a separate read-only recovery check, never the blocked
+            // ordinary Skills editor. Core decides whether history is reviewable.
+            _body.Add(CreationNavigationRow(CreationAllocationStrings.Get(
+                "SkillsReReview.Check", "Check older Skills choices for re-review"), null,
+                async () =>
+                {
+                    long generation = _creationDashboardAppearanceGeneration;
+                    var result = await Task.Run(() => Coordinator.LoadCreationSkillsReReview());
+                    if (generation != _creationDashboardAppearanceGeneration
+                        || _creationDashboardRouteReadyLifetime is not { IsCancellationRequested: false }) return;
+                    if (result.Value is { } state && CreationSkillsReReviewPhoneAuthority.Matches(state, Coordinator.State))
+                        await Navigation.PushAsync(new CreationSkillsReReviewPage(Coordinator, state));
+                    else await DisplayAlertAsync(CreationAllocationStrings.Get("SkillsReReview.Title", "Review older Skills choices"),
+                        CreationAllocationStrings.Get("SkillsReReview.Unavailable", "No supported historical Skills draft is available for this runner. Nothing was changed."), "OK");
+                }, enabled: true, automationId: "creation-skills-rereview-open"));
+        }
         CharacterCreationWizardStageState? active = snapshot.Steps.FirstOrDefault(stage =>
             string.Equals(stage.StepId, snapshot.ActiveStepId, StringComparison.Ordinal));
         string[] candidateIds = new[] { snapshot.ActiveStepId }

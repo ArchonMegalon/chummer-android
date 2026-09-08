@@ -533,7 +533,9 @@ internal static partial class AfterRunAuthorityHarness
         public CharacterWorkspaceId Id;
 
         public NativeRewardRuntime(string contentRoot, bool governedConsequences = false, bool reputation = false,
-            Func<ICharacterCareerReputationService, ICharacterCareerReputationService>? reputationDecorator = null)
+            Func<ICharacterCareerReputationService, ICharacterCareerReputationService>? reputationDecorator = null,
+            Action<string>? creationSkillsSeed = null,
+            Func<ICharacterCreationSkillsService, ICharacterCreationSkillsService>? skillsDecorator = null)
         {
             _priorPreferences = Preferences.Default;
             _setPreferences = typeof(Preferences).GetMethod("SetDefault",
@@ -547,6 +549,7 @@ internal static partial class AfterRunAuthorityHarness
                 SetEnvironment("CHUMMER_WORKSPACE_STORE_PATH", StateDirectory);
                 SetEnvironment("CHUMMER_CLIENT_MODE", "local");
                 SetEnvironment("CHUMMER_DESKTOP_CLIENT_MODE", "local");
+                creationSkillsSeed?.Invoke(StateDirectory);
                 var services = new ServiceCollection();
                 services.AddChummerLocalRuntimeClient(contentRoot, contentRoot);
                 services.Replace(ServiceDescriptor.Singleton<IWorkspaceStore>(new FileWorkspaceStore(StateDirectory)));
@@ -595,6 +598,9 @@ internal static partial class AfterRunAuthorityHarness
                     afterRunProposalCatalog: governedConsequences ? _provider.GetRequiredService<Sr5AfterRunManualProposalSource>() : null,
                     afterRunRewardService: new WorkspaceCharacterAfterRunRewardService(store),
                     afterRunRewardCheckpoints: checkpoints,
+                    creationSkillsService: creationSkillsSeed is null ? null : skillsDecorator is null
+                        ? _provider.GetRequiredService<ICharacterCreationSkillsService>()
+                        : skillsDecorator(_provider.GetRequiredService<ICharacterCreationSkillsService>()),
                     careerReputationService: reputationService,
                     careerReputationJournal: reputation ? _provider.GetRequiredService<Sr5CareerReputationJournal>() : null);
             }
