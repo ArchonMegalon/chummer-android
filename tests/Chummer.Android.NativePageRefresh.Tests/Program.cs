@@ -9,6 +9,8 @@ internal static class Program
         [
             (nameof(AppearanceChangeAfterLoadingRenderGetsOneTrailingRefreshAsync), AppearanceChangeAfterLoadingRenderGetsOneTrailingRefreshAsync),
             (nameof(ActionChangeAfterLoadingRenderGetsOneTrailingRefreshAsync), ActionChangeAfterLoadingRenderGetsOneTrailingRefreshAsync),
+            (nameof(ScheduledRefreshWaitsForRunningActionAsync), ScheduledRefreshWaitsForRunningActionAsync),
+            (nameof(ScheduledRefreshWaitsForConditionalActionAsync), ScheduledRefreshWaitsForConditionalActionAsync),
             (nameof(NoEventAddsNoAppearanceOrActionRefreshAsync), NoEventAddsNoAppearanceOrActionRefreshAsync),
             (nameof(PreRenderBurstIsAbsorbedByExplicitAppearanceRefreshAsync), PreRenderBurstIsAbsorbedByExplicitAppearanceRefreshAsync),
             (nameof(HideAndReappearRejectsStaleGenerationCallbackAsync), HideAndReappearRejectsStaleGenerationCallbackAsync),
@@ -87,6 +89,59 @@ internal static class Program
         Require(page.RenderCount == 3, "Action did not render exactly one trailing pass.");
         Require(page.LinkEnabled, "Action left the account link disabled after recovery completed.");
         Require(page.AllRendersOnUiThread, "Action trailing refresh left the UI thread.");
+        await ui.InvokeAsync(page.Disappear);
+    }
+
+    private static Task ScheduledRefreshWaitsForRunningActionAsync()
+        => ScheduledRefreshWaitsForActionAsync(conditional: false);
+
+    private static Task ScheduledRefreshWaitsForConditionalActionAsync()
+        => ScheduledRefreshWaitsForActionAsync(conditional: true);
+
+    private static async Task ScheduledRefreshWaitsForActionAsync(bool conditional)
+    {
+        using var ui = new TestUiThread();
+        var refreshDispatcher = new ControlledRefreshDispatcher();
+        var account = new FakeAccountLinkService();
+        var page = new TestPage(new RunnerSessionCoordinator(account), refreshDispatcher, ui.ThreadId);
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        await ui.InvokeAsync(page.Appear);
+        await Task.Run(() => account.Publish(isLoading: false));
+        Require(refreshDispatcher.PendingCount == 1, "The pre-action change did not queue its callback.");
+
+        async Task HoldActionAsync()
+        {
+            entered.SetResult();
+            await release.Task;
+        }
+
+        Task action = ui.InvokeAsync(() => conditional
+            ? page.ExecuteConditionalActionAsync(async () => { await HoldActionAsync(); return false; })
+            : page.ExecuteActionAsync(HoldActionAsync));
+        try
+        {
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await ui.InvokeAsync(refreshDispatcher.DrainAll);
+            Require(page.RenderCount == 1, "A previously queued callback rendered during a claimed action.");
+            Require(refreshDispatcher.PendingCount == 0, "The suppressed callback rescheduled during the action.");
+            await Task.Run(() => account.Publish(isLoading: true, burst: 16));
+            Require(refreshDispatcher.PendingCount == 0, "A new event bypassed the claimed action gate.");
+        }
+        finally
+        {
+            release.TrySetResult();
+            await action;
+        }
+
+        Require(page.RenderCount == (conditional ? 1 : 2), "Action completion performed an unexpected render.");
+        Require(refreshDispatcher.PendingCount == (conditional ? 1 : 0),
+            "Action release lost pending state or replayed an already absorbed refresh.");
+        await ui.InvokeAsync(refreshDispatcher.DrainAll);
+        Require(page.RenderCount == 2, "Retained state was not rendered exactly once after action release.");
+        Require(!page.LinkEnabled, "The post-action render missed the latest account state.");
+        Require(page.AllRendersOnUiThread, "The suppressed callback recovery left the UI thread.");
         await ui.InvokeAsync(page.Disappear);
     }
 
@@ -372,6 +427,9 @@ internal static class Program
         public void Disappear() => OnDisappearing();
 
         public Task ExecuteActionAsync(Func<Task> action) => RunAsync(action);
+
+        public Task ExecuteConditionalActionAsync(Func<Task<bool>> action)
+            => RunWithConditionalRefreshAsync(action);
 
         public void RenderNow() => Refresh();
 
