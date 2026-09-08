@@ -71,7 +71,7 @@ class RecordingDevice(DRIVER.Device):
         self.locale_output = locale_output
         self.commands: list[tuple[str, ...]] = []
         self.nodes: list[DRIVER.UiNode] = []
-        self.input_method_output = ""
+        self.input_method_output = "mImeWindowVis=0\n mInputShown=false"
         self.hide_keyboard_on_nav_tap = False
         self.hide_keyboard_on_escape = False
 
@@ -7007,6 +7007,78 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
 
             device.input_method_output = "mImeWindowVis=0x3\n      mInputShown=true"
             self.assertTrue(device.keyboard_visible())
+
+    def test_keyboard_active_only_does_not_mean_visible(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            device = RecordingDevice(Path(temporary), "Physical size: 1080x2400")
+            for flags in ("1", "0x1", "0X1", "01"):
+                with self.subTest(flags=flags):
+                    device.input_method_output = f"mImeWindowVis={flags}\n mInputShown=false"
+                    self.assertFalse(device.keyboard_visible())
+            for flags in ("2", "3", "0x2", "0X3"):
+                with self.subTest(flags=flags):
+                    device.input_method_output = f"mImeWindowVis={flags}\n mInputShown=false"
+                    self.assertTrue(device.keyboard_visible())
+            device.input_method_output = "mImeWindowVis=1\n mInputShown=true"
+            self.assertTrue(device.keyboard_visible(), "A pending show request cannot prove hidden IME.")
+
+    def test_active_but_hidden_keyboard_never_emits_dismissal_input(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            device = RecordingDevice(Path(temporary), "Physical size: 1080x2400")
+            device.capture = Mock()
+            device.input_method_output = "mImeWindowVis=1\n mInputShown=false"
+            with patch.object(DRIVER.time, "sleep"):
+                device.dismiss_keyboard()
+            self.assertEqual(device.commands, [("dumpsys", "input_method")])
+
+    def test_unknown_ime_observation_is_not_a_hidden_keyboard(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            device = RecordingDevice(Path(temporary), "Physical size: 1080x2400")
+            for state in ("", "Can't find service: input_method", "mImeWindowVis=0x",
+                          "mImeWindowVis=-1", "mImeWindowVis=16", "mImeWindowVis=3junk",
+                          "mInputShown=unknown", "mImeWindowVis=0 mInputShown=falsejunk",
+                          "mInputShown=false", "mImeWindowVis=0"):
+                with self.subTest(state=state):
+                    device.input_method_output = state
+                    with self.assertRaisesRegex(RuntimeError, "IME visibility observation"):
+                        device.keyboard_visible()
+
+    def test_failed_ime_dismissal_retains_exact_observed_state(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            device = RecordingDevice(Path(temporary), "Physical size: 1080x2400")
+            state = "mCurMethod=null\n  mImeWindowVis=3\n  mInputShown=true"
+            device.input_method_output = state
+            device.capture = Mock()
+            with patch.object(DRIVER.time, "sleep"):
+                with self.assertRaisesRegex(RuntimeError, "did not hide the keyboard"):
+                    device.dismiss_keyboard()
+            self.assertEqual((Path(temporary) / "keyboard-input-method-last.txt").read_text(), state)
+            self.assertEqual(device.commands.count(("input", "keyevent", "111")), 1)
+            self.assertEqual(device.commands.count(("input", "tap", "162", "2350")), 1)
+            device.capture.assert_called_once_with("keyboard-dismiss-failed")
+
+    def test_unknown_ime_dismissal_never_emits_input(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            device = RecordingDevice(Path(temporary), "Physical size: 1080x2400")
+            device.input_method_output = "Can't find service: input_method"
+            with self.assertRaisesRegex(RuntimeError, "IME visibility observation"):
+                device.dismiss_keyboard()
+            self.assertEqual(device.commands, [("dumpsys", "input_method")])
+            self.assertEqual((Path(temporary) / "keyboard-input-method-last.txt").read_text(),
+                             device.input_method_output)
+
+    def test_ime_diagnostic_is_bounded_and_replaces_the_previous_read(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            device = RecordingDevice(root, "Physical size: 1080x2400")
+            self.assertFalse(device.keyboard_visible())
+            device.input_method_output = "mImeWindowVis=3 mInputShown=true"
+            self.assertTrue(device.keyboard_visible())
+            device.input_method_output = "x" * (1024 * 1024 + 1)
+            with self.assertRaisesRegex(RuntimeError, "diagnostic bound"):
+                device.keyboard_visible()
+            self.assertEqual([path.name for path in root.iterdir()], ["keyboard-input-method-last.txt"])
+            self.assertEqual((root / "keyboard-input-method-last.txt").stat().st_size, 1024 * 1024)
 
     def test_text_entry_uses_escape_to_hide_ime_without_navigating_back(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
