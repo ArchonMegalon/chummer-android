@@ -67,6 +67,53 @@ class NativeCompileSourcePathTests(unittest.TestCase):
         self.assertEqual([], issues)
         self.assertEqual(5, len(compiled))
 
+    def test_msbuild_dot_segment_repo_root_infers_the_canonical_workspace(self) -> None:
+        dependency = self.root / "chummer-presentation/Presentation.csproj"
+        dependency.parent.mkdir()
+        dependency.write_text("<Project />", encoding="utf-8")
+        obj = self.project.parent / "obj"
+        obj.mkdir()
+        NativeCompileProofInfrastructureTests._write_assets(obj, self.project, dependency)
+        NativeCompileProofInfrastructureTests._write_dgspec(obj, self.project, dependency)
+        # Match $(MSBuildProjectDirectory)/../.. from the embedded Exec target.
+        lexical_repo = self.project.parent / "../.."
+        for mode in ("--require-assets", "--assets-only"):
+            with self.subTest(mode=mode):
+                command = [
+                    sys.executable, "-B", str(REPO / "scripts/verify_native_compile_graph.py"),
+                    "--repo-root", str(lexical_repo), "--project", str(self.project), mode,
+                ]
+                result = subprocess.run(command, capture_output=True, text=True, timeout=10, check=False)
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                payload = json.loads(result.stdout)
+                self.assertEqual(str(self.repo.resolve()), payload["repoRoot"])
+                self.assertEqual(str(self.root.resolve()), payload["workspaceRoot"])
+                self.assertEqual(2, payload["generatedProjectReferenceCount"])
+                self.assertEqual([], payload["issues"])
+                restricted = subprocess.run(
+                    [*command, "--workspace-root", str(self.repo)],
+                    capture_output=True, text=True, timeout=10, check=False,
+                )
+                self.assertEqual(2, restricted.returncode, restricted.stdout + restricted.stderr)
+                self.assertIn("project-reference-outside-workspace", restricted.stdout)
+
+    def test_msbuild_dot_segments_cannot_erase_a_symlinked_repo_component(self) -> None:
+        target = self.project.parent / "nested"
+        target.mkdir()
+        alias = self.project.parent / "alias"
+        alias.symlink_to(target, target_is_directory=True)
+        lexical_repo = alias / "../../.."
+        self.assertEqual(self.repo.resolve(), lexical_repo.resolve())
+        for mode in ("--require-assets", "--assets-only"):
+            with self.subTest(mode=mode):
+                result = subprocess.run(
+                    [sys.executable, "-B", str(REPO / "scripts/verify_native_compile_graph.py"),
+                     "--repo-root", str(lexical_repo), "--project", str(self.project), mode],
+                    capture_output=True, text=True, timeout=10, check=False,
+                )
+                self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+                self.assertIn(f"source-root-symlink:{alias}", json.loads(result.stdout)["issues"])
+
     def test_linked_source_inside_owner_is_rejected_before_resolution(self) -> None:
         source = self.project.parent / "CompileStubs.cs"
         target = source.with_name("Redirected.cs")

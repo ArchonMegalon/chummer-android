@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 from pathlib import Path
 import shutil
@@ -18,6 +19,30 @@ from tests import test_api36_arm64_physical_contract as consumer_contract_tests
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+class CurrentPhysicalAuthorityBindingTests(unittest.TestCase):
+    def test_physical_proof_constants_match_the_checked_in_package_authority(self) -> None:
+        raw = (REPO_ROOT / "eng/internal-phone-beta-package-authority.json").read_bytes()
+        manifest = json.loads(raw)
+        self.assertEqual(hashlib.sha256(raw).hexdigest(), provenance.PACKAGE_AUTHORITY_SHA256)
+        self.assertEqual(
+            manifest["verificationReceipt"]["sha256"], provenance.UI_AUTHORITY_RECEIPT_SHA256
+        )
+        self.assertEqual(
+            manifest["verificationReceipt"]["sizeBytes"], provenance.UI_AUTHORITY_RECEIPT_SIZE
+        )
+        self.assertEqual(manifest["presentationSource"]["commit"], provenance.PRESENTATION_COMMIT)
+        self.assertEqual(manifest["presentationSource"]["tree"], provenance.PRESENTATION_TREE)
+        self.assertEqual(
+            manifest["packagePlaneLock"]["sha256"], provenance.PRESENTATION_PACKAGE_LOCK_SHA256
+        )
+        self.assertEqual(
+            manifest["androidConsumerLocks"][0]["sha256"], provenance.FULL_PROJECT_LOCK_SHA256
+        )
+        self.assertEqual(
+            manifest["androidConsumerLocks"][0]["sizeBytes"], provenance.FULL_PROJECT_LOCK_SIZE
+        )
 
 
 def write_json(path: Path, payload: object) -> None:

@@ -263,21 +263,30 @@ def main() -> int:
     parser.add_argument("--assets-root", type=Path)
     args = parser.parse_args()
 
-    # Preserve lexical roots for the source guard; normalizing here would hide
-    # symlinked checkouts/projects before they reach the validator.
+    # Reject lexical links before resolving MSBuild's legitimate /../.. root.
+    # Workspace ancestry must be inferred from the canonical repository, not
+    # the lexical parent of that unresolved path. Other inputs retain their
+    # lexical spelling until their respective validators inspect them.
     repo_root = args.repo_root.absolute()
     project_path = (args.project or repo_root / DEFAULT_PROJECT).absolute()
-    workspace_root = (args.workspace_root or _default_workspace_root(repo_root)).absolute()
+    workspace_root = (args.workspace_root or repo_root.parent).absolute()
     compiled: list[Path] = []
     issues: list[str] = []
-    if not args.assets_only:
-        compiled, issues = verify_source_graph(repo_root, project_path)
     referenced: list[Path] = []
-    if args.require_assets or args.assets_only:
-        referenced, asset_issues = verify_asset_graph(
-            project_path, workspace_root, args.assets_root,
-        )
-        issues.extend(asset_issues)
+    root_symlink = _first_symlink(repo_root)
+    if root_symlink is not None:
+        issues.append(f"source-root-symlink:{root_symlink}")
+    else:
+        repo_root = repo_root.resolve()
+        if args.workspace_root is None:
+            workspace_root = _default_workspace_root(repo_root)
+        if not args.assets_only:
+            compiled, issues = verify_source_graph(repo_root, project_path)
+        if args.require_assets or args.assets_only:
+            referenced, asset_issues = verify_asset_graph(
+                project_path, workspace_root, args.assets_root,
+            )
+            issues.extend(asset_issues)
     payload = {
         "schema": SCHEMA,
         "status": "pass" if not issues else "blocked",
