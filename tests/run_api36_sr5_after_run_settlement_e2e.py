@@ -830,6 +830,24 @@ def require_same_draft(reviewed: dict[str, object], applied: dict[str, object]) 
         raise RuntimeError("Applied checkpoint does not preserve the exact reviewed draft")
 
 
+def confirmed_transaction_authority(
+    reviewed: dict[str, str], applied: dict[str, str],
+) -> dict[str, str]:
+    """Publish the validated committed digest, never the pre-commit placeholder."""
+    fields = {"transactionId", "gmReviewDigest", "ownerReviewDigest", "receiptDigest"}
+    _exact_fields(reviewed, fields, "Reviewed transaction authority")
+    _exact_fields(applied, fields, "Applied transaction authority")
+    physical.canonical_guid(applied["transactionId"], "settlement transaction")
+    for field in ("transactionId", "gmReviewDigest", "ownerReviewDigest"):
+        if applied[field] != reviewed[field]:
+            raise RuntimeError("Applied receipt changed transaction or review-digest authority")
+    for field in ("gmReviewDigest", "ownerReviewDigest", "receiptDigest"):
+        _sha256(applied[field], f"Applied transaction {field}")
+    if reviewed["receiptDigest"] != "":
+        raise RuntimeError("Reviewed transaction authority unexpectedly contains a committed receipt")
+    return dict(applied)
+
+
 def _set(device: physical.shared.Device, selector: str, label: str, value: object) -> None:
     device.set_text(
         selector, label, str(value), scroll=True, max_scrolls=48,
@@ -1265,11 +1283,9 @@ def prove_after_run(
         character_projection_digest=initial_saved.payload_sha256, version=3, phase=2,
     )
     require_same_draft(reviewed.payload, applied.payload)
-    if any(
-        receipt_projection[field] != review_projection[field]
-        for field in ("transactionId", "gmReviewDigest", "ownerReviewDigest")
-    ):
-        raise RuntimeError("Applied receipt changed transaction or review-digest authority")
+    transaction_projection = confirmed_transaction_authority(
+        review_projection, receipt_projection,
+    )
     device.capture("sr5-after-run-atomic-core-receipt")
     applied_restart = physical.shared.force_stop_and_launch_new_process(
         device, reviewed_restart.restarted
@@ -1322,7 +1338,7 @@ def prove_after_run(
         "reviewedCheckpointSha256": reviewed.serialized_sha256,
         "appliedCheckpoint": applied.payload,
         "appliedCheckpointSha256": applied.serialized_sha256,
-        "transactionAndReviewAuthority": review_projection,
+        "transactionAndReviewAuthority": transaction_projection,
         "restartProcessIds": [
             list(reviewed_restart.restarted.process_ids),
             list(applied_restart.restarted.process_ids),

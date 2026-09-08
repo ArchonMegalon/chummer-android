@@ -53,7 +53,9 @@ jobs:
         with:
           path: chummer-android
           persist-credentials: false
-          fetch-depth: 1
+          # Canonical driver tests authenticate the historical integration
+          # baseline's real Git trees. A head-only clone cannot prove them.
+          fetch-depth: 0
 
       - name: Check out the pinned presentation dependency
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -249,6 +251,42 @@ jobs:
 
       - name: Restore the pinned MAUI Android workload
         run: '"$DOTNET_ROOT/dotnet" workload restore chummer-android/Chummer.Android.slnx'
+
+      - name: Verify canonical source and account-link regressions
+        working-directory: chummer-android
+        shell: bash
+        run: |
+          set -euo pipefail
+          run_clean() {
+            env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8 LC_ALL=C.UTF-8 \
+              DOTNET_ROOT="$DOTNET_ROOT" DOTNET_MULTILEVEL_LOOKUP=0 \
+              DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_CLI_USE_MSBUILD_SERVER=0 \
+              MSBUILDDISABLENODEREUSE=1 PYTHONDONTWRITEBYTECODE=1 \
+              PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 \
+              CHUMMER_COMPLETE_ROOT="$GITHUB_WORKSPACE" \
+              CHUMMER5A_ROOT="$GITHUB_WORKSPACE/chummer5a" "$@"
+          }
+          # Isolate test-only Python packages; do not depend on runner extras
+          # or install into the system interpreter used by APK proof tooling.
+          test_python_root=$(mktemp -d "$RUNNER_TEMP/chummer-canonical-tests.XXXXXX")
+          run_clean python3 -m venv "$test_python_root"
+          run_clean "$test_python_root/bin/python" -m pip --isolated install \
+            --require-hashes --only-binary=:all: --no-cache-dir \
+            --index-url https://pypi.org/simple -r tests/requirements-ci.txt
+          run_clean "$test_python_root/bin/python" -B -m unittest discover -s tests -v
+          # unittest imports this pytest module but does not execute its
+          # parametrized tests. Run them explicitly as source regressions,
+          # not as new physical-device or release authority.
+          run_clean "$test_python_root/bin/python" -B -m pytest -q -p no:cacheprovider \
+            tests/test_api36_sr5_life_module_nationality_origin_physical_e2e_driver.py
+          for project in \
+            tests/Chummer.Android.AccountLinkKey.Tests/Chummer.Android.AccountLinkKey.Tests.csproj \
+            tests/Chummer.Android.AccountLinkHttp.Tests/Chummer.Android.AccountLinkHttp.Tests.csproj; do
+            run_clean "$DOTNET_ROOT/dotnet" restore "$project" --locked-mode --disable-parallel
+            run_clean "$DOTNET_ROOT/dotnet" run --project "$project" \
+              --configuration Release --no-restore \
+              -p:BuildInParallel=false -p:UseSharedCompilation=false
+          done
 
       - name: Verify clean Android source before local-compatibility restores
         shell: bash

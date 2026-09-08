@@ -1,6 +1,7 @@
 import ast
 import importlib.util
 import json
+import os
 from pathlib import Path
 import tempfile
 import unittest
@@ -18,7 +19,7 @@ PRESENTATION = _resolve_repository_sibling(
     REPO.parent, "presentation", ("presentation", "chummer-presentation")
 )
 CORE = _resolve_repository_sibling(REPO.parent, "core", ("core", "chummer-core-engine"))
-CHUMMER5 = Path("/docker/chummer5a")
+CHUMMER5 = Path(os.environ.get("CHUMMER5A_ROOT", "/docker/chummer5a"))
 CONTROLS = {
     "chkHideMasterIndex": "settings-hide-master-index",
     "chkHideCharacterRoster": "settings-hide-character-roster",

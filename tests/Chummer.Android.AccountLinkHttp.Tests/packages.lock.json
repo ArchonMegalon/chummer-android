@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net10.0": {
+      "Microsoft.Maui.Essentials": {
+        "type": "Direct",
+        "requested": "[10.0.20, )",
+        "resolved": "10.0.20",
+        "contentHash": "jalsUhCCL+T5qng/OXAkJhSaV/Uhml3s4LLExx/RBVz4z/kSIOjyXLkV/O66BBUxy/0nPFILeNx9p21TVqWrMg==",
+        "dependencies": {
+          "Microsoft.Maui.Graphics": "10.0.20"
+        }
+      },
+      "Microsoft.Maui.Graphics": {
+        "type": "Transitive",
+        "resolved": "10.0.20",
+        "contentHash": "X1IfBjN/0KcrcbaDU47xNrZufQeI/PJyBVPxt+3a/yNDhduGS+jlihi4sByil7E4VbQTFVPxclevnbhLtWxNQw=="
+      }
+    }
+  }
+}

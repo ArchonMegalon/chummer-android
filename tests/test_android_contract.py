@@ -865,7 +865,25 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("ContentPage", page)
         self.assertEqual(2, page.count("if (!_actionGate.TryClaim())"))
         self.assertEqual(2, page.count("_actionGate.Release();"))
-        self.assertIn("if (_actionGate.IsClaimed)", page)
+        for method, next_method in (
+            ("private void TryScheduleCoordinatorRefresh", "private void DispatchCoordinatorRefresh"),
+            ("private async Task DrainCoordinatorRefreshAsync", "private async Task NotifyPlayReviewSafeMomentAsync"),
+        ):
+            with self.subTest(refresh_guard=method):
+                method_body = page.split(method, 1)[1].split(next_method, 1)[0]
+                # Both scheduling and the eventual callback must reject a claimed
+                # action before reading or consuming pending refresh work.
+                self.assertRegex(
+                    method_body,
+                    r"if\s*\(!IsCurrentAppearanceGeneration\(appearanceGeneration\)"
+                    r"\s*\|\|\s*_actionGate\.IsClaimed"
+                    r"\s*\|\|\s*Volatile\.Read\(ref _appearanceRefreshActive\) > 0\)"
+                    r"\s*\{\s*return;\s*\}",
+                )
+                self.assertLess(
+                    method_body.index("_actionGate.IsClaimed"),
+                    method_body.index("_coordinatorRefresh.TryGetPendingRequest("),
+                )
         self.assertNotIn("_runningActionDepth", page)
         self.assertNotIn("Microsoft.NET.Sdk.Razor", project)
         self.assertNotIn("Components.WebView.Maui", project)
