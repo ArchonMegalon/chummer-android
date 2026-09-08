@@ -20,10 +20,13 @@ internal static partial class AfterRunAuthorityHarness
         await ApplyingCheckpointDialogCannotDeleteRecoveryAsync();
         await NativeEntryFactorySelectsOnlyAllowedPagesAsync();
         await NativeExplicitGovernedEntryRequiresIntentAndPreservesRecoveryAsync();
+        await ManualEntryAndPublicationRejectInactiveRunnerAsync();
+        await ManualPublicationUsesRealSourceAndPreservesCanceledInputAsync();
+        await ManualPublicationDoesNotAcceptResultAfterDisposalAsync();
         await NativeEntryFactoryRejectsChangedOrCanceledObservationAsync();
         await NativeEntryFactoryPreservesPendingRewardBesideSettlementAsync();
         await NativeEntryFactoryKeepsApplyingSettlementPriorityAsync();
-        Console.WriteLine("PASS 10 native After Run page/dialog/entry cases");
+        Console.WriteLine("PASS 13 native After Run page/dialog/entry cases");
     }
 
     private static async Task DiscardDialogKeepsOrDeletesOnlyTheReviewedJournalAsync()
@@ -229,6 +232,113 @@ internal static partial class AfterRunAuthorityHarness
             "An existing governed catalog was replaced by manual intake.");
     }
 
+    private static async Task ManualEntryAndPublicationRejectInactiveRunnerAsync()
+    {
+        List<string> failures = [];
+        foreach (string change in new[] { "disposed", "creation", "sr6", "busy", "error", "dirty", "revision", "foreign" })
+        {
+            using var fixture = new PageFixture(staleCatalog: false, manualEntry: true);
+            Require(fixture.Coordinator.SupportsManualAfterRunProposalEntry,
+                "The test did not compose real manual entry capability.");
+            _ = new Sr5AfterRunManualProposalPage(fixture.Coordinator, WorkspaceId, 41);
+            string journal = fixture.Backend.Payload;
+            switch (change)
+            {
+                case "disposed": fixture.Coordinator.Dispose(); break;
+                case "creation": fixture.State = fixture.State with
+                    { Profile = fixture.State.Profile! with { Created = false } }; break;
+                case "sr6": fixture.State = fixture.State with
+                    { Rules = fixture.State.Rules! with { GameEdition = "SR6" } }; break;
+                case "busy": fixture.State = fixture.State with { IsBusy = true }; break;
+                case "error": fixture.State = fixture.State with { Error = "Reload failed." }; break;
+                case "foreign": fixture.State = fixture.State with { WorkspaceId = new("other-runner") }; break;
+                default:
+                    var workspace = fixture.State.ActiveWorkspace! with
+                    { ContentRevision = 42, SavedRevision = change == "dirty" ? 41 : 42 };
+                    fixture.State = fixture.State with
+                    { OpenWorkspaces = [workspace], Session = new(WorkspaceId, [workspace], [WorkspaceId]) };
+                    break;
+            }
+            if (change == "disposed" && fixture.Coordinator.SupportsManualAfterRunProposalEntry)
+                failures.Add("disposed coordinator still advertises manual authority");
+            bool rejected = false;
+            try { _ = new Sr5AfterRunManualProposalPage(fixture.Coordinator, WorkspaceId, 41); }
+            catch (InvalidOperationException) { rejected = true; }
+            if (!rejected) failures.Add($"{change} constructed a manual page");
+            try
+            {
+                var result = await fixture.Coordinator.PublishManualAfterRunProposalAsync(ManualSubmission());
+                if (result.Published || result.Proposal is not null || string.IsNullOrWhiteSpace(result.Blocker))
+                    failures.Add($"{change} returned an accepted publication");
+            }
+            catch (InvalidOperationException)
+            {
+                // A throwing dependency is not an entry rejection: the call
+                // counter below proves whether the host was reached at all.
+            }
+            if (fixture.ServiceCalls != 0) failures.Add($"{change} invoked proposal authority");
+            Require(fixture.Backend.Payload == journal && fixture.OwnerBackend.Payload.Length == 0
+                    && fixture.RewardBackend.Writes == 0,
+                $"Rejected {change} entry changed recovery state.");
+        }
+        Require(failures.Count == 0, string.Join("; ", failures));
+    }
+
+    private static async Task ManualPublicationUsesRealSourceAndPreservesCanceledInputAsync()
+    {
+        var backend = new ManualProposalBackend();
+        var source = new Sr5AfterRunManualProposalSource(new ManualSnapshotSource(ManualSnapshot(41, 'f')), backend);
+        using var fixture = new PageFixture(staleCatalog: false, manualAuthority: source);
+        using var canceled = new CancellationTokenSource();
+        canceled.Cancel();
+        bool rejected = false;
+        try { await fixture.Coordinator.PublishManualAfterRunProposalAsync(ManualSubmission(), canceled.Token); }
+        catch (OperationCanceledException) { rejected = true; }
+        Require(rejected && backend.Payload.Length == 0,
+            "A canceled queued proposal entered the real persistent source.");
+        var result = await fixture.Coordinator.PublishManualAfterRunProposalAsync(ManualSubmission());
+        Require(result.Published && !result.Replayed && result.Proposal?.IsExact() == true,
+            "An exact live Career runner cannot publish through the actual host/Core source.");
+        string persisted = backend.Payload;
+        var replay = await fixture.Coordinator.PublishManualAfterRunProposalAsync(ManualSubmission());
+        Require(replay.Published && replay.Replayed && backend.Payload == persisted
+                && fixture.State.ContentRevision == 41 && !fixture.State.IsDirty,
+            "Revisiting the same manual proposal duplicated or changed the runner transaction.");
+    }
+
+    private static async Task ManualPublicationDoesNotAcceptResultAfterDisposalAsync()
+    {
+        var backend = new ManualProposalBackend();
+        var source = new Sr5AfterRunManualProposalSource(new ManualSnapshotSource(ManualSnapshot(41, 'f')), backend);
+        var observed = new ObservedManualCatalog(source);
+        using var fixture = new PageFixture(staleCatalog: false, manualAuthority: observed);
+        observed.BeforePublish = fixture.Coordinator.Dispose;
+        bool rejected = false;
+        try { await fixture.Coordinator.PublishManualAfterRunProposalAsync(ManualSubmission()); }
+        catch (InvalidOperationException) { rejected = true; }
+        Require(rejected && observed.PublishCalls == 1 && backend.Payload.Length > 0,
+            "A disposed caller accepted an in-flight result or pretended the proposal write was rolled back.");
+        string persisted = backend.Payload;
+        var later = await fixture.Coordinator.PublishManualAfterRunProposalAsync(ManualSubmission());
+        Require(!later.Published && observed.PublishCalls == 1 && backend.Payload == persisted
+                && source.Load(WorkspaceId).Entries.Count == 1 && fixture.State.ContentRevision == 41,
+            "Shutdown replayed, erased, duplicated or applied the durably recorded proposal.");
+    }
+
+    private sealed class ObservedManualCatalog(Sr5AfterRunManualProposalSource source) : IManualEntryCatalog
+    {
+        public Action? BeforePublish;
+        public int PublishCalls;
+        public Sr5AfterRunProposalCatalogResult Load(Chummer.Contracts.Workspaces.CharacterWorkspaceId workspaceId)
+            => source.Load(workspaceId);
+        public Sr5AfterRunManualProposalPublishResult Publish(Sr5AfterRunManualProposalSubmission submission)
+        {
+            PublishCalls++;
+            BeforePublish?.Invoke();
+            return source.Publish(submission);
+        }
+    }
+
     private static async Task NativeEntryFactoryRejectsChangedOrCanceledObservationAsync()
     {
         foreach (string change in new[] { "canceled-before", "canceled-during", "busy", "selection" })
@@ -368,7 +478,8 @@ internal static partial class AfterRunAuthorityHarness
         public int ServiceCalls;
         public string Prompt = string.Empty;
 
-        public PageFixture(bool staleCatalog = true, bool manualEntry = false)
+        public PageFixture(bool staleCatalog = true, bool manualEntry = false,
+            IAndroidAfterRunProposalCatalog? manualAuthority = null)
         {
             long revision = staleCatalog ? 42 : 41;
             var baseState = Program.NewCreationOverview(WorkspaceId, revision, revision);
@@ -384,8 +495,8 @@ internal static partial class AfterRunAuthorityHarness
                 null!, null!, null!, null!, null!, null!,
                 StrictPageProxy.Create<IShellPresenter>(), null!, null!, null!, null!, null!,
                 StrictPageProxy.Create<IAndroidAccountLinkService>(), null!, null!,
-                afterRunProposalCatalog: manualEntry ? StrictPageProxy.Create<IManualEntryCatalog>(
-                    unexpected: () => ServiceCalls++) : null,
+                afterRunProposalCatalog: manualAuthority ?? (manualEntry ? StrictPageProxy.Create<IManualEntryCatalog>(
+                    unexpected: () => ServiceCalls++) : null),
                 afterRunRewardService: StrictPageProxy.Create<ICharacterAfterRunRewardService>(
                     unexpected: () => ServiceCalls++),
                 afterRunRewardCheckpoints: RewardStore);

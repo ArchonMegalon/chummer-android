@@ -63,12 +63,7 @@ public sealed class Sr5AfterRunManualProposalPage : NativePageBase
         CharacterWorkspaceId workspaceId,
         long workspaceRevision) : base(coordinator)
     {
-        if (workspaceRevision <= 0
-            || coordinator.State.WorkspaceId != workspaceId
-            || coordinator.State.ContentRevision != workspaceRevision
-            || coordinator.State.SavedRevision != workspaceRevision
-            || coordinator.State.IsDirty
-            || !coordinator.SupportsManualAfterRunProposalEntry)
+        if (!coordinator.CanEnterManualAfterRunProposal(workspaceId, workspaceRevision))
         {
             throw new InvalidOperationException(
                 "Manual After Run entry requires the composed host authority and exact clean saved runner revision.");
@@ -403,11 +398,7 @@ public sealed class Sr5AfterRunManualProposalPage : NativePageBase
 
     private void RefreshEnabledState()
     {
-        bool exactRunner = Coordinator.State.WorkspaceId == _workspaceId
-            && Coordinator.State.ContentRevision == _workspaceRevision
-            && Coordinator.State.SavedRevision == _workspaceRevision
-            && !Coordinator.State.IsDirty
-            && string.IsNullOrWhiteSpace(Coordinator.State.Error);
+        bool exactRunner = Coordinator.CanEnterManualAfterRunProposal(_workspaceId, _workspaceRevision);
         _addContact.IsEnabled = TryPendingContact(out _);
         _removeContact.IsEnabled = _contacts.Count > 0;
         _publish.IsEnabled = exactRunner

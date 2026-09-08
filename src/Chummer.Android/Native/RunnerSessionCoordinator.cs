@@ -4756,7 +4756,27 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
     }
 
     public bool SupportsManualAfterRunProposalEntry
-        => _afterRunProposalCatalog is ISr5AfterRunManualProposalAuthority;
+        => !_disposed && _afterRunProposalCatalog is ISr5AfterRunManualProposalAuthority;
+
+    internal bool CanEnterManualAfterRunProposal(
+        CharacterWorkspaceId workspaceId, long workspaceRevision)
+    {
+        // One immutable overview supplies every field; a mixed read must not
+        // authorize a stale page against another runner or lifecycle state.
+        CharacterOverviewState current = State;
+        return SupportsManualAfterRunProposalEntry
+            && !current.IsBusy
+            && current.WorkspaceId == workspaceId
+            && current.ContentRevision == workspaceRevision
+            && Sr5AfterRunSettlementEntryGuard.TryValidate(new(
+                current.Profile?.Created == true,
+                current.Rules?.GameEdition,
+                current.WorkspaceId,
+                current.ContentRevision,
+                current.SavedRevision,
+                current.IsDirty,
+                current.Error), out _);
+    }
 
     /// <summary>
     /// Publishes one fully typed manual run result through the Android host
@@ -4770,32 +4790,28 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
     {
         ArgumentNullException.ThrowIfNull(submission);
         if (_afterRunProposalCatalog is not ISr5AfterRunManualProposalAuthority authority
-            || State.WorkspaceId is not { } workspaceId
-            || submission.WorkspaceId != workspaceId
-            || submission.ExpectedWorkspaceRevision != State.ContentRevision
-            || State.SavedRevision != State.ContentRevision
-            || State.IsDirty
-            || !string.IsNullOrWhiteSpace(State.Error))
+            || !CanEnterManualAfterRunProposal(submission.WorkspaceId, submission.ExpectedWorkspaceRevision))
         {
-            return new(
-                Published: false,
-                Replayed: false,
-                Proposal: null,
-                "Manual After Run entry does not own the exact current clean saved runner revision.");
+            return Rejected();
         }
+        using var lifetime = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _lifetime.Token);
         Sr5AfterRunManualProposalPublishResult result = await Task.Run(
-            () => authority.Publish(submission),
-            cancellationToken).ConfigureAwait(false);
-        if (State.WorkspaceId != workspaceId
-            || State.ContentRevision != submission.ExpectedWorkspaceRevision
-            || State.SavedRevision != submission.ExpectedWorkspaceRevision
-            || State.IsDirty
-            || !string.IsNullOrWhiteSpace(State.Error))
+            () => CanEnterManualAfterRunProposal(submission.WorkspaceId, submission.ExpectedWorkspaceRevision)
+                ? authority.Publish(submission)
+                : Rejected(),
+            lifetime.Token).ConfigureAwait(false);
+        if (!CanEnterManualAfterRunProposal(submission.WorkspaceId, submission.ExpectedWorkspaceRevision))
         {
             throw new InvalidOperationException(
                 "The saved runner changed while the manual After Run proposal was being registered.");
         }
         return result;
+
+        static Sr5AfterRunManualProposalPublishResult Rejected() => new(
+            Published: false,
+            Replayed: false,
+            Proposal: null,
+            "Manual After Run entry does not own the exact current clean saved SR5 Career runner revision.");
     }
 
     public Task<CharacterCareerSkillSpecializationQuote?> PrepareCareerSkillSpecializationQuoteAsync(

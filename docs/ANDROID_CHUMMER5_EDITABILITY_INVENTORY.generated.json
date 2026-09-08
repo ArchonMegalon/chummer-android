@@ -652,7 +652,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "a2d74f50ca19c6d3c7b47ab136d9db30a20db9625ee4fff0a5b13489c92a70fa"
+        "sha256": "59e26a4be57401c88a4a454fa84906d2bff36644567bada81d21f9368fe6bdb9"
       },
       {
         "path": "src/Chummer.Android/Native/RunnerSessionSr5CareerWizardPhoneAuthority.cs",
@@ -687,7 +687,7 @@
       {
         "path": "src/Chummer.Android/Native/Sr5AfterRunManualProposalPage.cs",
         "exists": true,
-        "sha256": "4e98cb1438ad529e68a9e072041f26398650f7e266293566a0fdc4f209d1606f"
+        "sha256": "4d614904846d1d090c92cb3b27fa85995965c70cbc8cf2618afcd96cad06ce9b"
       },
       {
         "path": "src/Chummer.Android/Native/Sr5AfterRunManualProposalSource.cs",
