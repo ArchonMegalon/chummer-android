@@ -652,7 +652,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "f4b94decd8a6446b073afdfb3751ff8593982703e3cadd9a0cba44f139baedd8"
+        "sha256": "cd045067197c046949bcd066dd47447c377188f05516dec0f8ad48d5c566fe2d"
       },
       {
         "path": "src/Chummer.Android/Native/RunnerSessionSr5CareerWizardPhoneAuthority.cs",
@@ -1022,7 +1022,7 @@
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
         "exists": true,
-        "sha256": "3c0485614faf213d3e4608a3ba1915527f01afcd66854791459cf298d0e68e2d"
+        "sha256": "924503aac5d53369e67992ce134f2a094a6e093e99832ecc7ee96f8a2cf0fdc3"
       },
       {
         "path": "src/Chummer.Android/Platform/IAndroidLinkedCharacterFileService.cs",
@@ -3000,7 +3000,7 @@
     },
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "ff6cfbf8d4e93834f4b05f15a77645337df74b751bfbcb26418bbeaf822c5ae7"
+      "sha256": "cd269d9dc13fba49e9a6c5d44b7601baf2d0113b820a6ddd05a9522973e81e99"
     }
   },
   "coverageByFamily": {

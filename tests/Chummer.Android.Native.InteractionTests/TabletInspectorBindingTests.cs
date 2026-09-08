@@ -11,11 +11,198 @@ internal static class TabletInspectorBindingTests
     private const string ItemBId = "22222222-2222-4222-8222-222222222222";
     public static async Task RunAsync()
     {
+        DelayedDamageActionCannotMixTracksAndPickers();
+        DetachedMoveCannotReorderThePreviousItem();
         DelayedApplyCannotMixTargetsAndControls();
         DetachedSelectionCannotRestoreAnOldEditor();
         RefreshAndDepartureInvalidateApply();
         await QueuedApplyRechecksAuthorityInsideGateAsync();
+        await DamageWaitRechecksTrackAndWorkspaceAsync();
+        await DeleteConfirmationStaysBoundToTheReviewedItemAsync();
+        await DeleteWaitRechecksAuthorityAfterConfirmationAsync();
+        NestedChooserKeepsTheCurrentParent();
         Console.WriteLine("PASS tablet inspector action binding (managed native page/coordinator, not device persistence)");
+    }
+
+    private static void DelayedDamageActionCannotMixTracksAndPickers()
+    {
+        using var fixture = new Fixture(condition: true);
+        Button oldApply = fixture.Button("tablet-condition-save-physical");
+        Button oldClear = fixture.Button("tablet-condition-clear-physical");
+        fixture.Click("tablet-condition-track-stun");
+        fixture.Picker("tablet-condition-filled-stun").SelectedIndex = 6;
+        ((IButtonController)oldApply).SendClicked();
+        ((IButtonController)oldClear).SendClicked();
+        Require(fixture.ConditionRequests.Count == 0,
+            "Detached Physical action forwarded a mutation after selecting Stun: "
+            + string.Join(", ", fixture.ConditionRequests.Select(request => $"{request.Track}:{request.Filled}")));
+        Require(fixture.Picker("tablet-condition-filled-stun").SelectedIndex == 6,
+            "Rejected damage action discarded the current Stun draft.");
+        fixture.Click("tablet-condition-save-stun");
+        Require(fixture.ConditionRequests.SequenceEqual([new(WorkspaceConditionMonitorTrack.Stun, 6)]),
+            "Current Stun Apply did not forward exactly its selected value.");
+        fixture.Click("tablet-condition-clear-stun");
+        Require(fixture.ConditionRequests.SequenceEqual([
+            new(WorkspaceConditionMonitorTrack.Stun, 6), new(WorkspaceConditionMonitorTrack.Stun, 0)]),
+            "Current Clear did not preserve the Stun typed identity.");
+        fixture.Picker("tablet-condition-filled-stun").SelectedIndex = -1;
+        fixture.Click("tablet-condition-save-stun");
+        Require(fixture.ConditionRequests.Count == 2, "Missing picker choice was converted into a mutation.");
+    }
+
+    private static void DetachedMoveCannotReorderThePreviousItem()
+    {
+        using var fixture = new Fixture(mutable: true);
+        Button oldDown = fixture.Button("tablet-inspector-move-down");
+        fixture.Click($"tablet-collection-item-{ItemBId}");
+        ((IButtonController)oldDown).SendClicked();
+        Require(fixture.Requests.Count == 0, "Detached Move reordered the previously selected item.");
+        fixture.Click("tablet-inspector-move-up");
+        Require(fixture.Requests.Count == 1
+            && fixture.Requests[0] is WorkspaceMoveCollectionItemRequest { Target.ItemId: ItemBId, TargetIndex: 0 },
+            "Current Move did not forward B's exact typed order request.");
+    }
+
+    private static async Task DamageWaitRechecksTrackAndWorkspaceAsync()
+    {
+        foreach (string change in new[] { "workspace", "revision", "track", "refresh", "departure", "unchanged" })
+        {
+            using var fixture = new Fixture(condition: true);
+            SemaphoreSlim gate = fixture.ActivationGate;
+            Require(gate.Wait(0), "Could not reserve workspace gate.");
+            Task<bool> action;
+            try
+            {
+                action = (Task<bool>)typeof(TabletBuildPage).GetMethod("ApplyConditionInspectorAsync",
+                    BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(fixture.Page,
+                    [new ConditionMonitorEditRequest(WorkspaceConditionMonitorTrack.Physical, 7),
+                        fixture.State, fixture.Generation])!;
+                Require(!action.IsCompleted && fixture.ConditionRequests.Count == 0,
+                    "Damage action did not wait for actual activation.");
+                switch (change)
+                {
+                    case "workspace": fixture.State = fixture.State with { WorkspaceId = new("other-runner") }; break;
+                    case "revision": fixture.AdvanceRevision(); break;
+                    case "track": fixture.Click("tablet-condition-track-stun"); break;
+                    case "refresh": fixture.Refresh(); break;
+                    case "departure": fixture.Depart(); break;
+                }
+            }
+            finally { gate.Release(); }
+            if (change == "unchanged")
+            {
+                bool observed = false;
+                try { await action; } catch (OperationCanceledException) { observed = true; }
+                Require(observed && fixture.ConditionRequests.SequenceEqual([new(WorkspaceConditionMonitorTrack.Physical, 7)]),
+                    "Unchanged queued damage action did not forward the captured value exactly once.");
+            }
+            else Require(!await action && fixture.ConditionRequests.Count == 0,
+                $"Damage applied after {change} changed behind the gate.");
+        }
+    }
+
+    private static async Task DeleteConfirmationStaysBoundToTheReviewedItemAsync()
+    {
+        foreach (string change in new[] { "declined", "selection", "workspace", "revision", "departure", "unchanged" })
+        {
+            using var fixture = new Fixture(mutable: true);
+            var answer = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            fixture.Confirmation = answer.Task;
+            Button oldDelete = fixture.Button("tablet-inspector-delete");
+            Task action = fixture.DeleteAsync();
+            Require(!action.IsCompleted && fixture.DialogCalls == 1
+                && fixture.Prompt.Contains(ItemAId, StringComparison.Ordinal),
+                "Delete did not wait for confirmation of the exact selected item.");
+            await fixture.DeleteAsync();
+            Require(fixture.DialogCalls == 1, "Overlapping Delete opened a second confirmation.");
+            switch (change)
+            {
+                case "selection": fixture.Click($"tablet-collection-item-{ItemBId}"); break;
+                case "workspace": fixture.State = fixture.State with { WorkspaceId = new("other-runner") }; break;
+                case "revision": fixture.AdvanceRevision(); break;
+                case "departure": fixture.Depart(); break;
+            }
+            answer.SetResult(change != "declined");
+            await action;
+            if (change == "unchanged")
+                Require(fixture.Requests.Count == 1 && fixture.Requests[0] is WorkspaceDeleteCollectionItemRequest
+                    { Target.ItemId: ItemAId }, "Confirmed current Delete did not preserve A's typed identity.");
+            else
+                Require(fixture.Requests.Count == 0, $"Delete mutated after {change} while awaiting confirmation.");
+            if (change == "selection")
+            {
+                int dialogs = fixture.DialogCalls;
+                ((IButtonController)oldDelete).SendClicked();
+                Require(fixture.DialogCalls == dialogs, "Detached Delete opened a fresh dialog for A.");
+                fixture.Confirmation = Task.FromResult(true);
+                fixture.Click("tablet-inspector-delete");
+                Require(fixture.Requests.Count == 1 && fixture.Requests[0].Target.ItemId == ItemBId,
+                    "Current B Delete did not remain usable after rejecting A's confirmation.");
+            }
+        }
+    }
+
+    private static async Task DeleteWaitRechecksAuthorityAfterConfirmationAsync()
+    {
+        foreach (string change in new[] { "selection", "workspace", "revision", "departure", "unchanged" })
+        {
+            using var fixture = new Fixture(mutable: true);
+            fixture.Confirmation = Task.FromResult(true);
+            SemaphoreSlim gate = fixture.ActivationGate;
+            Require(gate.Wait(0), "Could not reserve the Delete activation gate.");
+            Task action;
+            try
+            {
+                action = fixture.DeleteAsync();
+                Require(fixture.DialogCalls == 1 && !action.IsCompleted && fixture.Requests.Count == 0,
+                    "Confirmed Delete did not wait for the actual activation gate.");
+                await fixture.DeleteAsync();
+                Require(fixture.DialogCalls == 1, "Queued confirmed Delete admitted a second dialog.");
+                switch (change)
+                {
+                    case "selection": fixture.Click($"tablet-collection-item-{ItemBId}"); break;
+                    case "workspace": fixture.State = fixture.State with { WorkspaceId = new("other-runner") }; break;
+                    case "revision": fixture.AdvanceRevision(); break;
+                    case "departure": fixture.Depart(); break;
+                }
+            }
+            finally { gate.Release(); }
+            await action;
+            if (change == "unchanged")
+                Require(fixture.Requests.Count == 1 && fixture.Requests[0] is WorkspaceDeleteCollectionItemRequest
+                    { Target.ItemId: ItemAId }, "Unchanged confirmed Delete did not forward A exactly once after gate release.");
+            else
+                Require(fixture.Requests.Count == 0,
+                    $"Delete mutated after {change} changed between confirmation and activation.");
+        }
+    }
+
+    private static void NestedChooserKeepsTheCurrentParent()
+    {
+        using var fixture = new Fixture(nested: true);
+        var navigation = new NavigationPage(fixture.Page);
+        Button oldAdd = fixture.Button("tablet-inspector-add-gear");
+        fixture.Click($"tablet-collection-item-{ItemBId}");
+        ((IButtonController)oldAdd).SendClicked();
+        Require(navigation.Navigation.NavigationStack.Count == 1 && navigation.CurrentPage == fixture.Page,
+            "Detached A Add opened a chooser after selecting B.");
+
+        fixture.Click("tablet-inspector-add-gear");
+        // The real managed stack changes synchronously. With no Android handler,
+        // the later Pushed animation event is not native-navigation completion proof.
+        Page destination = navigation.CurrentPage;
+        Require(navigation.Navigation.NavigationStack.Count == 2
+            && ReferenceEquals(navigation.CurrentPage, destination)
+            && destination is NestedCollectionAddPage && destination.AutomationId == "nested-add-gear",
+            "Current B Add did not open exactly the real nested Gear chooser.");
+        var parent = (WorkspaceCollectionItemTarget)typeof(NestedCollectionAddPage)
+            .GetField("_parent", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(destination)!;
+        var kind = (WorkspaceNestedCollectionKind)typeof(NestedCollectionAddPage)
+            .GetField("_nestedKind", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(destination)!;
+        Require(parent == fixture.State.ActiveCollectionEditor!.Items[1].Target
+            && kind == WorkspaceNestedCollectionKind.Gear,
+            "Nested chooser did not retain B's exact parent identity and nested kind.");
+        Require(fixture.Requests.Count == 0, "Opening the nested chooser mutated the runner.");
     }
 
     private static void DelayedApplyCannotMixTargetsAndControls()
@@ -166,17 +353,47 @@ internal static class TabletInspectorBindingTests
             ActiveCollectionEditor = Editor("saved A", "saved B")
         };
         public readonly List<WorkspaceCollectionMutationRequest> Requests = [];
+        public readonly List<ConditionMonitorEditRequest> ConditionRequests = [];
         public readonly RunnerSessionCoordinator Coordinator;
         public readonly TabletBuildPage Page;
+        public Task<bool> Confirmation = Task.FromResult(false);
+        public int DialogCalls;
+        public string Prompt = string.Empty;
 
-        public Fixture()
+        public Fixture(bool condition = false, bool mutable = false, bool nested = false)
         {
-            var presenter = TabletMutationProxy.Create(() => State, Requests.Add);
+            if (condition)
+                State = State with
+                {
+                    Profile = State.Profile! with { Created = true },
+                    ActiveSectionId = "conditionmonitor", ActiveCollectionEditor = null,
+                    ActiveConditionMonitor = new(true, [
+                        new(WorkspaceConditionMonitorTrack.Physical, "Physical", 2, 10, 0, 10, 0, "", false),
+                        new(WorkspaceConditionMonitorTrack.Stun, "Stun", 3, 10, 0, 10, 0, "", false)])
+                };
+            if (mutable)
+                State = State with { ActiveCollectionEditor = State.ActiveCollectionEditor! with
+                {
+                    Items = State.ActiveCollectionEditor!.Items.Select(item => item with
+                    { CanMove = true, CanDelete = true }).ToArray()
+                }};
+            if (nested)
+                State = State with { ActiveCollectionEditor = State.ActiveCollectionEditor! with
+                {
+                    Items = State.ActiveCollectionEditor!.Items.Select(item => item with
+                    { AddableNestedKinds = [WorkspaceNestedCollectionKind.Gear] }).ToArray()
+                }};
+            var presenter = TabletMutationProxy.Create(() => State, Requests.Add, ConditionRequests.Add);
             Coordinator = new RunnerSessionCoordinator(presenter,
                 null!, null!, null!, null!, null!, null!, StrictPageProxy.Create<IShellPresenter>(),
                 null!, null!, null!, null!, null!, StrictPageProxy.Create<IAndroidAccountLinkService>(),
                 null!, null!);
-            Page = new(Coordinator);
+            Page = new(Coordinator, (_, message, _, _) =>
+            {
+                DialogCalls++;
+                Prompt = message;
+                return Confirmation;
+            });
             Refresh();
         }
 
@@ -184,6 +401,20 @@ internal static class TabletInspectorBindingTests
             .Single(input => input.AutomationId == "tablet-field-notes");
         public Button Button(string id) => Elements(Page).OfType<Button>()
             .Single(button => button.AutomationId == id);
+        public Picker Picker(string id) => Elements(Page).OfType<Picker>()
+            .Single(picker => picker.AutomationId == id);
+        public long Generation => (long)typeof(TabletBuildPage).GetField("_inspectorGeneration",
+            BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(Page)!;
+        public SemaphoreSlim ActivationGate => (SemaphoreSlim)typeof(RunnerSessionCoordinator)
+            .GetField("_workspaceActivationGate", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(Coordinator)!;
+        public Task DeleteAsync() => (Task)typeof(TabletBuildPage).GetMethod("DeleteInspectorItemAsync",
+            BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(Page,
+                [State.ActiveCollectionEditor!.Items[0], State, Generation])!;
+        public void AdvanceRevision()
+        {
+            var changed = State.ActiveWorkspace! with { ContentRevision = State.ContentRevision + 1 };
+            State = State with { OpenWorkspaces = [changed], Session = new(changed.Id, [changed], [changed.Id]) };
+        }
         public void Click(string id) => ((IButtonController)Button(id)).SendClicked();
         public void Refresh() => typeof(TabletBuildPage).GetMethod("Refresh",
             BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(Page, null);
@@ -212,14 +443,17 @@ public class TabletMutationProxy : DispatchProxy
 {
     private Func<CharacterOverviewState> _state = null!;
     private Action<WorkspaceCollectionMutationRequest> _observe = null!;
+    private Action<ConditionMonitorEditRequest> _condition = null!;
 
     public static ICharacterOverviewPresenter Create(Func<CharacterOverviewState> state,
-        Action<WorkspaceCollectionMutationRequest> observe)
+        Action<WorkspaceCollectionMutationRequest> observe,
+        Action<ConditionMonitorEditRequest> condition)
     {
         var instance = Create<ICharacterOverviewPresenter, TabletMutationProxy>();
         var proxy = (TabletMutationProxy)(object)instance;
         proxy._state = state;
         proxy._observe = observe;
+        proxy._condition = condition;
         return instance;
     }
 
@@ -229,6 +463,11 @@ public class TabletMutationProxy : DispatchProxy
         if (name.StartsWith("add_", StringComparison.Ordinal) || name.StartsWith("remove_", StringComparison.Ordinal))
             return null;
         if (name == "get_State") return _state();
+        if (name == "ApplyConditionMonitorEditAsync")
+        {
+            _condition((ConditionMonitorEditRequest)args![0]!);
+            return Task.FromCanceled(new CancellationToken(canceled: true));
+        }
         if (name == "ApplyCollectionMutationAsync")
         {
             _observe((WorkspaceCollectionMutationRequest)args![0]!);

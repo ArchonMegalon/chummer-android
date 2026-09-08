@@ -23205,7 +23205,12 @@ def _known_phone_mapping(
         tablet_implemented = shared and _contains(
             tablet_page,
             "tablet-condition-filled-",
-            "ApplyConditionMonitorEditAsync",
+            "TryApplyBoundConditionMonitorEditAsync",
+            "IsCurrentConditionInspector",
+        ) and _contains(
+            coordinator,
+            "TryApplyBoundConditionMonitorEditAsync",
+            "ApplyConditionMonitorEditCoreAsync",
         )
         e2e_scripted = _contains(
             e2e_driver,

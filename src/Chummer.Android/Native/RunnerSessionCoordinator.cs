@@ -3332,6 +3332,31 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         NotifyChanged();
     }
 
+    internal Task<bool> TryApplyBoundConditionMonitorEditAsync(
+        ConditionMonitorEditRequest request,
+        CharacterOverviewState expected,
+        Func<bool> isCurrentInspector,
+        CancellationToken cancellationToken = default)
+        => WithWorkspaceActivationGateAsync(async () =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            CharacterOverviewState current = State;
+            if (_disposed || current.IsBusy || current.Error is not null
+                || expected.WorkspaceId is null
+                || current.WorkspaceId != expected.WorkspaceId
+                || current.ContentRevision != expected.ContentRevision
+                || current.SavedRevision != expected.SavedRevision
+                || !string.Equals(current.ActiveSectionId, expected.ActiveSectionId, StringComparison.Ordinal)
+                || !ReferenceEquals(current.ActiveConditionMonitor, expected.ActiveConditionMonitor)
+                || expected.ActiveConditionMonitor is not { CareerEditable: true } monitor
+                || monitor.Tracks.Count(track => track.Track == request.Track) != 1
+                || !isCurrentInspector())
+                return false;
+
+            await ApplyConditionMonitorEditCoreAsync(request, cancellationToken);
+            return State.Error is null;
+        }, cancellationToken);
+
     public Task<CareerReputationEditorState?> PrepareCareerReputationEditAsync(
         CancellationToken cancellationToken = default)
         => _presenter.PrepareCareerReputationEditAsync(cancellationToken);

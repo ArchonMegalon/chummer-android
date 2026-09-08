@@ -6,9 +6,24 @@ coordinator implementations. Compile it with the same explicit dependency
 roots, package feeds and versions as `Native.CompileCheck`, then execute its
 `net10.0` DLL. Passing this development harness does not seal those dependencies.
 
-The current 60 top-level cases contain 58 existing interaction cases and two
-wrappers: 14 settlement authority cases and 10 native After Run page/entry cases.
+The current 61 top-level cases contain 58 existing interaction cases and three
+wrappers: settlement authority, native After Run page/entry, and tablet inspector
+binding cases.
 Do not add the wrapper and nested counts as separate independent tests.
+
+`TabletInspectorBindingTests.cs` exercises actual collection and condition-track
+controls, detached selection/Apply/Clear/Move/Delete callbacks, the activation
+semaphore, and asynchronous delete confirmation. Selection, workspace, revision,
+refresh and departure changes must invalidate captured requests; unchanged queued
+actions forward exactly once. The nested-add row uses a real managed MAUI
+`NavigationPage` and verifies the destination's exact parent target and kind.
+The managed stack changes without an Android handler; its later animation event
+is not required or claimed as device navigation proof.
+
+The tablet presenter spy records typed requests and cancels before Core mutation
+and shell synchronization. These checks prove native routing and stale-action
+rejection, not successful Core writes, durable persistence, rotation, or Android
+process restart. They cannot promote an inventory row to device-qualified parity.
 
 `AfterRunPageInteractionTests.cs` instantiates the actual settlement page,
 reward page/view, coordinator, entry factory, action gate and checkpoint stores.
@@ -45,7 +60,7 @@ publication remain separate gates.
 ## Local runtime/file-store integration
 
 Pass `--after-run-runtime-content-root /absolute/core/Chummer` to the compiled
-DLL to run six additional integration cases after the 60 default cases. The
+DLL to run six additional integration cases after the 61 default cases. The
 path must contain `data/`; there is no implicit sibling lookup. Without that
 argument the executable explicitly reports that these cases were not run.
 
