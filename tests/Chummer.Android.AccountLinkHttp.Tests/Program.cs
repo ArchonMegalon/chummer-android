@@ -59,7 +59,9 @@ internal static class Program
         await SuccessfulErasureCannotLeaveAStaleLinkedSnapshotAsync();
         await LostRefreshResponseSurvivesProcessRestartAsync();
         await MismatchedOperationResponsesRetainRecoveryStateAsync();
-        Console.WriteLine("Account-link HTTP hardening tests passed: 34");
+        await UnsupportedBootstrapGrantTransportCannotCommitAsync();
+        await UnsupportedRefreshGrantTransportCannotRotateAsync();
+        Console.WriteLine("Account-link HTTP hardening tests passed: 36");
     }
 
     private static async Task BearerTokenIsRequestBoundAndRedacted()
@@ -1702,6 +1704,154 @@ internal static class Program
             refreshFixture.Identity.InstallationId)).GrantId == "grant-before-refresh");
     }
 
+    private static async Task UnsupportedBootstrapGrantTransportCannotCommitAsync()
+    {
+        foreach ((string name, Func<HttpResponseMessage, HttpResponseMessage> corrupt) in UnsupportedGrantResponses())
+        {
+            LinkFixture fixture = await CreatePendingFixtureAsync();
+            string? originalBinding = fixture.Metadata.GetRaw(AndroidAccountLinkKeyAuthority.BindingStorageKey);
+            List<string> credentialWrites = ObserveCredentialWrites(fixture);
+            var terminal = new RecordingHandler(request => corrupt(
+                BootstrapGrantResponse(fixture.Identity, RequestOperationId(request), alreadyClaimed: false)));
+            using (AndroidAccountLinkHttpTransport transport = CreateTransport(terminal))
+            {
+                AndroidAccountLinkService service = CreateService(transport, fixture);
+                await service.ResumePendingLinkAsync();
+                Require(service.Snapshot.Status == AndroidAccountLinkStatus.Error);
+                Require(!service.Snapshot.ToString().Contains(RotatedAccessToken, StringComparison.Ordinal));
+            }
+            Require(credentialWrites.Count == 0);
+            Require(!fixture.Metadata.Contains(StoredAccessTokenKey));
+            Require(!fixture.Metadata.Contains(StoredGrantExpiryKey));
+            Require(!fixture.Metadata.Contains(StagedGrantCommitKey));
+            Require(fixture.Metadata.GetRaw(AndroidAccountLinkKeyAuthority.BindingStorageKey) == originalBinding);
+            Require(fixture.Metadata.Contains(PendingStateKey));
+            Require(fixture.Metadata.Contains(PendingPollOperationKey));
+            Require(fixture.Keys.Contains(fixture.Identity.Alias));
+
+            // Restart and retry the retained operation with a fresh proof, not a new link/key.
+            var recovery = new RecordingHandler(request => BootstrapGrantResponse(
+                fixture.Identity, RequestOperationId(request), alreadyClaimed: true));
+            using AndroidAccountLinkHttpTransport recoveryTransport = CreateTransport(recovery);
+            AndroidAccountLinkService restarted = CreateService(recoveryTransport, fixture);
+            await restarted.ResumePendingLinkAsync();
+            Require(restarted.Snapshot.Status == AndroidAccountLinkStatus.Linked);
+            await RequireCommittedGrantAsync(fixture, "grant-after-response-loss");
+            Require(!fixture.Metadata.Contains(PendingPollOperationKey));
+            RequireBootstrapRetriesShareOnlyStableOperation(
+                RequireSingle(terminal.Requests), RequireSingle(recovery.Requests));
+            Console.WriteLine($"PASS bootstrap grant transport rejection/recovery: {name}");
+        }
+    }
+
+    private static async Task UnsupportedRefreshGrantTransportCannotRotateAsync()
+    {
+        foreach ((string name, Func<HttpResponseMessage, HttpResponseMessage> corrupt) in UnsupportedGrantResponses())
+        {
+            LinkFixture fixture = await CreateLinkedFixtureAsync(DateTimeOffset.UtcNow.AddDays(1));
+            string? originalBinding = fixture.Metadata.GetRaw(AndroidAccountLinkKeyAuthority.BindingStorageKey);
+            string? originalExpiry = fixture.Metadata.GetRaw(StoredGrantExpiryKey);
+            List<string> credentialWrites = ObserveCredentialWrites(fixture);
+            int calls = 0;
+            var terminal = new RecordingHandler(request => ++calls == 1
+                ? JsonResponse("{}")
+                : corrupt(RefreshGrantResponse(fixture.Identity, RequestOperationId(request))));
+            using (AndroidAccountLinkHttpTransport transport = CreateTransport(terminal))
+            {
+                AndroidAccountLinkService service = CreateService(transport, fixture);
+                await service.InitializeAsync();
+                Require(service.Snapshot.Status == AndroidAccountLinkStatus.Error);
+                Require(!service.Snapshot.ToString().Contains(RotatedAccessToken, StringComparison.Ordinal));
+            }
+            Require(calls == 2);
+            Require(credentialWrites.Count == 0);
+            Require(fixture.Metadata.GetRaw(StoredAccessTokenKey) == AccessToken);
+            Require(fixture.Metadata.GetRaw(StoredGrantExpiryKey) == originalExpiry);
+            Require(fixture.Metadata.GetRaw(AndroidAccountLinkKeyAuthority.BindingStorageKey) == originalBinding);
+            Require(!fixture.Metadata.Contains(StagedGrantCommitKey));
+            Require(fixture.Metadata.Contains(RefreshAttemptKey));
+            Require(fixture.Keys.Contains(fixture.Identity.Alias));
+
+            var recovery = new RecordingHandler(request => RefreshGrantResponse(
+                fixture.Identity, RequestOperationId(request)));
+            using AndroidAccountLinkHttpTransport recoveryTransport = CreateTransport(recovery);
+            AndroidAccountLinkService restarted = CreateService(recoveryTransport, fixture);
+            await restarted.InitializeAsync();
+            Require(restarted.Snapshot.Status == AndroidAccountLinkStatus.Linked);
+            await RequireCommittedGrantAsync(fixture, "grant-after-refresh");
+            Require(!fixture.Metadata.Contains(RefreshAttemptKey));
+            ObservedRequest retry = RequireSingle(recovery.Requests);
+            Require(retry.Body == terminal.Requests[1].Body);
+            Require(retry.PacketKey != terminal.Requests[1].PacketKey);
+            Require(retry.Signature != terminal.Requests[1].Signature);
+            Console.WriteLine($"PASS refresh grant transport rejection/recovery: {name}");
+        }
+    }
+
+    private static List<string> ObserveCredentialWrites(LinkFixture fixture)
+    {
+        List<string> writes = [];
+        fixture.Metadata.AfterSet = key =>
+        {
+            if (key is StoredAccessTokenKey or StoredGrantExpiryKey or StagedGrantCommitKey
+                or InstallationIdKey or AndroidAccountLinkKeyAuthority.BindingStorageKey)
+                writes.Add(key);
+        };
+        return writes;
+    }
+
+    private static IEnumerable<(string Name, Action<JsonObject> Mutate)> UnsupportedGrantTransports()
+    {
+        yield return ("missing", body => { body.Remove("grantTransport"); });
+        yield return ("null", body => { body["grantTransport"] = null; });
+        yield return ("empty", body => { body["grantTransport"] = ""; });
+        yield return ("legacy", body => { body["grantTransport"] = "legacy-v1"; });
+        yield return ("future", body => { body["grantTransport"] = "android-linked-v3"; });
+        yield return ("case", body => { body["grantTransport"] = "ANDROID-LINKED-V2"; });
+        yield return ("whitespace", body => { body["grantTransport"] = " android-linked-v2 "; });
+        yield return ("number", body => { body["grantTransport"] = 2; });
+        yield return ("credential", body => { body["grantTransport"] = RotatedAccessToken; });
+    }
+
+    private static IEnumerable<(string Name, Func<HttpResponseMessage, HttpResponseMessage> Corrupt)> UnsupportedGrantResponses()
+    {
+        foreach ((string name, Action<JsonObject> mutate) in UnsupportedGrantTransports())
+            yield return (name, response => MutateGrantResponse(response, mutate));
+        yield return ("duplicate-valid-last", response => DuplicateGrantTransport(
+            response, "legacy-v1", "android-linked-v2"));
+        yield return ("duplicate-valid-first", response => DuplicateGrantTransport(
+            response, "android-linked-v2", "legacy-v1"));
+        yield return ("duplicate-identical", response => DuplicateGrantTransport(
+            response, "android-linked-v2", "android-linked-v2"));
+        yield return ("duplicate-alias-valid-last", response => DuplicateGrantTransport(
+            response, "legacy-v1", "android-linked-v2", "GrantTransport"));
+        yield return ("duplicate-alias-valid-first", response => DuplicateGrantTransport(
+            response, "android-linked-v2", "legacy-v1", "GrantTransport"));
+    }
+
+    private static HttpResponseMessage DuplicateGrantTransport(
+        HttpResponseMessage response, string first, string last, string lastPropertyName = "grantTransport")
+    {
+        JsonObject body = JsonNode.Parse(response.Content.ReadAsStringAsync().GetAwaiter().GetResult())!.AsObject();
+        body.Remove("grantTransport");
+        string prefix = body.ToJsonString()[..^1];
+        string duplicateBody = prefix + ",\"grantTransport\":" + JsonSerializer.Serialize(first)
+            + "," + JsonSerializer.Serialize(lastPropertyName) + ":" + JsonSerializer.Serialize(last) + "}";
+        response.Content.Dispose();
+        response.Content = new StringContent(duplicateBody, Encoding.UTF8, "application/json");
+        return response;
+    }
+
+    private static HttpResponseMessage MutateGrantResponse(
+        HttpResponseMessage response, Action<JsonObject> mutate)
+    {
+        JsonObject body = JsonNode.Parse(response.Content.ReadAsStringAsync().GetAwaiter().GetResult())!.AsObject();
+        mutate(body);
+        response.Content.Dispose();
+        response.Content = new StringContent(body.ToJsonString(), Encoding.UTF8, "application/json");
+        return response;
+    }
+
     private static AndroidAccountLinkService CreateService(
         AndroidAccountLinkHttpTransport transport,
         LinkFixture fixture,
@@ -1880,7 +2030,8 @@ internal static class Program
             {
                 grant = GrantMetadata("grant-after-response-loss", identity.InstallationId),
                 alreadyClaimed,
-                operationId
+                operationId,
+                grantTransport = "android-linked-v2"
             }));
 
     private static HttpResponseMessage RefreshGrantResponse(
@@ -1893,7 +2044,8 @@ internal static class Program
             {
                 grant = GrantMetadata("grant-after-refresh", identity.InstallationId),
                 rotated = true,
-                operationId
+                operationId,
+                grantTransport = "android-linked-v2"
             }));
 
     private static HttpResponseMessage AlreadyRedeemedResponse(string operationId)

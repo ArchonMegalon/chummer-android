@@ -16,6 +16,7 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
         MaxDepth = 64,
+        AllowDuplicateProperties = false,
         RespectNullableAnnotations = true,
         RespectRequiredConstructorParameters = true
     };
