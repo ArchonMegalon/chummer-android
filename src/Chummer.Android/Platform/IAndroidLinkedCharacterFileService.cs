@@ -16,6 +16,7 @@ public interface IAndroidLinkedCharacterFileService
 {
     // A returned file belongs exclusively to this staging invocation until
     // dispatched. Returning an existing content-addressed/shared path is forbidden.
+    // Return only after file data and the final directory entry are flushed.
     Task<AndroidStagedLinkedCharacter?> StageAsync(
         WorkspaceCollectionItemTarget target,
         CancellationToken cancellationToken);
@@ -33,6 +34,8 @@ public sealed class AndroidLinkedCharacterFileService : IAndroidLinkedCharacterF
     private readonly ICharacterLinkedDocumentCodec _codec;
     private readonly Func<string> _appDataDirectory;
     private readonly Func<Guid> _newFileId;
+    private readonly Action<FileStream> _flushFile;
+    private readonly Action<string> _syncDirectory;
 
     public AndroidLinkedCharacterFileService(
         IAndroidDocumentService documents,
@@ -40,12 +43,15 @@ public sealed class AndroidLinkedCharacterFileService : IAndroidLinkedCharacterF
         : this(documents, codec, () => FileSystem.AppDataDirectory, Guid.NewGuid) { }
 
     internal AndroidLinkedCharacterFileService(IAndroidDocumentService documents,
-        ICharacterLinkedDocumentCodec codec, Func<string> appDataDirectory, Func<Guid> newFileId)
+        ICharacterLinkedDocumentCodec codec, Func<string> appDataDirectory, Func<Guid> newFileId,
+        Action<FileStream>? flushFile = null, Action<string>? syncDirectory = null)
     {
         _documents = documents;
         _codec = codec;
         _appDataDirectory = appDataDirectory;
         _newFileId = newFileId;
+        _flushFile = flushFile ?? (stream => stream.Flush(flushToDisk: true));
+        _syncDirectory = syncDirectory ?? AndroidPrivateFileDurability.SyncDirectory;
     }
 
     public async Task<AndroidStagedLinkedCharacter?> StageAsync(
@@ -53,6 +59,7 @@ public sealed class AndroidLinkedCharacterFileService : IAndroidLinkedCharacterF
         CancellationToken cancellationToken)
     {
         ValidateTarget(target);
+        cancellationToken.ThrowIfCancellationRequested();
         AndroidDocument? selected = await _documents.OpenAsync(cancellationToken);
         if (selected is null)
         {
@@ -61,41 +68,59 @@ public sealed class AndroidLinkedCharacterFileService : IAndroidLinkedCharacterF
 
         try
         {
-            string displayName = NormalizeDisplayName(selected.DisplayName);
-            if (!_codec.TryDecode(displayName, selected.Content, out CharacterLinkedDocument? identity))
+            // Parsing, hashing and synchronous durability barriers must not run
+            // on Android's UI synchronization context. Once scheduled, always
+            // join this work before clearing the selected buffer.
+            return await Task.Run(async () =>
             {
-                throw new InvalidOperationException(
-                    "Select a valid Chummer5 .chum5 or .chum5lz runner document.");
-            }
-
-            string extension = ResolveExtension(displayName);
-            string targetPrefix = BuildTargetPrefix(target);
-            string contentHash = Convert.ToHexString(SHA256.HashData(selected.Content))
-                .ToLowerInvariant()[..16];
-            string stagedFileName = $"{targetPrefix}-{contentHash}-{_newFileId():N}{extension}";
-            string root = ResolveRoot();
-            Directory.CreateDirectory(root);
-            string finalPath = Path.Combine(root, stagedFileName);
-            string temporaryPath = Path.Combine(root, $".{stagedFileName}.{Guid.NewGuid():N}.tmp");
-            try
-            {
-                await File.WriteAllBytesAsync(temporaryPath, selected.Content, cancellationToken);
                 cancellationToken.ThrowIfCancellationRequested();
-                File.Move(temporaryPath, finalPath, overwrite: false);
-            }
-            finally
-            {
-                if (File.Exists(temporaryPath))
+                string displayName = NormalizeDisplayName(selected.DisplayName);
+                if (!_codec.TryDecode(displayName, selected.Content, out CharacterLinkedDocument? identity))
                 {
-                    File.Delete(temporaryPath);
+                    throw new InvalidOperationException(
+                        "Select a valid Chummer5 .chum5 or .chum5lz runner document.");
                 }
-            }
 
-            return new AndroidStagedLinkedCharacter(
-                FileName: finalPath,
-                RelativeFileName: $"{DirectoryName}/{stagedFileName}",
-                DisplayName: displayName,
-                Identity: identity);
+                string extension = ResolveExtension(displayName);
+                string targetPrefix = BuildTargetPrefix(target);
+                string contentHash = Convert.ToHexString(SHA256.HashData(selected.Content))
+                    .ToLowerInvariant()[..16];
+                string stagedFileName = $"{targetPrefix}-{contentHash}-{_newFileId():N}{extension}";
+                string root = ResolveRoot();
+                Directory.CreateDirectory(root);
+                // The linked-characters directory itself may have been created
+                // on this call. Persist its parent entry before any file publish.
+                _syncDirectory(Path.GetDirectoryName(root)!);
+                string finalPath = Path.Combine(root, stagedFileName);
+                string temporaryPath = Path.Combine(root, $".{stagedFileName}.{Guid.NewGuid():N}.tmp");
+                try
+                {
+                    await using (var stream = new FileStream(temporaryPath, FileMode.CreateNew,
+                        FileAccess.Write, FileShare.None, 4096, FileOptions.Asynchronous | FileOptions.WriteThrough))
+                    {
+                        await stream.WriteAsync(selected.Content, cancellationToken).ConfigureAwait(false);
+                        _flushFile(stream);
+                    }
+                    cancellationToken.ThrowIfCancellationRequested();
+                    File.Move(temporaryPath, finalPath, overwrite: false);
+                    _syncDirectory(root);
+                    // Do not throw for a late cancellation after this durable
+                    // acknowledgement: return ownership for undispatched cleanup.
+                }
+                finally
+                {
+                    if (File.Exists(temporaryPath)) File.Delete(temporaryPath);
+                    // A failed directory acknowledgement after rename retains
+                    // the exclusive final file, but never exposes a link to it.
+                    // Reclamation needs separate reference/recovery authority.
+                }
+
+                return new AndroidStagedLinkedCharacter(
+                    FileName: finalPath,
+                    RelativeFileName: $"{DirectoryName}/{stagedFileName}",
+                    DisplayName: displayName,
+                    Identity: identity);
+            }, CancellationToken.None).ConfigureAwait(false);
         }
         finally
         {

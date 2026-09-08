@@ -10,6 +10,7 @@
     <Compile Include="Program.cs" />
     <Compile Include="TabletInspectorBindingTests.cs" />
     <Compile Include="LinkedCharacterBindingTests.cs" />
+    <Compile Include="LinkedCharacterDurabilityTests.cs" />
     <Compile Include="LinkedCharacterNativeRuntimeTests.cs" />
     <Compile Include="AfterRunPageInteractionTests.cs" />
     <Compile Include="AfterRunNativeRuntimeTests.cs" />

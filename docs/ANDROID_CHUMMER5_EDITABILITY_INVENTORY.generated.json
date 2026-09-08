@@ -907,7 +907,7 @@
       {
         "path": "tests/Chummer.Android.Native.CompileCheck/NativeCompileInputs.props",
         "exists": true,
-        "sha256": "9aec146406a0e2414ecc75fd1a57b9b96cba73887831f8924bdd7bc7671b45ad"
+        "sha256": "8f0209472503fb53066025d75adf5bc156e871b8f03aae4bbb8abf38b7d03eaa"
       },
       {
         "path": "tests/test_api36_e2e_workflow.py",
@@ -1012,7 +1012,7 @@
       {
         "path": "tests/test_chummer5_editability_inventory.py",
         "exists": true,
-        "sha256": "b4a1c40ac67fb0aa3ddf2d5bab87cab4b19862b079dc56e8ca1314cc45aa9d0d"
+        "sha256": "40c29b4c75c35bba96eb1c57fcf0e73c793b59316794d363d9d111dce78bbfad"
       },
       {
         "path": "tests/test_sr5_contextual_wizard_scope.py",
@@ -1032,7 +1032,12 @@
       {
         "path": "src/Chummer.Android/Platform/IAndroidLinkedCharacterFileService.cs",
         "exists": true,
-        "sha256": "432b60c09fef37e3e5d9c86b6ccc8c5ae9779f4a48d55d895de2e71da4e90144"
+        "sha256": "99bbf24911143b49da7ccaa6f3ece75038ec5ac1a5eea7eb03f87bc4ba14d435"
+      },
+      {
+        "path": "src/Chummer.Android/Platform/AndroidPrivateFileDurability.cs",
+        "exists": true,
+        "sha256": "1e613d909e51ea32525d4b17d4b14ca57bcb5a4d30079713131b7d44af21e3ea"
       },
       {
         "path": "tests/run_api36_editing_e2e.py",
@@ -1437,7 +1442,7 @@
       {
         "path": "tests/run_api36_linked_runner_e2e.py",
         "exists": true,
-        "sha256": "f95002b9eaee87f46ef114c19386bb399f198f347e43a56f4fe15794ed969db1"
+        "sha256": "cd31559e0066947ff79a4f6b0d18318c4e9bd00579eddd2c9a6bc3e96a3f2dd0"
       },
       {
         "path": "tests/run_api36_new_character_settings_e2e.py",
@@ -3005,7 +3010,7 @@
     },
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "4954790bc3f46bb2f6e35be738cee68c50b8bea9d3f21bbf4fce0e520b73bccb"
+      "sha256": "fe879f6b4e01b4ed5c4568c02bd820c9316fb648a9049548c7eb5e6670d8e80f"
     }
   },
   "coverageByFamily": {

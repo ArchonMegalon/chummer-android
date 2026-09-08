@@ -34,6 +34,7 @@
     <Compile Include="ReputationTests.cs" />
     <Compile Include="ReputationViewTests.cs" />
     <Compile Include="../../src/Chummer.Android/Native/FileSr5CareerCommandJournalBackend.cs" Link="Native/FileSr5CareerCommandJournalBackend.cs" />
+    <Compile Include="../../src/Chummer.Android/Platform/AndroidPrivateFileDurability.cs" Link="Platform/AndroidPrivateFileDurability.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5CareerReputationJournal.cs" Link="Native/Sr5CareerReputationJournal.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5CareerReputationCoordinator.cs" Link="Native/Sr5CareerReputationCoordinator.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5CareerReputationPhoneModel.cs" Link="Native/Sr5CareerReputationPhoneModel.cs" />

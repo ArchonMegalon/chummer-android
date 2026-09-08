@@ -4802,6 +4802,7 @@ public sealed class Demo
             "runnerSessionCoordinatorSha256": native_root / "Native" / "RunnerSessionCoordinator.cs",
             "linkedCharacterCoordinatorSha256": native_root / "Native" / "RunnerSessionCoordinator.LinkedCharacters.cs",
             "linkedCharacterFileServiceSha256": native_root / "Platform" / "IAndroidLinkedCharacterFileService.cs",
+            "linkedFileDurabilitySha256": native_root / "Platform" / "AndroidPrivateFileDurability.cs",
             "linkedDocumentCodecSha256": inventory.WORKSPACE_ROOT / "chummer-core-engine" / "Chummer.Infrastructure" / "Xml" / "Chummer5LinkedDocumentCodec.cs",
             "workspaceCollectionEditorProjectorSha256": overview / "WorkspaceCollectionEditorProjector.cs",
             "workspaceCollectionEditorStateSha256": overview / "WorkspaceCollectionEditorState.cs",
@@ -4851,6 +4852,7 @@ public sealed class Demo
                     "driverSha256",
                     "linkedDocumentCodecSha256",
                     "linkedCharacterCoordinatorSha256",
+                    "linkedFileDurabilitySha256",
                     "invalidLinkedFixtureSha256",
                 ):
                     stale_receipt = {**receipt, stale_hash: "0" * 64}
@@ -4859,10 +4861,10 @@ public sealed class Demo
                         inventory._validated_linked_runner_phone_e2e_receipt(),
                         stale_hash,
                     )
-                missing_binding = {key: value for key, value in receipt.items()
-                                   if key != "linkedCharacterCoordinatorSha256"}
-                receipt_path.write_text(json.dumps(missing_binding), encoding="utf-8")
-                self.assertIsNone(inventory._validated_linked_runner_phone_e2e_receipt())
+                for missing in ("linkedCharacterCoordinatorSha256", "linkedFileDurabilitySha256"):
+                    missing_binding = {key: value for key, value in receipt.items() if key != missing}
+                    receipt_path.write_text(json.dumps(missing_binding), encoding="utf-8")
+                    self.assertIsNone(inventory._validated_linked_runner_phone_e2e_receipt(), missing)
 
     def test_new_character_priority_receipt_is_source_hash_bound(self) -> None:
         self.assertIsNone(

@@ -19,6 +19,7 @@ internal static class LinkedCharacterBindingTests
         await AmbiguousDispatchPreservesEveryReferencedFileAsync();
         await NativeControlsRejectStaleDialogsAndPickersAsync();
         await RealStagingOwnsUniqueFilesAndPreservesCollisionAsync();
+        await LinkedCharacterDurabilityTests.RunAsync();
         SuccessfulDocumentReplaceIsNotACheckpoint();
         Console.WriteLine("PASS linked-character binding (managed native controls, canonical codec and real temporary files; no device/Core mutation receipt)");
     }

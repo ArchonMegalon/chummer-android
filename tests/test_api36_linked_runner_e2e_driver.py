@@ -58,6 +58,7 @@ class Api36LinkedRunnerE2EDriverTests(unittest.TestCase):
         for marker in (
             "linkedCharacterFileServiceSha256",
             "linkedCharacterCoordinatorSha256",
+            "linkedFileDurabilitySha256",
             "linkedDocumentCodecSha256",
             "workspaceCollectionEditorProjectorSha256",
             "workspaceCollectionMutationRequestSha256",
