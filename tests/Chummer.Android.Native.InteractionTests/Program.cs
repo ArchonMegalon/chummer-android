@@ -13,6 +13,11 @@ internal static class Program
 {
     private static async Task Main(string[] args)
     {
+        if (args.Length == 1 && args[0] == "--tablet-inspector-binding")
+        {
+            await TabletInspectorBindingTests.RunAsync();
+            return;
+        }
         if (args.Length == 2 && args[0] == "--skills-rereview-runtime-content-root")
         {
             CreationMagicNativeRuntimeTests.RunSkillsReReview(args[1]);
@@ -27,6 +32,7 @@ internal static class Program
             throw new ArgumentException("Expected --after-run-runtime-content-root followed by an explicit Core content directory.");
         (string Name, Func<Task> Run)[] tests =
         [
+            (nameof(TabletInspectorBindingTests.RunAsync), TabletInspectorBindingTests.RunAsync),
             (nameof(SettlementRecoveryUsesActualNativeAndCoreAssembliesAsync), SettlementRecoveryUsesActualNativeAndCoreAssembliesAsync),
             (nameof(AfterRunAuthorityHarness.RunNativePageCasesAsync), AfterRunAuthorityHarness.RunNativePageCasesAsync),
             (nameof(QueuedOlderUnfocusedCannotOverwriteActionInputAsync), QueuedOlderUnfocusedCannotOverwriteActionInputAsync),

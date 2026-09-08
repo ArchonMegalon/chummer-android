@@ -33,6 +33,9 @@ public sealed class TabletBuildPage : NativePageBase
     private Picker? _conditionFilledPicker;
     private Picker? _vehiclePhysicalDamagePicker;
     private Picker? _matrixDamagePicker;
+    private long _collectionGeneration;
+    private long _inspectorGeneration;
+    private bool _departed;
 
     public TabletBuildPage(RunnerSessionCoordinator coordinator) : base(coordinator)
     {
@@ -58,6 +61,22 @@ public sealed class TabletBuildPage : NativePageBase
             Priority = 1,
             Command = new Command(async () => await Navigation.PushAsync(new NativeCommandPage(Coordinator)))
         });
+    }
+
+    protected override void OnAppearing()
+    {
+        _departed = false;
+        _collectionGeneration++;
+        _inspectorGeneration++;
+        base.OnAppearing();
+    }
+
+    protected override void OnDisappearing()
+    {
+        _departed = true;
+        _collectionGeneration++;
+        _inspectorGeneration++;
+        base.OnDisappearing();
     }
 
     protected override void Refresh()
@@ -168,6 +187,8 @@ public sealed class TabletBuildPage : NativePageBase
 
     private void BuildCollectionPane(WorkspaceCollectionEditorState? editor)
     {
+        long generation = ++_collectionGeneration;
+        CharacterOverviewState state = Coordinator.State;
         _collection.Clear();
         _collection.Add(NativeTheme.Eyebrow("Collection"));
         _collection.Add(NativeTheme.Title(
@@ -190,6 +211,7 @@ public sealed class TabletBuildPage : NativePageBase
                     selected ? $"Selected · {track.Filled}/{track.EditableMaximum}" : $"{track.Filled}/{track.EditableMaximum} filled",
                     () =>
                     {
+                        if (!IsCurrentCollection(generation, state)) return Task.CompletedTask;
                         _selectedConditionTrack = track.Track;
                         BuildCollectionPane(editor);
                         BuildInspectorPane(editor);
@@ -222,6 +244,7 @@ public sealed class TabletBuildPage : NativePageBase
                     selected ? $"Selected · {attribute.TotalValue}" : attribute.TotalValue.ToString(CultureInfo.InvariantCulture),
                     () =>
                     {
+                        if (!IsCurrentCollection(generation, state)) return Task.CompletedTask;
                         _selectedAttributeName = attribute.AttributeName;
                         BuildCollectionPane(editor);
                         BuildInspectorPane(editor);
@@ -271,6 +294,7 @@ public sealed class TabletBuildPage : NativePageBase
                 detail,
                 () =>
                 {
+                    if (!IsCurrentCollection(generation, state)) return Task.CompletedTask;
                     _selectedTarget = item.Target;
                     BuildCollectionPane(editor);
                     BuildInspectorPane(editor);
@@ -284,6 +308,8 @@ public sealed class TabletBuildPage : NativePageBase
 
     private void BuildInspectorPane(WorkspaceCollectionEditorState? editor)
     {
+        long generation = ++_inspectorGeneration;
+        CharacterOverviewState state = Coordinator.State;
         _inspector.Clear();
         _textInputs.Clear();
         _toggleInputs.Clear();
@@ -359,7 +385,14 @@ public sealed class TabletBuildPage : NativePageBase
 
         Button save = NativeTheme.PrimaryButton("Apply changes");
         save.AutomationId = "tablet-inspector-save";
-        save.Clicked += async (_, _) => await RunWithConditionalRefreshAsync(() => SaveInspectorAsync(item));
+        save.Clicked += async (_, _) =>
+        {
+            // A queued click retains its old item, while this page's input fields
+            // belong to the latest inspector. Never mix those two renderings.
+            if (!IsCurrentInspector(generation, state, item.Target)
+                || !ReferenceEquals(save.Parent, _inspector)) return;
+            await RunWithConditionalRefreshAsync(() => SaveInspectorAsync(item, state, generation));
+        };
         _inspector.Add(save);
         AddLinkedCharacterInspector(item);
         AddInspectorActions(item, editor!.Items.Count);
@@ -695,8 +728,36 @@ public sealed class TabletBuildPage : NativePageBase
         _inspector.Add(_matrixDamagePicker);
     }
 
-    private async Task<bool> SaveInspectorAsync(WorkspaceCollectionItemEditorState item)
+    private bool IsCurrentView(CharacterOverviewState expected)
     {
+        CharacterOverviewState current = Coordinator.State;
+        return !_departed
+            && !Coordinator.IsBusy
+            && current.Error is null
+            && expected.WorkspaceId is not null
+            && current.WorkspaceId == expected.WorkspaceId
+            && current.ContentRevision == expected.ContentRevision
+            && current.SavedRevision == expected.SavedRevision
+            && string.Equals(current.ActiveSectionId, expected.ActiveSectionId, StringComparison.Ordinal)
+            && string.Equals(current.ActiveSectionJson, expected.ActiveSectionJson, StringComparison.Ordinal)
+            && ReferenceEquals(current.ActiveCollectionEditor, expected.ActiveCollectionEditor)
+            && ReferenceEquals(current.ActiveConditionMonitor, expected.ActiveConditionMonitor);
+    }
+
+    private bool IsCurrentCollection(long generation, CharacterOverviewState expected)
+        => generation == _collectionGeneration && IsCurrentView(expected);
+
+    private bool IsCurrentInspector(long generation, CharacterOverviewState expected,
+        WorkspaceCollectionItemTarget target)
+        => generation == _inspectorGeneration
+            && _selectedTarget is not null
+            && CollectionItemEditorPage.TargetsMatch(target, _selectedTarget)
+            && IsCurrentView(expected);
+
+    private async Task<bool> SaveInspectorAsync(WorkspaceCollectionItemEditorState item,
+        CharacterOverviewState expected, long generation)
+    {
+        if (!IsCurrentInspector(generation, expected, item.Target)) return false;
         Dictionary<WorkspaceCollectionTextField, string?> textChanges = [];
         foreach (WorkspaceCollectionTextValueState original in item.TextValues)
         {
@@ -875,7 +936,7 @@ public sealed class TabletBuildPage : NativePageBase
             return false;
         }
 
-        await Coordinator.ApplyCollectionMutationAsync(new WorkspacePatchCollectionItemRequest(
+        return await Coordinator.TryApplyBoundCollectionMutationAsync(new WorkspacePatchCollectionItemRequest(
             item.Target,
             TextValues: textChanges,
             Rating: ratingChange,
@@ -888,8 +949,8 @@ public sealed class TabletBuildPage : NativePageBase
             WeaponMatrixDamage: weaponMatrixDamageChange,
             CyberwareMatrixDamage: cyberwareMatrixDamageChange,
             ContactConnection: contactConnectionChange,
-            ContactLoyalty: contactLoyaltyChange));
-        return true;
+            ContactLoyalty: contactLoyaltyChange),
+            expected, () => IsCurrentInspector(generation, expected, item.Target));
     }
 
     private void AddInspectorActions(WorkspaceCollectionItemEditorState item, int itemCount)

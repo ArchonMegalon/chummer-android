@@ -8,6 +8,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
+    <Compile Include="TabletInspectorBindingTests.cs" />
     <Compile Include="AfterRunPageInteractionTests.cs" />
     <Compile Include="AfterRunNativeRuntimeTests.cs" />
     <Compile Include="ReputationNativeRuntimeTests.cs" />

@@ -3173,6 +3173,37 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
             () => ApplyCollectionMutationCoreAsync(request, cancellationToken),
             cancellationToken);
 
+    /// <summary>
+    /// An adaptive inspector can be replaced while waiting for workspace activation.
+    /// Recheck its captured document and render binding inside the same gate used
+    /// by activation, before the existing typed presenter mutation is entered.
+    /// </summary>
+    internal Task<bool> TryApplyBoundCollectionMutationAsync(
+        WorkspaceCollectionMutationRequest request,
+        CharacterOverviewState expected,
+        Func<bool> isCurrentInspector,
+        CancellationToken cancellationToken = default)
+        => WithWorkspaceActivationGateAsync(async () =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            CharacterOverviewState current = State;
+            if (_disposed || current.IsBusy || current.Error is not null
+                || expected.WorkspaceId is null
+                || current.WorkspaceId != expected.WorkspaceId
+                || current.ContentRevision != expected.ContentRevision
+                || current.SavedRevision != expected.SavedRevision
+                || !string.Equals(current.ActiveSectionId, expected.ActiveSectionId, StringComparison.Ordinal)
+                || !ReferenceEquals(current.ActiveCollectionEditor, expected.ActiveCollectionEditor)
+                || expected.ActiveCollectionEditor is null
+                || expected.ActiveCollectionEditor.Items.Count(item =>
+                    CollectionItemEditorPage.TargetsMatch(item.Target, request.Target)) != 1
+                || !isCurrentInspector())
+                return false;
+
+            await ApplyCollectionMutationCoreAsync(request, cancellationToken);
+            return State.Error is null;
+        }, cancellationToken);
+
     private async Task ApplyCollectionMutationCoreAsync(
         WorkspaceCollectionMutationRequest request,
         CancellationToken cancellationToken)
