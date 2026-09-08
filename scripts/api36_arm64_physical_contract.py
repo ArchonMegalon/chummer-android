@@ -511,7 +511,7 @@ LANE_RECEIPT_FIELDS = {
     "ReceiptDigest",
 }
 AFTER_PROOF_FIELDS = {
-    "import", "restoredBeforeApply", "savedSuccessor", "finalRestartSuccessor",
+    "import", "initialSaved", "restoredBeforeApply", "savedSuccessor", "finalRestartSuccessor",
     "reviewedCheckpoint", "reviewedCheckpointSha256", "appliedCheckpoint",
     "appliedCheckpointSha256", "transactionAndReviewAuthority", "restartProcessIds",
 }
@@ -3117,11 +3117,50 @@ def _validate_after_checkpoint(value: object, label: str) -> None:
 
 def _validate_after_proof(proof: Mapping[str, object]) -> None:
     require_exact_keys(proof, AFTER_PROOF_FIELDS, "After Run authorityProofStages")
+    # Import is an observation before the first durable save. Only this stage
+    # admits savedRevision=0; subsequent stages retain the strict saved check.
+    imported = require_exact_keys(proof.get("import"), WORKSPACE_FIELDS, "After Run.import")
+    require_string(imported.get("workspaceId"), "After Run.import workspaceId")
+    content_revision = require_integer(imported.get("contentRevision"), "After Run.import contentRevision", minimum=1)
+    saved_revision = require_integer(imported.get("savedRevision"), "After Run.import savedRevision", minimum=0)
+    if saved_revision > content_revision:
+        raise ValueError("After Run import saved revision exceeds content revision")
+    for field in ("payloadSha256", "documentSha256"):
+        require_hex(imported.get(field), f"After Run.import {field}")
     _validate_workspace_group(proof, (
-        "import", "restoredBeforeApply", "savedSuccessor", "finalRestartSuccessor",
+        "initialSaved", "restoredBeforeApply", "savedSuccessor", "finalRestartSuccessor",
     ), "After Run")
+    initial = proof["initialSaved"]
+    successor = proof["savedSuccessor"]
+    if (initial != {**imported, "savedRevision": content_revision}
+            or proof["restoredBeforeApply"] != initial):
+        raise ValueError("After Run first save/reopen changed imported workspace authority")
+    if (successor["workspaceId"] != initial["workspaceId"]
+            or successor["contentRevision"] != content_revision + 1
+            or successor["savedRevision"] != successor["contentRevision"]
+            or successor["payloadSha256"] == initial["payloadSha256"]
+            or successor["documentSha256"] == initial["documentSha256"]
+            or proof["finalRestartSuccessor"] != successor):
+        raise ValueError("After Run successor/restart is not one exact durable settlement")
     _validate_after_checkpoint(proof.get("reviewedCheckpoint"), "After Run reviewed checkpoint")
     _validate_after_checkpoint(proof.get("appliedCheckpoint"), "After Run applied checkpoint")
+    reviewed = proof["reviewedCheckpoint"]
+    applied = proof["appliedCheckpoint"]
+    if (reviewed["SchemaVersion"] != 1 or applied["SchemaVersion"] != 1
+            or reviewed["RouteId"] != "sr5-career/after-run/settlement/review"
+            # The persisted RouteId is the review origin even after apply;
+            # Phase/Receipt describe state, not the currently visible page.
+            or applied["RouteId"] != reviewed["RouteId"]
+            or reviewed["Version"] != 1 or reviewed["Phase"] != 0 or reviewed["Receipt"] is not None
+            or applied["Version"] != 3 or applied["Phase"] != 2 or applied["Receipt"] is None
+            or reviewed["Draft"] != applied["Draft"]
+            or reviewed["IdempotencyKey"] != applied["IdempotencyKey"]
+            or not all(reviewed["Draft"]["Acknowledgements"].values())):
+        raise ValueError("After Run committed checkpoint differs from its exact reviewed draft")
+    binding = reviewed["Draft"]["Candidate"]["Binding"]
+    if (binding["WorkspaceId"]["Value"] != initial["workspaceId"]
+            or binding["WorkspaceRevision"] != content_revision):
+        raise ValueError("After Run review is bound to another initial workspace/revision")
     for field in ("reviewedCheckpointSha256", "appliedCheckpointSha256"):
         require_hex(proof.get(field), f"After Run {field}")
     projection = require_exact_keys(proof.get("transactionAndReviewAuthority"), {
@@ -3129,6 +3168,21 @@ def _validate_after_proof(proof: Mapping[str, object]) -> None:
     }, "After Run transaction authority")
     for field in ("gmReviewDigest", "ownerReviewDigest", "receiptDigest"):
         require_hex(projection.get(field), f"After Run {field}")
+    receipt = applied["Receipt"]
+    plan = reviewed["Draft"]["Plan"]
+    if (plan["Identity"] != receipt["Identity"]
+            or plan["Identity"] != binding["Identity"]
+            or plan["Identity"] != binding["Quote"]["Identity"]):
+        raise ValueError("After Run plan, quote and receipt have different typed identities")
+    for summary_field, checkpoint_field in (
+        ("transactionId", "TransactionId"), ("gmReviewDigest", "GmReviewDigest"),
+        ("ownerReviewDigest", "OwnerReviewDigest"),
+    ):
+        if (projection[summary_field] != plan[checkpoint_field]
+                or projection[summary_field] != receipt[checkpoint_field]):
+            raise ValueError("After Run transaction summary differs from its reviewed plan/receipt")
+    if projection["receiptDigest"] != receipt["ReceiptDigest"]:
+        raise ValueError("After Run summary does not bind the committed Core receipt digest")
 
 
 def _validate_downtime_journal(value: object, label: str) -> None:

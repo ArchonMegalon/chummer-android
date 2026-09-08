@@ -1124,56 +1124,36 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
 
     @staticmethod
     def after_checkpoint(*, applied: bool) -> dict[str, object]:
-        identity = {field: "id" for field in contract.AFTER_IDENTITY_FIELDS}
-        quote = {field: "value" for field in contract.AFTER_QUOTE_FIELDS}
-        for field in {
-            "HeatBefore", "HeatDelta", "HeatAfter", "StreetCredBefore", "StreetCredDelta",
-            "StreetCredAfter", "NotorietyBefore", "NotorietyDelta", "NotorietyAfter",
-            "PublicAwarenessBefore", "RequestedPublicAwarenessDelta", "PublicAwarenessAfter",
-            "KarmaBefore", "ContactKarmaCost", "KarmaAfter", "Blocker",
-        }:
-            quote[field] = 0
-        quote.update({"Identity": identity, "Contacts": [], "Prerequisites": [], "CanSettle": True})
-        reward = {field: "value" for field in contract.AFTER_REWARD_CONTEXT_FIELDS}
-        reward.update({"Identity": identity, "KarmaAward": 1, "NuyenAward": 1})
-        binding = {field: "value" for field in contract.AFTER_BINDING_FIELDS}
-        binding.update({"WorkspaceId": {"Value": "workspace-1"}, "WorkspaceRevision": 1, "Identity": identity, "Quote": quote})
-        plan = {field: "value" for field in contract.AFTER_PLAN_FIELDS}
-        for field in {
-            "TargetHeat", "TargetStreetCred", "TargetNotoriety", "TargetPublicAwareness",
-            "TargetKarma", "ContactKarmaCost", "ExpenseAmount",
-        }:
-            plan[field] = 0
-        plan.update({"Identity": identity, "ContactsToAdd": []})
-        draft = {
-            "OwnerId": "owner", "Candidate": {"RewardContext": reward, "Binding": binding},
-            "Plan": plan, "Acknowledgements": {field: True for field in contract.AFTER_ACK_FIELDS},
-        }
-        receipt = None
-        if applied:
-            receipt = {field: "value" for field in contract.AFTER_RECEIPT_FIELDS}
-            for field in {
-                "HeatBefore", "HeatAfter", "StreetCredBefore", "StreetCredAfter",
-                "NotorietyBefore", "NotorietyAfter", "PublicAwarenessBefore",
-                "PublicAwarenessAfter", "KarmaBefore", "KarmaAfter", "ContactKarmaCost",
-                "ExpenseAmount",
-            }:
-                receipt[field] = 0
-            receipt.update({"Identity": identity, "AddedContacts": []})
-        checkpoint = {field: "value" for field in contract.AFTER_CHECKPOINT_FIELDS}
-        checkpoint.update({"SchemaVersion": 1, "Version": 1, "Phase": 2 if applied else 0, "Draft": draft, "Receipt": receipt})
-        return checkpoint
+        # Use the real driver's governed checkpoint shape, not invented
+        # "value" fields that can conceal a producer/consumer mismatch.
+        import run_api36_sr5_after_run_settlement_e2e as after_driver
+        fixture = after_driver.load_fixture()
+        return after_driver._expected_after_run_authority(
+            fixture, workspace_id="workspace-1", workspace_revision=1,
+            character_projection_digest=fixture["runner"]["expectedSha256"],
+            owner_id="ffffffff-ffff-ffff-ffff-ffffffffffff",
+            transaction_id="eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
+            version=3 if applied else 1, phase=2 if applied else 0,
+        )
 
     def after_proof(self, restart_pid: str) -> dict[str, object]:
         index = contract.JOURNEY_ORDER.index("after-run")
+        saved = {
+            **self.workspace_payload(), "contentRevision": 1, "savedRevision": 1,
+            "payloadSha256": "8" * 64, "documentSha256": "9" * 64,
+        }
+        reviewed = self.after_checkpoint(applied=False)
+        applied = self.after_checkpoint(applied=True)
+        receipt = applied["Receipt"]
         return {
-            "import": self.workspace_payload(), "restoredBeforeApply": self.workspace_payload(),
+            "import": {**saved, "savedRevision": 0}, "initialSaved": dict(saved),
+            "restoredBeforeApply": dict(saved),
             "savedSuccessor": self.workspace_payload(), "finalRestartSuccessor": self.workspace_payload(),
-            "reviewedCheckpoint": self.after_checkpoint(applied=False), "reviewedCheckpointSha256": "1" * 64,
-            "appliedCheckpoint": self.after_checkpoint(applied=True), "appliedCheckpointSha256": "2" * 64,
+            "reviewedCheckpoint": reviewed, "reviewedCheckpointSha256": "1" * 64,
+            "appliedCheckpoint": applied, "appliedCheckpointSha256": "2" * 64,
             "transactionAndReviewAuthority": {
-                "transactionId": "transaction", "gmReviewDigest": "3" * 64,
-                "ownerReviewDigest": "4" * 64, "receiptDigest": "5" * 64,
+                "transactionId": receipt["TransactionId"], "gmReviewDigest": receipt["GmReviewDigest"],
+                "ownerReviewDigest": receipt["OwnerReviewDigest"], "receiptDigest": receipt["ReceiptDigest"],
             },
             "restartProcessIds": [[str(300 + index * 3)], [str(301 + index * 3)], [restart_pid]],
         }
