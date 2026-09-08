@@ -29,6 +29,7 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
     private const string PlatformId = "android";
     private const string ReleaseChannel = "preview";
     private const string InstallLinkTransport = "proof_poll_v2";
+    private const string ExpectedGrantTransport = "android-linked-v2";
     private const string BootstrapGrantCommitKind = "bootstrap";
     private const string RefreshGrantCommitKind = "refresh";
     private const int PendingPollOperationVersion = 1;
@@ -553,6 +554,7 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             ExchangeResponse exchange = await _httpTransport.ReadJsonAsync<ExchangeResponse>(
                 response,
                 cancellationToken);
+            RequireExpectedGrantTransport(exchange.GrantTransport);
             if (!string.Equals(
                     exchange.OperationId,
                     operation.OperationId,
@@ -1117,6 +1119,15 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         }
     }
 
+    private static void RequireExpectedGrantTransport(string grantTransport)
+    {
+        // The Hub's grant transport identifies grant/proof semantics, independently of
+        // the approval poll transport. Headers alone must not authorize a legacy or
+        // future protocol. Reject before staging credentials or changing key bindings.
+        if (!string.Equals(grantTransport, ExpectedGrantTransport, StringComparison.Ordinal))
+            throw new InvalidDataException("Chummer returned an unsupported grant transport.");
+    }
+
     private async Task<GrantContract?> RefreshGrantAsync(
         StoredGrant grant,
         RefreshOperation operation,
@@ -1149,6 +1160,7 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             RefreshResponse refreshed = await _httpTransport.ReadJsonAsync<RefreshResponse>(
                 response,
                 cancellationToken);
+            RequireExpectedGrantTransport(refreshed.GrantTransport);
             if (!string.Equals(
                     refreshed.OperationId,
                     operation.OperationId,
@@ -2144,11 +2156,13 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
     private sealed record ExchangeResponse(
         GrantMetadata Grant,
         bool AlreadyClaimed,
-        string OperationId);
+        string OperationId,
+        string GrantTransport);
     private sealed record RefreshResponse(
         GrantMetadata Grant,
         bool Rotated,
-        string OperationId);
+        string OperationId,
+        string GrantTransport);
     private sealed record WorkspaceListResponse(IReadOnlyList<WorkspaceSnapshotDto> Snapshots);
     private sealed record WorkspaceSnapshotDto(
         string WorkspaceId,

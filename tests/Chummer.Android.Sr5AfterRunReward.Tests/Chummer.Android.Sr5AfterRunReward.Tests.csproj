@@ -1,0 +1,71 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <Target Name="RequireExplicitChummerCoreRoot"
+          BeforeTargets="PrepareForBuild;CollectPackageReferences;_GenerateRestoreGraphProjectEntry">
+    <Error Condition="'$(ChummerCoreRoot)' == ''"
+           Text="Supply ChummerCoreRoot explicitly with the reviewed Core checkout. This harness has no ambient Core fallback." />
+    <Error Condition="'$(ChummerCoreRoot)' != '' and !Exists('$(ChummerCoreRoot)/Chummer.Contracts/Chummer.Contracts.csproj')"
+           Text="ChummerCoreRoot must contain the real Chummer.Contracts project." />
+    <Error Condition="'$(ChummerCoreRoot)' != '' and !Exists('$(ChummerCoreRoot)/Chummer.Application/Chummer.Application.csproj')"
+           Text="ChummerCoreRoot must contain the real Chummer.Application project." />
+    <Error Condition="'$(ChummerCoreRoot)' != '' and !Exists('$(ChummerCoreRoot)/Chummer.Infrastructure/Chummer.Infrastructure.csproj')"
+           Text="ChummerCoreRoot must contain the real Chummer.Infrastructure project." />
+  </Target>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Maui.Controls" Version="10.0.20" />
+    <EmbeddedResource Include="../../src/Chummer.Android/Resources/Localization/PhoneStrings.resx" LogicalName="Chummer.Android.Resources.Localization.PhoneStrings.resources" />
+    <EmbeddedResource Include="../../src/Chummer.Android/Resources/Localization/PhoneStrings.de.resx" LogicalName="Chummer.Android.Resources.Localization.PhoneStrings.de.resources" />
+    <EmbeddedResource Include="../../src/Chummer.Android/Resources/Localization/PhoneStrings.es.resx" LogicalName="Chummer.Android.Resources.Localization.PhoneStrings.es.resources" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(ChummerCoreRoot)' != ''">
+    <ProjectReference Include="$(ChummerCoreRoot)/Chummer.Contracts/Chummer.Contracts.csproj" />
+    <ProjectReference Include="$(ChummerCoreRoot)/Chummer.Application/Chummer.Application.csproj" />
+    <ProjectReference Include="$(ChummerCoreRoot)/Chummer.Infrastructure/Chummer.Infrastructure.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="ReputationTests.cs" />
+    <Compile Include="ReputationViewTests.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/FileSr5CareerCommandJournalBackend.cs" Link="Native/FileSr5CareerCommandJournalBackend.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5CareerReputationJournal.cs" Link="Native/Sr5CareerReputationJournal.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5CareerReputationCoordinator.cs" Link="Native/Sr5CareerReputationCoordinator.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5CareerReputationPhoneModel.cs" Link="Native/Sr5CareerReputationPhoneModel.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5CareerReputationView.cs" Link="Native/Sr5CareerReputationView.cs" />
+    <None Include="$(ChummerCoreRoot)/Chummer/data/settings.xml" Link="core-data/settings.xml" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="$(ChummerCoreRoot)/Chummer/data/books.xml" Link="core-data/books.xml" CopyToOutputDirectory="PreserveNewest" />
+    <Compile Include="PhoneModelTests.cs" />
+    <Compile Include="ColdEntryTests.cs" />
+    <Compile Include="RunnerHostTests.cs" />
+    <Compile Include="NativeViewTests.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5AfterRunRewardView.cs" Link="Native/Sr5AfterRunRewardView.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/NativeTheme.cs" Link="Native/NativeTheme.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/PhoneStrings.cs" Link="Native/PhoneStrings.cs" />
+    <Compile Include="RunnerHostTestSeams.cs" />
+    <Compile Include="HostStorageCompileSeams.cs" />
+    <Compile Include="RealAfterRunRewardFixture.cs" />
+    <Compile Include="JournalOwnershipTests.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5AfterRunRewardWizardModel.cs"
+             Link="Native/Sr5AfterRunRewardWizardModel.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5AfterRunRewardCheckpointStore.cs"
+             Link="Native/Sr5AfterRunRewardCheckpointStore.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5AfterRunRewardCoordinator.cs"
+             Link="Native/Sr5AfterRunRewardCoordinator.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5AfterRunRewardPhoneModel.cs"
+             Link="Native/Sr5AfterRunRewardPhoneModel.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5AfterRunRewardConsequencesHandoff.cs"
+             Link="Native/Sr5AfterRunRewardConsequencesHandoff.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/RunnerSessionCoordinator.AfterRunRewards.cs"
+             Link="Native/RunnerSessionCoordinator.AfterRunRewards.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/RunnerSessionSr5AfterRunRewardHost.cs"
+             Link="Native/RunnerSessionSr5AfterRunRewardHost.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5CareerMutationOwnerStore.cs"
+             Link="Native/Sr5CareerMutationOwnerStore.cs" />
+  </ItemGroup>
+</Project>

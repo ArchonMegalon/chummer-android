@@ -913,6 +913,8 @@ def _launch_state_payload(state: physical.shared.LaunchState) -> dict[str, objec
 def tap_after_run_action_with_immediate_diagnostics(
     device: physical.shared.Device,
     evidence_stage: str,
+    *,
+    governed_proposal: bool = False,
 ) -> None:
     """Tap once, then retain the first observable process/foreground outcome.
 
@@ -935,9 +937,16 @@ def tap_after_run_action_with_immediate_diagnostics(
             "the After Run navigation tap"
         )
 
+    # The advanced entry is a separate row below the ordinary action. Locate it
+    # with the same bounded exact-ID scrolling used for other settlement fields;
+    # scrolling is observation/navigation, never a replay of the one final tap.
+    scroll_options = {
+        "scroll": True, "max_scrolls": 48, "scroll_distance_ratio": 0.18,
+    } if governed_proposal else {}
     device.tap_single_exact_resource_id(
-        "sr5-career-action-after-run", timeout=120,
+        "sr5-career-action-after-run-governed" if governed_proposal else "sr5-career-action-after-run", timeout=120,
         evidence_prefix="sr5-after-run-action", surface_name="SR5 After Run action",
+        **scroll_options,
     )
 
     # Observe process/foreground first. The subsequent raw buffers retain the
@@ -1008,7 +1017,12 @@ def open_after_run(
     physical.shared.reset_scroll_to_top(device, swipes=18)
     _tap_exact(device, "build-sr5-career-wizard")
     physical.wait_exact_route(device, "sr5-career", timeout=90)
-    tap_after_run_action_with_immediate_diagnostics(device, evidence_stage)
+    # Initial governed intake is explicit; reopen/recovery must still be found
+    # through ordinary After Run. Local rewards cannot count as settlement proof.
+    tap_after_run_action_with_immediate_diagnostics(
+        device, evidence_stage,
+        governed_proposal=expected_route == "sr5-career/after-run/settlement/enter",
+    )
     physical.wait_exact_route(device, expected_route, timeout=180)
 
 

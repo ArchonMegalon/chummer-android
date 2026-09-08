@@ -1095,7 +1095,10 @@ namespace Chummer
             xml_element, automation_id, _property = inventory.CAREER_REPUTATION_CONTROLS[
                 control
             ]
-            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            # These rows describe the withdrawn generic page, not the current
+            # typed reputation wizard. Do not transfer that wizard's evidence
+            # to obsolete controls or silently grant Astral/Wild parity.
+            self.assertEqual("missing", row["phone"]["status"])
             self.assertEqual("Build > Reputation", row["phone"]["route"])
             self.assertEqual("CareerReputationPage", row["phone"]["surface"])
             self.assertEqual(automation_id, row["phone"]["automationId"])
@@ -1116,7 +1119,7 @@ namespace Chummer
             if row["legacy"]["formOrControl"] == "CharacterCareer"
             and row["legacy"]["controlName"] == inventory.BURN_STREET_CRED_CONTROL
         )
-        self.assertEqual("implemented_pending_emulator", burn_street_cred["phone"]["status"])
+        self.assertEqual("missing", burn_street_cred["phone"]["status"])
         self.assertEqual(
             "Build > Reputation > Burn 2 Street Cred",
             burn_street_cred["phone"]["route"],
@@ -3066,8 +3069,8 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 387,
-                "missing": 940,
+                "implemented_pending_emulator": 381,
+                "missing": 946,
                 "not_applicable_non_mutating": 478,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 318,
@@ -6711,8 +6714,8 @@ public sealed class Demo
         self.assertEqual(0, recognition["completionCountContribution"])
         self.assertEqual(
             {
-                "implemented_pending_emulator": 387,
-                "missing": 940,
+                "implemented_pending_emulator": 381,
+                "missing": 946,
                 "not_applicable_non_mutating": 478,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 318,

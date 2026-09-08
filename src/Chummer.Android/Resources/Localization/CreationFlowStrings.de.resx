@@ -228,4 +228,15 @@
   <data name="Qualities.Step2" xml:space="preserve"><value>SR5-Priorität · 2 von 4</value></data>
   <data name="Qualities.Step3" xml:space="preserve"><value>SR5-Priorität · 3 von 4</value></data>
   <data name="Qualities.Step4" xml:space="preserve"><value>SR5-Priorität · 4 von 4</value></data>
+  <data name="Magic.Mystic.Title" xml:space="preserve"><value>Kraftpunkte für Mystische Adepten</value></data>
+  <data name="Magic.Mystic.Summary" xml:space="preserve"><value>{0} / {1} Kraftpunkte · {2} Karma · {3} getauschte Zauberplätze · {4} verbleibende Zauberwahlen</value></data>
+  <data name="Magic.Mystic.Boundary" xml:space="preserve"><value>Karma wird in der abschließenden Charakterprüfung verrechnet. Getauschte Zauberplätze verringern deine Zauberauswahl.</value></data>
+  <data name="Magic.Mystic.Decrease" xml:space="preserve"><value>Einen Kraftpunkt entfernen</value></data>
+  <data name="Magic.Mystic.Increase" xml:space="preserve"><value>Einen Kraftpunkt hinzufügen</value></data>
+  <data name="Magic.Mystic.SeparateAttributeUnsupported" xml:space="preserve"><value>Dieses Regelprofil verwendet das getrennte Attribut MAGAdept. Dessen Verteilung wird von diesem Wizard noch nicht unterstützt. Dein Entwurf und das Regelprofil bleiben unverändert.</value></data>
+  <data name="TalentChoices.Title" xml:space="preserve"><value>Talentauswahl</value></data>
+  <data name="TalentChoices.SelectionOnly" xml:space="preserve"><value>Diese Wahl ist erforderlich, gewährt aber keine kostenlosen Fertigkeitsstufen.</value></data>
+  <data name="TalentChoices.Continue" xml:space="preserve"><value>Mit dieser Auswahl fortfahren</value></data>
+  <data name="TalentChoices.ChooseMore" xml:space="preserve"><value>Noch {0} auswählen</value></data>
+  <data name="TalentChoices.SelectionSlot" xml:space="preserve"><value>Wahl {0} · {1} · keine kostenlosen Fertigkeitsstufen</value></data>
 </root>

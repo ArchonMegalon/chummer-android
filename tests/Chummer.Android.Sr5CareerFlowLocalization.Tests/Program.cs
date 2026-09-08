@@ -34,6 +34,16 @@ AssertSamePlaceholders(neutral, spanish, "es");
 AssertSameLayoutTokens(neutral, german, "de");
 AssertSameLayoutTokens(neutral, spanish, "es");
 
+const string rewardContext = "These rewards come from the reviewed run context. This settlement only applies Heat, reputation, contacts and their Karma cost; it does not duplicate the reward ledger.";
+Assert(Sr5CareerFlowStrings.Text(rewardContext, CultureInfo.GetCultureInfo("en-GB"))
+        == rewardContext, "reviewed reward context must retain its English meaning");
+Assert(Sr5CareerFlowStrings.Text(rewardContext, CultureInfo.GetCultureInfo("de-AT"))
+        == german[rewardContext] && german[rewardContext].Contains("geprüften Run-Kontext"),
+    "German must not present a manual proposal as cryptographically signed");
+Assert(Sr5CareerFlowStrings.Text(rewardContext, CultureInfo.GetCultureInfo("es-MX"))
+        == spanish[rewardContext] && spanish[rewardContext].Contains("contexto revisado"),
+    "Spanish must not present a manual proposal as cryptographically signed");
+
 Assert(
     Sr5CareerFlowStrings.Text("Advance attribute", CultureInfo.GetCultureInfo("en-GB"))
         == "Advance attribute",

@@ -9,6 +9,7 @@ using Chummer.Application.Tools;
 using Chummer.Application.Workspaces;
 using Chummer.Desktop.Runtime;
 using Chummer.Infrastructure.Files;
+using Chummer.Infrastructure.Workspaces;
 using Chummer.Presentation.Overview;
 using Chummer.Presentation.OriginBooks;
 using Chummer.Presentation.Shell;
@@ -105,6 +106,15 @@ public static class MauiProgram
             contentPath,
             contentPath,
             "android");
+        // The reward service uses the runtime's actual workspace store, never a
+        // second Android store or a generic XML/currency mutation substitute.
+        builder.Services.AddSingleton<ICharacterAfterRunRewardService>(provider =>
+            new WorkspaceCharacterAfterRunRewardService(provider.GetRequiredService<IWorkspaceStore>()));
+        builder.Services.AddSingleton(Sr5AfterRunRewardCheckpointStore.CreateDefault(statePath));
+        // Reputation is registered by the Core runtime over its actual store
+        // and source resolver. Android only adds its app-private intent journal.
+        builder.Services.AddSingleton(provider => Sr5CareerReputationJournal.CreateDefault(
+            statePath, provider.GetRequiredService<ICharacterCareerReputationService>()));
         builder.Services.AddSingleton<ILifeModuleDecisionAuthority>(provider =>
             new CharacterCreationFoundationLifeModuleDecisionAuthority(
                 provider.GetRequiredService<IWorkspaceStore>(),

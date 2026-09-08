@@ -26,7 +26,7 @@ public sealed class CreationTalentSkillGrantPage : NativePageBase
         _talentSelectionId = string.IsNullOrWhiteSpace(talentSelectionId)
             ? throw new ArgumentException("A Core-projected Talent selection is required.", nameof(talentSelectionId))
             : talentSelectionId;
-        Title = "Choose granted skills";
+        Title = CreationFlowStrings.Get("TalentChoices.Title", "Talent choices");
         AutomationId = "creation-prerequisite-talent-grant-page";
         Content = new ScrollView { Content = _body };
     }
@@ -200,7 +200,15 @@ public sealed class CreationTalentSkillGrantPage : NativePageBase
         card.Add(NativeTheme.Metric(
             "Required",
             requiredAuthority));
-        card.Add(NativeTheme.Metric("Granted rating", rating.ToString(CultureInfo.InvariantCulture)));
+        if (rating == 0)
+        {
+            Label selectionOnly = NativeTheme.Body(CreationFlowStrings.Get(
+                "TalentChoices.SelectionOnly", "This choice is required, but grants no free skill levels."));
+            selectionOnly.AutomationId = "creation-prerequisite-talent-selection-only";
+            card.Add(selectionOnly);
+        }
+        else
+            card.Add(NativeTheme.Metric("Granted rating", rating.ToString(CultureInfo.InvariantCulture)));
         card.Add(NativeTheme.Metric("Selector", selectorType));
         card.Add(NativeTheme.Metric("Improvement", improvementKind));
         Label digest = NativeTheme.Body(grantDigest, NativeTheme.Muted);
@@ -236,8 +244,8 @@ public sealed class CreationTalentSkillGrantPage : NativePageBase
     {
         Button done = NativeTheme.PrimaryButton(
             complete
-                ? "Continue with exact grant"
-                : $"Choose {requiredCount - selectedCount} more");
+                ? CreationFlowStrings.Get("TalentChoices.Continue", "Continue with these choices")
+                : CreationFlowStrings.Format("TalentChoices.ChooseMore", "Choose {0} more", requiredCount - selectedCount));
         done.AutomationId = "creation-prerequisite-talent-grant-complete";
         done.IsEnabled = complete;
         done.Clicked += async (_, _) => await Navigation.PopAsync(animated: false);

@@ -10,6 +10,7 @@ public class Sr5DowntimeCalendarWizardPage : NativePageBase
 {
     private readonly RunnerSessionSr5DowntimeCalendarAuthority _authority;
     private readonly Sr5DowntimeCalendarJournalStore _journalStore;
+    private readonly Func<bool>? _entryStillCurrent;
     private readonly Guid _ownerId = Guid.NewGuid();
     private readonly Label _binding;
     private readonly Label _status;
@@ -39,10 +40,12 @@ public class Sr5DowntimeCalendarWizardPage : NativePageBase
     internal Sr5DowntimeCalendarWizardPage(
         RunnerSessionCoordinator coordinator,
         RunnerSessionSr5DowntimeCalendarAuthority authority,
-        Sr5DowntimeCalendarJournalStore journalStore) : base(coordinator)
+        Sr5DowntimeCalendarJournalStore journalStore,
+        Func<bool>? entryStillCurrent = null) : base(coordinator)
     {
         _authority = authority ?? throw new ArgumentNullException(nameof(authority));
         _journalStore = journalStore ?? throw new ArgumentNullException(nameof(journalStore));
+        _entryStillCurrent = entryStillCurrent;
         Title = Text("Downtime calendar");
         AutomationId = "sr5-downtime-calendar-page";
         VerticalStackLayout body = new() { Padding = new Thickness(20, 18, 20, 40), Spacing = 14 };
@@ -168,7 +171,12 @@ public class Sr5DowntimeCalendarWizardPage : NativePageBase
 
     private async Task LoadAndRecoverAsync(CancellationToken cancellationToken)
     {
-        _load = await _authority.LoadAsync(cancellationToken);
+        // A contextual entry may expire while the destination attaches or its
+        // projection is awaited. Do not publish a foreign/renewed entry's state.
+        RequireCurrentEntry(cancellationToken);
+        var load = await _authority.LoadAsync(cancellationToken);
+        RequireCurrentEntry(cancellationToken);
+        _load = load;
         if (!_load.IsReady)
         {
             _binding.Text = _load.Blocker ?? Text("Exact Downtime Calendar authority is unavailable.");
@@ -189,6 +197,13 @@ public class Sr5DowntimeCalendarWizardPage : NativePageBase
             return;
         }
         RecoverJournal(_journal!);
+    }
+
+    private void RequireCurrentEntry(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (_entryStillCurrent?.Invoke() == false)
+            throw new InvalidOperationException(Text("The saved runner changed. Reopen Downtime before reviewing."));
     }
 
     private void RecoverJournal(Sr5DowntimeCalendarJournal journal)

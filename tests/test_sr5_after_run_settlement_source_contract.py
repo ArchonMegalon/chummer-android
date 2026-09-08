@@ -1,4 +1,6 @@
 from pathlib import Path
+import re
+import xml.etree.ElementTree as ET
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -29,6 +31,9 @@ def test_phone_surface_has_every_governed_stage_and_two_entry_points() -> None:
     assert "OpenAfterRunSettlementAsync" in career
     assert "RunnerSessionSr5AfterRunSettlementPresenter" in career
     assert 'automationId: "sr5-career-action-after-run"' in career
+    assert 'automationId: "sr5-career-action-after-run-governed"' in career
+    assert "OpenAfterRunSettlementAsync(requestGovernedProposal: true)" in career
+    assert "OpenAfterRunSettlementAsync(requestGovernedProposal: false)" in career
     assert "() => RunAsync(OpenAfterRunSettlementAsync)" in career
     assert "enabled: canOpenAfterRun" in career
     assert 'blocker.AutomationId = "sr5-career-after-run-unavailable"' in career
@@ -36,7 +41,8 @@ def test_phone_surface_has_every_governed_stage_and_two_entry_points() -> None:
     assert 'automationId: "phone-table-after-run"' in table
     assert "Sr5AfterRunSettlementWizardPage" in table
     for surface in (career, table, read("BuildPage.cs")):
-        assert "CreateEntryDestination(Coordinator, editor)" in surface
+        assert "CreateEntryDestinationAsync(Coordinator, editor" in surface
+        assert "Page destination = await Sr5AfterRunSettlementWizardPage" in surface
         assert "editor.Status == Sr5AfterRunCatalogStatus.Missing" not in surface
     assert "TryReadOwnedRecovery" in page
     assert "GenericQuickEdit" not in career + table
@@ -192,10 +198,10 @@ def test_shared_owner_cas_receipt_and_unknown_recovery_fail_closed() -> None:
     assert "Do not replay, clear, or claim success" in coordinator
 
 
-def test_entry_routing_prefers_only_exact_owned_recovery_over_manual_intake() -> None:
+def test_entry_routing_prefers_owned_recovery_and_uses_local_rewards_not_manual_ids() -> None:
     page = read("Sr5AfterRunSettlementWizardPage.cs")
     store = read("Sr5AfterRunSettlementCheckpointStore.cs")
-    route = page.split("internal static Page CreateEntryDestination", 1)[1]
+    route = page.split("internal static async Task<Page> CreateEntryDestinationAsync", 1)[1]
     route = route.split("protected override void Refresh", 1)[0]
     owned = store.split("internal bool TryReadOwnedRecovery", 1)[1]
     owned = owned.split("public bool TryCreate", 1)[0]
@@ -203,14 +209,46 @@ def test_entry_routing_prefers_only_exact_owned_recovery_over_manual_intake() ->
     assert route.index("TryReadOwnedRecovery") < route.index(
         "Sr5AfterRunCatalogStatus.Missing"
     )
+    assert route.index("RequireCurrentEntry();") < route.index("CreateDependencies")
+    assert "current.WorkspaceId != editor.WorkspaceId" in route
+    assert route.count("RequireCurrentEntry();") == 2
+    assert "await coordinator.PrepareAfterRunRewardEntryAsync" in route
+    assert "new Sr5AfterRunRewardWizardPage(coordinator, reward)" in route
+    assert "current.ContentRevision != editor.WorkspaceRevision" in route
+    assert "current.IsDirty || current.IsBusy" in route
     assert "string.IsNullOrWhiteSpace(recoveryBlocker)" in route
-    assert "SupportsManualAfterRunProposalEntry" in route
-    assert "Sr5AfterRunManualProposalPage" in route
+    assert "SupportsAfterRunRewardEntry" in route
+    assert "Sr5AfterRunRewardWizardPage" in route
+    manual = route.index("return new Sr5AfterRunManualProposalPage")
+    assert route.index("bool requestGovernedProposal = false") < manual
+    assert route.index("new Sr5AfterRunRewardWizardPage") < manual
+    assert route.index("return new Sr5AfterRunSettlementReceiptPage") < manual
+    assert "if (requestGovernedProposal && !ownsRecovery && recorded is null" in route
+    assert "&& !ownsDiscardableReview && string.IsNullOrWhiteSpace(recoveryBlocker)" in route
+    assert "&& coordinator.SupportsManualAfterRunProposalEntry" in route
+    assert "Sr5AfterRunCatalogStatus.Missing && !requestGovernedProposal" in route
     assert "Sr5AfterRunSettlementWizardPage" in route
     assert "checkpoint.Phase == Sr5CareerCheckpointPhase.Reviewed" in owned
     assert "_authority.OwnsReviewed(checkpoint)" in owned
     assert "_authority.OwnsCurrentRunner(checkpoint)" in owned
     assert "replay-blocking" in owned
+
+
+def test_historical_receipt_route_cannot_resume_or_replay_and_ack_requires_unowned_gate() -> None:
+    page = read("Sr5AfterRunSettlementWizardPage.cs")
+    store = read("Sr5AfterRunSettlementCheckpointStore.cs")
+    history = store.split("internal bool TryReadOwnedRecordedReceipt", 1)[1].split("public bool TryCreate", 1)[0]
+    assert "TryReadLocked" in history
+    assert "TryReconcileResolvedOwner" not in history
+    delete = store.split("private bool TryDelete(", 1)[1].split("private bool TryRequireCasLocked", 1)[0]
+    assert delete.index("TryRunWhenUnowned") < delete.index("lock (Gate)")
+    assert "OwnsRecordedReceipt" in delete
+    assert "TryRequireCasLocked" in delete
+    receipt = page.split("public sealed class Sr5AfterRunSettlementReceiptPage", 1)[1]
+    for forbidden in ("SettleAsync", "ApplyAsync", "ResolveAsync", "RetryAsync", "SaveAsync"):
+        assert forbidden not in receipt
+    assert "IsRecordedReceiptForCurrentRunner" in receipt
+    assert "Recorded revision: {0}. Current saved runner revision: {1}." in receipt
 
 
 def test_default_runtime_composition_is_explicitly_unavailable() -> None:
@@ -221,6 +259,43 @@ def test_default_runtime_composition_is_explicitly_unavailable() -> None:
     assert "Sr5AfterRunSettlementEditorState.Unavailable" in runner
     assert "No fallback mutation is available" in runner
     assert "service.Settle(command)" in runner
+
+
+def test_discard_is_separate_from_resume_and_captures_the_confirmed_checkpoint() -> None:
+    page = read("Sr5AfterRunSettlementWizardPage.cs")
+    store = read("Sr5AfterRunSettlementCheckpointStore.cs")
+    action = page.split("private async Task AbandonAsync()", 1)[1].split("private static string CandidateLabel", 1)[0]
+    assert "IsDiscardableReviewForCurrentRunner" in action
+    assert action.index("var expected = Sr5AfterRunSettlementCheckpointCas.From(_checkpoint)") < action.index("await _confirmAbandon")
+    assert action.index("appearance != Volatile.Read(ref _discardAppearanceGeneration)") < action.index("_store.TryDeleteReviewed")
+    assert action.index("runner != Coordinator.CaptureAfterRunRewardBinding(expected.OwnerId)") < action.index("_store.TryDeleteReviewed")
+    assert "DisplayAlertAsync(title, message, accept, cancel)" in page
+    assert action.index("if (!confirmed)") < action.index("_store.TryDeleteReviewed")
+    assert "TryDeleteReviewed(\n                expected," in action
+    assert "Discard the saved review for {0} (runner revision {1})?" in action
+    assert "TryReadOwnedDiscardableReview" in page
+    assert "&& !ownsDiscardableReview" in page  # never a new-reward bypass
+    assert "_resume.IsVisible = reviewed" in page
+    assert "_abandon.IsVisible = discardable" in page
+    discard = store.split("internal bool TryReadOwnedDiscardableReview", 1)[1].split("public bool TryCreate", 1)[0]
+    assert "TryReadLocked" in discard
+    assert "TryReconcileResolvedOwner" not in discard
+
+
+def test_discard_copy_has_exact_supported_language_and_placeholder_parity() -> None:
+    directory = ROOT / "src/Chummer.Android/Resources/Localization"
+    catalogs = [
+        {node.attrib["name"]: node.findtext("value") for node in ET.parse(directory / f"Sr5CareerFlowStrings{suffix}.resx").getroot().findall("data")}
+        for suffix in ("", ".de", ".es")
+    ]
+    for key in (
+        "This saved review no longer matches the current catalog or runner. You can discard it, but cannot resume or apply it.",
+        "Discard the saved review for {0} (runner revision {1})? This removes only the local review, not runner data or proposal approvals.",
+    ):
+        placeholders = set(re.findall(r"\{\d+\}", catalogs[0][key]))
+        for catalog in catalogs:
+            assert catalog[key].strip()
+            assert set(re.findall(r"\{\d+\}", catalog[key])) == placeholders
 
 
 def test_physical_contract_and_driver_require_the_exact_governed_fixture_and_remain_non_release() -> None:

@@ -362,12 +362,20 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
             self.module.EXPECTED_SOURCE_GRAPH["hubProducerCommit"],
             runtime_hub["packageProducerCommit"],
         )
-        self.assertNotEqual(
-            runtime_hub["runtimeSourceCommit"],
-            runtime_hub["packageProducerCommit"],
+        self.assertEqual({"runtimeSourceCommit", "packageProducerCommit"}, set(runtime_hub))
+
+    def test_independently_pinned_runtime_and_producer_can_share_a_commit(self) -> None:
+        shared_commit = self.module.EXPECTED_RUNTIME_HUB_COMMIT
+        with patch.dict(self.module.EXPECTED_SOURCE_GRAPH, hubProducerCommit=shared_commit):
+            binding = self.module.validate_runtime_hub_source_checkout(
+                REPO / self.module.RUNTIME_SOURCE_WORKFLOW_PATH
+            )
+        self.assertEqual(
+            {"runtimeSourceCommit": shared_commit, "packageProducerCommit": shared_commit},
+            binding,
         )
 
-    def test_runtime_hub_checkout_rejects_package_producer_and_duplicate_source(self) -> None:
+    def test_runtime_hub_checkout_rejects_producer_substitution_and_duplicate_source(self) -> None:
         canonical = (
             REPO / self.module.RUNTIME_SOURCE_WORKFLOW_PATH
         ).read_text(encoding="utf-8")
@@ -378,13 +386,14 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
             producer_as_runtime.write_text(
                 canonical.replace(
                     f"ref: {self.module.EXPECTED_RUNTIME_HUB_COMMIT}",
-                    f"ref: {self.module.EXPECTED_SOURCE_GRAPH['hubProducerCommit']}",
+                    f"ref: {'e' * 40}",
                     1,
                 ),
                 encoding="utf-8",
             )
-            with self.assertRaisesRegex(ValueError, "runtime Hub checkout commit drifted"):
-                self.module.validate_runtime_hub_source_checkout(producer_as_runtime)
+            with patch.dict(self.module.EXPECTED_SOURCE_GRAPH, hubProducerCommit="e" * 40):
+                with self.assertRaisesRegex(ValueError, "runtime Hub checkout commit drifted"):
+                    self.module.validate_runtime_hub_source_checkout(producer_as_runtime)
 
             duplicate = root / "duplicate-runtime-hub.yml"
             duplicate.write_text(
@@ -401,6 +410,11 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
             )
             with self.assertRaisesRegex(ValueError, "must occur exactly once"):
                 self.module.validate_runtime_hub_source_checkout(duplicate)
+
+            missing = root / "missing-runtime-hub.yml"
+            missing.write_text(canonical.replace(repository_line, "repository: unrelated"), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "must occur exactly once"):
+                self.module.validate_runtime_hub_source_checkout(missing)
 
     def test_canonical_presentation_origin_is_accepted(self) -> None:
         self.validate_presentation_checkout(

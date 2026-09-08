@@ -286,6 +286,52 @@ class Api36Sr5AfterRunSettlementContractTests(unittest.TestCase):
                 ).read_text(encoding="utf-8"),
             )
 
+    def test_initial_settlement_entry_is_explicit_but_recovery_uses_ordinary_entry(self) -> None:
+        for route, explicit in (
+            ("sr5-career/after-run/settlement/enter", True),
+            ("sr5-career/after-run/settlement/choose", False),
+            ("sr5-career/after-run/settlement/receipt", False),
+        ):
+            with self.subTest(route=route), patch.object(
+                driver.physical.shared, "open_build"
+            ), patch.object(driver.physical.shared, "reset_scroll_to_top"), patch.object(
+                driver, "_tap_exact"
+            ), patch.object(driver.physical, "wait_exact_route") as wait, patch.object(
+                driver, "tap_after_run_action_with_immediate_diagnostics"
+            ) as tap:
+                device = object()
+                driver.open_after_run(device, route, evidence_stage="initial-entry")
+                tap.assert_called_once_with(
+                    device, "initial-entry", governed_proposal=explicit
+                )
+                self.assertEqual((device, route), wait.call_args.args)
+                self.assertEqual(180, wait.call_args.kwargs["timeout"])
+
+    def test_explicit_governed_navigation_taps_once_without_retry(self) -> None:
+        component = f"{driver.physical.shared.PACKAGE}/.MainActivity"
+        state = driver.physical.shared.LaunchState(("731",), component, "stable")
+        with tempfile.TemporaryDirectory() as temporary:
+            device = type("Device", (), {})()
+            device.evidence = Path(temporary)
+            with patch.object(driver.physical.shared, "current_launch_state", return_value=state), patch.object(
+                driver, "_post_tap_command", return_value={"captureStatus": "captured"}
+            ):
+                from unittest.mock import Mock
+                device.tap_single_exact_resource_id = Mock()
+                driver.tap_after_run_action_with_immediate_diagnostics(
+                    device, "initial-entry", governed_proposal=True
+                )
+                device.tap_single_exact_resource_id.assert_called_once_with(
+                    "sr5-career-action-after-run-governed", timeout=120,
+                    evidence_prefix="sr5-after-run-action", surface_name="SR5 After Run action",
+                    scroll=True, max_scrolls=48, scroll_distance_ratio=0.18,
+                )
+                evidence = json.loads((Path(temporary)
+                    / "sr5-after-run-post-tap-initial-entry-state.json").read_text(encoding="utf-8"))
+                self.assertEqual(1, evidence["tapCount"])
+                self.assertFalse(evidence["tapReplayAttempted"])
+                self.assertFalse(evidence["foregroundRecoveryAttempted"])
+
     def test_governed_fixture_materializes_exact_runner_bytes(self) -> None:
         fixture = driver.load_fixture()
         payload = driver.render_runner_xml(fixture)

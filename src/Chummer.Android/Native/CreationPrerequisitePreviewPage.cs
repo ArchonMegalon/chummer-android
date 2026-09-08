@@ -172,7 +172,10 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
                     CharacterCreationTalentSkillGroupGrantPlanEntry entry =
                         grantPlan.SkillGroups[index];
                     Label grant = NativeTheme.Body(
-                        WizardStrings.Format(
+                        entry.BaseRating == 0
+                            ? CreationFlowStrings.Format(
+                                "TalentChoices.SelectionSlot", "Choice {0} · {1} · no free skill levels", index + 1, entry.CanonicalName)
+                            : WizardStrings.Format(
                             "Priority.Preview.GrantSlot",
                             "Slot {0} · {1} · rating {2} · {3}",
                             index + 1,

@@ -192,11 +192,16 @@ public sealed class Sr5CareerWizardPage : NativePageBase
         _afterRunEntryBlocker = canOpenAfterRun ? null : afterRunBlocker;
         _body.Add(NativeTheme.NavigationRow(
             Sr5CareerFlowStrings.Text("After the run"),
-            Sr5CareerFlowStrings.Text(
-                "Only governed proposal, run, and character IDs are selectable. This page never invents a run from the current character file."),
+            PhoneStrings.Get("AfterRunEntryDetail", "Record local rewards or review a governed run settlement. Resolve any pending transaction first."),
             () => RunAsync(OpenAfterRunSettlementAsync),
             enabled: canOpenAfterRun,
             automationId: "sr5-career-action-after-run"));
+        _body.Add(NativeTheme.NavigationRow(
+            PhoneStrings.Get("AfterRunGovernedEntryTitle", "Recorded run result"),
+            PhoneStrings.Get("AfterRunGovernedEntryDetail", "Advanced: review an existing run proposal or enter its exact recorded IDs and approvals. Pending transactions take priority; this does not grant rewards again."),
+            () => RunAsync(() => OpenAfterRunSettlementAsync(requestGovernedProposal: true)),
+            enabled: canOpenAfterRun,
+            automationId: "sr5-career-action-after-run-governed"));
         if (!string.IsNullOrWhiteSpace(_afterRunEntryBlocker))
         {
             Label blocker = NativeTheme.Body(
@@ -239,7 +244,9 @@ public sealed class Sr5CareerWizardPage : NativePageBase
         _body.Add(NativeTheme.Card(boundary));
     }
 
-    private async Task OpenAfterRunSettlementAsync()
+    private Task OpenAfterRunSettlementAsync() => OpenAfterRunSettlementAsync(requestGovernedProposal: false);
+
+    private async Task OpenAfterRunSettlementAsync(bool requestGovernedProposal)
     {
         RunnerSessionSr5AfterRunSettlementPresenter presenter = new(Coordinator);
         if (!Sr5AfterRunSettlementEntryGuard.TryValidate(
@@ -272,8 +279,9 @@ public sealed class Sr5CareerWizardPage : NativePageBase
         }
 
         _afterRunEntryBlocker = null;
-        Page destination = Sr5AfterRunSettlementWizardPage
-            .CreateEntryDestination(Coordinator, editor);
+        Page destination = await Sr5AfterRunSettlementWizardPage
+            .CreateEntryDestinationAsync(Coordinator, editor,
+                requestGovernedProposal: requestGovernedProposal);
         await Navigation.PushAsync(destination);
     }
 

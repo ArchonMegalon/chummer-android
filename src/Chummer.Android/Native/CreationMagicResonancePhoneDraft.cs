@@ -145,6 +145,16 @@ internal sealed class CreationMagicResonancePhoneDraft
         return true;
     }
 
+    public CharacterCreationMagicResonanceDesktopDraft CreateMysticPowerPointCandidate(int powerPoints)
+    {
+        var editor = RequireEditor();
+        if (editor.MysticAdeptPowerPoints is not { } purchase
+            || powerPoints < 0 || powerPoints > purchase.MaximumPowerPoints)
+            throw new InvalidOperationException(CharacterCreationMagicResonanceBlockers.PowerBudgetUnsupported);
+        return CreationMagicResonancePhoneAuthority.CreateDraft(editor,
+            _selections with { MysticAdeptPowerPoints = powerPoints });
+    }
+
     public bool IsSelected(CharacterCreationMagicResonanceOptionIdentity identity)
         => identity.Kind switch
         {

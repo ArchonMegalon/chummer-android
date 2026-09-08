@@ -99,15 +99,15 @@ public sealed class PhoneTablePage : NativePageBase
         _body.Add(beforeRun);
         View afterRun = NativeTheme.NavigationRow(
             Text("After Run"),
-            Text("Settle governed rewards, Heat/reputation, contacts, approvals and the atomic Core receipt"),
+            Text("Record local rewards or review a governed run settlement. Resolve any pending transaction first."),
             async () =>
             {
                 Sr5AfterRunSettlementCoordinator authority = new(
                     new RunnerSessionSr5AfterRunSettlementPresenter(Coordinator),
                     new PreferencesSr5CareerCheckpointOwnerAuthority());
                 Sr5AfterRunSettlementEditorState editor = await authority.PrepareAsync();
-                Page destination = Sr5AfterRunSettlementWizardPage
-                    .CreateEntryDestination(Coordinator, editor);
+                Page destination = await Sr5AfterRunSettlementWizardPage
+                    .CreateEntryDestinationAsync(Coordinator, editor);
                 await Navigation.PushAsync(destination);
             },
             automationId: "phone-table-after-run");

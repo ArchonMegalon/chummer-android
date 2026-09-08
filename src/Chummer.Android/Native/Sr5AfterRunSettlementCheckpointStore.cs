@@ -9,6 +9,8 @@ internal interface ISr5AfterRunSettlementCheckpointAuthority :
 {
     bool OwnsReviewed(Sr5AfterRunSettlementCheckpoint checkpoint);
     bool OwnsCurrentRunner(Sr5AfterRunSettlementCheckpoint checkpoint);
+    bool OwnsRecordedReceipt(Sr5AfterRunSettlementCheckpoint checkpoint);
+    bool OwnsDiscardableReview(Sr5AfterRunSettlementCheckpoint checkpoint);
     bool OwnsResolution(
         Sr5AfterRunSettlementCheckpoint checkpoint,
         Sr5AfterRunSettlementRecoveryStatus status);
@@ -66,6 +68,36 @@ internal sealed class Sr5AfterRunSettlementLiveCheckpointAuthority(
                 && binding.ContentRevision == expected + 1,
             _ => false
         };
+    }
+
+    // Historical receipt display/acknowledgment is not permission to resume or
+    // replay a settlement. Keep OwnsCurrentRunner's exact successor rule intact.
+    public bool OwnsRecordedReceipt(Sr5AfterRunSettlementCheckpoint checkpoint)
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        Sr5CareerRunnerBinding binding = _currentBinding();
+        return checkpoint.Phase == Sr5CareerCheckpointPhase.Applied
+            && checkpoint.IsStructurallyValid()
+            && checkpoint.Receipt is not null
+            && CurrentOwnerId != Guid.Empty
+            && checkpoint.Draft.OwnerId == CurrentOwnerId
+            && OwnsCleanRunner(binding, checkpoint.Draft.WorkspaceId.Value)
+            && checkpoint.Draft.ExpectedWorkspaceRevision < long.MaxValue
+            && binding.ContentRevision >= checkpoint.Draft.ExpectedWorkspaceRevision + 1;
+    }
+
+    // Discarding an unapplied review needs no current proposal approval. This
+    // only admits removal of local intent, never resume/apply or owner release.
+    public bool OwnsDiscardableReview(Sr5AfterRunSettlementCheckpoint checkpoint)
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        Sr5CareerRunnerBinding binding = _currentBinding();
+        return checkpoint.Phase == Sr5CareerCheckpointPhase.Reviewed
+            && checkpoint.IsStructurallyValid()
+            && CurrentOwnerId != Guid.Empty
+            && checkpoint.Draft.OwnerId == CurrentOwnerId
+            && OwnsCleanRunner(binding, checkpoint.Draft.WorkspaceId.Value)
+            && binding.ContentRevision >= checkpoint.Draft.ExpectedWorkspaceRevision;
     }
 
     public bool OwnsResolution(
@@ -232,6 +264,43 @@ public sealed class Sr5AfterRunSettlementCheckpointStore
             "The durable After Run checkpoint does not belong to the exact current owner, runner and saved revision; it remains replay-blocking.";
         return false;
     }
+
+    /// <summary>
+    /// Read the immutable recorded receipt even after later saved edits. This
+    /// never reconciles/releases ownership or asserts current settlement truth.
+    /// </summary>
+    internal bool TryReadOwnedRecordedReceipt(
+        out Sr5AfterRunSettlementCheckpoint checkpoint, out string blocker)
+    {
+        lock (Gate)
+        {
+            if (!TryReadLocked(out checkpoint, out blocker)) return false;
+            if (IsRecordedReceiptForCurrentRunner(checkpoint)) return true;
+            checkpoint = null!;
+            blocker = "No recorded After Run receipt belongs to this clean saved runner and owner.";
+            return false;
+        }
+    }
+
+    internal bool IsRecordedReceiptForCurrentRunner(Sr5AfterRunSettlementCheckpoint checkpoint)
+        => _authority?.OwnsRecordedReceipt(checkpoint) == true;
+
+    /// <summary>Read-only discard projection; no catalog promotion or owner release.</summary>
+    internal bool TryReadOwnedDiscardableReview(
+        out Sr5AfterRunSettlementCheckpoint checkpoint, out string blocker)
+    {
+        lock (Gate)
+        {
+            if (!TryReadLocked(out checkpoint, out blocker)) return false;
+            if (IsDiscardableReviewForCurrentRunner(checkpoint)) return true;
+            checkpoint = null!;
+            blocker = "No unapplied After Run review belongs to this clean saved runner and owner.";
+            return false;
+        }
+    }
+
+    internal bool IsDiscardableReviewForCurrentRunner(Sr5AfterRunSettlementCheckpoint checkpoint)
+        => _authority?.OwnsDiscardableReview(checkpoint) == true;
 
     public bool TryCreate(
         Sr5AfterRunSettlementCheckpoint checkpoint,
@@ -493,24 +562,32 @@ public sealed class Sr5AfterRunSettlementCheckpointStore
         out string blocker)
     {
         ArgumentNullException.ThrowIfNull(expected);
-        blocker = string.Empty;
-        lock (Gate)
+        // Never remove the only resolved checkpoint while its shared owner is
+        // still durable, or race another Career mutation. Observe lock order:
+        // shared process gate first, domain journal second.
+        return _mutationOwners.TryRunWhenUnowned(() =>
         {
-            if (expected.Phase != requiredPhase
-                || !TryRequireCasLocked(
-                    expected,
-                    out Sr5AfterRunSettlementCheckpoint current,
-                    out blocker)
-                || _authority is null
-                || !_authority.OwnsCurrentRunner(current))
+            lock (Gate)
             {
-                blocker = string.IsNullOrWhiteSpace(blocker)
-                    ? $"Only the exact owned {requiredPhase} After Run checkpoint may be removed."
-                    : blocker;
-                return false;
+                string readBlocker = string.Empty;
+                if (expected.Phase != requiredPhase
+                    || !TryRequireCasLocked(
+                        expected,
+                        out Sr5AfterRunSettlementCheckpoint current,
+                        out readBlocker)
+                    || _authority is null
+                    || !(requiredPhase == Sr5CareerCheckpointPhase.Applied
+                        ? _authority.OwnsRecordedReceipt(current)
+                        : _authority.OwnsDiscardableReview(current)))
+                {
+                    return (false, string.IsNullOrWhiteSpace(readBlocker)
+                        ? $"Only the exact owned {requiredPhase} After Run checkpoint may be removed."
+                        : readBlocker);
+                }
+                bool deleted = TryDeleteAndReadBackLocked(current, out readBlocker);
+                return (deleted, readBlocker);
             }
-            return TryDeleteAndReadBackLocked(current, out blocker);
-        }
+        }, out blocker);
     }
 
     private bool TryRequireCasLocked(

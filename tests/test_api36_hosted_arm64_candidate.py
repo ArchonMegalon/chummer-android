@@ -53,7 +53,7 @@ class Api36HostedArm64CandidateTests(unittest.TestCase):
                 {
                     "status": "pass",
                     "schema": "chummer.android.content-bundle/v1",
-                    "coreRevision": "c06f22c185c7b733637fdb76b3cf333f31716781",
+                    "coreRevision": "1d8cf694d0412b3bd9f4a241fb95244fad341160",
                     "apkVerified": True,
                     "apkSha256": self.apk_sha256,
                     "issues": [],

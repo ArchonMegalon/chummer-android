@@ -16,7 +16,6 @@
   <data name="Resume reviewed advancement" xml:space="preserve"><value>Resume reviewed advancement</value></data>
   <data name="Resolve interrupted apply" xml:space="preserve"><value>Resolve interrupted apply</value></data>
   <data name="Abandon reviewed draft" xml:space="preserve"><value>Abandon reviewed draft</value></data>
-  <data name="Attribute recovery unavailable" xml:space="preserve"><value>Attribute recovery unavailable</value></data>
   <data name="OK" xml:space="preserve"><value>OK</value></data>
   <data name="{0} · {1} → {2} · {3} Karma" xml:space="preserve"><value>{0} · {1} → {2} · {3} Karma</value></data>
   <data name="{0} · {1} → {2} · blocked" xml:space="preserve"><value>{0} · {1} → {2} · blocked</value></data>
@@ -92,7 +91,6 @@
   <data name="Saved active skill" xml:space="preserve"><value>Saved active skill</value></data>
   <data name="{0} skill(s) are omitted because their exact authority cannot be reproduced safely." xml:space="preserve"><value>{0} skill(s) are omitted because their exact authority cannot be reproduced safely.</value></data>
   <data name="Review advancement" xml:space="preserve"><value>Review advancement</value></data>
-  <data name="Recovery unavailable" xml:space="preserve"><value>Recovery unavailable</value></data>
   <data name="No exact active-skill quote is available." xml:space="preserve"><value>No exact active-skill quote is available.</value></data>
   <data name="Current {0} · after {1} · maximum {2}" xml:space="preserve"><value>Current {0} · after {1} · maximum {2}</value></data>
   <data name="This public action is available only to a created SR5 runner." xml:space="preserve"><value>This public action is available only to a created SR5 runner.</value></data>
@@ -150,7 +148,6 @@
   <data name="Skill group" xml:space="preserve"><value>Skill group</value></data>
   <data name="Saved skill group" xml:space="preserve"><value>Saved skill group</value></data>
   <data name="{0} skill-group quote(s) were omitted because exact authority could not be reproduced." xml:space="preserve"><value>{0} skill-group quote(s) were omitted because exact authority could not be reproduced.</value></data>
-  <data name="SkillGroup recovery unavailable" xml:space="preserve"><value>SkillGroup recovery unavailable</value></data>
   <data name="No exact skill-group quote is available." xml:space="preserve"><value>No exact skill-group quote is available.</value></data>
   <data name="Group {0} → {1} · cost rating {2} → {3} · {4} enabled member(s) · maximum {5}" xml:space="preserve"><value>Group {0} → {1} · cost rating {2} → {3} · {4} enabled member(s) · maximum {5}</value></data>
   <data name="This runner changed. Reopen skill-group advancement." xml:space="preserve"><value>This runner changed. Reopen skill-group advancement.</value></data>
@@ -204,7 +201,6 @@
   <data name="Knowledge / Language skill" xml:space="preserve"><value>Knowledge / Language skill</value></data>
   <data name="Saved knowledge skill" xml:space="preserve"><value>Saved knowledge skill</value></data>
   <data name="{0} knowledge skill quote(s) and {1} receipt(s) were omitted because exact authority could not be reproduced." xml:space="preserve"><value>{0} knowledge skill quote(s) and {1} receipt(s) were omitted because exact authority could not be reproduced.</value></data>
-  <data name="Knowledge/Language recovery unavailable" xml:space="preserve"><value>Knowledge/Language recovery unavailable</value></data>
   <data name="{0} · {1} · {2} → {3} · {4} Karma" xml:space="preserve"><value>{0} · {1} · {2} → {3} · {4} Karma</value></data>
   <data name="{0} · {1} · {2} → {3} · blocked" xml:space="preserve"><value>{0} · {1} · {2} → {3} · blocked</value></data>
   <data name="No exact knowledge skill quote is available." xml:space="preserve"><value>No exact knowledge skill quote is available.</value></data>
@@ -237,7 +233,6 @@
   <data name="Choose specialization" xml:space="preserve"><value>Choose specialization</value></data>
   <data name="Resume reviewed purchase" xml:space="preserve"><value>Resume reviewed purchase</value></data>
   <data name="Abandon reviewed purchase" xml:space="preserve"><value>Abandon reviewed purchase</value></data>
-  <data name="Specialization recovery unavailable" xml:space="preserve"><value>Specialization recovery unavailable</value></data>
   <data name="{0} · {1} · rating {2} · {3} existing" xml:space="preserve"><value>{0} · {1} · rating {2} · {3} existing</value></data>
   <data name="No exact specialization candidate is available." xml:space="preserve"><value>No exact specialization candidate is available.</value></data>
   <data name="{0} · group {1} · {2} governed option(s) plus custom text" xml:space="preserve"><value>{0} · group {1} · {2} governed option(s) plus custom text</value></data>
@@ -291,7 +286,6 @@ Karma: {6} → {7} (cost {8})</value></data>
   <data name="Review exact quality diff" xml:space="preserve"><value>Review exact quality diff</value></data>
   <data name="Resume reviewed quality change" xml:space="preserve"><value>Resume reviewed quality change</value></data>
   <data name="Resolve interrupted atomic commit" xml:space="preserve"><value>Resolve interrupted atomic commit</value></data>
-  <data name="Quality recovery unavailable" xml:space="preserve"><value>Quality recovery unavailable</value></data>
   <data name="{0} · {1} · level {2} → {3} · {4}" xml:space="preserve"><value>{0} · {1} · level {2} → {3} · {4}</value></data>
   <data name="{0} Karma" xml:space="preserve"><value>{0} Karma</value></data>
   <data name="Acquire level" xml:space="preserve"><value>Acquire level</value></data>
@@ -372,7 +366,6 @@ Karma: {6} → {7} (cost {8})</value></data>
   <data name="Resume reviewed settlement" xml:space="preserve"><value>Resume reviewed settlement</value></data>
   <data name="Resolve interrupted settlement" xml:space="preserve"><value>Resolve interrupted settlement</value></data>
   <data name="Abandon reviewed settlement" xml:space="preserve"><value>Abandon reviewed settlement</value></data>
-  <data name="After Run recovery unavailable" xml:space="preserve"><value>After Run recovery unavailable</value></data>
   <data name="A reviewed settlement is durable and can be resumed or abandoned." xml:space="preserve"><value>A reviewed settlement is durable and can be resumed or abandoned.</value></data>
   <data name="An interrupted settlement owns the runner. Resolve the exact command before any other Career mutation." xml:space="preserve"><value>An interrupted settlement owns the runner. Resolve the exact command before any other Career mutation.</value></data>
   <data name="A verified Core receipt is durable and ready to inspect." xml:space="preserve"><value>A verified Core receipt is durable and ready to inspect.</value></data>
@@ -384,11 +377,10 @@ Run {3}
 Status: {4}</value></data>
   <data name="all Core prerequisites satisfied" xml:space="preserve"><value>all Core prerequisites satisfied</value></data>
   <data name="Abandon reviewed settlement?" xml:space="preserve"><value>Abandon reviewed settlement?</value></data>
-  <data name="This removes only the durable review. It does not change the runner or approve the proposal." xml:space="preserve"><value>This removes only the durable review. It does not change the runner or approve the proposal.</value></data>
   <data name="Reviewed settlement abandoned; no runner mutation occurred." xml:space="preserve"><value>Reviewed settlement abandoned; no runner mutation occurred.</value></data>
   <data name="{0} · {1}" xml:space="preserve"><value>{0} · {1}</value></data>
   <data name="SR5 Career · After Run · {0} of 7" xml:space="preserve"><value>SR5 Career · After Run · {0} of 7</value></data>
-  <data name="These rewards come from the signed run context. This settlement only applies Heat, reputation, contacts and their Karma cost; it does not duplicate the reward ledger." xml:space="preserve"><value>These rewards come from the signed run context. This settlement only applies Heat, reputation, contacts and their Karma cost; it does not duplicate the reward ledger.</value></data>
+  <data name="These rewards come from the reviewed run context. This settlement only applies Heat, reputation, contacts and their Karma cost; it does not duplicate the reward ledger." xml:space="preserve"><value>These rewards come from the reviewed run context. This settlement only applies Heat, reputation, contacts and their Karma cost; it does not duplicate the reward ledger.</value></data>
   <data name="Run" xml:space="preserve"><value>Run</value></data>
   <data name="Karma award" xml:space="preserve"><value>Karma award</value></data>
   <data name="Nuyen award" xml:space="preserve"><value>Nuyen award</value></data>
@@ -431,8 +423,6 @@ Status: {4}</value></data>
   <data name="The After Run receipt page requires the exact durable Applied checkpoint." xml:space="preserve"><value>The After Run receipt page requires the exact durable Applied checkpoint.</value></data>
   <data name="Settlement receipt" xml:space="preserve"><value>Settlement receipt</value></data>
   <data name="SR5 Career · After Run" xml:space="preserve"><value>SR5 Career · After Run</value></data>
-  <data name="Settlement saved" xml:space="preserve"><value>Settlement saved</value></data>
-  <data name="Core verified the exact post-save runner revision, transaction ledger and receipt. Acknowledging removes only this local recovery checkpoint." xml:space="preserve"><value>Core verified the exact post-save runner revision, transaction ledger and receipt. Acknowledging removes only this local recovery checkpoint.</value></data>
   <data name="Contacts added" xml:space="preserve"><value>Contacts added</value></data>
   <data name="Receipt" xml:space="preserve"><value>Receipt</value></data>
   <data name="Receipt acknowledged. The saved runner and Core transaction ledger remain unchanged." xml:space="preserve"><value>Receipt acknowledged. The saved runner and Core transaction ledger remain unchanged.</value></data>
@@ -677,7 +667,6 @@ Preview: {3}…</value></data>
   <data name="Choose a governed table flow" xml:space="preserve"><value>Choose a governed table flow</value></data>
   <data name="Each enabled route is backed by a typed Core/Presentation authority and exact saved-runner revision." xml:space="preserve"><value>Each enabled route is backed by a typed Core/Presentation authority and exact saved-runner revision.</value></data>
   <data name="After Run" xml:space="preserve"><value>After Run</value></data>
-  <data name="Settle governed rewards, Heat/reputation, contacts, approvals and the atomic Core receipt" xml:space="preserve"><value>Settle governed rewards, Heat/reputation, contacts, approvals and the atomic Core receipt</value></data>
   <data name="Review, confirm and persist one exact SR5 Calendar add, edit or delete with restart recovery" xml:space="preserve"><value>Review, confirm and persist one exact SR5 Calendar add, edit or delete with restart recovery</value></data>
   <data name="Playtime" xml:space="preserve"><value>Playtime</value></data>
   <data name="Quote, review and confirm exact Edge, direct-weapon ammunition, or Physical/Stun damage changes with a restart-safe receipt" xml:space="preserve"><value>Quote, review and confirm exact Edge, direct-weapon ammunition, or Physical/Stun damage changes with a restart-safe receipt</value></data>
@@ -1029,4 +1018,11 @@ Preview: {3}…</value></data>
   <data name="Selected" xml:space="preserve"><value>Selected</value></data>
   <data name="Choose component" xml:space="preserve"><value>Choose component</value></data>
   <data name="Exact chassis → modifications and weapon mounts → Core quote → durable purchase receipt" xml:space="preserve"><value>Exact chassis → modifications and weapon mounts → Core quote → durable purchase receipt</value></data>
+  <data name="Recorded settlement" xml:space="preserve"><value>Recorded settlement</value></data>
+  <data name="This receipt records a saved settlement, not the runner's current values or permission to apply it again. Acknowledging removes only this local checkpoint; the saved runner and Core ledger remain unchanged." xml:space="preserve"><value>This receipt records a saved settlement, not the runner's current values or permission to apply it again. Acknowledging removes only this local checkpoint; the saved runner and Core ledger remain unchanged.</value></data>
+  <data name="Recorded revision: {0}. Current saved runner revision: {1}." xml:space="preserve"><value>Recorded revision: {0}. Current saved runner revision: {1}.</value></data>
+  <data name="This saved review no longer matches the current catalog or runner. You can discard it, but cannot resume or apply it." xml:space="preserve"><value>This saved review no longer matches the current catalog or runner. You can discard it, but cannot resume or apply it.</value></data>
+  <data name="Discard the saved review for {0} (runner revision {1})? This removes only the local review, not runner data or proposal approvals." xml:space="preserve"><value>Discard the saved review for {0} (runner revision {1})? This removes only the local review, not runner data or proposal approvals.</value></data>
+  <data name="The selected runner changed. Reopen After Run for the current saved runner." xml:space="preserve"><value>The selected runner changed. Reopen After Run for the current saved runner.</value></data>
+  <data name="Record local rewards or review a governed run settlement. Resolve any pending transaction first." xml:space="preserve"><value>Record local rewards or review a governed run settlement. Resolve any pending transaction first.</value></data>
 </root>

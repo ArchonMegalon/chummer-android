@@ -179,32 +179,32 @@ for forbidden in \
 done
 
 [[ -f "$lock" && ! -L "$lock" ]] || fail "full-project-lock-missing"
-[[ "$("$sha256sum_command" "$lock" | "$cut_command" -d' ' -f1)" == "66bbd296462b8db4838672af7af011a03ace6fa3c5a98bd7b5cc5c65a20464e6" ]] \
+[[ "$("$sha256sum_command" "$lock" | "$cut_command" -d' ' -f1)" == "32f8393f06f70530f6e528e0120778036328472c949afcb5c0679dc0b618768e" ]] \
   || fail "full-project-lock-digest-mismatch"
 [[ "$($dotnet_command --version)" == "10.0.111" ]] || fail "dotnet-sdk-not-10.0.111"
 [[ -z "$("$git_command" -C "$repo_dir" status --porcelain=v1 --untracked-files=all)" ]] \
   || fail "android-candidate-not-clean"
 [[ "$CHUMMER_ANDROID_REVISION" == "$("$git_command" -C "$repo_dir" rev-parse HEAD)" ]] \
   || fail "android-source-head-mismatch"
-[[ "$CHUMMER_PRESENTATION_REVISION" == "a9e5bbd4fd44826177dd048b24417fad27397497" ]] \
+[[ "$CHUMMER_PRESENTATION_REVISION" == "5b26b46d0c1326dfff2824e7aba6f03aec52b304" ]] \
   || fail "presentation-revision-input-mismatch"
-[[ "$CHUMMER_CORE_ENGINE_REVISION" == "60112dccb6a3faad330d32c3c98eef0aa81d97af" ]] \
+[[ "$CHUMMER_CORE_ENGINE_REVISION" == "880e5df8ace981e9a60264d835329dd32f54a158" ]] \
   || fail "core-runtime-revision-input-mismatch"
-[[ "$CHUMMER_RUN_SERVICES_REVISION" == "4f335d6cebbd4101212fd2cc77265b50f252775c" ]] \
+[[ "$CHUMMER_RUN_SERVICES_REVISION" == "f06bb7e7e71e5afceb115d9078a473b1087ac7df" ]] \
   || fail "hub-revision-input-mismatch"
 [[ "$CHUMMER_UI_KIT_REVISION" == "d51ecd99cf72098d4adc8db0192bff7bf9fd8e61" ]] \
   || fail "ui-kit-revision-input-mismatch"
 [[ "$CHUMMER_HUB_REGISTRY_REVISION" == "af9a7e19c3bf331e96411dfb8f9e7820a98cab29" ]] \
   || fail "registry-revision-input-mismatch"
-[[ "$("$git_command" -C "$CHUMMER_PRESENTATION_ROOT" rev-parse HEAD)" == "a9e5bbd4fd44826177dd048b24417fad27397497" ]] \
+[[ "$("$git_command" -C "$CHUMMER_PRESENTATION_ROOT" rev-parse HEAD)" == "5b26b46d0c1326dfff2824e7aba6f03aec52b304" ]] \
   || fail "current-presentation-commit-mismatch"
-[[ "$("$git_command" -C "$CHUMMER_PRESENTATION_ROOT" rev-parse 'HEAD^{tree}')" == "a6d77fd56e5caa599f476dbe2e59146b88e9744d" ]] \
+[[ "$("$git_command" -C "$CHUMMER_PRESENTATION_ROOT" rev-parse 'HEAD^{tree}')" == "3c7bc481c55d8de6ef255e64d13ca6b9f2615e92" ]] \
   || fail "current-presentation-tree-mismatch"
 [[ -z "$("$git_command" -C "$CHUMMER_PRESENTATION_ROOT" status --porcelain=v1 --untracked-files=all)" ]] \
   || fail "current-presentation-not-clean"
-[[ "$("$sha256sum_command" "$CHUMMER_PRESENTATION_ROOT/config/package-plane.lock.json" | "$cut_command" -d' ' -f1)" == "b63ce17ce2105eedf1ed388f7eb59cf2232e9b8a65f66e940860965adced3ef5" ]] \
+[[ "$("$sha256sum_command" "$CHUMMER_PRESENTATION_ROOT/config/package-plane.lock.json" | "$cut_command" -d' ' -f1)" == "7bfc76002f4ab18fe382b74c2dbd496737d435e014ef7992a64503716dc1fa8b" ]] \
   || fail "current-presentation-lock-mismatch"
-[[ "$("$git_command" -C "$CHUMMER_CORE_CONTENT_ROOT" rev-parse HEAD)" == "c06f22c185c7b733637fdb76b3cf333f31716781" ]] \
+[[ "$("$git_command" -C "$CHUMMER_CORE_CONTENT_ROOT" rev-parse HEAD)" == "1d8cf694d0412b3bd9f4a241fb95244fad341160" ]] \
   || fail "core-content-commit-mismatch"
 [[ -z "$("$git_command" -C "$CHUMMER_CORE_CONTENT_ROOT" status --porcelain=v1 --untracked-files=all -- Chummer/data Chummer/lang)" ]] \
   || fail "core-content-not-clean"
@@ -298,8 +298,8 @@ package_args=(
   "-p:AndroidSdkDirectory=$android_sdk_root"
   "-p:AndroidSdkBuildToolsVersion=$android_build_tools_version"
   "-p:JavaSdkDirectory=$java_home"
-  "-p:ChummerContractsPackageVersion=0.0.0-packageplane.candidate.sh60112dccb6a3f"
-  "-p:ChummerCoreRuntimePackageVersion=0.0.0-packageplane.candidate.sh60112dccb6a3f"
+  "-p:ChummerContractsPackageVersion=0.0.0-packageplane.candidate.sh880e5df8ace98"
+  "-p:ChummerCoreRuntimePackageVersion=0.0.0-packageplane.candidate.sh880e5df8ace98"
   "-p:ChummerCampaignContractsPackageVersion=0.1.0-preview"
   "-p:ChummerRunContractsPackageVersion=0.1.0-packageplane.candidate.sh1852ea4eef6d"
   "-p:ChummerHubRegistryContractsPackageVersion=0.1.0-packageplane.candidate.sh1852ea4eef6d"

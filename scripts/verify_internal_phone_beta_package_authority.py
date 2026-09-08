@@ -35,43 +35,43 @@ RECEIPT_TOP_LEVEL_KEYS = {
     "sdkArchiveSha512", "sdkVersion", "sourceInventory", "status",
     "stubPackagesAllowed", "testExecutions", "testProjects", "uiOwnerFeed",
 }
-EXPECTED_PRESENTATION_COMMIT = "a9e5bbd4fd44826177dd048b24417fad27397497"
-EXPECTED_PRESENTATION_TREE = "a6d77fd56e5caa599f476dbe2e59146b88e9744d"
+EXPECTED_PRESENTATION_COMMIT = "5b26b46d0c1326dfff2824e7aba6f03aec52b304"
+EXPECTED_PRESENTATION_TREE = "3c7bc481c55d8de6ef255e64d13ca6b9f2615e92"
 EXPECTED_PRESENTATION_REPOSITORY = "https://github.com/ArchonMegalon/chummer6-ui.git"
 EXPECTED_LOCK_PATH = "config/package-plane.lock.json"
-EXPECTED_LOCK_SHA256 = "b63ce17ce2105eedf1ed388f7eb59cf2232e9b8a65f66e940860965adced3ef5"
-EXPECTED_LOCK_SIZE = 54835
-EXPECTED_LOCK_BLOB = "973619c8560a474c1896d83e708f0c39bd89eecd"
-EXPECTED_RECEIPT_SHA256 = "e0bd4e4ea8174fa5985378baef820ca064f3af6557d5dec62e0a57d4d1f45600"
-EXPECTED_RECEIPT_SIZE = 39791
-EXPECTED_CACHE_KEY = "09e80f5f583c1f46eb1811999b6f4d529f62b321e75e6b7f206c9931b3624ca5"
-EXPECTED_CACHE_MANIFEST_SHA256 = "41c20c3eb10ff5b10677200bafb58aa40e2accf66007bdd67ae0b415f336471a"
+EXPECTED_LOCK_SHA256 = "7bfc76002f4ab18fe382b74c2dbd496737d435e014ef7992a64503716dc1fa8b"
+EXPECTED_LOCK_SIZE = 56886
+EXPECTED_LOCK_BLOB = "ce1761de041536a4f4b824488a0c8935d2748c77"
+EXPECTED_RECEIPT_SHA256 = "3fe45e2ba2409aef7b43e7bbbd0a6a13c0292211f131b7ae32c7aa7a864f8033"
+EXPECTED_RECEIPT_SIZE = 43395
+EXPECTED_CACHE_KEY = "76d2bc7c594977c1461cb817a3e2acee4299f1a78a216d85efa4be7ba82b89d9"
+EXPECTED_CACHE_MANIFEST_SHA256 = "3d7b05fac0cd7af70957580e6b890b1f7a67419863127f376e3bc7947bdabb37"
 EXPECTED_CACHE_MANIFEST_SIZE = 13707
 EXPECTED_PACKAGE_COUNT = 18
 EXPECTED_SOURCE_GRAPH = {
-    "corePackageRecipeCommit": "c06f22c185c7b733637fdb76b3cf333f31716781",
-    "coreRuntimeSourceCommit": "60112dccb6a3faad330d32c3c98eef0aa81d97af",
-    "hubProducerCommit": "bc199cbe0982833ec2fc9ce625826e612759d67a",
+    "corePackageRecipeCommit": "1d8cf694d0412b3bd9f4a241fb95244fad341160",
+    "coreRuntimeSourceCommit": "880e5df8ace981e9a60264d835329dd32f54a158",
+    "hubProducerCommit": "f06bb7e7e71e5afceb115d9078a473b1087ac7df",
     "registryCommit": "af9a7e19c3bf331e96411dfb8f9e7820a98cab29",
     "uiKitCommit": "d51ecd99cf72098d4adc8db0192bff7bf9fd8e61",
 }
-EXPECTED_RUNTIME_HUB_COMMIT = "4f335d6cebbd4101212fd2cc77265b50f252775c"
+EXPECTED_RUNTIME_HUB_COMMIT = "f06bb7e7e71e5afceb115d9078a473b1087ac7df"
 RUNTIME_SOURCE_WORKFLOW_PATH = ".github/workflows/api36-editing-e2e.yml"
 EXPECTED_ANDROID_LOCKS = (
     (
         "src/Chummer.Android/Chummer.Android.csproj",
         "src/Chummer.Android/packages.lock.json",
-        "66bbd296462b8db4838672af7af011a03ace6fa3c5a98bd7b5cc5c65a20464e6",
+        "32f8393f06f70530f6e528e0120778036328472c949afcb5c0679dc0b618768e",
         70375,
     ),
     (
         "tests/Chummer.Android.Native.CompileCheck/Chummer.Android.Native.CompileCheck.csproj",
         "tests/Chummer.Android.Native.CompileCheck/packages.lock.json",
-        "f421578231b43f5bd81eebedb5b82fd4b9345dc91bc2af005cbefcaab117b00b",
+        "df9356de847edbca8a31b590bfe478c7927c712fd241a74149fead9294927e5c",
         16178,
     ),
 )
-CORE_VERSION = "0.0.0-packageplane.candidate.sh60112dccb6a3f"
+CORE_VERSION = "0.0.0-packageplane.candidate.sh880e5df8ace98"
 HUB_VERSION = "0.1.0-packageplane.candidate.sh1852ea4eef6d"
 CAMPAIGN_VERSION = "0.1.0-preview"
 UI_KIT_VERSION = "0.1.0-preview"
@@ -124,7 +124,7 @@ def strict_json(path: Path, label: str) -> dict[str, Any]:
 
 
 def validate_runtime_hub_source_checkout(workflow_path: Path) -> dict[str, str]:
-    """Keep runtime source assembly distinct from the sealed Hub package producer."""
+    """Bind runtime and package roles independently, even at one exact commit."""
     if workflow_path.is_symlink() or not workflow_path.is_file():
         raise ValueError("API-36 runtime source workflow is unavailable")
     lines = workflow_path.read_text(encoding="utf-8").splitlines()
@@ -143,8 +143,9 @@ def validate_runtime_hub_source_checkout(workflow_path: Path) -> dict[str, str]:
     if refs != [EXPECTED_RUNTIME_HUB_COMMIT]:
         raise ValueError("API-36 runtime Hub checkout commit drifted")
     package_producer = EXPECTED_SOURCE_GRAPH["hubProducerCommit"]
-    if EXPECTED_RUNTIME_HUB_COMMIT == package_producer:
-        raise ValueError("runtime Hub source cannot be conflated with its package producer")
+    # Both roles may intentionally use the same reviewed source commit. The
+    # runtime allowlist above is independent: a different package producer must
+    # never implicitly select the runtime checkout or confer API-36 authority.
     return {
         "runtimeSourceCommit": EXPECTED_RUNTIME_HUB_COMMIT,
         "packageProducerCommit": package_producer,

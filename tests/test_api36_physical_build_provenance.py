@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 from pathlib import Path
 import shutil
@@ -18,6 +19,30 @@ from tests import test_api36_arm64_physical_contract as consumer_contract_tests
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+class CurrentPhysicalAuthorityBindingTests(unittest.TestCase):
+    def test_physical_proof_constants_match_the_checked_in_package_authority(self) -> None:
+        raw = (REPO_ROOT / "eng/internal-phone-beta-package-authority.json").read_bytes()
+        manifest = json.loads(raw)
+        self.assertEqual(hashlib.sha256(raw).hexdigest(), provenance.PACKAGE_AUTHORITY_SHA256)
+        self.assertEqual(
+            manifest["verificationReceipt"]["sha256"], provenance.UI_AUTHORITY_RECEIPT_SHA256
+        )
+        self.assertEqual(
+            manifest["verificationReceipt"]["sizeBytes"], provenance.UI_AUTHORITY_RECEIPT_SIZE
+        )
+        self.assertEqual(manifest["presentationSource"]["commit"], provenance.PRESENTATION_COMMIT)
+        self.assertEqual(manifest["presentationSource"]["tree"], provenance.PRESENTATION_TREE)
+        self.assertEqual(
+            manifest["packagePlaneLock"]["sha256"], provenance.PRESENTATION_PACKAGE_LOCK_SHA256
+        )
+        self.assertEqual(
+            manifest["androidConsumerLocks"][0]["sha256"], provenance.FULL_PROJECT_LOCK_SHA256
+        )
+        self.assertEqual(
+            manifest["androidConsumerLocks"][0]["sizeBytes"], provenance.FULL_PROJECT_LOCK_SIZE
+        )
 
 
 def write_json(path: Path, payload: object) -> None:
@@ -59,6 +84,10 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
         (self.android / "scripts").mkdir()
         self.content_manifest = self.android / "src/Chummer.Android/Content/chummer-content-manifest.json"
         self.content_manifest.parent.mkdir(parents=True)
+        shutil.copyfile(
+            REPO_ROOT / "src/Chummer.Android/Chummer.Android.csproj",
+            self.android / "src/Chummer.Android/Chummer.Android.csproj",
+        )
         write_json(self.content_manifest, {
             "schema": provenance.CONTENT_CONTRACT,
             "coreRevision": self.core_commit,
@@ -1052,6 +1081,52 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
             self.package_authority_binding.write_bytes(original_intake)
             self.package_authority_seal.write_bytes(original_post)
 
+    def test_v3_release_intent_cannot_substitute_project_head_or_tree_authority(self) -> None:
+        manifest = provenance.create_manifest(**self.create_arguments())
+        provenance.write_manifest(self.manifest, manifest)
+        pristine = self.consumer_source_graph(manifest)
+        graph_path = self.root / "consumer-release-source-graph.json"
+
+        def validate(graph: dict[str, object]) -> None:
+            write_json(graph_path, graph)
+            physical_contract.validate_build_provenance(
+                physical_contract.bind_regular(self.manifest, "materialized v3 provenance"),
+                physical_contract.bind_regular(graph_path, "consumer release source graph"),
+                physical_contract.bind_regular(self.apk, "materialized producer APK"),
+                **self.consumer_validation_arguments(),
+            )
+
+        validate(pristine)
+        for field in ("commit", "tree"):
+            with self.subTest(source_head_field=field):
+                graph = copy.deepcopy(pristine)
+                graph["repositories"][0][field] = "0" * 40
+                with self.assertRaisesRegex(ValueError, "source head does not bind"):
+                    validate(graph)
+        for field, value, project_field in (
+            ("versionName", "0.1.0-preview.13", "ApplicationDisplayVersion"),
+            ("versionCode", 13, "ApplicationVersion"),
+        ):
+            with self.subTest(identity_field=field):
+                graph = copy.deepcopy(pristine)
+                graph["releaseIdentity"][field] = value
+                with self.assertRaisesRegex(ValueError, project_field):
+                    validate(graph)
+
+        project = self.android / "src/Chummer.Android/Chummer.Android.csproj"
+        original_project = project.read_bytes()
+        graph = copy.deepcopy(pristine)
+        graph["releaseIdentity"].update({"versionName": "0.1.0-preview.13", "versionCode": 13})
+        try:
+            project.write_bytes(original_project.replace(
+                b"0.1.0-preview.12", b"0.1.0-preview.13",
+            ).replace(b"<ApplicationVersion>12</", b"<ApplicationVersion>13</"))
+            with self.assertRaisesRegex(ValueError, "exact clean source-graph authority"):
+                validate(graph)
+        finally:
+            project.write_bytes(original_project)
+        validate(pristine)
+
     def test_consumer_rejects_every_previously_unbound_security_leaf(self) -> None:
         manifest = provenance.create_manifest(**self.create_arguments())
         graph_path = self.root / "consumer-release-source-graph.json"
@@ -1907,7 +1982,7 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
             "verify_android_content_bundle.py", "check-inputs", "materialize",
             "--framework net10.0-android36.0", "--runtime android-arm64",
             "-p:AndroidPackageFormats=apk", "-m:1", "--warnaserror",
-            "66bbd296462b8db4838672af7af011a03ace6fa3c5a98bd7b5cc5c65a20464e6",
+            "32f8393f06f70530f6e528e0120778036328472c949afcb5c0679dc0b618768e",
             "presentation-revision-input-mismatch",
             "current-presentation-tree-mismatch",
             "current-presentation-lock-mismatch",
@@ -1953,7 +2028,7 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
         lock_path = REPO_ROOT / "src/Chummer.Android/packages.lock.json"
         lock = provenance.validate_full_project_lock(lock_path)
         self.assertEqual(
-            "66bbd296462b8db4838672af7af011a03ace6fa3c5a98bd7b5cc5c65a20464e6",
+            "32f8393f06f70530f6e528e0120778036328472c949afcb5c0679dc0b618768e",
             provenance.file_sha256(lock_path),
         )
         self.assertEqual(70_375, lock_path.stat().st_size)

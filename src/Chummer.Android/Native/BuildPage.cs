@@ -2231,6 +2231,15 @@ public sealed class BuildPage : NativePageBase
         CharacterCreationContactsInteractionLoadResult? creationContacts,
         CharacterCreationResourcesInteractionLoadResult? creationResources)
     {
+        if (!HasAuthoritativeSkills(skillsResult)
+            && snapshot.Steps.Any(stage => stage.StepId == CharacterCreationWizardStepIds.Skills))
+        {
+            // This opens a separate read-only recovery check, never the blocked
+            // ordinary Skills editor. Core decides whether history is reviewable.
+            _body.Add(CreationNavigationRow(CreationAllocationStrings.Get(
+                "SkillsReReview.Check", "Check older Skills choices for re-review"), null,
+                OpenCreationSkillsReReviewAsync, enabled: true, automationId: "creation-skills-rereview-open"));
+        }
         CharacterCreationWizardStageState? active = snapshot.Steps.FirstOrDefault(stage =>
             string.Equals(stage.StepId, snapshot.ActiveStepId, StringComparison.Ordinal));
         string[] candidateIds = new[] { snapshot.ActiveStepId }
@@ -2615,6 +2624,21 @@ public sealed class BuildPage : NativePageBase
 
     private Task OpenCreationSkillsAsync(CharacterCreationSkillsState authority)
         => Navigation.PushAsync(new CreationSkillsPage(Coordinator, authority));
+
+    private async Task OpenCreationSkillsReReviewAsync()
+    {
+        // Capture the real dashboard appearance, not just a matching workspace.
+        // A read finishing after Back must not reopen a departed wizard page.
+        if (_creationDashboardRouteReadyLifetime is not { IsCancellationRequested: false }) return;
+        long generation = _creationDashboardAppearanceGeneration;
+        var result = await Task.Run(() => Coordinator.LoadCreationSkillsReReview());
+        if (generation != _creationDashboardAppearanceGeneration
+            || _creationDashboardRouteReadyLifetime is not { IsCancellationRequested: false }) return;
+        if (result.Value is { } state && CreationSkillsReReviewPhoneAuthority.Matches(state, Coordinator.State))
+            await Navigation.PushAsync(new CreationSkillsReReviewPage(Coordinator, state));
+        else await DisplayAlertAsync(CreationAllocationStrings.Get("SkillsReReview.Title", "Review older Skills choices"),
+            CreationAllocationStrings.Get("SkillsReReview.Unavailable", "No supported historical Skills draft is available for this runner. Nothing was changed."), "OK");
+    }
 
     private Task OpenCreationQualitiesAsync()
         => Navigation.PushAsync(new CreationQualitiesPage(Coordinator));
@@ -3092,15 +3116,15 @@ public sealed class BuildPage : NativePageBase
                 automationId: "build-career-specialization-editor"));
             _body.Add(NativeTheme.NavigationRow(
                 "Settle completed run",
-                "Review governed rewards, Heat/reputation, contacts and both approvals before one atomic Core receipt",
+                PhoneStrings.Get("AfterRunEntryDetail", "Record local rewards or review a governed run settlement. Resolve any pending transaction first."),
                 async () =>
                 {
                     Sr5AfterRunSettlementCoordinator authority = new(
                         new RunnerSessionSr5AfterRunSettlementPresenter(Coordinator),
                         new PreferencesSr5CareerCheckpointOwnerAuthority());
                     Sr5AfterRunSettlementEditorState editor = await authority.PrepareAsync();
-                    Page destination = Sr5AfterRunSettlementWizardPage
-                        .CreateEntryDestination(Coordinator, editor);
+                    Page destination = await Sr5AfterRunSettlementWizardPage
+                        .CreateEntryDestinationAsync(Coordinator, editor);
                     await Navigation.PushAsync(destination);
                 },
                 automationId: "build-career-after-run-settlement"));
@@ -3112,18 +3136,20 @@ public sealed class BuildPage : NativePageBase
                     await Navigation.PushAsync(new Sr5DowntimeCalendarWizardPage(Coordinator));
                 },
                 automationId: "build-career-calendar"));
-            _body.Add(NativeTheme.NavigationRow(
-                "Reputation",
-                "Street Cred, notoriety and source-aware reputation",
-                async () =>
-                {
-                    CareerReputationEditorState? editor = await Coordinator.PrepareCareerReputationEditAsync();
-                    if (editor is not null)
+            if (Coordinator.SupportsCareerReputationEntry)
+            {
+                _body.Add(NativeTheme.NavigationRow(
+                    PhoneStrings.Get("ReputationWizardTitle", "Career · Reputation"),
+                    PhoneStrings.Get("ReputationWizardIntro", "Review local reputation changes before saving."),
+                    async () =>
                     {
-                        await Navigation.PushAsync(new CareerReputationPage(Coordinator, editor));
-                    }
-                },
-                automationId: "build-career-reputation"));
+                        var model = await Coordinator.PrepareCareerReputationEntryAsync();
+                        var destination = new Sr5CareerReputationWizardPage(Coordinator, model);
+                        destination.RequireCurrentEntry(default);
+                        await Navigation.PushAsync(destination);
+                    },
+                    automationId: "build-career-reputation"));
+            }
         }
     }
 

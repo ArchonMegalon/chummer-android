@@ -138,4 +138,95 @@
   <data name="CharacterSettingMaxSkillRating" xml:space="preserve"><value>Maximum career active-skill rating</value></data>
   <data name="CharacterSettingMaxKnowledgeSkillRating" xml:space="preserve"><value>Maximum career knowledge-skill rating</value></data>
   <data name="CharacterSettingUsePointsOnBrokenGroups" xml:space="preserve"><value>Allow points on broken skill groups</value></data>
+  <data name="AfterRunRewardTitle" xml:space="preserve"><value>After Run · Rewards</value></data>
+  <data name="AfterRunRewardIntro" xml:space="preserve"><value>Record a local reward for this runner. Review the changes before saving. This does not approve run consequences.</value></data>
+  <data name="AfterRunRewardExperimental" xml:space="preserve"><value>Experimental workflow — not yet covered by the current phone release's device tests.</value></data>
+  <data name="AfterRunRewardKarma" xml:space="preserve"><value>Karma gained</value></data>
+  <data name="AfterRunRewardNuyen" xml:space="preserve"><value>Nuyen gained</value></data>
+  <data name="AfterRunRewardReason" xml:space="preserve"><value>Reason / run name (optional)</value></data>
+  <data name="AfterRunRewardDate" xml:space="preserve"><value>Entry date</value></data>
+  <data name="AfterRunRewardTime" xml:space="preserve"><value>Local time</value></data>
+  <data name="AfterRunRewardNoAward" xml:space="preserve"><value>Explicitly record no reward (0 Karma / 0 Nuyen)</value></data>
+  <data name="AfterRunRewardPreview" xml:space="preserve"><value>Review reward</value></data>
+  <data name="AfterRunRewardConfirm" xml:space="preserve"><value>Confirm and save this reward</value></data>
+  <data name="AfterRunRewardRecover" xml:space="preserve"><value>Check saved result</value></data>
+  <data name="AfterRunRewardRetry" xml:space="preserve"><value>Retry the same confirmed reward</value></data>
+  <data name="AfterRunRewardDone" xml:space="preserve"><value>Done · return to Career</value></data>
+  <data name="AfterRunRewardDowntime" xml:space="preserve"><value>Plan downtime</value></data>
+  <data name="AfterRunRewardDowntimeBoundary" xml:space="preserve"><value>Plan your calendar locally. Each calendar change needs its own review and confirmation; it does not spend Karma, grant rewards or approve run consequences.</value></data>
+  <data name="AfterRunRewardConsequences" xml:space="preserve"><value>Review run consequences</value></data>
+  <data name="AfterRunRewardConsequencesChanged" xml:space="preserve"><value>The saved runner or run proposal changed. Recheck the saved reward before continuing.</value></data>
+  <data name="AfterRunRewardConsequencesBoundary" xml:space="preserve"><value>Heat, reputation and contacts require a separate reviewed run proposal. Checking it does not grant rewards again or approve consequences.</value></data>
+  <data name="AfterRunRewardHistory" xml:space="preserve"><value>Previously recorded rewards</value></data>
+  <data name="AfterRunRewardHistoryChoose" xml:space="preserve"><value>Choose a recorded reward</value></data>
+  <data name="AfterRunRewardHistoryPrevious" xml:space="preserve"><value>Previous rewards</value></data>
+  <data name="AfterRunRewardHistoryNext" xml:space="preserve"><value>More rewards</value></data>
+  <data name="AfterRunRewardHistoryResume" xml:space="preserve"><value>Verify selected saved reward</value></data>
+  <data name="AfterRunRewardSaved" xml:space="preserve"><value>Saved. Current balance: {0} Karma · {1} Nuyen.</value></data>
+  <data name="AfterRunRewardHistoryItem" xml:space="preserve"><value>{0} · {1} · {2} Karma / {3} Nuyen</value></data>
+  <data name="AfterRunRewardHistoryPosition" xml:space="preserve"><value>Page {0} of {1}</value></data>
+  <data name="AfterRunRewardPreviewSummary" xml:space="preserve"><value>Karma: {0} → {1}&#10;Nuyen: {2} → {3}&#10;{4} · {5}</value></data>
+  <data name="AfterRunRewardWorking" xml:space="preserve"><value>Working… Please wait.</value></data>
+  <data name="AfterRunRewardLoading" xml:space="preserve"><value>Checking saved rewards…</value></data>
+  <data name="AfterRunRewardEditing" xml:space="preserve"><value>Enter the reward, then review it.</value></data>
+  <data name="AfterRunRewardReviewReady" xml:space="preserve"><value>Check the exact changes below before confirming.</value></data>
+  <data name="AfterRunRewardInvalid" xml:space="preserve"><value>Check the non-negative whole amounts, date and note. For 0 / 0, explicitly select no reward.</value></data>
+  <data name="AfterRunRewardReviewUnavailable" xml:space="preserve"><value>A current reward preview is unavailable. Recheck the saved runner and try reviewing again.</value></data>
+  <data name="AfterRunRewardPending" xml:space="preserve"><value>An earlier reward is unfinished. Check its saved result before doing anything else.</value></data>
+  <data name="AfterRunRewardUnknown" xml:space="preserve"><value>The result is uncertain. Do not enter it again as a new reward. Check the result or explicitly retry this same operation.</value></data>
+  <data name="AfterRunRewardRecorded" xml:space="preserve"><value>Reward recorded and saved runner reloaded.</value></data>
+  <data name="AfterRunRewardRefreshRequired" xml:space="preserve"><value>The reward is retained, but the current result could not be loaded. Check the saved result; do not award it again.</value></data>
+  <data name="AfterRunRewardRunnerChanged" xml:space="preserve"><value>The selected runner changed. Reopen After Run for the current saved runner.</value></data>
+  <data name="AfterRunRewardJournalUnavailable" xml:space="preserve"><value>A pending Career operation or unreadable journal prevents a new reward. Resolve that operation first; nothing has been cleared.</value></data>
+  <data name="AfterRunEntryDetail" xml:space="preserve"><value>Record local rewards or review a governed run settlement. Resolve any pending transaction first.</value></data>
+  <data name="AfterRunGovernedEntryTitle" xml:space="preserve"><value>Recorded run result</value></data>
+  <data name="AfterRunGovernedEntryDetail" xml:space="preserve"><value>Advanced: review an existing run proposal or enter its exact recorded IDs and approvals. Pending transactions take priority; this does not grant rewards again.</value></data>
+  <data name="ReputationWizardTitle" xml:space="preserve"><value>Career · Reputation</value></data>
+  <data name="ReputationWizardIntro" xml:space="preserve"><value>Record manual reputation changes or review burning Street Cred. Core calculates the totals; nothing is saved before your confirmation.</value></data>
+  <data name="ReputationWizardScope" xml:space="preserve"><value>Experimental local wizard: not yet qualified on an Android device. Astral and Wild reputation are not changed here. This is not GM approval or a run settlement.</value></data>
+  <data name="ReputationWizardInputHelp" xml:space="preserve"><value>Enter signed changes, such as +1 or -1. Leave a field empty to keep its manual value unchanged. Calculated totals are shown separately.</value></data>
+  <data name="ReputationWizardStreetCred" xml:space="preserve"><value>Street Cred change</value></data>
+  <data name="ReputationWizardNotoriety" xml:space="preserve"><value>Notoriety change</value></data>
+  <data name="ReputationWizardAwareness" xml:space="preserve"><value>Public Awareness change</value></data>
+  <data name="ReputationWizardReason" xml:space="preserve"><value>Reason / run name (optional)</value></data>
+  <data name="ReputationWizardPreview" xml:space="preserve"><value>Review manual changes</value></data>
+  <data name="ReputationWizardBurn" xml:space="preserve"><value>Review burning Street Cred</value></data>
+  <data name="ReputationWizardConfirm" xml:space="preserve"><value>Confirm and save this change</value></data>
+  <data name="ReputationWizardRecover" xml:space="preserve"><value>Check saved result</value></data>
+  <data name="ReputationWizardRetry" xml:space="preserve"><value>Retry the same confirmed change</value></data>
+  <data name="ReputationWizardCloseSuperseded" xml:space="preserve"><value>Close original request only if superseded</value></data>
+  <data name="ReputationWizardReload" xml:space="preserve"><value>Reload saved context</value></data>
+  <data name="ReputationWizardDone" xml:space="preserve"><value>Done · return to Career</value></data>
+  <data name="ReputationWizardHistory" xml:space="preserve"><value>Reputation history</value></data>
+  <data name="ReputationWizardChooseHistory" xml:space="preserve"><value>Choose a saved record</value></data>
+  <data name="ReputationWizardNewer" xml:space="preserve"><value>Newer records</value></data>
+  <data name="ReputationWizardOlder" xml:space="preserve"><value>Older records</value></data>
+  <data name="ReputationWizardResume" xml:space="preserve"><value>Verify selected record</value></data>
+  <data name="ReputationWizardValues" xml:space="preserve"><value>Street Cred: manual {0}, total {1}
+Notoriety: manual {2}, total {3}
+Public Awareness: manual {4}, total {5}
+Street Cred already burnt: {6}</value></data>
+  <data name="ReputationWizardComparison" xml:space="preserve"><value>{0}
+Before:
+{1}
+After:
+{2}
+No change has been saved yet.</value></data>
+  <data name="ReputationWizardHistoryRow" xml:space="preserve"><value>Revision {0} · {1} · {2}</value></data>
+  <data name="ReputationWizardSavedReceipt" xml:space="preserve"><value>Recorded at revision {0}:
+{1}</value></data>
+  <data name="ReputationWizardClosedReceipt" xml:space="preserve"><value>Not applied. Revision {0} superseded the original request. The original command remains in history; no saved change was reversed.</value></data>
+  <data name="ReputationWizardLoading" xml:space="preserve"><value>Loading saved reputation…</value></data>
+  <data name="ReputationWizardWorking" xml:space="preserve"><value>Working… Please wait for the result.</value></data>
+  <data name="ReputationWizardEditing" xml:space="preserve"><value>Choose the change to review.</value></data>
+  <data name="ReputationWizardReview" xml:space="preserve"><value>Check the exact before and after values, then confirm.</value></data>
+  <data name="ReputationWizardInvalidInput" xml:space="preserve"><value>Enter whole signed numbers, with at least one change. Empty fields stay unchanged.</value></data>
+  <data name="ReputationWizardReviewUnavailable" xml:space="preserve"><value>These choices cannot currently be confirmed. Adjust them or reload the saved context.</value></data>
+  <data name="ReputationWizardUnavailable" xml:space="preserve"><value>The saved context or Career journal is unavailable. Reload or resolve the original pending operation; nothing was cleared.</value></data>
+  <data name="ReputationWizardPending" xml:space="preserve"><value>An original confirmed request needs recovery. Check its saved result first.</value></data>
+  <data name="ReputationWizardOutcomeUnknown" xml:space="preserve"><value>The outcome is unknown. Keep the original request and check its result before retrying. Closing is allowed only when Core proves it was not applied and its revision is obsolete.</value></data>
+  <data name="ReputationWizardRecorded" xml:space="preserve"><value>Recorded; the saved runner has been reloaded.</value></data>
+  <data name="ReputationWizardSuperseded" xml:space="preserve"><value>Not applied · original revision superseded.</value></data>
+  <data name="ReputationWizardRefreshRequired" xml:space="preserve"><value>The original result is retained, but the current runner could not be reloaded. Check the saved result; do not create a replacement request.</value></data>
+  <data name="ReputationWizardRunnerChanged" xml:space="preserve"><value>The selected runner changed. Reopen Reputation for the current saved runner.</value></data>
 </root>

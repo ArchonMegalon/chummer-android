@@ -138,4 +138,95 @@
   <data name="CharacterSettingMaxSkillRating" xml:space="preserve"><value>Nivel máximo de habilidad activa en carrera</value></data>
   <data name="CharacterSettingMaxKnowledgeSkillRating" xml:space="preserve"><value>Nivel máximo de habilidad de conocimiento en carrera</value></data>
   <data name="CharacterSettingUsePointsOnBrokenGroups" xml:space="preserve"><value>Permitir puntos en grupos de habilidades rotos</value></data>
+  <data name="AfterRunRewardTitle" xml:space="preserve"><value>Después de la misión · Recompensas</value></data>
+  <data name="AfterRunRewardIntro" xml:space="preserve"><value>Registra una recompensa local para este runner. Revisa los cambios antes de guardar. Esto no aprueba las consecuencias de la misión.</value></data>
+  <data name="AfterRunRewardExperimental" xml:space="preserve"><value>Flujo experimental: aún no está cubierto por las pruebas en dispositivos de la versión actual.</value></data>
+  <data name="AfterRunRewardKarma" xml:space="preserve"><value>Karma recibido</value></data>
+  <data name="AfterRunRewardNuyen" xml:space="preserve"><value>Nuyen recibidos</value></data>
+  <data name="AfterRunRewardReason" xml:space="preserve"><value>Motivo / nombre de la misión (opcional)</value></data>
+  <data name="AfterRunRewardDate" xml:space="preserve"><value>Fecha del registro</value></data>
+  <data name="AfterRunRewardTime" xml:space="preserve"><value>Hora local</value></data>
+  <data name="AfterRunRewardNoAward" xml:space="preserve"><value>Registrar expresamente que no hay recompensa (0 Karma / 0 Nuyen)</value></data>
+  <data name="AfterRunRewardPreview" xml:space="preserve"><value>Revisar recompensa</value></data>
+  <data name="AfterRunRewardConfirm" xml:space="preserve"><value>Confirmar y guardar esta recompensa</value></data>
+  <data name="AfterRunRewardRecover" xml:space="preserve"><value>Comprobar resultado guardado</value></data>
+  <data name="AfterRunRewardRetry" xml:space="preserve"><value>Reintentar la misma recompensa confirmada</value></data>
+  <data name="AfterRunRewardDone" xml:space="preserve"><value>Listo · volver a Carrera</value></data>
+  <data name="AfterRunRewardDowntime" xml:space="preserve"><value>Planificar el tiempo libre</value></data>
+  <data name="AfterRunRewardDowntimeBoundary" xml:space="preserve"><value>Planifica tu calendario localmente. Cada cambio requiere su propia revisión y confirmación; no gasta Karma, concede recompensas ni aprueba consecuencias de la misión.</value></data>
+  <data name="AfterRunRewardConsequences" xml:space="preserve"><value>Revisar consecuencias de la misión</value></data>
+  <data name="AfterRunRewardConsequencesChanged" xml:space="preserve"><value>El runner guardado o la propuesta de misión ha cambiado. Vuelve a comprobar la recompensa guardada antes de continuar.</value></data>
+  <data name="AfterRunRewardConsequencesBoundary" xml:space="preserve"><value>Heat, reputación y contactos requieren una propuesta de misión revisada por separado. Consultarla no concede otra recompensa ni aprueba las consecuencias.</value></data>
+  <data name="AfterRunRewardHistory" xml:space="preserve"><value>Recompensas registradas</value></data>
+  <data name="AfterRunRewardHistoryChoose" xml:space="preserve"><value>Elegir una recompensa registrada</value></data>
+  <data name="AfterRunRewardHistoryPrevious" xml:space="preserve"><value>Recompensas anteriores</value></data>
+  <data name="AfterRunRewardHistoryNext" xml:space="preserve"><value>Más recompensas</value></data>
+  <data name="AfterRunRewardHistoryResume" xml:space="preserve"><value>Verificar recompensa guardada seleccionada</value></data>
+  <data name="AfterRunRewardSaved" xml:space="preserve"><value>Guardado. Saldo actual: {0} Karma · {1} Nuyen.</value></data>
+  <data name="AfterRunRewardHistoryItem" xml:space="preserve"><value>{0} · {1} · {2} Karma / {3} Nuyen</value></data>
+  <data name="AfterRunRewardHistoryPosition" xml:space="preserve"><value>Página {0} de {1}</value></data>
+  <data name="AfterRunRewardPreviewSummary" xml:space="preserve"><value>Karma: {0} → {1}&#10;Nuyen: {2} → {3}&#10;{4} · {5}</value></data>
+  <data name="AfterRunRewardWorking" xml:space="preserve"><value>Procesando… Espera, por favor.</value></data>
+  <data name="AfterRunRewardLoading" xml:space="preserve"><value>Comprobando recompensas guardadas…</value></data>
+  <data name="AfterRunRewardEditing" xml:space="preserve"><value>Introduce la recompensa y después revísala.</value></data>
+  <data name="AfterRunRewardReviewReady" xml:space="preserve"><value>Comprueba los siguientes cambios antes de confirmar.</value></data>
+  <data name="AfterRunRewardInvalid" xml:space="preserve"><value>Comprueba las cantidades enteras no negativas, la fecha y la nota. Para 0 / 0, selecciona expresamente que no hay recompensa.</value></data>
+  <data name="AfterRunRewardReviewUnavailable" xml:space="preserve"><value>No hay una vista previa actual disponible. Comprueba el runner guardado y solicita otra revisión.</value></data>
+  <data name="AfterRunRewardPending" xml:space="preserve"><value>Hay una recompensa anterior pendiente. Comprueba primero su resultado guardado.</value></data>
+  <data name="AfterRunRewardUnknown" xml:space="preserve"><value>El resultado es incierto. No lo registres como una recompensa nueva. Comprueba el resultado o reintenta expresamente la misma operación.</value></data>
+  <data name="AfterRunRewardRecorded" xml:space="preserve"><value>Recompensa registrada y runner guardado recargado.</value></data>
+  <data name="AfterRunRewardRefreshRequired" xml:space="preserve"><value>La recompensa se conserva, pero no se pudo cargar el resultado actual. Comprueba el resultado guardado; no vuelvas a concederla.</value></data>
+  <data name="AfterRunRewardRunnerChanged" xml:space="preserve"><value>El runner seleccionado ha cambiado. Vuelve a abrir Después de la misión para el runner guardado actual.</value></data>
+  <data name="AfterRunRewardJournalUnavailable" xml:space="preserve"><value>Una operación de Carrera pendiente o un registro ilegible impide crear otra recompensa. Resuelve primero esa operación; no se ha borrado nada.</value></data>
+  <data name="AfterRunEntryDetail" xml:space="preserve"><value>Registra recompensas locales o revisa una liquidación autorizada de misión. Resuelve primero cualquier operación pendiente.</value></data>
+  <data name="AfterRunGovernedEntryTitle" xml:space="preserve"><value>Resultado registrado de la misión</value></data>
+  <data name="AfterRunGovernedEntryDetail" xml:space="preserve"><value>Avanzado: revisa una propuesta de misión existente o introduce sus identificadores y aprobaciones exactos. Las operaciones pendientes tienen prioridad; no se vuelven a otorgar recompensas.</value></data>
+  <data name="ReputationWizardTitle" xml:space="preserve"><value>Carrera · Reputación</value></data>
+  <data name="ReputationWizardIntro" xml:space="preserve"><value>Registra cambios manuales de reputación o revisa la quema de reputación callejera. Core calcula los totales; nada se guarda sin tu confirmación.</value></data>
+  <data name="ReputationWizardScope" xml:space="preserve"><value>Asistente local experimental: aún no verificado en un dispositivo Android. No modifica la reputación astral ni salvaje. No constituye aprobación del DJ ni liquidación de una misión.</value></data>
+  <data name="ReputationWizardInputHelp" xml:space="preserve"><value>Introduce cambios con signo, como +1 o -1. Deja un campo vacío para conservar su valor manual. Los totales calculados se muestran por separado.</value></data>
+  <data name="ReputationWizardStreetCred" xml:space="preserve"><value>Cambio de reputación callejera</value></data>
+  <data name="ReputationWizardNotoriety" xml:space="preserve"><value>Cambio de notoriedad</value></data>
+  <data name="ReputationWizardAwareness" xml:space="preserve"><value>Cambio de conocimiento público</value></data>
+  <data name="ReputationWizardReason" xml:space="preserve"><value>Motivo / nombre de misión (opcional)</value></data>
+  <data name="ReputationWizardPreview" xml:space="preserve"><value>Revisar cambios manuales</value></data>
+  <data name="ReputationWizardBurn" xml:space="preserve"><value>Revisar quema de reputación callejera</value></data>
+  <data name="ReputationWizardConfirm" xml:space="preserve"><value>Confirmar y guardar este cambio</value></data>
+  <data name="ReputationWizardRecover" xml:space="preserve"><value>Comprobar resultado guardado</value></data>
+  <data name="ReputationWizardRetry" xml:space="preserve"><value>Reintentar el mismo cambio confirmado</value></data>
+  <data name="ReputationWizardCloseSuperseded" xml:space="preserve"><value>Cerrar solicitud original solo si su revisión quedó obsoleta</value></data>
+  <data name="ReputationWizardReload" xml:space="preserve"><value>Recargar contexto guardado</value></data>
+  <data name="ReputationWizardDone" xml:space="preserve"><value>Listo · volver a Carrera</value></data>
+  <data name="ReputationWizardHistory" xml:space="preserve"><value>Historial de reputación</value></data>
+  <data name="ReputationWizardChooseHistory" xml:space="preserve"><value>Elegir un registro guardado</value></data>
+  <data name="ReputationWizardNewer" xml:space="preserve"><value>Registros más recientes</value></data>
+  <data name="ReputationWizardOlder" xml:space="preserve"><value>Registros anteriores</value></data>
+  <data name="ReputationWizardResume" xml:space="preserve"><value>Verificar registro seleccionado</value></data>
+  <data name="ReputationWizardValues" xml:space="preserve"><value>Reputación callejera: manual {0}, total {1}
+Notoriedad: manual {2}, total {3}
+Conocimiento público: manual {4}, total {5}
+Reputación callejera ya quemada: {6}</value></data>
+  <data name="ReputationWizardComparison" xml:space="preserve"><value>{0}
+Antes:
+{1}
+Después:
+{2}
+Todavía no se ha guardado ningún cambio.</value></data>
+  <data name="ReputationWizardHistoryRow" xml:space="preserve"><value>Revisión {0} · {1} · {2}</value></data>
+  <data name="ReputationWizardSavedReceipt" xml:space="preserve"><value>Guardado en la revisión {0}:
+{1}</value></data>
+  <data name="ReputationWizardClosedReceipt" xml:space="preserve"><value>No aplicado. La revisión {0} dejó obsoleta la solicitud original. Se conserva en el historial; no se revirtió ningún cambio guardado.</value></data>
+  <data name="ReputationWizardLoading" xml:space="preserve"><value>Cargando reputación guardada…</value></data>
+  <data name="ReputationWizardWorking" xml:space="preserve"><value>Procesando… Espera el resultado.</value></data>
+  <data name="ReputationWizardEditing" xml:space="preserve"><value>Elige el cambio que quieres revisar.</value></data>
+  <data name="ReputationWizardReview" xml:space="preserve"><value>Comprueba los valores exactos antes y después; luego confirma.</value></data>
+  <data name="ReputationWizardInvalidInput" xml:space="preserve"><value>Introduce números enteros con signo y al menos un cambio. Los campos vacíos se mantienen sin cambios.</value></data>
+  <data name="ReputationWizardReviewUnavailable" xml:space="preserve"><value>No se pueden confirmar estas opciones. Modifícalas o recarga el contexto guardado.</value></data>
+  <data name="ReputationWizardUnavailable" xml:space="preserve"><value>El contexto guardado o el registro de Carrera no está disponible. Recarga o resuelve la operación pendiente original; no se ha borrado nada.</value></data>
+  <data name="ReputationWizardPending" xml:space="preserve"><value>Una solicitud confirmada necesita recuperación. Comprueba primero su resultado guardado.</value></data>
+  <data name="ReputationWizardOutcomeUnknown" xml:space="preserve"><value>El resultado es desconocido. Conserva la solicitud original y comprueba su resultado antes de reintentar. Solo se permite cerrarla si Core demuestra que no se aplicó y su revisión quedó obsoleta.</value></data>
+  <data name="ReputationWizardRecorded" xml:space="preserve"><value>Guardado; se ha recargado el personaje.</value></data>
+  <data name="ReputationWizardSuperseded" xml:space="preserve"><value>No aplicado · revisión original obsoleta.</value></data>
+  <data name="ReputationWizardRefreshRequired" xml:space="preserve"><value>Se conserva el resultado original, pero no se pudo recargar el personaje. Comprueba el resultado guardado; no crees una solicitud de reemplazo.</value></data>
+  <data name="ReputationWizardRunnerChanged" xml:space="preserve"><value>El personaje seleccionado cambió. Vuelve a abrir Reputación para el personaje actual.</value></data>
 </root>

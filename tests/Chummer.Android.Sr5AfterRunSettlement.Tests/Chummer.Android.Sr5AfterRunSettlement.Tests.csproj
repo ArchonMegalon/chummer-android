@@ -9,6 +9,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
+    <Compile Include="AfterRunAuthorityHarness.cs" />
     <Compile Include="AuthorityCompileStubs.cs" />
     <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CharacterAfterRunSettlementRules.cs" Link="Core/CharacterAfterRunSettlementRules.cs" />
     <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CharacterAfterRunSettlementServiceContracts.cs" Link="Core/CharacterAfterRunSettlementServiceContracts.cs" />

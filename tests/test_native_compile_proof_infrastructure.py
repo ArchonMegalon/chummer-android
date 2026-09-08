@@ -1,6 +1,8 @@
 import importlib.util
 import json
 import os
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -28,7 +30,232 @@ compile_graph = load_script("verify_native_compile_graph")
 toolchain = load_script("preflight_native_android_toolchain")
 
 
+class NativeCompileSourcePathTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+        self.repo = self.root / "android"
+        self.project = self.repo / "tests/Compile/Compile.csproj"
+        self.project.parent.mkdir(parents=True)
+        self.project.write_text(
+            '<Project><PropertyGroup><EnableDefaultCompileItems>false</EnableDefaultCompileItems>'
+            '</PropertyGroup><Import Project="NativeCompileInputs.props" /></Project>',
+            encoding="utf-8",
+        )
+        sources = (
+            "src/Chummer.Android/MainShell.cs",
+            "src/Chummer.Android/MauiProgram.cs",
+            "src/Chummer.Android/Platform/IAndroidImageDocumentService.cs",
+            "src/Chummer.Android/Native/Page.cs",
+            "tests/Compile/CompileStubs.cs",
+        )
+        includes = []
+        for relative in sources:
+            source = self.repo / relative
+            source.parent.mkdir(parents=True, exist_ok=True)
+            source.write_text("// owned fixture source\n", encoding="utf-8")
+            includes.append(f'<Compile Include="../../{relative}" />')
+        self.manifest = self.project.parent / "NativeCompileInputs.props"
+        self.manifest.write_text(
+            "<Project><ItemGroup>" + "".join(includes) + "</ItemGroup></Project>",
+            encoding="utf-8",
+        )
+
+    def test_regular_owned_relative_paths_remain_accepted(self) -> None:
+        compiled, issues = compile_graph.verify_source_graph(self.repo, self.project)
+        self.assertEqual([], issues)
+        self.assertEqual(5, len(compiled))
+
+    def test_msbuild_dot_segment_repo_root_infers_the_canonical_workspace(self) -> None:
+        dependency = self.root / "chummer-presentation/Presentation.csproj"
+        dependency.parent.mkdir()
+        dependency.write_text("<Project />", encoding="utf-8")
+        obj = self.project.parent / "obj"
+        obj.mkdir()
+        NativeCompileProofInfrastructureTests._write_assets(obj, self.project, dependency)
+        NativeCompileProofInfrastructureTests._write_dgspec(obj, self.project, dependency)
+        # Match $(MSBuildProjectDirectory)/../.. from the embedded Exec target.
+        lexical_repo = self.project.parent / "../.."
+        for mode in ("--require-assets", "--assets-only"):
+            with self.subTest(mode=mode):
+                command = [
+                    sys.executable, "-B", str(REPO / "scripts/verify_native_compile_graph.py"),
+                    "--repo-root", str(lexical_repo), "--project", str(self.project), mode,
+                ]
+                result = subprocess.run(command, capture_output=True, text=True, timeout=10, check=False)
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                payload = json.loads(result.stdout)
+                self.assertEqual(str(self.repo.resolve()), payload["repoRoot"])
+                self.assertEqual(str(self.root.resolve()), payload["workspaceRoot"])
+                self.assertEqual(2, payload["generatedProjectReferenceCount"])
+                self.assertEqual([], payload["issues"])
+                restricted = subprocess.run(
+                    [*command, "--workspace-root", str(self.repo)],
+                    capture_output=True, text=True, timeout=10, check=False,
+                )
+                self.assertEqual(2, restricted.returncode, restricted.stdout + restricted.stderr)
+                self.assertIn("project-reference-outside-workspace", restricted.stdout)
+
+    def test_msbuild_dot_segments_cannot_erase_a_symlinked_repo_component(self) -> None:
+        target = self.project.parent / "nested"
+        target.mkdir()
+        alias = self.project.parent / "alias"
+        alias.symlink_to(target, target_is_directory=True)
+        lexical_repo = alias / "../../.."
+        self.assertEqual(self.repo.resolve(), lexical_repo.resolve())
+        for mode in ("--require-assets", "--assets-only"):
+            with self.subTest(mode=mode):
+                result = subprocess.run(
+                    [sys.executable, "-B", str(REPO / "scripts/verify_native_compile_graph.py"),
+                     "--repo-root", str(lexical_repo), "--project", str(self.project), mode],
+                    capture_output=True, text=True, timeout=10, check=False,
+                )
+                self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+                self.assertIn(f"source-root-symlink:{alias}", json.loads(result.stdout)["issues"])
+
+    def test_linked_source_inside_owner_is_rejected_before_resolution(self) -> None:
+        source = self.project.parent / "CompileStubs.cs"
+        target = source.with_name("Redirected.cs")
+        source.rename(target)
+        source.symlink_to(target.name)
+        _, issues = compile_graph.verify_source_graph(self.repo, self.project)
+        self.assertTrue(any("symlink" in issue for issue in issues), issues)
+
+    def test_linked_source_parent_inside_owner_is_rejected(self) -> None:
+        source_parent = self.repo / "src/Chummer.Android/Platform"
+        target = source_parent.with_name("RedirectedPlatform")
+        source_parent.rename(target)
+        source_parent.symlink_to(target.name, target_is_directory=True)
+        _, issues = compile_graph.verify_source_graph(self.repo, self.project)
+        self.assertTrue(any("symlink" in issue for issue in issues), issues)
+
+    def test_linked_compile_project_is_rejected(self) -> None:
+        target = self.project.with_name("Redirected.csproj")
+        self.project.rename(target)
+        self.project.symlink_to(target.name)
+        _, issues = compile_graph.verify_source_graph(self.repo, self.project)
+        self.assertTrue(any("symlink" in issue for issue in issues), issues)
+
+    def test_linked_owner_root_is_rejected(self) -> None:
+        alias = self.root / "alias"
+        alias.symlink_to(self.repo.name, target_is_directory=True)
+        _, issues = compile_graph.verify_source_graph(alias, alias / "tests/Compile/Compile.csproj")
+        self.assertTrue(any("symlink" in issue for issue in issues), issues)
+
+    def test_cli_does_not_erase_linked_owner_root(self) -> None:
+        alias = self.root / "alias"
+        alias.symlink_to(self.repo.name, target_is_directory=True)
+        result = subprocess.run(
+            [sys.executable, "-B", str(REPO / "scripts/verify_native_compile_graph.py"),
+             "--repo-root", str(alias), "--project", str(alias / "tests/Compile/Compile.csproj")],
+            capture_output=True, text=True, timeout=10, check=False,
+        )
+        self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+        payload = json.loads(result.stdout)
+        self.assertEqual("blocked", payload["status"])
+        self.assertTrue(any("symlink" in issue for issue in payload["issues"]))
+
+    def test_cli_does_not_erase_linked_compile_project(self) -> None:
+        target = self.project.with_name("Redirected.csproj")
+        self.project.rename(target)
+        self.project.symlink_to(target.name)
+        result = subprocess.run(
+            [sys.executable, "-B", str(REPO / "scripts/verify_native_compile_graph.py"),
+             "--repo-root", str(self.repo), "--project", str(self.project)],
+            capture_output=True, text=True, timeout=10, check=False,
+        )
+        self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+        self.assertTrue(any("symlink" in issue for issue in json.loads(result.stdout)["issues"]))
+
+    def test_parent_traversal_does_not_erase_a_linked_input_component(self) -> None:
+        target = self.repo / "redirect-target/child"
+        target.mkdir(parents=True)
+        (target.parent / "Extra.cs").write_text("// redirected source\n", encoding="utf-8")
+        alias = self.project.parent / "alias"
+        alias.symlink_to(target, target_is_directory=True)
+        self.manifest.write_text(
+            self.manifest.read_text(encoding="utf-8").replace(
+                "</ItemGroup>", '<Compile Include="alias/../Extra.cs" /></ItemGroup>',
+            ),
+            encoding="utf-8",
+        )
+        _, issues = compile_graph.verify_source_graph(self.repo, self.project)
+        self.assertTrue(any("symlink" in issue for issue in issues), issues)
+
+    def test_missing_required_source_is_reported_without_reading_it(self) -> None:
+        (self.repo / "src/Chummer.Android/MauiProgram.cs").unlink()
+        _, issues = compile_graph.verify_source_graph(self.repo, self.project)
+        self.assertTrue(any("compile-input-unavailable" in issue for issue in issues), issues)
+
+    def test_linked_manifest_remains_rejected(self) -> None:
+        target = self.manifest.with_name("Redirected.props")
+        self.manifest.rename(target)
+        self.manifest.symlink_to(target.name)
+        _, issues = compile_graph.verify_source_graph(self.repo, self.project)
+        self.assertTrue(issues)
+
+    def test_looping_source_link_fails_closed_without_crashing(self) -> None:
+        source = self.project.parent / "CompileStubs.cs"
+        source.unlink()
+        source.symlink_to(source.name)
+        _, issues = compile_graph.verify_source_graph(self.repo, self.project)
+        self.assertTrue(any("symlink" in issue for issue in issues), issues)
+
+
 class NativeCompileProofInfrastructureTests(unittest.TestCase):
+    def test_generated_graph_rejects_lexical_symlinks_before_resolution(self) -> None:
+        for linked_part in ("project", "dependency", "workspace", "default-obj", "explicit-obj"):
+            with self.subTest(linked_part=linked_part), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                workspace = root / "workspace"
+                project = workspace / "android/Compile.csproj"
+                dependency = workspace / "core/Contracts.csproj"
+                project.parent.mkdir(parents=True)
+                dependency.parent.mkdir(parents=True)
+                project.write_text("<Project />", encoding="utf-8")
+                dependency.write_text("<Project />", encoding="utf-8")
+                obj = project.parent / "obj"
+                obj.mkdir()
+                self._write_assets(obj, project, dependency)
+                self._write_dgspec(obj, project, dependency)
+                selected = {
+                    "project": project, "dependency": dependency, "workspace": workspace,
+                    "default-obj": obj, "explicit-obj": obj,
+                }[linked_part]
+                target = selected.with_name(selected.name + "-real")
+                selected.rename(target)
+                selected.symlink_to(target.name, target_is_directory=target.is_dir())
+                _, issues = compile_graph.verify_asset_graph(
+                    project, workspace, obj if linked_part == "explicit-obj" else None,
+                )
+                self.assertTrue(any("symlink" in issue for issue in issues), issues)
+
+    def test_assets_only_cli_preserves_explicit_workspace_identity(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            workspace = root / "workspace"
+            project = workspace / "android/Compile.csproj"
+            dependency = workspace / "core/Contracts.csproj"
+            project.parent.mkdir(parents=True)
+            dependency.parent.mkdir(parents=True)
+            project.write_text("<Project />", encoding="utf-8")
+            dependency.write_text("<Project />", encoding="utf-8")
+            obj = project.parent / "obj"
+            obj.mkdir()
+            self._write_assets(obj, project, dependency)
+            self._write_dgspec(obj, project, dependency)
+            alias = root / "alias"
+            alias.symlink_to(workspace.name, target_is_directory=True)
+            result = subprocess.run(
+                [sys.executable, "-B", str(REPO / "scripts/verify_native_compile_graph.py"),
+                 "--repo-root", str(project.parent), "--project", str(project),
+                 "--workspace-root", str(alias), "--assets-only"],
+                capture_output=True, text=True, timeout=10, check=False,
+            )
+            self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+            self.assertTrue(any("symlink" in issue for issue in json.loads(result.stdout)["issues"]))
+
     def test_default_workspace_includes_validated_integration_shelves(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             workspace = Path(temporary) / "workspace"

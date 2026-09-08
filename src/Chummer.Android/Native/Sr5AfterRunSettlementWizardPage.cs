@@ -7,7 +7,8 @@ namespace Chummer.Android.Native;
 internal sealed record Sr5AfterRunSettlementWizardDependencies(
     Sr5AfterRunSettlementCoordinator Coordinator,
     Sr5AfterRunSettlementCheckpointStore Store,
-    ISr5AfterRunSettlementCheckpointAuthority CheckpointAuthority);
+    ISr5AfterRunSettlementCheckpointAuthority CheckpointAuthority,
+    ISr5CareerCheckpointOwnerAuthority Owner);
 
 /// <summary>Step 1: choose one exact completed-run proposal.</summary>
 public sealed class Sr5AfterRunSettlementWizardPage : NativePageBase
@@ -23,6 +24,9 @@ public sealed class Sr5AfterRunSettlementWizardPage : NativePageBase
     private readonly Button _resume;
     private readonly Button _resolve;
     private readonly Button _abandon;
+    private readonly Func<string, string, string, string, Task<bool>> _confirmAbandon;
+    private long _discardAppearanceGeneration;
+    private bool _discardPageDeparted;
     private Sr5AfterRunSettlementCandidate? _selected;
     private Sr5AfterRunSettlementCheckpoint? _checkpoint;
 
@@ -33,16 +37,19 @@ public sealed class Sr5AfterRunSettlementWizardPage : NativePageBase
     {
     }
 
-    private Sr5AfterRunSettlementWizardPage(
+    internal Sr5AfterRunSettlementWizardPage(
         RunnerSessionCoordinator coordinator,
         Sr5AfterRunSettlementEditorState editor,
-        Sr5AfterRunSettlementWizardDependencies dependencies)
+        Sr5AfterRunSettlementWizardDependencies dependencies,
+        Func<string, string, string, string, Task<bool>>? confirmAbandon = null)
         : base(coordinator)
     {
         _editor = editor ?? throw new ArgumentNullException(nameof(editor));
         _authority = dependencies.Coordinator;
         _store = dependencies.Store;
         _checkpointAuthority = dependencies.CheckpointAuthority;
+        _confirmAbandon = confirmAbandon ?? ((title, message, accept, cancel) =>
+            DisplayAlertAsync(title, message, accept, cancel));
         Sr5CareerRunnerGuard.RequireCreated(
             new RunnerSessionSr5AfterRunSettlementPresenter(coordinator).Binding);
         if (!editor.IsExact()
@@ -114,7 +121,7 @@ public sealed class Sr5AfterRunSettlementWizardPage : NativePageBase
         body.Add(_resolve);
         _abandon = NativeTheme.SecondaryButton(Text("Abandon reviewed settlement"));
         _abandon.AutomationId = "sr5-after-run-abandon";
-        _abandon.Clicked += async (_, _) => await RunAsync(AbandonAsync);
+        _abandon.Clicked += async (_, _) => await AbandonReviewedAsync();
         body.Add(_abandon);
         Content = new ScrollView { Content = body };
         LoadCheckpoint();
@@ -135,36 +142,98 @@ public sealed class Sr5AfterRunSettlementWizardPage : NativePageBase
                 new RunnerSessionSr5AfterRunSettlementPresenter(coordinator),
                 owner),
             Sr5AfterRunSettlementCheckpointStore.CreateDefault(checkpointAuthority),
-            checkpointAuthority);
+            checkpointAuthority,
+            owner);
     }
 
-    internal static Page CreateEntryDestination(
+    internal static async Task<Page> CreateEntryDestinationAsync(
         RunnerSessionCoordinator coordinator,
-        Sr5AfterRunSettlementEditorState editor)
+        Sr5AfterRunSettlementEditorState editor,
+        CancellationToken cancellationToken = default,
+        Func<Sr5AfterRunSettlementWizardDependencies>? createDependencies = null,
+        bool requestGovernedProposal = false)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+        // Catalog preparation awaited work. Bind the destination to that same
+        // saved runner, not whichever runner happens to be selected afterward.
+        RequireCurrentEntry();
         Sr5AfterRunSettlementWizardDependencies dependencies =
-            CreateDependencies(coordinator, editor);
+            createDependencies is null ? CreateDependencies(coordinator, editor) : createDependencies();
         bool ownsRecovery = dependencies.Store.TryReadOwnedRecovery(
-            out _,
+            out var owningCheckpoint,
             out string recoveryBlocker);
-        if (!ownsRecovery
-            && string.IsNullOrWhiteSpace(recoveryBlocker)
+        Sr5AfterRunSettlementCheckpoint? recorded = ownsRecovery
+            && owningCheckpoint.Phase == Sr5CareerCheckpointPhase.Applied ? owningCheckpoint : null;
+        if (!ownsRecovery && dependencies.Store.TryReadOwnedRecordedReceipt(
+                out var historical, out _)) recorded = historical;
+        bool ownsDiscardableReview = dependencies.Store.TryReadOwnedDiscardableReview(out _, out _);
+        bool canObserveLocalRecovery = recorded is not null
+            || ownsDiscardableReview
+            || ownsRecovery && owningCheckpoint.Phase == Sr5CareerCheckpointPhase.Reviewed
+            || !ownsRecovery && string.IsNullOrWhiteSpace(recoveryBlocker);
+        if (canObserveLocalRecovery && coordinator.SupportsAfterRunRewardEntry)
+        {
+            // Recovery takes priority even when a catalog has appeared since
+            // the local reward was confirmed. An old settled receipt or a
+            // not-yet-applying review must not hide an active local reward.
+            var reward = await coordinator.PrepareAfterRunRewardEntryAsync(
+                allowNewReward: !ownsRecovery && recorded is null && !ownsDiscardableReview
+                    && editor.Status == Sr5AfterRunCatalogStatus.Missing && !requestGovernedProposal,
+                cancellationToken,
+                owner: dependencies.Owner,
+                allowRecordedReceiptFallback: recorded is not null);
+            cancellationToken.ThrowIfCancellationRequested();
+            RequireCurrentEntry();
+            if (reward is not null)
+                return new Sr5AfterRunRewardWizardPage(coordinator, reward);
+        }
+
+        if (!ownsRecovery && recorded is not null)
+            return new Sr5AfterRunSettlementReceiptPage(coordinator, recorded,
+                recorded.Receipt!, dependencies.Store);
+
+        // Advanced, explicit intake is separate from ordinary local rewards.
+        // Neither this preference nor missing catalog data can bypass retained
+        // recovery, a discard-only review, or an unreadable ownership journal.
+        if (requestGovernedProposal && !ownsRecovery && recorded is null
+            && !ownsDiscardableReview && string.IsNullOrWhiteSpace(recoveryBlocker)
             && editor.Status == Sr5AfterRunCatalogStatus.Missing
             && coordinator.SupportsManualAfterRunProposalEntry)
-        {
-            return new Sr5AfterRunManualProposalPage(
-                coordinator,
-                editor.WorkspaceId,
-                editor.WorkspaceRevision);
-        }
+            return new Sr5AfterRunManualProposalPage(coordinator,
+                editor.WorkspaceId, editor.WorkspaceRevision);
 
         return new Sr5AfterRunSettlementWizardPage(
             coordinator,
             editor,
             dependencies);
+
+        void RequireCurrentEntry()
+        {
+            var current = coordinator.State;
+            if (!editor.IsExact() || current.WorkspaceId != editor.WorkspaceId
+                || current.ContentRevision != editor.WorkspaceRevision
+                || current.SavedRevision != editor.WorkspaceRevision
+                || current.IsDirty || current.IsBusy || !string.IsNullOrWhiteSpace(current.Error))
+                throw new InvalidOperationException(
+                    Text("The SR5 After Run route requires the exact current clean saved runner revision."));
+        }
     }
 
     protected override void Refresh() => RefreshEnabledState();
+
+    protected override void OnAppearing()
+    {
+        Interlocked.Increment(ref _discardAppearanceGeneration);
+        _discardPageDeparted = false;
+        base.OnAppearing();
+    }
+
+    protected override void OnDisappearing()
+    {
+        _discardPageDeparted = true;
+        Interlocked.Increment(ref _discardAppearanceGeneration);
+        base.OnDisappearing();
+    }
 
     protected override Task PrepareForAppearanceRefreshAsync(
         CancellationToken cancellationToken)
@@ -205,6 +274,13 @@ public sealed class Sr5AfterRunSettlementWizardPage : NativePageBase
                 ? NativeTheme.Danger
                 : NativeTheme.Muted;
         }
+        else if (_store.TryReadOwnedDiscardableReview(out var discardedReview, out _))
+        {
+            _checkpoint = discardedReview;
+            _recovery.Text = Text(
+                "This saved review no longer matches the current catalog or runner. You can discard it, but cannot resume or apply it.");
+            _recovery.TextColor = NativeTheme.Muted;
+        }
         else
         {
             _checkpoint = null;
@@ -242,8 +318,10 @@ public sealed class Sr5AfterRunSettlementWizardPage : NativePageBase
             && _checkpointAuthority.OwnsReviewed(_checkpoint);
         _resume.IsVisible = reviewed;
         _resume.IsEnabled = reviewed;
-        _abandon.IsVisible = reviewed;
-        _abandon.IsEnabled = reviewed;
+        bool discardable = _checkpoint is not null
+            && _store.IsDiscardableReviewForCurrentRunner(_checkpoint);
+        _abandon.IsVisible = discardable;
+        _abandon.IsEnabled = discardable && !Coordinator.State.IsBusy;
         bool interrupted = _checkpoint?.Phase is Sr5CareerCheckpointPhase.Applying
             or Sr5CareerCheckpointPhase.Applied;
         _resolve.IsVisible = interrupted;
@@ -332,24 +410,41 @@ public sealed class Sr5AfterRunSettlementWizardPage : NativePageBase
         RefreshEnabledState();
     }
 
+    internal Task AbandonReviewedAsync() => RunAsync(AbandonAsync);
+
     private async Task AbandonAsync()
     {
-        if (_checkpoint is null || !_checkpointAuthority.OwnsReviewed(_checkpoint))
+        if (_discardPageDeparted || _checkpoint is null
+            || !_store.IsDiscardableReviewForCurrentRunner(_checkpoint))
         {
             return;
         }
-        bool confirmed = await DisplayAlertAsync(
+        // The dialog confirms this exact checkpoint, not whichever review an
+        // appearance refresh might load while the user is deciding.
+        var expected = Sr5AfterRunSettlementCheckpointCas.From(_checkpoint);
+        long appearance = Volatile.Read(ref _discardAppearanceGeneration);
+        // The existing session selection generation also fences A -> B -> A
+        // and disposal. An old dialog must not borrow a later page/selection.
+        var runner = Coordinator.CaptureAfterRunRewardBinding(expected.OwnerId);
+        if (!runner.IsCleanSavedSr5()) return;
+        bool confirmed = await _confirmAbandon(
             Text("Abandon reviewed settlement?"),
-            Text("This removes only the durable review. It does not change the runner or approve the proposal."),
+            Format(
+                "Discard the saved review for {0} (runner revision {1})? This removes only the local review, not runner data or proposal approvals.",
+                _checkpoint.Draft.Candidate.RewardContext.RunTitle,
+                _checkpoint.Draft.ExpectedWorkspaceRevision),
             Text("Abandon"),
             Text("Keep"));
+        if (appearance != Volatile.Read(ref _discardAppearanceGeneration)
+            || runner != Coordinator.CaptureAfterRunRewardBinding(expected.OwnerId))
+            return;
         if (!confirmed)
         {
             RefreshEnabledState();
             return;
         }
         if (_store.TryDeleteReviewed(
-                Sr5AfterRunSettlementCheckpointCas.From(_checkpoint),
+                expected,
                 out string blocker))
         {
             _checkpoint = null;
@@ -358,6 +453,9 @@ public sealed class Sr5AfterRunSettlementWizardPage : NativePageBase
         }
         else
         {
+            // Another page may have replaced or started applying this review
+            // while confirmation was open. Re-observe before enabling actions.
+            LoadCheckpoint();
             _recovery.Text = blocker;
             _recovery.TextColor = NativeTheme.Danger;
         }
@@ -440,7 +538,7 @@ internal sealed class Sr5AfterRunSettlementStagePage : NativePageBase
         {
             case Sr5AfterRunSettlementStage.Rewards:
                 body.Add(NativeTheme.Body(
-                    Text("These rewards come from the signed run context. This settlement only applies Heat, reputation, contacts and their Karma cost; it does not duplicate the reward ledger."),
+                    Text("These rewards come from the reviewed run context. This settlement only applies Heat, reputation, contacts and their Karma cost; it does not duplicate the reward ledger."),
                     NativeTheme.Muted));
                 body.Add(NativeTheme.Card(new VerticalStackLayout
                 {
@@ -807,6 +905,7 @@ public sealed class Sr5AfterRunSettlementReceiptPage : NativePageBase
     private readonly Sr5AfterRunSettlementCheckpointStore _store;
     private readonly Button _acknowledge;
     private readonly Label _status;
+    private readonly Label _revision;
 
     internal Sr5AfterRunSettlementReceiptPage(
         RunnerSessionCoordinator coordinator,
@@ -829,10 +928,14 @@ public sealed class Sr5AfterRunSettlementReceiptPage : NativePageBase
         AutomationId = Sr5CareerWizardRoutes.AfterRunReceipt;
         VerticalStackLayout body = Sr5AfterRunSettlementWizardPage.Body();
         body.Add(NativeTheme.Eyebrow(Text("SR5 Career · After Run")));
-        body.Add(NativeTheme.Title(Text("Settlement saved")));
+        body.Add(NativeTheme.Title(Text("Recorded settlement")));
         body.Add(NativeTheme.Body(
-            Text("Core verified the exact post-save runner revision, transaction ledger and receipt. Acknowledging removes only this local recovery checkpoint."),
+            Text(
+                "This receipt records a saved settlement, not the runner's current values or permission to apply it again. Acknowledging removes only this local checkpoint; the saved runner and Core ledger remain unchanged."),
             NativeTheme.Muted));
+        _revision = NativeTheme.Body(string.Empty, NativeTheme.Muted);
+        _revision.AutomationId = "sr5-after-run-receipt-revisions";
+        body.Add(_revision);
         body.Add(NativeTheme.Card(new VerticalStackLayout
         {
             Spacing = 7,
@@ -860,12 +963,15 @@ public sealed class Sr5AfterRunSettlementReceiptPage : NativePageBase
 
     protected override void Refresh()
     {
-        _acknowledge.IsEnabled = Coordinator.State.WorkspaceId
-                == _checkpoint.Draft.WorkspaceId
-            && Coordinator.State.ContentRevision
-                == _checkpoint.Draft.ExpectedWorkspaceRevision + 1
-            && Coordinator.State.SavedRevision == Coordinator.State.ContentRevision
-            && !Coordinator.State.IsDirty;
+        bool owned = _store.IsRecordedReceiptForCurrentRunner(_checkpoint);
+        _acknowledge.IsEnabled = owned && !Coordinator.State.IsBusy;
+        _revision.Text = owned
+            ? Format(
+                "Recorded revision: {0}. Current saved runner revision: {1}.",
+                _checkpoint.Draft.ExpectedWorkspaceRevision + 1,
+                Coordinator.State.SavedRevision)
+            : Text(
+                "The selected runner changed. Reopen After Run for the current saved runner.");
     }
 
     private async Task AcknowledgeAsync()

@@ -92,6 +92,11 @@ namespace Chummer.Android.Native
         {
         }
 
+        // Signature-only seam for the current native page. This lightweight
+        // authority harness does not simulate or qualify the MAUI lifecycle.
+        protected virtual Task PrepareForAppearanceRefreshAsync(CancellationToken cancellationToken)
+            => throw new NotSupportedException("Native appearance requires the actual MAUI lifecycle harness.");
+
         protected Task RunAsync(Func<Task> action) => action();
 
         protected new Task DisplayAlertAsync(string title, string message, string cancel)

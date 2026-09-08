@@ -11,10 +11,24 @@ using Microsoft.Maui.Controls;
 
 internal static class Program
 {
-    private static async Task Main()
+    private static async Task Main(string[] args)
     {
+        if (args.Length == 2 && args[0] == "--skills-rereview-runtime-content-root")
+        {
+            CreationMagicNativeRuntimeTests.RunSkillsReReview(args[1]);
+            return;
+        }
+        if (args.Length == 2 && args[0] == "--creation-magic-runtime-content-root")
+        {
+            CreationMagicNativeRuntimeTests.Run(args[1]);
+            return;
+        }
+        if (args.Length != 0 && (args.Length != 2 || args[0] != "--after-run-runtime-content-root"))
+            throw new ArgumentException("Expected --after-run-runtime-content-root followed by an explicit Core content directory.");
         (string Name, Func<Task> Run)[] tests =
         [
+            (nameof(SettlementRecoveryUsesActualNativeAndCoreAssembliesAsync), SettlementRecoveryUsesActualNativeAndCoreAssembliesAsync),
+            (nameof(AfterRunAuthorityHarness.RunNativePageCasesAsync), AfterRunAuthorityHarness.RunNativePageCasesAsync),
             (nameof(QueuedOlderUnfocusedCannotOverwriteActionInputAsync), QueuedOlderUnfocusedCannotOverwriteActionInputAsync),
             (nameof(StaleGenerationAndSameIdShapeChangesFailClosedAsync), StaleGenerationAndSameIdShapeChangesFailClosedAsync),
             (nameof(ReadOnlyTransitionFailsClosedAsync), ReadOnlyTransitionFailsClosedAsync),
@@ -74,6 +88,7 @@ internal static class Program
             (nameof(AttributesBodPreviewCannotConfirmAgiDraftAsync), AttributesBodPreviewCannotConfirmAgiDraftAsync),
             (nameof(AttributesReceiptMustMatchCommittedWorkspaceBeforeActivationAsync), AttributesReceiptMustMatchCommittedWorkspaceBeforeActivationAsync),
             (nameof(SkillsPreviewAdoptionPreservesOnlyCoreProjectionAsync), SkillsPreviewAdoptionPreservesOnlyCoreProjectionAsync),
+            (nameof(TalentGrantedSkillsFlowFromCoreToNativeDraftAsync), TalentGrantedSkillsFlowFromCoreToNativeDraftAsync),
             (nameof(SkillsCommittedRefreshFailureRemainsCommittedAsync), SkillsCommittedRefreshFailureRemainsCommittedAsync)
         ];
 
@@ -84,6 +99,23 @@ internal static class Program
         }
 
         Console.WriteLine($"Native dialog interaction tests passed: {tests.Length}");
+        if (args.Length == 2)
+        {
+            await AfterRunAuthorityHarness.RunNativeRuntimeCasesAsync(args[1]);
+            CreationMagicNativeRuntimeTests.Run(args[1]);
+        }
+        else
+            Console.WriteLine("Native runtime/file-store integration not run: supply --after-run-runtime-content-root explicitly.");
+    }
+
+    private static async Task SettlementRecoveryUsesActualNativeAndCoreAssembliesAsync()
+    {
+        Require(typeof(Sr5AfterRunSettlementCheckpointStore).Assembly != typeof(Program).Assembly,
+            "Settlement implementation was substituted by test source.");
+        Require(typeof(CharacterAfterRunSettlementRules).Assembly != typeof(Program).Assembly,
+            "Core settlement rules were substituted by test source.");
+        Require(await AfterRunAuthorityHarness.RunAsync() == 0,
+            "Settlement recovery cases failed against the actual native/Core assemblies.");
     }
 
     private static Task CoordinatorRefreshBurstsRenderOnlyLatestStateAsync()
@@ -2802,6 +2834,113 @@ internal static class Program
         return Task.CompletedTask;
     }
 
+    private static Task TalentGrantedSkillsFlowFromCoreToNativeDraftAsync()
+    {
+        foreach (string talentValue in new[] { "Magician", "Aspected Magician" })
+        {
+            string directory = Path.Combine(Path.GetTempPath(), $"chummer-native-talent-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(directory);
+            try
+            {
+                string core = ResolveCoreRoot();
+                var resolver = new FileSystemCharacterSourceDataResolver(new FileSystemContentOverlayCatalogService(core, core, null));
+                var queries = new XmlCharacterFileQueries(new CharacterFileService());
+                var store = new FileWorkspaceStore(directory);
+                var codec = new Chummer.Rulesets.Sr5.Sr5WorkspaceCodec(queries,
+                    new XmlCharacterSectionQueries(new CharacterSectionService(resolver)),
+                    new XmlCharacterMetadataCommands(new CharacterFileService()));
+                var bootstrap = new CharacterCreationBootstrapService(store,
+                    new Chummer.Rulesets.Hosting.RulesetWorkspaceCodecResolver([codec]), queries, resolver);
+                var created = bootstrap.Create(new(CharacterCreationBootstrapSchemas.RequestV1,
+                    CharacterCreationBootstrapStages.AwaitingFoundationSelection, RulesetDefaults.Sr5,
+                    "Native talent runner", "Talent", CharacterCreationBuildMethods.Priority,
+                    CharacterCreationBootstrapProfiles.PrioritySettingsProfileId));
+                Require(created.Value is not null, string.Join(",", created.Blockers));
+                var id = created.Value!.WorkspaceId;
+                var prerequisites = new CharacterCreationPrerequisiteService(store, queries, resolver);
+                var state = prerequisites.Load(new(id)).Value!;
+                var ranks = new Dictionary<string, string>(StringComparer.Ordinal)
+                { ["heritage"] = "E", ["talent"] = "B", ["attributes"] = "A", ["skills"] = "C", ["resources"] = "D" };
+                var heritage = state.Authority.Options.Single(item => item.CategoryId == "heritage" && item.Rank == "E")
+                    .HeritageOptions.First(item => item.MetatypeName == "Human" && item.MetavariantSourceId is null && item.IsEnabled);
+                var talent = state.Authority.Options.Single(item => item.CategoryId == "talent" && item.Rank == "B")
+                    .TalentOptions.First(item => item.Value == talentValue && item.IsEnabled);
+                string[] skillChoices = talent.ActiveSkillGrant?.Options.Where(item => item.IsEnabled)
+                    .Take(talent.ActiveSkillGrant.Quantity).Select(item => item.SelectionId).ToArray() ?? [];
+                string[] groupChoices = talent.SkillGroupGrant?.Options.Take(talent.SkillGroupGrant.Quantity)
+                    .Select(item => item.SelectionId).ToArray() ?? [];
+                var prerequisitePreview = prerequisites.Preview(new(state.Binding, ranks)
+                {
+                    HeritageSelectionId = heritage.SelectionId, TalentSelectionId = talent.SelectionId,
+                    TalentActiveSkillSelectionIds = skillChoices, TalentSkillGroupSelectionIds = groupChoices
+                }).Value!;
+                var confirmed = prerequisites.Confirm(new(prerequisitePreview.Binding, ranks, prerequisitePreview.PreviewDigest, true)
+                {
+                    HeritageSelectionId = heritage.SelectionId, TalentSelectionId = talent.SelectionId,
+                    TalentActiveSkillSelectionIds = skillChoices, TalentSkillGroupSelectionIds = groupChoices
+                });
+                Require(confirmed.Outcome == CharacterCreationFoundationOutcomes.Success, string.Join(",", confirmed.Blockers));
+                var attributes = new CharacterCreationAttributesService(store, resolver);
+                var attributePreview = attributes.Preview(new(attributes.Load(new(id)).Value!.Binding, [])).Value!;
+                Require(attributes.Confirm(new(attributePreview.Binding, [], attributePreview.PreviewDigest, true)).Outcome
+                    == CharacterCreationFoundationOutcomes.Success, "Actual attribute draft must confirm.");
+                var service = new CharacterCreationSkillsService(store, resolver);
+                var skills = service.Load(new(id)).Value!;
+                var overview = NewCreationOverview(id, skills.Binding.ContentRevision, skills.Binding.SavedRevision);
+                var draft = new CreationSkillsPhoneDraft();
+                draft.Bind(skills, overview);
+                Require(draft.Matches(skills, overview), "Native Skills authority must accept actual Core source projections.");
+                Require(draft.Skills.Count == skills.Skills.Count && draft.Groups.Count == skills.SkillGroups.Count,
+                    "Initial phone choices must display Core's free talent rows before a Skills draft exists.");
+                var native = skills.Authority.KnowledgeSkills.First(item => item.CanBeNativeLanguage);
+                var withNative = draft.WithSkill(native, 0, native: true);
+                var initial = service.Preview(new(skills.Binding, withNative, draft.Groups));
+                Require(draft.TryAdopt(skills, overview, initial, withNative, draft.Groups),
+                    "Core's initial free rating and native language preview must be adoptable.");
+                IReadOnlyList<CharacterCreationSkillAllocation> requestSkills = draft.Skills;
+                IReadOnlyList<CharacterCreationSkillGroupAllocation> requestGroups = draft.Groups;
+                if (skills.Skills.Count > 0)
+                {
+                    var source = skills.Authority.ActiveSkills.Single(item => item.SourceSkillId == skills.Skills[0].SourceSkillId);
+                    Require(draft.WithSkill(source, -1).Single(item => item.SourceSkillId == source.SourceSkillId).Rating
+                        == skills.Skills[0].GrantedRating, "A minus tap cannot remove a Core-granted rating.");
+                    requestSkills = draft.WithSkill(source, 1);
+                }
+                else
+                {
+                    var source = skills.Authority.SkillGroups.Single(item => item.GroupId == skills.SkillGroups[0].GroupId);
+                    Require(draft.WithGroup(source, -1).Single(item => item.GroupId == source.GroupId).Rating
+                        == skills.SkillGroups[0].GrantedRating, "A minus tap cannot remove a Core-granted group rating.");
+                    requestGroups = draft.WithGroup(source, 1);
+                }
+                Require(requestSkills.Any(item => item.SourceSkillId == native.SourceSkillId && item.IsNativeLanguage),
+                    "Editing another row must preserve the selected native language.");
+                var preview = service.Preview(new(skills.Binding, requestSkills, requestGroups));
+                Require(draft.TryAdopt(skills, overview, preview, requestSkills, requestGroups),
+                    "A real Core preview must accept a native +1 from the granted starting rating.");
+                Require(preview.Value!.ActiveSkillPointBudget.Used + preview.Value.SkillGroupPointBudget.Used == 1,
+                    "Only the additional rating costs a Priority point.");
+                var command = new CharacterCreationSkillsConfirmRequest(skills.Binding, requestSkills, requestGroups,
+                    preview.Value.PreviewDigest, "native-talent-grant-save", true);
+                var saved = service.Confirm(command);
+                Require(saved.Value is not null, string.Join(",", saved.Blockers));
+                var coldStore = new FileWorkspaceStore(directory);
+                var coldService = new CharacterCreationSkillsService(coldStore, resolver);
+                var cold = coldService.Load(new(id)).Value!;
+                var reopened = new CreationSkillsPhoneDraft();
+                reopened.Bind(cold, NewCreationOverview(id, cold.Binding.ContentRevision, cold.Binding.SavedRevision));
+                Require(reopened.Skills.SequenceEqual(draft.Skills) && reopened.Groups.SequenceEqual(draft.Groups),
+                    "A cold store and fresh phone draft must restore exact granted and purchased choices.");
+                Require(coldService.Confirm(command).Value!.ReceiptDigest == saved.Value!.ReceiptDigest,
+                    "Original command recovery returns the original receipt, not another save.");
+                Require(coldStore.Get(id).Value!.ContentRevision == cold.Binding.ContentRevision,
+                    "Receipt recovery must not advance the workspace.");
+            }
+            finally { Directory.Delete(directory, recursive: true); }
+        }
+        return Task.CompletedTask;
+    }
+
     private static Task SkillsPreviewAdoptionPreservesOnlyCoreProjectionAsync()
     {
         SkillsFixture fixture = NewSkillsFixture();
@@ -2878,6 +3017,16 @@ internal static class Program
         Require(
             increased.SpecializationOptionId == fixture.Specialization.OptionId,
             "Rating changes must preserve the Core-projected specialization.");
+        Require(
+            phoneDraft.WithSkill(fixture.ActiveSource, 1).Single(item => item.IsNativeLanguage)
+                == fixture.Allocations.Single(item => item.IsNativeLanguage),
+            "Increasing an ordinary active skill must preserve the null-rated native language.");
+        IReadOnlyList<CharacterCreationSkillAllocation> removed = phoneDraft.WithSkill(fixture.ActiveSource, -2);
+        Require(
+            removed.Count == 1 && removed[0] == fixture.Allocations.Single(item => item.IsNativeLanguage),
+            "Removing an ordinary active skill must remove only that skill, not the native language.");
+        Require(phoneDraft.Skills.SequenceEqual(fixture.Allocations),
+            "Preparing either rating request must not mutate the adopted draft before Core preview.");
         Require(
             phoneDraft.WithSpecialization(fixture.LanguageSource, "invented").SequenceEqual(phoneDraft.Skills),
             "A specialization must never manufacture a missing or native allocation.");
@@ -3405,7 +3554,7 @@ internal static class Program
                 []));
     }
 
-    private static CharacterOverviewState NewCreationOverview(
+    internal static CharacterOverviewState NewCreationOverview(
         CharacterWorkspaceId workspaceId,
         long contentRevision,
         long savedRevision)

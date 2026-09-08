@@ -66,6 +66,16 @@ Assert(
         CultureInfo.GetCultureInfo("es-MX")) == "safe English fallback",
     "missing resources must return caller-provided safe English copy");
 
+foreach ((string locale, string expected) in new[]
+{
+    ("en-GB", "Free starting rating 4 from Talent Priority."),
+    ("de-AT", "Kostenloser Startwert 4 aus der Talent-Priorität."),
+    ("es-MX", "Nivel inicial gratuito 4 de la prioridad de Talento.")
+})
+    Assert(CreationAllocationStrings.Format(CultureInfo.GetCultureInfo(locale),
+        "Skills.TalentGrant", "fallback", 4) == expected,
+        "Talent grant copy must use the real regional satellite and preserve Core's rating: " + locale);
+
 CultureInfo previousCulture = CultureInfo.CurrentUICulture;
 try
 {
@@ -225,7 +235,9 @@ static void AssertAuthorityBoundary(string native)
         && attributes.Contains("CreationPrerequisiteDigestText.CanonicalPrefix(_preview.PreviewDigest)", StringComparison.Ordinal),
         "Attribute preview/confirm/digest authority must remain exact");
     Assert(
-        skills.Contains("Coordinator.PreviewCreationSkills(state.Binding, skills, groups)", StringComparison.Ordinal)
+        skills.Contains("Coordinator.PreviewCreationSkills(\n                    state.Binding,\n                    requestedSkills,\n                    requestedGroups)", StringComparison.Ordinal)
+        && skills.Contains("CharacterCreationSkillAllocation[] requestedSkills = skills.ToArray();", StringComparison.Ordinal)
+        && skills.Contains("CharacterCreationSkillGroupAllocation[] requestedGroups = groups.ToArray();", StringComparison.Ordinal)
         && skills.Contains("Coordinator.ConfirmCreationSkillsAsync(\n                _preview,\n                _allocations,\n                _groups,\n                _idempotencyKey)", StringComparison.Ordinal)
         && skills.Contains("NativeTheme.Title(source.Name, 18)", StringComparison.Ordinal)
         && skills.Contains("NativeTheme.Title(skill.Name, 18)", StringComparison.Ordinal),

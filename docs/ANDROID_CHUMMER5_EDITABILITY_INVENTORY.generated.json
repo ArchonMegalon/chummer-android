@@ -14,8 +14,8 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 478,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 387,
-      "missing": 940,
+      "implemented_pending_emulator": 381,
+      "missing": 946,
       "not_applicable_non_mutating": 478,
       "partial_create_only": 106,
       "partial_exact_saved_data": 318
@@ -107,7 +107,7 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "da7167ab30a3c51992c325ac195916019b96d7e97d909904e92cea2b8609ad19"
+        "sha256": "14ba3d31e41c83a2e97bbf78bf1ff1570829585a0e3e30ccea15316cf8a69a98"
       },
       {
         "path": "src/Chummer.Android/Native/MorePage.cs",
@@ -152,7 +152,7 @@
       {
         "path": "src/Chummer.Android/MauiProgram.cs",
         "exists": true,
-        "sha256": "939e7ab90fca0e2b5da88f79b2e67d093e170f4ffa8eed3d27cea1743240828b"
+        "sha256": "2fbf42f24e912e29787ad7dc26ed5717b47a4a736d9c5ff11609c577686dc5a5"
       },
       {
         "path": "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
@@ -622,17 +622,17 @@
       {
         "path": "src/Chummer.Android/Native/CreationTalentSkillGrantPage.cs",
         "exists": true,
-        "sha256": "5204608b65d310ba7aa005ccd1e01fd8b997a3a7189e7cc7b72a932001991b6a"
+        "sha256": "78c8d38c4973605f31353b973b03dc312c7d3e32c1965cf94bf5d202b84791e4"
       },
       {
         "path": "src/Chummer.Android/Native/CreationPrerequisitePreviewPage.cs",
         "exists": true,
-        "sha256": "1c77f5ef2dd54d6a8464c038958796fbce9e376861ac598d6e3c8bdbd935aa18"
+        "sha256": "1d495e537322137925ef298ff15b36f14a02f177568b2f3b5c5cae9faf6d1084"
       },
       {
         "path": "src/Chummer.Android/Native/CreationPrerequisitePhoneDraft.cs",
         "exists": true,
-        "sha256": "352d251725ed809213fb2541f4a2bd736bddad2c4bcd44ef11d7ca1954d512ec"
+        "sha256": "ef0d7d243a846eb8ef6515a5935aa03a27bfc0febb15f0d1f2f4a8744b55af4b"
       },
       {
         "path": "src/Chummer.Android/Native/AndroidAfterRunWorkspaceSnapshotSource.cs",
@@ -642,7 +642,7 @@
       {
         "path": "src/Chummer.Android/Native/PhoneShellPages.cs",
         "exists": true,
-        "sha256": "43a1192605525e055bea0a31138fbba1673119779a1e359c7084fd998dd2b3a5"
+        "sha256": "e284c94fee0a66941564b4d9a35ab2daed66c82b63c70d4973e68ae80cadb6af"
       },
       {
         "path": "src/Chummer.Android/Native/CurrentPhoneWizardScope.cs",
@@ -652,7 +652,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "c9d8293339af450d0dacc16d957077e71fd55b6a4ec926d39a02214aed66f9f1"
+        "sha256": "59e26a4be57401c88a4a454fa84906d2bff36644567bada81d21f9368fe6bdb9"
       },
       {
         "path": "src/Chummer.Android/Native/RunnerSessionSr5CareerWizardPhoneAuthority.cs",
@@ -677,7 +677,7 @@
       {
         "path": "src/Chummer.Android/Native/Sr5CareerWizardPage.cs",
         "exists": true,
-        "sha256": "dd06dfec254849aefa1522cf825116e6c42438c0ad1b55bcc6be0d48f21433ae"
+        "sha256": "c712d33c4b052e6f24591cf7d677d13ff44598cab0efbb4f5f48aa5799fbf48a"
       },
       {
         "path": "src/Chummer.Android/Native/Sr5CareerWizardPhoneModel.cs",
@@ -687,7 +687,7 @@
       {
         "path": "src/Chummer.Android/Native/Sr5AfterRunManualProposalPage.cs",
         "exists": true,
-        "sha256": "4e98cb1438ad529e68a9e072041f26398650f7e266293566a0fdc4f209d1606f"
+        "sha256": "4d614904846d1d090c92cb3b27fa85995965c70cbc8cf2618afcd96cad06ce9b"
       },
       {
         "path": "src/Chummer.Android/Native/Sr5AfterRunManualProposalSource.cs",
@@ -697,7 +697,7 @@
       {
         "path": "src/Chummer.Android/Native/Sr5AfterRunSettlementCheckpointStore.cs",
         "exists": true,
-        "sha256": "25a7ed28a6c35bd086f28bc821d1ab70126b68253ae659b29037100a1f6c54f0"
+        "sha256": "943f812d40f718458f94d9399a2c6eac2e9433944cf59442831c9f6484923b39"
       },
       {
         "path": "src/Chummer.Android/Native/Sr5AfterRunSettlementCoordinator.cs",
@@ -707,7 +707,7 @@
       {
         "path": "src/Chummer.Android/Native/Sr5AfterRunSettlementWizardPage.cs",
         "exists": true,
-        "sha256": "29c9571cedb264b20a68973aa8c1d7ea038c4121ff10046b6dc349c736b1af15"
+        "sha256": "b3d41117600203819072e5a631a50adc2bae134364cc2abc69ef4024718b1891"
       },
       {
         "path": "src/Chummer.Android/Native/Sr5AfterRunWizardModel.cs",
@@ -742,17 +742,17 @@
       {
         "path": "src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.resx",
         "exists": true,
-        "sha256": "669b90e2cbaf8b0c661320515cdd31b29838ce10817ae5b4bb2dbcbdb6bf1b8d"
+        "sha256": "5164ff2de83ff03062ca8120eaae0455dc816864ec24c5bf07030e8496126d42"
       },
       {
         "path": "src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.de.resx",
         "exists": true,
-        "sha256": "d8e7d1ba704cb64140ca3c9fee782894bef19205134afa8e03a4101a0161e26d"
+        "sha256": "f6fe40c037ebe3b06da1c8fd50fb77a068d8f90baaaf72416ff55737ce5d239a"
       },
       {
         "path": "src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.es.resx",
         "exists": true,
-        "sha256": "076cbeed8b8ce8dba2444c65a5fdf5e6197f0d8d6fff2c0ddc4543e2673eec33"
+        "sha256": "3aaa9e7f0eb1d353ac617d0e23c27057d9d3da744575023d09ffe29ffa91722c"
       },
       {
         "path": "src/Chummer.Android/Resources/Localization/WizardStrings.resx",
@@ -787,7 +787,7 @@
       {
         "path": "tests/Chummer.Android.Sr5CareerFlowLocalization.Tests/Program.cs",
         "exists": true,
-        "sha256": "81cc45395efcbf93cba41acb1147f7fc5761f7b3dd72d16481f0397d73fb7203"
+        "sha256": "8f4f4b68e9c2c6cb465584ef8d52fc63891b1559f1f2863ebf5bec089f9a33bb"
       },
       {
         "path": "tests/Chummer.Android.Sr5TableWizard.NativeCompile.Tests/Chummer.Android.Sr5TableWizard.NativeCompile.Tests.csproj",
@@ -812,7 +812,7 @@
       {
         "path": ".github/workflows/api36-editing-e2e.yml",
         "exists": true,
-        "sha256": "2084ebbc4cbe82c08548f7fac52a4d7b1c42eca6cb9b8354724c9cf6c40c0444"
+        "sha256": "322da013834178d0287852dbbb555e28e6334170831ca0251cf6cb86b696d758"
       },
       {
         "path": ".github/workflows/api36-two-consecutive-green.yml",
@@ -872,7 +872,7 @@
       {
         "path": "scripts/materialize-android-p0-pr-authority.py",
         "exists": true,
-        "sha256": "0558e63125b429b3073533adf34d57fc1f661d8ceb9296deec5fca42a8e076dd"
+        "sha256": "a0ab78ab19dffb5b0738d69e237bf12c12f9974c32ba4da79da10c4c4dc16ea2"
       },
       {
         "path": "scripts/prepare-api36-emulator-live-log.py",
@@ -912,7 +912,7 @@
       {
         "path": "tests/test_api36_e2e_workflow.py",
         "exists": true,
-        "sha256": "74ab6754b44b813d9aaddb732b65c966b793576f75fa0180be7bab19b873c9b3"
+        "sha256": "b003ab01b10d255a251ed848c8609e6ba7da5afa8b069623535f82dfb1b8bb40"
       },
       {
         "path": "tests/test_api36_e2e_artifact_authority.py",
@@ -927,12 +927,12 @@
       {
         "path": "tests/test_api36_two_green_eligibility.py",
         "exists": true,
-        "sha256": "5b3c04b78fbc7c7c055e7b47742117ed707315affed08b4cc4bd427ba59b8e32"
+        "sha256": "c8e9f5b4e768b127d05f64bc3b769be6d93b7e4421d40ef8226bc95aa6c7d1c9"
       },
       {
         "path": "tests/test_android_p0_pr_authority.py",
         "exists": true,
-        "sha256": "88ddec495f44d7804c70511f868c7c240b02e5391a8ba2936b6f8a1d452ab7c5"
+        "sha256": "efa5ed470f80c48fd40f9d3b6e9ceb7c235e2be37d2878083e354077baa0ea05"
       },
       {
         "path": "tests/test_current_phone_wizard_scope.py",
@@ -992,7 +992,7 @@
       {
         "path": "tests/run_api36_sr5_after_run_settlement_e2e.py",
         "exists": true,
-        "sha256": "be88a047e01ab44cfc823ffe506b200a73cf4a9ab15589f41081df43dec80a23"
+        "sha256": "033ab8016d006304929a594417d8e92724c41a772f2ea4da344fb9f560326c16"
       },
       {
         "path": "tests/run_api36_sr5_after_run_settlement_hosted_e2e.py",
@@ -1012,7 +1012,7 @@
       {
         "path": "tests/test_chummer5_editability_inventory.py",
         "exists": true,
-        "sha256": "c189d968c6d6c2838d1f937fb4cfb15032c2c0a9740ddbd72ecb9df182ab37ae"
+        "sha256": "1cb46f807cc7b123ee869f1238c6112cccf04ccd45800a875c94744f95ec69cf"
       },
       {
         "path": "tests/test_sr5_contextual_wizard_scope.py",
@@ -1032,7 +1032,7 @@
       {
         "path": "tests/run_api36_editing_e2e.py",
         "exists": true,
-        "sha256": "d5a5da08318e4c0beb50240db526006bbb2bbbd4601e4f8b94957f7299ec874a"
+        "sha256": "3bcd949ea5374e651fc4913a4a6446900b8ffb85fa9687dc7bd830ff2cf08b1c"
       },
       {
         "path": "tests/run_api36_career_active_skill_advance_e2e.py",
@@ -2467,7 +2467,7 @@
       {
         "path": "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
         "exists": true,
-        "sha256": "5dc99ca6b3aa0d4d124b2411e9c1caaa04467c39658067ee31c58747b24a51a5"
+        "sha256": "703e535c1a43566c9035accb90bc336a2670e3288664a019a01bbcae98567f4c"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterFileService.cs",
@@ -2482,12 +2482,12 @@
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
         "exists": true,
-        "sha256": "d2a77c80c153b14a99058bd428d600b90c7284ed2a8d9c5da0ec7f3748bb7e95"
+        "sha256": "4e47acc8f655184ab248a63dd454701b9e22aa044b79bc114341e286fe0d5f81"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
         "exists": true,
-        "sha256": "2fe9d232183571275d60074d1ad1a082db54f418492846eaec10110c78007151"
+        "sha256": "16defdbf3c9c12c4c2a8334329ec488f846adefb17afc8d1eb0ba5a44a073aea"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
@@ -2727,7 +2727,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewState.cs",
         "exists": true,
-        "sha256": "25344339580baa08ffaa7434c1e9d81f0e08642d04abb2130e77294a2980ad18"
+        "sha256": "b8d30c29ce19f760f13451c7ed1bc07f653c25eec68b5d1403de5f5066c4aeb2"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
@@ -3196,7 +3196,7 @@
     "karma_nuyen_and_reputation": {
       "rowCount": 18,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 5,
+      "phoneMissingCount": 11,
       "tabletMissingCount": 15,
       "completionProvenCount": 3
     },
@@ -26382,7 +26382,7 @@
       "mutationFamily": "karma_nuyen_and_reputation",
       "operation": "adjust",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Reputation > Burn 2 Street Cred",
         "surface": "CareerReputationPage",
         "automationId": "career-reputation-burn-street-cred",
@@ -26945,7 +26945,7 @@
       "mutationFamily": "karma_nuyen_and_reputation",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Reputation",
         "surface": "CareerReputationPage",
         "automationId": "career-reputation-public-awareness",
@@ -27008,7 +27008,7 @@
       "mutationFamily": "karma_nuyen_and_reputation",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Reputation",
         "surface": "CareerReputationPage",
         "automationId": "career-reputation-notoriety",
@@ -27072,7 +27072,7 @@
       "mutationFamily": "karma_nuyen_and_reputation",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Reputation",
         "surface": "CareerReputationPage",
         "automationId": "career-reputation-street-cred",
@@ -37781,7 +37781,7 @@
       "mutationFamily": "karma_nuyen_and_reputation",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Reputation",
         "surface": "CareerReputationPage",
         "automationId": "career-reputation-astral",
@@ -37844,7 +37844,7 @@
       "mutationFamily": "karma_nuyen_and_reputation",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Reputation",
         "surface": "CareerReputationPage",
         "automationId": "career-reputation-wild",

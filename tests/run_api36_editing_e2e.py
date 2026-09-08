@@ -6231,10 +6231,31 @@ class Device:
 
     def keyboard_visible(self) -> bool:
         state = self.shell("dumpsys", "input_method")
-        return "mInputShown=true" in state or re.search(
-            r"mImeWindowVis=(?:0x)?[1-9a-fA-F]",
-            state,
-        ) is not None
+        # Keep the exact text used by this decision, rather than a later read
+        # after an IME crash/restart. One bounded file is reused, not accumulated.
+        state_bytes = state.encode("utf-8")
+        observation_limit = 1024 * 1024
+        (self.evidence / "keyboard-input-method-last.txt").write_bytes(
+            state_bytes[:observation_limit]
+        )
+        if len(state_bytes) > observation_limit:
+            raise RuntimeError("IME visibility observation exceeded its diagnostic bound")
+        flags = re.findall(r"(?:^|\s)mImeWindowVis=([^\s]*)", state)
+        shown = re.findall(r"(?:^|\s)mInputShown=([^\s]*)", state)
+        if not flags or not shown or any(value not in {"true", "false"} for value in shown):
+            raise RuntimeError("IME visibility observation is missing or malformed")
+        masks = []
+        for value in flags:
+            if re.fullmatch(r"(?:0[xX][0-9a-fA-F]{1,8}|[0-9]{1,10})", value) is None:
+                raise RuntimeError("IME visibility observation has malformed window flags")
+            mask = int(value, 16 if value.lower().startswith("0x") else 10)
+            if mask & ~3:
+                raise RuntimeError("IME visibility observation has unsupported window flags")
+            masks.append(mask)
+        # Android 16 (API 36) InputMethodService: ACTIVE=1, VISIBLE=2.
+        # ACTIVE alone may be hidden; a pending input-shown request still blocks.
+        # https://android.googlesource.com/platform/frameworks/base/+/refs/tags/android-16.0.0_r1/core/java/android/inputmethodservice/InputMethodService.java
+        return "true" in shown or any(mask & 2 for mask in masks)
 
     def dismiss_keyboard(self) -> None:
         if not self.keyboard_visible():

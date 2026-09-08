@@ -168,4 +168,39 @@
   <data name="SkillsPreview.Rating" xml:space="preserve"><value>Stufe</value></data>
   <data name="SkillsPreview.Specialization" xml:space="preserve"><value>Spezialisierung</value></data>
   <data name="SkillsPreview.TypedSelections" xml:space="preserve"><value>Typisierte Auswahlen</value></data>
+  <data name="Common.Next" xml:space="preserve"><value>Weiter</value></data>
+  <data name="Common.Previous" xml:space="preserve"><value>Zurück</value></data>
+  <data name="Skills.CatalogRange" xml:space="preserve"><value>Einträge {0}–{1} von {2}</value></data>
+  <data name="Skills.NoCatalogEntries" xml:space="preserve"><value>Keine verfügbaren Einträge</value></data>
+  <data name="Skills.TalentGrant" xml:space="preserve"><value>Kostenloser Startwert {0} aus der Talent-Priorität.</value></data>
+  <data name="SkillsReReview.Title" xml:space="preserve"><value>Ältere Fertigkeitsentscheidungen prüfen</value></data>
+  <data name="SkillsReReview.Intro" xml:space="preserve"><value>Deine gespeicherten Entscheidungen bleiben unverändert. Vergleiche sie mit den aktuellen Regeln, behebe Konflikte und bestätige anschließend den vollständigen Vorschlag.</value></data>
+  <data name="SkillsReReview.Saved" xml:space="preserve"><value>Prüfung gespeichert. Frühere Speicherbelege bleiben im Verlauf.</value></data>
+  <data name="SkillsReReview.SavedRefresh" xml:space="preserve"><value>Für den Speichervorgang liegt ein Beleg vor. Öffne den Runner zum Aktualisieren erneut; nicht nochmals übernehmen.</value></data>
+  <data name="SkillsReReview.Stale" xml:space="preserve"><value>Der Charakterkontext wurde verändert. Öffne die Prüfung erneut; es wurde nichts übernommen.</value></data>
+  <data name="SkillsReReview.Binding" xml:space="preserve"><value>Revision {0} · früherer Entwurf {1}</value></data>
+  <data name="SkillsReReview.Budget" xml:space="preserve"><value>{0}: {1} / {2} Punkte; {3} übrig</value></data>
+  <data name="SkillsReReview.Confirm" xml:space="preserve"><value>Diese Änderungen prüfen und bestätigen</value></data>
+  <data name="SkillsReReview.ConfirmBody" xml:space="preserve"><value>Den angezeigten Vergleich genau so übernehmen? Entfernte Entscheidungen entfallen im neuen Entwurf; frühere Entscheidungen und Belege bleiben im Verlauf.</value></data>
+  <data name="SkillsReReview.Apply" xml:space="preserve"><value>Geprüfte Entscheidungen übernehmen</value></data>
+  <data name="SkillsReReview.Cancel" xml:space="preserve"><value>Abbrechen</value></data>
+  <data name="SkillsReReview.Comparison" xml:space="preserve"><value>Gespeichert: {0} ({1} Punkte) → Vorschlag: {2} ({3} Punkte)</value></data>
+  <data name="SkillsReReview.Removed" xml:space="preserve"><value>entfernt</value></data>
+  <data name="SkillsReReview.Specialization" xml:space="preserve"><value>Spezialisierung: {0} → {1}</value></data>
+  <data name="SkillsReReview.Sources" xml:space="preserve"><value>Quellenanker: {0}</value></data>
+  <data name="SkillsReReview.Remove" xml:space="preserve"><value>Aus Vorschlag entfernen</value></data>
+  <data name="SkillsReReview.Restore" xml:space="preserve"><value>Gespeicherte Auswahl in Vorschlag wiederherstellen</value></data>
+  <data name="SkillsReReview.RatedLanguage" xml:space="preserve"><value>Als bewertete Sprache verwenden</value></data>
+  <data name="SkillsReReview.NativeLanguage" xml:space="preserve"><value>Als Muttersprache verwenden</value></data>
+  <data name="SkillsReReview.NoSpecialization" xml:space="preserve"><value>Keine Spezialisierung</value></data>
+  <data name="SkillsReReview.ChooseSpecialization" xml:space="preserve"><value>Spezialisierung auswählen</value></data>
+  <data name="SkillsReReview.SetSpecialization" xml:space="preserve"><value>Spezialisierung prüfen</value></data>
+  <data name="SkillsReReview.Group" xml:space="preserve"><value>Fertigkeitsgruppe</value></data>
+  <data name="SkillsReReview.AddChoice" xml:space="preserve"><value>Auswahl aus aktuellem Katalog hinzufügen</value></data>
+  <data name="SkillsReReview.AddPreview" xml:space="preserve"><value>Hinzugefügte Auswahl prüfen</value></data>
+  <data name="SkillsReReview.Back" xml:space="preserve"><value>Zurück ohne weitere Änderungen</value></data>
+  <data name="SkillsReReview.None" xml:space="preserve"><value>keine</value></data>
+  <data name="SkillsReReview.Native" xml:space="preserve"><value>Muttersprache</value></data>
+  <data name="SkillsReReview.Check" xml:space="preserve"><value>Wiederprüfung älterer Fertigkeitsentscheidungen öffnen</value></data>
+  <data name="SkillsReReview.Unavailable" xml:space="preserve"><value>Für diesen Runner ist kein unterstützter früherer Fertigkeitsentwurf verfügbar. Es wurde nichts geändert.</value></data>
 </root>

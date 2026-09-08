@@ -20,9 +20,9 @@ class CreationSkillsSourceContractTests(unittest.TestCase):
         for marker in (
             'AutomationId = "creation-skills-page"',
             "Coordinator.LoadCreationSkills()",
-            "state.Authority.ActiveSkills",
+            "CreationSkillsPhoneAuthority.AvailableActiveSkills(state)",
             "state.Authority.KnowledgeSkills",
-            "state.Authority.SkillGroups",
+            "CreationSkillsPhoneAuthority.AvailableGroups(state)",
             "CreationSkillsCatalogPaging.NormalizeOffset(",
             ".Take(CatalogPageSize)",
             'AutomationId = $"creation-skills-{catalogToken}-catalog-range"',
@@ -42,8 +42,10 @@ class CreationSkillsSourceContractTests(unittest.TestCase):
         for marker in (
             "CreationSkillsPhoneAuthority.IsReady(state, overview)",
             "CreationSkillsPhoneAuthority.BindingEquals(_binding, state.Binding)",
-            "state.PendingDraft?.Allocations",
-            "state.PendingDraft?.GroupAllocations",
+            "foreach (CharacterCreationSkillProjection item in state.Skills)",
+            "foreach (CharacterCreationSkillGroupProjection item in state.SkillGroups)",
+            "_availableSkills.Contains((source.Kind, source.SourceSkillId))",
+            "_availableGroups.Contains(source.GroupId)",
             "CharacterCreationSkillsDigest.EqualsFixedTime(_snapshotDigest, state.SnapshotDigest)",
             "current.SpecializationOptionId",
             "source.CanBeNativeLanguage",
@@ -69,6 +71,8 @@ class CreationSkillsSourceContractTests(unittest.TestCase):
             "!receipt.CharacterDocumentChanged",
             "CharacterCreationSkillsBlockers.PostCommitRefreshRequired",
             "CharacterCreationSkillsDraftIntegrity.IsValidStateProjection(state)",
+            "CharacterCreationSkillsAccessRules.IsSkillAvailable(",
+            "CharacterCreationSkillsAccessRules.IsGroupAvailable(",
         ):
             self.assertIn(marker, authority)
 
@@ -99,6 +103,10 @@ class CreationSkillsSourceContractTests(unittest.TestCase):
             "Guid.NewGuid",
             "({INTUnaug} + {LOGUnaug}) * 2",
             'source.Category, "Language"',
+            '"Magical Active"',
+            '"Resonance Active"',
+            '"Aspected Magician"',
+            "unlockskills",
         ):
             self.assertNotIn(forbidden, combined)
 

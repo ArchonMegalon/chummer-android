@@ -256,6 +256,11 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
             "generatedAtUtc": "2026-08-28T00:00:00Z",
             "authorityState": "local_review_required",
             "publicationAuthorized": False,
+            "releaseIdentity": {
+                "packageId": contract.PACKAGE,
+                "versionName": "0.1.0-preview.12", "versionCode": 12,
+                "intentAuthority": "explicit_build_input", "minimumExclusiveVersionCode": 11,
+            },
             "generator": {
                 "path": "scripts/verify_release_source_graph.py",
                 "sha256": hashlib.sha256(generator_bytes).hexdigest(),
@@ -312,6 +317,117 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
         forged_current_tree["ownerPackagePins"][0]["source_tree"] = "f" * 40
         with self.assertRaisesRegex(ValueError, "current source tree differs"):
             contract.validate_source_graph(self.bound_graph(forged_current_tree))
+
+    def test_current_release_graph_producer_is_consumed_without_schema_translation(self) -> None:
+        from tests.test_release_source_graph import build_release_graph, seed_workspace
+
+        producer, workspace, roots, revisions, authority_root, authority = seed_workspace(
+            self.root / "producer",
+        )
+        graph = build_release_graph(
+            producer, roots["chummer-android"], workspace,
+            authority, authority_root, revisions,
+        )
+        self.assertEqual("chummer.android.release-source-graph/v3", graph["contractName"])
+        self.assertEqual({
+            "packageId": contract.PACKAGE,
+            "versionName": "0.1.0-preview.12", "versionCode": 12,
+            "intentAuthority": "explicit_build_input", "minimumExclusiveVersionCode": 11,
+        }, graph["releaseIdentity"])
+        self.assertEqual(graph, contract.validate_source_graph(self.bound_graph(graph)))
+
+    def test_v3_release_identity_rejects_noncanonical_missing_and_extra_fields(self) -> None:
+        pristine = self.graph_payload()
+        cases = (
+            ("packageId", "com.example.other"),
+            ("intentAuthority", "self_asserted"),
+            ("minimumExclusiveVersionCode", 10),
+            ("minimumExclusiveVersionCode", 11.0),
+            ("minimumExclusiveVersionCode", True),
+            ("versionName", ""), ("versionName", None), ("versionName", 12),
+            ("versionName", "0.1.0-preview.12\n"),
+            ("versionName", "0.1.0-preview..12"),
+            ("versionName", "0.1.0-" + "a" * 129),
+            ("versionCode", 11), ("versionCode", 0), ("versionCode", -12),
+            ("versionCode", "12"), ("versionCode", "012"),
+            ("versionCode", 12.0), ("versionCode", True), ("versionCode", None),
+            ("targetSdkVersion", 36), ("minimumSdkVersion", 24),
+            ("packageFormat", "apk"), ("unknown", False),
+        )
+        for field, value in cases:
+            with self.subTest(field=field, value=value):
+                graph = copy.deepcopy(pristine)
+                graph["releaseIdentity"][field] = value
+                with self.assertRaises(ValueError):
+                    contract.validate_source_graph(self.bound_graph(graph))
+        for field in pristine["releaseIdentity"]:
+            with self.subTest(missing=field):
+                graph = copy.deepcopy(pristine)
+                del graph["releaseIdentity"][field]
+                with self.assertRaisesRegex(ValueError, "release identity keys are not exact"):
+                    contract.validate_source_graph(self.bound_graph(graph))
+        for schema, retain_identity in (
+            ("chummer.android.release-source-graph/v2", False),
+            ("chummer.android.release-source-graph/v2", True),
+            ("chummer.android.release-source-graph/v3", False),
+        ):
+            with self.subTest(schema=schema, retain_identity=retain_identity):
+                graph = copy.deepcopy(pristine)
+                graph["contractName"] = schema
+                if not retain_identity:
+                    del graph["releaseIdentity"]
+                with self.assertRaises(ValueError):
+                    contract.validate_source_graph(self.bound_graph(graph))
+
+    def test_v3_identity_is_bound_to_current_project_not_only_well_formed_json(self) -> None:
+        for field, value, project_field in (
+            ("versionName", "0.1.0-preview.11", "ApplicationDisplayVersion"),
+            ("versionName", "0.1.0-preview.13", "ApplicationDisplayVersion"),
+            ("versionCode", 13, "ApplicationVersion"),
+        ):
+            with self.subTest(field=field, value=value):
+                graph = self.graph_payload()
+                graph["releaseIdentity"][field] = value
+                write_json(self.graph, graph)
+                with self.assertRaisesRegex(ValueError, project_field):
+                    contract.capture_build_inputs(
+                        apk_path=self.apk, source_graph_path=self.graph,
+                        build_provenance_path=self.provenance,
+                    )
+
+    def test_physical_release_intent_project_is_regular_unambiguous_and_immutable(self) -> None:
+        project = self.root / "src/Chummer.Android/Chummer.Android.csproj"
+        project.parent.mkdir(parents=True)
+        pristine = (ROOT / "src/Chummer.Android/Chummer.Android.csproj").read_bytes()
+        graph = self.graph_payload()
+        project.write_bytes(pristine)
+        bound = contract._bind_physical_release_intent(graph, self.root)
+        contract.require_unchanged(bound, "physical release intent project")
+        for tag, value in (
+            ("ApplicationId", "com.example.other"),
+            ("ApplicationDisplayVersion", "0.1.0-preview.13"),
+            ("ApplicationVersion", "13"),
+        ):
+            with self.subTest(ambiguous=tag):
+                project.write_bytes(pristine.replace(
+                    b"</Project>",
+                    f"<PropertyGroup><{tag}>{value}</{tag}></PropertyGroup></Project>".encode(),
+                ))
+                with self.assertRaisesRegex(ValueError, tag):
+                    contract._bind_physical_release_intent(graph, self.root)
+        project.write_bytes(b"<Project>")
+        with self.assertRaisesRegex(ValueError, "well-formed XML"):
+            contract._bind_physical_release_intent(graph, self.root)
+        with self.assertRaisesRegex(ValueError, "bytes changed"):
+            contract.require_unchanged(bound, "physical release intent project")
+        project.unlink()
+        project.symlink_to(ROOT / "src/Chummer.Android/Chummer.Android.csproj")
+        with self.assertRaisesRegex(ValueError, "canonical|symlink"):
+            contract._bind_physical_release_intent(graph, self.root)
+        project.unlink()
+        project.mkdir()
+        with self.assertRaisesRegex(ValueError, "regular file"):
+            contract._bind_physical_release_intent(graph, self.root)
 
     def test_source_graph_reasserts_run_to_play_dependency(self) -> None:
         payload = self.graph_payload()
@@ -2016,10 +2132,16 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
             ("package-authority-unknown", lambda value: value["packageAuthority"].update({"unknown": True})),
             ("package-source-drift", lambda value: value["packageAuthority"]["sourceGraph"].update({"hubProducerCommit": "0" * 40})),
             ("artifact-no-signing", lambda value: value["artifact"].pop("signing")),
+            ("artifact-api-drift", lambda value: value["artifact"].update({"apiLevel": 35})),
+            ("artifact-abi-drift", lambda value: value["artifact"].update({"abis": ["x86_64"]})),
+            ("artifact-release-drift", lambda value: value["artifact"].update({"configuration": "Release"})),
+            ("artifact-unbound-version", lambda value: value["artifact"].update({"versionCode": 12})),
+            ("artifact-unbound-format", lambda value: value["artifact"].update({"packageFormat": "apk"})),
             ("signing-unknown", lambda value: value["artifact"]["signing"].update({"unknown": True})),
             ("signing-bool-scheme", lambda value: value["artifact"]["signing"].update({"verifiedSchemes": [True, 2]})),
             ("execution-missing", lambda value: value["executionEvidence"].pop("delegateCommandJournal")),
             ("toolchain-unknown", lambda value: value["toolchain"].update({"unknown": True})),
+            ("toolchain-sdk-drift", lambda value: value["toolchain"].update({"targetSdkVersion": 35})),
             ("toolchain-untrusted-dotnet", lambda value: value["toolchain"]["dotnetHost"].update({"sha256": "0" * 64})),
             ("toolchain-arbitrary-sdk-root", lambda value: value["toolchain"]["androidSdk"].update({"root": "/tmp/android-sdk"})),
             ("toolchain-incomplete-jdk-map", lambda value: value["toolchain"]["jdkRelease"].update({"fields": {"IMPLEMENTOR": "Microsoft", "JAVA_VERSION": "17.0.14"}})),
