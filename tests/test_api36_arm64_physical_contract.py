@@ -16,6 +16,9 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
+# Real driver fixtures import their adjacent helpers, including when this
+# module is run alone rather than through discovery (which adds tests to path).
+sys.path.insert(0, str(ROOT / "tests"))
 sys.path.insert(0, str(SCRIPTS))
 import api36_arm64_physical_contract as contract
 

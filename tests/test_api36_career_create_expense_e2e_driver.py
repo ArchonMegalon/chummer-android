@@ -1,6 +1,7 @@
 import ast
 import importlib.util
 import json
+import os
 from pathlib import Path
 import unittest
 from unittest.mock import patch
@@ -15,7 +16,7 @@ PRESENTATION = _resolve_repository_sibling(
     REPO.parent, "presentation", ("presentation", "chummer-presentation")
 )
 CORE = _resolve_repository_sibling(REPO.parent, "core", ("core", "chummer-core-engine"))
-CHUMMER5 = Path("/docker/chummer5a")
+CHUMMER5 = Path(os.environ.get("CHUMMER5A_ROOT", "/docker/chummer5a"))
 CONTROLS = {
     "nudAmount": "career-create-expense-amount",
     "txtDescription": "career-create-expense-description",

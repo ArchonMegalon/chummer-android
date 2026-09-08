@@ -170,6 +170,15 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
             self.text.index("Build the emulator APK and native compile gate"),
         )
 
+    def test_candidate_checkout_preserves_historical_driver_git_authority(self) -> None:
+        step = self.text.split("      - name: Check out the Android candidate\n", 1)[1].split(
+            "      - name:", 1
+        )[0]
+        self.assertIn("fetch-depth: 0", step)
+        self.assertIn("persist-credentials: false", step)
+        self.assertNotIn("continue-on-error", step)
+        self.assertNotIn("if:", step)
+
     def test_canonical_and_account_security_suites_gate_candidate_artifacts(self) -> None:
         step_name = "Verify canonical source and account-link regressions"
         self.assertEqual(1, self.text.count(step_name))
@@ -182,7 +191,20 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         self.assertIn('DOTNET_ROOT="$DOTNET_ROOT" DOTNET_MULTILEVEL_LOOKUP=0', step)
         self.assertIn('CHUMMER_COMPLETE_ROOT="$GITHUB_WORKSPACE"', step)
         self.assertIn('CHUMMER5A_ROOT="$GITHUB_WORKSPACE/chummer5a"', step)
-        self.assertIn("run_clean python3 -B -m unittest discover -s tests -v", step)
+        self.assertIn('run_clean python3 -m venv "$test_python_root"', step)
+        self.assertIn('"$RUNNER_TEMP/chummer-canonical-tests.XXXXXX"', step)
+        self.assertIn('run_clean "$test_python_root/bin/python" -m pip --isolated install', step)
+        self.assertIn("--require-hashes --only-binary=:all: --no-cache-dir", step)
+        self.assertIn("--index-url https://pypi.org/simple -r tests/requirements-ci.txt", step)
+        requirements = (REPO_ROOT / "tests/requirements-ci.txt").read_text(encoding="utf-8")
+        pinned_packages = [line for line in requirements.splitlines() if line and not line.startswith("#")]
+        self.assertEqual(5, len(pinned_packages))
+        for line in pinned_packages:
+            self.assertRegex(line, r"^[a-z]+==[0-9]+(?:\.[0-9]+){1,2} --hash=sha256:[a-f0-9]{64}$")
+        self.assertIn('run_clean "$test_python_root/bin/python" -B -m unittest discover -s tests -v', step)
+        self.assertIn("PYTEST_DISABLE_PLUGIN_AUTOLOAD=1", step)
+        self.assertIn('run_clean "$test_python_root/bin/python" -B -m pytest -q -p no:cacheprovider', step)
+        self.assertIn("tests/test_api36_sr5_life_module_nationality_origin_physical_e2e_driver.py", step)
         for lane in ("Key", "Http"):
             project = (
                 f"tests/Chummer.Android.AccountLink{lane}.Tests/"

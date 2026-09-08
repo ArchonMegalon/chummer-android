@@ -34,7 +34,11 @@ PACKAGE_IDS = (
 
 
 def private_directory(path: Path) -> Path:
-    path.mkdir(parents=True, exist_ok=True)
+    # mkdir(parents=True) applies mode only to the leaf. Every cache ancestor
+    # must be private even on hosted runners whose ambient umask is 0022.
+    if not path.parent.exists():
+        private_directory(path.parent)
+    path.mkdir(mode=0o700, exist_ok=True)
     path.chmod(0o700)
     return path
 
@@ -180,6 +184,18 @@ def fixture(root: Path):
 
 
 class ReleaseRestoreConsumptionTests(unittest.TestCase):
+    def test_private_fixture_parents_are_safe_under_hosted_umask(self) -> None:
+        previous_umask = os.umask(0o022)
+        try:
+            with tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                private_directory(root / "packages" / "example" / "1.0.0")
+                for path in root.rglob("*"):
+                    self.assertEqual(0o700, path.stat().st_mode & 0o777, str(path))
+            self.test_manifest_binds_assets_dgspec_lock_cache_and_complete_closure()
+        finally:
+            os.umask(previous_umask)
+
     def test_snapshot_binds_exact_twelve_package_closure_and_engine(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             (
