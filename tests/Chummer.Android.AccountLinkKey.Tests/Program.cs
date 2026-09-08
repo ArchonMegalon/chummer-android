@@ -28,10 +28,12 @@ internal static class Program
         await PartialBindingRecoveryRemovesTheOrphanedKeyAsync();
         await UnlinkDeletesKeyAuthorityAndMetadataAsync();
         await UnlinkFailureRemovesMetadataAndSurfacesTheCleanupFailureAsync();
+        await PendingCleanupCannotAuthorizeOrRebindAfterRestartAsync();
+        await InFlightSignatureCannotEscapeUnlinkOrGrantReplacementAsync();
         await SelectorReadCancellationPreservesTheOnlyCleanupRouteAsync();
         await SelectorReadFailurePreservesTheOnlyCleanupRouteAsync();
         await SelectorDeleteCancellationRetainsARecoverableOutcomeAsync();
-        Console.WriteLine("Android account-link key authority tests passed: 25");
+        Console.WriteLine("Android account-link key authority tests passed: 27");
     }
 
     private static async Task PersistedBindingNeverContainsPrivateKeyMaterialAsync()
@@ -516,6 +518,130 @@ internal static class Program
         Require(metadata.Values.Count == 0, "Successful retry must remove the cleanup tombstone.");
     }
 
+    private static async Task PendingCleanupCannotAuthorizeOrRebindAfterRestartAsync()
+    {
+        foreach (bool linked in new[] { false, true })
+        {
+            MemoryMetadataStore metadata = new();
+            using MemoryDeviceKeyStore keys = new();
+            AndroidAccountLinkKeyAuthority authority = new(keys, metadata);
+            AndroidAccountLinkKeyIdentity identity = await authority.StartOrResumeExplicitLinkAsync();
+            if (linked)
+            {
+                await authority.BindGrantAsync(identity.InstallationId, "grant-one");
+                identity = await authority.RequireLinkedIdentityAsync(identity.InstallationId);
+            }
+
+            // Preserve an otherwise valid binding/key while the real cleanup implementation
+            // persists its deletion intent. Each failing write is independent of readable state.
+            metadata.FailNextSetKey = AndroidAccountLinkKeyAuthority.BindingStorageKey;
+            metadata.FailBeforeRemoveKeys.Add(AndroidAccountLinkKeyAuthority.BindingStorageKey);
+            metadata.FailBeforeRemoveKeys.Add(AndroidAccountLinkKeyAuthority.InstallationIdStorageKey);
+            keys.FailDeleteAlias = identity.Alias;
+            await RequireThrowsAsync<IOException>(
+                () => authority.RemoveAsync(),
+                "Partial cleanup must report its first metadata failure.");
+            Require(keys.Contains(identity.Alias)
+                    && metadata.Contains(AndroidAccountLinkKeyAuthority.BindingStorageKey)
+                    && metadata.Contains(AndroidAccountLinkKeyAuthority.InstallationIdStorageKey)
+                    && metadata.Contains(AndroidAccountLinkKeyAuthority.CleanupTombstoneStorageKey),
+                "The fixture must retain both usable key material and its durable cleanup intent.");
+
+            AndroidAccountLinkKeyAuthority restarted = new(keys, metadata);
+            string? bindingBefore = await metadata.GetAsync(AndroidAccountLinkKeyAuthority.BindingStorageKey);
+            await RequireThrowsAsync<AndroidDeviceRelinkRequiredException>(
+                () => linked
+                    ? restarted.RequireLinkedIdentityAsync(identity.InstallationId)
+                    : restarted.RequirePendingIdentityAsync(identity.InstallationId),
+                "A durable cleanup intent must quarantine even an otherwise valid identity.");
+            await RequireThrowsAsync<AndroidDeviceRelinkRequiredException>(
+                () => restarted.SignAsync(identity, "proof"u8.ToArray()),
+                "A retained cleanup key must not sign after authority recreation.");
+            await RequireThrowsAsync<AndroidDeviceRelinkRequiredException>(
+                () => restarted.BindGrantAsync(identity.InstallationId, "replacement-grant"),
+                "A staged grant must not revive a key whose cleanup is pending.");
+            Require(keys.SignCount == 0 && keys.CreatedCount == 1,
+                "Rejected cleanup authority must neither sign nor create a parallel key.");
+            Require(await metadata.GetAsync(AndroidAccountLinkKeyAuthority.BindingStorageKey) == bindingBefore,
+                "Rejected reads and grant binding must preserve the cleanup selector unchanged.");
+
+            metadata.FailBeforeRemoveKeys.Clear();
+            keys.FailDeleteAlias = null;
+            AndroidAccountLinkKeyIdentity replacement = await restarted.StartOrResumeExplicitLinkAsync();
+            Require(replacement.InstallationId != identity.InstallationId
+                    && !keys.Contains(identity.Alias) && keys.KeyCount == 1
+                    && !metadata.Contains(AndroidAccountLinkKeyAuthority.CleanupTombstoneStorageKey),
+                "Explicit relinking must finish cleanup before making fresh key authority.");
+            await restarted.SignAsync(replacement, "fresh-proof"u8.ToArray());
+            Require(keys.SignCount == 1, "Only the explicitly recovered identity may sign.");
+        }
+    }
+
+    private static async Task InFlightSignatureCannotEscapeUnlinkOrGrantReplacementAsync()
+    {
+        foreach (string transition in new[]
+                 { "unlink", "pending-cleanup", "grant-replacement", "selector-read-failure", "selector-read-cancellation" })
+        {
+            MemoryMetadataStore metadata = new();
+            using MemoryDeviceKeyStore keys = new();
+            AndroidAccountLinkKeyAuthority authority = new(keys, metadata);
+            AndroidAccountLinkKeyIdentity pending = await authority.StartOrResumeExplicitLinkAsync();
+            await authority.BindGrantAsync(pending.InstallationId, "grant-one");
+            AndroidAccountLinkKeyIdentity identity = await authority.RequireLinkedIdentityAsync(pending.InstallationId);
+            byte[]? capturedSignature = null;
+            keys.BeforeReturningSignature = async signature =>
+            {
+                capturedSignature = signature;
+                if (transition == "selector-read-failure")
+                {
+                    metadata.FailAfterGetKey = AndroidAccountLinkKeyAuthority.CleanupTombstoneStorageKey;
+                    return;
+                }
+                if (transition == "selector-read-cancellation")
+                {
+                    metadata.CancelAfterGetKey = AndroidAccountLinkKeyAuthority.CleanupTombstoneStorageKey;
+                    return;
+                }
+                if (transition == "grant-replacement")
+                {
+                    await authority.BindGrantAsync(identity.InstallationId, "grant-two");
+                    return;
+                }
+                if (transition == "pending-cleanup")
+                {
+                    metadata.FailNextSetKey = AndroidAccountLinkKeyAuthority.BindingStorageKey;
+                    metadata.FailBeforeRemoveKeys.Add(AndroidAccountLinkKeyAuthority.BindingStorageKey);
+                    metadata.FailBeforeRemoveKeys.Add(AndroidAccountLinkKeyAuthority.InstallationIdStorageKey);
+                    keys.FailDeleteAlias = identity.Alias;
+                    await RequireThrowsAsync<IOException>(() => authority.RemoveAsync(),
+                        "The injected cleanup must preserve its durable retry intent.");
+                    return;
+                }
+                await authority.RemoveAsync();
+            };
+
+            Func<Task> sign = () => authority.SignAsync(identity, "in-flight-proof"u8.ToArray());
+            if (transition == "selector-read-failure")
+            {
+                await RequireThrowsAsync<IOException>(sign, "An unread cleanup selector must fail closed.");
+            }
+            else if (transition == "selector-read-cancellation")
+            {
+                await RequireThrowsAsync<OperationCanceledException>(sign,
+                    "Cancellation while revalidating a proof must not release its signature.");
+            }
+            else
+            {
+                await RequireThrowsAsync<AndroidDeviceRelinkRequiredException>(sign,
+                    "An in-flight proof must revalidate its exact authority after signing completes.");
+            }
+            Require(keys.SignCount == 1 && capturedSignature is { Length: > 0 },
+                "The fixture must complete one real signature before the identity transition.");
+            Require(capturedSignature!.All(static value => value == 0),
+                "A rejected in-flight signature must be cleared rather than returned.");
+        }
+    }
+
     private static async Task SelectorReadCancellationPreservesTheOnlyCleanupRouteAsync()
     {
         foreach (string selector in CleanupSelectorKeys())
@@ -689,6 +815,8 @@ internal static class Program
 
         public string? CancelAfterRemoveKey { get; set; }
 
+        public HashSet<string> FailBeforeRemoveKeys { get; } = new(StringComparer.Ordinal);
+
         public Task<string?> GetAsync(string key, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -728,6 +856,10 @@ internal static class Program
         public Task RemoveAsync(string key, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (FailBeforeRemoveKeys.Contains(key))
+            {
+                throw new IOException("Injected metadata removal failure before commit.");
+            }
             _values.Remove(key);
             if (string.Equals(CancelAfterRemoveKey, key, StringComparison.Ordinal))
             {
@@ -759,6 +891,8 @@ internal static class Program
         public string? FailDeleteAlias { get; set; }
 
         public bool FailAllDeletes { get; set; }
+
+        public Func<byte[], Task>? BeforeReturningSignature { get; set; }
 
         public Task<AndroidDevicePublicKey> CreateAsync(
             string alias,
@@ -796,7 +930,7 @@ internal static class Program
                 : new AndroidDevicePublicKey(AndroidDeviceKeyAvailability.Missing));
         }
 
-        public Task<byte[]> SignAsync(
+        public async Task<byte[]> SignAsync(
             string alias,
             ReadOnlyMemory<byte> payload,
             CancellationToken cancellationToken = default)
@@ -819,7 +953,7 @@ internal static class Program
             SignCount++;
             if (ReturnNullSignature)
             {
-                return Task.FromResult<byte[]>(null!);
+                return null!;
             }
 
             byte[] signature = key.SignData(
@@ -831,7 +965,11 @@ internal static class Program
                 signature[0] ^= 0xff;
             }
 
-            return Task.FromResult(signature);
+            if (BeforeReturningSignature is not null)
+            {
+                await BeforeReturningSignature(signature);
+            }
+            return signature;
         }
 
         public Task DeleteAsync(string alias, CancellationToken cancellationToken = default)

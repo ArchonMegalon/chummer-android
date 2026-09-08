@@ -203,21 +203,33 @@ public sealed class AndroidAccountLinkKeyAuthority
                 "The account-link key binding changed before signing.");
         }
 
+        byte[]? signature = null;
+        bool accepted = false;
         try
         {
-            byte[]? signature = await _keyStore.SignAsync(current.Alias, payload, cancellationToken);
+            signature = await _keyStore.SignAsync(current.Alias, payload, cancellationToken);
             if (signature is null
                 || !VerifyProtocolSignature(current.PublicKey, payload.Span, signature))
             {
-                if (signature is not null)
-                {
-                    CryptographicOperations.ZeroMemory(signature);
-                }
                 throw new AndroidDeviceRelinkRequiredException(
                     AndroidDeviceKeyAvailability.Invalidated,
                     "The Android account-link key returned an invalid signature.");
             }
 
+            // Key operations can outlive local unlink/recovery. A completed signature is not
+            // permission to release a proof for an identity which changed during that await.
+            AndroidAccountLinkKeyIdentity? observed = await ReadAndValidateAsync(
+                identity.InstallationId,
+                requireGrantBinding: false,
+                cancellationToken);
+            if (observed != current)
+            {
+                throw new AndroidDeviceRelinkRequiredException(
+                    AndroidDeviceKeyAvailability.Invalidated,
+                    "The account-link key binding changed while signing.");
+            }
+
+            accepted = true;
             return signature;
         }
         catch (AndroidDeviceRelinkRequiredException)
@@ -230,6 +242,13 @@ public sealed class AndroidAccountLinkKeyAuthority
                 AndroidDeviceKeyAvailability.Invalidated,
                 "The Android account-link key can no longer sign.",
                 exception);
+        }
+        finally
+        {
+            if (!accepted && signature is not null)
+            {
+                CryptographicOperations.ZeroMemory(signature);
+            }
         }
     }
 
@@ -408,6 +427,7 @@ public sealed class AndroidAccountLinkKeyAuthority
         bool requireGrantBinding,
         CancellationToken cancellationToken)
     {
+        await RequireCleanupCompletedAsync(cancellationToken);
         string? installationId = await _metadataStore.GetAsync(InstallationIdStorageKey, cancellationToken);
         string? serialized = await _metadataStore.GetAsync(BindingStorageKey, cancellationToken);
         if (string.IsNullOrWhiteSpace(installationId) && string.IsNullOrWhiteSpace(serialized))
@@ -439,7 +459,19 @@ public sealed class AndroidAccountLinkKeyAuthority
                 : current.Availability);
         }
 
+        await RequireCleanupCompletedAsync(cancellationToken);
         return identity;
+    }
+
+    private async Task RequireCleanupCompletedAsync(CancellationToken cancellationToken)
+    {
+        if (!string.IsNullOrWhiteSpace(
+                await _metadataStore.GetAsync(CleanupTombstoneStorageKey, cancellationToken)))
+        {
+            throw new AndroidDeviceRelinkRequiredException(
+                AndroidDeviceKeyAvailability.Invalidated,
+                "The account-link key is awaiting cleanup. Explicit relinking is required.");
+        }
     }
 
     private async Task PersistBindingAsync(
