@@ -697,10 +697,23 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
         )
         hub_producer_commit = internal_authority["sourceGraph"]["hubProducerCommit"]
         hub_producer_tree = "d" * 40
+        hub_package_sources = {
+            "Chummer.Campaign.Contracts": hub_producer_commit,
+            "Chummer.Play.Contracts": "586aa84bd616779ccb84529a76b75dfcc39189ba",
+            "Chummer.Run.Contracts": "586aa84bd616779ccb84529a76b75dfcc39189ba",
+        }
+        # These integration fixtures use synthetic dependency trees. The real
+        # sealed-lock capture is exercised separately with actual Git checkouts.
+        sealed_sources = mock.patch.object(
+            consumer, "_sealed_hub_package_sources",
+            return_value=hub_package_sources,
+        )
+        sealed_sources.start()
+        self.addCleanup(sealed_sources.stop)
 
         def owner_source(package_id: str, source_name: str) -> dict[str, object]:
             source_commit = (
-                hub_producer_commit
+                hub_package_sources[package_id]
                 if source_name == "hub"
                 else sources[source_name]["commit"]
             )
@@ -1597,14 +1610,20 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
             if row["package_id"] == "Chummer.Campaign.Contracts"
         )
         self.assertEqual(
-            "4f335d6cebbd4101212fd2cc77265b50f252775c",
+            authority["commonAuthority"]["dependencyGraph"]["sources"]["hub"]["commit"],
             hub_head["commit"],
         )
         self.assertEqual(
-            "bc199cbe0982833ec2fc9ce625826e612759d67a",
+            json.loads((REPO / "eng/internal-phone-beta-package-authority.json").read_bytes())[
+                "sourceGraph"
+            ]["hubProducerCommit"],
             hub_package["source_commit"],
         )
-        self.assertNotEqual(hub_package["source_commit"], hub_head["commit"])
+        historical_package = next(
+            row for row in graph["ownerPackagePins"] if row["package_id"] == "Chummer.Play.Contracts"
+        )
+        self.assertEqual("586aa84bd616779ccb84529a76b75dfcc39189ba", historical_package["source_commit"])
+        self.assertNotEqual(historical_package["source_commit"], hub_head["commit"])
         self.assertEqual(
             {
                 "owner_head_commit": hub_head["commit"],
@@ -1632,6 +1651,55 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
                 package_authority_path=package_authority,
                 source_graph_path=source_graph,
             )
+
+    def test_release_consumer_accepts_sealed_mixed_hub_package_sources(self) -> None:
+        self.inputs["policy"] = gate.POLICY_PATH
+        self.inputs["environment_policy"] = gate.ENVIRONMENT_POLICY_PATH
+        authority = self.create()
+        receipt, approval, package_authority, source_graph = self.release_consumer_inputs(authority)
+        expected_sources = {
+            "Chummer.Campaign.Contracts": "f06bb7e7e71e5afceb115d9078a473b1087ac7df",
+            "Chummer.Play.Contracts": "586aa84bd616779ccb84529a76b75dfcc39189ba",
+            "Chummer.Run.Contracts": "586aa84bd616779ccb84529a76b75dfcc39189ba",
+        }
+        for path in (package_authority, source_graph):
+            payload = json.loads(path.read_bytes())
+            for row in payload["ownerPackagePins"]:
+                if row["package_id"] in expected_sources:
+                    row["source_commit"] = expected_sources[row["package_id"]]
+            path.write_bytes(gate.canonical_json_bytes(payload))
+        with mock.patch.object(
+            consumer, "_sealed_hub_package_sources", return_value=expected_sources,
+        ):
+            binding = consumer.verify_release_eligibility(
+                receipt, approval, android_root=self.android,
+                expected_version_name="0.1.0-preview.12", expected_version_code=12,
+                package_authority_path=package_authority, source_graph_path=source_graph,
+            )
+        self.assertTrue(binding["eligible"])
+        self.assertFalse(binding["publicationAuthorized"])
+        self.assertFalse(binding["googlePlayUploadAuthorized"])
+
+        for graph_only in (False, True):
+            with self.subTest(graph_only=graph_only):
+                originals = {path: path.read_bytes() for path in (package_authority, source_graph)}
+                for path in originals:
+                    payload = json.loads(originals[path])
+                    for row in payload["ownerPackagePins"]:
+                        if row["package_id"] == "Chummer.Play.Contracts":
+                            row["source_commit"] = expected_sources["Chummer.Campaign.Contracts"]
+                    path.write_bytes(gate.canonical_json_bytes(payload))
+                with mock.patch.object(
+                    consumer, "_sealed_hub_package_sources", return_value=expected_sources,
+                ), self.assertRaisesRegex(ValueError, "two-green (dependency|package source): hub"):
+                    consumer.verify_release_eligibility(
+                        receipt, approval, android_root=self.android,
+                        expected_version_name="0.1.0-preview.12", expected_version_code=12,
+                        package_authority_path=None if graph_only else package_authority,
+                        source_graph_path=source_graph,
+                    )
+                for path, raw in originals.items():
+                    path.write_bytes(raw)
 
     def test_release_consumer_cli_never_turns_eligibility_into_signing_or_upload_authority(
         self,
@@ -2168,6 +2236,146 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
         authority_link.symlink_to(self.output)
         with self.assertRaisesRegex(ValueError, "absolute canonical non-symlink"):
             gate.main(["verify", *self.cli_inputs(), "--authority", str(authority_link)])
+
+
+class Api36TwoGreenSealedHubSourcesTests(unittest.TestCase):
+    PRODUCER = "f06bb7e7e71e5afceb115d9078a473b1087ac7df"
+    HISTORICAL_SOURCE = "586aa84bd616779ccb84529a76b75dfcc39189ba"
+    HUB_REPOSITORY = "https://github.com/ArchonMegalon/chummer6-hub.git"
+
+    def setUp(self) -> None:
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name).resolve()
+        self.android = self.root / "chummer-android"
+        self.presentation = self.root / "chummer-presentation"
+        self.lock_path = self.presentation / "config/package-plane.lock.json"
+        self.manifest_path = self.android / "eng/internal-phone-beta-package-authority.json"
+        self.lock_path.parent.mkdir(parents=True)
+        self.manifest_path.parent.mkdir(parents=True)
+        self.lock = {
+            "contractName": "chummer6-ui.fresh-package-plane-lock",
+            "contractVersion": 11,
+            "canonicalOwnerFeed": {
+                "producerCommit": self.PRODUCER,
+                "packages": [self.row(package_id, self.HISTORICAL_SOURCE) for package_id in (
+                    "Chummer.Play.Contracts", "Chummer.Run.Contracts",
+                )],
+            },
+            "uiOwnerFeed": {"packages": [self.row("Chummer.Campaign.Contracts", self.PRODUCER)]},
+        }
+        self.git("init", "--quiet")
+        self.git("config", "user.name", "Package Source Test")
+        self.git("config", "user.email", "test@example.invalid")
+        patcher = mock.patch.object(consumer, "REPO_ROOT", self.android)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.seal()
+
+    def row(self, package_id: str, commit: str) -> dict[str, str]:
+        return {"packageId": package_id, "commit": commit, "repository": self.HUB_REPOSITORY}
+
+    def git(self, *arguments: str) -> str:
+        return subprocess.run(
+            ["git", "-C", str(self.presentation), *arguments], check=True,
+            capture_output=True, text=True,
+        ).stdout.strip()
+
+    def seal(self) -> None:
+        raw = gate.canonical_json_bytes(self.lock)
+        self.lock_path.write_bytes(raw)
+        self.git("add", "config/package-plane.lock.json")
+        self.git("commit", "--quiet", "--allow-empty", "-m", "sealed package source fixture")
+        self.sources = {
+            "presentation": {
+                "commit": self.git("rev-parse", "HEAD"),
+                "tree": self.git("rev-parse", "HEAD^{tree}"),
+                "repository": "https://github.com/ArchonMegalon/chummer6-ui.git",
+            },
+            "hub": {"commit": self.PRODUCER, "repository": self.HUB_REPOSITORY},
+        }
+        self.manifest = {
+            "presentationSource": self.sources["presentation"],
+            "packagePlaneLock": {
+                "path": "config/package-plane.lock.json",
+                "contractName": self.lock["contractName"], "contractVersion": 11,
+                "sha256": sha256(raw), "sizeBytes": len(raw),
+            },
+        }
+        self.manifest_path.write_bytes(gate.canonical_json_bytes(self.manifest))
+
+    def capture(self) -> dict[str, str]:
+        return consumer._sealed_hub_package_sources(
+            self.android, sources=self.sources, hub_producer_commit=self.PRODUCER,
+        )
+
+    def test_exact_mixed_package_sources_survive_equal_runtime_and_producer_commits(self) -> None:
+        self.assertEqual({
+            "Chummer.Campaign.Contracts": self.PRODUCER,
+            "Chummer.Play.Contracts": self.HISTORICAL_SOURCE,
+            "Chummer.Run.Contracts": self.HISTORICAL_SOURCE,
+        }, self.capture())
+
+    def test_lock_digest_and_size_are_independent_of_git_identity(self) -> None:
+        for key, value in (("sha256", "0" * 64), ("sizeBytes", 1), ("sizeBytes", True)):
+            with self.subTest(key=key, value=value):
+                manifest = copy.deepcopy(self.manifest)
+                manifest["packagePlaneLock"][key] = value
+                self.manifest_path.write_bytes(gate.canonical_json_bytes(manifest))
+                with self.assertRaisesRegex(ValueError, "binding differs|lock bytes differ"):
+                    self.capture()
+
+    def test_presentation_consumer_commit_and_tree_must_match_the_checkout(self) -> None:
+        for key in ("commit", "tree"):
+            with self.subTest(key=key):
+                original = self.sources["presentation"][key]
+                self.sources["presentation"][key] = "0" * 40
+                self.manifest_path.write_bytes(gate.canonical_json_bytes(self.manifest))
+                with self.assertRaisesRegex(ValueError, "checkout commit/tree differs"):
+                    self.capture()
+                self.sources["presentation"][key] = original
+
+    def test_unsealed_coordinated_package_source_substitution_is_rejected(self) -> None:
+        self.lock["canonicalOwnerFeed"]["packages"][0]["commit"] = self.PRODUCER
+        self.lock_path.write_bytes(gate.canonical_json_bytes(self.lock))
+        with self.assertRaisesRegex(ValueError, "checkout is not clean"):
+            self.capture()
+
+    def test_sealed_malformed_duplicate_missing_and_misowned_sources_are_rejected(self) -> None:
+        original = copy.deepcopy(self.lock)
+        mutations = (
+            lambda rows: rows[0].update(commit="not-a-commit"),
+            lambda rows: rows[0].update(repository="https://github.com/Elsewhere/hub.git"),
+            lambda rows: rows.append(copy.deepcopy(rows[0])),
+            lambda rows: rows.pop(),
+        )
+        for mutate in mutations:
+            self.lock = copy.deepcopy(original)
+            mutate(self.lock["canonicalOwnerFeed"]["packages"])
+            self.seal()
+            with self.subTest(lock=self.lock), self.assertRaises(ValueError):
+                self.capture()
+
+    def test_symlinked_lock_or_parent_and_nonregular_lock_are_rejected(self) -> None:
+        raw = self.lock_path.read_bytes()
+        replacement = self.root / "replacement.json"
+        replacement.write_bytes(raw)
+        self.lock_path.unlink()
+        self.lock_path.symlink_to(replacement)
+        with self.assertRaises(ValueError):
+            self.capture()
+        self.lock_path.unlink()
+        self.lock_path.mkdir()
+        with self.assertRaises(ValueError):
+            self.capture()
+        self.lock_path.rmdir()
+        self.lock_path.write_bytes(raw)
+        config = self.lock_path.parent
+        relocated = self.presentation / "relocated-config"
+        config.rename(relocated)
+        config.symlink_to(relocated, target_is_directory=True)
+        with self.assertRaises(ValueError):
+            self.capture()
 
 
 class Api36TwoGreenWorkflowSourceTests(unittest.TestCase):

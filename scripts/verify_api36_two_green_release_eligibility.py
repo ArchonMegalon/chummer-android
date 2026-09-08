@@ -584,11 +584,92 @@ def _validate_dependency_authority(
     return sources
 
 
+def _sealed_hub_package_sources(
+    android_root: Path,
+    *,
+    sources: dict[str, dict[str, Any]],
+    hub_producer_commit: str,
+) -> dict[str, str]:
+    """Read individual package sources from the exact sealed Presentation lock."""
+    manifest = _strict_json(
+        _stable_bytes(
+            REPO_ROOT / "eng/internal-phone-beta-package-authority.json",
+            label="internal package authority", limit=MAX_AUTHORITY_BYTES, owner_only=False,
+        ),
+        label="internal package authority",
+    )
+    presentation = manifest.get("presentationSource")
+    binding = manifest.get("packagePlaneLock")
+    if (
+        not isinstance(presentation, dict)
+        or presentation != sources["presentation"]
+        or not isinstance(binding, dict)
+        or binding.get("path") != "config/package-plane.lock.json"
+        or binding.get("contractName") != "chummer6-ui.fresh-package-plane-lock"
+        or type(binding.get("contractVersion")) is not int
+        or type(binding.get("sizeBytes")) is not int
+        or binding["sizeBytes"] <= 0
+    ):
+        raise ValueError("sealed Presentation package source binding differs")
+    expected_digest = _sha256(binding.get("sha256"), "sealed Presentation lock digest")
+    presentation_root = android_root.parent / "chummer-presentation"
+    expected_identity = (presentation["commit"], presentation["tree"])
+    if _git_identity(presentation_root) != expected_identity:
+        raise ValueError("sealed Presentation checkout commit/tree differs")
+    raw = _stable_bytes(
+        presentation_root / binding["path"], label="sealed Presentation package lock",
+        limit=MAX_AUTHORITY_BYTES, owner_only=False,
+    )
+    if len(raw) != binding["sizeBytes"] or hashlib.sha256(raw).hexdigest() != expected_digest:
+        raise ValueError("sealed Presentation package lock bytes differ")
+    lock = _strict_json(raw, label="sealed Presentation package lock")
+    if (
+        lock.get("contractName") != binding["contractName"]
+        or type(lock.get("contractVersion")) is not int
+        or lock["contractVersion"] != binding["contractVersion"]
+    ):
+        raise ValueError("sealed Presentation package lock contract differs")
+    canonical = lock.get("canonicalOwnerFeed")
+    ui_owner = lock.get("uiOwnerFeed")
+    if (
+        not isinstance(canonical, dict)
+        or canonical.get("producerCommit") != hub_producer_commit
+        or not isinstance(ui_owner, dict)
+    ):
+        raise ValueError("sealed Hub package producer authority differs")
+    result: dict[str, str] = {}
+    for feed, expected_ids in (
+        (canonical, {"Chummer.Play.Contracts", "Chummer.Run.Contracts"}),
+        (ui_owner, {"Chummer.Campaign.Contracts"}),
+    ):
+        rows = feed.get("packages")
+        if not isinstance(rows, list):
+            raise ValueError("sealed Hub package source inventory is missing")
+        seen: set[str] = set()
+        for row in rows:
+            if not isinstance(row, dict) or not isinstance(row.get("packageId"), str):
+                raise ValueError("sealed Hub package source row is malformed")
+            package_id = row["packageId"]
+            if package_id in seen:
+                raise ValueError("sealed Hub package source inventory is ambiguous")
+            seen.add(package_id)
+            if package_id not in expected_ids:
+                continue
+            if row.get("repository") != sources["hub"]["repository"]:
+                raise ValueError("sealed Hub package source repository differs")
+            result[package_id] = _sha40(row.get("commit"), f"sealed {package_id} source commit")
+        if not expected_ids.issubset(seen):
+            raise ValueError("sealed Hub package source inventory is incomplete")
+    if _git_identity(presentation_root) != expected_identity:
+        raise ValueError("sealed Presentation checkout commit/tree changed during capture")
+    return result
+
+
 def _validate_package_authority(
     path: Path,
     *,
     sources: dict[str, dict[str, Any]],
-    hub_producer_commit: str,
+    hub_package_sources: dict[str, str],
 ) -> dict[str, dict[str, Any]]:
     value = _strict_json(
         _stable_bytes(
@@ -627,7 +708,7 @@ def _validate_package_authority(
         package_id = row["package_id"]
         source_name = OWNER_PACKAGES[package_id]
         expected_commit = (
-            hub_producer_commit
+            hub_package_sources[package_id]
             if source_name == "hub"
             else sources[source_name]["commit"]
         )
@@ -666,10 +747,9 @@ def _validate_current_dependency_pins(
     for name, commit in expected.items():
         if commit != sources[name].get("commit"):
             raise ValueError(f"current release dependency pin differs from two-green graph: {name}")
-    # The sealed Hub packages can legitimately have been produced by an older
-    # commit than the Hub source checkout used by the Android runtime graph.
-    # Their ancestry is authenticated by each source-graph owner pin below;
-    # equating the producer with the pinned Hub head destroys that distinction.
+    # Producer, individual package source, and runtime checkout are independent
+    # roles. Authenticate package sources from the sealed lock when consumed;
+    # the source graph also binds their ancestry to the runtime checkout.
     return _sha40(source_graph.get("hubProducerCommit"), "sealed Hub package producer commit")
 
 
@@ -681,7 +761,7 @@ def _validate_source_graph(
     version_name: str,
     version_code: int,
     sources: dict[str, dict[str, Any]],
-    hub_producer_commit: str,
+    hub_package_sources: dict[str, str],
     package_owner_pins: dict[str, dict[str, Any]] | None,
 ) -> None:
     value = _strict_json(
@@ -761,7 +841,7 @@ def _validate_source_graph(
         row = owner_by_id[package_id]
         owner_repository = by_name[SOURCE_GRAPH_REPOSITORIES[source_name]]
         expected_commit = (
-            hub_producer_commit
+            hub_package_sources[package_id]
             if source_name == "hub"
             else sources[source_name]["commit"]
         )
@@ -917,12 +997,19 @@ def verify_release_eligibility(
         common.get("dependencyGraph"), source_tree=source_tree
     )
     hub_producer_commit = _validate_current_dependency_pins(sources)
+    hub_package_sources = (
+        _sealed_hub_package_sources(
+            android_root, sources=sources, hub_producer_commit=hub_producer_commit,
+        )
+        if package_authority_path is not None or source_graph_path is not None
+        else {}
+    )
     package_owner_pins = None
     if package_authority_path is not None:
         package_owner_pins = _validate_package_authority(
             package_authority_path,
             sources=sources,
-            hub_producer_commit=hub_producer_commit,
+            hub_package_sources=hub_package_sources,
         )
     if source_graph_path is not None:
         _validate_source_graph(
@@ -932,7 +1019,7 @@ def verify_release_eligibility(
             version_name=expected_version_name,
             version_code=version_code,
             sources=sources,
-            hub_producer_commit=hub_producer_commit,
+            hub_package_sources=hub_package_sources,
             package_owner_pins=package_owner_pins,
         )
     return {
