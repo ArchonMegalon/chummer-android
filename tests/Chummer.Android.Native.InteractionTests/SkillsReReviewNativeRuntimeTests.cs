@@ -24,9 +24,11 @@ internal static partial class AfterRunAuthorityHarness
         foreach (var (obsolete, failCommittedRead) in new[] { (false, false), (true, false), (false, true) })
         {
             string? path = null;
+            SkillsReReviewReadProbe? entryProbe = null;
             await using var runtime = new NativeRewardRuntime(contentRoot, creationSkillsSeed: target =>
                 path = SeedHistoricalSkills(target, sourceDirectory, resolver, id, sourceState, sourcePreview, sourceReceipt, obsolete),
-                skillsDecorator: failCommittedRead ? inner => new FailedCommittedSkillsRead(inner) : null);
+                skillsDecorator: inner => failCommittedRead ? new FailedCommittedSkillsRead(inner)
+                    : entryProbe = new SkillsReReviewReadProbe(inner));
             runtime.Id = id;
             await runtime.Presenter.LoadAsync(id, default);
             Require(runtime.Coordinator.State.Profile?.Created == false && runtime.Coordinator.State.WorkspaceId == id,
@@ -40,6 +42,9 @@ internal static partial class AfterRunAuthorityHarness
             var loaded = runtime.Coordinator.LoadCreationSkillsReReview();
             Require(loaded.Value is not null, "Actual native re-review unavailable: " + string.Join(",", loaded.Blockers));
             var state = loaded.Value!;
+            if (entryProbe is not null)
+                await SkillsReReviewDashboardEntryAsync(runtime.Coordinator, entryProbe, obsolete);
+            Require(File.ReadAllBytes(path!).SequenceEqual(before), "Opening or leaving the actual dashboard recovery route changed history.");
             var draft = new CreationSkillsReReviewPhoneDraft();
             Require(draft.Bind(state, runtime.Coordinator.State) && !state.CurrentState.CanEdit,
                 "Re-review forged ordinary editable authority.");
@@ -153,6 +158,107 @@ internal static partial class AfterRunAuthorityHarness
     private static Button SkillsReviewButton(CreationSkillsReReviewPage page) =>
         ((VerticalStackLayout)((ScrollView)page.Content!).Content).Children.OfType<Button>()
             .Single(button => button.AutomationId == "creation-skills-rereview-confirm");
+
+    private static async Task SkillsReReviewDashboardEntryAsync(RunnerSessionCoordinator coordinator,
+        SkillsReReviewReadProbe probe, bool exerciseLateRead)
+    {
+        Require(coordinator.State.CreationWizard is { } wizard
+            && wizard.Steps.Any(step => step.StepId == CharacterCreationWizardStepIds.Skills),
+            "The real historical runner has no Creation dashboard/Skills stage.");
+        var build = new BuildPage(coordinator);
+        var navigation = new NavigationPage(build);
+        var open = typeof(BuildPage).GetMethod("OpenCreationSkillsReReviewAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        var disappear = typeof(BuildPage).GetMethod("OnDisappearing", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        var lifetimeField = typeof(BuildPage).GetField("_creationDashboardRouteReadyLifetime", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        var generationField = typeof(BuildPage).GetField("_creationDashboardAppearanceGeneration", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        int beforeReads = probe.ReadCount;
+        await ((Task)open.Invoke(build, null)!).WaitAsync(TimeSpan.FromSeconds(20));
+        Require(probe.ReadCount == beforeReads && navigation.Navigation.NavigationStack.Count == 1,
+            "An unattached dashboard scheduled Core reads or navigation.");
+        using var lifetime = new CancellationTokenSource();
+        lifetimeField.SetValue(build, lifetime);
+        generationField.SetValue(build, 1L); // Managed appearance, not Activity proof.
+        try
+        {
+            typeof(BuildPage).GetMethod("AddLegalNextSteps", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(build,
+                [coordinator.State.CreationWizard, null, null, null, coordinator.LoadCreationSkills(), null, null]);
+            var body = (VerticalStackLayout)((ScrollView)build.Content!).Content;
+            var recovery = body.Children.OfType<Border>().SelectMany(border => border.Content is Grid grid
+                    ? grid.Children.OfType<Button>() : Enumerable.Empty<Button>())
+                .Single(button => button.AutomationId == "creation-skills-rereview-open");
+            Require(recovery.IsEnabled, "The real dashboard omitted the separate recovery route for blocked Skills.");
+            await ((Task)open.Invoke(build, null)!).WaitAsync(TimeSpan.FromSeconds(20));
+            Require(navigation.CurrentPage is CreationSkillsReReviewPage && navigation.Navigation.NavigationStack.Count == 2,
+                "Dashboard recovery did not reach the comparison page or used the ordinary invalid Skills editor.");
+            var target = (CreationSkillsReReviewPage)navigation.CurrentPage;
+            RefreshSkillsReReview(target);
+            Require(((VerticalStackLayout)((ScrollView)target.Content!).Content).Children.OfType<Label>()
+                .Any(label => label.AutomationId == "creation-skills-rereview-binding"),
+                "The dashboard-created destination did not retain the exact Core review binding.");
+        }
+        finally { disappear.Invoke(build, null); }
+        if (!exerciseLateRead) return;
+
+        var departed = new BuildPage(coordinator);
+        var departedNavigation = new NavigationPage(departed);
+        using var departedLifetime = new CancellationTokenSource();
+        using var returnedLifetime = new CancellationTokenSource();
+        lifetimeField.SetValue(departed, departedLifetime);
+        generationField.SetValue(departed, 1L);
+        probe.PauseNextRead();
+        Task pending = (Task)open.Invoke(departed, null)!;
+        try
+        {
+            await probe.ReadEntered.Task.WaitAsync(TimeSpan.FromSeconds(20));
+            disappear.Invoke(departed, null);
+            // Reappearing on the same runner must not rehabilitate the old
+            // response merely because there is now another active lifetime.
+            lifetimeField.SetValue(departed, returnedLifetime);
+            generationField.SetValue(departed, 3L);
+            probe.ReleaseRead.TrySetResult();
+            await pending.WaitAsync(TimeSpan.FromSeconds(20));
+            Require(departedNavigation.Navigation.NavigationStack.Count == 1
+                && ReferenceEquals(departedNavigation.CurrentPage, departed),
+                "A late Core response reopened a wizard after dashboard departure.");
+            await ((Task)open.Invoke(departed, null)!).WaitAsync(TimeSpan.FromSeconds(20));
+            Require(departedNavigation.CurrentPage is CreationSkillsReReviewPage,
+                "Rejecting an old response stranded a fresh explicit dashboard entry.");
+        }
+        finally
+        {
+            probe.ReleaseRead.TrySetResult();
+            await pending.WaitAsync(TimeSpan.FromSeconds(20));
+            disappear.Invoke(departed, null);
+        }
+        Console.WriteLine("PASS actual historical dashboard recovery entry → native comparison; departed/reappearing late read remains inert; fresh entry succeeds (managed navigation)");
+    }
+
+    private sealed class SkillsReReviewReadProbe(ICharacterCreationSkillsService inner)
+        : ICharacterCreationSkillsService, ICharacterCreationSkillsReReviewService
+    {
+        private readonly ICharacterCreationSkillsReReviewService _review = (ICharacterCreationSkillsReReviewService)inner;
+        private int _pause, _reads;
+        public int ReadCount => Volatile.Read(ref _reads);
+        public TaskCompletionSource ReadEntered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource ReleaseRead { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public void PauseNextRead() => Interlocked.Exchange(ref _pause, 1);
+        public CharacterCreationFoundationResult<CharacterCreationSkillsState> Load(CharacterCreationSkillsLoadRequest request) => inner.Load(request);
+        public CharacterCreationFoundationResult<CharacterCreationSkillsPreview> Preview(CharacterCreationSkillsPreviewRequest request) => inner.Preview(request);
+        public CharacterCreationFoundationResult<CharacterCreationSkillsReceipt> Confirm(CharacterCreationSkillsConfirmRequest request) => inner.Confirm(request);
+        public CharacterCreationFoundationResult<CharacterCreationSkillsReReviewState> LoadReReview(CharacterCreationSkillsLoadRequest request)
+        {
+            Interlocked.Increment(ref _reads);
+            var result = _review.LoadReReview(request);
+            if (Interlocked.Exchange(ref _pause, 0) != 0)
+            {
+                ReadEntered.TrySetResult();
+                ReleaseRead.Task.WaitAsync(TimeSpan.FromSeconds(20)).GetAwaiter().GetResult();
+            }
+            return result;
+        }
+        public CharacterCreationFoundationResult<CharacterCreationSkillsReReviewPreview> PreviewReReview(CharacterCreationSkillsReReviewPreviewRequest request) => _review.PreviewReReview(request);
+        public CharacterCreationFoundationResult<CharacterCreationSkillsReceipt> ConfirmReReview(CharacterCreationSkillsReReviewConfirmRequest request) => _review.ConfirmReReview(request);
+    }
 
     private sealed class FailedCommittedSkillsRead(ICharacterCreationSkillsService inner)
         : ICharacterCreationSkillsService, ICharacterCreationSkillsReReviewService

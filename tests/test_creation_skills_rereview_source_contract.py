@@ -10,6 +10,16 @@ RESOURCES = ROOT / "src/Chummer.Android/Resources/Localization"
 
 
 class SkillsReReviewSourceTests(unittest.TestCase):
+    def test_dashboard_recovery_uses_the_actual_guarded_navigation_entry(self):
+        build = (NATIVE / "BuildPage.cs").read_text()
+        self.assertIn('OpenCreationSkillsReReviewAsync, enabled: true, automationId: "creation-skills-rereview-open"', build)
+        entry = build[build.index("private async Task OpenCreationSkillsReReviewAsync()"):build.index("private Task OpenCreationQualitiesAsync()")]
+        self.assertIn("if (_creationDashboardRouteReadyLifetime is not", entry)
+        self.assertIn("generation != _creationDashboardAppearanceGeneration", entry)
+        self.assertIn("await Task.Run(() => Coordinator.LoadCreationSkillsReReview())", entry)
+        self.assertIn("new CreationSkillsReReviewPage(Coordinator, state)", entry)
+        self.assertNotIn("new CreationSkillsPage", entry)
+
     def test_all_copy_and_placeholders_have_three_actual_resource_packs(self):
         catalogs = []
         for locale in ("", ".de", ".es"):

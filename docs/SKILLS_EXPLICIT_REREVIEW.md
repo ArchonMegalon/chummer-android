@@ -36,6 +36,11 @@ are derived from the canonical source catalog, not historical Play exports.
 The cases cover unchanged legal choices, multiple incremental repairs, declined
 review, forged comparison reprojection, detached/departed actions, a post-commit
 read failure, presenter/shell refresh, cold reopen and idempotent replay.
+They also use the actual historical runner's Creation dashboard and its native
+navigation entry: a detached dashboard performs no read, an active entry opens
+the comparison page, a delayed response stays inert after departure/reappearance,
+and a fresh explicit entry still succeeds. Navigation methods and appearance
+stand-ins are managed tests, not Android touch/Activity evidence.
 
 Managed page/control tests do not establish Android handler behavior, native
 alerts, process-death upgrade behavior, APK authority or Play publication. Those

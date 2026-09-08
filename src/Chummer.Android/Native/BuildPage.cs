@@ -2238,17 +2238,7 @@ public sealed class BuildPage : NativePageBase
             // ordinary Skills editor. Core decides whether history is reviewable.
             _body.Add(CreationNavigationRow(CreationAllocationStrings.Get(
                 "SkillsReReview.Check", "Check older Skills choices for re-review"), null,
-                async () =>
-                {
-                    long generation = _creationDashboardAppearanceGeneration;
-                    var result = await Task.Run(() => Coordinator.LoadCreationSkillsReReview());
-                    if (generation != _creationDashboardAppearanceGeneration
-                        || _creationDashboardRouteReadyLifetime is not { IsCancellationRequested: false }) return;
-                    if (result.Value is { } state && CreationSkillsReReviewPhoneAuthority.Matches(state, Coordinator.State))
-                        await Navigation.PushAsync(new CreationSkillsReReviewPage(Coordinator, state));
-                    else await DisplayAlertAsync(CreationAllocationStrings.Get("SkillsReReview.Title", "Review older Skills choices"),
-                        CreationAllocationStrings.Get("SkillsReReview.Unavailable", "No supported historical Skills draft is available for this runner. Nothing was changed."), "OK");
-                }, enabled: true, automationId: "creation-skills-rereview-open"));
+                OpenCreationSkillsReReviewAsync, enabled: true, automationId: "creation-skills-rereview-open"));
         }
         CharacterCreationWizardStageState? active = snapshot.Steps.FirstOrDefault(stage =>
             string.Equals(stage.StepId, snapshot.ActiveStepId, StringComparison.Ordinal));
@@ -2634,6 +2624,21 @@ public sealed class BuildPage : NativePageBase
 
     private Task OpenCreationSkillsAsync(CharacterCreationSkillsState authority)
         => Navigation.PushAsync(new CreationSkillsPage(Coordinator, authority));
+
+    private async Task OpenCreationSkillsReReviewAsync()
+    {
+        // Capture the real dashboard appearance, not just a matching workspace.
+        // A read finishing after Back must not reopen a departed wizard page.
+        if (_creationDashboardRouteReadyLifetime is not { IsCancellationRequested: false }) return;
+        long generation = _creationDashboardAppearanceGeneration;
+        var result = await Task.Run(() => Coordinator.LoadCreationSkillsReReview());
+        if (generation != _creationDashboardAppearanceGeneration
+            || _creationDashboardRouteReadyLifetime is not { IsCancellationRequested: false }) return;
+        if (result.Value is { } state && CreationSkillsReReviewPhoneAuthority.Matches(state, Coordinator.State))
+            await Navigation.PushAsync(new CreationSkillsReReviewPage(Coordinator, state));
+        else await DisplayAlertAsync(CreationAllocationStrings.Get("SkillsReReview.Title", "Review older Skills choices"),
+            CreationAllocationStrings.Get("SkillsReReview.Unavailable", "No supported historical Skills draft is available for this runner. Nothing was changed."), "OK");
+    }
 
     private Task OpenCreationQualitiesAsync()
         => Navigation.PushAsync(new CreationQualitiesPage(Coordinator));
