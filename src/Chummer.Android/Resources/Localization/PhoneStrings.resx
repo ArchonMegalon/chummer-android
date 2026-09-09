@@ -234,5 +234,16 @@ No change has been saved yet.</value></data>
   <data name="TabletDraftDiscard" xml:space="preserve"><value>Discard this draft</value></data>
   <data name="TabletDraftDiscardTitle" xml:space="preserve"><value>Discard unapplied changes?</value></data>
   <data name="TabletDraftDiscardPrompt" xml:space="preserve"><value>Only this item's retained input will be removed. The saved runner and other drafts will not change.</value></data>
-  <data name="LinkedRunnerOutcomeUnconfirmed" xml:space="preserve"><value>The link outcome could not be confirmed. Reopen this runner before trying again; local files were retained.</value></data>
+  <data name="LinkedRunnerOutcomeUnconfirmed" xml:space="preserve"><value>The link outcome could not be confirmed. Open Linked-runner recovery from Runners; do not retry. Local files were retained.</value></data>
+  <data name="LinkedRecoveryTitle" xml:space="preserve"><value>Linked-runner recovery</value></data>
+  <data name="LinkedRecoveryUnavailable" xml:space="preserve"><value>Recovery is unavailable or damaged. No link was changed; keep local recovery files.</value></data>
+  <data name="LinkedRecoveryBoundary" xml:space="preserve"><value>These are local intents and state observations, not Core transaction receipts. Unresolved changes must not be retried.</value></data>
+  <data name="LinkedRecoveryReload" xml:space="preserve"><value>Context changed. Refresh recovery history.</value></data>
+  <data name="LinkedRecoveryUnresolved" xml:space="preserve"><value>Still unresolved. No change was replayed and no file was removed.</value></data>
+  <data name="LinkedRecoveryObserved" xml:space="preserve"><value>Requested state observed at the next revision; no historical commit attribution.</value></data>
+  <data name="LinkedRecoveryNotDispatched" xml:space="preserve"><value>Stopped before dispatch. The runner was not changed by this attempt.</value></data>
+  <data name="LinkedRecoveryPending" xml:space="preserve"><value>Outcome unknown — retain files and do not retry.</value></data>
+  <data name="LinkedRecoveryCheck" xml:space="preserve"><value>Check current saved state</value></data>
+  <data name="LinkedRecoveryPrevious" xml:space="preserve"><value>Previous</value></data>
+  <data name="LinkedRecoveryNext" xml:space="preserve"><value>Next</value></data>
 </root>

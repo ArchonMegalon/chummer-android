@@ -108,6 +108,15 @@ public class HomePage : NativePageBase, IPlayReviewSafeSurface
             await Navigation.PushAsync(new ApplicationSettingsPage(Coordinator));
         _body.Add(applicationSettings);
 
+        // Recovery remains reachable without a selected workspace, target, or
+        // successful ordinary runner initialization, on both phone and tablet.
+        Button linkedRecovery = NativeTheme.SecondaryButton(
+            PhoneStrings.Get("LinkedRecoveryTitle", "Linked-runner recovery"));
+        linkedRecovery.AutomationId = "home-linked-runner-recovery";
+        linkedRecovery.Clicked += async (_, _) =>
+            await Navigation.PushAsync(new LinkedCharacterRecoveryPage(Coordinator));
+        _body.Add(linkedRecovery);
+
         if (Coordinator.State.WorkspaceId is not null)
         {
             Button favorites = NativeTheme.SecondaryButton(

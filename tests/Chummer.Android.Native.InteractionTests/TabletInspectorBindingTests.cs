@@ -741,13 +741,15 @@ internal static class TabletInspectorBindingTests
     {
         public readonly TaskCompletionSource<AndroidStagedLinkedCharacter?> Picker = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public readonly AndroidStagedLinkedCharacter Staged = new("/test-private/new-link.chum5", "linked-characters/new-link.chum5",
-            "new-link.chum5", new("Linked runner", "Runner", "Alias", "Human", "", "", ""));
+            "new-link.chum5", new("Linked runner", "Runner", "Alias", "Human", "", "", "")) { ContentSha256 = new('a', 64) };
         public readonly List<string?> Deleted = [];
         public int StageCalls;
         public Task<AndroidStagedLinkedCharacter?> StageAsync(WorkspaceCollectionItemTarget target, CancellationToken token)
         { StageCalls++; return Picker.Task; }
         public Task DeleteOwnedAsync(WorkspaceCollectionItemTarget target, string? path, CancellationToken token)
         { Deleted.Add(path); return Task.CompletedTask; }
+        public Task<bool> MatchesStagedFileAsync(WorkspaceCollectionItemTarget target, string file, string hash, CancellationToken token)
+            => Task.FromResult(file == Staged.FileName && hash == Staged.ContentSha256);
     }
 
     internal sealed class Fixture : IDisposable
@@ -765,9 +767,13 @@ internal static class TabletInspectorBindingTests
         public int DialogCalls;
         public string Prompt = string.Empty;
         public Func<WorkspaceCollectionMutationRequest, Task>? CollectionResult;
+        public string LinkedJournalDirectory { get; } = Directory.CreateTempSubdirectory("chummer-linked-host-control-").FullName;
+        public AndroidLinkedCharacterIntentJournal LinkedJournal { get; }
 
         public Fixture(bool condition = false, bool mutable = false, bool nested = false, bool rich = false,
-            IAndroidLinkedCharacterFileService? linkedFiles = null)
+            IAndroidLinkedCharacterFileService? linkedFiles = null, IAndroidAccountLinkService? account = null,
+            IAndroidLinkedWorkspaceReader? linkedReader = null,
+            Func<IAndroidLinkedWorkspaceReader, IAndroidLinkedWorkspaceReader>? linkedReaderDecorator = null)
         {
             if (linkedFiles is not null)
                 State = State with { ActiveSectionId = "contacts", ActiveCollectionEditor = new("contacts", WorkspaceCollectionKind.Contact, null,
@@ -810,10 +816,13 @@ internal static class TabletInspectorBindingTests
                 }};
             var presenter = TabletMutationProxy.Create(() => State, Requests.Add, ConditionRequests.Add,
                 request => CollectionResult?.Invoke(request) ?? Task.FromCanceled(new CancellationToken(true)));
+            LinkedJournal = new AndroidLinkedCharacterIntentJournal(LinkedJournalDirectory);
+            linkedReader ??= new ControlledLinkedReader(() => State);
+            if (linkedReaderDecorator is not null) linkedReader = linkedReaderDecorator(linkedReader);
             Coordinator = new RunnerSessionCoordinator(presenter,
                 null!, null!, null!, null!, null!, null!, StrictPageProxy.Create<IShellPresenter>(),
-                null!, null!, null!, linkedFiles!, null!, StrictPageProxy.Create<IAndroidAccountLinkService>(),
-                null!, null!);
+                null!, null!, null!, linkedFiles!, null!, account ?? StrictPageProxy.Create<IAndroidAccountLinkService>(),
+                null!, null!, linkedCharacterJournal: LinkedJournal, linkedWorkspaceReader: linkedReader);
             Page = NewPage();
             Refresh();
         }
@@ -863,7 +872,43 @@ internal static class TabletInspectorBindingTests
             BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(Page, null);
         public void Depart() => typeof(TabletBuildPage).GetMethod("OnDisappearing",
             BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(Page, null);
-        public void Dispose() => Coordinator.Dispose();
+        public void Dispose()
+        {
+            Coordinator.Dispose();
+            Directory.Delete(LinkedJournalDirectory, recursive: true); // Only this fixture's fresh private directory.
+        }
+    }
+
+    private sealed class ControlledLinkedReader(Func<CharacterOverviewState> state) : IAndroidLinkedWorkspaceReader
+    {
+        public bool IsAvailable => true;
+        public AndroidLinkedOwner CurrentOwner => new("local-single-user", true);
+        public Task<AndroidLinkedOwner> ReadCurrentOwnerAsync(CancellationToken token)
+        {
+            token.ThrowIfCancellationRequested();
+            return Task.FromResult(CurrentOwner); // In-memory controlled owner, no file I/O.
+        }
+        public async Task<AndroidLinkedWorkspaceSnapshot?> ReadForMutationAsync(Chummer.Contracts.Workspaces.CharacterWorkspaceId id,
+            string section, WorkspaceCollectionMutationRequest request, CancellationToken token)
+        {
+            var snapshot = await ReadAsync(id, section, token);
+            return snapshot! with { ExpectedDocumentAuthoritySha256 =
+                Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(
+                    System.Text.Encoding.UTF8.GetBytes($"controlled:{snapshot.ContentRevision + 1}:{snapshot.SavedRevision}"))) };
+        }
+        public Task<AndroidLinkedWorkspaceSnapshot?> ReadAsync(Chummer.Contracts.Workspaces.CharacterWorkspaceId id,
+            string section, CancellationToken token)
+        {
+            token.ThrowIfCancellationRequested();
+            var current = state();
+            // Controlled host observation only; real canonical reads are exercised
+            // separately through actual Core/Presentation/native/FileWorkspaceStore.
+            return Task.FromResult<AndroidLinkedWorkspaceSnapshot?>(new(CurrentOwner, id.Value,
+                current.ContentRevision, current.SavedRevision,
+                Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(
+                    System.Text.Encoding.UTF8.GetBytes($"controlled:{current.ContentRevision}:{current.SavedRevision}"))),
+                current.ActiveCollectionEditor));
+        }
     }
 
     private static IEnumerable<Element> Elements(Element root)

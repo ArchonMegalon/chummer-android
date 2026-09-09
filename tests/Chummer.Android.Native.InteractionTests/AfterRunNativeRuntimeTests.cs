@@ -529,6 +529,7 @@ internal static partial class AfterRunAuthorityHarness
         public readonly CharacterOverviewPresenter Presenter;
         public readonly ShellPresenter Shell;
         public readonly RunnerSessionCoordinator Coordinator;
+        public AndroidLinkedCharacterIntentJournal LinkedJournal { get; }
         public ICharacterCareerReputationService ReputationService => _provider.GetRequiredService<ICharacterCareerReputationService>();
         public CharacterWorkspaceId Id;
 
@@ -590,6 +591,7 @@ internal static partial class AfterRunAuthorityHarness
                     : new Sr5AfterRunRewardCheckpointStore(
                     new FileSr5AfterRunRewardJournalBackend(StateDirectory),
                     new Sr5CareerMutationOwnerStore(new MemoryBackend()));
+                LinkedJournal = new AndroidLinkedCharacterIntentJournal(StateDirectory);
                 Coordinator = new RunnerSessionCoordinator(Presenter, Client, operations,
                     null!, null!, null!, null!, Shell,
                     _provider.GetRequiredService<IShellSurfaceResolver>(),
@@ -603,7 +605,11 @@ internal static partial class AfterRunAuthorityHarness
                         ? _provider.GetRequiredService<ICharacterCreationSkillsService>()
                         : skillsDecorator(_provider.GetRequiredService<ICharacterCreationSkillsService>()),
                     careerReputationService: reputationService,
-                    careerReputationJournal: reputation ? _provider.GetRequiredService<Sr5CareerReputationJournal>() : null);
+                    careerReputationJournal: reputation ? _provider.GetRequiredService<Sr5CareerReputationJournal>() : null,
+                    linkedCharacterJournal: LinkedJournal,
+                    linkedWorkspaceReader: new AndroidLinkedWorkspaceReader(Client, store,
+                        _provider.GetRequiredService<Chummer.Application.Owners.IOwnerContextAccessor>(),
+                        _provider.GetRequiredService<IRulesetWorkspaceCodecResolver>()));
             }
             catch
             {

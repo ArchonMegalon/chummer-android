@@ -290,6 +290,8 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
     private readonly ICommandAvailabilityEvaluator _availability;
     private readonly IAndroidDocumentService _documents;
     private readonly IAndroidLinkedCharacterFileService _linkedCharacters;
+    private readonly AndroidLinkedCharacterIntentJournal? _linkedJournal;
+    private readonly IAndroidLinkedWorkspaceReader? _linkedWorkspaceReader;
     private readonly IAndroidSystemService _system;
     private readonly IAndroidAccountLinkService _account;
     private readonly CharacterRosterFavoritePresenter _rosterFavoritePresenter;
@@ -360,7 +362,9 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         ICharacterAfterRunRewardService? afterRunRewardService = null,
         Sr5AfterRunRewardCheckpointStore? afterRunRewardCheckpoints = null,
         ICharacterCareerReputationService? careerReputationService = null,
-        Sr5CareerReputationJournal? careerReputationJournal = null)
+        Sr5CareerReputationJournal? careerReputationJournal = null,
+        AndroidLinkedCharacterIntentJournal? linkedCharacterJournal = null,
+        IAndroidLinkedWorkspaceReader? linkedWorkspaceReader = null)
     {
         _presenter = presenter;
         _client = client;
@@ -389,6 +393,8 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         _availability = availability;
         _documents = documents;
         _linkedCharacters = linkedCharacters;
+        _linkedJournal = linkedCharacterJournal;
+        _linkedWorkspaceReader = linkedWorkspaceReader;
         _system = system;
         _account = account;
         _rosterFavoritePresenter = rosterFavoritePresenter;
@@ -6492,7 +6498,7 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
                verified.Document.AuxiliaryStateDigest,
                StringComparison.Ordinal);
 
-    private static string ComputeDocumentAuthoritySha256(WorkspaceDocument document)
+    internal static string ComputeDocumentAuthoritySha256(WorkspaceDocument document)
     {
         using IncrementalHash digest = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         AppendAuthorityField(digest, "schema", WorkspaceAuthorityDigestSchema);

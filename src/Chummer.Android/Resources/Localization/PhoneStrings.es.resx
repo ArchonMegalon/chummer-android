@@ -234,5 +234,16 @@ Todavía no se ha guardado ningún cambio.</value></data>
   <data name="TabletDraftDiscard" xml:space="preserve"><value>Descartar este borrador</value></data>
   <data name="TabletDraftDiscardTitle" xml:space="preserve"><value>¿Descartar los cambios sin aplicar?</value></data>
   <data name="TabletDraftDiscardPrompt" xml:space="preserve"><value>Solo se descartarán los datos de este elemento. El runner guardado y los demás borradores no cambiarán.</value></data>
-  <data name="LinkedRunnerOutcomeUnconfirmed" xml:space="preserve"><value>No se pudo confirmar el resultado del vínculo. Vuelve a abrir este runner antes de intentarlo de nuevo; se conservaron los archivos locales.</value></data>
+  <data name="LinkedRunnerOutcomeUnconfirmed" xml:space="preserve"><value>No se pudo confirmar el resultado del vínculo. Abre la recuperación de vínculos en Runners; no lo intentes de nuevo. Se conservaron los archivos locales.</value></data>
+  <data name="LinkedRecoveryTitle" xml:space="preserve"><value>Recuperación de vínculos</value></data>
+  <data name="LinkedRecoveryUnavailable" xml:space="preserve"><value>La recuperación no está disponible o está dañada. No se cambió ningún vínculo; conserva los archivos locales de recuperación.</value></data>
+  <data name="LinkedRecoveryBoundary" xml:space="preserve"><value>Son intenciones locales y observaciones del estado, no recibos de transacción de Core. No se deben repetir cambios sin resolver.</value></data>
+  <data name="LinkedRecoveryReload" xml:space="preserve"><value>El contexto cambió. Actualiza el historial de recuperación.</value></data>
+  <data name="LinkedRecoveryUnresolved" xml:space="preserve"><value>Sigue sin resolverse. No se repitió ningún cambio ni se eliminó ningún archivo.</value></data>
+  <data name="LinkedRecoveryObserved" xml:space="preserve"><value>Estado solicitado observado en la revisión siguiente; sin atribuir una transacción histórica.</value></data>
+  <data name="LinkedRecoveryNotDispatched" xml:space="preserve"><value>Detenido antes del envío. Este intento no cambió el runner.</value></data>
+  <data name="LinkedRecoveryPending" xml:space="preserve"><value>Resultado desconocido: conserva los archivos y no lo intentes de nuevo.</value></data>
+  <data name="LinkedRecoveryCheck" xml:space="preserve"><value>Comprobar estado guardado</value></data>
+  <data name="LinkedRecoveryPrevious" xml:space="preserve"><value>Anterior</value></data>
+  <data name="LinkedRecoveryNext" xml:space="preserve"><value>Siguiente</value></data>
 </root>

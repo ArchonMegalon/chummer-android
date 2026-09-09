@@ -147,12 +147,12 @@
       {
         "path": "src/Chummer.Android/Native/HomePage.cs",
         "exists": true,
-        "sha256": "b4e2b1d5dc18db34fd6e5b13115ccd6cd63e75dffbf86e5c509d82bca7569db3"
+        "sha256": "b0ecee0bde0248acad54c064216b9e46292d535a67a6e73498d94fcfba4f05ab"
       },
       {
         "path": "src/Chummer.Android/MauiProgram.cs",
         "exists": true,
-        "sha256": "2fbf42f24e912e29787ad7dc26ed5717b47a4a736d9c5ff11609c577686dc5a5"
+        "sha256": "a29f73050c90dae168732daeb6f778c25d2cd18e093746b6e38f98ae74fdb20c"
       },
       {
         "path": "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
@@ -652,7 +652,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "fd61ce2e3637726609880402b38fbe62440d4a52b1d7807e14e92e380ad92a5d"
+        "sha256": "caaed75b17385c4d4e338f342c839bf1eb5b2c754332cda5455b228538f5969a"
       },
       {
         "path": "src/Chummer.Android/Native/RunnerSessionSr5CareerWizardPhoneAuthority.cs",
@@ -1012,7 +1012,7 @@
       {
         "path": "tests/test_chummer5_editability_inventory.py",
         "exists": true,
-        "sha256": "40c29b4c75c35bba96eb1c57fcf0e73c793b59316794d363d9d111dce78bbfad"
+        "sha256": "0d4e2933d4fec049d4b7d686a9f68be3edd42066576dc112013c640c9ba7045c"
       },
       {
         "path": "tests/test_sr5_contextual_wizard_scope.py",
@@ -1022,7 +1022,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.LinkedCharacters.cs",
         "exists": true,
-        "sha256": "fd6f8cf9ffe91d80dae87bb57f589b51daf685d18bf6a5252ea3bfd700d6f469"
+        "sha256": "8ec34144950b1c20c46d5905345013ef3f2607bd355641e0e2a89e4419d40228"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -1032,7 +1032,7 @@
       {
         "path": "src/Chummer.Android/Platform/IAndroidLinkedCharacterFileService.cs",
         "exists": true,
-        "sha256": "99bbf24911143b49da7ccaa6f3ece75038ec5ac1a5eea7eb03f87bc4ba14d435"
+        "sha256": "056e8fd78022d05606fb58564132fe35ad7d7b5cd39f901f96e6666a372e8079"
       },
       {
         "path": "src/Chummer.Android/Platform/AndroidPrivateFileDurability.cs",
@@ -1442,7 +1442,7 @@
       {
         "path": "tests/run_api36_linked_runner_e2e.py",
         "exists": true,
-        "sha256": "cd31559e0066947ff79a4f6b0d18318c4e9bd00579eddd2c9a6bc3e96a3f2dd0"
+        "sha256": "f0bf7449ab1401aa1e18e78f136969d62e02b61247bbc3c59b33143691f751d7"
       },
       {
         "path": "tests/run_api36_new_character_settings_e2e.py",
@@ -3010,7 +3010,7 @@
     },
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "fe879f6b4e01b4ed5c4568c02bd820c9316fb648a9049548c7eb5e6670d8e80f"
+      "sha256": "c56d12fc8a19b9503cd01af42d9f177899af41b16497eb4174109c475ea15272"
     }
   },
   "coverageByFamily": {
@@ -4142,11 +4142,16 @@
           "src/Chummer.Android/Native/TabletBuildPage.cs",
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "src/Chummer.Android/Native/RunnerSessionCoordinator.LinkedCharacters.cs",
+          "src/Chummer.Android/Native/AndroidLinkedCharacterIntentJournal.cs",
+          "src/Chummer.Android/Native/AndroidLinkedWorkspaceReader.cs",
+          "src/Chummer.Android/Native/LinkedCharacterRecoveryPage.cs",
           "src/Chummer.Android/Platform/IAndroidLinkedCharacterFileService.cs",
+          "src/Chummer.Android/Platform/AndroidPrivateFileDurability.cs",
           "chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
           "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
           "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
           "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceLinkedCharacterMutationPreview.cs",
           "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
         ]
       },
@@ -4159,11 +4164,16 @@
           "src/Chummer.Android/Native/TabletBuildPage.cs",
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "src/Chummer.Android/Native/RunnerSessionCoordinator.LinkedCharacters.cs",
+          "src/Chummer.Android/Native/AndroidLinkedCharacterIntentJournal.cs",
+          "src/Chummer.Android/Native/AndroidLinkedWorkspaceReader.cs",
+          "src/Chummer.Android/Native/LinkedCharacterRecoveryPage.cs",
           "src/Chummer.Android/Platform/IAndroidLinkedCharacterFileService.cs",
+          "src/Chummer.Android/Platform/AndroidPrivateFileDurability.cs",
           "chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
           "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
           "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
           "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceLinkedCharacterMutationPreview.cs",
           "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
         ]
       },
@@ -4221,11 +4231,16 @@
           "src/Chummer.Android/Native/TabletBuildPage.cs",
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "src/Chummer.Android/Native/RunnerSessionCoordinator.LinkedCharacters.cs",
+          "src/Chummer.Android/Native/AndroidLinkedCharacterIntentJournal.cs",
+          "src/Chummer.Android/Native/AndroidLinkedWorkspaceReader.cs",
+          "src/Chummer.Android/Native/LinkedCharacterRecoveryPage.cs",
           "src/Chummer.Android/Platform/IAndroidLinkedCharacterFileService.cs",
+          "src/Chummer.Android/Platform/AndroidPrivateFileDurability.cs",
           "chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
           "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
           "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
           "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceLinkedCharacterMutationPreview.cs",
           "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
         ]
       },
@@ -4238,11 +4253,16 @@
           "src/Chummer.Android/Native/TabletBuildPage.cs",
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "src/Chummer.Android/Native/RunnerSessionCoordinator.LinkedCharacters.cs",
+          "src/Chummer.Android/Native/AndroidLinkedCharacterIntentJournal.cs",
+          "src/Chummer.Android/Native/AndroidLinkedWorkspaceReader.cs",
+          "src/Chummer.Android/Native/LinkedCharacterRecoveryPage.cs",
           "src/Chummer.Android/Platform/IAndroidLinkedCharacterFileService.cs",
+          "src/Chummer.Android/Platform/AndroidPrivateFileDurability.cs",
           "chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
           "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
           "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
           "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceLinkedCharacterMutationPreview.cs",
           "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
         ]
       },
@@ -5511,11 +5531,16 @@
           "src/Chummer.Android/Native/TabletBuildPage.cs",
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "src/Chummer.Android/Native/RunnerSessionCoordinator.LinkedCharacters.cs",
+          "src/Chummer.Android/Native/AndroidLinkedCharacterIntentJournal.cs",
+          "src/Chummer.Android/Native/AndroidLinkedWorkspaceReader.cs",
+          "src/Chummer.Android/Native/LinkedCharacterRecoveryPage.cs",
           "src/Chummer.Android/Platform/IAndroidLinkedCharacterFileService.cs",
+          "src/Chummer.Android/Platform/AndroidPrivateFileDurability.cs",
           "chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
           "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
           "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
           "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceLinkedCharacterMutationPreview.cs",
           "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
         ]
       },
@@ -5528,11 +5553,16 @@
           "src/Chummer.Android/Native/TabletBuildPage.cs",
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "src/Chummer.Android/Native/RunnerSessionCoordinator.LinkedCharacters.cs",
+          "src/Chummer.Android/Native/AndroidLinkedCharacterIntentJournal.cs",
+          "src/Chummer.Android/Native/AndroidLinkedWorkspaceReader.cs",
+          "src/Chummer.Android/Native/LinkedCharacterRecoveryPage.cs",
           "src/Chummer.Android/Platform/IAndroidLinkedCharacterFileService.cs",
+          "src/Chummer.Android/Platform/AndroidPrivateFileDurability.cs",
           "chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
           "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
           "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
           "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceLinkedCharacterMutationPreview.cs",
           "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
         ]
       },
@@ -5590,11 +5620,16 @@
           "src/Chummer.Android/Native/TabletBuildPage.cs",
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "src/Chummer.Android/Native/RunnerSessionCoordinator.LinkedCharacters.cs",
+          "src/Chummer.Android/Native/AndroidLinkedCharacterIntentJournal.cs",
+          "src/Chummer.Android/Native/AndroidLinkedWorkspaceReader.cs",
+          "src/Chummer.Android/Native/LinkedCharacterRecoveryPage.cs",
           "src/Chummer.Android/Platform/IAndroidLinkedCharacterFileService.cs",
+          "src/Chummer.Android/Platform/AndroidPrivateFileDurability.cs",
           "chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
           "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
           "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
           "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceLinkedCharacterMutationPreview.cs",
           "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
         ]
       },
@@ -5607,11 +5642,16 @@
           "src/Chummer.Android/Native/TabletBuildPage.cs",
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "src/Chummer.Android/Native/RunnerSessionCoordinator.LinkedCharacters.cs",
+          "src/Chummer.Android/Native/AndroidLinkedCharacterIntentJournal.cs",
+          "src/Chummer.Android/Native/AndroidLinkedWorkspaceReader.cs",
+          "src/Chummer.Android/Native/LinkedCharacterRecoveryPage.cs",
           "src/Chummer.Android/Platform/IAndroidLinkedCharacterFileService.cs",
+          "src/Chummer.Android/Platform/AndroidPrivateFileDurability.cs",
           "chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
           "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
           "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
           "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceLinkedCharacterMutationPreview.cs",
           "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
         ]
       },

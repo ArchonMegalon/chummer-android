@@ -10,7 +10,10 @@ public sealed record AndroidStagedLinkedCharacter(
     string FileName,
     string RelativeFileName,
     string DisplayName,
-    CharacterLinkedDocument Identity);
+    CharacterLinkedDocument Identity)
+{
+    public string ContentSha256 { get; init; } = string.Empty;
+}
 
 public interface IAndroidLinkedCharacterFileService
 {
@@ -25,6 +28,9 @@ public interface IAndroidLinkedCharacterFileService
         WorkspaceCollectionItemTarget target,
         string? fileName,
         CancellationToken cancellationToken);
+
+    Task<bool> MatchesStagedFileAsync(WorkspaceCollectionItemTarget target, string fileName,
+        string expectedSha256, CancellationToken cancellationToken) => Task.FromResult(false);
 }
 
 public sealed class AndroidLinkedCharacterFileService : IAndroidLinkedCharacterFileService
@@ -83,9 +89,8 @@ public sealed class AndroidLinkedCharacterFileService : IAndroidLinkedCharacterF
 
                 string extension = ResolveExtension(displayName);
                 string targetPrefix = BuildTargetPrefix(target);
-                string contentHash = Convert.ToHexString(SHA256.HashData(selected.Content))
-                    .ToLowerInvariant()[..16];
-                string stagedFileName = $"{targetPrefix}-{contentHash}-{_newFileId():N}{extension}";
+                string contentHash = Convert.ToHexStringLower(SHA256.HashData(selected.Content));
+                string stagedFileName = $"{targetPrefix}-{contentHash[..16]}-{_newFileId():N}{extension}";
                 string root = ResolveRoot();
                 Directory.CreateDirectory(root);
                 // The linked-characters directory itself may have been created
@@ -119,13 +124,48 @@ public sealed class AndroidLinkedCharacterFileService : IAndroidLinkedCharacterF
                     FileName: finalPath,
                     RelativeFileName: $"{DirectoryName}/{stagedFileName}",
                     DisplayName: displayName,
-                    Identity: identity);
+                    Identity: identity) { ContentSha256 = contentHash };
             }, CancellationToken.None).ConfigureAwait(false);
         }
         finally
         {
             CryptographicOperations.ZeroMemory(selected.Content);
         }
+    }
+
+    public async Task<bool> MatchesStagedFileAsync(WorkspaceCollectionItemTarget target, string fileName,
+        string expectedSha256, CancellationToken cancellationToken)
+    {
+        ValidateTarget(target);
+        if (expectedSha256.Length != 64 || !expectedSha256.All(c => c is >= '0' and <= '9' or >= 'a' and <= 'f')
+            || !TryResolveOwnedPath(target, fileName, out string path)) return false;
+        return await Task.Run(() =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var file = new FileInfo(path);
+            if (!file.Exists || file.LinkTarget is not null || file.Length is <= 0 or > 8 * 1024 * 1024
+                || new DirectoryInfo(ResolveRoot()).LinkTarget is not null) return false;
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+            if (stream.Length != file.Length) return false;
+            using var digest = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+            Span<byte> buffer = stackalloc byte[8192];
+            try
+            {
+                long remaining = file.Length;
+                while (remaining > 0)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    int read = stream.Read(buffer[..(int)Math.Min(buffer.Length, remaining)]);
+                    if (read == 0) return false;
+                    digest.AppendData(buffer[..read]);
+                    remaining -= read;
+                }
+                cancellationToken.ThrowIfCancellationRequested();
+                return stream.ReadByte() == -1 && stream.Length == file.Length
+                    && Convert.ToHexStringLower(digest.GetHashAndReset()) == expectedSha256;
+            }
+            finally { CryptographicOperations.ZeroMemory(buffer); }
+        }, cancellationToken).ConfigureAwait(false);
     }
 
     public Task DeleteOwnedAsync(

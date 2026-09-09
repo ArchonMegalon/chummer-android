@@ -4803,10 +4803,14 @@ public sealed class Demo
             "linkedCharacterCoordinatorSha256": native_root / "Native" / "RunnerSessionCoordinator.LinkedCharacters.cs",
             "linkedCharacterFileServiceSha256": native_root / "Platform" / "IAndroidLinkedCharacterFileService.cs",
             "linkedFileDurabilitySha256": native_root / "Platform" / "AndroidPrivateFileDurability.cs",
+            "linkedIntentJournalSha256": native_root / "Native" / "AndroidLinkedCharacterIntentJournal.cs",
+            "linkedWorkspaceReaderSha256": native_root / "Native" / "AndroidLinkedWorkspaceReader.cs",
+            "linkedRecoveryPageSha256": native_root / "Native" / "LinkedCharacterRecoveryPage.cs",
             "linkedDocumentCodecSha256": inventory.WORKSPACE_ROOT / "chummer-core-engine" / "Chummer.Infrastructure" / "Xml" / "Chummer5LinkedDocumentCodec.cs",
             "workspaceCollectionEditorProjectorSha256": overview / "WorkspaceCollectionEditorProjector.cs",
             "workspaceCollectionEditorStateSha256": overview / "WorkspaceCollectionEditorState.cs",
             "workspaceCollectionMutationRequestSha256": overview / "WorkspaceCollectionMutationRequest.cs",
+            "workspaceLinkedCharacterMutationPreviewSha256": overview / "WorkspaceLinkedCharacterMutationPreview.cs",
             "workspaceXmlMutationCatalogSha256": overview / "WorkspaceXmlMutationCatalog.cs",
             "workspaceMutationsSha256": overview / "CharacterOverviewPresenter.WorkspaceMutations.cs",
             "inputFixtureSha256": fixture_root / "creation-contact-pet-e2e.chum5",
@@ -4853,6 +4857,7 @@ public sealed class Demo
                     "linkedDocumentCodecSha256",
                     "linkedCharacterCoordinatorSha256",
                     "linkedFileDurabilitySha256",
+                    "workspaceLinkedCharacterMutationPreviewSha256",
                     "invalidLinkedFixtureSha256",
                 ):
                     stale_receipt = {**receipt, stale_hash: "0" * 64}
@@ -4861,7 +4866,9 @@ public sealed class Demo
                         inventory._validated_linked_runner_phone_e2e_receipt(),
                         stale_hash,
                     )
-                for missing in ("linkedCharacterCoordinatorSha256", "linkedFileDurabilitySha256"):
+                for missing in ("linkedCharacterCoordinatorSha256", "linkedFileDurabilitySha256",
+                                "linkedIntentJournalSha256", "linkedWorkspaceReaderSha256", "linkedRecoveryPageSha256",
+                                "workspaceLinkedCharacterMutationPreviewSha256"):
                     missing_binding = {key: value for key, value in receipt.items() if key != missing}
                     receipt_path.write_text(json.dumps(missing_binding), encoding="utf-8")
                     self.assertIsNone(inventory._validated_linked_runner_phone_e2e_receipt(), missing)

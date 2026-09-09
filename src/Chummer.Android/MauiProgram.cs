@@ -106,6 +106,12 @@ public static class MauiProgram
             contentPath,
             contentPath,
             "android");
+        builder.Services.AddSingleton(new AndroidLinkedCharacterIntentJournal(statePath));
+        builder.Services.AddSingleton<IAndroidLinkedWorkspaceReader>(provider => new AndroidLinkedWorkspaceReader(
+            provider.GetRequiredService<Chummer.Presentation.IChummerClient>(),
+            provider.GetRequiredService<IWorkspaceStore>(),
+            provider.GetRequiredService<Chummer.Application.Owners.IOwnerContextAccessor>(),
+            provider.GetRequiredService<IRulesetWorkspaceCodecResolver>()));
         // The reward service uses the runtime's actual workspace store, never a
         // second Android store or a generic XML/currency mutation substitute.
         builder.Services.AddSingleton<ICharacterAfterRunRewardService>(provider =>
