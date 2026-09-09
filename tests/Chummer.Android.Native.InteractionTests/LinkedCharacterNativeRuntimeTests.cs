@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -22,10 +23,13 @@ internal static partial class AfterRunAuthorityHarness
 {
     private const string LinkedContactId = "11111111-1111-4111-8111-111111111111";
     private const string UntouchedContactId = "22222222-2222-4222-8222-222222222222";
+    private const string LinkedPetId = "33333333-3333-4333-8333-333333333333";
     private static readonly WorkspaceCollectionItemTarget LinkedContactTarget =
         new(WorkspaceCollectionKind.Contact, LinkedContactId);
+    private static readonly WorkspaceCollectionItemTarget LinkedPetTarget =
+        new(WorkspaceCollectionKind.Pet, LinkedPetId);
 
-    public static async Task RunLinkedCharacterNativeRuntimeCasesAsync(string contentRoot)
+    private static void RequireLinkedRuntimeContentRoot(string contentRoot)
     {
         if (!Path.IsPathFullyQualified(contentRoot) || !Directory.Exists(Path.Combine(contentRoot, "data")))
             throw new ArgumentException("Supply an explicit Core directory containing data/.", nameof(contentRoot));
@@ -34,6 +38,11 @@ internal static partial class AfterRunAuthorityHarness
             && typeof(RunnerSessionCoordinator).Assembly != typeof(Program).Assembly
             && typeof(Chummer5LinkedDocumentCodec).Assembly != typeof(Program).Assembly,
             "Link integration requires actual Core, Presentation and native assemblies, not test substitutes.");
+    }
+
+    public static async Task RunLinkedCharacterNativeRuntimeCasesAsync(string contentRoot)
+    {
+        RequireLinkedRuntimeContentRoot(contentRoot);
         await NativeLinkedAttachReplaceRemovePersistsAsync(contentRoot);
         await NativeLinkedPostCommitFailureRetainsFilesAsync(contentRoot);
         foreach (string drift in new[] { "missing-file", "later-revision", "deleted-target", "deleted-workspace" })
@@ -43,9 +52,404 @@ internal static partial class AfterRunAuthorityHarness
         Console.WriteLine("PASS 10 actual linked-character/native/runtime/file-store cases: exact host intent/current-effect observations, shared paths, post-commit failure, conservative drift and identity substitution; no operation lookup, Android process-death or checkpoint proof");
         await NativeLinkedReaderOwnerBoundariesAsync(contentRoot);
         await NativeLinkedOwnerReadCancellationJoinsAccessorAsync(contentRoot);
-        foreach (string boundary in new[] { "same-effect", "uncertain-acknowledgement", "owner-change" })
+        await RunLinkedOwnerAbaPublicationCasesAsync(contentRoot);
+        foreach (string boundary in new[] { "same-effect", "uncertain-acknowledgement", "owner-change", "owner-aba" })
             await NativeConcurrentLinkedRecoveryAsync(contentRoot, boundary);
-        Console.WriteLine("PASS 3 actual concurrent linked-recovery cases: one immutable observation, uncertain acknowledgement and live owner change; no mutation replay");
+        Console.WriteLine("PASS 4 actual concurrent linked-recovery cases: immutable observation, uncertain acknowledgement, changed owner and historical scope recovery after ABA; no mutation replay");
+    }
+
+    public static async Task RunLinkedOwnerAbaPublicationCasesAsync(string contentRoot)
+    {
+        RequireLinkedRuntimeContentRoot(contentRoot);
+        // The unchanged and persistent-change controls must pass before the ABA
+        // invariant is attempted. The controlled stamped authority is shared by
+        // the real native reader and mutation client; no Core receipt is fabricated.
+        foreach (string boundary in new[] { "unchanged-owner", "persistent-owner-change", "owner-aba", "dispatch-owner-aba" })
+        {
+            await NativeLinkedOwnerAbaDuringIntentPublicationAsync(contentRoot, boundary);
+            Console.WriteLine($"PASS linked owner publication boundary: {boundary}");
+        }
+        await NativeLinkedOwnerAbaDuringIntentPublicationAsync(contentRoot, "dispatch-owner-aba", LinkedPetTarget);
+        await NativeLinkedOwnerAbaDuringIntentPublicationAsync(contentRoot, "dispatch-owner-aba", LinkedContactTarget, attach: false);
+        await NativeLinkedOwnerAbaDuringIntentPublicationAsync(contentRoot, "dispatch-owner-aba", LinkedPetTarget, attach: false);
+        Console.WriteLine("PASS actual contact/pet attach/remove final-inspector ABA: original Core stamp rejects dispatch; canonical targets, immutable intent and retained prior link");
+        await NativeLinkedOwnerAbaDuringStagingAsync(contentRoot);
+        await RunLinkedStaleDisplayOwnerCaptureCaseAsync(contentRoot);
+    }
+
+    public static async Task RunLinkedStaleDisplayOwnerCaptureCaseAsync(string contentRoot)
+    {
+        RequireLinkedRuntimeContentRoot(contentRoot);
+        string appData = Directory.CreateTempSubdirectory("chummer-native-linked-display-owner-").FullName;
+        try
+        {
+            var owners = new ControlledLinkedOwner();
+            var documents = new LinkedRuntimeDocuments();
+            var files = new AndroidLinkedCharacterFileService(documents, new Chummer5LinkedDocumentCodec(), () => appData, Guid.NewGuid);
+            FirstLinkedOwnerCaptureReader? reader = null;
+            await using var runtime = new NativeRewardRuntime(contentRoot, linkedCharacters: files, linkedOwners: owners,
+                linkedReaderDecorator: inner => reader = new FirstLinkedOwnerCaptureReader(inner));
+            await runtime.LoadRunnerAsync(LinkedRuntimeRunnerXml);
+            await SelectLinkedContactsAsync(runtime);
+            OwnerScope ownerA = owners.Current;
+            OwnerScope ownerB = new("linked-identical-stale-display-owner-b");
+            CharacterOverviewState displayedByA = runtime.Coordinator.State;
+            WorkspaceStoredDocument beforeA = ReadLinkedWorkspace(runtime);
+            var store = new FileWorkspaceStore(runtime.StateDirectory);
+            // Deliberately identical canonical document, ID and revisions in two
+            // real Core partitions. Equality of editor bytes is not owner authority.
+            Require(store.CreateWorkspaceDocument(ownerB, runtime.Id, beforeA.Document).Success
+                && store.SaveCheckpoint(ownerB, runtime.Id, beforeA.ContentRevision).Success,
+                "Could not create the same-ID/revision canonical B fixture without changing the A display.");
+            WorkspaceStoredDocument beforeB = store.Get(ownerB, runtime.Id).Value!;
+            RequireSameRewardDocument(beforeA, beforeB);
+            Require(beforeA.Id == beforeB.Id && owners.Current == ownerA
+                && ReferenceEquals(runtime.Coordinator.State.ActiveCollectionEditor, displayedByA.ActiveCollectionEditor),
+                "The stale-display fixture did not retain its original A-owned presenter frame.");
+            var workspaceBytes = Directory.EnumerateFiles(runtime.StateDirectory, runtime.Id.Value + ".json", SearchOption.AllDirectories)
+                .ToDictionary(path => path, File.ReadAllBytes, StringComparer.Ordinal);
+            Require(workspaceBytes.Count == 2, "The collision fixture must have two actual serialized Core workspace files.");
+            Require(runtime.LinkedJournal.ReadAll(ownerA.NormalizedValue, ownerA.IsLocalSingleUser).Count == 0
+                && runtime.LinkedJournal.ReadAll(ownerB.NormalizedValue, ownerB.IsLocalSingleUser).Count == 0,
+                "The pre-capture fixture must start without any inserted intent or observation authority.");
+
+            documents.Enqueue("stale-display.chum5", LinkedRuntimeDocuments.FirstPayload);
+            reader!.Armed = true;
+            Task<bool> action = runtime.Coordinator.TryAttachBoundLinkedCharacterAsync(LinkedContactTarget, displayedByA, () => true);
+            bool applied = false;
+            Exception? actionFailure = null;
+            try
+            {
+                // This is before the first actual capture, not after A's stamp
+                // has been sampled. Capturing B later must not rebind A's view.
+                await reader.BeforeCapture.Task.WaitAsync(TimeSpan.FromSeconds(10));
+                Require(!action.IsCompleted && reader.Pauses == 1 && owners.ActiveLeases == 0 && documents.OpenCount == 0,
+                    "The stale A display did not stop before the first real owner capture and picker.");
+                owners.Set(ownerB);
+                reader.ReleaseCapture.TrySetResult();
+                try { applied = await action.WaitAsync(TimeSpan.FromSeconds(20)); }
+                catch (Exception error) { actionFailure = error; }
+            }
+            finally
+            {
+                reader.ReleaseCapture.TrySetResult();
+                try { await action; }
+                catch (Exception error) { actionFailure ??= error; }
+            }
+
+            var cold = new FileWorkspaceStore(runtime.StateDirectory);
+            WorkspaceStoredDocument afterA = cold.Get(runtime.Id).Value!;
+            WorkspaceStoredDocument afterB = cold.Get(ownerB, runtime.Id).Value!;
+            int intentsA = runtime.LinkedJournal.ReadAll(ownerA.NormalizedValue, ownerA.IsLocalSingleUser).Count;
+            int intentsB = runtime.LinkedJournal.ReadAll(ownerB.NormalizedValue, ownerB.IsLocalSingleUser).Count;
+            int stagedFiles = Directory.Exists(Path.Combine(appData, "linked-characters"))
+                ? Directory.EnumerateFiles(Path.Combine(appData, "linked-characters")).Count() : 0;
+            bool workspaceBytesUnchanged = workspaceBytes.All(entry => File.Exists(entry.Key)
+                && File.ReadAllBytes(entry.Key).SequenceEqual(entry.Value));
+            Console.WriteLine("LINKED_STALE_DISPLAY_OWNER_OBSERVATION " + JsonSerializer.Serialize(new
+            {
+                applied, error = actionFailure?.GetType().Name, intentsA, intentsB, stagedFiles,
+                pickerReads = documents.OpenCount, beforeARevision = beforeA.ContentRevision,
+                afterARevision = afterA.ContentRevision, beforeBRevision = beforeB.ContentRevision,
+                afterBRevision = afterB.ContentRevision, workspaceBytesUnchanged
+            }));
+            Require(reader.Pauses == 1 && reader.FirstCapturedStamp?.Owner == ownerB && owners.Current == ownerB,
+                "The fixture did not make the first real capture observe B after displaying A.");
+            Require(!applied && intentsA == 0 && intentsB == 0 && stagedFiles == 0 && workspaceBytesUnchanged,
+                "A stale A-owned display adopted B's first-captured authority: neither identical-ID owner partition may mutate, "
+                + "no intent may be published, and any newly staged file must be reclaimed.");
+            RequireSameRewardDocument(beforeA, afterA);
+            RequireSameRewardDocument(beforeB, afterB);
+            Require(beforeA.LastUpdatedUtc == afterA.LastUpdatedUtc && beforeB.LastUpdatedUtc == afterB.LastUpdatedUtc,
+                "Stale-display rejection changed one owner's persisted workspace metadata.");
+            Require(actionFailure is null or InvalidOperationException,
+                "The stale-display action failed for an unrelated exception: " + actionFailure?.GetType().Name);
+            Console.WriteLine("PASS actual stale A display / first B capture: identical Core ID/revisions/editor do not grant B mutation authority");
+        }
+        finally { Directory.Delete(appData, recursive: true); }
+    }
+
+    private static async Task NativeLinkedOwnerAbaDuringIntentPublicationAsync(string contentRoot, string boundary,
+        WorkspaceCollectionItemTarget? selectedTarget = null, bool attach = true)
+    {
+        WorkspaceCollectionItemTarget target = selectedTarget ?? LinkedContactTarget;
+        string appData = Directory.CreateTempSubdirectory("chummer-native-linked-owner-aba-").FullName;
+        try
+        {
+            var documents = new LinkedRuntimeDocuments();
+            var files = new AndroidLinkedCharacterFileService(documents, new Chummer5LinkedDocumentCodec(), () => appData, Guid.NewGuid);
+            var owners = new ControlledLinkedOwner();
+            var published = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            using var release = new ManualResetEventSlim(false);
+            bool armed = false;
+            int pauses = 0;
+            var existingIntentPaths = new HashSet<string>(StringComparer.Ordinal);
+            await using var runtime = new NativeRewardRuntime(contentRoot, linkedCharacters: files, linkedOwners: owners,
+                linkedJournalFactory: state => new AndroidLinkedCharacterIntentJournal(state, directory =>
+                {
+                    AndroidPrivateFileDurability.SyncDirectory(directory);
+                    if (!Volatile.Read(ref armed)
+                        || !directory.EndsWith("linked-character-intents-v1", StringComparison.Ordinal)
+                        || !Directory.EnumerateFiles(directory, "*.intent.json").Any(path => !existingIntentPaths.Contains(path))
+                        || Interlocked.CompareExchange(ref pauses, 1, 0) != 0) return;
+                    // This is the real post-rename/fsync Begin boundary, not an
+                    // Nth owner read. Begin still holds the journal ProcessGate.
+                    published.TrySetResult();
+                    if (!release.Wait(TimeSpan.FromSeconds(30)))
+                        throw new IOException("Owner-ABA fixture intent publication was not released.");
+                }));
+            await runtime.LoadRunnerAsync(target.Kind == WorkspaceCollectionKind.Pet
+                ? LinkedRuntimeRunnerXml.Replace("</contacts>", LinkedRuntimePetXml + "</contacts>", StringComparison.Ordinal)
+                : LinkedRuntimeRunnerXml);
+            await SelectLinkedAbaTargetAsync(runtime, target);
+            string? originalLinkedPath = null;
+            if (!attach)
+            {
+                // Removal starts from a real acknowledged native/Core attachment,
+                // not a fabricated editor or a journal entry inserted as authority.
+                documents.Enqueue("original-link.chum5", LinkedRuntimeDocuments.FirstPayload);
+                Require(await runtime.Coordinator.TryAttachBoundLinkedCharacterAsync(target, runtime.Coordinator.State, () => true),
+                    "The actual removal fixture could not establish its original saved link.");
+                await runtime.Presenter.LoadAsync(runtime.Id, default);
+                await SelectLinkedAbaTargetAsync(runtime, target);
+                WorkspaceLinkedCharacterState linked = runtime.Coordinator.State.ActiveCollectionEditor!.Items
+                    .Single(item => CollectionItemEditorPage.TargetsMatch(item.Target, target)).LinkedCharacter!;
+                Require(linked.CanRemove, "Canonical saved target does not authorize linked removal.");
+                RequireLinkedFile(linked, "original-link.chum5", LinkedRuntimeDocuments.FirstPayload);
+                originalLinkedPath = linked.FileName;
+            }
+            var productionReader = LinkedReader(runtime);
+            Require(productionReader is AndroidLinkedWorkspaceReader
+                && ReferenceEquals(owners, typeof(AndroidLinkedWorkspaceReader)
+                    .GetField("_owners", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(productionReader))
+                && ReferenceEquals(owners, typeof(InProcessChummerClient)
+                    .GetField("_ownerContextAccessor", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(runtime.Client)),
+                "The ABA fixture must share the actual runtime client/reader owner accessor.");
+            OwnerScope originalScope = owners.Current;
+            OwnerContextStamp originalStamp = owners.Capture();
+            AndroidLinkedOwner originalOwner = await productionReader.ReadCurrentOwnerAsync(default);
+            var priorRecords = runtime.LinkedJournal.Read(originalOwner.Scope, originalOwner.TrustedLocal, runtime.Id.Value);
+            Require(priorRecords.Count == (attach ? 0 : 1) && priorRecords.All(record => record.EffectObserved),
+                "Only a real acknowledged setup attachment may precede the tested command.");
+            string journalDirectory = Path.Combine(runtime.StateDirectory, "linked-character-intents-v1");
+            if (Directory.Exists(journalDirectory))
+                existingIntentPaths.UnionWith(Directory.EnumerateFiles(journalDirectory, "*.intent.json"));
+            var priorIntentBytes = existingIntentPaths.ToDictionary(path => path, File.ReadAllBytes, StringComparer.Ordinal);
+            WorkspaceStoredDocument before = ReadLinkedWorkspace(runtime);
+            CharacterOverviewState beforeUi = runtime.Coordinator.State;
+            if (attach) documents.Enqueue("owner-bound.chum5", LinkedRuntimeDocuments.FirstPayload);
+            Volatile.Write(ref armed, true);
+            int dispatchFlips = 0;
+            bool IsCurrentInspector()
+            {
+                // This callback is the final inspector check AFTER the last native
+                // owner read. Only the original stamp carried into Core can close
+                // this gap; another scope-equality check already returned A.
+                if (boundary == "dispatch-owner-aba" && Volatile.Read(ref pauses) == 1 && release.IsSet
+                    && Interlocked.CompareExchange(ref dispatchFlips, 1, 0) == 0)
+                {
+                    Require(owners.ActiveLeases == 0, "A native owner lease escaped across an awaited boundary.");
+                    owners.Set(new OwnerScope("different-owner-before-core-dispatch"));
+                    owners.Set(originalScope);
+                }
+                return true;
+            }
+            Task<bool> action = attach
+                ? runtime.Coordinator.TryAttachBoundLinkedCharacterAsync(target, beforeUi, IsCurrentInspector)
+                : runtime.Coordinator.TryRemoveBoundLinkedCharacterAsync(target, beforeUi, IsCurrentInspector);
+            bool applied = false;
+            Exception? actionFailure = null;
+            string? intentPath = null;
+            byte[]? intentBytes = null;
+            try
+            {
+                await published.Task.WaitAsync(TimeSpan.FromSeconds(10));
+                Require(!action.IsCompleted && Volatile.Read(ref pauses) == 1,
+                    "The actual intent-publication boundary was not held.");
+                Require(owners.ActiveLeases == 0, "An owner lease was held across durable journal publication.");
+                intentPath = Directory.EnumerateFiles(journalDirectory, "*.intent.json")
+                    .Single(path => !existingIntentPaths.Contains(path));
+                intentBytes = File.ReadAllBytes(intentPath);
+                Require(Directory.EnumerateFiles(journalDirectory, "*.observation.json").Count() == priorRecords.Count,
+                    "Owner transition did not precede the actual observation.");
+                RequireSameRewardDocument(before, ReadLinkedWorkspace(runtime));
+                // Never call journal.Read here: the paused Begin owns its lock.
+                if (boundary is "persistent-owner-change" or "owner-aba")
+                {
+                    var differentOwner = new OwnerScope("different-owner-during-linked-publication");
+                    owners.Set(differentOwner);
+                    Require(owners.Current == differentOwner, "The fixture did not switch away from the original owner.");
+                    if (boundary == "owner-aba")
+                    {
+                        owners.Set(originalScope);
+                        Require(owners.Current == originalScope, "The fixture did not switch back to the original owner.");
+                    }
+                }
+                release.Set();
+                try { applied = await action.WaitAsync(TimeSpan.FromSeconds(20)); }
+                catch (Exception error) { actionFailure = error; }
+            }
+            finally
+            {
+                release.Set();
+                // A timeout/assertion must not detach the real worker or dispose
+                // its runtime, staged bytes, journal directory or wait handle.
+                try { await action; }
+                catch (Exception error) { actionFailure ??= error; }
+            }
+            Require(actionFailure is null, $"Owner publication action faulted: {actionFailure?.GetType().Name}.");
+            if (boundary is "owner-aba" or "dispatch-owner-aba")
+            {
+                OwnerContextStamp returned = owners.Capture();
+                Require(returned.Owner == originalStamp.Owner && returned.AuthorityInstanceId == originalStamp.AuthorityInstanceId
+                    && returned.TransitionRevision == originalStamp.TransitionRevision + 2
+                    && (boundary != "dispatch-owner-aba" || dispatchFlips == 1),
+                    "The ABA fixture did not retain equal scope with a distinct original Core stamp.");
+            }
+            var allRecords = runtime.LinkedJournal.Read(originalOwner.Scope, originalOwner.TrustedLocal, runtime.Id.Value);
+            Require(allRecords.Count == priorRecords.Count + 1 && priorRecords.All(prior =>
+                JsonSerializer.Serialize(allRecords.Single(current => current.Intent.OperationId == prior.Intent.OperationId))
+                    == JsonSerializer.Serialize(prior))
+                && priorIntentBytes.All(prior => File.ReadAllBytes(prior.Key).SequenceEqual(prior.Value)),
+                "The ABA operation replaced or reinterpreted genuine prior attachment history.");
+            var record = allRecords.Single(current => !priorRecords.Any(prior => prior.Intent.OperationId == current.Intent.OperationId));
+            WorkspaceStoredDocument after = ReadLinkedWorkspace(runtime);
+            bool stagedExists = record.Intent.StagedFileName is { } stagedPath && File.Exists(stagedPath);
+            Require(intentPath is not null && intentBytes is not null
+                && File.ReadAllBytes(intentPath).SequenceEqual(intentBytes)
+                && record.Intent.OwnerScope == originalOwner.Scope
+                && record.Intent.TrustedLocalOwner == originalOwner.TrustedLocal
+                && record.Intent.ContentRevision == before.ContentRevision
+                && record.Intent.SavedRevision == before.SavedRevision
+                && record.Intent.DocumentAuthoritySha256 == RunnerSessionCoordinator.ComputeDocumentAuthoritySha256(before.Document)
+                && record.Intent.Attach == attach && CollectionItemEditorPage.TargetsMatch(record.Intent.Target, target)
+                && documents.OpenCount == 1,
+                "Owner publication fixture changed intent authority or replayed document selection.");
+            RequireLinkedIntentHasNoTransientStamp(intentBytes!, originalStamp);
+            WorkspaceCollectionMutationRequest originalRequest = attach
+                ? record.Intent.Attachment! : new WorkspaceRemoveLinkedCharacterRequest(target);
+            Require(record.Intent.RequestSha256 == Convert.ToHexStringLower(SHA256.HashData(
+                JsonSerializer.SerializeToUtf8Bytes(originalRequest, originalRequest.GetType()))),
+                "The original target/path-bound request digest changed across the owner boundary.");
+            if (!attach)
+                Require(record.Intent.StagedFileName is null && record.Intent.Attachment is null
+                    && File.Exists(originalLinkedPath) && File.ReadAllBytes(originalLinkedPath!).SequenceEqual(LinkedRuntimeDocuments.FirstPayload),
+                    "A rejected removal reclaimed or changed the original committed linked file.");
+            Console.WriteLine("LINKED_OWNER_PUBLICATION_OBSERVATION " + JsonSerializer.Serialize(new
+            {
+                boundary, targetKind = target.Kind.ToString(), attach, applied, beforeRevision = before.ContentRevision, afterRevision = after.ContentRevision,
+                savedRevision = after.SavedRevision, record.EffectObserved, record.NotDispatched,
+                stagedExists, pickerReads = documents.OpenCount,
+                documentUnchanged = RunnerSessionCoordinator.ComputeDocumentAuthoritySha256(before.Document)
+                    == RunnerSessionCoordinator.ComputeDocumentAuthoritySha256(after.Document)
+            }));
+            if (boundary == "unchanged-owner")
+            {
+                Require(applied && record.EffectObserved && !record.NotDispatched && stagedExists
+                    && after.ContentRevision == before.ContentRevision + 1 && after.SavedRevision == before.SavedRevision,
+                    "Unchanged-owner control did not commit exactly one acknowledged current effect.");
+                RequireOnlyLinkedAssociationChanged(before, after);
+                Require(File.ReadAllBytes(record.Intent.StagedFileName!).SequenceEqual(LinkedRuntimeDocuments.FirstPayload),
+                    "Unchanged-owner control did not retain the committed staged bytes.");
+            }
+            else
+            {
+                Require(!applied && record.NotDispatched && !record.EffectObserved && !stagedExists,
+                    $"Owner transition during durable intent publication must invalidate dispatch, even after A-to-B-to-A: "
+                    + $"boundary={boundary}, applied={applied}, revision={before.ContentRevision}->{after.ContentRevision}, "
+                    + $"effectObserved={record.EffectObserved}, notDispatched={record.NotDispatched}, stagedExists={stagedExists}.");
+                RequireSameRewardDocument(before, after);
+                Require(Directory.EnumerateFiles(Path.Combine(appData, "linked-characters")).Count() == (attach ? 0 : 1),
+                    "Rejected owner transition retained uncommitted staging or reclaimed a previously committed file.");
+            }
+        }
+        finally { Directory.Delete(appData, recursive: true); } // This test's fresh private directory only.
+    }
+
+    private static void RequireLinkedIntentHasNoTransientStamp(byte[] intentBytes, OwnerContextStamp originalStamp)
+    {
+        string raw = Encoding.UTF8.GetString(intentBytes);
+        using JsonDocument intent = JsonDocument.Parse(intentBytes);
+        Require(!raw.Contains(originalStamp.AuthorityInstanceId, StringComparison.Ordinal)
+            && !ContainsTransientProperty(intent.RootElement),
+            "A transient authority issuer or transition revision leaked into the stable durable intent identity.");
+
+        static bool ContainsTransientProperty(JsonElement element)
+            => element.ValueKind switch
+            {
+                JsonValueKind.Object => element.EnumerateObject().Any(property =>
+                    property.Name.Equals("authorityInstanceId", StringComparison.OrdinalIgnoreCase)
+                    || property.Name.Equals("transitionRevision", StringComparison.OrdinalIgnoreCase)
+                    || ContainsTransientProperty(property.Value)),
+                JsonValueKind.Array => element.EnumerateArray().Any(ContainsTransientProperty),
+                _ => false
+            };
+    }
+
+    private static async Task SelectLinkedAbaTargetAsync(NativeRewardRuntime runtime, WorkspaceCollectionItemTarget target)
+    {
+        if (target.Kind == WorkspaceCollectionKind.Contact)
+        {
+            await SelectLinkedContactsAsync(runtime);
+            return;
+        }
+
+        await runtime.Coordinator.SelectTabAsync("tab-relationships");
+        var petsAction = runtime.Coordinator.Surface.WorkspaceActions.Single(action => action.Id == "tab-relationships.pets");
+        await runtime.Coordinator.ExecuteWorkspaceActionAsync(petsAction);
+        CharacterOverviewState state = runtime.Coordinator.State;
+        Require(state.WorkspaceId == runtime.Id && state.ActiveSectionId == "pets"
+            && runtime.Presenter.State.Error is null && state.ActiveCollectionEditor?.Items.Count == 1,
+            $"Actual pets projection is unavailable: {runtime.Presenter.State.Error}");
+        WorkspaceCollectionItemEditorState pet = state.ActiveCollectionEditor!.Items.Single();
+        AndroidLinkedWorkspaceSnapshot? snapshot = await LinkedReader(runtime).ReadAsync(runtime.Id, "pets", default);
+        Require(CollectionItemEditorPage.TargetsMatch(pet.Target, LinkedPetTarget)
+            && pet.LinkedCharacter is { CanAttach: true }
+            && snapshot is not null && snapshot.Contacts.Count == 1 && snapshot.Contacts.Single().Guid == LinkedPetId
+            && snapshot.DocumentAuthoritySha256 == RunnerSessionCoordinator.ComputeDocumentAuthoritySha256(ReadLinkedWorkspace(runtime).Document)
+            && JsonSerializer.Serialize(snapshot.Editor) == JsonSerializer.Serialize(state.ActiveCollectionEditor),
+            "The actual saved Core pet identity/reader/presenter must agree; a synthetic editor is not fixture authority.");
+    }
+
+    private static async Task NativeLinkedOwnerAbaDuringStagingAsync(string contentRoot)
+    {
+        string appData = Directory.CreateTempSubdirectory("chummer-native-linked-stage-aba-").FullName;
+        try
+        {
+            var owners = new ControlledLinkedOwner();
+            var documents = new LinkedRuntimeDocuments();
+            int transitions = 0;
+            bool armed = false;
+            var files = new AndroidLinkedCharacterFileService(documents, new Chummer5LinkedDocumentCodec(),
+                () => appData, Guid.NewGuid, syncDirectory: directory =>
+                {
+                    AndroidPrivateFileDurability.SyncDirectory(directory);
+                    if (!armed || Interlocked.CompareExchange(ref transitions, 1, 0) != 0) return;
+                    Require(owners.ActiveLeases == 0, "The original owner lease crossed asynchronous file staging.");
+                    OwnerScope original = owners.Current;
+                    owners.Set(new OwnerScope("owner-during-linked-stage"));
+                    owners.Set(original);
+                });
+            await using var runtime = new NativeRewardRuntime(contentRoot, linkedCharacters: files, linkedOwners: owners);
+            await runtime.LoadRunnerAsync(LinkedRuntimeRunnerXml);
+            await SelectLinkedContactsAsync(runtime);
+            WorkspaceStoredDocument before = ReadLinkedWorkspace(runtime);
+            CharacterOverviewState beforeUi = runtime.Coordinator.State;
+            OwnerContextStamp originalStamp = owners.Capture();
+            documents.Enqueue("staging-aba.chum5", LinkedRuntimeDocuments.FirstPayload);
+            armed = true;
+            Require(!await runtime.Coordinator.TryAttachBoundLinkedCharacterAsync(LinkedContactTarget, beforeUi, () => true),
+                "A scope-equal ABA during real file staging authorized a new link mutation.");
+            OwnerContextStamp after = owners.Capture();
+            Require(transitions == 1 && after.Owner == originalStamp.Owner
+                && after.TransitionRevision == originalStamp.TransitionRevision + 2 && owners.ActiveLeases == 0
+                && documents.OpenCount == 1 && runtime.LinkedJournal.ReadAll(after.Owner.NormalizedValue, after.Owner.IsLocalSingleUser).Count == 0
+                && !Directory.EnumerateFiles(Path.Combine(appData, "linked-characters")).Any(),
+                "Staging ABA lost original authority, replayed selection, began a journal or retained undispatched bytes.");
+            RequireSameRewardDocument(before, ReadLinkedWorkspace(runtime));
+            Console.WriteLine("PASS actual linked staging ABA: original stamped action rejected, real file cleaned, no journal or mutation");
+        }
+        finally { Directory.Delete(appData, recursive: true); } // This fixture's fresh private directory only.
     }
 
     private static async Task NativeConcurrentLinkedRecoveryAsync(string contentRoot, string boundary)
@@ -93,7 +497,13 @@ internal static partial class AfterRunAuthorityHarness
                 // their first canonical snapshot before either may publish.
                 await reader.BothPending.Task.WaitAsync(TimeSpan.FromSeconds(5));
                 Require(!File.Exists(observationPath), "Concurrent fixture did not stop before observation publication.");
-                if (boundary == "owner-change") owners.Set(new OwnerScope("different-live-link-owner"));
+                if (boundary is "owner-change" or "owner-aba")
+                {
+                    Require(owners.ActiveLeases == 0, "Recovery retained a reader lease across an await.");
+                    OwnerScope original = owners.Current;
+                    owners.Set(new OwnerScope("different-live-link-owner"));
+                    if (boundary == "owner-aba") owners.Set(original);
+                }
                 reader.Release.TrySetResult();
                 try { outcomes = await both.WaitAsync(TimeSpan.FromSeconds(20)); }
                 catch (Exception error) { failure = error; }
@@ -107,7 +517,7 @@ internal static partial class AfterRunAuthorityHarness
             }
             var record = runtime.LinkedJournal.Read(pending.Intent.OwnerScope,
                 pending.Intent.TrustedLocalOwner, runtime.Id.Value).Single();
-            if (boundary == "same-effect")
+            if (boundary is "same-effect" or "owner-aba")
             {
                 Require(failure is null && outcomes is [true, true],
                     $"Concurrent read-only checks misreported one healthy observation as failure: {failure?.GetType().Name}.");
@@ -135,6 +545,40 @@ internal static partial class AfterRunAuthorityHarness
         finally { Directory.Delete(appData, recursive: true); } // This test's fresh private directory only.
     }
 
+    private sealed class FirstLinkedOwnerCaptureReader(IAndroidLinkedWorkspaceReader inner) : IAndroidLinkedWorkspaceReader
+    {
+        private int _pauses;
+        public IAndroidLinkedWorkspaceReader Inner => inner;
+        public bool Armed { get; set; }
+        public int Pauses => Volatile.Read(ref _pauses);
+        public OwnerContextStamp? FirstCapturedStamp { get; private set; }
+        public TaskCompletionSource BeforeCapture { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource ReleaseCapture { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public bool IsAvailable => inner.IsAvailable;
+        public AndroidLinkedOwner CurrentOwner => inner.CurrentOwner;
+        public async Task<OwnerContextStamp> CaptureOwnerContextAsync(CancellationToken token)
+        {
+            bool first = Armed && Interlocked.CompareExchange(ref _pauses, 1, 0) == 0;
+            if (first)
+            {
+                BeforeCapture.TrySetResult();
+                await ReleaseCapture.Task.ConfigureAwait(false);
+            }
+            OwnerContextStamp captured = await inner.CaptureOwnerContextAsync(token).ConfigureAwait(false);
+            if (first) FirstCapturedStamp = captured;
+            return captured;
+        }
+        public Task<AndroidLinkedOwner> ReadCurrentOwnerAsync(CancellationToken token) => inner.ReadCurrentOwnerAsync(token);
+        public Task<AndroidLinkedWorkspaceSnapshot?> ReadAsync(CharacterWorkspaceId id, string section, CancellationToken token)
+            => inner.ReadAsync(id, section, token);
+        public Task<AndroidLinkedWorkspaceSnapshot?> ReadForMutationAsync(OwnerContextStamp expectedOwner,
+            CharacterWorkspaceId id, string section, WorkspaceCollectionMutationRequest request, CancellationToken token)
+            => inner.ReadForMutationAsync(expectedOwner, id, section, request, token);
+        public Task<AndroidLinkedWorkspaceSnapshot?> ReadForMutationAsync(CharacterWorkspaceId id, string section,
+            WorkspaceCollectionMutationRequest request, CancellationToken token)
+            => inner.ReadForMutationAsync(id, section, request, token);
+    }
+
     private sealed class ConcurrentLinkedReader(IAndroidLinkedWorkspaceReader inner) : IAndroidLinkedWorkspaceReader
     {
         private int _reads;
@@ -144,7 +588,11 @@ internal static partial class AfterRunAuthorityHarness
         public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public bool IsAvailable => inner.IsAvailable;
         public AndroidLinkedOwner CurrentOwner => inner.CurrentOwner;
+        public Task<OwnerContextStamp> CaptureOwnerContextAsync(CancellationToken token) => inner.CaptureOwnerContextAsync(token);
         public Task<AndroidLinkedOwner> ReadCurrentOwnerAsync(CancellationToken token) => inner.ReadCurrentOwnerAsync(token);
+        public Task<AndroidLinkedWorkspaceSnapshot?> ReadForMutationAsync(OwnerContextStamp expectedOwner,
+            CharacterWorkspaceId id, string section, WorkspaceCollectionMutationRequest request, CancellationToken token)
+            => inner.ReadForMutationAsync(expectedOwner, id, section, request, token);
         public Task<AndroidLinkedWorkspaceSnapshot?> ReadForMutationAsync(CharacterWorkspaceId id, string section,
             WorkspaceCollectionMutationRequest request, CancellationToken token)
             => inner.ReadForMutationAsync(id, section, request, token);
@@ -256,7 +704,7 @@ internal static partial class AfterRunAuthorityHarness
         }
         Require(canceledAfterRelease && pending is { IsCanceled: true } && exited.IsSet && runtime.Owners.ReadCount == 1,
             "The production owner read did not report cancellation after joining exactly one completed accessor read.");
-        Console.WriteLine("PASS actual linked-reader async owner read: exact scope, precancellation without access, responsive caller and joined cancellation; no owner lease or Android device proof");
+        Console.WriteLine("PASS actual linked-reader async owner read: exact scope, precancellation without access, responsive caller and joined cancellation; controlled accessor, no Desktop writer or Android device proof");
     }
 
     private static async Task NativeLinkedReaderOwnerBoundariesAsync(string contentRoot)
@@ -276,6 +724,22 @@ internal static partial class AfterRunAuthorityHarness
         runtime.Owners.Set(local);
         Require(runtime.Reader.IsAvailable && runtime.Reader.CurrentOwner == new AndroidLinkedOwner(local.NormalizedValue, true),
             "The actual runtime's privileged local sentinel was not retained.");
+        var codecs = (IRulesetWorkspaceCodecResolver)typeof(AndroidLinkedWorkspaceReader)
+            .GetField("_codecs", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(runtime.Reader)!;
+        var scopeOnly = new AndroidLinkedWorkspaceReader(runtime.Client, runtime.Store, new ScopeOnlyLinkedOwner(), codecs);
+        Require(!scopeOnly.IsAvailable && await scopeOnly.ReadAsync(localDocument.Id, "contacts", default) is null,
+            "Scope-only owner polling was silently upgraded to actual lease authority.");
+        var foreignOwners = new ControlledLinkedOwner();
+        var foreignAuthority = new AndroidLinkedWorkspaceReader(runtime.Client, runtime.Store, foreignOwners, codecs);
+        Require(await foreignAuthority.ReadAsync(localDocument.Id, "contacts", default) is null,
+            "A same-scope reader with a different authority issuer obtained workspace evidence.");
+        Require(await foreignAuthority.ReadForMutationAsync(foreignOwners.Capture(), localDocument.Id, "contacts",
+            new WorkspaceRemoveLinkedCharacterRequest(LinkedContactTarget), default) is null,
+            "An explicit stamp from the foreign reader's own issuer bypassed the real mutation client's authority.");
+        bool foreignCaptureRejected = false;
+        try { _ = await foreignAuthority.CaptureOwnerContextAsync(default); }
+        catch (InvalidOperationException) { foreignCaptureRejected = true; }
+        Require(foreignCaptureRejected, "A foreign reader issuer adopted the actual client's stamp.");
         await RequireOwnedLinkedSnapshotAsync(runtime, local, localDocument);
         var remove = new WorkspaceRemoveLinkedCharacterRequest(LinkedContactTarget);
         var preview = await runtime.Reader.ReadForMutationAsync(localDocument.Id, "contacts", remove, default);
@@ -342,24 +806,22 @@ internal static partial class AfterRunAuthorityHarness
             await RequireOwnedLinkedSnapshotAsync(runtime, partition.Owner, partition.Stored);
         }
 
-        // Accessor reads occur at initial capture, after the first actual stored
-        // read, after the second stored read, and after canonical projection.
-        // Each injected change persists (A -> B); this intentionally proves no
-        // owner-ABA detection and does not claim a lease over owner identity.
-        foreach (int changeAt in new[] { 2, 3, 4 })
+        // The original stamp is an actual authority generation, not a scope
+        // reconstructed after returning to A. Every failed preview is read-only.
+        foreach (string drift in new[] { "persistent", "aba", "foreign-authority" })
         {
-            foreach (bool mutationPreview in new[] { false, true })
+            runtime.Owners.Set(accountA);
+            OwnerContextStamp original = await runtime.Reader.CaptureOwnerContextAsync(default);
+            if (drift == "foreign-authority") original = original with { AuthorityInstanceId = Guid.NewGuid().ToString("N") };
+            else
             {
-                runtime.Owners.ChangeOnRead(accountA, accountB, changeAt);
-                AndroidLinkedWorkspaceSnapshot? changed = mutationPreview
-                    ? await runtime.Reader.ReadForMutationAsync(sharedId, "contacts", remove, default)
-                    : await runtime.Reader.ReadAsync(sharedId, "contacts", default);
-                Require(runtime.Owners.ChangeApplied && runtime.Owners.ReadCount == changeAt,
-                    $"The controlled live-owner change was not observed at reader checkpoint {changeAt}.");
-                Require(changed is null,
-                    $"Reader returned an observation across a persistent owner change at checkpoint {changeAt}.");
+                runtime.Owners.Set(accountB);
+                if (drift == "aba") runtime.Owners.Set(accountA);
             }
+            Require(await runtime.Reader.ReadForMutationAsync(original, sharedId, "contacts", remove, default) is null,
+                $"The real reader accepted an original {drift} owner stamp for mutation preview.");
         }
+        await RequireLinkedReaderLeaseExcludesWriterAsync(runtime, accountA, accountB, sharedId, remove);
         runtime.Owners.Set(accountB);
         await RequireOwnedLinkedSnapshotAsync(runtime, accountB, sharedB);
 
@@ -381,7 +843,54 @@ internal static partial class AfterRunAuthorityHarness
                 "Owner-bound read checks changed or lost a real persisted workspace.");
             RequireSameRewardDocument(pair.Before, pair.After!);
         }
-        Console.WriteLine("PASS 4 actual linked-reader owner-boundary groups: trusted local, forged local rejection, account partition isolation, and persistent owner changes; no owner-ABA or Android process-death proof");
+        Console.WriteLine("PASS actual linked-reader owner boundaries: trusted/forged local, account partitions, stale/ABA/foreign stamps and synchronous writer exclusion; controlled lease authority, no Desktop writer or Android process-death proof");
+    }
+
+    private static async Task RequireLinkedReaderLeaseExcludesWriterAsync(LinkedOwnerRuntime runtime,
+        OwnerScope accountA, OwnerScope accountB, CharacterWorkspaceId workspaceId,
+        WorkspaceCollectionMutationRequest request)
+    {
+        runtime.Owners.Set(accountA);
+        OwnerContextStamp original = await runtime.Reader.CaptureOwnerContextAsync(default);
+        using var entered = new ManualResetEventSlim();
+        using var release = new ManualResetEventSlim();
+        using var writerEntered = new ManualResetEventSlim();
+        runtime.Owners.AfterAcquire = () =>
+        {
+            entered.Set();
+            if (!release.Wait(TimeSpan.FromSeconds(10)))
+                throw new TimeoutException("The real reader's synchronous owner lease was not released.");
+        };
+        runtime.Owners.BeforeWrite = () => writerEntered.Set();
+        Task<AndroidLinkedWorkspaceSnapshot?> read = runtime.Reader.ReadForMutationAsync(
+            original, workspaceId, "contacts", request, default);
+        Task? writer = null;
+        AndroidLinkedWorkspaceSnapshot? observed = null;
+        try
+        {
+            Require(entered.Wait(TimeSpan.FromSeconds(5)), "The real reader did not acquire its original owner lease.");
+            writer = Task.Run(() => runtime.Owners.Set(accountB));
+            Require(writerEntered.Wait(TimeSpan.FromSeconds(5)) && !writer.IsCompleted
+                && runtime.Owners.ActiveLeases == 1,
+                "A mutable owner writer crossed the reader's live exclusion boundary.");
+        }
+        finally
+        {
+            release.Set();
+            try { observed = await read; }
+            finally
+            {
+                if (writer is not null) await writer;
+                runtime.Owners.AfterAcquire = null;
+                runtime.Owners.BeforeWrite = null;
+            }
+        }
+        Require(observed is not null && observed.Owner == new AndroidLinkedOwner(accountA.NormalizedValue, false)
+            && runtime.Owners.ActiveLeases == 0 && runtime.Owners.Current == accountB,
+            "Reader lease did not preserve A's exact observation and release its same-thread writer exclusion.");
+        runtime.Owners.Set(accountA);
+        Require(await runtime.Reader.ReadForMutationAsync(original, workspaceId, "contacts", request, default) is null,
+            "A completed A-to-B-to-A writer transition revived the original reader stamp.");
     }
 
     private static async Task RequireOwnedLinkedSnapshotAsync(
@@ -707,7 +1216,12 @@ internal static partial class AfterRunAuthorityHarness
     private static async Task<AndroidLinkedWorkspaceSnapshot> RequireLinkedReaderMatchesPresenterAsync(NativeRewardRuntime runtime)
     {
         IAndroidLinkedWorkspaceReader reader = LinkedReader(runtime);
-        IAndroidLinkedWorkspaceReader productionReader = reader is ConcurrentLinkedReader timed ? timed.Inner : reader;
+        IAndroidLinkedWorkspaceReader productionReader = reader switch
+        {
+            ConcurrentLinkedReader timed => timed.Inner,
+            FirstLinkedOwnerCaptureReader captured => captured.Inner,
+            _ => reader
+        };
         Require(productionReader is AndroidLinkedWorkspaceReader,
             "The timing decorator must still wrap the actual production reader.");
         CharacterOverviewState expected = runtime.Coordinator.State;
@@ -1027,61 +1541,91 @@ internal static partial class AfterRunAuthorityHarness
         }
     }
 
-    private sealed class ControlledLinkedOwner : IOwnerContextAccessor
+    private sealed class ScopeOnlyLinkedOwner : IOwnerContextAccessor
+    {
+        public OwnerScope Current => OwnerScope.LocalSingleUser;
+    }
+
+    // Test-only authority shared by the actual Core client and native reader.
+    // Its writer uses the same gate as live leases; it is not a runtime adapter
+    // over Current and does not stand in for Desktop install-writer evidence.
+    private sealed class ControlledLinkedOwner : IOwnerContextLeaseAccessor
     {
         private readonly object _gate = new();
+        private readonly string _authorityId = Guid.NewGuid().ToString("N");
         private OwnerScope _current = OwnerScope.LocalSingleUser;
-        private OwnerScope _next;
-        private int _changeAt;
+        private long _revision;
         private int _reads;
-        private bool _changed;
+        private int _activeLeases;
+        private int _leaseThread;
 
         public int ReadCount { get { lock (_gate) return _reads; } }
-        public bool ChangeApplied { get { lock (_gate) return _changed; } }
+        public int ActiveLeases => Volatile.Read(ref _activeLeases);
         public Action? BeforeRead { get; set; }
         public Action? AfterRead { get; set; }
-        public OwnerScope Current
+        public Action? AfterAcquire { get; set; }
+        public Action? BeforeWrite { get; set; }
+        public OwnerScope Current => Capture().Owner;
+        private OwnerContextStamp Stamp => new(_current, _authorityId, _revision);
+
+        public OwnerContextStamp Capture()
         {
-            get
+            try
             {
-                try
+                BeforeRead?.Invoke();
+                lock (_gate)
                 {
-                    BeforeRead?.Invoke();
-                    lock (_gate)
-                    {
-                        _reads++;
-                        if (_changeAt > 0 && _reads == _changeAt)
-                        {
-                            _current = _next;
-                            _changed = true;
-                        }
-                        return _current;
-                    }
+                    _reads++;
+                    return Stamp;
                 }
-                finally { AfterRead?.Invoke(); }
             }
+            finally { AfterRead?.Invoke(); }
         }
 
         public void Set(OwnerScope owner)
         {
+            BeforeWrite?.Invoke();
             lock (_gate)
             {
+                if (_activeLeases != 0)
+                    throw new InvalidOperationException("Owner writer re-entered an active same-thread lease.");
+                if (_current != owner) _revision = checked(_revision + 1);
                 _current = owner;
-                _changeAt = 0;
                 _reads = 0;
-                _changed = false;
             }
         }
 
-        public void ChangeOnRead(OwnerScope before, OwnerScope after, int readNumber)
+        public bool TryAcquire(OwnerContextStamp expected, [NotNullWhen(true)] out IOwnerContextLease? lease)
         {
-            lock (_gate)
+            lease = null;
+            Monitor.Enter(_gate);
+            if (!expected.IsValid || expected != Stamp || _activeLeases != 0)
             {
-                _current = before;
-                _next = after;
-                _changeAt = readNumber;
-                _reads = 0;
-                _changed = false;
+                Monitor.Exit(_gate);
+                return false;
+            }
+            _leaseThread = Environment.CurrentManagedThreadId;
+            Volatile.Write(ref _activeLeases, 1);
+            var acquired = new ControlledLease(this, expected);
+            try { AfterAcquire?.Invoke(); }
+            catch { acquired.Dispose(); throw; }
+            lease = acquired;
+            return true;
+        }
+
+        private sealed class ControlledLease(ControlledLinkedOwner authority, OwnerContextStamp stamp) : IOwnerContextLease
+        {
+            private bool _disposed;
+            public OwnerContextStamp Stamp => !_disposed ? stamp : throw new ObjectDisposedException(nameof(ControlledLease));
+            public void Dispose()
+            {
+                if (_disposed) return;
+                if (authority._leaseThread != Environment.CurrentManagedThreadId)
+                    throw new InvalidOperationException("An owner lease crossed an asynchronous/thread boundary.");
+                _disposed = true;
+                authority._leaseThread = 0;
+                Volatile.Write(ref authority._activeLeases, 0);
+                Monitor.Exit(authority._gate);
             }
         }
     }
@@ -1108,6 +1652,11 @@ internal static partial class AfterRunAuthorityHarness
         public Task<bool> SaveAsAsync(string name, string type, Stream content, CancellationToken token)
             => throw new InvalidOperationException("Link staging must not export or checkpoint a runner.");
     }
+
+    private const string LinkedRuntimePetXml = """
+        <contact><guid>33333333-3333-4333-8333-333333333333</guid><name>Original pet</name>
+        <metatype>Hell Hound</metatype><type>Pet</type><notes>Keep original pet notes</notes></contact>
+        """;
 
     private const string LinkedRuntimeRunnerXml = """
         <character><name>Native linked runner</name><gameedition>SR5</gameedition>

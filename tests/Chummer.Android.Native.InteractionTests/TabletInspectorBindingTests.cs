@@ -1,6 +1,9 @@
 using System.Reflection;
 using Chummer.Android.Native;
 using Chummer.Android.Platform;
+using Chummer.Application.Owners;
+using Chummer.Contracts.Owners;
+using Chummer.Presentation;
 using Chummer.Presentation.Overview;
 using Chummer.Presentation.Shell;
 using Microsoft.Maui.Controls;
@@ -9,6 +12,7 @@ internal static class TabletInspectorBindingTests
 {
     private const string ItemAId = "11111111-1111-4111-8111-111111111111";
     private const string ItemBId = "22222222-2222-4222-8222-222222222222";
+    private static readonly OwnerContextStamp LinkedDisplayOwner = new(OwnerScope.LocalSingleUser, "controlled-tablet-host", 0);
     public static async Task RunAsync()
     {
         UnsavedCollectionDraftSurvivesSelectionAndRefresh();
@@ -776,7 +780,7 @@ internal static class TabletInspectorBindingTests
             Func<IAndroidLinkedWorkspaceReader, IAndroidLinkedWorkspaceReader>? linkedReaderDecorator = null)
         {
             if (linkedFiles is not null)
-                State = State with { ActiveSectionId = "contacts", ActiveCollectionEditor = new("contacts", WorkspaceCollectionKind.Contact, null,
+                State = State with { DisplayOwnerContext = LinkedDisplayOwner, ActiveSectionId = "contacts", ActiveCollectionEditor = new("contacts", WorkspaceCollectionKind.Contact, null,
                     State.ActiveCollectionEditor!.Items.Select(item => item with
                     { Target = new(WorkspaceCollectionKind.Contact, item.Target.ItemId),
                         LinkedCharacter = new(true, true, "/test-private/prior.chum5", "linked-characters/prior.chum5", "prior.chum5", true, true)
@@ -881,8 +885,14 @@ internal static class TabletInspectorBindingTests
 
     private sealed class ControlledLinkedReader(Func<CharacterOverviewState> state) : IAndroidLinkedWorkspaceReader
     {
+        private static OwnerContextStamp Stamp => LinkedDisplayOwner;
         public bool IsAvailable => true;
         public AndroidLinkedOwner CurrentOwner => new("local-single-user", true);
+        public Task<OwnerContextStamp> CaptureOwnerContextAsync(CancellationToken token)
+        {
+            token.ThrowIfCancellationRequested();
+            return Task.FromResult(Stamp); // Host-control fixture, not production lease proof.
+        }
         public Task<AndroidLinkedOwner> ReadCurrentOwnerAsync(CancellationToken token)
         {
             token.ThrowIfCancellationRequested();
@@ -896,6 +906,11 @@ internal static class TabletInspectorBindingTests
                 Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(
                     System.Text.Encoding.UTF8.GetBytes($"controlled:{snapshot.ContentRevision + 1}:{snapshot.SavedRevision}"))) };
         }
+        public Task<AndroidLinkedWorkspaceSnapshot?> ReadForMutationAsync(OwnerContextStamp expectedOwner,
+            Chummer.Contracts.Workspaces.CharacterWorkspaceId id, string section,
+            WorkspaceCollectionMutationRequest request, CancellationToken token)
+            => expectedOwner == Stamp ? ReadForMutationAsync(id, section, request, token)
+                : Task.FromResult<AndroidLinkedWorkspaceSnapshot?>(null);
         public Task<AndroidLinkedWorkspaceSnapshot?> ReadAsync(Chummer.Contracts.Workspaces.CharacterWorkspaceId id,
             string section, CancellationToken token)
         {
@@ -927,6 +942,8 @@ internal static class TabletInspectorBindingTests
     }
 }
 
+public interface ITabletOwnerBoundMutationTestPresenter : ICharacterOverviewPresenter, IOwnerBoundWorkspaceMutationPresenter { }
+
 public class TabletMutationProxy : DispatchProxy
 {
     private Func<CharacterOverviewState> _state = null!;
@@ -939,7 +956,7 @@ public class TabletMutationProxy : DispatchProxy
         Action<ConditionMonitorEditRequest> condition,
         Func<WorkspaceCollectionMutationRequest, Task>? collectionResult = null)
     {
-        var instance = Create<ICharacterOverviewPresenter, TabletMutationProxy>();
+        var instance = Create<ITabletOwnerBoundMutationTestPresenter, TabletMutationProxy>();
         var proxy = (TabletMutationProxy)(object)instance;
         proxy._state = state;
         proxy._observe = observe;
@@ -961,6 +978,9 @@ public class TabletMutationProxy : DispatchProxy
         }
         if (name == "ApplyCollectionMutationAsync")
         {
+            if (args!.Length == 3)
+                return ApplyBoundAsync((WorkspaceCollectionMutationRequest)args[0]!,
+                    (OwnerContextStamp)args[1]!, (CancellationToken)args[2]!);
             _observe((WorkspaceCollectionMutationRequest)args![0]!);
             if (_collectionResult is not null)
                 return _collectionResult((WorkspaceCollectionMutationRequest)args[0]!);
@@ -969,5 +989,17 @@ public class TabletMutationProxy : DispatchProxy
             return Task.FromCanceled(new CancellationToken(canceled: true));
         }
         throw new InvalidOperationException($"Unexpected tablet dependency: {name}");
+    }
+
+    private async Task<OwnerBoundWorkspaceMutationDispatch> ApplyBoundAsync(
+        WorkspaceCollectionMutationRequest request, OwnerContextStamp stamp, CancellationToken token)
+    {
+        if (token.IsCancellationRequested)
+            return OwnerBoundWorkspaceMutationDispatch.NotDispatched;
+        if (!stamp.IsValid) throw new InvalidOperationException("The host dropped its original owner stamp.");
+        _observe(request);
+        await (_collectionResult?.Invoke(request) ?? Task.FromCanceled(new CancellationToken(true)));
+        // This test boundary does not establish any Core write or receipt.
+        return OwnerBoundWorkspaceMutationDispatch.Dispatched;
     }
 }

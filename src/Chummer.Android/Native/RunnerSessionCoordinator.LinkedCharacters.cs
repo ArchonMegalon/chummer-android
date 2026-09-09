@@ -1,6 +1,8 @@
 using System.Security.Cryptography;
 using System.Text.Json;
 using Chummer.Android.Platform;
+using Chummer.Application.Owners;
+using Chummer.Presentation;
 using Chummer.Presentation.Overview;
 
 namespace Chummer.Android.Native;
@@ -15,7 +17,7 @@ public sealed partial class RunnerSessionCoordinator
         if (item?.LinkedCharacter is not { CanAttach: true }) return false;
         string authority = LinkedEditorAuthority(expected, item);
         if (!LinkedEditorIsCurrent(expected, target, authority, isCurrentInspector)) return false;
-        AndroidLinkedOwner owner = await RequireLinkedOwnerAsync(cancellationToken);
+        OwnerContextStamp owner = await RequireLinkedOwnerStampAsync(expected, cancellationToken);
         if (!LinkedEditorIsCurrent(expected, target, authority, isCurrentInspector)) return false;
 
         // The platform service returns a fresh exclusively-created staging file.
@@ -29,30 +31,33 @@ public sealed partial class RunnerSessionCoordinator
             return await WithWorkspaceActivationGateAsync(async () =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                if (!await LinkedOwnerIsCurrentAsync(owner, cancellationToken)
+                if (!await LinkedOwnerStampIsCurrentAsync(owner, cancellationToken)
                     || !LinkedEditorIsCurrent(expected, target, authority, isCurrentInspector)) return false;
                 var request = new WorkspaceSetLinkedCharacterRequest(
                     target, staged.FileName, staged.RelativeFileName, staged.DisplayName, staged.Identity);
                 AndroidLinkedCharacterIntent intent = await CaptureLinkedIntentAsync(
                     owner, expected, authority, request, staged, cancellationToken);
-                if (!await LinkedOwnerIsCurrentAsync(owner, cancellationToken)
+                if (!await LinkedOwnerStampIsCurrentAsync(owner, cancellationToken)
                     || !LinkedEditorIsCurrent(expected, target, authority, isCurrentInspector)) return false;
                 custodyAttempted = true;
                 await Task.Run(() => _linkedJournal!.Begin(intent), CancellationToken.None);
                 // The final editor check follows owner-file I/O: navigation
                 // during that await must never dispatch into another workspace.
-                if (cancellationToken.IsCancellationRequested
-                    || !await LinkedOwnerIsCurrentAsync(owner, CancellationToken.None)
-                    || cancellationToken.IsCancellationRequested
-                    || !LinkedEditorIsCurrent(expected, target, authority, isCurrentInspector))
+                bool currentOwner = await LinkedOwnerStampIsCurrentAsync(owner, CancellationToken.None);
+                using var dispatchCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                if (!currentOwner || !LinkedEditorIsCurrent(expected, target, authority, isCurrentInspector))
+                    dispatchCancellation.Cancel();
+                dispatched = true; // Escaping exceptions are unknown, never non-dispatch evidence.
+                OwnerBoundWorkspaceMutationDispatch dispatch = await ApplyOwnerBoundLinkedMutationCoreAsync(
+                    request, owner, dispatchCancellation.Token);
+                if (dispatch == OwnerBoundWorkspaceMutationDispatch.NotDispatched)
                 {
                     await AbandonUndispatchedLinkedIntentAsync(intent);
+                    dispatched = false;
                     custodyAttempted = false;
                     cancellationToken.ThrowIfCancellationRequested();
                     return false;
                 }
-                dispatched = true; // Task failure after this point is not non-commit proof.
-                await ApplyCollectionMutationCoreAsync(request, cancellationToken);
                 bool observed = LinkedSuccessorIsCurrent(expected)
                     && UniqueLinkedItem(State, target)?.LinkedCharacter is { IsLinked: true, IdentityResolved: true } linked
                     && linked.FileName == staged.FileName && linked.RelativeFileName == staged.RelativeFileName
@@ -86,31 +91,33 @@ public sealed partial class RunnerSessionCoordinator
         if (item?.LinkedCharacter is not { CanRemove: true }) return false;
         string authority = LinkedEditorAuthority(expected, item);
         if (!LinkedEditorIsCurrent(expected, target, authority, isCurrentInspector)) return false;
-        AndroidLinkedOwner owner = await RequireLinkedOwnerAsync(cancellationToken);
+        OwnerContextStamp owner = await RequireLinkedOwnerStampAsync(expected, cancellationToken);
         if (!LinkedEditorIsCurrent(expected, target, authority, isCurrentInspector)) return false;
         return await WithWorkspaceActivationGateAsync(async () =>
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (!await LinkedOwnerIsCurrentAsync(owner, cancellationToken)
+            if (!await LinkedOwnerStampIsCurrentAsync(owner, cancellationToken)
                 || !LinkedEditorIsCurrent(expected, target, authority, isCurrentInspector)) return false;
             try
             {
                 var request = new WorkspaceRemoveLinkedCharacterRequest(target);
                 AndroidLinkedCharacterIntent intent = await CaptureLinkedIntentAsync(
                     owner, expected, authority, request, null, cancellationToken);
-                if (!await LinkedOwnerIsCurrentAsync(owner, cancellationToken)
+                if (!await LinkedOwnerStampIsCurrentAsync(owner, cancellationToken)
                     || !LinkedEditorIsCurrent(expected, target, authority, isCurrentInspector)) return false;
                 await Task.Run(() => _linkedJournal!.Begin(intent), CancellationToken.None);
-                if (cancellationToken.IsCancellationRequested
-                    || !await LinkedOwnerIsCurrentAsync(owner, CancellationToken.None)
-                    || cancellationToken.IsCancellationRequested
-                    || !LinkedEditorIsCurrent(expected, target, authority, isCurrentInspector))
+                bool currentOwner = await LinkedOwnerStampIsCurrentAsync(owner, CancellationToken.None);
+                using var dispatchCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                if (!currentOwner || !LinkedEditorIsCurrent(expected, target, authority, isCurrentInspector))
+                    dispatchCancellation.Cancel();
+                OwnerBoundWorkspaceMutationDispatch dispatch = await ApplyOwnerBoundLinkedMutationCoreAsync(
+                    request, owner, dispatchCancellation.Token);
+                if (dispatch == OwnerBoundWorkspaceMutationDispatch.NotDispatched)
                 {
                     await AbandonUndispatchedLinkedIntentAsync(intent);
                     cancellationToken.ThrowIfCancellationRequested();
                     return false;
                 }
-                await ApplyCollectionMutationCoreAsync(request, cancellationToken);
                 bool observed = LinkedSuccessorIsCurrent(expected)
                     && UniqueLinkedItem(State, target)?.LinkedCharacter is { IsLinked: false, FileName.Length: 0, RelativeFileName.Length: 0 };
                 observed = observed && await ObserveLinkedIntentAsync(intent, cancellationToken);
@@ -131,6 +138,47 @@ public sealed partial class RunnerSessionCoordinator
         return await _linkedWorkspaceReader.ReadCurrentOwnerAsync(token);
     }
 
+    private async Task<OwnerContextStamp> RequireLinkedOwnerStampAsync(CharacterOverviewState expected, CancellationToken token)
+    {
+        if (_linkedJournal is null || _linkedWorkspaceReader?.IsAvailable != true
+            || _presenter is not IOwnerBoundWorkspaceMutationPresenter
+            || expected.DisplayOwnerContext is not { IsValid: true } originalOwner)
+            throw new InvalidOperationException(PhoneStrings.Get("LinkedRecoveryUnavailable",
+                "Linked-runner recovery is unavailable. No link was changed."));
+        // Obtain display provenance synchronously from the exact immutable frame,
+        // never from a newly scheduled owner-file read. The background read below
+        // validates that original authority; it cannot grant B authority to an A
+        // view even when both partitions have identical workspace/editor bytes.
+        OwnerContextStamp current = await _linkedWorkspaceReader.CaptureOwnerContextAsync(token);
+        if (current != originalOwner)
+            throw new InvalidOperationException("The displayed runner belongs to an earlier owner context. Reopen it before linking.");
+        // Keep this original stamp transient through every subsequent await.
+        return originalOwner;
+    }
+
+    private async Task<bool> LinkedOwnerStampIsCurrentAsync(OwnerContextStamp owner, CancellationToken token)
+    {
+        if (_disposed || _linkedWorkspaceReader?.IsAvailable != true) return false;
+        OwnerContextStamp current = await _linkedWorkspaceReader.CaptureOwnerContextAsync(token);
+        return !_disposed && current == owner;
+    }
+
+    private async Task<OwnerBoundWorkspaceMutationDispatch> ApplyOwnerBoundLinkedMutationCoreAsync(
+        WorkspaceCollectionMutationRequest request, OwnerContextStamp originalOwner, CancellationToken token)
+    {
+        var presenter = _presenter as IOwnerBoundWorkspaceMutationPresenter
+            ?? throw new InvalidOperationException("Owner-bound linked mutation dispatch is unavailable.");
+        OwnerBoundWorkspaceMutationDispatch dispatch = await presenter.ApplyCollectionMutationAsync(
+            request, originalOwner, token);
+        if (dispatch != OwnerBoundWorkspaceMutationDispatch.NotDispatched)
+        {
+            _notice = State.Error is null ? "Runner item updated." : null;
+            await SyncShellAsync(token);
+            NotifyChanged();
+        }
+        return dispatch;
+    }
+
     private async Task<bool> LinkedOwnerIsCurrentAsync(AndroidLinkedOwner owner, CancellationToken token)
     {
         if (_disposed || _linkedWorkspaceReader?.IsAvailable != true) return false;
@@ -138,13 +186,14 @@ public sealed partial class RunnerSessionCoordinator
         return !_disposed && current == owner;
     }
 
-    private async Task<AndroidLinkedCharacterIntent> CaptureLinkedIntentAsync(AndroidLinkedOwner owner,
+    private async Task<AndroidLinkedCharacterIntent> CaptureLinkedIntentAsync(OwnerContextStamp owner,
         CharacterOverviewState expected, string editorAuthority, WorkspaceCollectionMutationRequest request,
         AndroidStagedLinkedCharacter? staged, CancellationToken token)
     {
         AndroidLinkedWorkspaceSnapshot? snapshot = await _linkedWorkspaceReader!.ReadForMutationAsync(
-            expected.WorkspaceId!.Value, expected.ActiveSectionId!, request, token);
-        if (snapshot is null || snapshot.Owner != owner || !await LinkedOwnerIsCurrentAsync(owner, token)
+            owner, expected.WorkspaceId!.Value, expected.ActiveSectionId!, request, token);
+        if (snapshot is null || snapshot.Owner != new AndroidLinkedOwner(owner.Owner.NormalizedValue, owner.Owner.IsLocalSingleUser)
+            || !await LinkedOwnerStampIsCurrentAsync(owner, token)
             || snapshot.WorkspaceId != expected.WorkspaceId.Value.Value
             || snapshot.ContentRevision != expected.ContentRevision || snapshot.SavedRevision != expected.SavedRevision
             || snapshot.ExpectedDocumentAuthoritySha256 is not { Length: 64 }
@@ -154,7 +203,9 @@ public sealed partial class RunnerSessionCoordinator
         if (staged is not null && !await _linkedCharacters.MatchesStagedFileAsync(
             request.Target, staged.FileName, staged.ContentSha256, token))
             throw new InvalidDataException("The selected linked-runner file changed before dispatch.");
-        return new(Guid.NewGuid(), owner.Scope, owner.TrustedLocal, snapshot.WorkspaceId,
+        // Persist only stable owner scope. The transient authority epoch is not
+        // a filesystem partition, operation identity or historical recovery key.
+        return new(Guid.NewGuid(), owner.Owner.NormalizedValue, owner.Owner.IsLocalSingleUser, snapshot.WorkspaceId,
             snapshot.ContentRevision, snapshot.SavedRevision, snapshot.DocumentAuthoritySha256, snapshot.ExpectedDocumentAuthoritySha256,
             editorAuthority, expected.ActiveSectionId!, request.Target, staged is not null,
             Convert.ToHexStringLower(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(request, request.GetType()))),
@@ -162,8 +213,8 @@ public sealed partial class RunnerSessionCoordinator
     }
 
     private Task AbandonUndispatchedLinkedIntentAsync(AndroidLinkedCharacterIntent intent)
-        // Called only before entering the owner mutation, while this invocation
-        // still holds the activation gate. Never offered as a recovery action.
+        // Called only after a joined typed NotDispatched result, while this
+        // invocation still holds the activation gate. Never a recovery action.
         => Task.Run(() => _linkedJournal!.AbandonBeforeDispatch(intent.OperationId,
             intent.OwnerScope, intent.TrustedLocalOwner, intent.WorkspaceId), CancellationToken.None);
 
@@ -245,6 +296,7 @@ public sealed partial class RunnerSessionCoordinator
 
     private bool LinkedSuccessorIsCurrent(CharacterOverviewState expected)
         => !_disposed && !State.IsBusy && State.Error is null && State.WorkspaceId == expected.WorkspaceId
+            && State.DisplayOwnerContext == expected.DisplayOwnerContext
             && State.ActiveSectionId == expected.ActiveSectionId
             && expected.ContentRevision < long.MaxValue
             && State.ContentRevision == expected.ContentRevision + 1
@@ -259,6 +311,7 @@ public sealed partial class RunnerSessionCoordinator
         WorkspaceCollectionItemEditorState? item = UniqueLinkedItem(current, target);
         return !_disposed && !current.IsBusy && current.Error is null && expected.WorkspaceId is not null
             && current.WorkspaceId == expected.WorkspaceId
+            && current.DisplayOwnerContext == expected.DisplayOwnerContext
             && current.ContentRevision == expected.ContentRevision && current.SavedRevision == expected.SavedRevision
             && current.ActiveSectionId == expected.ActiveSectionId
             && ReferenceEquals(current.ActiveCollectionEditor, expected.ActiveCollectionEditor)

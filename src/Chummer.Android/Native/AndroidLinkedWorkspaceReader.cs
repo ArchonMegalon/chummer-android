@@ -36,11 +36,16 @@ public interface IAndroidLinkedWorkspaceReader
 {
     bool IsAvailable { get; }
     AndroidLinkedOwner CurrentOwner { get; }
+    Task<OwnerContextStamp> CaptureOwnerContextAsync(CancellationToken cancellationToken);
     Task<AndroidLinkedOwner> ReadCurrentOwnerAsync(CancellationToken cancellationToken);
     Task<AndroidLinkedWorkspaceSnapshot?> ReadAsync(
         CharacterWorkspaceId workspaceId, string sectionId, CancellationToken cancellationToken);
     Task<AndroidLinkedWorkspaceSnapshot?> ReadForMutationAsync(CharacterWorkspaceId workspaceId,
         string sectionId, WorkspaceCollectionMutationRequest request, CancellationToken cancellationToken)
+        => Task.FromResult<AndroidLinkedWorkspaceSnapshot?>(null);
+    Task<AndroidLinkedWorkspaceSnapshot?> ReadForMutationAsync(OwnerContextStamp expectedOwner,
+        CharacterWorkspaceId workspaceId, string sectionId, WorkspaceCollectionMutationRequest request,
+        CancellationToken cancellationToken)
         => Task.FromResult<AndroidLinkedWorkspaceSnapshot?>(null);
 }
 
@@ -55,6 +60,7 @@ public sealed class AndroidLinkedWorkspaceReader : IAndroidLinkedWorkspaceReader
     private static readonly JsonSerializerOptions SectionJson = new(JsonSerializerDefaults.Web);
     private readonly IWorkspaceStore _store;
     private readonly IOwnerContextAccessor _owners;
+    private readonly IOwnerBoundWorkspaceMutationClient? _ownerClient;
     private readonly IRulesetWorkspaceCodecResolver _codecs;
 
     public AndroidLinkedWorkspaceReader(IChummerClient client, IWorkspaceStore store,
@@ -63,10 +69,12 @@ public sealed class AndroidLinkedWorkspaceReader : IAndroidLinkedWorkspaceReader
         ArgumentNullException.ThrowIfNull(client);
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _owners = owners ?? throw new ArgumentNullException(nameof(owners));
+        _ownerClient = client as IOwnerBoundWorkspaceMutationClient;
         _codecs = codecs ?? throw new ArgumentNullException(nameof(codecs));
         // HTTP clients and in-memory compatibility stores cannot establish the
         // owner-bound persisted authority of this Android file-runtime adapter.
-        IsAvailable = client is InProcessChummerClient && store is FileWorkspaceStore;
+        IsAvailable = client is InProcessChummerClient && store is FileWorkspaceStore
+            && owners is IOwnerContextLeaseAccessor && _ownerClient is not null;
     }
 
     public bool IsAvailable { get; }
@@ -77,8 +85,38 @@ public sealed class AndroidLinkedWorkspaceReader : IAndroidLinkedWorkspaceReader
         {
             if (!IsAvailable)
                 throw new InvalidOperationException("Owner-bound local linked-runner reads are unavailable.");
-            return Describe(_owners.Current);
+            return Describe(CaptureOwnerContext().Owner);
         }
+    }
+
+    /// <summary>
+    /// Capture from the actual mutation client and validate against the same
+    /// authority supplied to this reader. An accessor that only exposes Current
+    /// cannot be upgraded into a lease authority by polling its owner name.
+    /// </summary>
+    public async Task<OwnerContextStamp> CaptureOwnerContextAsync(CancellationToken cancellationToken)
+        => await Task.Run(() =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            OwnerContextStamp stamp = CaptureOwnerContext();
+            cancellationToken.ThrowIfCancellationRequested();
+            return stamp;
+        }, CancellationToken.None).ConfigureAwait(false);
+
+    private OwnerContextStamp CaptureOwnerContext()
+    {
+        if (!IsAvailable || _owners is not IOwnerContextLeaseAccessor owners)
+            throw new InvalidOperationException("The actual local owner lease authority is unavailable.");
+        OwnerContextStamp stamp = _ownerClient!.CaptureOwnerContext();
+        if (!stamp.IsValid || !owners.TryAcquire(stamp, out var lease))
+            throw new InvalidOperationException("The reader and mutation client no longer share this live owner authority.");
+        using (lease)
+        {
+            if (lease.Stamp != stamp)
+                throw new InvalidOperationException("The acquired owner authority differs from its requested stamp.");
+            _ = Describe(lease.Stamp.Owner);
+        }
+        return stamp;
     }
 
     // The real install owner accessor reads its state file. Join that read off
@@ -99,16 +137,23 @@ public sealed class AndroidLinkedWorkspaceReader : IAndroidLinkedWorkspaceReader
         // Do not allow scheduling cancellation to detach work from its caller.
         // All store reads, owner-file access, hashing and canonical parsing are
         // joined off the caller's synchronization context.
-        => await Task.Run(() => ReadCore(workspaceId, sectionId, null, cancellationToken),
+        => await Task.Run(() => ReadCore(workspaceId, sectionId, null, null, cancellationToken),
             CancellationToken.None).ConfigureAwait(false);
 
     public async Task<AndroidLinkedWorkspaceSnapshot?> ReadForMutationAsync(CharacterWorkspaceId workspaceId,
         string sectionId, WorkspaceCollectionMutationRequest request, CancellationToken cancellationToken)
-        => await Task.Run(() => ReadCore(workspaceId, sectionId, request, cancellationToken),
+        => await Task.Run(() => ReadCore(workspaceId, sectionId, request, null, cancellationToken),
+            CancellationToken.None).ConfigureAwait(false);
+
+    public async Task<AndroidLinkedWorkspaceSnapshot?> ReadForMutationAsync(OwnerContextStamp expectedOwner,
+        CharacterWorkspaceId workspaceId, string sectionId, WorkspaceCollectionMutationRequest request,
+        CancellationToken cancellationToken)
+        => await Task.Run(() => ReadCore(workspaceId, sectionId, request, expectedOwner, cancellationToken),
             CancellationToken.None).ConfigureAwait(false);
 
     private AndroidLinkedWorkspaceSnapshot? ReadCore(
         CharacterWorkspaceId workspaceId, string sectionId, WorkspaceCollectionMutationRequest? request,
+        OwnerContextStamp? expectedOwner,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -118,7 +163,20 @@ public sealed class AndroidLinkedWorkspaceReader : IAndroidLinkedWorkspaceReader
 
         try
         {
-            OwnerScope liveOwner = _owners.Current;
+            OwnerContextStamp stamp = expectedOwner ?? CaptureOwnerContext();
+            // Explicit preview callers still have to name this mutation
+            // client's issuer, not just a stamp accepted by an unrelated reader
+            // accessor. Compare against the current capture; never replace the
+            // caller's original stamp with that newer capture.
+            if (expectedOwner.HasValue && _ownerClient!.CaptureOwnerContext() != stamp) return null;
+            if (_owners is not IOwnerContextLeaseAccessor owners
+                || !stamp.IsValid || !owners.TryAcquire(stamp, out var lease)) return null;
+            // The actual owner writer is excluded for the entire synchronous
+            // file-store read/projection. Acquire/use/dispose on this worker;
+            // never carry a thread-affine Core lease across an await.
+            using var readLease = lease;
+            if (readLease.Stamp != stamp) return null;
+            OwnerScope liveOwner = readLease.Stamp.Owner;
             AndroidLinkedOwner owner = Describe(liveOwner);
             cancellationToken.ThrowIfCancellationRequested();
             WorkspaceStoreReadResult firstRead = ReadOwned(liveOwner, workspaceId);
@@ -126,7 +184,6 @@ public sealed class AndroidLinkedWorkspaceReader : IAndroidLinkedWorkspaceReader
             if (!firstRead.Success || firstRead.Value is not { } first || !IsExact(first, workspaceId))
                 return null;
             string firstDigest = RunnerSessionCoordinator.ComputeDocumentAuthoritySha256(first.Document);
-            if (Describe(_owners.Current) != owner) return null;
 
             cancellationToken.ThrowIfCancellationRequested();
             WorkspaceStoreReadResult secondRead = ReadOwned(liveOwner, workspaceId);
@@ -137,8 +194,7 @@ public sealed class AndroidLinkedWorkspaceReader : IAndroidLinkedWorkspaceReader
                 || first.LastUpdatedUtc != second.LastUpdatedUtc)
                 return null;
             string secondDigest = RunnerSessionCoordinator.ComputeDocumentAuthoritySha256(second.Document);
-            if (!string.Equals(firstDigest, secondDigest, StringComparison.Ordinal)
-                || Describe(_owners.Current) != owner)
+            if (!string.Equals(firstDigest, secondDigest, StringComparison.Ordinal))
                 return null;
 
             cancellationToken.ThrowIfCancellationRequested();
@@ -161,7 +217,6 @@ public sealed class AndroidLinkedWorkspaceReader : IAndroidLinkedWorkspaceReader
                 expectedDigest = RunnerSessionCoordinator.ComputeDocumentAuthoritySha256(replacement);
             }
             cancellationToken.ThrowIfCancellationRequested();
-            if (Describe(_owners.Current) != owner) return null;
             return new(owner, second.Id.Value, second.ContentRevision, second.SavedRevision, secondDigest, editor)
             {
                 ExpectedDocumentAuthoritySha256 = expectedDigest,

@@ -23,6 +23,16 @@ internal static class Program
             await AfterRunAuthorityHarness.RunLinkedCharacterNativeRuntimeCasesAsync(args[1]);
             return;
         }
+        if (args.Length == 2 && args[0] == "--linked-owner-aba-publication-content-root")
+        {
+            await AfterRunAuthorityHarness.RunLinkedOwnerAbaPublicationCasesAsync(args[1]);
+            return;
+        }
+        if (args.Length == 2 && args[0] == "--linked-stale-display-owner-content-root")
+        {
+            await AfterRunAuthorityHarness.RunLinkedStaleDisplayOwnerCaptureCaseAsync(args[1]);
+            return;
+        }
         if (args.Length == 2 && args[0] == "--skills-rereview-runtime-content-root")
         {
             CreationMagicNativeRuntimeTests.RunSkillsReReview(args[1]);

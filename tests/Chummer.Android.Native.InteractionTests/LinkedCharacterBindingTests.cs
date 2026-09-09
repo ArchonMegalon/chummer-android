@@ -2,6 +2,8 @@ using System.Reflection;
 using System.Text;
 using Chummer.Android.Native;
 using Chummer.Android.Platform;
+using Chummer.Application.Owners;
+using Chummer.Contracts.Owners;
 using Chummer.Infrastructure.Xml;
 using Chummer.Presentation.Overview;
 using Microsoft.Maui.Controls;
@@ -15,6 +17,7 @@ internal static class LinkedCharacterBindingTests
 
     public static async Task RunAsync()
     {
+        await MissingDisplayedOwnerCannotCaptureANewOwnerAsync();
         await SlowOwnerReadDoesNotBlockCallerAsync();
         await FinalOwnerReadAfterBeginRevalidatesBeforeDispatchAsync();
         await PickerAndActivationWaitsRetainExactAuthorityAsync();
@@ -26,6 +29,31 @@ internal static class LinkedCharacterBindingTests
         RecoveryEntryDoesNotRequireTheOriginalRunner();
         SuccessfulDocumentReplaceIsNotACheckpoint();
         Console.WriteLine("PASS linked-character binding (managed native controls, canonical codec and real temporary files; no device/Core mutation receipt)");
+    }
+
+    private static async Task MissingDisplayedOwnerCannotCaptureANewOwnerAsync()
+    {
+        foreach (OwnerContextStamp? missing in new OwnerContextStamp?[] { null, default(OwnerContextStamp) })
+        foreach (bool attach in new[] { true, false })
+        {
+            using var reader = new BlockingOwnerReader();
+            var files = new Files();
+            using var fixture = new Fixture(linkedFiles: files, linkedReader: reader);
+            fixture.State = fixture.State with { DisplayOwnerContext = missing };
+            var displayed = fixture.State;
+            var target = displayed.ActiveCollectionEditor!.Items[0].Target;
+            bool rejected = false;
+            try
+            {
+                if (attach) await fixture.Coordinator.TryAttachBoundLinkedCharacterAsync(target, displayed, () => true);
+                else await fixture.Coordinator.TryRemoveBoundLinkedCharacterAsync(target, displayed, () => true);
+            }
+            catch (InvalidOperationException) { rejected = true; }
+            finally { reader.Release.Set(); }
+            Require(rejected && !reader.Entered.IsSet && files.StageCalls == 0 && fixture.Requests.Count == 0
+                && fixture.LinkedJournal.ReadAll("local-single-user", true).Count == 0,
+                "Missing displayed owner provenance was replaced by a fresh owner capture or staged mutation.");
+        }
     }
 
     private static async Task SlowOwnerReadDoesNotBlockCallerAsync()
@@ -73,7 +101,7 @@ internal static class LinkedCharacterBindingTests
     private static async Task FinalOwnerReadAfterBeginRevalidatesBeforeDispatchAsync()
     {
         foreach (bool attach in new[] { true, false })
-        foreach (string drift in new[] { "workspace", "revision", "section", "capability", "duplicate", "view", "owner", "cancel", "unchanged" })
+        foreach (string drift in new[] { "workspace", "revision", "section", "capability", "duplicate", "view", "owner", "display-owner", "cancel", "unchanged" })
         {
             var files = new Files();
             PausedFinalOwnerReader? reader = null;
@@ -114,6 +142,7 @@ internal static class LinkedCharacterBindingTests
                         break;
                     case "view": currentView = false; break;
                     case "owner": reader.OwnerOverride = new("changed-owner", false); break;
+                    case "display-owner": fixture.State = fixture.State with { DisplayOwnerContext = null }; break;
                     case "cancel": cancellation.Cancel(); break;
                 }
                 Require(!action.IsCompleted && fixture.Requests.Count == 0,
@@ -153,7 +182,7 @@ internal static class LinkedCharacterBindingTests
     private static async Task PickerAndActivationWaitsRetainExactAuthorityAsync()
     {
         foreach (bool attach in new[] { true, false })
-        foreach (string drift in new[] { "workspace", "revision", "section", "capability", "duplicate", "view", "cancel", "unchanged" })
+        foreach (string drift in new[] { "workspace", "revision", "section", "capability", "duplicate", "view", "display-owner", "cancel", "unchanged" })
         {
             var files = new Files();
             using var fixture = new Fixture(linkedFiles: files);
@@ -173,6 +202,7 @@ internal static class LinkedCharacterBindingTests
                 switch (drift)
                 {
                     case "workspace": fixture.State = fixture.State with { WorkspaceId = new("different-runner") }; break;
+                    case "display-owner": fixture.State = fixture.State with { DisplayOwnerContext = null }; break;
                     case "revision": fixture.AdvanceRevision(); break;
                     case "section": fixture.State = fixture.State with { ActiveSectionId = "pets" }; break;
                     case "capability":
@@ -401,7 +431,7 @@ internal static class LinkedCharacterBindingTests
         Require(accepted && fixture.State.ContentRevision == 6 && fixture.State.SavedRevision == 5,
             "An ordinary document replacement was falsely rejected for not being a file checkpoint.");
         var successor = fixture.State;
-        foreach (string drift in new[] { "error", "busy", "workspace", "section", "checkpoint" })
+        foreach (string drift in new[] { "error", "busy", "workspace", "section", "display-owner", "checkpoint" })
         {
             fixture.State = drift switch
             {
@@ -409,6 +439,7 @@ internal static class LinkedCharacterBindingTests
                 "busy" => successor with { IsBusy = true },
                 "workspace" => successor with { WorkspaceId = new("unrelated-runner") },
                 "section" => successor with { ActiveSectionId = "pets" },
+                "display-owner" => successor with { DisplayOwnerContext = null },
                 _ => successor with { Session = successor.Session with { OpenWorkspaces = successor.OpenWorkspaces
                     .Select(workspace => workspace with { SavedRevision = workspace.ContentRevision }).ToArray() },
                     OpenWorkspaces = successor.OpenWorkspaces.Select(workspace => workspace with
@@ -465,6 +496,11 @@ internal static class LinkedCharacterBindingTests
                 token.ThrowIfCancellationRequested();
                 return owner;
             }, CancellationToken.None);
+        public async Task<OwnerContextStamp> CaptureOwnerContextAsync(CancellationToken token)
+        {
+            await ReadCurrentOwnerAsync(token);
+            return new(OwnerScope.LocalSingleUser, "blocking-host-control", 0);
+        }
         public Task<AndroidLinkedWorkspaceSnapshot?> ReadAsync(
             Chummer.Contracts.Workspaces.CharacterWorkspaceId id, string section, CancellationToken token)
             => throw new InvalidOperationException("Cancelled owner capture must not read the workspace.");
@@ -481,7 +517,20 @@ internal static class LinkedCharacterBindingTests
         private bool _paused;
         public bool IsAvailable => inner.IsAvailable;
         public AndroidLinkedOwner CurrentOwner => OwnerOverride ?? inner.CurrentOwner;
+        public async Task<OwnerContextStamp> CaptureOwnerContextAsync(CancellationToken token)
+        {
+            await PauseAsync(token);
+            OwnerContextStamp stamp = await inner.CaptureOwnerContextAsync(token);
+            return OwnerOverride is { } owner
+                ? new(new OwnerScope(owner.Scope), stamp.AuthorityInstanceId, checked(stamp.TransitionRevision + 1))
+                : stamp;
+        }
         public async Task<AndroidLinkedOwner> ReadCurrentOwnerAsync(CancellationToken token)
+        {
+            await PauseAsync(token);
+            return OwnerOverride ?? await inner.ReadCurrentOwnerAsync(token);
+        }
+        private async Task PauseAsync(CancellationToken token)
         {
             // Suspend at the real journal boundary, not an assumed Nth read.
             if (!_paused && ShouldPause())
@@ -491,7 +540,6 @@ internal static class LinkedCharacterBindingTests
                 Entered.TrySetResult();
                 await Release.Task;
             }
-            return OwnerOverride ?? await inner.ReadCurrentOwnerAsync(token);
         }
         public Task<AndroidLinkedWorkspaceSnapshot?> ReadAsync(
             Chummer.Contracts.Workspaces.CharacterWorkspaceId id, string section, CancellationToken token)
@@ -500,6 +548,10 @@ internal static class LinkedCharacterBindingTests
             Chummer.Contracts.Workspaces.CharacterWorkspaceId id, string section,
             WorkspaceCollectionMutationRequest request, CancellationToken token)
             => inner.ReadForMutationAsync(id, section, request, token);
+        public Task<AndroidLinkedWorkspaceSnapshot?> ReadForMutationAsync(OwnerContextStamp expectedOwner,
+            Chummer.Contracts.Workspaces.CharacterWorkspaceId id, string section,
+            WorkspaceCollectionMutationRequest request, CancellationToken token)
+            => inner.ReadForMutationAsync(expectedOwner, id, section, request, token);
     }
 
     private sealed class Files : IAndroidLinkedCharacterFileService
