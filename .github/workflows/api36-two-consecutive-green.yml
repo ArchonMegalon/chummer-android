@@ -112,6 +112,28 @@ jobs:
                 "repos/$GITHUB_REPOSITORY/actions/artifacts/$artifact_id/zip" \
                 >"$role_root/$kind.zip"
             done
+            producer_attempt="$(
+              PYTHONDONTWRITEBYTECODE=1 python3 \
+                chummer-android/scripts/materialize-api36-two-green-eligibility.py \
+                producer-attempt \
+                --p0-archive "$role_root/p0.zip" \
+                --run-id "$run_id" \
+                --aggregate-attempt "$run_attempt"
+            )"
+            apk_name="chummer-android-api36-x64-debug-$run_id-$producer_attempt"
+            apk_count="$(jq -er --arg name "$apk_name" '[.artifacts[] | select(.name == $name)] | length' "$role_root/artifacts.json")"
+            test "$apk_count" = 1
+            apk_artifact_id="$(jq -er --arg name "$apk_name" '.artifacts[] | select(.name == $name) | .id | select(type == "number" and . >= 1 and floor == .)' "$role_root/artifacts.json")"
+            gh api \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "repos/$GITHUB_REPOSITORY/actions/artifacts/$apk_artifact_id/zip" \
+              >"$role_root/apk.zip"
+            gh api \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/attempts/$producer_attempt/jobs?per_page=100" \
+              >"$role_root/producer-jobs.json"
           done
           gh api \
             -H 'Accept: application/vnd.github+json' \
@@ -178,9 +200,11 @@ jobs:
             --main-run-id "$MAIN_RUN_ID"
             --review-run "$evidence/review/run.json"
             --review-jobs "$evidence/review/jobs.json"
+            --review-producer-jobs "$evidence/review/producer-jobs.json"
             --review-artifacts "$evidence/review/artifacts.json"
             --review-aggregate-archive "$evidence/review/aggregate.zip"
             --review-p0-archive "$evidence/review/p0.zip"
+            --review-apk-archive "$evidence/review/apk.zip"
             --review-pull-request "$evidence/review/pull-request.json"
             --review-head-pull-requests "$evidence/review/head-pull-requests.json"
             --review-aggregate-check-run "$evidence/review/aggregate-check-run.json"
@@ -189,9 +213,11 @@ jobs:
             --review-event-commit "$evidence/review/event-commit.json"
             --main-run "$evidence/main/run.json"
             --main-jobs "$evidence/main/jobs.json"
+            --main-producer-jobs "$evidence/main/producer-jobs.json"
             --main-artifacts "$evidence/main/artifacts.json"
             --main-aggregate-archive "$evidence/main/aggregate.zip"
             --main-p0-archive "$evidence/main/p0.zip"
+            --main-apk-archive "$evidence/main/apk.zip"
             --main-commit "$evidence/main/commit.json"
           )
           python3 chummer-android/scripts/materialize-api36-two-green-eligibility.py \

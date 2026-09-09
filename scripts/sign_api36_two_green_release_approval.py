@@ -58,9 +58,11 @@ AUTHENTICATED_GITHUB_FILE_INPUTS = {
     "source_workflow",
     "review_run",
     "review_jobs",
+    "review_producer_jobs",
     "review_artifacts",
     "review_aggregate_archive",
     "review_p0_archive",
+    "review_apk_archive",
     "review_pull_request",
     "review_head_pull_requests",
     "review_aggregate_check_run",
@@ -69,9 +71,11 @@ AUTHENTICATED_GITHUB_FILE_INPUTS = {
     "review_event_commit",
     "main_run",
     "main_jobs",
+    "main_producer_jobs",
     "main_artifacts",
     "main_aggregate_archive",
     "main_p0_archive",
+    "main_apk_archive",
     "main_commit",
 }
 SYSTEM_CA_BUNDLE = Path("/etc/ssl/certs/ca-certificates.crt")
@@ -326,6 +330,38 @@ def _authenticated_github_replay(
             if len(matching) != 1 or type(matching[0].get("id")) is not int:
                 raise ValueError("authenticated GitHub proof artifact cardinality differs")
             fetch_archive(f"{role}_{kind}_archive", matching[0]["id"])
+        producer_attempt = TWO_GREEN.candidate_producer_attempt_from_p0_archive(
+            fetched[f"{role}_p0_archive"],
+            run_id=run_id,
+            aggregate_attempt=attempt,
+        )
+        apk_name = (
+            f"chummer-android-api36-x64-debug-{run_id}-{producer_attempt}"
+        )
+        matching_apks = [
+            row
+            for row in artifacts.get("artifacts", [])
+            if isinstance(row, dict) and row.get("name") == apk_name
+        ]
+        if len(matching_apks) != 1 or type(matching_apks[0].get("id")) is not int:
+            raise ValueError("authenticated GitHub APK artifact cardinality differs")
+        fetch_archive(f"{role}_apk_archive", matching_apks[0]["id"])
+        if producer_attempt == attempt:
+            fetched[f"{role}_producer_jobs"] = fetched[f"{role}_jobs"]
+        else:
+            producer_jobs = fetch_json(
+                f"{role}_producer_jobs",
+                (
+                    f"repos/{repository}/actions/runs/{run_id}/attempts/"
+                    f"{producer_attempt}/jobs?per_page=100"
+                ),
+            )
+            if producer_jobs.get("total_count") != len(
+                producer_jobs.get("jobs", [])
+            ):
+                raise ValueError(
+                    "authenticated GitHub producer jobs response is paginated or incomplete"
+                )
 
     review_run = run_values["review"]
     main_run = run_values["main"]

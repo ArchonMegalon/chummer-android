@@ -490,6 +490,7 @@ def _validate_run_evidence(
         "jobs",
         "actionsMetadata",
         "artifacts",
+        "apkProducer",
         "p0AuthoritySha256",
         "p0BaseSha",
         "p0EventSha",
@@ -545,6 +546,108 @@ def _validate_run_evidence(
     if aggregate["status"] != "completed" or aggregate["conclusion"] != "success":
         raise ValueError(f"two-green {role} aggregate job is not successful")
     _sha256(evidence.get("p0AuthoritySha256"), f"two-green {role} P0 authority")
+    producer = evidence.get("apkProducer")
+    if (
+        not isinstance(producer, dict)
+        or set(producer)
+        != {
+            "runAttempt",
+            "jobsApiSnapshotSha256",
+            "jobsApiSnapshotSizeBytes",
+            "buildJob",
+            "apkArtifact",
+            "apk",
+        }
+    ):
+        raise ValueError(f"two-green {role} APK producer authority is not exact")
+    producer_attempt = _positive_integer(
+        producer.get("runAttempt"), f"two-green {role} APK producer attempt"
+    )
+    if producer_attempt > run["attempt"]:
+        raise ValueError(f"two-green {role} APK producer attempt is invalid")
+    _sha256(
+        producer.get("jobsApiSnapshotSha256"),
+        f"two-green {role} APK producer jobs snapshot",
+    )
+    _positive_integer(
+        producer.get("jobsApiSnapshotSizeBytes"),
+        f"two-green {role} APK producer jobs snapshot size",
+    )
+    build = producer.get("buildJob")
+    if (
+        not isinstance(build, dict)
+        or set(build)
+        != {
+            "id",
+            "status",
+            "conclusion",
+            "startedAtUtc",
+            "completedAtUtc",
+            "detailsUrl",
+            "checkRunUrl",
+            "uploadStep",
+        }
+        or build.get("status") != "completed"
+        or build.get("conclusion") != "success"
+    ):
+        raise ValueError(f"two-green {role} APK producer build is not successful")
+    _positive_integer(build.get("id"), f"two-green {role} APK producer build ID")
+    upload = build.get("uploadStep")
+    if (
+        not isinstance(upload, dict)
+        or set(upload)
+        != {
+            "name",
+            "number",
+            "status",
+            "conclusion",
+            "startedAtUtc",
+            "completedAtUtc",
+        }
+        or upload.get("name") != TWO_GREEN.APK_UPLOAD_STEP_NAME
+        or upload.get("status") != "completed"
+        or upload.get("conclusion") != "success"
+    ):
+        raise ValueError(f"two-green {role} APK upload step is not successful")
+    _positive_integer(upload.get("number"), f"two-green {role} APK upload step number")
+    artifact = producer.get("apkArtifact")
+    expected_artifact_name = (
+        f"chummer-android-api36-x64-debug-{run['id']}-{producer_attempt}"
+    )
+    if (
+        not isinstance(artifact, dict)
+        or set(artifact)
+        != {
+            "id",
+            "name",
+            "archiveDigest",
+            "archiveSizeBytes",
+            "createdAtUtc",
+            "updatedAtUtc",
+            "expiresAtUtc",
+            "headSha",
+        }
+        or artifact.get("name") != expected_artifact_name
+        or artifact.get("headSha") != head
+        or not isinstance(artifact.get("archiveDigest"), str)
+        or TWO_GREEN.ARTIFACT_DIGEST.fullmatch(artifact["archiveDigest"]) is None
+    ):
+        raise ValueError(f"two-green {role} APK artifact authority is not exact")
+    _positive_integer(artifact.get("id"), f"two-green {role} APK artifact ID")
+    _positive_integer(
+        artifact.get("archiveSizeBytes"),
+        f"two-green {role} APK artifact archive size",
+    )
+    apk = producer.get("apk")
+    if (
+        not isinstance(apk, dict)
+        or set(apk) != {"fileName", "sha256", "sizeBytes", "archiveSha256"}
+        or apk.get("fileName") != TWO_GREEN.P0.X64_APK_NAME
+    ):
+        raise ValueError(f"two-green {role} APK identity is not exact")
+    _sha256(apk.get("sha256"), f"two-green {role} APK SHA-256")
+    _sha256(apk.get("archiveSha256"), f"two-green {role} APK archive SHA-256")
+    _positive_integer(apk.get("sizeBytes"), f"two-green {role} APK size")
     return run
 
 

@@ -1,5 +1,5 @@
 {
-  "schema": "chummer.android.api36-ordered-review-main-green-policy/v2",
+  "schema": "chummer.android.api36-ordered-review-main-green-policy/v3",
   "repository": "ArchonMegalon/chummer-android",
   "sourceWorkflow": {
     "name": "API 36 phone beta SR5 wizard E2E",
@@ -25,6 +25,7 @@
     "Aggregate exact API 36 phone evidence"
   ],
   "requiredArtifacts": [
+    "chummer-android-api36-x64-debug",
     "chummer-android-api36-phone-sr5-wizard-aggregate",
     "chummer-android-p0-pr-authority"
   ],
@@ -39,6 +40,9 @@
   "requiresExactMergeCommitGraphs": true,
   "requiresExactAggregateCheckRun": true,
   "requiresCanonicalActionsDetailsUrls": true,
+  "requiresAuthenticatedApkProducerAttempt": true,
+  "requiresExactApkArtifactIdentity": true,
+  "requiresSuccessfulApkUploadStep": true,
   "sequenceSemantics": "reviewed_green_followed_later_by_main_green_not_run_adjacency",
   "requiresExactSameAndroidTree": true,
   "requiresExactMainCommit": true,
