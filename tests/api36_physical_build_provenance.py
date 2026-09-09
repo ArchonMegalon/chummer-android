@@ -30,16 +30,16 @@ PACKAGE_AUTHORITY_CONTRACT = "chummer.android.internal-phone-beta-package-author
 UI_AUTHORITY_RECEIPT_CONTRACT = "chummer6-ui.fresh-package-plane-verification"
 CONTENT_CONTRACT = "chummer.android.content-bundle/v1"
 
-UI_AUTHORITY_RECEIPT_SHA256 = "3fe45e2ba2409aef7b43e7bbbd0a6a13c0292211f131b7ae32c7aa7a864f8033"
-UI_AUTHORITY_RECEIPT_SIZE = 43395
-PACKAGE_AUTHORITY_SHA256 = "7a638519d2b2af803e6a4e06e0d224a3ea70485bf4927ddc0cffa9245a698a6e"
-PACKAGE_CACHE_MANIFEST_SHA256 = "3d7b05fac0cd7af70957580e6b890b1f7a67419863127f376e3bc7947bdabb37"
-PRESENTATION_COMMIT = "5b26b46d0c1326dfff2824e7aba6f03aec52b304"
-PRESENTATION_TREE = "3c7bc481c55d8de6ef255e64d13ca6b9f2615e92"
+UI_AUTHORITY_RECEIPT_SHA256 = "886825d774d2eef66c3ed1c4c1f1bda323faeab6e5502838aa3e5315b1096129"
+UI_AUTHORITY_RECEIPT_SIZE = 51098
+PACKAGE_AUTHORITY_SHA256 = "7346aab0958626ba9c752e8d9ad189c5d22dd984dbe0346acf37178904fbaf2f"
+PACKAGE_CACHE_MANIFEST_SHA256 = "7979dd989cdac1bca9834747192f066aa2eb48842799a80bdab1a65e29c0b4d7"
+PRESENTATION_COMMIT = "ad9e2e8446876170cd7b1d1fc6a810ab2505ea92"
+PRESENTATION_TREE = "bd604f3841831f7da3b71658e909b79aa3e7c430"
 PRESENTATION_REPOSITORY = "https://github.com/ArchonMegalon/chummer6-ui.git"
 PRESENTATION_REMOTE_REF = "refs/remotes/origin/main"
-PRESENTATION_PACKAGE_LOCK_SHA256 = "7bfc76002f4ab18fe382b74c2dbd496737d435e014ef7992a64503716dc1fa8b"
-PRESENTATION_PRODUCER_LOCK_SHA256 = "a0d5a6b6b071b4782e88b99170fde40b604713de99f812cdcbd033f19d8026a9"
+PRESENTATION_PACKAGE_LOCK_SHA256 = "0d7c4e5235b366a35aa5bf38340bfb517c1788b41cb7c3c28072850ff4663aa2"
+PRESENTATION_PRODUCER_LOCK_SHA256 = "288a1d8edefea4a9d9befa8b84ac7310df346f9798924d1f2cb09a481dfe312f"
 FULL_PROJECT_LOCK_SHA256 = "32f8393f06f70530f6e528e0120778036328472c949afcb5c0679dc0b618768e"
 FULL_PROJECT_LOCK_SIZE = 70375
 CORE_CONTENT_REVISION = "1d8cf694d0412b3bd9f4a241fb95244fad341160"
@@ -415,8 +415,9 @@ def _verify_current_package_authority_external(
     manifest = module.validate_manifest(manifest_path)
     module.validate_android_sdk_authority(android_root, manifest)
     module.validate_presentation_repository(presentation_root)
-    module.validate_receipt(receipt)
-    module.validate_package_feed(package_feed)
+    verified_receipt = module.validate_receipt(receipt)
+    verified_cache = module.validate_package_feed(package_feed)
+    module.validate_receipt_cache_equivalence(verified_receipt, verified_cache, package_feed=package_feed)
     return {
         "status": "pass",
         "contractName": module.CONTRACT,

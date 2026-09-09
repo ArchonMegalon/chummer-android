@@ -537,7 +537,10 @@ internal static partial class AfterRunAuthorityHarness
             Func<ICharacterCareerReputationService, ICharacterCareerReputationService>? reputationDecorator = null,
             Action<string>? creationSkillsSeed = null,
             Func<ICharacterCreationSkillsService, ICharacterCreationSkillsService>? skillsDecorator = null,
-            IAndroidLinkedCharacterFileService? linkedCharacters = null)
+            IAndroidLinkedCharacterFileService? linkedCharacters = null,
+            Func<IAndroidLinkedWorkspaceReader, IAndroidLinkedWorkspaceReader>? linkedReaderDecorator = null,
+            Func<string, AndroidLinkedCharacterIntentJournal>? linkedJournalFactory = null,
+            Chummer.Application.Owners.IOwnerContextAccessor? linkedOwners = null)
         {
             _priorPreferences = Preferences.Default;
             _setPreferences = typeof(Preferences).GetMethod("SetDefault",
@@ -555,6 +558,8 @@ internal static partial class AfterRunAuthorityHarness
                 var services = new ServiceCollection();
                 services.AddChummerLocalRuntimeClient(contentRoot, contentRoot);
                 services.Replace(ServiceDescriptor.Singleton<IWorkspaceStore>(new FileWorkspaceStore(StateDirectory)));
+                if (linkedOwners is not null)
+                    services.Replace(ServiceDescriptor.Singleton(linkedOwners));
                 if (reputation)
                 {
                     Settings.Set("sr5.career.owner.v1", OwnerId.ToString("D"));
@@ -591,7 +596,12 @@ internal static partial class AfterRunAuthorityHarness
                     : new Sr5AfterRunRewardCheckpointStore(
                     new FileSr5AfterRunRewardJournalBackend(StateDirectory),
                     new Sr5CareerMutationOwnerStore(new MemoryBackend()));
-                LinkedJournal = new AndroidLinkedCharacterIntentJournal(StateDirectory);
+                LinkedJournal = linkedJournalFactory?.Invoke(StateDirectory)
+                    ?? new AndroidLinkedCharacterIntentJournal(StateDirectory);
+                IAndroidLinkedWorkspaceReader linkedReader = new AndroidLinkedWorkspaceReader(Client, store,
+                    _provider.GetRequiredService<Chummer.Application.Owners.IOwnerContextAccessor>(),
+                    _provider.GetRequiredService<IRulesetWorkspaceCodecResolver>());
+                if (linkedReaderDecorator is not null) linkedReader = linkedReaderDecorator(linkedReader);
                 Coordinator = new RunnerSessionCoordinator(Presenter, Client, operations,
                     null!, null!, null!, null!, Shell,
                     _provider.GetRequiredService<IShellSurfaceResolver>(),
@@ -607,9 +617,7 @@ internal static partial class AfterRunAuthorityHarness
                     careerReputationService: reputationService,
                     careerReputationJournal: reputation ? _provider.GetRequiredService<Sr5CareerReputationJournal>() : null,
                     linkedCharacterJournal: LinkedJournal,
-                    linkedWorkspaceReader: new AndroidLinkedWorkspaceReader(Client, store,
-                        _provider.GetRequiredService<Chummer.Application.Owners.IOwnerContextAccessor>(),
-                        _provider.GetRequiredService<IRulesetWorkspaceCodecResolver>()));
+                    linkedWorkspaceReader: linkedReader);
             }
             catch
             {

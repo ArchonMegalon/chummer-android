@@ -387,7 +387,7 @@ def materialize(
         ),
     )
     cache = internal_authority.validate_package_feed(package_feed)
-    internal_authority.validate_receipt_cache_equivalence(receipt, cache)
+    internal_authority.validate_receipt_cache_equivalence(receipt, cache, package_feed=package_feed)
     source_graph = manifest.get("sourceGraph")
     if not isinstance(source_graph, dict):
         raise ValueError("internal phone-beta source graph is unavailable")

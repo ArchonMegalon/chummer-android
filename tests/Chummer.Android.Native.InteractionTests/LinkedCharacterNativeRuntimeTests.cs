@@ -43,6 +43,121 @@ internal static partial class AfterRunAuthorityHarness
         Console.WriteLine("PASS 10 actual linked-character/native/runtime/file-store cases: exact host intent/current-effect observations, shared paths, post-commit failure, conservative drift and identity substitution; no operation lookup, Android process-death or checkpoint proof");
         await NativeLinkedReaderOwnerBoundariesAsync(contentRoot);
         await NativeLinkedOwnerReadCancellationJoinsAccessorAsync(contentRoot);
+        foreach (string boundary in new[] { "same-effect", "uncertain-acknowledgement", "owner-change" })
+            await NativeConcurrentLinkedRecoveryAsync(contentRoot, boundary);
+        Console.WriteLine("PASS 3 actual concurrent linked-recovery cases: one immutable observation, uncertain acknowledgement and live owner change; no mutation replay");
+    }
+
+    private static async Task NativeConcurrentLinkedRecoveryAsync(string contentRoot, string boundary)
+    {
+        string appData = Directory.CreateTempSubdirectory("chummer-native-linked-concurrent-").FullName;
+        try
+        {
+            var documents = new LinkedRuntimeDocuments();
+            var files = new AndroidLinkedCharacterFileService(documents, new Chummer5LinkedDocumentCodec(), () => appData, Guid.NewGuid);
+            var owners = new ControlledLinkedOwner();
+            ConcurrentLinkedReader? reader = null;
+            bool failObservationAcknowledgement = false;
+            await using var runtime = new NativeRewardRuntime(contentRoot, linkedCharacters: files,
+                linkedReaderDecorator: inner => reader = new ConcurrentLinkedReader(inner), linkedOwners: owners,
+                linkedJournalFactory: state => new AndroidLinkedCharacterIntentJournal(state, directory =>
+                {
+                    AndroidPrivateFileDurability.SyncDirectory(directory);
+                    if (failObservationAcknowledgement && directory.EndsWith("linked-character-intents-v1", StringComparison.Ordinal)
+                        && Directory.EnumerateFiles(directory, "*.observation.json").Any())
+                        throw new IOException("Injected observation directory acknowledgement failure.");
+                }));
+            await runtime.LoadRunnerAsync(LinkedRuntimeRunnerXml);
+            await SelectLinkedContactsAsync(runtime);
+            WorkspaceStoredDocument before = ReadLinkedWorkspace(runtime);
+            CharacterOverviewState beforeUi = runtime.Coordinator.State;
+            documents.Enqueue("concurrent.chum5", LinkedRuntimeDocuments.FirstPayload);
+            await RequireLinkedShellFailureAsync(runtime, attach: true);
+            var pending = await RequireLinkedIntentRecordAsync(runtime, before, beforeUi, attach: true, observed: false, count: 1);
+            WorkspaceStoredDocument committed = ReadLinkedWorkspace(runtime);
+            string observationPath = Path.Combine(runtime.StateDirectory, "linked-character-intents-v1",
+                $"{pending.Intent.OperationId:N}.observation.json");
+            string intentPath = Path.Combine(runtime.StateDirectory, "linked-character-intents-v1",
+                $"{pending.Intent.OperationId:N}.intent.json");
+            byte[] intentBytes = File.ReadAllBytes(intentPath);
+            failObservationAcknowledgement = boundary == "uncertain-acknowledgement";
+            reader!.Armed = true;
+            Task<bool> first = runtime.Coordinator.CheckLinkedCharacterIntentAsync(pending.Intent.OperationId);
+            Task<bool> second = runtime.Coordinator.CheckLinkedCharacterIntentAsync(pending.Intent.OperationId);
+            Task<bool[]> both = Task.WhenAll(first, second);
+            Exception? failure = null;
+            bool[]? outcomes = null;
+            try
+            {
+                // Both callers have read the real pending journal and completed
+                // their first canonical snapshot before either may publish.
+                await reader.BothPending.Task.WaitAsync(TimeSpan.FromSeconds(5));
+                Require(!File.Exists(observationPath), "Concurrent fixture did not stop before observation publication.");
+                if (boundary == "owner-change") owners.Set(new OwnerScope("different-live-link-owner"));
+                reader.Release.TrySetResult();
+                try { outcomes = await both.WaitAsync(TimeSpan.FromSeconds(20)); }
+                catch (Exception error) { failure = error; }
+            }
+            finally
+            {
+                reader.Release.TrySetResult();
+                // Never dispose the runtime or fixture files while a real read,
+                // journal write or failed observation is still being joined.
+                try { await both; } catch { }
+            }
+            var record = runtime.LinkedJournal.Read(pending.Intent.OwnerScope,
+                pending.Intent.TrustedLocalOwner, runtime.Id.Value).Single();
+            if (boundary == "same-effect")
+            {
+                Require(failure is null && outcomes is [true, true],
+                    $"Concurrent read-only checks misreported one healthy observation as failure: {failure?.GetType().Name}.");
+                Require(record.EffectObserved && !record.NotDispatched && File.Exists(observationPath),
+                    "Concurrent checks failed to retain one exact acknowledged observation.");
+                byte[] observedBytes = File.ReadAllBytes(observationPath);
+                Require(await runtime.Coordinator.CheckLinkedCharacterIntentAsync(pending.Intent.OperationId)
+                    && File.ReadAllBytes(observationPath).SequenceEqual(observedBytes),
+                    "Revisiting concurrent recovery rewrote the immutable observation.");
+            }
+            else if (boundary == "uncertain-acknowledgement")
+                Require(failure is IOException && first.IsFaulted && second.IsFaulted
+                    && !record.EffectObserved && !record.NotDispatched && !record.ObservationAcknowledged
+                    && File.Exists(observationPath),
+                    "A failed durability acknowledgement was promoted by the conflicting read-only check.");
+            else
+                Require(failure is null && outcomes is [false, false] && record.Observation is null
+                    && !File.Exists(observationPath), "Owner drift acquired another owner's recovery authority.");
+            RequireSameRewardDocument(committed, ReadLinkedWorkspace(runtime));
+            Require(File.ReadAllBytes(intentPath).SequenceEqual(intentBytes) && documents.OpenCount == 1
+                && File.ReadAllBytes(pending.Intent.StagedFileName!).SequenceEqual(LinkedRuntimeDocuments.FirstPayload)
+                && Directory.EnumerateFiles(Path.Combine(appData, "linked-characters")).Count() == 1,
+                "Read-only recovery mutated intent, replayed a picker or reclaimed staged bytes.");
+        }
+        finally { Directory.Delete(appData, recursive: true); } // This test's fresh private directory only.
+    }
+
+    private sealed class ConcurrentLinkedReader(IAndroidLinkedWorkspaceReader inner) : IAndroidLinkedWorkspaceReader
+    {
+        private int _reads;
+        public IAndroidLinkedWorkspaceReader Inner => inner;
+        public bool Armed { get; set; }
+        public TaskCompletionSource BothPending { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public bool IsAvailable => inner.IsAvailable;
+        public AndroidLinkedOwner CurrentOwner => inner.CurrentOwner;
+        public Task<AndroidLinkedOwner> ReadCurrentOwnerAsync(CancellationToken token) => inner.ReadCurrentOwnerAsync(token);
+        public Task<AndroidLinkedWorkspaceSnapshot?> ReadForMutationAsync(CharacterWorkspaceId id, string section,
+            WorkspaceCollectionMutationRequest request, CancellationToken token)
+            => inner.ReadForMutationAsync(id, section, request, token);
+        public async Task<AndroidLinkedWorkspaceSnapshot?> ReadAsync(CharacterWorkspaceId id, string section, CancellationToken token)
+        {
+            AndroidLinkedWorkspaceSnapshot? result = await inner.ReadAsync(id, section, token);
+            if (Armed && Interlocked.Increment(ref _reads) <= 2)
+            {
+                if (Volatile.Read(ref _reads) == 2) BothPending.TrySetResult();
+                await Release.Task.WaitAsync(token);
+            }
+            return result;
+        }
     }
 
     private static async Task NativeLinkedOwnerReadCancellationJoinsAccessorAsync(string contentRoot)
@@ -592,21 +707,24 @@ internal static partial class AfterRunAuthorityHarness
     private static async Task<AndroidLinkedWorkspaceSnapshot> RequireLinkedReaderMatchesPresenterAsync(NativeRewardRuntime runtime)
     {
         IAndroidLinkedWorkspaceReader reader = LinkedReader(runtime);
+        IAndroidLinkedWorkspaceReader productionReader = reader is ConcurrentLinkedReader timed ? timed.Inner : reader;
+        Require(productionReader is AndroidLinkedWorkspaceReader,
+            "The timing decorator must still wrap the actual production reader.");
         CharacterOverviewState expected = runtime.Coordinator.State;
         WorkspaceStoredDocument stored = ReadLinkedWorkspace(runtime);
         Require(reader.IsAvailable, "Synthetic linked fixture has no available actual in-process/file-store read capability.");
         AndroidLinkedOwner owner = await Task.Run(() => reader.CurrentOwner);
-        var codecs = (IRulesetWorkspaceCodecResolver)reader.GetType()
-            .GetField("_codecs", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(reader)!;
+        var codecs = (IRulesetWorkspaceCodecResolver)productionReader.GetType()
+            .GetField("_codecs", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(productionReader)!;
         object canonical = codecs.Resolve(stored.Document.RulesetId).ParseSection("contacts", stored.Document.PayloadEnvelope);
         Require(canonical is Chummer.Contracts.Characters.CharacterContactsSection,
             "Actual linked codec section type: " + canonical.GetType().FullName);
         Require(stored.Document.Format == WorkspaceDocumentFormat.NativeXml && stored.Document.SchemaVersion > 0,
             "Actual linked fixture envelope is not an identified native document.");
         _ = RunnerSessionCoordinator.ComputeDocumentAuthoritySha256(stored.Document);
-        var readerStore = (IWorkspaceStore)reader.GetType().GetField("_store", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(reader)!;
-        var ownerAccessor = (Chummer.Application.Owners.IOwnerContextAccessor)reader.GetType()
-            .GetField("_owners", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(reader)!;
+        var readerStore = (IWorkspaceStore)productionReader.GetType().GetField("_store", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(productionReader)!;
+        var ownerAccessor = (Chummer.Application.Owners.IOwnerContextAccessor)productionReader.GetType()
+            .GetField("_owners", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(productionReader)!;
         var liveScope = ownerAccessor.Current;
         var firstRead = liveScope.IsLocalSingleUser ? readerStore.Get(runtime.Id) : readerStore.Get(liveScope, runtime.Id);
         var secondRead = liveScope.IsLocalSingleUser ? readerStore.Get(runtime.Id) : readerStore.Get(liveScope, runtime.Id);

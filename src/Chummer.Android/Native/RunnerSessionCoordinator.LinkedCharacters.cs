@@ -216,8 +216,28 @@ public sealed partial class RunnerSessionCoordinator
             || after.ContentRevision != snapshot.ContentRevision || after.SavedRevision != snapshot.SavedRevision
             || after.DocumentAuthoritySha256 != snapshot.DocumentAuthoritySha256
             || !await LinkedOwnerIsCurrentAsync(owner, token)) return false;
-        await Task.Run(() => _linkedJournal!.Observe(intent.OperationId, intent.OwnerScope, intent.TrustedLocalOwner,
-            intent.WorkspaceId, snapshot.DocumentAuthoritySha256, snapshot.ContentRevision, snapshot.SavedRevision), CancellationToken.None);
+        try
+        {
+            await Task.Run(() => _linkedJournal!.Observe(intent.OperationId, intent.OwnerScope, intent.TrustedLocalOwner,
+                intent.WorkspaceId, snapshot.DocumentAuthoritySha256, snapshot.ContentRevision, snapshot.SavedRevision), CancellationToken.None);
+        }
+        catch (IOException)
+        {
+            // Another read-only check (or the original command's observation)
+            // may have won the append-only journal CAS after both read pending.
+            // Reconcile only the identical acknowledged observation; never retry
+            // publication or treat readable but unacknowledged bytes as success.
+            if (!await LinkedOwnerIsCurrentAsync(owner, token)) return false;
+            AndroidLinkedCharacterIntentRecord? recorded = await Task.Run(() =>
+                _linkedJournal!.Read(intent.OwnerScope, intent.TrustedLocalOwner, intent.WorkspaceId)
+                    .SingleOrDefault(record => record.Intent.OperationId == intent.OperationId), CancellationToken.None);
+            if (recorded?.Intent != intent || !recorded.EffectObserved
+                || recorded.Observation is not { Outcome: "current-effect-observed" } observation
+                || observation.DocumentAuthoritySha256 != snapshot.DocumentAuthoritySha256
+                || observation.ContentRevision != snapshot.ContentRevision
+                || observation.SavedRevision != snapshot.SavedRevision)
+                throw;
+        }
         // This is a recorded current-state observation, NOT a Core operation
         // receipt, historical attribution, or permission to replay the command.
         return await LinkedOwnerIsCurrentAsync(owner, token);

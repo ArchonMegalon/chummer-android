@@ -812,7 +812,7 @@
       {
         "path": ".github/workflows/api36-editing-e2e.yml",
         "exists": true,
-        "sha256": "0c177583cca0ab918029e79bb168d1057b8a763d1c98ce0493c93cbd01b4bd5d"
+        "sha256": "f6ceea83237f5507bcf065a067f25d73fbdd8be4d57836c134156b260ed85925"
       },
       {
         "path": ".github/workflows/api36-two-consecutive-green.yml",
@@ -872,7 +872,7 @@
       {
         "path": "scripts/materialize-android-p0-pr-authority.py",
         "exists": true,
-        "sha256": "a0ab78ab19dffb5b0738d69e237bf12c12f9974c32ba4da79da10c4c4dc16ea2"
+        "sha256": "c15ac8c139632e09d6c737916c21dfb7e6703922993c56e025626bc2525ce9c8"
       },
       {
         "path": "scripts/prepare-api36-emulator-live-log.py",
@@ -912,7 +912,7 @@
       {
         "path": "tests/test_api36_e2e_workflow.py",
         "exists": true,
-        "sha256": "d9df8aa0d22c832ef6aed70842dcc9ea6323a248abea784908503698560f1874"
+        "sha256": "5b4fedb5b94da7741ae47ba5fcb4b9a15a83a9d30e44782fb6f633a74effaff4"
       },
       {
         "path": "tests/test_api36_e2e_artifact_authority.py",
@@ -1022,7 +1022,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.LinkedCharacters.cs",
         "exists": true,
-        "sha256": "8ec34144950b1c20c46d5905345013ef3f2607bd355641e0e2a89e4419d40228"
+        "sha256": "4f65f4129e376ea51fe4cf6c11aaedba196793d0f9da0d8f6dfe0825ea78a9e2"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",

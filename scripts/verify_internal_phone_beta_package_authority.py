@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import stat
 import subprocess
 from pathlib import Path
@@ -35,19 +36,20 @@ RECEIPT_TOP_LEVEL_KEYS = {
     "sdkArchiveSha512", "sdkVersion", "sourceInventory", "status",
     "stubPackagesAllowed", "testExecutions", "testProjects", "uiOwnerFeed",
 }
-EXPECTED_PRESENTATION_COMMIT = "5b26b46d0c1326dfff2824e7aba6f03aec52b304"
-EXPECTED_PRESENTATION_TREE = "3c7bc481c55d8de6ef255e64d13ca6b9f2615e92"
+EXPECTED_PRESENTATION_COMMIT = "ad9e2e8446876170cd7b1d1fc6a810ab2505ea92"
+EXPECTED_PRESENTATION_TREE = "bd604f3841831f7da3b71658e909b79aa3e7c430"
 EXPECTED_PRESENTATION_REPOSITORY = "https://github.com/ArchonMegalon/chummer6-ui.git"
 EXPECTED_LOCK_PATH = "config/package-plane.lock.json"
-EXPECTED_LOCK_SHA256 = "7bfc76002f4ab18fe382b74c2dbd496737d435e014ef7992a64503716dc1fa8b"
-EXPECTED_LOCK_SIZE = 56886
-EXPECTED_LOCK_BLOB = "ce1761de041536a4f4b824488a0c8935d2748c77"
-EXPECTED_RECEIPT_SHA256 = "3fe45e2ba2409aef7b43e7bbbd0a6a13c0292211f131b7ae32c7aa7a864f8033"
-EXPECTED_RECEIPT_SIZE = 43395
-EXPECTED_CACHE_KEY = "76d2bc7c594977c1461cb817a3e2acee4299f1a78a216d85efa4be7ba82b89d9"
-EXPECTED_CACHE_MANIFEST_SHA256 = "3d7b05fac0cd7af70957580e6b890b1f7a67419863127f376e3bc7947bdabb37"
+EXPECTED_LOCK_SHA256 = "0d7c4e5235b366a35aa5bf38340bfb517c1788b41cb7c3c28072850ff4663aa2"
+EXPECTED_LOCK_SIZE = 57315
+EXPECTED_LOCK_BLOB = "cfc7f533da28eb39a9e4de0129c5e0a25eb95654"
+EXPECTED_RECEIPT_SHA256 = "886825d774d2eef66c3ed1c4c1f1bda323faeab6e5502838aa3e5315b1096129"
+EXPECTED_RECEIPT_SIZE = 51098
+EXPECTED_CACHE_KEY = "f6d6b787c3439f4548370c07fa101043ad768c1e5849ab16b1ca2dc8d10cff27"
+EXPECTED_CACHE_MANIFEST_SHA256 = "7979dd989cdac1bca9834747192f066aa2eb48842799a80bdab1a65e29c0b4d7"
 EXPECTED_CACHE_MANIFEST_SIZE = 13707
 EXPECTED_PACKAGE_COUNT = 18
+EXPECTED_CACHE_AUTHORITY_COUNT = 13
 EXPECTED_SOURCE_GRAPH = {
     "corePackageRecipeCommit": "1d8cf694d0412b3bd9f4a241fb95244fad341160",
     "coreRuntimeSourceCommit": "880e5df8ace981e9a60264d835329dd32f54a158",
@@ -166,6 +168,120 @@ def require_string(value: Any, label: str) -> str:
     if not isinstance(value, str) or not value:
         raise ValueError(f"{label} must be one non-empty string")
     return value
+
+
+def cache_file_name(value: Any, label: str) -> str:
+    if not isinstance(value, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", value):
+        raise ValueError(f"{label} must be one canonical filename")
+    return value
+
+
+def cache_byte_identity(digest: Any, size: Any, label: str) -> None:
+    if (
+        not isinstance(digest, str)
+        or not re.fullmatch(r"[0-9a-f]{64}", digest)
+        or type(size) is not int
+        or size <= 0
+    ):
+        raise ValueError(f"{label} byte identity is malformed")
+
+
+def cache_file_inventory(
+    path: Path, label: str, *, expected_size: int | None = None, capture: bool = False,
+) -> tuple[dict[str, Any], bytes]:
+    """Hash the actual regular file, rejecting substitution during the read."""
+    def identity(metadata: os.stat_result) -> tuple[int, ...]:
+        return (metadata.st_dev, metadata.st_ino, metadata.st_mode, metadata.st_size,
+                metadata.st_mtime_ns, metadata.st_ctime_ns)
+
+    try:
+        if not path.is_absolute() or path.resolve(strict=True) != path:
+            raise ValueError(f"{label} path is not canonical or contains a symlink")
+        before = path.lstat()
+        if not stat.S_ISREG(before.st_mode):
+            raise ValueError(f"{label} must be a regular non-symlinked file")
+        descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        try:
+            opened = os.fstat(descriptor)
+            if identity(opened) != identity(before):
+                raise ValueError(f"{label} changed before read")
+            if expected_size is not None and opened.st_size != expected_size:
+                raise ValueError(f"{label} size differs")
+            digest = hashlib.sha256()
+            chunks: list[bytes] = []
+            read_size = 0
+            # One byte beyond the opened size detects growth without following
+            # an indefinitely growing file or capturing unbounded manifest data.
+            while chunk := os.read(descriptor, min(1024 * 1024, opened.st_size - read_size + 1)):
+                read_size += len(chunk)
+                if read_size > opened.st_size:
+                    raise ValueError(f"{label} grew during read")
+                digest.update(chunk)
+                if capture:
+                    chunks.append(chunk)
+            if read_size != opened.st_size:
+                raise ValueError(f"{label} shrank during read")
+            if identity(os.fstat(descriptor)) != identity(opened):
+                raise ValueError(f"{label} changed during read")
+        finally:
+            os.close(descriptor)
+        if identity(path.lstat()) != identity(before):
+            raise ValueError(f"{label} changed after read")
+    except OSError as error:
+        raise ValueError(f"{label} is unavailable: {error}") from error
+    return {"sha256": digest.hexdigest(), "sizeBytes": opened.st_size}, b"".join(chunks)
+
+
+def copied_cache_rows(value: Any, *, directory: str, count: int) -> list[dict[str, Any]]:
+    label = f"UI copied-cache {directory}"
+    if not isinstance(value, list) or len(value) != count:
+        raise ValueError(f"{label} row count is not exact")
+    paths: set[str] = set()
+    for row in value:
+        require_exact_object(row, label, {"path", "sha256", "sizeBytes"})
+        path = require_string(row["path"], f"{label} path")
+        prefix = f"{directory}/"
+        if not path.startswith(prefix):
+            raise ValueError(f"{label} path is not canonical")
+        cache_file_name(path[len(prefix):], f"{label} path")
+        cache_byte_identity(row["sha256"], row["sizeBytes"], label)
+        if path in paths:
+            raise ValueError(f"{label} contains duplicate paths")
+        paths.add(path)
+    if value != sorted(value, key=lambda row: row["path"]):
+        raise ValueError(f"{label} rows are not in canonical order")
+    return value
+
+
+def validate_copied_cache_receipt(value: Any) -> dict[str, Any]:
+    cache = require_exact_object(value, "UI copied-cache receipt", {
+        "authorityArtifacts", "cacheKey", "coldProducerFallbackOnCacheMiss", "contract",
+        "importedByCopy", "manifest", "packageCount", "packages", "sourcePath", "status", "used",
+    })
+    manifest = require_exact_object(cache["manifest"], "UI copied-cache manifest", {"path", "sha256", "sizeBytes"})
+    cache_byte_identity(manifest["sha256"], manifest["sizeBytes"], "UI copied-cache manifest")
+    if (
+        cache["coldProducerFallbackOnCacheMiss"] is not True
+        or cache["contract"] != CACHE_CONTRACT
+        or cache["importedByCopy"] is not True
+        or cache["status"] != "passed"
+        or cache["used"] is not True
+        or type(cache["packageCount"]) is not int
+        or cache["packageCount"] != EXPECTED_PACKAGE_COUNT
+        or cache["cacheKey"] != EXPECTED_CACHE_KEY
+        or cache["manifest"] != {
+            "path": "owner-package-cache.json",
+            "sha256": EXPECTED_CACHE_MANIFEST_SHA256,
+            "sizeBytes": EXPECTED_CACHE_MANIFEST_SIZE,
+        }
+    ):
+        raise ValueError("UI copied-cache receipt posture or manifest is not exact")
+    # The producer's recorded source path is provenance only. The caller's
+    # independently authenticated package_feed supplies all filesystem authority.
+    require_string(cache["sourcePath"], "UI copied-cache source provenance")
+    copied_cache_rows(cache["packages"], directory="packages", count=EXPECTED_PACKAGE_COUNT)
+    copied_cache_rows(cache["authorityArtifacts"], directory="authority", count=EXPECTED_CACHE_AUTHORITY_COUNT)
+    return cache
 
 
 def package_rows_by_id(
@@ -615,19 +731,17 @@ def validate_receipt(receipt_path: Path) -> dict[str, Any]:
         raise ValueError("UI current-graph receipt did not pass integration mode")
     if receipt.get("consumerCommit") != EXPECTED_PRESENTATION_COMMIT:
         raise ValueError("UI current-graph receipt consumer drifted")
-    if receipt.get("localCompatibilityTree") is not False or receipt.get("packageCacheWasFresh") is not True:
+    if (receipt.get("localCompatibilityTree") is not False
+        or receipt.get("packageCacheWasFresh") is not True
+        or receipt.get("stubPackagesAllowed") is not False):
         raise ValueError("UI current-graph receipt used a local tree or stale cache")
     lock = receipt.get("consumerPackagePlaneLock")
     if lock != {"path": EXPECTED_LOCK_PATH, "sha256": EXPECTED_LOCK_SHA256, "sizeBytes": EXPECTED_LOCK_SIZE}:
         raise ValueError("UI current-graph receipt package lock drifted")
-    cache = receipt.get("ownerPackageArtifactCache")
-    if cache != {
-        "coldProducerFallbackOnCacheMiss": True,
-        "contract": CACHE_CONTRACT,
-        "status": "not_supplied",
-        "used": False,
-    }:
-        raise ValueError("UI current-graph receipt cache non-use posture is not exact")
+    # The pinned current UI consumer copies the cold-produced retained cache
+    # into fresh private consumer caches. It does not claim cache non-use.
+    # The older cold/non-use shape is intentionally not an accepted alternative.
+    validate_copied_cache_receipt(receipt.get("ownerPackageArtifactCache"))
     return receipt
 
 
@@ -688,7 +802,7 @@ def validate_bound_authority_claims(
             "inventoryContract", "inventorySha256", "lockContract", "lockSha256",
             "packageCount", "packages", "producerCommit", "producerPath",
             "producerRepository", "producerSha256", "projectLockFilesEnforced",
-            "status",
+            "receiptContract", "receiptSha256", "status",
         },
     )
     receipt_hub_rows = sorted(
@@ -708,11 +822,9 @@ def validate_bound_authority_claims(
         "producerPath": receipt_hub.get("producerPath"),
         "producerRepository": receipt_hub.get("producerRepository"),
         "producerSha256": receipt_hub.get("producerSha256"),
-    } != {
-        key: value
-        for key, value in expected_hub.items()
-        if key not in {"receiptContract", "receiptSha256"}
-    }:
+        "receiptContract": receipt_hub.get("receiptContract"),
+        "receiptSha256": receipt_hub.get("receiptSha256"),
+    } != expected_hub:
         raise ValueError("UI receipt Hub authority disagrees with the bound UI package lock")
     if (
         receipt_hub.get("packageCount") != len(receipt_hub_rows)
@@ -802,13 +914,29 @@ def validate_bound_authority_claims(
 def validate_package_feed(feed: Path) -> dict[str, Any]:
     if not feed.is_absolute() or feed.is_symlink() or not feed.is_dir() or feed.resolve() != feed:
         raise ValueError("current package feed must be one canonical non-symlinked directory")
+    if feed.name != "packages" or {entry.name for entry in feed.parent.iterdir()} != {
+        "authority", "owner-package-cache.json", "packages",
+    }:
+        raise ValueError("current package cache root membership is not exact")
     manifest_path = feed.parent / "owner-package-cache.json"
-    if manifest_path.is_symlink() or not manifest_path.is_file():
-        raise ValueError("current package cache manifest is unavailable")
-    if manifest_path.stat().st_size != EXPECTED_CACHE_MANIFEST_SIZE or sha256(manifest_path) != EXPECTED_CACHE_MANIFEST_SHA256:
+    manifest_inventory, manifest_bytes = cache_file_inventory(
+        manifest_path, "current package cache manifest",
+        expected_size=EXPECTED_CACHE_MANIFEST_SIZE, capture=True,
+    )
+    if manifest_inventory["sha256"] != EXPECTED_CACHE_MANIFEST_SHA256:
         raise ValueError("current package cache manifest bytes drifted")
+    # Parse exactly the bytes hashed above; a second path read is not authority.
+    def reject_duplicates(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+        result: dict[str, Any] = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError("current package cache manifest contains duplicate keys")
+            result[key] = value
+        return result
+
     cache = require_exact_object(
-        strict_json(manifest_path, "current package cache manifest"),
+        json.loads(manifest_bytes, object_pairs_hook=reject_duplicates,
+                   parse_constant=lambda _: (_ for _ in ()).throw(ValueError("non-finite cache value"))),
         "current package cache manifest",
         {"authorities", "authorityArtifacts", "cacheKey", "contract", "packages"},
     )
@@ -817,7 +945,7 @@ def validate_package_feed(feed: Path) -> dict[str, Any]:
     if not isinstance(cache.get("authorities"), dict):
         raise ValueError("current package cache authority projection is malformed")
     authority_artifacts = cache.get("authorityArtifacts")
-    if not isinstance(authority_artifacts, list) or not authority_artifacts:
+    if not isinstance(authority_artifacts, list) or len(authority_artifacts) != EXPECTED_CACHE_AUTHORITY_COUNT:
         raise ValueError("current package cache authority artifact inventory is malformed")
     artifact_names: set[str] = set()
     for value_index, row_value in enumerate(authority_artifacts):
@@ -826,11 +954,20 @@ def validate_package_feed(feed: Path) -> dict[str, Any]:
             f"current package cache authority artifact row {value_index}",
             {"fileName", "sha256"},
         )
-        name = require_string(row.get("fileName"), "current package cache authority artifact filename")
+        name = cache_file_name(row.get("fileName"), "current package cache authority artifact filename")
         digest = require_string(row.get("sha256"), "current package cache authority artifact sha256")
-        if name in artifact_names or len(digest) != 64:
+        if name in artifact_names or not re.fullmatch(r"[0-9a-f]{64}", digest):
             raise ValueError("current package cache authority artifact inventory is not exact")
         artifact_names.add(name)
+    authority_root = feed.parent / "authority"
+    if (authority_root.is_symlink() or not authority_root.is_dir()
+        or authority_root.resolve() != authority_root
+        or {path.name for path in authority_root.iterdir()} != artifact_names):
+        raise ValueError("current package cache authority files are not exact")
+    for row in authority_artifacts:
+        inventory, _ = cache_file_inventory(authority_root / row["fileName"], "current cache authority file")
+        if inventory["sha256"] != row["sha256"]:
+            raise ValueError("current package cache authority bytes drifted")
     rows = cache.get("packages")
     if not isinstance(rows, list) or len(rows) != EXPECTED_PACKAGE_COUNT:
         raise ValueError("current package cache must bind exactly eighteen packages")
@@ -841,20 +978,20 @@ def validate_package_feed(feed: Path) -> dict[str, Any]:
             f"current package cache row {value_index}",
             {"commit", "fileName", "packageId", "plane", "repository", "sha256", "sizeBytes", "version"},
         )
-        name = row.get("fileName")
+        name = cache_file_name(row.get("fileName"), "current package cache filename")
         digest = row.get("sha256")
         size = row.get("sizeBytes")
-        if not isinstance(name, str) or not isinstance(digest, str) or not isinstance(size, int):
-            raise ValueError("current package cache row fields are malformed")
+        cache_byte_identity(digest, size, "current package cache row")
         if name in expected:
             raise ValueError("current package cache contains duplicate filenames")
         expected[name] = (digest, size)
-    actual = {path.name: path for path in feed.iterdir() if path.is_file()}
+    actual = {path.name: path for path in feed.iterdir()}
     if set(actual) != set(expected):
         raise ValueError("current package feed does not match the exact eighteen-package cache")
     for name, path in actual.items():
         digest, size = expected[name]
-        if path.is_symlink() or path.stat().st_size != size or sha256(path) != digest:
+        inventory, _ = cache_file_inventory(path, "current package file", expected_size=size)
+        if inventory["sha256"] != digest:
             raise ValueError(f"current package bytes drifted: {name}")
     return cache
 
@@ -862,7 +999,12 @@ def validate_package_feed(feed: Path) -> dict[str, Any]:
 def validate_receipt_cache_equivalence(
     receipt: Mapping[str, Any],
     cache: Mapping[str, Any],
+    *,
+    package_feed: Path,
 ) -> None:
+    # Reauthenticate the supplied files; never resolve receipt.sourcePath.
+    if validate_package_feed(package_feed) != cache:
+        raise ValueError("retained package cache differs from authenticated files")
     cache_rows = cache.get("packages")
     if not isinstance(cache_rows, list) or len(cache_rows) != EXPECTED_PACKAGE_COUNT:
         raise ValueError("retained package cache inventory is unavailable")
@@ -907,6 +1049,23 @@ def validate_receipt_cache_equivalence(
     if any(inventory_by_name.get(row["fileName"]) != row for row in cache_bytes):
         raise ValueError("UI receipt package inventory diverges from the retained package cache")
 
+    copied = validate_copied_cache_receipt(receipt.get("ownerPackageArtifactCache"))
+    expected_packages = [{"path": f"packages/{row['fileName']}",
+                          "sha256": row["sha256"], "sizeBytes": row["sizeBytes"]}
+                         for row in cache_bytes]
+    if copied["packages"] != expected_packages:
+        raise ValueError("UI copied-cache package rows differ from authenticated files")
+    expected_authorities = []
+    for row in cache["authorityArtifacts"]:
+        inventory, _ = cache_file_inventory(
+            package_feed.parent / "authority" / row["fileName"], "retained authority file",
+        )
+        if inventory["sha256"] != row["sha256"]:
+            raise ValueError("retained authority file changed after cache validation")
+        expected_authorities.append({"path": f"authority/{row['fileName']}", **inventory})
+    if copied["authorityArtifacts"] != sorted(expected_authorities, key=lambda row: row["path"]):
+        raise ValueError("UI copied-cache authority rows differ from authenticated files")
+
 
 def build_binding(manifest: Mapping[str, Any]) -> dict[str, Any]:
     return dict(manifest)
@@ -949,7 +1108,7 @@ def main() -> int:
             args.android_root / RUNTIME_SOURCE_WORKFLOW_PATH
         )
         cache = validate_package_feed(args.package_feed)
-        validate_receipt_cache_equivalence(receipt, cache)
+        validate_receipt_cache_equivalence(receipt, cache, package_feed=args.package_feed)
         binding = build_binding(manifest)
         if args.output is not None:
             write_exclusive(args.output, binding)
