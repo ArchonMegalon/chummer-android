@@ -37,6 +37,7 @@ from api36_proof_environment_authority import (  # noqa: E402
     policy_binding as environment_policy_binding,
     validate_receipt as validate_environment_receipt,
 )
+from api36_journey_producer_authority import JourneyProducerAuthority  # noqa: E402
 
 
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
@@ -1309,6 +1310,7 @@ def validate_aggregate(
     artifact_attempt: str,
     apk_sha256: str,
     gate_contract_path: Path = DEFAULT_CONTRACT,
+    journey_producer_authority: JourneyProducerAuthority | None = None,
 ) -> dict[str, Any]:
     if build_result != "success":
         raise ValueError(f"build job did not succeed: {build_result!r}")
@@ -1316,6 +1318,11 @@ def validate_aggregate(
         raise ValueError(f"phone journey matrix did not succeed: {matrix_result!r}")
     if not POSITIVE_INTEGER.fullmatch(run_attempt):
         raise ValueError("run attempt must be one positive integer")
+    if journey_producer_authority is not None and (
+        journey_producer_authority.run_id != int(run_id)
+        or journey_producer_authority.aggregate_attempt != int(run_attempt)
+    ):
+        raise ValueError("journey producer aggregate execution differs")
     if evidence_root.is_symlink() or not evidence_root.is_dir():
         raise ValueError("journey evidence root is not one regular directory")
 
@@ -1493,7 +1500,11 @@ def validate_aggregate(
             receipt_snapshot,
             receipt_seal_snapshot,
         )
-        started = read_execution_started(directory / "execution-started.txt")
+        started_snapshot = EnvironmentStableFile(
+            directory / "execution-started.txt", f"{journey} execution started",
+        )
+        started = read_execution_started(started_snapshot.path)
+        started_snapshot.recheck()
         expected_started = {
             "profile": "phone",
             "matrix_journey": journey,
@@ -1551,9 +1562,22 @@ def validate_aggregate(
             emulator_observation_snapshot
         )
         emulator_execution = expected_emulator["liveObservation"]["execution"]
+        producer_attempt = int(run_attempt)
+        if journey_producer_authority is not None:
+            bindings = journey_producer_authority.require(
+                journey=journey, execution=emulator_execution, directory=directory,
+            )
+            for snapshot in (
+                receipt_snapshot, receipt_seal_snapshot, environment_snapshot,
+                environment_seal_snapshot, emulator_observation_snapshot,
+                started_snapshot,
+            ):
+                if bindings.get(snapshot.path.name) != snapshot.sha256:
+                    raise ValueError(f"journey producer captured member differs: {journey}")
+            producer_attempt = emulator_execution["runAttempt"]
         expected_execution = {
             "runId": int(run_id),
-            "runAttempt": int(run_attempt),
+            "runAttempt": producer_attempt,
             "matrixJourney": journey,
         }
         if (
@@ -1604,6 +1628,7 @@ def validate_aggregate(
                 environment_snapshot,
                 environment_seal_snapshot,
                 emulator_observation_snapshot,
+                started_snapshot,
             )
         )
 
@@ -1637,6 +1662,8 @@ def validate_aggregate(
     x64_apk_snapshot.recheck()
     arm64_apk_snapshot.recheck()
     hosted_candidate_snapshot.recheck()
+    if journey_producer_authority is not None:
+        journey_producer_authority.recheck()
     workflow_snapshot.recheck()
     for snapshot in journey_snapshots:
         snapshot.recheck()
@@ -1785,6 +1812,8 @@ def main() -> int:
     parser.add_argument("--workflow", type=Path, required=True)
     parser.add_argument("--run-id", required=True)
     parser.add_argument("--run-attempt", required=True)
+    parser.add_argument("--repository", required=True)
+    parser.add_argument("--head-sha", required=True)
     parser.add_argument("--build-result", required=True)
     parser.add_argument("--matrix-result", required=True)
     parser.add_argument("--artifact-id", required=True)
@@ -1819,6 +1848,10 @@ def main() -> int:
         artifact_attempt=args.artifact_attempt,
         apk_sha256=args.apk_sha256,
         gate_contract_path=args.gate_contract,
+        journey_producer_authority=JourneyProducerAuthority.from_environment(
+            repository=args.repository, run_id=int(args.run_id),
+            aggregate_attempt=int(args.run_attempt), head_sha=args.head_sha,
+        ),
     )
     write_atomically(receipt_path, aggregate)
     print(

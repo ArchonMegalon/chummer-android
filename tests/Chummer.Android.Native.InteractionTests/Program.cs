@@ -89,6 +89,7 @@ internal static class Program
             (nameof(CreationDashboardReadyMarkerRequiresCurrentTerminalAuthorityAsync), CreationDashboardReadyMarkerRequiresCurrentTerminalAuthorityAsync),
             (nameof(ExactTypedCreationAuthorityRehydratesConservativeStageAsync), ExactTypedCreationAuthorityRehydratesConservativeStageAsync),
             (nameof(ResourcesAuxiliaryStateDigestUsesRawLowerSha256Async), ResourcesAuxiliaryStateDigestUsesRawLowerSha256Async),
+            (nameof(ResourcesTechnicalDisclosureIsReadOnlyAndLocalizedAsync), ResourcesTechnicalDisclosureIsReadOnlyAndLocalizedAsync),
             (nameof(ResourcesRawCharacterXmlDigestNormalizationFailsClosedAsync), ResourcesRawCharacterXmlDigestNormalizationFailsClosedAsync),
             (nameof(ResourcesStageRehydrationRejectsEveryHostileAuthorityShapeAsync), ResourcesStageRehydrationRejectsEveryHostileAuthorityShapeAsync),
             (nameof(CompletedCreationProjectionSurvivesADeferredUiConsumerAsync), CompletedCreationProjectionSurvivesADeferredUiConsumerAsync),
@@ -3510,6 +3511,139 @@ internal static class Program
             IsExact: true,
             [],
             "points");
+
+    private static Task ResourcesTechnicalDisclosureIsReadOnlyAndLocalizedAsync()
+    {
+        var previousCulture = System.Globalization.CultureInfo.CurrentUICulture;
+        try
+        {
+            foreach ((string locale, string show, string hide) in new[]
+            {
+                ("en-GB", "Show technical details", "Hide technical details"),
+                ("de-AT", "Technische Details anzeigen", "Technische Details ausblenden"),
+                ("es-MX", "Mostrar detalles técnicos", "Ocultar detalles técnicos")
+            })
+            foreach (bool blocked in new[] { false, true })
+            {
+                System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.CultureInfo.GetCultureInfo(locale);
+                ResourcesFixture fixture = NewResourcesFixture();
+                var state = blocked ? fixture.State with { CanEdit = false } : fixture.State;
+                var resources = new DisclosureResourcesPresenter(fixture.Load with { State = state });
+                var overview = StrictPageProxy.Create<ICharacterOverviewPresenter>(() => fixture.Overview);
+                using var coordinator = new RunnerSessionCoordinator(overview,
+                    null!, null!, null!, null!, null!, null!,
+                    StrictPageProxy.Create<Chummer.Presentation.Shell.IShellPresenter>(),
+                    null!, null!, null!, null!, null!,
+                    StrictPageProxy.Create<Chummer.Android.Platform.IAndroidAccountLinkService>(), null!, null!);
+                var page = new CreationResourcesPage(coordinator, resources, overview, null, state);
+                var refresh = typeof(CreationResourcesPage).GetMethod("Refresh",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+                refresh.Invoke(page, null);
+                var body = (VerticalStackLayout)((ScrollView)page.Content!).Content;
+                var toggle = body.Children.OfType<Button>().Single(button =>
+                    button.AutomationId == "creation-resources-technical-details-toggle");
+                int toggleIndex = body.Children.IndexOf(toggle);
+                var details = (VerticalStackLayout)body.Children[toggleIndex + 1];
+                Require(toggle.Text == show && !details.IsVisible,
+                    $"{locale}: Resources diagnostics were not initially collapsed.");
+                Require(body.Children.IndexOf(body.Children.Single(item =>
+                    item is Border { AutomationId: "creation-resources-budget" })) < toggleIndex,
+                    "Technical data displaced the useful budget.");
+                if (blocked)
+                    Require(body.Children.IndexOf(body.Children.Single(item =>
+                        item is Border { AutomationId: "creation-resources-blockers" })) < toggleIndex,
+                        "Blocked Resources did not retain blockers before diagnostic access.");
+                ((IButtonController)toggle).SendClicked();
+                Require(details.IsVisible && toggle.Text == hide,
+                    $"{locale}: Actual disclosure click did not reveal diagnostics.");
+                var expected = new Dictionary<string, string>
+                {
+                    ["creation-resources-binding-content-revision"] = "8",
+                    ["creation-resources-binding-saved-revision"] = "8",
+                    ["creation-resources-binding-snapshot-digest"] = state.SnapshotDigest,
+                    ["creation-resources-binding-raw-character-xml-digest"] = state.Binding.RawCharacterXmlDigest,
+                    ["creation-resources-binding-auxiliary-state-digest"] = state.Binding.AuxiliaryStateDigest,
+                    ["creation-resources-binding-prerequisite-draft-digest"] = state.Binding.PrerequisiteDraftDigest,
+                    ["creation-resources-budget-priority-nuyen"] = "50000",
+                    ["creation-resources-budget-karma-investment"] = "0",
+                    ["creation-resources-budget-total-starting-nuyen"] = "50000"
+                };
+                if (!blocked)
+                {
+                    expected["creation-resources-authority-digest"] = state.Binding.AuthorityDigest;
+                    expected["creation-resources-source-digest"] = state.Binding.SourceDigest;
+                    expected["creation-resources-rules-digest"] = state.Binding.RulesDigest;
+                    expected["creation-resources-runtime-digest"] = state.Binding.RuntimeDigest;
+                }
+                void AssertExactDetails()
+                {
+                    Label[] labels = details.Children.OfType<VerticalStackLayout>()
+                        .SelectMany(row => row.Children.OfType<Label>())
+                        .Where(label => !string.IsNullOrEmpty(label.AutomationId)).ToArray();
+                    Require(labels.Length == expected.Count, "Resources duplicated or omitted diagnostic values.");
+                    foreach ((string id, string value) in expected)
+                    {
+                        Label label = labels.Single(candidate => candidate.AutomationId == id);
+                        Require(label.Text == value && label.LineBreakMode == LineBreakMode.CharacterWrap,
+                            $"Resources {id} lost its full text or character wrapping.");
+                    }
+                    Button[] options = body.Children.OfType<Border>()
+                        .Select(border => border.Content).OfType<Grid>()
+                        .SelectMany(grid => grid.Children.OfType<Button>())
+                        .Where(button => button.AutomationId?.StartsWith(
+                            "creation-resources-option-", StringComparison.Ordinal) == true).ToArray();
+                    Require(options.Length == (blocked ? 0 : 1),
+                        "Resources disclosure hid an available option or exposed a blocked conversion.");
+                    if (!blocked)
+                        Require(options[0].AutomationId == "creation-resources-option-karma-0" && options[0].IsEnabled,
+                            "Resources disclosure changed the exact available conversion option.");
+                }
+                AssertExactDetails();
+                ((IButtonController)toggle).SendClicked();
+                Require(!details.IsVisible && toggle.Text == show,
+                    $"{locale}: Second read-only click did not collapse diagnostics.");
+                Require(resources.Loads == (blocked ? 1 : 0),
+                    "Disclosure clicks reloaded Core or ignored the exact cached authority.");
+                refresh.Invoke(page, null);
+                Require(body.Children.OfType<Button>().Count(button =>
+                    button.AutomationId == "creation-resources-technical-details-toggle") == 1,
+                    "Repeated Resources refresh duplicated its disclosure control.");
+                AssertExactDetails();
+                var currentToggle = body.Children.OfType<Button>().Single(button =>
+                    button.AutomationId == "creation-resources-technical-details-toggle");
+                ((IButtonController)toggle).SendClicked();
+                Require(!details.IsVisible && currentToggle.Text == show,
+                    "A departed Resources control changed the replacement disclosure state.");
+                ((IButtonController)currentToggle).SendClicked();
+                Require(details.IsVisible && currentToggle.Text == hide,
+                    "Rejecting the departed control disabled the current disclosure.");
+            }
+        }
+        finally
+        {
+            System.Globalization.CultureInfo.CurrentUICulture = previousCulture;
+        }
+        return Task.CompletedTask;
+    }
+
+    private sealed class DisclosureResourcesPresenter(CharacterCreationResourcesInteractionLoadResult load)
+        : ICharacterCreationResourcesInteractionPresenter
+    {
+        public int Loads { get; private set; }
+        public CharacterCreationResourcesInteractionLoadResult Load(CharacterOverviewState overview)
+        {
+            Loads++;
+            return load;
+        }
+        public CharacterCreationResourcesInteractionPrepareResult Prepare(CharacterOverviewState overview, string optionId)
+            => throw new InvalidOperationException("Read-only disclosure attempted to prepare a mutation.");
+        public CharacterCreationResourcesInteractionConfirmResult Confirm(CharacterOverviewState overview,
+            CharacterCreationResourcesConfirmation confirmation)
+            => throw new InvalidOperationException("Read-only disclosure attempted to confirm a mutation.");
+        public CharacterCreationResourcesInteractionReceiptLookupResult LookupReceipt(CharacterOverviewState overview,
+            string idempotencyKey)
+            => throw new InvalidOperationException("Read-only disclosure attempted to recover a mutation.");
+    }
 
     private static ResourcesFixture NewResourcesFixture()
     {

@@ -2196,7 +2196,82 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         device.wait_exact_resource_id_bidirectional.assert_not_called()
         device.shell.assert_not_called()
 
-    def test_resources_legacy_calls_do_not_inject_none_deadlines(self) -> None:
+    def test_resources_disclosure_opens_once_in_each_supported_language(self) -> None:
+        selector = "creation-resources-technical-details-toggle"
+        for closed, opened in (
+            ("Show technical details", "Hide technical details"),
+            ("Technische Details anzeigen", "Technische Details ausblenden"),
+            ("Mostrar detalles técnicos", "Ocultar detalles técnicos"),
+        ):
+            with self.subTest(language=closed):
+                device = mock.Mock()
+                toggle = self.canonical_node(selector, text=closed)
+                device.wait_exact_resource_id_bidirectional.return_value = toggle
+                device.wait_for_single_exact_resource_id.return_value = self.canonical_node(
+                    selector, text=opened,
+                )
+                device.node_has_tappable_bounds.return_value = True
+                deadline = driver.time.monotonic() + 30
+                driver.open_resources_technical_details(device, deadline=deadline)
+                device.shell.assert_called_once_with(
+                    "input", "tap", *(str(value) for value in toggle.center),
+                    timeout=15, deadline=deadline,
+                )
+                self.assertEqual(
+                    selector,
+                    device.wait_for_single_exact_resource_id.call_args.args[0],
+                )
+                # Re-reading the same open disclosure must not close it or
+                # replay any mutation while obtaining full identity values.
+                device.wait_exact_resource_id_bidirectional.return_value = (
+                    device.wait_for_single_exact_resource_id.return_value
+                )
+                driver.open_resources_technical_details(device, deadline=deadline)
+                self.assertEqual(1, device.shell.call_count)
+
+    def test_resources_disclosure_rejects_foreign_unknown_and_disabled_controls(self) -> None:
+        selector = "creation-resources-technical-details-toggle"
+        for attributes in (
+            {"package": "another.app"},
+            {"resource-id": f"another.app:id/{selector}"},
+            {"text": "Apply resources"},
+            {"enabled": "false"},
+            {"clickable": "false"},
+        ):
+            with self.subTest(attributes=attributes):
+                device = mock.Mock()
+                device.wait_exact_resource_id_bidirectional.return_value = self.canonical_node(
+                    selector, **({"text": "Show technical details"} | attributes),
+                )
+                with self.assertRaises(RuntimeError):
+                    driver.open_resources_technical_details(
+                        device, deadline=driver.time.monotonic() + 30,
+                    )
+                device.shell.assert_not_called()
+
+    def test_resources_disclosure_does_not_hide_missing_or_ambiguous_controls(self) -> None:
+        for error in ("missing disclosure", "disclosure cardinality 2"):
+            with self.subTest(error=error):
+                device = mock.Mock()
+                device.wait_exact_resource_id_bidirectional.side_effect = RuntimeError(error)
+                with self.assertRaisesRegex(RuntimeError, error):
+                    driver.open_resources_technical_details(
+                        device, deadline=driver.time.monotonic() + 30,
+                    )
+                device.shell.assert_not_called()
+                device.wait_for_single_exact_resource_id.assert_not_called()
+
+    def test_resources_disclosure_deadline_expires_before_any_tap(self) -> None:
+        device = mock.Mock()
+        with self.assertRaises(driver.shared.AdbOperationDeadlineExceeded):
+            driver.open_resources_technical_details(
+                device, deadline=driver.time.monotonic() - 1,
+            )
+        device.wait_exact_resource_id_bidirectional.assert_not_called()
+        device.shell.assert_not_called()
+
+    @mock.patch.object(driver, "open_resources_technical_details")
+    def test_resources_legacy_calls_do_not_inject_none_deadlines(self, disclosure: mock.Mock) -> None:
         device = mock.Mock()
         device.wait_exact_resource_id_bidirectional.return_value = self.canonical_node(
             "creation-resources-option-karma-0",
@@ -2231,6 +2306,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         ) as auxiliary:
             driver.read_resources_binding(device)
 
+        disclosure.assert_called_once_with(device, deadline=None)
         for helper in (integer, canonical, auxiliary):
             for call in helper.call_args_list:
                 self.assertNotIn("deadline", call.kwargs)
@@ -2500,8 +2576,10 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                         deadline=driver.time.monotonic() + 30,
                     )
 
+    @mock.patch.object(driver, "open_resources_technical_details")
     def test_resources_binding_reacquires_zero_option_from_measured_scan_only(
         self,
+        disclosure: mock.Mock,
     ) -> None:
         option = self.canonical_node(
             driver.RESOURCES_ZERO_CONVERSION_OPTION_ID,
@@ -2541,6 +2619,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
         self.assertIs(option, actual_option)
         self.assertEqual(50_000, authority["totalStartingNuyen"])
+        disclosure.assert_called_once_with(device, deadline=deadline)
         scan.assert_called_once_with(
             device,
             (
@@ -2585,7 +2664,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             deadline=deadline,
         )
 
-    def test_resources_binding_reuses_fresh_terminal_option_without_rewind(self) -> None:
+    @mock.patch.object(driver, "open_resources_technical_details")
+    def test_resources_binding_reuses_fresh_terminal_option_without_rewind(self, disclosure: mock.Mock) -> None:
         option = self.canonical_node(
             driver.RESOURCES_ZERO_CONVERSION_OPTION_ID,
             **{"content-desc": "0 Karma · 50,000 nuyen"},
@@ -2620,13 +2700,15 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             )
 
         self.assertEqual(50_000, authority["priorityNuyen"])
+        disclosure.assert_called_once_with(device, deadline=deadline)
         self.assertIs(option, actual_option)
         measured.assert_not_called()
         rewind.assert_not_called()
         device.capture.assert_not_called()
         device.shell.assert_not_called()
 
-    def test_resources_terminal_reuse_rejects_identity_and_viewport_drift(self) -> None:
+    @mock.patch.object(driver, "open_resources_technical_details")
+    def test_resources_terminal_reuse_rejects_identity_and_viewport_drift(self, disclosure: mock.Mock) -> None:
         option = self.canonical_node(
             driver.RESOURCES_ZERO_CONVERSION_OPTION_ID,
             **{"content-desc": "0 Karma · 50,000 nuyen"},
