@@ -812,7 +812,7 @@
       {
         "path": ".github/workflows/api36-editing-e2e.yml",
         "exists": true,
-        "sha256": "f6ceea83237f5507bcf065a067f25d73fbdd8be4d57836c134156b260ed85925"
+        "sha256": "f42e9bac0d86c845b29545e83b677a7e09d679debb188b7d908944ba1e3071a8"
       },
       {
         "path": ".github/workflows/api36-two-consecutive-green.yml",
@@ -872,7 +872,7 @@
       {
         "path": "scripts/materialize-android-p0-pr-authority.py",
         "exists": true,
-        "sha256": "c15ac8c139632e09d6c737916c21dfb7e6703922993c56e025626bc2525ce9c8"
+        "sha256": "a606227964835dc8fcc4ebcf1f7d71462f66d833e069e66820566963d39f135c"
       },
       {
         "path": "scripts/prepare-api36-emulator-live-log.py",
@@ -912,7 +912,7 @@
       {
         "path": "tests/test_api36_e2e_workflow.py",
         "exists": true,
-        "sha256": "5b4fedb5b94da7741ae47ba5fcb4b9a15a83a9d30e44782fb6f633a74effaff4"
+        "sha256": "133a9635f3e9e34563bd455fc9dc655e532fa90cf17195d5a145b34b708a925f"
       },
       {
         "path": "tests/test_api36_e2e_artifact_authority.py",
