@@ -177,6 +177,7 @@ interaction_tests_binary="${interaction_tests_path%/*}/bin/Debug/net10.0/Chummer
 "$dotnet_command" "$interaction_tests_binary" --android-account-owner-content-root "$native_content_root"
 "$dotnet_command" "$interaction_tests_binary" --creation-bootstrap-owner-content-root "$native_content_root"
 "$dotnet_command" "$interaction_tests_binary" --creation-contacts-owner-content-root "$native_content_root"
+"$dotnet_command" "$interaction_tests_binary" --creation-finalization-owner-content-root "$native_content_root"
 "$dotnet_command" "$interaction_tests_binary" --persistence-owner-content-root "$native_content_root"
 "$dotnet_command" "$interaction_tests_binary" --account-erasure-owner-content-root "$native_content_root"
 # End required account/continuation suites.
