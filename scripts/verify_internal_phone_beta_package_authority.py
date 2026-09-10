@@ -108,6 +108,7 @@ EXISTING_OWNER_TEST_EXECUTIONS = (
     ("WorkspaceSessionPresenterTests", "Chummer.Tests/Presentation/WorkspaceSessionPresenterTests.cs", 23),
     ("WorkspaceViewStateStoreTests", "Chummer.Tests/Presentation/WorkspaceViewStateStoreTests.cs", 6),
     ("RestartSafeWorkspacePersistenceTests", "Chummer.Tests/RestartSafeWorkspacePersistenceTests.cs", 1),
+    ("WorkspaceOverviewFinalizationOwnerTests", "Chummer.CreationWizard.Presentation.Tests/WorkspaceOverviewFinalizationOwnerTests.cs", 24),
 )
 
 
@@ -758,7 +759,7 @@ def validate_owner_test_executions(receipt: Mapping[str, Any]) -> None:
         or full["disableBuildServers"] is not True
         or full["useSharedCompilation"] is not False
         or type(full["maxCpuCount"]) is not int or full["maxCpuCount"] != 1
-        or type(full["minimumExpectedTests"]) is not int or full["minimumExpectedTests"] != 747
+        or type(full["minimumExpectedTests"]) is not int or full["minimumExpectedTests"] != 771
     ):
         raise ValueError("UI full Product test invocation is not exact")
     assembly = require_exact_object(full["testAssembly"], "UI Product test assembly", {"path", "sha256", "sizeBytes"})

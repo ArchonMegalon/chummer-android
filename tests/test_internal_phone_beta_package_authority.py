@@ -364,7 +364,7 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
             "compileRunner": "serialized-package-plane-build",
             "disableBuildServers": True,
             "maxCpuCount": 1,
-            "minimumExpectedTests": 747,
+            "minimumExpectedTests": 771,
             "project": project,
             "runner": "direct-exact-assembly",
             "sdkVersion": receipt["sdkVersion"],
@@ -381,6 +381,7 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
             ("WorkspaceSessionPresenterTests", "Chummer.Tests/Presentation/WorkspaceSessionPresenterTests.cs", 23),
             ("WorkspaceViewStateStoreTests", "Chummer.Tests/Presentation/WorkspaceViewStateStoreTests.cs", 6),
             ("RestartSafeWorkspacePersistenceTests", "Chummer.Tests/RestartSafeWorkspacePersistenceTests.cs", 1),
+            ("WorkspaceOverviewFinalizationOwnerTests", "Chummer.CreationWizard.Presentation.Tests/WorkspaceOverviewFinalizationOwnerTests.cs", 24),
         )
         rows = [{
             "coreProjectionContent": copy.deepcopy(content),
@@ -709,14 +710,57 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
         original = copy.deepcopy(receipt)
         self.assertEqual(receipt, self.validate_receipt_copy(receipt))
         self.assertEqual(original, receipt)
-        self.assertEqual(747, receipt["testExecutions"][0]["minimumExpectedTests"])
-        self.assertEqual([19, 26, 74, 24, 80, 5, 23, 6, 1],
+        self.assertEqual(771, receipt["testExecutions"][0]["minimumExpectedTests"])
+        self.assertEqual([19, 26, 74, 24, 80, 5, 23, 6, 1, 24],
                          [row["minimumExpectedTests"] for row in self.owner_execution_rows(receipt)])
         self.assertFalse(Path(receipt["testExecutions"][0]["coreProjectionContent"]["sourceRoot"]).exists())
         # The producer can validate the content checkout at either exact commit.
         for row in [*receipt["testExecutions"], *self.owner_execution_rows(receipt)]:
             row["coreProjectionContent"]["checkoutCommit"] = self.module.EXPECTED_SOURCE_GRAPH["coreRuntimeSourceCommit"]
         self.validate_receipt_copy(receipt)
+
+    def test_finalization_owner_execution_matches_exact_ui_producer_shape(self) -> None:
+        # Synthetic receipt compatibility only: these tests do not attest a
+        # compiled Product assembly, protected producer, or future UI seal.
+        receipt = self.current_main_receipt_fixture()
+        full = receipt["testExecutions"][0]
+        source = "Chummer.CreationWizard.Presentation.Tests/WorkspaceOverviewFinalizationOwnerTests.cs"
+        rows = receipt["focusedExistingOwnerRegressionTestExecutions"]
+        self.assertEqual(8, len(rows))
+        self.assertEqual(8, len(self.module.EXISTING_OWNER_TEST_EXECUTIONS))
+        self.assertEqual(
+            ("WorkspaceOverviewFinalizationOwnerTests", source, 24),
+            self.module.EXISTING_OWNER_TEST_EXECUTIONS[-1],
+        )
+        self.assertEqual({
+            "coreProjectionContent": full["coreProjectionContent"],
+            "filter": "FullyQualifiedName~WorkspaceOverviewFinalizationOwnerTests",
+            "minimumExpectedTests": 24,
+            "project": full["project"],
+            "reuseFullSuiteBuild": True,
+            "runner": "direct-exact-assembly",
+            "sdkVersion": full["sdkVersion"],
+            "sourceFiles": [source],
+            "testAssembly": full["testAssembly"],
+        }, rows[-1])
+        self.assertEqual(1, [row["path"] for row in receipt["sourceInventory"]].count(source))
+        self.assertEqual(receipt, self.validate_receipt_copy(receipt))
+
+    def test_previous_floor_or_missing_finalization_authority_is_rejected(self) -> None:
+        source = "Chummer.CreationWizard.Presentation.Tests/WorkspaceOverviewFinalizationOwnerTests.cs"
+        for change in ("previous-floor", "previous-seven-rows", "missing-source"):
+            receipt = self.current_main_receipt_fixture()
+            if change == "previous-floor":
+                receipt["testExecutions"][0]["minimumExpectedTests"] = 747
+            elif change == "previous-seven-rows":
+                receipt["focusedExistingOwnerRegressionTestExecutions"].pop()
+                self.assertEqual(7, len(receipt["focusedExistingOwnerRegressionTestExecutions"]))
+            else:
+                receipt["sourceInventory"] = [
+                    row for row in receipt["sourceInventory"] if row["path"] != source
+                ]
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                self.validate_receipt_copy(receipt)
 
     def test_new_owner_receipt_fields_are_required_and_unknown_fields_stay_denied(self) -> None:
         for field in ("focusedContinuationTestExecution", "focusedOwnerShellTestExecution",
@@ -746,7 +790,7 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
             "testAssembly": None,
             "coreProjectionContent": None,
         }
-        for index in range(9):
+        for index in range(10):
             for field, value in mutations.items():
                 for change in ("missing", "changed"):
                     receipt = self.current_main_receipt_fixture()
@@ -778,7 +822,7 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
                 self.validate_receipt_copy(receipt)
 
     def test_configured_test_floors_require_exact_integers_not_observed_totals(self) -> None:
-        for index in range(10):
+        for index in range(11):
             for change in ("float", "boolean", "lower", "higher"):
                 receipt = self.current_main_receipt_fixture()
                 row = [*receipt["testExecutions"], *self.owner_execution_rows(receipt)][index]
@@ -789,7 +833,7 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
                     self.validate_receipt_copy(receipt)
 
     def test_owner_tests_cannot_use_different_assembly_or_core_projection_bytes(self) -> None:
-        for index in range(9):
+        for index in range(10):
             for field, key, value in (
                 ("testAssembly", "path", "Other.dll"),
                 ("testAssembly", "sha256", "e" * 64),
