@@ -927,7 +927,7 @@
       {
         "path": "tests/test_api36_two_green_eligibility.py",
         "exists": true,
-        "sha256": "dcc33dc219762ac7ebf817e71470a648c19afd243924d63eff195a10636b2fb3"
+        "sha256": "e20f17fc6b8eca36c4a6956773dd75edb5938734891cb3c066c55e84f7678a1c"
       },
       {
         "path": "tests/test_android_p0_pr_authority.py",

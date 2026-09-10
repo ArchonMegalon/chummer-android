@@ -840,7 +840,9 @@ def _validate_current_dependency_pins(
     if not isinstance(source_graph, dict) or not isinstance(presentation, dict):
         raise ValueError("internal package authority dependency pins are missing")
     expected = {
-        "core-content": source_graph.get("corePackageRecipeCommit"),
+        # Android's frozen data/lang checkout is independent of both the Core
+        # package-recipe commit and its compiled runtime source commit.
+        "core-content": TWO_GREEN.P0.EXPECTED_DEPENDENCY_COMMITS["core-content"],
         "core-runtime": source_graph.get("coreRuntimeSourceCommit"),
         "registry": source_graph.get("registryCommit"),
         "ui-kit": source_graph.get("uiKitCommit"),

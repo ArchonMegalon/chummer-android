@@ -139,6 +139,32 @@ class RecordingDevice(DRIVER.Device):
 
 
 class Api36EditingE2EDriverTests(unittest.TestCase):
+    @staticmethod
+    def _coordinator_member(source: str, declaration: str) -> str:
+        """Bound source assertions to one exact four-space-indented C# member."""
+        source = "\n" + source
+        marker = "\n    " + declaration
+        if source.count(marker) != 1:
+            raise AssertionError(f"expected one coordinator declaration: {declaration}")
+        lines = source[source.index(marker) + len("\n    ") :].splitlines(keepends=True)
+        for index, line in enumerate(lines[1:], 1):
+            if line.startswith(("    public ", "    private ", "    internal ", "    protected ")):
+                return "".join(lines[:index])
+        return "".join(lines)
+
+    def test_coordinator_member_checks_reject_missing_duplicate_and_adjacent_guards(self) -> None:
+        declaration = "public Task ConfirmAsync()"
+        member = f"    {declaration}\n    {{\n        return Task.CompletedTask;\n    }}\n"
+        adjacent = "    private Task NeighborAsync() => WithWorkspaceActivationGateAsync();\n"
+        with self.assertRaisesRegex(AssertionError, "expected one coordinator declaration"):
+            self._coordinator_member(adjacent, declaration)
+        with self.assertRaisesRegex(AssertionError, "expected one coordinator declaration"):
+            self._coordinator_member(member + member, declaration)
+        selected = self._coordinator_member(member + adjacent, declaration)
+        self.assertIn("return Task.CompletedTask;", selected)
+        self.assertNotIn("WithWorkspaceActivationGateAsync", selected)
+        self.assertNotIn("NeighborAsync", selected)
+
     def test_preview_talent_plan_uses_one_fine_scan_for_a_short_digest_row(self) -> None:
         selected_id = (
             "creation-prerequisite-talent-active-skill-option-"
@@ -5531,12 +5557,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             / "Native"
             / "RunnerSessionCoordinator.cs"
         ).read_text(encoding="utf-8")
-        block = source[source.index("public async Task<NativeWorkspaceActivationReceipt?> OpenLocalAsync") :]
-        block = block[
-            : block.index(
-                "public async Task<NativeWorkspaceActivationReceipt?> OpenOnlineAsync"
-            )
-        ]
+        block = self._coordinator_member(source, "public async Task<NativeWorkspaceActivationReceipt?> OpenLocalAsync")
 
         self.assertNotIn("CharacterOverviewState previousState = State;", block)
         self.assertIn("_notice = null;", block)
@@ -5881,8 +5902,18 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         self.assertIn("IChummerClient client", coordinator)
         self.assertIn("using Chummer.Presentation;", coordinator)
         self.assertIn("_client = client;", coordinator)
-        self.assertIn("await _client.GetWorkspaceAsync(workspaceId, cancellationToken)", coordinator)
-        self.assertEqual(2, coordinator.count("await _client.GetWorkspaceAsync(workspaceId, cancellationToken)"))
+        read = self._coordinator_member(coordinator, "private async Task<NativeWorkspaceAuthoritySnapshot> ReadWorkspaceAuthorityAsync")
+        self.assertEqual(2, read.count("await ReadAsync()"))
+        self.assertEqual(2, read.count("RequireWorkspaceSnapshot("))
+        self.assertIn("if (expectedOwner is not null && _client is not IOwnerBoundWorkspaceMutationClient)", read)
+        self.assertIn('throw new InvalidOperationException("Owner-bound Android proof capture is unavailable.")', read)
+        self.assertIn("=> expectedOwner is { } owner", read)
+        self.assertIn("? ((IOwnerBoundWorkspaceMutationClient)_client).GetWorkspaceAsync(owner, workspaceId, cancellationToken)", read)
+        self.assertIn(": _client.GetWorkspaceAsync(workspaceId, cancellationToken);", read)
+        refresh = self._coordinator_member(coordinator, "private async Task<NativeWorkspaceAuthoritySnapshot?> TryRefreshWorkspaceAuthorityAsync")
+        self.assertIn("ReadWorkspaceAuthorityAsync(workspaceId, token, expectedOwner)", refresh)
+        self.assertIn("bound.CaptureOwnerContext() != retained", refresh)
+        self.assertIn("expectedOwner is { } owner && State.DisplayOwnerContext != owner", refresh)
         self.assertIn("AuthoritySnapshotsMatch(first, verified)", coordinator)
         self.assertIn("authorityEpoch != _workspaceAuthorityEpoch", coordinator)
         self.assertIn("!authority.Matches(State)", coordinator)
@@ -5937,12 +5968,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             / "Native"
             / "RunnerSessionCoordinator.cs"
         ).read_text(encoding="utf-8")
-        local = source[source.index("public async Task<NativeWorkspaceActivationReceipt?> OpenLocalAsync") :]
-        local = local[
-            : local.index(
-                "public async Task<NativeWorkspaceActivationReceipt?> OpenOnlineAsync"
-            )
-        ]
+        local = self._coordinator_member(source, "public async Task<NativeWorkspaceActivationReceipt?> OpenLocalAsync")
         save = source[source.index("public async Task SaveAsync") :]
         save = save[: save.index("public async Task ExportAsync")]
         refresh = source[source.index("private async Task<NativeWorkspaceAuthoritySnapshot?>") :]
@@ -5959,7 +5985,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         self.assertIn("ClearWorkspaceAuthority();", refresh)
         self.assertIn("return null;", refresh)
 
-    def test_import_receipts_require_verified_authority_after_final_state_restore(self) -> None:
+    def test_local_and_continuation_receipts_require_verified_state_after_final_restore(self) -> None:
         source = (
             REPO_ROOT
             / "src"
@@ -5967,35 +5993,36 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             / "Native"
             / "RunnerSessionCoordinator.cs"
         ).read_text(encoding="utf-8")
-        local = source[
-            source.index("public async Task<NativeWorkspaceActivationReceipt?> OpenLocalAsync") :
-            source.index("private static bool WorkspaceIsActive")
-        ]
-        online = source[
-            source.index("public async Task<NativeWorkspaceActivationReceipt?> OpenOnlineAsync") :
-            source.index("public async Task CreateRunnerAsync")
-        ]
+        local = self._coordinator_member(source, "public async Task<NativeWorkspaceActivationReceipt?> OpenLocalAsync")
+        authority_guard = local[local.index("if (authority is not null)") :]
+        receipt_assignment = local.index("activation = new(")
+        self.assertIn("activatedWorkspaceId = importedWorkspaceId;", authority_guard)
+        self.assertIn("verifiedAuthority = authority;", authority_guard)
+        self.assertLess(local.index("await SyncShellAsync"), receipt_assignment)
+        self.assertLess(local.index("RestorePlayState();"), receipt_assignment)
+        final_guard = local[local.index("RestorePlayState();") : receipt_assignment]
+        self.assertIn("verifiedAuthority?.Matches(State) == true", final_guard)
+        self.assertIn("WorkspaceIsActive(State, stableWorkspaceId)", final_guard)
+        self.assertNotIn("catch (", local)
 
-        for name, block in (("local", local), ("online", online)):
-            with self.subTest(name=name):
-                authority_guard = block[block.index("if (authority is not null)") :]
-                receipt_assignment = block.index("activation = new(")
-                self.assertIn("activatedWorkspaceId = importedWorkspaceId;", authority_guard)
-                self.assertIn("verifiedAuthority = authority;", authority_guard)
-                self.assertLess(block.index("await SyncShellAsync"), receipt_assignment)
-                self.assertLess(block.index("RestorePlayState();"), receipt_assignment)
-                self.assertIn(
-                    "verifiedAuthority?.Matches(State) == true",
-                    block[block.index("RestorePlayState();") : receipt_assignment],
-                )
-                self.assertIn(
-                    "WorkspaceIsActive(State, stableWorkspaceId)",
-                    block[block.index("RestorePlayState();") : receipt_assignment],
-                )
-                self.assertNotIn("catch (", block)
+        continuation = (REPO_ROOT / "src/Chummer.Android/Native/RunnerSessionCoordinator.Continuations.cs").read_text(encoding="utf-8")
+        online = self._coordinator_member(continuation, "public async Task<NativeWorkspaceContinuationOpenResult> ConfirmOnlineAsync")
+        self.assertLess(online.index("continuation.ConfirmContinuationAsync"), online.index("presenter.ActivateContinuationAsync"))
+        self.assertIn("presenter.ActivateContinuationAsync(review.Owner, review.Expected, result.Receipt, ct)", online)
+        self.assertIn("if (!activated || !IsContinuationOwnerCurrent(review.Owner))", online)
+        self.assertLess(online.index("presenter.ActivateContinuationAsync"), online.index("await SyncShellAsync(ct)"))
+        self.assertLess(online.index("await SyncShellAsync(ct)"), online.index("RestorePlayState();"))
+        final_guard = online[online.index("await SyncShellAsync(ct)") : online.index("RestorePlayState();")]
+        for check in ("!IsContinuationOwnerCurrent(review.Owner)", "State.WorkspaceId != workspace.Id",
+                      "State.ContentRevision != workspace.ContentRevision", "State.SavedRevision != workspace.SavedRevision",
+                      "return new(result, null);"):
+            self.assertIn(check, final_guard)
+        self.assertLess(online.index("RestorePlayState();"), online.index("return new(result, new(NativeWorkspaceActivationKind.OnlineCharacter, workspace.Id)"))
+        for binding in ("OriginalOwner = review.Owner", "ExpectedContentRevision = workspace.ContentRevision",
+                        "ExpectedSavedRevision = workspace.SavedRevision"):
+            self.assertIn(binding, online)
 
-        predicate = source[source.index("private static bool WorkspaceIsActive") :]
-        predicate = predicate[: predicate.index("public async Task<NativeWorkspaceActivationReceipt?> OpenOnlineAsync")]
+        predicate = self._coordinator_member(source, "private static bool WorkspaceIsActive")
         self.assertIn("state.WorkspaceId is { } activeWorkspaceId", predicate)
         self.assertIn("StringComparison.Ordinal", predicate)
 
@@ -6029,7 +6056,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         self.assertIn("NativeWorkspaceActivationKind.WorkspaceSwitch", block)
         self.assertIn("workspace.Id)", block)
 
-    def test_online_import_uses_the_same_exact_authority_activation_contract(self) -> None:
+    def test_online_restore_requires_complete_owner_bound_review_not_xml_import(self) -> None:
         source = (
             REPO_ROOT
             / "src"
@@ -6037,40 +6064,43 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             / "Native"
             / "RunnerSessionCoordinator.cs"
         ).read_text(encoding="utf-8")
-        block = source[
-            source.index(
-                "public async Task<NativeWorkspaceActivationReceipt?> OpenOnlineAsync"
-            ) :
-        ]
-        block = block[: block.index("public async Task CreateRunnerAsync")]
+        legacy = self._coordinator_member(source, "public Task<NativeWorkspaceActivationReceipt?> OpenOnlineAsync")
+        self.assertIn("cancellationToken.ThrowIfCancellationRequested();", legacy)
+        self.assertIn("return Task.FromResult<NativeWorkspaceActivationReceipt?>(null);", legacy)
+        self.assertIn('"OnlineContinuationReviewRequired"', legacy)
+        for forbidden in ("ImportAsync", "StrictUtf8.GetBytes", "WorkspaceImportDocument", "RememberRosterLocator",
+                          "ConfirmContinuationAsync", "ActivateContinuationAsync"):
+            self.assertNotIn(forbidden, legacy)
 
-        self.assertNotIn("CharacterOverviewState previousState = State;", block)
-        self.assertIn("_notice = null;", block)
-        self.assertIn("await _workspaceActivationGate.WaitAsync(cancellationToken);", block)
-        self.assertIn("string expectedPayloadSha256 = Sha256Hex(payload);", block)
-        self.assertIn(
-            "if (State.WorkspaceId is { } importedWorkspaceId)",
-            block,
-        )
-        guarded = block[block.index("if (State.WorkspaceId is { } importedWorkspaceId)") :]
-        self.assertIn("TryRefreshWorkspaceAuthorityAsync", guarded)
-        self.assertIn("expectedPayloadSha256", guarded)
-        self.assertIn("if (authority is not null)", guarded)
-        self.assertIn("RememberRosterLocator", guarded)
-        self.assertIn(
-            '_notice = $"Opened {DisplayName(character.Name, character.Alias)}.";',
-            guarded,
-        )
-        self.assertIn(
-            "else\n                {\n                    _notice = WorkspaceVerificationUnavailableNotice;",
-            guarded,
-        )
-        self.assertEqual(2, source.count("_notice = WorkspaceVerificationUnavailableNotice;"))
-        self.assertNotIn(
-            'cancellationToken);\n'
-            '            RememberRosterLocator(',
-            block,
-        )
+        continuation = (REPO_ROOT / "src/Chummer.Android/Native/RunnerSessionCoordinator.Continuations.cs").read_text(encoding="utf-8")
+        review = self._coordinator_member(continuation, "public async Task<NativeWorkspaceContinuationReview?> ReviewOnlineAsync")
+        self.assertIn("ReferenceEquals(item.Character, character)", review)
+        self.assertIn("item?.Continuation is null", review)
+        self.assertIn("!IsContinuationOwnerCurrent(catalog.Owner)", review)
+        self.assertIn("_client is not IOwnerBoundWorkspaceContinuationClient continuation", review)
+        self.assertIn("WorkspaceSessionState selection = State.Session;", review)
+        self.assertEqual(4, review.count("!IsContinuationSelectionCurrent(catalog.Owner, selection)"))
+        self.assertIn("WorkspaceContinuationCodec.TryDecodeCandidate(bytes, 512 * 1024, out var candidate)", review)
+        self.assertIn("review.SnapshotDigest != expected!.SnapshotDigest", review)
+        self.assertIn("review.Result.Target?.SnapshotDigest != expected!.SnapshotDigest", review)
+        self.assertIn("continuation.ReviewContinuationAsync(catalog.Owner, bytes, ct)", review)
+        self.assertIn("new NativeWorkspaceContinuationReview(this, catalog.Owner, expected, selection, review)", review)
+        for forbidden in ("ImportAsync", "ConfirmContinuationAsync", "RememberRosterLocator"):
+            self.assertNotIn(forbidden, review)
+
+        confirm = self._coordinator_member(continuation, "public async Task<NativeWorkspaceContinuationOpenResult> ConfirmOnlineAsync")
+        self.assertLess(confirm.index("if (!review.TryClaim(this))"), confirm.index("if (!explicitlyConfirmed)"))
+        self.assertLess(confirm.index("if (!explicitlyConfirmed)"), confirm.index("_workspaceActivationGate.WaitAsync(ct)"))
+        self.assertLess(confirm.index("!IsContinuationSelectionCurrent(review.Owner, review.Selection)"), confirm.index("continuation.ConfirmContinuationAsync"))
+        self.assertEqual(1, confirm.count("continuation.ConfirmContinuationAsync(review.Owner, review.CoreReview, true, ct)"))
+        self.assertIn("WorkspaceContinuationRestoreOutcome.Conflict, ReopenRequired: true", confirm)
+        self.assertIn("WorkspaceContinuationRestoreOutcome.AlreadyCurrent", confirm)
+        self.assertNotIn("_presenter.ImportAsync", confirm)
+
+        selection = self._coordinator_member(continuation, "private bool IsContinuationSelectionCurrent")
+        for check in ("IsContinuationOwnerCurrent(original)", "ReferenceEquals(State.Session, selection)",
+                      "State.Session.OwnerContext == original", "!State.IsDirty", "State.ActiveWorkspace?.ConflictState is null"):
+            self.assertIn(check, selection)
 
     def test_import_buffers_are_allocated_only_after_the_shared_activation_gate(self) -> None:
         source = (
@@ -6080,21 +6110,53 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             / "Native"
             / "RunnerSessionCoordinator.cs"
         ).read_text(encoding="utf-8")
-        local = source[source.index("public async Task<NativeWorkspaceActivationReceipt?> OpenLocalAsync") :]
-        local = local[: local.index("private static bool WorkspaceIsActive")]
-        online = source[
-            source.index(
-                "public async Task<NativeWorkspaceActivationReceipt?> OpenOnlineAsync"
-            ) :
-        ]
-        online = online[: online.index("public async Task CreateRunnerAsync")]
+        local = self._coordinator_member(source, "public async Task<NativeWorkspaceActivationReceipt?> OpenLocalAsync")
+        continuation = (REPO_ROOT / "src/Chummer.Android/Native/RunnerSessionCoordinator.Continuations.cs").read_text(encoding="utf-8")
+        online = self._coordinator_member(continuation, "public async Task<NativeWorkspaceContinuationReview?> ReviewOnlineAsync")
 
         self.assertLess(local.index("_workspaceActivationGate.WaitAsync"), local.index("_documents.OpenAsync"))
         self.assertLess(local.index("_documents.OpenAsync"), local.index("ComputeExactImportPayloadSha256"))
         self.assertLess(local.index("CryptographicOperations.ZeroMemory"), local.index("_workspaceActivationGate.Release"))
-        self.assertLess(online.index("_workspaceActivationGate.WaitAsync"), online.index("StrictUtf8.GetBytes"))
-        self.assertLess(online.index("StrictUtf8.GetBytes"), online.index("Sha256Hex(payload)"))
+        self.assertLess(online.index("_workspaceActivationGate.WaitAsync"), online.index("WorkspaceContinuationCodec.Encode"))
+        self.assertIn("Task.Run(() => WorkspaceContinuationCodec.Encode(item.Continuation, 512 * 1024), ct)", online)
+        self.assertLess(online.index("WorkspaceContinuationCodec.Encode"), online.index("WorkspaceContinuationCodec.TryDecodeCandidate"))
+        self.assertLess(online.index("WorkspaceContinuationCodec.TryDecodeCandidate"), online.index("continuation.ReviewContinuationAsync"))
+        self.assertIn("finally", online)
+        self.assertIn("review?.Dispose();", online)
+        self.assertIn("CryptographicOperations.ZeroMemory(bytes)", online)
         self.assertLess(online.index("CryptographicOperations.ZeroMemory"), online.index("_workspaceActivationGate.Release"))
+
+    def test_continuation_consumption_and_postcommit_failure_preserve_core_receipt(self) -> None:
+        source = (REPO_ROOT / "src/Chummer.Android/Native/RunnerSessionCoordinator.Continuations.cs").read_text(encoding="utf-8")
+        claim = self._coordinator_member(source, "internal bool TryClaim(RunnerSessionCoordinator issuer)")
+        self.assertIn("ReferenceEquals(Issuer, issuer)", claim)
+        self.assertIn("Interlocked.CompareExchange(ref _consumed, 1, 0) == 0", claim)
+        dispose = self._coordinator_member(source, "public void Dispose()")
+        self.assertIn("Interlocked.Exchange(ref _consumed, 1)", dispose)
+        self.assertIn("CoreReview.Dispose();", dispose)
+        current = self._coordinator_member(source, "private bool IsContinuationOwnerCurrent")
+        self.assertIn("current == original && original.IsValid", current)
+        activation = self._coordinator_member(source, "public bool IsWorkspaceActivationCurrent")
+        self.assertIn("receipt?.Matches(State, kind) == true", activation)
+        self.assertIn("IsContinuationOwnerCurrent(original)", activation)
+
+        confirm = self._coordinator_member(source, "public async Task<NativeWorkspaceContinuationOpenResult> ConfirmOnlineAsync")
+        self.assertIn("if (!review.TryClaim(this)) return new(new(WorkspaceContinuationRestoreOutcome.ReviewConsumed), null);", confirm)
+        self.assertIn("if (!explicitlyConfirmed) { review.Dispose(); return new(new(WorkspaceContinuationRestoreOutcome.Canceled), null); }", confirm)
+        self.assertIn("catch { review.Dispose(); throw; }", confirm)
+        outcome_guard = confirm[confirm.index("if (result.Outcome is not") : confirm.index("bool activated =")]
+        for outcome in ("Applied", "Recovered", "AlreadyCurrent"):
+            self.assertIn(f"WorkspaceContinuationRestoreOutcome.{outcome}", outcome_guard)
+        self.assertIn("return new(result, null);", outcome_guard)
+        postcommit = confirm[confirm.index("catch (Exception ex) when") :]
+        # Both activation exceptions (including cancellation) and a faulty final
+        # Changed observer are suppressible only after a known committed outcome.
+        self.assertEqual(2, postcommit.count("result.Outcome is WorkspaceContinuationRestoreOutcome.Applied or WorkspaceContinuationRestoreOutcome.Recovered"))
+        self.assertIn("return new(result, null);", postcommit)
+        self.assertIn("review.Dispose();", postcommit)
+        self.assertIn("_workspaceActivationGate.Release();", postcommit)
+        self.assertNotIn("ConfirmContinuationAsync", postcommit)
+        self.assertNotIn("RecoverContinuationAsync", postcommit)
 
     def test_explicit_android_activation_entrypoints_share_one_gate(self) -> None:
         source = (
@@ -6105,52 +6167,51 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             / "RunnerSessionCoordinator.cs"
         ).read_text(encoding="utf-8")
 
-        for method_name, start_marker, next_method in (
-            ("ConfirmCreationPrerequisiteAsync", "ConfirmCreationPrerequisiteAsync(", "ConfirmCreationPrerequisiteCoreAsync"),
-            ("ConfirmCreationFoundationAsync", "public async Task<CharacterCreationFoundationInteractionConfirmResult> ConfirmCreationFoundationAsync(", "ConfirmCreationFoundationCoreAsync"),
+        for method_name, start_marker in (
+            ("ConfirmCreationPrerequisiteAsync", "internal async Task<CreationPrerequisitePhoneConfirmResult>\n        ConfirmCreationPrerequisiteAsync("),
+            ("ConfirmCreationFoundationAsync", "public async Task<CharacterCreationFoundationInteractionConfirmResult> ConfirmCreationFoundationAsync("),
             (
                 "SwitchWorkspaceAsync",
                 "public async Task<NativeWorkspaceActivationReceipt?> SwitchWorkspaceAsync",
-                "CloseWorkspaceAsync",
             ),
-            ("CloseWorkspaceAsync", "public async Task CloseWorkspaceAsync", "private async Task WithWorkspaceActivationGateAsync"),
-            ("EraseAccountAsync", "public async Task<NativeAccountErasureResult> EraseAccountAsync", "EraseAccountCoreAsync"),
-            ("ExecuteCommandAsync", "public async Task ExecuteCommandAsync", "ExecuteCommandCoreAsync"),
-            ("ExecuteDialogActionAsync", "public async Task ExecuteDialogActionAsync", "ExecuteDialogActionCoreAsync"),
-            ("ExecuteWorkspaceActionAsync", "public async Task ExecuteWorkspaceActionAsync", "ExecuteWorkspaceActionCoreAsync"),
-            ("ApplyAttributeEditAsync", "public async Task ApplyAttributeEditAsync", "ApplyAttributeEditCoreAsync"),
-            ("ApplyOriginDossierEditAsync", "public async Task ApplyOriginDossierEditAsync", "ApplyOriginDossierEditCoreAsync"),
-            ("ApplyCollectionMutationAsync", "public async Task ApplyCollectionMutationAsync", "ApplyCollectionMutationCoreAsync"),
-            ("ApplyConditionMonitorEditAsync", "public async Task ApplyConditionMonitorEditAsync", "ApplyConditionMonitorEditCoreAsync"),
-            ("ApplyPrimaryArmEditAsync", "public async Task ApplyPrimaryArmEditAsync", "ApplyPrimaryArmEditCoreAsync"),
+            ("CloseWorkspaceAsync", "public async Task CloseWorkspaceAsync"),
+            ("EraseAccountAsync", "public Task<NativeAccountErasureResult> EraseAccountAsync(NativeAccountErasureRequest request,"),
+            ("ExecuteCommandAsync", "public async Task ExecuteCommandAsync"),
+            ("ExecuteDialogActionAsync", "public async Task ExecuteDialogActionAsync"),
+            ("ExecuteWorkspaceActionAsync", "public async Task ExecuteWorkspaceActionAsync"),
+            ("ApplyAttributeEditAsync", "public async Task ApplyAttributeEditAsync"),
+            ("ApplyOriginDossierEditAsync", "public async Task ApplyOriginDossierEditAsync"),
+            ("ApplyCollectionMutationAsync", "public async Task ApplyCollectionMutationAsync"),
+            ("ApplyConditionMonitorEditAsync", "public async Task ApplyConditionMonitorEditAsync"),
+            ("ApplyPrimaryArmEditAsync", "public async Task ApplyPrimaryArmEditAsync"),
         ):
-            block = source[source.index(start_marker) :]
-            block = block[: block.index(next_method, len(method_name))]
+            block = self._coordinator_member(source, start_marker)
             self.assertIn("WithWorkspaceActivationGateAsync", block, method_name)
 
-        create = source[source.index("public async Task CreateRunnerAsync") :]
-        create = create[
-            : create.index(
-                "public async Task<NativeWorkspaceActivationReceipt?> SwitchWorkspaceAsync"
-            )
-        ]
+        create = self._coordinator_member(source, "public async Task CreateRunnerAsync")
         self.assertIn('ExecuteCommandAsync("new_character", cancellationToken)', create)
         self.assertNotIn("WithWorkspaceActivationGateAsync", create)
 
-        initialize = source[source.index("public async Task InitializeAsync") :]
-        initialize = initialize[
-            : initialize.index(
-                "public async Task<NativeWorkspaceActivationReceipt?> OpenLocalAsync"
-            )
-        ]
+        initialize = self._coordinator_member(source, "private async Task<bool> InitializeWorkspaceOwnerAsync")
         self.assertLess(
             initialize.index("_workspaceActivationGate.WaitAsync"),
             initialize.index("_presenter.InitializeAsync"),
         )
-        helper = source[source.index("private async Task WithWorkspaceActivationGateAsync") :]
-        helper = helper[: helper.index("public bool IsRosterFavorite")]
-        self.assertIn("finally", helper)
-        self.assertIn("_workspaceActivationGate.Release();", helper)
+        for declaration in ("private async Task WithWorkspaceActivationGateAsync(",
+                            "private async Task<T> WithWorkspaceActivationGateAsync<T>("):
+            helper = self._coordinator_member(source, declaration)
+            self.assertLess(helper.index("_workspaceActivationGate.WaitAsync"), helper.index("await action()"))
+            self.assertIn("finally", helper)
+            self.assertIn("_workspaceActivationGate.Release();", helper)
+        continuation = (REPO_ROOT / "src/Chummer.Android/Native/RunnerSessionCoordinator.Continuations.cs").read_text(encoding="utf-8")
+        for declaration, operation in (
+            ("public async Task<NativeWorkspaceContinuationReview?> ReviewOnlineAsync", "continuation.ReviewContinuationAsync"),
+            ("public async Task<NativeWorkspaceContinuationOpenResult> ConfirmOnlineAsync", "continuation.ConfirmContinuationAsync"),
+        ):
+            block = self._coordinator_member(continuation, declaration)
+            self.assertLess(block.index("_workspaceActivationGate.WaitAsync(ct)"), block.index(operation))
+            self.assertIn("finally", block)
+            self.assertIn("_workspaceActivationGate.Release();", block)
 
     def test_authority_capture_uses_the_shared_presentation_operation_coordinator(self) -> None:
         source = (
@@ -6191,15 +6252,10 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         self.assertIn("ClearWorkspaceAuthority();\n                return null;", run_current)
 
         for method_name, start_marker, presenter_operation in (
-            ("InitializeAsync", "public async Task InitializeAsync", "_presenter.InitializeAsync"),
+            ("InitializeWorkspaceOwnerAsync", "private async Task<bool> InitializeWorkspaceOwnerAsync", "_presenter.InitializeAsync"),
             (
                 "OpenLocalAsync",
                 "public async Task<NativeWorkspaceActivationReceipt?> OpenLocalAsync",
-                "_presenter.ImportAsync",
-            ),
-            (
-                "OpenOnlineAsync",
-                "public async Task<NativeWorkspaceActivationReceipt?> OpenOnlineAsync",
                 "_presenter.ImportAsync",
             ),
             (
@@ -6210,15 +6266,16 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             ("CloseWorkspaceAsync", "public async Task CloseWorkspaceAsync", "_presenter.CloseWorkspaceAsync"),
             ("SaveAsync", "public async Task SaveAsync", "_presenter.SaveAsync"),
         ):
-            block = source[source.index(start_marker) :]
-            next_public = block.find("\n    public ", 10)
-            if next_public >= 0:
-                block = block[:next_public]
+            block = self._coordinator_member(source, start_marker)
             self.assertLess(
                 block.index(presenter_operation),
                 block.index("TryRefreshWorkspaceAuthorityAsync"),
                 method_name,
             )
+
+        close = self._coordinator_member(source, "public async Task CloseWorkspaceAsync")
+        self.assertIn("bound.CloseWorkspaceAsync(owner, workspace.Id, workspace.ContentRevision, cancellationToken)", close)
+        self.assertLess(close.index("bound.CloseWorkspaceAsync"), close.index("TryRefreshWorkspaceAuthorityAsync"))
 
     def test_opt_in_changes_clear_then_rerender_and_refresh_without_static_leaks(self) -> None:
         source = (

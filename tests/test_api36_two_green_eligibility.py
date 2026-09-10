@@ -42,6 +42,56 @@ def sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+class Api36TwoGreenCurrentDependencyPinsTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.sources = {
+            name: {"commit": commit}
+            for name, commit in gate.P0.EXPECTED_DEPENDENCY_COMMITS.items()
+        }
+        self.manifest = json.loads(
+            (REPO / "eng/internal-phone-beta-package-authority.json").read_bytes()
+        )
+
+    def test_current_pins_accept_distinct_frozen_content_runtime_and_package_recipe(self) -> None:
+        content = self.sources["core-content"]["commit"]
+        runtime = self.manifest["sourceGraph"]["coreRuntimeSourceCommit"]
+        recipe = self.manifest["sourceGraph"]["corePackageRecipeCommit"]
+        self.assertEqual("1d8cf694d0412b3bd9f4a241fb95244fad341160", content)
+        self.assertEqual("f7500ef8c2f597bac67bc3f53620d50b7a17d00a", runtime)
+        self.assertEqual(runtime, self.sources["core-runtime"]["commit"])
+        self.assertEqual(3, len({content, runtime, recipe}))
+        self.assertEqual(
+            self.manifest["sourceGraph"]["hubProducerCommit"],
+            consumer._validate_current_dependency_pins(self.sources),
+        )
+
+    def test_current_pins_reject_content_runtime_and_recipe_role_substitution(self) -> None:
+        content = self.sources["core-content"]["commit"]
+        runtime = self.manifest["sourceGraph"]["coreRuntimeSourceCommit"]
+        recipe = self.manifest["sourceGraph"]["corePackageRecipeCommit"]
+        substitutions = (
+            ("core-content", runtime),
+            ("core-content", recipe),
+            ("core-runtime", content),
+            ("core-runtime", recipe),
+        )
+        for role, substituted_commit in substitutions:
+            with self.subTest(role=role, substituted_commit=substituted_commit):
+                changed = copy.deepcopy(self.sources)
+                changed[role]["commit"] = substituted_commit
+                with self.assertRaisesRegex(
+                    ValueError,
+                    f"current release dependency pin differs from two-green graph: {role}",
+                ):
+                    consumer._validate_current_dependency_pins(changed)
+        # Swapping both roles must not bypass either independent pin check.
+        changed = copy.deepcopy(self.sources)
+        changed["core-content"]["commit"] = runtime
+        changed["core-runtime"]["commit"] = content
+        with self.assertRaisesRegex(ValueError, "two-green graph: core-content"):
+            consumer._validate_current_dependency_pins(changed)
+
+
 class FakeAuthenticatedGitHubClient:
     def __init__(self, android_root: Path, responses: dict[str, bytes]) -> None:
         self.android_root = android_root
