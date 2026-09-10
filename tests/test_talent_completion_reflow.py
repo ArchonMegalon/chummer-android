@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import unittest
 from unittest import mock
+import xml.etree.ElementTree as ET
 
 import run_api36_creation_prerequisite_e2e as driver
 
@@ -37,7 +38,7 @@ def bottom_frame(*, recovered=False, selected=True):
     ]
     if recovered:
         result.append(node(COMPLETE, bounds=FIXTURE["initialCompletionBounds"],
-                           text="Continue with exact grant"))
+                           text="Continue with these choices"))
     return result
 
 
@@ -88,6 +89,45 @@ class ReflowDevice:
 
 
 class TalentCompletionReflowTests(unittest.TestCase):
+    def test_completion_labels_match_current_native_localization_resources(self):
+        resources = Path(__file__).resolve().parents[1] / "src" / "Chummer.Android" / "Resources" / "Localization"
+        native_page = resources.parents[1] / "Native" / "CreationTalentSkillGrantPage.cs"
+        self.assertIn('CreationFlowStrings.Get("TalentChoices.Continue",', native_page.read_text())
+        for language, label in driver.TALENT_GRANT_COMPLETION_LABEL_BY_LANGUAGE.items():
+            suffix = "" if language == "en" else "." + language
+            root = ET.parse(resources / f"CreationFlowStrings{suffix}.resx").getroot()
+            values = root.findall("./data[@name='TalentChoices.Continue']/value")
+            self.assertEqual(1, len(values))
+            self.assertEqual(values[0].text, label)
+
+    def test_current_hosted_completion_copy_is_accepted_only_in_bound_language(self):
+        # Run34433199030's real XML had this exact ID, enabled/clickable state,
+        # and the current English copy; the retired label caused its rejection.
+        for language, label in driver.TALENT_GRANT_COMPLETION_LABEL_BY_LANGUAGE.items():
+            with self.subTest(language=language):
+                recovered = self.replace(bottom_frame(recovered=True), COMPLETE, text=label)
+                device = ReflowDevice([bottom_frame(), recovered])
+                device._phone_ui_locale_binding = driver.shared.PhoneUiLocaleBinding(
+                    locale_tag=language, language=language, authority_property="persist.sys.locale",
+                )
+                with mock.patch.object(driver.time, "sleep"):
+                    result = self.acquire(device)
+                self.assertEqual((label,), driver._accessible_values(result.resources[COMPLETE]))
+                for wrong_label in ("Continue with exact grant", "Choose 1 more", label + " forged"):
+                    invalid = self.replace(recovered, COMPLETE, text=wrong_label)
+                    rejected = ReflowDevice([bottom_frame(), invalid])
+                    rejected._phone_ui_locale_binding = device._phone_ui_locale_binding
+                    with mock.patch.object(driver.time, "sleep"), self.assertRaisesRegex(RuntimeError, "exact completion state"):
+                        self.acquire(rejected)
+
+    def test_completion_label_cannot_cross_phone_language_boundary(self):
+        device = ReflowDevice()
+        device._phone_ui_locale_binding = driver.shared.PhoneUiLocaleBinding(
+            locale_tag="de-AT", language="de", authority_property="persist.sys.locale",
+        )
+        with mock.patch.object(driver.time, "sleep"), self.assertRaisesRegex(RuntimeError, "exact completion state"):
+            self.acquire(device)
+
     def acquire(self, device, **kwargs):
         return driver.reacquire_exact_talent_state_group(
             device, (OPTION, COMPLETE), 9, 9, 9,

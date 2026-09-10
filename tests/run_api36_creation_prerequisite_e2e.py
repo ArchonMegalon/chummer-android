@@ -44,6 +44,11 @@ PRIORITY_KARMA_LABELS_BY_LANGUAGE = {
     "de": ("Gesamt", "Verwendet", "Verbleibend"),
     "es": ("Total", "Usado", "Restante"),
 }
+TALENT_GRANT_COMPLETION_LABEL_BY_LANGUAGE = {
+    "en": "Continue with these choices",
+    "de": "Mit dieser Auswahl fortfahren",
+    "es": "Continuar con estas opciones",
+}
 ACTIVE_SKILL_TALENT_LABEL = "Adept - 6 Magic"
 SKILL_GROUP_TALENT_LABEL = "Aspected Magician - 5 Magic"
 TALENT_GRANT_KINDS = ("Active skills", "Skill groups")
@@ -7157,9 +7162,18 @@ def _require_talent_completion_reflow_frame(
         selected_bottoms.append(y2)
     completion = exact(completion_id, optional=True)
     if completion is not None:
+        locale_binding = getattr(device, "_phone_ui_locale_binding", None)
+        language = (
+            locale_binding.language
+            if isinstance(locale_binding, shared.PhoneUiLocaleBinding)
+            else "en"
+        )
+        expected_completion_label = TALENT_GRANT_COMPLETION_LABEL_BY_LANGUAGE.get(language)
+        if expected_completion_label is None:
+            raise RuntimeError("Talent completion reflow has an unsupported phone language")
         x1, y1, x2, y2 = bounds(completion)
         if (
-            _accessible_values(completion) != ("Continue with exact grant",)
+            _accessible_values(completion) != (expected_completion_label,)
             or completion.attributes.get("enabled") != "true"
             or completion.attributes.get("clickable") != "true"
             or not (left <= x1 < x2 <= right and max(selected_bottoms) <= y1 < y2 <= bottom)
