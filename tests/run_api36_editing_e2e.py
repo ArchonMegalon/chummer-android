@@ -14,6 +14,7 @@ import subprocess
 import sys
 import time
 import xml.etree.ElementTree as ET
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -5704,6 +5705,7 @@ class Device:
         surface_name: str = "Exact resource-id control",
         require_tappable: bool = True,
         deadline: float | None = None,
+        continuity_check: Callable[[list[UiNode], str, str, int], None] | None = None,
     ) -> UiNode:
         """Reset to the top, then scan one exact ID without blind swipes.
 
@@ -5713,9 +5715,26 @@ class Device:
         the viewport, one bounded reverse gesture recovers it. Interactive callers
         retain the default tappability gate; read-only authority cards can explicitly
         request cardinality-checked visible-node acquisition instead.
+
+        An optional fail-closed observer checks each fresh nonempty hierarchy
+        before another gesture or candidate admission. Its return value is not
+        authority; exceptions stop the search without recovery or replay.
         """
+        if continuity_check is not None and (
+            not callable(continuity_check) or deadline is None
+        ):
+            raise ValueError("Guarded resource acquisition requires a callback and caller deadline")
         if deadline is not None:
             _remaining_operation_timeout(deadline=deadline, maximum=timeout)
+
+        gestures_issued = 0
+
+        def require_continuity(nodes: list[UiNode], traversal: str) -> None:
+            if continuity_check is not None:
+                result = continuity_check(nodes, evidence_prefix, traversal, gestures_issued)
+                if result is not None:
+                    raise ValueError("Continuity observers must not return admission authority")
+                _remaining_operation_timeout(deadline=deadline, maximum=timeout)
 
         def capture_evidence(name: str) -> None:
             if deadline is None:
@@ -5725,6 +5744,13 @@ class Device:
 
         x_ratio = self._scroll_x_ratio(selector)
         for _ in range(backward_scrolls):
+            if continuity_check is not None:
+                # An empty accessibility read never permits a reverse gesture.
+                nodes = self.hierarchy(deadline=deadline)
+                while not nodes:
+                    _sleep_before_operation_deadline(0.75, deadline=deadline)
+                    nodes = self.hierarchy(deadline=deadline)
+                require_continuity(nodes, "reverse")
             if deadline is None:
                 self.swipe_down(
                     x_ratio=x_ratio,
@@ -5736,6 +5762,7 @@ class Device:
                     distance_ratio=scroll_distance_ratio,
                     deadline=deadline,
                 )
+            gestures_issued += 1
             _sleep_before_operation_deadline(0.2, deadline=deadline)
         if backward_scrolls > 0:
             _sleep_before_operation_deadline(0.75, deadline=deadline)
@@ -5754,6 +5781,10 @@ class Device:
             if not nodes:
                 _sleep_before_operation_deadline(0.75, deadline=deadline)
                 continue
+
+            # This also runs when a foreign/wrong route contains an exact
+            # target-looking node; target presence cannot bypass continuity.
+            require_continuity(nodes, "forward")
 
             matches = [
                 node
@@ -5816,6 +5847,7 @@ class Device:
                         )
                     forward -= 1
                     backtracks += 1
+                    gestures_issued += 1
                     _sleep_before_operation_deadline(0.75, deadline=deadline)
                     continue
                 if clipped_below and forward < forward_scrolls:
@@ -5831,6 +5863,7 @@ class Device:
                             deadline=deadline,
                         )
                     forward += 1
+                    gestures_issued += 1
                     _sleep_before_operation_deadline(0.75, deadline=deadline)
                     continue
 
@@ -5866,6 +5899,7 @@ class Device:
                     deadline=deadline,
                 )
             forward += 1
+            gestures_issued += 1
             _sleep_before_operation_deadline(0.75, deadline=deadline)
         if deadline is not None:
             _remaining_operation_timeout(deadline=deadline, maximum=timeout)
