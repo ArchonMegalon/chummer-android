@@ -263,7 +263,7 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
                 status="passed",
             ),
         }
-        # The copied-cache producer emits the complete Hub authority binding,
+        # The current producer emits the complete Hub authority binding,
         # including the authenticated receipt contract and digest.
         receipt["packageInventory"] = sorted(
             [
@@ -298,42 +298,10 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
                 "sizeBytes": self.module.EXPECTED_LOCK_SIZE,
             },
             "ownerPackageArtifactCache": {
-                "authorityArtifacts": [
-                    {
-                        "path": f"authority/{name}",
-                        "sha256": hashlib.sha256(name.encode()).hexdigest(),
-                        "sizeBytes": len(name.encode()),
-                    }
-                    for name in (
-                        "core-inventory.json", "core-lock.json", "core-receipt.json",
-                        "hub-inventory.json", "hub-lock.json", "hub-producer.py",
-                        "hub-receipt.json", "legacy-inventory.json", "legacy-lock.json",
-                        "legacy-producer.py", "ui-owner-package-plane.lock.json",
-                        "ui-owner-packages.inventory.json", "ui-owner-packages.receipt.json",
-                    )
-                ],
-                "cacheKey": self.module.EXPECTED_CACHE_KEY,
                 "coldProducerFallbackOnCacheMiss": True,
                 "contract": self.module.CACHE_CONTRACT,
-                "importedByCopy": True,
-                "manifest": {
-                    "path": "owner-package-cache.json",
-                    "sha256": self.module.EXPECTED_CACHE_MANIFEST_SHA256,
-                    "sizeBytes": self.module.EXPECTED_CACHE_MANIFEST_SIZE,
-                },
-                "packageCount": 18,
-                "packages": [
-                    {
-                        "path": f"packages/{row['fileName']}",
-                        "sha256": row["sha256"],
-                        "sizeBytes": row["sizeBytes"],
-                    }
-                    for row in receipt["packageInventory"]
-                ],
-                # Provenance is deliberately unavailable locally: never follow it.
-                "sourcePath": "/provenance-only/absent/cold-owner-cache",
-                "status": "passed",
-                "used": True,
+                "status": "not_supplied",
+                "used": False,
             },
         })
         self.add_synthetic_owner_test_executions(receipt)
@@ -429,12 +397,42 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
         return {
             "authorities": {},
             "authorityArtifacts": [
-                {"fileName": row["path"].removeprefix("authority/"), "sha256": row["sha256"]}
-                for row in receipt["ownerPackageArtifactCache"]["authorityArtifacts"]
+                {"fileName": name, "sha256": hashlib.sha256(name.encode()).hexdigest()}
+                for name in (
+                    "core-inventory.json", "core-lock.json", "core-receipt.json",
+                    "hub-inventory.json", "hub-lock.json", "hub-producer.py",
+                    "hub-receipt.json", "legacy-inventory.json", "legacy-lock.json",
+                    "legacy-producer.py", "ui-owner-package-plane.lock.json",
+                    "ui-owner-packages.inventory.json", "ui-owner-packages.receipt.json",
+                )
             ],
             "cacheKey": self.module.EXPECTED_CACHE_KEY,
             "contract": self.module.CACHE_CONTRACT,
             "packages": packages,
+        }
+
+    def copied_cache_receipt_fixture(self, receipt: dict[str, object]) -> dict[str, object]:
+        """Well-shaped copied-cache receipt, deliberately inadmissible as hosted cold evidence."""
+        cache = self.retained_cache_fixture(receipt)
+        return {
+            "authorityArtifacts": [
+                {"path": f"authority/{row['fileName']}", "sha256": row["sha256"],
+                 "sizeBytes": len(row["fileName"].encode())}
+                for row in cache["authorityArtifacts"]
+            ],
+            "cacheKey": self.module.EXPECTED_CACHE_KEY,
+            "coldProducerFallbackOnCacheMiss": True,
+            "contract": self.module.CACHE_CONTRACT,
+            "importedByCopy": True,
+            "manifest": {"path": "owner-package-cache.json",
+                         "sha256": self.module.EXPECTED_CACHE_MANIFEST_SHA256,
+                         "sizeBytes": self.module.EXPECTED_CACHE_MANIFEST_SIZE},
+            "packageCount": 18,
+            "packages": [{"path": f"packages/{row['fileName']}", "sha256": row["sha256"],
+                          "sizeBytes": row["sizeBytes"]} for row in cache["packages"]],
+            "sourcePath": "/provenance-only/absent/cold-owner-cache",
+            "status": "passed",
+            "used": True,
         }
 
     @contextmanager
@@ -454,19 +452,12 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
             for field in ("coreRuntimeFeed", "canonicalOwnerFeed", "currentOwnerContractFeed", "uiOwnerFeed"):
                 for row in receipt[field]["packages"]:
                     row.update(packages[row["fileName"]])
-            copied = receipt["ownerPackageArtifactCache"]
-            copied["sourcePath"] = str(root / "provenance-only-not-created")
-            copied["packages"] = [
-                {"path": f"packages/{row['fileName']}", "sha256": row["sha256"], "sizeBytes": row["sizeBytes"]}
-                for row in receipt["packageInventory"]
-            ]
-            for row in copied["authorityArtifacts"]:
-                name = row["path"].removeprefix("authority/")
-                (root / row["path"]).write_bytes(name.encode())
             cache = self.retained_cache_fixture(receipt)
+            for row in cache["authorityArtifacts"]:
+                name = row["fileName"]
+                (root / "authority" / name).write_bytes(name.encode())
             manifest = root / "owner-package-cache.json"
             write_private(manifest, cache)
-            copied["manifest"].update(sha256=self.module.sha256(manifest), sizeBytes=manifest.stat().st_size)
             with (
                 patch.object(self.module, "EXPECTED_CACHE_MANIFEST_SHA256", self.module.sha256(manifest)),
                 patch.object(self.module, "EXPECTED_CACHE_MANIFEST_SIZE", manifest.stat().st_size),
@@ -694,12 +685,17 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
                 with self.subTest(field=field, value=value), self.assertRaisesRegex(ValueError, "receipt Hub authority disagrees"):
                     self.module.validate_bound_authority_claims(self.payload, package_authority, receipt)
 
-    def test_exact_copied_cache_receipt_posture_is_accepted(self) -> None:
+    def test_exact_hosted_cold_non_use_receipt_posture_is_accepted(self) -> None:
         receipt = self.current_main_receipt_fixture()
         validated = self.validate_receipt_copy(receipt)
         self.assertEqual(receipt["ownerPackageArtifactCache"], validated["ownerPackageArtifactCache"])
-        self.assertTrue(validated["ownerPackageArtifactCache"]["used"])
-        self.assertTrue(validated["ownerPackageArtifactCache"]["importedByCopy"])
+        self.assertEqual({
+            "coldProducerFallbackOnCacheMiss": True,
+            "contract": "chummer6-ui.owner-package-artifact-cache/v1",
+            "status": "not_supplied",
+            "used": False,
+        }, validated["ownerPackageArtifactCache"])
+        self.assertIs(validated["ownerPackageArtifactCache"]["used"], False)
 
     def owner_execution_rows(self, receipt):
         return [receipt["focusedContinuationTestExecution"], receipt["focusedOwnerShellTestExecution"],
@@ -920,13 +916,13 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
                 receipt["testProjects"].append("Other.Tests/Other.Tests.csproj")
             with self.subTest(change=change), self.assertRaises(ValueError):
                 self.validate_receipt_copy(receipt)
-    def test_cold_non_use_and_incomplete_warm_postures_fail_closed(self) -> None:
+    def test_inexact_cold_and_warm_postures_fail_closed(self) -> None:
         mutations = (
-            {"status": "not_supplied", "used": False},
             {"status": "not_supplied", "used": True},
             {"status": "passed", "used": False},
             {"status": "passed", "used": True},
             {"status": "not_supplied"},
+            {"used": False},
         )
         for cache in mutations:
             payload = self.current_main_receipt_fixture()
@@ -936,18 +932,23 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
                 **cache,
             }
             with self.subTest(cache=cache):
-                with self.assertRaisesRegex(ValueError, "copied-cache"):
+                with self.assertRaisesRegex(ValueError, "cold/non-use"):
                     self.validate_receipt_copy(payload)
 
-    def test_copied_cache_flags_types_and_exact_shape_fail_closed(self) -> None:
+    def test_cold_cache_flags_types_and_exact_shape_fail_closed(self) -> None:
+        for value in (None, [], "not_supplied", False, 0):
+            receipt = self.current_main_receipt_fixture()
+            receipt["ownerPackageArtifactCache"] = value
+            with self.subTest(object=value), self.assertRaises(ValueError):
+                self.validate_receipt_copy(receipt)
         mutations = [
-            (field, value)
-            for field in ("used", "importedByCopy", "coldProducerFallbackOnCacheMiss")
-            for value in (False, 1, "true", None)
+            ("coldProducerFallbackOnCacheMiss", value)
+            for value in (False, 1, 1.0, "true", None)
         ] + [
-            ("status", "not_supplied"), ("contract", "other"), ("cacheKey", "0" * 64),
-            ("packageCount", True), ("packageCount", 18.0), ("packageCount", "18"),
-            ("sourcePath", None), ("sourcePath", ""),
+            ("used", value) for value in (True, 0, 0.0, "false", None, [], {})
+        ] + [
+            (field, value) for field in ("status", "contract")
+            for value in ("other", "", None, False, 1, [], {})
         ]
         for field, value in mutations:
             receipt = self.current_main_receipt_fixture()
@@ -959,13 +960,10 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
             receipt["ownerPackageArtifactCache"].pop(field)
             with self.subTest(missing=field), self.assertRaises(ValueError):
                 self.validate_receipt_copy(receipt)
-        for field, value in (
-            ("extra", False),
-            ("manifest", {"path": "../owner-package-cache.json", "sha256": self.module.EXPECTED_CACHE_MANIFEST_SHA256,
-                          "sizeBytes": self.module.EXPECTED_CACHE_MANIFEST_SIZE}),
-        ):
+        for field in ("extra", "manifest", "sourcePath", "importedByCopy", "cacheKey",
+                      "packageCount", "packages", "authorityArtifacts"):
             receipt = self.current_main_receipt_fixture()
-            receipt["ownerPackageArtifactCache"][field] = value
+            receipt["ownerPackageArtifactCache"][field] = False
             with self.subTest(field=field), self.assertRaises(ValueError):
                 self.validate_receipt_copy(receipt)
         for field in ("packageCacheWasFresh", "localCompatibilityTree", "stubPackagesAllowed"):
@@ -974,48 +972,32 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
                 receipt[field] = value
                 with self.subTest(field=field, value=value), self.assertRaises(ValueError):
                     self.validate_receipt_copy(receipt)
-        for mutation in ("float-size", "extra", "missing", "digest"):
-            receipt = self.current_main_receipt_fixture()
-            manifest = receipt["ownerPackageArtifactCache"]["manifest"]
-            if mutation == "float-size": manifest["sizeBytes"] = float(manifest["sizeBytes"])
-            elif mutation == "extra": manifest["extra"] = False
-            elif mutation == "missing": manifest.pop("path")
-            else: manifest["sha256"] = "0" * 64
-            with self.subTest(manifest=mutation), self.assertRaises(ValueError):
-                self.validate_receipt_copy(receipt)
 
-    def test_copied_cache_row_counts_paths_types_and_membership_are_closed(self) -> None:
-        for field in ("packages", "authorityArtifacts"):
-            for mutation in ("missing", "extra", "duplicate", "reordered", "missing-field", "extra-field"):
-                receipt = self.current_main_receipt_fixture()
-                rows = receipt["ownerPackageArtifactCache"][field]
-                if mutation == "missing": rows.pop()
-                elif mutation == "extra": rows.append(copy.deepcopy(rows[-1]))
-                elif mutation == "duplicate": rows[-1] = copy.deepcopy(rows[0])
-                elif mutation == "reordered": rows.reverse()
-                elif mutation == "missing-field": rows[0].pop("sha256")
-                else: rows[0]["extra"] = False
-                with self.subTest(field=field, mutation=mutation), self.assertRaises(ValueError):
+    def test_copied_cache_receipt_cannot_substitute_for_hosted_cold_result(self) -> None:
+        with self.materialized_cache_fixture() as (base, cache, feed):
+            for posture in ("copied", "relabeled-cold"):
+                receipt = copy.deepcopy(base)
+                receipt["ownerPackageArtifactCache"] = self.copied_cache_receipt_fixture(receipt)
+                if posture == "relabeled-cold":
+                    receipt["ownerPackageArtifactCache"].update(status="not_supplied", used=False)
+                with self.subTest(posture=posture), self.assertRaisesRegex(ValueError, "cold/non-use"):
                     self.validate_receipt_copy(receipt)
-            prefix = "packages" if field == "packages" else "authority"
-            for key, value in (
-                ("path", f"{prefix}/../outside"), ("path", f"{prefix}/nested/file"),
-                ("path", f"{prefix}/..\\outside"), ("path", "/absolute"),
-                ("path", f"{prefix}/."), ("path", f"{prefix}/bad\x00name"),
-                ("sha256", "X" * 64), ("sha256", "a" * 63),
-                ("sizeBytes", True), ("sizeBytes", 1.0), ("sizeBytes", "1"), ("sizeBytes", 0),
-            ):
-                receipt = self.current_main_receipt_fixture()
-                receipt["ownerPackageArtifactCache"][field][0][key] = value
-                with self.subTest(field=field, key=key, value=value), self.assertRaises(ValueError):
-                    self.validate_receipt_copy(receipt)
+                # Even a separately valid supplied feed cannot promote this
+                # different producer posture into the hosted cold authority.
+                with self.subTest(equivalence=posture), self.assertRaisesRegex(ValueError, "cold/non-use"):
+                    self.module.validate_receipt_cache_equivalence(receipt, cache, package_feed=feed)
 
-    def test_final_receipt_and_retained_cache_are_byte_equivalent(self) -> None:
+    def test_cold_receipt_and_independent_retained_cache_are_byte_equivalent(self) -> None:
         with self.materialized_cache_fixture() as (receipt, cache, feed):
+            original = copy.deepcopy(receipt)
+            self.assertEqual(18, len(cache["packages"]))
+            self.assertEqual(13, len(cache["authorityArtifacts"]))
             self.assertEqual(cache, self.module.validate_package_feed(feed))
             self.validate_receipt_copy(receipt)
             self.module.validate_receipt_cache_equivalence(receipt, cache, package_feed=feed)
-            self.assertFalse(Path(receipt["ownerPackageArtifactCache"]["sourcePath"]).exists())
+            self.assertEqual(original, receipt)
+            self.assertIs(receipt["ownerPackageArtifactCache"]["used"], False)
+            self.assertNotIn("sourcePath", receipt["ownerPackageArtifactCache"])
 
     def test_final_receipt_and_retained_cache_divergence_fails_closed(self) -> None:
         with self.materialized_cache_fixture() as (base_receipt, base_cache, feed):
@@ -1033,18 +1015,16 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
                 with self.subTest(message=message), self.assertRaisesRegex(ValueError, message):
                     self.module.validate_receipt_cache_equivalence(receipt, cache, package_feed=feed)
 
-    def test_copied_receipt_rows_match_actual_files_not_only_manifest_digests(self) -> None:
-        with self.materialized_cache_fixture() as (base, cache, feed):
-            for field in ("packages", "authorityArtifacts"):
-                for key, value in (("sha256", "0" * 64), ("sizeBytes", 999), ("path", None)):
-                    receipt = copy.deepcopy(base)
-                    row = receipt["ownerPackageArtifactCache"][field][0]
-                    row[key] = value if value is not None else row["path"] + ".substituted"
-                    receipt["ownerPackageArtifactCache"][field].sort(key=lambda item: item["path"])
-                    # Still well-shaped; must fail actual-file equivalence.
-                    self.validate_receipt_copy(receipt)
-                    with self.subTest(field=field, key=key), self.assertRaisesRegex(ValueError, "rows differ"):
-                        self.module.validate_receipt_cache_equivalence(receipt, cache, package_feed=feed)
+    def test_cold_non_use_never_bypasses_independent_cache_identity(self) -> None:
+        with self.materialized_cache_fixture() as (receipt, cache, feed):
+            for constant, value in (
+                ("EXPECTED_CACHE_MANIFEST_SHA256", "0" * 64),
+                ("EXPECTED_CACHE_MANIFEST_SIZE", 1),
+                ("EXPECTED_CACHE_KEY", "0" * 64),
+            ):
+                with (self.subTest(constant=constant), patch.object(self.module, constant, value),
+                      self.assertRaises(ValueError)):
+                    self.module.validate_receipt_cache_equivalence(receipt, cache, package_feed=feed)
 
     def test_cache_files_reject_tamper_missing_extras_links_and_special_entries(self) -> None:
         for directory in ("packages", "authority"):
@@ -1105,7 +1085,7 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
 
     def test_authenticated_manifest_still_requires_closed_safe_rows(self) -> None:
         for field in ("packages", "authorityArtifacts"):
-            for mutation in ("missing", "extra", "duplicate", "traversal", "bad-hash", "extra-field"):
+            for mutation in ("missing", "extra", "duplicate", "traversal", "bad-hash", "missing-field", "extra-field"):
                 with self.materialized_cache_fixture() as (_receipt, cache, feed):
                     rows = cache[field]
                     if mutation == "missing": rows.pop()
@@ -1113,6 +1093,7 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
                     elif mutation == "duplicate": rows[-1] = copy.deepcopy(rows[0])
                     elif mutation == "traversal": rows[0]["fileName"] = "../outside"
                     elif mutation == "bad-hash": rows[0]["sha256"] = "X" * 64
+                    elif mutation == "missing-field": rows[0].pop("sha256")
                     else: rows[0]["extra"] = False
                     manifest = feed.parent / "owner-package-cache.json"
                     write_private(manifest, cache)
@@ -1122,6 +1103,29 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
                         self.subTest(field=field, mutation=mutation), self.assertRaises(ValueError),
                     ):
                         self.module.validate_package_feed(feed)
+
+    def test_authenticated_cache_byte_rows_are_typed_and_path_safe(self) -> None:
+        # The hosted cold receipt carries no copied rows. Exercise these hostile
+        # values against the independent actual-file validator, not an already
+        # rejected copied-cache receipt shape.
+        for field in ("packages", "authorityArtifacts"):
+            mutations = [
+                ("fileName", value) for value in
+                ("../outside", "nested/file", "..\\outside", "/absolute", ".", "bad\x00name", None)
+            ] + [("sha256", value) for value in ("X" * 64, "a" * 63, None, True)]
+            if field == "packages":
+                mutations += [("sizeBytes", value) for value in (True, 1.0, "1", 0, None)]
+            for key, value in mutations:
+                with self.materialized_cache_fixture() as (receipt, cache, feed):
+                    cache[field][0][key] = value
+                    manifest = feed.parent / "owner-package-cache.json"
+                    write_private(manifest, cache)
+                    with (
+                        patch.object(self.module, "EXPECTED_CACHE_MANIFEST_SHA256", self.module.sha256(manifest)),
+                        patch.object(self.module, "EXPECTED_CACHE_MANIFEST_SIZE", manifest.stat().st_size),
+                        self.subTest(field=field, key=key, value=value), self.assertRaises(ValueError),
+                    ):
+                        self.module.validate_receipt_cache_equivalence(receipt, cache, package_feed=feed)
 
     def test_lock_missing_extra_reordered_and_byte_tamper_fail_closed(self) -> None:
         mutations: list[tuple[dict[str, object], str]] = []

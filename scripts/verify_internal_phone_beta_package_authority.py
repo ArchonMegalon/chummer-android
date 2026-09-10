@@ -251,55 +251,17 @@ def cache_file_inventory(
     return {"sha256": digest.hexdigest(), "sizeBytes": opened.st_size}, b"".join(chunks)
 
 
-def copied_cache_rows(value: Any, *, directory: str, count: int) -> list[dict[str, Any]]:
-    label = f"UI copied-cache {directory}"
-    if not isinstance(value, list) or len(value) != count:
-        raise ValueError(f"{label} row count is not exact")
-    paths: set[str] = set()
-    for row in value:
-        require_exact_object(row, label, {"path", "sha256", "sizeBytes"})
-        path = require_string(row["path"], f"{label} path")
-        prefix = f"{directory}/"
-        if not path.startswith(prefix):
-            raise ValueError(f"{label} path is not canonical")
-        cache_file_name(path[len(prefix):], f"{label} path")
-        cache_byte_identity(row["sha256"], row["sizeBytes"], label)
-        if path in paths:
-            raise ValueError(f"{label} contains duplicate paths")
-        paths.add(path)
-    if value != sorted(value, key=lambda row: row["path"]):
-        raise ValueError(f"{label} rows are not in canonical order")
-    return value
-
-
-def validate_copied_cache_receipt(value: Any) -> dict[str, Any]:
-    cache = require_exact_object(value, "UI copied-cache receipt", {
-        "authorityArtifacts", "cacheKey", "coldProducerFallbackOnCacheMiss", "contract",
-        "importedByCopy", "manifest", "packageCount", "packages", "sourcePath", "status", "used",
+def validate_cold_cache_receipt(value: Any) -> dict[str, Any]:
+    cache = require_exact_object(value, "UI cold/non-use cache receipt", {
+        "coldProducerFallbackOnCacheMiss", "contract", "status", "used",
     })
-    manifest = require_exact_object(cache["manifest"], "UI copied-cache manifest", {"path", "sha256", "sizeBytes"})
-    cache_byte_identity(manifest["sha256"], manifest["sizeBytes"], "UI copied-cache manifest")
     if (
         cache["coldProducerFallbackOnCacheMiss"] is not True
         or cache["contract"] != CACHE_CONTRACT
-        or cache["importedByCopy"] is not True
-        or cache["status"] != "passed"
-        or cache["used"] is not True
-        or type(cache["packageCount"]) is not int
-        or cache["packageCount"] != EXPECTED_PACKAGE_COUNT
-        or cache["cacheKey"] != EXPECTED_CACHE_KEY
-        or cache["manifest"] != {
-            "path": "owner-package-cache.json",
-            "sha256": EXPECTED_CACHE_MANIFEST_SHA256,
-            "sizeBytes": EXPECTED_CACHE_MANIFEST_SIZE,
-        }
+        or cache["status"] != "not_supplied"
+        or cache["used"] is not False
     ):
-        raise ValueError("UI copied-cache receipt posture or manifest is not exact")
-    # The producer's recorded source path is provenance only. The caller's
-    # independently authenticated package_feed supplies all filesystem authority.
-    require_string(cache["sourcePath"], "UI copied-cache source provenance")
-    copied_cache_rows(cache["packages"], directory="packages", count=EXPECTED_PACKAGE_COUNT)
-    copied_cache_rows(cache["authorityArtifacts"], directory="authority", count=EXPECTED_CACHE_AUTHORITY_COUNT)
+        raise ValueError("UI cold/non-use cache receipt posture is not exact")
     return cache
 
 
@@ -861,10 +823,10 @@ def validate_receipt(receipt_path: Path) -> dict[str, Any]:
     lock = receipt.get("consumerPackagePlaneLock")
     if lock != {"path": EXPECTED_LOCK_PATH, "sha256": EXPECTED_LOCK_SHA256, "sizeBytes": EXPECTED_LOCK_SIZE}:
         raise ValueError("UI current-graph receipt package lock drifted")
-    # The pinned current UI consumer copies the cold-produced retained cache
-    # into fresh private consumer caches. It does not claim cache non-use.
-    # The older cold/non-use shape is intentionally not an accepted alternative.
-    validate_copied_cache_receipt(receipt.get("ownerPackageArtifactCache"))
+    # The hosted current-main consumer supplies no owner-package cache. Its
+    # cold production receipt must not be replaced with a local copied-cache run.
+    # A caller's retained feed is authenticated independently below.
+    validate_cold_cache_receipt(receipt.get("ownerPackageArtifactCache"))
     validate_owner_test_executions(receipt)
     return receipt
 
@@ -1126,7 +1088,9 @@ def validate_receipt_cache_equivalence(
     *,
     package_feed: Path,
 ) -> None:
-    # Reauthenticate the supplied files; never resolve receipt.sourcePath.
+    # This proves byte equivalence, not that the hosted producer used this cache.
+    validate_cold_cache_receipt(receipt.get("ownerPackageArtifactCache"))
+    # Reauthenticate the independently pinned manifest and all 18/13 files.
     if validate_package_feed(package_feed) != cache:
         raise ValueError("retained package cache differs from authenticated files")
     cache_rows = cache.get("packages")
@@ -1173,22 +1137,15 @@ def validate_receipt_cache_equivalence(
     if any(inventory_by_name.get(row["fileName"]) != row for row in cache_bytes):
         raise ValueError("UI receipt package inventory diverges from the retained package cache")
 
-    copied = validate_copied_cache_receipt(receipt.get("ownerPackageArtifactCache"))
-    expected_packages = [{"path": f"packages/{row['fileName']}",
-                          "sha256": row["sha256"], "sizeBytes": row["sizeBytes"]}
-                         for row in cache_bytes]
-    if copied["packages"] != expected_packages:
-        raise ValueError("UI copied-cache package rows differ from authenticated files")
-    expected_authorities = []
+    # The cold/non-use receipt has no copied-file inventory. Authority bytes
+    # remain bound by the exact separately pinned cache manifest, not by a
+    # synthesized claim that the hosted producer copied these files.
     for row in cache["authorityArtifacts"]:
         inventory, _ = cache_file_inventory(
             package_feed.parent / "authority" / row["fileName"], "retained authority file",
         )
         if inventory["sha256"] != row["sha256"]:
             raise ValueError("retained authority file changed after cache validation")
-        expected_authorities.append({"path": f"authority/{row['fileName']}", **inventory})
-    if copied["authorityArtifacts"] != sorted(expected_authorities, key=lambda row: row["path"]):
-        raise ValueError("UI copied-cache authority rows differ from authenticated files")
 
 
 def build_binding(manifest: Mapping[str, Any]) -> dict[str, Any]:
