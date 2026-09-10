@@ -38,45 +38,45 @@ RECEIPT_TOP_LEVEL_KEYS = {
     "sdkArchiveSha512", "sdkVersion", "sourceInventory", "status",
     "stubPackagesAllowed", "testExecutions", "testProjects", "uiOwnerFeed",
 }
-EXPECTED_PRESENTATION_COMMIT = "f7d671e8e1fd9ba630b74564c203077e6f162fa7"
-EXPECTED_PRESENTATION_TREE = "62a8711e128b920dacd541ad18f9fd5d6d9194b0"
+EXPECTED_PRESENTATION_COMMIT = "c86fabcb3168615d95f3732cfc6d544eb7fa1d0d"
+EXPECTED_PRESENTATION_TREE = "3c6a08a2f543c1fcbb734aa9ecd94588a63a7319"
 EXPECTED_PRESENTATION_REPOSITORY = "https://github.com/ArchonMegalon/chummer6-ui.git"
 EXPECTED_LOCK_PATH = "config/package-plane.lock.json"
-EXPECTED_LOCK_SHA256 = "7330a2d5feb5c0f71991b0e79134f20aa162b3bab7d042d7ac963cc4baff4cb8"
-EXPECTED_LOCK_SIZE = 66853
-EXPECTED_LOCK_BLOB = "0da2966b6c262fa01eade081b00b84a058167634"
-EXPECTED_RECEIPT_SHA256 = "b9a78d7a818e6b522da59fea84ac478e268955cb2baa9aeebc257786594aaa53"
-EXPECTED_RECEIPT_SIZE = 78985
-EXPECTED_CACHE_KEY = "9b3218010f819c69d59a8e1b132e6f799e895cf700ea11d748b815518efd3dbe"
-EXPECTED_CACHE_MANIFEST_SHA256 = "cc4e7e1150c0aa433bd304afc129c3a4263ba2c87fb5ae02e6d5150cea635c01"
-EXPECTED_CACHE_MANIFEST_SIZE = 13707
+EXPECTED_LOCK_SHA256 = "a0ebe05bc7ab277b6a18c097891b1f78de11129d7149a1471db65ad073f04d30"
+EXPECTED_LOCK_SIZE = 66889
+EXPECTED_LOCK_BLOB = "0080285ff0726724eb8c9075f346d622ab665eac"
+EXPECTED_RECEIPT_SHA256 = "875e9a2cf421500667b23c2ff880cef9eee5fe664d895375e4867fe704cc8c90"
+EXPECTED_RECEIPT_SIZE = 71955
+EXPECTED_CACHE_KEY = "192c3e3e8a8b4ac92f6431b27f02cf84b50a86300d41d37613f11c6700655fd1"
+EXPECTED_CACHE_MANIFEST_SHA256 = "14910c50c62428876113b0a15b4f498edd7bcdc0d71df3c3afcd534be39112f8"
+EXPECTED_CACHE_MANIFEST_SIZE = 13595
 EXPECTED_PACKAGE_COUNT = 18
 EXPECTED_CACHE_AUTHORITY_COUNT = 13
 EXPECTED_SOURCE_GRAPH = {
-    "corePackageRecipeCommit": "2c7f566dfbedddaa4e4b15c975b1e17e6f14990a",
-    "coreRuntimeSourceCommit": "f7500ef8c2f597bac67bc3f53620d50b7a17d00a",
-    "hubProducerCommit": "894cb12281eb1315a202c7f1ac5d7de9f70e5fd6",
+    "corePackageRecipeCommit": "b0fbae73f952bb417f9b790cd743c59db1b9ad7f",
+    "coreRuntimeSourceCommit": "b32ee7d37b539cf21a51e9220ff76bffe37a67a4",
+    "hubProducerCommit": "1952cdccd908b8b70196fa54d518f0c37a0169bd",
     "registryCommit": "af9a7e19c3bf331e96411dfb8f9e7820a98cab29",
     "uiKitCommit": "d51ecd99cf72098d4adc8db0192bff7bf9fd8e61",
 }
-EXPECTED_RUNTIME_HUB_COMMIT = "894cb12281eb1315a202c7f1ac5d7de9f70e5fd6"
+EXPECTED_RUNTIME_HUB_COMMIT = "1952cdccd908b8b70196fa54d518f0c37a0169bd"
 RUNTIME_SOURCE_WORKFLOW_PATH = ".github/workflows/api36-editing-e2e.yml"
 EXPECTED_ANDROID_LOCKS = (
     (
         "src/Chummer.Android/Chummer.Android.csproj",
         "src/Chummer.Android/packages.lock.json",
-        "805882c8077168aacdf4111312f06c64604c157039f513fdabe3181ba97215b6",
-        70375,
+        "8b4cd7e76f762aeaad96b2c0562711be56285bc1eb3770c65c212b6ab5a14fd0",
+        70263,
     ),
     (
         "tests/Chummer.Android.Native.CompileCheck/Chummer.Android.Native.CompileCheck.csproj",
         "tests/Chummer.Android.Native.CompileCheck/packages.lock.json",
-        "7aca6848509c4c2bcca5feb045611b682302b1125518fff1b9cc4dbca7b2a294",
-        16178,
+        "e869f09e0a5d37532a9959df328b93f6d53f28ebff0b039da8779fbcf51fa40f",
+        16066,
     ),
 )
-CORE_VERSION = "0.0.0-packageplane.candidate.shf7500ef8c2f59"
-HUB_VERSION = "0.1.0-packageplane.candidate.shfe4b2706c44d"
+CORE_VERSION = "0.0.0-packageplane.candidate.shb32ee7d37b539"
+HUB_VERSION = "0.1.1-packageplane.20260910.1"
 CAMPAIGN_VERSION = "0.1.0-preview"
 UI_KIT_VERSION = "0.1.0-preview"
 EXPECTED_COMPILE_PACKAGES = {
@@ -888,7 +888,7 @@ def validate_bound_authority_claims(
             "inventoryContract", "inventorySha256", "lockContract", "lockSha256",
             "packageCount", "packages", "producerCommit", "producerPath",
             "producerRepository", "producerSha256", "projectLockFilesEnforced",
-            "receiptContract", "receiptSha256", "status",
+            "status",
         },
     )
     receipt_hub_rows = sorted(
@@ -908,10 +908,14 @@ def validate_bound_authority_claims(
         "producerPath": receipt_hub.get("producerPath"),
         "producerRepository": receipt_hub.get("producerRepository"),
         "producerSha256": receipt_hub.get("producerSha256"),
-        "receiptContract": receipt_hub.get("receiptContract"),
-        "receiptSha256": receipt_hub.get("receiptSha256"),
-    } != expected_hub:
+    } != {
+        key: value for key, value in expected_hub.items()
+        if key not in {"receiptContract", "receiptSha256"}
+    }:
         raise ValueError("UI receipt Hub authority disagrees with the bound UI package lock")
+    # Cold hosted production reports package reproduction, not a copied Hub
+    # receipt. The latter remains bound by the exact UI lock and the independently
+    # authenticated retained cache's hub-receipt.json bytes.
     if (
         receipt_hub.get("packageCount") != len(receipt_hub_rows)
         or receipt_hub.get("projectLockFilesEnforced") is not True

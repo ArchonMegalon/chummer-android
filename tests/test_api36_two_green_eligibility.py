@@ -57,7 +57,7 @@ class Api36TwoGreenCurrentDependencyPinsTests(unittest.TestCase):
         runtime = self.manifest["sourceGraph"]["coreRuntimeSourceCommit"]
         recipe = self.manifest["sourceGraph"]["corePackageRecipeCommit"]
         self.assertEqual("1d8cf694d0412b3bd9f4a241fb95244fad341160", content)
-        self.assertEqual("f7500ef8c2f597bac67bc3f53620d50b7a17d00a", runtime)
+        self.assertEqual("b32ee7d37b539cf21a51e9220ff76bffe37a67a4", runtime)
         self.assertEqual(runtime, self.sources["core-runtime"]["commit"])
         self.assertEqual(3, len({content, runtime, recipe}))
         self.assertEqual(

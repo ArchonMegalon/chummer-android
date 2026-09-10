@@ -263,8 +263,10 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
                 status="passed",
             ),
         }
-        # The current producer emits the complete Hub authority binding,
-        # including the authenticated receipt contract and digest.
+        # Hosted cold reproduction does not claim to have copied a Hub receipt.
+        # Those fields remain in the exact lock projection and retained cache.
+        receipt["canonicalOwnerFeed"].pop("receiptContract")
+        receipt["canonicalOwnerFeed"].pop("receiptSha256")
         receipt["packageInventory"] = sorted(
             [
                 copy.deepcopy(row)
@@ -656,24 +658,25 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
                 receipt,
             )
 
-    def test_warm_hub_receipt_binds_complete_authenticated_projection(self) -> None:
+    def test_cold_hub_reproduction_keeps_receipt_binding_in_lock_projection(self) -> None:
         package_authority, receipt = self.bound_authority_fixture()
         self.module.validate_bound_authority_claims(self.payload, package_authority, receipt)
         for field in ("receiptContract", "receiptSha256"):
-            self.assertEqual(package_authority["canonicalOwnerFeed"][field], receipt["canonicalOwnerFeed"][field])
+            self.assertIn(field, package_authority["canonicalOwnerFeed"])
+            self.assertNotIn(field, receipt["canonicalOwnerFeed"])
 
-    def test_warm_hub_receipt_rejects_cold_missing_extra_or_substituted_authority(self) -> None:
+    def test_cold_hub_receipt_rejects_missing_extra_or_copied_authority(self) -> None:
         package_authority, original = self.bound_authority_fixture()
         for field in original["canonicalOwnerFeed"]:
             receipt = copy.deepcopy(original)
             receipt["canonicalOwnerFeed"].pop(field)
             with self.subTest(missing=field), self.assertRaisesRegex(ValueError, "Hub feed schema is not exact"):
                 self.module.validate_bound_authority_claims(self.payload, package_authority, receipt)
-        for mutation in ("cold", "extra"):
+        for mutation in ("copied", "extra"):
             receipt = copy.deepcopy(original)
-            if mutation == "cold":
-                receipt["canonicalOwnerFeed"].pop("receiptContract")
-                receipt["canonicalOwnerFeed"].pop("receiptSha256")
+            if mutation == "copied":
+                for field in ("receiptContract", "receiptSha256"):
+                    receipt["canonicalOwnerFeed"][field] = package_authority["canonicalOwnerFeed"][field]
             else:
                 receipt["canonicalOwnerFeed"]["unboundAuthority"] = "not-authorized"
             with self.subTest(mutation=mutation), self.assertRaisesRegex(ValueError, "Hub feed schema is not exact"):
@@ -682,8 +685,15 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
             for value in ("substituted-contract", "0" * 64, "", None, False, 1, [], {}):
                 receipt = copy.deepcopy(original)
                 receipt["canonicalOwnerFeed"][field] = value
-                with self.subTest(field=field, value=value), self.assertRaisesRegex(ValueError, "receipt Hub authority disagrees"):
+                with self.subTest(field=field, value=value), self.assertRaisesRegex(ValueError, "Hub feed schema is not exact"):
                     self.module.validate_bound_authority_claims(self.payload, package_authority, receipt)
+
+    def test_cold_receipt_does_not_excuse_retained_hub_receipt_byte_tamper(self) -> None:
+        with self.materialized_cache_fixture() as (receipt, cache, feed):
+            self.module.validate_receipt_cache_equivalence(receipt, cache, package_feed=feed)
+            (feed.parent / "authority" / "hub-receipt.json").write_bytes(b"substituted-hub-receipt")
+            with self.assertRaisesRegex(ValueError, "authority bytes drifted"):
+                self.module.validate_receipt_cache_equivalence(receipt, cache, package_feed=feed)
 
     def test_exact_hosted_cold_non_use_receipt_posture_is_accepted(self) -> None:
         receipt = self.current_main_receipt_fixture()
