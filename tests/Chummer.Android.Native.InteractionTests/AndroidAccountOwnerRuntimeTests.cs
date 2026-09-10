@@ -29,20 +29,32 @@ internal static partial class AfterRunAuthorityHarness
         Console.WriteLine("PASS actual Android account → Core → Shell local startup");
         OwnerContextStamp local = fixture.Owner.Capture();
         await fixture.Account.InitializeAsync();
+        await AwaitNativeAccountOwnerInitializationAsync(runtime, fixture, local);
         Require(fixture.Owner.Capture() == local,
             "Background account initialization invalidated an unchanged device-local owner.");
         CharacterWorkspaceId localRunner = await CreateActualAccountRunnerAsync(runtime, "Device-local runner");
-        await fixture.LinkAsync("native-account-A", "native-grant-A");
-        OwnerContextStamp linked = fixture.Owner.Capture();
-        Require(linked.IsValid && linked.Owner.Value ==
-            "install-account-v1:2439e7738b045b5b21ad3d31b94018953bad614617b36b09adc7a790240aa752"
-            && linked.AuthorityInstanceId == local.AuthorityInstanceId && linked.TransitionRevision > local.TransitionRevision,
-            "Authenticated Android link did not become the exact Core owner.");
-        Require(!fixture.Owner.TryAcquire(local, out _), "The old local stamp survived an actual account transition.");
-        // Explicit shared presentation reinitialization here. Production account-
-        // switch UX/Maui composition is a separate closure requirement, not faked.
-        await runtime.Shell.InitializeAsync(default);
-        await runtime.Presenter.InitializeAsync(default);
+        var activationGate = (SemaphoreSlim)typeof(RunnerSessionCoordinator).GetField("_workspaceActivationGate",
+            BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(runtime.Coordinator)!;
+        OwnerContextStamp linked;
+        await activationGate.WaitAsync();
+        try
+        {
+            // Delay the real native initializer, not credential ownership. The
+            // linked epoch must publish while the old Shell remains fenced.
+            await fixture.LinkAsync("native-account-A", "native-grant-A");
+            linked = fixture.Owner.Capture();
+            Require(linked.IsValid && linked.Owner.Value ==
+                "install-account-v1:2439e7738b045b5b21ad3d31b94018953bad614617b36b09adc7a790240aa752"
+                && linked.AuthorityInstanceId == local.AuthorityInstanceId && linked.TransitionRevision > local.TransitionRevision,
+                "Authenticated Android link did not become the exact Core owner.");
+            Require(!fixture.Owner.TryAcquire(local, out _), "The old local stamp survived an actual account transition.");
+            Require(NativeAccountInitializationField<int>(runtime, "_workspaceOwnerInitializationScheduled") == 1
+                && runtime.Shell.State.OwnerContext == local && runtime.Presenter.State.Session.OwnerContext == local,
+                "The delayed native owner initializer bypassed the activation gate: " + NativeAccountRuntimeDiagnostic(runtime, fixture));
+        }
+        finally { activationGate.Release(); }
+        await AwaitNativeAccountOwnerInitializationAsync(runtime, fixture, linked);
+        Console.WriteLine("PASS delayed native account transition joins automatic owner initialization without manual Shell/Presenter reinitialization");
         CharacterWorkspaceId linkedRunner = await CreateActualAccountRunnerAsync(runtime, "Account runner");
         var store = new FileWorkspaceStore(runtime.StateDirectory);
         // The unscoped overload is the trusted device-local store boundary;
@@ -53,6 +65,7 @@ internal static partial class AfterRunAuthorityHarness
         string localBefore = JsonSerializer.Serialize(store.Get(localRunner).Value);
         await runtime.Presenter.UpdateMetadataAsync(new UpdateWorkspaceMetadata(
             "Saved account runner", "ACCOUNT", "Actual Android account-owned edit"), default);
+        RequireNativeAccountDisplay(runtime, fixture, linked, linkedRunner, "before initial account save");
         await runtime.Coordinator.SaveAsync();
         var savedAccount = new FileWorkspaceStore(runtime.StateDirectory).Get(linked.Owner, linkedRunner).Value!;
         Require(runtime.Presenter.State.Error is null && savedAccount.SavedRevision == savedAccount.ContentRevision
@@ -62,50 +75,71 @@ internal static partial class AfterRunAuthorityHarness
         string accountBefore = JsonSerializer.Serialize(savedAccount);
         Console.WriteLine("PASS actual Android grant → Core native creation in separate owner partitions");
 
-        Task unlink;
-        int originalRequests = fixture.Requests;
-        Require(fixture.Owner.TryAcquire(linked, out IOwnerContextLease? held), "Current owner lease unavailable.");
-        using (held)
+        OwnerContextStamp returned;
+        await activationGate.WaitAsync();
+        try
         {
-            var started = new ManualResetEventSlim();
-            unlink = Task.Run(async () => { started.Set(); await fixture.Account.UnlinkAsync(); });
-            Require(started.Wait(TimeSpan.FromSeconds(5)), "Unlink writer did not start.");
-            var accountGate = (SemaphoreSlim)typeof(AndroidAccountLinkService).GetField("_gate",
-                BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(fixture.Account)!;
-            Require(SpinWait.SpinUntil(() => accountGate.CurrentCount == 0, TimeSpan.FromSeconds(5)),
-                "Unlink did not enter the actual account operation gate.");
-            Require(!unlink.IsCompleted && fixture.Requests == originalRequests,
-                "Unlink crossed the live Core lease before credential/request admission.");
-            Require(fixture.Owner.Capture() == linked && held!.Stamp == linked, "Live Core ownership changed during the lease.");
-            Require(!fixture.Owner.TryAcquire(linked, out _), "A nested lease bypassed the credential exclusion gate.");
-            // No await occurs between acquisition and release, as Core requires.
-        }
-        await unlink.WaitAsync(TimeSpan.FromSeconds(5));
-        Require(fixture.Owner.Current == OwnerScope.LocalSingleUser && !fixture.Owner.TryAcquire(linked, out _),
-            "Unlink did not retire the original grant stamp.");
-        await runtime.Presenter.UpdateMetadataAsync(new UpdateWorkspaceMetadata(
-            "Rejected stale account runner", "REJECTED", "After unlink"), default);
-        Require(JsonSerializer.Serialize(store.Get(linked.Owner, linkedRunner).Value) == accountBefore
-            && JsonSerializer.Serialize(store.Get(localRunner).Value) == localBefore,
-            "An old account display mutated a runner after actual unlink.");
-        Console.WriteLine("PASS actual credential writer waits for Core lease, then retires original ownership");
+            Task unlink;
+            int originalRequests = fixture.Requests;
+            Require(fixture.Owner.TryAcquire(linked, out IOwnerContextLease? held), "Current owner lease unavailable.");
+            using (held)
+            {
+                using var started = new ManualResetEventSlim();
+                unlink = Task.Run(async () => { started.Set(); await fixture.Account.UnlinkAsync(); });
+                Require(started.Wait(TimeSpan.FromSeconds(5)), "Unlink writer did not start.");
+                var accountGate = (SemaphoreSlim)typeof(AndroidAccountLinkService).GetField("_gate",
+                    BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(fixture.Account)!;
+                Require(SpinWait.SpinUntil(() => accountGate.CurrentCount == 0, TimeSpan.FromSeconds(5)),
+                    "Unlink did not enter the actual account operation gate.");
+                Require(!unlink.IsCompleted && fixture.Requests == originalRequests,
+                    "Unlink crossed the live Core lease before credential/request admission.");
+                Require(fixture.Owner.Capture() == linked && held!.Stamp == linked, "Live Core ownership changed during the lease.");
+                Require(!fixture.Owner.TryAcquire(linked, out _), "A nested lease bypassed the credential exclusion gate.");
+                // No await occurs between acquisition and release, as Core requires.
+            }
+            await unlink.WaitAsync(TimeSpan.FromSeconds(5));
+            Require(fixture.Owner.Current == OwnerScope.LocalSingleUser && !fixture.Owner.TryAcquire(linked, out _),
+                "Unlink did not retire the original grant stamp.");
+            Require(runtime.Presenter.State.DisplayOwnerContext == linked,
+                "The stale display negative control was rebound before the attempted unlink edit.");
+            await runtime.Presenter.UpdateMetadataAsync(new UpdateWorkspaceMetadata(
+                "Rejected stale account runner", "REJECTED", "After unlink"), default);
+            Require(JsonSerializer.Serialize(store.Get(linked.Owner, linkedRunner).Value) == accountBefore
+                && JsonSerializer.Serialize(store.Get(localRunner).Value) == localBefore,
+                "An old account display mutated a runner after actual unlink.");
+            Console.WriteLine("PASS actual credential writer waits for Core lease, then retires original ownership");
 
-        await fixture.LinkAsync("native-account-A", "native-grant-A2");
-        OwnerContextStamp returned = fixture.Owner.Capture();
-        Require(returned.Owner == linked.Owner && returned != linked && !fixture.Owner.TryAcquire(linked, out _),
-            "Actual unlink/relink A-to-Local-to-A restored a stale epoch.");
-        await fixture.Owner.InitializeAsync();
-        Require(fixture.Owner.Capture() == returned, "A read-only local hydration unnecessarily invalidated an unchanged grant.");
-        await runtime.Presenter.UpdateMetadataAsync(new UpdateWorkspaceMetadata(
-            "Rejected old grant runner", "REJECTED", "After relink to the same account"), default);
-        Require(JsonSerializer.Serialize(store.Get(linked.Owner, linkedRunner).Value) == accountBefore
-            && JsonSerializer.Serialize(store.Get(localRunner).Value) == localBefore,
-            "A stale original display was resurrected by relinking the same account.");
-        await runtime.Shell.InitializeAsync(default);
-        await runtime.Presenter.InitializeAsync(default);
-        await runtime.Presenter.LoadAsync(linkedRunner, default);
+            await fixture.LinkAsync("native-account-A", "native-grant-A2");
+            returned = fixture.Owner.Capture();
+            Require(returned.Owner == linked.Owner && returned != linked && !fixture.Owner.TryAcquire(linked, out _),
+                "Actual unlink/relink A-to-Local-to-A restored a stale epoch.");
+            await fixture.Owner.InitializeAsync();
+            Require(fixture.Owner.Capture() == returned, "A read-only local hydration unnecessarily invalidated an unchanged grant.");
+            Require(runtime.Presenter.State.DisplayOwnerContext != returned && runtime.Presenter.State.Session.OwnerContext != returned,
+                "The relink negative control acquired the new owner before explicit native reopening.");
+            await runtime.Presenter.UpdateMetadataAsync(new UpdateWorkspaceMetadata(
+                "Rejected old grant runner", "REJECTED", "After relink to the same account"), default);
+            Require(JsonSerializer.Serialize(store.Get(linked.Owner, linkedRunner).Value) == accountBefore
+                && JsonSerializer.Serialize(store.Get(localRunner).Value) == localBefore,
+                "A stale original display was resurrected by relinking the same account.");
+        }
+        finally { activationGate.Release(); }
+        await AwaitNativeAccountOwnerInitializationAsync(runtime, fixture, returned);
+        var rosterItem = runtime.Coordinator.State.OpenWorkspaces.Single(item => item.Id == linkedRunner);
+        NativeWorkspaceActivationReceipt? activation = await runtime.Coordinator.SwitchWorkspaceAsync(rosterItem);
+        var reopenedBeforeEdit = new FileWorkspaceStore(runtime.StateDirectory).Get(returned.Owner, linkedRunner).Value
+            ?? throw new InvalidOperationException("The native reopened runner is absent from its exact owner store.");
+        Require(activation is { Kind: NativeWorkspaceActivationKind.WorkspaceSwitch }
+            && activation.WorkspaceId == linkedRunner
+            && runtime.Coordinator.IsWorkspaceActivationCurrent(activation, NativeWorkspaceActivationKind.WorkspaceSwitch)
+            && runtime.Coordinator.State.ContentRevision == reopenedBeforeEdit.ContentRevision
+            && runtime.Coordinator.State.SavedRevision == reopenedBeforeEdit.SavedRevision
+            && JsonSerializer.Serialize(reopenedBeforeEdit) == accountBefore,
+            "Native reopening did not return the exact current runner activation receipt: " + NativeAccountRuntimeDiagnostic(runtime, fixture));
+        RequireNativeAccountDisplay(runtime, fixture, returned, linkedRunner, "after native account reopen");
         await runtime.Presenter.UpdateMetadataAsync(new UpdateWorkspaceMetadata(
             "Reopened account runner", "ACCOUNT", "Explicitly reopened after relink"), default);
+        RequireNativeAccountDisplay(runtime, fixture, returned, linkedRunner, "before relinked account save");
         await runtime.Coordinator.SaveAsync();
         var reopened = new FileWorkspaceStore(runtime.StateDirectory).Get(returned.Owner, linkedRunner).Value!;
         Require(runtime.Presenter.State.Error is null && reopened.SavedRevision == reopened.ContentRevision
@@ -332,6 +366,68 @@ internal static partial class AfterRunAuthorityHarness
         => (Task?)typeof(RunnerSessionCoordinator).GetField("_accountInitialization",
             BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(coordinator)
             ?? throw new InvalidOperationException("The actual background account recovery was never started.");
+
+    private static T NativeAccountInitializationField<T>(NativeRewardRuntime runtime, string name)
+        => (T)typeof(RunnerSessionCoordinator).GetField(name,
+            BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(runtime.Coordinator)!;
+
+    private static string NativeAccountRuntimeDiagnostic(NativeRewardRuntime runtime, ActualAccountFixture fixture)
+        => JsonSerializer.Serialize(new
+        {
+            CurrentOwner = fixture.Owner.Capture(),
+            ShellOwner = runtime.Shell.State.OwnerContext,
+            SessionOwner = runtime.Presenter.State.Session.OwnerContext,
+            runtime.Presenter.State.DisplayOwnerContext,
+            runtime.Presenter.State.WorkspaceId,
+            runtime.Presenter.State.ContentRevision,
+            runtime.Presenter.State.SavedRevision,
+            runtime.Presenter.State.Error,
+            ShellError = runtime.Shell.State.Error,
+            runtime.Coordinator.IsBusy,
+            Pending = NativeAccountInitializationField<bool>(runtime, "_workspaceOwnerInitializationPending"),
+            Scheduled = NativeAccountInitializationField<int>(runtime, "_workspaceOwnerInitializationScheduled"),
+            Requested = NativeAccountInitializationField<int>(runtime, "_workspaceOwnerInitializationRequested")
+        });
+
+    private static async Task AwaitNativeAccountOwnerInitializationAsync(NativeRewardRuntime runtime,
+        ActualAccountFixture fixture, OwnerContextStamp expectedOwner)
+    {
+        await AccountStartupTask(runtime.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        try
+        {
+            // Account mutations have been awaited and the activation gate has
+            // been released. Join the actual scheduled worker, including any
+            // coalesced follow-up, not a possibly early Changed notification.
+            while (NativeAccountInitializationField<int>(runtime, "_workspaceOwnerInitializationScheduled") != 0
+                || NativeAccountInitializationField<int>(runtime, "_workspaceOwnerInitializationRequested") != 0)
+                await Task.Delay(TimeSpan.FromMilliseconds(10), timeout.Token);
+        }
+        catch (OperationCanceledException exception) when (timeout.IsCancellationRequested)
+        {
+            throw new TimeoutException("Native account owner initialization did not finish: "
+                + NativeAccountRuntimeDiagnostic(runtime, fixture), exception);
+        }
+        Require(fixture.Owner.Capture() == expectedOwner
+            && runtime.Shell.State.OwnerContext == expectedOwner
+            && runtime.Presenter.State.Session.OwnerContext == expectedOwner
+            && !NativeAccountInitializationField<bool>(runtime, "_workspaceOwnerInitializationPending")
+            && !runtime.Coordinator.IsBusy && runtime.Presenter.State.Error is null && runtime.Shell.State.Error is null,
+            "Actual native owner initialization did not establish the expected ready session: "
+                + NativeAccountRuntimeDiagnostic(runtime, fixture));
+    }
+
+    private static void RequireNativeAccountDisplay(NativeRewardRuntime runtime, ActualAccountFixture fixture,
+        OwnerContextStamp expectedOwner, CharacterWorkspaceId expectedWorkspace, string stage)
+        => Require(fixture.Owner.Capture() == expectedOwner
+            && runtime.Shell.State.OwnerContext == expectedOwner
+            && runtime.Presenter.State.Session.OwnerContext == expectedOwner
+            && runtime.Presenter.State.DisplayOwnerContext == expectedOwner
+            && runtime.Presenter.State.WorkspaceId == expectedWorkspace
+            && runtime.Presenter.State.ContentRevision > 0
+            && runtime.Presenter.State.SavedRevision <= runtime.Presenter.State.ContentRevision
+            && !runtime.Coordinator.IsBusy && runtime.Presenter.State.Error is null && runtime.Shell.State.Error is null,
+            "Native account display is not current " + stage + ": " + NativeAccountRuntimeDiagnostic(runtime, fixture));
 
     private static async Task<CharacterWorkspaceId> CreateActualAccountRunnerAsync(NativeRewardRuntime runtime, string name)
     {
