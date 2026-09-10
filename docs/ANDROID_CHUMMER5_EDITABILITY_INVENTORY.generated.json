@@ -962,7 +962,7 @@
       {
         "path": "tests/test_run_api36_sr5_before_run_edge_e2e_driver.py",
         "exists": true,
-        "sha256": "dfdcae33d30e8f2f048ea215996c76d85cab7184c9c380e09290aec4e2c2ac68"
+        "sha256": "5321b1e0fb83573a6f4ca31038f69725d71d48e639e315e6ae4f345791dc937b"
       },
       {
         "path": "tests/run_api36_sr5_playtime_short_burst_e2e.py",
@@ -1042,7 +1042,7 @@
       {
         "path": "tests/run_api36_editing_e2e.py",
         "exists": true,
-        "sha256": "ebb5e37bb9a775296d70712fbc35028725701f22143d6eb8c0a831cc320cc3cb"
+        "sha256": "b97cb85383ae9201ae6e514643fe549fba7a2475b8038db3c0784d73f83385fe"
       },
       {
         "path": "tests/run_api36_career_active_skill_advance_e2e.py",
