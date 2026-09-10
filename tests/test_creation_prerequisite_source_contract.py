@@ -1948,6 +1948,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
     def test_progress_finish_rejects_cross_field_timing_forgery(self) -> None:
         cases = (
+            ("validBaseline", None),
             ("phaseOverSum", "does not reconcile"),
             ("totalOverPhaseSum", "does not reconcile"),
             ("milestoneTotalZero", "milestone timing differs"),
@@ -1955,8 +1956,13 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             ("milestoneBoolOrdinal", "milestone evidence differs"),
         )
         for case, expected_error in cases:
-            with self.subTest(case=case), tempfile.TemporaryDirectory() as temporary, mock.patch(
-                "builtins.print"
+            with (
+                self.subTest(case=case),
+                tempfile.TemporaryDirectory() as temporary,
+                mock.patch("builtins.print"),
+                # Host scheduling/JSON writes must not change which hostile
+                # timing field this fixture reaches, including its final phase.
+                mock.patch.object(driver.time, "monotonic", return_value=100.0),
             ):
                 progress = driver.ProgressRecorder(Path(temporary))
                 for phase_id in driver.PHASE_ORDER:
@@ -1970,6 +1976,11 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                     ):
                         if milestone_phase == phase_id:
                             progress.record_initial_milestone(milestone_id)
+                if case == "validBaseline":
+                    baseline = progress.finish()
+                    self.assertEqual(len(driver.PHASE_ORDER), len(baseline["phases"]))
+                    self.assertEqual(0, baseline["totalElapsedMs"])
+                    continue
                 if case == "phaseOverSum":
                     for phase in progress.phases:
                         phase["elapsedMs"] = phase["budgetMs"]
