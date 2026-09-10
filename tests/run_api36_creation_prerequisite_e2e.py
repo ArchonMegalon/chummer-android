@@ -1501,6 +1501,10 @@ def capture_creation_dashboard_continuity_failure(
         "noNavigation": True,
         "receiptWrittenBeforeDeviceDiagnostics": True,
     }
+    if scroll_journal and "requiredAnchors" in scroll_journal[-1]:
+        failure_receipt["hierarchy"]["requiredAnchors"] = (
+            scroll_journal[-1]["requiredAnchors"]
+        )
     for name, value in (
         (f"{prefix}-scroll-journal.json", journal_receipt),
         (f"{prefix}.json", failure_receipt),
@@ -1584,7 +1588,7 @@ def capture_creation_dashboard_continuity_failure(
             pass
 
 class CreationDashboardContinuityGuard:
-    """Bind the initial dashboard scan to one uninterrupted app foreground."""
+    """Bind dashboard scans to one previously proven app foreground."""
 
     def __init__(
         self,
@@ -1593,6 +1597,7 @@ class CreationDashboardContinuityGuard:
         *,
         deadline: float,
         phase_id: str,
+        resources_acquisition: bool = False,
     ) -> None:
         component = (
             shared.COMPONENT.fullmatch(expected.resumed_component)
@@ -1606,6 +1611,7 @@ class CreationDashboardContinuityGuard:
             or not component.group("activity").endswith("MainActivity")
             or not math.isfinite(deadline)
             or not phase_id
+            or type(resources_acquisition) is not bool
         ):
             raise ValueError(
                 "Creation dashboard continuity requires one exact Chummer PID "
@@ -1617,6 +1623,8 @@ class CreationDashboardContinuityGuard:
         self._phase_id = phase_id
         self._scroll_journal: list[dict[str, object]] = []
         self._failed = False
+        self._resources_acquisition = resources_acquisition
+        self._resources_entry_proven = False
 
     @property
     def scroll_journal(self) -> tuple[dict[str, object], ...]:
@@ -1629,6 +1637,29 @@ class CreationDashboardContinuityGuard:
         traversal: str,
         gestures_issued: int,
     ) -> None:
+        if self._resources_acquisition and not self._resources_entry_proven:
+            raise RuntimeError("Resources continuity requires an exact fresh dashboard entry")
+        self._require(nodes, scan_id, traversal, gestures_issued)
+
+    def require_resources_entry(
+        self,
+        nodes: list[shared.UiNode],
+        scan_id: str,
+    ) -> None:
+        if not self._resources_acquisition:
+            raise ValueError("Resources entry requires the closed Resources acquisition mode")
+        self._require(nodes, scan_id, "dashboard-entry", 0, dashboard_entry=True)
+        self._resources_entry_proven = True
+
+    def _require(
+        self,
+        nodes: list[shared.UiNode],
+        scan_id: str,
+        traversal: str,
+        gestures_issued: int,
+        *,
+        dashboard_entry: bool = False,
+    ) -> None:
         if self._failed:
             raise RuntimeError(
                 "Creation dashboard continuity already failed; no recovery or "
@@ -1638,6 +1669,49 @@ class CreationDashboardContinuityGuard:
             _creation_dashboard_hierarchy_authority(nodes)
         )
         hierarchy_matches = packages == (shared.PACKAGE,) and exact_route
+        required_anchors: dict[str, object] | None = None
+        exact_toolbar = True
+        exact_entry = True
+        if self._resources_acquisition:
+            toolbar_nodes = [
+                node for node in nodes
+                if node.attributes.get("content-desc") == "build-save-runner"
+                or _exact_resource_id(node) == "build-save-runner"
+            ]
+            exact_toolbar = (
+                len(toolbar_nodes) == 1
+                and toolbar_nodes[0].attributes.get("package") == shared.PACKAGE
+                and (
+                    toolbar_nodes[0].attributes.get("content-desc") == "build-save-runner"
+                    or toolbar_nodes[0].attributes.get("resource-id")
+                    == f"{shared.PACKAGE}:id/build-save-runner"
+                )
+            )
+            required_anchors = {
+                "mode": "resources-stage-acquisition",
+                "routeResourceId": CREATION_DASHBOARD_CONTINUITY_ROUTE_ID,
+                "toolbarAccessibilityValue": "build-save-runner",
+                "toolbarCardinality": len(toolbar_nodes),
+                "exactToolbar": exact_toolbar,
+                "dashboardEntryRequired": dashboard_entry,
+            }
+            if dashboard_entry:
+                entries = [node for node in nodes if _exact_resource_id(node)
+                           == "creation-wizard-dashboard"]
+                exact_entry = (
+                    len(entries) == 1
+                    and entries[0].attributes.get("package") == shared.PACKAGE
+                    and entries[0].attributes.get("resource-id")
+                    == f"{shared.PACKAGE}:id/creation-wizard-dashboard"
+                    and entries[0].attributes.get("class") == "android.view.ViewGroup"
+                    and self._device.node_has_tappable_bounds(entries[0], deadline=self._deadline)
+                )
+                required_anchors.update({
+                    "dashboardResourceId": "creation-wizard-dashboard",
+                    "dashboardCardinality": len(entries),
+                    "exactDashboardEntry": exact_entry,
+                })
+            hierarchy_matches = hierarchy_matches and exact_toolbar and exact_entry
         launch_observations: list[dict[str, object]] = []
         try:
             observed = _strict_creation_dashboard_launch_state(
@@ -1690,6 +1764,8 @@ class CreationDashboardContinuityGuard:
                 else "fail"
             ),
         }
+        if required_anchors is not None:
+            observation["requiredAnchors"] = required_anchors
         self._scroll_journal.append(observation)
         if pid_matches and component_matches and hierarchy_matches:
             return
@@ -1703,6 +1779,10 @@ class CreationDashboardContinuityGuard:
             reasons.append("hierarchy-package-changed")
         if not exact_route:
             reasons.append("dashboard-route-changed")
+        if not exact_toolbar:
+            reasons.append("resources-toolbar-changed")
+        if not exact_entry:
+            reasons.append("resources-dashboard-entry-changed")
         reason = "+".join(reasons)
         self._failed = True
         capture_creation_dashboard_continuity_failure(
@@ -10150,6 +10230,7 @@ def open_resources(
     deadline: float | None = None,
     observed_dashboard: shared.UiNode | None = None,
     authority_scan_owns_origin: bool = False,
+    continuity_guard: CreationDashboardContinuityGuard | None = None,
 ) -> None:
     """Open Resources without duplicating an already-proven viewport boundary.
 
@@ -10164,6 +10245,17 @@ def open_resources(
         raise ValueError(
             "Resources authority-scan origin ownership requires an observed dashboard"
         )
+    continuity_options: dict[str, object] = {}
+    if continuity_guard is not None:
+        if deadline is None or observed_dashboard is None:
+            raise ValueError("Guarded Resources acquisition requires a dashboard and caller deadline")
+        # Do not use the caller's earlier UiNode as fresh foreground evidence.
+        # The guard retains restart.restarted, never an arbitrary current PID.
+        continuity_guard.require_resources_entry(
+            device.hierarchy(deadline=deadline),
+            "process-restart-resources-dashboard-entry",
+        )
+        continuity_options["continuity_check"] = continuity_guard.require
     if observed_dashboard is not None:
         _require_canonical_chummer_resource_id(
             device,
@@ -10222,6 +10314,7 @@ def open_resources(
         evidence_prefix="creation-resources-stage",
         surface_name="Core-authoritative Resources stage",
         deadline=deadline,
+        **continuity_options,
     )
     _require_canonical_chummer_resource_id(
         device,
@@ -12212,6 +12305,13 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     process_restart_resources_deadline = progress.active_phase_deadline(
         "process-restart-resources"
     )
+    resources_continuity = CreationDashboardContinuityGuard(
+        device,
+        restart.restarted,
+        deadline=process_restart_resources_deadline,
+        phase_id="process-restart-resources",
+        resources_acquisition=True,
+    )
     device.back(deadline=process_restart_resources_deadline)
     process_restart_resources_dashboard = shared.open_creation_dashboard(
         device,
@@ -12225,6 +12325,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         deadline=process_restart_resources_deadline,
         observed_dashboard=process_restart_resources_dashboard,
         authority_scan_owns_origin=True,
+        continuity_guard=resources_continuity,
     )
     resources_restarted, resources_restart_proof = (
         read_process_restart_resources_proof_state(

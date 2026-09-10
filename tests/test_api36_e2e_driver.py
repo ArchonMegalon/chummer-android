@@ -6199,12 +6199,47 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             ("ExecuteWorkspaceActionAsync", "public async Task ExecuteWorkspaceActionAsync"),
             ("ApplyAttributeEditAsync", "public async Task ApplyAttributeEditAsync"),
             ("ApplyOriginDossierEditAsync", "public async Task ApplyOriginDossierEditAsync"),
-            ("ApplyCollectionMutationAsync", "public async Task ApplyCollectionMutationAsync"),
             ("ApplyConditionMonitorEditAsync", "public async Task ApplyConditionMonitorEditAsync"),
             ("ApplyPrimaryArmEditAsync", "public async Task ApplyPrimaryArmEditAsync"),
         ):
             block = self._coordinator_member(source, start_marker)
             self.assertIn("WithWorkspaceActivationGateAsync", block, method_name)
+
+        # Collection compatibility calls capture before queueing; the exact bound
+        # helper, not a newly captured current frame, owns activation admission.
+        collection = self._coordinator_member(source, "public Task ApplyCollectionMutationAsync(")
+        self.assertLess(collection.index("CharacterOverviewState expected = State;"),
+                        collection.index("return TryApplyBoundCollectionMutationAsync(request, expected, () => true, cancellationToken);"))
+        bound = self._coordinator_member(source, "internal Task<bool> TryApplyBoundCollectionMutationAsync(")
+        dispatch = "return await ApplyCollectionMutationCoreAsync(request, expected, cancellationToken);"
+        gate = bound.index("=> WithWorkspaceActivationGateAsync(async () =>")
+        for guard in (
+            "current.WorkspaceId != expected.WorkspaceId",
+            "current.DisplayOwnerContext != expected.DisplayOwnerContext",
+            "!IsNativePersistenceOwnerCurrent(expected.DisplayOwnerContext)",
+            "current.ContentRevision != expected.ContentRevision",
+            "current.SavedRevision != expected.SavedRevision",
+            "!string.Equals(current.ActiveSectionId, expected.ActiveSectionId, StringComparison.Ordinal)",
+            "!ReferenceEquals(current.ActiveCollectionEditor, expected.ActiveCollectionEditor)",
+            "CollectionItemEditorPage.TargetsMatch(item.Target, request.Target)) != 1",
+            "!isCurrentInspector())",
+            "return false;",
+        ):
+            self.assertLess(gate, bound.index(guard))
+            self.assertLess(bound.index(guard), bound.index(dispatch))
+        for member in (collection, bound):
+            self.assertNotIn("_presenter.", member)
+            self.assertNotIn("bound.ApplyCollectionMutationAsync", member)
+        core = self._coordinator_member(source, "private async Task<bool> ApplyCollectionMutationCoreAsync(")
+        owner_lane, legacy_lane = core.split("\n        else\n", 1)
+        self.assertIn("if (expected.DisplayOwnerContext is { } owner)", owner_lane)
+        self.assertIn("if (_presenter is not IOwnerBoundWorkspaceMutationPresenter bound) return false;", owner_lane)
+        self.assertIn("await bound.ApplyCollectionMutationAsync(request, owner, cancellationToken);", owner_lane)
+        self.assertNotIn("await _presenter.ApplyCollectionMutationAsync", owner_lane)
+        self.assertLess(legacy_lane.index("if (_client is IOwnerBoundWorkspaceMutationClient) return false;"),
+                        legacy_lane.index("await _presenter.ApplyCollectionMutationAsync(request, cancellationToken);"))
+        self.assertEqual(2, core.count("if (!HasCurrentCollectionObservation()) return false;"))
+        self.assertIn("IsNativePersistenceOwnerCurrent(expected.DisplayOwnerContext)", core)
 
         create = self._coordinator_member(source, "public async Task CreateRunnerAsync")
         self.assertIn('ExecuteCommandAsync("new_character", cancellationToken)', create)
@@ -10559,6 +10594,103 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             scans[0]["elapsedMs"],
             round(CREATION.POST_CONFIRM_DASHBOARD_READY_TIMEOUT_SECONDS * 1000),
         )
+
+
+class GuardedExactResourceSearchTests(unittest.TestCase):
+    @staticmethod
+    def node(selector="creation-stage-resources"):
+        return DRIVER.UiNode({
+            "resource-id": f"{DRIVER.PACKAGE}:id/{selector}",
+            "package": DRIVER.PACKAGE,
+            "enabled": "true", "clickable": "true", "bounds": "[98,420][984,640]",
+        })
+
+    @staticmethod
+    def device(screens):
+        device = Mock(spec=DRIVER.Device)
+        device.hierarchy.side_effect = screens
+        device._scroll_x_ratio.return_value = 0.5
+        device.node_has_tappable_bounds.return_value = True
+        device.dismiss_system_ui_anr.return_value = False
+        return device
+
+    def search(self, device, callback, *, backward=0, deadline=None):
+        return DRIVER.Device.wait_exact_resource_id_bidirectional(
+            device, "creation-stage-resources", backward_scrolls=backward, forward_scrolls=2,
+            deadline=DRIVER.time.monotonic() + 120 if deadline is None else deadline,
+            continuity_check=callback,
+        )
+
+    def test_guarded_exact_resource_observer_failure_precedes_target_and_anr_admission(self):
+        for backward in (0, 1):
+            with self.subTest(backward=backward):
+                target = self.node()
+                device = self.device([[target]])
+                callback = Mock(side_effect=RuntimeError("foreign foreground"))
+                with self.assertRaisesRegex(RuntimeError, "foreign foreground"):
+                    self.search(device, callback, backward=backward)
+                self.assertIs(target, callback.call_args.args[0][0])
+                self.assertEqual("reverse" if backward else "forward", callback.call_args.args[2])
+                self.assertEqual(0, callback.call_args.args[3])
+                device.node_has_tappable_bounds.assert_not_called()
+                device.dismiss_system_ui_anr.assert_not_called()
+                device.swipe_up.assert_not_called()
+                device.swipe_down.assert_not_called()
+                device.shell.assert_not_called()
+
+    def test_guarded_exact_resource_observer_boolean_is_not_admission_authority(self):
+        device = self.device([[self.node()]])
+        with self.assertRaisesRegex(ValueError, "must not return admission authority"):
+            self.search(device, lambda *_: True)
+        device.shell.assert_not_called()
+        device.swipe_up.assert_not_called()
+        device.swipe_down.assert_not_called()
+        device.node_has_tappable_bounds.assert_not_called()
+        target = self.node()
+        positive = self.device([[target]])
+        self.assertIs(target, self.search(positive, lambda *_: None))
+
+    def test_guarded_exact_resource_observer_cannot_extend_the_caller_deadline(self):
+        clock = {"now": 0.0}
+        device = self.device([[self.node()]])
+
+        def consumes_budget(*_):
+            clock["now"] = 2.0
+
+        with (
+            patch.object(DRIVER.time, "monotonic", side_effect=lambda: clock["now"]),
+            self.assertRaises(DRIVER.AdbOperationDeadlineExceeded),
+        ):
+            self.search(device, consumes_budget, deadline=1.0)
+        device.node_has_tappable_bounds.assert_not_called()
+        device.shell.assert_not_called()
+        device.swipe_up.assert_not_called()
+        device.swipe_down.assert_not_called()
+
+    def test_guarded_exact_resource_empty_reads_never_authorize_a_gesture(self):
+        target = self.node()
+        root = self.node("phone-runner-page")
+        device = self.device([[], [root], [root, target]])
+        callback = Mock(return_value=None)
+        with patch.object(DRIVER.time, "sleep"):
+            self.assertIs(target, self.search(device, callback))
+        self.assertEqual(3, device.hierarchy.call_count)
+        self.assertEqual(2, callback.call_count)
+        self.assertEqual([0, 1], [call.args[3] for call in callback.call_args_list])
+        self.assertEqual([[root], [root, target]], [call.args[0] for call in callback.call_args_list])
+        device.swipe_up.assert_called_once()
+        device.swipe_down.assert_not_called()
+        device.shell.assert_not_called()
+
+    def test_guarded_exact_resource_requires_a_callable_and_original_deadline(self):
+        device = self.device([])
+        for callback, deadline in ((True, 100.0), (lambda *_: None, None)):
+            with self.subTest(callback=callback, deadline=deadline), self.assertRaises(ValueError):
+                DRIVER.Device.wait_exact_resource_id_bidirectional(
+                    device, "creation-stage-resources", continuity_check=callback, deadline=deadline,
+                )
+        device.hierarchy.assert_not_called()
+        device.shell.assert_not_called()
 
 
 if __name__ == "__main__":

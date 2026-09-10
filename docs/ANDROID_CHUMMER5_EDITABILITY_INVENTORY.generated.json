@@ -577,7 +577,7 @@
       {
         "path": "src/Chummer.Android/Native/CollectionEditorPages.cs",
         "exists": true,
-        "sha256": "a4b05de404624f99d7cb535776b70f0ca6b2cda56e478c1dba2d4d926c240f11"
+        "sha256": "577484c63048a2cff5328b29bb78bcc5765495b6ed47d8600824335a2531f912"
       },
       {
         "path": "src/Chummer.Android/Native/ConditionMonitorEditPage.cs",
@@ -652,7 +652,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "77fdd2d65e9c28908114d13c9590f2005c1eef2f3e5fb1b72135ef96889dd5da"
+        "sha256": "6779662772ac008792caf6bba035501245bd1ba0ef0faca661e32e6f3b5b6998"
       },
       {
         "path": "src/Chummer.Android/Native/RunnerSessionSr5CareerWizardPhoneAuthority.cs",
@@ -1012,7 +1012,7 @@
       {
         "path": "tests/test_chummer5_editability_inventory.py",
         "exists": true,
-        "sha256": "6c959c9e7fc8263db8314618c1216e40ad96decd54a300e895bf94b4aab63760"
+        "sha256": "3bbdf9d4f75fe26e6c978452712810687a5011727594d9c9b98fabc099716fbf"
       },
       {
         "path": "tests/test_sr5_contextual_wizard_scope.py",
@@ -1027,7 +1027,7 @@
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
         "exists": true,
-        "sha256": "8af2d5ec2116abaa11f442594ed23c04a7be5579cc25daca9c44b3b7390d89f2"
+        "sha256": "63d573d20dbd121f9e08dd3424378d7e71f5cd7769804ff745a4fc768c721366"
       },
       {
         "path": "src/Chummer.Android/Platform/IAndroidLinkedCharacterFileService.cs",
@@ -1042,7 +1042,7 @@
       {
         "path": "tests/run_api36_editing_e2e.py",
         "exists": true,
-        "sha256": "3bcd949ea5374e651fc4913a4a6446900b8ffb85fa9687dc7bd830ff2cf08b1c"
+        "sha256": "362f6e6baced265e8a188d86fe446cd779efa2c02f6b3d98688909dfb0a03858"
       },
       {
         "path": "tests/run_api36_career_active_skill_advance_e2e.py",
@@ -1462,7 +1462,7 @@
       {
         "path": "tests/run_api36_creation_prerequisite_e2e.py",
         "exists": true,
-        "sha256": "876d7fedb5f716a14e7ae77bc0a581b34ace028df9cca5f4bd60a533fc805171"
+        "sha256": "19469901284cb7e608d82536d944a9c903f53f7bb51498837719b2c512a06687"
       },
       {
         "path": "tests/fixtures/career-condition-monitor-e2e.chum5",
@@ -3010,7 +3010,7 @@
     },
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "59ae964cd8bd809b5c4d1c18fdc3128a6b6cde69cfe499a75f5ea8830c0e6a18"
+      "sha256": "0be3823a0ae7b6fb702afd9ab904a2b9d5f570a8acf8e43a11be6d8a33ed8c3f"
     }
   },
   "coverageByFamily": {

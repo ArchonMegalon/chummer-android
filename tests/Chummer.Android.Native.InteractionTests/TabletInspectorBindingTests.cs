@@ -42,6 +42,7 @@ internal static class TabletInspectorBindingTests
         await DeleteConfirmationStaysBoundToTheReviewedItemAsync();
         await DeleteWaitRechecksAuthorityAfterConfirmationAsync();
         NestedChooserKeepsTheCurrentParent();
+        await RejectedNestedAddRetainsDraftAsync();
         await LinkedPickerAndUnknownOutcomeRemainSafeAsync();
         await LinkedCharacterBindingTests.RunAsync();
         Console.WriteLine("PASS tablet inspector action binding (managed native page/coordinator, not device persistence)");
@@ -862,6 +863,36 @@ internal static class TabletInspectorBindingTests
     private static void Require(bool condition, string message)
     {
         if (!condition) throw new InvalidOperationException(message);
+    }
+
+    private static async Task RejectedNestedAddRetainsDraftAsync()
+    {
+        using var fixture = new Fixture(mutable: true);
+        var expected = fixture.State;
+        var page = new NestedCollectionAddPage(fixture.Coordinator,
+            expected.ActiveCollectionEditor!.Items[0].Target, WorkspaceNestedCollectionKind.Gear, expected);
+        typeof(NestedCollectionAddPage).GetMethod("Refresh", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .Invoke(page, null);
+        var name = (Entry)typeof(NestedCollectionAddPage).GetField("_name", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .GetValue(page)!;
+        name.Text = "Retain my unsubmitted child";
+        long generation = (long)typeof(NestedCollectionAddPage).GetField("_renderGeneration", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .GetValue(page)!;
+        fixture.State = fixture.State with { WorkspaceId = new("another-runner") };
+        bool? accepted = null;
+        Func<Task<bool>> action = async () =>
+        {
+            accepted = await (Task<bool>)typeof(NestedCollectionAddPage).GetMethod("SaveAsync",
+                BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(page, [generation])!;
+            return accepted.Value;
+        };
+        await (Task)typeof(NativePageBase).GetMethod("RunWithConditionalRefreshAsync",
+            BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(page, [action])!;
+        Require(accepted == false && name.Text == "Retain my unsubmitted child"
+            && ReferenceEquals(name, typeof(NestedCollectionAddPage).GetField("_name",
+                BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page))
+            && fixture.Requests.Count == 0,
+            "Rejected nested add erased its draft, refreshed the stale form or dispatched to another runner.");
     }
 
     private static async Task LinkedPickerAndUnknownOutcomeRemainSafeAsync()

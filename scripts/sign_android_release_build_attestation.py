@@ -5,12 +5,13 @@ from __future__ import annotations
 
 import argparse
 import base64
+from collections import deque
 from datetime import UTC, datetime
 import hashlib
 import importlib.util
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import secrets
 import stat
 import subprocess
@@ -602,6 +603,103 @@ def _trusted_system_executable(path: Path, label: str) -> Path:
     return _trusted_tool(resolved, root, label)
 
 
+TRUSTED_TREE_MAX_ENTRIES = 250_000
+
+
+def _trusted_tree_link(root: Path, path: Path, target: str, label: str) -> None:
+    """Reject any outside hop, even when a later link would return inside."""
+    location = list(path.parent.relative_to(root).parts)
+    pending: deque[str] = deque()
+    hops = 0
+
+    def enqueue(text: str) -> None:
+        nonlocal location
+        value = PurePosixPath(text)
+        if not text:
+            raise ValueError(f"{label} contains an unresolved symlink")
+        if value.is_absolute():
+            if not value.is_relative_to(root):
+                raise ValueError(f"{label} symlink escapes its trusted root")
+            location = []
+            value = value.relative_to(root)
+        pending.extendleft(reversed(value.parts))
+
+    try:
+        enqueue(target)
+        while pending:
+            part = pending.popleft()
+            if part == "..":
+                if not location:
+                    raise ValueError(f"{label} symlink escapes its trusted root")
+                location.pop()
+                continue
+            candidate = root.joinpath(*location, part)
+            metadata = candidate.lstat()
+            if metadata.st_uid != 0:
+                raise ValueError(f"{label} symlink reaches non-root-owned content")
+            if stat.S_ISLNK(metadata.st_mode):
+                hops += 1
+                if hops > 64:
+                    raise ValueError(f"{label} contains a cyclic or excessive-hop symlink")
+                enqueue(os.readlink(candidate))
+            else:
+                if stat.S_IMODE(metadata.st_mode) & 0o022:
+                    raise ValueError(f"{label} symlink reaches writable content")
+                if not (stat.S_ISREG(metadata.st_mode) or stat.S_ISDIR(metadata.st_mode)):
+                    raise ValueError(f"{label} symlink reaches unsupported content")
+                if pending and not stat.S_ISDIR(metadata.st_mode):
+                    raise ValueError(f"{label} contains an unresolved symlink")
+                location.append(part)
+        # PurePosixPath normalizes trailing '/.' or '/', but the kernel must
+        # still reject treating a regular file as a directory.
+        final = path.stat()
+        if (final.st_uid != 0 or stat.S_IMODE(final.st_mode) & 0o022
+                or not (stat.S_ISREG(final.st_mode) or stat.S_ISDIR(final.st_mode))):
+            raise ValueError(f"{label} symlink reaches unsafe content")
+    except (OSError, RuntimeError):
+        raise ValueError(f"{label} contains an unresolved symlink") from None
+
+
+def _trusted_tree_file_sha256(path: Path, metadata: os.stat_result, label: str) -> str:
+    """Two bounded FD passes detect stable rewrites hidden by timestamp quanta.
+
+    This is not an atomic snapshot or a substitute for immutable tool custody.
+    Empty regular files remain legitimate closure members.
+    """
+    identity = _lease_identity(metadata)
+    failure = f"{label} content changed while hashing its closure"
+    try:
+        if _lease_identity(path.lstat()) != identity:
+            raise ValueError(failure)
+        descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_CLOEXEC", 0)
+                             | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0))
+        try:
+            if _lease_identity(os.fstat(descriptor)) != identity:
+                raise ValueError(failure)
+            previous = None
+            for _ in range(2):
+                os.lseek(descriptor, 0, os.SEEK_SET)
+                digest, observed = hashlib.sha256(), 0
+                while chunk := os.read(descriptor, 1024 * 1024):
+                    observed += len(chunk)
+                    if observed > metadata.st_size:
+                        raise ValueError(failure)
+                    digest.update(chunk)
+                current = digest.hexdigest()
+                if (observed != metadata.st_size or _lease_identity(os.fstat(descriptor)) != identity
+                        or (previous is not None and current != previous)):
+                    raise ValueError(failure)
+                previous = current
+            if _lease_identity(path.lstat()) != identity:
+                raise ValueError(failure)
+            assert previous is not None
+            return previous
+        finally:
+            os.close(descriptor)
+    except (OSError, RuntimeError):
+        raise ValueError(failure) from None
+
+
 def _trusted_tree_digest(root: Path, label: str) -> tuple[str, int, int]:
     """Digest the complete root-owned SDK/JDK closure, including link targets."""
 
@@ -609,41 +707,67 @@ def _trusted_tree_digest(root: Path, label: str) -> tuple[str, int, int]:
     digest = hashlib.sha256()
     file_count = 0
     total_bytes = 0
-    pending = [root]
+    entry_count = 0
+    pending = [(root, root.lstat())]
     while pending:
-        directory = pending.pop()
-        entries = sorted(os.scandir(directory), key=lambda entry: entry.name)
-        for entry in entries:
-            path = Path(entry.path)
-            relative = path.relative_to(root).as_posix()
-            metadata = entry.stat(follow_symlinks=False)
-            if metadata.st_uid != 0 or stat.S_IMODE(metadata.st_mode) & 0o022:
-                raise ValueError(f"{label} contains writable or non-root-owned content")
-            if entry.is_symlink():
-                target = os.readlink(path)
-                resolved = path.resolve(strict=True)
-                if not resolved.is_relative_to(root):
-                    raise ValueError(f"{label} symlink escapes its trusted root")
-                row = f"L\0{relative}\0{stat.S_IMODE(metadata.st_mode):o}\0{target}\n".encode()
-            elif entry.is_dir(follow_symlinks=False):
-                pending.append(path)
-                row = f"D\0{relative}\0{stat.S_IMODE(metadata.st_mode):o}\n".encode()
-            elif entry.is_file(follow_symlinks=False):
-                file_count += 1
-                total_bytes += metadata.st_size
-                if file_count > 250_000 or total_bytes > 16 * 1024 * 1024 * 1024:
-                    raise ValueError(f"{label} exceeds its closure bound")
-                content = path.read_bytes()
-                if len(content) != metadata.st_size:
-                    raise ValueError(f"{label} content changed while hashing its closure")
-                content_sha = hashlib.sha256(content).hexdigest()
-                row = (
-                    f"F\0{relative}\0{stat.S_IMODE(metadata.st_mode):o}\0"
-                    f"{metadata.st_size}\0{content_sha}\n"
-                ).encode()
-            else:
-                raise ValueError(f"{label} contains unsupported filesystem content")
-            digest.update(row)
+        directory, before = pending.pop()
+        if (not stat.S_ISDIR(before.st_mode) or before.st_uid != 0
+                or stat.S_IMODE(before.st_mode) & 0o022):
+            raise ValueError(f"{label} contains writable or non-root-owned content")
+        identity = _lease_identity(before)
+        descriptor = None
+        try:
+            if _lease_identity(directory.lstat()) != identity:
+                raise ValueError(f"{label} directory changed while hashing its closure")
+            descriptor = os.open(directory, os.O_RDONLY | getattr(os, "O_CLOEXEC", 0)
+                                 | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0))
+            if _lease_identity(os.fstat(descriptor)) != identity:
+                raise ValueError(f"{label} directory changed while hashing its closure")
+            entries = []
+            with os.scandir(descriptor) as iterator:
+                for entry in iterator:
+                    entry_count += 1
+                    if entry_count > TRUSTED_TREE_MAX_ENTRIES:
+                        raise ValueError(f"{label} exceeds its closure entry bound")
+                    entries.append(entry)
+            entries.sort(key=lambda entry: entry.name)
+            for entry in entries:
+                path = directory / entry.name
+                relative = path.relative_to(root).as_posix()
+                metadata = entry.stat(follow_symlinks=False)
+                is_link = stat.S_ISLNK(metadata.st_mode)
+                if metadata.st_uid != 0 or (not is_link and stat.S_IMODE(metadata.st_mode) & 0o022):
+                    raise ValueError(f"{label} contains writable or non-root-owned content")
+                if is_link:
+                    target = os.readlink(path)
+                    _trusted_tree_link(root, path, target, label)
+                    if _lease_identity(path.lstat()) != _lease_identity(metadata) or os.readlink(path) != target:
+                        raise ValueError(f"{label} symlink changed while hashing its closure")
+                    row = f"L\0{relative}\0{stat.S_IMODE(metadata.st_mode):o}\0{target}\n".encode()
+                elif stat.S_ISDIR(metadata.st_mode):
+                    pending.append((path, metadata))
+                    row = f"D\0{relative}\0{stat.S_IMODE(metadata.st_mode):o}\n".encode()
+                elif stat.S_ISREG(metadata.st_mode):
+                    file_count += 1
+                    total_bytes += metadata.st_size
+                    if file_count > 250_000 or total_bytes > 16 * 1024 * 1024 * 1024:
+                        raise ValueError(f"{label} exceeds its closure bound")
+                    content_sha = _trusted_tree_file_sha256(path, metadata, label)
+                    row = (
+                        f"F\0{relative}\0{stat.S_IMODE(metadata.st_mode):o}\0"
+                        f"{metadata.st_size}\0{content_sha}\n"
+                    ).encode()
+                else:
+                    raise ValueError(f"{label} contains unsupported filesystem content")
+                digest.update(row)
+            if (_lease_identity(os.fstat(descriptor)) != identity
+                    or _lease_identity(directory.lstat()) != identity):
+                raise ValueError(f"{label} directory changed while hashing its closure")
+        except (OSError, RuntimeError):
+            raise ValueError(f"{label} directory changed while hashing its closure") from None
+        finally:
+            if descriptor is not None:
+                os.close(descriptor)
     return digest.hexdigest(), file_count, total_bytes
 
 

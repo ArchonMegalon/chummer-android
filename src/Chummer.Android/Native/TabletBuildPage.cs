@@ -1077,7 +1077,7 @@ public sealed partial class TabletBuildPage : NativePageBase
                 $"Add {RunnerSessionCoordinator.HumanizeId(nestedKind.ToString())}",
                 "Keep the parent and collection visible",
                 () => IsCurrentInspector(generation, expected, item.Target)
-                    ? Navigation.PushAsync(new NestedCollectionAddPage(Coordinator, item.Target, nestedKind))
+                    ? Navigation.PushAsync(new NestedCollectionAddPage(Coordinator, item.Target, nestedKind, expected))
                     : Task.CompletedTask,
                 automationId: $"tablet-inspector-add-{Token(nestedKind.ToString())}"));
         }
