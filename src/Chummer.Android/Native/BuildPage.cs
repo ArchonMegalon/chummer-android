@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using Chummer.Application.Owners;
 using Chummer.Contracts.Characters;
 using Chummer.Contracts.Presentation;
 using Chummer.Presentation.Overview;
@@ -10,6 +11,21 @@ namespace Chummer.Android.Native;
 public sealed record BuildPageRouteMarker(string AutomationId, string Label);
 
 public sealed record CreationIdentityRouteState(bool IsEnabled, string Blocker);
+
+// Finalization has its own owner-bound queue key; other creation phases retain
+// their existing contracts. A same-ID account switch must retire this request.
+internal sealed record CreationFinalizationProjectionBinding(
+    CreationDashboardProjectionBinding Dashboard,
+    OwnerContextStamp? Owner,
+    string? Tab,
+    string? Action,
+    string? Section)
+{
+    public bool Matches(CharacterOverviewState state, CharacterCreationWizardSnapshot snapshot)
+        => Dashboard.Matches(state, snapshot) && state.DisplayOwnerContext == Owner
+           && state.Session.OwnerContext == Owner && state.ActiveTabId == Tab
+           && state.ActiveActionId == Action && state.ActiveSectionId == Section;
+}
 
 public sealed record CreationDashboardRouteReadyMarker(
     string Schema,
@@ -695,13 +711,13 @@ public sealed class BuildPage : NativePageBase
         CreationDashboardProjectionBinding,
         CharacterCreationResourcesInteractionLoadResult> _creationResourcesQueue = new();
     private readonly LatestBackgroundProjectionQueue<
-        CreationDashboardProjectionBinding,
+        CreationFinalizationProjectionBinding,
         CharacterCreationFinalizationResult<CharacterCreationFinalizationState>> _creationFinalizationQueue = new();
     private readonly ICharacterCreationResourcesInteractionPresenter? _resourcesPresenter;
     private readonly ICharacterCreationGearInteractionPresenter? _gearPresenter;
     private readonly ICharacterOverviewPresenter? _overviewPresenter;
     private CreationDashboardAuthorityProjection? _creationProjection;
-    private CreationDashboardProjectionBinding? _creationFinalizationBinding;
+    private CreationFinalizationProjectionBinding? _creationFinalizationBinding;
     private CharacterCreationFinalizationResult<CharacterCreationFinalizationState>?
         _creationFinalizationAuthority;
     private string? _creationFinalizationFailureReason;
@@ -1499,12 +1515,15 @@ public sealed class BuildPage : NativePageBase
     {
         if (projection is null || projection.Progress.HasLoading)
             return;
+        CharacterOverviewState original = Coordinator.State;
         if (!CreationDashboardProjectionBinding.TryCreate(
-                Coordinator.State,
+                original,
                 snapshot,
-                out CreationDashboardProjectionBinding? binding)
-            || binding is null)
+                out CreationDashboardProjectionBinding? dashboardBinding)
+            || dashboardBinding is null || !Coordinator.IsCreationFinalizationDisplayCurrent(original))
             return;
+        var binding = new CreationFinalizationProjectionBinding(dashboardBinding,
+            original.DisplayOwnerContext, original.ActiveTabId, original.ActiveActionId, original.ActiveSectionId);
         if (_creationFinalizationBinding?.Equals(binding) != true)
         {
             _creationFinalizationQueue.Cancel();
@@ -1521,11 +1540,11 @@ public sealed class BuildPage : NativePageBase
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     CharacterCreationFinalizationResult<CharacterCreationFinalizationState> result =
-                        Coordinator.LoadCreationFinalization();
+                        Coordinator.LoadCreationFinalization(original);
                     cancellationToken.ThrowIfCancellationRequested();
                     return result;
                 },
-                out BackgroundProjectionRequest<CreationDashboardProjectionBinding> request);
+                out BackgroundProjectionRequest<CreationFinalizationProjectionBinding> request);
             if (_creationFinalizationQueue.TryTake(
                     request,
                     out CharacterCreationFinalizationResult<CharacterCreationFinalizationState> completed,
@@ -1565,8 +1584,23 @@ public sealed class BuildPage : NativePageBase
             ScheduleCreationNavigationPressCancellation(pressGeneration);
         review.Clicked += async (_, _) => await RunCreationNavigationAsync(async () =>
         {
-            CharacterCreationFinalizationResult<CharacterCreationFinalizationReview> result =
-                Coordinator.ReviewCreationFinalization(authority.Value.Binding);
+            long originalAppearance = _creationDashboardAppearanceGeneration;
+            if (!IsCurrentCreationDashboardPage()) return;
+            CharacterCreationFinalizationResult<CharacterCreationFinalizationReview> result;
+            try
+            {
+                result = await Coordinator.ReviewCreationFinalizationAsync(authority.Value.Binding);
+            }
+            catch (Exception exception) when (exception is not OutOfMemoryException)
+            {
+                // A departed/recreated appearance must not surface an old worker
+                // failure through the shared navigation error handler.
+                if (originalAppearance != _creationDashboardAppearanceGeneration || !IsCurrentCreationDashboardPage())
+                    return;
+                throw;
+            }
+            if (originalAppearance != _creationDashboardAppearanceGeneration || !IsCurrentCreationDashboardPage())
+                return;
             if (result is not
                 {
                     Outcome: CharacterCreationFinalizationOutcomes.Available,
@@ -1577,6 +1611,8 @@ public sealed class BuildPage : NativePageBase
                     result.Blockers.FirstOrDefault()
                     ?? "The final creation authority changed. Reload the runner and review again.");
             }
+            if (!Coordinator.IsCreationFinalizationReviewCurrent(result.Value))
+                return;
             await Navigation.PushAsync(new CreationFinalizationPage(Coordinator, result.Value));
         }, pressGeneration);
         _body.Add(review);
@@ -1646,12 +1682,13 @@ public sealed class BuildPage : NativePageBase
     }
 
     private void ScheduleCreationFinalizationAcceptance(
-        BackgroundProjectionRequest<CreationDashboardProjectionBinding> request)
+        BackgroundProjectionRequest<CreationFinalizationProjectionBinding> request)
     {
         MainThread.BeginInvokeOnMainThread(() =>
         {
             if (_creationFinalizationBinding?.Equals(request.Key) != true
                 || Coordinator.State.CreationWizard is not { } snapshot
+                || !Coordinator.IsCreationFinalizationDisplayCurrent(Coordinator.State)
                 || !request.Key.Matches(Coordinator.State, snapshot))
             {
                 _creationFinalizationQueue.TryAccept(request);

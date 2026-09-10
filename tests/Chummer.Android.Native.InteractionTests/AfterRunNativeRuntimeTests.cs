@@ -551,7 +551,9 @@ internal static partial class AfterRunAuthorityHarness
             IDesktopWorkspaceRoamingSync? persistenceRoaming = null,
             IAndroidDocumentService? outputDocuments = null,
             IAndroidSystemService? outputSystem = null,
-            IAndroidAccountLinkService? accountService = null)
+            IAndroidAccountLinkService? accountService = null,
+            bool creationFinalization = false,
+            Func<IOwnerBoundCharacterCreationFinalizationService, IOwnerBoundCharacterCreationFinalizationService>? finalizationDecorator = null)
         {
             _priorPreferences = Preferences.Default;
             _setPreferences = typeof(Preferences).GetMethod("SetDefault",
@@ -648,10 +650,15 @@ internal static partial class AfterRunAuthorityHarness
                     creationSkillsService: creationSkillsSeed is null ? null : skillsDecorator is null
                         ? _provider.GetRequiredService<ICharacterCreationSkillsService>()
                         : skillsDecorator(_provider.GetRequiredService<ICharacterCreationSkillsService>()),
+                    creationFinalizationService: creationFinalization
+                        ? _provider.GetRequiredService<ICharacterCreationFinalizationService>() : null,
                     careerReputationService: reputationService,
                     careerReputationJournal: reputation ? _provider.GetRequiredService<Sr5CareerReputationJournal>() : null,
                     linkedCharacterJournal: LinkedJournal,
-                    linkedWorkspaceReader: linkedReader);
+                    linkedWorkspaceReader: linkedReader,
+                    ownerBoundCreationFinalizationService: creationFinalization
+                        ? finalizationDecorator?.Invoke(_provider.GetRequiredService<IOwnerBoundCharacterCreationFinalizationService>())
+                            ?? _provider.GetRequiredService<IOwnerBoundCharacterCreationFinalizationService>() : null);
             }
             catch
             {
