@@ -304,6 +304,10 @@ ADB_CREATION_BOOTSTRAP_LOGCAT_ARGUMENTS = (
     "*:S",
 )
 ADB_CREATION_BOOTSTRAP_LOGCAT_CLEAR_ARGUMENTS = ("logcat", "-c")
+ADB_CREATION_DIALOG_DIAGNOSTIC_LOGCAT_ARGUMENTS = (
+    "logcat", "-d", "-b", "main", "-v", "threadtime",
+    "-s", "ChummerCreateDiag:I", "*:S",
+)
 ADB_CREATION_DASHBOARD_READY_LOGCAT_ARGUMENTS = (
     "logcat",
     "-d",
@@ -1024,6 +1028,11 @@ def adb_command_retry_policy(arguments: tuple[str, ...]) -> tuple[str, str]:
         return (
             "read-only-retryable",
             "bounded exact-tag creation-bootstrap timing observation",
+        )
+    if arguments == ADB_CREATION_DIALOG_DIAGNOSTIC_LOGCAT_ARGUMENTS:
+        return (
+            "read-only-retryable",
+            "exact-tag creation-dialog diagnostic snapshot; not mutation authority",
         )
     if arguments == ADB_CREATION_DASHBOARD_READY_LOGCAT_ARGUMENTS:
         return (

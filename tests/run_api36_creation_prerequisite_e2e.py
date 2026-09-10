@@ -799,6 +799,7 @@ def capture_creation_bootstrap_timeout(device: shared.Device) -> None:
         "diagnosticOnly": True,
         "bootstrapStatus": "timeout",
         "freshHierarchy": "unavailable",
+        "dialogTrace": "unavailable",
     }
     try:
         # The legacy capture copies an existing device XML file. Name it as
@@ -811,14 +812,16 @@ def capture_creation_bootstrap_timeout(device: shared.Device) -> None:
         observation["priorHierarchy"] = "copied-existing-device-file-not-fresh"
     try:
         trace = device.run(
-            "logcat", "-d", "-b", "main", "-v", "threadtime",
-            "-s", "ChummerCreateDiag:I", "*:S",
+            *shared.ADB_CREATION_DIALOG_DIAGNOSTIC_LOGCAT_ARGUMENTS,
             timeout=shared._remaining_operation_timeout(deadline=deadline, maximum=1.0),
-            deadline=deadline,
+            deadline=min(deadline, time.monotonic() + 1.0),
         )
         (device.evidence / f"{name}-dialog-trace.txt").write_text(trace.stdout, encoding="utf-8")
-    except Exception:
-        pass
+        observation["dialogTrace"] = "captured" if trace.stdout.strip() else "empty"
+    except Exception as error:
+        # Preserve why this diagnostic was unavailable without replacing the
+        # failed bootstrap or leaking raw transport/character details.
+        observation["dialogTraceFailureType"] = type(error).__name__
     try:
         fresh = device.run(
             *shared.ADB_READ_ONLY_HIERARCHY_ARGUMENTS,

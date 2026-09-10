@@ -794,6 +794,71 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 ),
             )
 
+    def test_creation_timeout_real_transport_keeps_diagnostics_without_replaying_action(self) -> None:
+        # Keep Device.run and its mutation fence real: mocking run itself hides
+        # the hosted failure where the exact trace read was never admitted.
+        with tempfile.TemporaryDirectory() as temporary:
+            evidence = Path(temporary) / "screenshots"
+            device = driver.shared.Device(Path("/unused/adb"), "unused", evidence)
+            trace_arguments = (
+                "logcat", "-d", "-b", "main", "-v", "threadtime",
+                "-s", "ChummerCreateDiag:I", "*:S",
+            )
+            fresh = b'<hierarchy rotation="0"><node text="busy" /></hierarchy>'
+            invoked = []
+
+            def invoke(arguments, **_kwargs):
+                invoked.append(arguments)
+                if arguments == driver.ADB_CREATION_BOOTSTRAP_LOGCAT_WAIT_ARGUMENTS:
+                    raise subprocess.TimeoutExpired(arguments, 1.0)
+                outputs = {
+                    ("exec-out", "screencap", "-p"): b"diagnostic screenshot",
+                    ("exec-out", "cat", driver.shared.ADB_FILE_HIERARCHY_REMOTE_PATH): fresh.decode(),
+                    ("logcat", "-d", "-t", "500"): "prior log tail",
+                    trace_arguments: "CHUMMER_CREATE_DIAGNOSTIC stage=claimed",
+                    driver.shared.ADB_READ_ONLY_HIERARCHY_ARGUMENTS: fresh,
+                }
+                return subprocess.CompletedProcess(arguments, 0, stdout=outputs[arguments], stderr="")
+
+            with mock.patch.object(device, "_invoke_once", side_effect=invoke), \
+                    mock.patch.object(driver.time, "monotonic", return_value=100.0):
+                with self.assertRaisesRegex(RuntimeError, "exact post-action creation bootstrap"):
+                    driver.wait_for_creation_bootstrap_timing_log(device, timeout=1.0)
+                with self.assertRaises(driver.shared.AdbTransportError) as blocked:
+                    device.shell("input", "tap", "290", "2187")
+            self.assertEqual("prior-mutation-outcome-unknown", blocked.exception.receipt["classification"])
+            self.assertFalse(blocked.exception.receipt["commandInvocationPerformed"])
+            self.assertEqual(1, invoked.count(driver.ADB_CREATION_BOOTSTRAP_LOGCAT_WAIT_ARGUMENTS))
+            self.assertEqual(1, invoked.count(trace_arguments))
+            self.assertFalse(any(arguments[:2] == ("shell", "input") for arguments in invoked))
+            name = "creation-bootstrap-timing-log-timeout"
+            self.assertEqual("CHUMMER_CREATE_DIAGNOSTIC stage=claimed",
+                             (evidence / f"{name}-dialog-trace.txt").read_text())
+            observation = json.loads((evidence / f"{name}-diagnostics.json").read_text())
+            self.assertEqual("timeout", observation["bootstrapStatus"])
+            self.assertEqual("captured", observation["dialogTrace"])
+            self.assertEqual("captured-from-new-read-only-dump", observation["freshHierarchy"])
+            self.assertEqual(fresh.decode(), (evidence / f"{name}.xml").read_text())
+            self.assertFalse((evidence / driver.CREATION_BOOTSTRAP_TIMING_FILE_NAME).exists())
+
+    def test_creation_timeout_records_empty_or_failed_trace_without_restoring_authority(self) -> None:
+        for fails in (True, False):
+            with self.subTest(fails=fails), tempfile.TemporaryDirectory() as temporary:
+                device = mock.Mock()
+                device.evidence = Path(temporary)
+                device.run.side_effect = [
+                    OSError("diagnostic unavailable") if fails else subprocess.CompletedProcess([], 0, stdout=""),
+                    subprocess.CompletedProcess([], 0, stdout=b"<hierarchy><node /></hierarchy>"),
+                ]
+                with mock.patch.object(driver.time, "monotonic", return_value=100.0):
+                    driver.capture_creation_bootstrap_timeout(device)
+                observation = json.loads((device.evidence / "creation-bootstrap-timing-log-timeout-diagnostics.json").read_text())
+                self.assertEqual("timeout", observation["bootstrapStatus"])
+                self.assertEqual("unavailable" if fails else "empty", observation["dialogTrace"])
+                self.assertEqual("OSError" if fails else None, observation.get("dialogTraceFailureType"))
+                self.assertEqual(101.0, device.run.call_args_list[0].kwargs["deadline"])
+                self.assertFalse((device.evidence / driver.CREATION_BOOTSTRAP_TIMING_FILE_NAME).exists())
+
     def test_creation_timeout_diagnostic_separates_stale_and_fresh_hierarchies(self) -> None:
         for fresh_succeeds in (True, False):
             with self.subTest(fresh_succeeds=fresh_succeeds), tempfile.TemporaryDirectory() as temporary:
