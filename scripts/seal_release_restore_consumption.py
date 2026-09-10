@@ -20,7 +20,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any, Iterable, Mapping
 
 
-CONTRACT = "chummer.android.release-restore-consumption/v1"
+CONTRACT = "chummer.android.release-restore-consumption/v2"
 DRIFT_DIAGNOSTIC_CONTRACT = "chummer.android.release-restore-drift-diagnostic/v1"
 AUTHORITY_CONTRACT = "chummer.android.release-package-authority/v2"
 EXPECTED_SOURCE_PROJECTS = {
@@ -42,6 +42,10 @@ EXPECTED_ROUTED_LOCKS = {
     "Chummer.Desktop.Runtime.packages.lock.json",
     "Chummer.Presentation.packages.lock.json",
 }
+EXPECTED_INTERMEDIATE_PROJECTS = {"Chummer.Android", *EXPECTED_SOURCE_PROJECTS}
+PRIMARY_ASSETS = "Chummer.Android/project.assets.json"
+PRIMARY_DGSPEC = "Chummer.Android/Chummer.Android.csproj.nuget.dgspec.json"
+VERIFY_PHASES = {"pre-publish", "post-publish"}
 
 
 class InventoryDriftError(ValueError):
@@ -211,6 +215,80 @@ def assert_clean_workspace_build_state(workspace_root: Path) -> None:
 def _inventory_digest(rows: Iterable[Mapping[str, Any]]) -> str:
     encoded = json.dumps(list(rows), sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
+
+
+def _restore_roots(
+    input_root: Path, workspace_root: Path, intermediate_root: Path,
+    owner_feed: Path, packages_root: Path, routed_lock_root: Path,
+) -> None:
+    _private_directory(input_root, "release restore input root")
+    _owned_directory(workspace_root, "coherent workspace")
+    _outside(input_root, workspace_root)
+    if workspace_root.is_relative_to(input_root):
+        raise ValueError("release restore input root and coherent workspace must be disjoint")
+    roots = (
+        (intermediate_root, "isolated restore intermediate root"),
+        (owner_feed, "private selected package feed"),
+        (packages_root, "isolated global-packages cache"),
+        (routed_lock_root, "routed project-lock root"),
+    )
+    for path, label in roots:
+        _private_directory(path, label)
+        if path == input_root or not path.is_relative_to(input_root):
+            raise ValueError(f"{label} must remain strictly inside the release restore input root")
+    for index, (left, _label) in enumerate(roots):
+        for right, _other_label in roots[index + 1:]:
+            if left.is_relative_to(right) or right.is_relative_to(left):
+                raise ValueError("release restore roots must not overlap")
+
+
+def _is_restore_metadata(name: str) -> bool:
+    return name in {"project.assets.json", "project.nuget.cache"} or name.endswith(
+        (".nuget.dgspec.json", ".nuget.g.props", ".nuget.g.targets")
+    )
+
+
+def _restore_inventory(root: Path) -> list[dict[str, Any]]:
+    rows = _tree_inventory(root, "isolated restore intermediates")
+    if any(not item.is_dir() or item.name not in EXPECTED_INTERMEDIATE_PROJECTS
+           for item in root.iterdir()):
+        raise ValueError("isolated restore intermediates contain an unexpected project root")
+    for row in rows:
+        parts = PurePosixPath(row["path"]).parts
+        if len(parts) < 2 or parts[0] not in EXPECTED_INTERMEDIATE_PROJECTS:
+            raise ValueError("isolated restore intermediate path is not project-scoped")
+        name = parts[-1]
+        if _is_restore_metadata(name):
+            allowed = {
+                "project.assets.json", "project.nuget.cache",
+                f"{parts[0]}.csproj.nuget.dgspec.json",
+                f"{parts[0]}.csproj.nuget.g.props",
+                f"{parts[0]}.csproj.nuget.g.targets",
+            }
+            if len(parts) != 2 or name not in allowed:
+                raise ValueError("duplicate or misplaced restore metadata in intermediate root")
+    paths = {row["path"] for row in rows}
+    if not {PRIMARY_ASSETS, PRIMARY_DGSPEC}.issubset(paths):
+        raise ValueError("restore must produce exactly one primary Android project.assets.json and dgspec")
+    return rows
+
+
+def _root_identity(root: Path) -> dict[str, int]:
+    info = root.stat()
+    return {"device": info.st_dev, "inode": info.st_ino}
+
+
+def _post_publish_workspace_state(workspace_root: Path) -> None:
+    roots, rows = _workspace_build_state(workspace_root)
+    project_dirs = {
+        PurePosixPath("chummer-android/src/Chummer.Android"),
+        *(relative.parent for _version, relative in EXPECTED_SOURCE_PROJECTS.values()),
+    }
+    allowed = {(project / "bin").as_posix() for project in project_dirs}
+    if not set(roots).issubset(allowed):
+        raise ValueError("workspace build outputs must remain in the exact source-project bin roots")
+    if any(_is_restore_metadata(PurePosixPath(row["path"]).name) for row in rows):
+        raise ValueError("workspace build outputs contain unsealed restore metadata")
 
 
 def _authority_packages(authority: Mapping[str, Any]) -> list[dict[str, str]]:
@@ -530,55 +608,40 @@ def _closure(
 
 def materialize_payload(
     *, input_root: Path, workspace_root: Path, authority_path: Path, owner_feed: Path,
-    packages_root: Path, routed_lock_root: Path, project_lock: Path,
+    packages_root: Path, routed_lock_root: Path, project_lock: Path, intermediate_root: Path,
 ) -> dict[str, Any]:
-    input_root = _private_directory(input_root, "release restore input root")
-    workspace_root = workspace_root.resolve(strict=True)
-    _outside(input_root, workspace_root)
-    for path, label in (
-        (owner_feed, "private selected package feed"),
-        (packages_root, "isolated global-packages cache"),
-        (routed_lock_root, "routed project-lock root"),
-    ):
-        _private_directory(path, label)
-        try:
-            path.relative_to(input_root)
-        except ValueError as error:
-            raise ValueError(f"{label} must remain inside the release restore input root") from error
+    _restore_roots(input_root, workspace_root, intermediate_root, owner_feed, packages_root, routed_lock_root)
+    assert_clean_workspace_build_state(workspace_root)
+    root_identity = _root_identity(intermediate_root)
     authority_data, _ = _stable_file(authority_path, "release package authority")
     authority = json.loads(authority_data)
     expected = _authority_packages(authority)
     package_rows = _tree_inventory(packages_root, "isolated global-packages cache")
-    build_roots, intermediate_rows = _workspace_build_state(workspace_root)
-    if any(PurePosixPath(root).name == "bin" for root in build_roots):
-        raise ValueError("coherent release workspace bin outputs must remain absent before publish")
-    assets_candidates = [
-        row for row in intermediate_rows
-        if PurePosixPath(row["path"]).name == "project.assets.json"
-        and "Chummer.Android" in PurePosixPath(row["path"]).parts
-    ]
-    dgspec_candidates = [
-        row for row in intermediate_rows
-        if PurePosixPath(row["path"]).name == "Chummer.Android.csproj.nuget.dgspec.json"
-    ]
-    if len(assets_candidates) != 1 or len(dgspec_candidates) != 1:
-        raise ValueError("restore must produce exactly one primary Android project.assets.json and dgspec")
-    assets_path = workspace_root / PurePosixPath(assets_candidates[0]["path"])
+    intermediate_rows = _restore_inventory(intermediate_root)
+    by_path = {row["path"]: row for row in intermediate_rows}
+    assets_path = intermediate_root / PRIMARY_ASSETS
     assets = _strict_json(assets_path, "project.assets.json")
-    dgspec_path = workspace_root / PurePosixPath(dgspec_candidates[0]["path"])
+    dgspec_path = intermediate_root / PRIMARY_DGSPEC
     dgspec = _strict_json(dgspec_path, "restore dgspec")
     chummer_closure, source_projects, dgspec_projects = _closure(
         assets, dgspec, packages_root, expected, workspace_root
     )
     lock_row = _file_row(project_lock, project_lock.name, "packages.lock.json")
+    if _root_identity(intermediate_root) != root_identity:
+        raise ValueError("isolated restore intermediate root changed during capture")
+    _require_inventory_unchanged(
+        _restore_inventory(intermediate_root), intermediate_rows,
+        label="isolated restore intermediates", message="restore intermediates changed during capture",
+    )
     return {
         "contractName": CONTRACT,
         "publicationAuthorized": False,
         "inputRoot": os.fspath(input_root),
+        "workspaceRoot": os.fspath(workspace_root),
         "authoritySha256": hashlib.sha256(authority_data).hexdigest(),
         "projectLock": lock_row,
-        "projectAssets": assets_candidates[0],
-        "dependencyGraphSpec": dgspec_candidates[0],
+        "projectAssets": by_path[PRIMARY_ASSETS],
+        "dependencyGraphSpec": by_path[PRIMARY_DGSPEC],
         "chummerClosure": chummer_closure,
         "sourceProjectReferences": source_projects,
         "dependencyGraphProjects": dgspec_projects,
@@ -589,11 +652,13 @@ def materialize_payload(
         "routedProjectLocks": {
             "files": _routed_lock_inventory(routed_lock_root),
         },
-        "workspaceBuildState": {
-            "roots": build_roots,
+        "restoreIntermediates": {
+            "root": os.fspath(intermediate_root),
+            "identity": root_identity,
             "files": intermediate_rows,
             "inventorySha256": _inventory_digest(intermediate_rows),
         },
+        "workspaceBuildState": {"roots": [], "files": [], "inventorySha256": _inventory_digest([])},
         "buildOutputsInitiallyEmpty": True,
     }
 
@@ -654,7 +719,12 @@ def _rows_by_path(rows: object, label: str) -> dict[str, Mapping[str, Any]]:
         if not isinstance(row, dict) or set(row) != {"path", "sizeBytes", "sha256"}:
             raise ValueError(f"{label} inventory row is malformed")
         path = row.get("path")
-        if not isinstance(path, str) or path in result:
+        if (not isinstance(path, str) or not path or path in result
+            or PurePosixPath(path).is_absolute() or "\\" in path
+            or ".." in PurePosixPath(path).parts or PurePosixPath(path).as_posix() != path
+            or type(row.get("sizeBytes")) is not int or row["sizeBytes"] < 0
+            or not isinstance(row.get("sha256"), str) or len(row["sha256"]) != 64
+            or any(character not in "0123456789abcdef" for character in row["sha256"])):
             raise ValueError(f"{label} inventory path is malformed")
         result[path] = row
     return result
@@ -716,10 +786,32 @@ def _require_inventory_unchanged(
 
 def verify_post_publish(
     manifest: Mapping[str, Any], *, packages_root: Path, workspace_root: Path,
-    owner_feed: Path, routed_lock_root: Path, project_lock: Path,
+    owner_feed: Path, routed_lock_root: Path, project_lock: Path, intermediate_root: Path,
+    phase: str,
 ) -> None:
     if manifest.get("contractName") != CONTRACT or manifest.get("publicationAuthorized") is not False:
         raise ValueError("restore consumption manifest posture is not exact")
+    if phase not in VERIFY_PHASES:
+        raise ValueError("restore verification phase must be pre-publish or post-publish")
+    input_root = manifest.get("inputRoot")
+    if not isinstance(input_root, str):
+        raise ValueError("restore consumption manifest input root is absent")
+    _restore_roots(Path(input_root), workspace_root, intermediate_root, owner_feed, packages_root, routed_lock_root)
+    if manifest.get("workspaceRoot") != os.fspath(workspace_root):
+        raise ValueError("restore consumption manifest workspace root drifted")
+    restore = manifest.get("restoreIntermediates")
+    if (not isinstance(restore, dict) or set(restore) != {"root", "identity", "files", "inventorySha256"}
+        or restore.get("root") != os.fspath(intermediate_root)
+        or restore.get("identity") != _root_identity(intermediate_root)):
+        raise ValueError("restore consumption manifest intermediate root drifted or is malformed")
+    sealed = _rows_by_path(restore.get("files"), "sealed restore intermediates")
+    if (restore.get("inventorySha256") != _inventory_digest(restore["files"])
+        or manifest.get("projectAssets") != sealed.get(PRIMARY_ASSETS)
+        or manifest.get("dependencyGraphSpec") != sealed.get(PRIMARY_DGSPEC)
+        or PRIMARY_ASSETS not in sealed or PRIMARY_DGSPEC not in sealed
+        or manifest.get("buildOutputsInitiallyEmpty") is not True
+        or manifest.get("workspaceBuildState") != {"roots": [], "files": [], "inventorySha256": _inventory_digest([])}):
+        raise ValueError("restore consumption manifest intermediate inventory is inconsistent")
     actual_packages = _tree_inventory(packages_root, "isolated global-packages cache")
     expected_packages = manifest.get("packages", {}).get("files") if isinstance(manifest.get("packages"), dict) else None
     _require_inventory_unchanged(
@@ -750,25 +842,34 @@ def verify_post_publish(
     lock = _file_row(project_lock, project_lock.name, "packages.lock.json")
     if lock != manifest.get("projectLock"):
         raise ValueError("packages.lock.json changed after restore")
-    _actual_roots, actual_rows = _workspace_build_state(workspace_root)
+    actual_rows = _restore_inventory(intermediate_root)
     actual_intermediate = _rows_by_path(actual_rows, "actual intermediates")
-    sealed = _rows_by_path(
-        manifest.get("workspaceBuildState", {}).get("files")
-        if isinstance(manifest.get("workspaceBuildState"), dict) else None,
-        "sealed intermediates",
-    )
     for path, row in sealed.items():
         if actual_intermediate.get(path) != row:
             raise ValueError(f"sealed restore intermediate changed during publish: {path}")
+    if phase == "pre-publish":
+        assert_clean_workspace_build_state(workspace_root)
+        _require_inventory_unchanged(
+            actual_rows, restore["files"], label="isolated restore intermediates",
+            message="isolated restore intermediates changed before publish",
+        )
+    else:
+        _post_publish_workspace_state(workspace_root)
+        for path in actual_intermediate.keys() - sealed.keys():
+            if _is_restore_metadata(PurePosixPath(path).name):
+                raise ValueError(f"publish introduced unsealed restore metadata: {path}")
+    if _root_identity(intermediate_root) != restore["identity"]:
+        raise ValueError("isolated restore intermediate root changed during verification")
 
 
 def verify_context(
     manifest: Mapping[str, Any], *, input_root: Path, workspace_root: Path,
     authority_path: Path, owner_feed: Path, packages_root: Path, routed_lock_root: Path,
+    intermediate_root: Path,
 ) -> None:
-    input_root = _private_directory(input_root, "release restore input root")
-    workspace_root = workspace_root.resolve(strict=True)
-    _outside(input_root, workspace_root)
+    if manifest.get("contractName") != CONTRACT or manifest.get("publicationAuthorized") is not False:
+        raise ValueError("restore consumption manifest posture is not exact")
+    _restore_roots(input_root, workspace_root, intermediate_root, owner_feed, packages_root, routed_lock_root)
     if manifest.get("inputRoot") != os.fspath(input_root):
         raise ValueError("restore consumption manifest input root drifted")
     authority_data, _ = _stable_file(authority_path, "release package authority")
@@ -804,9 +905,11 @@ def main() -> int:
         command.add_argument("--owner-feed", required=True, type=Path)
         command.add_argument("--packages-root", required=True, type=Path)
         command.add_argument("--routed-lock-root", required=True, type=Path)
+        command.add_argument("--intermediate-root", required=True, type=Path)
         command.add_argument("--project-lock", required=True, type=Path)
         command.add_argument("--manifest", required=True, type=Path)
     verify.add_argument("--drift-diagnostic", type=Path)
+    verify.add_argument("--phase", required=True, choices=sorted(VERIFY_PHASES))
     args = parser.parse_args()
     manifest_sha256: str | None = None
     try:
@@ -823,7 +926,7 @@ def main() -> int:
                 input_root=args.input_root, workspace_root=args.workspace_root,
                 authority_path=args.authority, owner_feed=args.owner_feed,
                 packages_root=args.packages_root, routed_lock_root=args.routed_lock_root,
-                project_lock=args.project_lock,
+                project_lock=args.project_lock, intermediate_root=args.intermediate_root,
             )
             _write_exclusive(args.manifest, payload)
             print(json.dumps({"contractName": CONTRACT, "status": "sealed", "publicationAuthorized": False}, sort_keys=True))
@@ -842,11 +945,12 @@ def main() -> int:
                 manifest, input_root=args.input_root, workspace_root=args.workspace_root,
                 authority_path=args.authority, owner_feed=args.owner_feed,
                 packages_root=args.packages_root, routed_lock_root=args.routed_lock_root,
+                intermediate_root=args.intermediate_root,
             )
             verify_post_publish(
                 manifest, packages_root=args.packages_root, workspace_root=args.workspace_root,
                 owner_feed=args.owner_feed, routed_lock_root=args.routed_lock_root,
-                project_lock=args.project_lock,
+                project_lock=args.project_lock, intermediate_root=args.intermediate_root, phase=args.phase,
             )
             print(json.dumps({"contractName": CONTRACT, "status": "verified", "publicationAuthorized": False}, sort_keys=True))
             return 0
