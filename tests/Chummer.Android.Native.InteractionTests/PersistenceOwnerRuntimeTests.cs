@@ -8,11 +8,249 @@ using Chummer.Infrastructure.Workspaces;
 using Chummer.Desktop.Runtime;
 using Chummer.Presentation;
 using Chummer.Presentation.Shell;
+using Chummer.Presentation.Overview;
 
 internal static partial class AfterRunAuthorityHarness
 {
+    public static async Task RunCollectionOwnerCasesAsync(string contentRoot)
+    {
+        var failures = new List<string>();
+        int cases = 0;
+        foreach (string surface in new[] { "public", "phone", "adaptive" })
+        foreach (string scenario in new[] { "same", "owner-b", "owner-aba", "workspace",
+            "stale-owner-b", "stale-owner-aba", "post-owner-b", "post-owner-aba", "post-cancel", "post-roaming-fault" })
+            if (surface != "phone" || scenario != "post-cancel") await Run(surface, scenario);
+        foreach (string scenario in new[] { "rerender", "departure", "old-render" })
+            await Run("phone", scenario);
+        foreach (string scenario in new[] { "same", "declined", "owner-b", "owner-aba", "workspace", "rerender", "departure" })
+            await Run("phone-delete", scenario);
+        await Run("public", "no-op");
+        Require(failures.Count == 0, "Actual queued collection failures: " + string.Join("; ", failures));
+        Console.WriteLine($"PASS {cases} actual collection owner/render/queue/postcommit cases");
+
+        async Task Run(string surface, string scenario)
+        {
+            cases++;
+            try { await RunQueuedCollectionOwnerAsync(contentRoot, surface, scenario); }
+            catch (Exception error) when (error is not OutOfMemoryException)
+            { failures.Add(surface + "/" + scenario + ": " + error.Message); }
+        }
+    }
+
+    private static async Task RunQueuedCollectionOwnerAsync(string contentRoot, string surface, string scenario)
+    {
+        var owners = new ControlledLinkedOwner();
+        owners.Set(ContactsOwnerA);
+        var roaming = new PersistenceRoamingProbe(owners);
+        await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners, persistenceRoaming: roaming);
+        string careerXml = ContactsCreationXml.Replace("<created>False</created>", "<created>True</created>", StringComparison.Ordinal);
+        runtime.Id = (await runtime.Client.ImportAsync(new WorkspaceImportDocument(careerXml, "sr5"), default)).Id;
+        var store = new FileWorkspaceStore(runtime.StateDirectory);
+        var originalDocument = store.Get(ContactsOwnerA, runtime.Id).Value!;
+        var otherId = new CharacterWorkspaceId(Guid.NewGuid().ToString("N"));
+        Require(store.CreateWorkspaceDocument(ContactsOwnerB, runtime.Id, originalDocument.Document).Success
+            && store.CreateWorkspaceDocument(ContactsOwnerA, otherId, originalDocument.Document).Success,
+            "Actual collection fixture could not create same-contact-ID destinations.");
+        Require(store.SaveCheckpoint(ContactsOwnerA, runtime.Id, 1).Success
+            && store.SaveCheckpoint(ContactsOwnerB, runtime.Id, 1).Success
+            && store.SaveCheckpoint(ContactsOwnerA, otherId, 1).Success,
+            "Actual collection destinations must be saved before legal workspace switching.");
+        originalDocument = store.Get(ContactsOwnerA, runtime.Id).Value!;
+        await Hydrate(runtime.Id);
+        var original = runtime.Coordinator.State;
+        var contact = original.ActiveCollectionEditor?.Items.Single();
+        Require(original.Profile?.Created == true && original.DisplayOwnerContext == owners.Capture()
+            && original.ActiveSectionId == "contacts" && contact?.Contact is { Exact: true, LoyaltyEditable: true },
+            "Actual career contact projection is unavailable: " + original.Error);
+        var request = new WorkspacePatchCollectionItemRequest(contact!.Target, ContactLoyalty: 3);
+        var before = Snapshot();
+        using var canceled = new CancellationTokenSource();
+        roaming.ExpectedOwner = owners.Capture();
+        int beforeCalls = roaming.BoundCalls;
+        var answer = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        int dialogCalls = 0;
+        CollectionItemEditorPage? page = surface.StartsWith("phone", StringComparison.Ordinal)
+            ? new(runtime.Coordinator, contact.Target, (_, _, _, _) => { dialogCalls++; return answer.Task; })
+            : null;
+        Microsoft.Maui.Controls.NavigationPage? navigation = null;
+        if (page is not null)
+        {
+            navigation = new(new Microsoft.Maui.Controls.ContentPage());
+            await navigation.PushAsync(page, animated: false);
+            RefreshPage();
+            var loyalty = (Microsoft.Maui.Controls.Entry)typeof(CollectionItemEditorPage)
+                .GetField("_contactLoyaltyInput", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)!;
+            loyalty.Text = "3";
+        }
+        long generation = page is null ? 0 : (long)typeof(CollectionItemEditorPage)
+            .GetField("_linkRenderGeneration", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)!;
+        var gate = (SemaphoreSlim)typeof(RunnerSessionCoordinator)
+            .GetField("_workspaceActivationGate", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .GetValue(runtime.Coordinator)!;
+        Task? pending = null;
+        Exception? setupFailure = null;
+        await gate.WaitAsync();
+        try
+        {
+            if (scenario == "old-render") RefreshPage();
+            pending = surface switch
+            {
+                "public" => runtime.Coordinator.ApplyCollectionMutationAsync(request, canceled.Token),
+                "adaptive" => runtime.Coordinator.TryApplyBoundCollectionMutationAsync(request, original, () => true, canceled.Token),
+                _ => InvokePageActionAsync()
+            };
+            Require(scenario == "old-render" ? pending.IsCompleted : !pending.IsCompleted,
+                "Native action did not respect its actual render/activation barrier.");
+            if (surface == "phone-delete") Require(dialogCalls == 1, "Actual Delete did not await the injected native dialog.");
+            if (scenario.StartsWith("post-", StringComparison.Ordinal))
+            {
+                roaming.AfterCommit = () =>
+                {
+                    if (scenario is "post-owner-b" or "post-owner-aba") owners.Set(ContactsOwnerB);
+                    if (scenario == "post-owner-aba") owners.Set(ContactsOwnerA);
+                    if (scenario == "post-cancel") canceled.Cancel();
+                    if (scenario == "post-roaming-fault") throw new IOException("Synthetic postcommit roaming failure");
+                };
+            }
+            else if (scenario is "owner-b" or "owner-aba" or "workspace")
+            {
+                if (scenario is "owner-b" or "owner-aba") owners.Set(ContactsOwnerB);
+                if (scenario == "owner-aba") owners.Set(ContactsOwnerA);
+                await Hydrate(scenario == "workspace" ? otherId : runtime.Id);
+            }
+            else if (scenario.StartsWith("stale-owner-", StringComparison.Ordinal))
+            {
+                owners.Set(ContactsOwnerB);
+                if (scenario == "stale-owner-aba") owners.Set(ContactsOwnerA);
+                Require(runtime.Coordinator.State.DisplayOwnerContext == original.DisplayOwnerContext,
+                    "Negative control unexpectedly refreshed the stale displayed owner.");
+            }
+            else if (scenario == "rerender") RefreshPage();
+            else if (scenario == "departure")
+                typeof(CollectionItemEditorPage).GetMethod("OnDisappearing", BindingFlags.Instance | BindingFlags.NonPublic)!
+                    .Invoke(page, null);
+            if (surface == "phone-delete") answer.TrySetResult(scenario != "declined");
+        }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        {
+            setupFailure = error;
+            canceled.Cancel();
+            answer.TrySetResult(false);
+        }
+        finally { gate.Release(); }
+        Exception? dispatchFailure = null;
+        if (pending is not null)
+            try { await pending.WaitAsync(TimeSpan.FromSeconds(20)); }
+            catch (Exception error) when (error is not OutOfMemoryException) { dispatchFailure = error; }
+        if (scenario == "no-op" && setupFailure is null && dispatchFailure is null)
+        {
+            // Submit a SECOND explicit identical-value gesture after the first
+            // established canonical XML serialization. Core Replace always
+            // advances content revision, even for exact same document bytes.
+            var stable = new FileWorkspaceStore(runtime.StateDirectory).Get(ContactsOwnerA, runtime.Id).Value!;
+            Require(stable.ContentRevision == 2 && stable.SavedRevision == 1,
+                "The first explicit contact edit did not establish the canonical no-op baseline.");
+            await runtime.Coordinator.ApplyCollectionMutationAsync(request);
+            var repeated = new FileWorkspaceStore(runtime.StateDirectory).Get(ContactsOwnerA, runtime.Id).Value!;
+            Require(repeated.ContentRevision == 3 && repeated.SavedRevision == 1
+                && JsonSerializer.Serialize(repeated.Document) == JsonSerializer.Serialize(stable.Document)
+                && runtime.Coordinator.State.Error is null,
+                "Identical-value gesture changed document bytes or lost exact existing Core Replace semantics.");
+        }
+        // Always join and cold-read, even after fixture/observation errors.
+        var after = Snapshot();
+        var cold = new FileWorkspaceStore(runtime.StateDirectory).Get(ContactsOwnerA, runtime.Id).Value!;
+        bool committed = scenario == "same" || scenario.StartsWith("post-", StringComparison.Ordinal);
+        bool noOp = scenario == "no-op";
+        bool expected = after["owner-b"] == before["owner-b"] && after["workspace"] == before["workspace"]
+            && (committed ? cold.ContentRevision == originalDocument.ContentRevision + 1
+                && cold.SavedRevision == originalDocument.SavedRevision
+                && (surface == "phone-delete"
+                    ? !cold.Document.Content.Contains("<loyalty>", StringComparison.Ordinal)
+                    : cold.Document.Content.Contains("<loyalty>3</loyalty>", StringComparison.Ordinal))
+                : noOp ? cold.ContentRevision == 3 && cold.SavedRevision == 1
+                    && cold.Document.Content.Contains("<loyalty>3</loyalty>", StringComparison.Ordinal)
+                    && runtime.Coordinator.State.Error is null
+                : after["original"] == before["original"]);
+        bool? applied = pending is Task<bool> result && result.IsCompletedSuccessfully ? result.Result : null;
+        Console.WriteLine("COLLECTION_QUEUE_OBSERVATION " + JsonSerializer.Serialize(new
+        {
+            surface, scenario, expected, applied, setupFailure = setupFailure?.Message,
+            dispatchFailure = dispatchFailure?.GetType().Name,
+            changed = after.Keys.Where(key => after[key] != before[key]).ToArray(),
+            calls = roaming.BoundCalls - beforeCalls
+        }));
+        Require(setupFailure is null, "Actual fixture setup failed: " + setupFailure?.Message);
+        Require(expected && owners.ActiveLeases == 0 && roaming.UnboundCalls == 0,
+            "Contact edit retargeted another owner/epoch/workspace, lost commit, or changed checkpoint semantics.");
+        Require(roaming.BoundCalls - beforeCalls == (noOp ? 2 : committed ? 1 : 0),
+            "Collection mutation was replayed or stale action reached canonical dispatch.");
+        if (scenario == "same") Require(dispatchFailure is null && (surface == "public" || applied == true),
+            "A genuine same-owner collection edit lost its current UI observation.");
+        if (!committed && !noOp) Require(applied != true, "A rejected action was presented as applied.");
+        if (scenario is "post-owner-b" or "post-owner-aba") Require(applied != true,
+            "A committed old-owner result was presented as current-account success.");
+        if (surface == "phone-delete")
+            Require(navigation!.Navigation.NavigationStack.Count == (scenario == "same" ? 1 : 2),
+                "Delete popped a stale page or failed to leave the successfully deleted item.");
+        Console.WriteLine("PASS actual career collection: " + surface + "/" + scenario);
+
+        void RefreshPage() => typeof(CollectionItemEditorPage).GetMethod("Refresh",
+            BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(page, null);
+
+        async Task<bool> InvokePageActionAsync()
+        {
+            bool applied = false;
+            Func<Task<bool>> action = async () =>
+            {
+                applied = await (Task<bool>)typeof(CollectionItemEditorPage).GetMethod(
+                    surface == "phone-delete" ? "DeleteItemAsync" : "SaveAsync",
+                    BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(page, [contact, original, generation])!;
+                return applied;
+            };
+            await (Task)typeof(NativePageBase).GetMethod("RunWithConditionalRefreshAsync",
+                BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(page, [action])!;
+            return applied;
+        }
+
+        async Task Hydrate(CharacterWorkspaceId destination)
+        {
+            // Same actual components/order as native owner initialization. Load,
+            // not Switch's same-ID shortcut, must hydrate a new owner's payload.
+            await runtime.Shell.InitializeAsync(default);
+            await runtime.Presenter.InitializeAsync(default);
+            await runtime.Presenter.LoadAsync(destination, default);
+            await runtime.Presenter.SelectTabAsync("tab-contacts", default);
+            var current = runtime.Coordinator.State;
+            bool valid = current.DisplayOwnerContext == owners.Capture()
+                && current.Session.OwnerContext == owners.Capture() && runtime.Shell.State.OwnerContext == owners.Capture()
+                && current.WorkspaceId == destination && current.Session.ActiveWorkspaceId == destination
+                && current.Profile?.Created == true && current.ActiveCollectionEditor?.Items.Count == 1
+                && current.ActiveCollectionEditor.Items.Single().Target.ItemId == CreationContactId.ToString("D")
+                && current.ContentRevision == 1 && current.SavedRevision == 1 && current.Error is null;
+            Require(valid, "Live collection hydration differs: " + JsonSerializer.Serialize(new
+            {
+                live = owners.Capture(), display = current.DisplayOwnerContext, session = current.Session.OwnerContext,
+                shell = runtime.Shell.State.OwnerContext, current.WorkspaceId, active = current.Session.ActiveWorkspaceId,
+                current.ContentRevision, current.SavedRevision, current.Error, current.ActiveSectionId
+            }));
+        }
+
+        Dictionary<string, string> Snapshot()
+        {
+            var reader = new FileWorkspaceStore(runtime.StateDirectory);
+            return new()
+            {
+                ["original"] = JsonSerializer.Serialize(reader.Get(ContactsOwnerA, runtime.Id).Value),
+                ["owner-b"] = JsonSerializer.Serialize(reader.Get(ContactsOwnerB, runtime.Id).Value),
+                ["workspace"] = JsonSerializer.Serialize(reader.Get(ContactsOwnerA, otherId).Value)
+            };
+        }
+    }
+
     public static async Task RunPersistenceOwnerCasesAsync(string contentRoot)
     {
+        await RunCollectionOwnerCasesAsync(contentRoot);
         var failures = new List<string>();
         foreach (string operation in new[] { "save", "metadata", "delete" })
         foreach (string scenario in new[] { "local", "linked", "owner-b", "owner-aba" })

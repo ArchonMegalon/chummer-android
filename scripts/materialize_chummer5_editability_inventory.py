@@ -7475,7 +7475,12 @@ def _csharp_method_source(
     matches = [
         match
         for match in declaration.finditer(text)
-        if declaration_marker in match.group(0)
+        # A first-line parameter selector distinguishes real overloads without
+        # borrowing markers from their bodies or an adjacent member.
+        if declaration_marker in (
+            text[match.start():].partition("\n")[0]
+            if declaration_marker.partition("(")[2] else match.group(0)
+        )
     ]
     if len(matches) != 1:
         return None
@@ -7507,6 +7512,99 @@ def _csharp_method_contains(
             return False
         offset = found + len(marker)
     return True
+
+
+def _native_collection_owner_guarded(page: Path, coordinator: Path) -> bool:
+    """Follow the rendered collection save into the original-owner gated dispatch.
+
+    These are bounded source requirements, not a Core receipt or device proof.
+    Unrelated collection/notes methods must not satisfy a missing save boundary.
+    """
+    # This file has two page classes with Refresh overrides. Bound the rendered
+    # frame to the item page, then its member, not adjacent linked-item actions.
+    page_text = _read_text(page)
+    class_marker = "public sealed class CollectionItemEditorPage : NativePageBase"
+    if page_text.count(class_marker) != 1:
+        return False
+    item_class = page_text.split(class_marker, 1)[1].split("\ninternal ", 1)[0]
+    refresh_marker = "\n    protected override void Refresh()"
+    if item_class.count(refresh_marker) != 1:
+        return False
+    refresh = item_class.split(refresh_marker, 1)[1]
+    refresh = re.split(r"(?m)^    (?:public|private|internal|protected) ", refresh, maxsplit=1)[0]
+    save = _csharp_method_source(
+        page, "SaveAsync",
+        "private async Task<bool> SaveAsync(WorkspaceCollectionItemEditorState item,",
+    )
+    entry = _csharp_method_source(
+        coordinator, "ApplyCollectionMutationAsync", "public Task ApplyCollectionMutationAsync(",
+    )
+    gated = _csharp_method_source(
+        coordinator, "TryApplyBoundCollectionMutationAsync", "internal Task<bool> TryApplyBoundCollectionMutationAsync(",
+    )
+    core = _csharp_method_source(
+        coordinator, "ApplyCollectionMutationCoreAsync", "private async Task<bool> ApplyCollectionMutationCoreAsync(",
+    )
+    if any(source is None for source in (save, entry, gated, core)):
+        return False
+    if any("_presenter." in source or "bound.ApplyCollectionMutationAsync" in source
+           for source in (save, entry, gated)):
+        return False
+    if "Coordinator.ApplyCollectionMutationAsync(" in save:
+        return False
+    # The only unbound dispatch remains the explicit legacy, non-owner-client lane.
+    if core.count("await _presenter.ApplyCollectionMutationAsync(") != 1:
+        return False
+    return (
+        "CharacterOverviewState expected = Coordinator.State;\n        long generation = _linkRenderGeneration;" in refresh
+        and "RunWithConditionalRefreshAsync(() => SaveAsync(item, expected, generation))" in refresh
+        and _csharp_method_contains(
+            page, "IsCollectionRenderCurrent", "private bool IsCollectionRenderCurrent(",
+            "!_linkDeparted && generation == _linkRenderGeneration",
+            "ReferenceEquals(Coordinator.State.ActiveCollectionEditor, expected.ActiveCollectionEditor)",
+        )
+        and _csharp_method_contains(
+            page, "SaveAsync", "private async Task<bool> SaveAsync(WorkspaceCollectionItemEditorState item,",
+            "CharacterOverviewState expected, long generation)",
+            "if (!IsCollectionRenderCurrent(expected, generation)) return false;",
+            "return await Coordinator.TryApplyBoundCollectionMutationAsync(new WorkspacePatchCollectionItemRequest(",
+            "_target,", "IntegerValues: integerChanges), expected, () => IsCollectionRenderCurrent(expected, generation));",
+        )
+        and _csharp_method_contains(
+            coordinator, "ApplyCollectionMutationAsync", "public Task ApplyCollectionMutationAsync(",
+            "CharacterOverviewState expected = State;",
+            "return TryApplyBoundCollectionMutationAsync(request, expected, () => true, cancellationToken);",
+        )
+        and _csharp_method_contains(
+            coordinator, "TryApplyBoundCollectionMutationAsync", "internal Task<bool> TryApplyBoundCollectionMutationAsync(",
+            "=> WithWorkspaceActivationGateAsync(async () =>", "cancellationToken.ThrowIfCancellationRequested();",
+            "CharacterOverviewState current = State;", "if (_disposed || current.IsBusy || current.Error is not null",
+            "expected.WorkspaceId is null", "expected.ContentRevision <= 0",
+            "current.WorkspaceId != expected.WorkspaceId",
+            "current.DisplayOwnerContext != expected.DisplayOwnerContext",
+            "!IsNativePersistenceOwnerCurrent(expected.DisplayOwnerContext)",
+            "current.ContentRevision != expected.ContentRevision", "current.SavedRevision != expected.SavedRevision",
+            "!string.Equals(current.ActiveSectionId, expected.ActiveSectionId, StringComparison.Ordinal)",
+            "!ReferenceEquals(current.ActiveCollectionEditor, expected.ActiveCollectionEditor)",
+            "expected.ActiveCollectionEditor is null", "expected.ActiveCollectionEditor.Items.Count(item =>",
+            "CollectionItemEditorPage.TargetsMatch(item.Target, request.Target)) != 1",
+            "!isCurrentInspector())", "return false;",
+            "return await ApplyCollectionMutationCoreAsync(request, expected, cancellationToken);",
+        )
+        and _csharp_method_contains(
+            coordinator, "ApplyCollectionMutationCoreAsync", "private async Task<bool> ApplyCollectionMutationCoreAsync(",
+            "if (expected.DisplayOwnerContext is { } owner)",
+            "if (_presenter is not IOwnerBoundWorkspaceMutationPresenter bound) return false;",
+            "await bound.ApplyCollectionMutationAsync(request, owner, cancellationToken);",
+            "else", "if (_client is IOwnerBoundWorkspaceMutationClient) return false;",
+            "await _presenter.ApplyCollectionMutationAsync(request, cancellationToken);",
+            "if (!HasCurrentCollectionObservation()) return false;", "await SyncShellAsync(cancellationToken);",
+            "if (!HasCurrentCollectionObservation()) return false;",
+            "State.WorkspaceId == expected.WorkspaceId", "State.DisplayOwnerContext == expected.DisplayOwnerContext",
+            "IsNativePersistenceOwnerCurrent(expected.DisplayOwnerContext)",
+            "State.SavedRevision == expected.SavedRevision", "State.ContentRevision == expected.ContentRevision + 1",
+        )
+    )
 
 
 def _presenter_save_authority_guarded(path: Path) -> bool:
@@ -20894,8 +20992,9 @@ def _known_phone_mapping(
                 "WorkspaceCollectionTextField.GearName",
                 '=> "gearname"',
                 "WorkspacePatchCollectionItemRequest",
-                "ApplyCollectionMutationAsync",
+                "TryApplyBoundCollectionMutationAsync",
             )
+            and _native_collection_owner_guarded(collection_page, collection_page.with_name("RunnerSessionCoordinator.cs"))
             and _contains(
                 request,
                 "WorkspaceCollectionTextField",
@@ -21252,9 +21351,10 @@ def _known_phone_mapping(
                 '"Lifestyle Name"',
                 '=> "lifestylename"',
                 "WorkspacePatchCollectionItemRequest",
-                "ApplyCollectionMutationAsync",
+                "TryApplyBoundCollectionMutationAsync",
                 "!item.CanMove && !item.CanDelete",
             )
+            and _native_collection_owner_guarded(collection_page, collection_page.with_name("RunnerSessionCoordinator.cs"))
             and _contains(
                 request,
                 "WorkspaceCollectionKind",
@@ -21408,9 +21508,10 @@ def _known_phone_mapping(
                 '"Notes Color"',
                 '=> "notescolor"',
                 "WorkspacePatchCollectionItemRequest",
-                "ApplyCollectionMutationAsync",
+                "TryApplyBoundCollectionMutationAsync",
                 "!item.CanMove && !item.CanDelete",
             )
+            and _native_collection_owner_guarded(collection_page, collection_page.with_name("RunnerSessionCoordinator.cs"))
             and _contains(
                 request,
                 "WorkspaceCollectionTextField",

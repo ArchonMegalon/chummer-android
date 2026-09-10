@@ -27,6 +27,123 @@ CORE_ROOT = _sibling_repo("chummer-core-engine", "core")
 
 
 class Chummer5EditabilityInventoryTests(unittest.TestCase):
+    def test_csharp_member_selector_distinguishes_overloads_without_adjacent_guards(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "Example.cs"
+            first = "    private Task<bool> SaveAsync(Item item,\n        State expected) => BoundSave(item, expected);\n"
+            second = "    private Task<bool> SaveAsync(long generation) => OtherSave(generation);\n"
+            path.write_text(first + second, encoding="utf-8")
+            selected = inventory._csharp_method_source(path, "SaveAsync", "private Task<bool> SaveAsync(Item item,")
+            self.assertIn("BoundSave(item, expected)", selected)
+            self.assertNotIn("OtherSave", selected)
+            self.assertIsNone(inventory._csharp_method_source(path, "SaveAsync", "private Task<bool> SaveAsync("))
+            path.write_text(first + first + second, encoding="utf-8")
+            self.assertIsNone(inventory._csharp_method_source(path, "SaveAsync", "private Task<bool> SaveAsync(Item item,"))
+
+    def _collection_owner_rows_and_receipt_arguments(self):
+        import inspect
+
+        payload = json.loads(inventory.DEFAULT_OUTPUT.read_text(encoding="utf-8"))
+        controls = {inventory.GEAR_NAME_CONTROL, inventory.LIFESTYLE_NAME_CONTROL,
+                    *inventory.LIFESTYLE_NOTES_CONTROLS}
+        rows = [row for row in payload["rows"]
+                if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
+                and row["legacy"]["controlName"] in controls]
+        self.assertEqual(8, len(rows))
+        arguments = {
+            name: {} if name in {"condition_e2e_receipts", "contact_pet_e2e_receipts"} else None
+            for name in list(inspect.signature(inventory._known_phone_mapping).parameters)[4:]
+        }
+        return rows, arguments
+
+    def test_collection_owner_inventory_follows_bound_save_without_claiming_execution(self) -> None:
+        page = REPO / "src/Chummer.Android/Native/CollectionEditorPages.cs"
+        coordinator = page.with_name("RunnerSessionCoordinator.cs")
+        self.assertTrue(inventory._native_collection_owner_guarded(page, coordinator))
+        rows, arguments = self._collection_owner_rows_and_receipt_arguments()
+        for row in rows:
+            with self.subTest(row=row["id"]):
+                mapping = inventory._known_phone_mapping(
+                    row, inventory.DEFAULT_CHUMMER5_ROOT, PRESENTATION_ROOT, CORE_ROOT, **arguments)
+                self.assertEqual("implemented_pending_emulator", mapping["status"])
+                self.assertEqual("scripted_not_executed", mapping["e2e"]["status"])
+
+    def test_collection_owner_inventory_rejects_bypassed_capture_gate_owner_and_render(self) -> None:
+        page = REPO / "src/Chummer.Android/Native/CollectionEditorPages.cs"
+        coordinator = page.with_name("RunnerSessionCoordinator.cs")
+        original_read = inventory._read_text
+        page_source, source = original_read(page), original_read(coordinator)
+        save = inventory._csharp_method_source(
+            page, "SaveAsync", "private async Task<bool> SaveAsync(WorkspaceCollectionItemEditorState item,")
+        entry = inventory._csharp_method_source(
+            coordinator, "ApplyCollectionMutationAsync", "public Task ApplyCollectionMutationAsync(")
+        gated = inventory._csharp_method_source(
+            coordinator, "TryApplyBoundCollectionMutationAsync", "internal Task<bool> TryApplyBoundCollectionMutationAsync(")
+        core = inventory._csharp_method_source(
+            coordinator, "ApplyCollectionMutationCoreAsync", "private async Task<bool> ApplyCollectionMutationCoreAsync(")
+        for body in (save, entry, gated, core):
+            self.assertIsNotNone(body)
+        mutations = []
+
+        def changed(name, path, original, body, old, new):
+            self.assertIn(old, body)
+            mutations.append((name, path, original.replace(body, body.replace(old, new, 1), 1)))
+
+        for name, old, new in (
+            ("missing bound call", "Coordinator.TryApplyBoundCollectionMutationAsync(", "Coordinator.PreviewCollectionMutationAsync("),
+            ("ambient public dispatch", "Coordinator.TryApplyBoundCollectionMutationAsync(", "Coordinator.ApplyCollectionMutationAsync("),
+            ("new frame after dialog", "), expected, () => IsCollectionRenderCurrent", "), Coordinator.State, () => IsCollectionRenderCurrent"),
+            ("missing render callback", "() => IsCollectionRenderCurrent(expected, generation)", "() => true"),
+            ("missing early render check", "if (!IsCollectionRenderCurrent(expected, generation)) return false;", "// removed render check"),
+        ):
+            changed(name, page, page_source, save, old, new)
+        changed("public substitutes current frame", coordinator, source, entry,
+                "request, expected, () => true", "request, State, () => true")
+        for guard in (
+            "=> WithWorkspaceActivationGateAsync(async () =>",
+            "current.WorkspaceId != expected.WorkspaceId",
+            "current.DisplayOwnerContext != expected.DisplayOwnerContext",
+            "!IsNativePersistenceOwnerCurrent(expected.DisplayOwnerContext)",
+            "current.ContentRevision != expected.ContentRevision",
+            "current.SavedRevision != expected.SavedRevision",
+            "!string.Equals(current.ActiveSectionId, expected.ActiveSectionId, StringComparison.Ordinal)",
+            "!ReferenceEquals(current.ActiveCollectionEditor, expected.ActiveCollectionEditor)",
+            "CollectionItemEditorPage.TargetsMatch(item.Target, request.Target)) != 1",
+            "!isCurrentInspector())",
+            "return await ApplyCollectionMutationCoreAsync(request, expected, cancellationToken);",
+        ):
+            changed(guard, coordinator, source, gated, guard, "REMOVED_GUARD")
+        changed("unbound presenter in owner branch", coordinator, source, core,
+                "await bound.ApplyCollectionMutationAsync(request, owner, cancellationToken);",
+                "await _presenter.ApplyCollectionMutationAsync(request, cancellationToken);")
+        changed("lost live owner after dispatch", coordinator, source, core,
+                "IsNativePersistenceOwnerCurrent(expected.DisplayOwnerContext)", "true")
+        changed("legacy client fence removed", coordinator, source, core,
+                "if (_client is IOwnerBoundWorkspaceMutationClient) return false;", "// no owner client fence")
+        changed("render capture missing", page, page_source, page_source,
+                "CharacterOverviewState expected = Coordinator.State;\n        long generation = _linkRenderGeneration;",
+                "CharacterOverviewState expected = Coordinator.State;")
+        changed("save event substitutes current frame", page, page_source, page_source,
+                "SaveAsync(item, expected, generation)", "SaveAsync(item, Coordinator.State, generation)")
+        changed("departure guard removed", page, page_source, page_source,
+                "!_linkDeparted && generation == _linkRenderGeneration", "generation == _linkRenderGeneration")
+        mutations.append(("duplicate save", page, page_source.replace(save, save + "\n" + save, 1)))
+        mutations.append(("duplicate gate", coordinator, source.replace(gated, gated + "\n" + gated, 1)))
+        # Unrelated methods cannot lend their valid dispatch markers to Save.
+        mutations.append(("removed save with adjacent markers", page,
+                          page_source.replace(save, save.replace("SaveAsync(", "DetachedSaveAsync(", 1), 1)))
+        rows, arguments = self._collection_owner_rows_and_receipt_arguments()
+        for name, path, replacement in mutations:
+            self.assertNotEqual(original_read(path), replacement)
+            def read_changed(candidate, path=path, replacement=replacement):
+                return replacement if candidate == path else original_read(candidate)
+            with self.subTest(mutation=name), patch.object(inventory, "_read_text", side_effect=read_changed):
+                self.assertFalse(inventory._native_collection_owner_guarded(page, coordinator))
+                for row in rows:
+                    mapping = inventory._known_phone_mapping(
+                        row, inventory.DEFAULT_CHUMMER5_ROOT, PRESENTATION_ROOT, CORE_ROOT, **arguments)
+                    self.assertEqual("missing", mapping["status"], row["id"])
+
     def _save_authority_rows_and_receipt_arguments(self):
         import inspect
 

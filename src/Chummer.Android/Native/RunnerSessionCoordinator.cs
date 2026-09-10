@@ -3352,12 +3352,15 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         return true;
     }
 
-    public async Task ApplyCollectionMutationAsync(
+    public Task ApplyCollectionMutationAsync(
         WorkspaceCollectionMutationRequest request,
         CancellationToken cancellationToken = default)
-        => await WithWorkspaceActivationGateAsync(
-            () => ApplyCollectionMutationCoreAsync(request, cancellationToken),
-            cancellationToken);
+    {
+        // Compatibility callers also retain display authority before queueing.
+        // Native editors additionally pass the exact original rendered frame.
+        CharacterOverviewState expected = State;
+        return TryApplyBoundCollectionMutationAsync(request, expected, () => true, cancellationToken);
+    }
 
     /// <summary>
     /// An adaptive inspector can be replaced while waiting for workspace activation.
@@ -3371,11 +3374,17 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         CancellationToken cancellationToken = default)
         => WithWorkspaceActivationGateAsync(async () =>
         {
+            ArgumentNullException.ThrowIfNull(request);
+            ArgumentNullException.ThrowIfNull(expected);
+            ArgumentNullException.ThrowIfNull(isCurrentInspector);
             cancellationToken.ThrowIfCancellationRequested();
             CharacterOverviewState current = State;
             if (_disposed || current.IsBusy || current.Error is not null
                 || expected.WorkspaceId is null
+                || expected.ContentRevision <= 0
                 || current.WorkspaceId != expected.WorkspaceId
+                || current.DisplayOwnerContext != expected.DisplayOwnerContext
+                || !IsNativePersistenceOwnerCurrent(expected.DisplayOwnerContext)
                 || current.ContentRevision != expected.ContentRevision
                 || current.SavedRevision != expected.SavedRevision
                 || !string.Equals(current.ActiveSectionId, expected.ActiveSectionId, StringComparison.Ordinal)
@@ -3386,18 +3395,43 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
                 || !isCurrentInspector())
                 return false;
 
-            await ApplyCollectionMutationCoreAsync(request, cancellationToken);
-            return State.Error is null;
+            return await ApplyCollectionMutationCoreAsync(request, expected, cancellationToken);
         }, cancellationToken);
 
-    private async Task ApplyCollectionMutationCoreAsync(
+    private async Task<bool> ApplyCollectionMutationCoreAsync(
         WorkspaceCollectionMutationRequest request,
+        CharacterOverviewState expected,
         CancellationToken cancellationToken)
     {
-        await _presenter.ApplyCollectionMutationAsync(request, cancellationToken);
-        _notice = State.Error is null ? "Runner item updated." : null;
+        if (expected.DisplayOwnerContext is { } owner)
+        {
+            if (_presenter is not IOwnerBoundWorkspaceMutationPresenter bound) return false;
+            // Dispatched is not a receipt: Core may have run even if observation
+            // was lost. Preserve the presenter's recovery without retrying.
+            await bound.ApplyCollectionMutationAsync(request, owner, cancellationToken);
+        }
+        else
+        {
+            if (_client is IOwnerBoundWorkspaceMutationClient) return false;
+            await _presenter.ApplyCollectionMutationAsync(request, cancellationToken);
+        }
+        if (!HasCurrentCollectionObservation()) return false;
         await SyncShellAsync(cancellationToken);
+        if (!HasCurrentCollectionObservation()) return false;
+        _notice = "Runner item updated.";
         NotifyChanged();
+        return true;
+
+        // Current UI feedback only, not a canonical receipt or checkpoint.
+        // A no-op/unknown observation gets no applied feedback and no retry.
+        bool HasCurrentCollectionObservation()
+            => !_disposed && !State.IsBusy && State.Error is null
+               && State.WorkspaceId == expected.WorkspaceId
+               && State.DisplayOwnerContext == expected.DisplayOwnerContext
+               && IsNativePersistenceOwnerCurrent(expected.DisplayOwnerContext)
+               && State.SavedRevision == expected.SavedRevision
+               && expected.ContentRevision < long.MaxValue
+               && State.ContentRevision == expected.ContentRevision + 1;
     }
 
     public async Task AttachLinkedCharacterAsync(

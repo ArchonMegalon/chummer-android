@@ -6199,12 +6199,47 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             ("ExecuteWorkspaceActionAsync", "public async Task ExecuteWorkspaceActionAsync"),
             ("ApplyAttributeEditAsync", "public async Task ApplyAttributeEditAsync"),
             ("ApplyOriginDossierEditAsync", "public async Task ApplyOriginDossierEditAsync"),
-            ("ApplyCollectionMutationAsync", "public async Task ApplyCollectionMutationAsync"),
             ("ApplyConditionMonitorEditAsync", "public async Task ApplyConditionMonitorEditAsync"),
             ("ApplyPrimaryArmEditAsync", "public async Task ApplyPrimaryArmEditAsync"),
         ):
             block = self._coordinator_member(source, start_marker)
             self.assertIn("WithWorkspaceActivationGateAsync", block, method_name)
+
+        # Collection compatibility calls capture before queueing; the exact bound
+        # helper, not a newly captured current frame, owns activation admission.
+        collection = self._coordinator_member(source, "public Task ApplyCollectionMutationAsync(")
+        self.assertLess(collection.index("CharacterOverviewState expected = State;"),
+                        collection.index("return TryApplyBoundCollectionMutationAsync(request, expected, () => true, cancellationToken);"))
+        bound = self._coordinator_member(source, "internal Task<bool> TryApplyBoundCollectionMutationAsync(")
+        dispatch = "return await ApplyCollectionMutationCoreAsync(request, expected, cancellationToken);"
+        gate = bound.index("=> WithWorkspaceActivationGateAsync(async () =>")
+        for guard in (
+            "current.WorkspaceId != expected.WorkspaceId",
+            "current.DisplayOwnerContext != expected.DisplayOwnerContext",
+            "!IsNativePersistenceOwnerCurrent(expected.DisplayOwnerContext)",
+            "current.ContentRevision != expected.ContentRevision",
+            "current.SavedRevision != expected.SavedRevision",
+            "!string.Equals(current.ActiveSectionId, expected.ActiveSectionId, StringComparison.Ordinal)",
+            "!ReferenceEquals(current.ActiveCollectionEditor, expected.ActiveCollectionEditor)",
+            "CollectionItemEditorPage.TargetsMatch(item.Target, request.Target)) != 1",
+            "!isCurrentInspector())",
+            "return false;",
+        ):
+            self.assertLess(gate, bound.index(guard))
+            self.assertLess(bound.index(guard), bound.index(dispatch))
+        for member in (collection, bound):
+            self.assertNotIn("_presenter.", member)
+            self.assertNotIn("bound.ApplyCollectionMutationAsync", member)
+        core = self._coordinator_member(source, "private async Task<bool> ApplyCollectionMutationCoreAsync(")
+        owner_lane, legacy_lane = core.split("\n        else\n", 1)
+        self.assertIn("if (expected.DisplayOwnerContext is { } owner)", owner_lane)
+        self.assertIn("if (_presenter is not IOwnerBoundWorkspaceMutationPresenter bound) return false;", owner_lane)
+        self.assertIn("await bound.ApplyCollectionMutationAsync(request, owner, cancellationToken);", owner_lane)
+        self.assertNotIn("await _presenter.ApplyCollectionMutationAsync", owner_lane)
+        self.assertLess(legacy_lane.index("if (_client is IOwnerBoundWorkspaceMutationClient) return false;"),
+                        legacy_lane.index("await _presenter.ApplyCollectionMutationAsync(request, cancellationToken);"))
+        self.assertEqual(2, core.count("if (!HasCurrentCollectionObservation()) return false;"))
+        self.assertIn("IsNativePersistenceOwnerCurrent(expected.DisplayOwnerContext)", core)
 
         create = self._coordinator_member(source, "public async Task CreateRunnerAsync")
         self.assertIn('ExecuteCommandAsync("new_character", cancellationToken)', create)

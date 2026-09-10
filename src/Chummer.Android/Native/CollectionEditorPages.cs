@@ -42,6 +42,8 @@ public sealed class CollectionItemEditorPage : NativePageBase
     protected override void Refresh()
     {
         _linkRenderGeneration++;
+        CharacterOverviewState expected = Coordinator.State;
+        long generation = _linkRenderGeneration;
         WorkspaceCollectionItemEditorState? item = FindCurrentItem();
         _body.Clear();
         _textInputs.Clear();
@@ -119,12 +121,12 @@ public sealed class CollectionItemEditorPage : NativePageBase
 
         Button save = NativeTheme.PrimaryButton("Save changes");
         save.AutomationId = $"collection-save-{TargetToken()}";
-        save.Clicked += async (_, _) => await RunWithConditionalRefreshAsync(() => SaveAsync(item));
+        save.Clicked += async (_, _) => await RunWithConditionalRefreshAsync(() => SaveAsync(item, expected, generation));
         _body.Add(save);
 
         AddLinkedCharacterActions(item);
-        AddMoveAndDeleteActions(item);
-        AddNestedActions(item);
+        AddMoveAndDeleteActions(item, expected, generation);
+        AddNestedActions(item, expected, generation);
         AddVehicleHomeNodeAction(item);
         AddVehicleActiveCommlinkAction(item);
         AddVehicleEquipmentInstalledAction(item);
@@ -395,8 +397,14 @@ public sealed class CollectionItemEditorPage : NativePageBase
         _body.Add(_matrixDamagePicker);
     }
 
-    private async Task<bool> SaveAsync(WorkspaceCollectionItemEditorState item)
+    private bool IsCollectionRenderCurrent(CharacterOverviewState expected, long generation)
+        => !_linkDeparted && generation == _linkRenderGeneration
+           && ReferenceEquals(Coordinator.State.ActiveCollectionEditor, expected.ActiveCollectionEditor);
+
+    private async Task<bool> SaveAsync(WorkspaceCollectionItemEditorState item,
+        CharacterOverviewState expected, long generation)
     {
+        if (!IsCollectionRenderCurrent(expected, generation)) return false;
         Dictionary<WorkspaceCollectionTextField, string?> textChanges = [];
         foreach (WorkspaceCollectionTextValueState original in item.TextValues)
         {
@@ -614,7 +622,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
             return false;
         }
 
-        await Coordinator.ApplyCollectionMutationAsync(new WorkspacePatchCollectionItemRequest(
+        return await Coordinator.TryApplyBoundCollectionMutationAsync(new WorkspacePatchCollectionItemRequest(
             _target,
             TextValues: textChanges,
             Rating: ratingChange,
@@ -628,11 +636,11 @@ public sealed class CollectionItemEditorPage : NativePageBase
             CyberwareMatrixDamage: cyberwareMatrixDamageChange,
             ContactConnection: contactConnectionChange,
             ContactLoyalty: contactLoyaltyChange,
-            IntegerValues: integerChanges));
-        return true;
+            IntegerValues: integerChanges), expected, () => IsCollectionRenderCurrent(expected, generation));
     }
 
-    private void AddMoveAndDeleteActions(WorkspaceCollectionItemEditorState item)
+    private void AddMoveAndDeleteActions(WorkspaceCollectionItemEditorState item,
+        CharacterOverviewState expected, long generation)
     {
         if (!item.CanMove && !item.CanDelete)
         {
@@ -644,16 +652,18 @@ public sealed class CollectionItemEditorPage : NativePageBase
         Button up = NativeTheme.SecondaryButton("Move up");
         up.AutomationId = $"collection-move-up-{TargetToken()}";
         up.IsEnabled = item.CanMove && item.Index > 0;
-        up.Clicked += async (_, _) => await RunAsync(() => Coordinator.ApplyCollectionMutationAsync(
-            new WorkspaceMoveCollectionItemRequest(_target, item.Index - 1)));
+        up.Clicked += async (_, _) => await RunWithConditionalRefreshAsync(() => Coordinator.TryApplyBoundCollectionMutationAsync(
+            new WorkspaceMoveCollectionItemRequest(_target, item.Index - 1), expected,
+            () => IsCollectionRenderCurrent(expected, generation)));
         order.Add(up);
 
         Button down = NativeTheme.SecondaryButton("Move down");
         down.AutomationId = $"collection-move-down-{TargetToken()}";
-        int itemCount = Coordinator.State.ActiveCollectionEditor?.Items.Count ?? 0;
+        int itemCount = expected.ActiveCollectionEditor?.Items.Count ?? 0;
         down.IsEnabled = item.CanMove && item.Index + 1 < itemCount;
-        down.Clicked += async (_, _) => await RunAsync(() => Coordinator.ApplyCollectionMutationAsync(
-            new WorkspaceMoveCollectionItemRequest(_target, item.Index + 1)));
+        down.Clicked += async (_, _) => await RunWithConditionalRefreshAsync(() => Coordinator.TryApplyBoundCollectionMutationAsync(
+            new WorkspaceMoveCollectionItemRequest(_target, item.Index + 1), expected,
+            () => IsCollectionRenderCurrent(expected, generation)));
         order.Add(down);
         _body.Add(order);
 
@@ -661,26 +671,24 @@ public sealed class CollectionItemEditorPage : NativePageBase
         delete.AutomationId = $"collection-delete-{TargetToken()}";
         delete.TextColor = NativeTheme.Danger;
         delete.IsEnabled = item.CanDelete;
-        delete.Clicked += async (_, _) =>
-        {
-            bool confirmed = await DisplayAlertAsync(
-                "Delete item?",
-                $"Delete {item.Label}? This change is saved to the open runner immediately.",
-                "Delete",
-                "Cancel");
-            if (!confirmed)
-            {
-                return;
-            }
-
-            await RunAsync(() => Coordinator.ApplyCollectionMutationAsync(
-                new WorkspaceDeleteCollectionItemRequest(_target)));
-            if (Coordinator.State.Error is null)
-            {
-                await Navigation.PopAsync();
-            }
-        };
+        delete.Clicked += async (_, _) => await RunWithConditionalRefreshAsync(
+            () => DeleteItemAsync(item, expected, generation));
         _body.Add(delete);
+    }
+
+    private async Task<bool> DeleteItemAsync(WorkspaceCollectionItemEditorState item,
+        CharacterOverviewState expected, long generation)
+    {
+        if (!IsCollectionRenderCurrent(expected, generation) || !item.CanDelete) return false;
+        bool confirmed = await _confirmLink("Delete item?",
+            $"Delete {item.Label}? This change is saved to the open runner immediately.", "Delete", "Cancel");
+        if (!confirmed) return false;
+        bool applied = await Coordinator.TryApplyBoundCollectionMutationAsync(
+            new WorkspaceDeleteCollectionItemRequest(_target), expected,
+            () => IsCollectionRenderCurrent(expected, generation));
+        if (applied && !_linkDeparted && generation == _linkRenderGeneration)
+            await Navigation.PopAsync();
+        return applied;
     }
 
     private void AddLinkedCharacterActions(WorkspaceCollectionItemEditorState item)
@@ -735,7 +743,8 @@ public sealed class CollectionItemEditorPage : NativePageBase
         _body.Add(remove);
     }
 
-    private void AddNestedActions(WorkspaceCollectionItemEditorState item)
+    private void AddNestedActions(WorkspaceCollectionItemEditorState item,
+        CharacterOverviewState expected, long generation)
     {
         if (item.AddableNestedKinds.Count == 0)
         {
@@ -748,7 +757,9 @@ public sealed class CollectionItemEditorPage : NativePageBase
             _body.Add(NativeTheme.NavigationRow(
                 $"Add {RunnerSessionCoordinator.HumanizeId(nestedKind.ToString())}",
                 "Create a child item under this entry",
-                () => Navigation.PushAsync(new NestedCollectionAddPage(Coordinator, _target, nestedKind)),
+                () => IsCollectionRenderCurrent(expected, generation)
+                    ? Navigation.PushAsync(new NestedCollectionAddPage(Coordinator, _target, nestedKind, expected))
+                    : Task.CompletedTask,
                 automationId: $"collection-add-{Token(nestedKind.ToString())}-{TargetToken()}"));
         }
     }
@@ -1827,6 +1838,9 @@ internal sealed class NestedCollectionAddPage : NativePageBase
 {
     private readonly WorkspaceCollectionItemTarget _parent;
     private readonly WorkspaceNestedCollectionKind _nestedKind;
+    private readonly CharacterOverviewState _expected;
+    private long _renderGeneration;
+    private bool _departed;
     private readonly VerticalStackLayout _body = new()
     {
         Padding = new Thickness(20, 18, 20, 40),
@@ -1845,10 +1859,12 @@ internal sealed class NestedCollectionAddPage : NativePageBase
     public NestedCollectionAddPage(
         RunnerSessionCoordinator coordinator,
         WorkspaceCollectionItemTarget parent,
-        WorkspaceNestedCollectionKind nestedKind) : base(coordinator)
+        WorkspaceNestedCollectionKind nestedKind,
+        CharacterOverviewState? expected = null) : base(coordinator)
     {
         _parent = parent with { NestedKind = null, NestedItemId = null };
         _nestedKind = nestedKind;
+        _expected = expected ?? coordinator.State;
         Title = $"Add {RunnerSessionCoordinator.HumanizeId(nestedKind.ToString())}";
         AutomationId = $"nested-add-{CollectionItemEditorPage.Token(nestedKind.ToString())}";
         Content = new ScrollView { Content = _body };
@@ -1856,6 +1872,7 @@ internal sealed class NestedCollectionAddPage : NativePageBase
 
     protected override void Refresh()
     {
+        long generation = ++_renderGeneration;
         _body.Clear();
         _body.Add(NativeTheme.Eyebrow("Child item"));
         _body.Add(NativeTheme.Title(Title));
@@ -1875,9 +1892,27 @@ internal sealed class NestedCollectionAddPage : NativePageBase
 
         Button save = NativeTheme.PrimaryButton("Add item");
         save.AutomationId = "nested-save";
-        save.Clicked += async (_, _) => await RunAsync(SaveAsync);
+        save.Clicked += async (_, _) => await RunWithConditionalRefreshAsync(() => SaveAsync(generation));
         _body.Add(save);
     }
+
+    protected override void OnAppearing()
+    {
+        _departed = false;
+        _renderGeneration++;
+        base.OnAppearing();
+    }
+
+    protected override void OnDisappearing()
+    {
+        _departed = true;
+        _renderGeneration++;
+        base.OnDisappearing();
+    }
+
+    private bool IsRenderCurrent(long generation)
+        => !_departed && generation == _renderGeneration
+           && ReferenceEquals(Coordinator.State.ActiveCollectionEditor, _expected.ActiveCollectionEditor);
 
     private Entry AddTextField(string label, string automationId, string value = "", Keyboard? keyboard = null)
     {
@@ -1909,19 +1944,20 @@ internal sealed class NestedCollectionAddPage : NativePageBase
         return toggle;
     }
 
-    private async Task SaveAsync()
+    private async Task<bool> SaveAsync(long generation)
     {
+        if (!IsRenderCurrent(generation)) return false;
         if (string.IsNullOrWhiteSpace(_name.Text))
         {
             await DisplayAlertAsync("Name required", "Enter a name before adding this item.", "OK");
-            return;
+            return false;
         }
 
         if (!int.TryParse(_rating.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out int rating)
             || rating is < 0 or > 1000)
         {
             await DisplayAlertAsync("Invalid rating", "Enter a whole number from 0 to 1000.", "OK");
-            return;
+            return false;
         }
 
         decimal quantity = 1m;
@@ -1931,10 +1967,10 @@ internal sealed class NestedCollectionAddPage : NativePageBase
                 || quantity > 1_000_000m))
         {
             await DisplayAlertAsync("Invalid quantity", "Enter a value greater than 0 and no greater than 1000000.", "OK");
-            return;
+            return false;
         }
 
-        await Coordinator.ApplyCollectionMutationAsync(new WorkspaceAddNestedCollectionItemRequest(
+        bool applied = await Coordinator.TryApplyBoundCollectionMutationAsync(new WorkspaceAddNestedCollectionItemRequest(
             _parent,
             _nestedKind,
             new WorkspaceNestedItemDraft(
@@ -1946,11 +1982,12 @@ internal sealed class NestedCollectionAddPage : NativePageBase
                 Rating: rating,
                 Quantity: quantity,
                 Equipped: _equipped.IsToggled,
-                WirelessEnabled: _wireless.IsToggled)));
-        if (Coordinator.State.Error is null)
+                WirelessEnabled: _wireless.IsToggled)), _expected, () => IsRenderCurrent(generation));
+        if (applied && !_departed && generation == _renderGeneration)
         {
             await Navigation.PopAsync();
         }
+        return applied;
     }
 
     private static string? EmptyToNull(string? value)
