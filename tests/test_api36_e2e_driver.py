@@ -1678,7 +1678,8 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         block = block[: block.index("private void BuildTabletShell")]
 
         self.assertIn(
-            "if (coordinator.State.Profile is not null\n"
+            "if (readiness.HasProfile && readiness.WorkspaceId is not null\n"
+            "                && coordinator.State.Profile is not null\n"
             "                && coordinator.State.WorkspaceId is not null)",
             block,
         )
@@ -1686,7 +1687,24 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             block.index("coordinator.State.WorkspaceId is not null"),
             block.index("GoToAsync(PhoneShellRoutes.RunnerAbsolute)"),
         )
-        self.assertIn("else\n            {\n                await GoToAsync(PhoneShellRoutes.RunnersAbsolute);", block)
+        self.assertLess(
+            block.index("coordinator.Changed += OnInitialPhoneReadinessChanged"),
+            block.index("await coordinator.InitializeAsync()"),
+        )
+        self.assertLess(
+            block.index("_initialPhoneRoute.TryResolve(readiness)"),
+            block.index("GoToAsync(PhoneShellRoutes.RunnerAbsolute)"),
+        )
+        self.assertLess(
+            block.index("coordinator.CaptureInitialPhoneRouteReadiness() != readiness"),
+            block.index("GoToAsync(PhoneShellRoutes.RunnerAbsolute)"),
+        )
+        self.assertIn("Dispatcher.Dispatch(async () =>", block)
+        self.assertNotIn("GoToAsync(PhoneShellRoutes.RunnersAbsolute)", block)
+        self.assertIn("Navigating -= OnInitialPhoneNavigating", block)
+        policy = (REPO_ROOT / "src" / "Chummer.Android" / "Native" / "PhoneInitialRoutePolicy.cs").read_text()
+        self.assertIn("readiness.Kind != PhoneInitialRouteReadinessKind.Ready", policy)
+        self.assertIn("readiness.Owner != original", policy)
         self.assertNotIn(
             "if (coordinator.State.Profile is not null)\n"
             "            {\n"

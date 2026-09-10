@@ -253,4 +253,5 @@ Todavía no se ha guardado ningún cambio.</value></data>
   <data name="OnlineContinuationTitle" xml:space="preserve"><value>Restaurar espacio de trabajo</value></data>
   <data name="OnlineContinuationReview" xml:space="preserve"><value>¿Abrir {0} con todo su historial del asistente? Revisión del contenido: {1}; revisión guardada: {2}. No se sobrescribirán los conflictos locales.</value></data>
   <data name="OnlineContinuationConfirm" xml:space="preserve"><value>Restaurar y abrir</value></data>
+  <data name="InitialRunnerRouteUnavailable" xml:space="preserve"><value>No se pudo abrir el runner automáticamente. Ábrelo desde Runners.</value></data>
 </root>

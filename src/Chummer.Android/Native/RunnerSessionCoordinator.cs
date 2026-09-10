@@ -2767,7 +2767,7 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
             _applicationSettings = _applicationSettingsPresenter.Load();
             _workspaceOwnerInitializationPending = !await InitializeWorkspaceOwnerAsync(cancellationToken);
             _initialized = true;
-            _accountInitialization = InitializeAccountInBackgroundAsync();
+            _accountInitialization = InitializeAccountWithInitialPhoneReadinessAsync();
             RequestPendingWorkspaceOwnerInitialization();
         }
         finally

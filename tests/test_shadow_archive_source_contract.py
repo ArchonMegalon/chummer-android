@@ -17,7 +17,11 @@ class ShadowArchiveSourceContractTests(unittest.TestCase):
         self.assertIn('PhoneStrings.Get("ShellStories", "Stories")', phone)
         self.assertIn('PhoneStrings.Get("ShellRunners", "Runners")', phone)
         self.assertLess(phone.index(runners), phone.index(archive))
-        self.assertIn("GoToAsync(PhoneShellRoutes.RunnersAbsolute)", shell)
+        # Runners is first and remains the default while owner restoration is
+        # pending; no redundant Home navigation may consume the startup intent.
+        self.assertLess(phone.index(runners), phone.index("CreatePhoneTab<BuildPage>("))
+        self.assertIn("_initialPhoneRoute.TryResolve(readiness)", shell)
+        self.assertNotIn("GoToAsync(PhoneShellRoutes.RunnersAbsolute)", shell)
         self.assertIn('public const string Archive = "archive";', routes)
         self.assertIn('AutomationId = $"phone-destination-{route}"', shell)
 

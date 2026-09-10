@@ -253,4 +253,5 @@ Noch wurde nichts gespeichert.</value></data>
   <data name="OnlineContinuationTitle" xml:space="preserve"><value>Arbeitsbereich wiederherstellen</value></data>
   <data name="OnlineContinuationReview" xml:space="preserve"><value>{0} mit dem vollständigen Wizard-Verlauf öffnen? Inhaltsrevision: {1}; gespeicherte Revision: {2}. Lokale Konflikte werden nicht überschrieben.</value></data>
   <data name="OnlineContinuationConfirm" xml:space="preserve"><value>Wiederherstellen und öffnen</value></data>
+  <data name="InitialRunnerRouteUnavailable" xml:space="preserve"><value>Der Runner konnte nicht automatisch geöffnet werden. Öffne ihn unter Runner.</value></data>
 </root>

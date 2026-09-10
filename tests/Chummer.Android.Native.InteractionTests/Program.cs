@@ -31,6 +31,12 @@ internal static class Program
         if (args.Length == 2 && args[0] == "--android-account-owner-content-root")
         {
             await AfterRunAuthorityHarness.RunAndroidAccountOwnerCasesAsync(args[1]);
+            await AfterRunAuthorityHarness.RunInitialPhoneRouteCasesAsync(args[1]);
+            return;
+        }
+        if (args.Length == 2 && args[0] == "--initial-phone-route-content-root")
+        {
+            await AfterRunAuthorityHarness.RunInitialPhoneRouteCasesAsync(args[1]);
             return;
         }
         if (args.Length == 2 && args[0] == "--account-erasure-owner-content-root")

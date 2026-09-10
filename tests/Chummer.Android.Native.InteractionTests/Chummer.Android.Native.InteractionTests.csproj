@@ -9,6 +9,7 @@
   <ItemGroup>
     <Compile Include="Program.cs" />
     <Compile Include="AndroidAccountOwnerRuntimeTests.cs" />
+    <Compile Include="AndroidInitialPhoneRouteRuntimeTests.cs" />
     <Compile Include="AndroidWorkspaceContinuationHttpTests.cs" />
     <Compile Include="AndroidWorkspaceContinuationRoamingTests.cs" />
     <Compile Include="AndroidWorkspaceContinuationNativeTests.cs" />
