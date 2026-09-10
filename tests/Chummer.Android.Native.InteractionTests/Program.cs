@@ -13,6 +13,24 @@ internal static class Program
 {
     private static async Task Main(string[] args)
     {
+        if (args.Length == 1 && args[0] == "--creation-bootstrap-timing")
+        {
+            await CreationBootstrapObservationsAreOneShotAndRequireSuccessfulStateAsync();
+            await AuthoritativeCreateReusesExactlyOnePresenterShellSyncAsync();
+            await AmbiguousOrFailedCreateRetainsFullAndroidShellSyncAsync();
+            Console.WriteLine("Creation bootstrap timing observation tests passed: 3");
+            return;
+        }
+        if (args.Length == 2 && args[0] == "--issued-arm-condition-pages-content-root")
+        {
+            await AfterRunAuthorityHarness.RunIssuedArmConditionPageCasesAsync(args[1]);
+            return;
+        }
+        if (args.Length == 2 && args[0] == "--arm-condition-owner-diagnostic-content-root")
+        {
+            await AfterRunAuthorityHarness.RunArmConditionOwnerDiagnosticAsync(args[1]);
+            return;
+        }
         if (args.Length == 1 && args[0] == "--native-dialog-busy")
         {
             await AfterRunAuthorityHarness.RunNativeDialogBusyCaseAsync();
@@ -52,6 +70,26 @@ internal static class Program
         if (args.Length == 2 && args[0] == "--persistence-owner-content-root")
         {
             await AfterRunAuthorityHarness.RunPersistenceOwnerCasesAsync(args[1]);
+            await AfterRunAuthorityHarness.RunArmConditionOwnerDiagnosticAsync(args[1]);
+            await AfterRunAuthorityHarness.RunIssuedArmConditionPageCasesAsync(args[1]);
+            await AfterRunAuthorityHarness.RunDamageJournalAccountCasesAsync(args[1]);
+            await AfterRunAuthorityHarness.RunDamageReviewOwnerDispatchCasesAsync(args[1]);
+            await AfterRunAuthorityHarness.RunDamageSaveReceiptCasesAsync(args[1]);
+            return;
+        }
+        if (args.Length == 2 && args[0] == "--damage-journal-account-content-root")
+        {
+            await AfterRunAuthorityHarness.RunDamageJournalAccountCasesAsync(args[1]);
+            return;
+        }
+        if (args.Length == 2 && args[0] == "--damage-review-owner-dispatch-content-root")
+        {
+            await AfterRunAuthorityHarness.RunDamageReviewOwnerDispatchCasesAsync(args[1]);
+            return;
+        }
+        if (args.Length == 2 && args[0] == "--damage-save-receipt-content-root")
+        {
+            await AfterRunAuthorityHarness.RunDamageSaveReceiptCasesAsync(args[1]);
             return;
         }
         if (args.Length == 2 && args[0] == "--creation-bootstrap-owner-content-root")
@@ -133,6 +171,7 @@ internal static class Program
 #if DEBUG
             (nameof(HomeAppearanceAuthorityRefreshFailsClosedForEveryHostileBindingAsync), HomeAppearanceAuthorityRefreshFailsClosedForEveryHostileBindingAsync),
 #endif
+            (nameof(CreationBootstrapObservationsAreOneShotAndRequireSuccessfulStateAsync), CreationBootstrapObservationsAreOneShotAndRequireSuccessfulStateAsync),
             (nameof(AuthoritativeCreateReusesExactlyOnePresenterShellSyncAsync), AuthoritativeCreateReusesExactlyOnePresenterShellSyncAsync),
             (nameof(AmbiguousOrFailedCreateRetainsFullAndroidShellSyncAsync), AmbiguousOrFailedCreateRetainsFullAndroidShellSyncAsync),
             (nameof(PlayReviewPolicyEnforcesUsageVersionAndCooldownAsync), PlayReviewPolicyEnforcesUsageVersionAndCooldownAsync),
@@ -1163,6 +1202,50 @@ internal static class Program
             BuildPageUiProjection.SaveToolbarText(hasDurableSaveNotice: true) == "Saved."
             && BuildPageUiProjection.SaveToolbarText(hasDurableSaveNotice: false) == "Save",
             "The toolbar must expose Saved. only for an exact durable notice match.");
+        return Task.CompletedTask;
+    }
+
+    private static Task CreationBootstrapObservationsAreOneShotAndRequireSuccessfulStateAsync()
+    {
+        var timing = new NativeCreationBootstrapTiming();
+        CharacterOverviewState created = NewCreationOverview(new CharacterWorkspaceId("created-runner"), 1, 1);
+        NativeCreationBootstrapTimingSnapshot initial = timing.Snapshot();
+        Require(timing.Observe(created) == NativeCreationBootstrapObservation.None
+            && timing.Snapshot() == initial,
+            "A successful state before load starts must not report bootstrap publication.");
+
+        Require(timing.Observe(created with { IsBusy = true }) == NativeCreationBootstrapObservation.LoadStarted,
+            "The first busy state must report one load-start observation.");
+        NativeCreationBootstrapTimingSnapshot loading = timing.Snapshot();
+        Require(loading.LoadStartObserved && !loading.WorkspaceStatePublished,
+            "Load-start alone must leave workspace publication incomplete.");
+        CharacterOverviewState[] incomplete =
+        [
+            created with { IsBusy = true },
+            created with { Error = "bootstrap failed" },
+            created with { WorkspaceId = null },
+            created with { Profile = null },
+            created with { Profile = created.Profile! with { Created = true } }
+        ];
+        foreach (CharacterOverviewState state in incomplete)
+        {
+            Require(timing.Observe(state) == NativeCreationBootstrapObservation.None
+                && timing.Snapshot() == loading,
+                "Repeated busy, failed, incomplete, or Career states must not report publication.");
+        }
+
+        Require(timing.Observe(created) == NativeCreationBootstrapObservation.WorkspaceStatePublished,
+            "The first successful uncreated workspace state after load starts must report publication.");
+        NativeCreationBootstrapTimingSnapshot published = timing.Snapshot();
+        Require(published.WorkspaceStatePublished
+            && published.PublishedWorkspaceId == created.WorkspaceId!.Value.Value,
+            "The existing timing snapshot must retain the observed workspace.");
+        foreach (CharacterOverviewState state in new[] { created, created with { IsBusy = true }, created })
+        {
+            Require(timing.Observe(state) == NativeCreationBootstrapObservation.None
+                && timing.Snapshot() == published,
+                "Later notifications must neither duplicate observations nor replace their timestamps.");
+        }
         return Task.CompletedTask;
     }
 

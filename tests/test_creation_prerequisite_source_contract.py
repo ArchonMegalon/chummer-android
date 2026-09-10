@@ -381,6 +381,81 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 inspect.getsource(driver.wait_for_creation_bootstrap_timing_log),
             )
 
+    def test_creation_bootstrap_partial_breadcrumbs_are_proof_only(self) -> None:
+        source = (NATIVE / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+        observer = source[source.index("EventHandler? bootstrapObserver ="):]
+        observer = observer[:observer.index("if (bootstrapObserver is not null)")]
+        guard = observer.index("#if CHUMMER_API36_PROOF_INSTRUMENTATION")
+        guard_end = observer.index("#endif", guard)
+        for stage in (
+            "bootstrap-load-start-observed",
+            "bootstrap-workspace-published-observed",
+        ):
+            call = f'Api36ProofStatePublisher.TraceCreationDialogStage(actionId, "{stage}");'
+            self.assertEqual(1, observer.count(call))
+            self.assertIn(call, observer[guard:guard_end])
+        self.assertNotIn("TraceCreationBootstrapTiming", observer)
+
+    def test_creation_bootstrap_progress_retains_timeout_and_original_exception(self) -> None:
+        failure = RuntimeError("original bootstrap timeout")
+        observation = {"scanId": "creation-bootstrap-timing-log-poll", "status": "timeout"}
+
+        def wait(device, *, observation_out):
+            observation_out.update(observation)
+            raise failure
+
+        with tempfile.TemporaryDirectory() as temporary, mock.patch("builtins.print"):
+            progress = driver.ProgressRecorder(Path(temporary))
+            progress._active_id = "initial-authority"
+            with mock.patch.object(driver, "wait_for_creation_bootstrap_timing_log", side_effect=wait) as waited:
+                with self.assertRaises(RuntimeError) as caught:
+                    driver.wait_for_creation_bootstrap_timing_with_progress(mock.sentinel.device, progress)
+            self.assertIs(failure, caught.exception)
+            self.assertEqual(1, waited.call_count)
+            retained = {**observation, "phaseId": "initial-authority"}
+            self.assertEqual([retained], progress.scans)
+            payload = json.loads(progress.evidence_path.read_text(encoding="utf-8"))
+            self.assertEqual([retained], payload["scans"])
+            self.assertEqual([], payload["milestones"])
+            self.assertEqual("running", payload["status"])
+
+    def test_creation_bootstrap_progress_recording_failure_cannot_mask_timeout(self) -> None:
+        failure = RuntimeError("original bootstrap timeout")
+        progress = mock.Mock()
+        progress.record_scan.side_effect = OSError("diagnostic write failed")
+
+        def wait(device, *, observation_out):
+            observation_out.update({"status": "timeout"})
+            raise failure
+
+        with mock.patch.object(driver, "wait_for_creation_bootstrap_timing_log", side_effect=wait) as waited:
+            with self.assertRaises(RuntimeError) as caught:
+                driver.wait_for_creation_bootstrap_timing_with_progress(mock.sentinel.device, progress)
+        self.assertIs(failure, caught.exception)
+        self.assertEqual(1, waited.call_count)
+        progress.record_scan.assert_called_once_with({"status": "timeout"})
+
+    def test_creation_bootstrap_progress_preserves_success_and_recording_failure(self) -> None:
+        for recording_failure in (None, OSError("diagnostic write failed")):
+            with self.subTest(recording_failure=recording_failure):
+                progress = mock.Mock()
+                progress.record_scan.side_effect = recording_failure
+
+                def wait(device, *, observation_out):
+                    observation_out.update({"status": "resolved"})
+                    return mock.sentinel.exact_logcat
+
+                with mock.patch.object(driver, "wait_for_creation_bootstrap_timing_log", side_effect=wait) as waited:
+                    if recording_failure is None:
+                        self.assertIs(mock.sentinel.exact_logcat,
+                            driver.wait_for_creation_bootstrap_timing_with_progress(mock.sentinel.device, progress))
+                    else:
+                        with self.assertRaises(OSError) as caught:
+                            driver.wait_for_creation_bootstrap_timing_with_progress(mock.sentinel.device, progress)
+                        self.assertIs(recording_failure, caught.exception)
+                self.assertEqual(1, waited.call_count)
+                progress.record_scan.assert_called_once_with({"status": "resolved"})
+
     def test_creation_bootstrap_stream_and_snapshot_accept_one_exact_main_divider(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             payload = self.bootstrap_timing_payload()

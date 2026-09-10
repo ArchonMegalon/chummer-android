@@ -269,7 +269,7 @@ class AndroidContractTests(unittest.TestCase):
         )
 
         for dependency, commits in (
-            ("ArchonMegalon/chummer6-ui", ("c86fabcb3168615d95f3732cfc6d544eb7fa1d0d",) * 2),
+            ("ArchonMegalon/chummer6-ui", ("6b85fbbb9f5374700a5503bf600f49cc6e19eb9c",) * 2),
             (
                 "ArchonMegalon/chummer6-core",
                 (
@@ -1236,18 +1236,76 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn('device.shell("am", "force-stop", shared.PACKAGE)', driver)
 
     def test_primary_arm_has_revision_bound_ambidextrous_safe_phone_path(self) -> None:
+        # Reuse the tested unique-member selector; no imported TestCase at module scope.
+        from test_api36_e2e_driver import Api36EditingE2EDriverTests
+        member = Api36EditingE2EDriverTests._coordinator_member
         build = (PROJECT / "Native" / "BuildPage.cs").read_text(encoding="utf-8")
         page = (PROJECT / "Native" / "PrimaryArmPage.cs").read_text(encoding="utf-8")
         coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+        save = member(page, "private async Task SaveAsync(")
+        prepare = member(coordinator, "internal async Task<PrimaryArmEditorState?> PreparePrimaryArmEditAsync(")
+        issued = member(coordinator, "internal Task<bool> TryApplyBoundPrimaryArmEditAsync(")
+        core = member(coordinator, "private async Task<bool> ApplyPrimaryArmEditCoreAsync(")
 
         self.assertIn('automationId: "build-primary-arm"', build)
-        self.assertIn("PreparePrimaryArmEditAsync", build + coordinator)
-        self.assertIn("ApplyPrimaryArmEditAsync", page + coordinator)
-        self.assertIn("PrimaryArmEditRequest", page)
-        self.assertIn("ExpectedContentRevision", coordinator)
-        self.assertIn("State.WorkspaceId != request.WorkspaceId", coordinator)
-        self.assertIn("State.ContentRevision != request.ExpectedContentRevision", coordinator)
-        self.assertIn("await _presenter.SaveAsync", coordinator)
+        self.assertIn("Coordinator.PreparePrimaryArmEditAsync(original)", build)
+        self.assertEqual(2, prepare.count("IsNativeEditDisplayCurrent(original)"))
+        self.assertLess(prepare.index("IsNativeEditDisplayCurrent(original)"),
+                        prepare.index("await _presenter.PreparePrimaryArmEditAsync"))
+        self.assertLess(prepare.index("editor.ContentRevision != original.ContentRevision"),
+                        prepare.index("_primaryArmEditors.GetValue(editor, _ => original);"))
+        self.assertIn("editor.WorkspaceId != original.WorkspaceId", prepare)
+        self.assertLess(issued.index("_primaryArmEditors.TryGetValue(editor, out CharacterOverviewState? original)"),
+                        issued.index("WithWorkspaceActivationGateAsync"))
+        self.assertIn("return Task.FromResult(false);", issued)
+        self.assertLess(issued.index("!isCurrentEditor()"), issued.index("ApplyPrimaryArmEditCoreAsync("))
+        self.assertIn("new(editor.WorkspaceId, editor.ContentRevision, value), original, cancellationToken)", issued)
+        self.assertNotIn("= State;", issued)
+        self.assertNotIn("_presenter.", issued)
+        self.assertLess(save.index("if (_editor.Ambidextrous)"), save.index("TryApplyBoundPrimaryArmEditAsync("))
+        self.assertLess(save.index("long appearance = CaptureAppearanceGeneration();"),
+                        save.index("TryApplyBoundPrimaryArmEditAsync("))
+        self.assertIn("_editor, value, () => IsCurrentAppearanceGeneration(appearance)", save)
+        self.assertLess(save.index("saved && IsCurrentAppearanceGeneration(appearance)"),
+                        save.index("await Navigation.PopAsync();"))
+        self.assertLess(save.index("Coordinator.IsPrimaryArmSaveCurrent(_editor)"),
+                        save.index("await Navigation.PopAsync();"))
+        self.assertNotIn("Coordinator.ApplyPrimaryArmEditAsync(", save)
+        self.assertNotIn("PrimaryArmEditRequest", page)  # Coordinator constructs it from the issued editor.
+        mutation = core.index("await bound.ApplyPrimaryArmEditAsync(")
+        checkpoint = core.index("await persistence.SaveAsync(")
+        for guard in (
+            "!IsNativeEditDisplayCurrent(original)",
+            "original.WorkspaceId != request.WorkspaceId",
+            "original.ContentRevision != request.ExpectedContentRevision",
+            "original.DisplayOwnerContext is not { IsValid: true } owner",
+            "_presenter is not IOwnerBoundWorkspaceMutationPresenter bound",
+            "_presenter is not IOwnerBoundWorkspacePersistencePresenter persistence",
+        ):
+            self.assertLess(core.index(guard), mutation)
+        self.assertIn("request, owner, cancellationToken);", core)
+        for guard in (
+            "!mutation.Success", "mutation.Value is not { } committed",
+            "committed.Id != request.WorkspaceId", "original.ContentRevision == long.MaxValue",
+            "committed.ContentRevision != original.ContentRevision + 1",
+            "committed.SavedRevision != original.SavedRevision",
+            "!IsNativeMutationObservationCurrent(original, committed.ContentRevision)",
+        ):
+            self.assertLess(mutation, core.index(guard))
+            self.assertLess(core.index(guard), checkpoint)
+        self.assertIn("owner, committed.Id, committed.ContentRevision, cancellationToken);", core)
+        for guard in (
+            "!saved.Success", "saved.Value is not { } receipt", "receipt.Id != committed.Id",
+            "receipt.ContentRevision != committed.ContentRevision",
+            "receipt.SavedRevision != committed.ContentRevision",
+            "!IsNativeMutationObservationCurrent(original, receipt.ContentRevision)",
+            "State.SavedRevision != receipt.SavedRevision",
+        ):
+            self.assertLess(checkpoint, core.index(guard))
+            self.assertLess(core.index(guard), core.index("TimeSpan.FromSeconds(5)"))
+        self.assertEqual(1, core.count("await bound.ApplyPrimaryArmEditAsync("))
+        self.assertEqual(1, core.count("await persistence.SaveAsync("))
+        self.assertNotIn("await _presenter.", core)
         self.assertIn('["Ambidextrous"]', page)
         self.assertIn('["Left", "Right"]', page)
         self.assertIn('"primary-arm-choice"', page)
@@ -1389,31 +1447,62 @@ class AndroidContractTests(unittest.TestCase):
         self.assertNotIn("<character", editor)
 
     def test_condition_monitors_have_closed_career_phone_and_tablet_editors(self) -> None:
+        from test_api36_e2e_driver import Api36EditingE2EDriverTests
+        member = Api36EditingE2EDriverTests._coordinator_member
         flow = (PROJECT / "Native" / "BuildFlowPages.cs").read_text(encoding="utf-8")
         phone = (PROJECT / "Native" / "ConditionMonitorEditPage.cs").read_text(encoding="utf-8")
         tablet = (PROJECT / "Native" / "TabletBuildPage.cs").read_text(encoding="utf-8")
         coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
         presentation = (
-            WORKSPACE
-            / "chummer-presentation"
-            / "Chummer.Presentation"
-            / "Overview"
-            / "WorkspaceXmlMutationCatalog.cs"
+            WORKSPACE / "chummer-presentation" / "Chummer.Presentation"
+            / "Overview" / "WorkspaceXmlMutationCatalog.cs"
         ).read_text(encoding="utf-8")
 
+        refresh = member(phone, "protected override void Refresh(")
+        dispatch = "Coordinator.TryApplyBoundConditionMonitorEditAsync("
+        self.assertLess(refresh.index("long generation = ++_renderGeneration;"), refresh.index(dispatch))
+        self.assertLess(refresh.index("long appearance = CaptureAppearanceGeneration();"), refresh.index(dispatch))
+        self.assertLess(refresh.index("CharacterOverviewState original = Coordinator.State;"), refresh.index(dispatch))
+        self.assertEqual(2, refresh.count(dispatch))
+        self.assertEqual(2, refresh.count(
+            "original, () => generation == _renderGeneration && IsCurrentAppearanceGeneration(appearance)"))
+        self.assertIn("new ConditionMonitorEditRequest(track.Track, SelectedNumber(filled, track.Filled))", refresh)
+        self.assertIn("new ConditionMonitorEditRequest(track.Track, 0)", refresh)
+        self.assertNotIn("Coordinator.ApplyConditionMonitorEditAsync(", refresh)
+        inspector = member(tablet, "private async Task<bool> ApplyConditionInspectorAsync(")
+        self.assertIn("Coordinator.TryApplyBoundConditionMonitorEditAsync(request, expected,", inspector)
+        self.assertIn("() => IsCurrentConditionInspector(generation, expected, request.Track)", inspector)
+        core = member(coordinator, "private async Task<bool> ApplyConditionMonitorEditCoreAsync(")
+        mutation = core.index("await bound.ApplyConditionMonitorEditAsync(")
+        for guard in (
+            "original.DisplayOwnerContext is not { IsValid: true } owner",
+            "original.WorkspaceId is not { } workspaceId",
+            "_presenter is not IOwnerBoundWorkspaceMutationPresenter bound",
+        ):
+            self.assertLess(core.index(guard), mutation)
+        self.assertIn("request, owner, workspaceId, original.ContentRevision, cancellationToken);", core)
+        for guard in (
+            "!result.Success", "result.Value is not { } receipt", "receipt.Id != workspaceId",
+            "original.ContentRevision == long.MaxValue",
+            "receipt.ContentRevision != original.ContentRevision + 1",
+            "receipt.SavedRevision != original.SavedRevision",
+            "!IsNativeMutationObservationCurrent(original, receipt.ContentRevision)",
+            "State.SavedRevision != original.SavedRevision",
+        ):
+            self.assertLess(mutation, core.index(guard))
+            self.assertLess(core.index(guard), core.index("await SyncShellAsync("))
+        self.assertEqual(1, core.count("await bound.ApplyConditionMonitorEditAsync("))
+        self.assertEqual(2, core.count("!IsNativeMutationObservationCurrent(original, receipt.ContentRevision)"))
+        self.assertNotIn("await _presenter.", core)
+        self.assertNotIn("SaveAsync(", core)  # Generic editing remains dirty; wizard checkpoint is separate.
         self.assertIn("ActiveConditionMonitor", flow + phone + tablet)
         self.assertIn("ConditionMonitorEditRequest", phone + tablet + coordinator)
-        self.assertIn("_presenter.ApplyConditionMonitorEditAsync", coordinator)
         self.assertIn("Condition monitors can only be changed for a created/career runner", presentation)
         for automation_id in (
-            "condition-monitor-editor-",
-            "condition-monitor-filled-",
-            "condition-monitor-save-",
-            "condition-monitor-clear-",
-            "tablet-condition-track-",
-            "tablet-condition-filled-",
-            "tablet-condition-save-",
-            "tablet-condition-clear-",
+            "condition-monitor-editor-", "condition-monitor-filled-",
+            "condition-monitor-save-", "condition-monitor-clear-",
+            "tablet-condition-track-", "tablet-condition-filled-",
+            "tablet-condition-save-", "tablet-condition-clear-",
         ):
             self.assertIn(automation_id, flow + phone + tablet)
         self.assertNotIn("XDocument", phone + tablet)

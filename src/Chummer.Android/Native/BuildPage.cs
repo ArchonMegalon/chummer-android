@@ -723,6 +723,7 @@ public sealed class BuildPage : NativePageBase
     private string? _creationFinalizationFailureReason;
     private CancellationTokenSource? _creationDashboardRouteReadyLifetime;
     private long _creationDashboardAppearanceGeneration;
+    private long _dossierRenderGeneration;
     private long _creationDashboardRouteReadyEmittedGeneration = -1;
     private readonly CreationNavigationRefreshLease _creationNavigationRefreshLease = new();
     private readonly CreationNavigationReleaseScheduler _creationNavigationReleaseScheduler;
@@ -840,6 +841,7 @@ public sealed class BuildPage : NativePageBase
 
     protected override void Refresh()
     {
+        _dossierRenderGeneration++;
         _body.Clear();
         _save.Text = BuildPageUiProjection.SaveToolbarText(Coordinator.HasDurableSaveNotice);
         _save.IsEnabled = Coordinator.State.Profile is not null;
@@ -2803,6 +2805,9 @@ public sealed class BuildPage : NativePageBase
 
     private void AddDossier()
     {
+        CharacterOverviewState original = Coordinator.State;
+        long appearance = CaptureAppearanceGeneration();
+        long render = _dossierRenderGeneration;
         _body.Add(NativeTheme.Eyebrow("Runner"));
         _body.Add(NativeTheme.NavigationRow(
             "Origin dossier",
@@ -2829,14 +2834,17 @@ public sealed class BuildPage : NativePageBase
         _body.Add(NativeTheme.NavigationRow(
             "Primary arm",
             "Preferred arm or Ambidextrous read-only state",
-            async () =>
+            () => RunAsync(async () =>
             {
-                PrimaryArmEditorState? editor = await Coordinator.PreparePrimaryArmEditAsync();
-                if (editor is not null)
+                if (render != _dossierRenderGeneration || !IsCurrentAppearanceGeneration(appearance)) return;
+                PrimaryArmEditorState? editor = await Coordinator.PreparePrimaryArmEditAsync(original);
+                if (editor is not null && IsCurrentAppearanceGeneration(appearance)
+                    && render == _dossierRenderGeneration
+                    && Coordinator.IsPrimaryArmEditorCurrent(editor))
                 {
                     await Navigation.PushAsync(new PrimaryArmPage(Coordinator, editor));
                 }
-            },
+            }),
             automationId: "build-primary-arm"));
         _body.Add(NativeTheme.NavigationRow(
             "Sustained effects",

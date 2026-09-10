@@ -268,7 +268,10 @@ public abstract class NativePageBase : ContentPage
         TryScheduleCoordinatorRefresh(appearanceGeneration);
     }
 
-    private bool IsCurrentAppearanceGeneration(long appearanceGeneration)
+    protected long CaptureAppearanceGeneration()
+        => Volatile.Read(ref _appearanceGeneration);
+
+    protected bool IsCurrentAppearanceGeneration(long appearanceGeneration)
         => appearanceGeneration > 0
            && Volatile.Read(ref _subscribed) != 0
            && Volatile.Read(ref _appearanceGeneration) == appearanceGeneration;

@@ -791,6 +791,29 @@ def wait_for_creation_bootstrap_timing_log(
     )
 
 
+def wait_for_creation_bootstrap_timing_with_progress(
+    device: shared.Device,
+    progress: ProgressRecorder,
+) -> str:
+    """Retain partial timing without replacing a failed bootstrap observation."""
+    bootstrap_log_observation: dict[str, object] = {}
+    wait_failed = True
+    try:
+        logcat = wait_for_creation_bootstrap_timing_log(
+            device,
+            observation_out=bootstrap_log_observation,
+        )
+        wait_failed = False
+        return logcat
+    finally:
+        if bootstrap_log_observation:
+            try:
+                progress.record_scan(bootstrap_log_observation)
+            except Exception:
+                if not wait_failed:
+                    raise
+
+
 def capture_creation_bootstrap_timeout(device: shared.Device) -> None:
     """Collect bounded diagnostics after failure; never grant more bootstrap time."""
     name = "creation-bootstrap-timing-log-timeout"
@@ -11525,12 +11548,10 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         "tap",
         *(str(value) for value in create_character.center),
     )
-    bootstrap_log_observation: dict[str, object] = {}
-    bootstrap_logcat = wait_for_creation_bootstrap_timing_log(
+    bootstrap_logcat = wait_for_creation_bootstrap_timing_with_progress(
         device,
-        observation_out=bootstrap_log_observation,
+        progress,
     )
-    progress.record_scan(bootstrap_log_observation)
     creation_bootstrap_timing = capture_creation_bootstrap_timing(
         device,
         logcat=bootstrap_logcat,

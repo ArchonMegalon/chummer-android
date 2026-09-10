@@ -7462,19 +7462,55 @@ def _csharp_method_source(
     path: Path,
     method_name: str,
     declaration_marker: str,
+    *,
+    declaring_type: str | None = None,
 ) -> str | None:
     """Return one exact C# method member, bounded by its declaring indentation."""
 
     if not path.is_file():
         return None
     text = _read_text(path)
+    structural = text
+    if declaring_type is not None:
+        # Opt-in lexical bounds for these reviewed file-scoped C# sources, not
+        # a C# compiler. Preserve offsets, ignore comments/string/char literals,
+        # and fail closed for raw literals not used by the admitted source.
+        if '"""' in text:
+            return None
+        structural = re.sub(
+            r'//[^\n]*|/\*[\s\S]*?\*/|(?:\$?@|@\$)"(?:""|[^"])*"'
+            r'|\$?"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'',
+            lambda token: re.sub(r"[^\n]", " ", token.group(0)), text,
+        )
+        types = list(re.finditer(
+            rf"(?m)^(?P<indent>[ \t]*){re.escape(declaring_type)}(?=[\s:{{])", structural))
+        types = [match for match in types if
+                 structural.count("{", 0, match.start()) == structural.count("}", 0, match.start())]
+        if len(types) != 1:
+            return None
+        start = types[0]
+        opening = structural.find("{", start.end())
+        if opening < 0:
+            return None
+        depth, end = 0, None
+        for brace in re.finditer(r"[{}]", structural[opening:]):
+            depth += 1 if brace.group() == "{" else -1
+            if depth == 0:
+                end = opening + brace.end()
+                break
+        if end is None:
+            return None
+        text = text[start.start():end]
+        structural = structural[start.start():end]
     declaration = re.compile(
         rf"(?m)^(?P<indent>[ \t]*)(?:public|private|protected|internal)"
         rf"[^\n]*\b{re.escape(method_name)}\s*\("
     )
     matches = [
         match
-        for match in declaration.finditer(text)
+        for match in declaration.finditer(structural)
+        if declaring_type is None or
+        structural.count("{", 0, match.start()) - structural.count("}", 0, match.start()) == 1
         # A first-line parameter selector distinguishes real overloads without
         # borrowing markers from their bodies or an adjacent member.
         if declaration_marker in (
@@ -7485,6 +7521,34 @@ def _csharp_method_source(
     if len(matches) != 1:
         return None
     match = matches[0]
+    if declaring_type is not None:
+        # End at this member's own body, not a following member/type. Nested
+        # type members are excluded by depth above even with flat indentation.
+        parens, parameters_end = 0, None
+        for token in re.finditer(r"[()]", structural[match.end() - 1:]):
+            parens += 1 if token.group() == "(" else -1
+            if parens == 0:
+                parameters_end = match.end() - 1 + token.end()
+                break
+        if parameters_end is None:
+            return None
+        body = re.search(r"\{|=>|;", structural[parameters_end:])
+        if body is None or body.group() == ";":
+            return None
+        body_start = parameters_end + body.start()
+        expression = body.group() == "=>"
+        depth = 0
+        for token in re.finditer(r"[{};]", structural[body_start:]):
+            value = token.group()
+            if value == "{":
+                depth += 1
+            elif value == "}":
+                depth -= 1
+                if depth < 0:
+                    return None
+            if depth == 0 and ((expression and value == ";") or (not expression and value == "}")):
+                return text[match.start():body_start + token.end()].rstrip()
+        return None
     indent = re.escape(match.group("indent"))
     next_member = re.compile(
         rf"(?m)^{indent}(?:public|private|protected|internal)"
@@ -7499,10 +7563,11 @@ def _csharp_method_contains(
     method_name: str,
     declaration_marker: str,
     *markers: str,
+    declaring_type: str | None = None,
 ) -> bool:
     """Require reviewed markers in order inside one exact C# method."""
 
-    source = _csharp_method_source(path, method_name, declaration_marker)
+    source = _csharp_method_source(path, method_name, declaration_marker, declaring_type=declaring_type)
     if source is None:
         return False
     offset = 0
@@ -7512,6 +7577,251 @@ def _csharp_method_contains(
             return False
         offset = found + len(marker)
     return True
+
+
+def _owner_bound_editor_presenter_guarded(presentation_root: Path, kind: str) -> bool:
+    """Inspect the declared source capability, not package, runtime or E2E proof.
+
+    The fail-closed interface default alone is insufficient. Both concrete
+    overloads must carry the original owner into the existing canonical observer.
+    """
+    if kind not in {"PrimaryArm", "ConditionMonitor"}:
+        return False
+    interface = presentation_root / "Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs"
+    presenter = presentation_root / "Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs"
+    persistence = presentation_root / "Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
+    method = f"Apply{kind}EditAsync"
+    signature = f"public Task<CommandResult<WorkspaceRevisionReceipt>> {method}("
+    body = _csharp_method_source(presenter, method, signature,
+        declaring_type="public sealed partial class CharacterOverviewPresenter")
+    if body is None or body.count("RunOriginalPersistenceGestureAsync<WorkspaceRevisionReceipt>(") != 1:
+        return False
+    # Interfaces omit the access modifier. Bound the one declared interface;
+    # no other client or default implementation can supply its signature.
+    if not interface.is_file():
+        return False
+    source = _read_text(interface)
+    marker = "public interface IOwnerBoundWorkspaceMutationPresenter\n{"
+    if source.count(marker) != 1:
+        return False
+    contract = source.split(marker, 1)[1].split("\n}", 1)[0]
+    required = (f"Task<CommandResult<WorkspaceRevisionReceipt>> {method}(\n"
+        f"        {kind}EditRequest request, OwnerContextStamp expectedOwner,")
+    if contract.count(required) != 1:
+        return False
+    arguments = ("expectedOwner, request.WorkspaceId,\n            request.ExpectedContentRevision"
+                 if kind == "PrimaryArm" else "expectedOwner, workspaceId,\n            expectedContentRevision")
+    target = ("request.WorkspaceId, request.ExpectedContentRevision, expectedOwner,"
+              if kind == "PrimaryArm" else "workspaceId, expectedContentRevision, expectedOwner,")
+    return (
+        _csharp_method_contains(presenter, method, signature,
+            f"{kind}EditRequest request, OwnerContextStamp expectedOwner,",
+            f"return RunOriginalPersistenceGestureAsync<WorkspaceRevisionReceipt>({arguments}",
+            "(_, observe) => ApplyOriginalWorkspaceXmlMutationAsync(", target,
+            f"WorkspaceXmlMutationCatalog.Apply{kind}Edit(xml, request), observe, ct));",
+            declaring_type="public sealed partial class CharacterOverviewPresenter")
+        and _csharp_method_contains(presenter, "ApplyOriginalWorkspaceXmlMutationAsync",
+            "private async Task ApplyOriginalWorkspaceXmlMutationAsync(",
+            "OwnerContextStamp originalOwner,", "await ApplyWorkspaceXmlMutationAsync(workspaceId, revision,",
+            "expectedOwner: originalOwner, observeCanonical: observe)",
+            declaring_type="public sealed partial class CharacterOverviewPresenter")
+        and _csharp_method_contains(presenter, "ApplyWorkspaceXmlMutationAsync",
+            "private async Task ApplyWorkspaceXmlMutationAsync(",
+            "CharacterWorkspaceId expectedWorkspaceId,", "long expectedContentRevision,",
+            "OwnerContextStamp? expectedOwner = null", "observeCanonical = null)",
+            "OwnerContextStamp? originalOwner = expectedOwner ?? originalState.DisplayOwnerContext;",
+            "if (expectedOwner.HasValue && boundClient is null)", "return;",
+            "originalOwner != State.DisplayOwnerContext", "return;",
+            "boundClient.GetWorkspaceAsync(", "originalOwner ?? throw",
+            "read.Value.ContentRevision != expectedContentRevision",
+            "boundClient.ReplaceWorkspaceDocumentAsync(", "originalOwner ?? throw",
+            "expectedWorkspaceId, expectedContentRevision, replacement,",
+            "observeCanonical?.Invoke(replacementResult);", "return replacementResult;",
+            declaring_type="public sealed partial class CharacterOverviewPresenter")
+        and _presenter_original_gesture_guarded(persistence,
+            declaring_type="public sealed partial class CharacterOverviewPresenter")
+    )
+
+
+def _owner_bound_editor_save_guarded(presentation_root: Path) -> bool:
+    """Additional checkpoint capability, never required by the dirty editor."""
+    interface = presentation_root / "Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs"
+    if not interface.is_file():
+        return False
+    source = _read_text(interface)
+    marker = "public interface IOwnerBoundWorkspacePersistencePresenter\n{"
+    if source.count(marker) != 1:
+        return False
+    contract = source.split(marker, 1)[1].split("\n}", 1)[0]
+    return (contract.count("Task<CommandResult<WorkspaceSaveReceipt>> SaveAsync(\n"
+            "        OwnerContextStamp originalOwner, CharacterWorkspaceId workspaceId,\n"
+            "        long expectedContentRevision, CancellationToken ct);") == 1
+        and _presenter_save_authority_guarded(presentation_root /
+            "Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+            declaring_type="public sealed partial class CharacterOverviewPresenter"))
+
+
+def _native_editor_frame_guarded(coordinator: Path) -> bool:
+    return _csharp_method_contains(coordinator, "IsNativeEditDisplayCurrent",
+        "private bool IsNativeEditDisplayCurrent(",
+        "!_disposed && !State.IsBusy && State.Error is null && State.ConflictState is null",
+        "original.WorkspaceId is not null && original.ContentRevision > 0",
+        "State.WorkspaceId == original.WorkspaceId", "State.ContentRevision == original.ContentRevision",
+        "State.SavedRevision == original.SavedRevision", "ReferenceEquals(State.Profile, original.Profile)",
+        "State.ActiveTabId == original.ActiveTabId", "State.ActiveActionId == original.ActiveActionId",
+        "State.ActiveSectionId == original.ActiveSectionId", "State.DisplayOwnerContext == original.DisplayOwnerContext",
+        "State.Session.OwnerContext == original.DisplayOwnerContext",
+        "_shellPresenter.State.OwnerContext == original.DisplayOwnerContext",
+        "IsNativePersistenceOwnerCurrent(original.DisplayOwnerContext);",
+        declaring_type="public sealed partial class RunnerSessionCoordinator",
+    )
+
+
+def _native_primary_arm_owner_guarded(native: Path, presentation_root: Path) -> bool:
+    page, coordinator = native / "PrimaryArmPage.cs", native / "RunnerSessionCoordinator.cs"
+    presenter = presentation_root / "Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs"
+    core = _csharp_method_source(coordinator, "ApplyPrimaryArmEditCoreAsync",
+        "private async Task<bool> ApplyPrimaryArmEditCoreAsync(",
+        declaring_type="public sealed partial class RunnerSessionCoordinator")
+    if core is None or core.count("await bound.ApplyPrimaryArmEditAsync(") != 1 or core.count("await persistence.SaveAsync(") != 1:
+        return False
+    if "await _presenter." in core:
+        return False
+    return (
+        _owner_bound_editor_presenter_guarded(presentation_root, "PrimaryArm")
+        and _owner_bound_editor_save_guarded(presentation_root)
+        and _native_editor_frame_guarded(coordinator)
+        and _csharp_method_contains(presenter, "PreparePrimaryArmEditAsync",
+            "public async Task<PrimaryArmEditorState?> PreparePrimaryArmEditAsync(",
+            "CharacterOverviewState originalState = State;", "originalState.DisplayOwnerContext;",
+            "long generation = CaptureDisplayGeneration();", "originalState.WorkspaceId;",
+            "originalState.ContentRevision;", "originalState.SavedRevision;",
+            "IsDisplayGenerationCurrent(generation)", "IsOriginalPersistenceOwnerCurrent(originalOwner)",
+            "State.DisplayOwnerContext == originalOwner", "State.Session.OwnerContext == originalState.Session.OwnerContext",
+            "State.WorkspaceId == currentWorkspace", "State.ContentRevision == expectedContentRevision",
+            "State.SavedRevision == expectedSavedRevision", "ReferenceEquals(State.Profile, originalState.Profile)",
+            "if (!OriginalViewIsCurrent()) return null;", "IOwnerBoundWorkspaceMutationClient)_client).GetWorkspaceAsync(owner,",
+            "if (!OriginalViewIsCurrent()) return null;", "read.Value.Id.Value, currentWorkspace.Value.Value",
+            "read.Value.ContentRevision != expectedContentRevision", "read.Value.SavedRevision != expectedSavedRevision",
+            "return OriginalViewIsCurrent() ? editor : null;",
+            declaring_type="public sealed partial class CharacterOverviewPresenter")
+        and _csharp_method_contains(native / "BuildPage.cs", "AddDossier", "private void AddDossier(",
+            "CharacterOverviewState original = Coordinator.State;", "CaptureAppearanceGeneration();",
+            "long render = _dossierRenderGeneration;", "render != _dossierRenderGeneration",
+            "!IsCurrentAppearanceGeneration(appearance)", "Coordinator.PreparePrimaryArmEditAsync(original)",
+            "IsCurrentAppearanceGeneration(appearance)", "render == _dossierRenderGeneration",
+            "Coordinator.IsPrimaryArmEditorCurrent(editor)", "new PrimaryArmPage(Coordinator, editor)",
+            declaring_type="public sealed class BuildPage")
+        and _csharp_method_contains(page, "SaveAsync", "private async Task SaveAsync(",
+            "if (_editor.Ambidextrous)", "return;", "long appearance = CaptureAppearanceGeneration();",
+            "await Coordinator.TryApplyBoundPrimaryArmEditAsync(", "_editor, value, () => IsCurrentAppearanceGeneration(appearance)",
+            "if (saved && IsCurrentAppearanceGeneration(appearance)", "Coordinator.IsPrimaryArmSaveCurrent(_editor)",
+            "await Navigation.PopAsync();", declaring_type="public sealed class PrimaryArmPage")
+        and _csharp_method_contains(coordinator, "PreparePrimaryArmEditAsync",
+            "internal async Task<PrimaryArmEditorState?> PreparePrimaryArmEditAsync(",
+            "CharacterOverviewState original,", "if (!IsNativeEditDisplayCurrent(original)) return null;",
+            "await _presenter.PreparePrimaryArmEditAsync(", "!IsNativeEditDisplayCurrent(original)",
+            "editor.WorkspaceId != original.WorkspaceId", "editor.ContentRevision != original.ContentRevision",
+            "_primaryArmEditors.GetValue(editor, _ => original);", "return editor;",
+            declaring_type="public sealed partial class RunnerSessionCoordinator")
+        and _csharp_method_contains(coordinator, "TryApplyBoundPrimaryArmEditAsync",
+            "internal Task<bool> TryApplyBoundPrimaryArmEditAsync(",
+            "_primaryArmEditors.TryGetValue(editor, out CharacterOverviewState? original)", "return Task.FromResult(false);",
+            "return WithWorkspaceActivationGateAsync(", "!isCurrentEditor() ? Task.FromResult(false)",
+            "ApplyPrimaryArmEditCoreAsync(", "new(editor.WorkspaceId, editor.ContentRevision, value), original,",
+            declaring_type="public sealed partial class RunnerSessionCoordinator")
+        and _csharp_method_contains(coordinator, "IsPrimaryArmSaveCurrent", "internal bool IsPrimaryArmSaveCurrent(",
+            "_primaryArmEditors.TryGetValue(editor, out CharacterOverviewState? original)",
+            "original.ContentRevision < long.MaxValue", "IsNativeMutationObservationCurrent(original, original.ContentRevision + 1)",
+            "State.SavedRevision == original.ContentRevision + 1",
+            declaring_type="public sealed partial class RunnerSessionCoordinator")
+        and _csharp_method_contains(coordinator, "ApplyPrimaryArmEditAsync", "public async Task ApplyPrimaryArmEditAsync(",
+            "CharacterOverviewState original = State;", "WithWorkspaceActivationGateAsync(",
+            "ApplyPrimaryArmEditCoreAsync(request, original, cancellationToken)",
+            declaring_type="public sealed partial class RunnerSessionCoordinator")
+        and _csharp_method_contains(coordinator, "ApplyPrimaryArmEditCoreAsync",
+            "private async Task<bool> ApplyPrimaryArmEditCoreAsync(",
+            "!IsNativeEditDisplayCurrent(original)", "original.WorkspaceId != request.WorkspaceId",
+            "original.ContentRevision != request.ExpectedContentRevision", "original.DisplayOwnerContext is not { IsValid: true } owner",
+            "IOwnerBoundWorkspaceMutationPresenter bound", "IOwnerBoundWorkspacePersistencePresenter persistence",
+            "await bound.ApplyPrimaryArmEditAsync(", "request, owner, cancellationToken)",
+            "!mutation.Success || mutation.Value is not { } committed", "committed.Id != request.WorkspaceId",
+            "committed.ContentRevision != original.ContentRevision + 1", "committed.SavedRevision != original.SavedRevision",
+            "!IsNativeMutationObservationCurrent(original, committed.ContentRevision)",
+            "await persistence.SaveAsync(", "owner, committed.Id, committed.ContentRevision, cancellationToken)",
+            "!saved.Success || saved.Value is not { } receipt || receipt.Id != committed.Id",
+            "receipt.ContentRevision != committed.ContentRevision", "receipt.SavedRevision != committed.ContentRevision",
+            "!IsNativeMutationObservationCurrent(original, receipt.ContentRevision)", "State.SavedRevision != receipt.SavedRevision",
+            declaring_type="public sealed partial class RunnerSessionCoordinator")
+    )
+
+
+def _native_condition_owner_guarded(native: Path, presentation_root: Path, *, tablet: bool = False) -> bool:
+    coordinator = native / "RunnerSessionCoordinator.cs"
+    core = _csharp_method_source(coordinator, "ApplyConditionMonitorEditCoreAsync",
+        "private async Task<bool> ApplyConditionMonitorEditCoreAsync(",
+        declaring_type="public sealed partial class RunnerSessionCoordinator")
+    if core is None or core.count("await bound.ApplyConditionMonitorEditAsync(") != 1:
+        return False
+    if "SaveAsync(" in core or "await _presenter." in core:
+        return False  # This generic editor deliberately leaves a dirty edit.
+    if tablet:
+        page = native / "TabletBuildPage.cs"
+        surface = (
+            _csharp_method_contains(page, "ApplyConditionInspectorAsync", "private async Task<bool> ApplyConditionInspectorAsync(",
+                "CharacterOverviewState expected, long generation)", "Coordinator.TryApplyBoundConditionMonitorEditAsync(request, expected,",
+                "() => IsCurrentConditionInspector(generation, expected, request.Track)",
+                declaring_type="public sealed partial class TabletBuildPage")
+            and _csharp_method_contains(page, "IsCurrentConditionInspector", "private bool IsCurrentConditionInspector(",
+                "!_draftConflict && CurrentDraftAuthorityMatches()", "generation == _inspectorGeneration",
+                "track == _selectedConditionTrack && IsCurrentView(expected)",
+                declaring_type="public sealed partial class TabletBuildPage")
+            and _csharp_method_contains(page, "BuildConditionMonitorInspector", "private void BuildConditionMonitorInspector(",
+                "CharacterOverviewState expected, long generation)", "apply.Clicked +=",
+                "!IsCurrentConditionInspector(generation, expected, track.Track)",
+                "!ReferenceEquals(apply.Parent, _inspector) || !apply.IsEnabled",
+                "ApplyConditionInspectorAsync(request, expected, generation)", "clear.Clicked +=",
+                "!IsCurrentConditionInspector(generation, expected, track.Track)",
+                "!ReferenceEquals(clear.Parent, _inspector) || !clear.IsEnabled",
+                "ApplyConditionInspectorAsync(", "new ConditionMonitorEditRequest(track.Track, 0), expected, generation)",
+                declaring_type="public sealed partial class TabletBuildPage"))
+    else:
+        page = native / "ConditionMonitorEditPage.cs"
+        refresh = _csharp_method_source(page, "Refresh", "protected override void Refresh(",
+            declaring_type="public sealed class ConditionMonitorEditPage")
+        surface = refresh is not None and refresh.count("Coordinator.TryApplyBoundConditionMonitorEditAsync(") == 2 and (
+            _csharp_method_contains(page, "Refresh", "protected override void Refresh(",
+                "long generation = ++_renderGeneration;", "long appearance = CaptureAppearanceGeneration();",
+                "CharacterOverviewState original = Coordinator.State;", "original.ActiveConditionMonitor",
+                "apply.Clicked += async (_, _) => await RunAsync(async () =>",
+                "Coordinator.TryApplyBoundConditionMonitorEditAsync(", "new ConditionMonitorEditRequest(track.Track, SelectedNumber(filled, track.Filled))",
+                "original, () => generation == _renderGeneration && IsCurrentAppearanceGeneration(appearance)",
+                "clear.Clicked += async (_, _) => await RunAsync(async () =>",
+                "Coordinator.TryApplyBoundConditionMonitorEditAsync(", "new ConditionMonitorEditRequest(track.Track, 0)",
+                "original, () => generation == _renderGeneration && IsCurrentAppearanceGeneration(appearance)",
+                declaring_type="public sealed class ConditionMonitorEditPage"))
+    return bool(surface and _owner_bound_editor_presenter_guarded(presentation_root, "ConditionMonitor")
+        and _native_editor_frame_guarded(coordinator)
+        and _csharp_method_contains(coordinator, "ApplyConditionMonitorEditAsync", "public async Task ApplyConditionMonitorEditAsync(",
+            "CharacterOverviewState original = State;", "TryApplyBoundConditionMonitorEditAsync(request, original, () => true,",
+            declaring_type="public sealed partial class RunnerSessionCoordinator")
+        and _csharp_method_contains(coordinator, "TryApplyBoundConditionMonitorEditAsync", "internal Task<bool> TryApplyBoundConditionMonitorEditAsync(",
+            "=> WithWorkspaceActivationGateAsync(async () =>", "!IsNativeEditDisplayCurrent(expected)",
+            "current.WorkspaceId != expected.WorkspaceId", "current.ContentRevision != expected.ContentRevision",
+            "current.SavedRevision != expected.SavedRevision", "current.ActiveSectionId, expected.ActiveSectionId",
+            "!ReferenceEquals(current.ActiveConditionMonitor, expected.ActiveConditionMonitor)",
+            "expected.ActiveConditionMonitor is not { CareerEditable: true } monitor",
+            "monitor.Tracks.Count(track => track.Track == request.Track) != 1", "!isCurrentInspector()",
+            "return await ApplyConditionMonitorEditCoreAsync(request, expected, cancellationToken);",
+            declaring_type="public sealed partial class RunnerSessionCoordinator")
+        and _csharp_method_contains(coordinator, "ApplyConditionMonitorEditCoreAsync", "private async Task<bool> ApplyConditionMonitorEditCoreAsync(",
+            "original.DisplayOwnerContext is not { IsValid: true } owner", "original.WorkspaceId is not { } workspaceId",
+            "IOwnerBoundWorkspaceMutationPresenter bound", "await bound.ApplyConditionMonitorEditAsync(",
+            "request, owner, workspaceId, original.ContentRevision, cancellationToken)",
+            "!result.Success || result.Value is not { } receipt", "receipt.Id != workspaceId",
+            "receipt.ContentRevision != original.ContentRevision + 1", "receipt.SavedRevision != original.SavedRevision",
+            "!IsNativeMutationObservationCurrent(original, receipt.ContentRevision)", "State.SavedRevision != original.SavedRevision",
+            declaring_type="public sealed partial class RunnerSessionCoordinator"))
 
 
 def _native_collection_owner_guarded(page: Path, coordinator: Path) -> bool:
@@ -7607,7 +7917,7 @@ def _native_collection_owner_guarded(page: Path, coordinator: Path) -> bool:
     )
 
 
-def _presenter_save_authority_guarded(path: Path) -> bool:
+def _presenter_save_authority_guarded(path: Path, *, declaring_type: str | None = None) -> bool:
     """Follow both public save entrypoints into the same owner-bound implementation.
 
     SaveAsync intentionally delegates rather than declaring async itself. Require
@@ -7619,6 +7929,7 @@ def _presenter_save_authority_guarded(path: Path) -> bool:
             path, "SaveAsync", "public Task SaveAsync(",
             "CancellationToken ct)",
             "=> SaveCoreAsync(State, ct);",
+            declaring_type=declaring_type,
         )
         and _csharp_method_contains(
             path, "SaveAsync", "public Task<CommandResult<WorkspaceSaveReceipt>> SaveAsync(",
@@ -7626,6 +7937,7 @@ def _presenter_save_authority_guarded(path: Path) -> bool:
             "CharacterWorkspaceId workspaceId, long expectedContentRevision, CancellationToken ct)",
             "=> RunOriginalPersistenceGestureAsync<WorkspaceSaveReceipt>(originalOwner, workspaceId,",
             "expectedContentRevision, (state, observe) => SaveCoreAsync(state, ct, observe));",
+            declaring_type=declaring_type,
         )
         and _csharp_method_contains(
             path, "SaveCoreAsync", "private async Task SaveCoreAsync(",
@@ -7654,8 +7966,16 @@ def _presenter_save_authority_guarded(path: Path) -> bool:
             "if (!IsOriginalPersistenceOwnerCurrent(originalOwner) || !IsDisplayGenerationCurrent(displayGeneration))",
             '"postcommit save recovery"',
             "PublishPostCommitState(State with",
+            declaring_type=declaring_type,
         )
-        and _csharp_method_contains(
+        and _presenter_original_gesture_guarded(path, declaring_type=declaring_type)
+    )
+
+
+def _presenter_original_gesture_guarded(path: Path, *, declaring_type: str | None = None) -> bool:
+    """Shared original-owner result observation, independent of checkpoint support."""
+    return (
+        _csharp_method_contains(
             path, "RunOriginalPersistenceGestureAsync<T>",
             "private async Task<CommandResult<T>> RunOriginalPersistenceGestureAsync<T>(",
             "CharacterOverviewState originalState = State;",
@@ -7666,6 +7986,7 @@ def _presenter_save_authority_guarded(path: Path) -> bool:
             "WorkspaceOperationOutcome.Conflict",
             "await operation(originalState, result => observed = result)",
             "return observed ?? new(false, null,",
+            declaring_type=declaring_type,
         )
         and _csharp_method_contains(
             path, "IsOriginalPersistenceOwnerCurrent", "private bool IsOriginalPersistenceOwnerCurrent(",
@@ -7675,6 +7996,7 @@ def _presenter_save_authority_guarded(path: Path) -> bool:
             "&& State.DisplayOwnerContext == original",
             "&& bound.CaptureOwnerContext() == original;",
             "return false;",
+            declaring_type=declaring_type,
         )
     )
 
@@ -19895,15 +20217,9 @@ def _known_phone_mapping(
         core_contract = character_notes_core_root / "Chummer.Contracts" / "Characters" / "CharacterSectionModels.cs"
         core_section = character_notes_core_root / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs"
         implemented = (
-            _contains(page, f'"{automation_id}"', '"primary-arm-save"', "PrimaryArmEditRequest", "Ambidextrous")
+            _contains(page, f'"{automation_id}"', '"primary-arm-save"', "PrimaryArmEditorState", "Ambidextrous")
             and _contains(build_page, '"build-primary-arm"', "new PrimaryArmPage")
-            and _contains(
-                coordinator,
-                "PreparePrimaryArmEditAsync",
-                "ApplyPrimaryArmEditAsync",
-                "ExpectedContentRevision",
-                "SaveAsync",
-            )
+            and _native_primary_arm_owner_guarded(page.parent, presentation_root)
             and _contains(
                 request,
                 "PrimaryArmEditorState",
@@ -19956,13 +20272,16 @@ def _known_phone_mapping(
                 "src/Chummer.Android/Native/BuildPage.cs",
                 "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
                 "chummer-presentation/Chummer.Presentation/Overview/PrimaryArmEditRequest.cs",
+                "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+                "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
                 "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
                 "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
                 "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
                 "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
             ],
             "presenterMutation": (
-                "ICharacterOverviewPresenter.ApplyPrimaryArmEditAsync(PrimaryArmEditRequest)"
+                "IOwnerBoundWorkspaceMutationPresenter.ApplyPrimaryArmEditAsync(PrimaryArmEditRequest, OwnerContextStamp, CancellationToken)"
             ),
             "persistenceAssertion": (
                 "character/primaryarm equals exact Left or Right after save, same-session reopen, "
@@ -23375,24 +23694,13 @@ def _known_phone_mapping(
                 and _contains(mutation, "ApplyConditionMonitorEdit", xml_element)
                 for track_name, xml_element in zip(tracks, xml_elements, strict=True)
             )
-            and _contains(coordinator, "ApplyConditionMonitorEditAsync")
-            and _contains(presenter, "ApplyConditionMonitorEditAsync", "ApplyWorkspaceXmlMutationAsync")
+            and _owner_bound_editor_presenter_guarded(presentation_root, "ConditionMonitor")
         )
-        phone_implemented = shared and _contains(
-            phone_page,
-            "condition-monitor-filled-",
-            "ApplyConditionMonitorEditAsync",
-        ) and _contains(phone_route, "condition-monitor-", "ConditionMonitorEditPage")
-        tablet_implemented = shared and _contains(
-            tablet_page,
-            "tablet-condition-filled-",
-            "TryApplyBoundConditionMonitorEditAsync",
-            "IsCurrentConditionInspector",
-        ) and _contains(
-            coordinator,
-            "TryApplyBoundConditionMonitorEditAsync",
-            "ApplyConditionMonitorEditCoreAsync",
-        )
+        phone_implemented = (shared and _contains(phone_page, "condition-monitor-filled-")
+            and _native_condition_owner_guarded(phone_page.parent, presentation_root)
+            and _contains(phone_route, "condition-monitor-", "ConditionMonitorEditPage"))
+        tablet_implemented = (shared and _contains(tablet_page, "tablet-condition-filled-")
+            and _native_condition_owner_guarded(tablet_page.parent, presentation_root, tablet=True))
         e2e_scripted = _contains(
             e2e_driver,
             "edit_condition_damage",
@@ -23438,8 +23746,12 @@ def _known_phone_mapping(
                 "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
                 "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
                 "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+                "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
             ],
-            "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+            "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
             "persistenceAssertion": persistence_assertion,
             "e2e": dict(phone_e2e) if phone_e2e is not None else {
                 "status": "scripted_not_executed" if e2e_scripted else "missing",
@@ -23459,6 +23771,10 @@ def _known_phone_mapping(
                     "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
                     "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
                     "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                    "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+                    "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+                    "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                    "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
                 ],
             },
             "tabletE2e": dict(tablet_e2e) if tablet_e2e is not None else {
@@ -24548,6 +24864,8 @@ def build_inventory(
         presentation_root / "Chummer.Presentation" / "Overview" / "LocationRenameRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceSectionRenderer.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CharacterOverviewState.cs",
+        presentation_root / "Chummer.Presentation" / "IOwnerBoundWorkspaceMutationClient.cs",
+        presentation_root / "Chummer.Presentation" / "IOwnerBoundWorkspacePersistenceClient.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CharacterOverviewPresenter.Persistence.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "ICharacterOverviewPresenter.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "ConditionMonitorEditRequest.cs",

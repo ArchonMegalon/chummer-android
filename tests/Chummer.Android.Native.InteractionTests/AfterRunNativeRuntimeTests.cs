@@ -553,7 +553,8 @@ internal static partial class AfterRunAuthorityHarness
             IAndroidSystemService? outputSystem = null,
             IAndroidAccountLinkService? accountService = null,
             bool creationFinalization = false,
-            Func<IOwnerBoundCharacterCreationFinalizationService, IOwnerBoundCharacterCreationFinalizationService>? finalizationDecorator = null)
+            Func<IOwnerBoundCharacterCreationFinalizationService, IOwnerBoundCharacterCreationFinalizationService>? finalizationDecorator = null,
+            Func<Chummer.Application.Owners.IOwnerContextAccessor, Chummer.Application.Owners.IOwnerContextAccessor?>? damageJournalAccessorDecorator = null)
         {
             _priorPreferences = Preferences.Default;
             _setPreferences = typeof(Preferences).GetMethod("SetDefault",
@@ -658,7 +659,10 @@ internal static partial class AfterRunAuthorityHarness
                     linkedWorkspaceReader: linkedReader,
                     ownerBoundCreationFinalizationService: creationFinalization
                         ? finalizationDecorator?.Invoke(_provider.GetRequiredService<IOwnerBoundCharacterCreationFinalizationService>())
-                            ?? _provider.GetRequiredService<IOwnerBoundCharacterCreationFinalizationService>() : null);
+                            ?? _provider.GetRequiredService<IOwnerBoundCharacterCreationFinalizationService>() : null,
+                    damageJournalOwnerAccessor: damageJournalAccessorDecorator is null
+                        ? _provider.GetRequiredService<Chummer.Application.Owners.IOwnerContextAccessor>()
+                        : damageJournalAccessorDecorator(_provider.GetRequiredService<Chummer.Application.Owners.IOwnerContextAccessor>()));
             }
             catch
             {

@@ -93,6 +93,13 @@ internal sealed record NativeCreationBootstrapTimingSnapshot(
     public bool WorkspaceStatePublished => WorkspaceStatePublishedTimestamp > 0;
 }
 
+internal enum NativeCreationBootstrapObservation
+{
+    None,
+    LoadStarted,
+    WorkspaceStatePublished
+}
+
 internal sealed class NativeCreationBootstrapTiming
 {
     private readonly object _sync = new();
@@ -107,7 +114,7 @@ internal sealed class NativeCreationBootstrapTiming
 
     public long StartedTimestamp { get; }
 
-    public void Observe(CharacterOverviewState state)
+    public NativeCreationBootstrapObservation Observe(CharacterOverviewState state)
     {
         long observedTimestamp = System.Diagnostics.Stopwatch.GetTimestamp();
         lock (_sync)
@@ -115,7 +122,7 @@ internal sealed class NativeCreationBootstrapTiming
             if (_loadStartedTimestamp == 0 && state.IsBusy)
             {
                 _loadStartedTimestamp = observedTimestamp;
-                return;
+                return NativeCreationBootstrapObservation.LoadStarted;
             }
 
             if (_loadStartedTimestamp > 0
@@ -127,7 +134,10 @@ internal sealed class NativeCreationBootstrapTiming
             {
                 _workspaceStatePublishedTimestamp = observedTimestamp;
                 _publishedWorkspaceId = workspaceId.Value;
+                return NativeCreationBootstrapObservation.WorkspaceStatePublished;
             }
+
+            return NativeCreationBootstrapObservation.None;
         }
     }
 
@@ -311,6 +321,7 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
     private const string RosterLocatorPreferencePrefix = "chummer.android.roster-locator.v1.";
     private readonly ICharacterOverviewPresenter _presenter;
     private readonly IChummerClient _client;
+    private readonly IOwnerContextAccessor? _damageJournalOwnerAccessor;
     private readonly IWorkspaceOperationCoordinator _workspaceOperationCoordinator;
     private readonly ICharacterCreationFoundationInteractionPresenter _foundationInteractionPresenter;
     private readonly OriginDossierLifeModulePhoneRuntime? _originLifeModuleRuntime;
@@ -326,6 +337,7 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
     private readonly System.Runtime.CompilerServices.ConditionalWeakTable<CharacterCreationFinalizationBinding, CharacterOverviewState> _finalizationLoads = new();
     private readonly System.Runtime.CompilerServices.ConditionalWeakTable<CharacterCreationFinalizationReview, CharacterOverviewState> _finalizationReviews = new();
     private readonly System.Runtime.CompilerServices.ConditionalWeakTable<CharacterCreationFinalizationReceipt, CharacterOverviewState> _finalizationReceipts = new();
+    private readonly System.Runtime.CompilerServices.ConditionalWeakTable<PrimaryArmEditorState, CharacterOverviewState> _primaryArmEditors = new();
     private readonly Sr5CareerCyberwarePurchaseService? _careerCyberwarePurchaseService;
     private readonly Sr5CareerCustomDrugRecipeService? _careerCustomDrugRecipeService;
     private readonly Sr5CareerVehicleWorkshopService? _careerVehicleWorkshopService;
@@ -417,10 +429,14 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         Sr5CareerReputationJournal? careerReputationJournal = null,
         AndroidLinkedCharacterIntentJournal? linkedCharacterJournal = null,
         IAndroidLinkedWorkspaceReader? linkedWorkspaceReader = null,
-        IOwnerBoundCharacterCreationFinalizationService? ownerBoundCreationFinalizationService = null)
+        IOwnerBoundCharacterCreationFinalizationService? ownerBoundCreationFinalizationService = null,
+        IOwnerContextAccessor? damageJournalOwnerAccessor = null)
     {
         _presenter = presenter;
         _client = client;
+        // Maui's existing IOwnerContextAccessor registration is the same issuing
+        // accessor used by Core. Hosts that omit this capability fail closed.
+        _damageJournalOwnerAccessor = damageJournalOwnerAccessor;
         _workspaceOperationCoordinator = workspaceOperationCoordinator;
         _foundationInteractionPresenter = foundationInteractionPresenter;
         _originLifeModuleRuntime = originLifeModuleRuntime;
@@ -464,6 +480,45 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
     public event EventHandler? Changed;
 
     public CharacterOverviewState State => _presenter.State;
+
+    // Journal-only synchronous admission. Never retain this lease across await,
+    // UI work or Core mutation dispatch. Capture alone cannot manufacture a lease.
+    internal bool TryAcquireDamageJournalOwner(OwnerContextStamp? expected,
+        CharacterWorkspaceId workspaceId, out IOwnerContextLease? lease)
+    {
+        lease = null;
+        if (expected is not { IsValid: true } stamp
+            || _damageJournalOwnerAccessor is not IOwnerContextLeaseAccessor owners
+            || !Matches()) return false;
+        IOwnerContextLease? acquired = null;
+        try
+        {
+            if (!owners.TryAcquire(stamp, out acquired) || acquired is null) return false;
+            if (!Matches() || acquired.Stamp != stamp) return false;
+            lease = acquired;
+            return true;
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            return false;
+        }
+        finally
+        {
+            if (lease is null) acquired?.Dispose();
+        }
+
+        bool Matches()
+        {
+            CharacterOverviewState state = State;
+            if (_disposed || state.WorkspaceId != workspaceId || state.IsBusy
+                || state.Error is not null || state.ConflictState is not null
+                || state.DisplayOwnerContext != expected || state.Session.OwnerContext != expected
+                || _shellPresenter.State.OwnerContext != expected
+                || _client is not IOwnerBoundWorkspaceMutationClient bound) return false;
+            try { return bound.CaptureOwnerContext() == expected; }
+            catch (Exception exception) when (exception is not OutOfMemoryException) { return false; }
+        }
+    }
 
     /// <summary>
     /// Captures the exact current document bytes and document metadata for the read-only SR5
@@ -3560,18 +3615,39 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
     public async Task ApplyConditionMonitorEditAsync(
         ConditionMonitorEditRequest request,
         CancellationToken cancellationToken = default)
-        => await WithWorkspaceActivationGateAsync(
-            () => ApplyConditionMonitorEditCoreAsync(request, cancellationToken),
-            cancellationToken);
+    {
+        CharacterOverviewState original = State;
+        if (!await TryApplyBoundConditionMonitorEditAsync(request, original, () => true, cancellationToken))
+            throw new InvalidOperationException(
+                "The damage change could not be verified for the original runner. Reopen it to review the outcome before retrying.");
+    }
 
-    private async Task ApplyConditionMonitorEditCoreAsync(
+    private async Task<bool> ApplyConditionMonitorEditCoreAsync(
         ConditionMonitorEditRequest request,
+        CharacterOverviewState original,
         CancellationToken cancellationToken)
     {
-        await _presenter.ApplyConditionMonitorEditAsync(request, cancellationToken);
-        _notice = State.Error is null ? "Damage track updated." : null;
+        if (original.DisplayOwnerContext is not { IsValid: true } owner
+            || original.WorkspaceId is not { } workspaceId
+            || _presenter is not IOwnerBoundWorkspaceMutationPresenter bound)
+            return false;
+        CommandResult<WorkspaceRevisionReceipt> result = await bound.ApplyConditionMonitorEditAsync(
+            request, owner, workspaceId, original.ContentRevision, cancellationToken);
+        if (!result.Success || result.Value is not { } receipt
+            || receipt.Id != workspaceId || original.ContentRevision == long.MaxValue
+            || receipt.ContentRevision != original.ContentRevision + 1
+            || receipt.SavedRevision != original.SavedRevision
+            || !IsNativeMutationObservationCurrent(original, receipt.ContentRevision)
+            || State.SavedRevision != original.SavedRevision)
+            return false;
+        // Damage changes remain dirty. No checkpoint or replay is inferred from
+        // a refreshed view, and a recovery conflict keeps the editor open.
         await SyncShellAsync(cancellationToken);
+        if (!IsNativeMutationObservationCurrent(original, receipt.ContentRevision)
+            || State.SavedRevision != original.SavedRevision) return false;
+        _notice = "Damage track updated.";
         NotifyChanged();
+        return true;
     }
 
     internal Task<bool> TryApplyBoundConditionMonitorEditAsync(
@@ -3583,7 +3659,7 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         {
             cancellationToken.ThrowIfCancellationRequested();
             CharacterOverviewState current = State;
-            if (_disposed || current.IsBusy || current.Error is not null
+            if (!IsNativeEditDisplayCurrent(expected)
                 || expected.WorkspaceId is null
                 || current.WorkspaceId != expected.WorkspaceId
                 || current.ContentRevision != expected.ContentRevision
@@ -3595,8 +3671,83 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
                 || !isCurrentInspector())
                 return false;
 
-            await ApplyConditionMonitorEditCoreAsync(request, cancellationToken);
-            return State.Error is null;
+            return await ApplyConditionMonitorEditCoreAsync(request, expected, cancellationToken);
+        }, cancellationToken);
+
+    /// <summary>
+    /// Wizard-only confirmation. Unlike the generic condition editor this joins
+    /// an explicit original-owner checkpoint. Null is not proof of no mutation:
+    /// callers must retain their durable Applying journal and must not replay.
+    /// </summary>
+    internal Task<WorkspaceSaveReceipt?> TryApplyAndSaveBoundConditionMonitorEditAsync(
+        ConditionMonitorEditRequest request,
+        CharacterOverviewState expected,
+        Func<bool> isCurrentReview,
+        CancellationToken cancellationToken = default)
+        => WithWorkspaceActivationGateAsync<WorkspaceSaveReceipt?>(async () =>
+        {
+            ArgumentNullException.ThrowIfNull(request);
+            ArgumentNullException.ThrowIfNull(expected);
+            ArgumentNullException.ThrowIfNull(isCurrentReview);
+            cancellationToken.ThrowIfCancellationRequested();
+            CharacterOverviewState current = State;
+            if (!IsNativeEditDisplayCurrent(expected)
+                || expected.IsDirty || expected.ContentRevision != expected.SavedRevision
+                || expected.ContentRevision == long.MaxValue
+                || expected.WorkspaceId is not { } workspaceId
+                || expected.DisplayOwnerContext is not { IsValid: true } owner
+                || current.WorkspaceId != workspaceId
+                || !ReferenceEquals(current.ActiveConditionMonitor, expected.ActiveConditionMonitor)
+                || expected.ActiveConditionMonitor is not { CareerEditable: true } monitor
+                || !Sr5PlaytimeDamageIntegrity.IsSupportedTrack(request.Track)
+                || monitor.Tracks.Count(track => track.Track == request.Track) != 1
+                || _presenter is not IOwnerBoundWorkspaceMutationPresenter bound
+                || _presenter is not IOwnerBoundWorkspacePersistencePresenter persistence
+                || !isCurrentReview())
+                return null;
+
+            // Pass the issued frame's stamp through both operations. Neither the
+            // queue nor a postcommit continuation may recapture the current user.
+            CommandResult<WorkspaceRevisionReceipt> mutation = await bound.ApplyConditionMonitorEditAsync(
+                request, owner, workspaceId, expected.ContentRevision, cancellationToken);
+            if (!mutation.Success || mutation.Value is not { } committed
+                || committed.Id != workspaceId
+                || committed.ContentRevision != expected.ContentRevision + 1
+                || committed.SavedRevision != expected.SavedRevision)
+                return null;
+
+            // Once dispatched, page departure does not authorize cancellation or
+            // replay. The runtime still requires this exact live account for Save.
+            CommandResult<WorkspaceSaveReceipt> saved = await persistence.SaveAsync(
+                owner, workspaceId, committed.ContentRevision, cancellationToken);
+            if (!saved.Success || saved.Value is not { } receipt
+                || receipt.Id != workspaceId
+                || receipt.ContentRevision != committed.ContentRevision
+                || receipt.SavedRevision != committed.ContentRevision)
+                return null;
+
+            // A joined canonical receipt stays known even when its original view
+            // can no longer publish. Current display truth only gates feedback.
+            try
+            {
+                if (!IsNativeMutationObservationCurrent(expected, receipt.ContentRevision)
+                    || State.SavedRevision != receipt.SavedRevision || State.IsDirty)
+                    return receipt;
+                using var postCommitBudget = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                await SyncShellAsync(postCommitBudget.Token);
+                if (!IsNativeMutationObservationCurrent(expected, receipt.ContentRevision)
+                    || State.SavedRevision != receipt.SavedRevision || State.IsDirty)
+                    return receipt;
+                _durableSaveNotice = new(receipt.Id, receipt.SavedRevision) { OriginalOwner = owner };
+                _notice = "Damage saved.";
+                NotifyChanged();
+            }
+            catch (Exception error) when (error is not OutOfMemoryException)
+            {
+                // Includes subscriber exceptions and lost/cancelled observations.
+                // They cannot erase the known save or authorize a second write.
+            }
+            return receipt;
         }, cancellationToken);
 
     public Task<CareerReputationEditorState?> PrepareCareerReputationEditAsync(
@@ -3725,36 +3876,119 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
 
     public Task<PrimaryArmEditorState?> PreparePrimaryArmEditAsync(
         CancellationToken cancellationToken = default)
-        => _presenter.PreparePrimaryArmEditAsync(cancellationToken);
+        => PreparePrimaryArmEditAsync(State, cancellationToken);
+
+    internal async Task<PrimaryArmEditorState?> PreparePrimaryArmEditAsync(
+        CharacterOverviewState original, CancellationToken cancellationToken = default)
+    {
+        if (!IsNativeEditDisplayCurrent(original)) return null;
+        PrimaryArmEditorState? editor = await _presenter.PreparePrimaryArmEditAsync(cancellationToken);
+        if (editor is null || !IsNativeEditDisplayCurrent(original)
+            || editor.WorkspaceId != original.WorkspaceId
+            || editor.ContentRevision != original.ContentRevision) return null;
+        _primaryArmEditors.GetValue(editor, _ => original);
+        return editor;
+    }
+
+    internal bool IsPrimaryArmEditorCurrent(PrimaryArmEditorState editor)
+        => _primaryArmEditors.TryGetValue(editor, out CharacterOverviewState? original)
+           && editor.WorkspaceId == original.WorkspaceId
+           && editor.ContentRevision == original.ContentRevision
+           && IsNativeEditDisplayCurrent(original);
+
+    internal Task<bool> TryApplyBoundPrimaryArmEditAsync(
+        PrimaryArmEditorState editor, string value, Func<bool> isCurrentEditor,
+        CancellationToken cancellationToken = default)
+    {
+        if (!_primaryArmEditors.TryGetValue(editor, out CharacterOverviewState? original))
+            return Task.FromResult(false);
+        return WithWorkspaceActivationGateAsync(
+            () => !isCurrentEditor() ? Task.FromResult(false)
+                : ApplyPrimaryArmEditCoreAsync(
+                    new(editor.WorkspaceId, editor.ContentRevision, value), original, cancellationToken),
+            cancellationToken);
+    }
+
+    internal bool IsPrimaryArmSaveCurrent(PrimaryArmEditorState editor)
+        => _primaryArmEditors.TryGetValue(editor, out CharacterOverviewState? original)
+           && original.ContentRevision < long.MaxValue
+           && IsNativeMutationObservationCurrent(original, original.ContentRevision + 1)
+           && State.SavedRevision == original.ContentRevision + 1;
 
     public async Task ApplyPrimaryArmEditAsync(
         PrimaryArmEditRequest request,
         CancellationToken cancellationToken = default)
-        => await WithWorkspaceActivationGateAsync(
-            () => ApplyPrimaryArmEditCoreAsync(request, cancellationToken),
-            cancellationToken);
+    {
+        CharacterOverviewState original = State;
+        if (!await WithWorkspaceActivationGateAsync(
+            () => ApplyPrimaryArmEditCoreAsync(request, original, cancellationToken), cancellationToken))
+            throw new InvalidOperationException(
+                "The primary-arm change could not be verified for the original runner. Reopen it to review the outcome before retrying.");
+    }
 
-    private async Task ApplyPrimaryArmEditCoreAsync(
+    private async Task<bool> ApplyPrimaryArmEditCoreAsync(
         PrimaryArmEditRequest request,
+        CharacterOverviewState original,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
-        if (State.WorkspaceId != request.WorkspaceId
-            || State.ContentRevision != request.ExpectedContentRevision)
-        {
-            throw new InvalidOperationException(
-                "This runner changed while Primary Arm was open. Reopen it before saving.");
-        }
+        if (!IsNativeEditDisplayCurrent(original)
+            || original.WorkspaceId != request.WorkspaceId
+            || original.ContentRevision != request.ExpectedContentRevision
+            || original.DisplayOwnerContext is not { IsValid: true } owner
+            || _presenter is not IOwnerBoundWorkspaceMutationPresenter bound
+            || _presenter is not IOwnerBoundWorkspacePersistencePresenter persistence)
+            return false;
 
-        await _presenter.ApplyPrimaryArmEditAsync(request, cancellationToken);
-        if (State.Error is null)
+        CommandResult<WorkspaceRevisionReceipt> mutation = await bound.ApplyPrimaryArmEditAsync(
+            request, owner, cancellationToken);
+        if (!mutation.Success || mutation.Value is not { } committed
+            || committed.Id != request.WorkspaceId || original.ContentRevision == long.MaxValue
+            || committed.ContentRevision != original.ContentRevision + 1
+            || committed.SavedRevision != original.SavedRevision
+            || !IsNativeMutationObservationCurrent(original, committed.ContentRevision)) return false;
+        CommandResult<WorkspaceSaveReceipt> saved = await persistence.SaveAsync(
+            owner, committed.Id, committed.ContentRevision, cancellationToken);
+        if (!saved.Success || saved.Value is not { } receipt || receipt.Id != committed.Id
+            || receipt.ContentRevision != committed.ContentRevision
+            || receipt.SavedRevision != committed.ContentRevision
+            || !IsNativeMutationObservationCurrent(original, receipt.ContentRevision)
+            || State.SavedRevision != receipt.SavedRevision) return false;
+        using var postCommitBudget = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        try { await SyncShellAsync(postCommitBudget.Token); }
+        catch (Exception error) when (error is not OutOfMemoryException)
         {
-            await _presenter.SaveAsync(cancellationToken);
+            // Both canonical calls joined. Never replay them on observation failure.
+            return false;
         }
-        _notice = State.Error is null ? "Primary arm saved." : null;
-        await SyncShellAsync(cancellationToken);
+        if (!IsNativeMutationObservationCurrent(original, receipt.ContentRevision)
+            || State.SavedRevision != receipt.SavedRevision) return false;
+        _durableSaveNotice = new(receipt.Id, receipt.SavedRevision) { OriginalOwner = owner };
+        _notice = "Primary arm saved.";
         NotifyChanged();
+        return true;
     }
+
+    private bool IsNativeEditDisplayCurrent(CharacterOverviewState original)
+        => !_disposed && !State.IsBusy && State.Error is null && State.ConflictState is null
+           && original.WorkspaceId is not null && original.ContentRevision > 0
+           && State.WorkspaceId == original.WorkspaceId
+           && State.ContentRevision == original.ContentRevision
+           && State.SavedRevision == original.SavedRevision
+           && ReferenceEquals(State.Profile, original.Profile)
+           && State.ActiveTabId == original.ActiveTabId
+           && State.ActiveActionId == original.ActiveActionId
+           && State.ActiveSectionId == original.ActiveSectionId
+           && State.DisplayOwnerContext == original.DisplayOwnerContext
+           && State.Session.OwnerContext == original.DisplayOwnerContext
+           && _shellPresenter.State.OwnerContext == original.DisplayOwnerContext
+           && IsNativePersistenceOwnerCurrent(original.DisplayOwnerContext);
+
+    private bool IsNativeMutationObservationCurrent(CharacterOverviewState original, long revision)
+        => !_disposed && !State.IsBusy && State.Error is null && State.ConflictState is null
+           && State.Session.ActiveWorkspaceId == original.WorkspaceId
+           && State.Session.OwnerContext == original.DisplayOwnerContext
+           && IsNativePersistenceViewCurrent(original, revision);
 
     public Task<CareerMugshotEditorState?> PrepareCareerMugshotEditAsync(
         CancellationToken cancellationToken = default)
@@ -6276,7 +6510,17 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
                 : null;
         EventHandler? bootstrapObserver = bootstrapTiming is null
             ? null
-            : (_, _) => bootstrapTiming.Observe(State);
+            : (_, _) =>
+            {
+                NativeCreationBootstrapObservation observation = bootstrapTiming.Observe(State);
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+                // Partial observations are diagnostics, never the completed bootstrap marker.
+                if (observation == NativeCreationBootstrapObservation.LoadStarted)
+                    Api36ProofStatePublisher.TraceCreationDialogStage(actionId, "bootstrap-load-start-observed");
+                else if (observation == NativeCreationBootstrapObservation.WorkspaceStatePublished)
+                    Api36ProofStatePublisher.TraceCreationDialogStage(actionId, "bootstrap-workspace-published-observed");
+#endif
+            };
         if (bootstrapObserver is not null)
         {
             _presenter.StateChanged += bootstrapObserver;

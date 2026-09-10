@@ -6361,11 +6361,52 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             ("ExecuteWorkspaceActionAsync", "public async Task ExecuteWorkspaceActionAsync"),
             ("ApplyAttributeEditAsync", "public async Task ApplyAttributeEditAsync"),
             ("ApplyOriginDossierEditAsync", "public async Task ApplyOriginDossierEditAsync"),
-            ("ApplyConditionMonitorEditAsync", "public async Task ApplyConditionMonitorEditAsync"),
             ("ApplyPrimaryArmEditAsync", "public async Task ApplyPrimaryArmEditAsync"),
         ):
             block = self._coordinator_member(source, start_marker)
             self.assertIn("WithWorkspaceActivationGateAsync", block, method_name)
+
+        # The public compatibility entry captures before delegating; the bound
+        # helper owns the same gate and cannot substitute a fresh current frame.
+        condition = self._coordinator_member(source, "public async Task ApplyConditionMonitorEditAsync(")
+        call = "TryApplyBoundConditionMonitorEditAsync(request, original, () => true, cancellationToken)"
+        self.assertLess(condition.index("CharacterOverviewState original = State;"), condition.index(call))
+        bound_condition = self._coordinator_member(source, "internal Task<bool> TryApplyBoundConditionMonitorEditAsync(")
+        gate = bound_condition.index("=> WithWorkspaceActivationGateAsync(async () =>")
+        dispatch = bound_condition.index("return await ApplyConditionMonitorEditCoreAsync(request, expected, cancellationToken);")
+        for guard in (
+            "cancellationToken.ThrowIfCancellationRequested();",
+            "!IsNativeEditDisplayCurrent(expected)", "expected.WorkspaceId is null",
+            "current.WorkspaceId != expected.WorkspaceId",
+            "current.ContentRevision != expected.ContentRevision",
+            "current.SavedRevision != expected.SavedRevision",
+            "!string.Equals(current.ActiveSectionId, expected.ActiveSectionId, StringComparison.Ordinal)",
+            "!ReferenceEquals(current.ActiveConditionMonitor, expected.ActiveConditionMonitor)",
+            "expected.ActiveConditionMonitor is not { CareerEditable: true } monitor",
+            "monitor.Tracks.Count(track => track.Track == request.Track) != 1",
+            "!isCurrentInspector()", "return false;",
+        ):
+            self.assertLess(gate, bound_condition.index(guard))
+            self.assertLess(bound_condition.index(guard), dispatch)
+        for block in (condition, bound_condition):
+            self.assertNotIn("_presenter.", block)
+            self.assertNotIn("bound.ApplyConditionMonitorEditAsync(", block)
+        current = self._coordinator_member(source, "private bool IsNativeEditDisplayCurrent(")
+        for guard in (
+            "!_disposed", "!State.IsBusy", "State.Error is null", "State.ConflictState is null",
+            "State.WorkspaceId == original.WorkspaceId",
+            "State.ContentRevision == original.ContentRevision", "State.SavedRevision == original.SavedRevision",
+            "ReferenceEquals(State.Profile, original.Profile)",
+            "State.ActiveTabId == original.ActiveTabId", "State.ActiveActionId == original.ActiveActionId",
+            "State.ActiveSectionId == original.ActiveSectionId",
+            "State.DisplayOwnerContext == original.DisplayOwnerContext",
+            "State.Session.OwnerContext == original.DisplayOwnerContext",
+            "_shellPresenter.State.OwnerContext == original.DisplayOwnerContext",
+            "IsNativePersistenceOwnerCurrent(original.DisplayOwnerContext)",
+        ):
+            self.assertIn(guard, current)
+        live = self._coordinator_member(source, "private bool IsNativePersistenceOwnerCurrent(")
+        self.assertIn("originalOwner is { IsValid: true } owner && bound.CaptureOwnerContext() == owner", live)
 
         # Collection compatibility calls capture before queueing; the exact bound
         # helper, not a newly captured current frame, owns activation admission.
