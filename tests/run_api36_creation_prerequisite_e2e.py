@@ -105,6 +105,7 @@ PROGRESS_EVENTS_FILE_NAME = "creation-prerequisite-progress.jsonl"
 CREATION_BOOTSTRAP_TIMING_PREFIX = "CHUMMER_CREATION_BOOTSTRAP_TIMING "
 CREATION_BOOTSTRAP_TIMING_FILE_NAME = "creation-bootstrap-timing.json"
 CREATION_BOOTSTRAP_LOGCAT_FILE_NAME = "creation-bootstrap-timing-logcat.txt"
+CREATION_TIMEOUT_DIAGNOSTIC_SECONDS = 8.0
 CREATION_BOOTSTRAP_TIMING_LINE = re.compile(
     rf"^{re.escape(CREATION_BOOTSTRAP_TIMING_PREFIX)}(?P<payload>\{{.*\}})$"
 )
@@ -780,9 +781,84 @@ def wait_for_creation_bootstrap_timing_log(
         last_logcat,
         encoding="utf-8",
     )
-    device.capture("creation-bootstrap-timing-log-timeout")
+    try:
+        capture_creation_bootstrap_timeout(device)
+    except Exception:
+        # Diagnostic failure cannot replace the original failed observation.
+        pass
     raise RuntimeError(
         "Timed out waiting for the exact post-action creation bootstrap timing marker"
+    )
+
+
+def capture_creation_bootstrap_timeout(device: shared.Device) -> None:
+    """Collect bounded diagnostics after failure; never grant more bootstrap time."""
+    name = "creation-bootstrap-timing-log-timeout"
+    deadline = time.monotonic() + CREATION_TIMEOUT_DIAGNOSTIC_SECONDS
+    observation: dict[str, object] = {
+        "diagnosticOnly": True,
+        "bootstrapStatus": "timeout",
+        "freshHierarchy": "unavailable",
+    }
+    try:
+        # The legacy capture copies an existing device XML file. Name it as
+        # prior evidence from the outset, even if later diagnostics fail.
+        device.capture(f"{name}-prior-hierarchy", deadline=min(deadline, time.monotonic() + 2.0))
+    except Exception:
+        pass
+    prior = device.evidence / f"{name}-prior-hierarchy.xml"
+    if prior.is_file():
+        observation["priorHierarchy"] = "copied-existing-device-file-not-fresh"
+    try:
+        trace = device.run(
+            "logcat", "-d", "-b", "main", "-v", "threadtime",
+            "-s", "ChummerCreateDiag:I", "*:S",
+            timeout=shared._remaining_operation_timeout(deadline=deadline, maximum=1.0),
+            deadline=deadline,
+        )
+        (device.evidence / f"{name}-dialog-trace.txt").write_text(trace.stdout, encoding="utf-8")
+    except Exception:
+        pass
+    try:
+        fresh = device.run(
+            *shared.ADB_READ_ONLY_HIERARCHY_ARGUMENTS,
+            timeout=shared._remaining_operation_timeout(deadline=deadline, maximum=5.0),
+            deadline=deadline,
+            text=False,
+        )
+        raw = fresh.stdout
+        # /dev/tty may add UIAutomator's status line around the XML document.
+        start = raw.find(b"<hierarchy")
+        end = raw.rfind(b"</hierarchy>")
+        complete = shared._complete_file_hierarchy(raw[start:end + len(b"</hierarchy>")])
+        if complete is not None:
+            (device.evidence / f"{name}.xml").write_text(complete[0], encoding="utf-8")
+            observation["freshHierarchy"] = "captured-from-new-read-only-dump"
+        else:
+            observation["freshHierarchy"] = "invalid-new-dump"
+    except Exception as error:
+        observation["freshHierarchyFailureType"] = type(error).__name__
+    (device.evidence / f"{name}-diagnostics.json").write_text(
+        json.dumps(observation, sort_keys=True, indent=2) + "\n", encoding="utf-8"
+    )
+
+
+def record_creation_action_tap_intent(
+    device: shared.Device, node: shared.UiNode, target_returned_at: float
+) -> None:
+    """Retain coordinates and clocks, never field values or a dispatch receipt."""
+    (device.evidence / "creation-action-tap-intent.json").write_text(
+        json.dumps({
+            "diagnosticOnly": True,
+            "event": "tap-intent",
+            "resourceId": "dialog-action-create-character",
+            "bounds": list(node.bounds),
+            "center": list(node.center),
+            "targetReturnedAtMonotonicSeconds": target_returned_at,
+            "tapRequestedAtMonotonicSeconds": time.monotonic(),
+            "tapRequestedAtUtc": datetime.now(timezone.utc).isoformat(),
+        }, sort_keys=True, indent=2) + "\n",
+        encoding="utf-8",
     )
 
 
@@ -11427,6 +11503,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         target_scroll_surface="dialog-surface",
         max_target_scrolls=16,
     )
+    create_character_target_returned_at = time.monotonic()
     progress.record_initial_milestone("dialog-acquisition-complete")
     if (
         create_character.attributes.get("enabled") != "true"
@@ -11439,6 +11516,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         )
     progress.advance("initial-authority")
     clear_creation_bootstrap_timing_log(device)
+    record_creation_action_tap_intent(device, create_character, create_character_target_returned_at)
     device.shell(
         "input",
         "tap",

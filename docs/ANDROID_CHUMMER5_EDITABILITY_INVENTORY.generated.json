@@ -592,7 +592,7 @@
       {
         "path": "src/Chummer.Android/Native/NativeDialogPage.cs",
         "exists": true,
-        "sha256": "08cebaaa8bd7b62353976d4e63cbebfde44f537afb80753a742069a33e60515f"
+        "sha256": "37c8af0278fe0b1ce1a3b318997cb01cf9651a59ababc312fbe77653320c37b7"
       },
       {
         "path": "src/Chummer.Android/Native/AndroidCharacterSettingsPhoneCapabilities.Generated.cs",
@@ -652,7 +652,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "e73414f9633c6b393591a058f5dfdbffe0aaabe4c50992279a47ac92b076deac"
+        "sha256": "01a579accd33b8c76abb1bfdad83f16d2ac7c31caab213b4ffa870d94b0a57cb"
       },
       {
         "path": "src/Chummer.Android/Native/RunnerSessionSr5CareerWizardPhoneAuthority.cs",
@@ -902,7 +902,7 @@
       {
         "path": "src/Chummer.Android/Proof/Api36ProofStatePublisher.cs",
         "exists": true,
-        "sha256": "3143d6b5718d4d93280f9e8e7e1ceb7318e94612e44e7a1f1b6eabddd27eb797"
+        "sha256": "7ecc2270d7e7d8f45b79e86227397f0dee5b5a9a99eb9e01c7816c5faad9387e"
       },
       {
         "path": "tests/Chummer.Android.Native.CompileCheck/NativeCompileInputs.props",
@@ -1462,7 +1462,7 @@
       {
         "path": "tests/run_api36_creation_prerequisite_e2e.py",
         "exists": true,
-        "sha256": "19469901284cb7e608d82536d944a9c903f53f7bb51498837719b2c512a06687"
+        "sha256": "3c0e0c193d390e24631d6f1b5d4244beaea7a1384d2f155620ba512f6a35305c"
       },
       {
         "path": "tests/fixtures/career-condition-monitor-e2e.chum5",

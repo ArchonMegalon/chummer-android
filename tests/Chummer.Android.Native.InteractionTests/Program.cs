@@ -13,6 +13,11 @@ internal static class Program
 {
     private static async Task Main(string[] args)
     {
+        if (args.Length == 1 && args[0] == "--native-dialog-busy")
+        {
+            await AfterRunAuthorityHarness.RunNativeDialogBusyCaseAsync();
+            return;
+        }
         if (args.Length == 2 && args[0] == "--android-continuation-native-content-root")
         {
             await AfterRunAuthorityHarness.RunAndroidContinuationNativeCasesAsync(args[1]);
@@ -106,6 +111,7 @@ internal static class Program
             (nameof(TabletInspectorBindingTests.RunAsync), TabletInspectorBindingTests.RunAsync),
             (nameof(SettlementRecoveryUsesActualNativeAndCoreAssembliesAsync), SettlementRecoveryUsesActualNativeAndCoreAssembliesAsync),
             (nameof(AfterRunAuthorityHarness.RunNativePageCasesAsync), AfterRunAuthorityHarness.RunNativePageCasesAsync),
+            (nameof(AfterRunAuthorityHarness.RunNativeDialogBusyCaseAsync), AfterRunAuthorityHarness.RunNativeDialogBusyCaseAsync),
             (nameof(QueuedOlderUnfocusedCannotOverwriteActionInputAsync), QueuedOlderUnfocusedCannotOverwriteActionInputAsync),
             (nameof(StaleGenerationAndSameIdShapeChangesFailClosedAsync), StaleGenerationAndSameIdShapeChangesFailClosedAsync),
             (nameof(ReadOnlyTransitionFailsClosedAsync), ReadOnlyTransitionFailsClosedAsync),

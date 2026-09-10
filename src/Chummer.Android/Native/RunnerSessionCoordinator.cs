@@ -6253,12 +6253,20 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
     }
 
     public async Task ExecuteDialogActionAsync(string actionId, CancellationToken cancellationToken = default)
-        => await WithWorkspaceActivationGateAsync(
+    {
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+        Api36ProofStatePublisher.TraceCreationDialogStage(actionId, "activation-queued");
+#endif
+        await WithWorkspaceActivationGateAsync(
             () => ExecuteDialogActionCoreAsync(actionId, cancellationToken),
             cancellationToken);
+    }
 
     private async Task ExecuteDialogActionCoreAsync(string actionId, CancellationToken cancellationToken)
     {
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+        Api36ProofStatePublisher.TraceCreationDialogStage(actionId, "activation-admitted");
+#endif
         CharacterWorkspaceId? workspaceBeforeAction = State.WorkspaceId;
         NativeCreationBootstrapTiming? bootstrapTiming = string.Equals(
             actionId,
@@ -6292,6 +6300,9 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         }
 
         long presenterCompletedTimestamp = System.Diagnostics.Stopwatch.GetTimestamp();
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+        Api36ProofStatePublisher.TraceCreationDialogStage(actionId, "presenter-returned");
+#endif
         if (activeSectionAction is not null
             && State.ActiveDialog is null
             && State.ContentRevision > contentRevision)
@@ -6311,8 +6322,14 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
             RefreshShellAfterPresenterSyncAsync,
             cancellationToken);
         long androidShellCompletedTimestamp = System.Diagnostics.Stopwatch.GetTimestamp();
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+        Api36ProofStatePublisher.TraceCreationDialogStage(actionId, "shell-complete");
+#endif
         await ProcessPendingOutputsAsync(cancellationToken);
         long pendingOutputsCompletedTimestamp = System.Diagnostics.Stopwatch.GetTimestamp();
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+        Api36ProofStatePublisher.TraceCreationDialogStage(actionId, "outputs-complete");
+#endif
         if (bootstrapSnapshot is not null && AndroidE2EAuthority.Enabled)
         {
             TraceCreationBootstrapTiming(

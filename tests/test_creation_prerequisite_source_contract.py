@@ -474,6 +474,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 "creation-bootstrap-timing-json-invalid"
             )
 
+    @mock.patch.object(driver, "capture_creation_bootstrap_timeout", lambda device: device.capture("creation-bootstrap-timing-log-timeout"))
     def test_creation_bootstrap_wait_rejects_illegal_stream_or_snapshot_lines(self) -> None:
         payload = self.bootstrap_timing_payload()
         marker = driver.CREATION_BOOTSTRAP_TIMING_PREFIX + json.dumps(
@@ -585,6 +586,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 TimingDevice.captures,
             )
 
+    @mock.patch.object(driver, "capture_creation_bootstrap_timeout", lambda device: device.capture("creation-bootstrap-timing-log-timeout"))
     def test_creation_bootstrap_stream_rejects_prefixed_marker_line(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             payload = self.bootstrap_timing_payload()
@@ -613,6 +615,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 "creation-bootstrap-timing-log-timeout"
             )
 
+    @mock.patch.object(driver, "capture_creation_bootstrap_timeout", lambda device: device.capture("creation-bootstrap-timing-log-timeout"))
     def test_creation_bootstrap_stream_success_at_deadline_fails_without_snapshot(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             payload = self.bootstrap_timing_payload()
@@ -648,6 +651,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             self.assertEqual("timeout", observation["status"])
             self.assertEqual(0, observation["snapshotLogcatReadCount"])
 
+    @mock.patch.object(driver, "capture_creation_bootstrap_timeout", lambda device: device.capture("creation-bootstrap-timing-log-timeout"))
     def test_creation_bootstrap_snapshot_cannot_extend_original_deadline(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             payload = self.bootstrap_timing_payload()
@@ -710,6 +714,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             )[0],
         )
 
+    @mock.patch.object(driver, "capture_creation_bootstrap_timeout", lambda device: device.capture("creation-bootstrap-timing-log-timeout"))
     def test_creation_bootstrap_marker_poll_times_out_fail_closed(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             device = mock.Mock()
@@ -742,6 +747,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             self.assertEqual(1, observation["streamLogcatReadCount"])
             self.assertEqual(0, observation["snapshotLogcatReadCount"])
 
+    @mock.patch.object(driver, "capture_creation_bootstrap_timeout", lambda device: device.capture("creation-bootstrap-timing-log-timeout"))
     def test_creation_bootstrap_transport_timeout_rejects_partial_marker_output(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             evidence = Path(temporary)
@@ -787,6 +793,115 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                     encoding="utf-8"
                 ),
             )
+
+    def test_creation_timeout_diagnostic_separates_stale_and_fresh_hierarchies(self) -> None:
+        for fresh_succeeds in (True, False):
+            with self.subTest(fresh_succeeds=fresh_succeeds), tempfile.TemporaryDirectory() as temporary:
+                device = mock.Mock()
+                device.evidence = Path(temporary)
+                name = "creation-bootstrap-timing-log-timeout"
+                stale = '<hierarchy rotation="0"><node text="prior" /></hierarchy>'
+                fresh = '<hierarchy rotation="0"><node text="fresh" /></hierarchy>'
+                device.capture.side_effect = lambda captured_name, **_kwargs: (
+                    device.evidence / f"{captured_name}.xml"
+                ).write_text(stale)
+                device.run.side_effect = (
+                    subprocess.CompletedProcess([], 0, stdout="stage=claimed", stderr=""),
+                    subprocess.CompletedProcess([], 0, stdout=(fresh + "\nUI hierchary dumped to: /dev/tty").encode(), stderr=b"")
+                    if fresh_succeeds else subprocess.TimeoutExpired([], 5),
+                )
+                with mock.patch.object(driver.time, "monotonic", return_value=100.0):
+                    driver.capture_creation_bootstrap_timeout(device)
+                self.assertEqual(stale, (device.evidence / f"{name}-prior-hierarchy.xml").read_text())
+                self.assertEqual(fresh_succeeds, (device.evidence / f"{name}.xml").exists())
+                if fresh_succeeds:
+                    self.assertEqual(fresh, (device.evidence / f"{name}.xml").read_text())
+                observation = json.loads((device.evidence / f"{name}-diagnostics.json").read_text())
+                self.assertTrue(observation["diagnosticOnly"])
+                self.assertEqual("timeout", observation["bootstrapStatus"])
+                self.assertEqual(2, device.run.call_count)
+                self.assertEqual(driver.shared.ADB_READ_ONLY_HIERARCHY_ARGUMENTS, device.run.call_args.args)
+                self.assertEqual(108.0, device.run.call_args.kwargs["deadline"])
+                self.assertEqual(5.0, device.run.call_args.kwargs["timeout"])
+                device.shell.assert_not_called()
+
+    def test_creation_timeout_diagnostic_failure_cannot_replace_bootstrap_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            device = mock.Mock()
+            device.evidence = Path(temporary)
+            device.run.side_effect = subprocess.TimeoutExpired([], 1.0)
+            with mock.patch.object(driver, "capture_creation_bootstrap_timeout", side_effect=OSError("diagnostic unavailable")), \
+                    self.assertRaisesRegex(RuntimeError, "exact post-action creation bootstrap"):
+                driver.wait_for_creation_bootstrap_timing_log(device, timeout=1.0)
+            self.assertEqual(1, device.run.call_count)
+            device.shell.assert_not_called()
+
+    def test_creation_timeout_actual_capture_keeps_prior_xml_and_rejects_partial_new_dump(self) -> None:
+        for fresh_complete in (True, False):
+            with self.subTest(fresh_complete=fresh_complete), tempfile.TemporaryDirectory() as temporary:
+                evidence = Path(temporary) / "screenshots"
+                device = driver.shared.Device(Path("/unused/adb"), "unused", evidence)
+                name = "creation-bootstrap-timing-log-timeout"
+                stale = '<hierarchy rotation="0"><node text="prior" /></hierarchy>'
+                fresh = b'<hierarchy rotation="0"><node text="new" /></hierarchy>'
+                if not fresh_complete:
+                    fresh = fresh.removesuffix(b"</hierarchy>")
+                outputs = (b"screenshot", stale, "old log tail", "stage=claimed", fresh)
+                with mock.patch.object(driver.time, "monotonic", return_value=100.0), \
+                        mock.patch.object(device, "run", side_effect=[
+                            subprocess.CompletedProcess([], 0, stdout=output) for output in outputs
+                        ]) as transport:
+                    driver.capture_creation_bootstrap_timeout(device)
+                self.assertEqual(b"screenshot", (evidence / f"{name}-prior-hierarchy.png").read_bytes())
+                self.assertEqual(stale, (evidence / f"{name}-prior-hierarchy.xml").read_text())
+                self.assertEqual(fresh_complete, (evidence / f"{name}.xml").exists())
+                self.assertEqual("stage=claimed", (evidence / f"{name}-dialog-trace.txt").read_text())
+                observation = json.loads((evidence / f"{name}-diagnostics.json").read_text())
+                self.assertEqual("timeout", observation["bootstrapStatus"])
+                self.assertEqual("captured-from-new-read-only-dump" if fresh_complete else "invalid-new-dump",
+                                 observation["freshHierarchy"])
+                self.assertEqual(5, transport.call_count)
+                self.assertTrue(all(call.kwargs["deadline"] <= 108.0 for call in transport.call_args_list))
+
+    def test_creation_timeout_exhausted_diagnostic_deadline_admits_no_more_commands(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            evidence = Path(temporary) / "screenshots"
+            device = driver.shared.Device(Path("/unused/adb"), "unused", evidence)
+            clock = [100.0]
+
+            def exhausted(*_args, **_kwargs):
+                clock[0] = 108.0
+                return subprocess.CompletedProcess([], 0, stdout=b"late screenshot")
+
+            with mock.patch.object(driver.time, "monotonic", side_effect=lambda: clock[0]), \
+                    mock.patch.object(device, "run", side_effect=exhausted) as transport:
+                driver.capture_creation_bootstrap_timeout(device)
+            transport.assert_called_once()
+            self.assertEqual(("exec-out", "screencap", "-p"), transport.call_args.args)
+            observation = json.loads((evidence / "creation-bootstrap-timing-log-timeout-diagnostics.json").read_text())
+            self.assertEqual("timeout", observation["bootstrapStatus"])
+            self.assertEqual("unavailable", observation["freshHierarchy"])
+            self.assertEqual("AdbOperationDeadlineExceeded", observation["freshHierarchyFailureType"])
+            self.assertFalse((evidence / "creation-bootstrap-timing-log-timeout.xml").exists())
+
+    def test_creation_tap_intent_retains_geometry_without_character_values_or_dispatch_claim(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            device = mock.Mock()
+            device.evidence = Path(temporary)
+            node = self.canonical_node("dialog-action-create-character", text="private value")
+            with mock.patch.object(driver.time, "monotonic", return_value=12.0):
+                driver.record_creation_action_tap_intent(device, node, 11.0)
+            payload = (device.evidence / "creation-action-tap-intent.json").read_text()
+            self.assertNotIn("private value", payload)
+            observation = json.loads(payload)
+            self.assertTrue(observation["diagnosticOnly"])
+            self.assertEqual("tap-intent", observation["event"])
+            self.assertEqual([100, 300, 900, 500], observation["bounds"])
+            self.assertEqual([500, 400], observation["center"])
+            self.assertEqual(11.0, observation["targetReturnedAtMonotonicSeconds"])
+            self.assertEqual(12.0, observation["tapRequestedAtMonotonicSeconds"])
+            device.run.assert_not_called()
+            device.shell.assert_not_called()
 
     def test_artifact_binding_digest_uses_canonical_sorted_json(self) -> None:
         first = {"driver": "a", "apk": "b", "nested": {"events": "c"}}
