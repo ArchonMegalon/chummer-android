@@ -809,6 +809,7 @@ public sealed partial class TabletBuildPage : NativePageBase
             && current.Error is null
             && expected.WorkspaceId is not null
             && current.WorkspaceId == expected.WorkspaceId
+            && current.DisplayOwnerContext == expected.DisplayOwnerContext
             && current.ContentRevision == expected.ContentRevision
             && current.SavedRevision == expected.SavedRevision
             && string.Equals(current.ActiveSectionId, expected.ActiveSectionId, StringComparison.Ordinal)

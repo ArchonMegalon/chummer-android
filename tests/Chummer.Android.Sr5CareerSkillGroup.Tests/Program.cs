@@ -57,6 +57,30 @@ internal static class Program
             "The verified bundled-content digest must remain bound.");
         Require(draft.RuntimeAuthority.RuntimeDigest == Sr5CareerSkillGroupRuntimeAuthority.CurrentRuntimeDigest,
             "The exact Core/Presentation/content runtime digest must remain bound.");
+        // A valid hash cannot authorize an older engine or a content checkout
+        // substituted for the runtime, even when the packaged data is unchanged.
+        foreach ((string core, string presentation) in new[]
+        {
+            ("880e5df8ace981e9a60264d835329dd32f54a158", "399cc0b4e0b70f678ebeb6a2fcc9d0e0659bf61d"),
+            ("1d8cf694d0412b3bd9f4a241fb95244fad341160", Sr5CareerSkillGroupRuntimeAuthority.CurrentPresentationRevision)
+        })
+        {
+            Sr5CareerSkillGroupRuntimeAuthority stale = draft.RuntimeAuthority with
+            {
+                CoreRevision = core,
+                PresentationRevision = presentation
+            };
+            stale = stale with
+            {
+                RuntimeDigest = Sr5CareerSkillGroupRuntimeAuthority.ComputeRuntimeDigest(
+                    stale.ContractName, stale.CoreRevision,
+                    stale.PresentationRevision, stale.ContentDigest)
+            };
+            Require(!stale.IsCurrent(), "Self-consistent stale runtime authority must be rejected.");
+            Require(!(draft with { RuntimeAuthority = stale }).IsExact(),
+                "A rehashed stale generation must not authorize a reviewed mutation.");
+        }
+
         CareerSkillGroupAdvanceRequest compatibility = draft.ToRequest();
         Require(compatibility.ExpectedSkillGroup == quote
             && compatibility.ExpectedRuleDigest == quote.RuleDigest,

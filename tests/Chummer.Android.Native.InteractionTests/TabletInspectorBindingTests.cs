@@ -22,12 +22,16 @@ internal static class TabletInspectorBindingTests
         RevisionAndFieldDriftRetainButNeverApplyDraft();
         InPlaceFieldAuthorityDriftCannotApplyRetainedInput();
         WorkspaceSwitchCannotLeakDrafts();
+        AccountSwitchCannotLeakDraftsOrReviveOldGrantInput();
+        AccountOwnedConditionAndAttributeDraftsRemainSeparate();
+        NewAuthorityInstanceRequiresDraftReview();
         RetiredPageCannotOverwriteOrDeleteNewerDraft();
         CompleteNestedIdentityAndCaseRemainBound();
         ObservedSuccessCleanupRequiresExactSuccessorProjection();
         AmbiguousCollectionReadbackCannotClearDraft();
         await ExplicitDiscardIsScopedAndCancelSafeAsync();
         await DelayedDiscardCannotEraseNewerInputAsync();
+        await DelayedDiscardCannotEraseEqualNewerDraftAsync();
         DelayedDamageActionCannotMixTracksAndPickers();
         DetachedMoveCannotReorderThePreviousItem();
         DelayedApplyCannotMixTargetsAndControls();
@@ -173,6 +177,93 @@ internal static class TabletInspectorBindingTests
             "Returning to the original workspace lost its selected draft.");
     }
 
+    private static void AccountSwitchCannotLeakDraftsOrReviveOldGrantInput()
+    {
+        using var fixture = new Fixture();
+        OwnerContextStamp ownerA = new(new OwnerScope("tablet-owner-a"), "tablet-account-authority", 1);
+        OwnerContextStamp ownerB = ownerA with { Owner = new OwnerScope("tablet-owner-b"), TransitionRevision = 2 };
+        fixture.State = fixture.State with { DisplayOwnerContext = ownerA };
+        fixture.Refresh();
+        fixture.Click($"tablet-collection-item-{ItemBId}");
+        fixture.Notes.Text = "account A private draft";
+        CharacterOverviewState original = fixture.State;
+        fixture.State = original with { DisplayOwnerContext = ownerB };
+        fixture.Refresh();
+        Require(fixture.Notes.Text == "saved A" && !fixture.Has("tablet-inspector-draft-conflict"),
+            "Identical workspace/item IDs leaked A's selection or draft into account B.");
+        fixture.Notes.Text = "account B private draft";
+        fixture.Recreate();
+        Require(fixture.Notes.Text == "account B private draft", "Account B lost its independently retained input.");
+
+        fixture.State = original with { DisplayOwnerContext = ownerA with { TransitionRevision = 3 } };
+        fixture.Refresh();
+        Require(fixture.Has("tablet-inspector-draft-conflict")
+            && fixture.Label("tablet-retained-tablet-field-notes").Text.Contains("account A private draft", StringComparison.Ordinal),
+            "Returning to A either lost its draft or silently rebound it to the new grant epoch.");
+        fixture.Click("tablet-inspector-save");
+        Require(fixture.Requests.Count == 0, "Old-grant draft input was applied without a new explicit review.");
+        fixture.State = original with { DisplayOwnerContext = ownerB };
+        fixture.Refresh();
+        Require(fixture.Notes.Text == "account B private draft" && !fixture.Has("tablet-inspector-draft-conflict"),
+            "A's conflict overwrote B's separately owned draft.");
+        Console.WriteLine("PASS tablet retained input: same IDs across accounts and same-account new-grant conflict");
+    }
+
+    private static void AccountOwnedConditionAndAttributeDraftsRemainSeparate()
+    {
+        foreach (bool attribute in new[] { false, true })
+        {
+            using var fixture = new Fixture(condition: !attribute);
+            OwnerContextStamp ownerA = new(new OwnerScope("tablet-owner-a"), "tablet-account-authority", 1);
+            OwnerContextStamp ownerB = ownerA with { Owner = new OwnerScope("tablet-owner-b"), TransitionRevision = 2 };
+            fixture.State = fixture.State with { DisplayOwnerContext = ownerA };
+            if (attribute)
+                fixture.State = fixture.State with { ActiveCollectionEditor = null, ActiveSectionId = "attributes",
+                    ActiveSectionJson = AttributeJson(2, 0) };
+            fixture.Refresh();
+            string picker = attribute ? "tablet-attribute-base-body" : "tablet-condition-filled-physical";
+            int original = fixture.Picker(picker).SelectedIndex;
+            int draftA = attribute ? 3 : 7;
+            int draftB = attribute ? 4 : 6;
+            fixture.Picker(picker).SelectedIndex = draftA;
+            CharacterOverviewState stateA = fixture.State;
+            fixture.State = stateA with { DisplayOwnerContext = ownerB };
+            fixture.Refresh();
+            Require(fixture.Picker(picker).SelectedIndex == original && !fixture.Has("tablet-inspector-draft-conflict"),
+                $"{picker}: A's private draft crossed the account boundary.");
+            fixture.Picker(picker).SelectedIndex = draftB;
+            fixture.State = stateA with { DisplayOwnerContext = ownerA with { TransitionRevision = 3 } };
+            fixture.Refresh();
+            Require(fixture.Has("tablet-inspector-draft-conflict") && fixture.Has($"tablet-retained-{picker}"),
+                $"{picker}: old-grant input was lost or automatically rebound.");
+            fixture.State = stateA with { DisplayOwnerContext = ownerB };
+            fixture.Refresh();
+            Require(fixture.Picker(picker).SelectedIndex == draftB && !fixture.Has("tablet-inspector-draft-conflict"),
+                $"{picker}: A's retained conflict corrupted B's draft.");
+            Require(fixture.Requests.Count == 0 && fixture.ConditionRequests.Count == 0,
+                "Changing accounts applied a retained draft.");
+        }
+    }
+
+    private static void NewAuthorityInstanceRequiresDraftReview()
+    {
+        using var fixture = new Fixture();
+        OwnerContextStamp owner = new(new OwnerScope("tablet-owner-a"), "first-authority-instance", 1);
+        fixture.State = fixture.State with { DisplayOwnerContext = owner };
+        fixture.Refresh();
+        fixture.Notes.Text = "input from the retired authority";
+        fixture.State = fixture.State with
+        {
+            DisplayOwnerContext = new OwnerContextStamp(owner.Owner, "replacement-authority-instance", 1)
+        };
+        fixture.Refresh();
+        Require(fixture.Has("tablet-inspector-draft-conflict")
+            && fixture.Label("tablet-retained-tablet-field-notes").Text.Contains("retired authority", StringComparison.Ordinal),
+            "An equal revision in a different authority instance revived stale input.");
+        fixture.Click("tablet-inspector-save");
+        Require(fixture.Requests.Count == 0, "Replacement authority applied an unreviewed old-authority draft.");
+    }
+
     private static void InPlaceFieldAuthorityDriftCannotApplyRetainedInput()
     {
         using var fixture = new Fixture();
@@ -229,6 +320,22 @@ internal static class TabletInspectorBindingTests
         fixture.Recreate();
         Require(fixture.Notes.Text == "typed after discard review",
             "Delayed discard erased newer input from the same render.");
+    }
+
+    private static async Task DelayedDiscardCannotEraseEqualNewerDraftAsync()
+    {
+        using var fixture = new Fixture();
+        fixture.Notes.Text = "reviewed value";
+        var pending = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        fixture.Confirmation = pending.Task;
+        Task discard = fixture.DiscardAsync();
+        fixture.Notes.Text = "different newly typed value";
+        fixture.Notes.Text = "reviewed value";
+        pending.SetResult(true);
+        await discard;
+        fixture.Recreate();
+        Require(fixture.Notes.Text == "reviewed value",
+            "A stale discard confirmation erased a newer equal-valued draft incarnation.");
     }
 
     private static void RetiredPageCannotOverwriteOrDeleteNewerDraft()
@@ -289,9 +396,12 @@ internal static class TabletInspectorBindingTests
     {
         foreach (string family in new[] { "collection", "condition", "attribute" })
         foreach (bool exact in new[] { false, true })
-        foreach (string lifetime in new[] { "same-page", "refresh", "departure", "recreated", "newer-input-aba" })
+        foreach (string lifetime in new[] { "same-page", "refresh", "departure", "recreated", "newer-input-aba", "other-owner" })
         {
             using var fixture = new Fixture(condition: family == "condition");
+            fixture.State = fixture.State with
+            { DisplayOwnerContext = new(new OwnerScope("tablet-owner-a"), "tablet-account-authority", 1) };
+            fixture.Refresh();
             if (family == "attribute")
             {
                 fixture.State = fixture.State with { ActiveCollectionEditor = null, ActiveSectionId = "attributes",
@@ -357,11 +467,15 @@ internal static class TabletInspectorBindingTests
             }
             Func<CharacterOverviewState, bool> matches = current => (bool)typeof(TabletBuildPage)
                 .GetMethod(matcher, BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null, [current, ..arguments])!;
+            if (lifetime == "other-owner")
+                fixture.State = fixture.State with
+                { DisplayOwnerContext = new(new OwnerScope("tablet-owner-b"), "tablet-account-authority", 2) };
             typeof(TabletBuildPage).GetMethod("ForgetObservedAppliedDraft", BindingFlags.Instance | BindingFlags.NonPublic)!
                 .Invoke(operationPage, [expected, draft, matches]);
+            fixture.State = fixture.State with { DisplayOwnerContext = expected.DisplayOwnerContext };
             fixture.Refresh();
             fixture.Recreate();
-            Require(fixture.Has("tablet-inspector-draft-conflict") == (!exact || lifetime == "newer-input-aba"),
+            Require(fixture.Has("tablet-inspector-draft-conflict") == (!exact || lifetime is "newer-input-aba" or "other-owner"),
                 $"{family}/{lifetime}: cleanup lost newer input or retained an exactly applied unchanged draft.");
         }
         // These are synthetic typed readback tests of the real cleanup logic.
@@ -439,9 +553,10 @@ internal static class TabletInspectorBindingTests
 
     private static async Task DamageWaitRechecksTrackAndWorkspaceAsync()
     {
-        foreach (string change in new[] { "workspace", "revision", "track", "refresh", "departure", "unchanged" })
+        foreach (string change in new[] { "workspace", "revision", "track", "refresh", "departure", "owner-b", "owner-aba", "unchanged" })
         {
             using var fixture = new Fixture(condition: true);
+            BindOwnerDriftCase(fixture, change);
             SemaphoreSlim gate = fixture.ActivationGate;
             Require(gate.Wait(0), "Could not reserve workspace gate.");
             Task<bool> action;
@@ -460,6 +575,8 @@ internal static class TabletInspectorBindingTests
                     case "track": fixture.Click("tablet-condition-track-stun"); break;
                     case "refresh": fixture.Refresh(); break;
                     case "departure": fixture.Depart(); break;
+                    case "owner-b":
+                    case "owner-aba": ChangeOwnerWithoutRefresh(fixture, change); break;
                 }
             }
             finally { gate.Release(); }
@@ -477,9 +594,10 @@ internal static class TabletInspectorBindingTests
 
     private static async Task DeleteConfirmationStaysBoundToTheReviewedItemAsync()
     {
-        foreach (string change in new[] { "declined", "selection", "workspace", "revision", "departure", "unchanged" })
+        foreach (string change in new[] { "declined", "selection", "workspace", "revision", "departure", "owner-b", "owner-aba", "unchanged" })
         {
             using var fixture = new Fixture(mutable: true);
+            BindOwnerDriftCase(fixture, change);
             var answer = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
             fixture.Confirmation = answer.Task;
             Button oldDelete = fixture.Button("tablet-inspector-delete");
@@ -495,6 +613,8 @@ internal static class TabletInspectorBindingTests
                 case "workspace": fixture.State = fixture.State with { WorkspaceId = new("other-runner") }; break;
                 case "revision": fixture.AdvanceRevision(); break;
                 case "departure": fixture.Depart(); break;
+                case "owner-b":
+                case "owner-aba": ChangeOwnerWithoutRefresh(fixture, change); break;
             }
             answer.SetResult(change != "declined");
             await action;
@@ -518,9 +638,10 @@ internal static class TabletInspectorBindingTests
 
     private static async Task DeleteWaitRechecksAuthorityAfterConfirmationAsync()
     {
-        foreach (string change in new[] { "selection", "workspace", "revision", "departure", "unchanged" })
+        foreach (string change in new[] { "selection", "workspace", "revision", "departure", "owner-b", "owner-aba", "unchanged" })
         {
             using var fixture = new Fixture(mutable: true);
+            BindOwnerDriftCase(fixture, change);
             fixture.Confirmation = Task.FromResult(true);
             SemaphoreSlim gate = fixture.ActivationGate;
             Require(gate.Wait(0), "Could not reserve the Delete activation gate.");
@@ -538,6 +659,8 @@ internal static class TabletInspectorBindingTests
                     case "workspace": fixture.State = fixture.State with { WorkspaceId = new("other-runner") }; break;
                     case "revision": fixture.AdvanceRevision(); break;
                     case "departure": fixture.Depart(); break;
+                    case "owner-b":
+                    case "owner-aba": ChangeOwnerWithoutRefresh(fixture, change); break;
                 }
             }
             finally { gate.Release(); }
@@ -642,10 +765,11 @@ internal static class TabletInspectorBindingTests
         foreach (string change in new[]
         {
             "workspace", "revision", "saved-revision", "section", "editor", "selection",
-            "refresh", "departure", "busy", "error", "disposed", "unchanged"
+            "refresh", "departure", "busy", "error", "disposed", "owner-b", "owner-aba", "unchanged"
         })
         {
             using var fixture = new Fixture();
+            BindOwnerDriftCase(fixture, change);
             fixture.Notes.Text = "queued A draft";
             var gate = (SemaphoreSlim)typeof(RunnerSessionCoordinator).GetField("_workspaceActivationGate",
                 BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(fixture.Coordinator)!;
@@ -685,6 +809,8 @@ internal static class TabletInspectorBindingTests
                     case "busy": fixture.State = fixture.State with { IsBusy = true }; break;
                     case "error": fixture.State = fixture.State with { Error = "Source unavailable" }; break;
                     case "disposed": fixture.Coordinator.Dispose(); break;
+                    case "owner-b":
+                    case "owner-aba": ChangeOwnerWithoutRefresh(fixture, change); break;
                 }
             }
             finally { gate.Release(); }
@@ -703,6 +829,25 @@ internal static class TabletInspectorBindingTests
                 Require(!await action && fixture.Requests.Count == 0,
                     $"Queued Apply forwarded an obsolete request after {change} changed.");
         }
+    }
+
+    private static void BindOwnerDriftCase(Fixture fixture, string change)
+    {
+        if (change is not ("owner-b" or "owner-aba")) return;
+        fixture.State = fixture.State with
+        { DisplayOwnerContext = new(new OwnerScope("tablet-owner-a"), "tablet-account-authority", 1) };
+        fixture.Refresh();
+    }
+
+    private static void ChangeOwnerWithoutRefresh(Fixture fixture, string change)
+    {
+        // Leave the workspace, projection references and page generation alone.
+        // Only the account publication changes while the action is queued.
+        fixture.State = fixture.State with
+        { DisplayOwnerContext = new(new OwnerScope("tablet-owner-b"), "tablet-account-authority", 2) };
+        if (change == "owner-aba")
+            fixture.State = fixture.State with
+            { DisplayOwnerContext = new(new OwnerScope("tablet-owner-a"), "tablet-account-authority", 3) };
     }
 
     private static WorkspaceCollectionEditorState Editor(string a, string b)

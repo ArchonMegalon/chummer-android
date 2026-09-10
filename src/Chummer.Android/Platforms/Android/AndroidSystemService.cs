@@ -36,12 +36,19 @@ public sealed class AndroidSystemService : IAndroidSystemService
     public Task ShareTextAsync(string text)
         => Share.Default.RequestAsync(new ShareTextRequest(text, "Share Chummer"));
 
-    public async Task<bool> PrintPdfAsync(
+    public Task<bool> PrintPdfAsync(
         string fileName,
         string contentBase64,
         string title,
         CancellationToken cancellationToken)
+        => PrintPdfAsync(fileName, contentBase64, title, static () => true, cancellationToken);
+
+    public async Task<bool> PrintPdfAsync(string fileName, string contentBase64, string title,
+        Func<bool> isOriginalContextCurrent, CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(isOriginalContextCurrent);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!isOriginalContextCurrent()) return false;
         Activity? activity = Microsoft.Maui.ApplicationModel.Platform.CurrentActivity;
         PrintManager? printManager = activity?.GetSystemService(Context.PrintService) as PrintManager;
         if (printManager is null)
@@ -55,32 +62,50 @@ public sealed class AndroidSystemService : IAndroidSystemService
         {
             safeName += ".pdf";
         }
-        string pdfPath = Path.Combine(FileSystem.CacheDirectory, safeName);
+        // Each print owns one private cache file. Reusing a display filename can
+        // make a queued adapter print another account's subsequently written PDF.
+        string pdfPath = Path.Combine(FileSystem.CacheDirectory, "chummer-print-" + Guid.NewGuid().ToString("N") + ".pdf");
+        bool handedOff = false;
         try
         {
             await System.IO.File.WriteAllBytesAsync(pdfPath, bytes, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!isOriginalContextCurrent()) return false;
+            handedOff = await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (!isOriginalContextCurrent()) return false;
+                return printManager.Print(
+                    string.IsNullOrWhiteSpace(title) ? "Chummer character" : title,
+                    new PdfFilePrintDocumentAdapter(pdfPath, safeName, isOriginalContextCurrent), null) is not null;
+            });
+            return handedOff;
         }
         finally
         {
-            Array.Clear(bytes);
+            CryptographicOperations.ZeroMemory(bytes);
+            if (!handedOff) RemovePrintCache(pdfPath);
         }
+    }
 
-        printManager.Print(
-            string.IsNullOrWhiteSpace(title) ? "Chummer character" : title,
-            new PdfFilePrintDocumentAdapter(pdfPath, safeName),
-            null);
-        return true;
+    private static void RemovePrintCache(string path)
+    {
+        try { System.IO.File.Delete(path); }
+        catch (System.IO.IOException) { }
+        catch (UnauthorizedAccessException) { }
     }
 
     private sealed class PdfFilePrintDocumentAdapter : PrintDocumentAdapter
     {
         private readonly string _path;
         private readonly string _displayName;
+        private readonly Func<bool> _isOriginalContextCurrent;
 
-        public PdfFilePrintDocumentAdapter(string path, string displayName)
+        public PdfFilePrintDocumentAdapter(string path, string displayName, Func<bool> isOriginalContextCurrent)
         {
             _path = path;
             _displayName = displayName;
+            _isOriginalContextCurrent = isOriginalContextCurrent;
         }
 
         public override void OnLayout(
@@ -90,7 +115,7 @@ public sealed class AndroidSystemService : IAndroidSystemService
             LayoutResultCallback? callback,
             Bundle? extras)
         {
-            if (cancellationSignal?.IsCanceled == true)
+            if (cancellationSignal?.IsCanceled == true || !_isOriginalContextCurrent())
             {
                 callback?.OnLayoutCancelled();
                 return;
@@ -109,7 +134,7 @@ public sealed class AndroidSystemService : IAndroidSystemService
             CancellationSignal? cancellationSignal,
             WriteResultCallback? callback)
         {
-            if (destination is null || cancellationSignal?.IsCanceled == true)
+            if (destination is null || cancellationSignal?.IsCanceled == true || !_isOriginalContextCurrent())
             {
                 callback?.OnWriteCancelled();
                 return;
@@ -125,7 +150,7 @@ public sealed class AndroidSystemService : IAndroidSystemService
                     int read;
                     while ((read = input.Read(buffer)) > 0)
                     {
-                        if (cancellationSignal?.IsCanceled == true)
+                        if (cancellationSignal?.IsCanceled == true || !_isOriginalContextCurrent())
                         {
                             callback?.OnWriteCancelled();
                             return;

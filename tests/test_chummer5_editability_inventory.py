@@ -27,6 +27,122 @@ CORE_ROOT = _sibling_repo("chummer-core-engine", "core")
 
 
 class Chummer5EditabilityInventoryTests(unittest.TestCase):
+    def _save_authority_rows_and_receipt_arguments(self):
+        import inspect
+
+        payload = json.loads(inventory.DEFAULT_OUTPUT.read_text(encoding="utf-8"))
+        rows = [
+            row for row in payload["rows"]
+            if (row["legacy"]["formOrControl"], row["legacy"]["controlName"])
+            in inventory.EXPLICIT_SAVE_CONTROLS
+            or (
+                row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
+                and row["legacy"]["controlName"] == inventory.CRITTER_POWER_COUNT_CONTROL
+            )
+        ]
+        self.assertEqual(7, len(rows))
+        parameters = list(inspect.signature(inventory._known_phone_mapping).parameters)
+        receipt_arguments = {
+            name: {} if name in {"condition_e2e_receipts", "contact_pet_e2e_receipts"} else None
+            for name in parameters[4:]
+        }
+        return rows, receipt_arguments
+
+    def test_save_authority_follows_both_public_entries_into_real_owner_bound_helper(self) -> None:
+        path = PRESENTATION_ROOT / "Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
+        self.assertTrue(inventory._presenter_save_authority_guarded(path))
+        rows, receipt_arguments = self._save_authority_rows_and_receipt_arguments()
+        for row in rows:
+            with self.subTest(row=row["id"]):
+                mapping = inventory._known_phone_mapping(
+                    row, inventory.DEFAULT_CHUMMER5_ROOT, PRESENTATION_ROOT, CORE_ROOT,
+                    **receipt_arguments,
+                )
+                self.assertEqual("implemented_pending_emulator", mapping["status"])
+                self.assertEqual("scripted_not_executed", mapping["e2e"]["status"])
+
+    def test_save_authority_rejects_bypassed_public_entries_and_shared_save_guards(self) -> None:
+        path = PRESENTATION_ROOT / "Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
+        original_read = inventory._read_text
+        original = original_read(path)
+        core = inventory._csharp_method_source(path, "SaveCoreAsync", "private async Task SaveCoreAsync(")
+        gesture = inventory._csharp_method_source(
+            path, "RunOriginalPersistenceGestureAsync<T>",
+            "private async Task<CommandResult<T>> RunOriginalPersistenceGestureAsync<T>(",
+        )
+        self.assertIsNotNone(core)
+        self.assertIsNotNone(gesture)
+        mutations = [
+            ("compatibility entry bypass", original.replace(
+                "=> SaveCoreAsync(State, ct);", "=> Task.CompletedTask;", 1)),
+            ("owner entry bypass", original.replace(
+                "(state, observe) => SaveCoreAsync(state, ct, observe)",
+                "(state, observe) => Task.CompletedTask", 1)),
+            ("owner entry substitutes latest state", original.replace(
+                "(state, observe) => SaveCoreAsync(state, ct, observe)",
+                "(state, observe) => SaveCoreAsync(State, ct, observe)", 1)),
+            ("shared helper removed", original.replace(
+                "private async Task SaveCoreAsync(", "private async Task DetachedSaveCoreAsync(", 1)),
+            ("ambiguous duplicate shared helper", original.replace(core, core + "\n\n" + core, 1)),
+        ]
+        for name, old, new in (
+            ("durable save replaced", "_workspacePersistenceService.SaveAsync(", "_workspacePersistenceService.PreviewSaveAsync("),
+            ("expected revision substituted", "originalState.ContentRevision", "State.ContentRevision"),
+            ("original owner checks bypassed", "IsOriginalPersistenceOwnerCurrent(originalOwner)", "IsPreviewOwnerCurrent(originalOwner)"),
+            ("postcommit recovery removed", "TryCaptureRecoveryPayloadAsync(", "CapturePreviewOnlyAsync("),
+        ):
+            self.assertIn(old, core)
+            mutations.append((name, original.replace(core, core.replace(old, new), 1)))
+        owner_check = "originalState.DisplayOwnerContext != originalOwner"
+        self.assertIn(owner_check, gesture)
+        mutations.append(("gesture owner admission removed", original.replace(
+            gesture, gesture.replace(owner_check, "false", 1), 1)))
+
+        rows, receipt_arguments = self._save_authority_rows_and_receipt_arguments()
+        for name, changed in mutations:
+            self.assertNotEqual(original, changed)
+
+            def read_changed(candidate: Path, changed=changed) -> str:
+                return changed if candidate == path else original_read(candidate)
+
+            with self.subTest(mutation=name), patch.object(inventory, "_read_text", side_effect=read_changed):
+                self.assertFalse(inventory._presenter_save_authority_guarded(path))
+                for row in rows:
+                    with self.subTest(row=row["id"]):
+                        mapping = inventory._known_phone_mapping(
+                            row, inventory.DEFAULT_CHUMMER5_ROOT, PRESENTATION_ROOT, CORE_ROOT,
+                            **receipt_arguments,
+                        )
+                        self.assertEqual("missing", mapping["status"])
+
+    def test_save_authority_cannot_borrow_real_save_body_from_unrelated_method(self) -> None:
+        path = PRESENTATION_ROOT / "Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
+        original_read = inventory._read_text
+        original = original_read(path)
+        core = inventory._csharp_method_source(path, "SaveCoreAsync", "private async Task SaveCoreAsync(")
+        self.assertIsNotNone(core)
+        declaration = core[:core.index("\n    {")]
+        stub = declaration + "\n    {\n        await Task.CompletedTask;\n    }"
+        detached = core.replace("private async Task SaveCoreAsync(", "private async Task DetachedSaveCoreAsync(", 1)
+        changed = original.replace(core, stub + "\n\n" + detached, 1)
+        # All the old whole-file markers remain, but the actual public target is a no-op.
+        for marker in ("expectedContentRevision", "SavedRevision", "TryCaptureRecoveryPayloadAsync", "postcommit save recovery"):
+            self.assertIn(marker, changed)
+        rows, receipt_arguments = self._save_authority_rows_and_receipt_arguments()
+
+        def read_changed(candidate: Path) -> str:
+            return changed if candidate == path else original_read(candidate)
+
+        with patch.object(inventory, "_read_text", side_effect=read_changed):
+            self.assertFalse(inventory._presenter_save_authority_guarded(path))
+            for row in rows:
+                with self.subTest(row=row["id"]):
+                    mapping = inventory._known_phone_mapping(
+                        row, inventory.DEFAULT_CHUMMER5_ROOT, PRESENTATION_ROOT, CORE_ROOT,
+                        **receipt_arguments,
+                    )
+                    self.assertEqual("missing", mapping["status"])
+
     def test_parser_includes_direct_dynamic_and_event_wired_controls_fail_closed(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

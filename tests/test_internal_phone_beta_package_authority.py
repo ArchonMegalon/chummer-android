@@ -279,6 +279,7 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
         return package_authority, receipt
 
     def current_main_receipt_fixture(self) -> dict[str, object]:
+        """Synthetic next-schema receipt, not historical or runtime evidence."""
         _, authority_receipt = self.bound_authority_fixture()
         receipt = {key: None for key in self.module.RECEIPT_TOP_LEVEL_KEYS}
         receipt.update(authority_receipt)
@@ -335,7 +336,71 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
                 "used": True,
             },
         })
+        self.add_synthetic_owner_test_executions(receipt)
         return receipt
+
+    def add_synthetic_owner_test_executions(self, receipt: dict[str, object]) -> None:
+        project = "Chummer.Product.UnitTests/Chummer.Product.UnitTests.csproj"
+        assembly = {
+            "path": "Chummer.Product.UnitTests/bin/Release/net10.0/Chummer.Product.UnitTests.dll",
+            "sha256": hashlib.sha256(b"synthetic Product assembly, not compiled").hexdigest(),
+            "sizeBytes": 12345,
+        }
+        content = {
+            "repository": "https://github.com/ArchonMegalon/chummer6-core.git",
+            "checkoutCommit": self.module.EXPECTED_SOURCE_GRAPH["corePackageRecipeCommit"],
+            "runtimeSourceCommit": self.module.EXPECTED_SOURCE_GRAPH["coreRuntimeSourceCommit"],
+            "packageRecipeCommit": self.module.EXPECTED_SOURCE_GRAPH["corePackageRecipeCommit"],
+            "sourceRoot": "/provenance-only/absent/core-rule-data",
+            "usage": "read-only-rule-data-not-project-reference",
+            "contentDirectories": ["Chummer/data", "Chummer/lang", "Chummer/customdata"],
+            "fileCount": 123,
+            "contentInventorySha256": hashlib.sha256(b"synthetic rule data inventory").hexdigest(),
+        }
+        receipt["testProjects"] = [project]
+        receipt["testExecutions"] = [{
+            "coreProjectionContent": copy.deepcopy(content),
+            "buildInParallel": False,
+            "compileRunner": "serialized-package-plane-build",
+            "disableBuildServers": True,
+            "maxCpuCount": 1,
+            "minimumExpectedTests": 747,
+            "project": project,
+            "runner": "direct-exact-assembly",
+            "sdkVersion": receipt["sdkVersion"],
+            "testAssembly": copy.deepcopy(assembly),
+            "useSharedCompilation": False,
+        }]
+        specs = (
+            ("InProcessWorkspaceContinuationTests", "Chummer.Tests/InProcessWorkspaceContinuationTests.cs", 19),
+            ("InProcessShellOwnerContextTests", "Chummer.Tests/InProcessShellOwnerContextTests.cs", 26),
+            ("InProcessChummerClientRulesetPluginTests", "Chummer.Tests/InProcessChummerClientRulesetPluginTests.cs", 74),
+            ("ShellBootstrapDataProviderTests", "Chummer.Tests/Presentation/ShellBootstrapDataProviderTests.cs", 24),
+            ("ShellPresenterTests", "Chummer.Tests/Presentation/ShellPresenterTests.cs", 80),
+            ("WorkspaceSessionActivationServiceTests", "Chummer.Tests/Presentation/WorkspaceSessionActivationServiceTests.cs", 5),
+            ("WorkspaceSessionPresenterTests", "Chummer.Tests/Presentation/WorkspaceSessionPresenterTests.cs", 23),
+            ("WorkspaceViewStateStoreTests", "Chummer.Tests/Presentation/WorkspaceViewStateStoreTests.cs", 6),
+            ("RestartSafeWorkspacePersistenceTests", "Chummer.Tests/RestartSafeWorkspacePersistenceTests.cs", 1),
+        )
+        rows = [{
+            "coreProjectionContent": copy.deepcopy(content),
+            "filter": f"FullyQualifiedName~{test_class}",
+            "minimumExpectedTests": minimum,
+            "project": project,
+            "reuseFullSuiteBuild": True,
+            "runner": "direct-exact-assembly",
+            "sdkVersion": receipt["sdkVersion"],
+            "sourceFiles": [source_file],
+            "testAssembly": copy.deepcopy(assembly),
+        } for test_class, source_file, minimum in specs]
+        receipt["focusedContinuationTestExecution"] = rows[0]
+        receipt["focusedOwnerShellTestExecution"] = rows[1]
+        receipt["focusedExistingOwnerRegressionTestExecutions"] = rows[2:]
+        receipt["sourceInventory"] = [{
+            "path": path,
+            "sha256": hashlib.sha256(f"synthetic source:{path}".encode()).hexdigest(),
+            "sizeBytes": len(path),
+        } for path in sorted([project, *(spec[1] for spec in specs)])]
 
     def validate_receipt_copy(self, payload: dict[str, object]) -> dict[str, object]:
         with tempfile.TemporaryDirectory() as temporary:
@@ -635,6 +700,182 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
         self.assertTrue(validated["ownerPackageArtifactCache"]["used"])
         self.assertTrue(validated["ownerPackageArtifactCache"]["importedByCopy"])
 
+    def owner_execution_rows(self, receipt):
+        return [receipt["focusedContinuationTestExecution"], receipt["focusedOwnerShellTestExecution"],
+                *receipt["focusedExistingOwnerRegressionTestExecutions"]]
+
+    def test_new_owner_receipt_invocations_bind_exact_shared_assembly_and_data(self) -> None:
+        receipt = self.current_main_receipt_fixture()
+        original = copy.deepcopy(receipt)
+        self.assertEqual(receipt, self.validate_receipt_copy(receipt))
+        self.assertEqual(original, receipt)
+        self.assertEqual(747, receipt["testExecutions"][0]["minimumExpectedTests"])
+        self.assertEqual([19, 26, 74, 24, 80, 5, 23, 6, 1],
+                         [row["minimumExpectedTests"] for row in self.owner_execution_rows(receipt)])
+        self.assertFalse(Path(receipt["testExecutions"][0]["coreProjectionContent"]["sourceRoot"]).exists())
+        # The producer can validate the content checkout at either exact commit.
+        for row in [*receipt["testExecutions"], *self.owner_execution_rows(receipt)]:
+            row["coreProjectionContent"]["checkoutCommit"] = self.module.EXPECTED_SOURCE_GRAPH["coreRuntimeSourceCommit"]
+        self.validate_receipt_copy(receipt)
+
+    def test_new_owner_receipt_fields_are_required_and_unknown_fields_stay_denied(self) -> None:
+        for field in ("focusedContinuationTestExecution", "focusedOwnerShellTestExecution",
+                      "focusedExistingOwnerRegressionTestExecutions"):
+            for change in ("missing", "null", "empty"):
+                receipt = self.current_main_receipt_fixture()
+                if change == "missing":
+                    receipt.pop(field)
+                else:
+                    receipt[field] = None if change == "null" else {}
+                with self.subTest(field=field, change=change), self.assertRaises(ValueError):
+                    self.validate_receipt_copy(receipt)
+        receipt = self.current_main_receipt_fixture()
+        receipt["unreviewedTestExecution"] = {}
+        with self.assertRaises(ValueError):
+            self.validate_receipt_copy(receipt)
+
+    def test_every_owner_class_rejects_missing_extra_or_changed_invocation_fields(self) -> None:
+        mutations = {
+            "filter": "FullyQualifiedName~SomethingElse",
+            "minimumExpectedTests": 0,
+            "project": "Other.Tests/Other.Tests.csproj",
+            "reuseFullSuiteBuild": 1,
+            "runner": "dotnet-test-may-rebuild",
+            "sdkVersion": "10.0.999",
+            "sourceFiles": ["Chummer.Tests/UnrelatedTests.cs"],
+            "testAssembly": None,
+            "coreProjectionContent": None,
+        }
+        for index in range(9):
+            for field, value in mutations.items():
+                for change in ("missing", "changed"):
+                    receipt = self.current_main_receipt_fixture()
+                    row = self.owner_execution_rows(receipt)[index]
+                    if change == "missing":
+                        row.pop(field)
+                    else:
+                        row[field] = value
+                    with self.subTest(index=index, field=field, change=change), self.assertRaises(ValueError):
+                        self.validate_receipt_copy(receipt)
+            receipt = self.current_main_receipt_fixture()
+            self.owner_execution_rows(receipt)[index]["observedPassingTotal"] = 999
+            with self.subTest(index=index, extra=True), self.assertRaises(ValueError):
+                self.validate_receipt_copy(receipt)
+
+    def test_existing_owner_classes_cannot_be_dropped_duplicated_reordered_or_extended(self) -> None:
+        for change in ("drop", "duplicate", "reverse", "extra"):
+            receipt = self.current_main_receipt_fixture()
+            rows = receipt["focusedExistingOwnerRegressionTestExecutions"]
+            if change == "drop":
+                rows.pop()
+            elif change == "duplicate":
+                rows[-1] = copy.deepcopy(rows[0])
+            elif change == "reverse":
+                rows.reverse()
+            else:
+                rows.append(copy.deepcopy(rows[0]))
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                self.validate_receipt_copy(receipt)
+
+    def test_configured_test_floors_require_exact_integers_not_observed_totals(self) -> None:
+        for index in range(10):
+            for change in ("float", "boolean", "lower", "higher"):
+                receipt = self.current_main_receipt_fixture()
+                row = [*receipt["testExecutions"], *self.owner_execution_rows(receipt)][index]
+                minimum = row["minimumExpectedTests"]
+                row["minimumExpectedTests"] = {"float": float(minimum), "boolean": True,
+                                               "lower": minimum - 1, "higher": minimum + 1}[change]
+                with self.subTest(index=index, change=change), self.assertRaises(ValueError):
+                    self.validate_receipt_copy(receipt)
+
+    def test_owner_tests_cannot_use_different_assembly_or_core_projection_bytes(self) -> None:
+        for index in range(9):
+            for field, key, value in (
+                ("testAssembly", "path", "Other.dll"),
+                ("testAssembly", "sha256", "e" * 64),
+                ("testAssembly", "sizeBytes", 9),
+                ("testAssembly", "sizeBytes", 12345.0),
+                ("testAssembly", "extra", "not admitted"),
+                ("coreProjectionContent", "contentInventorySha256", "e" * 64),
+                ("coreProjectionContent", "sourceRoot", "/another/provenance/root"),
+                ("coreProjectionContent", "fileCount", 123.0),
+                ("coreProjectionContent", "extra", "not admitted"),
+            ):
+                receipt = self.current_main_receipt_fixture()
+                self.owner_execution_rows(receipt)[index][field][key] = value
+                with self.subTest(index=index, field=field, key=key, value=value), self.assertRaises(ValueError):
+                    self.validate_receipt_copy(receipt)
+
+    def test_coordinated_core_projection_forgery_is_not_runtime_feed_authority(self) -> None:
+        for key, value in (
+            ("repository", "https://github.com/example/fork.git"),
+            ("runtimeSourceCommit", "e" * 40),
+            ("packageRecipeCommit", "e" * 40),
+            ("checkoutCommit", "e" * 40),
+            ("usage", "source-project-reference"),
+            ("contentDirectories", ["Chummer/data", "Chummer/lang"]),
+            ("sourceRoot", "relative/core"),
+            ("sourceRoot", "/data/../redirected"),
+            ("contentInventorySha256", "G" * 64),
+            ("fileCount", True),
+            ("fileCount", 0),
+        ):
+            receipt = self.current_main_receipt_fixture()
+            for row in [*receipt["testExecutions"], *self.owner_execution_rows(receipt)]:
+                row["coreProjectionContent"][key] = value
+            with self.subTest(key=key, value=value), self.assertRaises(ValueError):
+                self.validate_receipt_copy(receipt)
+
+    def test_owner_sources_require_canonical_inventory_membership_and_exact_source_sets(self) -> None:
+        for change in ("missing", "duplicate", "reverse", "bad-digest", "boolean-size", "unknown-field"):
+            receipt = self.current_main_receipt_fixture()
+            rows = receipt["sourceInventory"]
+            if change == "missing":
+                rows.pop()
+            elif change == "duplicate":
+                rows.append(copy.deepcopy(rows[0]))
+            elif change == "reverse":
+                rows.reverse()
+            elif change == "bad-digest":
+                rows[0]["sha256"] = "not-a-digest"
+            elif change == "boolean-size":
+                rows[0]["sizeBytes"] = True
+            else:
+                rows[0]["extra"] = "not admitted"
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                self.validate_receipt_copy(receipt)
+        receipt = self.current_main_receipt_fixture()
+        receipt["focusedContinuationTestExecution"]["sourceFiles"].append(
+            receipt["focusedOwnerShellTestExecution"]["sourceFiles"][0])
+        with self.assertRaises(ValueError):
+            self.validate_receipt_copy(receipt)
+
+    def test_full_execution_cannot_be_filtered_rebuilt_duplicated_or_misreported(self) -> None:
+        for field, value in (
+            ("filter", "FullyQualifiedName~Subset"),
+            ("project", "Other.Tests/Other.Tests.csproj"),
+            ("runner", "different-runner"),
+            ("compileRunner", "unbound-build"),
+            ("sdkVersion", "10.0.999"),
+            ("buildInParallel", True),
+            ("disableBuildServers", False),
+            ("useSharedCompilation", True),
+            ("maxCpuCount", True),
+        ):
+            receipt = self.current_main_receipt_fixture()
+            receipt["testExecutions"][0][field] = value
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                self.validate_receipt_copy(receipt)
+        for change in ("missing", "duplicate", "projects"):
+            receipt = self.current_main_receipt_fixture()
+            if change == "missing":
+                receipt["testExecutions"] = []
+            elif change == "duplicate":
+                receipt["testExecutions"].append(copy.deepcopy(receipt["testExecutions"][0]))
+            else:
+                receipt["testProjects"].append("Other.Tests/Other.Tests.csproj")
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                self.validate_receipt_copy(receipt)
     def test_cold_non_use_and_incomplete_warm_postures_fail_closed(self) -> None:
         mutations = (
             {"status": "not_supplied", "used": False},

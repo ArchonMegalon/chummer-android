@@ -246,4 +246,11 @@ Todavía no se ha guardado ningún cambio.</value></data>
   <data name="LinkedRecoveryCheck" xml:space="preserve"><value>Comprobar estado guardado</value></data>
   <data name="LinkedRecoveryPrevious" xml:space="preserve"><value>Anterior</value></data>
   <data name="LinkedRecoveryNext" xml:space="preserve"><value>Siguiente</value></data>
+  <data name="OnlineContinuationUnavailable" xml:space="preserve"><value>Este runner no tiene un espacio de trabajo completo que se pueda restaurar. Actualiza la lista o súbelo desde un cliente compatible.</value></data>
+  <data name="OnlineContinuationStored" xml:space="preserve"><value>El espacio de trabajo está guardado localmente. Vuelve a abrirlo para continuar; no repitas la restauración.</value></data>
+  <data name="OnlineContinuationReviewRequired" xml:space="preserve"><value>Revisa el espacio de trabajo completo antes de restaurarlo.</value></data>
+  <data name="OnlineContinuationRejected" xml:space="preserve"><value>No se puede restaurar este espacio de trabajo de forma segura. Conserva el runner local y resuelve primero sus conflictos.</value></data>
+  <data name="OnlineContinuationTitle" xml:space="preserve"><value>Restaurar espacio de trabajo</value></data>
+  <data name="OnlineContinuationReview" xml:space="preserve"><value>¿Abrir {0} con todo su historial del asistente? Revisión del contenido: {1}; revisión guardada: {2}. No se sobrescribirán los conflictos locales.</value></data>
+  <data name="OnlineContinuationConfirm" xml:space="preserve"><value>Restaurar y abrir</value></data>
 </root>

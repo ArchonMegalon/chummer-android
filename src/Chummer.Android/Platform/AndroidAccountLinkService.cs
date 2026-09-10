@@ -11,11 +11,12 @@ using Microsoft.Maui.Devices;
 
 namespace Chummer.Android.Platform;
 
-public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
+public sealed partial class AndroidAccountLinkService : IAndroidAccountLinkService, IAndroidAccountLocalIdentityInitializer
 {
     private const string InstallationIdKey = AndroidAccountLinkKeyAuthority.InstallationIdStorageKey;
     private const string AccessTokenKey = "chummer.account.installation-grant.v1";
     private const string GrantExpiryKey = "chummer.account.installation-grant-expiry.v1";
+    private const string OwnerBindingKey = "chummer.account.grant-owner.v1";
     private const string RefreshAttemptKey = "chummer.account.installation-grant-refresh-attempt.v1";
     private const string StagedGrantCommitKey = "chummer.account.staged-grant-commit.v1";
     private const string PendingPollOperationKey = "chummer.account.pending-poll-operation.v1";
@@ -60,6 +61,7 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
     private readonly Func<string> _architectureProvider;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly SemaphoreSlim _credentialCommitGate = new(1, 1);
+    internal AndroidAccountOwnerAuthority OwnerAuthority { get; }
     private AndroidAccountLinkSnapshot _snapshot = new(
         AndroidAccountLinkStatus.Loading,
         AccountText("Checking", "Checking"));
@@ -71,7 +73,8 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         IAndroidAccountLinkKeyMetadataStore metadataStore,
         Func<string>? versionProvider = null,
         Func<string>? hostLabelProvider = null,
-        Func<string>? architectureProvider = null)
+        Func<string>? architectureProvider = null,
+        TimeProvider? ownerClock = null)
     {
         _httpTransport = httpTransport;
         _systemService = systemService;
@@ -80,11 +83,23 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         _versionProvider = versionProvider ?? (() => AppInfo.Current.VersionString);
         _hostLabelProvider = hostLabelProvider ?? ResolveHostLabel;
         _architectureProvider = architectureProvider ?? ResolveArchitecture;
+        OwnerAuthority = new(_credentialCommitGate, ownerClock ?? TimeProvider.System);
     }
 
     public event EventHandler? Changed;
 
     public AndroidAccountLinkSnapshot Snapshot => _snapshot;
+
+    Task IAndroidAccountLocalIdentityInitializer.InitializeLocalIdentityAsync(CancellationToken cancellationToken)
+        => InitializeOwnerContextAsync(cancellationToken);
+
+    // Local-only prerequisite for Core/Shell startup; never waits for Hub.
+    internal async Task InitializeOwnerContextAsync(CancellationToken cancellationToken = default)
+    {
+        await _gate.WaitAsync(cancellationToken);
+        try { _ = await ReadStoredGrantAsync(cancellationToken); }
+        finally { _gate.Release(); }
+    }
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
@@ -190,7 +205,8 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
                 return;
             }
 
-            GrantValidationResult validation = await ValidateGrantAsync(grant, cancellationToken);
+            (GrantValidationResult validation, StoredGrant validatedGrant) =
+                await ValidateGrantAsync(grant, cancellationToken);
             if (validation == GrantValidationResult.Invalid)
             {
                 await SetSnapshotAfterRejectedGrantAsync(
@@ -207,6 +223,10 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
                     expiresAtUtc));
                 return;
             }
+
+            // Validation may have hydrated a legacy owner. Refresh must retain
+            // that authenticated subject instead of reusing the unbound input.
+            grant = validatedGrant;
 
             if (expiresAtUtc is not null && expiresAtUtc <= DateTimeOffset.UtcNow.Add(RefreshWindow))
             {
@@ -300,6 +320,7 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             {
                 hadStoredGrant = !string.IsNullOrWhiteSpace(
                     await _metadataStore.GetAsync(AccessTokenKey, CancellationToken.None));
+                OwnerAuthority.Invalidate();
                 identity = await _keyAuthority
                     .StartOrResumeExplicitLinkAsync(CancellationToken.None);
                 await ClearGrantCoreAsync(CancellationToken.None);
@@ -564,6 +585,7 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             }
             GrantContract grant = MaterializeIssuedGrant(
                 exchange.Grant,
+                exchange.Installation,
                 responseAuthority,
                 identity.InstallationId);
             if (!IsUsableGrant(grant, identity.InstallationId))
@@ -687,8 +709,16 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         await _systemService.OpenUriAsync(ChummerWebRoutes.Resolve(ChummerWebRoutes.AccountAccess));
     }
 
-    public async Task<AndroidAccountErasureReceipt> EraseAccountAsync(
+    public Task<AndroidAccountErasureReceipt> EraseAccountAsync(
         string confirmation,
+        CancellationToken cancellationToken = default)
+    {
+        AndroidAccountLinkSnapshot original = _snapshot;
+        return EraseAccountAsync(confirmation, () => ReferenceEquals(_snapshot, original), cancellationToken);
+    }
+
+    public async Task<AndroidAccountErasureReceipt> EraseAccountAsync(
+        string confirmation, Func<bool> isOriginalContextCurrent,
         CancellationToken cancellationToken = default)
     {
         if (!string.Equals(
@@ -701,10 +731,22 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
                 nameof(confirmation));
         }
 
+        ArgumentNullException.ThrowIfNull(isOriginalContextCurrent);
+        void EnsureOriginal()
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!isOriginalContextCurrent())
+                throw new InvalidOperationException("The deletion account changed. Confirm deletion again.");
+        }
+        EnsureOriginal();
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            EnsureOriginal();
             StoredGrant grant = await RequireStoredGrantAsync(cancellationToken);
+            EnsureOriginal();
+            string? localOwner = await ReadErasureOwnerAsync(grant, cancellationToken);
+            EnsureOriginal();
             AndroidAccountErasureReceipt receipt = await SendLinkedAsync<AndroidAccountErasureReceipt>(
                 "/api/v2/android/linked/account/erase",
                 new AccountErasureRequest(
@@ -727,7 +769,7 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             {
                 SetSnapshot(LocalCleanupPendingSnapshot());
             }
-            return receipt;
+            return receipt with { LocalWorkspaceOwnerKey = localOwner };
         }
         finally
         {
@@ -955,6 +997,43 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             group.Members.Select(static member => new AndroidLinkedGroupMember(member.Role, member.RunnerHandle)).ToArray(),
             group.UpdatedAtUtc);
 
+    private async Task<string?> ReadErasureOwnerAsync(StoredGrant grant, CancellationToken cancellationToken)
+    {
+        // This is an optional read-only correlation, not a second erasure or a
+        // fallback account selector. Old/offline Hub replies keep local data.
+        try
+        {
+            using HttpResponseMessage response = await _httpTransport.PostJsonAsync(
+                "/api/v2/install-linking/grants/status",
+                new InstallationGrantRequest(grant.InstallationId),
+                CreateRequestAuthority(grant), cancellationToken);
+            if (!response.IsSuccessStatusCode) return null;
+            ErasureGrantStatus status = await _httpTransport.ReadJsonAsync<ErasureGrantStatus>(response, cancellationToken);
+            DateTimeOffset now = DateTimeOffset.UtcNow;
+            DateTimeOffset? storedExpiry = await ReadGrantExpiryAsync(cancellationToken);
+            if (!string.Equals(status.InstallationId, grant.InstallationId, StringComparison.Ordinal)
+                || !string.Equals(status.GrantId, grant.GrantId, StringComparison.Ordinal)
+                || !string.Equals(status.Status, "active", StringComparison.Ordinal)
+                || status.SubjectId is not { Length: > 0 and <= 256 } subject
+                || !string.Equals(subject, subject.Trim(), StringComparison.Ordinal)
+                || subject.Any(char.IsControl)
+                || (grant.SubjectId is not null
+                    && !string.Equals(subject, grant.SubjectId, StringComparison.Ordinal))
+                || status.IssuedAtUtc == default
+                || status.IssuedAtUtc > status.ObservedAtUtc
+                || status.ExpiresAtUtc != storedExpiry || status.ExpiresAtUtc <= now
+                || status.ObservedAtUtc < now.AddMinutes(-2) || status.ObservedAtUtc > now.AddMinutes(2))
+                return null;
+            // Correlate only the exact local partition used by the Core owner
+            // accessor. Do not adopt the legacy key or LocalSingleUser state.
+            return AndroidAccountOwnerKey.TryCreate(subject, out string ownerKey) ? ownerKey : null;
+        }
+        catch (Exception error) when (error is HttpRequestException or InvalidDataException or JsonException)
+        {
+            return null;
+        }
+    }
+
     private static bool IsCompleteAccountErasureReceipt(AndroidAccountErasureReceipt receipt)
     {
         if (!receipt.Erased
@@ -1095,27 +1174,73 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         return await _httpTransport.ReadJsonAsync<T>(response, cancellationToken);
     }
 
-    private async Task<GrantValidationResult> ValidateGrantAsync(
+    private async Task<(GrantValidationResult Result, StoredGrant Grant)> ValidateGrantAsync(
         StoredGrant grant,
         CancellationToken cancellationToken)
     {
         try
         {
+            long expectedOwnerRevision = OwnerAuthority.Revision;
             AndroidAccountLinkRequestAuthority authority = CreateRequestAuthority(grant);
             using HttpResponseMessage response = await _httpTransport.PostJsonAsync(
                 "/api/v2/install-linking/grants/status",
                 new InstallationGrantRequest(grant.InstallationId),
                 authority,
                 cancellationToken);
-            return response.IsSuccessStatusCode
-                ? GrantValidationResult.Valid
-                : response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.NotFound or HttpStatusCode.Conflict
-                    ? GrantValidationResult.Invalid
-                    : GrantValidationResult.Offline;
+            if (!response.IsSuccessStatusCode)
+                return (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.NotFound or HttpStatusCode.Conflict
+                    ? GrantValidationResult.Invalid : GrantValidationResult.Offline, grant);
+
+            ErasureGrantStatus status = await _httpTransport.ReadJsonAsync<ErasureGrantStatus>(response, cancellationToken);
+            DateTimeOffset now = DateTimeOffset.UtcNow;
+            DateTimeOffset? expiry = await ReadGrantExpiryAsync(cancellationToken);
+            if (!string.Equals(status.InstallationId, grant.InstallationId, StringComparison.Ordinal)
+                || !string.Equals(status.GrantId, grant.GrantId, StringComparison.Ordinal)
+                || !string.Equals(status.Status, "active", StringComparison.Ordinal)
+                || !IsCanonicalSubject(status.SubjectId)
+                || (grant.SubjectId is not null && !string.Equals(grant.SubjectId, status.SubjectId, StringComparison.Ordinal))
+                || status.IssuedAtUtc == default || status.IssuedAtUtc > status.ObservedAtUtc
+                || status.ExpiresAtUtc != expiry || status.ExpiresAtUtc <= now
+                || status.ObservedAtUtc < now.AddMinutes(-2) || status.ObservedAtUtc > now.AddMinutes(2))
+                throw new InvalidDataException("Chummer returned an invalid account identity status.");
+
+            await _credentialCommitGate.WaitAsync(cancellationToken);
+            try
+            {
+                if (OwnerAuthority.Revision != expectedOwnerRevision
+                    || !await IsExactActiveGrantCoreAsync(grant)
+                    || await ReadGrantExpiryAsync(cancellationToken) != status.ExpiresAtUtc
+                    || status.ExpiresAtUtc <= DateTimeOffset.UtcNow
+                    || status.ObservedAtUtc < DateTimeOffset.UtcNow.AddMinutes(-2))
+                    throw new InvalidOperationException("The account link changed during validation.");
+                cancellationToken.ThrowIfCancellationRequested();
+                if (grant.SubjectId is null)
+                {
+                    // One exact secure-store row adds identity, not credentials.
+                    // After this commit boundary cancellation cannot turn a
+                    // durable identity into a false no-effect result. A crash
+                    // leaves either no row or the complete validated binding.
+                    OwnerAuthority.Invalidate();
+                    await _metadataStore.SetAsync(OwnerBindingKey,
+                        JsonSerializer.Serialize(new StoredOwnerBinding(1, grant.InstallationId,
+                            grant.GrantId, status.SubjectId!, status.IssuedAtUtc, status.ExpiresAtUtc), OperationJsonOptions),
+                        CancellationToken.None);
+                    OwnerAuthority.PublishLinked(grant.InstallationId, grant.GrantId, status.SubjectId!, status.ExpiresAtUtc);
+                }
+                return (GrantValidationResult.Valid, new StoredGrant(grant.Identity, grant.AccessToken, status.SubjectId));
+            }
+            catch
+            {
+                // Do not invalidate a replacement account after losing the CAS.
+                if (OwnerAuthority.Revision == expectedOwnerRevision)
+                    OwnerAuthority.Invalidate();
+                throw;
+            }
+            finally { _credentialCommitGate.Release(); }
         }
         catch (HttpRequestException)
         {
-            return GrantValidationResult.Offline;
+            return (GrantValidationResult.Offline, grant);
         }
     }
 
@@ -1170,8 +1295,16 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             }
             GrantContract rotated = MaterializeIssuedGrant(
                 refreshed.Grant,
+                refreshed.Installation,
                 responseAuthority,
                 grant.InstallationId);
+            if (grant.SubjectId is not null
+                && !string.Equals(grant.SubjectId, rotated.SubjectId, StringComparison.Ordinal))
+            {
+                // A refresh rotates credentials, never the owner of an existing
+                // link. Keep the original bundle and exact recovery operation.
+                throw new InvalidDataException("Chummer returned a mismatched account owner.");
+            }
             return IsUsableGrant(rotated, grant.InstallationId)
                 ? rotated
                 : null;
@@ -1235,12 +1368,19 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         await _credentialCommitGate.WaitAsync(CancellationToken.None);
         try
         {
+            if (!OwnerAuthority.MatchesLinked(grant.InstallationId, grant.GrantId, grant.SubjectId, grant.ExpiresAtUtc))
+                OwnerAuthority.Invalidate();
             await _metadataStore.SetAsync(
                 StagedGrantCommitKey,
                 JsonSerializer.Serialize(staged, OperationJsonOptions),
                 CancellationToken.None);
             await FinalizeStagedGrantCommitAsync(staged);
             await TryCleanupStagedGrantCommitAsync(staged);
+        }
+        catch
+        {
+            OwnerAuthority.Invalidate();
+            throw;
         }
         finally
         {
@@ -1254,6 +1394,11 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         try
         {
             return await RecoverStagedGrantCommitCoreAsync();
+        }
+        catch
+        {
+            OwnerAuthority.Invalidate();
+            throw;
         }
         finally
         {
@@ -1422,6 +1567,24 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
 
     private async Task FinalizeStagedGrantCommitAsync(StagedGrantCommit staged)
     {
+        if (!OwnerAuthority.MatchesLinked(staged.Grant.InstallationId, staged.Grant.GrantId,
+                staged.Grant.SubjectId, staged.Grant.ExpiresAtUtc))
+            OwnerAuthority.Invalidate();
+        if (staged.Grant.SubjectId is { } subject)
+        {
+            await _metadataStore.SetAsync(
+                OwnerBindingKey,
+                JsonSerializer.Serialize(new StoredOwnerBinding(
+                    1, staged.Grant.InstallationId, staged.Grant.GrantId, subject,
+                    staged.Grant.IssuedAtUtc, staged.Grant.ExpiresAtUtc), OperationJsonOptions),
+                CancellationToken.None);
+        }
+        else
+        {
+            // A pre-owner-binding staged transaction may still be recovered,
+            // but must not inherit owner authority from an unrelated generation.
+            await _metadataStore.RemoveAsync(OwnerBindingKey, CancellationToken.None);
+        }
         await _metadataStore.SetAsync(
             AccessTokenKey,
             staged.Grant.AccessToken,
@@ -1436,6 +1599,9 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             staged.Grant.InstallationId,
             staged.Grant.GrantId,
             CancellationToken.None);
+        if (staged.Grant.SubjectId is { } committedSubject)
+            OwnerAuthority.PublishLinked(staged.Grant.InstallationId, staged.Grant.GrantId,
+                committedSubject, staged.Grant.ExpiresAtUtc);
     }
 
     private async Task TryCleanupStagedGrantCommitAsync(StagedGrantCommit staged)
@@ -1492,6 +1658,7 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             && staged.Grant is not null
             && AndroidAccountLinkKeyAuthority.IsExpectedInstallationId(
                 staged.Grant.InstallationId)
+            && (staged.Grant.SubjectId is null || IsCanonicalSubject(staged.Grant.SubjectId))
             && IsUsableGrant(staged.Grant, staged.Grant.InstallationId);
 
     private async Task<StoredGrant?> ReadStoredGrantAsync(CancellationToken cancellationToken)
@@ -1506,20 +1673,70 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             string? accessToken = await _metadataStore.GetAsync(
                 AccessTokenKey,
                 cancellationToken);
-            return string.IsNullOrWhiteSpace(installationId)
-                || string.IsNullOrWhiteSpace(accessToken)
-                    ? null
-                    : new StoredGrant(
-                        await _keyAuthority.RequireLinkedIdentityAsync(
-                            installationId,
-                            cancellationToken),
-                        accessToken);
+            if (string.IsNullOrWhiteSpace(installationId) || string.IsNullOrWhiteSpace(accessToken))
+            {
+                // Complete absence permits device-local work. Torn, legacy or
+                // unreadable account fields cannot silently select that partition.
+                bool absent = accessToken is null;
+                foreach (string key in new[] { OwnerBindingKey, GrantExpiryKey, RefreshAttemptKey, StagedGrantCommitKey })
+                    absent &= await _metadataStore.GetAsync(key, cancellationToken) is null;
+                if (absent) OwnerAuthority.PublishLocal();
+                else OwnerAuthority.Invalidate();
+                return null;
+            }
+            AndroidAccountLinkKeyIdentity identity = await _keyAuthority.RequireLinkedIdentityAsync(
+                installationId, cancellationToken);
+            string? subject = await ReadStoredOwnerAsync(identity, cancellationToken);
+            DateTimeOffset? expiry = await ReadGrantExpiryAsync(cancellationToken);
+            if (subject is not null && expiry is { } knownExpiry)
+                OwnerAuthority.PublishLinked(identity.InstallationId, identity.GrantId!, subject, knownExpiry);
+            else OwnerAuthority.Invalidate();
+            return new StoredGrant(identity, accessToken, subject);
+        }
+        catch
+        {
+            OwnerAuthority.Invalidate();
+            throw;
         }
         finally
         {
             _credentialCommitGate.Release();
         }
     }
+
+    private async Task<string?> ReadStoredOwnerAsync(
+        AndroidAccountLinkKeyIdentity identity, CancellationToken cancellationToken)
+    {
+        string? serialized = await _metadataStore.GetAsync(OwnerBindingKey, cancellationToken);
+        // Absent legacy identity is unknown, never a device-local owner grant.
+        if (serialized is null) return null;
+        try
+        {
+            if (serialized.Length is 0 or > 4096) throw new InvalidDataException();
+            StoredOwnerBinding? binding = JsonSerializer.Deserialize<StoredOwnerBinding>(
+                serialized, OperationJsonOptions);
+            if (binding is null || binding.Version != 1
+                || !IsCanonicalSubject(binding.SubjectId)
+                || !string.Equals(binding.InstallationId, identity.InstallationId, StringComparison.Ordinal)
+                || !string.Equals(binding.GrantId, identity.GrantId, StringComparison.Ordinal)
+                || binding.IssuedAtUtc == default || binding.ExpiresAtUtc <= binding.IssuedAtUtc
+                || binding.ExpiresAtUtc != await ReadGrantExpiryAsync(cancellationToken)
+                // This is our own secure-store format. Exact serialization rejects
+                // duplicate keys, aliases, unknown fields and ambiguous persisted JSON.
+                || !string.Equals(serialized, JsonSerializer.Serialize(binding, OperationJsonOptions), StringComparison.Ordinal))
+                throw new InvalidDataException();
+            return binding.SubjectId;
+        }
+        catch (Exception error) when (error is InvalidDataException or JsonException or NotSupportedException)
+        {
+            throw new InvalidDataException("The stored account owner binding is invalid.");
+        }
+    }
+
+    private static bool IsCanonicalSubject(string? subject)
+        => subject is { Length: > 0 and <= 256 }
+            && string.Equals(subject, subject.Trim(), StringComparison.Ordinal)
+            && !subject.Any(char.IsControl);
 
     private AndroidAccountLinkRequestAuthority CreateRequestAuthority(StoredGrant grant)
         => new(
@@ -1541,11 +1758,19 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
 
     private static GrantContract MaterializeIssuedGrant(
         GrantMetadata metadata,
+        InstallationOwnerProjection installation,
         AndroidAccountLinkResponseGrantAuthority authority,
         string expectedInstallationId)
     {
         if (!string.Equals(metadata.GrantId, authority.GrantId, StringComparison.Ordinal)
-            || !string.Equals(metadata.InstallationId, expectedInstallationId, StringComparison.Ordinal))
+            || !string.Equals(metadata.InstallationId, expectedInstallationId, StringComparison.Ordinal)
+            || !string.Equals(installation.InstallationId, expectedInstallationId, StringComparison.Ordinal)
+            || !string.Equals(installation.GrantId, metadata.GrantId, StringComparison.Ordinal)
+            || !string.Equals(installation.Status, "active", StringComparison.Ordinal)
+            || !string.Equals(metadata.Status, "active", StringComparison.Ordinal)
+            || !IsCanonicalSubject(installation.SubjectId)
+            || metadata.IssuedAtUtc == default
+            || metadata.IssuedAtUtc > DateTimeOffset.UtcNow.AddMinutes(2))
         {
             throw new InvalidDataException("Chummer returned a mismatched account grant.");
         }
@@ -1555,7 +1780,8 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             metadata.Status,
             authority.AccessToken,
             metadata.IssuedAtUtc,
-            metadata.ExpiresAtUtc);
+            metadata.ExpiresAtUtc,
+            installation.SubjectId);
     }
     private async Task<DateTimeOffset?> ReadGrantExpiryAsync(CancellationToken cancellationToken)
         => await ReadTimestampAsync(GrantExpiryKey, cancellationToken);
@@ -1899,7 +2125,9 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             && string.Equals(
                 current.PublicKey,
                 expectedGrant.Identity.PublicKey,
-                StringComparison.Ordinal);
+                StringComparison.Ordinal)
+            && string.Equals(await ReadStoredOwnerAsync(current, CancellationToken.None),
+                expectedGrant.SubjectId, StringComparison.Ordinal);
     }
 
     private static bool FixedTimeEqualsSecret(string? left, string right)
@@ -1947,6 +2175,20 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
                 return false;
             }
 
+            // An already-empty credential bundle is not a transition. In particular,
+            // the deferred startup check must not retire the local stamp captured by
+            // a New Runner dialog while merely checking that no account is linked.
+            // Present-but-empty or partial rows still take destructive recovery below.
+            if (accessToken is null
+                && await _metadataStore.GetAsync(OwnerBindingKey, CancellationToken.None) is null
+                && await _metadataStore.GetAsync(GrantExpiryKey, CancellationToken.None) is null
+                && await _metadataStore.GetAsync(RefreshAttemptKey, CancellationToken.None) is null
+                && await _metadataStore.GetAsync(StagedGrantCommitKey, CancellationToken.None) is null)
+            {
+                OwnerAuthority.PublishLocal();
+                return true;
+            }
+
             await ClearGrantCoreAsync(CancellationToken.None);
             return true;
         }
@@ -1958,10 +2200,13 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
 
     private async Task ClearGrantCoreAsync(CancellationToken cancellationToken)
     {
+        OwnerAuthority.Invalidate();
         await _metadataStore.RemoveAsync(AccessTokenKey, cancellationToken);
+        await _metadataStore.RemoveAsync(OwnerBindingKey, cancellationToken);
         await _metadataStore.RemoveAsync(GrantExpiryKey, cancellationToken);
         await _metadataStore.RemoveAsync(RefreshAttemptKey, cancellationToken);
         await _metadataStore.RemoveAsync(StagedGrantCommitKey, cancellationToken);
+        OwnerAuthority.PublishLocal();
     }
 
     private async Task ClearPendingAsync(CancellationToken cancellationToken)
@@ -1987,6 +2232,7 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
 
     private async Task ClearAllCredentialsCoreAsync(CancellationToken cancellationToken)
     {
+        OwnerAuthority.Invalidate();
         try
         {
             await _keyAuthority.RemoveAsync(cancellationToken);
@@ -2066,22 +2312,26 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
 
     private sealed class StoredGrant
     {
-        internal StoredGrant(AndroidAccountLinkKeyIdentity identity, string accessToken)
+        internal StoredGrant(AndroidAccountLinkKeyIdentity identity, string accessToken, string? subjectId)
         {
             Identity = identity;
             AccessToken = accessToken;
+            SubjectId = subjectId;
         }
 
         internal AndroidAccountLinkKeyIdentity Identity { get; }
         internal string InstallationId => Identity.InstallationId;
         internal string GrantId => Identity.GrantId!;
         internal string AccessToken { get; }
+        internal string? SubjectId { get; }
 
         public override string ToString()
             => $"StoredGrant {{ InstallationId = {InstallationId}, GrantId = {GrantId}, AccessToken = [REDACTED], Key = [NON-EXPORTABLE] }}";
     }
 
     private sealed record InstallationGrantRequest(string InstallationId);
+    private sealed record ErasureGrantStatus(string InstallationId, string GrantId, string Status,
+        DateTimeOffset IssuedAtUtc, DateTimeOffset ExpiresAtUtc, DateTimeOffset ObservedAtUtc, string? SubjectId);
     private sealed record AccountErasureRequest(
         string InstallationId,
         string Confirmation);
@@ -2146,7 +2396,12 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         string Status,
         string AccessToken,
         DateTimeOffset IssuedAtUtc,
-        DateTimeOffset ExpiresAtUtc);
+        DateTimeOffset ExpiresAtUtc,
+        string? SubjectId = null);
+    private sealed record StoredOwnerBinding(int Version, string InstallationId, string GrantId,
+        string SubjectId, DateTimeOffset IssuedAtUtc, DateTimeOffset ExpiresAtUtc);
+    private sealed record InstallationOwnerProjection(string InstallationId, string GrantId,
+        string SubjectId, string Status);
     private sealed record GrantMetadata(
         string GrantId,
         string InstallationId,
@@ -2155,11 +2410,13 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         DateTimeOffset ExpiresAtUtc);
     private sealed record ExchangeResponse(
         GrantMetadata Grant,
+        InstallationOwnerProjection Installation,
         bool AlreadyClaimed,
         string OperationId,
         string GrantTransport);
     private sealed record RefreshResponse(
         GrantMetadata Grant,
+        InstallationOwnerProjection Installation,
         bool Rotated,
         string OperationId,
         string GrantTransport);

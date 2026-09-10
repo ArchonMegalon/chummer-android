@@ -269,16 +269,16 @@ class AndroidContractTests(unittest.TestCase):
         )
 
         for dependency, commits in (
-            ("ArchonMegalon/chummer6-ui", ("399cc0b4e0b70f678ebeb6a2fcc9d0e0659bf61d",) * 2),
+            ("ArchonMegalon/chummer6-ui", ("f7d671e8e1fd9ba630b74564c203077e6f162fa7",) * 2),
             (
                 "ArchonMegalon/chummer6-core",
                 (
-                    "880e5df8ace981e9a60264d835329dd32f54a158",
+                    "f7500ef8c2f597bac67bc3f53620d50b7a17d00a",
                     "1d8cf694d0412b3bd9f4a241fb95244fad341160",
-                    "880e5df8ace981e9a60264d835329dd32f54a158",
+                    "f7500ef8c2f597bac67bc3f53620d50b7a17d00a",
                 ),
             ),
-            ("ArchonMegalon/chummer6-hub", ("f06bb7e7e71e5afceb115d9078a473b1087ac7df",)),
+            ("ArchonMegalon/chummer6-hub", ("894cb12281eb1315a202c7f1ac5d7de9f70e5fd6",)),
             ("ArchonMegalon/chummer6-ui-kit", ("d51ecd99cf72098d4adc8db0192bff7bf9fd8e61",)),
             ("ArchonMegalon/chummer6-hub-registry", ("af9a7e19c3bf331e96411dfb8f9e7820a98cab29",)),
             ("ArchonMegalon/chummer6-media-factory", ("415c8163d3d90b1211e4014fef332bdec6d75f73",)),
@@ -682,10 +682,24 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn(required_phrase, hub_contract)
         self.assertIn('"/api/v2/android/linked/account/erase"', service)
         server_call = coordinator.index("await _account.EraseAccountAsync")
-        local_delete = coordinator.index("await _presenter.DeleteWorkspaceAsync")
+        local_delete = coordinator.index("await bound.DeleteStoredWorkspaceAsync")
         credentials_clear = service.index("ClearAllCredentialsAsync", service.index("EraseAccountAsync"))
         response_validation = service.index("if (!IsCompleteAccountErasureReceipt(receipt))", service.index("EraseAccountAsync"))
         self.assertLess(server_call, local_delete)
+        self.assertIn("IsOriginalAccountCurrent,", coordinator)
+        self.assertIn("deleted.Deletion.Success && deleted.Deletion.Value?.Id == id", coordinator)
+        self.assertIn("deleted.Deletion.Value.ContentRevision == revision && deleted.LocalProjectionRetired", coordinator)
+        self.assertIn("cleanup.RetireOwnerRecovery(recoveryOwner)", coordinator)
+        self.assertIn("postCommitBudget.Token", coordinator[local_delete:])
+        self.assertIn("localCoverageComplete", coordinator)
+        self.assertIn("removeLocalRunners && localOwnerMatched", coordinator)
+        self.assertIn("originalOwner.Owner != OwnerScope.LocalSingleUser", coordinator)
+        self.assertIn("receipt.LocalWorkspaceOwnerKey", coordinator)
+        self.assertIn("ReadErasureOwnerAsync(grant, cancellationToken)", service)
+        self.assertIn("Local runners were kept", coordinator)
+        deletion_page = privacy[privacy.index("public sealed class AccountDeletionPage"):]
+        self.assertLess(deletion_page.index("CaptureAccountErasureRequest"), deletion_page.index("await DisplayAlertAsync"))
+        self.assertIn("Coordinator.EraseAccountAsync(originalRequest, removeOriginalLocalRunners)", deletion_page)
         self.assertLess(response_validation, credentials_clear)
         self.assertIn("AccountDeletionPage", privacy)
         self.assertIn("AccountDeletionInfoPage", privacy)
@@ -700,7 +714,10 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("completed.SetEquals(RequiredErasureComponents)", service)
         self.assertIn("Copy receipt", privacy)
         self.assertIn("Clipboard.Default.SetTextAsync(result.Receipt.ReceiptSha256)", privacy)
-        self.assertIn("Remove runners saved on this device", privacy)
+        self.assertIn("Remove this account's runners saved on this device", privacy)
+        self.assertIn("Other accounts' runners were kept", privacy)
+        self.assertNotIn("Active account data and this device are cleared", privacy)
+        self.assertIn("cleanupRoster.InspectLocalWorkspacesAsync(cleanupOwner, postCommitBudget.Token)", coordinator)
         self.assertIn("This cannot be undone.", privacy)
         self.assertIn("ChummerWebRoutes.AccountDeletion", coordinator)
         self.assertIn("Preferences.Default.Remove(SelectedGroupPreferenceKey)", coordinator)
@@ -808,11 +825,45 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("NativeWorkspaceActivationReceipt", coordinator)
         self.assertIn("return null;", coordinator)
         self.assertNotIn("ActivatedNewWorkspace", coordinator)
-        self.assertEqual(
-            2,
-            coordinator.count("if (State.WorkspaceId is { } importedWorkspaceId)"),
+        local_import = coordinator[
+            coordinator.index("public async Task<NativeWorkspaceActivationReceipt?> OpenLocalAsync("):
+            coordinator.index("private static bool WorkspaceIsActive(")
+        ]
+        self.assertEqual(1, local_import.count("await _presenter.ImportAsync("))
+        self.assertEqual(1, local_import.count("if (State.WorkspaceId is { } importedWorkspaceId)"))
+        self.assertIn("ComputeExactImportPayloadSha256(document.Content)", local_import)
+        self.assertIn("await TryRefreshWorkspaceAuthorityAsync(", local_import)
+        self.assertIn("expectedPayloadSha256,", local_import)
+        self.assertIn("verifiedAuthority?.Matches(State) == true", local_import)
+        self.assertIn("WorkspaceIsActive(State, stableWorkspaceId)", local_import)
+        self.assertLess(
+            local_import.index("await _presenter.ImportAsync("),
+            local_import.index("await TryRefreshWorkspaceAuthorityAsync("),
         )
-        self.assertGreaterEqual(coordinator.count("expectedPayloadSha256"), 2)
+        self.assertLess(
+            local_import.index("verifiedAuthority?.Matches(State) == true"),
+            local_import.index("NativeWorkspaceActivationKind.LocalFile"),
+        )
+        legacy_online = coordinator[
+            coordinator.index("public Task<NativeWorkspaceActivationReceipt?> OpenOnlineAsync("):
+            coordinator.index("public async Task CreateRunnerAsync(")
+        ]
+        self.assertIn("Task.FromResult<NativeWorkspaceActivationReceipt?>(null)", legacy_online)
+        self.assertNotIn("ImportAsync(", legacy_online)
+        online_review = runners[runners.index("using NativeWorkspaceContinuationReview? review ="):]
+        self.assertIn("await Coordinator.ReviewOnlineAsync(character)", online_review)
+        self.assertIn("if (!review.CanConfirm)", online_review)
+        self.assertIn("bool confirmed = await DisplayAlertAsync(", online_review)
+        self.assertIn("await Coordinator.ConfirmOnlineAsync(review, confirmed)", online_review)
+        self.assertIn("Coordinator.IsWorkspaceActivationCurrent(activation, NativeWorkspaceActivationKind.OnlineCharacter)", online_review)
+        self.assertLess(
+            online_review.index("bool confirmed = await DisplayAlertAsync("),
+            online_review.index("await Coordinator.ConfirmOnlineAsync(review, confirmed)"),
+        )
+        self.assertLess(
+            online_review.index("Coordinator.IsWorkspaceActivationCurrent("),
+            online_review.index("await Shell.Current.GoToAsync(_runnerRoute)"),
+        )
         self.assertIn("NativeWorkspaceActivationKind.LocalFile", coordinator)
         self.assertIn("ResolveInitialPhoneRouteAsync", phone_shell)
         initial_phone_route = shell[
@@ -1246,7 +1297,9 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("await _presenter.SaveAsync", coordinator)
         self.assertIn("_durableSaveNotice = null;", coordinator)
         self.assertIn("TryRefreshWorkspaceAuthorityAsync", coordinator)
-        self.assertIn("bool durableSaveVerified = State.Error is null", coordinator)
+        self.assertIn("bool durableSaveVerified = IsNativePersistenceViewCurrent(original,", coordinator)
+        self.assertIn("CommandResult<WorkspaceSaveReceipt> saved = await bound.SaveAsync(owner, workspaceId,", coordinator)
+        self.assertIn("OriginalOwner = original.DisplayOwnerContext", coordinator)
         self.assertIn("_durableSaveNotice = new NativeDurableSaveNotice(", coordinator)
         self.assertIn('_notice = "Saved.";', coordinator)
         self.assertIn('"journey": "explicit-save"', driver)

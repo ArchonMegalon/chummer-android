@@ -27,6 +27,14 @@ require_governed_source_root() {
 require_governed_source_root CHUMMER_PRESENTATION_ROOT
 require_governed_source_root CHUMMER_CORE_ENGINE_ROOT
 
+# Continuation tests use only this build's canonical Core content, never ambient data.
+native_content_root="$CHUMMER_CORE_ENGINE_ROOT/Chummer"
+[[ -d "$native_content_root/data" && ! -L "$native_content_root" && ! -L "$native_content_root/data" \
+  && "$(realpath -e -- "$native_content_root/data")" == "$native_content_root/data" ]] || {
+  echo "The governed Core engine root must contain canonical Chummer/data for native continuation tests." >&2
+  exit 64
+}
+
 python3 "$repo_dir/scripts/preflight_native_android_toolchain.py" \
   --repo-root "$repo_dir" \
   --dotnet "$dotnet_command"
@@ -46,6 +54,8 @@ python3 "$repo_dir/scripts/verify_native_compile_graph.py" \
   -p:UseSharedCompilation=false \
   -p:BuildInParallel=false \
   -p:ChummerDesktopRuntimeIdentifiers= \
+  -p:ChummerPresentationRoot="$CHUMMER_PRESENTATION_ROOT" \
+  -p:ChummerCoreEngineRoot="$CHUMMER_CORE_ENGINE_ROOT" \
   -p:ChummerUseLocalCompatibilityTree=true
 
 "$dotnet_command" run \
@@ -54,6 +64,22 @@ python3 "$repo_dir/scripts/verify_native_compile_graph.py" \
   --no-build \
   --no-restore \
   --disable-build-servers
+
+# Required account/continuation suites reuse the just-built binary without rebuilding.
+interaction_tests_binary="${interaction_tests_path%/*}/bin/Release/net10.0/Chummer.Android.Native.InteractionTests.dll"
+[[ -f "$interaction_tests_binary" && ! -L "$interaction_tests_binary" ]] || {
+  echo "The just-built native interaction test binary is unavailable." >&2
+  exit 64
+}
+"$dotnet_command" "$interaction_tests_binary" --android-continuation-transport
+"$dotnet_command" "$interaction_tests_binary" --android-continuation-roaming
+"$dotnet_command" "$interaction_tests_binary" --android-continuation-native-content-root "$native_content_root"
+"$dotnet_command" "$interaction_tests_binary" --android-account-owner-content-root "$native_content_root"
+"$dotnet_command" "$interaction_tests_binary" --creation-bootstrap-owner-content-root "$native_content_root"
+"$dotnet_command" "$interaction_tests_binary" --creation-contacts-owner-content-root "$native_content_root"
+"$dotnet_command" "$interaction_tests_binary" --persistence-owner-content-root "$native_content_root"
+"$dotnet_command" "$interaction_tests_binary" --account-erasure-owner-content-root "$native_content_root"
+# End required account/continuation suites.
 
 "$dotnet_command" run \
   --project "$play_review_tests_path" \

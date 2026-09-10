@@ -13,6 +13,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
+    <Compile Include="../../src/Chummer.Android/Platform/AndroidAccountOwnerAuthority.cs" Link="AndroidAccountOwnerAuthority.cs" />
     <Compile Include="../../src/Chummer.Android/Native/PhoneStrings.cs"
              Link="PhoneStrings.cs" />
     <Compile Include="../../src/Chummer.Android/Platform/IAndroidAccountLinkService.cs"

@@ -30,51 +30,53 @@ RECEIPT_TOP_LEVEL_KEYS = {
     "contractName", "contractVersion", "coreRuntimeFeed",
     "creationInitialAuthorityTimingContract", "currentOwnerContractFeed",
     "focusedCareerAdvanceTestExecution", "focusedOverviewTestExecution",
+    "focusedContinuationTestExecution", "focusedOwnerShellTestExecution",
+    "focusedExistingOwnerRegressionTestExecutions",
     "generatedAt", "localCompatibilityTree", "mode", "nugetConfigSha256",
     "ownerPackageArtifactCache", "ownerSources", "packageCacheWasFresh",
     "packageFeedInventorySha256", "packageInventory", "packageSources",
     "sdkArchiveSha512", "sdkVersion", "sourceInventory", "status",
     "stubPackagesAllowed", "testExecutions", "testProjects", "uiOwnerFeed",
 }
-EXPECTED_PRESENTATION_COMMIT = "399cc0b4e0b70f678ebeb6a2fcc9d0e0659bf61d"
-EXPECTED_PRESENTATION_TREE = "4effca11a4f7a4f0b48094c3c1df4fbd150114e6"
+EXPECTED_PRESENTATION_COMMIT = "f7d671e8e1fd9ba630b74564c203077e6f162fa7"
+EXPECTED_PRESENTATION_TREE = "62a8711e128b920dacd541ad18f9fd5d6d9194b0"
 EXPECTED_PRESENTATION_REPOSITORY = "https://github.com/ArchonMegalon/chummer6-ui.git"
 EXPECTED_LOCK_PATH = "config/package-plane.lock.json"
-EXPECTED_LOCK_SHA256 = "3c619d0634a1a74e0cab52742b02b900377dd641161c4668812c17caed4edcf7"
-EXPECTED_LOCK_SIZE = 57315
-EXPECTED_LOCK_BLOB = "501c88b5a443c22e85b59593c5026b10aa35ef19"
-EXPECTED_RECEIPT_SHA256 = "ba99f688f7d6507c87a0a7a28231d80b01ec0d8e60ebc274c70796c092eb1f04"
-EXPECTED_RECEIPT_SIZE = 51091
-EXPECTED_CACHE_KEY = "49e0da417b7c000646b3a6beb4e385288a2c8aff0da83fd673cb938a73e1b9e4"
-EXPECTED_CACHE_MANIFEST_SHA256 = "2010c669ae9857a663cd7df0ccc3dd36d6f8a7ddc44dd598db2426dd817a5751"
+EXPECTED_LOCK_SHA256 = "7330a2d5feb5c0f71991b0e79134f20aa162b3bab7d042d7ac963cc4baff4cb8"
+EXPECTED_LOCK_SIZE = 66853
+EXPECTED_LOCK_BLOB = "0da2966b6c262fa01eade081b00b84a058167634"
+EXPECTED_RECEIPT_SHA256 = "b9a78d7a818e6b522da59fea84ac478e268955cb2baa9aeebc257786594aaa53"
+EXPECTED_RECEIPT_SIZE = 78985
+EXPECTED_CACHE_KEY = "9b3218010f819c69d59a8e1b132e6f799e895cf700ea11d748b815518efd3dbe"
+EXPECTED_CACHE_MANIFEST_SHA256 = "cc4e7e1150c0aa433bd304afc129c3a4263ba2c87fb5ae02e6d5150cea635c01"
 EXPECTED_CACHE_MANIFEST_SIZE = 13707
 EXPECTED_PACKAGE_COUNT = 18
 EXPECTED_CACHE_AUTHORITY_COUNT = 13
 EXPECTED_SOURCE_GRAPH = {
-    "corePackageRecipeCommit": "1d8cf694d0412b3bd9f4a241fb95244fad341160",
-    "coreRuntimeSourceCommit": "880e5df8ace981e9a60264d835329dd32f54a158",
-    "hubProducerCommit": "f06bb7e7e71e5afceb115d9078a473b1087ac7df",
+    "corePackageRecipeCommit": "2c7f566dfbedddaa4e4b15c975b1e17e6f14990a",
+    "coreRuntimeSourceCommit": "f7500ef8c2f597bac67bc3f53620d50b7a17d00a",
+    "hubProducerCommit": "894cb12281eb1315a202c7f1ac5d7de9f70e5fd6",
     "registryCommit": "af9a7e19c3bf331e96411dfb8f9e7820a98cab29",
     "uiKitCommit": "d51ecd99cf72098d4adc8db0192bff7bf9fd8e61",
 }
-EXPECTED_RUNTIME_HUB_COMMIT = "f06bb7e7e71e5afceb115d9078a473b1087ac7df"
+EXPECTED_RUNTIME_HUB_COMMIT = "894cb12281eb1315a202c7f1ac5d7de9f70e5fd6"
 RUNTIME_SOURCE_WORKFLOW_PATH = ".github/workflows/api36-editing-e2e.yml"
 EXPECTED_ANDROID_LOCKS = (
     (
         "src/Chummer.Android/Chummer.Android.csproj",
         "src/Chummer.Android/packages.lock.json",
-        "32f8393f06f70530f6e528e0120778036328472c949afcb5c0679dc0b618768e",
+        "805882c8077168aacdf4111312f06c64604c157039f513fdabe3181ba97215b6",
         70375,
     ),
     (
         "tests/Chummer.Android.Native.CompileCheck/Chummer.Android.Native.CompileCheck.csproj",
         "tests/Chummer.Android.Native.CompileCheck/packages.lock.json",
-        "df9356de847edbca8a31b590bfe478c7927c712fd241a74149fead9294927e5c",
+        "7aca6848509c4c2bcca5feb045611b682302b1125518fff1b9cc4dbca7b2a294",
         16178,
     ),
 )
-CORE_VERSION = "0.0.0-packageplane.candidate.sh880e5df8ace98"
-HUB_VERSION = "0.1.0-packageplane.candidate.sh1852ea4eef6d"
+CORE_VERSION = "0.0.0-packageplane.candidate.shf7500ef8c2f59"
+HUB_VERSION = "0.1.0-packageplane.candidate.shfe4b2706c44d"
 CAMPAIGN_VERSION = "0.1.0-preview"
 UI_KIT_VERSION = "0.1.0-preview"
 EXPECTED_COMPILE_PACKAGES = {
@@ -91,6 +93,22 @@ EXPECTED_COMPILE_PACKAGES = {
     "Chummer.Run.Contracts": HUB_VERSION,
     "Chummer.Ui.Kit": UI_KIT_VERSION,
 }
+PRODUCT_TEST_PROJECT = "Chummer.Product.UnitTests/Chummer.Product.UnitTests.csproj"
+PRODUCT_TEST_ASSEMBLY = "Chummer.Product.UnitTests/bin/Release/net10.0/Chummer.Product.UnitTests.dll"
+# Configured execution floors from the reviewed UI producer, not observed totals.
+OWNER_TEST_EXECUTIONS = (
+    ("focusedContinuationTestExecution", "InProcessWorkspaceContinuationTests", "Chummer.Tests/InProcessWorkspaceContinuationTests.cs", 19),
+    ("focusedOwnerShellTestExecution", "InProcessShellOwnerContextTests", "Chummer.Tests/InProcessShellOwnerContextTests.cs", 26),
+)
+EXISTING_OWNER_TEST_EXECUTIONS = (
+    ("InProcessChummerClientRulesetPluginTests", "Chummer.Tests/InProcessChummerClientRulesetPluginTests.cs", 74),
+    ("ShellBootstrapDataProviderTests", "Chummer.Tests/Presentation/ShellBootstrapDataProviderTests.cs", 24),
+    ("ShellPresenterTests", "Chummer.Tests/Presentation/ShellPresenterTests.cs", 80),
+    ("WorkspaceSessionActivationServiceTests", "Chummer.Tests/Presentation/WorkspaceSessionActivationServiceTests.cs", 5),
+    ("WorkspaceSessionPresenterTests", "Chummer.Tests/Presentation/WorkspaceSessionPresenterTests.cs", 23),
+    ("WorkspaceViewStateStoreTests", "Chummer.Tests/Presentation/WorkspaceViewStateStoreTests.cs", 6),
+    ("RestartSafeWorkspacePersistenceTests", "Chummer.Tests/RestartSafeWorkspacePersistenceTests.cs", 1),
+)
 
 
 def sha256(path: Path) -> str:
@@ -716,6 +734,110 @@ def validate_android_sdk_authority(
             raise ValueError(f"Android consumer lock bytes drifted: {project}")
 
 
+def validate_owner_test_executions(receipt: Mapping[str, Any]) -> None:
+    """Validate recorded invocation identity; do not invent observed test counts.
+
+    The separately pinned passed receipt authenticates execution success. Source
+    roots here are provenance only, never filesystem or restore authority.
+    """
+    executions = receipt.get("testExecutions")
+    if receipt.get("testProjects") != [PRODUCT_TEST_PROJECT] or not isinstance(executions, list) or len(executions) != 1:
+        raise ValueError("UI owner tests require the one complete Product test execution")
+    full = require_exact_object(executions[0], "UI full Product test execution", {
+        "coreProjectionContent", "buildInParallel", "compileRunner", "disableBuildServers",
+        "maxCpuCount", "minimumExpectedTests", "project", "runner", "sdkVersion",
+        "testAssembly", "useSharedCompilation",
+    })
+    sdk = require_string(receipt.get("sdkVersion"), "UI test SDK")
+    if (
+        full["project"] != PRODUCT_TEST_PROJECT
+        or full["runner"] != "direct-exact-assembly"
+        or full["compileRunner"] != "serialized-package-plane-build"
+        or full["sdkVersion"] != sdk
+        or full["buildInParallel"] is not False
+        or full["disableBuildServers"] is not True
+        or full["useSharedCompilation"] is not False
+        or type(full["maxCpuCount"]) is not int or full["maxCpuCount"] != 1
+        or type(full["minimumExpectedTests"]) is not int or full["minimumExpectedTests"] != 747
+    ):
+        raise ValueError("UI full Product test invocation is not exact")
+    assembly = require_exact_object(full["testAssembly"], "UI Product test assembly", {"path", "sha256", "sizeBytes"})
+    cache_byte_identity(assembly["sha256"], assembly["sizeBytes"], "UI Product test assembly")
+    if assembly["path"] != PRODUCT_TEST_ASSEMBLY:
+        raise ValueError("UI Product test assembly path differs")
+
+    content = require_exact_object(full["coreProjectionContent"], "UI test Core projection", {
+        "repository", "checkoutCommit", "runtimeSourceCommit", "packageRecipeCommit", "sourceRoot",
+        "usage", "contentDirectories", "fileCount", "contentInventorySha256",
+    })
+    source = EXPECTED_SOURCE_GRAPH["coreRuntimeSourceCommit"]
+    recipe = EXPECTED_SOURCE_GRAPH["corePackageRecipeCommit"]
+    core_feed = receipt.get("coreRuntimeFeed")
+    source_root = content["sourceRoot"]
+    if (
+        content["repository"] != "https://github.com/ArchonMegalon/chummer6-core.git"
+        or content["runtimeSourceCommit"] != source or content["packageRecipeCommit"] != recipe
+        or content["checkoutCommit"] not in (source, recipe)
+        or not isinstance(core_feed, dict)
+        or core_feed.get("runtimeSourceCommit") != source or core_feed.get("packageRecipeCommit") != recipe
+        or content["usage"] != "read-only-rule-data-not-project-reference"
+        or content["contentDirectories"] != ["Chummer/data", "Chummer/lang", "Chummer/customdata"]
+        or not isinstance(source_root, str) or not source_root.startswith("/")
+        or "\\" in source_root or "\0" in source_root or source_root == "/"
+        or any(part in ("", ".", "..") for part in source_root[1:].split("/"))
+        or type(content["fileCount"]) is not int or content["fileCount"] <= 0
+        or not isinstance(content["contentInventorySha256"], str)
+        or re.fullmatch(r"[0-9a-f]{64}", content["contentInventorySha256"]) is None
+    ):
+        raise ValueError("UI test Core projection is not bound to the runtime feed")
+
+    inventory = receipt.get("sourceInventory")
+    if not isinstance(inventory, list) or not inventory:
+        raise ValueError("UI owner test source inventory is missing")
+    source_paths: list[str] = []
+    for value in inventory:
+        row = require_exact_object(value, "UI test source inventory row", {"path", "sha256", "sizeBytes"})
+        path = row["path"]
+        if (
+            not isinstance(path, str) or "\\" in path or "\0" in path
+            or any(part in ("", ".", "..") for part in path.split("/"))
+            or not isinstance(row["sha256"], str) or re.fullmatch(r"[0-9a-f]{64}", row["sha256"]) is None
+            or type(row["sizeBytes"]) is not int or row["sizeBytes"] < 0
+        ):
+            raise ValueError("UI owner test source inventory row is malformed")
+        source_paths.append(path)
+    if source_paths != sorted(set(source_paths)) or PRODUCT_TEST_PROJECT not in source_paths:
+        raise ValueError("UI owner test source inventory membership is not canonical")
+
+    def validate_execution(value: Any, test_class: str, source_file: str, minimum: int) -> None:
+        row = require_exact_object(value, f"UI focused owner test {test_class}", {
+            "coreProjectionContent", "filter", "minimumExpectedTests", "project", "reuseFullSuiteBuild",
+            "runner", "sdkVersion", "sourceFiles", "testAssembly",
+        })
+        # Validate types before equality: bool/int and float/int must not alias.
+        focused_assembly = require_exact_object(row["testAssembly"], "UI focused test assembly", {"path", "sha256", "sizeBytes"})
+        cache_byte_identity(focused_assembly["sha256"], focused_assembly["sizeBytes"], "UI focused test assembly")
+        focused_content = require_exact_object(row["coreProjectionContent"], "UI focused Core projection", set(content))
+        if (
+            row["filter"] != f"FullyQualifiedName~{test_class}"
+            or type(row["minimumExpectedTests"]) is not int or row["minimumExpectedTests"] != minimum
+            or row["project"] != PRODUCT_TEST_PROJECT or row["reuseFullSuiteBuild"] is not True
+            or row["runner"] != "direct-exact-assembly" or row["sdkVersion"] != sdk
+            or row["sourceFiles"] != [source_file] or source_file not in source_paths
+            or focused_assembly != assembly or focused_content != content
+            or type(focused_content["fileCount"]) is not int
+        ):
+            raise ValueError(f"UI focused owner test {test_class} is not bound to the full suite")
+
+    for key, test_class, source_file, minimum in OWNER_TEST_EXECUTIONS:
+        validate_execution(receipt.get(key), test_class, source_file, minimum)
+    existing = receipt.get("focusedExistingOwnerRegressionTestExecutions")
+    if not isinstance(existing, list) or len(existing) != len(EXISTING_OWNER_TEST_EXECUTIONS):
+        raise ValueError("UI existing owner test execution set is not exact")
+    for row, (test_class, source_file, minimum) in zip(existing, EXISTING_OWNER_TEST_EXECUTIONS, strict=True):
+        validate_execution(row, test_class, source_file, minimum)
+
+
 def validate_receipt(receipt_path: Path) -> dict[str, Any]:
     receipt_path = require_private_regular_file(receipt_path, "UI current-graph receipt")
     if receipt_path.stat().st_size != EXPECTED_RECEIPT_SIZE or sha256(receipt_path) != EXPECTED_RECEIPT_SHA256:
@@ -742,6 +864,7 @@ def validate_receipt(receipt_path: Path) -> dict[str, Any]:
     # into fresh private consumer caches. It does not claim cache non-use.
     # The older cold/non-use shape is intentionally not an accepted alternative.
     validate_copied_cache_receipt(receipt.get("ownerPackageArtifactCache"))
+    validate_owner_test_executions(receipt)
     return receipt
 
 

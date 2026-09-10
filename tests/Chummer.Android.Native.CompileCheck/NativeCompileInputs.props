@@ -11,6 +11,7 @@
     <Compile Include="../../src/Chummer.Android/PhoneShellRoutes.cs" Link="PhoneShellRoutes.cs" />
     <Compile Include="../../src/Chummer.Android/MauiProgram.cs" Link="MauiProgram.cs" />
     <Compile Include="../../src/Chummer.Android/Platform/IAndroidAccountLinkService.cs" Link="Platform/IAndroidAccountLinkService.cs" />
+    <Compile Include="../../src/Chummer.Android/Platform/IAndroidWorkspaceContinuationTransport.cs" Link="Platform/IAndroidWorkspaceContinuationTransport.cs" />
     <Compile Include="../../src/Chummer.Android/Platform/AndroidAccountLinkKeyAuthority.cs" Link="Platform/AndroidAccountLinkKeyAuthority.cs" />
     <Compile Include="../../src/Chummer.Android/Platform/MauiSecureAndroidAccountLinkKeyMetadataStore.cs" Link="Platform/MauiSecureAndroidAccountLinkKeyMetadataStore.cs" />
     <Compile Include="../../src/Chummer.Android/Platform/IAndroidDocumentService.cs" Link="Platform/IAndroidDocumentService.cs" />
@@ -20,6 +21,8 @@
     <Compile Include="../../src/Chummer.Android/Platform/IAndroidSystemService.cs" Link="Platform/IAndroidSystemService.cs" />
     <Compile Include="../../src/Chummer.Android/Platform/AndroidAccountLinkHttpTransport.cs" Link="Platform/AndroidAccountLinkHttpTransport.cs" />
     <Compile Include="../../src/Chummer.Android/Platform/AndroidAccountLinkService.cs" Link="Platform/AndroidAccountLinkService.cs" />
+    <Compile Include="../../src/Chummer.Android/Platform/AndroidAccountLinkService.Continuations.cs" Link="Platform/AndroidAccountLinkService.Continuations.cs" />
+    <Compile Include="../../src/Chummer.Android/Platform/AndroidAccountOwnerAuthority.cs" Link="Platform/AndroidAccountOwnerAuthority.cs" />
     <Compile Include="../../src/Chummer.Android/Platform/AccountStartupWorkScheduler.cs" Link="Platform/AccountStartupWorkScheduler.cs" />
     <Compile Include="../../src/Chummer.Android/Platform/ChummerWebRoutes.cs" Link="Platform/ChummerWebRoutes.cs" />
     <Compile Include="CompileStubs.cs" Link="CompileStubs.cs" />

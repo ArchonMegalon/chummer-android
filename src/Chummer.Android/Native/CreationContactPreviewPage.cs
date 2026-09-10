@@ -206,6 +206,17 @@ public sealed class CreationContactPreviewPage : NativePageBase
             return;
         }
 
+        if (_confirmation?.Receipt is { } committed
+            && CreationContactsPhoneAuthority.ReceiptMatches(_prepared, committed))
+        {
+            Label saved = NativeTheme.Body(
+                "Saved and atomically checkpointed. Reload the original account's character to continue; "
+                + "this change must not be submitted again.");
+            saved.AutomationId = "creation-contact-committed-reload-required";
+            _body.Add(NativeTheme.Card(saved));
+            return;
+        }
+
         CheckBox explicitConfirm = new()
         {
             AutomationId = "creation-contact-explicit-confirm",
@@ -258,15 +269,12 @@ public sealed class CreationContactPreviewPage : NativePageBase
 
     private void AddReceipt()
     {
-        if (_confirmation is not
-            {
-                Outcome: CharacterCreationContactOutcomes.Applied or CharacterCreationContactOutcomes.Replayed,
-                Receipt: { } receipt,
-                RefreshedState: { } refreshed
-            })
+        if (_confirmation?.Receipt is not { } receipt
+            || !CreationContactsPhoneAuthority.ReceiptMatches(_prepared, receipt))
         {
             return;
         }
+        var refreshed = _confirmation.RefreshedState;
 
         VerticalStackLayout card = new() { Spacing = 7 };
         card.Add(NativeTheme.Eyebrow("Atomic creation receipt"));
@@ -290,7 +298,7 @@ public sealed class CreationContactPreviewPage : NativePageBase
             receipt.ContactPointsRemaining.ToString(CultureInfo.InvariantCulture)));
         card.Add(NativeTheme.Metric(
             "Reloaded contacts",
-            refreshed.Contacts.Count.ToString(CultureInfo.InvariantCulture)));
+            refreshed is null ? "Reload required" : refreshed.Contacts.Count.ToString(CultureInfo.InvariantCulture)));
         Border border = NativeTheme.Card(card);
         border.AutomationId = "creation-contact-confirm-receipt";
         SemanticProperties.SetDescription(

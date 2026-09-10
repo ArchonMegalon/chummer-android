@@ -1,4 +1,5 @@
 using Chummer.Contracts.Workspaces;
+using Chummer.Contracts.Owners;
 using Chummer.Presentation.Overview;
 
 namespace Chummer.Android.Native;
@@ -10,16 +11,20 @@ public sealed partial class TabletBuildPage
     private bool _draftConflict;
     private Label? _draftStatus;
     private CharacterWorkspaceId? _selectionWorkspace;
+    private OwnerScope? _selectionOwner;
     private string? _selectionSection;
 
     private void RestoreInspectorSelection()
     {
         CharacterOverviewState state = Coordinator.State;
-        if (_selectionWorkspace == state.WorkspaceId && _selectionSection == state.ActiveSectionId) return;
+        OwnerScope? owner = state.DisplayOwnerContext?.Owner;
+        if (_selectionOwner == owner && _selectionWorkspace == state.WorkspaceId
+            && _selectionSection == state.ActiveSectionId) return;
+        _selectionOwner = owner;
         _selectionWorkspace = state.WorkspaceId;
         _selectionSection = state.ActiveSectionId;
         TabletInspectorKey? selected = state.WorkspaceId is { } workspace && state.ActiveSectionId is { } section
-            ? Coordinator.TabletInspectorDrafts.Selection(workspace, section) : null;
+            ? Coordinator.TabletInspectorDrafts.Selection(workspace, section, owner) : null;
         _selectedTarget = selected?.Item;
         _selectedConditionTrack = selected?.Track;
         _selectedAttributeName = selected?.Attribute;
@@ -55,6 +60,7 @@ public sealed partial class TabletBuildPage
     {
         if (_renderedDraft is not { } draft || !Coordinator.TabletInspectorDrafts.Owns(_draftLease)) return false;
         CharacterOverviewState current = Coordinator.State;
+        if (draft.Key.Owner != current.DisplayOwnerContext?.Owner) return false;
         object? projection;
         if (draft.Key.Item is { } target)
         {
@@ -77,6 +83,7 @@ public sealed partial class TabletBuildPage
     private void BindInspectorDraft(CharacterOverviewState expected, long generation,
         TabletInspectorKey key, object projection)
     {
+        key = key with { Owner = expected.DisplayOwnerContext?.Owner };
         _draftLease = Coordinator.TabletInspectorDrafts.Acquire(key);
         TabletInspectorValues original = ReadInspectorValues();
         string authority = TabletInspectorDraftStore.Authority(expected, projection);
@@ -199,6 +206,7 @@ public sealed partial class TabletBuildPage
         CharacterOverviewState current = Coordinator.State;
         if (draft is null || current.Error is not null || current.IsBusy
             || current.WorkspaceId != expected.WorkspaceId
+            || current.DisplayOwnerContext != expected.DisplayOwnerContext
             || current.ContentRevision <= expected.ContentRevision || !matches(current)
             || !Coordinator.TabletInspectorDrafts.DiscardObservedIfUnchanged(draft)) return;
         if (_renderedDraft is { } rendered && rendered.Key == draft.Key

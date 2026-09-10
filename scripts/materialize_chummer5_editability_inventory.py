@@ -7509,6 +7509,78 @@ def _csharp_method_contains(
     return True
 
 
+def _presenter_save_authority_guarded(path: Path) -> bool:
+    """Follow both public save entrypoints into the same owner-bound implementation.
+
+    SaveAsync intentionally delegates rather than declaring async itself. Require
+    the actual callee bodies: unrelated metadata/recovery methods in this partial
+    must not satisfy a missing save implementation's source markers.
+    """
+    return (
+        _csharp_method_contains(
+            path, "SaveAsync", "public Task SaveAsync(",
+            "CancellationToken ct)",
+            "=> SaveCoreAsync(State, ct);",
+        )
+        and _csharp_method_contains(
+            path, "SaveAsync", "public Task<CommandResult<WorkspaceSaveReceipt>> SaveAsync(",
+            "OwnerContextStamp originalOwner,",
+            "CharacterWorkspaceId workspaceId, long expectedContentRevision, CancellationToken ct)",
+            "=> RunOriginalPersistenceGestureAsync<WorkspaceSaveReceipt>(originalOwner, workspaceId,",
+            "expectedContentRevision, (state, observe) => SaveCoreAsync(state, ct, observe));",
+        )
+        and _csharp_method_contains(
+            path, "SaveCoreAsync", "private async Task SaveCoreAsync(",
+            "CharacterOverviewState originalState, CancellationToken ct,",
+            "OwnerContextStamp? originalOwner = originalState.DisplayOwnerContext;",
+            "CharacterWorkspaceId? currentWorkspace = originalState.WorkspaceId;",
+            "if (!IsOriginalPersistenceOwnerCurrent(originalOwner))",
+            "AbandonOriginalPersistenceView(displayGeneration, originalState, committed: false);",
+            "long expectedContentRevision = originalState.ContentRevision;",
+            "RecoveryPayloads(originalOwner).TryBeginCaptureIntent(",
+            "WorkspaceOperationExecution<WorkspaceSaveResult> execution = await _workspaceOperationCoordinator",
+            "WorkspaceSaveResult persisted = originalOwner is { } original",
+            "? await _workspacePersistenceService.SaveAsync(",
+            "_client, original, currentWorkspace.Value, expectedContentRevision, token)",
+            "observeCanonical?.Invoke(persisted.CanonicalResult);",
+            "if (!IsOriginalPersistenceOwnerCurrent(originalOwner))",
+            "TryCaptureRecoveryPayloadAsync(",
+            "postCommitCaptureIntent, originalOwner: originalOwner)",
+            '"stale postcommit save recovery"',
+            "WorkspaceSaveResult result = execution.Value;",
+            "if (!result.Success)",
+            "long contentRevision = result.Receipt?.ContentRevision > 0",
+            "long savedRevision = result.Receipt?.SavedRevision > 0",
+            "TryCaptureRecoveryPayloadAsync(",
+            "postCommitCaptureIntent, originalOwner: originalOwner)",
+            "if (!IsOriginalPersistenceOwnerCurrent(originalOwner) || !IsDisplayGenerationCurrent(displayGeneration))",
+            '"postcommit save recovery"',
+            "PublishPostCommitState(State with",
+        )
+        and _csharp_method_contains(
+            path, "RunOriginalPersistenceGestureAsync<T>",
+            "private async Task<CommandResult<T>> RunOriginalPersistenceGestureAsync<T>(",
+            "CharacterOverviewState originalState = State;",
+            "if (!originalOwner.IsValid || originalState.DisplayOwnerContext != originalOwner",
+            "|| originalState.WorkspaceId != workspaceId || expectedContentRevision <= 0",
+            "|| originalState.ContentRevision != expectedContentRevision",
+            "|| !IsOriginalPersistenceOwnerCurrent(originalOwner))",
+            "WorkspaceOperationOutcome.Conflict",
+            "await operation(originalState, result => observed = result)",
+            "return observed ?? new(false, null,",
+        )
+        and _csharp_method_contains(
+            path, "IsOriginalPersistenceOwnerCurrent", "private bool IsOriginalPersistenceOwnerCurrent(",
+            "if (_client is not IOwnerBoundWorkspaceMutationClient bound)",
+            "return originalOwner is null;",
+            "return originalOwner is { IsValid: true } original",
+            "&& State.DisplayOwnerContext == original",
+            "&& bound.CaptureOwnerContext() == original;",
+            "return false;",
+        )
+    )
+
+
 def _career_weapon_ammo_equality_guarded(path: Path) -> bool:
     if not path.is_file():
         return False
@@ -7708,13 +7780,7 @@ def _known_phone_mapping(
                 '_notice = "Saved."',
             )
             and _contains(presenter_interface, "Task SaveAsync(CancellationToken ct)")
-            and _contains(
-                presenter_persistence,
-                "public async Task SaveAsync",
-                "expectedContentRevision",
-                "SavedRevision",
-                "TryCaptureRecoveryPayloadAsync",
-            )
+            and _presenter_save_authority_guarded(presenter_persistence)
         )
         e2e_scripted = _contains(
             e2e_driver,
@@ -11094,12 +11160,7 @@ def _known_phone_mapping(
                 "ApplyWorkspaceXmlMutationAsync",
                 "ExpectedContentRevision",
             )
-            and _contains(
-                presenter_persistence,
-                "public async Task SaveAsync",
-                "TryCaptureRecoveryPayloadAsync",
-                "postcommit save recovery",
-            )
+            and _presenter_save_authority_guarded(presenter_persistence)
             and _contains(
                 workspace_store,
                 "WriteRecordAtomically",

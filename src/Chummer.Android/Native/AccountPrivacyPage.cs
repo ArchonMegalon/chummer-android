@@ -92,7 +92,7 @@ public sealed class AccountDeletionInfoPage : ContentPage
         VerticalStackLayout process = new() { Spacing = 10 };
         process.Add(NativeTheme.Eyebrow("Process"));
         process.Add(NativeTheme.Body(
-            "Chummer finishes the online deletion first. This app clears its linked grant and local data only after the server returns a deletion receipt."));
+            "Chummer finishes the online deletion first. After the server returns a deletion receipt, this app clears its linked grant and, if selected, attempts to remove this account's local runners. Other accounts' runners are kept."));
         process.Add(NativeTheme.Body(
             "Hosted Build backup retention, deletion replay, and whole-account erasure limits are still under review. Check the public deletion page for the current policy before you continue.",
             NativeTheme.Muted));
@@ -163,6 +163,7 @@ public sealed class AccountDeletionPage : NativePageBase
         }
 
         Switch removeLocal = new() { IsToggled = true };
+        NativeAccountErasureRequest originalRequest = Coordinator.CaptureAccountErasureRequest();
         Grid localRow = new()
         {
             ColumnDefinitions =
@@ -172,7 +173,7 @@ public sealed class AccountDeletionPage : NativePageBase
             },
             ColumnSpacing = 12
         };
-        localRow.Add(NativeTheme.Body("Remove runners saved on this device"));
+        localRow.Add(NativeTheme.Body("Remove this account's runners saved on this device"));
         localRow.Add(removeLocal, 1);
         _body.Add(NativeTheme.Card(localRow));
 
@@ -193,9 +194,10 @@ public sealed class AccountDeletionPage : NativePageBase
             StringComparison.Ordinal);
         erase.Clicked += async (_, _) =>
         {
+            bool removeOriginalLocalRunners = removeLocal.IsToggled;
             bool final = await DisplayAlertAsync(
                 "Delete your account?",
-                "Chummer clears this device only after every server-owned data plane returns a completed receipt. This cannot be undone.",
+                "Chummer deletes this account only after every server-owned data plane returns a completed receipt. Other accounts' local runners are kept. This cannot be undone.",
                 "Delete",
                 "Cancel");
             if (!final)
@@ -208,16 +210,20 @@ public sealed class AccountDeletionPage : NativePageBase
             removeLocal.IsEnabled = false;
             try
             {
-                NativeAccountErasureResult result = await Coordinator.EraseAccountAsync(removeLocal.IsToggled);
+                NativeAccountErasureResult result = await Coordinator.EraseAccountAsync(originalRequest, removeOriginalLocalRunners);
+                if (!Coordinator.IsAccountErasureResultCurrent(result)) return;
                 string receiptLabel = result.Receipt.ReceiptSha256[..12].ToLowerInvariant();
-                string message = result.LocalRunnersRemoved
-                    ? $"Active account data and this device are cleared. Receipt {receiptLabel}…"
+                string message = !result.LocalRunnersRequested
+                    ? $"Active account data is deleted. Local runners were kept. Receipt {receiptLabel}…"
+                    : result.LocalRunnersRemoved
+                    ? $"Active account data and its local runners are deleted. Other accounts' runners were kept. Receipt {receiptLabel}…"
                     : $"Active account data is deleted, but some runners remain on this device. Receipt {receiptLabel}…";
                 bool copyReceipt = await DisplayAlertAsync(
                     "Deletion completed",
                     message,
                     "Copy receipt",
                     "Done");
+                if (!Coordinator.IsAccountErasureResultCurrent(result)) return;
                 if (copyReceipt)
                 {
                     await Clipboard.Default.SetTextAsync(result.Receipt.ReceiptSha256);
@@ -227,12 +233,9 @@ public sealed class AccountDeletionPage : NativePageBase
             catch (Exception ex)
             {
                 await DisplayAlertAsync("Could not delete account", ex.Message, "OK");
-                phrase.IsEnabled = true;
-                removeLocal.IsEnabled = true;
-                erase.IsEnabled = string.Equals(
-                    phrase.Text,
-                    Platform.AndroidAccountErasureConfirmation.RequiredPhrase,
-                    StringComparison.Ordinal);
+                // A consumed/stale confirmation must not be re-enabled. The
+                // current account needs a fresh phrase and confirmation.
+                Refresh();
             }
         };
         confirm.Add(phrase);

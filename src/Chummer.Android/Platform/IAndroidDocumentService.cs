@@ -6,4 +6,8 @@ public interface IAndroidDocumentService
 {
     Task<AndroidDocument?> OpenAsync(CancellationToken cancellationToken);
     Task<bool> SaveAsAsync(string suggestedName, string mediaType, Stream content, CancellationToken cancellationToken);
+
+    Task<bool> SaveAsAsync(string suggestedName, string mediaType, Stream content,
+        Func<bool> isOriginalContextCurrent, CancellationToken cancellationToken)
+        => Task.FromException<bool>(new InvalidOperationException("Context-bound document output is unavailable."));
 }

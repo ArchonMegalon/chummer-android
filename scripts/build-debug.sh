@@ -18,6 +18,13 @@ framework="net10.0-android36.0"
 runtime_identifier="${CHUMMER_ANDROID_RUNTIME_ID:-android-arm64}"
 presentation_root="$(cd "${CHUMMER_PRESENTATION_ROOT:-$repo_dir/../chummer-presentation}" && pwd -P)"
 core_engine_root="$(cd "${CHUMMER_CORE_ENGINE_ROOT:-$presentation_root/../chummer-core-engine}" && pwd -P)"
+# Continuation tests use only this build's canonical Core content, never ambient data.
+native_content_root="$core_engine_root/Chummer"
+[[ -d "$native_content_root/data" && ! -L "$native_content_root" && ! -L "$native_content_root/data" \
+  && "$(realpath -e -- "$native_content_root/data")" == "$native_content_root/data" ]] || {
+  echo "The governed Core engine root must contain canonical Chummer/data for native continuation tests." >&2
+  exit 64
+}
 workspace_root="$(cd "$presentation_root/.." && pwd -P)"
 run_services_root="$(cd "$workspace_root/chummer.run-services" && pwd -P)"
 hub_registry_root="$(cd "$workspace_root/chummer-hub-registry" && pwd -P)"
@@ -157,6 +164,22 @@ python3 "$compile_graph_verifier" \
   --no-build \
   --no-restore \
   --disable-build-servers
+
+# Required account/continuation suites reuse the just-built binary without rebuilding.
+interaction_tests_binary="${interaction_tests_path%/*}/bin/Debug/net10.0/Chummer.Android.Native.InteractionTests.dll"
+[[ -f "$interaction_tests_binary" && ! -L "$interaction_tests_binary" ]] || {
+  echo "The just-built native interaction test binary is unavailable." >&2
+  exit 64
+}
+"$dotnet_command" "$interaction_tests_binary" --android-continuation-transport
+"$dotnet_command" "$interaction_tests_binary" --android-continuation-roaming
+"$dotnet_command" "$interaction_tests_binary" --android-continuation-native-content-root "$native_content_root"
+"$dotnet_command" "$interaction_tests_binary" --android-account-owner-content-root "$native_content_root"
+"$dotnet_command" "$interaction_tests_binary" --creation-bootstrap-owner-content-root "$native_content_root"
+"$dotnet_command" "$interaction_tests_binary" --creation-contacts-owner-content-root "$native_content_root"
+"$dotnet_command" "$interaction_tests_binary" --persistence-owner-content-root "$native_content_root"
+"$dotnet_command" "$interaction_tests_binary" --account-erasure-owner-content-root "$native_content_root"
+# End required account/continuation suites.
 
 "$dotnet_command" run \
   --project "$document_provider_work_tests_path" \

@@ -254,18 +254,44 @@ public class HomePage : NativePageBase, IPlayReviewSafeSurface
                         ? character.Name
                         : PhoneStrings.Get("RunnerFallback", "Runner");
                 Button button = NativeTheme.SecondaryButton(name);
+                button.IsEnabled = Coordinator.HasCompleteOnlineContinuation(character);
                 button.Clicked += async (_, _) => await RunAsync(async () =>
                 {
-                    NativeWorkspaceActivationReceipt? activation =
-                        await Coordinator.OpenOnlineAsync(character);
-                    if (activation?.Matches(
-                            Coordinator.State,
-                            NativeWorkspaceActivationKind.OnlineCharacter) == true)
+                    using NativeWorkspaceContinuationReview? review = await Coordinator.ReviewOnlineAsync(character);
+                    if (review is null) return;
+                    if (!review.CanConfirm)
+                    {
+                        await DisplayAlertAsync("Chummer", PhoneStrings.Get("OnlineContinuationRejected",
+                            "This workspace cannot be restored safely. Keep the local runner and resolve its conflicts first."), "OK");
+                        return;
+                    }
+                    bool confirmed = await DisplayAlertAsync(
+                        PhoneStrings.Get("OnlineContinuationTitle", "Restore workspace"),
+                        PhoneStrings.Format("OnlineContinuationReview",
+                            "Open {0} with its complete wizard history? Content revision: {1}; saved revision: {2}. Local conflicts will not be overwritten.",
+                            name, review.ContentRevision, review.SavedRevision),
+                        PhoneStrings.Get("OnlineContinuationConfirm", "Restore and open"),
+                        PhoneStrings.Get("Cancel", "Cancel"));
+                    var restored = await Coordinator.ConfirmOnlineAsync(review, confirmed);
+                    if (confirmed && restored.Restore.Outcome is not (
+                        Chummer.Contracts.Workspaces.WorkspaceContinuationRestoreOutcome.Applied
+                        or Chummer.Contracts.Workspaces.WorkspaceContinuationRestoreOutcome.Recovered
+                        or Chummer.Contracts.Workspaces.WorkspaceContinuationRestoreOutcome.AlreadyCurrent
+                        or Chummer.Contracts.Workspaces.WorkspaceContinuationRestoreOutcome.Canceled))
+                    {
+                        await DisplayAlertAsync("Chummer", PhoneStrings.Get("OnlineContinuationRejected",
+                            "This workspace cannot be restored safely. Keep the local runner and resolve its conflicts first."), "OK");
+                    }
+                    NativeWorkspaceActivationReceipt? activation = restored.Activation;
+                    if (Coordinator.IsWorkspaceActivationCurrent(activation, NativeWorkspaceActivationKind.OnlineCharacter))
                     {
                         await Shell.Current.GoToAsync(_runnerRoute);
                     }
                 });
                 online.Add(button);
+                if (!button.IsEnabled)
+                    online.Add(NativeTheme.Body(PhoneStrings.Get("OnlineContinuationUnavailable",
+                        "This runner has no complete restorable workspace. Refresh or upload it from a supported client."), NativeTheme.Muted));
             }
         }
 

@@ -37,7 +37,14 @@ public sealed record AndroidAccountErasureReceipt(
     string? UserKeySha256,
     IReadOnlyList<AndroidAccountErasureComponentReceipt> Components,
     DateTimeOffset ErasedAtUtc,
-    string ReceiptSha256);
+    string ReceiptSha256)
+{
+    // Only the account service may attach this process-local correlation after
+    // authenticating the exact grant used for erasure. A serialized receipt,
+    // UI snapshot, installation ID or receipt HMAC cannot mint this authority.
+    [System.Text.Json.Serialization.JsonIgnore]
+    internal string? LocalWorkspaceOwnerKey { get; init; }
+}
 
 public sealed record AndroidOnlineCharacter(
     string WorkspaceId,
@@ -127,6 +134,12 @@ public sealed record AndroidChroniclePacket(
     string ContentBase64,
     string Sha256);
 
+/// <summary>Local credential hydration required before an owner-bound Shell can load.</summary>
+public interface IAndroidAccountLocalIdentityInitializer
+{
+    Task InitializeLocalIdentityAsync(CancellationToken cancellationToken = default);
+}
+
 public interface IAndroidAccountLinkService
 {
     event EventHandler? Changed;
@@ -146,6 +159,12 @@ public interface IAndroidAccountLinkService
     Task<AndroidAccountErasureReceipt> EraseAccountAsync(
         string confirmation,
         CancellationToken cancellationToken = default);
+
+    Task<AndroidAccountErasureReceipt> EraseAccountAsync(
+        string confirmation, Func<bool> isOriginalContextCurrent,
+        CancellationToken cancellationToken = default)
+        => Task.FromException<AndroidAccountErasureReceipt>(
+            new InvalidOperationException("Context-bound account deletion is unavailable."));
 
     Task<IReadOnlyList<AndroidOnlineCharacter>> ListOnlineCharactersAsync(CancellationToken cancellationToken = default);
 

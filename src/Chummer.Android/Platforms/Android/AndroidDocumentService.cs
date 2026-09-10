@@ -61,15 +61,22 @@ public sealed class AndroidDocumentService : IAndroidDocumentService
         }
     }
 
-    public async Task<bool> SaveAsAsync(
+    public Task<bool> SaveAsAsync(
         string suggestedName,
         string mediaType,
         Stream content,
         CancellationToken cancellationToken)
+        => SaveAsAsync(suggestedName, mediaType, content, static () => true, cancellationToken);
+
+    public async Task<bool> SaveAsAsync(
+        string suggestedName, string mediaType, Stream content,
+        Func<bool> isOriginalContextCurrent, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(suggestedName);
         ArgumentException.ThrowIfNullOrWhiteSpace(mediaType);
         ArgumentNullException.ThrowIfNull(content);
+        ArgumentNullException.ThrowIfNull(isOriginalContextCurrent);
+        EnsureOutputCurrent(isOriginalContextCurrent, cancellationToken);
 
         Activity activity = Microsoft.Maui.ApplicationModel.Platform.CurrentActivity
             ?? throw new InvalidOperationException("No active Android activity is available.");
@@ -92,10 +99,11 @@ public sealed class AndroidDocumentService : IAndroidDocumentService
             return false;
         }
 
+        EnsureOutputCurrent(isOriginalContextCurrent, cancellationToken);
         ContentResolver resolver = activity.ContentResolver
             ?? throw new IOException("Android did not provide a content resolver.");
         await DocumentProviderWorkScheduler.RunAsync(
-            token => WriteDocumentAsync(resolver, uri, content, token),
+            token => WriteDocumentAsync(resolver, uri, content, isOriginalContextCurrent, token),
             cancellationToken);
         return true;
     }
@@ -120,16 +128,41 @@ public sealed class AndroidDocumentService : IAndroidDocumentService
         ContentResolver resolver,
         global::Android.Net.Uri uri,
         Stream content,
+        Func<bool> isOriginalContextCurrent,
         CancellationToken cancellationToken)
     {
+        // A canceled/stale picker must not even truncate the selected document.
+        EnsureOutputCurrent(isOriginalContextCurrent, cancellationToken);
         TryPersistDocumentGrant(
             resolver,
             uri,
             ActivityFlags.GrantReadUriPermission | ActivityFlags.GrantWriteUriPermission);
         await using Stream destination = resolver.OpenOutputStream(uri, "wt")
             ?? throw new IOException("Android did not provide a writable document stream.");
-        await content.CopyToAsync(destination, cancellationToken).ConfigureAwait(false);
+        byte[] buffer = ArrayPool<byte>.Shared.Rent(32 * 1024);
+        try
+        {
+            while (true)
+            {
+                EnsureOutputCurrent(isOriginalContextCurrent, cancellationToken);
+                int read = await content.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+                if (read == 0) break;
+                EnsureOutputCurrent(isOriginalContextCurrent, cancellationToken);
+                await destination.WriteAsync(buffer.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(buffer);
+            ArrayPool<byte>.Shared.Return(buffer, clearArray: false);
+        }
         await destination.FlushAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private static void EnsureOutputCurrent(Func<bool> isCurrent, CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        if (!isCurrent()) throw new OperationCanceledException("The original output context changed.");
     }
 
     private static string? ResolveDisplayName(

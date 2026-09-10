@@ -246,4 +246,11 @@ Noch wurde nichts gespeichert.</value></data>
   <data name="LinkedRecoveryCheck" xml:space="preserve"><value>Gespeicherten Zustand prüfen</value></data>
   <data name="LinkedRecoveryPrevious" xml:space="preserve"><value>Zurück</value></data>
   <data name="LinkedRecoveryNext" xml:space="preserve"><value>Weiter</value></data>
+  <data name="OnlineContinuationUnavailable" xml:space="preserve"><value>Für diesen Runner fehlt ein vollständig wiederherstellbarer Arbeitsbereich. Aktualisiere die Liste oder lade ihn mit einem unterstützten Client hoch.</value></data>
+  <data name="OnlineContinuationStored" xml:space="preserve"><value>Der Arbeitsbereich ist lokal gespeichert. Öffne ihn erneut, um fortzufahren; wiederhole die Wiederherstellung nicht.</value></data>
+  <data name="OnlineContinuationReviewRequired" xml:space="preserve"><value>Prüfe den vollständigen Arbeitsbereich vor der Wiederherstellung.</value></data>
+  <data name="OnlineContinuationRejected" xml:space="preserve"><value>Dieser Arbeitsbereich kann nicht sicher wiederhergestellt werden. Behalte den lokalen Runner und löse zuerst die Konflikte.</value></data>
+  <data name="OnlineContinuationTitle" xml:space="preserve"><value>Arbeitsbereich wiederherstellen</value></data>
+  <data name="OnlineContinuationReview" xml:space="preserve"><value>{0} mit dem vollständigen Wizard-Verlauf öffnen? Inhaltsrevision: {1}; gespeicherte Revision: {2}. Lokale Konflikte werden nicht überschrieben.</value></data>
+  <data name="OnlineContinuationConfirm" xml:space="preserve"><value>Wiederherstellen und öffnen</value></data>
 </root>

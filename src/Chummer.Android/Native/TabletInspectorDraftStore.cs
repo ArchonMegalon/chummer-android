@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text.Json;
+using Chummer.Contracts.Owners;
 using Chummer.Contracts.Workspaces;
 using Chummer.Presentation.Overview;
 
@@ -12,7 +13,8 @@ internal sealed record TabletInspectorKey(
     string SectionId,
     WorkspaceCollectionItemTarget? Item = null,
     WorkspaceConditionMonitorTrack? Track = null,
-    string? Attribute = null);
+    string? Attribute = null,
+    OwnerScope? Owner = null);
 
 internal sealed record TabletInspectorValues(
     IReadOnlyDictionary<string, string?> Text,
@@ -44,16 +46,16 @@ internal sealed record TabletInspectorDraft(
 internal sealed class TabletInspectorDraftStore
 {
     private readonly Dictionary<TabletInspectorKey, TabletInspectorDraft> _drafts = new(KeyComparer.Instance);
-    private readonly Dictionary<(CharacterWorkspaceId, string), TabletInspectorKey> _selections = [];
+    private readonly Dictionary<(OwnerScope?, CharacterWorkspaceId, string), TabletInspectorKey> _selections = [];
     private readonly object _sync = new();
     private bool _closed;
     private long _nextLease;
     private long _activeLease;
     private TabletInspectorKey? _activeKey;
 
-    public TabletInspectorKey? Selection(CharacterWorkspaceId workspace, string section)
+    public TabletInspectorKey? Selection(CharacterWorkspaceId workspace, string section, OwnerScope? owner = null)
     {
-        lock (_sync) return _selections.GetValueOrDefault((workspace, section.ToLowerInvariant()));
+        lock (_sync) return _selections.GetValueOrDefault((owner, workspace, section.ToLowerInvariant()));
     }
 
     public long Acquire(TabletInspectorKey key)
@@ -61,7 +63,7 @@ internal sealed class TabletInspectorDraftStore
         lock (_sync)
         {
             if (_closed) return 0;
-            _selections[(key.WorkspaceId, key.SectionId.ToLowerInvariant())] = key;
+            _selections[(key.Owner, key.WorkspaceId, key.SectionId.ToLowerInvariant())] = key;
             _activeKey = key;
             return _activeLease = checked(++_nextLease);
         }
@@ -85,7 +87,7 @@ internal sealed class TabletInspectorDraftStore
     {
         lock (_sync)
         {
-            if (!Owns(lease)) return draft;
+            if (!Owns(lease) || !KeyComparer.Instance.Equals(_activeKey, draft.Key)) return draft;
             // Preserve the incarnation across lifecycle captures with identical
             // input. Changing input (including A -> B -> A) creates a new one.
             if (_drafts.TryGetValue(draft.Key, out TabletInspectorDraft? current)
@@ -119,9 +121,9 @@ internal sealed class TabletInspectorDraftStore
     {
         lock (_sync)
         {
-            if (!Owns(lease)) return false;
+            if (!Owns(lease) || !KeyComparer.Instance.Equals(_activeKey, expected.Key)) return false;
             if (!_drafts.TryGetValue(expected.Key, out TabletInspectorDraft? actual)
-                || actual.Authority != expected.Authority || !actual.Values.SameAs(expected.Values))
+                || !ReferenceEquals(actual, expected))
                 return false;
             return _drafts.Remove(expected.Key);
         }
@@ -151,6 +153,10 @@ internal sealed class TabletInspectorDraftStore
             }};
         byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(new
         {
+            // Stable owner partitions retain input for explicit review after
+            // relinking. The full stamp makes the old grant's input conflict;
+            // matching workspace bytes never authorize automatic reapplication.
+            OriginalOwner = state.DisplayOwnerContext,
             state.WorkspaceId, state.ContentRevision, state.SavedRevision,
             state.ActiveSectionId, state.ActiveSectionJson,
             state.ActiveWorkspace?.RulesetId, state.Rules,
@@ -163,7 +169,8 @@ internal sealed class TabletInspectorDraftStore
     {
         public static KeyComparer Instance { get; } = new();
         public bool Equals(TabletInspectorKey? left, TabletInspectorKey? right)
-            => left is not null && right is not null && left.WorkspaceId == right.WorkspaceId
+            => left is not null && right is not null && left.Owner == right.Owner
+                && left.WorkspaceId == right.WorkspaceId
                 && StringComparer.OrdinalIgnoreCase.Equals(left.SectionId, right.SectionId)
                 && left.Track == right.Track
                 && StringComparer.OrdinalIgnoreCase.Equals(left.Attribute, right.Attribute)
@@ -173,6 +180,7 @@ internal sealed class TabletInspectorDraftStore
         public int GetHashCode(TabletInspectorKey key)
         {
             HashCode hash = new();
+            hash.Add(key.Owner);
             hash.Add(key.WorkspaceId);
             hash.Add(key.SectionId, StringComparer.OrdinalIgnoreCase);
             hash.Add(key.Track);

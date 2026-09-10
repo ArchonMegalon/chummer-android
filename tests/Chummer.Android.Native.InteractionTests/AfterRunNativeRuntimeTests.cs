@@ -8,6 +8,7 @@ using Chummer.Contracts.Characters;
 using Chummer.Contracts.Workspaces;
 using Chummer.Desktop.Runtime;
 using Chummer.Infrastructure.Workspaces;
+using Chummer.Infrastructure.Files;
 using Chummer.Presentation;
 using Chummer.Presentation.Overview;
 using Chummer.Presentation.Shell;
@@ -530,6 +531,7 @@ internal static partial class AfterRunAuthorityHarness
         public readonly ShellPresenter Shell;
         public readonly RunnerSessionCoordinator Coordinator;
         public AndroidLinkedCharacterIntentJournal LinkedJournal { get; }
+        internal IServiceProvider Services => _provider;
         public ICharacterCareerReputationService ReputationService => _provider.GetRequiredService<ICharacterCareerReputationService>();
         public CharacterWorkspaceId Id;
 
@@ -540,7 +542,16 @@ internal static partial class AfterRunAuthorityHarness
             IAndroidLinkedCharacterFileService? linkedCharacters = null,
             Func<IAndroidLinkedWorkspaceReader, IAndroidLinkedWorkspaceReader>? linkedReaderDecorator = null,
             Func<string, AndroidLinkedCharacterIntentJournal>? linkedJournalFactory = null,
-            Chummer.Application.Owners.IOwnerContextAccessor? linkedOwners = null)
+            Chummer.Application.Owners.IOwnerContextAccessor? linkedOwners = null,
+            bool creationContacts = false,
+            Func<IOwnerBoundCharacterCreationContactsService, IOwnerBoundCharacterCreationContactsService>? contactsDecorator = null,
+            bool creationBootstrap = false,
+            Func<IOwnerBoundCharacterCreationBootstrapService, IOwnerBoundCharacterCreationBootstrapService?>? bootstrapDecorator = null,
+            IOverviewCommandDispatcher? bootstrapCommandDispatcher = null,
+            IDesktopWorkspaceRoamingSync? persistenceRoaming = null,
+            IAndroidDocumentService? outputDocuments = null,
+            IAndroidSystemService? outputSystem = null,
+            IAndroidAccountLinkService? accountService = null)
         {
             _priorPreferences = Preferences.Default;
             _setPreferences = typeof(Preferences).GetMethod("SetDefault",
@@ -560,6 +571,8 @@ internal static partial class AfterRunAuthorityHarness
                 services.Replace(ServiceDescriptor.Singleton<IWorkspaceStore>(new FileWorkspaceStore(StateDirectory)));
                 if (linkedOwners is not null)
                     services.Replace(ServiceDescriptor.Singleton(linkedOwners));
+                if (persistenceRoaming is not null)
+                    services.Replace(ServiceDescriptor.Singleton(persistenceRoaming));
                 if (reputation)
                 {
                     Settings.Set("sr5.career.owner.v1", OwnerId.ToString("D"));
@@ -581,13 +594,32 @@ internal static partial class AfterRunAuthorityHarness
                 // session coordinator. Separate instances leave native reads
                 // without an active workspace and must fail closed.
                 services.AddSingleton<IWorkspaceOperationCoordinator, WorkspaceOperationCoordinator>();
+                services.AddChummerWorkspaceRecovery();
                 _provider = services.BuildServiceProvider();
                 Client = _provider.GetRequiredService<IChummerClient>();
                 Require(Client is InProcessChummerClient, "Runtime integration must never use a network client.");
                 Shell = new ShellPresenter(Client);
                 var operations = _provider.GetRequiredService<IWorkspaceOperationCoordinator>();
+                var boundBootstrap = creationBootstrap ? _provider.GetRequiredService<IOwnerBoundCharacterCreationBootstrapService>() : null;
                 Presenter = new CharacterOverviewPresenter(Client, shellPresenter: Shell,
-                    workspaceOperationCoordinator: operations);
+                    workspaceOverviewLoader: _provider.GetRequiredService<IWorkspaceOverviewLoader>(),
+                    commandDispatcher: bootstrapCommandDispatcher,
+                    workspaceOperationCoordinator: operations,
+                    workspaceOverviewStateFactory: creationContacts ? new WorkspaceOverviewStateFactory(
+                        creationContactsService: _provider.GetRequiredService<ICharacterCreationContactsService>(),
+                        ownerBoundCreationContactsService: _provider.GetRequiredService<IOwnerBoundCharacterCreationContactsService>()) : null,
+                    characterCreationBootstrapService: creationBootstrap ? _provider.GetRequiredService<ICharacterCreationBootstrapService>() : null,
+                    characterCreationBootstrapActivationService: creationBootstrap ? _provider.GetRequiredService<ICharacterCreationBootstrapActivationService>() : null,
+                    ownerBoundCharacterCreationBootstrapService: boundBootstrap is null ? null
+                        : bootstrapDecorator is null ? boundBootstrap : bootstrapDecorator(boundBootstrap));
+                ICharacterCreationContactsInteractionPresenter? contactsPresenter = null;
+                if (creationContacts)
+                {
+                    var boundContacts = _provider.GetRequiredService<IOwnerBoundCharacterCreationContactsService>();
+                    contactsPresenter = new CharacterCreationContactsInteractionPresenter(
+                        _provider.GetRequiredService<ICharacterCreationContactsService>(),
+                        contactsDecorator?.Invoke(boundContacts) ?? boundContacts);
+                }
                 var store = _provider.GetRequiredService<IWorkspaceStore>();
                 var reputationService = reputation ? _provider.GetRequiredService<ICharacterCareerReputationService>() : null;
                 if (reputationService is not null && reputationDecorator is not null)
@@ -603,10 +635,12 @@ internal static partial class AfterRunAuthorityHarness
                     _provider.GetRequiredService<IRulesetWorkspaceCodecResolver>());
                 if (linkedReaderDecorator is not null) linkedReader = linkedReaderDecorator(linkedReader);
                 Coordinator = new RunnerSessionCoordinator(Presenter, Client, operations,
-                    null!, null!, null!, null!, Shell,
+                    null!, contactsPresenter!, null!, null!, Shell,
                     _provider.GetRequiredService<IShellSurfaceResolver>(),
                     _provider.GetRequiredService<ICommandAvailabilityEvaluator>(),
-                    null!, linkedCharacters!, null!, StrictPageProxy.Create<IAndroidAccountLinkService>(), null!, null!,
+                    outputDocuments!, linkedCharacters!, outputSystem!, accountService ?? StrictPageProxy.Create<IAndroidAccountLinkService>(),
+                    new CharacterRosterFavoritePresenter(new FileCharacterRosterFavoriteStore(StateDirectory)),
+                    new ApplicationDeleteConfirmationPresenter(new FileApplicationDeleteConfirmationStore(StateDirectory, new Version(0, 1))),
                     afterRunSettlementService: governedConsequences ? _provider.GetRequiredService<ICharacterAfterRunSettlementService>() : null,
                     afterRunProposalCatalog: governedConsequences ? _provider.GetRequiredService<Sr5AfterRunManualProposalSource>() : null,
                     afterRunRewardService: new WorkspaceCharacterAfterRunRewardService(store),
@@ -681,16 +715,59 @@ internal static partial class AfterRunAuthorityHarness
 
         public async ValueTask DisposeAsync()
         {
-            try
+            // The process-scoped coordinator cancels on Dispose, but intentionally
+            // does not synchronously join its account/owner reinitialization. A
+            // temporary store cannot be removed until those real workers finish.
+            Coordinator.Dispose();
+            const BindingFlags fields = BindingFlags.Instance | BindingFlags.NonPublic;
+            Type coordinatorType = typeof(RunnerSessionCoordinator);
+            if (coordinatorType.GetField("_accountInitialization", fields)!.GetValue(Coordinator) is Task startup)
+                await startup.WaitAsync(TimeSpan.FromSeconds(30));
+
+            FieldInfo scheduled = coordinatorType.GetField("_workspaceOwnerInitializationScheduled", fields)!;
+            using (var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30)))
             {
-                Coordinator.Dispose();
-                await Presenter.DisposeAsync();
+                // This task is not retained by production. Its completion flag is
+                // cleared in finally, after its last store/presenter access. All
+                // test account mutations and startup are joined; Dispose removes
+                // subscriptions and refuses further scheduling/re-scheduling.
+                try
+                {
+                    while ((int)scheduled.GetValue(Coordinator)! != 0)
+                        await Task.Delay(TimeSpan.FromMilliseconds(10), timeout.Token);
+                }
+                catch (OperationCanceledException exception) when (timeout.IsCancellationRequested)
+                {
+                    throw new TimeoutException("Native fixture owner initialization did not finish after disposal.", exception);
+                }
             }
-            finally
+
+            await Presenter.DisposeAsync();
+            foreach (string name in new[] { "_initializeGate", "_workspaceActivationGate", "_shellSyncGate", "_outputGate" })
             {
-                try { await _provider.DisposeAsync(); }
-                finally { RestoreHost(); }
+                var gate = (SemaphoreSlim)coordinatorType.GetField(name, fields)!.GetValue(Coordinator)!;
+                if (!await gate.WaitAsync(TimeSpan.FromSeconds(30)))
+                    throw new TimeoutException($"Native fixture teardown could not drain {name}.");
+                gate.Release();
             }
+
+            // Presenter disposal joins its producers (including roster watching).
+            // Join the actual serialized Core queue, not another owner read that
+            // could itself recreate a partition or be rejected after owner change.
+            object queue = typeof(InProcessChummerClient).GetField("_workspaceOperations", fields)!.GetValue(Client)!;
+            object queueGate = queue.GetType().GetField("_queueGate", fields)!.GetValue(queue)!;
+            FieldInfo tailField = queue.GetType().GetField("_tail", fields)!;
+            Task tail;
+            lock (queueGate) tail = (Task)tailField.GetValue(queue)!;
+            await tail.WaitAsync(TimeSpan.FromSeconds(30));
+            lock (queueGate)
+                Require(ReferenceEquals(tail, tailField.GetValue(queue)),
+                    "Native fixture teardown still has an unjoined Core queue producer.");
+
+            // If quiescence fails, leave the store intact for diagnosis; never
+            // race a still-running worker with deletion or mask that failure.
+            try { await _provider.DisposeAsync(); }
+            finally { RestoreHost(); }
         }
     }
 

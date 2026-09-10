@@ -52,6 +52,30 @@ internal static class Program
         Require(draft.ExpectedWorkspaceRevision == 41 && draft.ExpectedSavedRevision == 41, "both revisions");
         Require(draft.RuntimeAuthority.ContentDigest == Sr5CareerQualityRuntimeAuthority.CurrentContentDigest, "content digest");
         Require(draft.RuntimeAuthority.RuntimeDigest == Sr5CareerQualityRuntimeAuthority.CurrentRuntimeDigest, "runtime digest");
+        // A valid hash cannot authorize an older engine or a content checkout
+        // substituted for the runtime, even when the packaged data is unchanged.
+        foreach ((string core, string presentation) in new[]
+        {
+            ("880e5df8ace981e9a60264d835329dd32f54a158", "399cc0b4e0b70f678ebeb6a2fcc9d0e0659bf61d"),
+            ("1d8cf694d0412b3bd9f4a241fb95244fad341160", Sr5CareerQualityRuntimeAuthority.CurrentPresentationRevision)
+        })
+        {
+            Sr5CareerQualityRuntimeAuthority stale = draft.RuntimeAuthority with
+            {
+                CoreRevision = core,
+                PresentationRevision = presentation
+            };
+            stale = stale with
+            {
+                RuntimeDigest = Sr5CareerQualityRuntimeAuthority.ComputeRuntimeDigest(
+                    stale.ContractName, stale.CoreRevision,
+                    stale.PresentationRevision, stale.ContentDigest)
+            };
+            Require(!stale.IsCurrent(), "Self-consistent stale runtime authority must be rejected.");
+            Require(!(draft with { RuntimeAuthority = stale }).IsExact(),
+                "A rehashed stale generation must not authorize a reviewed mutation.");
+        }
+
         Require(draft.ActionPlan.IdempotencyKey.Length == 64, "idempotency digest");
         Require(draft.ActionPlan.DomainIdentity.Contains(InternalId.ToString("D"), StringComparison.Ordinal), "identity in action");
         Require(draft.ActionPlan.DomainIdentity.Contains(SourceId.ToString("D"), StringComparison.Ordinal), "source identity in action");

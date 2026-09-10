@@ -1,4 +1,5 @@
 using System.Globalization;
+using Chummer.Application.Owners;
 using Chummer.Contracts.Characters;
 using Chummer.Presentation.Overview;
 
@@ -29,6 +30,7 @@ internal sealed class CreationContactsPhoneDraft
     });
 
     private CharacterCreationContactBinding? _binding;
+    private OwnerContextStamp? _ownerContext;
     private string? _snapshotDigest;
     private Guid _contactId;
     private string? _contactDigest;
@@ -45,6 +47,7 @@ internal sealed class CreationContactsPhoneDraft
             return false;
 
         _binding = state.Binding;
+        _ownerContext = state.DisplayOwnerContext;
         _snapshotDigest = state.SnapshotDigest;
         _contactId = contact.ContactId;
         _contactDigest = contact.ContactDigest;
@@ -62,6 +65,7 @@ internal sealed class CreationContactsPhoneDraft
         CharacterCreationContactsInteractionState state,
         CharacterCreationContactProjection contact)
         => _binding is not null
+           && _ownerContext == state.DisplayOwnerContext
            && _contactId == contact.ContactId
            && CreationContactsPhoneAuthority.BindingEquals(_binding, state.Binding)
            && string.Equals(_snapshotDigest, state.SnapshotDigest, StringComparison.Ordinal)
@@ -193,7 +197,10 @@ internal sealed class CreationContactsPhoneDraft
             IsGroup: ChangedBool(CharacterCreationContactFieldIds.Group),
             Free: ChangedBool(CharacterCreationContactFieldIds.Free),
             Family: ChangedBool(CharacterCreationContactFieldIds.Family),
-            Blackmail: ChangedBool(CharacterCreationContactFieldIds.Blackmail));
+            Blackmail: ChangedBool(CharacterCreationContactFieldIds.Blackmail))
+        {
+            DisplayOwnerContext = _ownerContext
+        };
     }
 
     private int? ChangedInt(string fieldId)
@@ -275,6 +282,8 @@ internal static class CreationContactsPhoneAuthority
         CharacterCreationContactsInteractionState state,
         CharacterOverviewState overview)
         => overview.Profile?.Created == false
+           && state.DisplayOwnerContext == overview.DisplayOwnerContext
+           && state.DisplayOwnerContext is not { IsValid: false }
            && overview.WorkspaceId is { } workspaceId
            && state.Binding.WorkspaceId == workspaceId
            && state.Binding.WorkspaceRevision == overview.ContentRevision
@@ -371,6 +380,7 @@ internal static class CreationContactsPhoneAuthority
         CharacterCreationContactsInteractionState state,
         CharacterOverviewState overview)
         => IsReady(state, overview)
+           && prepared.DisplayOwnerContext == state.DisplayOwnerContext
            && BindingEquals(prepared.Binding, state.Binding)
            && string.Equals(
                prepared.ContactsSnapshotDigest,
@@ -451,6 +461,7 @@ internal static class CreationContactsPhoneAuthority
         CharacterCreationContactsInteractionState refreshed,
         CharacterOverviewState overview)
         => IsReady(refreshed, overview)
+           && prepared.DisplayOwnerContext == refreshed.DisplayOwnerContext
            && ReceiptMatches(prepared, receipt)
            && refreshed.Binding.WorkspaceRevision == receipt.WorkspaceRevision
            && refreshed.Binding.ContentRevision == receipt.ContentRevision

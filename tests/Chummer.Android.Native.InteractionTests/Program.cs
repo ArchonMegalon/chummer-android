@@ -13,6 +13,46 @@ internal static class Program
 {
     private static async Task Main(string[] args)
     {
+        if (args.Length == 2 && args[0] == "--android-continuation-native-content-root")
+        {
+            await AfterRunAuthorityHarness.RunAndroidContinuationNativeCasesAsync(args[1]);
+            return;
+        }
+        if (args.Length == 1 && args[0] == "--android-continuation-transport")
+        {
+            await AfterRunAuthorityHarness.RunAndroidContinuationTransportCasesAsync();
+            return;
+        }
+        if (args.Length == 1 && args[0] == "--android-continuation-roaming")
+        {
+            await AfterRunAuthorityHarness.RunAndroidContinuationRoamingCasesAsync();
+            return;
+        }
+        if (args.Length == 2 && args[0] == "--android-account-owner-content-root")
+        {
+            await AfterRunAuthorityHarness.RunAndroidAccountOwnerCasesAsync(args[1]);
+            return;
+        }
+        if (args.Length == 2 && args[0] == "--account-erasure-owner-content-root")
+        {
+            await AfterRunAuthorityHarness.RunAccountErasureOwnerCasesAsync(args[1]);
+            return;
+        }
+        if (args.Length == 2 && args[0] == "--persistence-owner-content-root")
+        {
+            await AfterRunAuthorityHarness.RunPersistenceOwnerCasesAsync(args[1]);
+            return;
+        }
+        if (args.Length == 2 && args[0] == "--creation-bootstrap-owner-content-root")
+        {
+            await AfterRunAuthorityHarness.RunCreationBootstrapOwnerCasesAsync(args[1]);
+            return;
+        }
+        if (args.Length == 2 && args[0] == "--creation-contacts-owner-content-root")
+        {
+            await AfterRunAuthorityHarness.RunCreationContactsOwnerCasesAsync(args[1]);
+            return;
+        }
         if (args.Length == 1 && args[0] == "--tablet-inspector-binding")
         {
             await TabletInspectorBindingTests.RunAsync();

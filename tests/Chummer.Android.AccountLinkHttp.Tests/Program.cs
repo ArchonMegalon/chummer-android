@@ -22,9 +22,15 @@ internal static class Program
     private const string PendingStartedKey = "chummer.account.pending-started.v1";
     private const string PendingInstallationIdKey = "chummer.account.pending-installation-id.v2";
     private const string InstallationIdKey = AndroidAccountLinkKeyAuthority.InstallationIdStorageKey;
+    private const string OwnerBindingKey = "chummer.account.grant-owner.v1";
 
     private static async Task Main()
     {
+        AccountOwnerKeyPreservesOpaqueSubjectIdentity();
+        await LegacyOwnerHydratesFromExactStatusAsync();
+        await GrantStatusCannotInventOrReplaceOwnerAsync();
+        await LegacyOwnerCommitIsRestartableAndFencedAsync();
+        await InFlightStatusCannotResurrectRevokedOwnerAsync();
         await BearerTokenIsRequestBoundAndRedacted();
         await PacketProofBindsExactBodyAndCaseSensitivePath();
         await BootstrapProofAndPollBodyMatchV2Contract();
@@ -57,11 +63,457 @@ internal static class Program
         await AlreadyRedeemedBootstrapConflictRetainsFreshCredentialsAsync();
         await SuccessfulUnlinkCannotLeaveAStaleLinkedSnapshotAsync();
         await SuccessfulErasureCannotLeaveAStaleLinkedSnapshotAsync();
+        await ErasureChecksOriginalContextAtQueueAndCredentialBoundariesAsync();
+        await ErasureOwnerCorrelationRequiresExactFreshGrantAsync();
         await LostRefreshResponseSurvivesProcessRestartAsync();
         await MismatchedOperationResponsesRetainRecoveryStateAsync();
         await UnsupportedBootstrapGrantTransportCannotCommitAsync();
         await UnsupportedRefreshGrantTransportCannotRotateAsync();
-        Console.WriteLine("Account-link HTTP hardening tests passed: 36");
+        await VerifiedGrantOwnerIsPersistedAndRefreshCannotReassignItAsync();
+        await MalformedResponseOwnersCannotCommitAsync();
+        await StoredOwnerBindingsFailClosedAcrossRestartAsync();
+        await LegacyStagedGrantCannotInheritAnOwnerAsync();
+        await BoundOwnerErasureAndUnlinkCleanupAsync();
+        Console.WriteLine("Account-link HTTP hardening tests passed: 48");
+    }
+
+    private static void AccountOwnerKeyPreservesOpaqueSubjectIdentity()
+    {
+        // Fixed vectors freeze the local namespace across client restarts and
+        // upgrades. Padding is defensive encoder coverage, not wire admission.
+        (string Subject, string Digest)[] vectors =
+        [
+            ("opaque-A", "d51880aa630551faff947f6bf0620e9c14232af0bca3f6b1a2ebe15f0f9a5a32"),
+            ("opaque-a", "8c95ef921efbc35b7cf639352a0b7a2a582d12c8f1a07420b904e341e2d85a80"),
+            (" opaque-A", "329acdd51fa2a17079d1e31d9b5cc59ed44d24126a64299b04241c8aa3c0cabf"),
+            ("opaque-A ", "5e3775707a7ded0182b8bc849382655e536becfc87ef0f112bafbcfd5d9e6dcf"),
+            ("e\u0301", "b749ca9a5d2ae28501f20e832b270e93f655fb44ca0bb3fec8d8f6c7ad7e464e"),
+            ("\u00e9", "312ceecd9baa9a1423b357038051e626e5c90048a28a85c4a1c9fa95e32648d6")
+        ];
+        var keys = new HashSet<string>(StringComparer.Ordinal);
+        foreach ((string subject, string digest) in vectors)
+        {
+            Require(AndroidAccountOwnerKey.TryCreate(subject, out string key)
+                && key == "install-account-v1:" + digest && keys.Add(key));
+            Require(AndroidAccountOwnerKey.TryCreate(subject, out string repeated) && repeated == key);
+            Require(key == key.Trim().ToLowerInvariant() && key != "install-account:" + subject);
+        }
+        foreach (string? invalid in new string?[] { null, "", "opaque-\ud800", "opaque-\ud801", "opaque-\udc00" })
+            Require(!AndroidAccountOwnerKey.TryCreate(invalid, out string key) && key.Length == 0);
+        Require(AndroidAccountOwnerKey.TryCreate("opaque-\ufffd", out _));
+        Console.WriteLine("PASS exact opaque subject owner keys, stable v1 vectors and malformed Unicode rejection");
+    }
+
+    private static HttpResponseMessage ExactGrantStatus(LinkFixture fixture, string subject = "subject-owner-A")
+        => JsonResponse(JsonSerializer.Serialize(new
+        {
+            installationId = fixture.Identity.InstallationId,
+            grantId = StoredBindingGrantId(fixture),
+            status = "active",
+            subjectId = subject,
+            issuedAtUtc = DateTimeOffset.UtcNow.AddMinutes(-5),
+            expiresAtUtc = DateTimeOffset.Parse(fixture.Metadata.GetRaw(StoredGrantExpiryKey)!, CultureInfo.InvariantCulture),
+            observedAtUtc = DateTimeOffset.UtcNow
+        }));
+
+    private static async Task LegacyOwnerHydratesFromExactStatusAsync()
+    {
+        LinkFixture fixture = await CreateLinkedFixtureAsync(DateTimeOffset.UtcNow.AddDays(30));
+        await fixture.Metadata.RemoveAsync(OwnerBindingKey);
+        var handler = new RecordingHandler(_ => ExactGrantStatus(fixture));
+        using var transport = CreateTransport(handler);
+        var service = CreateService(transport, fixture);
+        await service.InitializeOwnerContextAsync();
+        Require(service.OwnerAuthority.Capture() is null && handler.Requests.Count == 0);
+        await service.InitializeAsync();
+        Require(service.Snapshot.IsLinked);
+        string binding = fixture.Metadata.GetRaw(OwnerBindingKey)
+            ?? throw new InvalidOperationException("Fresh authenticated status did not bind the legacy account owner.");
+        Require(service.OwnerAuthority.Capture()?.SubjectId == "subject-owner-A");
+        Require(!binding.Contains(AccessToken, StringComparison.Ordinal));
+        Require(fixture.Metadata.GetRaw(StoredAccessTokenKey) == AccessToken);
+        long epoch = service.OwnerAuthority.Revision;
+        await service.InitializeAsync();
+        Require(service.OwnerAuthority.Revision == epoch && fixture.Metadata.GetRaw(OwnerBindingKey) == binding);
+        var offlineHandler = new RecordingHandler(_ => throw new HttpRequestException("offline"));
+        using var offline = CreateTransport(offlineHandler);
+        var restart = CreateService(offline, fixture);
+        await restart.InitializeOwnerContextAsync();
+        Require(offlineHandler.Requests.Count == 0 && restart.OwnerAuthority.Capture()?.SubjectId == "subject-owner-A");
+        await restart.InitializeAsync();
+        Require(restart.Snapshot.IsLinked && fixture.Metadata.GetRaw(OwnerBindingKey) == binding);
+        Console.WriteLine("PASS legacy owner fresh status, idempotent validation and zero-network restart");
+    }
+
+    private static async Task GrantStatusCannotInventOrReplaceOwnerAsync()
+    {
+        (string Name, Action<JsonObject> Corrupt)[] corruptions =
+        [
+            ("installation", body => body["installationId"] = "foreign-install"),
+            ("grant", body => body["grantId"] = "foreign-grant"),
+            ("status", body => body["status"] = "revoked"),
+            ("missing-subject", body => body.Remove("subjectId")),
+            ("null-subject", body => body["subjectId"] = null),
+            ("trim-subject", body => body["subjectId"] = " subject-owner-A"),
+            ("control-subject", body => body["subjectId"] = "subject\nA"),
+            ("large-subject", body => body["subjectId"] = new string('x', 257)),
+            ("number-subject", body => body["subjectId"] = 5),
+            ("alias-subject", body => body["SubjectId"] = "subject-owner-A"),
+            ("missing-issued", body => body["issuedAtUtc"] = default(DateTimeOffset)),
+            ("future-issued", body => body["issuedAtUtc"] = DateTimeOffset.UtcNow.AddDays(1)),
+            ("wrong-expiry", body => body["expiresAtUtc"] = DateTimeOffset.UtcNow.AddDays(31)),
+            ("stale-observation", body => body["observedAtUtc"] = DateTimeOffset.UtcNow.AddMinutes(-5)),
+            ("future-observation", body => body["observedAtUtc"] = DateTimeOffset.UtcNow.AddMinutes(5))
+        ];
+        foreach (bool legacy in new[] { false, true })
+        foreach ((string name, Action<JsonObject> corrupt) in corruptions)
+        {
+            LinkFixture fixture = await CreateLinkedFixtureAsync(DateTimeOffset.UtcNow.AddDays(30));
+            if (legacy) await fixture.Metadata.RemoveAsync(OwnerBindingKey);
+            string? before = fixture.Metadata.GetRaw(OwnerBindingKey);
+            var terminal = new RecordingHandler(_ => MutateGrantResponse(ExactGrantStatus(fixture), corrupt));
+            using var transport = CreateTransport(terminal);
+            var service = CreateService(transport, fixture);
+            await service.InitializeAsync();
+            Require(service.Snapshot.Status == AndroidAccountLinkStatus.Error);
+            Require(fixture.Metadata.GetRaw(OwnerBindingKey) == before
+                && fixture.Metadata.GetRaw(StoredAccessTokenKey) == AccessToken);
+            Require(!service.Snapshot.ToString().Contains(AccessToken, StringComparison.Ordinal));
+            if (legacy) Require(service.OwnerAuthority.Capture() is null);
+            Console.WriteLine($"PASS status identity rejected: legacy={legacy}, {name}");
+        }
+        LinkFixture known = await CreateLinkedFixtureAsync(DateTimeOffset.UtcNow.AddDays(30));
+        string original = known.Metadata.GetRaw(OwnerBindingKey)!;
+        using var wrong = CreateTransport(new RecordingHandler(_ => ExactGrantStatus(known, "subject-owner-B")));
+        var sameAccountOnly = CreateService(wrong, known);
+        await sameAccountOnly.InitializeAsync();
+        Require(sameAccountOnly.Snapshot.Status == AndroidAccountLinkStatus.Error
+            && known.Metadata.GetRaw(OwnerBindingKey) == original);
+        Console.WriteLine("PASS fresh status cannot reassign an existing owner");
+    }
+
+    private static async Task LegacyOwnerCommitIsRestartableAndFencedAsync()
+    {
+        foreach (string scenario in new[] { "cancel-before", "cancel-after", "crash-after", "replaced-token" })
+        {
+            LinkFixture fixture = await CreateLinkedFixtureAsync(DateTimeOffset.UtcNow.AddDays(30));
+            await fixture.Metadata.RemoveAsync(OwnerBindingKey);
+            using var cancellation = new CancellationTokenSource();
+            if (scenario == "crash-after") fixture.Metadata.ThrowAfterSetKey = OwnerBindingKey;
+            if (scenario == "cancel-after") fixture.Metadata.AfterSet = key =>
+            { if (key == OwnerBindingKey) cancellation.Cancel(); };
+            var terminal = new RecordingHandler(_ =>
+            {
+                HttpResponseMessage response = ExactGrantStatus(fixture);
+                if (scenario == "cancel-before") cancellation.Cancel();
+                if (scenario == "replaced-token") fixture.Metadata.SetRaw(StoredAccessTokenKey, RotatedAccessToken);
+                return response;
+            });
+            using var transport = CreateTransport(terminal);
+            var service = CreateService(transport, fixture);
+            try { await service.InitializeAsync(cancellation.Token); }
+            catch (OperationCanceledException) when (scenario == "cancel-before") { }
+            bool committed = scenario is "cancel-after" or "crash-after";
+            Require(fixture.Metadata.Contains(OwnerBindingKey) == committed);
+            Require(fixture.Metadata.GetRaw(StoredAccessTokenKey)
+                == (scenario == "replaced-token" ? RotatedAccessToken : AccessToken));
+            Require(!fixture.Metadata.Contains(StagedGrantCommitKey) && !fixture.Metadata.Contains(RefreshAttemptKey));
+            if (scenario == "cancel-after") Require(service.Snapshot.IsLinked);
+            if (committed)
+            {
+                var offline = new RecordingHandler(_ => throw new InvalidOperationException("Local hydration contacted Hub."));
+                using var localTransport = CreateTransport(offline);
+                var cold = CreateService(localTransport, fixture);
+                await cold.InitializeOwnerContextAsync();
+                Require(offline.Requests.Count == 0 && cold.OwnerAuthority.Capture()?.SubjectId == "subject-owner-A");
+            }
+            else Require(service.OwnerAuthority.Capture() is null);
+            Console.WriteLine("PASS status owner commit boundary: " + scenario);
+        }
+    }
+
+    private static async Task InFlightStatusCannotResurrectRevokedOwnerAsync()
+    {
+        foreach (bool legacy in new[] { false, true })
+        {
+            LinkFixture fixture = await CreateLinkedFixtureAsync(DateTimeOffset.UtcNow.AddDays(30));
+            if (legacy) await fixture.Metadata.RemoveAsync(OwnerBindingKey);
+            var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var handler = new RecordingHandler(async (request, cancellationToken) =>
+            {
+                if (request.RequestUri!.AbsolutePath.EndsWith("/status", StringComparison.Ordinal))
+                {
+                    HttpResponseMessage original = ExactGrantStatus(fixture);
+                    started.TrySetResult();
+                    await release.Task.WaitAsync(cancellationToken);
+                    return original;
+                }
+                Require(request.RequestUri.AbsolutePath == "/api/v2/android/linked/groups");
+                return JsonResponse("{}", HttpStatusCode.Unauthorized);
+            });
+            using var transport = CreateTransport(handler);
+            var service = CreateService(transport, fixture);
+            Task validation = service.InitializeAsync();
+            await started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            try
+            {
+                await RequireThrowsAsync<InvalidOperationException>(() => service.ListGroupsAsync());
+                Require(service.OwnerAuthority.Capture() is { DeviceLocal: true });
+            }
+            finally { release.TrySetResult(); }
+            await validation.WaitAsync(TimeSpan.FromSeconds(5));
+            Require(!fixture.Metadata.Contains(OwnerBindingKey) && !fixture.Metadata.Contains(StoredAccessTokenKey)
+                && service.OwnerAuthority.Capture() is { DeviceLocal: true });
+            Console.WriteLine($"PASS delayed status cannot resurrect actual revoked credentials: legacy={legacy}");
+        }
+    }
+
+    private static async Task VerifiedGrantOwnerIsPersistedAndRefreshCannotReassignItAsync()
+    {
+        LinkFixture fixture = await CreatePendingFixtureAsync();
+        var terminal = new RecordingHandler(request => BootstrapGrantResponse(fixture.Identity,
+            RequestOperationId(request), alreadyClaimed: false));
+        using (var transport = CreateTransport(terminal))
+        {
+            var service = CreateService(transport, fixture);
+            await service.ResumePendingLinkAsync();
+            Require(service.Snapshot.IsLinked);
+        }
+        string ownerBytes = fixture.Metadata.GetRaw(OwnerBindingKey)
+            ?? throw new InvalidOperationException("The authenticated grant subject was discarded during commit.");
+        using (var owner = JsonDocument.Parse(ownerBytes))
+        {
+            Require(owner.RootElement.GetProperty("subjectId").GetString() == "subject-owner-A");
+            Require(owner.RootElement.GetProperty("grantId").GetString() == "grant-after-response-loss");
+            Require(owner.RootElement.GetProperty("installationId").GetString() == fixture.Identity.InstallationId);
+        }
+        Require(!ownerBytes.Contains(RotatedAccessToken, StringComparison.Ordinal));
+        // Queue an exact refresh operation for the already committed grant, as
+        // a previous process could have done before losing its HTTP response.
+        using var restartTransport = CreateTransport(new RecordingHandler(request =>
+            RefreshGrantResponse(fixture.Identity, RequestOperationId(request), "subject-owner-B")));
+        var restart = CreateService(restartTransport, fixture);
+        var read = typeof(AndroidAccountLinkService).GetMethod("ReadStoredGrantAsync", BindingFlags.NonPublic | BindingFlags.Instance)!;
+        var readTask = (Task)read.Invoke(restart, [CancellationToken.None])!;
+        await readTask;
+        object grant = readTask.GetType().GetProperty("Result")!.GetValue(readTask)!;
+        var create = typeof(AndroidAccountLinkService).GetMethod("CreateAndPersistRefreshOperationAsync", BindingFlags.NonPublic | BindingFlags.Instance)!;
+        var operationTask = (Task)create.Invoke(restart, [grant, CancellationToken.None])!;
+        await operationTask;
+        await restart.InitializeAsync();
+        Require(!restart.Snapshot.IsLinked && fixture.Metadata.GetRaw(OwnerBindingKey) == ownerBytes);
+        Require(fixture.Metadata.GetRaw(StoredAccessTokenKey) == RotatedAccessToken);
+        Require(fixture.Metadata.Contains(RefreshAttemptKey));
+        Require(!fixture.Metadata.Contains(StagedGrantCommitKey));
+        var recovery = new RecordingHandler(request => RefreshGrantResponse(fixture.Identity, RequestOperationId(request)));
+        using var recoveryTransport = CreateTransport(recovery);
+        var recovered = CreateService(recoveryTransport, fixture);
+        await recovered.InitializeAsync();
+        Require(recovered.Snapshot.IsLinked && recovery.Requests.Count == 1);
+        await RequireCommittedGrantAsync(fixture, "grant-after-refresh");
+        Require(!fixture.Metadata.Contains(RefreshAttemptKey));
+    }
+
+    private static async Task MalformedResponseOwnersCannotCommitAsync()
+    {
+        (string Name, Action<JsonObject> Corrupt)[] cases =
+        [
+            ("missing-installation", body => body.Remove("installation")),
+            ("null-installation", body => body["installation"] = null),
+            ("wrong-installation", body => body["installation"]!["installationId"] = "other-installation"),
+            ("wrong-grant", body => body["installation"]!["grantId"] = "other-grant"),
+            ("missing-subject", body => body["installation"]!.AsObject().Remove("subjectId")),
+            ("null-subject", body => body["installation"]!["subjectId"] = null),
+            ("empty-subject", body => body["installation"]!["subjectId"] = ""),
+            ("trimmed-subject", body => body["installation"]!["subjectId"] = " subject-owner-A "),
+            ("control-subject", body => body["installation"]!["subjectId"] = "subject\nowner"),
+            ("large-subject", body => body["installation"]!["subjectId"] = new string('a', 257)),
+            ("number-subject", body => body["installation"]!["subjectId"] = 42),
+            ("inactive-installation", body => body["installation"]!["status"] = "revoked"),
+            ("inactive-grant", body => body["grant"]!["status"] = "revoked"),
+            ("missing-issued", body => body["grant"]!["issuedAtUtc"] = default(DateTimeOffset)),
+            ("future-issued", body => body["grant"]!["issuedAtUtc"] = DateTimeOffset.UtcNow.AddDays(1)),
+            ("duplicate-subject-alias", body => body["installation"]!["SubjectId"] = "subject-owner-A")
+        ];
+        foreach (bool refresh in new[] { false, true })
+        foreach ((string name, Action<JsonObject> corrupt) in cases)
+        {
+            LinkFixture fixture = refresh
+                ? await CreateLinkedFixtureAsync(DateTimeOffset.UtcNow.AddDays(1))
+                : await CreatePendingFixtureAsync();
+            string? originalToken = fixture.Metadata.GetRaw(StoredAccessTokenKey);
+            string? originalBinding = fixture.Metadata.GetRaw(AndroidAccountLinkKeyAuthority.BindingStorageKey);
+            string? originalOwner = fixture.Metadata.GetRaw(OwnerBindingKey);
+            List<string> writes = ObserveCredentialWrites(fixture);
+            var terminal = new RecordingHandler(request => request.RequestUri!.AbsolutePath.EndsWith("/status", StringComparison.Ordinal)
+                ? ExactGrantStatus(fixture)
+                : MutateGrantResponse(refresh
+                    ? RefreshGrantResponse(fixture.Identity, RequestOperationId(request))
+                    : BootstrapGrantResponse(fixture.Identity, RequestOperationId(request), false), corrupt));
+            using (var transport = CreateTransport(terminal))
+            {
+                var service = CreateService(transport, fixture);
+                if (refresh) await service.InitializeAsync();
+                else await service.ResumePendingLinkAsync();
+                Require(!service.Snapshot.IsLinked);
+            }
+            Require(writes.Count == 0);
+            Require(fixture.Metadata.GetRaw(OwnerBindingKey) == originalOwner && !fixture.Metadata.Contains(StagedGrantCommitKey));
+            Require(fixture.Metadata.GetRaw(StoredAccessTokenKey) == originalToken);
+            Require(fixture.Metadata.GetRaw(AndroidAccountLinkKeyAuthority.BindingStorageKey) == originalBinding);
+            Require(fixture.Metadata.Contains(refresh ? RefreshAttemptKey : PendingPollOperationKey));
+            // The same persisted operation can recover with a valid response;
+            // rejection never rolls it forward or loses the approval/replay ID.
+            string priorOperation = RequestOperationId(terminal.Requests.Last());
+            var recovery = new RecordingHandler(request => refresh
+                ? RefreshGrantResponse(fixture.Identity, RequestOperationId(request))
+                : BootstrapGrantResponse(fixture.Identity, RequestOperationId(request), true));
+            using (var transport = CreateTransport(recovery))
+            {
+                var service = CreateService(transport, fixture);
+                if (refresh) await service.InitializeAsync();
+                else await service.ResumePendingLinkAsync();
+                Require(service.Snapshot.IsLinked);
+            }
+            Require(recovery.Requests.Count == 1 && RequestOperationId(recovery.Requests[0]) == priorOperation);
+            await RequireCommittedGrantAsync(fixture, refresh ? "grant-after-refresh" : "grant-after-response-loss");
+            Console.WriteLine($"PASS response owner rejection/recovery: {(refresh ? "refresh" : "bootstrap")}/{name}");
+        }
+    }
+
+    private static async Task StoredOwnerBindingsFailClosedAcrossRestartAsync()
+    {
+        foreach (string scenario in new[] { "valid", "legacy-absent", "empty", "malformed", "null", "large",
+                     "version", "installation", "grant", "subject", "expiry", "issued", "duplicate", "alias", "unknown" })
+        {
+            LinkFixture fixture = await CreatePendingFixtureAsync();
+            using (var transport = CreateTransport(new RecordingHandler(request => BootstrapGrantResponse(
+                       fixture.Identity, RequestOperationId(request), false))))
+            {
+                var service = CreateService(transport, fixture);
+                await service.ResumePendingLinkAsync();
+                Require(service.Snapshot.IsLinked);
+            }
+            string original = fixture.Metadata.GetRaw(OwnerBindingKey)!;
+            JsonObject binding = JsonNode.Parse(original)!.AsObject();
+            switch (scenario)
+            {
+                case "valid": break; // Preserve the actual persisted bytes, including encoder choices.
+                case "legacy-absent": await fixture.Metadata.RemoveAsync(OwnerBindingKey); break;
+                case "empty": fixture.Metadata.SetRaw(OwnerBindingKey, ""); break;
+                case "malformed": fixture.Metadata.SetRaw(OwnerBindingKey, "{"); break;
+                case "null": fixture.Metadata.SetRaw(OwnerBindingKey, "null"); break;
+                case "large": fixture.Metadata.SetRaw(OwnerBindingKey, new string(' ', 4097)); break;
+                case "duplicate": fixture.Metadata.SetRaw(OwnerBindingKey, original[..^1] + ",\"subjectId\":\"subject-owner-A\"}"); break;
+                default:
+                    switch (scenario)
+                    {
+                        case "version": binding["version"] = 2; break;
+                        case "installation": binding["installationId"] = "other-installation"; break;
+                        case "grant": binding["grantId"] = "other-grant"; break;
+                        case "subject": binding["subjectId"] = " owner "; break;
+                        case "expiry": binding["expiresAtUtc"] = DateTimeOffset.UtcNow.AddDays(60); break;
+                        case "issued": binding["issuedAtUtc"] = default(DateTimeOffset); break;
+                        case "alias": binding["SubjectId"] = "subject-owner-A"; break;
+                        case "unknown": binding["ownerScope"] = "local-single-user"; break;
+                    }
+                    fixture.Metadata.SetRaw(OwnerBindingKey, binding.ToJsonString());
+                    break;
+            }
+            string? observed = fixture.Metadata.GetRaw(OwnerBindingKey);
+            var terminal = new RecordingHandler(_ => throw new HttpRequestException("offline"));
+            using var restartTransport = CreateTransport(terminal);
+            var restart = CreateService(restartTransport, fixture);
+            await restart.InitializeAsync();
+            bool valid = scenario is "valid" or "legacy-absent";
+            if (restart.Snapshot.IsLinked != valid)
+                throw new InvalidOperationException($"Stored owner admission differed for {scenario}.");
+            Require(terminal.Requests.Count == (valid ? 1 : 0));
+            Require(fixture.Metadata.GetRaw(OwnerBindingKey) == observed);
+            Require(fixture.Metadata.GetRaw(StoredAccessTokenKey) == RotatedAccessToken);
+            if (valid)
+            {
+                var read = typeof(AndroidAccountLinkService).GetMethod("ReadStoredGrantAsync", BindingFlags.NonPublic | BindingFlags.Instance)!;
+                var task = (Task)read.Invoke(restart, [CancellationToken.None])!;
+                await task;
+                object grant = task.GetType().GetProperty("Result")!.GetValue(task)!;
+                string? subject = (string?)grant.GetType().GetProperty("SubjectId", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(grant);
+                Require(subject == (scenario == "valid" ? "subject-owner-A" : null));
+                Require(!grant.ToString()!.Contains("subject-owner-A", StringComparison.Ordinal));
+                Require(!grant.ToString()!.Contains(RotatedAccessToken, StringComparison.Ordinal));
+            }
+            Console.WriteLine($"PASS stored owner restart admission: {scenario}");
+        }
+    }
+
+    private static async Task LegacyStagedGrantCannotInheritAnOwnerAsync()
+    {
+        LinkFixture fixture = await CreateInterruptedBootstrapStageAsync();
+        JsonObject stage = JsonNode.Parse(fixture.Metadata.GetRaw(StagedGrantCommitKey)!)!.AsObject();
+        stage["grant"]!.AsObject().Remove("subjectId");
+        fixture.Metadata.SetRaw(StagedGrantCommitKey, stage.ToJsonString());
+        fixture.Metadata.SetRaw(OwnerBindingKey, "{stale-unrelated-owner}");
+        fixture.Metadata.ThrowBeforeRemoveKey = OwnerBindingKey;
+        var terminal = new RecordingHandler(_ => throw new InvalidOperationException("Legacy staged recovery cannot call Hub."));
+        using var transport = CreateTransport(terminal);
+        var interrupted = CreateService(transport, fixture);
+        await interrupted.InitializeAsync();
+        Require(!interrupted.Snapshot.IsLinked && fixture.Metadata.Contains(StagedGrantCommitKey));
+        var restart = CreateService(transport, fixture);
+        await restart.InitializeAsync();
+        Require(restart.Snapshot.IsLinked && terminal.Requests.Count == 0);
+        Require(!fixture.Metadata.Contains(OwnerBindingKey) && !fixture.Metadata.Contains(StagedGrantCommitKey));
+        Require(fixture.Metadata.GetRaw(StoredAccessTokenKey) == RotatedAccessToken);
+        Require(StoredBindingGrantId(fixture) == "grant-after-response-loss");
+    }
+
+    private static async Task BoundOwnerErasureAndUnlinkCleanupAsync()
+    {
+        foreach (string scenario in new[] { "same-owner", "other-owner", "unlink" })
+        {
+            LinkFixture fixture = await CreatePendingFixtureAsync();
+            var terminal = new RecordingHandler(request =>
+            {
+                string path = request.RequestUri!.AbsolutePath;
+                if (path.EndsWith("/status", StringComparison.Ordinal))
+                {
+                    using JsonDocument owner = JsonDocument.Parse(fixture.Metadata.GetRaw(OwnerBindingKey)!);
+                    return JsonResponse(JsonSerializer.Serialize(new
+                    {
+                        installationId = fixture.Identity.InstallationId,
+                        grantId = "grant-after-response-loss",
+                        subjectId = scenario == "other-owner" ? "subject-owner-B" : "subject-owner-A",
+                        status = "active",
+                        issuedAtUtc = owner.RootElement.GetProperty("issuedAtUtc").GetDateTimeOffset(),
+                        expiresAtUtc = owner.RootElement.GetProperty("expiresAtUtc").GetDateTimeOffset(),
+                        observedAtUtc = DateTimeOffset.UtcNow
+                    }));
+                }
+                if (path.EndsWith("/erase", StringComparison.Ordinal)) return AccountErasureResponse();
+                if (path.EndsWith("/revoke", StringComparison.Ordinal)) return JsonResponse("{}");
+                return BootstrapGrantResponse(fixture.Identity, RequestOperationId(request), false);
+            });
+            using var transport = CreateTransport(terminal);
+            var service = CreateService(transport, fixture);
+            await service.ResumePendingLinkAsync();
+            await RequireCommittedGrantAsync(fixture, "grant-after-response-loss");
+            if (scenario == "unlink") await service.UnlinkAsync();
+            else
+            {
+                AndroidAccountErasureReceipt receipt = await service.EraseAccountAsync(
+                    AndroidAccountErasureConfirmation.RequiredPhrase, () => true);
+                Require(receipt.Erased);
+                Require(receipt.LocalWorkspaceOwnerKey == (scenario == "same-owner"
+                    ? "install-account-v1:5988219081b6fc9f4b7de3e451fa45c8e9f78a1db808eb3027185baa005fad3f" : null));
+                Require(!JsonSerializer.Serialize(receipt).Contains("subject-owner-A", StringComparison.Ordinal));
+            }
+            Require(!service.Snapshot.IsLinked);
+            Require(!fixture.Metadata.Contains(OwnerBindingKey));
+            Require(!fixture.Metadata.Contains(StoredAccessTokenKey));
+            Require(!fixture.Metadata.Contains(StagedGrantCommitKey));
+            Console.WriteLine($"PASS bound owner cleanup: {scenario}");
+        }
     }
 
     private static async Task BearerTokenIsRequestBoundAndRedacted()
@@ -832,6 +1284,7 @@ internal static class Program
         string[] commitWrites =
         [
             StagedGrantCommitKey,
+            OwnerBindingKey,
             StoredAccessTokenKey,
             StoredGrantExpiryKey,
             AndroidAccountLinkKeyAuthority.BindingStorageKey
@@ -874,7 +1327,7 @@ internal static class Program
             };
             int refreshCall = 0;
             var refreshTerminal = new RecordingHandler(request => ++refreshCall == 1
-                ? JsonResponse("{}")
+                ? ExactGrantStatus(refreshFixture)
                 : RefreshGrantResponse(refreshFixture.Identity, RequestOperationId(request)));
             using (AndroidAccountLinkHttpTransport transport = CreateTransport(refreshTerminal))
             {
@@ -894,6 +1347,7 @@ internal static class Program
         string[] commitWrites =
         [
             StagedGrantCommitKey,
+            OwnerBindingKey,
             StoredAccessTokenKey,
             StoredGrantExpiryKey,
             AndroidAccountLinkKeyAuthority.BindingStorageKey
@@ -917,7 +1371,7 @@ internal static class Program
             Require(bootstrapFixture.Keys.Contains(bootstrapFixture.Identity.Alias));
             Require(
                 bootstrapFixture.Metadata.GetRaw(StoredAccessTokenKey)
-                == (terminateAfterWrite == StagedGrantCommitKey ? null : RotatedAccessToken));
+                == (terminateAfterWrite is StagedGrantCommitKey or OwnerBindingKey ? null : RotatedAccessToken));
             Require(
                 StoredBindingGrantId(bootstrapFixture)
                 == (terminateAfterWrite == AndroidAccountLinkKeyAuthority.BindingStorageKey
@@ -941,7 +1395,7 @@ internal static class Program
             refreshFixture.Metadata.ThrowAfterSetKey = terminateAfterWrite;
             int refreshCall = 0;
             var refreshTerminal = new RecordingHandler(request => ++refreshCall == 1
-                ? JsonResponse("{}")
+                ? ExactGrantStatus(refreshFixture)
                 : RefreshGrantResponse(refreshFixture.Identity, RequestOperationId(request)));
             using (AndroidAccountLinkHttpTransport transport = CreateTransport(refreshTerminal))
             {
@@ -953,7 +1407,7 @@ internal static class Program
             Require(refreshFixture.Metadata.Contains(RefreshAttemptKey));
             Require(
                 refreshFixture.Metadata.GetRaw(StoredAccessTokenKey)
-                == (terminateAfterWrite == StagedGrantCommitKey ? AccessToken : RotatedAccessToken));
+                == (terminateAfterWrite is StagedGrantCommitKey or OwnerBindingKey ? AccessToken : RotatedAccessToken));
             Require(
                 StoredBindingGrantId(refreshFixture)
                 == (terminateAfterWrite == AndroidAccountLinkKeyAuthority.BindingStorageKey
@@ -1001,7 +1455,7 @@ internal static class Program
             fixture.Metadata.ThrowBeforeRemoveKey = failedCleanup;
             int call = 0;
             var terminal = new RecordingHandler(request => ++call == 1
-                ? JsonResponse("{}")
+                ? ExactGrantStatus(fixture)
                 : RefreshGrantResponse(fixture.Identity, RequestOperationId(request)));
             using (AndroidAccountLinkHttpTransport transport = CreateTransport(terminal))
             {
@@ -1020,6 +1474,7 @@ internal static class Program
         [
             (RefreshAttemptKey, true, false, true),
             (StagedGrantCommitKey, true, false, true),
+            (OwnerBindingKey, true, false, true),
             (StoredAccessTokenKey, true, false, true),
             (StoredGrantExpiryKey, true, false, true),
             (AndroidAccountLinkKeyAuthority.BindingStorageKey, true, false, true),
@@ -1062,7 +1517,7 @@ internal static class Program
                     }
                     if (path == "/api/v2/install-linking/grants/status")
                     {
-                        return JsonResponse("{}");
+                        return ExactGrantStatus(fixture);
                     }
                     if (path == "/api/v2/install-linking/grants/refresh")
                     {
@@ -1154,7 +1609,7 @@ internal static class Program
                 }
                 if (path == "/api/v2/install-linking/grants/status")
                 {
-                    return JsonResponse("{}");
+                    return ExactGrantStatus(fixture);
                 }
                 if (path == "/api/v2/install-linking/grants/refresh")
                 {
@@ -1313,7 +1768,7 @@ internal static class Program
         LinkFixture newerFixture = await CreateLinkedFixtureAsync(DateTimeOffset.UtcNow.AddDays(1));
         int newerCall = 0;
         var newerTerminal = new RecordingHandler(request => ++newerCall == 1
-            ? JsonResponse("{}")
+            ? ExactGrantStatus(newerFixture)
             : RefreshGrantResponse(newerFixture.Identity, RequestOperationId(request)));
         using (AndroidAccountLinkHttpTransport transport = CreateTransport(newerTerminal))
         {
@@ -1322,7 +1777,7 @@ internal static class Program
             Require(service.Snapshot.Status == AndroidAccountLinkStatus.Linked);
         }
         newerFixture.Metadata.SetRaw(StagedGrantCommitKey, "{orphaned-stage");
-        var statusTerminal = new RecordingHandler(_ => JsonResponse("{}"));
+        var statusTerminal = new RecordingHandler(_ => ExactGrantStatus(newerFixture));
         using (AndroidAccountLinkHttpTransport transport = CreateTransport(statusTerminal))
         {
             AndroidAccountLinkService restarted = CreateService(transport, newerFixture);
@@ -1536,7 +1991,7 @@ internal static class Program
         LinkFixture fixture = await CreateLinkedFixtureAsync(DateTimeOffset.UtcNow.AddDays(30));
         var terminal = new RecordingHandler(request => request.RequestUri!.AbsolutePath switch
         {
-            "/api/v2/install-linking/grants/status" => JsonResponse("{}"),
+            "/api/v2/install-linking/grants/status" => ExactGrantStatus(fixture),
             "/api/v2/install-linking/grants/revoke" => JsonResponse("{}"),
             _ => throw new InvalidOperationException("Unexpected account-link route.")
         });
@@ -1562,7 +2017,7 @@ internal static class Program
         LinkFixture fixture = await CreateLinkedFixtureAsync(DateTimeOffset.UtcNow.AddDays(30));
         var terminal = new RecordingHandler(request => request.RequestUri!.AbsolutePath switch
         {
-            "/api/v2/install-linking/grants/status" => JsonResponse("{}"),
+            "/api/v2/install-linking/grants/status" => ExactGrantStatus(fixture),
             "/api/v2/android/linked/account/erase" => AccountErasureResponse(),
             _ => throw new InvalidOperationException("Unexpected account-link route.")
         });
@@ -1585,6 +2040,133 @@ internal static class Program
         await fixture.Authority.RemoveAsync();
     }
 
+    private static async Task ErasureChecksOriginalContextAtQueueAndCredentialBoundariesAsync()
+    {
+        foreach (string scenario in new[] { "same", "before", "queued", "credential-read", "cancelled" })
+        {
+            LinkFixture fixture = await CreateLinkedFixtureAsync(DateTimeOffset.UtcNow.AddDays(30));
+            int erasures = 0;
+            var terminal = new RecordingHandler(request =>
+            {
+                if (request.RequestUri!.AbsolutePath == "/api/v2/install-linking/grants/status") return ExactGrantStatus(fixture);
+                Require(request.RequestUri.AbsolutePath == "/api/v2/android/linked/account/erase");
+                erasures++;
+                return AccountErasureResponse();
+            });
+            using AndroidAccountLinkHttpTransport transport = CreateTransport(terminal);
+            AndroidAccountLinkService service = CreateService(transport, fixture);
+            await service.InitializeAsync();
+            bool current = scenario != "before";
+            using var cancellation = new CancellationTokenSource();
+            if (scenario == "cancelled") cancellation.Cancel();
+            if (scenario == "credential-read")
+                fixture.Metadata.BeforeGet = key => { if (key == StoredAccessTokenKey) current = false; };
+            var gate = (SemaphoreSlim)typeof(AndroidAccountLinkService)
+                .GetField("_gate", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(service)!;
+            if (scenario == "queued") await gate.WaitAsync();
+            Task<AndroidAccountErasureReceipt> pending = service.EraseAccountAsync(
+                AndroidAccountErasureConfirmation.RequiredPhrase, () => current, cancellation.Token);
+            if (scenario == "queued")
+            {
+                Require(!pending.IsCompleted);
+                current = false;
+                gate.Release();
+            }
+            AndroidAccountErasureReceipt? receipt = null;
+            Exception? failure = null;
+            try { receipt = await pending.WaitAsync(TimeSpan.FromSeconds(5)); }
+            catch (Exception error) when (error is InvalidOperationException or OperationCanceledException) { failure = error; }
+            Require(scenario == "same"
+                ? receipt?.Erased == true && erasures == 1 && failure is null
+                : receipt is null && erasures == 0 && failure is not null && fixture.Metadata.Contains(StoredAccessTokenKey));
+            Require(gate.CurrentCount == 1);
+            Console.WriteLine("PASS actual account transport erasure boundary: " + scenario);
+        }
+    }
+
+    private static async Task ErasureOwnerCorrelationRequiresExactFreshGrantAsync()
+    {
+        foreach (string scenario in new[] { "same", "legacy", "grant", "installation", "inactive",
+            "missing-subject", "trimmed-subject", "control-subject", "large-subject", "expired",
+            "expiry-mismatch", "stale", "future", "issued-after-observed", "missing-issued", "offline", "malformed",
+            "during-owner-change", "during-cancel", "injected-owner" })
+        {
+            DateTimeOffset now = DateTimeOffset.UtcNow;
+            DateTimeOffset expiry = now.AddDays(30);
+            LinkFixture fixture = await CreateLinkedFixtureAsync(expiry, "subject-A");
+            bool current = true;
+            using var cancellation = new CancellationTokenSource();
+            int statusCalls = 0, erasures = 0;
+            var terminal = new RecordingHandler(request =>
+            {
+                if (request.RequestUri!.AbsolutePath == "/api/v2/install-linking/grants/status")
+                {
+                    if (++statusCalls == 1) return ExactGrantStatus(fixture, "subject-A");
+                    if (scenario == "during-owner-change") current = false;
+                    if (scenario == "during-cancel") cancellation.Cancel();
+                    if (scenario is "legacy" or "injected-owner") return JsonResponse("{}");
+                    if (scenario == "malformed") return JsonResponse("{");
+                    if (scenario == "offline") return new HttpResponseMessage(HttpStatusCode.ServiceUnavailable);
+                    return JsonResponse(JsonSerializer.Serialize(new
+                    {
+                        installationId = scenario == "installation" ? "another-install" : fixture.Identity.InstallationId,
+                        grantId = scenario == "grant" ? "another-grant" : "grant-before-refresh",
+                        status = scenario == "inactive" ? "revoked" : "active",
+                        subjectId = scenario switch
+                        {
+                            "missing-subject" => null,
+                            "trimmed-subject" => " subject-A ",
+                            "control-subject" => "subject\0A",
+                            "large-subject" => new string('x', 257),
+                            _ => "subject-A"
+                        },
+                        issuedAtUtc = scenario == "issued-after-observed" ? now.AddMinutes(1)
+                            : scenario == "missing-issued" ? default : now.AddMinutes(-5),
+                        expiresAtUtc = scenario == "expired" ? now.AddMinutes(-1)
+                            : scenario == "expiry-mismatch" ? expiry.AddMinutes(1) : expiry,
+                        observedAtUtc = scenario == "stale" ? now.AddMinutes(-5)
+                            : scenario == "future" ? now.AddMinutes(5) : now
+                    }));
+                }
+                Require(request.RequestUri.AbsolutePath == "/api/v2/android/linked/account/erase");
+                erasures++;
+                return AccountErasureResponse();
+            });
+            using AndroidAccountLinkHttpTransport transport = CreateTransport(terminal);
+            AndroidAccountLinkService service = CreateService(transport, fixture);
+            await service.InitializeAsync();
+            AndroidAccountErasureReceipt? receipt = null;
+            Exception? failure = null;
+            try
+            {
+                receipt = await service.EraseAccountAsync(AndroidAccountErasureConfirmation.RequiredPhrase,
+                    () => current, cancellation.Token);
+            }
+            catch (Exception error) when (error is InvalidOperationException or OperationCanceledException) { failure = error; }
+            bool interrupted = scenario is "during-owner-change" or "during-cancel";
+            Require(interrupted
+                ? receipt is null && failure is not null && erasures == 0 && fixture.Metadata.Contains(StoredAccessTokenKey)
+                : receipt is { Erased: true } && failure is null && erasures == 1
+                    && receipt.LocalWorkspaceOwnerKey == (scenario == "same"
+                        ? "install-account-v1:1df895c42e2fe3a608a26448f2ec6f3a36393a751cab99d92764ad4f7ec86d0f" : null));
+            Require(statusCalls == 2);
+            foreach (ObservedRequest sent in terminal.Requests)
+                Require(sent.AuthorizationParameter == AccessToken && sent.GrantId == "grant-before-refresh"
+                    && !sent.Body.Contains(AccessToken, StringComparison.Ordinal));
+            if (receipt is not null)
+            {
+                string json = JsonSerializer.Serialize(receipt);
+                Require(!json.Contains("subject-A", StringComparison.Ordinal)
+                    && !json.Contains("LocalWorkspaceOwnerKey", StringComparison.Ordinal)
+                    && !receipt.ToString().Contains("subject-A", StringComparison.Ordinal));
+                Require(JsonSerializer.Deserialize<AndroidAccountErasureReceipt>(json)!.LocalWorkspaceOwnerKey is null);
+                string injected = json[..^1] + ",\"localWorkspaceOwnerKey\":\"install-account:subject-A\"}";
+                Require(JsonSerializer.Deserialize<AndroidAccountErasureReceipt>(injected)!.LocalWorkspaceOwnerKey is null);
+            }
+            Console.WriteLine("PASS actual account grant/owner erasure correlation: " + scenario);
+        }
+    }
+
     private static async Task LostRefreshResponseSurvivesProcessRestartAsync()
     {
         LinkFixture fixture = await CreateLinkedFixtureAsync(DateTimeOffset.UtcNow.AddDays(1));
@@ -1593,7 +2175,7 @@ internal static class Program
         {
             if (++firstPhaseCall == 1)
             {
-                return JsonResponse("{}");
+                return ExactGrantStatus(fixture);
             }
 
             Require(fixture.Metadata.Contains(RefreshAttemptKey));
@@ -1690,7 +2272,7 @@ internal static class Program
         LinkFixture refreshFixture = await CreateLinkedFixtureAsync(DateTimeOffset.UtcNow.AddDays(1));
         int call = 0;
         var refreshTerminal = new RecordingHandler(_ => ++call == 1
-            ? JsonResponse("{}")
+            ? ExactGrantStatus(refreshFixture)
             : RefreshGrantResponse(refreshFixture.Identity, mismatchedOperationId));
         using (AndroidAccountLinkHttpTransport transport = CreateTransport(refreshTerminal))
         {
@@ -1754,7 +2336,7 @@ internal static class Program
             List<string> credentialWrites = ObserveCredentialWrites(fixture);
             int calls = 0;
             var terminal = new RecordingHandler(request => ++calls == 1
-                ? JsonResponse("{}")
+                ? ExactGrantStatus(fixture)
                 : corrupt(RefreshGrantResponse(fixture.Identity, RequestOperationId(request))));
             using (AndroidAccountLinkHttpTransport transport = CreateTransport(terminal))
             {
@@ -1793,7 +2375,7 @@ internal static class Program
         List<string> writes = [];
         fixture.Metadata.AfterSet = key =>
         {
-            if (key is StoredAccessTokenKey or StoredGrantExpiryKey or StagedGrantCommitKey
+            if (key is StoredAccessTokenKey or StoredGrantExpiryKey or StagedGrantCommitKey or OwnerBindingKey
                 or InstallationIdKey or AndroidAccountLinkKeyAuthority.BindingStorageKey)
                 writes.Add(key);
         };
@@ -1882,6 +2464,11 @@ internal static class Program
         AndroidAccountLinkKeyIdentity linked = await fixture.Authority
             .RequireLinkedIdentityAsync(fixture.Identity.InstallationId);
         Require(linked.GrantId == expectedGrantId);
+        using JsonDocument owner = JsonDocument.Parse(fixture.Metadata.GetRaw(OwnerBindingKey)!);
+        Require(owner.RootElement.GetProperty("subjectId").GetString() == "subject-owner-A");
+        Require(owner.RootElement.GetProperty("grantId").GetString() == expectedGrantId);
+        Require(owner.RootElement.GetProperty("installationId").GetString() == linked.InstallationId);
+        Require(owner.RootElement.GetProperty("expiresAtUtc").GetDateTimeOffset() == expiresAtUtc);
     }
 
     private static string? StoredBindingGrantId(LinkFixture fixture)
@@ -1927,7 +2514,7 @@ internal static class Program
         return fixture;
     }
 
-    private static async Task<LinkFixture> CreateLinkedFixtureAsync(DateTimeOffset expiresAtUtc)
+    private static async Task<LinkFixture> CreateLinkedFixtureAsync(DateTimeOffset expiresAtUtc, string subject = "subject-owner-A")
     {
         MemoryMetadataStore metadata = new();
         MemoryDeviceKeyStore keys = new();
@@ -1938,6 +2525,13 @@ internal static class Program
         await metadata.SetAsync(
             StoredGrantExpiryKey,
             expiresAtUtc.ToString("O", CultureInfo.InvariantCulture));
+        // Current linked fixtures retain the owner written by a real grant
+        // commit. Legacy hydration tests explicitly remove this row.
+        await metadata.SetAsync(OwnerBindingKey, JsonSerializer.Serialize(new
+        {
+            version = 1, installationId = identity.InstallationId, grantId = "grant-before-refresh",
+            subjectId = subject, issuedAtUtc = DateTimeOffset.UtcNow.AddMinutes(-5), expiresAtUtc
+        }));
         return new(metadata, keys, authority, identity);
     }
 
@@ -1964,7 +2558,7 @@ internal static class Program
         fixture.Metadata.ThrowAfterSetKey = StagedGrantCommitKey;
         int call = 0;
         var terminal = new RecordingHandler(request => ++call == 1
-            ? JsonResponse("{}")
+            ? ExactGrantStatus(fixture)
             : RefreshGrantResponse(fixture.Identity, RequestOperationId(request)));
         using AndroidAccountLinkHttpTransport transport = CreateTransport(terminal);
         AndroidAccountLinkService service = CreateService(transport, fixture);
@@ -2029,6 +2623,7 @@ internal static class Program
             JsonSerializer.Serialize(new
             {
                 grant = GrantMetadata("grant-after-response-loss", identity.InstallationId),
+                installation = new { installationId = identity.InstallationId, grantId = "grant-after-response-loss", subjectId = "subject-owner-A", status = "active" },
                 alreadyClaimed,
                 operationId,
                 grantTransport = "android-linked-v2"
@@ -2036,13 +2631,15 @@ internal static class Program
 
     private static HttpResponseMessage RefreshGrantResponse(
         AndroidAccountLinkKeyIdentity identity,
-        string operationId)
+        string operationId,
+        string subjectId = "subject-owner-A")
         => GrantResponse(
             "grant-after-refresh",
             RotatedAccessToken,
             JsonSerializer.Serialize(new
             {
                 grant = GrantMetadata("grant-after-refresh", identity.InstallationId),
+                installation = new { installationId = identity.InstallationId, grantId = "grant-after-refresh", subjectId, status = "active" },
                 rotated = true,
                 operationId,
                 grantTransport = "android-linked-v2"
@@ -2057,6 +2654,13 @@ internal static class Program
     {
         string body = request.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
         using JsonDocument json = JsonDocument.Parse(body);
+        return json.RootElement.GetProperty("operationId").GetString()
+            ?? throw new InvalidOperationException("Operation ID is required.");
+    }
+
+    private static string RequestOperationId(ObservedRequest request)
+    {
+        using JsonDocument json = JsonDocument.Parse(request.Body);
         return json.RootElement.GetProperty("operationId").GetString()
             ?? throw new InvalidOperationException("Operation ID is required.");
     }

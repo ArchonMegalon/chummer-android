@@ -246,4 +246,11 @@ No change has been saved yet.</value></data>
   <data name="LinkedRecoveryCheck" xml:space="preserve"><value>Check current saved state</value></data>
   <data name="LinkedRecoveryPrevious" xml:space="preserve"><value>Previous</value></data>
   <data name="LinkedRecoveryNext" xml:space="preserve"><value>Next</value></data>
+  <data name="OnlineContinuationUnavailable" xml:space="preserve"><value>This runner has no complete restorable workspace. Refresh or upload it from a supported client.</value></data>
+  <data name="OnlineContinuationStored" xml:space="preserve"><value>The workspace is stored locally. Reopen it to continue; do not repeat the restore.</value></data>
+  <data name="OnlineContinuationReviewRequired" xml:space="preserve"><value>Review the complete workspace before restoring it.</value></data>
+  <data name="OnlineContinuationRejected" xml:space="preserve"><value>This workspace cannot be restored safely. Keep the local runner and resolve its conflicts first.</value></data>
+  <data name="OnlineContinuationTitle" xml:space="preserve"><value>Restore workspace</value></data>
+  <data name="OnlineContinuationReview" xml:space="preserve"><value>Open {0} with its complete wizard history? Content revision: {1}; saved revision: {2}. Local conflicts will not be overwritten.</value></data>
+  <data name="OnlineContinuationConfirm" xml:space="preserve"><value>Restore and open</value></data>
 </root>
