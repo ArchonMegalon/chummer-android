@@ -57,8 +57,8 @@ class CareerQualityWizardSourceContractTests(unittest.TestCase):
         self.assertIsNotNone(content)
         self.assertIsNotNone(runtime)
         self.assertIsNotNone(contract)
-        self.assertEqual(core.group(1), "1d8cf694d0412b3bd9f4a241fb95244fad341160")
-        self.assertEqual(presentation.group(1), "5b26b46d0c1326dfff2824e7aba6f03aec52b304")
+        self.assertEqual(core.group(1), "f7500ef8c2f597bac67bc3f53620d50b7a17d00a")
+        self.assertEqual(presentation.group(1), "f7d671e8e1fd9ba630b74564c203077e6f162fa7")
         expected = hashlib.sha256(
             f"{contract.group(1)}\n{core.group(1)}\n{presentation.group(1)}\n{content.group(1)}\n".encode()
         ).hexdigest()
@@ -217,7 +217,7 @@ class CareerQualityWizardSourceContractTests(unittest.TestCase):
             self.assertIn(token, COORDINATOR + PAGE)
         self.assertIn("TryDeleteCorrected", STORE + PAGE)
 
-    def test_content_manifest_matches_exact_quality_core_generation(self) -> None:
+    def test_content_manifest_is_independent_of_quality_runtime_generation(self) -> None:
         manifest = json.loads(
             (REPO / "src" / "Chummer.Android" / "Content" / "chummer-content-manifest.json")
             .read_text(encoding="utf-8")
@@ -227,6 +227,9 @@ class CareerQualityWizardSourceContractTests(unittest.TestCase):
         )
         self.assertEqual(manifest["bundleDigest"], "85f484c6d67c076ded1b78bfb611526485596a8054e3b90b88e5bfb0cf0e253c")
         self.assertEqual(len(manifest["files"]), 110)
+        runtime_core = re.search(r'CurrentCoreRevision\s*=\s*\n?\s*"([0-9a-f]{40})"', MODEL)
+        self.assertIsNotNone(runtime_core)
+        self.assertNotEqual(runtime_core.group(1), manifest["coreRevision"])
 
     def test_focused_compile_harness_uses_exact_authority_sources(self) -> None:
         project = (

@@ -16,4 +16,8 @@ public interface IAndroidSystemService
     Task<AndroidUpdateCheckResult> CheckForUpdatesAsync();
     Task ShareTextAsync(string text);
     Task<bool> PrintPdfAsync(string fileName, string contentBase64, string title, CancellationToken cancellationToken);
+
+    Task<bool> PrintPdfAsync(string fileName, string contentBase64, string title,
+        Func<bool> isOriginalContextCurrent, CancellationToken cancellationToken)
+        => Task.FromException<bool>(new InvalidOperationException("Context-bound printing is unavailable."));
 }

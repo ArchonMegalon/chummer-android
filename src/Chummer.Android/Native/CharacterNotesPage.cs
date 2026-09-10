@@ -1,5 +1,6 @@
 using Chummer.Contracts.Characters;
 using Chummer.Contracts.Workspaces;
+using Chummer.Application.Owners;
 
 namespace Chummer.Android.Native;
 
@@ -7,6 +8,8 @@ public sealed class CharacterNotesPage : NativePageBase
 {
     private readonly CharacterWorkspaceId _workspaceId;
     private readonly long _contentRevision;
+    private readonly OwnerContextStamp? _originalOwner;
+    private readonly string _originalGameNotes;
     private readonly Editor _characterNotes;
     private readonly Editor? _gameNotes;
     private readonly Editor _groupNotes;
@@ -19,9 +22,12 @@ public sealed class CharacterNotesPage : NativePageBase
 
     public CharacterNotesPage(RunnerSessionCoordinator coordinator) : base(coordinator)
     {
-        _workspaceId = coordinator.State.WorkspaceId
+        var original = coordinator.State;
+        _workspaceId = original.WorkspaceId
             ?? throw new InvalidOperationException("Open a runner before editing Notes.");
-        _contentRevision = coordinator.State.ContentRevision;
+        _contentRevision = original.ContentRevision;
+        _originalOwner = original.DisplayOwnerContext;
+        _originalGameNotes = coordinator.GameNotes;
         Title = "Notes";
         AutomationId = "character-notes";
 
@@ -65,7 +71,9 @@ public sealed class CharacterNotesPage : NativePageBase
 
     protected override void Refresh()
     {
-        if (Coordinator.State.WorkspaceId != _workspaceId)
+        if (Coordinator.State.WorkspaceId != _workspaceId
+            || Coordinator.State.DisplayOwnerContext != _originalOwner
+            || Coordinator.State.ContentRevision != _contentRevision)
         {
             _characterNotes.IsEnabled = false;
             if (_gameNotes is not null)
@@ -79,13 +87,13 @@ public sealed class CharacterNotesPage : NativePageBase
 
     private async Task SaveAsync()
     {
-        await Coordinator.ApplyCharacterNotesEditAsync(new CharacterNotesEditRequest(
+        bool saved = await Coordinator.ApplyCharacterNotesEditAsync(new CharacterNotesEditRequest(
             _workspaceId,
             _contentRevision,
             _characterNotes.Text ?? string.Empty,
-            _gameNotes?.Text ?? Coordinator.GameNotes,
-            _groupNotes.Text ?? string.Empty));
-        if (Coordinator.State.Error is null)
+            _gameNotes?.Text ?? _originalGameNotes,
+            _groupNotes.Text ?? string.Empty) { OriginalOwner = _originalOwner });
+        if (saved)
         {
             await Navigation.PopAsync();
         }

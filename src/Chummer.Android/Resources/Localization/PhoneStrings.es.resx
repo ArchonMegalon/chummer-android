@@ -229,4 +229,29 @@ Todavía no se ha guardado ningún cambio.</value></data>
   <data name="ReputationWizardSuperseded" xml:space="preserve"><value>No aplicado · revisión original obsoleta.</value></data>
   <data name="ReputationWizardRefreshRequired" xml:space="preserve"><value>Se conserva el resultado original, pero no se pudo recargar el personaje. Comprueba el resultado guardado; no crees una solicitud de reemplazo.</value></data>
   <data name="ReputationWizardRunnerChanged" xml:space="preserve"><value>El personaje seleccionado cambió. Vuelve a abrir Reputación para el personaje actual.</value></data>
+  <data name="TabletDraftPending" xml:space="preserve"><value>Los cambios sin aplicar se conservan durante esta sesión.</value></data>
+  <data name="TabletDraftConflict" xml:space="preserve"><value>El runner o sus reglas han cambiado. Tus datos anteriores se conservan abajo y no se han aplicado. Descártalos explícitamente antes de editar los valores actuales.</value></data>
+  <data name="TabletDraftDiscard" xml:space="preserve"><value>Descartar este borrador</value></data>
+  <data name="TabletDraftDiscardTitle" xml:space="preserve"><value>¿Descartar los cambios sin aplicar?</value></data>
+  <data name="TabletDraftDiscardPrompt" xml:space="preserve"><value>Solo se descartarán los datos de este elemento. El runner guardado y los demás borradores no cambiarán.</value></data>
+  <data name="LinkedRunnerOutcomeUnconfirmed" xml:space="preserve"><value>No se pudo confirmar el resultado del vínculo. Abre la recuperación de vínculos en Runners; no lo intentes de nuevo. Se conservaron los archivos locales.</value></data>
+  <data name="LinkedRecoveryTitle" xml:space="preserve"><value>Recuperación de vínculos</value></data>
+  <data name="LinkedRecoveryUnavailable" xml:space="preserve"><value>La recuperación no está disponible o está dañada. No se cambió ningún vínculo; conserva los archivos locales de recuperación.</value></data>
+  <data name="LinkedRecoveryBoundary" xml:space="preserve"><value>Son intenciones locales y observaciones del estado, no recibos de transacción de Core. No se deben repetir cambios sin resolver.</value></data>
+  <data name="LinkedRecoveryReload" xml:space="preserve"><value>El contexto cambió. Actualiza el historial de recuperación.</value></data>
+  <data name="LinkedRecoveryUnresolved" xml:space="preserve"><value>Sigue sin resolverse. No se repitió ningún cambio ni se eliminó ningún archivo.</value></data>
+  <data name="LinkedRecoveryObserved" xml:space="preserve"><value>Estado solicitado observado en la revisión siguiente; sin atribuir una transacción histórica.</value></data>
+  <data name="LinkedRecoveryNotDispatched" xml:space="preserve"><value>Detenido antes del envío. Este intento no cambió el runner.</value></data>
+  <data name="LinkedRecoveryPending" xml:space="preserve"><value>Resultado desconocido: conserva los archivos y no lo intentes de nuevo.</value></data>
+  <data name="LinkedRecoveryCheck" xml:space="preserve"><value>Comprobar estado guardado</value></data>
+  <data name="LinkedRecoveryPrevious" xml:space="preserve"><value>Anterior</value></data>
+  <data name="LinkedRecoveryNext" xml:space="preserve"><value>Siguiente</value></data>
+  <data name="OnlineContinuationUnavailable" xml:space="preserve"><value>Este runner no tiene un espacio de trabajo completo que se pueda restaurar. Actualiza la lista o súbelo desde un cliente compatible.</value></data>
+  <data name="OnlineContinuationStored" xml:space="preserve"><value>El espacio de trabajo está guardado localmente. Vuelve a abrirlo para continuar; no repitas la restauración.</value></data>
+  <data name="OnlineContinuationReviewRequired" xml:space="preserve"><value>Revisa el espacio de trabajo completo antes de restaurarlo.</value></data>
+  <data name="OnlineContinuationRejected" xml:space="preserve"><value>No se puede restaurar este espacio de trabajo de forma segura. Conserva el runner local y resuelve primero sus conflictos.</value></data>
+  <data name="OnlineContinuationTitle" xml:space="preserve"><value>Restaurar espacio de trabajo</value></data>
+  <data name="OnlineContinuationReview" xml:space="preserve"><value>¿Abrir {0} con todo su historial del asistente? Revisión del contenido: {1}; revisión guardada: {2}. No se sobrescribirán los conflictos locales.</value></data>
+  <data name="OnlineContinuationConfirm" xml:space="preserve"><value>Restaurar y abrir</value></data>
+  <data name="InitialRunnerRouteUnavailable" xml:space="preserve"><value>No se pudo abrir el runner automáticamente. Ábrelo desde Runners.</value></data>
 </root>

@@ -5,6 +5,7 @@ using Chummer.Android.Proof;
 #endif
 using Chummer.Application.Characters;
 using Chummer.Application.LifeModules;
+using Chummer.Application.Owners;
 using Chummer.Application.Tools;
 using Chummer.Application.Workspaces;
 using Chummer.Desktop.Runtime;
@@ -14,6 +15,7 @@ using Chummer.Presentation.Overview;
 using Chummer.Presentation.OriginBooks;
 using Chummer.Presentation.Shell;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Chummer.Android;
 
@@ -48,12 +50,16 @@ public static class MauiProgram
         builder.Services.AddSingleton<IAndroidDeviceKeyStore>(_ => new UnavailableAndroidDeviceKeyStore());
 #endif
         builder.Services.AddSingleton<AndroidAccountLinkKeyAuthority>();
-        builder.Services.AddSingleton<IAndroidAccountLinkService>(provider =>
+        builder.Services.AddSingleton<AndroidAccountLinkService>(provider =>
             new AndroidAccountLinkService(
                 provider.GetRequiredService<AndroidAccountLinkHttpTransport>(),
                 provider.GetRequiredService<IAndroidSystemService>(),
                 provider.GetRequiredService<AndroidAccountLinkKeyAuthority>(),
                 provider.GetRequiredService<IAndroidAccountLinkKeyMetadataStore>()));
+        builder.Services.AddSingleton<IAndroidAccountLinkService>(provider =>
+            provider.GetRequiredService<AndroidAccountLinkService>());
+        builder.Services.AddSingleton<IAndroidWorkspaceContinuationTransport>(provider =>
+            provider.GetRequiredService<AndroidAccountLinkService>());
         // Hub transport and public-catalog composition are not present in this graph. Bind the
         // exact Presentation contract and keep the missing list capability separately fail-closed.
         builder.Services.AddSingleton<IShadowArchivePresentationClient,
@@ -106,6 +112,31 @@ public static class MauiProgram
             contentPath,
             contentPath,
             "android");
+        // The shared runtime's desktop credential cache is not the Android
+        // account. Override only after its default composition has completed.
+        builder.Services.RemoveAll<IOwnerContextAccessor>();
+        builder.Services.RemoveAll<IOwnerContextLeaseAccessor>();
+        builder.Services.AddSingleton<AndroidAccountOwnerContextAccessor>();
+        builder.Services.AddSingleton<IOwnerContextAccessor>(provider =>
+            provider.GetRequiredService<AndroidAccountOwnerContextAccessor>());
+        builder.Services.AddSingleton<IOwnerContextLeaseAccessor>(provider =>
+            provider.GetRequiredService<AndroidAccountOwnerContextAccessor>());
+        builder.Services.RemoveAll<IDesktopWorkspaceRoamingSync>();
+        builder.Services.RemoveAll<IOwnerBoundDesktopWorkspaceRoamingSync>();
+        builder.Services.AddSingleton<AndroidWorkspaceContinuationRoamingSync>(provider => new(
+            provider.GetRequiredService<IOwnerContextLeaseAccessor>(),
+            provider.GetRequiredService<WorkspaceContinuationExportService>(),
+            provider.GetRequiredService<IAndroidWorkspaceContinuationTransport>(), statePath));
+        builder.Services.AddSingleton<IDesktopWorkspaceRoamingSync>(provider =>
+            provider.GetRequiredService<AndroidWorkspaceContinuationRoamingSync>());
+        builder.Services.AddSingleton<IOwnerBoundDesktopWorkspaceRoamingSync>(provider =>
+            provider.GetRequiredService<AndroidWorkspaceContinuationRoamingSync>());
+        builder.Services.AddSingleton(new AndroidLinkedCharacterIntentJournal(statePath));
+        builder.Services.AddSingleton<IAndroidLinkedWorkspaceReader>(provider => new AndroidLinkedWorkspaceReader(
+            provider.GetRequiredService<Chummer.Presentation.IChummerClient>(),
+            provider.GetRequiredService<IWorkspaceStore>(),
+            provider.GetRequiredService<Chummer.Application.Owners.IOwnerContextAccessor>(),
+            provider.GetRequiredService<IRulesetWorkspaceCodecResolver>()));
         // The reward service uses the runtime's actual workspace store, never a
         // second Android store or a generic XML/currency mutation substitute.
         builder.Services.AddSingleton<ICharacterAfterRunRewardService>(provider =>
@@ -146,13 +177,15 @@ public static class MauiProgram
                 provider.GetRequiredService<ICharacterCreationFoundationService>(),
                 provider.GetService<ICharacterCreationContactsService>(),
                 provider.GetService<ICharacterCreationQualitiesService>(),
-                provider.GetService<ICharacterCreationMagicResonanceService>()));
+                provider.GetService<ICharacterCreationMagicResonanceService>(),
+                ownerBoundCreationContactsService: provider.GetRequiredService<IOwnerBoundCharacterCreationContactsService>()));
         builder.Services.AddSingleton<ICharacterCreationFoundationInteractionPresenter>(provider =>
             new CharacterCreationFoundationInteractionPresenter(
                 provider.GetRequiredService<ICharacterCreationFoundationService>()));
         builder.Services.AddSingleton<ICharacterCreationContactsInteractionPresenter>(provider =>
             new CharacterCreationContactsInteractionPresenter(
-                provider.GetRequiredService<ICharacterCreationContactsService>()));
+                provider.GetRequiredService<ICharacterCreationContactsService>(),
+                provider.GetRequiredService<IOwnerBoundCharacterCreationContactsService>()));
         builder.Services.AddSingleton<ICharacterCreationLifestylesInteractionPresenter>(provider =>
             new CharacterCreationLifestylesInteractionPresenter(
                 provider.GetRequiredService<ICharacterCreationLifestylesService>()));
@@ -163,6 +196,7 @@ public static class MauiProgram
             new CharacterCreationGearInteractionPresenter(
                 provider.GetRequiredService<ICharacterCreationGearService>()));
         builder.Services.AddSingleton<IWorkspaceOperationCoordinator, WorkspaceOperationCoordinator>();
+        builder.Services.AddChummerWorkspaceRecovery();
         builder.Services.AddSingleton<ICharacterOverviewPresenter, CharacterOverviewPresenter>();
         builder.Services.AddSingleton<IShellPresenter, ShellPresenter>();
         builder.Services.AddSingleton<ICommandAvailabilityEvaluator, DefaultCommandAvailabilityEvaluator>();

@@ -15,6 +15,7 @@ import argparse
 from datetime import datetime, timezone
 import hashlib
 import importlib.util
+import io
 import json
 import os
 from pathlib import Path
@@ -72,8 +73,8 @@ REPO_ROOT = SCRIPT_DIRECTORY.parent
 POLICY_PATH = REPO_ROOT / "eng/api36-two-consecutive-green-authority.json"
 ENVIRONMENT_POLICY_PATH = REPO_ROOT / "eng/api36-proof-environment-authority.json"
 SOURCE_WORKFLOW = REPO_ROOT / ".github/workflows/api36-editing-e2e.yml"
-POLICY_SCHEMA = "chummer.android.api36-ordered-review-main-green-policy/v2"
-CONTRACT = "chummer.android.api36-ordered-review-main-green-eligibility/v2"
+POLICY_SCHEMA = "chummer.android.api36-ordered-review-main-green-policy/v3"
+CONTRACT = "chummer.android.api36-ordered-review-main-green-eligibility/v3"
 OUTPUT_NAME = "ANDROID_API36_TWO_GREEN_ELIGIBILITY.generated.json"
 REPOSITORY = "ArchonMegalon/chummer-android"
 PACKAGE_ID = "com.myexternalbrain.chummer"
@@ -93,6 +94,7 @@ VERSION_NAME = re.compile(
 ARTIFACT_DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
 RFC3339_UTC = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 MAX_JSON_ARTIFACT_BYTES = 16 * 1024 * 1024
+MAX_APK_BYTES = 256 * 1024 * 1024
 REQUIRED_JOB_NAMES = (
     "Build x64 emulator and ARM64 hosted debug candidates",
     "phone API 36 SR5 wizard persistence (creation-prerequisite)",
@@ -104,6 +106,10 @@ REQUIRED_JOB_NAMES = (
     "phone API 36 SR5 wizard persistence (after-run-settlement)",
     "Aggregate exact API 36 phone evidence",
 )
+BUILD_JOB_NAME = REQUIRED_JOB_NAMES[0]
+APK_UPLOAD_STEP_NAME = "Upload the exact APK under test"
+APK_CHECKSUM_NAME = f"{P0.X64_APK_NAME}.sha256"
+APK_CONTENT_RECEIPT_NAME = "chummer-android-content-bundle-receipt.json"
 DOES_NOT_ASSERT = (
     "google_play_upload",
     "google_play_processing",
@@ -215,6 +221,7 @@ def expected_policy() -> dict[str, object]:
         "mainRun": {"event": "push", "headBranch": "main", "ref": MAIN_REF},
         "requiredJobs": list(REQUIRED_JOB_NAMES),
         "requiredArtifacts": [
+            "chummer-android-api36-x64-debug",
             "chummer-android-api36-phone-sr5-wizard-aggregate",
             "chummer-android-p0-pr-authority",
         ],
@@ -229,6 +236,9 @@ def expected_policy() -> dict[str, object]:
         "requiresExactMergeCommitGraphs": True,
         "requiresExactAggregateCheckRun": True,
         "requiresCanonicalActionsDetailsUrls": True,
+        "requiresAuthenticatedApkProducerAttempt": True,
+        "requiresExactApkArtifactIdentity": True,
+        "requiresSuccessfulApkUploadStep": True,
         "sequenceSemantics": (
             "reviewed_green_followed_later_by_main_green_not_run_adjacency"
         ),
@@ -901,29 +911,30 @@ def extract_exact_json_archive(
         raise ValueError(f"artifact archive size differs: {metadata['name']}")
     if f"sha256:{snapshot.sha256}" != metadata["digest"]:
         raise ValueError(f"artifact archive digest differs: {metadata['name']}")
-    try:
-        with zipfile.ZipFile(snapshot.path, "r") as archive:
-            members = archive.infolist()
-            if len(members) != 1 or members[0].filename != expected_member:
-                raise ValueError(
-                    f"artifact archive must contain exactly {expected_member}"
-                )
-            member = members[0]
-            unix_mode = (member.external_attr >> 16) & 0xFFFF
-            if (
-                member.is_dir()
-                or member.flag_bits & 0x1
-                or stat.S_IFMT(unix_mode) == stat.S_IFLNK
-                or member.file_size <= 0
-                or member.file_size > MAX_JSON_ARTIFACT_BYTES
-                or member.filename != Path(member.filename).name
-            ):
-                raise ValueError("artifact archive member is unsafe")
-            data = archive.read(member)
-    except (zipfile.BadZipFile, RuntimeError) as error:
-        raise ValueError("artifact archive is invalid") from error
-    if len(data) != member.file_size:
-        raise ValueError("artifact member size changed during extraction")
+    value, data = extract_exact_json_archive_bytes(
+        snapshot.data,
+        expected_member=expected_member,
+    )
+    binding = {
+        **metadata,
+        "archiveSha256": snapshot.sha256,
+        "memberName": expected_member,
+        "memberSha256": hashlib.sha256(data).hexdigest(),
+        "memberSizeBytes": len(data),
+    }
+    return value, binding, data
+
+
+def extract_exact_json_archive_bytes(
+    archive_bytes: bytes,
+    *,
+    expected_member: str,
+) -> tuple[dict[str, object], bytes]:
+    data = extract_exact_archive_member_bytes(
+        archive_bytes,
+        expected_member=expected_member,
+        maximum_member_bytes=MAX_JSON_ARTIFACT_BYTES,
+    )
     try:
         value = json.loads(
             data.decode("utf-8", errors="strict"),
@@ -936,14 +947,366 @@ def extract_exact_json_archive(
         raise ValueError("artifact member is not strict UTF-8 JSON") from error
     if not isinstance(value, dict):
         raise ValueError("artifact member must be one JSON object")
-    binding = {
-        **metadata,
-        "archiveSha256": snapshot.sha256,
-        "memberName": expected_member,
-        "memberSha256": hashlib.sha256(data).hexdigest(),
-        "memberSizeBytes": len(data),
+    return value, data
+
+
+def extract_exact_archive_member_bytes(
+    archive_bytes: bytes,
+    *,
+    expected_member: str,
+    maximum_member_bytes: int,
+) -> bytes:
+    try:
+        with zipfile.ZipFile(io.BytesIO(archive_bytes), "r") as archive:
+            members = archive.infolist()
+            if len(members) != 1 or members[0].filename != expected_member:
+                raise ValueError(
+                    f"artifact archive must contain exactly {expected_member}"
+                )
+            member = members[0]
+            unix_mode = (member.external_attr >> 16) & 0xFFFF
+            if (
+                member.is_dir()
+                or member.flag_bits & 0x1
+                or stat.S_IFMT(unix_mode) == stat.S_IFLNK
+                or member.file_size <= 0
+                or member.file_size > maximum_member_bytes
+                or member.filename != Path(member.filename).name
+            ):
+                raise ValueError("artifact archive member is unsafe")
+            data = archive.read(member)
+    except (zipfile.BadZipFile, RuntimeError) as error:
+        raise ValueError("artifact archive is invalid") from error
+    if len(data) != member.file_size:
+        raise ValueError("artifact member size changed during extraction")
+    return data
+
+
+def extract_exact_apk_archive_bytes(archive_bytes: bytes) -> bytes:
+    expected_names = {
+        P0.X64_APK_NAME,
+        APK_CHECKSUM_NAME,
+        APK_CONTENT_RECEIPT_NAME,
     }
-    return value, binding, data
+    try:
+        with zipfile.ZipFile(io.BytesIO(archive_bytes), "r") as archive:
+            members = archive.infolist()
+            if len(members) != len(expected_names) or {
+                member.filename for member in members
+            } != expected_names:
+                raise ValueError("APK artifact archive file inventory differs")
+            for member in members:
+                unix_mode = (member.external_attr >> 16) & 0xFFFF
+                maximum = (
+                    MAX_APK_BYTES
+                    if member.filename == P0.X64_APK_NAME
+                    else MAX_JSON_ARTIFACT_BYTES
+                )
+                if (
+                    member.is_dir()
+                    or member.flag_bits & 0x1
+                    or stat.S_IFMT(unix_mode) == stat.S_IFLNK
+                    or member.file_size <= 0
+                    or member.file_size > maximum
+                    or member.filename != Path(member.filename).name
+                ):
+                    raise ValueError("APK artifact archive member is unsafe")
+            apk_bytes = archive.read(P0.X64_APK_NAME)
+            checksum_bytes = archive.read(APK_CHECKSUM_NAME)
+            content_receipt_bytes = archive.read(APK_CONTENT_RECEIPT_NAME)
+    except (zipfile.BadZipFile, RuntimeError) as error:
+        raise ValueError("APK artifact archive is invalid") from error
+    apk_sha256 = hashlib.sha256(apk_bytes).hexdigest()
+    if checksum_bytes != f"{apk_sha256}  {P0.X64_APK_NAME}\n".encode("ascii"):
+        raise ValueError("APK artifact checksum sidecar differs")
+    try:
+        content_receipt = json.loads(
+            content_receipt_bytes.decode("utf-8", errors="strict"),
+            object_pairs_hook=object_without_duplicates,
+            parse_constant=lambda token: (_ for _ in ()).throw(
+                ValueError(f"non-finite JSON value: {token}")
+            ),
+        )
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ValueError("APK content receipt is not strict UTF-8 JSON") from error
+    if (
+        not isinstance(content_receipt, dict)
+        or content_receipt.get("schema") != "chummer.android.content-bundle/v1"
+        or content_receipt.get("status") != "pass"
+        or content_receipt.get("apkVerified") is not True
+        or content_receipt.get("apkSha256") != apk_sha256
+    ):
+        raise ValueError("APK content receipt differs from the exact APK")
+    return apk_bytes
+
+
+def candidate_producer_attempt_from_p0_archive(
+    archive_bytes: bytes,
+    *,
+    run_id: int,
+    aggregate_attempt: int,
+) -> int:
+    """Read the bounded attempt selector; full authority is checked later."""
+    p0, _ = extract_exact_json_archive_bytes(
+        archive_bytes,
+        expected_member=P0.OUTPUT_NAME,
+    )
+    P0.validate_authority(p0)
+    github_run = p0.get("githubRun")
+    if not isinstance(github_run, dict) or github_run.get("id") != run_id:
+        raise ValueError("P0 producer run differs from the selected run")
+    producer_attempt = _positive_integer(
+        github_run.get("attempt"), "P0 APK producer attempt"
+    )
+    if producer_attempt > aggregate_attempt:
+        raise ValueError("P0 APK producer attempt is later than the aggregate attempt")
+    return producer_attempt
+
+
+def _proof_artifact_digest(value: object, label: str) -> str:
+    if not isinstance(value, str):
+        raise ValueError(f"{label} must be a SHA-256 artifact digest")
+    return _sha256(value.removeprefix("sha256:"), label)
+
+
+def validate_apk_producer_authority(
+    *,
+    p0: dict[str, object],
+    aggregate: dict[str, object],
+    run: dict[str, object],
+    artifacts: dict[str, object],
+    producer_jobs_snapshot: StableFile,
+    apk_archive_snapshot: StableFile,
+    role: str,
+) -> dict[str, object]:
+    aggregate_artifact = aggregate.get("artifactAuthority")
+    github_run = p0.get("githubRun")
+    p0_apks = p0.get("apks")
+    p0_x64 = p0_apks.get("android-x64") if isinstance(p0_apks, dict) else None
+    if (
+        not isinstance(aggregate_artifact, dict)
+        or not isinstance(p0_x64, dict)
+        or set(p0_x64)
+        != {
+            "fileName",
+            "sha256",
+            "sizeBytes",
+            "artifactAuthority",
+            "deviceJourneyAggregate",
+        }
+        or p0_x64.get("fileName") != P0.X64_APK_NAME
+        or p0_x64.get("artifactAuthority") != aggregate_artifact
+        or p0_x64.get("deviceJourneyAggregate") is not True
+        or p0_x64.get("sha256") != aggregate_artifact.get("apkSha256")
+        or not isinstance(github_run, dict)
+        or github_run.get("attempt") != aggregate_artifact.get("artifactAttempt")
+    ):
+        raise ValueError(f"{role} P0 and aggregate APK authority differs")
+    apk_size = _positive_integer(p0_x64.get("sizeBytes"), f"{role} x64 APK size")
+    apk_sha256 = _sha256(p0_x64.get("sha256"), f"{role} x64 APK SHA-256")
+    producer_attempt = _positive_integer(
+        aggregate_artifact.get("artifactAttempt"),
+        f"{role} APK producer attempt",
+    )
+    if producer_attempt > run["attempt"]:
+        raise ValueError(f"{role} APK producer attempt is later than aggregate attempt")
+    if aggregate_artifact.get("runId") != run["id"]:
+        raise ValueError(f"{role} APK producer run differs")
+    artifact_id_raw = aggregate_artifact.get("artifactId")
+    if (
+        not isinstance(artifact_id_raw, str)
+        or not artifact_id_raw.isdecimal()
+        or artifact_id_raw.startswith("0")
+    ):
+        raise ValueError(f"{role} APK artifact ID is not canonical")
+    artifact_id = _positive_integer(int(artifact_id_raw), f"{role} APK artifact ID")
+    expected_name = (
+        f"chummer-android-api36-x64-debug-{run['id']}-{producer_attempt}"
+    )
+    if aggregate_artifact.get("artifactName") != expected_name:
+        raise ValueError(f"{role} APK artifact name differs")
+    artifact_digest = _proof_artifact_digest(
+        aggregate_artifact.get("artifactDigest"),
+        f"{role} APK artifact digest",
+    )
+
+    artifact_rows = artifacts.get("artifacts")
+    artifact_total = artifacts.get("total_count")
+    if (
+        type(artifact_total) is not int
+        or not isinstance(artifact_rows, list)
+        or artifact_total != len(artifact_rows)
+    ):
+        raise ValueError(f"{role} artifacts response is truncated or malformed")
+    matches = [
+        row
+        for row in artifact_rows
+        if isinstance(row, dict) and row.get("name") == expected_name
+    ]
+    if len(matches) != 1:
+        raise ValueError(f"{role} APK artifact cardinality differs")
+    artifact_row = matches[0]
+    workflow_run = artifact_row.get("workflow_run")
+    api_root = f"https://api.github.com/repos/{REPOSITORY}"
+    repository_id = (
+        workflow_run.get("repository_id") if isinstance(workflow_run, dict) else None
+    )
+    head_repository_id = (
+        workflow_run.get("head_repository_id")
+        if isinstance(workflow_run, dict)
+        else None
+    )
+    if (
+        artifact_row.get("id") != artifact_id
+        or artifact_row.get("expired") is not False
+        or artifact_row.get("digest") != f"sha256:{artifact_digest}"
+        or artifact_row.get("url") != f"{api_root}/actions/artifacts/{artifact_id}"
+        or artifact_row.get("archive_download_url")
+        != f"{api_root}/actions/artifacts/{artifact_id}/zip"
+        or not isinstance(workflow_run, dict)
+        or workflow_run.get("id") != run["id"]
+        or workflow_run.get("head_branch") != run["headBranch"]
+        or workflow_run.get("head_sha") != run["headSha"]
+        or type(repository_id) is not int
+        or repository_id <= 0
+        or head_repository_id != repository_id
+    ):
+        raise ValueError(f"{role} APK artifact identity/digest/head authority differs")
+    artifact_archive_size = _positive_integer(
+        artifact_row.get("size_in_bytes"), f"{role} APK artifact archive size"
+    )
+    artifact_created = _utc(
+        artifact_row.get("created_at"), f"{role} APK artifact created_at"
+    )
+    artifact_updated = _utc(
+        artifact_row.get("updated_at"), f"{role} APK artifact updated_at"
+    )
+    artifact_expires = _utc(
+        artifact_row.get("expires_at"), f"{role} APK artifact expires_at"
+    )
+    if not artifact_created <= artifact_updated <= artifact_expires:
+        raise ValueError(f"{role} APK artifact timestamps are not monotonic")
+    if (
+        apk_archive_snapshot.size != artifact_archive_size
+        or apk_archive_snapshot.sha256 != artifact_digest
+    ):
+        raise ValueError(f"{role} APK archive bytes differ from GitHub artifact metadata")
+    apk_bytes = extract_exact_apk_archive_bytes(apk_archive_snapshot.data)
+    if len(apk_bytes) != apk_size or hashlib.sha256(apk_bytes).hexdigest() != apk_sha256:
+        raise ValueError(f"{role} APK bytes differ from the P0 authority")
+
+    producer_jobs = producer_jobs_snapshot.json()
+    rows = producer_jobs.get("jobs")
+    total = producer_jobs.get("total_count")
+    if type(total) is not int or not isinstance(rows, list) or total != len(rows):
+        raise ValueError(f"{role} producer jobs response is truncated or malformed")
+    build_rows = [
+        row
+        for row in rows
+        if isinstance(row, dict) and row.get("name") == BUILD_JOB_NAME
+    ]
+    if len(build_rows) != 1:
+        raise ValueError(f"{role} APK producer build job cardinality differs")
+    build_job = build_rows[0]
+    build_job_id = _positive_integer(
+        build_job.get("id"), f"{role} APK producer build job ID"
+    )
+    html_root = f"https://github.com/{REPOSITORY}"
+    if (
+        build_job.get("run_id") != run["id"]
+        or build_job.get("run_attempt") != producer_attempt
+        or build_job.get("workflow_name") != WORKFLOW_NAME
+        or build_job.get("head_branch") != run["headBranch"]
+        or build_job.get("head_sha") != run["headSha"]
+        or build_job.get("run_url") != f"{api_root}/actions/runs/{run['id']}"
+        or build_job.get("url") != f"{api_root}/actions/jobs/{build_job_id}"
+        or build_job.get("html_url")
+        != f"{html_root}/actions/runs/{run['id']}/job/{build_job_id}"
+        or build_job.get("check_run_url")
+        != f"{api_root}/check-runs/{build_job_id}"
+        or build_job.get("status") != "completed"
+        or build_job.get("conclusion") != "success"
+    ):
+        raise ValueError(f"{role} APK producer build job is not exact and successful")
+    build_started = _utc(
+        build_job.get("started_at"), f"{role} APK producer build started_at"
+    )
+    build_completed = _utc(
+        build_job.get("completed_at"), f"{role} APK producer build completed_at"
+    )
+    if build_started > build_completed:
+        raise ValueError(f"{role} APK producer build timestamps are not monotonic")
+    steps = build_job.get("steps")
+    upload_steps = (
+        [
+            step
+            for step in steps
+            if isinstance(step, dict) and step.get("name") == APK_UPLOAD_STEP_NAME
+        ]
+        if isinstance(steps, list)
+        else []
+    )
+    if len(upload_steps) != 1:
+        raise ValueError(f"{role} APK upload step cardinality differs")
+    upload = upload_steps[0]
+    upload_number = _positive_integer(
+        upload.get("number"), f"{role} APK upload step number"
+    )
+    if upload.get("status") != "completed" or upload.get("conclusion") != "success":
+        raise ValueError(f"{role} APK upload step is not successful")
+    upload_started = _utc(
+        upload.get("started_at"), f"{role} APK upload started_at"
+    )
+    upload_completed = _utc(
+        upload.get("completed_at"), f"{role} APK upload completed_at"
+    )
+    if not (
+        build_started
+        <= upload_started
+        <= artifact_created
+        <= artifact_updated
+        <= upload_completed
+        <= build_completed
+    ):
+        raise ValueError(f"{role} APK artifact is outside its successful upload step")
+    return {
+        "runAttempt": producer_attempt,
+        "jobsApiSnapshotSha256": producer_jobs_snapshot.sha256,
+        "jobsApiSnapshotSizeBytes": producer_jobs_snapshot.size,
+        "buildJob": {
+            "id": build_job_id,
+            "status": "completed",
+            "conclusion": "success",
+            "startedAtUtc": build_job["started_at"],
+            "completedAtUtc": build_job["completed_at"],
+            "detailsUrl": build_job["html_url"],
+            "checkRunUrl": build_job["check_run_url"],
+            "uploadStep": {
+                "name": APK_UPLOAD_STEP_NAME,
+                "number": upload_number,
+                "status": "completed",
+                "conclusion": "success",
+                "startedAtUtc": upload["started_at"],
+                "completedAtUtc": upload["completed_at"],
+            },
+        },
+        "apkArtifact": {
+            "id": artifact_id,
+            "name": expected_name,
+            "archiveDigest": f"sha256:{artifact_digest}",
+            "archiveSizeBytes": artifact_archive_size,
+            "createdAtUtc": artifact_row["created_at"],
+            "updatedAtUtc": artifact_row["updated_at"],
+            "expiresAtUtc": artifact_row["expires_at"],
+            "headSha": run["headSha"],
+        },
+        "apk": {
+            "fileName": P0.X64_APK_NAME,
+            "sha256": apk_sha256,
+            "sizeBytes": apk_size,
+            "archiveSha256": apk_archive_snapshot.sha256,
+        },
+    }
 
 
 def normalized_dependency_authority(
@@ -1050,7 +1413,9 @@ def validate_proof_artifacts(
             for field in ("baseSha", "eventSha", "headSha")
         )
         or github_run.get("id") != run["id"]
-        or github_run.get("attempt") != run["attempt"]
+        or type(github_run.get("attempt")) is not int
+        or github_run["attempt"] <= 0
+        or github_run["attempt"] > run["attempt"]
         or github_run.get("eventName") != run["event"]
         or github_run.get("headSha") != run["headSha"]
         or (role == "main" and github_run.get("eventSha") != run["headSha"])
@@ -1109,9 +1474,11 @@ def run_evidence(
     expected_run_id: int,
     run_snapshot: StableFile,
     jobs_snapshot: StableFile,
+    producer_jobs_snapshot: StableFile,
     artifacts_snapshot: StableFile,
     aggregate_archive_snapshot: StableFile,
     p0_archive_snapshot: StableFile,
+    apk_archive_snapshot: StableFile,
     workflow_binding: dict[str, object],
     environment_policy_authority: dict[str, object],
     local_tree: str,
@@ -1143,6 +1510,15 @@ def run_evidence(
         local_tree=local_tree,
         role=role,
     )
+    apk_producer = validate_apk_producer_authority(
+        p0=p0,
+        aggregate=aggregate,
+        run=run,
+        artifacts=artifacts_snapshot.json(),
+        producer_jobs_snapshot=producer_jobs_snapshot,
+        apk_archive_snapshot=apk_archive_snapshot,
+        role=role,
+    )
     evidence = {
         "run": run,
         "jobs": jobs,
@@ -1155,6 +1531,7 @@ def run_evidence(
             "aggregate": aggregate_artifact,
             "p0Authority": p0_artifact,
         },
+        "apkProducer": apk_producer,
         "p0AuthoritySha256": p0["authoritySha256"],
         "p0BaseSha": p0["githubRun"]["baseSha"],
         "p0EventSha": p0["githubRun"]["eventSha"],
@@ -1175,9 +1552,11 @@ def create_authority(
     main_run_id: int,
     review_run: Path,
     review_jobs: Path,
+    review_producer_jobs: Path,
     review_artifacts: Path,
     review_aggregate_archive: Path,
     review_p0_archive: Path,
+    review_apk_archive: Path,
     review_pull_request: Path,
     review_head_pull_requests: Path,
     review_aggregate_check_run: Path,
@@ -1186,9 +1565,11 @@ def create_authority(
     review_event_commit: Path,
     main_run: Path,
     main_jobs: Path,
+    main_producer_jobs: Path,
     main_artifacts: Path,
     main_aggregate_archive: Path,
     main_p0_archive: Path,
+    main_apk_archive: Path,
     main_commit: Path,
 ) -> dict[str, object]:
     if review_run_id == main_run_id:
@@ -1205,9 +1586,13 @@ def create_authority(
         ),
         "reviewRun": StableFile(review_run, "review run metadata"),
         "reviewJobs": StableFile(review_jobs, "review jobs metadata"),
+        "reviewProducerJobs": StableFile(
+            review_producer_jobs, "review APK producer jobs metadata"
+        ),
         "reviewArtifacts": StableFile(review_artifacts, "review artifacts metadata"),
         "reviewAggregate": StableFile(review_aggregate_archive, "review aggregate archive"),
         "reviewP0": StableFile(review_p0_archive, "review P0 archive"),
+        "reviewApk": StableFile(review_apk_archive, "review x64 APK archive"),
         "reviewPullRequest": StableFile(
             review_pull_request, "review pull request API response"
         ),
@@ -1229,9 +1614,13 @@ def create_authority(
         ),
         "mainRun": StableFile(main_run, "main run metadata"),
         "mainJobs": StableFile(main_jobs, "main jobs metadata"),
+        "mainProducerJobs": StableFile(
+            main_producer_jobs, "main APK producer jobs metadata"
+        ),
         "mainArtifacts": StableFile(main_artifacts, "main artifacts metadata"),
         "mainAggregate": StableFile(main_aggregate_archive, "main aggregate archive"),
         "mainP0": StableFile(main_p0_archive, "main P0 archive"),
+        "mainApk": StableFile(main_apk_archive, "main x64 APK archive"),
         "mainCommit": StableFile(main_commit, "main commit API response"),
     }
     policy_authority = policy_binding(snapshots["policy"])
@@ -1253,9 +1642,11 @@ def create_authority(
         expected_run_id=review_run_id,
         run_snapshot=snapshots["reviewRun"],
         jobs_snapshot=snapshots["reviewJobs"],
+        producer_jobs_snapshot=snapshots["reviewProducerJobs"],
         artifacts_snapshot=snapshots["reviewArtifacts"],
         aggregate_archive_snapshot=snapshots["reviewAggregate"],
         p0_archive_snapshot=snapshots["reviewP0"],
+        apk_archive_snapshot=snapshots["reviewApk"],
         workflow_binding=workflow_binding,
         environment_policy_authority=environment_policy_authority,
         local_tree=local_tree,
@@ -1265,9 +1656,11 @@ def create_authority(
         expected_run_id=main_run_id,
         run_snapshot=snapshots["mainRun"],
         jobs_snapshot=snapshots["mainJobs"],
+        producer_jobs_snapshot=snapshots["mainProducerJobs"],
         artifacts_snapshot=snapshots["mainArtifacts"],
         aggregate_archive_snapshot=snapshots["mainAggregate"],
         p0_archive_snapshot=snapshots["mainP0"],
+        apk_archive_snapshot=snapshots["mainApk"],
         workflow_binding=workflow_binding,
         environment_policy_authority=environment_policy_authority,
         local_tree=local_tree,
@@ -1419,9 +1812,11 @@ def _input_arguments(parser: argparse.ArgumentParser) -> None:
     for role in ("review", "main"):
         parser.add_argument(f"--{role}-run", type=Path, required=True)
         parser.add_argument(f"--{role}-jobs", type=Path, required=True)
+        parser.add_argument(f"--{role}-producer-jobs", type=Path, required=True)
         parser.add_argument(f"--{role}-artifacts", type=Path, required=True)
         parser.add_argument(f"--{role}-aggregate-archive", type=Path, required=True)
         parser.add_argument(f"--{role}-p0-archive", type=Path, required=True)
+        parser.add_argument(f"--{role}-apk-archive", type=Path, required=True)
     parser.add_argument("--review-pull-request", type=Path, required=True)
     parser.add_argument("--review-head-pull-requests", type=Path, required=True)
     parser.add_argument("--review-aggregate-check-run", type=Path, required=True)
@@ -1440,7 +1835,23 @@ def main(argv: list[str] | None = None) -> int:
     verify = subparsers.add_parser("verify")
     _input_arguments(verify)
     verify.add_argument("--authority", type=Path, required=True)
+    producer_attempt = subparsers.add_parser("producer-attempt")
+    producer_attempt.add_argument("--p0-archive", type=Path, required=True)
+    producer_attempt.add_argument("--run-id", type=int, required=True)
+    producer_attempt.add_argument("--aggregate-attempt", type=int, required=True)
     args = parser.parse_args(argv)
+    if args.command == "producer-attempt":
+        snapshot = StableFile(args.p0_archive, "P0 producer-attempt archive")
+        attempt = candidate_producer_attempt_from_p0_archive(
+            snapshot.data,
+            run_id=_positive_integer(args.run_id, "selected run ID"),
+            aggregate_attempt=_positive_integer(
+                args.aggregate_attempt, "aggregate run attempt"
+            ),
+        )
+        snapshot.recheck()
+        print(attempt)
+        return 0
     keyword_arguments = {
         key: value for key, value in vars(args).items()
         if key not in {"command", "output", "authority"}

@@ -5,7 +5,7 @@ using Chummer.Presentation.Rulesets;
 
 namespace Chummer.Android.Native;
 
-public sealed class TabletBuildPage : NativePageBase
+public sealed partial class TabletBuildPage : NativePageBase
 {
     private readonly Grid _layout = new()
     {
@@ -33,9 +33,19 @@ public sealed class TabletBuildPage : NativePageBase
     private Picker? _conditionFilledPicker;
     private Picker? _vehiclePhysicalDamagePicker;
     private Picker? _matrixDamagePicker;
+    private long _collectionGeneration;
+    private long _inspectorGeneration;
+    private bool _departed;
+    private readonly Func<string, string, string, string, Task<bool>> _confirm;
 
-    public TabletBuildPage(RunnerSessionCoordinator coordinator) : base(coordinator)
+    public TabletBuildPage(RunnerSessionCoordinator coordinator) : this(coordinator, null)
     {
+    }
+
+    internal TabletBuildPage(RunnerSessionCoordinator coordinator,
+        Func<string, string, string, string, Task<bool>>? confirm) : base(coordinator)
+    {
+        _confirm = confirm ?? ((title, message, accept, cancel) => DisplayAlertAsync(title, message, accept, cancel));
         Title = "Build";
         AutomationId = "tablet-build-page";
         _navigationPane = CreatePane(_navigation, "tablet-build-navigation-pane");
@@ -60,8 +70,29 @@ public sealed class TabletBuildPage : NativePageBase
         });
     }
 
+    protected override void OnAppearing()
+    {
+        _departed = false;
+        _collectionGeneration++;
+        _inspectorGeneration++;
+        base.OnAppearing();
+    }
+
+    protected override void OnDisappearing()
+    {
+        CaptureInspectorDraft();
+        Coordinator.TabletInspectorDrafts.Release(_draftLease);
+        _draftLease = 0;
+        _departed = true;
+        _collectionGeneration++;
+        _inspectorGeneration++;
+        base.OnDisappearing();
+    }
+
     protected override void Refresh()
     {
+        CaptureInspectorDraft();
+        RestoreInspectorSelection();
         WorkspaceCollectionEditorState? editor = Coordinator.State.ActiveCollectionEditor;
         ConditionMonitorEditorState? conditionMonitor = Coordinator.State.ActiveConditionMonitor;
         if (conditionMonitor is not null)
@@ -168,6 +199,8 @@ public sealed class TabletBuildPage : NativePageBase
 
     private void BuildCollectionPane(WorkspaceCollectionEditorState? editor)
     {
+        long generation = ++_collectionGeneration;
+        CharacterOverviewState state = Coordinator.State;
         _collection.Clear();
         _collection.Add(NativeTheme.Eyebrow("Collection"));
         _collection.Add(NativeTheme.Title(
@@ -190,6 +223,7 @@ public sealed class TabletBuildPage : NativePageBase
                     selected ? $"Selected · {track.Filled}/{track.EditableMaximum}" : $"{track.Filled}/{track.EditableMaximum} filled",
                     () =>
                     {
+                        if (!IsCurrentCollection(generation, state)) return Task.CompletedTask;
                         _selectedConditionTrack = track.Track;
                         BuildCollectionPane(editor);
                         BuildInspectorPane(editor);
@@ -222,6 +256,7 @@ public sealed class TabletBuildPage : NativePageBase
                     selected ? $"Selected · {attribute.TotalValue}" : attribute.TotalValue.ToString(CultureInfo.InvariantCulture),
                     () =>
                     {
+                        if (!IsCurrentCollection(generation, state)) return Task.CompletedTask;
                         _selectedAttributeName = attribute.AttributeName;
                         BuildCollectionPane(editor);
                         BuildInspectorPane(editor);
@@ -271,6 +306,7 @@ public sealed class TabletBuildPage : NativePageBase
                 detail,
                 () =>
                 {
+                    if (!IsCurrentCollection(generation, state)) return Task.CompletedTask;
                     _selectedTarget = item.Target;
                     BuildCollectionPane(editor);
                     BuildInspectorPane(editor);
@@ -284,6 +320,11 @@ public sealed class TabletBuildPage : NativePageBase
 
     private void BuildInspectorPane(WorkspaceCollectionEditorState? editor)
     {
+        CaptureInspectorDraft();
+        _renderedDraft = null;
+        _draftConflict = false;
+        long generation = ++_inspectorGeneration;
+        CharacterOverviewState state = Coordinator.State;
         _inspector.Clear();
         _textInputs.Clear();
         _toggleInputs.Clear();
@@ -300,13 +341,21 @@ public sealed class TabletBuildPage : NativePageBase
 
         if (Coordinator.State.ActiveConditionMonitor is { } conditionMonitor)
         {
-            BuildConditionMonitorInspector(conditionMonitor);
+            BuildConditionMonitorInspector(conditionMonitor, state, generation);
+            if (_selectedConditionTrack is { } track && state.WorkspaceId is { } damageWorkspace
+                && state.ActiveSectionId is { } damageSection)
+                BindInspectorDraft(state, generation, new(damageWorkspace,
+                    damageSection, Track: track), conditionMonitor);
             return;
         }
 
         if (AttributeWorkbenchProjector.IsAttributeSection(Coordinator.State.ActiveSectionId))
         {
-            BuildAttributeInspector();
+            BuildAttributeInspector(state, generation);
+            if (_selectedAttributeName is { } attribute && state.WorkspaceId is { } attributeWorkspace
+                && state.ActiveSectionId is { } attributeSection)
+                BindInspectorDraft(state, generation, new(attributeWorkspace,
+                    attributeSection, Attribute: attribute), CurrentAttributes());
             return;
         }
 
@@ -359,10 +408,17 @@ public sealed class TabletBuildPage : NativePageBase
 
         Button save = NativeTheme.PrimaryButton("Apply changes");
         save.AutomationId = "tablet-inspector-save";
-        save.Clicked += async (_, _) => await RunWithConditionalRefreshAsync(() => SaveInspectorAsync(item));
+        save.Clicked += async (_, _) =>
+        {
+            // A queued click retains its old item, while this page's input fields
+            // belong to the latest inspector. Never mix those two renderings.
+            if (!IsCurrentInspector(generation, state, item.Target)
+                || !ReferenceEquals(save.Parent, _inspector)) return;
+            await RunWithConditionalRefreshAsync(() => SaveInspectorAsync(item, state, generation));
+        };
         _inspector.Add(save);
-        AddLinkedCharacterInspector(item);
-        AddInspectorActions(item, editor!.Items.Count);
+        AddLinkedCharacterInspector(item, state, generation);
+        AddInspectorActions(item, editor!.Items.Count, state, generation);
 
         if (!string.IsNullOrWhiteSpace(Coordinator.State.Error))
         {
@@ -372,9 +428,12 @@ public sealed class TabletBuildPage : NativePageBase
         {
             _inspector.Add(NativeTheme.Body(Coordinator.Notice!, NativeTheme.Muted));
         }
+        if (state.WorkspaceId is { } workspace && state.ActiveSectionId is { } section)
+            BindInspectorDraft(state, generation, new(workspace, section, Item: item.Target), item);
     }
 
-    private void BuildConditionMonitorInspector(ConditionMonitorEditorState editor)
+    private void BuildConditionMonitorInspector(ConditionMonitorEditorState editor,
+        CharacterOverviewState expected, long generation)
     {
         ConditionMonitorTrackState? track = editor.Tracks.FirstOrDefault(candidate => candidate.Track == _selectedConditionTrack);
         if (track is null)
@@ -406,7 +465,7 @@ public sealed class TabletBuildPage : NativePageBase
         string[] values = Enumerable.Range(0, track.EditableMaximum + 1)
             .Select(value => value.ToString(CultureInfo.InvariantCulture))
             .ToArray();
-        _conditionFilledPicker = new Picker
+        Picker picker = new()
         {
             AutomationId = $"tablet-condition-filled-{token}",
             ItemsSource = values,
@@ -414,23 +473,56 @@ public sealed class TabletBuildPage : NativePageBase
             BackgroundColor = NativeTheme.Surface,
             TextColor = NativeTheme.Text
         };
-        _inspector.Add(_conditionFilledPicker);
+        _conditionFilledPicker = picker;
+        _inspector.Add(picker);
 
         Button apply = NativeTheme.PrimaryButton("Apply damage track");
         apply.AutomationId = $"tablet-condition-save-{token}";
-        apply.Clicked += async (_, _) => await RunAsync(() => Coordinator.ApplyConditionMonitorEditAsync(
-            new ConditionMonitorEditRequest(track.Track, SelectedNumber(_conditionFilledPicker, track.Filled))));
+        apply.Clicked += async (_, _) =>
+        {
+            if (!IsCurrentConditionInspector(generation, expected, track.Track)
+                || !ReferenceEquals(apply.Parent, _inspector) || !apply.IsEnabled) return;
+            if (picker.SelectedIndex < 0 || picker.SelectedIndex >= values.Length
+                || picker.SelectedItem is not string selected
+                || !string.Equals(selected, values[picker.SelectedIndex], StringComparison.Ordinal)
+                || !int.TryParse(selected, NumberStyles.Integer, CultureInfo.InvariantCulture, out int filled)) return;
+            var request = new ConditionMonitorEditRequest(track.Track, filled);
+            await RunWithConditionalRefreshAsync(() => ApplyConditionInspectorAsync(request, expected, generation));
+        };
         _inspector.Add(apply);
 
         Button clear = NativeTheme.SecondaryButton("Clear damage");
         clear.AutomationId = $"tablet-condition-clear-{token}";
         clear.IsEnabled = track.Filled > 0;
-        clear.Clicked += async (_, _) => await RunAsync(() => Coordinator.ApplyConditionMonitorEditAsync(
-            new ConditionMonitorEditRequest(track.Track, 0)));
+        clear.Clicked += async (_, _) =>
+        {
+            if (!IsCurrentConditionInspector(generation, expected, track.Track)
+                || !ReferenceEquals(clear.Parent, _inspector) || !clear.IsEnabled) return;
+            await RunWithConditionalRefreshAsync(() => ApplyConditionInspectorAsync(
+                new ConditionMonitorEditRequest(track.Track, 0), expected, generation));
+        };
         _inspector.Add(clear);
     }
 
-    private void BuildAttributeInspector()
+    private bool IsCurrentConditionInspector(long generation, CharacterOverviewState expected,
+        WorkspaceConditionMonitorTrack track)
+        => !_draftConflict && CurrentDraftAuthorityMatches()
+            && generation == _inspectorGeneration
+            && track == _selectedConditionTrack && IsCurrentView(expected);
+
+    private async Task<bool> ApplyConditionInspectorAsync(ConditionMonitorEditRequest request,
+        CharacterOverviewState expected, long generation)
+    {
+        CaptureInspectorDraft();
+        TabletInspectorDraft? draft = _renderedDraft;
+        bool applied = await Coordinator.TryApplyBoundConditionMonitorEditAsync(request, expected,
+            () => IsCurrentConditionInspector(generation, expected, request.Track));
+        if (applied)
+            ForgetObservedAppliedDraft(expected, draft, current => ConditionEditObserved(current, request));
+        return applied;
+    }
+
+    private void BuildAttributeInspector(CharacterOverviewState expected, long generation)
     {
         AttributeWorkbenchRow? attribute = CurrentAttributes().FirstOrDefault(candidate => string.Equals(
             candidate.AttributeName,
@@ -456,8 +548,12 @@ public sealed class TabletBuildPage : NativePageBase
                 attribute.UpgradeKarmaCost > 0 ? $"Improve · {attribute.UpgradeKarmaCost} Karma" : "At maximum");
             improve.AutomationId = $"tablet-attribute-improve-{Token(attribute.AttributeName)}";
             improve.IsEnabled = AttributeWorkbenchProjector.CanCareerAdvance(attribute);
-            improve.Clicked += async (_, _) => await RunAsync(() => Coordinator.ApplyAttributeEditAsync(
-                new AttributeEditRequest(attribute.AttributeName, "improve", attribute.TotalValue + 1)));
+            improve.Clicked += async (_, _) =>
+            {
+                if (!improve.IsEnabled || !IsCurrentAttributeInspector(generation, expected, attribute.AttributeName)) return;
+                await RunAsync(() => Coordinator.ApplyAttributeEditAsync(
+                    new AttributeEditRequest(attribute.AttributeName, "improve", attribute.TotalValue + 1)));
+            };
             _inspector.Add(improve);
 
             if (AttributeWorkbenchProjector.CanBurnEdge(attribute))
@@ -467,12 +563,13 @@ public sealed class TabletBuildPage : NativePageBase
                 burn.TextColor = NativeTheme.Danger;
                 burn.Clicked += async (_, _) =>
                 {
+                    if (!burn.IsEnabled || !IsCurrentAttributeInspector(generation, expected, attribute.AttributeName)) return;
                     bool confirmed = await DisplayAlertAsync(
                         "Burn Edge?",
                         "This permanently reduces Edge by one.",
                         "Burn",
                         "Cancel");
-                    if (confirmed)
+                    if (confirmed && IsCurrentAttributeInspector(generation, expected, attribute.AttributeName))
                     {
                         await RunAsync(() => Coordinator.ApplyAttributeEditAsync(
                             new AttributeEditRequest(attribute.AttributeName, "burn", 0)));
@@ -501,14 +598,21 @@ public sealed class TabletBuildPage : NativePageBase
 
         Button save = NativeTheme.PrimaryButton("Apply attribute");
         save.AutomationId = $"tablet-attribute-save-{Token(attribute.AttributeName)}";
-        save.Clicked += async (_, _) => await RunAsync(() => SaveAttributeAsync(attribute));
+        save.Clicked += async (_, _) =>
+        {
+            if (!save.IsEnabled || !IsCurrentAttributeInspector(generation, expected, attribute.AttributeName)) return;
+            await RunAsync(() => SaveAttributeAsync(attribute));
+        };
         _inspector.Add(save);
     }
 
     private async Task SaveAttributeAsync(AttributeWorkbenchRow attribute)
     {
-        int baseValue = SelectedNumber(_attributeBasePicker, attribute.BaseValue);
-        int karmaValue = SelectedNumber(_attributeKarmaPicker, attribute.KarmaValue);
+        CaptureInspectorDraft();
+        CharacterOverviewState expected = Coordinator.State;
+        TabletInspectorDraft? draft = _renderedDraft;
+        if (!TrySelectedNumber(_attributeBasePicker, out int baseValue)
+            || !TrySelectedNumber(_attributeKarmaPicker, out int karmaValue)) return;
         if (attribute.BaseUnlocked && baseValue != attribute.BaseValue)
         {
             await Coordinator.ApplyAttributeEditAsync(new AttributeEditRequest(attribute.AttributeName, "base", baseValue));
@@ -523,6 +627,8 @@ public sealed class TabletBuildPage : NativePageBase
         {
             await DisplayAlertAsync("No changes", "Nothing has changed on this attribute.", "OK");
         }
+        ForgetObservedAppliedDraft(expected, draft,
+            current => AttributeEditObserved(current, attribute.AttributeName, baseValue, karmaValue));
     }
 
     private void AddTextInput(WorkspaceCollectionTextValueState value)
@@ -695,8 +801,44 @@ public sealed class TabletBuildPage : NativePageBase
         _inspector.Add(_matrixDamagePicker);
     }
 
-    private async Task<bool> SaveInspectorAsync(WorkspaceCollectionItemEditorState item)
+    private bool IsCurrentView(CharacterOverviewState expected)
     {
+        CharacterOverviewState current = Coordinator.State;
+        return !_departed
+            && !Coordinator.IsBusy
+            && current.Error is null
+            && expected.WorkspaceId is not null
+            && current.WorkspaceId == expected.WorkspaceId
+            && current.DisplayOwnerContext == expected.DisplayOwnerContext
+            && current.ContentRevision == expected.ContentRevision
+            && current.SavedRevision == expected.SavedRevision
+            && string.Equals(current.ActiveSectionId, expected.ActiveSectionId, StringComparison.Ordinal)
+            && string.Equals(current.ActiveSectionJson, expected.ActiveSectionJson, StringComparison.Ordinal)
+            && ReferenceEquals(current.ActiveCollectionEditor, expected.ActiveCollectionEditor)
+            && ReferenceEquals(current.ActiveConditionMonitor, expected.ActiveConditionMonitor);
+    }
+
+    private bool IsCurrentCollection(long generation, CharacterOverviewState expected)
+        => generation == _collectionGeneration && IsCurrentView(expected);
+
+    private bool IsCurrentInspector(long generation, CharacterOverviewState expected,
+        WorkspaceCollectionItemTarget target)
+        => !_draftConflict && CurrentDraftAuthorityMatches()
+            && generation == _inspectorGeneration
+            && _selectedTarget is not null
+            && CollectionItemEditorPage.TargetsMatch(target, _selectedTarget)
+            && IsCurrentView(expected);
+
+    private bool IsCurrentAttributeInspector(long generation, CharacterOverviewState expected, string attribute)
+        => !_draftConflict && CurrentDraftAuthorityMatches()
+            && generation == _inspectorGeneration
+            && string.Equals(attribute, _selectedAttributeName, StringComparison.OrdinalIgnoreCase)
+            && IsCurrentView(expected);
+
+    private async Task<bool> SaveInspectorAsync(WorkspaceCollectionItemEditorState item,
+        CharacterOverviewState expected, long generation)
+    {
+        if (!IsCurrentInspector(generation, expected, item.Target)) return false;
         Dictionary<WorkspaceCollectionTextField, string?> textChanges = [];
         foreach (WorkspaceCollectionTextValueState original in item.TextValues)
         {
@@ -875,7 +1017,9 @@ public sealed class TabletBuildPage : NativePageBase
             return false;
         }
 
-        await Coordinator.ApplyCollectionMutationAsync(new WorkspacePatchCollectionItemRequest(
+        CaptureInspectorDraft();
+        TabletInspectorDraft? draft = _renderedDraft;
+        var request = new WorkspacePatchCollectionItemRequest(
             item.Target,
             TextValues: textChanges,
             Rating: ratingChange,
@@ -888,25 +1032,42 @@ public sealed class TabletBuildPage : NativePageBase
             WeaponMatrixDamage: weaponMatrixDamageChange,
             CyberwareMatrixDamage: cyberwareMatrixDamageChange,
             ContactConnection: contactConnectionChange,
-            ContactLoyalty: contactLoyaltyChange));
-        return true;
+            ContactLoyalty: contactLoyaltyChange);
+        bool applied = await Coordinator.TryApplyBoundCollectionMutationAsync(request,
+            expected, () => IsCurrentInspector(generation, expected, item.Target));
+        if (applied)
+            ForgetObservedAppliedDraft(expected, draft, current => CollectionPatchObserved(current, request));
+        return applied;
     }
 
-    private void AddInspectorActions(WorkspaceCollectionItemEditorState item, int itemCount)
+    private void AddInspectorActions(WorkspaceCollectionItemEditorState item, int itemCount,
+        CharacterOverviewState expected, long generation)
     {
         _inspector.Add(NativeTheme.Eyebrow("Order and children"));
         HorizontalStackLayout order = new() { Spacing = 10 };
         Button up = NativeTheme.SecondaryButton("Move up");
         up.AutomationId = "tablet-inspector-move-up";
         up.IsEnabled = item.CanMove && item.Index > 0;
-        up.Clicked += async (_, _) => await RunAsync(() => Coordinator.ApplyCollectionMutationAsync(
-            new WorkspaceMoveCollectionItemRequest(item.Target, item.Index - 1)));
+        up.Clicked += async (_, _) =>
+        {
+            if (!up.IsEnabled || !ReferenceEquals(up.Parent, order)
+                || !IsCurrentInspector(generation, expected, item.Target)) return;
+            await RunWithConditionalRefreshAsync(() => Coordinator.TryApplyBoundCollectionMutationAsync(
+                new WorkspaceMoveCollectionItemRequest(item.Target, item.Index - 1), expected,
+                () => IsCurrentInspector(generation, expected, item.Target)));
+        };
         order.Add(up);
         Button down = NativeTheme.SecondaryButton("Move down");
         down.AutomationId = "tablet-inspector-move-down";
         down.IsEnabled = item.CanMove && item.Index + 1 < itemCount;
-        down.Clicked += async (_, _) => await RunAsync(() => Coordinator.ApplyCollectionMutationAsync(
-            new WorkspaceMoveCollectionItemRequest(item.Target, item.Index + 1)));
+        down.Clicked += async (_, _) =>
+        {
+            if (!down.IsEnabled || !ReferenceEquals(down.Parent, order)
+                || !IsCurrentInspector(generation, expected, item.Target)) return;
+            await RunWithConditionalRefreshAsync(() => Coordinator.TryApplyBoundCollectionMutationAsync(
+                new WorkspaceMoveCollectionItemRequest(item.Target, item.Index + 1), expected,
+                () => IsCurrentInspector(generation, expected, item.Target)));
+        };
         order.Add(down);
         _inspector.Add(order);
 
@@ -915,7 +1076,9 @@ public sealed class TabletBuildPage : NativePageBase
             _inspector.Add(NativeTheme.NavigationRow(
                 $"Add {RunnerSessionCoordinator.HumanizeId(nestedKind.ToString())}",
                 "Keep the parent and collection visible",
-                () => Navigation.PushAsync(new NestedCollectionAddPage(Coordinator, item.Target, nestedKind)),
+                () => IsCurrentInspector(generation, expected, item.Target)
+                    ? Navigation.PushAsync(new NestedCollectionAddPage(Coordinator, item.Target, nestedKind))
+                    : Task.CompletedTask,
                 automationId: $"tablet-inspector-add-{Token(nestedKind.ToString())}"));
         }
 
@@ -925,17 +1088,26 @@ public sealed class TabletBuildPage : NativePageBase
         delete.IsEnabled = item.CanDelete;
         delete.Clicked += async (_, _) =>
         {
-            bool confirmed = await DisplayAlertAsync("Delete item?", $"Delete {item.Label}?", "Delete", "Cancel");
-            if (confirmed)
-            {
-                await RunAsync(() => Coordinator.ApplyCollectionMutationAsync(
-                    new WorkspaceDeleteCollectionItemRequest(item.Target)));
-            }
+            if (!delete.IsEnabled || !ReferenceEquals(delete.Parent, _inspector)
+                || !IsCurrentInspector(generation, expected, item.Target)) return;
+            await DeleteInspectorItemAsync(item, expected, generation);
         };
         _inspector.Add(delete);
     }
 
-    private void AddLinkedCharacterInspector(WorkspaceCollectionItemEditorState item)
+    private Task DeleteInspectorItemAsync(WorkspaceCollectionItemEditorState item,
+        CharacterOverviewState expected, long generation)
+        => RunWithConditionalRefreshAsync(async () =>
+        {
+            if (!item.CanDelete || !IsCurrentInspector(generation, expected, item.Target)) return false;
+            if (!await _confirm("Delete item?", $"Delete {item.Label}?", "Delete", "Cancel")) return false;
+            return await Coordinator.TryApplyBoundCollectionMutationAsync(
+                new WorkspaceDeleteCollectionItemRequest(item.Target), expected,
+                () => IsCurrentInspector(generation, expected, item.Target));
+        });
+
+    private void AddLinkedCharacterInspector(WorkspaceCollectionItemEditorState item,
+        CharacterOverviewState expected, long generation)
     {
         if (item.LinkedCharacter is not { } linked)
         {
@@ -957,7 +1129,12 @@ public sealed class TabletBuildPage : NativePageBase
         Button attach = NativeTheme.SecondaryButton(linked.IsLinked ? "Replace" : "Attach");
         attach.AutomationId = "tablet-linked-attach";
         attach.IsEnabled = linked.CanAttach;
-        attach.Clicked += async (_, _) => await RunAsync(() => Coordinator.AttachLinkedCharacterAsync(item.Target));
+        attach.Clicked += async (_, _) =>
+        {
+            if (!attach.IsEnabled || !IsCurrentInspector(generation, expected, item.Target)) return;
+            await RunWithConditionalRefreshAsync(() => Coordinator.TryAttachBoundLinkedCharacterAsync(
+                item.Target, expected, () => IsCurrentInspector(generation, expected, item.Target)));
+        };
         actions.Add(attach);
 
         Button remove = NativeTheme.SecondaryButton("Remove");
@@ -966,15 +1143,15 @@ public sealed class TabletBuildPage : NativePageBase
         remove.TextColor = NativeTheme.Danger;
         remove.Clicked += async (_, _) =>
         {
-            bool confirmed = await DisplayAlertAsync(
-                "Remove linked runner?",
-                "The original saved contact or pet identity will be shown again.",
-                "Remove link",
-                "Cancel");
-            if (confirmed)
+            if (!remove.IsEnabled || !IsCurrentInspector(generation, expected, item.Target)) return;
+            await RunWithConditionalRefreshAsync(async () =>
             {
-                await RunAsync(() => Coordinator.RemoveLinkedCharacterAsync(item.Target));
-            }
+                if (!IsCurrentInspector(generation, expected, item.Target)) return false;
+                if (!await _confirm("Remove linked runner?",
+                    "The original saved contact or pet identity will be shown again.", "Remove link", "Cancel")) return false;
+                return await Coordinator.TryRemoveBoundLinkedCharacterAsync(item.Target, expected,
+                    () => IsCurrentInspector(generation, expected, item.Target));
+            });
         };
         actions.Add(remove);
         _inspector.Add(actions);
@@ -1023,11 +1200,14 @@ public sealed class TabletBuildPage : NativePageBase
         };
     }
 
-    private static int SelectedNumber(Picker? picker, int fallback)
-        => picker?.SelectedItem is string selected
-            && int.TryParse(selected, NumberStyles.Integer, CultureInfo.InvariantCulture, out int value)
-                ? value
-                : fallback;
+    private static bool TrySelectedNumber(Picker? picker, out int value)
+    {
+        value = 0;
+        return picker is { SelectedIndex: >= 0, SelectedItem: string selected }
+            && picker.ItemsSource is { } choices && picker.SelectedIndex < choices.Count
+            && Equals(choices[picker.SelectedIndex], selected)
+            && int.TryParse(selected, NumberStyles.Integer, CultureInfo.InvariantCulture, out value);
+    }
 
     private static string Token(string value) => CollectionItemEditorPage.Token(value);
 

@@ -6,9 +6,44 @@ coordinator implementations. Compile it with the same explicit dependency
 roots, package feeds and versions as `Native.CompileCheck`, then execute its
 `net10.0` DLL. Passing this development harness does not seal those dependencies.
 
-The current 60 top-level cases contain 58 existing interaction cases and two
-wrappers: 14 settlement authority cases and 10 native After Run page/entry cases.
+The current 61 top-level cases contain 58 existing interaction cases and three
+wrappers: settlement authority, native After Run page/entry, and tablet inspector
+binding cases.
 Do not add the wrapper and nested counts as separate independent tests.
+
+`TabletInspectorBindingTests.cs` exercises actual collection and condition-track
+controls, detached selection/Apply/Clear/Move/Delete callbacks, the activation
+semaphore, and asynchronous delete confirmation. Selection, workspace, revision,
+refresh and departure changes must invalidate captured requests; unchanged queued
+actions forward exactly once. The nested-add row uses a real managed MAUI
+`NavigationPage` and verifies the destination's exact parent target and kind.
+The managed stack changes without an Android handler; its later animation event
+is not required or claimed as device navigation proof.
+
+The same wrapper exercises unsubmitted tablet drafts through A/B/A selection,
+fresh equivalent projections, same-process page recreation, workspace isolation,
+incomplete numeric text, toggle/picker values and missing picker choices. Revision
+or field-authority drift retains the old input visibly without enabling Apply.
+Explicit discard tests cover cancel, another item's retained draft and a delayed
+confirmation after selection or input changes. A mutable-projection hostile test
+verifies that reference equality alone cannot authorize retained input. Writer
+leases prevent older page captures from overwriting newer drafts. Full nested
+parent identity, case-only IDs and section isolation are exercised separately.
+
+Synthetic successor readbacks exercise the real collection, condition and
+attribute cleanup predicates. Exact completion can retire an unchanged draft
+after refresh, departure or same-process page replacement; partial or ambiguous
+readback cannot. Newer edits, including A-to-B-to-A input, survive an old operation's
+completion. These controlled projections are not successful Core mutation proof.
+
+Drafts are coordinator-session memory, not saved runner state or durable recovery.
+The tests do not prove process-death recovery, successful attribute atomicity,
+complete tablet input coverage, or API-36 persistence.
+
+The tablet presenter spy records typed requests and cancels before Core mutation
+and shell synchronization. These checks prove native routing and stale-action
+rejection, not successful Core writes, durable persistence, rotation, or Android
+process restart. They cannot promote an inventory row to device-qualified parity.
 
 `AfterRunPageInteractionTests.cs` instantiates the actual settlement page,
 reward page/view, coordinator, entry factory, action gate and checkpoint stores.
@@ -45,7 +80,7 @@ publication remain separate gates.
 ## Local runtime/file-store integration
 
 Pass `--after-run-runtime-content-root /absolute/core/Chummer` to the compiled
-DLL to run six additional integration cases after the 60 default cases. The
+DLL to run six additional integration cases after the 61 default cases. The
 path must contain `data/`; there is no implicit sibling lookup. Without that
 argument the executable explicitly reports that these cases were not run.
 

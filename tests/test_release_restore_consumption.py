@@ -64,7 +64,7 @@ def fixture(root: Path):
         "Chummer.Presentation.packages.lock.json",
     ):
         private_file(routed_locks / name, f"sealed:{name}".encode())
-    intermediate = private_directory(workspace / "chummer-android/src/Chummer.Android/obj")
+    intermediate = private_directory(input_root / "intermediate" / "Chummer.Android")
     primary_intermediate = intermediate
     android_project = private_file(
         workspace / "chummer-android/src/Chummer.Android/Chummer.Android.csproj",
@@ -176,6 +176,15 @@ def fixture(root: Path):
         json.dumps(dgspec).encode(),
     )
     private_file(primary_intermediate / "Chummer.Android.csproj.nuget.g.props", b"<Project />")
+    for project_id, path in (("Chummer.Desktop.Runtime", desktop_project), ("Chummer.Presentation", presentation_project)):
+        project_intermediate = private_directory(intermediate.parent / project_id)
+        private_file(project_intermediate / "project.assets.json", json.dumps({
+            "project": {"restore": {"projectPath": os.fspath(path)}}
+        }).encode())
+        private_file(project_intermediate / f"{project_id}.csproj.nuget.dgspec.json", json.dumps({
+            "projects": {os.fspath(path): dgspec["projects"][os.fspath(path)]}
+        }).encode())
+        private_file(project_intermediate / f"{project_id}.csproj.nuget.g.props", b"<Project />")
     lock = private_file(root / "packages.lock.json", b'{"version":2}')
     return (
         module, workspace, input_root, authority_path, feed, selected_feed,
@@ -183,7 +192,221 @@ def fixture(root: Path):
     )
 
 
+def sealed_fixture(root: Path):
+    values = fixture(root)
+    module, workspace, input_root, authority, _feed, selected, packages, routed_locks, intermediate, _output, lock = values
+    arguments = dict(
+        input_root=input_root, workspace_root=workspace, authority_path=authority,
+        owner_feed=selected, packages_root=packages, routed_lock_root=routed_locks,
+        project_lock=lock, intermediate_root=intermediate.parent,
+    )
+    payload = module.materialize_payload(**arguments)
+    verify_arguments = {key: value for key, value in arguments.items() if key not in {"input_root", "authority_path"}}
+    return values, payload, arguments, verify_arguments
+
+
 class ReleaseRestoreConsumptionTests(unittest.TestCase):
+    def test_v2_external_layout_has_no_ambient_workspace_restore(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            values, payload, _arguments, verify = sealed_fixture(Path(temporary))
+            module, workspace, _input, _authority, _feed, _selected, _packages, _locks, intermediate, _output, _lock = values
+            self.assertEqual("chummer.android.release-restore-consumption/v2", payload["contractName"])
+            self.assertEqual([], module._workspace_build_state(workspace)[0])
+            self.assertEqual(os.fspath(intermediate.parent), payload["restoreIntermediates"]["root"])
+            self.assertEqual(9, len(payload["restoreIntermediates"]["files"]))
+            module.verify_post_publish(payload, **verify, phase="pre-publish")
+            module.verify_post_publish(payload, **verify, phase="post-publish")
+
+    def test_wrong_swapped_symlink_and_unsafe_intermediate_roots_fail(self) -> None:
+        for mutation in ("wrong", "swapped", "symlink", "public", "outside", "equal-input", "overlap-packages", "nested-symlink"):
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                values, payload, arguments, verify = sealed_fixture(root)
+                module, _workspace, input_root, _authority, _feed, _selected, packages, _locks, intermediate, _output, _lock = values
+                if mutation == "wrong":
+                    verify["intermediate_root"] = private_directory(input_root / "wrong")
+                elif mutation == "swapped":
+                    original = intermediate.parent
+                    original.rename(input_root / "retired-intermediate")
+                    private_directory(original)
+                elif mutation == "symlink":
+                    link = input_root / "linked-intermediate"
+                    link.symlink_to(intermediate.parent, target_is_directory=True)
+                    verify["intermediate_root"] = link
+                elif mutation == "public":
+                    intermediate.parent.chmod(0o755)
+                elif mutation == "outside":
+                    verify["intermediate_root"] = private_directory(root / "outside")
+                elif mutation == "equal-input":
+                    verify["intermediate_root"] = input_root
+                elif mutation == "overlap-packages":
+                    verify["intermediate_root"] = packages
+                else:
+                    (intermediate / "escape").symlink_to(packages, target_is_directory=True)
+                with self.assertRaises(ValueError):
+                    module.verify_post_publish(payload, **verify, phase="post-publish")
+                # Root scope checks apply at initial capture as well as replay.
+                if mutation in {"public", "outside", "equal-input", "overlap-packages", "symlink", "nested-symlink"}:
+                    arguments["intermediate_root"] = verify["intermediate_root"]
+                    with self.assertRaises(ValueError):
+                        module.materialize_payload(**arguments)
+
+    def test_root_overlap_in_both_directions_rejected_before_capture(self) -> None:
+        for nested in (False, True):
+            with self.subTest(nested=nested), tempfile.TemporaryDirectory() as temporary:
+                values, _payload, arguments, _verify = sealed_fixture(Path(temporary))
+                module, _workspace, _input, _authority, _feed, _selected, packages, _locks, intermediate, _output, _lock = values
+                if nested:
+                    arguments["intermediate_root"] = private_directory(packages / "restore")
+                else:
+                    arguments["packages_root"] = private_directory(intermediate.parent / "packages")
+                with self.assertRaisesRegex(ValueError, "overlap"):
+                    module.materialize_payload(**arguments)
+
+    def test_input_workspace_overlap_rejected_at_capture_context_and_each_phase(self) -> None:
+        for layout in ("ancestor", "ancestor-with-workspace-intermediates", "equal", "descendant"):
+            with self.subTest(layout=layout), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                values, payload, arguments, verify = sealed_fixture(root)
+                module, workspace, _input, _authority, _feed, _selected, _packages, _locks, intermediate, _output, _lock = values
+                input_root = root
+                if layout == "ancestor-with-workspace-intermediates":
+                    # This is neither bin nor obj: the independent workspace
+                    # output scan cannot substitute for root disjointness.
+                    in_workspace = workspace / "restore-intermediates"
+                    intermediate.parent.rename(in_workspace)
+                    arguments["intermediate_root"] = in_workspace
+                    verify["intermediate_root"] = in_workspace
+                    payload["restoreIntermediates"]["root"] = os.fspath(in_workspace)
+                elif layout == "equal":
+                    input_root = workspace
+                elif layout == "descendant":
+                    input_root = private_directory(workspace / "release-input")
+                arguments["input_root"] = input_root
+                payload["inputRoot"] = os.fspath(input_root)
+                context = {key: value for key, value in arguments.items() if key != "project_lock"}
+                error = "outside the coherent workspace|must be disjoint"
+                with self.subTest(entrypoint="materialize"), self.assertRaisesRegex(ValueError, error):
+                    module.materialize_payload(**arguments)
+                with self.subTest(entrypoint="context"), self.assertRaisesRegex(ValueError, error):
+                    module.verify_context(payload, **context)
+                for phase in ("pre-publish", "post-publish"):
+                    with self.subTest(entrypoint=phase), self.assertRaisesRegex(ValueError, error):
+                        module.verify_post_publish(payload, **verify, phase=phase)
+
+    def test_changed_removed_replaced_or_linked_restore_bytes_fail_in_both_phases(self) -> None:
+        for phase in ("pre-publish", "post-publish"):
+            for mutation in ("changed", "removed", "replaced", "symlink", "hardlink"):
+                with self.subTest(phase=phase, mutation=mutation), tempfile.TemporaryDirectory() as temporary:
+                    values, payload, _arguments, verify = sealed_fixture(Path(temporary))
+                    module, _workspace, _input, _authority, _feed, _selected, _packages, _locks, intermediate, _output, _lock = values
+                    path = intermediate / "Chummer.Android.csproj.nuget.g.props"
+                    if mutation == "changed":
+                        private_file(path, b"modified restore byte")
+                    else:
+                        path.unlink()
+                        if mutation == "replaced":
+                            private_file(path, b"replacement restore byte")
+                        elif mutation == "symlink":
+                            path.symlink_to(intermediate / "project.assets.json")
+                        elif mutation == "hardlink":
+                            os.link(intermediate / "project.assets.json", path)
+                    with self.assertRaises(ValueError):
+                        module.verify_post_publish(payload, **verify, phase=phase)
+
+    def test_pre_rejects_new_output_and_post_allows_new_compiler_and_workspace_bin_outputs(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            values, payload, _arguments, verify = sealed_fixture(Path(temporary))
+            module, workspace, _input, _authority, _feed, _selected, _packages, _locks, intermediate, output, _lock = values
+            private_file(intermediate / "Release/net10.0-android36.0/compiled.dll", b"compiler output")
+            with self.assertRaisesRegex(ValueError, "changed before publish"):
+                module.verify_post_publish(payload, **verify, phase="pre-publish")
+            module.verify_post_publish(payload, **verify, phase="post-publish")
+            private_file(output / "Release/net10.0-android36.0/app.dll", b"app output")
+            private_file(workspace / "chummer-presentation/Chummer.Presentation/bin/Release/net10.0/presentation.dll", b"UI output")
+            module.verify_post_publish(payload, **verify, phase="post-publish")
+            with self.assertRaisesRegex(ValueError, "stale bin/obj"):
+                module.verify_post_publish(payload, **verify, phase="pre-publish")
+
+    def test_post_rejects_duplicate_or_unsealed_restore_metadata_and_wrong_project_outputs(self) -> None:
+        for relative in (
+            "Chummer.Android/Release/project.assets.json",
+            "Chummer.Android/other.csproj.nuget.dgspec.json",
+            "Chummer.Android/Release/Chummer.Android.csproj.nuget.g.props",
+            "Chummer.Android/project.nuget.cache",
+            "Unexpected.Project/Release/payload.dll",
+        ):
+            with self.subTest(relative=relative), tempfile.TemporaryDirectory() as temporary:
+                values, payload, _arguments, verify = sealed_fixture(Path(temporary))
+                module, _workspace, _input, _authority, _feed, _selected, _packages, _locks, intermediate, _output, _lock = values
+                private_file(intermediate.parent / relative, b"{}")
+                with self.assertRaises(ValueError):
+                    module.verify_post_publish(payload, **verify, phase="post-publish")
+
+    def test_post_rejects_ambient_obj_and_unrelated_workspace_bin(self) -> None:
+        for relative in ("chummer-android/src/Chummer.Android/obj/project.assets.json", "unrelated/bin/payload.dll"):
+            with self.subTest(relative=relative), tempfile.TemporaryDirectory() as temporary:
+                values, payload, _arguments, verify = sealed_fixture(Path(temporary))
+                module, workspace, *_rest = values
+                private_file(workspace / relative, b"not an admitted output")
+                with self.assertRaisesRegex(ValueError, "exact source-project bin roots"):
+                    module.verify_post_publish(payload, **verify, phase="post-publish")
+
+    def test_materialize_rejects_duplicate_assets_and_malformed_primary_json(self) -> None:
+        for mutation in ("duplicate-assets", "duplicate-dgspec", "malformed", "duplicate-json-key"):
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as temporary:
+                values, _payload, arguments, _verify = sealed_fixture(Path(temporary))
+                module, _workspace, _input, _authority, _feed, _selected, _packages, _locks, intermediate, _output, _lock = values
+                if mutation == "duplicate-assets":
+                    private_file(intermediate / "extra/project.assets.json", b"{}")
+                elif mutation == "duplicate-dgspec":
+                    private_file(intermediate / "extra/Chummer.Android.csproj.nuget.dgspec.json", b"{}")
+                else:
+                    private_file(intermediate / "project.assets.json", b"{" if mutation == "malformed" else b'{"project":{},"project":{}}')
+                with self.assertRaises(ValueError):
+                    module.materialize_payload(**arguments)
+
+    def test_v1_missing_root_malformed_rows_and_manifest_digest_drift_fail(self) -> None:
+        for mutation in ("v1", "missing-root", "wrong-root", "bad-inventory", "escape-row", "missing-primary"):
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as temporary:
+                values, payload, _arguments, verify = sealed_fixture(Path(temporary))
+                module = values[0]
+                if mutation == "v1":
+                    payload["contractName"] = "chummer.android.release-restore-consumption/v1"
+                elif mutation == "missing-root":
+                    del payload["restoreIntermediates"]
+                elif mutation == "wrong-root":
+                    payload["restoreIntermediates"]["root"] = "/unbound"
+                elif mutation == "bad-inventory":
+                    payload["restoreIntermediates"]["inventorySha256"] = "0" * 64
+                elif mutation == "escape-row":
+                    payload["restoreIntermediates"]["files"][0]["path"] = "../outside"
+                else:
+                    payload["restoreIntermediates"]["files"] = []
+                    payload["restoreIntermediates"]["inventorySha256"] = module._inventory_digest([])
+                with self.assertRaises(ValueError):
+                    module.verify_post_publish(payload, **verify, phase="post-publish")
+
+    def test_verify_cli_requires_explicit_phase_and_intermediate_root(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            values, payload, arguments, _verify = sealed_fixture(Path(temporary))
+            input_root = values[2]
+            manifest = private_file(input_root / "restore-consumption.json", json.dumps(payload).encode())
+            names = {"authority_path": "authority", "project_lock": "project-lock"}
+            command = [sys.executable, os.fspath(SCRIPT), "verify", "--manifest", os.fspath(manifest), "--phase", "pre-publish"]
+            for key, value in arguments.items():
+                command.extend(("--" + names.get(key, key.replace("_", "-")), os.fspath(value)))
+            completed = subprocess.run(command, capture_output=True, text=True, check=False)
+            self.assertEqual(0, completed.returncode, completed.stdout + completed.stderr)
+            for missing in ("--phase", "--intermediate-root"):
+                with self.subTest(missing=missing):
+                    reduced = command.copy()
+                    index = reduced.index(missing)
+                    del reduced[index:index + 2]
+                    rejected = subprocess.run(reduced, capture_output=True, text=True, check=False)
+                    self.assertNotEqual(0, rejected.returncode)
+                    self.assertIn(missing, rejected.stderr)
+
     def test_private_fixture_parents_are_safe_under_hosted_umask(self) -> None:
         previous_umask = os.umask(0o022)
         try:
@@ -200,7 +423,7 @@ class ReleaseRestoreConsumptionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             (
                 module, _workspace, _input_root, authority, feed, selected,
-                _packages, _routed_locks, _intermediate, _output, _lock,
+                _packages, _routed_locks, intermediate, _output, _lock,
             ) = fixture(Path(temporary))
             second = private_directory(Path(temporary) / "second-feed")
             result = module.snapshot_feed(authority, feed, second)
@@ -222,7 +445,7 @@ class ReleaseRestoreConsumptionTests(unittest.TestCase):
             with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as temporary:
                 (
                     module, _workspace, _input_root, authority, feed, _selected,
-                    _packages, _routed_locks, _intermediate, _output, _lock,
+                    _packages, _routed_locks, intermediate, _output, _lock,
                 ) = fixture(Path(temporary))
                 destination = private_directory(Path(temporary) / "snapshot")
                 if mutation == "missing-engine":
@@ -251,10 +474,11 @@ class ReleaseRestoreConsumptionTests(unittest.TestCase):
                 input_root=input_root, workspace_root=workspace, authority_path=authority,
                 owner_feed=selected, packages_root=packages,
                 routed_lock_root=routed_locks, project_lock=lock,
+                intermediate_root=intermediate.parent,
             )
             self.assertEqual(module.CONTRACT, payload["contractName"])
             self.assertFalse(payload["publicationAuthorized"])
-            self.assertTrue(payload["projectAssets"]["path"].endswith("Chummer.Android/obj/project.assets.json"))
+            self.assertTrue(payload["projectAssets"]["path"].endswith("Chummer.Android/project.assets.json"))
             self.assertTrue(payload["dependencyGraphSpec"]["path"].endswith(".nuget.dgspec.json"))
             self.assertEqual(12, len(payload["chummerClosure"]))
             self.assertIn("Chummer.Engine.Contracts", {
@@ -267,6 +491,7 @@ class ReleaseRestoreConsumptionTests(unittest.TestCase):
             module.verify_post_publish(
                 payload, packages_root=packages, workspace_root=workspace,
                 owner_feed=selected, routed_lock_root=routed_locks, project_lock=lock,
+                intermediate_root=intermediate.parent, phase="post-publish",
             )
 
     def test_inventory_drift_diagnostic_is_sorted_exact_and_byte_free(self) -> None:
@@ -322,7 +547,7 @@ class ReleaseRestoreConsumptionTests(unittest.TestCase):
             values = fixture(Path(temporary))
             (
                 module, workspace, input_root, authority, _feed, selected,
-                packages, routed_locks, _intermediate, _output, lock,
+                packages, routed_locks, intermediate, _output, lock,
             ) = values
             payload = module.materialize_payload(
                 input_root=input_root,
@@ -332,6 +557,7 @@ class ReleaseRestoreConsumptionTests(unittest.TestCase):
                 packages_root=packages,
                 routed_lock_root=routed_locks,
                 project_lock=lock,
+                intermediate_root=intermediate.parent,
             )
             manifest = private_file(
                 input_root / "restore-consumption.json",
@@ -354,6 +580,7 @@ class ReleaseRestoreConsumptionTests(unittest.TestCase):
                     owner_feed=selected,
                     routed_lock_root=routed_locks,
                     project_lock=lock,
+                    intermediate_root=intermediate.parent, phase="post-publish",
                 )
 
             validated_manifest_sha256 = hashlib.sha256(manifest.read_bytes()).hexdigest()
@@ -393,7 +620,7 @@ class ReleaseRestoreConsumptionTests(unittest.TestCase):
             values = fixture(Path(temporary))
             (
                 module, workspace, input_root, authority, _feed, selected,
-                packages, routed_locks, _intermediate, _output, lock,
+                packages, routed_locks, intermediate, _output, lock,
             ) = values
             payload = module.materialize_payload(
                 input_root=input_root,
@@ -403,6 +630,7 @@ class ReleaseRestoreConsumptionTests(unittest.TestCase):
                 packages_root=packages,
                 routed_lock_root=routed_locks,
                 project_lock=lock,
+                intermediate_root=intermediate.parent,
             )
             manifest = private_file(
                 input_root / "restore-consumption.json",
@@ -427,6 +655,10 @@ class ReleaseRestoreConsumptionTests(unittest.TestCase):
                     os.fspath(input_root),
                     "--workspace-root",
                     os.fspath(workspace),
+                    "--intermediate-root",
+                    os.fspath(intermediate.parent),
+                    "--phase",
+                    "post-publish",
                     "--authority",
                     os.fspath(authority),
                     "--owner-feed",
@@ -477,6 +709,7 @@ class ReleaseRestoreConsumptionTests(unittest.TestCase):
                     input_root=input_root, workspace_root=workspace, authority_path=authority,
                     owner_feed=selected, packages_root=packages,
                     routed_lock_root=routed_locks, project_lock=lock,
+                    intermediate_root=intermediate.parent,
                 )
                 engine_dir = packages / "chummer.engine.contracts" / "1.2.3"
                 if mutation == "package-tamper":
@@ -511,12 +744,13 @@ class ReleaseRestoreConsumptionTests(unittest.TestCase):
                         payload, packages_root=packages, workspace_root=workspace,
                         owner_feed=selected, routed_lock_root=routed_locks,
                         project_lock=lock,
+                        intermediate_root=intermediate.parent, phase="post-publish",
                     )
 
     def test_materialize_rejects_workspace_input_nonempty_output_missing_dgspec_and_run_play_drift(self) -> None:
         mutations = (
             ("inside-workspace", "outside the coherent workspace"),
-            ("nonempty-output", "bin outputs must remain absent before publish"),
+            ("nonempty-output", "stale bin/obj build state"),
             ("missing-dgspec", "exactly one"),
             ("run-play", "does not bind exact Play.Contracts"),
         )
@@ -541,6 +775,7 @@ class ReleaseRestoreConsumptionTests(unittest.TestCase):
                         authority_path=authority, owner_feed=selected,
                         packages_root=packages, routed_lock_root=routed_locks,
                         project_lock=lock,
+                        intermediate_root=intermediate.parent,
                     )
 
     def test_source_projects_are_separate_from_packages_and_fail_closed(self) -> None:
@@ -585,6 +820,7 @@ class ReleaseRestoreConsumptionTests(unittest.TestCase):
                         authority_path=authority, owner_feed=selected,
                         packages_root=packages, routed_lock_root=routed_locks,
                         project_lock=lock,
+                        intermediate_root=intermediate.parent,
                     )
 
     def test_assets_and_dgspec_bind_the_exact_three_project_graph(self) -> None:
@@ -651,6 +887,7 @@ class ReleaseRestoreConsumptionTests(unittest.TestCase):
                         authority_path=authority, owner_feed=selected,
                         packages_root=packages, routed_lock_root=routed_locks,
                         project_lock=lock,
+                        intermediate_root=intermediate.parent,
                     )
 
 

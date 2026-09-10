@@ -30,22 +30,22 @@ PACKAGE_AUTHORITY_CONTRACT = "chummer.android.internal-phone-beta-package-author
 UI_AUTHORITY_RECEIPT_CONTRACT = "chummer6-ui.fresh-package-plane-verification"
 CONTENT_CONTRACT = "chummer.android.content-bundle/v1"
 
-UI_AUTHORITY_RECEIPT_SHA256 = "3fe45e2ba2409aef7b43e7bbbd0a6a13c0292211f131b7ae32c7aa7a864f8033"
-UI_AUTHORITY_RECEIPT_SIZE = 43395
-PACKAGE_AUTHORITY_SHA256 = "7a638519d2b2af803e6a4e06e0d224a3ea70485bf4927ddc0cffa9245a698a6e"
-PACKAGE_CACHE_MANIFEST_SHA256 = "3d7b05fac0cd7af70957580e6b890b1f7a67419863127f376e3bc7947bdabb37"
-PRESENTATION_COMMIT = "5b26b46d0c1326dfff2824e7aba6f03aec52b304"
-PRESENTATION_TREE = "3c7bc481c55d8de6ef255e64d13ca6b9f2615e92"
+UI_AUTHORITY_RECEIPT_SHA256 = "b9a78d7a818e6b522da59fea84ac478e268955cb2baa9aeebc257786594aaa53"
+UI_AUTHORITY_RECEIPT_SIZE = 78985
+PACKAGE_AUTHORITY_SHA256 = "83dfe2f28de3464cf1e9835fea43c1461406790803eafb664f617f31ac67454e"
+PACKAGE_CACHE_MANIFEST_SHA256 = "cc4e7e1150c0aa433bd304afc129c3a4263ba2c87fb5ae02e6d5150cea635c01"
+PRESENTATION_COMMIT = "f7d671e8e1fd9ba630b74564c203077e6f162fa7"
+PRESENTATION_TREE = "62a8711e128b920dacd541ad18f9fd5d6d9194b0"
 PRESENTATION_REPOSITORY = "https://github.com/ArchonMegalon/chummer6-ui.git"
 PRESENTATION_REMOTE_REF = "refs/remotes/origin/main"
-PRESENTATION_PACKAGE_LOCK_SHA256 = "7bfc76002f4ab18fe382b74c2dbd496737d435e014ef7992a64503716dc1fa8b"
-PRESENTATION_PRODUCER_LOCK_SHA256 = "a0d5a6b6b071b4782e88b99170fde40b604713de99f812cdcbd033f19d8026a9"
-FULL_PROJECT_LOCK_SHA256 = "32f8393f06f70530f6e528e0120778036328472c949afcb5c0679dc0b618768e"
+PRESENTATION_PACKAGE_LOCK_SHA256 = "7330a2d5feb5c0f71991b0e79134f20aa162b3bab7d042d7ac963cc4baff4cb8"
+PRESENTATION_PRODUCER_LOCK_SHA256 = "725e0ee73e7a4ec34026911534f77ef1b2eee3b5514d977b56374f5a02336826"
+FULL_PROJECT_LOCK_SHA256 = "805882c8077168aacdf4111312f06c64604c157039f513fdabe3181ba97215b6"
 FULL_PROJECT_LOCK_SIZE = 70375
 CORE_CONTENT_REVISION = "1d8cf694d0412b3bd9f4a241fb95244fad341160"
-CORE_RUNTIME_REVISION = "880e5df8ace981e9a60264d835329dd32f54a158"
+CORE_RUNTIME_REVISION = "f7500ef8c2f597bac67bc3f53620d50b7a17d00a"
 CORE_CONTENT_DIGEST = "85f484c6d67c076ded1b78bfb611526485596a8054e3b90b88e5bfb0cf0e253c"
-HUB_REVISION = "f06bb7e7e71e5afceb115d9078a473b1087ac7df"
+HUB_REVISION = "894cb12281eb1315a202c7f1ac5d7de9f70e5fd6"
 UI_KIT_REVISION = "d51ecd99cf72098d4adc8db0192bff7bf9fd8e61"
 REGISTRY_REVISION = "af9a7e19c3bf331e96411dfb8f9e7820a98cab29"
 DOTNET_SDK_VERSION = "10.0.111"
@@ -113,8 +113,8 @@ OWNER_PACKAGE_IDS = (
     "Chummer.Hub.Registry.Contracts",
     "Chummer.Ui.Kit",
 )
-CORE_PACKAGE_VERSION = "0.0.0-packageplane.candidate.sh880e5df8ace98"
-HUB_PACKAGE_VERSION = "0.1.0-packageplane.candidate.sh1852ea4eef6d"
+CORE_PACKAGE_VERSION = "0.0.0-packageplane.candidate.shf7500ef8c2f59"
+HUB_PACKAGE_VERSION = "0.1.0-packageplane.candidate.shfe4b2706c44d"
 EXPECTED_PACKAGE_VERSIONS = {
     "Chummer.Application": CORE_PACKAGE_VERSION,
     "Chummer.Engine.Contracts": CORE_PACKAGE_VERSION,
@@ -415,8 +415,9 @@ def _verify_current_package_authority_external(
     manifest = module.validate_manifest(manifest_path)
     module.validate_android_sdk_authority(android_root, manifest)
     module.validate_presentation_repository(presentation_root)
-    module.validate_receipt(receipt)
-    module.validate_package_feed(package_feed)
+    verified_receipt = module.validate_receipt(receipt)
+    verified_cache = module.validate_package_feed(package_feed)
+    module.validate_receipt_cache_equivalence(verified_receipt, verified_cache, package_feed=package_feed)
     return {
         "status": "pass",
         "contractName": module.CONTRACT,

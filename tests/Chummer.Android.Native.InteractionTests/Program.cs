@@ -13,6 +13,72 @@ internal static class Program
 {
     private static async Task Main(string[] args)
     {
+        if (args.Length == 2 && args[0] == "--android-continuation-native-content-root")
+        {
+            await AfterRunAuthorityHarness.RunAndroidContinuationNativeCasesAsync(args[1]);
+            return;
+        }
+        if (args.Length == 1 && args[0] == "--android-continuation-transport")
+        {
+            await AfterRunAuthorityHarness.RunAndroidContinuationTransportCasesAsync();
+            return;
+        }
+        if (args.Length == 1 && args[0] == "--android-continuation-roaming")
+        {
+            await AfterRunAuthorityHarness.RunAndroidContinuationRoamingCasesAsync();
+            return;
+        }
+        if (args.Length == 2 && args[0] == "--android-account-owner-content-root")
+        {
+            await AfterRunAuthorityHarness.RunAndroidAccountOwnerCasesAsync(args[1]);
+            await AfterRunAuthorityHarness.RunInitialPhoneRouteCasesAsync(args[1]);
+            return;
+        }
+        if (args.Length == 2 && args[0] == "--initial-phone-route-content-root")
+        {
+            await AfterRunAuthorityHarness.RunInitialPhoneRouteCasesAsync(args[1]);
+            return;
+        }
+        if (args.Length == 2 && args[0] == "--account-erasure-owner-content-root")
+        {
+            await AfterRunAuthorityHarness.RunAccountErasureOwnerCasesAsync(args[1]);
+            return;
+        }
+        if (args.Length == 2 && args[0] == "--persistence-owner-content-root")
+        {
+            await AfterRunAuthorityHarness.RunPersistenceOwnerCasesAsync(args[1]);
+            return;
+        }
+        if (args.Length == 2 && args[0] == "--creation-bootstrap-owner-content-root")
+        {
+            await AfterRunAuthorityHarness.RunCreationBootstrapOwnerCasesAsync(args[1]);
+            return;
+        }
+        if (args.Length == 2 && args[0] == "--creation-contacts-owner-content-root")
+        {
+            await AfterRunAuthorityHarness.RunCreationContactsOwnerCasesAsync(args[1]);
+            return;
+        }
+        if (args.Length == 1 && args[0] == "--tablet-inspector-binding")
+        {
+            await TabletInspectorBindingTests.RunAsync();
+            return;
+        }
+        if (args.Length == 2 && args[0] == "--linked-character-runtime-content-root")
+        {
+            await AfterRunAuthorityHarness.RunLinkedCharacterNativeRuntimeCasesAsync(args[1]);
+            return;
+        }
+        if (args.Length == 2 && args[0] == "--linked-owner-aba-publication-content-root")
+        {
+            await AfterRunAuthorityHarness.RunLinkedOwnerAbaPublicationCasesAsync(args[1]);
+            return;
+        }
+        if (args.Length == 2 && args[0] == "--linked-stale-display-owner-content-root")
+        {
+            await AfterRunAuthorityHarness.RunLinkedStaleDisplayOwnerCaptureCaseAsync(args[1]);
+            return;
+        }
         if (args.Length == 2 && args[0] == "--skills-rereview-runtime-content-root")
         {
             CreationMagicNativeRuntimeTests.RunSkillsReReview(args[1]);
@@ -27,6 +93,7 @@ internal static class Program
             throw new ArgumentException("Expected --after-run-runtime-content-root followed by an explicit Core content directory.");
         (string Name, Func<Task> Run)[] tests =
         [
+            (nameof(TabletInspectorBindingTests.RunAsync), TabletInspectorBindingTests.RunAsync),
             (nameof(SettlementRecoveryUsesActualNativeAndCoreAssembliesAsync), SettlementRecoveryUsesActualNativeAndCoreAssembliesAsync),
             (nameof(AfterRunAuthorityHarness.RunNativePageCasesAsync), AfterRunAuthorityHarness.RunNativePageCasesAsync),
             (nameof(QueuedOlderUnfocusedCannotOverwriteActionInputAsync), QueuedOlderUnfocusedCannotOverwriteActionInputAsync),

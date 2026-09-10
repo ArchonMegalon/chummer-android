@@ -33,10 +33,19 @@ class AndroidUnresponsiveHotpathTests(unittest.TestCase):
         )[0]
 
         self.assertNotIn("await _account.InitializeAsync", initialize)
-        self.assertIn("_accountInitialization = InitializeAccountInBackgroundAsync();", initialize)
+        self.assertIn("_accountInitialization = InitializeAccountWithInitialPhoneReadinessAsync();", initialize)
         self.assertLess(
             initialize.index("_initialized = true;"),
-            initialize.index("_accountInitialization = InitializeAccountInBackgroundAsync();"),
+            initialize.index("_accountInitialization = InitializeAccountWithInitialPhoneReadinessAsync();"),
+        )
+        self.assertNotIn("await InitializeAccountWithInitialPhoneReadinessAsync", initialize)
+        readiness = (COORDINATOR.parent / "RunnerSessionCoordinator.InitialPhoneRoute.cs").read_text()
+        self.assertIn("await InitializeAccountInBackgroundAsync().ConfigureAwait(false)", readiness)
+        self.assertIn("finally", readiness)
+        self.assertIn("Volatile.Write(ref _initialPhoneAccountRecoverySettled, 1)", readiness)
+        self.assertLess(
+            readiness.index("Volatile.Write(ref _initialPhoneAccountRecoverySettled, 1)"),
+            readiness.index("NotifyChanged()"),
         )
         self.assertIn("AccountStartupWorkScheduler.RunAsync", initialize)
         self.assertIn("_lifetime.Token", initialize)

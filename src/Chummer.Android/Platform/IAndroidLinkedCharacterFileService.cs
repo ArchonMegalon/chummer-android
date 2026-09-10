@@ -10,10 +10,16 @@ public sealed record AndroidStagedLinkedCharacter(
     string FileName,
     string RelativeFileName,
     string DisplayName,
-    CharacterLinkedDocument Identity);
+    CharacterLinkedDocument Identity)
+{
+    public string ContentSha256 { get; init; } = string.Empty;
+}
 
 public interface IAndroidLinkedCharacterFileService
 {
+    // A returned file belongs exclusively to this staging invocation until
+    // dispatched. Returning an existing content-addressed/shared path is forbidden.
+    // Return only after file data and the final directory entry are flushed.
     Task<AndroidStagedLinkedCharacter?> StageAsync(
         WorkspaceCollectionItemTarget target,
         CancellationToken cancellationToken);
@@ -22,6 +28,9 @@ public interface IAndroidLinkedCharacterFileService
         WorkspaceCollectionItemTarget target,
         string? fileName,
         CancellationToken cancellationToken);
+
+    Task<bool> MatchesStagedFileAsync(WorkspaceCollectionItemTarget target, string fileName,
+        string expectedSha256, CancellationToken cancellationToken) => Task.FromResult(false);
 }
 
 public sealed class AndroidLinkedCharacterFileService : IAndroidLinkedCharacterFileService
@@ -29,13 +38,26 @@ public sealed class AndroidLinkedCharacterFileService : IAndroidLinkedCharacterF
     private const string DirectoryName = "linked-characters";
     private readonly IAndroidDocumentService _documents;
     private readonly ICharacterLinkedDocumentCodec _codec;
+    private readonly Func<string> _appDataDirectory;
+    private readonly Func<Guid> _newFileId;
+    private readonly Action<FileStream> _flushFile;
+    private readonly Action<string> _syncDirectory;
 
     public AndroidLinkedCharacterFileService(
         IAndroidDocumentService documents,
         ICharacterLinkedDocumentCodec codec)
+        : this(documents, codec, () => FileSystem.AppDataDirectory, Guid.NewGuid) { }
+
+    internal AndroidLinkedCharacterFileService(IAndroidDocumentService documents,
+        ICharacterLinkedDocumentCodec codec, Func<string> appDataDirectory, Func<Guid> newFileId,
+        Action<FileStream>? flushFile = null, Action<string>? syncDirectory = null)
     {
         _documents = documents;
         _codec = codec;
+        _appDataDirectory = appDataDirectory;
+        _newFileId = newFileId;
+        _flushFile = flushFile ?? (stream => stream.Flush(flushToDisk: true));
+        _syncDirectory = syncDirectory ?? AndroidPrivateFileDurability.SyncDirectory;
     }
 
     public async Task<AndroidStagedLinkedCharacter?> StageAsync(
@@ -43,6 +65,7 @@ public sealed class AndroidLinkedCharacterFileService : IAndroidLinkedCharacterF
         CancellationToken cancellationToken)
     {
         ValidateTarget(target);
+        cancellationToken.ThrowIfCancellationRequested();
         AndroidDocument? selected = await _documents.OpenAsync(cancellationToken);
         if (selected is null)
         {
@@ -51,45 +74,98 @@ public sealed class AndroidLinkedCharacterFileService : IAndroidLinkedCharacterF
 
         try
         {
-            string displayName = NormalizeDisplayName(selected.DisplayName);
-            if (!_codec.TryDecode(displayName, selected.Content, out CharacterLinkedDocument? identity))
+            // Parsing, hashing and synchronous durability barriers must not run
+            // on Android's UI synchronization context. Once scheduled, always
+            // join this work before clearing the selected buffer.
+            return await Task.Run(async () =>
             {
-                throw new InvalidOperationException(
-                    "Select a valid Chummer5 .chum5 or .chum5lz runner document.");
-            }
-
-            string extension = ResolveExtension(displayName);
-            string targetPrefix = BuildTargetPrefix(target);
-            string contentHash = Convert.ToHexString(SHA256.HashData(selected.Content))
-                .ToLowerInvariant()[..16];
-            string stagedFileName = $"{targetPrefix}-{contentHash}{extension}";
-            string root = ResolveRoot();
-            Directory.CreateDirectory(root);
-            string finalPath = Path.Combine(root, stagedFileName);
-            string temporaryPath = Path.Combine(root, $".{stagedFileName}.{Guid.NewGuid():N}.tmp");
-            try
-            {
-                await File.WriteAllBytesAsync(temporaryPath, selected.Content, cancellationToken);
-                File.Move(temporaryPath, finalPath, overwrite: true);
-            }
-            finally
-            {
-                if (File.Exists(temporaryPath))
+                cancellationToken.ThrowIfCancellationRequested();
+                string displayName = NormalizeDisplayName(selected.DisplayName);
+                if (!_codec.TryDecode(displayName, selected.Content, out CharacterLinkedDocument? identity))
                 {
-                    File.Delete(temporaryPath);
+                    throw new InvalidOperationException(
+                        "Select a valid Chummer5 .chum5 or .chum5lz runner document.");
                 }
-            }
 
-            return new AndroidStagedLinkedCharacter(
-                FileName: finalPath,
-                RelativeFileName: $"{DirectoryName}/{stagedFileName}",
-                DisplayName: displayName,
-                Identity: identity);
+                string extension = ResolveExtension(displayName);
+                string targetPrefix = BuildTargetPrefix(target);
+                string contentHash = Convert.ToHexStringLower(SHA256.HashData(selected.Content));
+                string stagedFileName = $"{targetPrefix}-{contentHash[..16]}-{_newFileId():N}{extension}";
+                string root = ResolveRoot();
+                Directory.CreateDirectory(root);
+                // The linked-characters directory itself may have been created
+                // on this call. Persist its parent entry before any file publish.
+                _syncDirectory(Path.GetDirectoryName(root)!);
+                string finalPath = Path.Combine(root, stagedFileName);
+                string temporaryPath = Path.Combine(root, $".{stagedFileName}.{Guid.NewGuid():N}.tmp");
+                try
+                {
+                    await using (var stream = new FileStream(temporaryPath, FileMode.CreateNew,
+                        FileAccess.Write, FileShare.None, 4096, FileOptions.Asynchronous | FileOptions.WriteThrough))
+                    {
+                        await stream.WriteAsync(selected.Content, cancellationToken).ConfigureAwait(false);
+                        _flushFile(stream);
+                    }
+                    cancellationToken.ThrowIfCancellationRequested();
+                    File.Move(temporaryPath, finalPath, overwrite: false);
+                    _syncDirectory(root);
+                    // Do not throw for a late cancellation after this durable
+                    // acknowledgement: return ownership for undispatched cleanup.
+                }
+                finally
+                {
+                    if (File.Exists(temporaryPath)) File.Delete(temporaryPath);
+                    // A failed directory acknowledgement after rename retains
+                    // the exclusive final file, but never exposes a link to it.
+                    // Reclamation needs separate reference/recovery authority.
+                }
+
+                return new AndroidStagedLinkedCharacter(
+                    FileName: finalPath,
+                    RelativeFileName: $"{DirectoryName}/{stagedFileName}",
+                    DisplayName: displayName,
+                    Identity: identity) { ContentSha256 = contentHash };
+            }, CancellationToken.None).ConfigureAwait(false);
         }
         finally
         {
             CryptographicOperations.ZeroMemory(selected.Content);
         }
+    }
+
+    public async Task<bool> MatchesStagedFileAsync(WorkspaceCollectionItemTarget target, string fileName,
+        string expectedSha256, CancellationToken cancellationToken)
+    {
+        ValidateTarget(target);
+        if (expectedSha256.Length != 64 || !expectedSha256.All(c => c is >= '0' and <= '9' or >= 'a' and <= 'f')
+            || !TryResolveOwnedPath(target, fileName, out string path)) return false;
+        return await Task.Run(() =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var file = new FileInfo(path);
+            if (!file.Exists || file.LinkTarget is not null || file.Length is <= 0 or > 8 * 1024 * 1024
+                || new DirectoryInfo(ResolveRoot()).LinkTarget is not null) return false;
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+            if (stream.Length != file.Length) return false;
+            using var digest = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+            Span<byte> buffer = stackalloc byte[8192];
+            try
+            {
+                long remaining = file.Length;
+                while (remaining > 0)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    int read = stream.Read(buffer[..(int)Math.Min(buffer.Length, remaining)]);
+                    if (read == 0) return false;
+                    digest.AppendData(buffer[..read]);
+                    remaining -= read;
+                }
+                cancellationToken.ThrowIfCancellationRequested();
+                return stream.ReadByte() == -1 && stream.Length == file.Length
+                    && Convert.ToHexStringLower(digest.GetHashAndReset()) == expectedSha256;
+            }
+            finally { CryptographicOperations.ZeroMemory(buffer); }
+        }, cancellationToken).ConfigureAwait(false);
     }
 
     public Task DeleteOwnedAsync(
@@ -108,7 +184,7 @@ public sealed class AndroidLinkedCharacterFileService : IAndroidLinkedCharacterF
         return Task.CompletedTask;
     }
 
-    private static bool TryResolveOwnedPath(
+    private bool TryResolveOwnedPath(
         WorkspaceCollectionItemTarget target,
         string? fileName,
         out string ownedPath)
@@ -144,8 +220,8 @@ public sealed class AndroidLinkedCharacterFileService : IAndroidLinkedCharacterF
         return true;
     }
 
-    private static string ResolveRoot()
-        => Path.GetFullPath(Path.Combine(FileSystem.AppDataDirectory, DirectoryName));
+    private string ResolveRoot()
+        => Path.GetFullPath(Path.Combine(_appDataDirectory(), DirectoryName));
 
     private static string BuildTargetPrefix(WorkspaceCollectionItemTarget target)
     {

@@ -5,7 +5,11 @@ namespace Chummer.Android;
 
 public sealed class MainShell : Shell
 {
-    private int _initialPhoneRouteResolved;
+    private readonly PhoneInitialRoutePolicy _initialPhoneRoute = new();
+    private RunnerSessionCoordinator? _initialPhoneCoordinator;
+    private int _initialPhoneRouteStarted;
+    private int _initialPhoneRouteQueued;
+    private bool _initialPhoneRouteUnloaded;
 
     public MainShell(IServiceProvider services)
     {
@@ -60,34 +64,145 @@ public sealed class MainShell : Shell
         Items.Add(tabs);
 
         RunnerSessionCoordinator coordinator = services.GetRequiredService<RunnerSessionCoordinator>();
-        Loaded += async (_, _) => await ResolveInitialPhoneRouteAsync(coordinator);
+        _initialPhoneCoordinator = coordinator;
+        Loaded += async (_, _) =>
+        {
+            await ResolveInitialPhoneRouteAsync(coordinator);
+            QueueInitialPhoneRoute();
+        };
+        Unloaded += (_, _) =>
+        {
+            _initialPhoneRouteUnloaded = true;
+            RetireInitialPhoneRoute();
+        };
+    }
+
+    protected override void OnAppearing()
+    {
+        base.OnAppearing();
+        // Loaded is not the sole lifecycle signal: both entries join the same
+        // one-shot startup and neither repeats coordinator initialization.
+        if (_initialPhoneCoordinator is { } coordinator)
+        {
+            _ = ResolveInitialPhoneRouteAsync(coordinator);
+            QueueInitialPhoneRoute();
+        }
     }
 
     private async Task ResolveInitialPhoneRouteAsync(RunnerSessionCoordinator coordinator)
     {
-        if (Interlocked.Exchange(ref _initialPhoneRouteResolved, 1) != 0)
-        {
-            return;
-        }
-
+        if (_initialPhoneRoute.IsRetired
+            || Interlocked.CompareExchange(ref _initialPhoneRouteStarted, 1, 0) != 0) return;
+        coordinator.Changed += OnInitialPhoneReadinessChanged;
+        Navigating += OnInitialPhoneNavigating;
+        _initialPhoneRoute.Observe(coordinator.CaptureInitialPhoneRouteReadiness());
         try
         {
             await coordinator.InitializeAsync();
-            if (coordinator.State.Profile is not null
-                && coordinator.State.WorkspaceId is not null)
-            {
-                await GoToAsync(PhoneShellRoutes.RunnerAbsolute);
-            }
-            else
-            {
-                await GoToAsync(PhoneShellRoutes.RunnersAbsolute);
-            }
+            QueueInitialPhoneRoute();
         }
-        catch
+        catch (Exception exception)
         {
-            // Runners remains the app-owned default; its coordinator projection reports load failures.
-            Interlocked.Exchange(ref _initialPhoneRouteResolved, 0);
+            RetireInitialPhoneRoute();
+            ReportInitialPhoneRouteFailure(exception);
         }
+    }
+
+    private void OnInitialPhoneReadinessChanged(object? sender, EventArgs args)
+    {
+        // Record an intervening owner epoch even if UI callbacks are coalesced.
+        // Capture only observes local state; all navigation is queued below.
+        if (_initialPhoneCoordinator is { } coordinator)
+            _initialPhoneRoute.Observe(coordinator.CaptureInitialPhoneRouteReadiness());
+        QueueInitialPhoneRoute();
+    }
+
+    private void QueueInitialPhoneRoute()
+    {
+        if (_initialPhoneRouteUnloaded) return;
+        if (Interlocked.CompareExchange(ref _initialPhoneRouteQueued, 1, 0) != 0) return;
+        // Always post, including on the UI thread. Changed can still own an
+        // account gate, so BeginInvoke-on-main-thread's inline path is unsafe.
+        if (!Dispatcher.Dispatch(async () =>
+            {
+                Interlocked.Exchange(ref _initialPhoneRouteQueued, 0);
+                await ApplyInitialPhoneRouteAsync();
+            }))
+        {
+            Interlocked.Exchange(ref _initialPhoneRouteQueued, 0);
+            RetireInitialPhoneRoute();
+            System.Diagnostics.Trace.TraceError("Initial phone route dispatch was unavailable.");
+        }
+    }
+
+    private async Task ApplyInitialPhoneRouteAsync()
+    {
+        RunnerSessionCoordinator? coordinator = _initialPhoneCoordinator;
+        if (coordinator is null || _initialPhoneRoute.IsRetired)
+        {
+            RetireInitialPhoneRoute();
+            return;
+        }
+        // OnAppearing may precede handler attachment. Loaded/appearance queues
+        // another observation; never spend the intent on a premature GoToAsync.
+        if (Handler is null || Window?.Handler is null) return;
+        PhoneInitialRouteReadiness readiness = coordinator.CaptureInitialPhoneRouteReadiness();
+        if (!_initialPhoneRoute.TryResolve(readiness))
+        {
+            if (_initialPhoneRoute.IsRetired) RetireInitialPhoneRoute();
+            return;
+        }
+        RetireInitialPhoneRoute();
+        // Recheck the live owner, both owner-bound projections, and the exact
+        // selected workspace immediately before starting this one navigation.
+        if (coordinator.CaptureInitialPhoneRouteReadiness() != readiness) return;
+        try
+        {
+            if (readiness.HasProfile && readiness.WorkspaceId is not null
+                && coordinator.State.Profile is not null
+                && coordinator.State.WorkspaceId is not null)
+                await GoToAsync(PhoneShellRoutes.RunnerAbsolute);
+            // Ready with no runner is terminal too. Runners is already the
+            // default; do not issue a redundant navigation or wait for Hub.
+        }
+        catch (Exception exception) { ReportInitialPhoneRouteFailure(exception); }
+    }
+
+    private void OnInitialPhoneNavigating(object? sender, ShellNavigatingEventArgs args)
+    {
+        // Any actual departure wins, including leave-and-return before a queued
+        // readiness callback. The automatic navigation unsubscribes first.
+        _initialPhoneRoute.ObserveNavigation(args.Current?.Location?.OriginalString,
+            args.Target?.Location?.OriginalString, CurrentPage is null or RunnersPage);
+        if (_initialPhoneRoute.IsRetired) RetireInitialPhoneRoute();
+    }
+
+    private void RetireInitialPhoneRoute()
+    {
+        _initialPhoneRoute.Retire();
+        if (_initialPhoneCoordinator is { } coordinator)
+            coordinator.Changed -= OnInitialPhoneReadinessChanged;
+        Navigating -= OnInitialPhoneNavigating;
+    }
+
+    private void ReportInitialPhoneRouteFailure(Exception exception)
+    {
+        System.Diagnostics.Trace.TraceError("Initial phone route failed ({0}).", exception.GetType().Name);
+        if (_initialPhoneRouteUnloaded) return;
+        Dispatcher.Dispatch(async () =>
+        {
+            if (_initialPhoneRouteUnloaded) return;
+            try
+            {
+                await DisplayAlertAsync("Chummer",
+                    PhoneStrings.Get("InitialRunnerRouteUnavailable", "The runner could not be opened automatically. Use Runners to open it."),
+                    PhoneStrings.Get("OK", "OK"));
+            }
+            catch (Exception reportError)
+            {
+                System.Diagnostics.Trace.TraceError("Initial phone route notice failed ({0}).", reportError.GetType().Name);
+            }
+        });
     }
 
     private void BuildTabletShell(IServiceProvider services)

@@ -466,10 +466,12 @@ python3 "$repo_dir/scripts/verify_native_compile_graph.py" \
   --repo-root "$repo_dir" \
   --project "$project_path" \
   --workspace-root "$workspace_root" \
+  --assets-root "$release_intermediate/Chummer.Android" \
   --assets-only
 
 python3 "$repo_dir/scripts/seal_release_restore_consumption.py" materialize \
   --input-root "$release_tmp" \
+  --intermediate-root "$release_intermediate" \
   --workspace-root "$workspace_root" \
   --authority "$CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY" \
   --owner-feed "$selected_package_feed" \
@@ -520,6 +522,8 @@ certificate_sha256="$(openssl x509 -in "$CHUMMER_ANDROID_UPLOAD_CERTIFICATE_PATH
 
 python3 "$repo_dir/scripts/seal_release_restore_consumption.py" verify \
   --input-root "$release_tmp" \
+  --intermediate-root "$release_intermediate" \
+  --phase pre-publish \
   --workspace-root "$workspace_root" \
   --authority "$CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY" \
   --owner-feed "$selected_package_feed" \
@@ -566,6 +570,8 @@ clean_exec "$dotnet_command" publish "$project_path" \
 
 python3 "$repo_dir/scripts/seal_release_restore_consumption.py" verify \
   --input-root "$release_tmp" \
+  --intermediate-root "$release_intermediate" \
+  --phase post-publish \
   --workspace-root "$workspace_root" \
   --authority "$CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY" \
   --owner-feed "$selected_package_feed" \

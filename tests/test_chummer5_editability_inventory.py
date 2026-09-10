@@ -27,6 +27,122 @@ CORE_ROOT = _sibling_repo("chummer-core-engine", "core")
 
 
 class Chummer5EditabilityInventoryTests(unittest.TestCase):
+    def _save_authority_rows_and_receipt_arguments(self):
+        import inspect
+
+        payload = json.loads(inventory.DEFAULT_OUTPUT.read_text(encoding="utf-8"))
+        rows = [
+            row for row in payload["rows"]
+            if (row["legacy"]["formOrControl"], row["legacy"]["controlName"])
+            in inventory.EXPLICIT_SAVE_CONTROLS
+            or (
+                row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
+                and row["legacy"]["controlName"] == inventory.CRITTER_POWER_COUNT_CONTROL
+            )
+        ]
+        self.assertEqual(7, len(rows))
+        parameters = list(inspect.signature(inventory._known_phone_mapping).parameters)
+        receipt_arguments = {
+            name: {} if name in {"condition_e2e_receipts", "contact_pet_e2e_receipts"} else None
+            for name in parameters[4:]
+        }
+        return rows, receipt_arguments
+
+    def test_save_authority_follows_both_public_entries_into_real_owner_bound_helper(self) -> None:
+        path = PRESENTATION_ROOT / "Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
+        self.assertTrue(inventory._presenter_save_authority_guarded(path))
+        rows, receipt_arguments = self._save_authority_rows_and_receipt_arguments()
+        for row in rows:
+            with self.subTest(row=row["id"]):
+                mapping = inventory._known_phone_mapping(
+                    row, inventory.DEFAULT_CHUMMER5_ROOT, PRESENTATION_ROOT, CORE_ROOT,
+                    **receipt_arguments,
+                )
+                self.assertEqual("implemented_pending_emulator", mapping["status"])
+                self.assertEqual("scripted_not_executed", mapping["e2e"]["status"])
+
+    def test_save_authority_rejects_bypassed_public_entries_and_shared_save_guards(self) -> None:
+        path = PRESENTATION_ROOT / "Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
+        original_read = inventory._read_text
+        original = original_read(path)
+        core = inventory._csharp_method_source(path, "SaveCoreAsync", "private async Task SaveCoreAsync(")
+        gesture = inventory._csharp_method_source(
+            path, "RunOriginalPersistenceGestureAsync<T>",
+            "private async Task<CommandResult<T>> RunOriginalPersistenceGestureAsync<T>(",
+        )
+        self.assertIsNotNone(core)
+        self.assertIsNotNone(gesture)
+        mutations = [
+            ("compatibility entry bypass", original.replace(
+                "=> SaveCoreAsync(State, ct);", "=> Task.CompletedTask;", 1)),
+            ("owner entry bypass", original.replace(
+                "(state, observe) => SaveCoreAsync(state, ct, observe)",
+                "(state, observe) => Task.CompletedTask", 1)),
+            ("owner entry substitutes latest state", original.replace(
+                "(state, observe) => SaveCoreAsync(state, ct, observe)",
+                "(state, observe) => SaveCoreAsync(State, ct, observe)", 1)),
+            ("shared helper removed", original.replace(
+                "private async Task SaveCoreAsync(", "private async Task DetachedSaveCoreAsync(", 1)),
+            ("ambiguous duplicate shared helper", original.replace(core, core + "\n\n" + core, 1)),
+        ]
+        for name, old, new in (
+            ("durable save replaced", "_workspacePersistenceService.SaveAsync(", "_workspacePersistenceService.PreviewSaveAsync("),
+            ("expected revision substituted", "originalState.ContentRevision", "State.ContentRevision"),
+            ("original owner checks bypassed", "IsOriginalPersistenceOwnerCurrent(originalOwner)", "IsPreviewOwnerCurrent(originalOwner)"),
+            ("postcommit recovery removed", "TryCaptureRecoveryPayloadAsync(", "CapturePreviewOnlyAsync("),
+        ):
+            self.assertIn(old, core)
+            mutations.append((name, original.replace(core, core.replace(old, new), 1)))
+        owner_check = "originalState.DisplayOwnerContext != originalOwner"
+        self.assertIn(owner_check, gesture)
+        mutations.append(("gesture owner admission removed", original.replace(
+            gesture, gesture.replace(owner_check, "false", 1), 1)))
+
+        rows, receipt_arguments = self._save_authority_rows_and_receipt_arguments()
+        for name, changed in mutations:
+            self.assertNotEqual(original, changed)
+
+            def read_changed(candidate: Path, changed=changed) -> str:
+                return changed if candidate == path else original_read(candidate)
+
+            with self.subTest(mutation=name), patch.object(inventory, "_read_text", side_effect=read_changed):
+                self.assertFalse(inventory._presenter_save_authority_guarded(path))
+                for row in rows:
+                    with self.subTest(row=row["id"]):
+                        mapping = inventory._known_phone_mapping(
+                            row, inventory.DEFAULT_CHUMMER5_ROOT, PRESENTATION_ROOT, CORE_ROOT,
+                            **receipt_arguments,
+                        )
+                        self.assertEqual("missing", mapping["status"])
+
+    def test_save_authority_cannot_borrow_real_save_body_from_unrelated_method(self) -> None:
+        path = PRESENTATION_ROOT / "Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
+        original_read = inventory._read_text
+        original = original_read(path)
+        core = inventory._csharp_method_source(path, "SaveCoreAsync", "private async Task SaveCoreAsync(")
+        self.assertIsNotNone(core)
+        declaration = core[:core.index("\n    {")]
+        stub = declaration + "\n    {\n        await Task.CompletedTask;\n    }"
+        detached = core.replace("private async Task SaveCoreAsync(", "private async Task DetachedSaveCoreAsync(", 1)
+        changed = original.replace(core, stub + "\n\n" + detached, 1)
+        # All the old whole-file markers remain, but the actual public target is a no-op.
+        for marker in ("expectedContentRevision", "SavedRevision", "TryCaptureRecoveryPayloadAsync", "postcommit save recovery"):
+            self.assertIn(marker, changed)
+        rows, receipt_arguments = self._save_authority_rows_and_receipt_arguments()
+
+        def read_changed(candidate: Path) -> str:
+            return changed if candidate == path else original_read(candidate)
+
+        with patch.object(inventory, "_read_text", side_effect=read_changed):
+            self.assertFalse(inventory._presenter_save_authority_guarded(path))
+            for row in rows:
+                with self.subTest(row=row["id"]):
+                    mapping = inventory._known_phone_mapping(
+                        row, inventory.DEFAULT_CHUMMER5_ROOT, PRESENTATION_ROOT, CORE_ROOT,
+                        **receipt_arguments,
+                    )
+                    self.assertEqual("missing", mapping["status"])
+
     def test_parser_includes_direct_dynamic_and_event_wired_controls_fail_closed(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -2603,6 +2719,11 @@ namespace Chummer
             and row["legacy"]["controlName"] in {"tsAttachCharacter", "tsRemoveCharacter"}
         ]
         self.assertEqual(4, len(linked_character_rows))
+        for row in linked_character_rows:
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual("implemented_pending_emulator", row["tablet"]["status"])
+            self.assertIn("src/Chummer.Android/Native/RunnerSessionCoordinator.LinkedCharacters.cs",
+                          row["phone"]["sourceRefs"])
         spirit_linked_runner_rows = [
             row for row in rows
             if row["legacy"]["formOrControl"] == "SpiritControl"
@@ -2613,7 +2734,10 @@ namespace Chummer
             {row["legacy"]["controlName"] for row in spirit_linked_runner_rows},
         )
         for row in spirit_linked_runner_rows:
-            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            # Current canonical target validation/projection and native staging
+            # support Contact/Pet only. Other Spirit symbols elsewhere in those
+            # files are not evidence that the link path supports Spirits.
+            self.assertEqual("missing", row["phone"]["status"])
             self.assertEqual("missing", row["tablet"]["status"])
             self.assertEqual("missing", row["e2e"]["phone"]["status"])
             self.assertIn("Spirits and sprites", row["phone"]["route"])
@@ -3069,8 +3193,10 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 381,
-                "missing": 946,
+                # Three Spirit link controls were previously false positives:
+                # current owner projection/target validation supports Contact/Pet only.
+                "implemented_pending_emulator": 378,
+                "missing": 949,
                 "not_applicable_non_mutating": 478,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 318,
@@ -4790,11 +4916,17 @@ public sealed class Demo
             "sharedDriverSha256": REPO / "tests" / "run_api36_editing_e2e.py",
             "collectionEditorPagesSha256": native_root / "Native" / "CollectionEditorPages.cs",
             "runnerSessionCoordinatorSha256": native_root / "Native" / "RunnerSessionCoordinator.cs",
+            "linkedCharacterCoordinatorSha256": native_root / "Native" / "RunnerSessionCoordinator.LinkedCharacters.cs",
             "linkedCharacterFileServiceSha256": native_root / "Platform" / "IAndroidLinkedCharacterFileService.cs",
+            "linkedFileDurabilitySha256": native_root / "Platform" / "AndroidPrivateFileDurability.cs",
+            "linkedIntentJournalSha256": native_root / "Native" / "AndroidLinkedCharacterIntentJournal.cs",
+            "linkedWorkspaceReaderSha256": native_root / "Native" / "AndroidLinkedWorkspaceReader.cs",
+            "linkedRecoveryPageSha256": native_root / "Native" / "LinkedCharacterRecoveryPage.cs",
             "linkedDocumentCodecSha256": inventory.WORKSPACE_ROOT / "chummer-core-engine" / "Chummer.Infrastructure" / "Xml" / "Chummer5LinkedDocumentCodec.cs",
             "workspaceCollectionEditorProjectorSha256": overview / "WorkspaceCollectionEditorProjector.cs",
             "workspaceCollectionEditorStateSha256": overview / "WorkspaceCollectionEditorState.cs",
             "workspaceCollectionMutationRequestSha256": overview / "WorkspaceCollectionMutationRequest.cs",
+            "workspaceLinkedCharacterMutationPreviewSha256": overview / "WorkspaceLinkedCharacterMutationPreview.cs",
             "workspaceXmlMutationCatalogSha256": overview / "WorkspaceXmlMutationCatalog.cs",
             "workspaceMutationsSha256": overview / "CharacterOverviewPresenter.WorkspaceMutations.cs",
             "inputFixtureSha256": fixture_root / "creation-contact-pet-e2e.chum5",
@@ -4839,6 +4971,9 @@ public sealed class Demo
                 for stale_hash in (
                     "driverSha256",
                     "linkedDocumentCodecSha256",
+                    "linkedCharacterCoordinatorSha256",
+                    "linkedFileDurabilitySha256",
+                    "workspaceLinkedCharacterMutationPreviewSha256",
                     "invalidLinkedFixtureSha256",
                 ):
                     stale_receipt = {**receipt, stale_hash: "0" * 64}
@@ -4847,6 +4982,12 @@ public sealed class Demo
                         inventory._validated_linked_runner_phone_e2e_receipt(),
                         stale_hash,
                     )
+                for missing in ("linkedCharacterCoordinatorSha256", "linkedFileDurabilitySha256",
+                                "linkedIntentJournalSha256", "linkedWorkspaceReaderSha256", "linkedRecoveryPageSha256",
+                                "workspaceLinkedCharacterMutationPreviewSha256"):
+                    missing_binding = {key: value for key, value in receipt.items() if key != missing}
+                    receipt_path.write_text(json.dumps(missing_binding), encoding="utf-8")
+                    self.assertIsNone(inventory._validated_linked_runner_phone_e2e_receipt(), missing)
 
     def test_new_character_priority_receipt_is_source_hash_bound(self) -> None:
         self.assertIsNone(
@@ -6714,8 +6855,8 @@ public sealed class Demo
         self.assertEqual(0, recognition["completionCountContribution"])
         self.assertEqual(
             {
-                "implemented_pending_emulator": 381,
-                "missing": 946,
+                "implemented_pending_emulator": 378,
+                "missing": 949,
                 "not_applicable_non_mutating": 478,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 318,

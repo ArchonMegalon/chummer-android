@@ -20,9 +20,9 @@ class CreationContactsSourceContractTests(unittest.TestCase):
             "prepared.IdempotencyKey",
             "prepared.PreviewDigest",
             "ExplicitlyConfirmed: true",
-            "_creationContactsPresenter.Confirm(State, confirmation)",
-            "_creationContactsPresenter.LookupReceipt(State, prepared.IdempotencyKey)",
-            "await _presenter.LoadAsync(receipt.WorkspaceId, cancellationToken)",
+            "_creationContactsPresenter.Confirm(originalOverview, confirmation)",
+            "_creationContactsPresenter.LookupReceipt(originalOverview, prepared.IdempotencyKey)",
+            "await boundRefresh.LoadAsync(owner, receipt!.WorkspaceId, cancellationToken)",
             "CreationContactsPhoneAuthority.ReceiptMatches(",
             "CreationContactsPhoneAuthority.RefreshedStateMatches(",
             'expectedPayloadSha256: receipt.ContentDigestAfter["sha256:".Length..]',
@@ -31,8 +31,8 @@ class CreationContactsSourceContractTests(unittest.TestCase):
             self.assertIn(marker, source)
 
         region = source[
-            source.index("LoadCreationContacts()") : source.index(
-                "LoadCreationPrerequisite()"
+            source.index("public CharacterCreationContactsInteractionLoadResult LoadCreationContacts()") : source.index(
+                "public CharacterCreationLifestylesInteractionLoadResult LoadCreationLifestyles()"
             )
         ]
         for forbidden in (
@@ -43,6 +43,38 @@ class CreationContactsSourceContractTests(unittest.TestCase):
             "ApplyCollectionMutationAsync",
         ):
             self.assertNotIn(forbidden, region)
+
+    def test_confirmation_and_recovery_retain_original_owner_across_the_queue(self) -> None:
+        source = (NATIVE / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+        start = source.index("public Task<CreationContactPhoneConfirmResult> ConfirmCreationContactAsync(")
+        core_start = source.index("private async Task<CreationContactPhoneConfirmResult> ConfirmCreationContactCoreAsync(")
+        owner_start = source.index("private bool CreationContactsOwnerIsCurrent(")
+        entry = source[start:core_start]
+        core = source[core_start:owner_start]
+        owner = source[owner_start:source.index("public CharacterCreationLifestylesInteractionLoadResult LoadCreationLifestyles()")]
+
+        self.assertLess(entry.index("CharacterOverviewState originalOverview = State;"), entry.index("WithWorkspaceActivationGateAsync("))
+        self.assertIn("ConfirmCreationContactCoreAsync(prepared, originalOverview, cancellationToken)", entry)
+        confirm_call = "_creationContactsPresenter.Confirm(originalOverview, confirmation)"
+        self.assertEqual(1, core.count(confirm_call))
+        self.assertLess(core.index("!CreationContactsOwnerIsCurrent(originalOverview)"), core.index(confirm_call))
+        self.assertLess(core.index("originalOverview.DisplayOwnerContext != prepared.DisplayOwnerContext"), core.index(confirm_call))
+        self.assertIn("_creationContactsPresenter.LookupReceipt(originalOverview, prepared.IdempotencyKey)", core)
+        self.assertNotIn("_creationContactsPresenter.Confirm(State,", core)
+        self.assertNotIn("_creationContactsPresenter.LookupReceipt(State,", core)
+        self.assertIn("if (originalOverview.DisplayOwnerContext is { } owner)", core)
+        self.assertIn("_presenter is not IOwnerBoundWorkspaceRefreshPresenter boundRefresh", core)
+        self.assertIn("await boundRefresh.LoadAsync(owner, receipt!.WorkspaceId, cancellationToken)", core)
+        self.assertIn("else\n            {\n                await _presenter.LoadAsync(receipt!.WorkspaceId, cancellationToken);", core)
+        self.assertEqual(4, core.count("!CreationContactsOwnerIsCurrent(originalOverview)"))
+        self.assertIn("expectedOwner: originalOverview.DisplayOwnerContext", core)
+        self.assertIn("CreationContactPhoneConfirmResult CommittedContactsRequireReload()", core)
+        self.assertIn("=> new(CharacterCreationContactOutcomes.Conflict, prepared, receipt, null,", core)
+        for check in ("State.WorkspaceId == original.WorkspaceId",
+                      "State.DisplayOwnerContext == original.DisplayOwnerContext",
+                      "bound.CaptureOwnerContext() == owner",
+                      "original.DisplayOwnerContext is null && _client is not IOwnerBoundWorkspaceMutationClient"):
+            self.assertIn(check, owner)
 
     def test_phone_draft_is_contact_and_snapshot_bound_with_complete_identity(self) -> None:
         source = (NATIVE / "CreationContactsPhoneDraft.cs").read_text(encoding="utf-8")

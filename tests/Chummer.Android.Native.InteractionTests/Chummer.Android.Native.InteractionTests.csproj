@@ -8,8 +8,24 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
+    <Compile Include="AndroidAccountOwnerRuntimeTests.cs" />
+    <Compile Include="AndroidInitialPhoneRouteRuntimeTests.cs" />
+    <Compile Include="AndroidWorkspaceContinuationHttpTests.cs" />
+    <Compile Include="AndroidWorkspaceContinuationRoamingTests.cs" />
+    <Compile Include="AndroidWorkspaceContinuationNativeTests.cs" />
+    <Compile Include="TabletInspectorBindingTests.cs" />
+    <Compile Include="LinkedCharacterBindingTests.cs" />
+    <Compile Include="LinkedCharacterDurabilityTests.cs" />
+    <Compile Include="LinkedCharacterIntentJournalTests.cs" />
+    <Compile Include="LinkedCharacterNativeRuntimeTests.cs" />
     <Compile Include="AfterRunPageInteractionTests.cs" />
     <Compile Include="AfterRunNativeRuntimeTests.cs" />
+    <Compile Include="CreationContactsOwnerRuntimeTests.cs" />
+    <Compile Include="CreationBootstrapOwnerRuntimeTests.cs" />
+    <Compile Include="PersistenceOwnerRuntimeTests.cs" />
+    <Compile Include="ReputationGestureOwnerRuntimeTests.cs" />
+    <Compile Include="OutputOwnerRuntimeTests.cs" />
+    <Compile Include="AccountErasureOwnerRuntimeTests.cs" />
     <Compile Include="ReputationNativeRuntimeTests.cs" />
     <Compile Include="CreationMagicNativeRuntimeTests.cs" />
     <Compile Include="SkillsReReviewNativeRuntimeTests.cs" />

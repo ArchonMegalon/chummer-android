@@ -42,6 +42,56 @@ def sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+class Api36TwoGreenCurrentDependencyPinsTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.sources = {
+            name: {"commit": commit}
+            for name, commit in gate.P0.EXPECTED_DEPENDENCY_COMMITS.items()
+        }
+        self.manifest = json.loads(
+            (REPO / "eng/internal-phone-beta-package-authority.json").read_bytes()
+        )
+
+    def test_current_pins_accept_distinct_frozen_content_runtime_and_package_recipe(self) -> None:
+        content = self.sources["core-content"]["commit"]
+        runtime = self.manifest["sourceGraph"]["coreRuntimeSourceCommit"]
+        recipe = self.manifest["sourceGraph"]["corePackageRecipeCommit"]
+        self.assertEqual("1d8cf694d0412b3bd9f4a241fb95244fad341160", content)
+        self.assertEqual("f7500ef8c2f597bac67bc3f53620d50b7a17d00a", runtime)
+        self.assertEqual(runtime, self.sources["core-runtime"]["commit"])
+        self.assertEqual(3, len({content, runtime, recipe}))
+        self.assertEqual(
+            self.manifest["sourceGraph"]["hubProducerCommit"],
+            consumer._validate_current_dependency_pins(self.sources),
+        )
+
+    def test_current_pins_reject_content_runtime_and_recipe_role_substitution(self) -> None:
+        content = self.sources["core-content"]["commit"]
+        runtime = self.manifest["sourceGraph"]["coreRuntimeSourceCommit"]
+        recipe = self.manifest["sourceGraph"]["corePackageRecipeCommit"]
+        substitutions = (
+            ("core-content", runtime),
+            ("core-content", recipe),
+            ("core-runtime", content),
+            ("core-runtime", recipe),
+        )
+        for role, substituted_commit in substitutions:
+            with self.subTest(role=role, substituted_commit=substituted_commit):
+                changed = copy.deepcopy(self.sources)
+                changed[role]["commit"] = substituted_commit
+                with self.assertRaisesRegex(
+                    ValueError,
+                    f"current release dependency pin differs from two-green graph: {role}",
+                ):
+                    consumer._validate_current_dependency_pins(changed)
+        # Swapping both roles must not bypass either independent pin check.
+        changed = copy.deepcopy(self.sources)
+        changed["core-content"]["commit"] = runtime
+        changed["core-runtime"]["commit"] = content
+        with self.assertRaisesRegex(ValueError, "two-green graph: core-content"):
+            consumer._validate_current_dependency_pins(changed)
+
+
 class FakeAuthenticatedGitHubClient:
     def __init__(self, android_root: Path, responses: dict[str, bytes]) -> None:
         self.android_root = android_root
@@ -155,6 +205,7 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
             gate.StableFile(self.environment_policy, "test proof environment policy")
         )
         self.output = self.root / gate.OUTPUT_NAME
+        self.apk_bytes = b"synthetic exact x64 APK bytes\n"
         self.inputs: dict[str, object] = {
             "android_root": self.android,
             "policy": self.policy,
@@ -215,7 +266,12 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
     def write_json(path: Path, value: object) -> None:
         path.write_bytes(gate.canonical_json_bytes(value))
 
-    def aggregate(self, run_id: int, attempt: int = 1) -> dict[str, object]:
+    def aggregate(
+        self,
+        run_id: int,
+        attempt: int = 1,
+        artifact_digest: str | None = None,
+    ) -> dict[str, object]:
         wizard_gate = gate.contract_binding()
         journey_compatibility = "9" * 64
         journeys = {
@@ -238,10 +294,10 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
                 "schema": "chummer.android.api36-apk-authority/v1",
                 "runId": run_id,
                 "artifactId": str(run_id + 10),
-                "artifactDigest": "sha256:" + "e" * 64,
+                "artifactDigest": artifact_digest or ("e" * 64),
                 "artifactName": f"chummer-android-api36-x64-debug-{run_id}-{attempt}",
                 "artifactAttempt": attempt,
-                "apkSha256": "f" * 64,
+                "apkSha256": sha256(self.apk_bytes),
             },
             "environmentAuthority": {
                 "policyAuthority": {
@@ -319,7 +375,15 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
                 "sizeBytes": self.source_workflow.stat().st_size,
             },
             "apks": {
-                "android-x64": {"sha256": "f" * 64},
+                "android-x64": {
+                    "fileName": gate.P0.X64_APK_NAME,
+                    "sha256": sha256(self.apk_bytes),
+                    "sizeBytes": len(self.apk_bytes),
+                    "artifactAuthority": json.loads(aggregate_bytes)[
+                        "artifactAuthority"
+                    ],
+                    "deviceJourneyAggregate": True,
+                },
                 "android-arm64": {"sha256": "e" * 64},
             },
             "requiredJourneyCount": len(rows),
@@ -363,6 +427,34 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
         with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED) as bundle:
             bundle.writestr(member, data)
 
+    def archive_apk(
+        self,
+        path: Path,
+        apk_bytes: bytes,
+        *,
+        checksum_sha256: str | None = None,
+    ) -> None:
+        apk_sha256 = sha256(apk_bytes)
+        content_receipt = {
+            "schema": "chummer.android.content-bundle/v1",
+            "status": "pass",
+            "apkVerified": True,
+            "apkSha256": apk_sha256,
+        }
+        with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED) as bundle:
+            bundle.writestr(gate.P0.X64_APK_NAME, apk_bytes)
+            bundle.writestr(
+                gate.APK_CHECKSUM_NAME,
+                (
+                    f"{checksum_sha256 or apk_sha256}  "
+                    f"{gate.P0.X64_APK_NAME}\n"
+                ),
+            )
+            bundle.writestr(
+                gate.APK_CONTENT_RECEIPT_NAME,
+                gate.canonical_json_bytes(content_receipt),
+            )
+
     def make_run(
         self,
         role: str,
@@ -375,10 +467,16 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
         created: str,
         started: str,
         completed: str,
+        aggregate_attempt: int = 1,
+        producer_attempt: int = 1,
+        producer_started: str | None = None,
+        producer_completed: str | None = None,
     ) -> None:
         root = self.root / role
-        root.mkdir()
-        attempt = 1
+        root.mkdir(exist_ok=True)
+        attempt = aggregate_attempt
+        producer_started = producer_started or started
+        producer_completed = producer_completed or completed
         api_root = f"https://api.github.com/repos/{gate.REPOSITORY}"
         html_root = f"https://github.com/{gate.REPOSITORY}"
         check_suite_id = 91743668109 if run_id == 33852701828 else run_id + 500
@@ -432,8 +530,10 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
                     "id": job_id(index, name),
                     "run_id": run_id,
                     "run_attempt": attempt,
+                    "head_branch": branch,
                     "head_sha": head_sha,
                     "workflow_name": gate.WORKFLOW_NAME,
+                    "run_url": f"{api_root}/actions/runs/{run_id}",
                     "name": name,
                     "status": "completed",
                     "conclusion": "success",
@@ -447,11 +547,29 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
                     "check_run_url": (
                         f"{api_root}/check-runs/{job_id(index, name)}"
                     ),
+                    "steps": (
+                        [
+                            {
+                                "name": gate.APK_UPLOAD_STEP_NAME,
+                                "status": "completed",
+                                "conclusion": "success",
+                                "number": 28,
+                                "started_at": completed,
+                                "completed_at": completed,
+                            }
+                        ]
+                        if name == gate.BUILD_JOB_NAME
+                        else []
+                    ),
                 }
                 for index, name in enumerate(gate.REQUIRED_JOB_NAMES, start=1)
             ],
         }
-        aggregate_bytes = gate.canonical_json_bytes(self.aggregate(run_id, attempt))
+        apk_archive = root / "apk.zip"
+        self.archive_apk(apk_archive, self.apk_bytes)
+        aggregate_bytes = gate.canonical_json_bytes(
+            self.aggregate(run_id, producer_attempt, sha256(apk_archive.read_bytes()))
+        )
         p0_bytes = gate.canonical_json_bytes(
             self.p0(
                 run_id=run_id,
@@ -459,14 +577,39 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
                 head_sha=head_sha,
                 event_sha=event_sha,
                 aggregate_bytes=aggregate_bytes,
-                attempt=attempt,
+                attempt=producer_attempt,
             )
         )
         aggregate_archive = root / "aggregate.zip"
         p0_archive = root / "p0.zip"
         self.archive(aggregate_archive, "receipt.json", aggregate_bytes)
         self.archive(p0_archive, gate.P0.OUTPUT_NAME, p0_bytes)
-        artifacts = []
+        artifacts = [
+            {
+                "id": run_id + 10,
+                "name": (
+                    f"chummer-android-api36-x64-debug-{run_id}-"
+                    f"{producer_attempt}"
+                ),
+                "size_in_bytes": apk_archive.stat().st_size,
+                "url": f"{api_root}/actions/artifacts/{run_id + 10}",
+                "archive_download_url": (
+                    f"{api_root}/actions/artifacts/{run_id + 10}/zip"
+                ),
+                "digest": "sha256:" + sha256(apk_archive.read_bytes()),
+                "expired": False,
+                "created_at": producer_completed,
+                "updated_at": producer_completed,
+                "expires_at": "2026-10-03T11:30:00Z",
+                "workflow_run": {
+                    "id": run_id,
+                    "repository_id": 1331626697,
+                    "head_repository_id": 1331626697,
+                    "head_branch": branch,
+                    "head_sha": head_sha,
+                },
+            }
+        ]
         for artifact_id, name, archive in (
             (
                 run_id + 1,
@@ -495,12 +638,23 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
         paths = {
             "run": root / "run.json",
             "jobs": root / "jobs.json",
+            "producer_jobs": root / "producer-jobs.json",
             "artifacts": root / "artifacts.json",
             "aggregate_archive": aggregate_archive,
             "p0_archive": p0_archive,
+            "apk_archive": apk_archive,
         }
         self.write_json(paths["run"], run)
         self.write_json(paths["jobs"], jobs)
+        producer_jobs = copy.deepcopy(jobs)
+        for row in producer_jobs["jobs"]:
+            row["run_attempt"] = producer_attempt
+            row["started_at"] = producer_started
+            row["completed_at"] = producer_completed
+            if row["name"] == gate.BUILD_JOB_NAME:
+                row["steps"][0]["started_at"] = producer_completed
+                row["steps"][0]["completed_at"] = producer_completed
+        self.write_json(paths["producer_jobs"], producer_jobs)
         self.write_json(
             paths["artifacts"], {"total_count": len(artifacts), "artifacts": artifacts}
         )
@@ -638,6 +792,18 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
             responses[
                 f"repos/{repository}/actions/runs/{run_id}/attempts/{attempt}/jobs?per_page=100"
             ] = self.inputs[f"{role}_jobs"].read_bytes()
+            producer_jobs = json.loads(
+                self.inputs[f"{role}_producer_jobs"].read_text(encoding="utf-8")
+            )
+            producer_attempt = next(
+                row["run_attempt"]
+                for row in producer_jobs["jobs"]
+                if row["name"] == gate.BUILD_JOB_NAME
+            )
+            responses[
+                f"repos/{repository}/actions/runs/{run_id}/attempts/"
+                f"{producer_attempt}/jobs?per_page=100"
+            ] = self.inputs[f"{role}_producer_jobs"].read_bytes()
             responses[
                 f"repos/{repository}/actions/runs/{run_id}/artifacts?per_page=100"
             ] = self.inputs[f"{role}_artifacts"].read_bytes()
@@ -647,6 +813,7 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
             for kind, prefix in (
                 ("aggregate", "chummer-android-api36-phone-sr5-wizard-aggregate"),
                 ("p0", "chummer-android-p0-pr-authority"),
+                ("apk", "chummer-android-api36-x64-debug"),
             ):
                 row = next(item for item in artifacts if item["name"].startswith(prefix))
                 responses[
@@ -896,7 +1063,7 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
                 else self.main_merge_commit
             ),
             aggregate_bytes=aggregate_bytes,
-            attempt=run["run_attempt"],
+            attempt=aggregate["artifactAuthority"]["artifactAttempt"],
         )
         if mutate_p0 is not None:
             mutate_p0(p0)
@@ -1011,6 +1178,182 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
         )
         self.assertEqual(result, json.loads(self.output.read_text(encoding="utf-8")))
         self.assertEqual(0, gate.main(["verify", *self.cli_inputs(), "--authority", str(self.output)]))
+
+    def test_successful_aggregate_rerun_authenticates_reused_apk_producer_attempt(
+        self,
+    ) -> None:
+        self.make_run(
+            "main",
+            run_id=self.main_run_id,
+            event="push",
+            branch="main",
+            head_sha=self.main_merge_commit,
+            event_sha=self.main_merge_commit,
+            created="2026-09-03T11:00:00Z",
+            started="2026-09-03T11:41:00Z",
+            completed="2026-09-03T12:00:00Z",
+            aggregate_attempt=2,
+            producer_attempt=1,
+            producer_started="2026-09-03T11:01:00Z",
+            producer_completed="2026-09-03T11:30:00Z",
+        )
+        self.inputs["policy"] = gate.POLICY_PATH
+        self.inputs["environment_policy"] = gate.ENVIRONMENT_POLICY_PATH
+        authority = self.create()
+        self.assertEqual(2, authority["mainRun"]["run"]["attempt"])
+        producer = authority["mainRun"]["apkProducer"]
+        self.assertEqual(1, producer["runAttempt"])
+        self.assertEqual(
+            f"chummer-android-api36-x64-debug-{self.main_run_id}-1",
+            producer["apkArtifact"]["name"],
+        )
+        self.assertEqual(sha256(self.apk_bytes), producer["apk"]["sha256"])
+
+        receipt_raw = gate.pretty_json_bytes(authority)
+        github = self.authenticated_github_client()
+        validator_sha256, replay_sha256 = signer._authenticated_github_replay(
+            receipt_raw,
+            authority,
+            self.github_token,
+            github_client=github,
+        )
+        self.assertRegex(validator_sha256, r"^[0-9a-f]{64}$")
+        self.assertRegex(replay_sha256, r"^[0-9a-f]{64}$")
+        producer_endpoint = (
+            f"repos/{gate.REPOSITORY}/actions/runs/{self.main_run_id}/"
+            "attempts/1/jobs?per_page=100"
+        )
+        self.assertIn((producer_endpoint, False), github.calls)
+
+    def test_apk_producer_attempt_artifact_and_bytes_fail_closed(self) -> None:
+        self.make_run(
+            "main",
+            run_id=self.main_run_id,
+            event="push",
+            branch="main",
+            head_sha=self.main_merge_commit,
+            event_sha=self.main_merge_commit,
+            created="2026-09-03T11:00:00Z",
+            started="2026-09-03T11:41:00Z",
+            completed="2026-09-03T12:00:00Z",
+            aggregate_attempt=2,
+            producer_attempt=1,
+            producer_started="2026-09-03T11:01:00Z",
+            producer_completed="2026-09-03T11:30:00Z",
+        )
+
+        def reject_json(key: str, mutate, expected: str) -> None:
+            path = self.inputs[key]
+            original = path.read_bytes()
+            value = json.loads(original)
+            mutate(value)
+            self.write_json(path, value)
+            try:
+                with self.assertRaisesRegex(ValueError, expected):
+                    self.create()
+            finally:
+                path.write_bytes(original)
+
+        reject_json(
+            "main_producer_jobs",
+            lambda value: next(
+                row
+                for row in value["jobs"]
+                if row["name"] == gate.BUILD_JOB_NAME
+            ).update({"run_attempt": 2}),
+            "producer build job is not exact",
+        )
+        reject_json(
+            "main_producer_jobs",
+            lambda value: next(
+                row
+                for row in value["jobs"]
+                if row["name"] == gate.BUILD_JOB_NAME
+            )["steps"][0].update({"conclusion": "failure"}),
+            "upload step is not successful",
+        )
+        reject_json(
+            "main_artifacts",
+            lambda value: next(
+                row
+                for row in value["artifacts"]
+                if row["name"].startswith("chummer-android-api36-x64-debug-")
+            ).update({"id": self.main_run_id + 99}),
+            "artifact identity/digest/head authority differs",
+        )
+        reject_json(
+            "main_artifacts",
+            lambda value: next(
+                row
+                for row in value["artifacts"]
+                if row["name"].startswith("chummer-android-api36-x64-debug-")
+            )["workflow_run"].update({"head_sha": "0" * 40}),
+            "artifact identity/digest/head authority differs",
+        )
+
+        with zipfile.ZipFile(self.inputs["main_aggregate_archive"]) as archive:
+            aggregate = json.loads(archive.read("receipt.json"))
+        original_aggregate = self.inputs["main_aggregate_archive"].read_bytes()
+        original_p0 = self.inputs["main_p0_archive"].read_bytes()
+        original_artifacts = self.inputs["main_artifacts"].read_bytes()
+        self.rewrite_proof(
+            "main",
+            aggregate,
+            mutate_p0=lambda value: value["githubRun"].update({"attempt": 2}),
+        )
+        try:
+            with self.assertRaisesRegex(ValueError, "P0 and aggregate APK authority"):
+                self.create()
+        finally:
+            self.inputs["main_aggregate_archive"].write_bytes(original_aggregate)
+            self.inputs["main_p0_archive"].write_bytes(original_p0)
+            self.inputs["main_artifacts"].write_bytes(original_artifacts)
+
+        apk_archive = self.inputs["main_apk_archive"]
+        original_apk_archive = apk_archive.read_bytes()
+        wrong_apk = b"wrong APK bytes\n"
+        self.archive_apk(apk_archive, wrong_apk)
+        with zipfile.ZipFile(self.inputs["main_aggregate_archive"]) as archive:
+            aggregate = json.loads(archive.read("receipt.json"))
+        aggregate["artifactAuthority"]["artifactDigest"] = sha256(
+            apk_archive.read_bytes()
+        )
+        self.rewrite_proof("main", aggregate)
+        artifacts = json.loads(self.inputs["main_artifacts"].read_bytes())
+        apk_row = next(
+            row
+            for row in artifacts["artifacts"]
+            if row["name"].startswith("chummer-android-api36-x64-debug-")
+        )
+        apk_row["size_in_bytes"] = apk_archive.stat().st_size
+        apk_row["digest"] = "sha256:" + sha256(apk_archive.read_bytes())
+        self.write_json(self.inputs["main_artifacts"], artifacts)
+        try:
+            with self.assertRaisesRegex(ValueError, "APK bytes differ"):
+                self.create()
+        finally:
+            apk_archive.write_bytes(original_apk_archive)
+            self.inputs["main_aggregate_archive"].write_bytes(original_aggregate)
+            self.inputs["main_p0_archive"].write_bytes(original_p0)
+            self.inputs["main_artifacts"].write_bytes(original_artifacts)
+
+        artifact_path = self.inputs["main_artifacts"]
+        artifacts = json.loads(artifact_path.read_bytes())
+        apk_row = next(
+            row
+            for row in artifacts["artifacts"]
+            if row["name"].startswith("chummer-android-api36-x64-debug-")
+        )
+        duplicate = copy.deepcopy(apk_row)
+        duplicate["id"] += 1
+        artifacts["artifacts"].append(duplicate)
+        artifacts["total_count"] += 1
+        self.write_json(artifact_path, artifacts)
+        try:
+            with self.assertRaisesRegex(ValueError, "artifact cardinality differs"):
+                self.create()
+        finally:
+            artifact_path.write_bytes(original_artifacts)
 
     def test_live_review_33852701828_empty_summary_has_independent_authority(self) -> None:
         api_root = f"https://api.github.com/repos/{gate.REPOSITORY}"
@@ -2213,6 +2556,9 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
         self.assertTrue(policy["requiresExactMergeCommitGraphs"])
         self.assertTrue(policy["requiresExactAggregateCheckRun"])
         self.assertTrue(policy["requiresCanonicalActionsDetailsUrls"])
+        self.assertTrue(policy["requiresAuthenticatedApkProducerAttempt"])
+        self.assertTrue(policy["requiresExactApkArtifactIdentity"])
+        self.assertTrue(policy["requiresSuccessfulApkUploadStep"])
         self.assertTrue(policy["requiresExactMainCommit"])
         self.assertTrue(policy["requiresExactReleaseIdentity"])
         self.assertTrue(policy["requiresExactDependencyGraph"])
@@ -2400,6 +2746,9 @@ class Api36TwoGreenWorkflowSourceTests(unittest.TestCase):
     def test_workflow_queries_explicit_runs_and_never_uploads_to_play(self) -> None:
         self.assertIn("actions/runs/$run_id", self.text)
         self.assertIn("attempts/$run_attempt/jobs?per_page=100", self.text)
+        self.assertIn(
+            "attempts/$producer_attempt/jobs?per_page=100", self.text
+        )
         self.assertIn("actions/artifacts/$artifact_id/zip", self.text)
         self.assertIn("pulls/$REVIEW_PULL_REQUEST_NUMBER", self.text)
         self.assertIn("commits/$review_head_sha/pulls", self.text)
@@ -2416,6 +2765,9 @@ class Api36TwoGreenWorkflowSourceTests(unittest.TestCase):
         self.assertIn("googlePlayUploadAuthorized == false", self.text)
         self.assertIn("--environment-policy", self.text)
         self.assertIn("--review-head-pull-requests", self.text)
+        self.assertIn("--review-producer-jobs", self.text)
+        self.assertIn("--review-apk-archive", self.text)
+        self.assertIn("producer-attempt", self.text)
         self.assertIn("--review-aggregate-check-run", self.text)
         self.assertIn("--review-base-commit", self.text)
         self.assertIn("--review-head-commit", self.text)

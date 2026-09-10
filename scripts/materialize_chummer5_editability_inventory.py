@@ -6514,11 +6514,17 @@ def _validated_linked_runner_phone_e2e_receipt() -> dict[str, Any] | None:
         "sharedDriverSha256": shared_driver,
         "collectionEditorPagesSha256": native_root / "Native" / "CollectionEditorPages.cs",
         "runnerSessionCoordinatorSha256": native_root / "Native" / "RunnerSessionCoordinator.cs",
+        "linkedCharacterCoordinatorSha256": native_root / "Native" / "RunnerSessionCoordinator.LinkedCharacters.cs",
         "linkedCharacterFileServiceSha256": native_root / "Platform" / "IAndroidLinkedCharacterFileService.cs",
+        "linkedFileDurabilitySha256": native_root / "Platform" / "AndroidPrivateFileDurability.cs",
+        "linkedIntentJournalSha256": native_root / "Native" / "AndroidLinkedCharacterIntentJournal.cs",
+        "linkedWorkspaceReaderSha256": native_root / "Native" / "AndroidLinkedWorkspaceReader.cs",
+        "linkedRecoveryPageSha256": native_root / "Native" / "LinkedCharacterRecoveryPage.cs",
         "linkedDocumentCodecSha256": WORKSPACE_ROOT / "chummer-core-engine" / "Chummer.Infrastructure" / "Xml" / "Chummer5LinkedDocumentCodec.cs",
         "workspaceCollectionEditorProjectorSha256": overview / "WorkspaceCollectionEditorProjector.cs",
         "workspaceCollectionEditorStateSha256": overview / "WorkspaceCollectionEditorState.cs",
         "workspaceCollectionMutationRequestSha256": overview / "WorkspaceCollectionMutationRequest.cs",
+        "workspaceLinkedCharacterMutationPreviewSha256": overview / "WorkspaceLinkedCharacterMutationPreview.cs",
         "workspaceXmlMutationCatalogSha256": overview / "WorkspaceXmlMutationCatalog.cs",
         "workspaceMutationsSha256": overview / "CharacterOverviewPresenter.WorkspaceMutations.cs",
         "inputFixtureSha256": fixture_root / "creation-contact-pet-e2e.chum5",
@@ -7503,6 +7509,78 @@ def _csharp_method_contains(
     return True
 
 
+def _presenter_save_authority_guarded(path: Path) -> bool:
+    """Follow both public save entrypoints into the same owner-bound implementation.
+
+    SaveAsync intentionally delegates rather than declaring async itself. Require
+    the actual callee bodies: unrelated metadata/recovery methods in this partial
+    must not satisfy a missing save implementation's source markers.
+    """
+    return (
+        _csharp_method_contains(
+            path, "SaveAsync", "public Task SaveAsync(",
+            "CancellationToken ct)",
+            "=> SaveCoreAsync(State, ct);",
+        )
+        and _csharp_method_contains(
+            path, "SaveAsync", "public Task<CommandResult<WorkspaceSaveReceipt>> SaveAsync(",
+            "OwnerContextStamp originalOwner,",
+            "CharacterWorkspaceId workspaceId, long expectedContentRevision, CancellationToken ct)",
+            "=> RunOriginalPersistenceGestureAsync<WorkspaceSaveReceipt>(originalOwner, workspaceId,",
+            "expectedContentRevision, (state, observe) => SaveCoreAsync(state, ct, observe));",
+        )
+        and _csharp_method_contains(
+            path, "SaveCoreAsync", "private async Task SaveCoreAsync(",
+            "CharacterOverviewState originalState, CancellationToken ct,",
+            "OwnerContextStamp? originalOwner = originalState.DisplayOwnerContext;",
+            "CharacterWorkspaceId? currentWorkspace = originalState.WorkspaceId;",
+            "if (!IsOriginalPersistenceOwnerCurrent(originalOwner))",
+            "AbandonOriginalPersistenceView(displayGeneration, originalState, committed: false);",
+            "long expectedContentRevision = originalState.ContentRevision;",
+            "RecoveryPayloads(originalOwner).TryBeginCaptureIntent(",
+            "WorkspaceOperationExecution<WorkspaceSaveResult> execution = await _workspaceOperationCoordinator",
+            "WorkspaceSaveResult persisted = originalOwner is { } original",
+            "? await _workspacePersistenceService.SaveAsync(",
+            "_client, original, currentWorkspace.Value, expectedContentRevision, token)",
+            "observeCanonical?.Invoke(persisted.CanonicalResult);",
+            "if (!IsOriginalPersistenceOwnerCurrent(originalOwner))",
+            "TryCaptureRecoveryPayloadAsync(",
+            "postCommitCaptureIntent, originalOwner: originalOwner)",
+            '"stale postcommit save recovery"',
+            "WorkspaceSaveResult result = execution.Value;",
+            "if (!result.Success)",
+            "long contentRevision = result.Receipt?.ContentRevision > 0",
+            "long savedRevision = result.Receipt?.SavedRevision > 0",
+            "TryCaptureRecoveryPayloadAsync(",
+            "postCommitCaptureIntent, originalOwner: originalOwner)",
+            "if (!IsOriginalPersistenceOwnerCurrent(originalOwner) || !IsDisplayGenerationCurrent(displayGeneration))",
+            '"postcommit save recovery"',
+            "PublishPostCommitState(State with",
+        )
+        and _csharp_method_contains(
+            path, "RunOriginalPersistenceGestureAsync<T>",
+            "private async Task<CommandResult<T>> RunOriginalPersistenceGestureAsync<T>(",
+            "CharacterOverviewState originalState = State;",
+            "if (!originalOwner.IsValid || originalState.DisplayOwnerContext != originalOwner",
+            "|| originalState.WorkspaceId != workspaceId || expectedContentRevision <= 0",
+            "|| originalState.ContentRevision != expectedContentRevision",
+            "|| !IsOriginalPersistenceOwnerCurrent(originalOwner))",
+            "WorkspaceOperationOutcome.Conflict",
+            "await operation(originalState, result => observed = result)",
+            "return observed ?? new(false, null,",
+        )
+        and _csharp_method_contains(
+            path, "IsOriginalPersistenceOwnerCurrent", "private bool IsOriginalPersistenceOwnerCurrent(",
+            "if (_client is not IOwnerBoundWorkspaceMutationClient bound)",
+            "return originalOwner is null;",
+            "return originalOwner is { IsValid: true } original",
+            "&& State.DisplayOwnerContext == original",
+            "&& bound.CaptureOwnerContext() == original;",
+            "return false;",
+        )
+    )
+
+
 def _career_weapon_ammo_equality_guarded(path: Path) -> bool:
     if not path.is_file():
         return False
@@ -7702,13 +7780,7 @@ def _known_phone_mapping(
                 '_notice = "Saved."',
             )
             and _contains(presenter_interface, "Task SaveAsync(CancellationToken ct)")
-            and _contains(
-                presenter_persistence,
-                "public async Task SaveAsync",
-                "expectedContentRevision",
-                "SavedRevision",
-                "TryCaptureRecoveryPayloadAsync",
-            )
+            and _presenter_save_authority_guarded(presenter_persistence)
         )
         e2e_scripted = _contains(
             e2e_driver,
@@ -8531,6 +8603,7 @@ def _known_phone_mapping(
     if class_name == "SpiritControl" and control in SPIRIT_LINKED_RUNNER_CONTROLS:
         phone_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs"
         coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        linked_coordinator = coordinator.with_name("RunnerSessionCoordinator.LinkedCharacters.cs")
         staging = REPO_ROOT / "src" / "Chummer.Android" / "Platform" / "IAndroidLinkedCharacterFileService.cs"
         state = presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceCollectionEditorState.cs"
         request = presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceCollectionMutationRequest.cs"
@@ -8541,7 +8614,8 @@ def _known_phone_mapping(
         core_parser = WORKSPACE_ROOT / "chummer-core-engine" / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs"
         action = SPIRIT_LINKED_RUNNER_CONTROLS[control]
         shared = (
-            _contains(staging, "ICharacterLinkedDocumentCodec", 'DirectoryName = "linked-characters"', "File.Move")
+            _contains(staging, "ICharacterLinkedDocumentCodec", 'DirectoryName = "linked-characters"', "File.Move",
+                      "WorkspaceCollectionKind.Spirit")
             and _contains(state, "WorkspaceLinkedCharacterState", "LinkedCharacter")
             and _contains(
                 request,
@@ -8570,18 +8644,19 @@ def _known_phone_mapping(
                 coordinator,
                 "AttachLinkedCharacterAsync",
                 "RemoveLinkedCharacterAsync",
-                "_linkedCharacters.DeleteOwnedAsync",
             )
+            and _contains(linked_coordinator, "TryAttachBoundLinkedCharacterAsync",
+                          "TryRemoveBoundLinkedCharacterAsync", "_linkedCharacters.DeleteOwnedAsync")
         )
         attach_available = _contains(
             phone_page,
             "collection-linked-attach-",
-            "Coordinator.AttachLinkedCharacterAsync",
+            "Coordinator.TryAttachBoundLinkedCharacterAsync",
         )
         remove_available = _contains(
             phone_page,
             "collection-linked-remove-",
-            "Coordinator.RemoveLinkedCharacterAsync",
+            "Coordinator.TryRemoveBoundLinkedCharacterAsync",
         )
         phone_implemented = shared and (
             attach_available
@@ -8608,6 +8683,7 @@ def _known_phone_mapping(
             "sourceRefs": [
                 "src/Chummer.Android/Native/CollectionEditorPages.cs",
                 "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.LinkedCharacters.cs",
                 "src/Chummer.Android/Platform/IAndroidLinkedCharacterFileService.cs",
                 "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
                 "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
@@ -8640,6 +8716,7 @@ def _known_phone_mapping(
         phone_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs"
         tablet_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "TabletBuildPage.cs"
         coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        linked_coordinator = coordinator.with_name("RunnerSessionCoordinator.LinkedCharacters.cs")
         staging = REPO_ROOT / "src" / "Chummer.Android" / "Platform" / "IAndroidLinkedCharacterFileService.cs"
         e2e_driver = REPO_ROOT / "tests" / "run_api36_linked_runner_e2e.py"
         tablet_e2e_driver = REPO_ROOT / "tests" / "run_api36_editing_e2e.py"
@@ -8680,18 +8757,20 @@ def _known_phone_mapping(
                 coordinator,
                 "AttachLinkedCharacterAsync",
                 "RemoveLinkedCharacterAsync",
-                "_linkedCharacters.DeleteOwnedAsync",
             )
+            and _contains(linked_coordinator, "TryAttachBoundLinkedCharacterAsync",
+                          "TryRemoveBoundLinkedCharacterAsync", "_linkedCharacters.DeleteOwnedAsync",
+                          "LinkedEditorIsCurrent")
         )
         phone_implemented = shared and _contains(
             phone_page,
             f"collection-linked-{phone_token}-",
-            f"Coordinator.{operation}LinkedCharacterAsync",
+            f"Coordinator.Try{operation}BoundLinkedCharacterAsync",
         )
         tablet_implemented = shared and _contains(
             tablet_page,
             f'"tablet-linked-{phone_token}"',
-            f"Coordinator.{operation}LinkedCharacterAsync",
+            f"Coordinator.Try{operation}BoundLinkedCharacterAsync",
         )
         e2e_marker = (
             f'"{kind.lower()}LinkedRunnerAttachPersisted": "pass"'
@@ -8729,11 +8808,17 @@ def _known_phone_mapping(
             "src/Chummer.Android/Native/CollectionEditorPages.cs",
             "src/Chummer.Android/Native/TabletBuildPage.cs",
             "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+            "src/Chummer.Android/Native/RunnerSessionCoordinator.LinkedCharacters.cs",
+            "src/Chummer.Android/Native/AndroidLinkedCharacterIntentJournal.cs",
+            "src/Chummer.Android/Native/AndroidLinkedWorkspaceReader.cs",
+            "src/Chummer.Android/Native/LinkedCharacterRecoveryPage.cs",
             "src/Chummer.Android/Platform/IAndroidLinkedCharacterFileService.cs",
+            "src/Chummer.Android/Platform/AndroidPrivateFileDurability.cs",
             "chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
             "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
             "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
             "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+            "chummer-presentation/Chummer.Presentation/Overview/WorkspaceLinkedCharacterMutationPreview.cs",
             "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         ]
         presenter_mutation = (
@@ -11075,12 +11160,7 @@ def _known_phone_mapping(
                 "ApplyWorkspaceXmlMutationAsync",
                 "ExpectedContentRevision",
             )
-            and _contains(
-                presenter_persistence,
-                "public async Task SaveAsync",
-                "TryCaptureRecoveryPayloadAsync",
-                "postcommit save recovery",
-            )
+            and _presenter_save_authority_guarded(presenter_persistence)
             and _contains(
                 workspace_store,
                 "WriteRecordAtomically",
@@ -23205,7 +23285,12 @@ def _known_phone_mapping(
         tablet_implemented = shared and _contains(
             tablet_page,
             "tablet-condition-filled-",
-            "ApplyConditionMonitorEditAsync",
+            "TryApplyBoundConditionMonitorEditAsync",
+            "IsCurrentConditionInspector",
+        ) and _contains(
+            coordinator,
+            "TryApplyBoundConditionMonitorEditAsync",
+            "ApplyConditionMonitorEditCoreAsync",
         )
         e2e_scripted = _contains(
             e2e_driver,
@@ -24038,8 +24123,10 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CreationPrerequisitePreviewPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CreationPrerequisitePhoneDraft.cs",
         *_sr5_table_wizard_authority_paths(presentation_root),
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.LinkedCharacters.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "TabletBuildPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Platform" / "IAndroidLinkedCharacterFileService.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Platform" / "AndroidPrivateFileDurability.cs",
         REPO_ROOT / "tests" / "run_api36_editing_e2e.py",
         REPO_ROOT / "tests" / "run_api36_career_active_skill_advance_e2e.py",
         REPO_ROOT / "tests" / "fixtures" / "career-active-skill-advance-e2e.chum5",

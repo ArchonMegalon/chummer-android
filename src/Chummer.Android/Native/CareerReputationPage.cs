@@ -78,7 +78,8 @@ public sealed class CareerReputationPage : NativePageBase
     protected override void Refresh()
     {
         bool exactRevision = Coordinator.State.WorkspaceId == _editor.WorkspaceId
-            && Coordinator.State.ContentRevision == _editor.ContentRevision;
+            && Coordinator.State.ContentRevision == _editor.ContentRevision
+            && Coordinator.State.DisplayOwnerContext == _editor.OriginalOwner;
         _streetCred.IsEnabled = exactRevision;
         _notoriety.IsEnabled = exactRevision;
         _publicAwareness.IsEnabled = exactRevision;
@@ -106,10 +107,10 @@ public sealed class CareerReputationPage : NativePageBase
             return;
         }
 
-        await Coordinator.ApplyBurnStreetCredAsync(new BurnStreetCredRequest(
+        bool saved = await Coordinator.ApplyBurnStreetCredAsync(new BurnStreetCredRequest(
             _editor.WorkspaceId,
-            _editor.ContentRevision));
-        if (Coordinator.State.Error is null)
+            _editor.ContentRevision) { OriginalOwner = _editor.OriginalOwner });
+        if (saved)
         {
             await Navigation.PopAsync();
         }
@@ -117,7 +118,7 @@ public sealed class CareerReputationPage : NativePageBase
 
     private async Task SaveAsync()
     {
-        await Coordinator.ApplyCareerReputationEditAsync(new CareerReputationEditRequest(
+        bool saved = await Coordinator.ApplyCareerReputationEditAsync(new CareerReputationEditRequest(
             _editor.WorkspaceId,
             _editor.ContentRevision,
             SelectedValue(_streetCred, _editor.StreetCred),
@@ -128,8 +129,8 @@ public sealed class CareerReputationPage : NativePageBase
                 : SelectedValue(_astralReputation, _editor.AstralReputation),
             _wildReputation is null
                 ? null
-                : SelectedValue(_wildReputation, _editor.WildReputation)));
-        if (Coordinator.State.Error is null)
+                : SelectedValue(_wildReputation, _editor.WildReputation)) { OriginalOwner = _editor.OriginalOwner });
+        if (saved)
         {
             await Navigation.PopAsync();
         }

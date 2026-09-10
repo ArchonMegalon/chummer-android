@@ -6,10 +6,12 @@ using Chummer.Android.Platform;
 using Chummer.Android.Proof;
 #endif
 using Chummer.Application.Characters;
+using Chummer.Application.Owners;
 using Chummer.Application.Tools;
 using Chummer.Contracts.Api;
 using Chummer.Contracts.Characters;
 using Chummer.Contracts.LifeModules;
+using Chummer.Contracts.Owners;
 using Chummer.Contracts.Presentation;
 using Chummer.Contracts.Workspaces;
 using Chummer.Presentation;
@@ -48,8 +50,12 @@ public sealed record NativeDurableSaveNotice(
     CharacterWorkspaceId WorkspaceId,
     long SavedRevision)
 {
+    [System.Text.Json.Serialization.JsonIgnore]
+    public OwnerContextStamp? OriginalOwner { get; init; }
+
     public bool Matches(CharacterOverviewState state)
         => state.Error is null
+           && state.DisplayOwnerContext == OriginalOwner
            && state.WorkspaceId is { } activeWorkspaceId
            && string.Equals(WorkspaceId.Value, activeWorkspaceId.Value, StringComparison.Ordinal)
            && SavedRevision > 0
@@ -140,7 +146,35 @@ internal sealed class NativeCreationBootstrapTiming
 
 public sealed record NativeAccountErasureResult(
     AndroidAccountErasureReceipt Receipt,
-    bool LocalRunnersRemoved);
+    bool LocalRunnersRemoved,
+    bool LocalRunnersRequested = true)
+{
+    internal OwnerContextStamp? OriginalOwner { get; init; }
+    internal AndroidAccountLinkSnapshot? PostAccount { get; init; }
+}
+
+// A local, one-use UI intent. It contains no grant or remotely usable credential
+// and cannot be restored from JSON or moved to another coordinator instance.
+public sealed class NativeAccountErasureRequest
+{
+    private readonly object _issuer;
+    private int _claimed;
+    internal NativeAccountErasureRequest(object issuer, OwnerContextStamp? owner,
+        AndroidAccountLinkSnapshot account, OpenWorkspaceState[] workspaces, AndroidLinkedGroup[] groups)
+    {
+        _issuer = issuer;
+        OriginalOwner = owner;
+        OriginalAccount = account;
+        Workspaces = workspaces;
+        Groups = groups;
+    }
+    internal OwnerContextStamp? OriginalOwner { get; }
+    internal AndroidAccountLinkSnapshot OriginalAccount { get; }
+    internal OpenWorkspaceState[] Workspaces { get; }
+    internal AndroidLinkedGroup[] Groups { get; }
+    internal bool TryClaim(object issuer)
+        => ReferenceEquals(_issuer, issuer) && Interlocked.CompareExchange(ref _claimed, 1, 0) == 0;
+}
 
 public enum NativeWorkspaceActivationKind
 {
@@ -153,10 +187,16 @@ public sealed record NativeWorkspaceActivationReceipt(
     NativeWorkspaceActivationKind Kind,
     CharacterWorkspaceId WorkspaceId)
 {
+    public OwnerContextStamp? OriginalOwner { get; init; }
+    public long? ExpectedContentRevision { get; init; }
+    public long? ExpectedSavedRevision { get; init; }
     public bool Matches(
         CharacterOverviewState state,
         NativeWorkspaceActivationKind expectedKind)
         => Kind == expectedKind
+           && (OriginalOwner is null || state.DisplayOwnerContext == OriginalOwner && state.Session.OwnerContext == OriginalOwner)
+           && (ExpectedContentRevision is null || state.ContentRevision == ExpectedContentRevision)
+           && (ExpectedSavedRevision is null || state.SavedRevision == ExpectedSavedRevision)
            && state.WorkspaceId is { } activeWorkspaceId
            && string.Equals(
                WorkspaceId.Value,
@@ -169,7 +209,11 @@ public sealed record CharacterNotesEditRequest(
     long ExpectedContentRevision,
     string CharacterNotes,
     string GameNotes,
-    string GroupNotes);
+    string GroupNotes)
+{
+    [System.Text.Json.Serialization.JsonIgnore]
+    public OwnerContextStamp? OriginalOwner { get; init; }
+}
 
 public sealed record CreationPrerequisitePhoneConfirmResult(
     string Outcome,
@@ -290,11 +334,14 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
     private readonly ICommandAvailabilityEvaluator _availability;
     private readonly IAndroidDocumentService _documents;
     private readonly IAndroidLinkedCharacterFileService _linkedCharacters;
+    private readonly AndroidLinkedCharacterIntentJournal? _linkedJournal;
+    private readonly IAndroidLinkedWorkspaceReader? _linkedWorkspaceReader;
     private readonly IAndroidSystemService _system;
     private readonly IAndroidAccountLinkService _account;
     private readonly CharacterRosterFavoritePresenter _rosterFavoritePresenter;
     private readonly ApplicationDeleteConfirmationPresenter _applicationSettingsPresenter;
     private readonly RookConversationStore _rookConversations = new();
+    internal TabletInspectorDraftStore TabletInspectorDrafts { get; } = new();
     private readonly SemaphoreSlim _initializeGate = new(1, 1);
     private readonly SemaphoreSlim _workspaceActivationGate = new(1, 1);
     private readonly SemaphoreSlim _outputGate = new(1, 1);
@@ -302,11 +349,14 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
     private readonly CancellationTokenSource _lifetime = new();
     private readonly object _workspaceAuthoritySync = new();
     private Task? _accountInitialization;
+    private volatile bool _workspaceOwnerInitializationPending;
+    private int _workspaceOwnerInitializationRequested;
+    private int _workspaceOwnerInitializationScheduled;
     private bool _initialized;
     private bool _disposed;
-    private long _handledDownloadVersion;
-    private long _handledExportVersion;
-    private long _handledPrintVersion;
+    private readonly System.Runtime.CompilerServices.ConditionalWeakTable<WorkspaceOutputBinding, object> _handledOutputs = new();
+    private int _outputRequested;
+    private (WorkspaceOutputBinding Binding, object Receipt, string Notice)? _outputNotice;
     private string? _notice;
     private NativeDurableSaveNotice? _durableSaveNotice;
     private string _persistedCharacterSettingsCatalogJson = string.Empty;
@@ -319,6 +369,7 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
     private long _workspaceAuthorityEpoch;
     private ShellSurfaceState _surface = ShellSurfaceState.Empty;
     private CharacterWorkspaceId? _characterNotesWorkspaceId;
+    private OwnerContextStamp? _characterNotesOwner;
     private long _characterNotesRevision;
     private string _characterNotes = string.Empty;
     private string _gameNotes = string.Empty;
@@ -359,7 +410,9 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         ICharacterAfterRunRewardService? afterRunRewardService = null,
         Sr5AfterRunRewardCheckpointStore? afterRunRewardCheckpoints = null,
         ICharacterCareerReputationService? careerReputationService = null,
-        Sr5CareerReputationJournal? careerReputationJournal = null)
+        Sr5CareerReputationJournal? careerReputationJournal = null,
+        AndroidLinkedCharacterIntentJournal? linkedCharacterJournal = null,
+        IAndroidLinkedWorkspaceReader? linkedWorkspaceReader = null)
     {
         _presenter = presenter;
         _client = client;
@@ -388,6 +441,8 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         _availability = availability;
         _documents = documents;
         _linkedCharacters = linkedCharacters;
+        _linkedJournal = linkedCharacterJournal;
+        _linkedWorkspaceReader = linkedWorkspaceReader;
         _system = system;
         _account = account;
         _rosterFavoritePresenter = rosterFavoritePresenter;
@@ -545,18 +600,21 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
 
     public string CharacterNotes
         => State.WorkspaceId == _characterNotesWorkspaceId
+            && State.DisplayOwnerContext == _characterNotesOwner
             && State.ContentRevision == _characterNotesRevision
                 ? _characterNotes
                 : State.Profile?.CharacterNotes ?? State.Preferences.CharacterNotes;
 
     public string GameNotes
         => State.WorkspaceId == _characterNotesWorkspaceId
+            && State.DisplayOwnerContext == _characterNotesOwner
             && State.ContentRevision == _characterNotesRevision
                 ? _gameNotes
                 : State.Profile?.GameNotes ?? string.Empty;
 
     public string GroupNotes
         => State.WorkspaceId == _characterNotesWorkspaceId
+            && State.DisplayOwnerContext == _characterNotesOwner
             && State.ContentRevision == _characterNotesRevision
                 ? _groupNotes
                 : State.Profile?.GroupNotes ?? string.Empty;
@@ -940,20 +998,26 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         return result;
     }
 
-    public async Task<CreationContactPhoneConfirmResult> ConfirmCreationContactAsync(
+    public Task<CreationContactPhoneConfirmResult> ConfirmCreationContactAsync(
         CharacterCreationContactPreparedPreview prepared,
         CancellationToken cancellationToken = default)
-        => await WithWorkspaceActivationGateAsync(
-            () => ConfirmCreationContactCoreAsync(prepared, cancellationToken),
+    {
+        CharacterOverviewState originalOverview = State;
+        return WithWorkspaceActivationGateAsync(
+            () => ConfirmCreationContactCoreAsync(prepared, originalOverview, cancellationToken),
             cancellationToken);
+    }
 
     private async Task<CreationContactPhoneConfirmResult> ConfirmCreationContactCoreAsync(
         CharacterCreationContactPreparedPreview prepared,
+        CharacterOverviewState originalOverview,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(prepared);
         CharacterCreationContactsInteractionLoadResult before = LoadCreationContacts();
         if (before.State is not { } state
+            || !CreationContactsOwnerIsCurrent(originalOverview)
+            || originalOverview.DisplayOwnerContext != prepared.DisplayOwnerContext
             || !CreationContactsPhoneAuthority.PreparedMatches(prepared, state, State))
         {
             return new CreationContactPhoneConfirmResult(
@@ -976,12 +1040,12 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         Exception? ambiguousFailure = null;
         try
         {
-            result = _creationContactsPresenter.Confirm(State, confirmation);
+            result = _creationContactsPresenter.Confirm(originalOverview, confirmation);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             // Core may have durably checkpointed before a transport/presentation failure became
-            // observable. Never issue a fresh key: reload and recover the exact retained key.
+            // observable. Recover the retained key under the ORIGINAL owner, never a fresh account.
             ambiguousFailure = exception;
         }
 
@@ -995,10 +1059,16 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         } && CreationContactsPhoneAuthority.ReceiptMatches(prepared, receipt!);
         if (!directlyValid)
         {
-            await _presenter.LoadAsync(prepared.Binding.WorkspaceId, cancellationToken);
-            await SyncShellAsync(cancellationToken);
-            CharacterCreationContactsInteractionReceiptLookupResult lookup =
-                _creationContactsPresenter.LookupReceipt(State, prepared.IdempotencyKey);
+            CharacterCreationContactsInteractionReceiptLookupResult lookup;
+            try
+            {
+                lookup = _creationContactsPresenter.LookupReceipt(originalOverview, prepared.IdempotencyKey);
+            }
+            catch (Exception exception) when (exception is not OutOfMemoryException)
+            {
+                lookup = new(CharacterCreationContactOutcomes.Unavailable, null, null,
+                    [CharacterCreationContactsBlockers.AuthorityUnavailable]);
+            }
             if (string.Equals(
                     lookup.Outcome,
                     CharacterCreationContactOutcomes.Available,
@@ -1028,8 +1098,29 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
             }
         }
 
-        await _presenter.LoadAsync(receipt!.WorkspaceId, cancellationToken);
-        await SyncShellAsync(cancellationToken);
+        try
+        {
+            if (!CreationContactsOwnerIsCurrent(originalOverview))
+                return CommittedContactsRequireReload();
+            if (originalOverview.DisplayOwnerContext is { } owner)
+            {
+                if (_presenter is not IOwnerBoundWorkspaceRefreshPresenter boundRefresh)
+                    return CommittedContactsRequireReload();
+                await boundRefresh.LoadAsync(owner, receipt!.WorkspaceId, cancellationToken);
+            }
+            else
+            {
+                await _presenter.LoadAsync(receipt!.WorkspaceId, cancellationToken);
+            }
+            if (!CreationContactsOwnerIsCurrent(originalOverview))
+                return CommittedContactsRequireReload();
+            await SyncShellAsync(cancellationToken);
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            // A committed receipt remains true even if refresh or cancellation fails afterwards.
+            return CommittedContactsRequireReload();
+        }
         CharacterCreationContactsInteractionLoadResult refreshed = LoadCreationContacts();
         if (refreshed.State is not { } refreshedState
             || !CreationContactsPhoneAuthority.ReceiptMatches(prepared, receipt)
@@ -1057,7 +1148,10 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         _ = await TryRefreshWorkspaceAuthorityAsync(
             expectedWorkspaceId: receipt.WorkspaceId,
             expectedPayloadSha256: receipt.ContentDigestAfter["sha256:".Length..],
-            cancellationToken);
+            cancellationToken,
+            expectedOwner: originalOverview.DisplayOwnerContext);
+        if (!CreationContactsOwnerIsCurrent(originalOverview))
+            return CommittedContactsRequireReload();
         _notice = recoveredByReceiptLookup
             ? "Creation Contact saved; the exact receipt recovered an ambiguous confirmation."
             : "Creation Contact saved and atomically checkpointed.";
@@ -1071,7 +1165,18 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
             refreshedState,
             recoveredByReceiptLookup,
             []);
+
+        CreationContactPhoneConfirmResult CommittedContactsRequireReload()
+            => new(CharacterCreationContactOutcomes.Conflict, prepared, receipt, null,
+                recoveredByReceiptLookup, [CharacterCreationContactsBlockers.StaleWorkspaceRevision]);
     }
+
+    private bool CreationContactsOwnerIsCurrent(CharacterOverviewState original)
+        => State.WorkspaceId == original.WorkspaceId
+           && State.DisplayOwnerContext == original.DisplayOwnerContext
+           && (original.DisplayOwnerContext is { IsValid: true } owner
+               ? _client is IOwnerBoundWorkspaceMutationClient bound && bound.CaptureOwnerContext() == owner
+               : original.DisplayOwnerContext is null && _client is not IOwnerBoundWorkspaceMutationClient);
 
     public CharacterCreationLifestylesInteractionLoadResult LoadCreationLifestyles()
     {
@@ -2640,29 +2745,30 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
                 return;
             }
 
-            RestoreCharacterSettingsCatalog();
+            // Hydrate the actual account's local credential/owner authority before
+            // Core publishes any roster, preferences or session. Hub validation
+            // remains deferred until after this local Shell initialization.
+            if (_account is IAndroidAccountLocalIdentityInitializer identity)
+            {
+                try
+                {
+                    await AccountStartupWorkScheduler.RunAsync(identity.InitializeLocalIdentityAsync, cancellationToken);
+                }
+                catch (Exception exception) when (exception is not OutOfMemoryException
+                    && exception is not OperationCanceledException && !TryCaptureWorkspaceOwner(out _))
+                {
+                    // Damaged/legacy credential metadata must leave recovery
+                    // reachable. The account service publishes its own error;
+                    // no exception text or fallback Local identity is invented.
+                }
+            }
+            if (TryCaptureWorkspaceOwner(out _)) RestoreCharacterSettingsCatalog();
             _rosterFavorites = _rosterFavoritePresenter.Load();
             _applicationSettings = _applicationSettingsPresenter.Load();
-            await _shellPresenter.InitializeAsync(cancellationToken);
-            await _workspaceActivationGate.WaitAsync(cancellationToken);
-            try
-            {
-                await _presenter.InitializeAsync(cancellationToken);
-                await RestoreSelectedWorkspaceAsync(cancellationToken);
-                await SyncShellAsync(cancellationToken);
-                _ = await TryRefreshWorkspaceAuthorityAsync(
-                    expectedWorkspaceId: State.WorkspaceId,
-                    expectedPayloadSha256: null,
-                    cancellationToken);
-            }
-            finally
-            {
-                _workspaceActivationGate.Release();
-            }
-            _surface = _surfaceResolver.Resolve(State, _shellPresenter.State);
-            RestorePlayState();
+            _workspaceOwnerInitializationPending = !await InitializeWorkspaceOwnerAsync(cancellationToken);
             _initialized = true;
-            _accountInitialization = InitializeAccountInBackgroundAsync();
+            _accountInitialization = InitializeAccountWithInitialPhoneReadinessAsync();
+            RequestPendingWorkspaceOwnerInitialization();
         }
         finally
         {
@@ -2670,6 +2776,98 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         }
 
         NotifyChanged();
+    }
+
+    private bool TryCaptureWorkspaceOwner(out OwnerContextStamp? owner)
+    {
+        owner = null;
+        if (_client is not IOwnerBoundShellStateClient bound) return true;
+        try
+        {
+            OwnerContextStamp captured = bound.CaptureOwnerContext();
+            if (!captured.IsValid) return false;
+            owner = captured;
+            return true;
+        }
+        catch (InvalidOperationException) { return false; }
+    }
+
+    private bool IsWorkspaceOwnerInitialized()
+        => TryCaptureWorkspaceOwner(out OwnerContextStamp? owner)
+            && (owner is null || State.Session.OwnerContext == owner && _shellPresenter.State.OwnerContext == owner)
+            && State.Error is null && _shellPresenter.State.Error is null;
+
+    private async Task<bool> InitializeWorkspaceOwnerAsync(CancellationToken cancellationToken)
+    {
+        await _workspaceActivationGate.WaitAsync(cancellationToken);
+        try
+        {
+            await _shellPresenter.InitializeAsync(cancellationToken);
+            await _presenter.InitializeAsync(cancellationToken);
+            // Never consult the old device-wide selected-runner or play
+            // preferences before a real owner-bound Shell has been established.
+            if (!IsWorkspaceOwnerInitialized()) return false;
+            await RestoreSelectedWorkspaceAsync(cancellationToken);
+            await SyncShellAsync(cancellationToken);
+            _ = await TryRefreshWorkspaceAuthorityAsync(State.WorkspaceId, null, cancellationToken);
+            if (!IsWorkspaceOwnerInitialized()) return false;
+            RestorePlayState();
+            return true;
+        }
+        finally
+        {
+            RefreshSurface();
+            _workspaceActivationGate.Release();
+        }
+    }
+
+    private void RequestPendingWorkspaceOwnerInitialization()
+    {
+        if (_disposed || !_initialized || !_workspaceOwnerInitializationPending) return;
+        Interlocked.Exchange(ref _workspaceOwnerInitializationRequested, 1);
+        if (Interlocked.CompareExchange(ref _workspaceOwnerInitializationScheduled, 1, 0) != 0) return;
+        // Changed may run inside the account operation gate. Never re-enter
+        // account recovery or synchronously bootstrap Core on that callback.
+        _ = Task.Run(ResumePendingWorkspaceOwnerInitializationAsync);
+    }
+
+    private async Task ResumePendingWorkspaceOwnerInitializationAsync()
+    {
+        try
+        {
+            do
+            {
+                Interlocked.Exchange(ref _workspaceOwnerInitializationRequested, 0);
+                await _initializeGate.WaitAsync(_lifetime.Token).ConfigureAwait(false);
+                try
+                {
+                    // Changed may be raised while the actual account writer
+                    // still owns its gate. Join its local-only hydration before
+                    // Core's non-reentrant lease admission, rather than racing
+                    // it and stranding the pending Shell until another event.
+                    if (_workspaceOwnerInitializationPending && _account is IAndroidAccountLocalIdentityInitializer identity)
+                        await AccountStartupWorkScheduler.RunAsync(identity.InitializeLocalIdentityAsync, _lifetime.Token).ConfigureAwait(false);
+                    if (_disposed || !_workspaceOwnerInitializationPending || !TryCaptureWorkspaceOwner(out _)) continue;
+                    _workspaceOwnerInitializationPending = !await InitializeWorkspaceOwnerAsync(_lifetime.Token).ConfigureAwait(false);
+                    NotifyChanged();
+                }
+                finally { _initializeGate.Release(); }
+            }
+            while (Volatile.Read(ref _workspaceOwnerInitializationRequested) != 0 && !_disposed);
+        }
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            // Keep the pending state retryable on the next explicit account
+            // update. Never turn an observer failure into a valid Local owner.
+            _ = exception;
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _workspaceOwnerInitializationScheduled, 0);
+            if (Volatile.Read(ref _workspaceOwnerInitializationRequested) != 0)
+                RequestPendingWorkspaceOwnerInitialization();
+        }
     }
 
     private async Task InitializeAccountInBackgroundAsync()
@@ -2789,67 +2987,17 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
                activeWorkspaceId.Value,
                StringComparison.Ordinal);
 
-    public async Task<NativeWorkspaceActivationReceipt?> OpenOnlineAsync(
+    public Task<NativeWorkspaceActivationReceipt?> OpenOnlineAsync(
         AndroidOnlineCharacter character,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(character);
-        await _workspaceActivationGate.WaitAsync(cancellationToken);
-        byte[]? payload = null;
-        NativeWorkspaceActivationReceipt? activation = null;
-        CharacterWorkspaceId? activatedWorkspaceId = null;
-        NativeWorkspaceAuthoritySnapshot? verifiedAuthority = null;
-        try
-        {
-            payload = StrictUtf8.GetBytes(character.Payload);
-            string expectedPayloadSha256 = Sha256Hex(payload);
-            _notice = null;
-            AdvanceAfterRunRewardSelection();
-            await _presenter.ImportAsync(
-                WorkspaceImportDocument.FromUtf8Bytes(payload, character.RulesetId, ParseFormat(character.Format)),
-                cancellationToken);
-            if (State.WorkspaceId is { } importedWorkspaceId)
-            {
-                NativeWorkspaceAuthoritySnapshot? authority = await TryRefreshWorkspaceAuthorityAsync(
-                    importedWorkspaceId,
-                    expectedPayloadSha256,
-                    cancellationToken);
-                if (authority is not null)
-                {
-                    RememberRosterLocator(
-                        importedWorkspaceId,
-                        $"chummer-run://workspace/{Uri.EscapeDataString(character.WorkspaceId)}");
-                    _notice = $"Opened {DisplayName(character.Name, character.Alias)}.";
-                    activatedWorkspaceId = importedWorkspaceId;
-                    verifiedAuthority = authority;
-                }
-                else
-                {
-                    _notice = WorkspaceVerificationUnavailableNotice;
-                }
-            }
-            await SyncShellAsync(cancellationToken);
-            RestorePlayState();
-            if (activatedWorkspaceId is { } stableWorkspaceId
-                && verifiedAuthority?.Matches(State) == true
-                && WorkspaceIsActive(State, stableWorkspaceId))
-            {
-                activation = new(
-                    NativeWorkspaceActivationKind.OnlineCharacter,
-                    stableWorkspaceId);
-            }
-        }
-        finally
-        {
-            if (payload is not null)
-            {
-                CryptographicOperations.ZeroMemory(payload);
-            }
-            _workspaceActivationGate.Release();
-        }
-
+        cancellationToken.ThrowIfCancellationRequested();
+        // Compatibility entry point is intentionally non-mutating. Online XML
+        // alone cannot restore workspace identity, both revisions and history.
+        _notice = PhoneStrings.Get("OnlineContinuationReviewRequired", "Review the complete workspace before restoring it.");
         NotifyChanged();
-        return activation;
+        return Task.FromResult<NativeWorkspaceActivationReceipt?>(null);
     }
 
     public async Task CreateRunnerAsync(CancellationToken cancellationToken = default)
@@ -2882,11 +3030,24 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
 
     public async Task CloseWorkspaceAsync(OpenWorkspaceState workspace, CancellationToken cancellationToken = default)
     {
+        CharacterOverviewState original = State;
+        // A stale roster item can survive even before this action reaches the queue.
+        if (!ReferenceEquals(original.Session.FindWorkspace(workspace.Id), workspace)) return;
         await WithWorkspaceActivationGateAsync(
             async () =>
             {
+                if (State.DisplayOwnerContext != original.DisplayOwnerContext
+                    || !IsNativePersistenceOwnerCurrent(original.DisplayOwnerContext)
+                    || !ReferenceEquals(State.Session.FindWorkspace(workspace.Id), workspace)) return;
                 if (State.WorkspaceId == workspace.Id) AdvanceAfterRunRewardSelection();
-                await _presenter.CloseWorkspaceAsync(workspace.Id, cancellationToken);
+                if (original.DisplayOwnerContext is { } owner)
+                {
+                    if (_presenter is not IOwnerBoundWorkspacePersistencePresenter bound)
+                        throw new InvalidOperationException("Original-account Close is unavailable.");
+                    await bound.CloseWorkspaceAsync(owner, workspace.Id, workspace.ContentRevision, cancellationToken);
+                }
+                else await _presenter.CloseWorkspaceAsync(workspace.Id, cancellationToken);
+                if (!IsNativePersistenceOwnerCurrent(original.DisplayOwnerContext)) return;
                 await SyncShellAsync(cancellationToken);
                 _ = await TryRefreshWorkspaceAuthorityAsync(
                     expectedWorkspaceId: State.WorkspaceId,
@@ -3126,44 +3287,69 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         NotifyChanged();
     }
 
-    public async Task ApplyCharacterNotesEditAsync(
+    public async Task<bool> ApplyCharacterNotesEditAsync(
         CharacterNotesEditRequest request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        if (State.WorkspaceId != request.WorkspaceId
-            || State.ContentRevision != request.ExpectedContentRevision)
+        CharacterOverviewState original = State;
+        if (original.WorkspaceId != request.WorkspaceId
+            || original.ContentRevision != request.ExpectedContentRevision
+            || original.DisplayOwnerContext != request.OriginalOwner
+            || !IsNativePersistenceOwnerCurrent(request.OriginalOwner))
         {
             throw new InvalidOperationException(
                 "This runner changed while its notes were open. Reopen Notes before saving.");
         }
 
-        CharacterProfileSection profile = State.Profile
+        CharacterProfileSection profile = original.Profile
             ?? throw new InvalidOperationException("Open a runner before editing Notes.");
-        await _presenter.UpdateMetadataAsync(
-            new UpdateWorkspaceMetadata(profile.Name, profile.Alias, request.CharacterNotes)
+        var command = new UpdateWorkspaceMetadata(profile.Name, profile.Alias, request.CharacterNotes)
             {
                 GameNotes = request.GameNotes,
                 GroupNotes = request.GroupNotes
-            },
-            cancellationToken);
-        if (State.Error is not null)
+            };
+        if (request.OriginalOwner is { } owner)
         {
-            return;
+            if (_presenter is not IOwnerBoundWorkspacePersistencePresenter bound)
+                throw new InvalidOperationException("Original-account Notes persistence is unavailable.");
+            CommandResult<WorkspaceMetadataResult> updated = await bound.UpdateMetadataAsync(
+                owner, request.WorkspaceId, request.ExpectedContentRevision, command, cancellationToken);
+            if (!updated.Success || updated.Value is null
+                || !IsNativePersistenceViewCurrent(original, updated.Value.ContentRevision)) return false;
+            CommandResult<WorkspaceSaveReceipt> saved = await bound.SaveAsync(
+                owner, request.WorkspaceId, updated.Value.ContentRevision, cancellationToken);
+            if (!saved.Success || saved.Value is null || saved.Value.Id != request.WorkspaceId
+                || saved.Value.SavedRevision != updated.Value.ContentRevision
+                || !IsNativePersistenceViewCurrent(original, saved.Value.ContentRevision)) return false;
         }
-
-        await _presenter.SaveAsync(cancellationToken);
-        if (State.Error is null)
+        else
         {
-            _characterNotesWorkspaceId = State.WorkspaceId;
-            _characterNotesRevision = State.ContentRevision;
-            _characterNotes = request.CharacterNotes;
-            _gameNotes = request.GameNotes;
-            _groupNotes = request.GroupNotes;
+            await _presenter.UpdateMetadataAsync(command, cancellationToken);
+            if (State.Error is not null || State.WorkspaceId != original.WorkspaceId) return false;
+            await _presenter.SaveAsync(cancellationToken);
+            if (State.Error is not null || State.WorkspaceId != original.WorkspaceId) return false;
         }
-        _notice = State.Error is null ? "Notes saved." : null;
-        await SyncShellAsync(cancellationToken);
+        long persistedRevision = State.ContentRevision;
+        using var postCommitBudget = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        try { await SyncShellAsync(postCommitBudget.Token); }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        {
+            // Only shell follow-up is optional here: Metadata and Save have both
+            // already returned canonical success. Never replay them on cancellation.
+        }
+        if (!IsNativePersistenceViewCurrent(original, persistedRevision)) return false;
+        _characterNotesOwner = original.DisplayOwnerContext;
+        _characterNotesWorkspaceId = request.WorkspaceId;
+        _characterNotesRevision = persistedRevision;
+        _characterNotes = request.CharacterNotes;
+        _gameNotes = request.GameNotes;
+        _groupNotes = request.GroupNotes;
+        _notice = "Notes saved.";
+        _durableSaveNotice = new NativeDurableSaveNotice(request.WorkspaceId, persistedRevision)
+            { OriginalOwner = original.DisplayOwnerContext };
         NotifyChanged();
+        return true;
     }
 
     public async Task ApplyCollectionMutationAsync(
@@ -3172,6 +3358,37 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         => await WithWorkspaceActivationGateAsync(
             () => ApplyCollectionMutationCoreAsync(request, cancellationToken),
             cancellationToken);
+
+    /// <summary>
+    /// An adaptive inspector can be replaced while waiting for workspace activation.
+    /// Recheck its captured document and render binding inside the same gate used
+    /// by activation, before the existing typed presenter mutation is entered.
+    /// </summary>
+    internal Task<bool> TryApplyBoundCollectionMutationAsync(
+        WorkspaceCollectionMutationRequest request,
+        CharacterOverviewState expected,
+        Func<bool> isCurrentInspector,
+        CancellationToken cancellationToken = default)
+        => WithWorkspaceActivationGateAsync(async () =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            CharacterOverviewState current = State;
+            if (_disposed || current.IsBusy || current.Error is not null
+                || expected.WorkspaceId is null
+                || current.WorkspaceId != expected.WorkspaceId
+                || current.ContentRevision != expected.ContentRevision
+                || current.SavedRevision != expected.SavedRevision
+                || !string.Equals(current.ActiveSectionId, expected.ActiveSectionId, StringComparison.Ordinal)
+                || !ReferenceEquals(current.ActiveCollectionEditor, expected.ActiveCollectionEditor)
+                || expected.ActiveCollectionEditor is null
+                || expected.ActiveCollectionEditor.Items.Count(item =>
+                    CollectionItemEditorPage.TargetsMatch(item.Target, request.Target)) != 1
+                || !isCurrentInspector())
+                return false;
+
+            await ApplyCollectionMutationCoreAsync(request, cancellationToken);
+            return State.Error is null;
+        }, cancellationToken);
 
     private async Task ApplyCollectionMutationCoreAsync(
         WorkspaceCollectionMutationRequest request,
@@ -3186,103 +3403,12 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
     public async Task AttachLinkedCharacterAsync(
         WorkspaceCollectionItemTarget target,
         CancellationToken cancellationToken = default)
-    {
-        WorkspaceCollectionItemEditorState item = ResolveCollectionItem(target);
-        WorkspaceLinkedCharacterState linked = item.LinkedCharacter
-            ?? throw new InvalidOperationException("This runner item does not support linked characters.");
-        if (!linked.CanAttach)
-        {
-            throw new InvalidOperationException("This runner's exact Chummer5 link rules are unavailable.");
-        }
-
-        AndroidStagedLinkedCharacter? staged = await _linkedCharacters.StageAsync(target, cancellationToken);
-        if (staged is null)
-        {
-            return;
-        }
-
-        bool sameAsPrior = PathsEqual(staged.FileName, linked.FileName);
-        try
-        {
-            await ApplyCollectionMutationAsync(
-                new WorkspaceSetLinkedCharacterRequest(
-                    target,
-                    staged.FileName,
-                    staged.RelativeFileName,
-                    staged.DisplayName,
-                    staged.Identity),
-                cancellationToken);
-            if (State.Error is not null)
-            {
-                if (!sameAsPrior)
-                {
-                    await _linkedCharacters.DeleteOwnedAsync(target, staged.FileName, CancellationToken.None);
-                }
-                return;
-            }
-
-            if (!sameAsPrior)
-            {
-                await _linkedCharacters.DeleteOwnedAsync(target, linked.FileName, CancellationToken.None);
-            }
-            _notice = $"Linked {staged.Identity.CharacterName}.";
-            NotifyChanged();
-        }
-        catch
-        {
-            if (!sameAsPrior)
-            {
-                await _linkedCharacters.DeleteOwnedAsync(target, staged.FileName, CancellationToken.None);
-            }
-            throw;
-        }
-    }
+        => _ = await TryAttachBoundLinkedCharacterAsync(target, State, () => true, cancellationToken);
 
     public async Task RemoveLinkedCharacterAsync(
         WorkspaceCollectionItemTarget target,
         CancellationToken cancellationToken = default)
-    {
-        WorkspaceCollectionItemEditorState item = ResolveCollectionItem(target);
-        WorkspaceLinkedCharacterState linked = item.LinkedCharacter
-            ?? throw new InvalidOperationException("This runner item does not support linked characters.");
-        if (!linked.CanRemove)
-        {
-            throw new InvalidOperationException("This runner item is not linked to another character.");
-        }
-
-        await ApplyCollectionMutationAsync(new WorkspaceRemoveLinkedCharacterRequest(target), cancellationToken);
-        if (State.Error is not null)
-        {
-            return;
-        }
-
-        await _linkedCharacters.DeleteOwnedAsync(target, linked.FileName, CancellationToken.None);
-        _notice = "Linked runner removed.";
-        NotifyChanged();
-    }
-
-    private WorkspaceCollectionItemEditorState ResolveCollectionItem(WorkspaceCollectionItemTarget target)
-        => State.ActiveCollectionEditor?.Items.FirstOrDefault(item =>
-                CollectionItemEditorPage.TargetsMatch(item.Target, target))
-            ?? throw new InvalidOperationException(
-                "This runner item no longer has a unique stable identity. Reload the section before editing.");
-
-    private static bool PathsEqual(string left, string right)
-    {
-        if (string.IsNullOrWhiteSpace(left) || string.IsNullOrWhiteSpace(right))
-        {
-            return false;
-        }
-
-        try
-        {
-            return string.Equals(Path.GetFullPath(left), Path.GetFullPath(right), StringComparison.Ordinal);
-        }
-        catch (Exception exception) when (exception is ArgumentException or NotSupportedException or PathTooLongException)
-        {
-            return false;
-        }
-    }
+        => _ = await TryRemoveBoundLinkedCharacterAsync(target, State, () => true, cancellationToken);
 
     public async Task ApplyConditionMonitorEditAsync(
         ConditionMonitorEditRequest request,
@@ -3301,22 +3427,57 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         NotifyChanged();
     }
 
+    internal Task<bool> TryApplyBoundConditionMonitorEditAsync(
+        ConditionMonitorEditRequest request,
+        CharacterOverviewState expected,
+        Func<bool> isCurrentInspector,
+        CancellationToken cancellationToken = default)
+        => WithWorkspaceActivationGateAsync(async () =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            CharacterOverviewState current = State;
+            if (_disposed || current.IsBusy || current.Error is not null
+                || expected.WorkspaceId is null
+                || current.WorkspaceId != expected.WorkspaceId
+                || current.ContentRevision != expected.ContentRevision
+                || current.SavedRevision != expected.SavedRevision
+                || !string.Equals(current.ActiveSectionId, expected.ActiveSectionId, StringComparison.Ordinal)
+                || !ReferenceEquals(current.ActiveConditionMonitor, expected.ActiveConditionMonitor)
+                || expected.ActiveConditionMonitor is not { CareerEditable: true } monitor
+                || monitor.Tracks.Count(track => track.Track == request.Track) != 1
+                || !isCurrentInspector())
+                return false;
+
+            await ApplyConditionMonitorEditCoreAsync(request, cancellationToken);
+            return State.Error is null;
+        }, cancellationToken);
+
     public Task<CareerReputationEditorState?> PrepareCareerReputationEditAsync(
         CancellationToken cancellationToken = default)
         => _presenter.PrepareCareerReputationEditAsync(cancellationToken);
 
-    public async Task ApplyCareerReputationEditAsync(
+    public async Task<bool> ApplyCareerReputationEditAsync(
         CareerReputationEditRequest request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        if (State.WorkspaceId != request.WorkspaceId
-            || State.ContentRevision != request.ExpectedContentRevision)
+        CharacterOverviewState original = State;
+        if (original.WorkspaceId != request.WorkspaceId
+            || original.ContentRevision != request.ExpectedContentRevision
+            || original.DisplayOwnerContext != request.OriginalOwner
+            || !IsNativePersistenceOwnerCurrent(request.OriginalOwner))
         {
             throw new InvalidOperationException(
                 "This runner changed while reputation was open. Reopen Reputation before saving.");
         }
 
+        if (original.DisplayOwnerContext is { } owner)
+        {
+            if (_presenter is not IOwnerBoundWorkspaceMutationPresenter bound)
+                throw new InvalidOperationException("Original-account reputation editing is unavailable.");
+            var result = await bound.ApplyCareerReputationEditAsync(request, owner, cancellationToken);
+            return await CompleteOriginalMutationSaveAsync(original, result, "Reputation saved.", cancellationToken);
+        }
         await _presenter.ApplyCareerReputationEditAsync(request, cancellationToken);
         if (State.Error is null)
         {
@@ -3325,20 +3486,31 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         _notice = State.Error is null ? "Reputation saved." : null;
         await SyncShellAsync(cancellationToken);
         NotifyChanged();
+        return State.Error is null && IsNativePersistenceViewCurrent(original, State.ContentRevision);
     }
 
-    public async Task ApplyBurnStreetCredAsync(
+    public async Task<bool> ApplyBurnStreetCredAsync(
         BurnStreetCredRequest request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        if (State.WorkspaceId != request.WorkspaceId
-            || State.ContentRevision != request.ExpectedContentRevision)
+        CharacterOverviewState original = State;
+        if (original.WorkspaceId != request.WorkspaceId
+            || original.ContentRevision != request.ExpectedContentRevision
+            || original.DisplayOwnerContext != request.OriginalOwner
+            || !IsNativePersistenceOwnerCurrent(request.OriginalOwner))
         {
             throw new InvalidOperationException(
                 "This runner changed while reputation was open. Reopen Reputation before burning Street Cred.");
         }
 
+        if (original.DisplayOwnerContext is { } owner)
+        {
+            if (_presenter is not IOwnerBoundWorkspaceMutationPresenter bound)
+                throw new InvalidOperationException("Original-account Street Cred editing is unavailable.");
+            var result = await bound.ApplyBurnStreetCredAsync(request, owner, cancellationToken);
+            return await CompleteOriginalMutationSaveAsync(original, result, "2 Street Cred burned.", cancellationToken);
+        }
         await _presenter.ApplyBurnStreetCredAsync(request, cancellationToken);
         if (State.Error is null)
         {
@@ -3347,6 +3519,35 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         _notice = State.Error is null ? "2 Street Cred burned." : null;
         await SyncShellAsync(cancellationToken);
         NotifyChanged();
+        return State.Error is null && IsNativePersistenceViewCurrent(original, State.ContentRevision);
+    }
+
+    private async Task<bool> CompleteOriginalMutationSaveAsync(CharacterOverviewState original,
+        CommandResult<WorkspaceRevisionReceipt> mutation, string notice, CancellationToken ct)
+    {
+        if (!mutation.Success || mutation.Value is not { } committed
+            || original.WorkspaceId != committed.Id
+            || !IsNativePersistenceViewCurrent(original, committed.ContentRevision)) return false;
+        if (original.DisplayOwnerContext is not { } owner
+            || _presenter is not IOwnerBoundWorkspacePersistencePresenter persistence)
+            throw new InvalidOperationException("The edit committed, but original-account Save is unavailable. Reload to review it.");
+        CommandResult<WorkspaceSaveReceipt> saved = await persistence.SaveAsync(
+            owner, committed.Id, committed.ContentRevision, ct);
+        if (!saved.Success || saved.Value is not { } receipt || receipt.Id != committed.Id
+            || receipt.ContentRevision != committed.ContentRevision
+            || receipt.SavedRevision != committed.ContentRevision
+            || !IsNativePersistenceViewCurrent(original, receipt.ContentRevision)) return false;
+        using var postCommitBudget = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        try { await SyncShellAsync(postCommitBudget.Token); }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        {
+            // Both writes have joined. A failed shell observation must not retry them.
+        }
+        if (!IsNativePersistenceViewCurrent(original, receipt.ContentRevision)) return false;
+        _durableSaveNotice = new NativeDurableSaveNotice(receipt.Id, receipt.SavedRevision) { OriginalOwner = owner };
+        _notice = notice;
+        NotifyChanged();
+        return true;
     }
 
     public Task<SituationalModifiersEditorState?> PrepareSituationalModifiersEditAsync(
@@ -6025,28 +6226,64 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
 
     public async Task SaveAsync(CancellationToken cancellationToken = default)
     {
+        CharacterOverviewState original = State;
         _notice = null;
         _durableSaveNotice = null;
-        await _presenter.SaveAsync(cancellationToken);
+        WorkspaceSaveReceipt? receipt = null;
+        if (_client is IOwnerBoundWorkspaceMutationClient)
+        {
+            if (original.DisplayOwnerContext is not { } owner || original.WorkspaceId is not { } workspaceId
+                || _presenter is not IOwnerBoundWorkspacePersistencePresenter bound)
+                throw new InvalidOperationException("Original-account Save is unavailable. Reopen the runner.");
+            CommandResult<WorkspaceSaveReceipt> saved = await bound.SaveAsync(owner, workspaceId,
+                original.ContentRevision, cancellationToken);
+            if (!saved.Success || saved.Value is null || saved.Value.Id != workspaceId
+                || !IsNativePersistenceViewCurrent(original, saved.Value.ContentRevision)) return;
+            receipt = saved.Value;
+        }
+        else await _presenter.SaveAsync(cancellationToken);
         if (State.Error is null)
         {
-            _ = await TryRefreshWorkspaceAuthorityAsync(
-                expectedWorkspaceId: State.WorkspaceId,
-                expectedPayloadSha256: null,
-                cancellationToken);
+            using var postCommitBudget = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            try
+            {
+                _ = await TryRefreshWorkspaceAuthorityAsync(
+                    expectedWorkspaceId: original.WorkspaceId,
+                    expectedPayloadSha256: null,
+                    receipt is not null ? postCommitBudget.Token : cancellationToken,
+                    expectedOwner: original.DisplayOwnerContext);
+            }
+            catch (Exception error) when (receipt is not null && error is not OutOfMemoryException)
+            {
+                // Preserve the exact joined save result; observation is not a second save.
+            }
         }
-        bool durableSaveVerified = State.Error is null
+        bool durableSaveVerified = IsNativePersistenceViewCurrent(original, receipt?.ContentRevision ?? State.ContentRevision)
+                                   && State.Error is null
                                    && State.ContentRevision > 0
                                    && State.ContentRevision == State.SavedRevision;
         if (durableSaveVerified && State.WorkspaceId is { } verifiedWorkspaceId)
         {
             _durableSaveNotice = new NativeDurableSaveNotice(
                 verifiedWorkspaceId,
-                State.SavedRevision);
+                receipt?.SavedRevision ?? State.SavedRevision) { OriginalOwner = original.DisplayOwnerContext };
             _notice = "Saved.";
         }
         NotifyChanged();
     }
+
+    private bool IsNativePersistenceOwnerCurrent(OwnerContextStamp? originalOwner)
+    {
+        if (_client is not IOwnerBoundWorkspaceMutationClient bound) return originalOwner is null;
+        try { return originalOwner is { IsValid: true } owner && bound.CaptureOwnerContext() == owner; }
+        catch (Exception error) when (error is InvalidOperationException or IOException or UnauthorizedAccessException)
+        { return false; }
+    }
+
+    private bool IsNativePersistenceViewCurrent(CharacterOverviewState original, long revision)
+        => State.WorkspaceId == original.WorkspaceId && State.ContentRevision == revision
+           && State.DisplayOwnerContext == original.DisplayOwnerContext
+           && IsNativePersistenceOwnerCurrent(original.DisplayOwnerContext);
 
     public async Task ExportAsync(CancellationToken cancellationToken = default)
     {
@@ -6090,31 +6327,104 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
     public Task OpenAccountDeletionInfoAsync()
         => _system.OpenUriAsync(ChummerWebRoutes.Resolve(ChummerWebRoutes.AccountDeletion));
 
-    public async Task<NativeAccountErasureResult> EraseAccountAsync(
+    public NativeAccountErasureRequest CaptureAccountErasureRequest()
+    {
+        CharacterOverviewState original = State;
+        OwnerContextStamp? owner = original.DisplayOwnerContext;
+        if (owner is null && original.WorkspaceId is null && _client is IOwnerBoundShellStateClient bound)
+            owner = bound.CaptureOwnerContext();
+        return new(this, owner, _account.Snapshot, original.OpenWorkspaces.ToArray(), _groups.ToArray());
+    }
+
+    public Task<NativeAccountErasureResult> EraseAccountAsync(
         bool removeLocalRunners,
         CancellationToken cancellationToken = default)
-        => await WithWorkspaceActivationGateAsync(
-            () => EraseAccountCoreAsync(removeLocalRunners, cancellationToken),
+        => EraseAccountAsync(CaptureAccountErasureRequest(), removeLocalRunners, cancellationToken);
+
+    public bool IsAccountErasureResultCurrent(NativeAccountErasureResult result)
+        => result.PostAccount is { Status: AndroidAccountLinkStatus.Unlinked } postAccount
+           && ReferenceEquals(_account.Snapshot, postAccount)
+           && IsNativePersistenceOwnerCurrent(result.OriginalOwner);
+
+    public Task<NativeAccountErasureResult> EraseAccountAsync(NativeAccountErasureRequest request,
+        bool removeLocalRunners, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (!request.TryClaim(this))
+            throw new InvalidOperationException("This deletion confirmation was already used. Open deletion again.");
+        return WithWorkspaceActivationGateAsync(
+            () => EraseAccountCoreAsync(request, removeLocalRunners, cancellationToken),
             cancellationToken);
+    }
 
     private async Task<NativeAccountErasureResult> EraseAccountCoreAsync(
+        NativeAccountErasureRequest request,
         bool removeLocalRunners,
         CancellationToken cancellationToken)
     {
-        OpenWorkspaceState[] openWorkspaces = State.OpenWorkspaces.ToArray();
-        AndroidLinkedGroup[] linkedGroups = _groups.ToArray();
+        bool IsOriginalAccountCurrent() => ReferenceEquals(request.OriginalAccount, _account.Snapshot)
+            && request.OriginalAccount.IsLinked && IsNativePersistenceOwnerCurrent(request.OriginalOwner);
+        if (!IsOriginalAccountCurrent())
+            throw new InvalidOperationException("The account changed. Open deletion again before confirming.");
+        OpenWorkspaceState[] openWorkspaces = request.Workspaces;
+        AndroidLinkedGroup[] linkedGroups = request.Groups;
+        bool localCoverageComplete = false;
+        (CharacterWorkspaceId Id, long Revision)[] cleanupTargets = [];
+        if (removeLocalRunners && request.OriginalOwner is { } original && _client is IOwnerBoundWorkspacePersistenceClient roster)
+        {
+            try
+            {
+                var inventory = await roster.InspectLocalWorkspacesAsync(original, cancellationToken);
+                if (inventory.Success && inventory.Value is { } localRunners)
+                {
+                    localCoverageComplete = true;
+                    cleanupTargets = localRunners.Select(item => (item.Id,
+                        openWorkspaces.FirstOrDefault(opened => opened.Id == item.Id)?.ContentRevision
+                            ?? item.ContentRevision)).ToArray();
+                }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+            catch { /* Unknown local coverage cannot become a complete-cleanup claim. */ }
+        }
         AndroidAccountErasureReceipt receipt = await _account.EraseAccountAsync(
             AndroidAccountErasureConfirmation.RequiredPhrase,
+            IsOriginalAccountCurrent,
             cancellationToken);
+        if (!receipt.Erased)
+            throw new InvalidDataException("Chummer did not confirm account deletion.");
 
-        bool localRunnersRemoved = true;
-        if (removeLocalRunners)
+        // Independently current Android and Core sessions need not be the same
+        // account. The actual grant-authenticated subject, not a display label
+        // or the erasure journal's server-HMAC, must match the original owner.
+        bool localOwnerMatched = request.OriginalOwner is { IsValid: true } originalOwner
+            && originalOwner.Owner != OwnerScope.LocalSingleUser
+            && !string.IsNullOrWhiteSpace(receipt.LocalWorkspaceOwnerKey)
+            && string.Equals(originalOwner.Owner.Value, receipt.LocalWorkspaceOwnerKey, StringComparison.Ordinal);
+
+        AndroidAccountLinkSnapshot postAccount = _account.Snapshot;
+        bool CanContinue() => postAccount.Status == AndroidAccountLinkStatus.Unlinked
+            && ReferenceEquals(postAccount, _account.Snapshot)
+            && IsNativePersistenceOwnerCurrent(request.OriginalOwner);
+        // Once the online commit exists, caller cancellation must not discard
+        // its receipt or replay erasure. Follow-up has its own bounded lifetime.
+        using var postCommitBudget = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        bool localRunnersRemoved = removeLocalRunners && localCoverageComplete && localOwnerMatched;
+        if (removeLocalRunners && localOwnerMatched)
         {
-            foreach (OpenWorkspaceState workspace in openWorkspaces)
+            foreach ((CharacterWorkspaceId id, long revision) in cleanupTargets)
             {
                 try
                 {
-                    await _presenter.DeleteWorkspaceAsync(workspace.Id, confirmed: true, ct: cancellationToken);
+                    if (!CanContinue() || request.OriginalOwner is not { } owner
+                        || _presenter is not IOwnerBoundWorkspaceCleanupPresenter bound)
+                    {
+                        localRunnersRemoved = false;
+                        break;
+                    }
+                    WorkspaceStoredDeletionResult deleted = await bound.DeleteStoredWorkspaceAsync(
+                        owner, id, revision, confirmed: true, postCommitBudget.Token);
+                    localRunnersRemoved &= deleted.Deletion.Success && deleted.Deletion.Value?.Id == id
+                        && deleted.Deletion.Value.ContentRevision == revision && deleted.LocalProjectionRetired;
                 }
                 catch
                 {
@@ -6122,20 +6432,57 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
                 }
             }
 
-            ClearPlayPreferences(openWorkspaces, linkedGroups);
+            // An online round trip can outlive a local create/import. The
+            // original open-tab snapshot is not evidence that no runners
+            // remain after cleanup. Never retarget this read to a new owner.
+            if (localRunnersRemoved)
+            {
+                try
+                {
+                    if (CanContinue() && request.OriginalOwner is { } cleanupOwner
+                        && _client is IOwnerBoundWorkspacePersistenceClient cleanupRoster)
+                    {
+                        var remaining = await cleanupRoster.InspectLocalWorkspacesAsync(cleanupOwner, postCommitBudget.Token);
+                        localRunnersRemoved = remaining.Success && remaining.Value is { Count: 0 } && CanContinue();
+                    }
+                    else localRunnersRemoved = false;
+                }
+                catch { localRunnersRemoved = false; }
+            }
+
+            if (CanContinue())
+            {
+                ClearPlayPreferences(openWorkspaces, linkedGroups);
+                try
+                {
+                    localRunnersRemoved &= request.OriginalOwner is { } recoveryOwner
+                        && _presenter is IOwnerBoundWorkspaceCleanupPresenter cleanup
+                        && cleanup.RetireOwnerRecovery(recoveryOwner);
+                }
+                catch { localRunnersRemoved = false; }
+            }
+            else localRunnersRemoved = false;
         }
 
-        Preferences.Default.Remove(SelectedGroupPreferenceKey);
-        _onlineCharacters = [];
-        _groups = [];
-        _chronicles = [];
-        _play = NativePlaySnapshot.Empty;
-        _notice = localRunnersRemoved
-            ? "Account deletion completed."
-            : "Account deletion completed. Some runners could not be removed from this device.";
-        await SyncShellAsync(cancellationToken);
-        NotifyChanged();
-        return new NativeAccountErasureResult(receipt, localRunnersRemoved);
+        if (CanContinue())
+        {
+            try
+            {
+                Preferences.Default.Remove(SelectedGroupPreferenceKey);
+                _onlineCharacters = [];
+                _groups = [];
+                _chronicles = [];
+                _play = NativePlaySnapshot.Empty;
+                _notice = !removeLocalRunners ? "Account deletion completed. Local runners were kept."
+                    : localRunnersRemoved ? "Account deletion completed."
+                    : "Account deletion completed. Some runners could not be removed from this device.";
+                await SyncShellAsync(postCommitBudget.Token);
+                NotifyChanged();
+            }
+            catch { /* The completed online receipt must remain available. */ }
+        }
+        return new NativeAccountErasureResult(receipt, localRunnersRemoved, removeLocalRunners)
+        { OriginalOwner = request.OriginalOwner, PostAccount = postAccount };
     }
 
     public Task<AndroidUpdateCheckResult> CheckForUpdatesAsync()
@@ -6144,31 +6491,8 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
     public Task ShareTextAsync(string text)
         => _system.ShareTextAsync(text);
 
-    public async Task RefreshLinkedDataAsync(CancellationToken cancellationToken = default)
-    {
-        await _account.InitializeAsync(cancellationToken);
-        if (!_account.Snapshot.IsLinked)
-        {
-            _onlineCharacters = [];
-            _groups = [];
-            _chronicles = [];
-            NotifyChanged();
-            return;
-        }
-
-        Task<IReadOnlyList<AndroidOnlineCharacter>> charactersTask =
-            _account.ListOnlineCharactersAsync(cancellationToken);
-        Task<IReadOnlyList<AndroidLinkedGroup>> groupsTask =
-            _account.ListGroupsAsync(cancellationToken);
-        await Task.WhenAll(charactersTask, groupsTask);
-        _onlineCharacters = await charactersTask;
-        _groups = await groupsTask;
-        EnsureSelectedGroup();
-        _chronicles = SelectedGroup is { } selectedGroup
-            ? await _account.ListChroniclesAsync(selectedGroup.GroupId, cancellationToken)
-            : [];
-        NotifyChanged();
-    }
+    public Task RefreshLinkedDataAsync(CancellationToken cancellationToken = default)
+        => RefreshContinuationCatalogAsync(cancellationToken);
 
     public void SelectGroup(AndroidLinkedGroup? group)
     {
@@ -6369,7 +6693,8 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         CharacterWorkspaceId? expectedWorkspaceId,
         string? expectedPayloadSha256,
         CancellationToken cancellationToken,
-        bool allowReadOnlyProductCapture = false)
+        bool allowReadOnlyProductCapture = false,
+        OwnerContextStamp? expectedOwner = null)
     {
         if (!allowReadOnlyProductCapture
             && !AndroidE2EAuthority.Enabled
@@ -6408,7 +6733,7 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
                     async token =>
                     {
                         NativeWorkspaceAuthoritySnapshot candidate =
-                            await ReadWorkspaceAuthorityAsync(workspaceId, token);
+                            await ReadWorkspaceAuthorityAsync(workspaceId, token, expectedOwner);
                         if (expectedPayloadSha256 is not null)
                         {
                             RequirePayloadDigest(candidate, expectedPayloadSha256);
@@ -6424,10 +6749,19 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
                 return null;
             }
 
+            // Do not acquire the owner's lock while holding the native publication lock.
+            if (expectedOwner is { } retained
+                && (_client is not IOwnerBoundWorkspaceMutationClient bound
+                    || bound.CaptureOwnerContext() != retained))
+            {
+                ClearWorkspaceAuthority();
+                return null;
+            }
             lock (_workspaceAuthoritySync)
             {
                 if (_disposed
                     || authorityEpoch != _workspaceAuthorityEpoch
+                    || expectedOwner is { } owner && State.DisplayOwnerContext != owner
                     || !authority.Matches(State))
                 {
                     _workspaceAuthority = null;
@@ -6471,13 +6805,16 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
 
     private async Task<NativeWorkspaceAuthoritySnapshot> ReadWorkspaceAuthorityAsync(
         CharacterWorkspaceId workspaceId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        OwnerContextStamp? expectedOwner = null)
     {
+        if (expectedOwner is not null && _client is not IOwnerBoundWorkspaceMutationClient)
+            throw new InvalidOperationException("Owner-bound Android proof capture is unavailable.");
         WorkspaceDocumentSnapshot first = RequireWorkspaceSnapshot(
-            await _client.GetWorkspaceAsync(workspaceId, cancellationToken),
+            await ReadAsync(),
             workspaceId);
         WorkspaceDocumentSnapshot verified = RequireWorkspaceSnapshot(
-            await _client.GetWorkspaceAsync(workspaceId, cancellationToken),
+            await ReadAsync(),
             workspaceId);
         if (!AuthoritySnapshotsMatch(first, verified))
         {
@@ -6490,6 +6827,11 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
             verified.SavedRevision,
             Sha256Hex(verified.Document.Content),
             ComputeDocumentAuthoritySha256(verified.Document));
+
+        Task<CommandResult<WorkspaceDocumentSnapshot>> ReadAsync()
+            => expectedOwner is { } owner
+                ? ((IOwnerBoundWorkspaceMutationClient)_client).GetWorkspaceAsync(owner, workspaceId, cancellationToken)
+                : _client.GetWorkspaceAsync(workspaceId, cancellationToken);
     }
 
     private static WorkspaceDocumentSnapshot RequireWorkspaceSnapshot(
@@ -6526,7 +6868,7 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
                verified.Document.AuxiliaryStateDigest,
                StringComparison.Ordinal);
 
-    private static string ComputeDocumentAuthoritySha256(WorkspaceDocument document)
+    internal static string ComputeDocumentAuthoritySha256(WorkspaceDocument document)
     {
         using IncrementalHash digest = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         AppendAuthorityField(digest, "schema", WorkspaceAuthorityDigestSchema);
@@ -6644,10 +6986,34 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         bool syncPresenterContext,
         CancellationToken cancellationToken)
     {
+        CharacterOverviewState requested = State;
         await _shellSyncGate.WaitAsync(cancellationToken);
         try
         {
-            CharacterWorkspaceId? active = State.Session.ActiveWorkspaceId ?? State.WorkspaceId;
+            if (!ReferenceEquals(State, requested)) return;
+            CharacterWorkspaceId? active = requested.Session.ActiveWorkspaceId ?? requested.WorkspaceId;
+            OwnerContextStamp? original = requested.Session.ActiveWorkspaceId is not null || active is null
+                ? requested.Session.OwnerContext : requested.DisplayOwnerContext;
+            if (_client is IOwnerBoundShellStateClient beforeSync
+                && original is { } beforeStamp && beforeSync.CaptureOwnerContext() != beforeStamp) return;
+            if (syncPresenterContext)
+            {
+                try
+                {
+                    await ShellWorkspaceContextSynchronization.SynchronizeAsync(
+                        _shellPresenter, _client, requested, cancellationToken);
+                }
+                catch (InvalidOperationException) when (_client is IOwnerBoundShellStateClient changed
+                    && original is { } previous && changed.CaptureOwnerContext() != previous)
+                {
+                    return;
+                }
+            }
+            if (!ReferenceEquals(State, requested)) return;
+            if (_client is IOwnerBoundShellStateClient bound)
+            {
+                if (original is not { IsValid: true } stamp || bound.CaptureOwnerContext() != stamp) return;
+            }
             if (active is not null)
             {
                 Preferences.Default.Set(SelectedWorkspacePreferenceKey, active.Value.Value);
@@ -6655,10 +7021,6 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
             else if (_initialized && State.OpenWorkspaces.Count == 0)
             {
                 Preferences.Default.Remove(SelectedWorkspacePreferenceKey);
-            }
-            if (syncPresenterContext)
-            {
-                await _shellPresenter.SyncWorkspaceContextAsync(active, cancellationToken);
             }
             RefreshSurface();
         }
@@ -6776,6 +7138,7 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
 
     private async Task ProcessPendingOutputsAsync(CancellationToken cancellationToken = default)
     {
+        Interlocked.Exchange(ref _outputRequested, 1);
         if (!await _outputGate.WaitAsync(0, cancellationToken))
         {
             return;
@@ -6783,37 +7146,75 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
 
         try
         {
-            CharacterOverviewState state = State;
-            if (state.PendingDownload is { } download && state.PendingDownloadVersion > _handledDownloadVersion)
+            do
             {
-                _handledDownloadVersion = state.PendingDownloadVersion;
-                await SaveBase64Async(download.FileName, MimeType(download.Format), download.ContentBase64, cancellationToken);
-            }
-
-            state = State;
-            if (state.PendingExport is { } export && state.PendingExportVersion > _handledExportVersion)
-            {
-                _handledExportVersion = state.PendingExportVersion;
-                await SaveBase64Async(export.FileName, MimeType(export.Format), export.ContentBase64, cancellationToken);
-            }
-
-            state = State;
-            if (state.PendingPrint is { } print && state.PendingPrintVersion > _handledPrintVersion)
-            {
-                _handledPrintVersion = state.PendingPrintVersion;
-                bool opened = await _system.PrintPdfAsync(
-                    print.FileName,
-                    print.ContentBase64,
-                    print.Title,
-                    cancellationToken);
-                _notice = opened ? "Print dialog opened." : "Printing is not available on this device.";
-            }
+                Interlocked.Exchange(ref _outputRequested, 0);
+                CharacterOverviewState state = State;
+                WorkspaceOutputBinding? binding = state.PendingOutputBinding;
+                object? receipt = (object?)state.PendingDownload ?? (object?)state.PendingExport ?? state.PendingPrint;
+                if (binding is null || receipt is null || _handledOutputs.TryGetValue(binding, out _)
+                    || !IsOutputCurrent(binding, receipt)) continue;
+                // A picker/print attempt can already have external effects. Never
+                // replay it because a later observation or account transition failed.
+                _handledOutputs.Add(binding, new object());
+                bool IsCurrent() => IsOutputCurrent(binding, receipt);
+                using var deliveryCancellation = CancellationTokenSource.CreateLinkedTokenSource(
+                    cancellationToken, binding.CancellationToken);
+                CancellationToken deliveryToken = deliveryCancellation.Token;
+                try
+                {
+                    string? notice = receipt switch
+                    {
+                        WorkspaceDownloadReceipt download => await SaveBoundOutputAsync(download.FileName,
+                            MimeType(download.Format), download.ContentBase64, IsCurrent, deliveryToken),
+                        WorkspaceExportReceipt export => await SaveBoundOutputAsync(export.FileName,
+                            MimeType(export.Format), export.ContentBase64, IsCurrent, deliveryToken),
+                        WorkspacePrintReceipt print => await _system.PrintPdfAsync(print.FileName,
+                            print.ContentBase64, print.Title, IsCurrent, deliveryToken)
+                            ? "Print dialog opened." : "Printing is not available on this device.",
+                        _ => null
+                    };
+                    if (notice is not null && IsCurrent())
+                    {
+                        _notice = notice;
+                        _outputNotice = (binding, receipt, notice);
+                    }
+                }
+                catch (Exception error) when (error is not OutOfMemoryException
+                    and not StackOverflowException and not AccessViolationException)
+                {
+                    if (IsCurrent())
+                    {
+                        _notice = "Output stopped. Reopen the runner before trying again.";
+                        _outputNotice = (binding, receipt, _notice);
+                    }
+                }
+            } while (Interlocked.Exchange(ref _outputRequested, 0) != 0);
         }
         finally
         {
             _outputGate.Release();
             NotifyChanged();
+            // A publication between the final read and gate release still drains.
+            if (Volatile.Read(ref _outputRequested) != 0) _ = ProcessPendingOutputsAsync();
         }
+    }
+
+    private bool IsOutputCurrent(WorkspaceOutputBinding binding, object receipt)
+        => binding.Matches(State, receipt) && IsNativePersistenceOwnerCurrent(binding.OriginalOwner);
+
+    private async Task<string> SaveBoundOutputAsync(string fileName, string mediaType, string contentBase64,
+        Func<bool> isCurrent, CancellationToken ct)
+    {
+        if (!isCurrent()) throw new OperationCanceledException("The original output context changed.");
+        byte[] bytes = Convert.FromBase64String(contentBase64);
+        try
+        {
+            await using MemoryStream stream = new(bytes, writable: false);
+            bool saved = await _documents.SaveAsAsync(fileName, mediaType, stream, isCurrent, ct);
+            return saved ? $"Saved {Path.GetFileName(fileName)}." : "Save cancelled.";
+        }
+        finally { CryptographicOperations.ZeroMemory(bytes); }
     }
 
     private async Task SaveBase64Async(
@@ -6911,6 +7312,16 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
 
     private void OnPresenterStateChanged(object? sender, EventArgs e)
     {
+        if (_outputNotice is { } output && !IsOutputCurrent(output.Binding, output.Receipt))
+        {
+            if (_notice == output.Notice) _notice = null;
+            _outputNotice = null;
+        }
+        if (_durableSaveNotice is { } saved && !saved.Matches(State))
+        {
+            _durableSaveNotice = null;
+            if (_notice is "Saved." or "Notes saved." or "Reputation saved." or "2 Street Cred burned.") _notice = null;
+        }
         ObserveAfterRunRewardSelection();
         lock (_workspaceAuthoritySync)
         {
@@ -6921,7 +7332,7 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
             _workspaceAuthority = null;
             _workspaceAuthorityOptInGeneration = 0;
         }
-        PersistCharacterSettingsCatalog();
+        if (IsWorkspaceOwnerInitialized()) PersistCharacterSettingsCatalog();
         RefreshSurface();
         NotifyChanged();
         _ = ProcessPendingOutputsAsync();
@@ -6968,7 +7379,12 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         NotifyChanged();
     }
 
-    private void OnAccountChanged(object? sender, EventArgs e) => NotifyChanged();
+    private void OnAccountChanged(object? sender, EventArgs e)
+    {
+        RetireContinuationCatalogOnAccountChange();
+        RequestPendingWorkspaceOwnerInitialization();
+        NotifyChanged();
+    }
 
     private void OnE2EAuthorityChanged(object? sender, EventArgs e)
     {
@@ -7014,6 +7430,7 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         }
 
         _disposed = true;
+        TabletInspectorDrafts.Clear();
         AdvanceAfterRunRewardSelection();
         _lifetime.Cancel();
         lock (_workspaceAuthoritySync)

@@ -1,6 +1,5 @@
-using System.ComponentModel;
-using System.Runtime.InteropServices;
 using System.Text;
+using Chummer.Android.Platform;
 
 namespace Chummer.Android.Native;
 
@@ -64,23 +63,9 @@ public sealed class FileSr5CareerCommandJournalBackend : ISr5CareerCommandJourna
                 stream.Flush(flushToDisk: true);
             }
             File.Move(temporary, _path, overwrite: true);
-            SyncDirectory(_directory);
+            AndroidPrivateFileDurability.SyncDirectory(_directory);
         }
         finally { if (File.Exists(temporary)) File.Delete(temporary); }
     }
 
-    private static void SyncDirectory(string directory)
-    {
-        int descriptor = Open(directory, 0x10000 | 0x80000);
-        if (descriptor < 0) throw new IOException("Cannot open Career journal directory for sync.", new Win32Exception(Marshal.GetLastPInvokeError()));
-        try
-        {
-            if (Fsync(descriptor) != 0) throw new IOException("Career journal directory sync acknowledgement is unavailable.",
-                new Win32Exception(Marshal.GetLastPInvokeError()));
-        }
-        finally { Close(descriptor); }
-    }
-    [DllImport("libc", EntryPoint = "open", SetLastError = true)] private static extern int Open(string path, int flags);
-    [DllImport("libc", EntryPoint = "fsync", SetLastError = true)] private static extern int Fsync(int descriptor);
-    [DllImport("libc", EntryPoint = "close", SetLastError = true)] private static extern int Close(int descriptor);
 }
