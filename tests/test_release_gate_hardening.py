@@ -1,17 +1,20 @@
 from __future__ import annotations
 
 from email.message import Message
+from contextlib import contextmanager
 import importlib.util
 import hashlib
 import json
 import os
 from pathlib import Path
 import re
+import stat
 import subprocess
 import tempfile
 import time
 import unittest
 from unittest import mock
+from types import SimpleNamespace
 import zipfile
 
 
@@ -784,6 +787,351 @@ class ReleaseGateHardeningTests(unittest.TestCase):
             module = REPO / "scripts" / module_name
             self.assertFalse(os.access(module, os.X_OK))
             self.assertTrue(module.read_text(encoding="utf-8").startswith("#!/usr/bin/python3\n"))
+
+
+class TrustedToolchainTreeTests(unittest.TestCase):
+    """Real filesystem trees; modeled UID/ancestor custody is NOT deployment proof."""
+
+    def setUp(self) -> None:
+        temporary = tempfile.TemporaryDirectory(prefix="android-trusted-tree-")
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name).resolve() / "tree"
+        self.root.mkdir(mode=0o755)
+        self.overrides: dict[Path, dict] = {}
+        self.frozen_times: dict[tuple[int, int], tuple[int, int]] = {}
+        real_stat, real_fstat, real_scandir = Path.stat, os.fstat, os.scandir
+        real_readlink = os.readlink
+        parents = set(self.root.parents)
+
+        def metadata(value, path=None):
+            fields = {name: getattr(value, name) for name in dir(value) if name.startswith("st_")}
+            fields["st_uid"] = 0
+            if path in parents:
+                fields["st_mode"] &= ~0o022
+            times = self.frozen_times.get((value.st_dev, value.st_ino))
+            if times is not None:
+                fields["st_mtime_ns"], fields["st_ctime_ns"] = times
+            fields.update(self.overrides.get(path, {}))
+            return SimpleNamespace(**fields)
+
+        def path_stat(path, *, follow_symlinks=True):
+            return metadata(real_stat(path, follow_symlinks=follow_symlinks), path)
+
+        class Entry:
+            def __init__(entry_self, value, directory):
+                entry_self.value, entry_self.name = value, value.name
+                entry_self.path = directory / value.name
+
+            def stat(entry_self, *, follow_symlinks=True):
+                return metadata(entry_self.value.stat(follow_symlinks=follow_symlinks), entry_self.path)
+
+        @contextmanager
+        def scandir(path):
+            directory = Path(real_readlink(f"/proc/self/fd/{path}")) if isinstance(path, int) else Path(path)
+            with real_scandir(path) as iterator:
+                yield (Entry(entry, directory) for entry in iterator)
+
+        for patch in (mock.patch.object(Path, "stat", path_stat),
+                      mock.patch.object(os, "fstat", lambda fd: metadata(real_fstat(fd))),
+                      mock.patch.object(os, "scandir", scandir)):
+            patch.start()
+            self.addCleanup(patch.stop)
+
+    def write(self, name: str, content: bytes = b"payload") -> Path:
+        path = self.root / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        for parent in path.parents:
+            if not parent.is_relative_to(self.root):
+                break
+            parent.chmod(0o755)
+        path.write_bytes(content)
+        path.chmod(0o644)
+        return path
+
+    def digest(self):
+        return BUILD_ATTESTATION._trusted_tree_digest(self.root, "fixture toolchain")
+
+    @staticmethod
+    def file_row(name: str, content: bytes, mode=0o644) -> bytes:
+        return f"F\0{name}\0{mode:o}\0{len(content)}\0{hashlib.sha256(content).hexdigest()}\n".encode()
+
+    def test_legacy_regular_rows_order_and_empty_file_are_unchanged(self) -> None:
+        self.write("a/empty", b"")
+        self.write("b/child", b"child")
+        self.write("z", b"last")
+        rows = (b"D\0a\000755\n" + b"D\0b\000755\n" + self.file_row("z", b"last")
+                + self.file_row("b/child", b"child") + self.file_row("a/empty", b""))
+        self.assertEqual((hashlib.sha256(rows).hexdigest(), 3, 9), self.digest())
+
+    def test_empty_root_preserves_empty_digest(self) -> None:
+        self.assertEqual((hashlib.sha256(b"").hexdigest(), 0, 0), self.digest())
+
+    def test_real_contained_links_bind_text_and_regular_target_bytes(self) -> None:
+        target = self.write("data", b"one")
+        link = self.root / "link"
+        link.symlink_to("data")
+        self.assertEqual(0o777, stat.S_IMODE(link.lstat().st_mode))
+        rows = self.file_row("data", b"one") + b"L\0link\000777\0data\n"
+        first = self.digest()
+        self.assertEqual((hashlib.sha256(rows).hexdigest(), 1, 3), first)
+        link.unlink()
+        link.symlink_to("./data")
+        second = self.digest()
+        self.assertNotEqual(first[0], second[0])
+        target.write_bytes(b"two")
+        self.assertNotEqual(second[0], self.digest()[0])
+
+    def test_directory_absolute_and_parent_relative_links_stay_inside(self) -> None:
+        self.write("actual/data", b"data")
+        (self.root / "directory").symlink_to("actual", target_is_directory=True)
+        (self.root / "absolute").symlink_to(self.root / "actual/data")
+        (self.root / "actual/back").symlink_to("../actual/data")
+        (self.root / "actual/root").symlink_to("..", target_is_directory=True)
+        result = self.digest()
+        self.assertEqual((1, 4), result[1:])  # Directory links are rows, not recursively expanded.
+
+    def test_unresolved_and_escaping_links_fail_closed(self) -> None:
+        self.write("file")
+        outside = self.root.parent / "outside"
+        outside.write_bytes(b"outside")
+        returning = self.root.parent / "returning"
+        returning.symlink_to(self.root / "file")
+        targets = ("missing", "link", "../outside", str(outside), str(returning),
+                   "../tree/file", "file/", "file/.")
+        link = self.root / "link"
+        for target in targets:
+            with self.subTest(target=target):
+                link.symlink_to(target)
+                with self.assertRaises(ValueError):
+                    self.digest()
+                link.unlink()
+
+    def test_nested_links_cannot_traverse_outside_then_return(self) -> None:
+        self.write("data")
+        (self.root.parent / "return").symlink_to(self.root, target_is_directory=True)
+        (self.root / "a").symlink_to("../return", target_is_directory=True)
+        (self.root / "b").symlink_to("a/data")
+        with self.assertRaisesRegex(ValueError, "escapes"):
+            self.digest()
+
+    def test_two_node_cycle_and_excessive_hops_are_rejected(self) -> None:
+        (self.root / "a").symlink_to("b")
+        (self.root / "b").symlink_to("a")
+        with self.assertRaises(ValueError):
+            self.digest()
+        (self.root / "a").unlink()
+        (self.root / "b").unlink()
+        self.write("last")
+        for number in range(67):
+            (self.root / f"link{number:02}").symlink_to(f"link{number + 1:02}" if number < 66 else "last")
+        with self.assertRaises(ValueError):
+            self.digest()
+
+    def test_foreign_owned_file_directory_link_and_target_rejected(self) -> None:
+        target = self.write("nested/data")
+        link = self.root / "a-link"
+        link.symlink_to("nested/data")
+        for path in (link, target, target.parent, self.root, self.root.parent):
+            with self.subTest(path=path):
+                self.overrides[path] = {"st_uid": 1001}
+                with self.assertRaises(ValueError):
+                    self.digest()
+                self.overrides.clear()
+
+    def test_foreign_intermediate_link_is_not_hidden_by_another_link(self) -> None:
+        self.write("data")
+        (self.root / "a").symlink_to("z")
+        (self.root / "z").symlink_to("data")
+        self.overrides[self.root / "z"] = {"st_uid": 1001}
+        with self.assertRaisesRegex(ValueError, "non-root-owned"):
+            self.digest()
+
+    def test_writable_targets_and_directory_ancestors_remain_rejected(self) -> None:
+        target = self.write("nested/data")
+        (self.root / "a-link").symlink_to("nested/data")
+        for path in (target, target.parent, self.root):
+            with self.subTest(path=path):
+                mode = stat.S_IMODE(path.stat().st_mode)
+                path.chmod(mode | 0o020)
+                with self.assertRaises(ValueError):
+                    self.digest()
+                path.chmod(mode)
+        self.overrides[self.root.parent] = {"st_mode": stat.S_IFDIR | 0o777}
+        with self.assertRaisesRegex(ValueError, "ancestry"):
+            self.digest()
+
+    def test_special_file_or_link_target_rejected_without_opening_fifo(self) -> None:
+        fifo = self.root / "fifo"
+        os.mkfifo(fifo, 0o600)
+        (self.root / "a-link").symlink_to("fifo")
+        with self.assertRaisesRegex(ValueError, "unsupported"):
+            self.digest()
+        (self.root / "a-link").unlink()
+        with self.assertRaisesRegex(ValueError, "unsupported"):
+            self.digest()
+
+    def test_streaming_is_bounded_and_preserves_large_file_formula(self) -> None:
+        content = b"x" * (2 * 1024 * 1024 + 19)
+        self.write("large", content)
+        real_read = os.read
+        requests = []
+
+        def bounded_read(fd, count):
+            self.assertEqual(1024 * 1024, count)
+            requests.append(count)
+            return real_read(fd, count)
+
+        with mock.patch.object(os, "read", bounded_read), mock.patch.object(
+            Path, "read_bytes", side_effect=AssertionError("whole-file allocation forbidden")
+        ):
+            observed = self.digest()
+        self.assertEqual((hashlib.sha256(self.file_row("large", content)).hexdigest(), 1, len(content)), observed)
+        self.assertEqual(8, len(requests))  # Three chunks plus EOF, in each independent pass.
+
+    def test_same_size_persistent_rewrite_with_identical_timestamps_rejected(self) -> None:
+        target = self.write("data", b"original")
+        before = target.stat()
+        self.frozen_times[(before.st_dev, before.st_ino)] = (before.st_mtime_ns, before.st_ctime_ns)
+        real_read = os.read
+        changed = False
+
+        def rewrite_after_read(fd, count):
+            nonlocal changed
+            chunk = real_read(fd, count)
+            if chunk and not changed:
+                changed = True
+                target.write_bytes(b"replaced")
+                self.assertEqual(BUILD_ATTESTATION._lease_identity(before),
+                                 BUILD_ATTESTATION._lease_identity(target.stat()))
+            return chunk
+
+        with mock.patch.object(os, "read", rewrite_after_read):
+            with self.assertRaisesRegex(ValueError, "changed"):
+                self.digest()
+        self.assertTrue(changed)
+        self.assertEqual(b"replaced", target.read_bytes())
+
+    def test_changed_file_descriptor_or_path_is_rejected(self) -> None:
+        for change in ("replace", "truncate", "grow", "unlink", "symlink", "mode", "owner"):
+            with self.subTest(change=change):
+                target = self.write("data", b"original")
+                real_read = os.read
+                changed = False
+
+                def mutate_after_read(fd, count):
+                    nonlocal changed
+                    chunk = real_read(fd, count)
+                    if chunk and not changed:
+                        changed = True
+                        if change == "replace":
+                            replacement = self.write("new", b"original")
+                            os.replace(replacement, target)
+                        elif change == "truncate":
+                            target.write_bytes(b"x")
+                        elif change == "grow":
+                            target.write_bytes(b"more than original")
+                        elif change == "unlink":
+                            target.unlink()
+                        elif change == "symlink":
+                            target.unlink()
+                            target.symlink_to("missing")
+                        elif change == "mode":
+                            target.chmod(0o666)
+                        else:
+                            self.overrides[target] = {"st_uid": 1001}
+                    return chunk
+
+                with mock.patch.object(os, "read", mutate_after_read):
+                    with self.assertRaisesRegex(ValueError, "changed"):
+                        self.digest()
+                self.assertTrue(changed)
+                self.overrides.clear()
+                target.unlink(missing_ok=True)
+
+    def test_no_follow_rejects_leaf_swap_before_open(self) -> None:
+        target = self.write("data")
+        real_open = os.open
+        outside = self.root.parent / "outside"
+        outside.write_bytes(b"must not read")
+        swapped = False
+
+        def swap_before_open(path, flags, *args, **kwargs):
+            nonlocal swapped
+            if Path(path) == target:
+                self.assertTrue(flags & os.O_NOFOLLOW)
+                target.unlink()
+                target.symlink_to(outside)
+                swapped = True
+            return real_open(path, flags, *args, **kwargs)
+
+        with mock.patch.object(os, "open", swap_before_open), mock.patch.object(
+            os, "read", side_effect=AssertionError("swapped outside file must not be read")
+        ):
+            with self.assertRaisesRegex(ValueError, "changed"):
+                self.digest()
+        self.assertTrue(swapped)
+
+    def test_queued_directory_swap_is_rejected_before_outside_scan(self) -> None:
+        self.write("nested/data")
+        directory = self.root / "nested"
+        outside = self.root.parent / "outside"
+        outside.mkdir()
+        (outside / "untrusted").write_bytes(b"not closure bytes")
+        real_open = os.open
+        swapped = False
+
+        def swap_before_open(path, flags, *args, **kwargs):
+            nonlocal swapped
+            if Path(path) == directory:
+                self.assertTrue(flags & os.O_NOFOLLOW)
+                directory.rename(self.root / "moved")
+                directory.symlink_to(outside, target_is_directory=True)
+                swapped = True
+            return real_open(path, flags, *args, **kwargs)
+
+        with mock.patch.object(os, "open", swap_before_open):
+            with self.assertRaisesRegex(ValueError, "directory changed"):
+                self.digest()
+        self.assertTrue(swapped)
+
+    def test_all_entries_bound_includes_directories_and_links_before_sorting(self) -> None:
+        for number in range(6):
+            (self.root / f"dir{number}").mkdir()
+        real_scandir = os.scandir
+        yielded = 0
+
+        class UnsortableEntry:
+            @property
+            def name(entry_self):
+                raise AssertionError("sorting must follow the admission bound")
+
+        @contextmanager
+        def bounded_scandir(path):
+            with real_scandir(path) as iterator:
+                def entries():
+                    nonlocal yielded
+                    for _ in iterator:
+                        yielded += 1
+                        self.assertLessEqual(yielded, 4)
+                        yield UnsortableEntry()
+                yield entries()
+
+        with mock.patch.object(BUILD_ATTESTATION, "TRUSTED_TREE_MAX_ENTRIES", 3), mock.patch.object(
+            os, "scandir", bounded_scandir
+        ):
+            with self.assertRaisesRegex(ValueError, "entry bound"):
+                self.digest()
+        self.assertEqual(4, yielded)
+        for number in range(6):
+            (self.root / f"dir{number}").rmdir()
+        self.write("target")
+        for number in range(3):
+            (self.root / f"link{number}").symlink_to("target")
+        with mock.patch.object(BUILD_ATTESTATION, "TRUSTED_TREE_MAX_ENTRIES", 3):
+            with self.assertRaisesRegex(ValueError, "entry bound"):
+                self.digest()
+        with mock.patch.object(BUILD_ATTESTATION, "TRUSTED_TREE_MAX_ENTRIES", 4):
+            self.assertEqual((1, 7), self.digest()[1:])
 
 
 if __name__ == "__main__":
