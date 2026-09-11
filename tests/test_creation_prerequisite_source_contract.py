@@ -7800,7 +7800,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             route = "parent"
             viewport = "bottom"
 
-            def hierarchy(self):
+            def hierarchy(self, *, deadline=None):
                 calls.append(("hierarchy", self.route))
                 if self.route == "parent":
                     return [parent_page] if self.viewport == "bottom" else [parent_page, initial_row]
@@ -8792,12 +8792,223 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                          [driver.shared.UiNode({"resource-id": "rank-origin"})]
                      ),
                  ), \
+                 mock.patch.object(
+                     driver.time, "monotonic", side_effect=[100.0, 100.0, 101.0, 145.0]
+                 ), \
+                 mock.patch.object(driver.time, "sleep"), \
                  self.assertRaisesRegex(RuntimeError, expected_error):
                 driver.select_priority_rank(
                     device,
                     "heritage",
                     category_navigation=category_navigation,
                 )
+
+    def assert_rank_refresh_observations(
+        self,
+        snapshots: list[list[driver.shared.UiNode]],
+        *,
+        expected_error: str | None = None,
+        read_seconds: float = 1.0,
+        language: str = "en",
+    ):
+        """Model only transport/clock; execute the real exact rank-tap helper."""
+        initial = self.canonical_node(
+            "creation-prerequisite-category-heritage", bounds="[10,100][900,300]"
+        )
+        ranks = [
+            self.canonical_node(
+                f"creation-prerequisite-rank-heritage-{rank}",
+                bounds=f"[100,{300 + index * 150}][900,{400 + index * 150}]",
+            )
+            for index, rank in enumerate("abcde")
+        ]
+        clock = [100.0]
+
+        class RefreshDevice:
+            def __init__(self):
+                self.taps = []
+                self.deadlines = []
+                self.captures = []
+                self.reads = 0
+
+            def shell(self, *arguments):
+                self.taps.append(arguments)
+                if len(self.taps) > 2:
+                    raise AssertionError("rank refresh must never repeat a tap")
+
+            def hierarchy(self, *, deadline=None):
+                if len(self.taps) == 1:
+                    if deadline is not None:
+                        raise AssertionError("rank reacquisition precedes the refresh lease")
+                    return ranks
+                if len(self.taps) != 2 or deadline != 145.0:
+                    raise AssertionError("refresh must share one exact post-tap lease")
+                self.deadlines.append(deadline)
+                self.reads += 1
+                if self.reads > 45:
+                    raise AssertionError("unbounded refresh observations")
+                clock[0] += read_seconds
+                return snapshots[min(self.reads - 1, len(snapshots) - 1)]
+
+            def display_size(self):
+                return (1080, 2400)
+
+            node_has_tappable_bounds = driver.shared.Device.node_has_tappable_bounds
+
+            def dismiss_system_ui_anr(self, _nodes=None):
+                return False
+
+            def capture(self, name):
+                self.captures.append(name)
+
+        device = RefreshDevice()
+        device._phone_ui_locale_binding = driver.shared.PhoneUiLocaleBinding(
+            locale_tag=language, language=language, authority_property="persist.sys.locale",
+        )
+        navigation = {}
+        with mock.patch.object(
+            driver, "acquire_measured_priority_category_row", return_value=initial
+        ), mock.patch.object(
+            driver, "wait_for_priority_rank_origin",
+            return_value=self.priority_rank_origin(ranks),
+        ) as origin, mock.patch.object(
+            driver, "scan_forward_with_receipt",
+            return_value=driver.StableViewportScan([ranks], 0),
+        ) as scan, mock.patch.object(
+            driver.time, "monotonic", side_effect=lambda: clock[0]
+        ), mock.patch.object(
+            driver.time, "sleep", side_effect=lambda seconds: clock.__setitem__(0, clock[0] + seconds)
+        ):
+            if expected_error is None:
+                self.assertEqual(
+                    "creation-prerequisite-rank-heritage-e",
+                    driver.select_priority_rank(
+                        device, "heritage", category_navigation=navigation,
+                    ),
+                )
+            else:
+                with self.assertRaisesRegex(RuntimeError, expected_error):
+                    driver.select_priority_rank(
+                        device, "heritage", category_navigation=navigation,
+                    )
+                self.assertEqual({}, navigation)
+        self.assertEqual(
+            [("input", "tap", "455", "200"), ("input", "tap", "500", "950")],
+            device.taps,
+        )
+        origin.assert_called_once()
+        scan.assert_called_once()
+        self.assertTrue(device.deadlines)
+        self.assertEqual({145.0}, set(device.deadlines))
+        return device, navigation, clock[0]
+
+    def test_rank_selection_waits_for_stale_absent_then_exact_current_row(self) -> None:
+        parent = self.canonical_node("creation-prerequisite-page")
+        stale = self.canonical_node(
+            "creation-prerequisite-category-heritage",
+            **{"content-desc": "Heritage. 1. Select an authority-projected rank"},
+        )
+        selected = self.canonical_node(
+            "creation-prerequisite-category-heritage",
+            **{"content-desc": "Heritage. 1. Rank E · Human · source SR5"},
+        )
+        current = [parent, selected]
+        device, navigation, elapsed = self.assert_rank_refresh_observations(
+            [[parent, stale], [], [parent], current]
+        )
+        self.assertEqual(4, device.reads)
+        self.assertEqual([], device.captures)
+        self.assertLess(elapsed, 145.0)
+        self.assertEqual("heritage", navigation["lastCategory"])
+        self.assertIs(current, navigation["currentNodes"])
+        self.assertIs(selected, navigation["currentNodes"][1])
+
+    def test_rank_selection_preserves_exact_rank_and_readiness_until_deadline(self) -> None:
+        parent = self.canonical_node("creation-prerequisite-page")
+        for attributes in (
+            {"content-desc": "Heritage. 1. Select an authority-projected rank"},
+            {"content-desc": "Heritage. 1. Rank A · Human"},
+            {"content-desc": "Heritage. 1. Rank Evil · Human"},
+            {"enabled": "false"},
+            {"clickable": "false"},
+            {"bounds": "[100,300][900,305]"},
+            {"bounds": "[100,2500][900,2700]"},
+        ):
+            with self.subTest(attributes=attributes):
+                values = {"content-desc": "Heritage. 1. Rank E · Human", **attributes}
+                invalid = self.canonical_node("creation-prerequisite-category-heritage", **values)
+                device, _, elapsed = self.assert_rank_refresh_observations(
+                    [[parent, invalid]], expected_error="was not projected",
+                )
+                self.assertEqual(145.0, elapsed)
+                self.assertGreater(device.reads, 1)
+                self.assertEqual(["creation-prerequisite-heritage-draft-not-refreshed"], device.captures)
+
+    def test_rank_selection_waits_for_selected_row_to_become_tappable(self) -> None:
+        parent = self.canonical_node("creation-prerequisite-page")
+        selected = self.canonical_node(
+            "creation-prerequisite-category-heritage",
+            **{"content-desc": "Heritage. 1. Rank E · Human"},
+        )
+        disabled = driver.shared.UiNode({**selected.attributes, "enabled": "false"})
+        current = [parent, selected]
+        device, navigation, _ = self.assert_rank_refresh_observations([[parent, disabled], current])
+        self.assertEqual(2, device.reads)
+        self.assertIs(current, navigation["currentNodes"])
+
+    def test_rank_selection_accepts_only_exact_refreshed_localized_rank(self) -> None:
+        for language, label in (("en", "Rank"), ("de", "Rang"), ("es", "Rango")):
+            with self.subTest(language=language):
+                parent = self.canonical_node("creation-prerequisite-page")
+                stale = self.canonical_node(
+                    "creation-prerequisite-category-heritage",
+                    **{"content-desc": f"Heritage. 1. {label} A · source SR5"},
+                )
+                selected = self.canonical_node(
+                    "creation-prerequisite-category-heritage",
+                    **{"content-desc": f"Heritage. 1. {label} E · source SR5"},
+                )
+                current = [parent, selected]
+                device, navigation, _ = self.assert_rank_refresh_observations(
+                    [[parent, stale], current], language=language,
+                )
+                self.assertEqual(2, device.reads)
+                self.assertIs(current, navigation["currentNodes"])
+
+    def test_rank_selection_rejects_ambiguous_current_observation_immediately(self) -> None:
+        parent = self.canonical_node("creation-prerequisite-page")
+        selected = self.canonical_node(
+            "creation-prerequisite-category-heritage",
+            **{"content-desc": "Heritage. 1. Rank E · Human"},
+        )
+        category = self.canonical_node("creation-prerequisite-category-page")
+        for duplicate in (parent, selected, category):
+            with self.subTest(selector=duplicate.attributes["resource-id"]):
+                nodes = [parent, selected, duplicate]
+                if duplicate is category:
+                    nodes.append(category)
+                device, _, elapsed = self.assert_rank_refresh_observations(
+                    [nodes, [parent, selected]], expected_error="ambiguous parent state",
+                )
+                self.assertEqual(1, device.reads)
+                self.assertEqual(101.0, elapsed)
+                self.assertEqual(["creation-prerequisite-heritage-pop-cardinality-invalid"], device.captures)
+
+    def test_rank_selection_rejects_selected_hierarchy_returned_at_or_after_deadline(self) -> None:
+        current = [
+            self.canonical_node("creation-prerequisite-page"),
+            self.canonical_node(
+                "creation-prerequisite-category-heritage",
+                **{"content-desc": "Heritage. 1. Rank E · Human"},
+            ),
+        ]
+        for read_seconds in (45.0, 46.0):
+            with self.subTest(read_seconds=read_seconds):
+                device, _, _ = self.assert_rank_refresh_observations(
+                    [current], expected_error="did not publish one refreshed parent row",
+                    read_seconds=read_seconds,
+                )
+                self.assertEqual(1, device.reads)
 
     def test_direct_priority_bootstrap_skips_legacy_continuation_and_public_save_detour(self) -> None:
         source = DRIVER.read_text(encoding="utf-8")

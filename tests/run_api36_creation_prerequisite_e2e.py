@@ -6442,10 +6442,21 @@ def select_priority_rank(
             f"{selected_resource_id!r}"
         )
 
+    expected_rank = rank_token.upper()
+    locale_binding = getattr(device, "_phone_ui_locale_binding", None)
+    language = (
+        locale_binding.language
+        if isinstance(locale_binding, shared.PhoneUiLocaleBinding)
+        else "en"
+    )
+    rank_label = PRIORITY_RANK_LABEL_BY_LANGUAGE[language]
     deadline = time.monotonic() + 45
     row: shared.UiNode | None = None
+    detail: str | None = None
     while time.monotonic() < deadline:
-        nodes = device.hierarchy()
+        nodes = device.hierarchy(deadline=deadline)
+        if time.monotonic() >= deadline:
+            break
         if not nodes:
             time.sleep(0.75)
             continue
@@ -6477,39 +6488,36 @@ def select_priority_rank(
             and len(matches["creation-prerequisite-page"]) == 1
             and len(matches[category_selector]) == 1
         ):
-            row = matches[category_selector][0]
-            break
+            candidate = matches[category_selector][0]
+            detail = candidate.attributes.get("content-desc", "")
+            # Pop can expose the retained parent before its asynchronous
+            # revalidation refreshes the selected rank. Observe within this
+            # same lease; never repeat the rank-selection tap.
+            if (
+                candidate.attributes.get("enabled") == "true"
+                and candidate.attributes.get("clickable") == "true"
+                and device.node_has_tappable_bounds(candidate)
+                and re.search(
+                    rf"(?:^|[. ·]){re.escape(rank_label)} {re.escape(expected_rank)}(?:$|[. ·])",
+                    detail,
+                ) is not None
+            ):
+                row = candidate
+                break
         if device.dismiss_system_ui_anr(nodes):
             time.sleep(2)
             continue
         time.sleep(0.25)
     if row is None:
+        if detail is not None:
+            device.capture(f"creation-prerequisite-{category}-draft-not-refreshed")
+            raise RuntimeError(
+                f"Selected {category} rank {expected_rank!r} was not projected by the "
+                f"refreshed phone draft row within the bounded wait: {detail!r}"
+            )
         device.capture(f"creation-prerequisite-{category}-category-pop-timeout")
         raise RuntimeError(
             f"{category} rank selection did not publish one refreshed parent row"
-        )
-    detail = row.attributes.get("content-desc", "")
-    expected_rank = rank_token.upper()
-    locale_binding = getattr(device, "_phone_ui_locale_binding", None)
-    language = (
-        locale_binding.language
-        if isinstance(locale_binding, shared.PhoneUiLocaleBinding)
-        else "en"
-    )
-    rank_label = PRIORITY_RANK_LABEL_BY_LANGUAGE[language]
-    if (
-        row.attributes.get("enabled") != "true"
-        or row.attributes.get("clickable") != "true"
-        or not device.node_has_tappable_bounds(row)
-        or re.search(
-            rf"(?:^|[. ·]){re.escape(rank_label)} {re.escape(expected_rank)}(?:$|[. ·])",
-            detail,
-        ) is None
-    ):
-        device.capture(f"creation-prerequisite-{category}-draft-not-refreshed")
-        raise RuntimeError(
-            f"Selected {category} rank {expected_rank!r} was not projected by the "
-            f"refreshed phone draft row: {detail!r}"
         )
     category_navigation["lastCategory"] = category
     category_navigation["currentNodes"] = nodes
