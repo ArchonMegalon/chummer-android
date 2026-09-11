@@ -130,7 +130,105 @@ def encoded(value: dict[str, object]) -> bytes:
     return json.dumps(value, separators=(",", ":")).encode("utf-8")
 
 
+def attachment_payload(sequence: int = 7) -> dict[str, object]:
+    value = state_payload()
+    value["sequence"] = sequence
+    value["surface"].update({
+        "pageAutomationId": "creation-prerequisite-page",
+        "navigationDepth": 2,
+        "wizardLane": "creation-prerequisite",
+        "stage": "attachment-authority-ready",
+    })
+    value["transaction"] = None
+    value["stateDigest"] = proof.expected_state_digest(value)
+    return value
+
+
 class Api36ProofStateContractTests(unittest.TestCase):
+    def test_attachment_reader_waits_for_later_same_process_proof(self) -> None:
+        prior = attachment_payload(9)
+        observations = [attachment_payload(8), prior, attachment_payload(10)]
+        clock = [100.0]
+        deadlines = []
+
+        def observe(_device, *, deadline, attempt):
+            deadlines.append(deadline)
+            return encoded(observations.pop(0)), 4242, {"attempt": attempt}
+
+        with patch.object(proof, "_state_file_observation", side_effect=observe), patch.object(
+            proof.time, "monotonic", side_effect=lambda: clock[0]
+        ), patch.object(proof.time, "sleep", side_effect=lambda n: clock.__setitem__(0, clock[0] + n)):
+            result = proof.wait_for_state(
+                SimpleNamespace(), expected=expectation(),
+                page_automation_id="creation-prerequisite-page",
+                stage="attachment-authority-ready", wizard_lane="creation-prerequisite",
+                timeout=30, deadline=105.0, after_same_process_proof=prior,
+            )
+        self.assertEqual(10, result.payload["sequence"])
+        self.assertEqual(3, result.read_observation["attempt"])
+        self.assertEqual([105.0] * 3, deadlines)
+
+    def test_attachment_reader_rejects_coherent_process_and_workspace_drift(self) -> None:
+        prior = attachment_payload(9)
+        cases = (
+            ("processId", None, 4243),
+            ("processInstanceId", None, "55555555-5555-5555-5555-555555555555"),
+            ("e2eAuthorityGeneration", None, 3),
+            ("workspace", "workspaceId", "another-workspace"),
+            ("workspace", "contentRevision", 32),
+            ("workspace", "savedRevision", 30),
+            ("workspace", "payloadSha256", "a" * 64),
+            ("workspace", "documentSha256", "b" * 64),
+        )
+        for field, member, replacement in cases:
+            with self.subTest(field=field, member=member):
+                value = attachment_payload(9)  # Even an old sequence cannot hide identity drift.
+                if member is None:
+                    value[field] = replacement
+                else:
+                    value[field][member] = replacement
+                value["stateDigest"] = proof.expected_state_digest(value)
+                with patch.object(proof, "_state_file_observation", return_value=(
+                    encoded(value), value["processId"], {"attempt": 1},
+                )) as read, self.assertRaisesRegex(RuntimeError, "exact same-process workspace"):
+                    proof.wait_for_state(
+                        SimpleNamespace(), expected=expectation(),
+                        page_automation_id="creation-prerequisite-page",
+                        stage="attachment-authority-ready", wizard_lane="creation-prerequisite",
+                        after_same_process_proof=prior,
+                    )
+                self.assertEqual(1, read.call_count)
+
+    def test_attachment_reader_rejects_stale_forever_and_late_valid_observation(self) -> None:
+        for late in (False, True):
+            with self.subTest(late=late):
+                clock = [100.0]
+                deadlines = []
+                prior = attachment_payload(9)
+
+                def observe(_device, *, deadline, attempt):
+                    deadlines.append(deadline)
+                    clock[0] += 0.6 if late else 0.1
+                    return encoded(attachment_payload(10) if late else prior), 4242, {"attempt": attempt}
+
+                with patch.object(proof, "_state_file_observation", side_effect=observe), patch.object(
+                    proof.time, "monotonic", side_effect=lambda: clock[0]
+                ), patch.object(proof.time, "sleep", side_effect=lambda n: clock.__setitem__(0, clock[0] + n)), self.assertRaisesRegex(
+                    RuntimeError, "after its deadline" if late else "required_after=9",
+                ):
+                    proof.wait_for_state(
+                        SimpleNamespace(), expected=expectation(),
+                        page_automation_id="creation-prerequisite-page",
+                        stage="attachment-authority-ready", wizard_lane="creation-prerequisite",
+                        timeout=30, deadline=100.5, after_same_process_proof=prior,
+                    )
+                self.assertTrue(deadlines)
+                self.assertTrue(all(value == 100.5 for value in deadlines))
+                if late:
+                    self.assertEqual(1, len(deadlines))
+                else:
+                    self.assertEqual(100.5, clock[0])
+
     def test_exact_import_state_binds_callback_stream_workspace_and_activation(self) -> None:
         value = import_state_payload()
         snapshot = proof.validate_import_state(

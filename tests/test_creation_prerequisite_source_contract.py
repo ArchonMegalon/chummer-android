@@ -6730,6 +6730,118 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             deadline=deadline,
         )
 
+    def _restored_attachment_barrier_scenario(self, *, stale_forever=False, duplicate=False):
+        # Only device transport/appearance timing and scroll scans are modeled.
+        # The real proof parser/digest, sequence, workspace, option and tap paths run.
+        from types import SimpleNamespace
+        from test_api36_proof_state_contract import attachment_payload, encoded, expectation
+
+        clock = [100.0]
+        ready = [True]
+        returned = [False]
+        after_back_reads = [0]
+        events = []
+        device = mock.Mock()
+        device.node_has_tappable_bounds.return_value = True
+        prior = attachment_payload(9)
+        stale_talent = self.canonical_node("creation-prerequisite-talent-selection")
+        fresh_talent = self.canonical_node(
+            "creation-prerequisite-talent-selection", bounds="[100,700][900,900]",
+        )
+        observed_rows = []
+
+        def observe(_device, *, deadline, attempt):
+            self.assertLessEqual(deadline, 220.0)
+            if not returned[0]:
+                events.append("pre-back-proof-9")
+                payload = prior
+            else:
+                after_back_reads[0] += 1
+                ready[0] = after_back_reads[0] >= 2 and not stale_forever
+                payload = attachment_payload(10) if ready[0] else prior
+                events.append(f"post-back-proof-{payload['sequence']}")
+            return encoded(payload), 4242, {"attempt": attempt}
+
+        def back(**_kwargs):
+            events.append("back")
+            returned[0] = True
+            ready[0] = False
+
+        def acquire_talent(*_args, **_kwargs):
+            node = fresh_talent if ready[0] else stale_talent
+            observed_rows.append(node)
+            events.append("fresh-talent" if ready[0] else "stale-talent")
+            return node
+
+        def tap(*args, **_kwargs):
+            self.assertEqual(("input", "tap"), args[:2])
+            if returned[0]:
+                self.assertTrue(ready[0], "Talent tap preceded refreshed attachment")
+                self.assertEqual(tuple(map(str, fresh_talent.center)), args[2:])
+                events.append("talent-tap")
+            else:
+                events.append("heritage-tap")
+
+        def route(selector, **_kwargs):
+            if returned[0] and selector == "creation-prerequisite-page":
+                events.append("parent-accessibility")
+            return self.canonical_node(selector)
+
+        def rewind(_device, selector, **_kwargs):
+            return self.canonical_node(selector), []
+
+        def scan(_device, *, scan_id, **_kwargs):
+            category = "talent" if "talent" in scan_id else "heritage"
+            option = self.canonical_node(
+                f"creation-prerequisite-{category}-option-exact",
+                text="Current typed draft selection",
+            )
+            nodes = [option, option] if duplicate and category == "talent" else [option]
+            return SimpleNamespace(screens=[nodes], swipes=0)
+
+        device.back.side_effect = back
+        device.shell.side_effect = tap
+        device.wait_exact_resource_id_bidirectional.side_effect = acquire_talent
+        device.wait_for_single_exact_resource_id.side_effect = route
+        navigation = {"selectionViewports": {"heritage": 0, "talent": 1}, "currentViewport": 2}
+        with mock.patch.object(driver.proof_state, "_state_file_observation", side_effect=observe), mock.patch.object(
+            driver.time, "monotonic", side_effect=lambda: clock[0]
+        ), mock.patch.object(driver.time, "sleep", side_effect=lambda n: clock.__setitem__(0, clock[0] + n)), mock.patch.object(
+            driver, "rewind_to_exact_resource_id", side_effect=rewind
+        ), mock.patch.object(driver, "acquire_stable_start_origin", return_value=self.priority_rank_origin([])), mock.patch.object(
+            driver, "scan_forward_with_receipt", side_effect=scan
+        ):
+            try:
+                for category in ("heritage", "talent"):
+                    driver.require_exact_restored_authority_option(
+                        device, category, f"creation-prerequisite-{category}-option-exact", "selection-exact",
+                        root_navigation=navigation, observed_selection_id="selection-exact",
+                        previous_root_category=None if category == "heritage" else "heritage",
+                        retain_selected_node=category == "talent", deadline=220.0,
+                        proof_expectation=expectation(),
+                    )
+            finally:
+                self.assertEqual(1, device.back.call_count)
+                self.assertEqual(1 if stale_forever else 2, device.shell.call_count)
+        return events, observed_rows, fresh_talent
+
+    def test_restored_talent_waits_for_fresh_attachment_before_one_current_row_tap(self) -> None:
+        events, rows, current = self._restored_attachment_barrier_scenario()
+        self.assertEqual([
+            "heritage-tap", "pre-back-proof-9", "back", "post-back-proof-9",
+            "post-back-proof-10", "parent-accessibility", "fresh-talent", "talent-tap",
+        ], events)
+        self.assertEqual(1, len(rows))
+        self.assertIs(current, rows[0])
+
+    def test_restored_talent_stale_attachment_never_reaches_acquisition_or_tap(self) -> None:
+        with self.assertRaisesRegex(RuntimeError, "required_after=9"):
+            self._restored_attachment_barrier_scenario(stale_forever=True)
+
+    def test_restored_talent_fresh_attachment_does_not_bypass_duplicate_options(self) -> None:
+        with self.assertRaisesRegex(RuntimeError, "duplicateResourceId=True"):
+            self._restored_attachment_barrier_scenario(duplicate=True)
+
     def test_prerequisite_navigation_rejects_partial_proof_contract_before_tap(self) -> None:
         device = mock.Mock()
         with self.assertRaisesRegex(ValueError, "supplied together"):

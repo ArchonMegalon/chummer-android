@@ -17,6 +17,11 @@ public sealed class CreationPrerequisitePage : NativePageBase
         Padding = new Thickness(20, 18, 20, 40),
         Spacing = 14
     };
+    private readonly ActivityIndicator _loading = new()
+    {
+        AutomationId = "creation-prerequisite-loading",
+        HeightRequest = 24
+    };
     private readonly CreationPrerequisitePhoneDraft _draft = new();
     private readonly CharacterCreationPrerequisiteState _originalAuthority;
     private CharacterCreationPrerequisiteState? _dashboardAuthority;
@@ -37,22 +42,33 @@ public sealed class CreationPrerequisitePage : NativePageBase
         Title = WizardStrings.Get("Priority.PageTitle", "Priorities");
         AutomationId = "creation-prerequisite-page";
         Content = new ScrollView { Content = _body };
+        _body.IsEnabled = false;
 #if CHUMMER_API36_PROOF_INSTRUMENTATION
         Loaded += OnApi36ProofLoaded;
 #endif
     }
 
-#if CHUMMER_API36_PROOF_INSTRUMENTATION
     protected override void OnAppearing()
     {
+        // A returned page still contains callbacks from its preceding appearance.
+        // Keep those controls inert until fresh owner-bound revalidation renders
+        // this appearance; a failed preparation must not revive cached authority.
+        _body.IsEnabled = false;
+        _dashboardAuthority = null;
+        if (!_body.Children.Contains(_loading))
+            _body.Children.Insert(0, _loading);
+        _loading.IsRunning = true;
         base.OnAppearing();
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
         // NativePageBase may refresh synchronously before its first incomplete await, or later
         // after initialization. Retain the route, Loaded, and ready-state signals so every
         // lifecycle order reaches the same exact attachment gate.
         _api36ProofRouteAppeared = true;
         TryPublishApi36AttachmentProof();
+#endif
     }
 
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
     protected override void OnNavigatedTo(NavigatedToEventArgs args)
     {
         base.OnNavigatedTo(args);
@@ -62,15 +78,21 @@ public sealed class CreationPrerequisitePage : NativePageBase
         // every authority and cardinality decision.
         TryPublishApi36AttachmentProof();
     }
+#endif
 
     protected override void OnDisappearing()
     {
+        _body.IsEnabled = false;
+        _dashboardAuthority = null;
+        _loading.IsRunning = false;
+        _body.Children.Remove(_loading);
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
         _api36ProofRouteAppeared = false;
         _latestApi36ProofReadyState = null;
         _api36ProofAttachmentPublished = false;
+#endif
         base.OnDisappearing();
     }
-#endif
 
     protected override async Task PrepareForAppearanceRefreshAsync(CancellationToken cancellationToken)
     {
@@ -84,6 +106,8 @@ public sealed class CreationPrerequisitePage : NativePageBase
 
     protected override void Refresh()
     {
+        _body.IsEnabled = false;
+        _loading.IsRunning = false;
         _renderGeneration++;
 #if CHUMMER_API36_PROOF_INSTRUMENTATION
         _api36ProofAttachmentPublished = false;
@@ -144,6 +168,8 @@ public sealed class CreationPrerequisitePage : NativePageBase
                 _prepareBlockers,
                 "creation-prerequisite-preview-blockers");
         AddActions(state);
+        _body.IsEnabled = IsCurrentAppearanceGeneration(CaptureAppearanceGeneration())
+            && Coordinator.IsCreationPrerequisiteStateCurrent(state);
 #if CHUMMER_API36_PROOF_INSTRUMENTATION
         _latestApi36ProofReadyState = state;
         TryPublishApi36AttachmentProof();
@@ -180,6 +206,7 @@ public sealed class CreationPrerequisitePage : NativePageBase
         IReadOnlyList<Page> navigationStack = Navigation.NavigationStack;
         if (_api36ProofAttachmentPublished
             || !_api36ProofRouteAppeared
+            || !_body.IsEnabled
             || !IsLoaded
             || Handler is null
             || Window is null

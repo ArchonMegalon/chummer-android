@@ -23,6 +23,11 @@ internal static class Program
             await AfterRunAuthorityHarness.RunCreationPrerequisiteOwnerCasesAsync(args[1]);
             return;
         }
+        if (args.Length == 2 && args[0] == "--creation-prerequisite-parent-readiness-content-root")
+        {
+            await AfterRunAuthorityHarness.RunCreationPrerequisiteParentReadinessCasesAsync(args[1]);
+            return;
+        }
         if (args.Length == 1 && args[0] == "--creation-bootstrap-timing")
         {
             await CreationBootstrapObservationsAreOneShotAndRequireSuccessfulStateAsync();

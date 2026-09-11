@@ -9938,6 +9938,7 @@ def require_exact_restored_authority_option(
     previous_root_category: str | None,
     retain_selected_node: bool,
     deadline: float,
+    proof_expectation: proof_state.ProofBuildExpectation,
     max_scrolls: int = 40,
     scan_observer: Callable[[dict[str, object]], None] | None = None,
     scan_id: str | None = None,
@@ -10121,13 +10122,36 @@ def require_exact_restored_authority_option(
             deadline=deadline,
         )
     else:
+        # Returning exposes the parent's old enabled rows before its awaited
+        # appearance revalidation refreshes their generation-bound callbacks.
+        # That source-proven race fits run 34623722416's retained parent route;
+        # the archive does not prove which generation handled its exact tap.
+        # Capture the latest observation immediately before this Back, not an
+        # earlier opening's sequence. Proof only gates scheduling: the fresh
+        # accessibility acquisition and all option/selection checks still apply.
+        prior_attachment = proof_state.wait_for_state(
+            device,
+            expected=proof_expectation,
+            page_automation_id="creation-prerequisite-page",
+            stage="attachment-authority-ready",
+            wizard_lane="creation-prerequisite",
+            timeout=shared._remaining_operation_timeout(deadline=deadline, maximum=30),
+            deadline=deadline,
+        )
         device.back(deadline=deadline)
+        return_deadline = min(deadline, time.monotonic() + 45)
+        read_creation_prerequisite_attachment_proof_state(
+            device,
+            proof_expectation,
+            expected_prior_proof=prior_attachment.payload,
+            deadline=return_deadline,
+        )
         root_node = device.wait_for_single_exact_resource_id(
             "creation-prerequisite-page",
             timeout=45,
             evidence_prefix=f"restored-{category}-back-to-prerequisite",
             surface_name=f"Prerequisite route after restored {category} proof",
-            deadline=deadline,
+            deadline=return_deadline,
         )
         _require_canonical_chummer_resource_id(
             device,
@@ -11330,7 +11354,7 @@ def read_creation_prerequisite_attachment_proof_state(
     expected_prior_proof: dict[str, object],
     deadline: float,
 ) -> dict[str, object]:
-    """Bind the one opening tap to an exact attached prerequisite page.
+    """Bind one navigation action to a later exact attached prerequisite page.
 
     This app-private observation proves only the route lifecycle boundary and
     its revision-bound Core snapshot. The following accessibility traversal
@@ -11344,6 +11368,8 @@ def read_creation_prerequisite_attachment_proof_state(
         stage="attachment-authority-ready",
         wizard_lane="creation-prerequisite",
         timeout=timeout,
+        deadline=deadline,
+        after_same_process_proof=expected_prior_proof,
     )
     payload = snapshot.payload
     workspace = payload.get("workspace")
@@ -11382,7 +11408,7 @@ def read_creation_prerequisite_attachment_proof_state(
         )
         raise RuntimeError(
             "Creation prerequisite attachment proof is not a later same-process "
-            "observation of the exact Resources workspace"
+            "observation of the exact workspace"
         )
     return {
         "schema": payload["schema"],
@@ -12073,6 +12099,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         previous_root_category=None,
         retain_selected_node=False,
         deadline=same_process_options_deadline,
+        proof_expectation=proof_expectation,
         scan_observer=progress.record_scan,
         scan_id="same-process-restored-authority-option-heritage",
     )
@@ -12086,6 +12113,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         previous_root_category="heritage",
         retain_selected_node=True,
         deadline=same_process_options_deadline,
+        proof_expectation=proof_expectation,
         scan_observer=progress.record_scan,
         scan_id="same-process-restored-authority-option-talent",
     )
@@ -12370,6 +12398,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         previous_root_category=None,
         retain_selected_node=False,
         deadline=process_restart_options_deadline,
+        proof_expectation=proof_expectation,
         scan_observer=progress.record_scan,
         scan_id="process-restart-restored-authority-option-heritage",
     )
@@ -12383,6 +12412,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         previous_root_category="heritage",
         retain_selected_node=True,
         deadline=process_restart_options_deadline,
+        proof_expectation=proof_expectation,
         scan_observer=progress.record_scan,
         scan_id="process-restart-restored-authority-option-talent",
     )

@@ -13,7 +13,13 @@ using Microsoft.Maui.Controls;
 
 internal static partial class AfterRunAuthorityHarness
 {
-    public static async Task RunCreationPrerequisiteOwnerCasesAsync(string contentRoot)
+    public static Task RunCreationPrerequisiteOwnerCasesAsync(string contentRoot)
+        => RunCreationPrerequisiteCasesAsync(contentRoot, parentReadinessOnly: false);
+
+    public static Task RunCreationPrerequisiteParentReadinessCasesAsync(string contentRoot)
+        => RunCreationPrerequisiteCasesAsync(contentRoot, parentReadinessOnly: true);
+
+    private static async Task RunCreationPrerequisiteCasesAsync(string contentRoot, bool parentReadinessOnly)
     {
         if (!Path.IsPathFullyQualified(contentRoot) || !Directory.Exists(Path.Combine(contentRoot, "data")))
             throw new ArgumentException("Supply the explicit canonical Core content root.", nameof(contentRoot));
@@ -26,7 +32,10 @@ internal static partial class AfterRunAuthorityHarness
                 "missing-service", "cancel-before-dispatch", "postcommit-cancel", "postcommit-load-fault",
                 "postcommit-owner-b", "postcommit-observer", "entered-unknown",
                 "page-same", "page-departure", "page-old-render", "page-queued-departure", "page-load-fault",
-                "page-back-departure", "page-back-old-render", "page-back-owner-b", "page-back-owner-aba"];
+                "page-back-departure", "page-back-old-render", "page-back-owner-b", "page-back-owner-aba",
+                "parent-return", "parent-return-fault", "parent-return-departure", "parent-return-owner-b", "parent-return-owner-aba"];
+            if (parentReadinessOnly)
+                cases = cases.Where(scenario => scenario.StartsWith("parent-return", StringComparison.Ordinal)).ToArray();
             foreach (string scenario in cases)
             {
                 try
@@ -118,6 +127,11 @@ internal static partial class AfterRunAuthorityHarness
                     && runtime.Coordinator.IsCreationPrerequisiteStateCurrent(loaded.Value),
                 "SETUP: actual Bootstrap/Load did not issue an actionable Priority prerequisite: " + JsonSerializer.Serialize(loaded));
             var state = loaded.Value!;
+            if (scenario.StartsWith("parent-return", StringComparison.Ordinal))
+            {
+                await RunPrerequisiteParentReturnAsync(runtime, owners, ui, probe!, state, scenario);
+                return;
+            }
             var (assignments, selections) = PrerequisiteSelections(state);
 
             if (scenario == "queued-preview-b")
@@ -289,7 +303,8 @@ internal static partial class AfterRunAuthorityHarness
                 before = before.ToDictionary(pair => pair.Key, pair => new { pair.Value.Content, pair.Value.Saved, pair.Value.Digest }),
                 after = after.ToDictionary(pair => pair.Key, pair => new { pair.Value.Content, pair.Value.Saved, pair.Value.Digest })
             }));
-            if (scenario is "queued-load-b" or "queued-preview-b" or "missing-service")
+            if (scenario is "queued-load-b" or "queued-preview-b" or "missing-service"
+                || scenario.StartsWith("parent-return", StringComparison.Ordinal))
                 Require(after.All(pair => pair.Value.Digest == before[pair.Key].Digest), "Rejected read changed a cold partition.");
         }
 
@@ -376,6 +391,8 @@ internal static partial class AfterRunAuthorityHarness
         public int UiTicks { get; private set; }
         public int PostCommitLoadFaultCalls { get; private set; }
         public int AfterCommitCalls { get; private set; }
+        public int AppearanceLoadFaultCalls { get; private set; }
+        public bool FailAppearanceLoad { get; set; }
         public bool FailPostCommitLoad { get; set; }
         public Action? AfterCommit { get; set; }
 
@@ -396,6 +413,11 @@ internal static partial class AfterRunAuthorityHarness
         public CharacterCreationFoundationResult<CharacterCreationPrerequisiteState> Load(OwnerContextStamp owner,
             CharacterCreationPrerequisiteLoadRequest request) => Invoke("load", () =>
             {
+                if (FailAppearanceLoad)
+                {
+                    AppearanceLoadFaultCalls++;
+                    throw new InvalidOperationException("diagnostic appearance Load fault");
+                }
                 if (FailPostCommitLoad && SuccessfulConfirms > 0)
                 {
                     PostCommitLoadFaultCalls++;
@@ -421,6 +443,164 @@ internal static partial class AfterRunAuthorityHarness
             }
             return result;
         }
+    }
+
+    private static async Task RunPrerequisiteParentReturnAsync(NativeRewardRuntime runtime,
+        ControlledLinkedOwner owners, IssuedPageUiContext ui, PrerequisiteCoreProbe probe,
+        CharacterCreationPrerequisiteState state, string scenario)
+    {
+        var page = new CreationPrerequisitePage(runtime.Coordinator, state);
+        var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
+        bool initiallyDisabled = !body.IsEnabled;
+        var navigation = new NavigationPage(new ContentPage { Title = "Prerequisite origin" });
+        await navigation.PushAsync(page, animated: false);
+        var window = new Window(navigation);
+        using var alerts = new IssuedPageAlerts(page, window);
+        await alerts.PreflightAsync();
+        var gate = (SemaphoreSlim)typeof(RunnerSessionCoordinator)
+            .GetField("_workspaceActivationGate", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(runtime.Coordinator)!;
+        Task? pending = null;
+        bool held = false;
+        bool returnGateReached = false;
+        string stage = "initial-appearance";
+        Exception? primaryFailure = null;
+        int renderChanges = 0, offUiRenderChanges = 0;
+        void ObserveRender(object? sender, ElementEventArgs args)
+        {
+            Interlocked.Increment(ref renderChanges);
+            if (!ReferenceEquals(SynchronizationContext.Current, ui) || page.Dispatcher.IsDispatchRequired)
+                Interlocked.Increment(ref offUiRenderChanges);
+        }
+        body.ChildAdded += ObserveRender;
+        body.ChildRemoved += ObserveRender;
+        try
+        {
+            int initialCalls = probe.Calls.Count;
+            pending = ui.BeginAsyncVoid(() => Lifecycle("OnAppearing"));
+            await JoinIssuedPageAsync(pending); pending = null;
+            Require(renderChanges > 0 && probe.Calls.Count == initialCalls + 1,
+                "SETUP: actual initial appearance did not load Core and render controls.");
+            Require(body.IsEnabled && !Loading() && alerts.Titles.Count == 0,
+                "SETUP: current prerequisite appearance did not become ready.");
+            stage = "ranked-heritage-navigation";
+            state = (CharacterCreationPrerequisiteState)typeof(CreationPrerequisitePage)
+                .GetField("_dashboardAuthority", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)!;
+            var draft = (CreationPrerequisitePhoneDraft)typeof(CreationPrerequisitePage)
+                .GetField("_draft", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)!;
+            // Seed local ranks through the actual typed draft, never a fabricated
+            // authority or saved state. The navigation/callbacks below are real.
+            Require(draft.TrySelect(state, runtime.Coordinator.State, CharacterCreationPriorityCategoryIds.Heritage, "A")
+                && draft.TrySelect(state, runtime.Coordinator.State, CharacterCreationPriorityCategoryIds.Talent, "E"),
+                "SETUP: real prerequisite ranks were unavailable.");
+            typeof(CreationPrerequisitePage).GetMethod("Refresh",
+                BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.DeclaredOnly)!.Invoke(page, null);
+            Button oldTalent = FindButton("creation-prerequisite-talent-selection");
+            Button heritage = FindButton("creation-prerequisite-heritage-selection");
+            Require(oldTalent.IsEnabled && heritage.IsEnabled, "SETUP: ranked navigation was disabled.");
+            pending = ui.BeginAsyncVoid(() => ((IButtonController)heritage).SendClicked());
+            await JoinIssuedPageAsync(pending); pending = null;
+            Require(navigation.Navigation.NavigationStack.Last() is CreationPriorityDetailPage
+                { AutomationId: "creation-prerequisite-heritage-page" }, "Actual Heritage tap did not push its detail page.");
+            Lifecycle("OnDisappearing");
+            bool departedDisabled = !body.IsEnabled && !Loading();
+            await navigation.PopAsync(animated: false);
+            int callsBeforeReturn = probe.Calls.Count;
+            await gate.WaitAsync(); held = true;
+            if (scenario == "parent-return-fault") probe.FailAppearanceLoad = true;
+            stage = "return-appearance";
+            pending = ui.BeginAsyncVoid(() => Lifecycle("OnAppearing"));
+            Require(!pending.IsCompleted && probe.Calls.Count == callsBeforeReturn,
+                "SETUP: return appearance did not await the actual Core activation gate.");
+            returnGateReached = true;
+            stage = "gate-held-readiness";
+            Require(!body.IsEnabled && !oldTalent.IsEnabled && initiallyDisabled && departedDisabled,
+                "Returned parent exposed stale enabled controls while authority revalidation was pending.");
+            Require(Loading(), "Pending parent did not expose its running loading indicator.");
+            var tick = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            ui.Post(_ => tick.TrySetResult(), null);
+            await tick.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            OwnerContextStamp originalOwner = owners.Capture();
+            if (scenario == "parent-return-departure") Lifecycle("OnDisappearing");
+            if (scenario is "parent-return-owner-b" or "parent-return-owner-aba")
+            {
+                owners.Set(ContactsOwnerB);
+                if (scenario == "parent-return-owner-aba") owners.Set(ContactsOwnerA);
+                var target = new FileWorkspaceStore(runtime.StateDirectory).Get(owners.Current, runtime.Id).Value!;
+                await HydrateFinalizationOwnerAsync(runtime, owners, target);
+                Require(owners.Capture() != originalOwner, "SETUP: owner epoch did not change.");
+            }
+            gate.Release(); held = false;
+            stage = "return-completion";
+            await JoinIssuedPageAsync(pending); pending = null;
+            Require(!Loading() && probe.AppearanceLoadFaultCalls == (scenario == "parent-return-fault" ? 1 : 0),
+                "Return stayed busy or did not reach exactly the intended appearance fault.");
+            Require(alerts.Titles.Count == (scenario == "parent-return-fault" ? 1 : 0),
+                "Unexpected/missing appearance error alert.");
+            var stack = navigation.Navigation.NavigationStack.ToArray();
+            if (scenario == "parent-return")
+            {
+                Button freshTalent = FindButton("creation-prerequisite-talent-selection");
+                Require(body.IsEnabled && freshTalent.IsEnabled && !ReferenceEquals(oldTalent, freshTalent)
+                    && probe.Calls.Count == callsBeforeReturn + 1, "Fresh return did not rebuild current actionable controls.");
+                // The retained old control is now detached from the disabled
+                // body. Its callback must still reject the old appearance.
+                Require(oldTalent.IsEnabled, "SETUP: retained old callback is not independently invocable.");
+                pending = ui.BeginAsyncVoid(() => ((IButtonController)oldTalent).SendClicked());
+                await JoinIssuedPageAsync(pending); pending = null;
+                Require(navigation.Navigation.NavigationStack.SequenceEqual(stack), "Old appearance callback navigated after fresh render.");
+                pending = ui.BeginAsyncVoid(() => ((IButtonController)freshTalent).SendClicked());
+                await JoinIssuedPageAsync(pending); pending = null;
+                Require(navigation.Navigation.NavigationStack.Count == stack.Length + 1
+                    && navigation.Navigation.NavigationStack.Last() is CreationPriorityDetailPage
+                    { AutomationId: "creation-prerequisite-talent-page" }, "One fresh Talent tap did not push the real detail page.");
+            }
+            else
+            {
+                Require(!body.IsEnabled && navigation.Navigation.NavigationStack.SequenceEqual(stack),
+                    "Failed/departed/replaced return revived the old editor.");
+                if (scenario != "parent-return-fault")
+                    Require(probe.Calls.Count == callsBeforeReturn, "Stale return entered Core under a replacement/departed frame.");
+            }
+            Require(probe.ConfirmCalls == 0 && owners.ActiveLeases == 0,
+                "Readiness/navigation committed a draft or retained an owner lease.");
+        }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        {
+            primaryFailure = error;
+            Console.WriteLine("PREREQUISITE_PARENT_PRIMARY " + scenario + " stage=" + stage + "\n" + error);
+            throw;
+        }
+        finally
+        {
+            try
+            {
+                if (held) { gate.Release(); held = false; }
+                if (pending is not null) await JoinIssuedPageAsync(pending);
+                Lifecycle("OnDisappearing");
+                await JoinIssuedPageAsync(ui.RunAsync(() => Task.CompletedTask));
+                Require(renderChanges > 0 && offUiRenderChanges == 0 && owners.ActiveLeases == 0,
+                    "Parent readiness rendering escaped the managed UI context or leaked a lease.");
+            }
+            catch (Exception cleanup) when (primaryFailure is not null && cleanup is not OutOfMemoryException)
+            {
+                throw new AggregateException("Parent readiness primary and cleanup failures.", primaryFailure, cleanup);
+            }
+            finally
+            {
+                Console.WriteLine("PREREQUISITE_PARENT_READINESS " + JsonSerializer.Serialize(new
+                { scenario, stage, returnGateReached, renderChanges, offUiRenderChanges,
+                    activeLeases = owners.ActiveLeases, coreCalls = probe.Calls.Count,
+                    probe.AppearanceLoadFaultCalls, primaryFailure = primaryFailure?.GetType().Name,
+                    scope = "managed page lifecycle/navigation only; no device accessibility proof" }));
+                body.ChildAdded -= ObserveRender; body.ChildRemoved -= ObserveRender;
+            }
+        }
+        Button FindButton(string id) => IssuedElements(page).OfType<Button>().Single(item => item.AutomationId == id);
+        bool Loading() => IssuedElements(page).OfType<ActivityIndicator>()
+            .Any(indicator => indicator.AutomationId == "creation-prerequisite-loading" && indicator.IsRunning);
+        // Use the same exact zero-argument virtual entry as the established page
+        // harness; a name-only reflection lookup can select ambiguous overloads.
+        void Lifecycle(string method) => IssuedPageLifecycle(page, method);
     }
 
     private static async Task<CreationPrerequisitePhoneConfirmResult?> RunPrerequisitePageAsync(NativeRewardRuntime runtime,
