@@ -43,6 +43,7 @@ PRESENTATION_PRODUCER_LOCK_SHA256 = "30fa92268ffff147658c559330afaf34cd1aa830d86
 FULL_PROJECT_LOCK_SHA256 = "8b4cd7e76f762aeaad96b2c0562711be56285bc1eb3770c65c212b6ab5a14fd0"
 FULL_PROJECT_LOCK_SIZE = 70263
 CORE_CONTENT_REVISION = "1d8cf694d0412b3bd9f4a241fb95244fad341160"
+CORE_PACKAGE_RECIPE_REVISION = "b0fbae73f952bb417f9b790cd743c59db1b9ad7f"
 CORE_RUNTIME_REVISION = "b32ee7d37b539cf21a51e9220ff76bffe37a67a4"
 CORE_CONTENT_DIGEST = "85f484c6d67c076ded1b78bfb611526485596a8054e3b90b88e5bfb0cf0e253c"
 HUB_REVISION = "1952cdccd908b8b70196fa54d518f0c37a0169bd"
@@ -487,7 +488,7 @@ def validate_current_package_authority(
             "repository": PRESENTATION_REPOSITORY,
         }
         or payload.get("sourceGraph") != {
-            "corePackageRecipeCommit": CORE_CONTENT_REVISION,
+            "corePackageRecipeCommit": CORE_PACKAGE_RECIPE_REVISION,
             "coreRuntimeSourceCommit": CORE_RUNTIME_REVISION,
             "hubProducerCommit": HUB_REVISION,
             "registryCommit": REGISTRY_REVISION,

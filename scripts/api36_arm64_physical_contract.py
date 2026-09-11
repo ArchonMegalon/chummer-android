@@ -231,6 +231,7 @@ TRUSTED_FULL_PROJECT_LOCK = {
     "sha256": "8b4cd7e76f762aeaad96b2c0562711be56285bc1eb3770c65c212b6ab5a14fd0",
     "sizeBytes": 70263,
 }
+TRUSTED_CORE_CONTENT_COMMIT = "1d8cf694d0412b3bd9f4a241fb95244fad341160"
 TRUSTED_CORE_CONTENT_TREE = "3f39863d2ae5db4d6d7b3d07185e33bf240db330"
 WP1_REFERENCE_EVIDENCE_FILES = {
     "executionEvidence.toolchainLog": "toolchain.log",
@@ -1735,10 +1736,10 @@ def validate_build_provenance(
     require_hex(content_source.get("tree"), "WP1 Core content source tree", length=40)
     if (
         content.get("coreRevision") != content_source.get("commit")
-        or content_source.get("commit") != package_source_graph.get("corePackageRecipeCommit")
+        or content_source.get("commit") != TRUSTED_CORE_CONTENT_COMMIT
         or content_source.get("tree") != TRUSTED_CORE_CONTENT_TREE
     ):
-        raise ValueError("WP1 Core content source is not bound to current package authority")
+        raise ValueError("WP1 Core content source is not the exact trusted canonical content")
     _validate_content_references(content, apk, references)
 
     artifact = require_exact_keys(value.get("artifact"), WP1_ARTIFACT_FIELDS, f"{WP1_COMMITTED_ADAPTER} artifact")
