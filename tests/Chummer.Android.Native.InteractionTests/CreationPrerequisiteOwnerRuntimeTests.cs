@@ -13,8 +13,8 @@ using Microsoft.Maui.Controls;
 
 internal static partial class AfterRunAuthorityHarness
 {
-    public static Task RunCreationPrerequisiteOwnerCasesAsync(string contentRoot)
-        => RunCreationPrerequisiteCasesAsync(contentRoot, parentReadinessOnly: false);
+    public static async Task RunCreationPrerequisiteOwnerCasesAsync(string contentRoot)
+        => await RunCreationPrerequisiteCasesAsync(contentRoot, parentReadinessOnly: false);
 
     public static Task RunCreationPrerequisiteParentReadinessCasesAsync(string contentRoot)
         => RunCreationPrerequisiteCasesAsync(contentRoot, parentReadinessOnly: true);
