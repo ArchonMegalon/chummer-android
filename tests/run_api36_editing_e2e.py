@@ -5188,6 +5188,49 @@ class Device:
         empty_hierarchy_reads = 0
         last_match_count: int | None = None
         stage = "hierarchy"
+        first_nonempty_projection: dict[str, object] | None = None
+        latest_nonempty_projection: dict[str, object] | None = None
+        projection_failures = 0
+        projection_max_nodes = 128
+        projection_max_attribute_characters = 256
+        projection_attributes = (
+            "resource-id", "class", "package", "bounds", "index",
+            "checkable", "checked", "clickable", "enabled", "focusable", "focused",
+            "scrollable", "long-clickable", "password", "selected",
+        )
+
+        def retain_nonempty_projection(
+            nodes: list[UiNode], observation_started_at: float,
+        ) -> None:
+            nonlocal first_nonempty_projection, latest_nonempty_projection, projection_failures
+            try:
+                projected_nodes = []
+                truncated_attributes = 0
+                omitted_attributes = 0
+                for node in nodes[:projection_max_nodes]:
+                    attributes = {}
+                    for name in projection_attributes:
+                        value = node.attributes.get(name)
+                        if isinstance(value, str):
+                            attributes[name] = value[:projection_max_attribute_characters]
+                            truncated_attributes += len(value) > projection_max_attribute_characters
+                    omitted_attributes += len(node.attributes) - len(attributes)
+                    projected_nodes.append(attributes)
+                projection = {
+                    "readOrdinal": hierarchy_reads,
+                    "observationStartedAtMonotonic": observation_started_at,
+                    "nodeCount": len(nodes),
+                    "omittedNodes": max(0, len(nodes) - projection_max_nodes),
+                    "omittedAttributes": omitted_attributes,
+                    "truncatedAttributes": truncated_attributes,
+                    "nodes": projected_nodes,
+                }
+                if first_nonempty_projection is None:
+                    first_nonempty_projection = projection
+                latest_nonempty_projection = projection
+            except Exception:
+                # Diagnostic collection cannot change matching or the original failure.
+                projection_failures += 1
 
         def record_deadline_context(error: AdbOperationDeadlineExceeded | None) -> None:
             # Host-only diagnostic, not evidence of product absence or mutation.
@@ -5207,6 +5250,20 @@ class Device:
                     "observedAtMonotonic": time.monotonic(),
                     "errorType": type(error).__name__ if error is not None else "RuntimeError",
                     "error": str(error) if error is not None else "Exact selector observation timed out",
+                    "observedHierarchyProjections": {
+                        "kind": "flattened-accessibility-observations",
+                        "authoritative": False,
+                        "rawXml": False,
+                        "maxNodesPerObservation": projection_max_nodes,
+                        "maxAttributeCharacters": projection_max_attribute_characters,
+                        "retainedAttributes": projection_attributes,
+                        # Free-form display/input text may contain credentials. Do not
+                        # guess which strings are safe, including on unexpected routes.
+                        "omissionPolicy": "text, content-desc and all non-allowlisted attributes omitted",
+                        "collectionFailures": projection_failures,
+                        "firstNonempty": first_nonempty_projection,
+                        "latestNonempty": latest_nonempty_projection,
+                    },
                 }
                 with (self.evidence / f"{evidence_prefix}-deadline.json").open(
                     "x", encoding="utf-8"
@@ -5226,7 +5283,7 @@ class Device:
                     pass
 
         try:
-            while time.monotonic() < operation_deadline:
+            while (observation_started_at := time.monotonic()) < operation_deadline:
                 stage = "hierarchy"
                 hierarchy_reads += 1
                 nodes = (
@@ -5248,6 +5305,8 @@ class Device:
                             deadline=operation_deadline,
                         )
                     continue
+                if deadline is not None:
+                    retain_nonempty_projection(nodes, observation_started_at)
                 matches = [
                     node
                     for node in nodes
