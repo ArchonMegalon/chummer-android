@@ -6553,7 +6553,6 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
 
         for method_name, start_marker in (
-            ("ConfirmCreationPrerequisiteAsync", "internal async Task<CreationPrerequisitePhoneConfirmResult>\n        ConfirmCreationPrerequisiteAsync("),
             ("ConfirmCreationFoundationAsync", "public async Task<CharacterCreationFoundationInteractionConfirmResult> ConfirmCreationFoundationAsync("),
             (
                 "SwitchWorkspaceAsync",
@@ -6570,6 +6569,16 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         ):
             block = self._coordinator_member(source, start_marker)
             self.assertIn("WithWorkspaceActivationGateAsync", block, method_name)
+
+        prerequisite = (REPO_ROOT / "src" / "Chummer.Android" / "Native"
+                        / "RunnerSessionCoordinator.CreationPrerequisite.cs").read_text(encoding="utf-8")
+        prerequisite_entry = self._coordinator_member(source, "internal Task<CreationPrerequisitePhoneConfirmResult>\n        ConfirmCreationPrerequisiteAsync(")
+        self.assertIn("ConfirmIssuedCreationPrerequisiteAsync(", prerequisite_entry)
+        bound_prerequisite = self._coordinator_member(prerequisite, "private Task<CreationPrerequisitePhoneConfirmResult> ConfirmIssuedCreationPrerequisiteAsync(")
+        self.assertIn("WithWorkspaceActivationGateAsync", bound_prerequisite)
+        self.assertLess(bound_prerequisite.index("_prerequisitePreviews.TryGetValue(preview, out var issued)"),
+                        bound_prerequisite.index("WithWorkspaceActivationGateAsync"))
+        self.assertIn("isCurrentPreview?.Invoke() == false", bound_prerequisite)
 
         # The public compatibility entry captures before delegating; the bound
         # helper owns the same gate and cannot substitute a fresh current frame.

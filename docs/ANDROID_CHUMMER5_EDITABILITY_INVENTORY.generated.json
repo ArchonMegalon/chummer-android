@@ -107,7 +107,7 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "a3e0bfe1a1f588a4045217a9ae2fe8b0929afba97ce10ef1f285a01e2947aec3"
+        "sha256": "c382f3c246d0ee975cdf0748f4e2774e78db993a192e543821562129bc13642a"
       },
       {
         "path": "src/Chummer.Android/Native/MorePage.cs",
@@ -607,32 +607,37 @@
       {
         "path": "src/Chummer.Android/Native/CreationPrerequisitePage.cs",
         "exists": true,
-        "sha256": "83277740c5c354f7e067da17d2e04827860d32c101b530aecb55531b94117e43"
+        "sha256": "3504fef1963028ad05fab99c08529950bd31c471e7b627aed20c73556b65e245"
       },
       {
         "path": "src/Chummer.Android/Native/CreationPriorityCategoryPage.cs",
         "exists": true,
-        "sha256": "78313797e0096866f5dcf1580ee5c1eb220384a086762236b9941769cfa42f95"
+        "sha256": "5e249b900841cd0d76c7c13705241b512db8079dd69581517549c1b8e8ab2642"
       },
       {
         "path": "src/Chummer.Android/Native/CreationPriorityDetailPage.cs",
         "exists": true,
-        "sha256": "8f8f9903e903b7b3384edbeec91faf89c0269752b02df07a0b331ad66c24219a"
+        "sha256": "c3bebbbc27ff029da67e1bd3ffdb40d3dfd56fc20715032d5eb097ffc52aa201"
       },
       {
         "path": "src/Chummer.Android/Native/CreationTalentSkillGrantPage.cs",
         "exists": true,
-        "sha256": "78c8d38c4973605f31353b973b03dc312c7d3e32c1965cf94bf5d202b84791e4"
+        "sha256": "ea26e83b26c2cc38a4528d5047177b93efd43becc47d8fcdd5e0332e3d8874dc"
       },
       {
         "path": "src/Chummer.Android/Native/CreationPrerequisitePreviewPage.cs",
         "exists": true,
-        "sha256": "1d495e537322137925ef298ff15b36f14a02f177568b2f3b5c5cae9faf6d1084"
+        "sha256": "3f78fbe69adea8e13d757188d35aeac9e357209429e05e18f84c8c84bd9e549d"
       },
       {
         "path": "src/Chummer.Android/Native/CreationPrerequisitePhoneDraft.cs",
         "exists": true,
         "sha256": "ef0d7d243a846eb8ef6515a5935aa03a27bfc0febb15f0d1f2f4a8744b55af4b"
+      },
+      {
+        "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.CreationPrerequisite.cs",
+        "exists": true,
+        "sha256": "82a0ddd1196b57a809028fa45b231dcc7b8abd3ed044eee882601efe29868ad4"
       },
       {
         "path": "src/Chummer.Android/Native/AndroidAfterRunWorkspaceSnapshotSource.cs",
@@ -652,7 +657,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "75634d2040e62b4beb4f120f92573c824561d2409e10ef693596c28f22fba757"
+        "sha256": "c7d87605bf6bf928146f22c3f243da64267d92cb3b06af84c50f1ff02e483a37"
       },
       {
         "path": "src/Chummer.Android/Native/RunnerSessionSr5CareerWizardPhoneAuthority.cs",
@@ -757,17 +762,17 @@
       {
         "path": "src/Chummer.Android/Resources/Localization/WizardStrings.resx",
         "exists": true,
-        "sha256": "736d7a42c283f8f7c215393cc5fedae5c1e507cf9f24ff4321a75371c4931a71"
+        "sha256": "6fa8a5482faf1790ab28a493efcb14c7b6b442f97ccebf9076c96d80d04d636b"
       },
       {
         "path": "src/Chummer.Android/Resources/Localization/WizardStrings.de.resx",
         "exists": true,
-        "sha256": "648e058e747c591875a707fd8911080b37ddc52b12bc7b6634968f505a51a88c"
+        "sha256": "c7310264ef377058f0c4e19ae91805924d3c523998b70c190c9257d3c934541c"
       },
       {
         "path": "src/Chummer.Android/Resources/Localization/WizardStrings.es.resx",
         "exists": true,
-        "sha256": "272ee5ccafcd43e8536a97a7c29e9da629f52f415a999c8316b57eb012c42473"
+        "sha256": "74fd713c62da452ef6d457f296a3423ff3c7343806cf690863da6c03b4ce4d27"
       },
       {
         "path": "tests/Chummer.Android.Sr5CareerChooser.Tests/Chummer.Android.Sr5CareerChooser.Tests.csproj",
@@ -812,7 +817,7 @@
       {
         "path": ".github/workflows/api36-editing-e2e.yml",
         "exists": true,
-        "sha256": "97506d846a3cb98bd36c2bacc8807ecb3ce0ff9d1ca0ae75d8fba58fc52ee628"
+        "sha256": "f4989e582dffa0cbbdfb8ca5f74fa8683b450e86bc1eb20f0a11d3fac6006563"
       },
       {
         "path": ".github/workflows/api36-two-consecutive-green.yml",
@@ -837,7 +842,7 @@
       {
         "path": "scripts/build-debug.sh",
         "exists": true,
-        "sha256": "90fab8edcfde8720c8a5e816e3c4105b3774501c2adc99342433a293ea3a7830"
+        "sha256": "22578425f980b26e51c09e6d5b8d214257d8c657a376e204d19c8b2f95b3d903"
       },
       {
         "path": "scripts/api36_proof_environment_authority.py",
@@ -872,7 +877,7 @@
       {
         "path": "scripts/materialize-android-p0-pr-authority.py",
         "exists": true,
-        "sha256": "bba379993509b7470bc1d8bff5ba8be7813ad6bc1c93b30c5f2edec55e2e7c2b"
+        "sha256": "6230bd8f56eb1050f962ad7785f179afadb8fca092a17fe09b66abe4a8333d24"
       },
       {
         "path": "scripts/prepare-api36-emulator-live-log.py",
@@ -912,7 +917,7 @@
       {
         "path": "tests/test_api36_e2e_workflow.py",
         "exists": true,
-        "sha256": "7a81ba92b75353c4a82a5b6120a87bac5ff7713ad2d592957e2363b7bcdc8681"
+        "sha256": "69d32cbd15e75df708b06706f2a98cf8807dd2fdcfa6c9374e3e55d5da5999cf"
       },
       {
         "path": "tests/test_api36_e2e_artifact_authority.py",
@@ -927,7 +932,7 @@
       {
         "path": "tests/test_api36_two_green_eligibility.py",
         "exists": true,
-        "sha256": "2af2d0f9a839b16904371447e66c2ccd655533019684a4027032173395d6e5c0"
+        "sha256": "f07d0867455ccbf61374b84204834d13c954061696af37510c4f9621611ec30b"
       },
       {
         "path": "tests/test_android_p0_pr_authority.py",
@@ -957,7 +962,7 @@
       {
         "path": "tests/test_api36_proof_state_contract.py",
         "exists": true,
-        "sha256": "24fa5da83eb4c5774b45ac21c0fa8fc1c730caf9e3f180f64a85d4f503d67b58"
+        "sha256": "70b60f8f15deb9a070e0d678b30c063cea54889135ba8ac2528f830b0a896a55"
       },
       {
         "path": "tests/test_run_api36_sr5_before_run_edge_e2e_driver.py",
@@ -1012,7 +1017,7 @@
       {
         "path": "tests/test_chummer5_editability_inventory.py",
         "exists": true,
-        "sha256": "3bbdf9d4f75fe26e6c978452712810687a5011727594d9c9b98fabc099716fbf"
+        "sha256": "51385d28c3095857a5b015cb0d6fe67bba176f72faa33606e8a2beaca6b10361"
       },
       {
         "path": "tests/test_sr5_contextual_wizard_scope.py",
@@ -3020,7 +3025,7 @@
     },
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "56a9be0550a48b2dbafa94df3d63d50ecf7bde57e5ace7a4a8f4d79844ca1c24"
+      "sha256": "6d5835b6c25c5af652a05e8bf5c1ae165ee85d6ebfe2dc787479890df00db86f"
     }
   },
   "coverageByFamily": {
@@ -15119,6 +15124,7 @@
           "src/Chummer.Android/Native/CreationPrerequisitePreviewPage.cs",
           "src/Chummer.Android/Native/CreationPrerequisitePhoneDraft.cs",
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.CreationPrerequisite.cs",
           "tests/run_api36_creation_prerequisite_e2e.py"
         ],
         "coverageLimit": "Priority/Sum-to-Ten prerequisite choices are stored only in the exact Core auxiliary creation draft. The character document is unchanged; metatype and other final character data are not committed, and creation finalization remains pending."
@@ -15129,7 +15135,7 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": "ICharacterCreationPrerequisiteService.Preview / Confirm auxiliary draft",
+      "presenterMutation": "IOwnerBoundCharacterCreationPrerequisiteService.Preview / Confirm auxiliary draft",
       "persistenceAssertion": "the exact preview digest is explicitly confirmed into one revision-bound Core auxiliary draft; raw character XML remains unchanged and character finalization is still pending",
       "e2e": {
         "phone": {
@@ -15189,6 +15195,7 @@
           "src/Chummer.Android/Native/CreationPrerequisitePreviewPage.cs",
           "src/Chummer.Android/Native/CreationPrerequisitePhoneDraft.cs",
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.CreationPrerequisite.cs",
           "tests/run_api36_creation_prerequisite_e2e.py"
         ],
         "coverageLimit": "Priority/Sum-to-Ten prerequisite choices are stored only in the exact Core auxiliary creation draft. The character document is unchanged; metatype and other final character data are not committed, and creation finalization remains pending."
@@ -15199,7 +15206,7 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": "ICharacterCreationPrerequisiteService.Preview / Confirm auxiliary draft",
+      "presenterMutation": "IOwnerBoundCharacterCreationPrerequisiteService.Preview / Confirm auxiliary draft",
       "persistenceAssertion": "the exact Core Heritage SelectionId remains the sole selected option in the revision-bound auxiliary draft after same-session reopen and process restart",
       "e2e": {
         "phone": {
@@ -15256,6 +15263,7 @@
           "src/Chummer.Android/Native/CreationPrerequisitePreviewPage.cs",
           "src/Chummer.Android/Native/CreationPrerequisitePhoneDraft.cs",
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.CreationPrerequisite.cs",
           "tests/run_api36_creation_prerequisite_e2e.py"
         ],
         "coverageLimit": "Priority/Sum-to-Ten prerequisite choices are stored only in the exact Core auxiliary creation draft. The character document is unchanged; metatype and other final character data are not committed, and creation finalization remains pending."
@@ -15266,7 +15274,7 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": "ICharacterCreationPrerequisiteService.Preview / Confirm auxiliary draft",
+      "presenterMutation": "IOwnerBoundCharacterCreationPrerequisiteService.Preview / Confirm auxiliary draft",
       "persistenceAssertion": "the exact Core Talent SelectionId remains the sole selected option in the revision-bound auxiliary draft after same-session reopen and process restart",
       "e2e": {
         "phone": {
@@ -15496,6 +15504,7 @@
           "src/Chummer.Android/Native/CreationPrerequisitePreviewPage.cs",
           "src/Chummer.Android/Native/CreationPrerequisitePhoneDraft.cs",
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.CreationPrerequisite.cs",
           "tests/run_api36_creation_prerequisite_e2e.py"
         ],
         "coverageLimit": "Priority/Sum-to-Ten prerequisite choices are stored only in the exact Core auxiliary creation draft. The character document is unchanged; metatype and other final character data are not committed, and creation finalization remains pending."
@@ -15506,7 +15515,7 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": "ICharacterCreationPrerequisiteService.Preview / Confirm auxiliary draft",
+      "presenterMutation": "IOwnerBoundCharacterCreationPrerequisiteService.Preview / Confirm auxiliary draft",
       "persistenceAssertion": "the exact Core-projected resources rank remains in the revision-bound auxiliary creation draft after same-session reopen and a disjoint process restart",
       "e2e": {
         "phone": {
@@ -15562,6 +15571,7 @@
           "src/Chummer.Android/Native/CreationPrerequisitePreviewPage.cs",
           "src/Chummer.Android/Native/CreationPrerequisitePhoneDraft.cs",
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.CreationPrerequisite.cs",
           "tests/run_api36_creation_prerequisite_e2e.py"
         ],
         "coverageLimit": "Priority/Sum-to-Ten prerequisite choices are stored only in the exact Core auxiliary creation draft. The character document is unchanged; metatype and other final character data are not committed, and creation finalization remains pending."
@@ -15572,7 +15582,7 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": "ICharacterCreationPrerequisiteService.Preview / Confirm auxiliary draft",
+      "presenterMutation": "IOwnerBoundCharacterCreationPrerequisiteService.Preview / Confirm auxiliary draft",
       "persistenceAssertion": "the exact Core-projected skills rank remains in the revision-bound auxiliary creation draft after same-session reopen and a disjoint process restart",
       "e2e": {
         "phone": {
@@ -15628,6 +15638,7 @@
           "src/Chummer.Android/Native/CreationPrerequisitePreviewPage.cs",
           "src/Chummer.Android/Native/CreationPrerequisitePhoneDraft.cs",
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.CreationPrerequisite.cs",
           "tests/run_api36_creation_prerequisite_e2e.py"
         ],
         "coverageLimit": "Priority/Sum-to-Ten prerequisite choices are stored only in the exact Core auxiliary creation draft. The character document is unchanged; metatype and other final character data are not committed, and creation finalization remains pending."
@@ -15638,7 +15649,7 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": "ICharacterCreationPrerequisiteService.Preview / Confirm auxiliary draft",
+      "presenterMutation": "IOwnerBoundCharacterCreationPrerequisiteService.Preview / Confirm auxiliary draft",
       "persistenceAssertion": "the exact Core-projected talent rank remains in the revision-bound auxiliary creation draft after same-session reopen and a disjoint process restart",
       "e2e": {
         "phone": {
@@ -15694,6 +15705,7 @@
           "src/Chummer.Android/Native/CreationPrerequisitePreviewPage.cs",
           "src/Chummer.Android/Native/CreationPrerequisitePhoneDraft.cs",
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.CreationPrerequisite.cs",
           "tests/run_api36_creation_prerequisite_e2e.py"
         ],
         "coverageLimit": "Priority/Sum-to-Ten prerequisite choices are stored only in the exact Core auxiliary creation draft. The character document is unchanged; metatype and other final character data are not committed, and creation finalization remains pending."
@@ -15704,7 +15716,7 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": "ICharacterCreationPrerequisiteService.Preview / Confirm auxiliary draft",
+      "presenterMutation": "IOwnerBoundCharacterCreationPrerequisiteService.Preview / Confirm auxiliary draft",
       "persistenceAssertion": "the exact Core-projected attributes rank remains in the revision-bound auxiliary creation draft after same-session reopen and a disjoint process restart",
       "e2e": {
         "phone": {
@@ -15760,6 +15772,7 @@
           "src/Chummer.Android/Native/CreationPrerequisitePreviewPage.cs",
           "src/Chummer.Android/Native/CreationPrerequisitePhoneDraft.cs",
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.CreationPrerequisite.cs",
           "tests/run_api36_creation_prerequisite_e2e.py"
         ],
         "coverageLimit": "Priority/Sum-to-Ten prerequisite choices are stored only in the exact Core auxiliary creation draft. The character document is unchanged; metatype and other final character data are not committed, and creation finalization remains pending."
@@ -15770,7 +15783,7 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": "ICharacterCreationPrerequisiteService.Preview / Confirm auxiliary draft",
+      "presenterMutation": "IOwnerBoundCharacterCreationPrerequisiteService.Preview / Confirm auxiliary draft",
       "persistenceAssertion": "the exact Core-projected heritage rank remains in the revision-bound auxiliary creation draft after same-session reopen and a disjoint process restart",
       "e2e": {
         "phone": {

@@ -554,7 +554,10 @@ internal static partial class AfterRunAuthorityHarness
             IAndroidAccountLinkService? accountService = null,
             bool creationFinalization = false,
             Func<IOwnerBoundCharacterCreationFinalizationService, IOwnerBoundCharacterCreationFinalizationService>? finalizationDecorator = null,
-            Func<Chummer.Application.Owners.IOwnerContextAccessor, Chummer.Application.Owners.IOwnerContextAccessor?>? damageJournalAccessorDecorator = null)
+            Func<Chummer.Application.Owners.IOwnerContextAccessor, Chummer.Application.Owners.IOwnerContextAccessor?>? damageJournalAccessorDecorator = null,
+            bool creationPrerequisite = false,
+            Func<IOwnerBoundCharacterCreationPrerequisiteService, IOwnerBoundCharacterCreationPrerequisiteService?>? prerequisiteDecorator = null,
+            bool productionCreationOverview = false)
         {
             _priorPreferences = Preferences.Default;
             _setPreferences = typeof(Preferences).GetMethod("SetDefault",
@@ -604,11 +607,22 @@ internal static partial class AfterRunAuthorityHarness
                 Shell = new ShellPresenter(Client);
                 var operations = _provider.GetRequiredService<IWorkspaceOperationCoordinator>();
                 var boundBootstrap = creationBootstrap ? _provider.GetRequiredService<IOwnerBoundCharacterCreationBootstrapService>() : null;
+                var productionFinalization = productionCreationOverview
+                    ? finalizationDecorator?.Invoke(_provider.GetRequiredService<IOwnerBoundCharacterCreationFinalizationService>())
+                        ?? _provider.GetRequiredService<IOwnerBoundCharacterCreationFinalizationService>()
+                    : null;
                 Presenter = new CharacterOverviewPresenter(Client, shellPresenter: Shell,
                     workspaceOverviewLoader: _provider.GetRequiredService<IWorkspaceOverviewLoader>(),
                     commandDispatcher: bootstrapCommandDispatcher,
                     workspaceOperationCoordinator: operations,
-                    workspaceOverviewStateFactory: creationContacts ? new WorkspaceOverviewStateFactory(
+                    workspaceOverviewStateFactory: productionCreationOverview ? new WorkspaceOverviewStateFactory(
+                        _provider.GetRequiredService<ICharacterCreationFoundationService>(),
+                        _provider.GetService<ICharacterCreationContactsService>(),
+                        _provider.GetService<ICharacterCreationQualitiesService>(),
+                        _provider.GetService<ICharacterCreationMagicResonanceService>(),
+                        ownerBoundCreationContactsService: _provider.GetRequiredService<IOwnerBoundCharacterCreationContactsService>(),
+                        ownerBoundCreationFinalizationService: productionFinalization)
+                        : creationContacts ? new WorkspaceOverviewStateFactory(
                         creationContactsService: _provider.GetRequiredService<ICharacterCreationContactsService>(),
                         ownerBoundCreationContactsService: _provider.GetRequiredService<IOwnerBoundCharacterCreationContactsService>()) : null,
                     characterCreationBootstrapService: creationBootstrap ? _provider.GetRequiredService<ICharacterCreationBootstrapService>() : null,
@@ -651,18 +665,22 @@ internal static partial class AfterRunAuthorityHarness
                     creationSkillsService: creationSkillsSeed is null ? null : skillsDecorator is null
                         ? _provider.GetRequiredService<ICharacterCreationSkillsService>()
                         : skillsDecorator(_provider.GetRequiredService<ICharacterCreationSkillsService>()),
-                    creationFinalizationService: creationFinalization
+                    creationFinalizationService: creationFinalization || productionCreationOverview
                         ? _provider.GetRequiredService<ICharacterCreationFinalizationService>() : null,
                     careerReputationService: reputationService,
                     careerReputationJournal: reputation ? _provider.GetRequiredService<Sr5CareerReputationJournal>() : null,
                     linkedCharacterJournal: LinkedJournal,
                     linkedWorkspaceReader: linkedReader,
-                    ownerBoundCreationFinalizationService: creationFinalization
+                    ownerBoundCreationFinalizationService: productionCreationOverview ? productionFinalization : creationFinalization
                         ? finalizationDecorator?.Invoke(_provider.GetRequiredService<IOwnerBoundCharacterCreationFinalizationService>())
                             ?? _provider.GetRequiredService<IOwnerBoundCharacterCreationFinalizationService>() : null,
                     damageJournalOwnerAccessor: damageJournalAccessorDecorator is null
                         ? _provider.GetRequiredService<Chummer.Application.Owners.IOwnerContextAccessor>()
-                        : damageJournalAccessorDecorator(_provider.GetRequiredService<Chummer.Application.Owners.IOwnerContextAccessor>()));
+                        : damageJournalAccessorDecorator(_provider.GetRequiredService<Chummer.Application.Owners.IOwnerContextAccessor>()),
+                    ownerBoundCreationPrerequisiteService: !creationPrerequisite ? null
+                        : prerequisiteDecorator is null
+                            ? _provider.GetRequiredService<IOwnerBoundCharacterCreationPrerequisiteService>()
+                            : prerequisiteDecorator(_provider.GetRequiredService<IOwnerBoundCharacterCreationPrerequisiteService>()));
             }
             catch
             {

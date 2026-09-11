@@ -175,6 +175,9 @@ interaction_tests_binary="${interaction_tests_path%/*}/bin/Debug/net10.0/Chummer
 "$dotnet_command" "$interaction_tests_binary" --android-continuation-roaming
 "$dotnet_command" "$interaction_tests_binary" --android-continuation-native-content-root "$native_content_root"
 "$dotnet_command" "$interaction_tests_binary" --android-account-owner-content-root "$native_content_root"
+# Separate managed production-wiring diagnostic (1) and prerequisite owner/dispatch suite (25).
+"$dotnet_command" "$interaction_tests_binary" --creation-bootstrap-production-content-root "$native_content_root"
+"$dotnet_command" "$interaction_tests_binary" --creation-prerequisite-owner-content-root "$native_content_root"
 "$dotnet_command" "$interaction_tests_binary" --creation-bootstrap-owner-content-root "$native_content_root"
 "$dotnet_command" "$interaction_tests_binary" --creation-contacts-owner-content-root "$native_content_root"
 "$dotnet_command" "$interaction_tests_binary" --creation-finalization-owner-content-root "$native_content_root"

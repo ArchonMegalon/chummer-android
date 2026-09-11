@@ -327,7 +327,7 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
     private readonly OriginDossierLifeModulePhoneRuntime? _originLifeModuleRuntime;
     private readonly ICharacterCreationContactsInteractionPresenter _creationContactsPresenter;
     private readonly ICharacterCreationLifestylesInteractionPresenter _creationLifestylesPresenter;
-    private readonly ICharacterCreationPrerequisiteService _creationPrerequisiteService;
+    private readonly IOwnerBoundCharacterCreationPrerequisiteService? _ownerBoundPrerequisiteService;
     private readonly ICharacterCreationAttributesService? _creationAttributesService;
     private readonly ICharacterCreationSkillsService? _creationSkillsService;
     private readonly ICharacterCreationQualitiesService? _creationQualitiesService;
@@ -430,7 +430,8 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         AndroidLinkedCharacterIntentJournal? linkedCharacterJournal = null,
         IAndroidLinkedWorkspaceReader? linkedWorkspaceReader = null,
         IOwnerBoundCharacterCreationFinalizationService? ownerBoundCreationFinalizationService = null,
-        IOwnerContextAccessor? damageJournalOwnerAccessor = null)
+        IOwnerContextAccessor? damageJournalOwnerAccessor = null,
+        IOwnerBoundCharacterCreationPrerequisiteService? ownerBoundCreationPrerequisiteService = null)
     {
         _presenter = presenter;
         _client = client;
@@ -442,7 +443,7 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         _originLifeModuleRuntime = originLifeModuleRuntime;
         _creationContactsPresenter = creationContactsPresenter;
         _creationLifestylesPresenter = creationLifestylesPresenter;
-        _creationPrerequisiteService = creationPrerequisiteService;
+        _ownerBoundPrerequisiteService = ownerBoundCreationPrerequisiteService;
         _creationAttributesService = creationAttributesService;
         _creationSkillsService = creationSkillsService;
         _creationQualitiesService = creationQualitiesService;
@@ -1444,28 +1445,10 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
 
     public CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>
         LoadCreationPrerequisite()
-    {
-        if (State.Profile?.Created != false || State.WorkspaceId is not { } workspaceId)
-        {
-            return new CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>(
-                CharacterCreationFoundationOutcomes.Blocked,
-                null,
-                [CharacterCreationPrerequisiteBlockers.WorkspaceUnavailable]);
-        }
-
-        CharacterCreationFoundationResult<CharacterCreationPrerequisiteState> result =
-            _creationPrerequisiteService.Load(
-                new CharacterCreationPrerequisiteLoadRequest(workspaceId));
-        if (result.Value is { } state
-            && !CreationPrerequisitePhoneAuthority.MatchesOverview(state, State))
-        {
-            return new CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>(
-                CharacterCreationFoundationOutcomes.Conflict,
-                null,
-                [CharacterCreationPrerequisiteBlockers.StaleWorkspaceRevision]);
-        }
-        return result;
-    }
+        // Rendering reads only an already accepted, original-owner projection.
+        => _prerequisiteCachedState is { } state && IsCreationPrerequisiteStateCurrent(state)
+            ? new(CharacterCreationFoundationOutcomes.Success, state, [])
+            : PrerequisiteUnavailable<CharacterCreationPrerequisiteState>();
 
     public CharacterCreationFinalizationResult<CharacterCreationFinalizationState>
         LoadCreationFinalization()
@@ -1723,153 +1706,24 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
            && State.DisplayOwnerContext == original.DisplayOwnerContext
            && State.Session.OwnerContext == original.DisplayOwnerContext;
 
-    internal CharacterCreationFoundationResult<CharacterCreationPrerequisitePreview>
-        PreviewCreationPrerequisite(
+    internal Task<CharacterCreationFoundationResult<CharacterCreationPrerequisitePreview>>
+        PreviewCreationPrerequisiteAsync(
             CharacterCreationPrerequisiteBinding binding,
             IReadOnlyDictionary<string, string> assignments,
-            CreationPrerequisitePhoneSelections selections)
-    {
-        ArgumentNullException.ThrowIfNull(binding);
-        ArgumentNullException.ThrowIfNull(assignments);
-        ArgumentNullException.ThrowIfNull(selections);
-        CharacterCreationFoundationResult<CharacterCreationPrerequisiteState> load =
-            LoadCreationPrerequisite();
-        if (load.Value is not { } state
-            || !CreationPrerequisitePhoneAuthority.BindingEquals(binding, state.Binding))
-        {
-            return new CharacterCreationFoundationResult<CharacterCreationPrerequisitePreview>(
-                CharacterCreationFoundationOutcomes.Conflict,
-                null,
-                [CharacterCreationPrerequisiteBlockers.StaleWorkspaceRevision]);
-        }
-        if (!CreationPrerequisitePhoneAuthority.IsReady(state, State))
-        {
-            return new CharacterCreationFoundationResult<CharacterCreationPrerequisitePreview>(
-                CharacterCreationFoundationOutcomes.Blocked,
-                null,
-                state.Blockers.Count > 0
-                    ? state.Blockers
-                    : [CharacterCreationPrerequisiteBlockers.AuthorityUnavailable]);
-        }
+            CreationPrerequisitePhoneSelections selections,
+            CancellationToken cancellationToken = default,
+            Func<bool>? isCurrentEditor = null)
+        => PreviewIssuedCreationPrerequisiteAsync(binding, assignments, selections, cancellationToken, isCurrentEditor);
 
-        return _creationPrerequisiteService.Preview(
-            new CharacterCreationPrerequisitePreviewRequest(
-                binding,
-                new Dictionary<string, string>(assignments, StringComparer.Ordinal))
-            {
-                HeritageSelectionId = selections.HeritageSelectionId,
-                TalentSelectionId = selections.TalentSelectionId,
-                TalentActiveSkillSelectionIds = selections.TalentActiveSkillSelectionIds.ToArray(),
-                TalentSkillGroupSelectionIds = selections.TalentSkillGroupSelectionIds.ToArray()
-            });
-    }
-
-    internal async Task<CreationPrerequisitePhoneConfirmResult>
+    internal Task<CreationPrerequisitePhoneConfirmResult>
         ConfirmCreationPrerequisiteAsync(
             CharacterCreationPrerequisitePreview preview,
             IReadOnlyDictionary<string, string> assignments,
             CreationPrerequisitePhoneSelections selections,
-            CancellationToken cancellationToken = default)
-        => await WithWorkspaceActivationGateAsync(
-            () => ConfirmCreationPrerequisiteCoreAsync(
-                preview,
-                assignments,
-                selections,
-                cancellationToken),
-            cancellationToken);
-
-    private async Task<CreationPrerequisitePhoneConfirmResult>
-        ConfirmCreationPrerequisiteCoreAsync(
-            CharacterCreationPrerequisitePreview preview,
-            IReadOnlyDictionary<string, string> assignments,
-            CreationPrerequisitePhoneSelections selections,
-            CancellationToken cancellationToken)
-    {
-        ArgumentNullException.ThrowIfNull(preview);
-        ArgumentNullException.ThrowIfNull(assignments);
-        ArgumentNullException.ThrowIfNull(selections);
-        CharacterCreationFoundationResult<CharacterCreationPrerequisiteState> before =
-            LoadCreationPrerequisite();
-        if (before.Value is not { } state
-            || !CreationPrerequisitePhoneAuthority.BindingEquals(preview.Binding, state.Binding))
-        {
-            return new CreationPrerequisitePhoneConfirmResult(
-                CharacterCreationFoundationOutcomes.Conflict,
-                null,
-                null,
-                [CharacterCreationPrerequisiteBlockers.StaleWorkspaceRevision]);
-        }
-        if (!CreationPrerequisitePhoneAuthority.IsReady(state, State)
-            || !PreviewMatchesSelections(preview, assignments, selections, state)
-            || !preview.RequiresExplicitConfirmation
-            || !preview.CanConfirm
-            || preview.Blockers.Count != 0
-            || !CharacterCreationPrerequisiteAuthorityDigest.IsCanonical(preview.PreviewDigest))
-        {
-            return new CreationPrerequisitePhoneConfirmResult(
-                CharacterCreationFoundationOutcomes.Conflict,
-                null,
-                null,
-                [CharacterCreationPrerequisiteBlockers.PreviewDigestMismatch]);
-        }
-
-        CharacterCreationFoundationResult<CharacterCreationPrerequisiteReceipt> result =
-            _creationPrerequisiteService.Confirm(
-                new CharacterCreationPrerequisiteConfirmRequest(
-                    preview.Binding,
-                    new Dictionary<string, string>(assignments, StringComparer.Ordinal),
-                    preview.PreviewDigest,
-                    ExplicitlyConfirmed: true)
-                {
-                    HeritageSelectionId = selections.HeritageSelectionId,
-                    TalentSelectionId = selections.TalentSelectionId,
-                    TalentActiveSkillSelectionIds = selections.TalentActiveSkillSelectionIds.ToArray(),
-                    TalentSkillGroupSelectionIds = selections.TalentSkillGroupSelectionIds.ToArray()
-                });
-        if (!string.Equals(
-                result.Outcome,
-                CharacterCreationFoundationOutcomes.Success,
-                StringComparison.Ordinal)
-            || result.Value is not { } receipt)
-        {
-            return new CreationPrerequisitePhoneConfirmResult(
-                result.Outcome,
-                result.Value,
-                null,
-                result.Blockers);
-        }
-
-        await _presenter.LoadAsync(receipt.WorkspaceId, cancellationToken);
-        await SyncShellAsync(cancellationToken);
-        CharacterCreationFoundationResult<CharacterCreationPrerequisiteState> refreshed =
-            LoadCreationPrerequisite();
-        if (refreshed.Value is not { } refreshedState
-            || !CreationPrerequisitePhoneAuthority.ReceiptMatches(
-                receipt,
-                refreshedState,
-                State))
-        {
-            _notice = null;
-            NotifyChanged();
-            return new CreationPrerequisitePhoneConfirmResult(
-                CharacterCreationFoundationOutcomes.Conflict,
-                receipt,
-                null,
-                refreshed.Blockers
-                    .Append(CharacterCreationPrerequisiteBlockers.DraftConflict)
-                    .Distinct(StringComparer.Ordinal)
-                    .OrderBy(static blocker => blocker, StringComparer.Ordinal)
-                    .ToArray());
-        }
-
-        _notice = "Creation-method draft saved. Core has opened the Attributes prerequisite.";
-        NotifyChanged();
-        return new CreationPrerequisitePhoneConfirmResult(
-            CharacterCreationFoundationOutcomes.Success,
-            receipt,
-            refreshedState,
-            []);
-    }
+            CancellationToken cancellationToken = default,
+            Func<bool>? isCurrentPreview = null)
+        => ConfirmIssuedCreationPrerequisiteAsync(
+            preview, assignments, selections, cancellationToken, isCurrentPreview);
 
     public CharacterCreationFoundationResult<CharacterCreationAttributesState>
         LoadCreationAttributes()

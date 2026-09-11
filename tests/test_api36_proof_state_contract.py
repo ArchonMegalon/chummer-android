@@ -941,7 +941,7 @@ class Api36ProofStateContractTests(unittest.TestCase):
         self.assertIn("TryPublishApi36AttachmentProof();", refresh)
         self.assertLess(
             refresh.index("_api36ProofAttachmentPublished = false;"),
-            refresh.index("Coordinator.LoadCreationPrerequisite()"),
+            refresh.index("ResolveCurrentAuthority()"),
         )
         self.assertLess(
             refresh.index("_latestApi36ProofReadyState = state;"),

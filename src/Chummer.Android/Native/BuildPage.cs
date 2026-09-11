@@ -697,7 +697,7 @@ public sealed class BuildPage : NativePageBase
     private readonly ToolbarItem _save;
     private readonly LatestBackgroundProjectionQueue<
         CreationDashboardProjectionBinding,
-        CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>> _creationPrerequisiteQueue = new();
+        CreationPrerequisitePhoneLoad> _creationPrerequisiteQueue = new();
     private readonly LatestBackgroundProjectionQueue<
         CreationDashboardProjectionBinding,
         CharacterCreationFoundationResult<CharacterCreationAttributesState>> _creationAttributesQueue = new();
@@ -1741,12 +1741,13 @@ public sealed class BuildPage : NativePageBase
                 switch (phase)
                 {
                     case CreationDashboardAuthorityPhase.Prerequisite:
+                        CharacterOverviewState prerequisiteDisplay = Coordinator.State;
                         ResolveCreationPhase(
                             binding,
                             projection.Progress.Prerequisite,
                             phase,
                             _creationPrerequisiteQueue,
-                            Coordinator.LoadCreationPrerequisite,
+                            () => Coordinator.LoadCreationPrerequisiteInBackground(prerequisiteDisplay),
                             AcceptCreationPrerequisite);
                         break;
                     case CreationDashboardAuthorityPhase.Attributes:
@@ -1913,7 +1914,7 @@ public sealed class BuildPage : NativePageBase
 
     private void AcceptCreationPrerequisite(
         CreationDashboardProjectionBinding binding,
-        CharacterCreationFoundationResult<CharacterCreationPrerequisiteState> result,
+        CreationPrerequisitePhoneLoad loaded,
         Exception? error)
     {
         if (_creationProjection is not { } projection || !projection.Binding.Equals(binding))
@@ -1923,7 +1924,7 @@ public sealed class BuildPage : NativePageBase
             Progress = projection.Progress.WithTerminal(
                 CreationDashboardAuthorityPhase.Prerequisite,
                 failed: error is not null),
-            Prerequisite = error is null ? result : null,
+            Prerequisite = error is null ? Coordinator.AcceptCreationPrerequisiteLoad(loaded) : null,
             PrerequisiteFailureReason = error is null
                 ? null
                 : "creation-prerequisite-authority-load-failed"
@@ -2564,6 +2565,7 @@ public sealed class BuildPage : NativePageBase
                Outcome: CharacterCreationFoundationOutcomes.Success,
                Value: { } state
            }
+           && Coordinator.IsCreationPrerequisiteStateCurrent(state)
            && CreationPrerequisitePhoneAuthority.IsReady(state, Coordinator.State);
 
     private bool HasAuthoritativeAttributes(
@@ -2676,7 +2678,9 @@ public sealed class BuildPage : NativePageBase
 
     private Task OpenCreationPrerequisiteAsync(
         CharacterCreationPrerequisiteState authority)
-        => Navigation.PushAsync(new CreationPrerequisitePage(Coordinator, authority));
+        => Coordinator.IsCreationPrerequisiteStateCurrent(authority)
+            ? Navigation.PushAsync(new CreationPrerequisitePage(Coordinator, authority))
+            : Task.CompletedTask;
 
     private Task OpenCreationAttributesAsync(CharacterCreationAttributesState authority)
         => Navigation.PushAsync(new CreationAttributesPage(Coordinator, authority));

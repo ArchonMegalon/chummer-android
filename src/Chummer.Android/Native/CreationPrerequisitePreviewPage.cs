@@ -19,6 +19,8 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
         Spacing = 14
     };
     private CreationPrerequisitePhoneConfirmResult? _confirmation;
+    private bool _revalidated;
+    private long _renderGeneration;
 
     internal CreationPrerequisitePreviewPage(
         RunnerSessionCoordinator coordinator,
@@ -31,7 +33,12 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
         _assignments = new Dictionary<string, string>(
             assignments ?? throw new ArgumentNullException(nameof(assignments)),
             StringComparer.Ordinal);
-        _selections = selections ?? throw new ArgumentNullException(nameof(selections));
+        ArgumentNullException.ThrowIfNull(selections);
+        _selections = selections with
+        {
+            TalentActiveSkillSelectionIds = Array.AsReadOnly(selections.TalentActiveSkillSelectionIds.ToArray()),
+            TalentSkillGroupSelectionIds = Array.AsReadOnly(selections.TalentSkillGroupSelectionIds.ToArray())
+        };
         _buildMethod = buildMethod is (CharacterCreationBuildMethods.Priority
             or CharacterCreationBuildMethods.SumToTen)
             ? buildMethod
@@ -43,9 +50,30 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
         Content = new ScrollView { Content = _body };
     }
 
+    protected override async Task PrepareForAppearanceRefreshAsync(CancellationToken cancellationToken)
+    {
+        _revalidated = false;
+        if (_confirmation is not null) return; // A consumed preview is never automatically confirmed or replayed.
+        long appearance = CaptureAppearanceGeneration();
+        var loaded = await Coordinator.RevalidateCreationPrerequisitePreviewAsync(_preview, cancellationToken,
+            () => IsCurrentAppearanceGeneration(appearance));
+        if (IsCurrentAppearanceGeneration(appearance))
+            _revalidated = loaded.Outcome == CharacterCreationFoundationOutcomes.Success
+                           && Coordinator.IsCreationPrerequisitePreviewCurrent(_preview);
+    }
+
     protected override void Refresh()
     {
+        _renderGeneration++;
         _body.Clear();
+        if (!Coordinator.CanDisplayCreationPrerequisitePreview(_preview))
+        {
+            Label stale = NativeTheme.Body(CharacterCreationPrerequisiteBlockers.StaleWorkspaceRevision,
+                NativeTheme.Danger);
+            stale.AutomationId = "creation-prerequisite-preview-unavailable";
+            _body.Add(NativeTheme.Card(stale));
+            return;
+        }
         _body.Add(NativeTheme.Eyebrow(WizardStrings.Get("Priority.Preview.Eyebrow", "Explicit review")));
         _body.Add(NativeTheme.Title(
             string.Equals(
@@ -339,10 +367,10 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
 
     private void AddConfirmation()
     {
-        bool confirmed = string.Equals(
-            _confirmation?.Outcome,
-            CharacterCreationFoundationOutcomes.Success,
-            StringComparison.Ordinal);
+        bool confirmed = _confirmation is
+            { Outcome: CharacterCreationFoundationOutcomes.Success, Receipt: { } receipt, RefreshedState: { } refreshed }
+            && _confirmation.Blockers.Count == 0
+            && Coordinator.IsCreationPrerequisiteReceiptCurrent(receipt, refreshed);
         if (confirmed)
         {
             Label complete = NativeTheme.Body(
@@ -354,12 +382,20 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
             return;
         }
 
-        CharacterCreationFoundationResult<CharacterCreationPrerequisiteState> live =
-            Coordinator.LoadCreationPrerequisite();
-        bool exactLiveBinding = live.Value is { } state
-                                && CreationPrerequisitePhoneAuthority.BindingEquals(
-                                    _preview.Binding,
-                                    state.Binding);
+        if (_confirmation is { Receipt: { } committed }
+            && Coordinator.CanDisplayCreationPrerequisiteReceipt(committed))
+        {
+            Label reopen = NativeTheme.Body(WizardStrings.Get("Priority.Preview.SavedReopenRequired",
+                "Draft saved. The current state could not be reloaded. Reopen the character before continuing."));
+            reopen.AutomationId = "creation-prerequisite-saved-reopen-required";
+            _body.Add(NativeTheme.Card(reopen));
+            return;
+        }
+
+        bool exactLiveBinding = _revalidated && _confirmation is null
+                                && Coordinator.IsCreationPrerequisitePreviewCurrent(_preview);
+        long render = _renderGeneration;
+        long appearance = CaptureAppearanceGeneration();
         Button confirm = NativeTheme.PrimaryButton(WizardStrings.Get("Priority.Preview.Confirm", "Confirm assignments draft"));
         confirm.AutomationId = "creation-prerequisite-confirm";
         confirm.IsEnabled = exactLiveBinding
@@ -372,10 +408,12 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
                                 _preview.PreviewDigest);
         confirm.Clicked += async (_, _) => await RunAsync(async () =>
         {
+            if (!IsCurrentPreview(render, appearance)) return;
             _confirmation = await Coordinator.ConfirmCreationPrerequisiteAsync(
                 _preview,
                 _assignments,
-                _selections);
+                _selections,
+                isCurrentPreview: () => IsCurrentPreview(render, appearance));
         });
         _body.Add(confirm);
 
@@ -399,7 +437,9 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
                 Outcome: CharacterCreationFoundationOutcomes.Success,
                 Receipt: { } receipt,
                 RefreshedState: { } refreshed
-            })
+            }
+            || _confirmation.Blockers.Count != 0
+            || !Coordinator.IsCreationPrerequisiteReceiptCurrent(receipt, refreshed))
         {
             return;
         }
@@ -494,12 +534,24 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
 
         Button back = NativeTheme.SecondaryButton(WizardStrings.Get("Priority.Preview.BackToBuild", "Back to Build"));
         back.AutomationId = "creation-prerequisite-back-to-build";
-        back.Clicked += async (_, _) => await BackToBuildAsync();
+        long render = _renderGeneration;
+        long appearance = CaptureAppearanceGeneration();
+        back.Clicked += async (_, _) => await RunAsync(() => BackToBuildAsync(receipt, refreshed, render, appearance));
         _body.Add(back);
     }
 
-    private async Task BackToBuildAsync()
+    private bool IsCurrentPreview(long render, long appearance)
+        => render == _renderGeneration && IsCurrentAppearanceGeneration(appearance)
+           && _revalidated && _confirmation is null
+           && Coordinator.IsCreationPrerequisitePreviewCurrent(_preview);
+
+    private async Task BackToBuildAsync(CharacterCreationPrerequisiteReceipt receipt,
+        CharacterCreationPrerequisiteState refreshed, long render, long appearance)
     {
+        if (render != _renderGeneration || !IsCurrentAppearanceGeneration(appearance)
+            || !ReferenceEquals(_confirmation?.Receipt, receipt)
+            || !ReferenceEquals(_confirmation?.RefreshedState, refreshed)
+            || !Coordinator.IsCreationPrerequisiteReceiptCurrent(receipt, refreshed)) return;
         // Creation prerequisite pages are pushed outside Shell's visual route
         // hierarchy.  Reset the phone Shell to its authored Runner route so Shell
         // owns the CurrentPage/OnAppearing/Loaded transition back to BuildPage.

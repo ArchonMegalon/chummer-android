@@ -6584,6 +6584,28 @@ public sealed class Demo
             )
         self.assertEqual("missing", drifted["status"])
 
+        # The renamed async entry is recognized only with its real original-owner
+        # implementation; source recognition still cannot prove hosted execution.
+        for control in ("cboHeritage", "cboTalents", "cmdOK"):
+            current = inventory._known_phone_mapping(
+                rows[control], inventory.DEFAULT_CHUMMER5_ROOT, PRESENTATION_ROOT,
+                CORE_ROOT, **receipt_arguments,
+            )
+            self.assertEqual("partial_exact_saved_data", current["status"])
+            self.assertEqual("scripted_not_executed", current["e2e"]["status"])
+
+            def missing_bound_prerequisite(path: Path, *needles: str) -> bool:
+                if path.name == "RunnerSessionCoordinator.CreationPrerequisite.cs":
+                    return False
+                return original_contains(path, *needles)
+
+            with patch.object(inventory, "_contains", side_effect=missing_bound_prerequisite):
+                missing = inventory._known_phone_mapping(
+                    rows[control], inventory.DEFAULT_CHUMMER5_ROOT, PRESENTATION_ROOT,
+                    CORE_ROOT, **receipt_arguments,
+                )
+            self.assertEqual("missing", missing["status"])
+
         rank_handoff_markers = (
             (
                 "CreationPrerequisitePage.cs",
@@ -6611,7 +6633,7 @@ public sealed class Demo
             ),
             (
                 "CreationPriorityCategoryPage.cs",
-                "if (!_draft.Matches(_state, Coordinator.State))",
+                "!Coordinator.IsCreationPrerequisiteStateCurrent(_state) || !_draft.Matches(_state, Coordinator.State)",
             ),
             (
                 "CreationPriorityCategoryPage.cs",

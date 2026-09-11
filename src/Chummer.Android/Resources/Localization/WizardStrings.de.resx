@@ -107,6 +107,7 @@
   <data name="Priority.Preview.Binding" xml:space="preserve"><value>Revision {0} · gespeichert {1} · Vorschau {2}</value></data>
   <data name="Priority.Preview.Confirm" xml:space="preserve"><value>Zuweisungsentwurf bestätigen</value></data>
   <data name="Priority.Preview.Confirmed" xml:space="preserve"><value>Entwurf der Erschaffungsmethode bestätigt und autoritativer Zustand neu geladen.</value></data>
+  <data name="Priority.Preview.SavedReopenRequired" xml:space="preserve"><value>Entwurf gespeichert. Der aktuelle Zustand konnte nicht neu geladen werden. Öffne den Charakter erneut, bevor du fortfährst.</value></data>
   <data name="Priority.Preview.ContentRevision" xml:space="preserve"><value>Inhaltsrevision</value></data>
   <data name="Priority.Preview.DocumentChanged" xml:space="preserve"><value>Charakterdokument geändert</value></data>
   <data name="Priority.Preview.Eyebrow" xml:space="preserve"><value>Ausdrückliche Prüfung</value></data>

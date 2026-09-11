@@ -13,6 +13,16 @@ internal static class Program
 {
     private static async Task Main(string[] args)
     {
+        if (args.Length == 2 && args[0] == "--creation-bootstrap-production-content-root")
+        {
+            await AfterRunAuthorityHarness.RunCreationBootstrapProductionOverviewAsync(args[1]);
+            return;
+        }
+        if (args.Length == 2 && args[0] == "--creation-prerequisite-owner-content-root")
+        {
+            await AfterRunAuthorityHarness.RunCreationPrerequisiteOwnerCasesAsync(args[1]);
+            return;
+        }
         if (args.Length == 1 && args[0] == "--creation-bootstrap-timing")
         {
             await CreationBootstrapObservationsAreOneShotAndRequireSuccessfulStateAsync();

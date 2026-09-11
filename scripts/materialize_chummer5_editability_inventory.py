@@ -8684,13 +8684,15 @@ def _known_phone_mapping(
         preview_page = prerequisite_page.with_name("CreationPrerequisitePreviewPage.cs")
         phone_draft = prerequisite_page.with_name("CreationPrerequisitePhoneDraft.cs")
         coordinator = prerequisite_page.with_name("RunnerSessionCoordinator.cs")
+        bound_prerequisite = prerequisite_page.with_name("RunnerSessionCoordinator.CreationPrerequisite.cs")
         e2e_driver = REPO_ROOT / "tests" / "run_api36_creation_prerequisite_e2e.py"
         shared_authority = (
             _contains(
                 prerequisite_page,
-                "Coordinator.LoadCreationPrerequisite()",
+                "await Coordinator.RevalidateCreationPrerequisiteAsync(_originalAuthority, cancellationToken,",
+                "Coordinator.IsCreationPrerequisiteStateCurrent(authority)",
                 "CreationPrerequisitePhoneAuthority.IsReady(state, Coordinator.State)",
-                "Coordinator.PreviewCreationPrerequisite(state.Binding, assignments, selections)",
+                "await Coordinator.PreviewCreationPrerequisiteAsync(state.Binding, assignments, selections,",
                 'automationId: "creation-prerequisite-heritage-selection"',
                 'automationId: "creation-prerequisite-talent-selection"',
             )
@@ -8703,10 +8705,20 @@ def _known_phone_mapping(
             )
             and _contains(
                 coordinator,
-                "ICharacterCreationPrerequisiteService",
+                "IOwnerBoundCharacterCreationPrerequisiteService",
                 "LoadCreationPrerequisite()",
-                "PreviewCreationPrerequisite(",
+                "PreviewCreationPrerequisiteAsync(",
                 "ConfirmCreationPrerequisiteAsync(",
+            )
+            and _contains(
+                bound_prerequisite,
+                "_prerequisiteLoads.TryGetValue(binding, out var issued)",
+                "_prerequisitePreviews.TryGetValue(preview, out var issued)",
+                "IsNativeEditDisplayCurrent(original)",
+                "WithWorkspaceActivationGateAsync",
+                "service.Load(owner, new(workspaceId))",
+                "await Task.Run(() => service.Preview(owner, request), cancellationToken)",
+                "return service.Confirm(owner, request);",
                 "CharacterCreationPrerequisitePreviewRequest",
                 "CharacterCreationPrerequisiteConfirmRequest",
             )
@@ -8727,7 +8739,7 @@ def _known_phone_mapping(
                 "private readonly CharacterCreationPrerequisiteState _state;",
                 "CharacterCreationPrerequisiteState state,",
                 "_state = state ?? throw new ArgumentNullException(nameof(state));",
-                "if (!_draft.Matches(_state, Coordinator.State))",
+                "!Coordinator.IsCreationPrerequisiteStateCurrent(_state) || !_draft.Matches(_state, Coordinator.State)",
                 "_draft.OptionsForCategory(_state, Coordinator.State, _categoryId)",
                 "_draft.TrySelect(_state, Coordinator.State, _categoryId, rank)",
                 '$"creation-prerequisite-rank-',
@@ -8768,6 +8780,7 @@ def _known_phone_mapping(
             "Coordinator.ConfirmCreationPrerequisiteAsync(",
             'confirm.AutomationId = "creation-prerequisite-confirm"',
             "receipt.CharacterDocumentChanged",
+            "Coordinator.IsCreationPrerequisiteReceiptCurrent(receipt, refreshed)",
             '"creation-prerequisite-receipt-draft-digest"',
             '"creation-prerequisite-receipt-auxiliary-state-digest"',
         )
@@ -8839,10 +8852,11 @@ def _known_phone_mapping(
                 "src/Chummer.Android/Native/CreationPrerequisitePreviewPage.cs",
                 "src/Chummer.Android/Native/CreationPrerequisitePhoneDraft.cs",
                 "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.CreationPrerequisite.cs",
                 "tests/run_api36_creation_prerequisite_e2e.py",
             ],
             "presenterMutation": (
-                "ICharacterCreationPrerequisiteService.Preview / Confirm auxiliary draft"
+                "IOwnerBoundCharacterCreationPrerequisiteService.Preview / Confirm auxiliary draft"
             ),
             "persistenceAssertion": assertion,
             "e2e": {
@@ -24539,6 +24553,7 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CreationTalentSkillGrantPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CreationPrerequisitePreviewPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CreationPrerequisitePhoneDraft.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.CreationPrerequisite.cs",
         *_sr5_table_wizard_authority_paths(presentation_root),
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.LinkedCharacters.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "TabletBuildPage.cs",

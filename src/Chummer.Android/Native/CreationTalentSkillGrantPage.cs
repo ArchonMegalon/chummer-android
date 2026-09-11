@@ -10,6 +10,8 @@ namespace Chummer.Android.Native;
 public sealed class CreationTalentSkillGrantPage : NativePageBase
 {
     private readonly CreationPrerequisitePhoneDraft _draft;
+    private readonly CharacterCreationPrerequisiteState _state;
+    private long _renderGeneration;
     private readonly string _talentSelectionId;
     private readonly VerticalStackLayout _body = new()
     {
@@ -20,9 +22,11 @@ public sealed class CreationTalentSkillGrantPage : NativePageBase
     internal CreationTalentSkillGrantPage(
         RunnerSessionCoordinator coordinator,
         CreationPrerequisitePhoneDraft draft,
+        CharacterCreationPrerequisiteState state,
         string talentSelectionId) : base(coordinator)
     {
         _draft = draft ?? throw new ArgumentNullException(nameof(draft));
+        _state = state ?? throw new ArgumentNullException(nameof(state));
         _talentSelectionId = string.IsNullOrWhiteSpace(talentSelectionId)
             ? throw new ArgumentException("A Core-projected Talent selection is required.", nameof(talentSelectionId))
             : talentSelectionId;
@@ -33,20 +37,14 @@ public sealed class CreationTalentSkillGrantPage : NativePageBase
 
     protected override void Refresh()
     {
+        _renderGeneration++;
         _body.Clear();
         _body.Add(NativeTheme.Eyebrow("Core-projected Talent grant"));
-        CharacterCreationFoundationResult<CharacterCreationPrerequisiteState> load =
-            Coordinator.LoadCreationPrerequisite();
-        if (!string.Equals(
-                load.Outcome,
-                CharacterCreationFoundationOutcomes.Success,
-                StringComparison.Ordinal)
-            || load.Value is not { } state
+        CharacterCreationPrerequisiteState state = _state;
+        if (!Coordinator.IsCreationPrerequisiteStateCurrent(state)
             || !_draft.Matches(state, Coordinator.State))
         {
-            AddStaleRecovery(load.Blockers.Count > 0
-                ? load.Blockers
-                : [CharacterCreationPrerequisiteBlockers.StaleWorkspaceRevision]);
+            AddStaleRecovery([CharacterCreationPrerequisiteBlockers.StaleWorkspaceRevision]);
             return;
         }
 
@@ -83,6 +81,8 @@ public sealed class CreationTalentSkillGrantPage : NativePageBase
         CharacterCreationPriorityTalentOptionProjection talent,
         CharacterCreationTalentActiveSkillGrantProjection grant)
     {
+        long render = _renderGeneration;
+        long appearance = CaptureAppearanceGeneration();
         IReadOnlyList<string> selected = _draft.TalentActiveSkillSelectionIds(
             state,
             Coordinator.State);
@@ -121,7 +121,8 @@ public sealed class CreationTalentSkillGrantPage : NativePageBase
             _body.Add(NativeTheme.NavigationRow(
                 isSelected ? $"✓ {choice.CanonicalName}" : choice.CanonicalName,
                 detail,
-                () => ToggleActiveAsync(state, choice.SelectionId),
+                () => IsCurrentSelection(render, appearance)
+                    ? ToggleActiveAsync(state, choice.SelectionId) : Task.CompletedTask,
                 enabled: isSelected || canAdd,
                 automationId:
                     $"creation-prerequisite-talent-active-skill-option-{Token(choice.SelectionId)}"));
@@ -141,6 +142,8 @@ public sealed class CreationTalentSkillGrantPage : NativePageBase
         CharacterCreationPriorityTalentOptionProjection talent,
         CharacterCreationTalentSkillGroupGrantProjection grant)
     {
+        long render = _renderGeneration;
+        long appearance = CaptureAppearanceGeneration();
         IReadOnlyList<string> selected = _draft.TalentSkillGroupSelectionIds(
             state,
             Coordinator.State);
@@ -168,7 +171,8 @@ public sealed class CreationTalentSkillGrantPage : NativePageBase
             _body.Add(NativeTheme.NavigationRow(
                 isSelected ? $"✓ {choice.CanonicalName}" : choice.CanonicalName,
                 detail,
-                () => ToggleGroupAsync(state, choice.SelectionId),
+                () => IsCurrentSelection(render, appearance)
+                    ? ToggleGroupAsync(state, choice.SelectionId) : Task.CompletedTask,
                 enabled: isSelected || selected.Count < grant.Quantity,
                 automationId:
                     $"creation-prerequisite-talent-skill-group-option-{Token(choice.SelectionId)}"));
@@ -242,13 +246,18 @@ public sealed class CreationTalentSkillGrantPage : NativePageBase
 
     private void AddCompletion(bool complete, int selectedCount, int requiredCount)
     {
+        long render = _renderGeneration;
+        long appearance = CaptureAppearanceGeneration();
         Button done = NativeTheme.PrimaryButton(
             complete
                 ? CreationFlowStrings.Get("TalentChoices.Continue", "Continue with these choices")
                 : CreationFlowStrings.Format("TalentChoices.ChooseMore", "Choose {0} more", requiredCount - selectedCount));
         done.AutomationId = "creation-prerequisite-talent-grant-complete";
         done.IsEnabled = complete;
-        done.Clicked += async (_, _) => await Navigation.PopAsync(animated: false);
+        done.Clicked += async (_, _) =>
+        {
+            if (IsCurrentSelection(render, appearance)) await Navigation.PopAsync(animated: false);
+        };
         _body.Add(done);
     }
 
@@ -257,9 +266,17 @@ public sealed class CreationTalentSkillGrantPage : NativePageBase
         AddBlockers(blockers, "creation-prerequisite-talent-grant-stale");
         Button back = NativeTheme.SecondaryButton("Return to refreshed Talent choices");
         back.AutomationId = "creation-prerequisite-talent-grant-recover";
-        back.Clicked += async (_, _) => await Navigation.PopAsync(animated: false);
+        long appearance = CaptureAppearanceGeneration();
+        back.Clicked += async (_, _) =>
+        {
+            if (IsCurrentAppearanceGeneration(appearance)) await Navigation.PopAsync(animated: false);
+        };
         _body.Add(back);
     }
+
+    private bool IsCurrentSelection(long render, long appearance)
+        => render == _renderGeneration && IsCurrentAppearanceGeneration(appearance)
+           && Coordinator.IsCreationPrerequisiteStateCurrent(_state);
 
     private void AddBlockers(IReadOnlyList<string> blockers, string automationId)
     {

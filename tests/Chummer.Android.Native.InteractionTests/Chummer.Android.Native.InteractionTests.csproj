@@ -27,6 +27,7 @@
     <Compile Include="DamageSaveReceiptRuntimeTests.cs" />
     <Compile Include="CreationContactsOwnerRuntimeTests.cs" />
     <Compile Include="CreationFinalizationOwnerRuntimeTests.cs" />
+    <Compile Include="CreationPrerequisiteOwnerRuntimeTests.cs" />
     <Compile Include="CreationBootstrapOwnerRuntimeTests.cs" />
     <Compile Include="PersistenceOwnerRuntimeTests.cs" />
     <Compile Include="ReputationGestureOwnerRuntimeTests.cs" />

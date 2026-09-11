@@ -10406,7 +10406,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             NATIVE / "CreationPrerequisitePreviewPage.cs"
         ).read_text(encoding="utf-8")
         callback = source[
-            source.index("private async Task BackToBuildAsync()") :
+            source.index("private async Task BackToBuildAsync(") :
             source.index("private static string FormatBudget(")
         ]
 
@@ -15966,31 +15966,55 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
     def test_coordinator_uses_only_the_core_prerequisite_boundary_and_refreshes_receipt(self) -> None:
         source = (NATIVE / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+        bound = (NATIVE / "RunnerSessionCoordinator.CreationPrerequisite.cs").read_text(encoding="utf-8")
         for marker in (
-            "internal CharacterCreationFoundationResult<CharacterCreationPrerequisitePreview>",
-            "internal async Task<CreationPrerequisitePhoneConfirmResult>",
-            "ICharacterCreationPrerequisiteService creationPrerequisiteService",
-            "_creationPrerequisiteService.Load(",
-            "new CharacterCreationPrerequisiteLoadRequest(workspaceId)",
-            "_creationPrerequisiteService.Preview(",
-            "new CharacterCreationPrerequisitePreviewRequest(",
-            "HeritageSelectionId = selections.HeritageSelectionId",
-            "TalentSelectionId = selections.TalentSelectionId",
-            "TalentActiveSkillSelectionIds = selections.TalentActiveSkillSelectionIds.ToArray()",
-            "TalentSkillGroupSelectionIds = selections.TalentSkillGroupSelectionIds.ToArray()",
-            "_creationPrerequisiteService.Confirm(",
+            "IOwnerBoundCharacterCreationPrerequisiteService? ownerBoundCreationPrerequisiteService",
+            "PreviewCreationPrerequisiteAsync(",
+            "ConfirmCreationPrerequisiteAsync(",
+            "_prerequisiteCachedState is { } state && IsCreationPrerequisiteStateCurrent(state)",
+        ):
+            self.assertIn(marker, source)
+        self.assertNotIn("_creationPrerequisiteService.", source + bound)
+        for marker in (
+            "service.Load(owner, new(workspaceId))",
+            "await Task.Run(() => service.Preview(owner, request), cancellationToken)",
+            "return service.Confirm(owner, request);",
+            "new CharacterCreationPrerequisitePreviewRequest(binding, copiedAssignments)",
             "new CharacterCreationPrerequisiteConfirmRequest(",
+            "HeritageSelectionId = copiedSelections.HeritageSelectionId",
+            "TalentSelectionId = copiedSelections.TalentSelectionId",
+            "TalentActiveSkillSelectionIds = copiedSelections.TalentActiveSkillSelectionIds",
+            "TalentSkillGroupSelectionIds = copiedSelections.TalentSkillGroupSelectionIds",
             "preview.PreviewDigest",
             "ExplicitlyConfirmed: true",
-            "await _presenter.LoadAsync(receipt.WorkspaceId, cancellationToken)",
+            "await refresh.LoadAsync(owner, receipt.WorkspaceId, cancellationToken)",
             "CreationPrerequisitePhoneAuthority.ReceiptMatches(",
             "!preview.RequiresExplicitConfirmation",
             "!preview.CanConfirm",
             "CharacterCreationPrerequisiteAuthorityDigest.IsCanonical(preview.PreviewDigest)",
             "CharacterCreationPrerequisiteBlockers.StaleWorkspaceRevision",
-            "CharacterCreationPrerequisiteBlockers.PreviewDigestMismatch",
+            "_prerequisiteLoads.TryGetValue(binding, out var issued)",
+            "_prerequisitePreviews.TryGetValue(preview, out var issued)",
+            "IsNativeEditDisplayCurrent(original)",
+            "IsNativePersistenceOwnerCurrent(original.DisplayOwnerContext)",
+            "issued.Load.OriginalDisplay.DisplayOwnerContext is not { IsValid: true } owner",
+            "isCurrentPreview?.Invoke() == false",
+            "Interlocked.Exchange(ref entered, 1)",
+            "catch (OperationCanceledException) when (Volatile.Read(ref entered) == 0)",
+            "issued.ConfirmationStarted = false",
+            "PrerequisiteOutcomeUnknown",
+            "new(result.Outcome, receipt, null, [PrerequisitePostCommitRefreshRequired])",
         ):
-            self.assertIn(marker, source)
+            self.assertIn(marker, bound)
+
+        confirm = bound[bound.index("private Task<CreationPrerequisitePhoneConfirmResult> ConfirmIssuedCreationPrerequisiteAsync(") :]
+        before_core = confirm[:confirm.index("return service.Confirm(owner, request);")]
+        self.assertNotIn("LoadCreationPrerequisite", before_core)
+        self.assertLess(before_core.index("CopyPrerequisiteAssignments(assignments)"), before_core.index("WithWorkspaceActivationGateAsync"))
+        self.assertLess(before_core.index("_prerequisitePreviews.TryGetValue"), before_core.index("WithWorkspaceActivationGateAsync"))
+        self.assertEqual(1, confirm.count("service.Confirm("))
+        self.assertNotIn("LookupReceipt", bound)
+        self.assertNotIn("await _presenter.LoadAsync(", bound)
 
         prerequisite_region = source[
             source.index("LoadCreationPrerequisite()") : source.index(
@@ -16005,6 +16029,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "UpdateMetadataAsync",
         ):
             self.assertNotIn(forbidden, prerequisite_region)
+            self.assertNotIn(forbidden, bound)
 
     def test_phone_draft_is_exact_bound_and_enforces_projected_profiles(self) -> None:
         source = (NATIVE / "CreationPrerequisitePhoneDraft.cs").read_text(encoding="utf-8")
@@ -16224,7 +16249,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "new CreationPriorityDetailPage(",
             '"creation-prerequisite-attributes-disabled"',
             "halveattributepoints adjustment",
-            "Coordinator.PreviewCreationPrerequisite(state.Binding, assignments, selections)",
+            "await Coordinator.PreviewCreationPrerequisiteAsync(state.Binding, assignments, selections,",
             "new CreationPrerequisitePreviewPage(",
         ):
             self.assertIn(marker, page)
@@ -16360,17 +16385,18 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             page.index("private void TryPublishApi36AttachmentProof()")
         ]
         self.assertEqual(1, refresh.count("            ResolveCurrentAuthority();"))
-        self.assertEqual(1, page.count("Coordinator.LoadCreationPrerequisite()"))
+        self.assertNotIn("Coordinator.LoadCreationPrerequisite()", page)
+        self.assertIn("await Coordinator.RevalidateCreationPrerequisiteAsync(_originalAuthority, cancellationToken,", page)
+        self.assertIn("() => IsCurrentAppearanceGeneration(appearance)", page)
         self.assertIn("CharacterCreationPrerequisiteState dashboardAuthority", page)
         self.assertIn("_dashboardAuthority = dashboardAuthority", page)
         self.assertIn(
             "CreationPrerequisitePhoneAuthority.IsReady(authority, Coordinator.State)",
             page,
         )
-        self.assertLess(
-            page.index("_dashboardAuthority = null;"),
-            page.index("return Coordinator.LoadCreationPrerequisite();"),
-        )
+        self.assertIn("Coordinator.IsCreationPrerequisiteStateCurrent(authority)", page)
+        self.assertIn("render == _renderGeneration && IsCurrentAppearanceGeneration(appearance)", page)
+        self.assertIn("isCurrentEditor: () => IsCurrentEditor(state, render, appearance)", page)
         self.assertIn(
             "OpenCreationPrerequisiteAsync(prerequisite!.Value!)",
             dashboard,
@@ -16383,15 +16409,40 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertNotIn("Coordinator.LoadCreationPrerequisite", options)
         self.assertIn("CharacterCreationPrerequisiteState state", options)
         self.assertIn("_state = state ?? throw", options)
-        self.assertIn("if (!_draft.Matches(_state, Coordinator.State))", category_refresh)
+        self.assertIn("!Coordinator.IsCreationPrerequisiteStateCurrent(_state) || !_draft.Matches(_state, Coordinator.State)", category_refresh)
         self.assertLess(
-            category_refresh.index("if (!_draft.Matches(_state, Coordinator.State))"),
+            category_refresh.index("!Coordinator.IsCreationPrerequisiteStateCurrent(_state)"),
             category_refresh.index("_draft.OptionsForCategory("),
         )
         self.assertIn(
             "AddBlockers([CharacterCreationPrerequisiteBlockers.StaleWorkspaceRevision])",
             category_refresh,
         )
+
+    def test_prerequisite_preview_render_is_read_only_and_receipt_visibility_is_honest(self) -> None:
+        preview = (NATIVE / "CreationPrerequisitePreviewPage.cs").read_text(encoding="utf-8")
+        self.assertNotIn("Coordinator.LoadCreationPrerequisite", preview)
+        self.assertIn("await Coordinator.RevalidateCreationPrerequisitePreviewAsync(_preview, cancellationToken,", preview)
+        self.assertIn("if (_confirmation is not null) return;", preview)
+        self.assertIn("isCurrentPreview: () => IsCurrentPreview(render, appearance)", preview)
+        self.assertIn("!Coordinator.CanDisplayCreationPrerequisitePreview(_preview)", preview)
+        self.assertIn("Coordinator.IsCreationPrerequisiteReceiptCurrent(receipt, refreshed)", preview)
+        self.assertIn("Coordinator.CanDisplayCreationPrerequisiteReceipt(committed)", preview)
+        self.assertIn('reopen.AutomationId = "creation-prerequisite-saved-reopen-required";', preview)
+        self.assertIn("_confirmation.Blockers.Count == 0", preview)
+        self.assertIn("await RunAsync(() => BackToBuildAsync(receipt, refreshed, render, appearance))", preview)
+        back = preview[preview.index("private async Task BackToBuildAsync(") : preview.index("private static string FormatBudget(")]
+        for guard in ("render != _renderGeneration", "!IsCurrentAppearanceGeneration(appearance)",
+                      "!ReferenceEquals(_confirmation?.Receipt, receipt)",
+                      "!ReferenceEquals(_confirmation?.RefreshedState, refreshed)",
+                      "!Coordinator.IsCreationPrerequisiteReceiptCurrent(receipt, refreshed)"):
+            self.assertLess(back.index(guard), back.index("Shell.Current"))
+        for child in ("CreationPriorityDetailPage.cs", "CreationTalentSkillGrantPage.cs"):
+            source = (NATIVE / child).read_text(encoding="utf-8")
+            self.assertNotIn("Coordinator.LoadCreationPrerequisite", source)
+            self.assertIn("private readonly CharacterCreationPrerequisiteState _state", source)
+            self.assertIn("render == _renderGeneration && IsCurrentAppearanceGeneration(appearance)", source)
+            self.assertIn("Coordinator.IsCreationPrerequisiteStateCurrent(_state)", source)
 
     def test_build_ghost_is_dormant_and_has_no_phone_prerequisite_launch(self) -> None:
         page = (NATIVE / "CreationPrerequisitePage.cs").read_text(encoding="utf-8")
@@ -16404,6 +16455,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         for forbidden in (
             "AskRook(",
             "PreviewCreationPrerequisite(",
+            "PreviewCreationPrerequisiteAsync(",
             "ConfirmCreationPrerequisiteAsync(",
             "ICharacterCreationPrerequisiteService",
         ):
